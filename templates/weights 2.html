@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Weight Configurations</title>
+    <!-- Bootstrap CSS for responsive grid layout -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <!-- Custom CSS for styling -->
+    <style>
+        /* Custom styles */
+        body {
+            padding-top: 20px;
+        }
+        .attribute-table {
+            margin-bottom: 20px;
+            background-color: black; /* Set background color to black for tables */
+            color: white; /* Set text color to white for contrast */
+        }
+        .attribute-table th {
+            background-color: black; /* Black background for headers */
+            color: white; /* White text for headers */
+        }
+        .attribute-table td {
+            text-align: center;
+            /* Text color for table cells will be set by determine_color function */
+        }
+        .tab-content {
+            margin-top: 20px;
+        }
+        /* Add custom colors for table borders */
+        .attribute-table, .attribute-table th, .attribute-table td {
+            border: 1px solid gray; /* Set border color */
+        }
+        
+        /* Dark mode styles */
+        .dark-mode {
+            background-color: #121212; /* Darker background for better contrast */
+            color: #ffffff;
+        }
+        .dark-mode .attribute-table {
+            background-color: #222; /* Dark background for table cells */
+            color: #ddd; /* Light text for readability */
+        }
+        .dark-mode .attribute-table th {
+            background-color: #222;
+            color: #ddd;
+        }
+        .dark-mode .attribute-table td {
+            background-color: #222; /* Dark background for table data cells */
+            color: #ddd; /* Light text for table data cells */
+        }
+        /* Ensure that category names in the table header also adhere to dark mode */
+        .dark-mode .attribute-table thead td {
+            background-color: black; /* Black background for category names */
+            color: white; /* White text for category names */
+        }
+    </style>
+</head>
+  <script>
+    if (localStorage.getItem('darkMode') === 'true') {
+        document.body.classList.add('dark-mode');
+    }
+  </script>
+  <div class="container mt-4">
+    <!-- Navigation link to index -->
+    <div class="text-center mb-4">
+        <a href="/" class="btn btn-info">Go to Home</a>
+    </div>
+    <div class="container mt-4">
+        <h2 class="mb-4">Attribute Weights</h2>
+        <!-- Tabs navigation -->
+        <ul class="nav nav-tabs" id="myTab" role="tablist">
+            {% for weight_key in weights.keys() %}
+                <li class="nav-item">
+                    <a class="nav-link {% if loop.first %}active{% endif %}" id="{{ weight_key }}-tab" data-toggle="tab" href="#{{ weight_key }}" role="tab" aria-controls="{{ weight_key }}" aria-selected="{% if loop.first %}true{% else %}false{% endif %}">{{ weight_key.replace('_', ' ').title() }}</a>
+                </li>
+            {% endfor %}
+        </ul>
+        <div class="container mt-4">
+          <!-- Button for toggling dark mode -->
+          <button type="button" id="dark-mode-toggle" class="btn btn-secondary">Toggle Dark Mode</button>  
+        <!-- Content of the tabs -->
+        <div class="tab-content" id="myTabContent">
+            {% for weight_key, weight_values in weights.items() %}
+            <div class="tab-pane fade {% if loop.first %}show active{% endif %}" id="{{ weight_key }}" role="tabpanel" aria-labelledby="{{ weight_key }}-tab">
+                <div class="row">
+                    <!-- Technical Attributes Column -->
+                    <div class="col-md-4">
+                        <table id="technical_table_{{ weight_key }}" class="table attribute-table">
+                            <thead>
+                                <tr><th colspan="2">Technical</th></tr>
+                            </thead>
+                            <tbody>
+                                {% for tech_key, tech_name in attributes.technical_attributes.items() %}
+                                {% if tech_name in weight_values %}
+                                    <tr>
+                                        <td style="background-color: black; color: white;">{{ tech_key }}</td>
+                                        <td style="color: {{ determine_color(weight_values[tech_name]) }}">{{ weight_values[tech_name] }}</td>
+                                    </tr>
+                                {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Mental Attributes Column -->
+                    <div class="col-md-4">
+                        <table id="mental_table_{{ weight_key }}" class="table attribute-table">
+                            <thead>
+                                <tr><th colspan="2">Mental</th></tr>
+                            </thead>
+                            <tbody>
+                                {% for mental_key, mental_name in attributes.mental_attributes.items() %}
+                                {% if mental_name in weight_values %}
+                                    <tr>
+                                        <td style="background-color: black; color: white;">{{ mental_key }}</td>
+                                        <td style="color: {{ determine_color(weight_values[mental_name]) }}">{{ weight_values[mental_name] }}</td>
+                                    </tr>
+                                {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Physical Attributes Column -->
+                    <div class="col-md-4">
+                        <table id="physical_table_{{ weight_key }}" class="table attribute-table">
+                            <thead>
+                                <tr><th colspan="2">Physical</th></tr>
+                            </thead>
+                            <tbody>
+                                {% for physical_key, physical_name in attributes.physical_attributes.items() %}
+                                {% if physical_name in weight_values %}
+                                    <tr>
+                                        <td style="background-color: black; color: white;">{{ physical_key }}</td>
+                                        <td style="color: {{ determine_color(weight_values[physical_name]) }}">{{ weight_values[physical_name] }}</td>
+                                    </tr>
+                                {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    <!-- Include jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Bootstrap JS -->
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js"></script>
+    <!-- Dark Mode Toggle Script -->
+
+    <!-- Include jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Bootstrap JS -->
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js"></script>
+    <!-- Dark Mode Toggle Script -->
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+          var darkModeToggle = document.getElementById('dark-mode-toggle');
+          var isDarkMode = localStorage.getItem('darkMode') === 'true';
+
+          // Function to toggle dark mode
+          function toggleDarkMode(isEnabled) {
+              if (isEnabled) {
+                  document.body.classList.add('dark-mode');
+              } else {
+                  document.body.classList.remove('dark-mode');
+              }
+              localStorage.setItem('darkMode', isEnabled);
+          }
+
+          // Apply dark mode if it was enabled previously
+          toggleDarkMode(isDarkMode);
+
+          // Event listener for the toggle button
+          darkModeToggle.addEventListener('click', function() {
+              isDarkMode = !isDarkMode;
+              toggleDarkMode(isDarkMode);
+          });
+      });
+  </script>
+</body>
+</html>

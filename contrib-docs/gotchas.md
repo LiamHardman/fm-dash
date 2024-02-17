@@ -1,0 +1,2 @@
+### Installing Pillow 9.5.0 Failing on Mac
+- Run brew install pkg-config cairo pango libpng jpeg giflib librsvg libjpeg-turbo webp. (or your flavor of package manager for linux distros) See [This issue comment](https://github.com/Automattic/node-canvas/issues/1898#issuecomment-1059309296)

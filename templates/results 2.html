@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Z Players Results</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.21/css/jquery.dataTables.css">
+    <style>
+        body {
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .table {
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .table th {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        .scatter-plots {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            align-items: center;
+            max-height: 100%;
+        }
+
+        .scatter-plots .plot-container {
+            flex: 1 1 auto;
+            max-width: 100%;
+            margin: 10px;
+            max-height: 50vh;
+            height: auto;
+            overflow: visible;
+        }
+
+        .dark-mode {
+            background-color: #121212;
+            color: #ffffff;
+        }
+
+        .dark-mode .table,
+        .dark-mode .table th,
+        .dark-mode .table td {
+            background-color: #222;
+            color: #ddd;
+            border-color: #333;
+        }
+
+        .dark-mode .table th {
+            background-color: #333;
+        }
+
+        .dark-mode .table thead th {
+            color: #ddd;
+        }
+
+        .dark-mode .dataTables_filter input {
+            background-color: #222;
+            color: #ddd;
+            border: 1px solid #333;
+        }
+
+        .dark-mode .dataTables_length select {
+            background-color: #222;
+            color: #ddd;
+            border: 1px solid #333;
+        }
+
+        .dark-mode .table a {
+            color: #4da3ff;
+        }
+
+        .dark-mode .btn {
+            background-color: #333;
+            color: #ddd;
+            border-color: #444;
+        }
+
+        .dark-mode .btn:hover {
+            background-color: #444;
+            color: #fff;
+        }
+
+        .dark-mode .graph-selection select {
+            background-color: #333;
+            color: #ddd;
+            border: 1px solid #444;
+        }
+
+        .dark-mode .graph-selection select option {
+            background-color: #333;
+            color: #ddd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <!-- Navigation buttons -->
+        <div class="text-center mb-4">
+            <a href="/" class="btn btn-primary mr-2">Home</a>
+            <a href="/weights" class="btn btn-info">Weights Configurations</a>
+        </div>
+
+    <h1>Top Players Results</h1>
+
+    <!-- Tab Navigation -->
+    <ul class="nav nav-tabs" id="myTab" role="tablist">
+        <li class="nav-item">
+            <a class="nav-link active" id="player-summary-tab" data-toggle="tab" href="#player-summary" role="tab" aria-controls="player-summary" aria-selected="true">Player Summary</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="defense-tab" data-toggle="tab" href="#defense" role="tab" aria-controls="defense" aria-selected="false">Defense</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="creative-tab" data-toggle="tab" href="#creative" role="tab" aria-controls="creative" aria-selected="false">Creative</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="attack-tab" data-toggle="tab" href="#attack" role="tab" aria-controls="attack" aria-selected="false">Attack</a>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="myTabContent">
+        <!-- Player Summary Tab -->
+        <div class="tab-pane fade show active" id="player-summary" role="tabpanel" aria-labelledby="player-summary-tab">
+            <div class="table-responsive">
+                <table class="table table-hover" id="playersTable">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Age</th>
+                            <th>Position</th>
+                            <th>Overall Score</th>
+                            <th>Physical Score</th>
+                            <th>Mental Score</th>
+                            <th>Technical Score</th>
+                            <th>Value Score</th>
+                            <th>Lower Value Range</th>
+                            <th>Upper Value Range</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for player in players %}
+                        <tr>
+                            <td>{{ player['Name'] }}</td>
+                            <td>{{ player['Age'] }}</td>
+                            <td>{{ player['Position'] }}</td>
+                            <td>{{ player['Overall Score'] }}</td>
+                            <td>{{ player['Physical Score'] }}</td>
+                            <td>{{ player['Mental Score'] }}</td>
+                            <td>{{ player['Technical Score'] }}</td>
+                            <td>{{ player['Value Score'] }}</td>
+                            <td>{{ player['Lower Value Range'] }}</td>
+                            <td>{{ player['Upper Value Range'] }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Defense Tab -->
+        <div class="tab-pane fade" id="defense" role="tabpanel" aria-labelledby="defense-tab">
+            <div class="table-responsive">
+                <table class="table table-hover" id="defenseTable">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Age</th>
+                            <th>Position</th>
+                            <th>Average Rating</th>
+                            <th>Passes/90</th>
+                            <th>Interceptions/90</th>
+                            <th>Tackles/90</th>
+                            <th>Blocks/90</th>
+                            <th>Clearances/90</th>
+                            <th>Headers Won/90</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for player in defense_table %}
+                        <tr>
+                            <td>{{ player['Name'] }}</td>
+                            <td>{{ player['Age'] }}</td>
+                            <td>{{ player['Position'] }}</td>
+                            <td>{{ player['Average Rating'] }}</td>
+                            <td>{{ player['Passes Completed/90'] }}</td>
+                            <td>{{ player['Interceptions/90'] }}</td>
+                            <td>{{ player['Tackles/90'] }}</td>
+                            <td>{{ player['Blocks/90'] }}</td>
+                            <td>{{ player['Clearances/90'] }}</td>
+                            <td>{{ player['Headers Won/90'] }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Creative Tab -->
+        <div class="tab-pane fade" id="creative" role="tabpanel" aria-labelledby="creative-tab">
+            <div class="table-responsive">
+                <table class="table table-hover" id="creativeTable">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Age</th>
+                            <th>Position</th>
+                            <th>Average Rating</th>
+                            <th>Passes/90</th>
+                            <th>Key Passes/90</th>
+                            <th>Assists/90</th>
+                            <th>Expected Assists/90</th>
+                            <th>Goals/90</th>
+                            <th>Expected Goals/90</th>
+                            <th>Crosses Completed/90</th>
+                            <th>Dribbles/90</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for player in creative_table %}
+                        <tr>
+                            <td>{{ player['Name'] }}</td>
+                            <td>{{ player['Age'] }}</td>
+                            <td>{{ player['Position'] }}</td>
+                            <td>{{ player['Average Rating'] }}</td>
+                            <td>{{ player['Passes Completed/90'] }}</td>
+                            <td>{{ player['Key Passes/90'] }}</td>
+                            <td>{{ player['Assists/90'] }}</td>
+                            <td>{{ player['Expected Assists/90'] }}</td>
+                            <td>{{ player['Goals/90'] }}</td>
+                            <td>{{ player['Expected Goals/90'] }}</td>
+                            <td>{{ player['Crosses Completed/90'] }}</td>
+                            <td>{{ player['Dribbles/90'] }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Attack Tab -->
+        <div class="tab-pane fade" id="attack" role="tabpanel" aria-labelledby="attack-tab">
+            <div class="table-responsive">
+                <table class="table table-hover" id="attackTable">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Age</th>
+                            <th>Position</th>
+                            <th>Average Rating</th>
+                            <th>Minutes per Goal</th>
+                            <th>Expected Goals/90</th>
+                            <th>Goals/90</th>
+                            <th>Expected Assists/90</th>
+                            <th>Assists/90</th>
+                            <th>Shots/90</th>
+                            <th>Dribbles/90</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for player in attack_table %}
+                        <tr>
+                            <td>{{ player['Name'] }}</td>
+                            <td>{{ player['Age'] }}</td>
+                            <td>{{ player['Position'] }}</td>
+                            <td>{{ player['Average Rating'] }}</td>
+                            <td>{{ player['Minutes per Goal'] }}</td>
+                            <td>{{ player['Expected Goals/90'] }}</td>
+                            <td>{{ player['Goals/90'] }}</td>
+                            <td>{{ player['Expected Assists/90'] }}</td>
+                            <td>{{ player['Assists/90'] }}</td>
+                            <td>{{ player['Shots/90'] }}</td>
+                            <td>{{ player['Dribbles/90'] }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center">
+        <button type="button" id="dark-mode-toggle" class="btn btn-secondary my-3">Toggle Dark Mode</button>
+    </div>
+    <div class="text-center my-3">
+        <a href="/export/html" target="_blank" class="btn btn-primary mr-2">Export as HTML</a>
+        <a href="/export/csv" target="_blank" class="btn btn-primary mr-2">Export as CSV</a>
+        <a href="/export/md" target="_blank" class="btn btn-primary mr-2">Export as Markdown</a>
+    </div>
+
+    {% if show_plots %}
+    <div class="graph-selection" style="text-align: center; margin-bottom: 20px;">
+        <select id="graphSelector" class="form-control" style="width: auto; display: inline-block;">
+            <option value="">Select a Graph</option>
+            <!-- Options will be populated dynamically -->
+        </select>
+    </div>
+    {% endif %}
+
+    <div class="scatter-plots">
+        <!-- Graphs will be rendered here -->
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.21/js/jquery.dataTables.js"></script>
+    <script>
+        var isDarkMode = localStorage.getItem('darkMode') === 'true';
+        var plots_data = {
+            'player-summary': {{ plots_json | safe }},
+            'defense': {{ defense_plots_json | safe }},
+            'creative': {{ creative_plots_json | safe }},
+            'attack': {{ attack_plots_json | safe }}
+        };
+        var plot_axes_data = {
+            'player-summary': {{ plot_axes | tojson | safe }},
+            'defense': {{ defense_plot_axes | tojson | safe }},
+            'creative': {{ creative_plot_axes | tojson | safe }},
+            'attack': {{ attack_plot_axes | tojson | safe }}
+        };
+        var currentDataTable;
+
+        function toggleDarkMode() {
+            isDarkMode = !isDarkMode;
+            localStorage.setItem('darkMode', isDarkMode);
+            document.body.classList.toggle('dark-mode');
+
+            // Re-render the current graph with the new dark mode styling
+            var activeTab = document.querySelector('.nav-link.active').getAttribute('aria-controls');
+            var selectedGraph = document.getElementById('graphSelector').value;
+            if (selectedGraph) {
+                renderGraph(activeTab, selectedGraph);
+            }
+        }
+
+
+        function applyDarkModeStyling(plotData) {
+            var bgColor = isDarkMode ? '#121212' : '#ffffff';
+            var textColor = isDarkMode ? '#ffffff' : '#000000';
+
+            plotData.layout = plotData.layout || {};
+            plotData.layout.paper_bgcolor = bgColor;
+            plotData.layout.plot_bgcolor = bgColor;
+            plotData.layout.font = plotData.layout.font || {};
+            plotData.layout.font.color = textColor;
+            plotData.layout.xaxis = plotData.layout.xaxis || {};
+            plotData.layout.yaxis = plotData.layout.yaxis || {};
+            plotData.layout.xaxis.title_font = plotData.layout.xaxis.title_font || {};
+            plotData.layout.xaxis.tickfont = plotData.layout.xaxis.tickfont || {};
+            plotData.layout.yaxis.title_font = plotData.layout.yaxis.title_font || {};
+            plotData.layout.yaxis.tickfont = plotData.layout.yaxis.tickfont || {};
+
+            // Set axis title colors
+            plotData.layout.xaxis.title.font.color = textColor;
+            plotData.layout.yaxis.title.font.color = textColor;
+
+            // Set tick colors
+            plotData.layout.xaxis.tickfont.color = textColor;
+            plotData.layout.yaxis.tickfont.color = textColor;
+        }
+
+        function renderGraph(tab, graphId) {
+            var plotData = plots_data[tab][graphId];
+
+            if (typeof plotData === 'string') {
+                plotData = JSON.parse(plotData);
+            }
+
+            if (plotData) {
+                var plotsContainer = document.querySelector('.scatter-plots');
+                // Clear the container of the previous graph
+                plotsContainer.innerHTML = '';
+                // Create a new container for the new graph
+                var container = document.createElement('div');
+                container.id = graphId;
+                container.className = 'plot-container';
+                plotsContainer.appendChild(container);
+
+                applyDarkModeStyling(plotData);
+                Plotly.react(container, plotData.data, plotData.layout);
+            } else {
+                console.error('No plot data found for:', graphId);
+            }
+        }
+
+
+        function initializeDataTable(tableId) {
+            if (currentDataTable) {
+                currentDataTable.destroy();
+            }
+            currentDataTable = $(tableId).DataTable({
+                "order": [[3, "desc"]],
+                "pageLength": 10
+            });
+        }
+
+        function populateGraphSelector(tab) {
+            var axes = plot_axes_data[tab] || [];
+            var graphSelector = document.getElementById('graphSelector');
+            graphSelector.innerHTML = '';
+            axes.forEach(function(axisPair) {
+                var plot_id = 'scatter_plot_' + axisPair.join('_').toLowerCase().replace(/\s+/g, '_');
+                var option = new Option(axisPair.join(' VS '), plot_id);
+                graphSelector.add(option);
+            });
+            if (axes.length > 0) {
+                renderGraph(tab, graphSelector.options[graphSelector.selectedIndex].value);
+            }
+        }
+
+        function initializePlots() {
+            var graphSelector = document.getElementById('graphSelector');
+            var selectedGraph = graphSelector.value;
+            var activeTab = document.querySelector('.nav-link.active').getAttribute('aria-controls');
+            var plotData = plots_data[activeTab][selectedGraph];
+
+            if (typeof plotData === 'string') {
+                plotData = JSON.parse(plotData);
+            }
+
+            if (plotData) {
+                renderGraph(activeTab, selectedGraph);
+            } else {
+                console.error('No plot data found for:', selectedGraph);
+            }
+        }
+
+        $(document).ready(function() {
+            if (isDarkMode) {
+                toggleDarkMode();
+            }
+            initializeDataTable('#playersTable');
+            populateGraphSelector('player-summary');
+            initializePlots();
+
+            $('#myTab a').on('shown.bs.tab', function(event) {
+                var activeTab = event.target.getAttribute('aria-controls');
+                populateGraphSelector(activeTab);
+
+                // Destroy the existing DataTables instance before reinitializing
+                var tableId = '#' + activeTab + 'Table';
+                if ($.fn.DataTable.isDataTable(tableId)) {
+                    $(tableId).DataTable().clear().destroy();
+                }
+
+                // Reinitialize the DataTable
+                initializeDataTable(tableId);
+
+                // Reinitialize the 'playersTable' specifically when coming back to the player-summary tab
+                if(activeTab === 'player-summary') {
+                    initializeDataTable('#playersTable');
+                }
+
+                // Check if the graph needs to be re-rendered
+                if(activeTab !== 'player-summary') { // Assuming the 'player-summary' doesn't have a graph to render
+                    var graphSelectorId = '#' + activeTab + 'GraphSelector';
+                    if($(graphSelectorId).length) {
+                        var selectedGraph = $(graphSelectorId).val();
+                        renderGraph(activeTab, selectedGraph);
+                    }
+                }
+            });
+
+            document.getElementById('dark-mode-toggle').addEventListener('click', toggleDarkMode);
+            document.getElementById('graphSelector').addEventListener('change', function() {
+                var activeTab = document.querySelector('.nav-link.active').getAttribute('aria-controls');
+                initializePlots();
+            });
+        });
+
+    </script>
+<script src="https://cdn.datatables.net/1.10.21/js/jquery.dataTables.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+</body>
+</html>

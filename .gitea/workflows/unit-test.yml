@@ -1,0 +1,58 @@
+name: Python Web App Unit Test
+run-name: ${{ gitea.actor }} is deploying some code. Let's test it! 🚀
+on: [push]
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v3
+    - run: apt update && apt-get install python3 pip -y
+    - run: pip install -r requirements.txt
+    - run: pip install pylint
+    - run: pylint --fail-under=7.0 app.py
+    - run: pylint --fail-under=7.0 calc.py
+    - run: pylint --fail-under=7.0 load_data.py
+    - run: pylint --fail-under=7.0 values.py
+    - run: pylint --fail-under=7.0 docs_layout.py
+    - run: pylint --fail-under=7.0 graph_callbacks.py
+    - run: pylint --fail-under=7.0 weight_layout.py
+    - run: pylint --fail-under=7.0 load_markdown.py
+    - run: cd ./tests && pytest
+
+
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      DOCKER_PASS: ${{ secrets.DOCKER_PASS }}
+      KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+    steps:
+    - uses: actions/checkout@v3
+    - run: apt update && apt install ca-certificates curl gnupg coreutils apt-utils -y
+    - run: install -m 0755 -d /etc/apt/keyrings
+    - run: apt --reinstall install coreutils
+    - run: curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    - run: chmod a+r /etc/apt/keyrings/docker.gpg
+    - run: echo \ "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+    - run: apt update
+    - run: apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
+    - run: docker build . -t git.liamhardman.com/liam/fm-dash
+      #  - run: FLASK_SECRET_STRING=$(cat /dev/urandom | env LC_ALL=C tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+    - run: echo $DOCKER_PASS  | docker login git.liamhardman.com --username liam --password-stdin
+      #  - run: grep -rl FLASK_SECRET_STRING /code/ | xargs sed -i "s/FLASK_SECRET_STRING/$FLASK_SECRET_STRING/g"
+    - run: docker push git.liamhardman.com/liam/fm-dash
+    - run: curl -sS https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor | tee /etc/apt/trusted.gpg.d/kubernetes-archive-keyring.gpg
+    - run: echo "deb [signed-by=/etc/apt/trusted.gpg.d/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | tee /etc/apt/sources.list.d/kubernetes.list
+    - run: apt-get update && apt-get install -y kubectl
+    - run: echo "$KUBE_CONFIG" > kubeconfig.yaml
+    - run: kubectl apply -f kube/ --kubeconfig ./kubeconfig.yaml
+    - run: kubectl rollout restart deployment/fm-dash-deploy --kubeconfig ./kubeconfig.yaml
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'git.liamhardman.com/liam/fm-dash'
+        format: 'table'
+        exit-code: '1'
+        ignore-unfixed: true
+        vuln-type: 'os,library'
+        severity: 'CRITICAL,HIGH'
+

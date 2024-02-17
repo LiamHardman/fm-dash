@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>FM Player Analysis</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <!-- Choices.js CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
+    <!-- Custom CSS -->
+    <style>
+        body {
+            padding-top: 20px;
+        }
+        .choices[data-type*="select-multiple"] .choices__list,
+        .choices[data-type*="text"] .choices__list {
+            min-height: 40px;
+            padding: 4px 8px;
+            background-color: #ffffff;
+            border: 1px solid #ced4da;
+            border-radius: 0.25rem;
+        }
+        .choices__item {
+            color: #495057;
+            background-color: #e9ecef;
+            border: 1px solid #ced4da;
+            border-radius: 0.2rem;
+        }
+        .dark-mode {
+            background-color: #121212; /* Darker background for better contrast */
+            color: #ffffff;
+        }
+        body.dark-mode .custom-file-label,
+        body.dark-mode .custom-file-input {
+            background-color: #222; /* Dark background for table cells */
+            color: #ddd; /* Light text for readability */
+            border-color: #333; /* Dark border color for subtle contrast */
+        }
+
+        /* Container within dark mode */
+        .dark-mode .container {
+            background-color: #1a1a1a; /* Slightly lighter than the body background */
+            padding: 0px;
+            border-radius: 0px;
+        }
+        .file-upload-btn {
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+       }
+        /* Form controls within dark mode */
+        .dark-mode .form-control,
+        .dark-mode .choices__inner,
+        .dark-mode .choices__input,
+        .dark-mode .choices__input--cloned {
+            background-color: #222; /* Lighter than the container for contrast */
+            color: #ddd; /* Light text for readability */
+            border-color: #333;
+        }
+        .dark-mode .choices__list--dropdown .choices__item--selectable {
+            color: #ddd; /* Ensuring dropdown items are also styled */
+            background-color: #222; /* Matching the inputs */
+        }
+
+        .dark-mode .choices[data-type*="select-multiple"] .choices__list,
+        .dark-mode .choices[data-type*="text"] .choices__list {
+            background-color: #222; /* Dark background for the dropdown */
+            color: #ddd; /* Light text for readability */
+            border-color: #333; /* Slightly lighter border for a subtle contrast */
+        }
+
+        .dark-mode .choices[data-type*="select-multiple"] .choices__list .choices__item,
+        .dark-mode .choices[data-type*="text"] .choices__list .choices__item {
+            background-color: #2c2c2c; /* Even lighter to distinguish individual items */
+            color: #ffffff; /* White text for readability */
+        }
+
+        /* Form controls within dark mode when focused */
+        .dark-mode .form-control:focus {
+            background-color: #222;
+            color: #ddd;
+            border-color: #555;
+        }
+
+        /* Form check inputs within dark mode */
+        .dark-mode .form-check-input {
+            background-color: #222;
+            border-color: #333;
+        }
+
+        /* Choices list within dark mode */
+        .dark-mode .choices__list {
+            background-color: #222;
+            border-color: #333;
+        }
+
+        /* Choices items within dark mode */
+        .dark-mode .choices__list--multiple .choices__item,
+        .dark-mode .choices__item {
+            background-color: #2c2c2c; /* Even lighter to distinguish individual items */
+            border-color: #333;
+            color: #ffffff; /* White text for readability */
+        }
+
+        /* Specific styles for invalid form controls in dark mode */
+        .dark-mode .was-validated .form-control:invalid,
+        .dark-mode .form-control.is-invalid {
+            background-image: none;
+            border-color: #e3342f;
+        }
+
+        /* Hide the feedback unless the form control is actually invalid */
+        .dark-mode .invalid-feedback {
+            display: none; /* Hide by default */
+        }
+
+        /* Only show the invalid feedback when the form control is invalid */
+        .dark-mode .was-validated .form-control:invalid ~ .invalid-feedback,
+        .dark-mode .form-control.is-invalid ~ .invalid-feedback {
+            display: block;
+            color: #e3342f;
+        }
+
+        /* Styles for valid form controls in dark mode */
+        .dark-mode .was-validated .form-control:valid,
+        .dark-mode .form-control.is-valid {
+            background-image: none;
+            border-color: #38c172;
+        }
+
+
+
+    </style>
+    <!-- jQuery -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mb-4">Football Manager Player Analysis</h1>
+        <div class="text-center mt-4">
+            <a href="/weights" class="btn btn-info">Go to Weight Configurations</a>
+        </div>
+            <div class="container mt-5">
+              <form id="file-upload-form" enctype="multipart/form-data">
+                <div class="custom-file">
+                  <input type="file" name="file" accept=".html" id="file-input" class="custom-file-input" onchange="uploadFile()">
+                  <label class="custom-file-label btn-primary" for="file-input">Upload HTML Data Export File</label>
+              </form>
+            </div>
+        <form action="/process" method="post" class="needs-validation" novalidate>
+            <div class="form-group">
+                <label for="weight_set">Select Weight Set:</label>
+                <select id="weight_set" name="weight_set" class="form-control" required>
+                    <option value="">Please select a weight set</option>
+                    {% for weight_key, weight_value in weights.items() %}
+                        <option value="{{ weight_key }}">{{ weight_key.split('_')[1] | upper }} - {{ weight_key.split('_')[2] | upper }}</option>
+                    {% endfor %}
+                </select>
+                <div class="invalid-feedback">Weight set is required.</div>
+            </div>
+            <div class="form-group">
+                <label for="position_regex">Position:</label>
+                <select id="position_regex" name="position_regex[]" multiple class="form-control">
+                    {% for position in positions %}
+                        <option value="{{ position }}">{{ position }}</option>
+                    {% endfor %}
+                </select>            </div>
+                <div class="form-check mb-3" style="display: none;">
+                    <input type="checkbox" id="show_plots" name="show_plots" value="yes" class="form-check-input" checked>
+                    <label for="show_plots" class="form-check-label">Show Scatter Plots</label>
+                </div>
+            <form action="/process" method="post" class="needs-validation" novalidate>
+                <!-- Hidden Input for File Path -->
+                <input type="hidden" name="file_path" id="file-path-input">
+            <button type="submit" class="btn btn-primary">Analyze</button>
+        </form>
+    </div>
+    <div class="container text-center mt-3">
+        <button type="button" id="dark-mode-toggle" class="btn btn-secondary">Toggle Dark Mode</button>
+    </div>
+    <!-- Choices.js JS -->
+    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+    <!-- Choices.js initialization -->
+    <script>
+        $(document).ready(function() {
+            var weightSetElement = document.getElementById('weight_set');
+            var choicesWeightSet = new Choices(weightSetElement, {
+                searchEnabled: true,
+                itemSelectText: '',
+                shouldSort: false
+            });
+
+            var positionElement = document.getElementById('position_regex');
+            var choicesPosition = new Choices(positionElement, {
+                removeItemButton: true,
+                maxItemCount: -1, // -1 for unlimited number of items
+                searchResultLimit: 5,
+                renderChoiceLimit: -1 // -1 for no limit
+            });
+        });
+    </script>
+    <!-- Bootstrap JS, Popper.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    <!-- Form validation script -->
+    <script>
+        // Example starter JavaScript for disabling form submissions if there are invalid fields
+        (function() {
+          'use strict';
+          window.addEventListener('load', function() {
+            // Fetch all the forms we want to apply custom Bootstrap validation styles to
+            var forms = document.getElementsByClassName('needs-validation');
+            // Loop over them and prevent submission
+            var validation = Array.prototype.filter.call(forms, function(form) {
+              form.addEventListener('submit', function(event) {
+                if (form.checkValidity() === false) {
+                  event.preventDefault();
+                  event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+              }, false);
+            });
+          }, false);
+        })();
+    </script>
+<script>
+    function uploadFile() {
+    var fileInput = document.getElementById('file-input');
+        if (!fileInput.files.length) {
+            alert('Please select a file to upload.');
+            return;
+        }
+
+        var formData = new FormData(document.getElementById('file-upload-form'));
+        fetch('/upload', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (response.ok) {
+                return response.text();
+            } else if (response.status === 413) {
+                throw new Error('File is too large. Maximum allowed size is 5MB.');
+            } else {
+                throw new Error('An error occurred while uploading the file.');
+            }
+        })
+        .then(data => {
+            document.getElementById('file-path-input').value = data;
+            alert('File uploaded successfully.');
+        })
+        .catch(error => {
+            alert(error.message);
+        });
+    }
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var processForm = document.querySelector('form[action="/process"]');
+        processForm.addEventListener('submit', function(event) {
+            var filePathInput = document.getElementById('file-path-input');
+            if (!filePathInput.value) {
+                alert('Please upload a file before analyzing.');
+                event.preventDefault(); // Prevent form submission
+            }
+        });
+    });
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var darkModeToggle = document.getElementById('dark-mode-toggle');
+        var isDarkMode = localStorage.getItem('darkMode') === 'true';
+
+        // Apply dark mode if it was enabled previously
+        if (isDarkMode) {
+            document.body.classList.add('dark-mode');
+        }
+
+        darkModeToggle.addEventListener('click', function() {
+            var isDarkModeEnabled = document.body.classList.toggle('dark-mode');
+            localStorage.setItem('darkMode', isDarkModeEnabled);
+        });
+    });
+</script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var darkModeToggle = document.getElementById('dark-mode-toggle');
+            var isDarkMode = localStorage.getItem('darkMode') === 'true';
+
+            function toggleDarkMode(isEnabled) {
+                if (isEnabled) {
+                    document.body.classList.add('dark-mode');
+                } else {
+                    document.body.classList.remove('dark-mode');
+                }
+            }
+
+            // Apply dark mode if it was enabled previously
+            toggleDarkMode(isDarkMode);
+
+            darkModeToggle.addEventListener('click', function() {
+                isDarkMode = !isDarkMode; // Toggle the state
+                localStorage.setItem('darkMode', isDarkMode); // Save the new state
+                toggleDarkMode(isDarkMode); // Apply the new state
+            });
+        });
+    </script>
+</body>
+</html>

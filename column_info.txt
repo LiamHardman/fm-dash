@@ -1,0 +1,92 @@
+
+	<th: object
+Name: object
+Position: object
+Nationality: object
+L Th: int64
+Age: int64
+Club: object
+Transfer Value: object
+Wage: float64
+Personality: object
+Media Handling: object
+Left Foot: object
+Right Foot: object
+Acc: int64
+Agg: int64
+Agi: int64
+Ant: int64
+Bal: int64
+Bra: int64
+Cnt: int64
+Cmp: int64
+Cro: int64
+Dec: int64
+Det: int64
+Dri: int64
+Fin: int64
+Fir: int64
+Fla: int64
+Hea: int64
+Jum: int64
+Ldr: int64
+Lon: int64
+Mar: int64
+OtB: int64
+Pac: int64
+Pas: int64
+Pos: int64
+Sta: int64
+Str: int64
+Tck: int64
+Tea: int64
+Tec: int64
+Vis: int64
+Wor: int64
+Cor: int64
+Nat: int64
+Fre: int64
+Pen: int64
+Asts/90: float64
+Av Rat: float64
+Blk/90: float64
+Ch C/90: float64
+Clr/90: float64
+Cr C/90: float64
+Drb/90: float64
+xA/90: float64
+xG/90: float64
+Gls/90: float64
+Hdrs W/90: float64
+Int/90: float64
+K Ps/90: float64
+Ps C/90: float64
+Shot/90: float64
+Tck/90: float64
+Poss Won/90: float64
+ShT/90: object
+Pres C/90: object
+Poss Lost/90: object
+Pr passes/90: object
+Conv %: object
+Tck R: object
+Pas %: object
+Cr C/A: object
+lower_value_range: float64
+upper_value_range: float64
+formatted_upper_value_range: float64
+id: int64
+find_similar: object
+Weak Foot: object
+physical_score: float64
+mental_score: float64
+technical_score: float64
+overall_score: float64
+value_score: float64
+best_role_name: object
+best_role_overall_score: float64
+best_role_physical_score: float64
+best_role_technical_score: float64
+best_role_mental_score: float64
+top_5_role_names: object
+top_5_role_scores: object

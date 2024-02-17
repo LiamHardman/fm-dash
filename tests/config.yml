@@ -1,0 +1,135 @@
+log_level: "WARNING"
+upload_max: 50 # Upload limit in megabytes
+results_to_return: 500 # How many results get returned back to you in the UI.
+rows_per_chunk: 2500 #Recommended to keep this the same unless you have less than 4 CPU threads.
+enable_tracing: true # Enables OTel Support. Off by default. Only turn on in a hosted environment and you know what you're doing.
+trace_endpoint: "https://otlp.eu01.nr-data.net:4317"
+#Web URL Used for fetching images for players not found via SoFIFA API (regens, obscure playaers etc.).
+#Will always prefer the local dir fifa_card_assets/player_img/regen over the fallback_image_url
+fallback_image_url: "https://api.fm-dash.com/player_img/regen/"
+
+# Add any extra headers from your data export here if you want them to be graphed
+axes_map:
+  upper_value_range: "Upper Value Range"
+  overall_score: "Overall Score"
+  Age: "Age"
+  value_score: "Value Score"
+  Tck/90: "Tackles per 90 Minutes"
+  xG/90: "Expected Goals per 90 Minutes"
+  Asts/90: "Assists per 90 Minutes"
+  Av Rat: "Average Rating"
+  Mins/Gl: "Minutes per Goal"
+  Blk/90: "Blocks per 90 Minutes"
+  Ch C/90: "Chance Creations per 90 Minutes"
+  Clr/90: "Clearances per 90 Minutes"
+  Cr C/90: "Crosses Completed per 90 Minutes"
+  Drb/90: "Dribbles per 90 Minutes"
+  xA/90: "Expected Assists per 90 Minutes"
+  Gls/90: "Goals per 90 Minutes"
+  Hdrs W/90: "Headers Won per 90 Minutes"
+  Int/90: "Interceptions per 90 Minutes"
+  K Ps/90: "Key Passes per 90 Minutes"
+  NP-xG/90: "Non-Penalty Expected Goals per 90 Minutes"
+  Ps C/90: "Passes Completed per 90 Minutes"
+  Poss Won/90: "Possessions Won per 90 Minutes"
+  Shot/90: "Shots per 90 Minutes"
+
+defense_stats:
+    Blk/90: "Blocks per 90"
+    Clr/90: "Clearances per 90"
+    Hdrs W/90: "Headers Won per 90"
+    Int/90: "Interceptions per 90"
+    Tck/90: "Tackles per 90"
+    Tck R: "Tackle Ratio"
+
+midfield_stats:
+    Pr passes/90: "Progressive Passes per 90"
+    Pas %: "Pass Completion Ratio"
+    K Ps/90: "Key Passes per 90"
+    Poss Won/90: "Possession Won per 90"
+    Poss Lost/90: "Possession Lost per 90"
+    Cr C/90: "Crosses Completed per 90"
+    Cr C/A: "Crosses Completion Ratio"
+attack_stats:
+    xA/90: "Expected Assists per 90"
+    Ch C/90: "Chances Created per 90"
+    Drb/90: "Dribbles per 90"
+    ShT/90: "Shots on Target per 90"
+    xG/90: "Expected Goals per 90"
+    Conv %: "Conversion Ratio"
+
+good_personalities:
+  - "Professional"
+  - "Model Citizen"
+  - "Resolute"
+  - "Driven"
+  - "Ambitious"
+  - "Perfectionist"
+  - "Resilient"
+  - "Spirited"
+  - "Determined"
+  - "Model Professional"
+  - "Fairly Ambitious"
+  - "Model Citizen"
+  - "Resolute"
+  - "Fairly Professional"
+  - "Very Ambitious"
+  - "Driven"
+  - "Fairly Determined"
+  - "Charismatic Leader"
+  - "Born Leader"
+  - "Leader"
+
+good_media_handling:
+  - "Outspoken"
+  - "Volatile"
+  - "Controversial"
+  - "Unflappable"
+
+good_weak_foot:
+  - "Very Strong"
+  - "Strong"
+  - "Fairly Strong"
+
+attributes:
+  technical:
+    Corners: Cor
+    Crossing: Cro
+    Dribbling: Dri
+    Finishing: Fin
+    First Touch: Fir
+    Free Kick Taking: Fre
+    Heading: Hea
+    Long Shots: Lon
+    Long Throws: L Th
+    Marking: Mar
+    Passing: Pas
+    Penalties: Pen
+    Tackling: Tck
+    Technique: Tec
+
+  mental:
+    Aggression: Agg
+    Anticipation: Ant
+    Bravery: Bra
+    Composure: Cmp
+    Concentration: Cnt
+    Decisions: Dec
+    Determination: Det
+    Flair: Fla
+    Leadership: Ldr
+    Off The Ball: OtB
+    Positioning: Pos
+    Teamwork: Tea
+    Vision: Vis
+    Work Rate: Wor
+
+  physical:
+    Acceleration: Acc
+    Agility: Agi
+    Balance: Bal
+    Jumping: Jum
+    Natural Fitness: Nat
+    Pace: Pac
+    Stamina: Sta
+    Strength: Str

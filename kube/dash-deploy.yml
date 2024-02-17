@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "fm-dash-deploy"
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: "fm-dash"
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: "fm-dash"
+    spec:
+      containers:
+      - image: git.liamhardman.com/liam/fm-dash:latest
+        imagePullPolicy: Always
+        name: "fm-dash"
+        ports:
+        - containerPort: 80
+          protocol: TCP
+        env:
+        - name: NEW_RELIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: newrelic-secrets
+              key: NEW_RELIC_API_KEY
+      imagePullSecrets:
+      - name: gitea

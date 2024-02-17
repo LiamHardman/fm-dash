@@ -1,0 +1,24 @@
+2024-01-24 22:06:29,468 - ERROR - Exception on /_dash-update-component [POST] - [Trace: f932ae61f30c898be8624607f1a83471, Span: 91b786072a3842cf, Flags: N/A]
+Traceback (most recent call last):
+  File "/opt/homebrew/lib/python3.11/site-packages/flask/app.py", line 2190, in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/flask/app.py", line 1486, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/flask/app.py", line 1484, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/flask/app.py", line 1469, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/dash/dash.py", line 1310, in dispatch
+    ctx.run(
+  File "/opt/homebrew/lib/python3.11/site-packages/dash/_callback.py", line 442, in add_context
+    output_value = func(*func_args, **func_kwargs)  # %% callback invoked %%
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/liam/Documents/git/fm-dash/detailled_view.py", line 675, in toggle_detail_modal
+    selected_club = selected_row["Club"]
+                    ~~~~~~~~~~~~^^^^^^^^
+KeyError: 'Club'
+2024-01-24 22:06:33,240 - ERROR - Failed to export traces to otlp.eu01.nr-data.net:4317, error code: StatusCode.PERMISSION_DENIED - [Trace: 0, Span: 0, Flags: N/A]
