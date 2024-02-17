@@ -1,6 +1,6 @@
 # FM-Dash
 
-[FM-Dash](dev.fm-dash.com) is a Football Manager Data analysis tool made with the aim of providing a number to the 'eye-test' that many FM players rely on to make signings. While you can use the above website to access this tool, you can host it yourself too!
+[FM-Dash](https://dev.fm-dash.com) is a Football Manager Data analysis tool made with the aim of providing a number to the 'eye-test' that many FM players rely on to make signings. While you can use the above website to access this tool, you can host it yourself too!
 
 
 
@@ -42,7 +42,7 @@ While tools like FM Genie Scout and FMRTE use and provide data that players othe
 - If you have a slow internet connection, rendering player and club images with non-regens will be quite slow. This is because FM-Dash fetches data from both SortitoutSI and SoFIFA for club/league and player images respectively.
 - Exports using the default view isn't supported. `fm-dash-search.fmf` must be used for full feature support. Alternative views *may* work, but they're not supported.
 - Only HTML data exports are supported.
-- Analyzing over ~8k players on the [FM-Dash site](https://fm-dash.com) does slow things down considerably, and that's the limit as it stands. As a general use pattern, only export players that are worth at least 1% of your most valuable player, and are at least 'Doubtful' interest.
+- Analyzing over ~8k players on the [FM-Dash site](https://dev.fm-dash.com) does slow things down considerably, and that's the limit as it stands. As a general use pattern, only export players that are worth at least 1% of your most valuable player, and are at least 'Doubtful' interest.
 - If you're hosting this yourself in a container environment, watch out for the somewhat large image pull.
 - The GitHub repo itself doesn't include the NewGAN facepack. You'll need to source that yourslf, extract the folders into `fifa_card_assets/regen` and run `fifa_card_assets/sort_regen_images.py`to organize them into the correct folder structure.
 
