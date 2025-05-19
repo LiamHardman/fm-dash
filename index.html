@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Player Data Parser</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <style>
+            body {
+                font-family: "Inter", sans-serif;
+                background-color: #f0f2f5; /* Light gray background */
+            }
+            .container {
+                max-width: 1200px;
+                margin: 2rem auto;
+                padding: 2rem;
+                background-color: white;
+                border-radius: 0.5rem; /* Tailwind's rounded-lg */
+                box-shadow:
+                    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+                    0 2px 4px -1px rgba(0, 0, 0, 0.06); /* Tailwind's shadow-md */
+            }
+            h1 {
+                color: #1f2937; /* Tailwind's gray-800 */
+            }
+            label {
+                color: #374151; /* Tailwind's gray-700 */
+            }
+            input[type="file"] {
+                border: 1px solid #d1d5db; /* Tailwind's gray-300 */
+                border-radius: 0.375rem; /* Tailwind's rounded-md */
+            }
+            button {
+                background-color: #3b82f6; /* Tailwind's blue-500 */
+                color: white;
+                transition: background-color 0.3s ease;
+            }
+            button:hover {
+                background-color: #2563eb; /* Tailwind's blue-600 */
+            }
+            table {
+                border-collapse: collapse;
+                width: 100%;
+                margin-top: 1.5rem; /* Tailwind's mt-6 */
+                font-size: 0.875rem; /* Tailwind's text-sm */
+                color: #374151; /* Tailwind's gray-700 */
+            }
+            th,
+            td {
+                border: 1px solid #e5e7eb; /* Tailwind's gray-200 */
+                padding: 0.75rem; /* Tailwind's p-3 */
+                text-align: left;
+            }
+            th {
+                background-color: #f9fafb; /* Tailwind's gray-50 */
+                color: #1f2937; /* Tailwind's gray-800 */
+                font-weight: 600; /* Tailwind's semibold */
+            }
+            tr:nth-child(even) {
+                background-color: #f9fafb; /* Tailwind's gray-50 */
+            }
+            .error-message {
+                background-color: #fee2e2; /* Tailwind's red-100 */
+                color: #b91c1c; /* Tailwind's red-700 */
+                padding: 1rem;
+                border-radius: 0.375rem; /* Tailwind's rounded-md */
+                margin-top: 1rem;
+            }
+            .loading-message {
+                color: #3b82f6; /* Tailwind's blue-500 */
+                margin-top: 1rem;
+            }
+        </style>
+    </head>
+    <body class="p-4 md:p-8">
+        <div class="container">
+            <h1 class="text-3xl font-bold mb-6 text-center">
+                Football Manager HTML Player Parser
+            </h1>
+
+            <div
+                class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-md text-blue-700"
+            >
+                <p class="font-semibold">Instructions:</p>
+                <ol class="list-decimal list-inside ml-4">
+                    <li>
+                        Ensure the Go API (<code>main.go</code>) is running
+                        (usually on <code>http://localhost:8080</code>).
+                    </li>
+                    <li>
+                        Select an HTML file exported from Football Manager
+                        containing player data.
+                    </li>
+                    <li>
+                        Click "Upload and Parse" to see the player stats below.
+                    </li>
+                </ol>
+            </div>
+
+            <div class="mb-6">
+                <label for="playerFile" class="block text-sm font-medium mb-2"
+                    >Upload HTML File:</label
+                >
+                <input
+                    type="file"
+                    id="playerFile"
+                    name="playerFile"
+                    accept=".html"
+                    class="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 p-2.5"
+                />
+            </div>
+
+            <button
+                onclick="uploadAndParse()"
+                class="w-full sm:w-auto px-6 py-3 font-semibold rounded-md shadow-sm"
+            >
+                Upload and Parse
+            </button>
+
+            <div id="loadingMessage" class="loading-message mt-4 hidden">
+                Parsing file, please wait...
+            </div>
+            <div id="errorMessage" class="error-message mt-4 hidden"></div>
+            <div id="playerTableContainer" class="mt-8 overflow-x-auto"></div>
+        </div>
+
+        <script>
+            const API_URL = "http://localhost:8080/upload";
+
+            async function uploadAndParse() {
+                const fileInput = document.getElementById("playerFile");
+                const playerTableContainer = document.getElementById(
+                    "playerTableContainer",
+                );
+                const errorMessageDiv = document.getElementById("errorMessage");
+                const loadingMessageDiv =
+                    document.getElementById("loadingMessage");
+
+                // Clear previous results and errors
+                playerTableContainer.innerHTML = "";
+                errorMessageDiv.classList.add("hidden");
+                errorMessageDiv.textContent = "";
+                loadingMessageDiv.classList.remove("hidden");
+
+                if (fileInput.files.length === 0) {
+                    showError("Please select an HTML file first.");
+                    loadingMessageDiv.classList.add("hidden");
+                    return;
+                }
+
+                const file = fileInput.files[0];
+                const formData = new FormData();
+                formData.append("playerFile", file);
+
+                try {
+                    const response = await fetch(API_URL, {
+                        method: "POST",
+                        body: formData,
+                    });
+
+                    loadingMessageDiv.classList.add("hidden");
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(
+                            `API Error: ${response.status} - ${errorText || response.statusText}`,
+                        );
+                    }
+
+                    const players = await response.json();
+
+                    if (players && players.length > 0) {
+                        displayPlayerTable(players);
+                    } else {
+                        showError(
+                            "No player data found in the file or the file format is not as expected.",
+                        );
+                    }
+                } catch (error) {
+                    console.error("Error:", error);
+                    showError(`Failed to parse player data: ${error.message}`);
+                    loadingMessageDiv.classList.add("hidden");
+                }
+            }
+
+            function showError(message) {
+                const errorMessageDiv = document.getElementById("errorMessage");
+                errorMessageDiv.textContent = message;
+                errorMessageDiv.classList.remove("hidden");
+            }
+
+            function displayPlayerTable(players) {
+                const container = document.getElementById(
+                    "playerTableContainer",
+                );
+                container.innerHTML = ""; // Clear previous table
+
+                if (!players || players.length === 0) {
+                    container.innerHTML =
+                        '<p class="text-gray-600">No player data to display.</p>';
+                    return;
+                }
+
+                const table = document.createElement("table");
+                table.className =
+                    "min-w-full divide-y divide-gray-200 shadow-sm rounded-lg"; // Added rounded-lg
+
+                const thead = document.createElement("thead");
+                thead.className = "bg-gray-50";
+                const headerRow = document.createElement("tr");
+
+                // Define base headers
+                const baseHeaders = ["Name", "Position", "Age", "Club"];
+                baseHeaders.forEach((text) => {
+                    const th = document.createElement("th");
+                    th.scope = "col";
+                    th.className =
+                        "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider";
+                    th.textContent = text;
+                    headerRow.appendChild(th);
+                });
+
+                // Dynamically add attribute headers from the first player
+                // Sort attribute keys for consistent column order
+                const attributeKeys = players[0].attributes
+                    ? Object.keys(players[0].attributes).sort()
+                    : [];
+                attributeKeys.forEach((key) => {
+                    const th = document.createElement("th");
+                    th.scope = "col";
+                    th.className =
+                        "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider";
+                    th.textContent = key;
+                    headerRow.appendChild(th);
+                });
+                thead.appendChild(headerRow);
+                table.appendChild(thead);
+
+                const tbody = document.createElement("tbody");
+                tbody.className = "bg-white divide-y divide-gray-200";
+
+                players.forEach((player) => {
+                    const tr = document.createElement("tr");
+                    tr.className =
+                        "hover:bg-gray-100 transition-colors duration-150";
+
+                    // Base player data
+                    const playerData = [
+                        player.name || "-",
+                        player.position || "-",
+                        player.age || "-",
+                        player.club || "-",
+                    ];
+
+                    playerData.forEach((text) => {
+                        const td = document.createElement("td");
+                        td.className =
+                            "px-6 py-4 whitespace-nowrap text-sm text-gray-700";
+                        td.textContent = text;
+                        tr.appendChild(td);
+                    });
+
+                    // Attribute data
+                    attributeKeys.forEach((key) => {
+                        const td = document.createElement("td");
+                        td.className =
+                            "px-6 py-4 whitespace-nowrap text-sm text-gray-700";
+                        td.textContent =
+                            player.attributes && player.attributes[key]
+                                ? player.attributes[key]
+                                : "-";
+                        tr.appendChild(td);
+                    });
+                    tbody.appendChild(tr);
+                });
+
+                table.appendChild(tbody);
+                container.appendChild(table);
+            }
+        </script>
+    </body>
+</html>
