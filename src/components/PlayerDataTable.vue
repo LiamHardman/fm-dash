@@ -19,9 +19,10 @@
         :columns="allColumns"
         :loading="loading"
         row-key="name"
-        :pagination.sync="pagination"
+        :pagination.sync="pagination" 
         :rows-per-page-options="rowsPerPageOptions"
         @request="onRequest"
+        :sort-method="customSort"
         binary-state-sort
         flat
         bordered
@@ -167,6 +168,28 @@ export default {
       return Math.ceil(props.players.length / pagination.rowsPerPage)
     })
     
+    // Compute the displayed players based on current pagination
+    const displayedPlayers = computed(() => {
+      if (pagination.rowsPerPage === 0) return sortedPlayers.value
+      
+      const firstIndex = (pagination.page - 1) * pagination.rowsPerPage
+      const lastIndex = Math.min(firstIndex + pagination.rowsPerPage, props.players.length)
+      
+      // Log the paginated players for debugging
+      const paginatedPlayers = sortedPlayers.value.slice(firstIndex, lastIndex)
+      
+      // If sorting by money fields, log the values on the current page
+      if (sortField.value === 'transfer_value' || sortField.value === 'wage') {
+        console.log(`Current page (${pagination.page}) player values:`)
+        paginatedPlayers.forEach(player => {
+          const field = sortField.value === 'transfer_value' ? 'transferValueAmount' : 'wageAmount'
+          console.log(`${player.name}: ${player[sortField.value]} → ${player[field]}`)
+        })
+      }
+      
+      return paginatedPlayers
+    })
+    
     // Reset pagination when players change
     watch(() => props.players.length, () => {
       pagination.page = 1
@@ -244,7 +267,22 @@ export default {
       
       console.log(`Sorting players by ${field} (${direction}, isAttribute: ${isAttr})`)
       
-      return [...props.players].sort((a, b) => {
+      // Debug example values for monetary sorts
+      if (field === 'transferValueAmount' || field === 'wageAmount') {
+        // Get all players with the field and log the top 10
+        const valuableList = [...props.players]
+          .filter(p => p[field] > 0)
+          .sort((a, b) => b[field] - a[field])
+          .slice(0, 10)
+        
+        console.log(`Top 10 ${field} values in dataset:`)
+        const displayField = field === 'transferValueAmount' ? 'transfer_value' : 'wage'
+        valuableList.forEach(player => {
+          console.log(`${player.name}: ${player[displayField]} → ${player[field]} (${typeof player[field]})`)
+        })
+      }
+      
+      const sortedList = [...props.players].sort((a, b) => {
         let valA, valB
         
         // Get values based on sort field
@@ -252,8 +290,17 @@ export default {
           // Attribute field (from the attributes object)
           valA = a.attributes?.[field]
           valB = b.attributes?.[field]
+        } else if (field === 'transferValueAmount' || field === 'wageAmount') {
+          // Use the numeric amount fields for money values
+          valA = a[field] || 0 // Ensure we have a number, default to 0
+          valB = b[field] || 0
+          
+          // Debug comparison for monetary values
+          if (Math.random() < 0.05) { // Only log ~5% of comparisons to avoid console spam
+            console.log(`Comparing: ${a.name} (${valA}) vs ${b.name} (${valB})`)
+          }
         } else {
-          // Regular field or monetary amount field
+          // Regular field
           valA = a[field]
           valB = b[field]
         }
@@ -270,6 +317,14 @@ export default {
         
         // String comparison for text fields
         if (typeof valA === 'string' && typeof valB === 'string') {
+          // For numeric strings, try to compare as numbers first
+          const numA = parseFloat(valA)
+          const numB = parseFloat(valB)
+          if (!isNaN(numA) && !isNaN(numB)) {
+            return direction === 'asc' ? numA - numB : numB - numA
+          }
+          
+          // Otherwise do string comparison
           valA = valA.toLowerCase()
           valB = valB.toLowerCase()
           if (valA < valB) return direction === 'asc' ? -1 : 1
@@ -280,6 +335,18 @@ export default {
         // Fallback comparison
         return 0
       })
+      
+      // Log top results after sorting
+      if (field === 'transferValueAmount' || field === 'wageAmount') {
+        console.log(`Top 10 ${field} values AFTER sorting (${direction}):`)
+        const displayField = field === 'transferValueAmount' ? 'transfer_value' : 'wage'
+        const toShow = direction === 'asc' ? sortedList.slice(0, 10) : sortedList.slice(0, 10)
+        toShow.forEach(player => {
+          console.log(`${player.name}: ${player[displayField]} → ${player[field]}`)
+        })
+      }
+      
+      return sortedList
     })
     
     // Get CSS class for attribute values based on their value
@@ -311,6 +378,9 @@ export default {
       // Parse the monetary value
       const amount = parseMonetaryValue(value)
       
+      // Log the parsed amount for debugging
+      console.log(`Money class: ${value} → ${amount}`)
+      
       // Return class based on monetary value
       if (amount >= 10000000) return 'money-very-high'  // 10M+
       if (amount >= 1000000) return 'money-high'        // 1M+
@@ -327,9 +397,10 @@ export default {
       // Remove any text after p/w (per week)
       const cleanedStr = valueStr.split(' p/w')[0]
       
-      let numStr = cleanedStr.replace(/[^0-9.,]/g, '')
-      numStr = numStr.replace(',', '.')
+      // Enhanced debug logging for ALL monetary values
+      console.log(`Parsing monetary value: "${valueStr}" → "${cleanedStr}"`)
       
+      // Determine multiplier based on suffix
       let multiplier = 1
       if (cleanedStr.toLowerCase().includes('m')) {
         multiplier = 1000000
@@ -337,31 +408,124 @@ export default {
         multiplier = 1000
       }
       
-      const cleanedNumStr = numStr.replace(/[^\d.]/g, '')
-      const numericValue = parseFloat(cleanedNumStr)
+      // Special handling for values with commas (e.g., £350,000)
+      // Remove all currency symbols and non-numeric chars except commas and periods
+      let numStr = cleanedStr.replace(/[^0-9,.]/g, '')
       
-      return isNaN(numericValue) ? 0 : numericValue * multiplier
+      // Handle comma-separated thousands (e.g., convert £350,000 to 350000)
+      // First check if it looks like a thousands separator comma pattern
+      if (numStr.includes(',') && !numStr.includes('.')) {
+        // Replace all commas with nothing (i.e., remove them)
+        numStr = numStr.replace(/,/g, '')
+      } else {
+        // If it's likely a decimal comma, replace with period
+        numStr = numStr.replace(',', '.')
+      }
+      
+      // Parse the numeric value
+      const numericValue = parseFloat(numStr)
+      
+      // Calculate result
+      const result = Math.round(isNaN(numericValue) ? 0 : numericValue * multiplier)
+      
+      // Debug output for all cases
+      console.log(`Parse result: "${valueStr}" → ${result} (multiplier: ${multiplier}, numericValue: ${numericValue})`)
+      
+      return result
     }
     
     // Handle pagination request
     const onRequest = (props) => {
+      console.log(`Pagination request: page ${props.pagination.page}, rows ${props.pagination.rowsPerPage}`)
       pagination.page = props.pagination.page
       pagination.rowsPerPage = props.pagination.rowsPerPage
+      
+      // Log page change for debugging
+      if (sortField.value === 'transfer_value' || sortField.value === 'wage') {
+        console.log(`Changing to page ${pagination.page} with ${pagination.rowsPerPage} rows per page`)
+      }
     }
     
     // Handle page change
     const onPageChange = (page) => {
+      console.log(`Page changed to: ${page}`)
       pagination.page = page
     }
     
     // Handle rows per page change
     const onRowsPerPageChange = (rowsPerPage) => {
+      console.log(`Rows per page changed to: ${rowsPerPage}`)
       pagination.rowsPerPage = rowsPerPage
       pagination.page = 1 // Reset to first page when changing rows per page
     }
     
-    // Sort the table - now handles sorting directly
+    // Sort the table - handles sorting internally and notifies parent
+    // Custom sort method for q-table
+    const customSort = (rows, sortBy, descending) => {
+      console.log(`Q-Table sort request: ${sortBy}, descending: ${descending}`)
+      
+      // Use our custom sort logic
+      const field = getSortField(sortBy)
+      const isAttr = isAttributeColumn(sortBy)
+      const direction = descending ? 'desc' : 'asc'
+      
+      console.log(`Custom sorting by ${field} (${direction})`)
+      
+      return rows.sort((a, b) => {
+        let valA, valB
+        
+        // Get values based on sort field
+        if (isAttr) {
+          valA = a.attributes?.[field]
+          valB = b.attributes?.[field]
+        } else if (field === 'transferValueAmount' || field === 'wageAmount') {
+          valA = typeof a[field] === 'number' ? a[field] : 0
+          valB = typeof b[field] === 'number' ? b[field] : 0
+          
+          // Log a sample comparison
+          if (Math.random() < 0.01) {
+            const displayKey = field === 'transferValueAmount' ? 'transfer_value' : 'wage'
+            console.log(`Q-Table comparing: ${a.name} (${a[displayKey]} → ${valA}) vs ${b.name} (${b[displayKey]} → ${valB})`)
+          }
+        } else {
+          valA = a[field]
+          valB = b[field]
+        }
+        
+        // Handle null/undefined values
+        if (valA == null && valB == null) return 0
+        if (valA == null) return direction === 'asc' ? 1 : -1
+        if (valB == null) return direction === 'asc' ? -1 : 1
+        
+        // Direct number comparison for numeric fields
+        if (typeof valA === 'number' && typeof valB === 'number') {
+          return direction === 'asc' ? valA - valB : valB - valA
+        }
+        
+        // Try to convert to number if they look like numbers
+        if (!isNaN(parseFloat(valA)) && !isNaN(parseFloat(valB))) {
+          const numA = parseFloat(valA)
+          const numB = parseFloat(valB)
+          return direction === 'asc' ? numA - numB : numB - numA
+        }
+        
+        // String comparison
+        if (typeof valA === 'string' && typeof valB === 'string') {
+          valA = valA.toLowerCase()
+          valB = valB.toLowerCase()
+          if (valA < valB) return direction === 'asc' ? -1 : 1
+          if (valA > valB) return direction === 'asc' ? 1 : -1
+          return 0
+        }
+        
+        return 0
+      })
+    }
+    
     const sortTable = (field, isAttribute = false) => {
+      // For monetary fields, use their actual sort field
+      const actualField = getSortField(field)
+      
       // Update sorting direction
       if (sortField.value === field) {
         // Toggle direction if same field
@@ -372,10 +536,20 @@ export default {
         sortDirection.value = 'asc'
       }
       
-      // Log the sort request for debugging
-      console.log(`Sort request: ${field} (${sortDirection.value}, isAttribute: ${isAttribute})`)
+      // Update pagination sort props to trigger the q-table's internal sort
+      pagination.sortBy = field
+      pagination.descending = sortDirection.value === 'desc'
       
-      // No need to emit an event - sorting is handled by the computed property now
+      // Log the sort request for debugging
+      console.log(`Sort request: ${field} → ${actualField} (${sortDirection.value}, isAttribute: ${isAttribute})`)
+      
+      // Emit an event for the parent component to use
+      emit('update:sort', {
+        key: actualField,
+        direction: sortDirection.value,
+        isAttribute: isAttribute,
+        displayField: field // Original field name for UI
+      })
     }
     
     return {
@@ -389,6 +563,7 @@ export default {
       attributeColumns,
       allColumns,
       sortedPlayers,
+      displayedPlayers,
       isAttributeColumn,
       getAttributeClass,
       getMoneyClass,
@@ -396,6 +571,7 @@ export default {
       onRequest,
       onPageChange,
       onRowsPerPageChange,
+      customSort,
       sortTable
     }
   }

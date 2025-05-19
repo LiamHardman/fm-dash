@@ -220,43 +220,62 @@ export default {
       // Remove any text after p/w (per week)
       const cleanedStr = valueStr.split(' p/w')[0]
       
-      // Debug logging for complex cases
-      if (valueStr.includes(',') && valueStr.length > 8) {
-        console.log(`Parsing complex value: "${valueStr}" → "${cleanedStr}"`)
-      }
+      // Always log for debugging during this fix
+      console.log(`PARSE: "${valueStr}" → "${cleanedStr}"`)
       
-      // Determine multiplier based on suffix
+      // Extract multiplier suffix (M or K) before removing non-numeric chars
+      // This ensures we catch the suffix even if it's not directly attached to the number
       let multiplier = 1
-      if (cleanedStr.toLowerCase().includes('m')) {
+      const lowerStr = cleanedStr.toLowerCase()
+      
+      if (lowerStr.includes('m')) {
         multiplier = 1000000
-      } else if (cleanedStr.toLowerCase().includes('k')) {
+      } else if (lowerStr.includes('k')) {
         multiplier = 1000
       }
       
-      // Special handling for values with commas (e.g., £350,000)
-      // Remove all currency symbols and non-numeric chars except commas and periods
+      // Step 1: Remove all currency symbols (£, €, $) and other non-numeric chars except commas, periods, and digits
       let numStr = cleanedStr.replace(/[^0-9,.]/g, '')
       
-      // Handle comma-separated thousands (e.g., convert £350,000 to 350000)
-      // First check if it looks like a thousands separator comma pattern
+      // Step 2: Handle numbers with commas
+      // If there are commas in the number but no decimal points
       if (numStr.includes(',') && !numStr.includes('.')) {
-        // Replace all commas with nothing (i.e., remove them)
+        // Check if it's a thousands separator pattern (e.g., "1,234,567")
+        // This heuristic checks if commas appear every 3 digits from the end
+        const parts = numStr.split(',')
+        let isThousandsSeparator = true
+        
+        // Check that most parts (except possibly the first) have length 3
+        for (let i = 1; i < parts.length; i++) {
+          if (parts[i].length !== 3) {
+            isThousandsSeparator = false
+            break
+          }
+        }
+        
+        if (isThousandsSeparator) {
+          // If it looks like thousands separators, remove all commas
+          numStr = numStr.replace(/,/g, '')
+          console.log(`  Treating commas as thousands separators: "${numStr}"`)
+        } else {
+          // If not a clear thousands separator pattern, try treating the last comma as decimal
+          numStr = numStr.replace(/,([^,]*)$/, '.$1')
+          console.log(`  Treating last comma as decimal: "${numStr}"`)
+        }
+      } else if (numStr.includes(',')) {
+        // If there are both commas and periods, assume comma is for thousands
         numStr = numStr.replace(/,/g, '')
-      } else {
-        // If it's likely a decimal comma, replace with period
-        numStr = numStr.replace(',', '.')
+        console.log(`  Mixed decimals and commas, treating commas as thousands: "${numStr}"`)
       }
       
-      // Parse the numeric value
+      // Step 3: Parse the numeric value
       const numericValue = parseFloat(numStr)
       
-      // Calculate result
+      // Step 4: Calculate result (using Math.round to avoid floating point issues)
       const result = Math.round(isNaN(numericValue) ? 0 : numericValue * multiplier)
       
-      // Debug output for problematic cases
-      if (valueStr.includes(',') && valueStr.length > 8) {
-        console.log(`Parse result: "${valueStr}" → ${result}`)
-      }
+      // Always log the result for debugging
+      console.log(`  Final result: "${valueStr}" → ${result} (multiplier: ${multiplier}, numericValue: ${numericValue})`)
       
       return result
     }
@@ -364,6 +383,20 @@ export default {
           console.log(`Transfer value: ${player2.transfer_value} → ${player2.transferValueAmount} (${typeof player2.transferValueAmount})`)
           console.log(`Wage: ${player2.wage} → ${player2.wageAmount} (${typeof player2.wageAmount})`)
         }
+        
+        // Log unique monetary values to check distribution
+        const values = allPlayers.value
+          .filter(p => p.transferValueAmount > 0)  // Filter out zero values
+          .map(p => ({ 
+            name: p.name, 
+            display: p.transfer_value, 
+            value: p.transferValueAmount 
+          }))
+          .sort((a, b) => b.value - a.value)  // Sort by value, high to low
+          .slice(0, 10);  // Take top 10
+        
+        console.log('Top 10 transfer values:');
+        values.forEach(v => console.log(`${v.name}: ${v.display} → ${v.value}`));
       }
     }
     
@@ -422,14 +455,32 @@ export default {
       // Log the sort operation for debugging
       console.log(`Sorting by: ${sortState.key} (${sortState.direction})`)
       
+      // Double-check the top values for monetary fields
+      if (sortState.key === 'transferValueAmount' || sortState.key === 'wageAmount') {
+        const displayKey = sortState.key === 'transferValueAmount' ? 'transfer_value' : 'wage'
+        const top5 = [...players]
+          .filter(p => p[sortState.key] > 0)
+          .sort((a, b) => b[sortState.key] - a[sortState.key])
+          .slice(0, 5);
+        
+        console.log(`Top 5 ${sortState.key} values before sorting:`)
+        top5.forEach(p => console.log(`${p.name}: ${p[displayKey]} → ${p[sortState.key]}`))
+      }
+      
       return players.sort((a, b) => {
         let valA, valB
         
         // Special handling for monetary fields (transferValueAmount and wageAmount)
         if (sortState.key === 'transferValueAmount' || sortState.key === 'wageAmount') {
-          // These are already integers from processing
-          valA = a[sortState.key] || 0
-          valB = b[sortState.key] || 0
+          // These should be integers from processing
+          valA = typeof a[sortState.key] === 'number' ? a[sortState.key] : 0
+          valB = typeof b[sortState.key] === 'number' ? b[sortState.key] : 0
+          
+          // Occasionally log examples of the comparison for debugging
+          if (Math.random() < 0.01) { // Log ~1% of comparisons
+            const displayKey = sortState.key === 'transferValueAmount' ? 'transfer_value' : 'wage'
+            console.log(`Comparing ${a.name} (${a[displayKey]} → ${valA}) vs ${b.name} (${b[displayKey]} → ${valB})`)
+          }
           
           // Direct numeric comparison (faster for integers)
           return sortState.direction === 'asc' ? valA - valB : valB - valA
