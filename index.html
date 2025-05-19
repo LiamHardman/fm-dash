@@ -5,15 +5,19 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Player Data Parser</title>
         <script src="https://cdn.tailwindcss.com"></script>
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+            rel="stylesheet"
+        />
         <style>
             body {
                 font-family: "Inter", sans-serif;
                 background-color: #f0f2f5; /* Light gray background */
             }
             .container {
-                max-width: 1200px; /* Increased max-width for more columns */
+                max-width: 95%; /* Increased max-width for more columns, use percentage for responsiveness */
                 margin: 2rem auto;
-                padding: 2rem;
+                padding: 1.5rem; /* Adjusted padding for smaller screens */
                 background-color: white;
                 border-radius: 0.5rem;
                 box-shadow:
@@ -26,17 +30,28 @@
             label {
                 color: #374151;
             }
-            input[type="file"] {
+            input[type="file"],
+            input[type="text"] {
                 border: 1px solid #d1d5db;
                 border-radius: 0.375rem;
+                padding: 0.5rem 0.75rem;
             }
             button {
                 background-color: #3b82f6;
                 color: white;
                 transition: background-color 0.3s ease;
+                border-radius: 0.375rem;
+                padding: 0.625rem 1rem; /* Standardized button padding */
+                font-weight: 500;
             }
             button:hover {
                 background-color: #2563eb;
+            }
+            button.secondary {
+                background-color: #6b7280;
+            }
+            button.secondary:hover {
+                background-color: #4b5563;
             }
             table {
                 border-collapse: collapse;
@@ -48,14 +63,23 @@
             th,
             td {
                 border: 1px solid #e5e7eb;
-                padding: 0.5rem 0.75rem; /* Adjusted padding */
+                padding: 0.5rem 0.75rem;
                 text-align: left;
+                min-width: 80px; /* Minimum width for table cells */
             }
             th {
                 background-color: #f9fafb;
                 color: #1f2937;
                 font-weight: 600;
-                white-space: nowrap; /* Prevent header text wrapping */
+                white-space: nowrap;
+                cursor: pointer; /* Add cursor pointer for sortable headers */
+            }
+            th .sort-arrow {
+                margin-left: 5px;
+                opacity: 0.5;
+            }
+            th .sort-arrow.active {
+                opacity: 1;
             }
             tr:nth-child(even) {
                 background-color: #f9fafb;
@@ -72,15 +96,43 @@
                 margin-top: 1rem;
             }
             .table-responsive-container {
-                /* Added for better horizontal scroll on small screens */
                 overflow-x: auto;
-                -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+                -webkit-overflow-scrolling: touch;
+            }
+            .pagination-controls button {
+                margin: 0 0.25rem;
+            }
+            .pagination-controls button.active {
+                background-color: #1d4ed8;
+                font-weight: bold;
+            }
+            /* Responsive adjustments */
+            @media (max-width: 768px) {
+                .container {
+                    margin: 1rem auto;
+                    padding: 1rem;
+                }
+                h1 {
+                    font-size: 1.5rem; /* Adjusted for smaller screens */
+                }
+                .search-filters div {
+                    margin-bottom: 0.5rem;
+                }
+                .search-filters button {
+                    width: 100%;
+                    margin-top: 0.5rem;
+                }
+                th,
+                td {
+                    font-size: 0.8rem;
+                    padding: 0.4rem 0.6rem;
+                }
             }
         </style>
     </head>
     <body class="p-4 md:p-8">
         <div class="container">
-            <h1 class="text-3xl font-bold mb-6 text-center">
+            <h1 class="text-2xl md:text-3xl font-bold mb-6 text-center">
                 Football Manager HTML Player Parser
             </h1>
 
@@ -88,21 +140,18 @@
                 class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-md text-blue-700"
             >
                 <p class="font-semibold">Instructions:</p>
-                <ol class="list-decimal list-inside ml-4">
+                <ol class="list-decimal list-inside ml-4 text-sm md:text-base">
                     <li>
                         Ensure the Go API (<code>main.go</code>) is running
                         (usually on <code>http://localhost:8080</code>).
                     </li>
                     <li>
-                        The <code>index.html</code> file (this page) should be
-                        in the same directory as your Go executable.
-                    </li>
-                    <li>
                         Select an HTML file exported from Football Manager
                         containing player data.
                     </li>
+                    <li>Click "Upload and Parse" to process the file.</li>
                     <li>
-                        Click "Upload and Parse" to see the player stats below.
+                        Use search, sort, and pagination to explore the data.
                     </li>
                 </ol>
             </div>
@@ -122,10 +171,75 @@
 
             <button
                 onclick="uploadAndParse()"
-                class="w-full sm:w-auto px-6 py-3 font-semibold rounded-md shadow-sm"
+                class="w-full sm:w-auto px-6 py-3 font-semibold rounded-md shadow-sm mb-4"
             >
                 Upload and Parse
             </button>
+
+            <div
+                class="search-filters mb-6 p-4 border border-gray-200 rounded-md bg-gray-50"
+            >
+                <h2 class="text-lg font-semibold mb-3 text-gray-700">
+                    Search Players
+                </h2>
+                <div
+                    class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4"
+                >
+                    <div>
+                        <label
+                            for="searchName"
+                            class="block text-sm font-medium text-gray-700 mb-1"
+                            >Name:</label
+                        >
+                        <input
+                            type="text"
+                            id="searchName"
+                            placeholder="Player name"
+                            class="w-full"
+                        />
+                    </div>
+                    <div>
+                        <label
+                            for="searchClub"
+                            class="block text-sm font-medium text-gray-700 mb-1"
+                            >Club:</label
+                        >
+                        <input
+                            type="text"
+                            id="searchClub"
+                            placeholder="Club name"
+                            class="w-full"
+                        />
+                    </div>
+                    <div>
+                        <label
+                            for="searchTransferValue"
+                            class="block text-sm font-medium text-gray-700 mb-1"
+                            >Transfer Value:</label
+                        >
+                        <input
+                            type="text"
+                            id="searchTransferValue"
+                            placeholder="e.g., €1.5M, >1M, <500K"
+                            class="w-full"
+                        />
+                    </div>
+                    <div class="flex items-end space-x-2">
+                        <button
+                            onclick="handleSearch()"
+                            class="w-full sm:w-auto"
+                        >
+                            Search
+                        </button>
+                        <button
+                            onclick="clearSearch()"
+                            class="w-full sm:w-auto secondary"
+                        >
+                            Clear
+                        </button>
+                    </div>
+                </div>
+            </div>
 
             <div id="loadingMessage" class="loading-message mt-4 hidden">
                 Parsing file, please wait...
@@ -136,89 +250,311 @@
                 id="playerTableContainer"
                 class="table-responsive-container mt-8"
             ></div>
+            <div
+                id="paginationControls"
+                class="pagination-controls mt-6 flex justify-center items-center space-x-2"
+            ></div>
         </div>
 
         <script>
-            const API_URL = "http://localhost:8080/upload"; // URL of your Go API endpoint
+            const API_URL = "http://localhost:8080/upload";
+            let allPlayers = []; // To store all fetched players
+            let filteredPlayers = []; // To store players after search/filter
+            let currentSortKey = null;
+            let currentSortDirection = "asc"; // 'asc' or 'desc'
+            let currentPage = 1;
+            const ITEMS_PER_PAGE = 15; // Number of players per page
+
+            // DOM Elements
+            const playerTableContainer = document.getElementById(
+                "playerTableContainer",
+            );
+            const errorMessageDiv = document.getElementById("errorMessage");
+            const loadingMessageDiv = document.getElementById("loadingMessage");
+            const paginationControlsContainer =
+                document.getElementById("paginationControls");
+            const searchNameInput = document.getElementById("searchName");
+            const searchClubInput = document.getElementById("searchClub");
+            const searchTransferValueInput = document.getElementById(
+                "searchTransferValue",
+            );
 
             // Function to handle file upload and parsing
             async function uploadAndParse() {
                 const fileInput = document.getElementById("playerFile");
-                const playerTableContainer = document.getElementById(
-                    "playerTableContainer",
-                );
-                const errorMessageDiv = document.getElementById("errorMessage");
-                const loadingMessageDiv =
-                    document.getElementById("loadingMessage");
 
-                // Clear previous results and errors
                 playerTableContainer.innerHTML = "";
                 errorMessageDiv.classList.add("hidden");
                 errorMessageDiv.textContent = "";
-                loadingMessageDiv.classList.remove("hidden"); // Show loading message
+                loadingMessageDiv.classList.remove("hidden");
+                paginationControlsContainer.innerHTML = ""; // Clear old pagination
 
                 if (fileInput.files.length === 0) {
                     showError("Please select an HTML file first.");
-                    loadingMessageDiv.classList.add("hidden"); // Hide loading message
+                    loadingMessageDiv.classList.add("hidden");
                     return;
                 }
 
                 const file = fileInput.files[0];
                 const formData = new FormData();
-                formData.append("playerFile", file); // 'playerFile' must match the name in Go's r.FormFile("playerFile")
+                formData.append("playerFile", file);
 
                 try {
-                    // Fetch data from the Go API
                     const response = await fetch(API_URL, {
                         method: "POST",
                         body: formData,
                     });
 
-                    loadingMessageDiv.classList.add("hidden"); // Hide loading message
+                    loadingMessageDiv.classList.add("hidden");
 
                     if (!response.ok) {
-                        // If API returns an error, try to parse it as text
                         const errorText = await response.text();
                         throw new Error(
                             `API Error: ${response.status} - ${errorText || response.statusText}`,
                         );
                     }
 
-                    const players = await response.json(); // Parse JSON response
+                    const players = await response.json();
 
                     if (players && players.length > 0) {
-                        displayPlayerTable(players); // Display data if successful
+                        allPlayers = players.map((p) => ({
+                            ...p,
+                            // Ensure attributes exist and are an object
+                            attributes:
+                                p.attributes && typeof p.attributes === "object"
+                                    ? p.attributes
+                                    : {},
+                        }));
+                        filteredPlayers = [...allPlayers]; // Initially, all players are shown
+                        currentPage = 1;
+                        currentSortKey = null; // Reset sort
+                        currentSortDirection = "asc";
+                        clearSearchInputs(); // Clear search fields on new upload
+                        renderTable();
                     } else {
-                        // Handle cases where API returns success but no player data (e.g., empty file or no parsable players)
+                        allPlayers = [];
+                        filteredPlayers = [];
                         showError(
                             "No player data found in the file or the file format is not as expected. Check API console for details.",
                         );
                     }
                 } catch (error) {
-                    // Catch any network errors or errors from the try block
                     console.error("Error:", error);
                     showError(`Failed to parse player data: ${error.message}`);
-                    loadingMessageDiv.classList.add("hidden"); // Hide loading message on error
+                    loadingMessageDiv.classList.add("hidden");
+                    allPlayers = [];
+                    filteredPlayers = [];
                 }
             }
 
-            // Function to display an error message on the page
+            // Function to display an error message
             function showError(message) {
-                const errorMessageDiv = document.getElementById("errorMessage");
                 errorMessageDiv.textContent = message;
                 errorMessageDiv.classList.remove("hidden");
             }
 
-            // Function to render the player data into an HTML table
-            function displayPlayerTable(players) {
-                const container = document.getElementById(
-                    "playerTableContainer",
-                );
-                container.innerHTML = ""; // Clear previous table
+            // Function to handle search
+            function handleSearch() {
+                const nameQuery = searchNameInput.value.toLowerCase().trim();
+                const clubQuery = searchClubInput.value.toLowerCase().trim();
+                const transferValueQuery = searchTransferValueInput.value
+                    .toLowerCase()
+                    .trim();
 
-                if (!players || players.length === 0) {
-                    container.innerHTML =
-                        '<p class="text-gray-600">No player data to display.</p>';
+                filteredPlayers = allPlayers.filter((player) => {
+                    const nameMatch =
+                        !nameQuery ||
+                        (player.name &&
+                            player.name.toLowerCase().includes(nameQuery));
+                    const clubMatch =
+                        !clubQuery ||
+                        (player.club &&
+                            player.club.toLowerCase().includes(clubQuery));
+
+                    let transferValueMatch = true;
+                    if (transferValueQuery) {
+                        const playerValueStr = String(
+                            player.transfer_value || "",
+                        ).toLowerCase();
+                        if (transferValueQuery.startsWith(">")) {
+                            const val = parseFloat(
+                                transferValueQuery
+                                    .substring(1)
+                                    .replace(/[^0-9.]/g, ""),
+                            );
+                            const playerVal = parseFloat(
+                                String(player.transfer_value || "0").replace(
+                                    /[^0-9.]/g,
+                                    "",
+                                ),
+                            );
+                            transferValueMatch = playerVal > val;
+                        } else if (transferValueQuery.startsWith("<")) {
+                            const val = parseFloat(
+                                transferValueQuery
+                                    .substring(1)
+                                    .replace(/[^0-9.]/g, ""),
+                            );
+                            const playerVal = parseFloat(
+                                String(player.transfer_value || "0").replace(
+                                    /[^0-9.]/g,
+                                    "",
+                                ),
+                            );
+                            transferValueMatch = playerVal < val;
+                        } else {
+                            transferValueMatch =
+                                playerValueStr.includes(transferValueQuery);
+                        }
+                    }
+                    return nameMatch && clubMatch && transferValueMatch;
+                });
+
+                currentPage = 1; // Reset to first page after search
+                renderTable();
+            }
+
+            // Function to clear search inputs and results
+            function clearSearch() {
+                clearSearchInputs();
+                filteredPlayers = [...allPlayers]; // Reset to all players
+                currentPage = 1;
+                renderTable();
+            }
+
+            function clearSearchInputs() {
+                searchNameInput.value = "";
+                searchClubInput.value = "";
+                searchTransferValueInput.value = "";
+            }
+
+            // Function to handle sorting
+            function handleSort(key, isAttribute = false) {
+                if (currentSortKey === key) {
+                    currentSortDirection =
+                        currentSortDirection === "asc" ? "desc" : "asc";
+                } else {
+                    currentSortKey = key;
+                    currentSortDirection = "asc";
+                }
+                sortPlayers(isAttribute);
+                currentPage = 1; // Reset to first page after sort
+                renderTable();
+            }
+
+            // Helper to parse monetary values like "€1.5M", "£500K", "$75.5K p/w"
+            function parseMonetaryValue(valueStr) {
+                if (typeof valueStr !== "string" || !valueStr) return 0;
+                let numStr = valueStr.replace(/[^0-9.,]/g, ""); // Keep numbers, dots, commas
+                numStr = numStr.replace(",", "."); // Standardize decimal separator
+
+                let multiplier = 1;
+                if (valueStr.toLowerCase().includes("m")) {
+                    multiplier = 1000000;
+                } else if (valueStr.toLowerCase().includes("k")) {
+                    multiplier = 1000;
+                }
+
+                // Remove all non-numeric characters except the decimal point for parseFloat
+                const cleanedNumStr = numStr.replace(/[^\d.]/g, "");
+                const numericValue = parseFloat(cleanedNumStr);
+
+                return isNaN(numericValue) ? 0 : numericValue * multiplier;
+            }
+
+            // Function to sort players
+            function sortPlayers(isAttributeSort) {
+                filteredPlayers.sort((a, b) => {
+                    let valA, valB;
+
+                    if (isAttributeSort) {
+                        valA = a.attributes
+                            ? a.attributes[currentSortKey]
+                            : null;
+                        valB = b.attributes
+                            ? b.attributes[currentSortKey]
+                            : null;
+                    } else {
+                        valA = a[currentSortKey];
+                        valB = b[currentSortKey];
+                    }
+
+                    // Special handling for 'Age' to sort numerically
+                    if (currentSortKey === "age") {
+                        valA = parseInt(valA, 10) || 0;
+                        valB = parseInt(valB, 10) || 0;
+                    }
+                    // Special handling for 'Transfer Value' and 'Wage'
+                    else if (
+                        currentSortKey === "transfer_value" ||
+                        currentSortKey === "wage"
+                    ) {
+                        valA = parseMonetaryValue(String(valA));
+                        valB = parseMonetaryValue(String(valB));
+                    }
+                    // For attributes that might be numbers (e.g., "18" for "Finishing")
+                    else if (
+                        isAttributeSort ||
+                        (!isNaN(parseFloat(valA)) && !isNaN(parseFloat(valB)))
+                    ) {
+                        // Check if they are numbers stored as strings
+                        const numA = parseFloat(valA);
+                        const numB = parseFloat(valB);
+                        if (!isNaN(numA) && !isNaN(numB)) {
+                            valA = numA;
+                            valB = numB;
+                        }
+                    }
+
+                    // Handle null, undefined, or empty strings by pushing them to the bottom
+                    if (valA == null || valA === "")
+                        valA =
+                            currentSortDirection === "asc"
+                                ? Infinity
+                                : -Infinity;
+                    if (valB == null || valB === "")
+                        valB =
+                            currentSortDirection === "asc"
+                                ? Infinity
+                                : -Infinity;
+
+                    if (typeof valA === "string" && typeof valB === "string") {
+                        valA = valA.toLowerCase();
+                        valB = valB.toLowerCase();
+                    }
+
+                    if (valA < valB) {
+                        return currentSortDirection === "asc" ? -1 : 1;
+                    }
+                    if (valA > valB) {
+                        return currentSortDirection === "asc" ? 1 : -1;
+                    }
+                    return 0;
+                });
+            }
+
+            // Function to render the table (current page slice)
+            function renderTable() {
+                playerTableContainer.innerHTML = ""; // Clear previous table
+                errorMessageDiv.classList.add("hidden"); // Hide error message if table is rendering
+
+                if (!filteredPlayers || filteredPlayers.length === 0) {
+                    if (
+                        searchNameInput.value ||
+                        searchClubInput.value ||
+                        searchTransferValueInput.value
+                    ) {
+                        playerTableContainer.innerHTML =
+                            '<p class="text-gray-600 p-4 text-center">No players match your search criteria.</p>';
+                    } else if (allPlayers.length > 0) {
+                        // If allPlayers exist but filtered is empty (e.g. bad search)
+                        playerTableContainer.innerHTML =
+                            '<p class="text-gray-600 p-4 text-center">No players to display with current filters.</p>';
+                    } else {
+                        playerTableContainer.innerHTML =
+                            '<p class="text-gray-600 p-4 text-center">Upload a file to see player data.</p>';
+                    }
+                    paginationControlsContainer.innerHTML = ""; // Clear pagination if no data
                     return;
                 }
 
@@ -230,37 +566,51 @@
                 thead.className = "bg-gray-50";
                 const headerRow = document.createElement("tr");
 
-                // Define base headers including new ones: Transfer Value and Wage
+                // Define base headers and their corresponding data keys
                 const baseHeaders = [
-                    "Name",
-                    "Position",
-                    "Age",
-                    "Club",
-                    "Transfer Value",
-                    "Wage",
+                    { text: "Name", key: "name" },
+                    { text: "Position", key: "position" },
+                    { text: "Age", key: "age" },
+                    { text: "Club", key: "club" },
+                    { text: "Transfer Value", key: "transfer_value" },
+                    { text: "Wage", key: "wage" },
                 ];
-                baseHeaders.forEach((text) => {
+
+                baseHeaders.forEach((header) => {
                     const th = document.createElement("th");
                     th.scope = "col";
                     th.className =
-                        "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider";
-                    th.textContent = text;
+                        "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider";
+                    th.textContent = header.text;
+                    th.onclick = () => handleSort(header.key);
+                    if (currentSortKey === header.key) {
+                        th.innerHTML += `<span class="sort-arrow active">${currentSortDirection === "asc" ? "▲" : "▼"}</span>`;
+                    } else {
+                        th.innerHTML += `<span class="sort-arrow">↕</span>`;
+                    }
                     headerRow.appendChild(th);
                 });
 
                 // Dynamically add attribute headers from the first player if attributes exist
-                // Sort attribute keys for consistent column order
                 const attributeKeys =
-                    players[0].attributes &&
-                    Object.keys(players[0].attributes).length > 0
-                        ? Object.keys(players[0].attributes).sort()
+                    filteredPlayers[0] &&
+                    filteredPlayers[0].attributes &&
+                    Object.keys(filteredPlayers[0].attributes).length > 0
+                        ? Object.keys(filteredPlayers[0].attributes).sort()
                         : [];
+
                 attributeKeys.forEach((key) => {
                     const th = document.createElement("th");
                     th.scope = "col";
                     th.className =
-                        "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider";
-                    th.textContent = key; // Attribute name as header
+                        "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider";
+                    th.textContent = key;
+                    th.onclick = () => handleSort(key, true); // Pass true for attribute sort
+                    if (currentSortKey === key) {
+                        th.innerHTML += `<span class="sort-arrow active">${currentSortDirection === "asc" ? "▲" : "▼"}</span>`;
+                    } else {
+                        th.innerHTML += `<span class="sort-arrow">↕</span>`;
+                    }
                     headerRow.appendChild(th);
                 });
                 thead.appendChild(headerRow);
@@ -269,35 +619,31 @@
                 const tbody = document.createElement("tbody");
                 tbody.className = "bg-white divide-y divide-gray-200";
 
-                players.forEach((player) => {
+                // Pagination logic
+                const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+                const endIndex = startIndex + ITEMS_PER_PAGE;
+                const playersToShow = filteredPlayers.slice(
+                    startIndex,
+                    endIndex,
+                );
+
+                playersToShow.forEach((player) => {
                     const tr = document.createElement("tr");
                     tr.className =
                         "hover:bg-gray-100 transition-colors duration-150";
 
-                    // Base player data cells, matching the order in baseHeaders
-                    const playerDataCells = [
-                        player.name || "-",
-                        player.position || "-",
-                        player.age || "-",
-                        player.club || "-",
-                        player.transfer_value || "-", // Corresponds to 'Transfer Value' header
-                        player.wage || "-", // Corresponds to 'Wage' header
-                    ];
-
-                    playerDataCells.forEach((text) => {
+                    baseHeaders.forEach((header) => {
                         const td = document.createElement("td");
                         td.className =
-                            "px-6 py-4 whitespace-nowrap text-sm text-gray-700";
-                        td.textContent = text;
+                            "px-4 py-3 whitespace-nowrap text-sm text-gray-700";
+                        td.textContent = player[header.key] || "-";
                         tr.appendChild(td);
                     });
 
-                    // Attribute data cells
                     attributeKeys.forEach((key) => {
                         const td = document.createElement("td");
                         td.className =
-                            "px-6 py-4 whitespace-nowrap text-sm text-gray-700";
-                        // Ensure player.attributes exists before trying to access a key
+                            "px-4 py-3 whitespace-nowrap text-sm text-gray-700";
                         td.textContent =
                             player.attributes && player.attributes[key]
                                 ? player.attributes[key]
@@ -308,8 +654,125 @@
                 });
 
                 table.appendChild(tbody);
-                container.appendChild(table); // Add the generated table to the container
+                playerTableContainer.appendChild(table);
+
+                renderPaginationControls();
             }
+
+            // Function to render pagination controls
+            function renderPaginationControls() {
+                paginationControlsContainer.innerHTML = ""; // Clear previous controls
+                if (
+                    !filteredPlayers ||
+                    filteredPlayers.length <= ITEMS_PER_PAGE
+                ) {
+                    return; // No pagination needed if not enough items
+                }
+
+                const totalPages = Math.ceil(
+                    filteredPlayers.length / ITEMS_PER_PAGE,
+                );
+
+                // Previous Button
+                const prevButton = document.createElement("button");
+                prevButton.textContent = "Previous";
+                prevButton.className =
+                    "px-3 py-1 border border-gray-300 rounded-md text-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed";
+                prevButton.disabled = currentPage === 1;
+                prevButton.onclick = () => {
+                    if (currentPage > 1) {
+                        currentPage--;
+                        renderTable();
+                    }
+                };
+                paginationControlsContainer.appendChild(prevButton);
+
+                // Page Number Buttons (simplified for brevity, could add more complex logic for many pages)
+                // Show first page, last page, and pages around current page
+                const pageNumbers = [];
+                const maxPagesToShow = 5; // Max number of page buttons to show (e.g., 1 ... 5 6 7 ... 10)
+
+                if (totalPages <= maxPagesToShow) {
+                    for (let i = 1; i <= totalPages; i++) {
+                        pageNumbers.push(i);
+                    }
+                } else {
+                    pageNumbers.push(1); // Always show first page
+                    let startPage = Math.max(2, currentPage - 1);
+                    let endPage = Math.min(totalPages - 1, currentPage + 1);
+
+                    if (currentPage <= 3) {
+                        endPage = Math.min(totalPages - 1, maxPagesToShow - 2); // e.g. 1, 2, 3, 4 ... last
+                    } else if (currentPage >= totalPages - 2) {
+                        startPage = Math.max(
+                            2,
+                            totalPages - (maxPagesToShow - 3),
+                        ); // e.g. 1 ... 7, 8, 9, 10
+                    }
+
+                    if (startPage > 2) {
+                        const ellipsisStart = document.createElement("span");
+                        ellipsisStart.textContent = "...";
+                        ellipsisStart.className =
+                            "px-3 py-1 text-sm text-gray-500";
+                        paginationControlsContainer.appendChild(ellipsisStart);
+                    }
+
+                    for (let i = startPage; i <= endPage; i++) {
+                        pageNumbers.push(i);
+                    }
+
+                    if (endPage < totalPages - 1) {
+                        const ellipsisEnd = document.createElement("span");
+                        ellipsisEnd.textContent = "...";
+                        ellipsisEnd.className =
+                            "px-3 py-1 text-sm text-gray-500";
+                        paginationControlsContainer.appendChild(ellipsisEnd);
+                    }
+                    if (!pageNumbers.includes(totalPages)) {
+                        // Ensure last page is always an option if not already included
+                        pageNumbers.push(totalPages);
+                    }
+                }
+
+                // Create buttons for the calculated page numbers
+                // Remove duplicates that might occur from logic above (e.g. if totalPages is small)
+                [...new Set(pageNumbers)].forEach((page) => {
+                    const pageButton = document.createElement("button");
+                    pageButton.textContent = page;
+                    pageButton.className = `px-3 py-1 border border-gray-300 rounded-md text-sm hover:bg-gray-100 ${currentPage === page ? "active bg-blue-500 text-white" : ""}`;
+                    pageButton.onclick = () => {
+                        currentPage = page;
+                        renderTable();
+                    };
+                    paginationControlsContainer.appendChild(pageButton);
+                });
+
+                // Next Button
+                const nextButton = document.createElement("button");
+                nextButton.textContent = "Next";
+                nextButton.className =
+                    "px-3 py-1 border border-gray-300 rounded-md text-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed";
+                nextButton.disabled = currentPage === totalPages;
+                nextButton.onclick = () => {
+                    if (currentPage < totalPages) {
+                        currentPage++;
+                        renderTable();
+                    }
+                };
+                paginationControlsContainer.appendChild(nextButton);
+
+                // Current page info
+                const pageInfo = document.createElement("div");
+                pageInfo.className = "text-sm text-gray-600 ml-4";
+                pageInfo.textContent = `Page ${currentPage} of ${totalPages} (${filteredPlayers.length} players)`;
+                paginationControlsContainer.appendChild(pageInfo);
+            }
+
+            // Initial call to render an empty state or instructions
+            document.addEventListener("DOMContentLoaded", () => {
+                renderTable(); // Show initial empty/message state
+            });
         </script>
     </body>
 </html>

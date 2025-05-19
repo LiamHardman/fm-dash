@@ -15,9 +15,9 @@ import (
 )
 
 const (
-	defaultPlayerCapacity    = 256 // Default capacity for the players slice
-	defaultAttributeCapacity = 30  // Default capacity for the attributes map
-	defaultCellCapacity      = 30  // Default capacity for cells slice if headers unknown
+	defaultPlayerCapacity    = 1024 // Default capacity for the players slice
+	defaultAttributeCapacity = 64  // Default capacity for the attributes map
+	defaultCellCapacity      = 64  // Default capacity for cells slice if headers unknown
 )
 
 // Player struct (remains the same)
