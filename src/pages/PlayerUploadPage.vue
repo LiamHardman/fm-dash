@@ -55,6 +55,7 @@
                 dense
                 outlined
                 clearable
+                @update:model-value="handleSearch"
               />
             </div>
             <div class="col-12 col-sm-6 col-md-3">
@@ -64,6 +65,7 @@
                 dense
                 outlined
                 clearable
+                @update:model-value="handleSearch"
               />
             </div>
             <div class="col-12 col-sm-6 col-md-3">
@@ -74,24 +76,18 @@
                 outlined
                 clearable
                 placeholder="e.g., €1.5M, >1M, <500K"
+                @update:model-value="handleSearch"
               />
             </div>
             <div class="col-12 col-sm-6 col-md-3 flex items-end">
               <div class="row q-col-gutter-sm full-width">
                 <div class="col">
                   <q-btn
-                    color="primary"
-                    label="Search"
-                    class="full-width"
-                    @click="handleSearch"
-                  />
-                </div>
-                <div class="col">
-                  <q-btn
                     color="grey"
-                    label="Clear"
+                    label="Clear Filters"
                     class="full-width"
                     @click="clearSearch"
+                    :disable="!hasActiveFilters"
                   />
                 </div>
               </div>
@@ -108,8 +104,43 @@
         </template>
       </q-banner>
 
-      <!-- Players Table -->
+      <!-- Players Table with Stats -->
       <template v-if="allPlayers.length > 0">
+        <div class="row q-col-gutter-md q-mb-md">
+          <div class="col-12 col-md-3">
+            <q-card class="text-center">
+              <q-card-section>
+                <div class="text-h6">{{ allPlayers.length }}</div>
+                <div class="text-subtitle2">Total Players</div>
+              </q-card-section>
+            </q-card>
+          </div>
+          <div class="col-12 col-md-3">
+            <q-card class="text-center">
+              <q-card-section>
+                <div class="text-h6">{{ filteredPlayers.length }}</div>
+                <div class="text-subtitle2">Filtered Players</div>
+              </q-card-section>
+            </q-card>
+          </div>
+          <div class="col-12 col-md-3">
+            <q-card class="text-center">
+              <q-card-section>
+                <div class="text-h6">{{ uniqueClubs }}</div>
+                <div class="text-subtitle2">Unique Clubs</div>
+              </q-card-section>
+            </q-card>
+          </div>
+          <div class="col-12 col-md-3">
+            <q-card class="text-center">
+              <q-card-section>
+                <div class="text-h6">{{ uniquePositions }}</div>
+                <div class="text-subtitle2">Unique Positions</div>
+              </q-card-section>
+            </q-card>
+          </div>
+        </div>
+        
         <PlayerDataTable
           :players="filteredPlayers"
           :loading="loading"
@@ -128,7 +159,7 @@
 </template>
 
 <script>
-import { ref, computed, reactive } from 'vue'
+import { ref, computed, reactive, watch } from 'vue'
 import PlayerDataTable from '../components/PlayerDataTable.vue'
 import playerService from '../services/playerService'
 
@@ -148,7 +179,8 @@ export default {
     const sortState = reactive({
       key: null,
       direction: 'asc',
-      isAttribute: false
+      isAttribute: false,
+      displayField: null
     })
     
     // Search filters
@@ -158,11 +190,82 @@ export default {
       transferValue: ''
     })
     
+    // Check if any filters are active
+    const hasActiveFilters = computed(() => {
+      return filters.name !== '' || filters.club !== '' || filters.transferValue !== ''
+    })
+    
+    // Calculate unique clubs
+    const uniqueClubs = computed(() => {
+      const clubs = new Set()
+      allPlayers.value.forEach(player => {
+        if (player.club) clubs.add(player.club)
+      })
+      return clubs.size
+    })
+    
+    // Calculate unique positions
+    const uniquePositions = computed(() => {
+      const positions = new Set()
+      allPlayers.value.forEach(player => {
+        if (player.position) positions.add(player.position)
+      })
+      return positions.size
+    })
+    
+    // Helper to parse monetary values (€1.5M, £500K, etc.) into integers for sorting
+    const parseMonetaryValue = (valueStr) => {
+      if (typeof valueStr !== 'string' || !valueStr) return 0
+      
+      // Remove any text after p/w (per week)
+      const cleanedStr = valueStr.split(' p/w')[0]
+      
+      // Debug logging for complex cases
+      if (valueStr.includes(',') && valueStr.length > 8) {
+        console.log(`Parsing complex value: "${valueStr}" → "${cleanedStr}"`)
+      }
+      
+      // Determine multiplier based on suffix
+      let multiplier = 1
+      if (cleanedStr.toLowerCase().includes('m')) {
+        multiplier = 1000000
+      } else if (cleanedStr.toLowerCase().includes('k')) {
+        multiplier = 1000
+      }
+      
+      // Special handling for values with commas (e.g., £350,000)
+      // Remove all currency symbols and non-numeric chars except commas and periods
+      let numStr = cleanedStr.replace(/[^0-9,.]/g, '')
+      
+      // Handle comma-separated thousands (e.g., convert £350,000 to 350000)
+      // First check if it looks like a thousands separator comma pattern
+      if (numStr.includes(',') && !numStr.includes('.')) {
+        // Replace all commas with nothing (i.e., remove them)
+        numStr = numStr.replace(/,/g, '')
+      } else {
+        // If it's likely a decimal comma, replace with period
+        numStr = numStr.replace(',', '.')
+      }
+      
+      // Parse the numeric value
+      const numericValue = parseFloat(numStr)
+      
+      // Calculate result
+      const result = Math.round(isNaN(numericValue) ? 0 : numericValue * multiplier)
+      
+      // Debug output for problematic cases
+      if (valueStr.includes(',') && valueStr.length > 8) {
+        console.log(`Parse result: "${valueStr}" → ${result}`)
+      }
+      
+      return result
+    }
+    
     // Filtered players based on search criteria
     const filteredPlayers = computed(() => {
       if (!allPlayers.value.length) return []
       
-      return allPlayers.value.filter(player => {
+      const filtered = allPlayers.value.filter(player => {
         // Name filter
         const nameMatch = !filters.name ||
           (player.name && player.name.toLowerCase().includes(filters.name.toLowerCase()))
@@ -174,23 +277,95 @@ export default {
         // Transfer value filter
         let transferValueMatch = true
         if (filters.transferValue) {
-          const playerValueStr = String(player.transfer_value || '').toLowerCase()
+          // Value to compare against (the filter value)
+          let compareValue = 0
+          let operator = 'includes'  // default operator
+          
+          // Check for operators
           if (filters.transferValue.startsWith('>')) {
-            const val = parseFloat(filters.transferValue.substring(1).replace(/[^0-9.]/g, ''))
-            const playerVal = parseFloat(String(player.transfer_value || '0').replace(/[^0-9.]/g, ''))
-            transferValueMatch = playerVal > val
+            operator = '>'
+            compareValue = parseMonetaryValue(filters.transferValue.substring(1))
           } else if (filters.transferValue.startsWith('<')) {
-            const val = parseFloat(filters.transferValue.substring(1).replace(/[^0-9.]/g, ''))
-            const playerVal = parseFloat(String(player.transfer_value || '0').replace(/[^0-9.]/g, ''))
-            transferValueMatch = playerVal < val
+            operator = '<'
+            compareValue = parseMonetaryValue(filters.transferValue.substring(1))
           } else {
+            // Text-based search
+            operator = 'includes'
+            const playerValueStr = String(player.transfer_value || '').toLowerCase()
             transferValueMatch = playerValueStr.includes(filters.transferValue.toLowerCase())
+            return nameMatch && clubMatch && transferValueMatch
+          }
+          
+          // Numeric comparison for > and < operators
+          const playerValue = player.transferValueAmount || 0
+          if (operator === '>') {
+            transferValueMatch = playerValue > compareValue
+          } else if (operator === '<') {
+            transferValueMatch = playerValue < compareValue
           }
         }
         
         return nameMatch && clubMatch && transferValueMatch
       })
+      
+      // Sort the filtered players if a sort key is set
+      if (sortState.key) {
+        return sortPlayers([...filtered])
+      }
+      
+      return filtered
     })
+    
+    // Process player data - convert string values to appropriate types
+    const processPlayerData = (players) => {
+      return players.map(player => {
+        // Parse monetary values first to ensure they're integers
+        const transferValue = parseMonetaryValue(player.transfer_value)
+        const wageValue = parseMonetaryValue(player.wage)
+        
+        // Create a new player object with processed data
+        const processedPlayer = {
+          ...player,
+          // Ensure age is a number
+          age: parseInt(player.age, 10) || 0,
+          // Store INTEGER values for sorting but keep display value
+          transferValueAmount: transferValue,
+          wageAmount: wageValue,
+          // Keep other fields as they are
+          attributes: { ...player.attributes }
+        }
+        
+        // Process attributes - convert all numeric attributes to numbers
+        if (processedPlayer.attributes) {
+          Object.keys(processedPlayer.attributes).forEach(key => {
+            const value = processedPlayer.attributes[key]
+            if (value && !isNaN(parseInt(value, 10))) {
+              processedPlayer.attributes[key] = parseInt(value, 10)
+            }
+          })
+        }
+        
+        return processedPlayer
+      })
+    }
+    
+    // Debug function to log players
+    const logPlayerData = () => {
+      if (allPlayers.value.length > 0) {
+        const player = allPlayers.value[0]
+        console.log('First player:', player)
+        console.log(`Transfer value: ${player.transfer_value} → ${player.transferValueAmount} (${typeof player.transferValueAmount})`)
+        console.log(`Wage: ${player.wage} → ${player.wageAmount} (${typeof player.wageAmount})`)
+        
+        // Get second player for comparison if available
+        if (allPlayers.value.length > 1) {
+          const player2 = allPlayers.value[1]
+          console.log('\nSecond player:', player2)
+          console.log(`Transfer value: ${player2.transfer_value} → ${player2.transferValueAmount} (${typeof player2.transferValueAmount})`)
+          console.log(`Wage: ${player2.wage} → ${player2.wageAmount} (${typeof player2.wageAmount})`)
+        }
+      }
+    }
     
     // Upload and parse the player data
     const uploadAndParse = async () => {
@@ -208,15 +383,19 @@ export default {
         
         const response = await playerService.uploadPlayerFile(formData)
         
-        allPlayers.value = response.map(p => ({
-          ...p,
-          attributes: p.attributes && typeof p.attributes === 'object' ? p.attributes : {}
-        }))
+        // Process player data - convert strings to appropriate types
+        const processedPlayers = processPlayerData(response)
+        
+        allPlayers.value = processedPlayers
+        
+        // Log for debugging
+        logPlayerData()
         
         // Reset sort and filters on new upload
         sortState.key = null
         sortState.direction = 'asc'
         sortState.isAttribute = false
+        sortState.displayField = null
         clearSearch()
         
       } catch (err) {
@@ -228,99 +407,77 @@ export default {
     }
     
     // Handle sorting
-    const handleSort = ({ key, isAttribute }) => {
-      if (sortState.key === key) {
-        // Toggle direction if same key
-        sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc'
-      } else {
-        // New sort key
-        sortState.key = key
-        sortState.direction = 'asc'
-        sortState.isAttribute = isAttribute
-      }
-      
-      // Sort the players
-      sortPlayers()
+    const handleSort = (sortParams) => {
+      // Update sort state with values from the event
+      sortState.key = sortParams.key // The actual field to sort by (could be transferValueAmount)
+      sortState.direction = sortParams.direction
+      sortState.isAttribute = sortParams.isAttribute
+      sortState.displayField = sortParams.displayField // For UI highlighting (might be transfer_value)
     }
     
     // Sort players based on current sort state
-    const sortPlayers = () => {
-      if (!sortState.key) return
+    const sortPlayers = (players) => {
+      if (!sortState.key) return players
       
-      allPlayers.value.sort((a, b) => {
+      // Log the sort operation for debugging
+      console.log(`Sorting by: ${sortState.key} (${sortState.direction})`)
+      
+      return players.sort((a, b) => {
         let valA, valB
         
-        if (sortState.isAttribute) {
+        // Special handling for monetary fields (transferValueAmount and wageAmount)
+        if (sortState.key === 'transferValueAmount' || sortState.key === 'wageAmount') {
+          // These are already integers from processing
+          valA = a[sortState.key] || 0
+          valB = b[sortState.key] || 0
+          
+          // Direct numeric comparison (faster for integers)
+          return sortState.direction === 'asc' ? valA - valB : valB - valA
+        }
+        // Handle attribute fields
+        else if (sortState.isAttribute) {
           valA = a.attributes ? a.attributes[sortState.key] : null
           valB = b.attributes ? b.attributes[sortState.key] : null
-        } else {
+        }
+        // Handle other fields
+        else {
           valA = a[sortState.key]
           valB = b[sortState.key]
         }
         
-        // Age sorting (numeric)
-        if (sortState.key === 'age') {
-          valA = parseInt(valA, 10) || 0
-          valB = parseInt(valB, 10) || 0
+        // Handle null/undefined values
+        if (valA == null && valB == null) return 0
+        if (valA == null) return sortState.direction === 'asc' ? 1 : -1
+        if (valB == null) return sortState.direction === 'asc' ? -1 : 1
+        
+        // If both values are numbers, compare them directly
+        if (typeof valA === 'number' && typeof valB === 'number') {
+          return sortState.direction === 'asc' ? valA - valB : valB - valA
         }
-        // Transfer Value and Wage sorting (monetary)
-        else if (sortState.key === 'transfer_value' || sortState.key === 'wage') {
-          valA = parseMonetaryValue(String(valA))
-          valB = parseMonetaryValue(String(valB))
-        }
-        // Numeric attribute sorting
-        else if (sortState.isAttribute || (!isNaN(parseFloat(valA)) && !isNaN(parseFloat(valB)))) {
+        
+        // Try to convert to number if they look like numbers
+        if (!isNaN(parseFloat(valA)) && !isNaN(parseFloat(valB))) {
           const numA = parseFloat(valA)
           const numB = parseFloat(valB)
-          if (!isNaN(numA) && !isNaN(numB)) {
-            valA = numA
-            valB = numB
-          }
+          return sortState.direction === 'asc' ? numA - numB : numB - numA
         }
         
-        // Handle null/empty values
-        if (valA == null || valA === '') {
-          valA = sortState.direction === 'asc' ? Infinity : -Infinity
-        }
-        if (valB == null || valB === '') {
-          valB = sortState.direction === 'asc' ? Infinity : -Infinity
-        }
-        
-        // String normalization
+        // String comparison
         if (typeof valA === 'string' && typeof valB === 'string') {
           valA = valA.toLowerCase()
           valB = valB.toLowerCase()
+          if (valA < valB) return sortState.direction === 'asc' ? -1 : 1
+          if (valA > valB) return sortState.direction === 'asc' ? 1 : -1
+          return 0
         }
         
-        // Compare and return sort order
-        if (valA < valB) {
-          return sortState.direction === 'asc' ? -1 : 1
-        }
-        if (valA > valB) {
-          return sortState.direction === 'asc' ? 1 : -1
-        }
+        // Fallback for mixed types
+        const strA = String(valA).toLowerCase()
+        const strB = String(valB).toLowerCase()
+        if (strA < strB) return sortState.direction === 'asc' ? -1 : 1
+        if (strA > strB) return sortState.direction === 'asc' ? 1 : -1
         return 0
       })
-    }
-    
-    // Helper to parse monetary values (€1.5M, £500K, etc.)
-    const parseMonetaryValue = (valueStr) => {
-      if (typeof valueStr !== 'string' || !valueStr) return 0
-      
-      let numStr = valueStr.replace(/[^0-9.,]/g, '')
-      numStr = numStr.replace(',', '.')
-      
-      let multiplier = 1
-      if (valueStr.toLowerCase().includes('m')) {
-        multiplier = 1000000
-      } else if (valueStr.toLowerCase().includes('k')) {
-        multiplier = 1000
-      }
-      
-      const cleanedNumStr = numStr.replace(/[^\d.]/g, '')
-      const numericValue = parseFloat(cleanedNumStr)
-      
-      return isNaN(numericValue) ? 0 : numericValue * multiplier
     }
     
     // Clear search filters
@@ -330,10 +487,8 @@ export default {
       filters.transferValue = ''
     }
     
-    // Handle search button click
-    const handleSearch = () => {
-      // The computed property will handle the filtering
-    }
+    // Handle search (nothing needed here - computed property does the filtering)
+    const handleSearch = () => {}
     
     return {
       playerFile,
@@ -341,7 +496,10 @@ export default {
       error,
       allPlayers,
       filteredPlayers,
+      uniqueClubs,
+      uniquePositions,
       filters,
+      hasActiveFilters,
       uploadAndParse,
       handleSort,
       handleSearch,
