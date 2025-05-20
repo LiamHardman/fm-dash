@@ -1,0 +1,191 @@
+{
+    "DC - BPD": {
+      "Cor": 5, "Cro": 1, "Dri": 40, "Fin": 10, "Fir": 35, "Fre": 10, "Hea": 55, "Lon": 10, "Tea": 20, "L Th": 0, "Mar": 55, "Pas": 55, "Pen": 10, "Tck": 40, "Tec": 35, "Agg": 40, "Ant": 50, "Bra": 30, "Cmp": 80, "Cnt": 50, "Dec": 50, "Det": 20, "Fla": 10, "Ldr": 10, "OtB": 10, "Pos": 55, "Vis": 50, "Wor": 55, "Acc": 90, "Agi": 60, "Bal": 35, "Jum": 65, "Nat": 10, "Pac": 90, "Sta": 30, "Str": 50
+    },
+    "DC - CD": {
+      "Cor": 10, "Cro": 10, "Dri": 30, "Fin": 10, "Fir": 30, "Fre": 5, "Hea": 60, "Lon": 0, "L Th": 0, "Mar": 70, "Pas": 40, "Pen": 0, "Tck": 70, "Tec": 30, "Agg": 60, "Ant": 65, "Bra": 50, "Cmp": 80, "Cnt": 65, "Dec": 65, "Det": 20, "Fla": 10, "Ldr": 10, "OtB": 10, "Pos": 65, "Tea": 20, "Vis": 30, "Wor": 60, "Acc": 60, "Agi": 30, "Bal": 30, "Jum": 65, "Nat": 10, "Pac": 70, "Sta": 40, "Str": 60
+    },
+    "DC - Generic": {
+      "Cor": 10, "Cro": 10, "Dri": 10, "Fin": 10, "Fir": 20, "Fre": 10, "Hea": 50, "Lon": 10, "L Th": 10, "Mar": 80, "Pas": 20, "Pen": 10, "Tck": 50, "Tec": 10, "Agg": 0, "Ant": 50, "Bra": 20, "Cmp": 20, "Cnt": 40, "Dec": 10, "Det": 0, "Fla": 0, "Ldr": 20, "OtB": 10, "Pos": 80, "Tea": 10, "Vis": 10, "Wor": 20, "Acc": 60, "Agi": 60, "Bal": 20, "Jum": 60, "Nat": 0, "Pac": 50, "Sta": 30, "Str": 60
+    },
+    "DC - WCB": {
+      "Cor": 5, "Cro": 30, "Dri": 40, "Fin": 10, "Fir": 50, "Fre": 10, "Hea": 50, "Lon": 10, "L Th": 0, "Mar": 40, "Pas": 50, "Pen": 10, "Tck": 30, "Tec": 30, "Agg": 50, "Ant": 60, "Bra": 30, "Cmp": 65, "Cnt": 50, "Dec": 40, "Det": 20, "Fla": 20, "Ldr": 10, "OtB": 10, "Pos": 60, "Tea": 20, "Vis": 60, "Wor": 60, "Acc": 75, "Agi": 65, "Bal": 30, "Jum": 35, "Nat": 30, "Pac": 75, "Sta": 60, "Str": 45
+    },
+    "DR/L - CWB": {
+      "Cor": 10, "Cro": 45, "Dri": 50, "Fin": 20, "Fir": 50, "Fre": 10, "Hea": 15, "Lon": 20, "L Th": 5, "Mar": 25, "Pas": 40, "Pen": 10, "Tck": 30, "Tec": 30, "Agg": 15, "Ant": 40, "Bra": 20, "Cmp": 25, "Cnt": 45, "Dec": 55, "Det": 0, "Fla": 20, "Ldr": 10, "OtB": 10, "Pos": 45, "Tea": 20, "Vis": 35, "Wor": 50, "Acc": 85, "Agi": 60, "Bal": 45, "Jum": 20, "Nat": 30, "Pac": 80, "Sta": 75, "Str": 35
+    },
+    "DR/L - FB": {
+      "Cor": 10, "Cro": 35, "Dri": 30, "Fin": 15, "Fir": 30, "Fre": 5, "Hea": 30, "Lon": 10, "L Th": 10, "Mar": 40, "Pas": 55, "Pen": 5, "Tck": 40, "Tec": 20, "Agg": 15, "Ant": 35, "Bra": 30, "Cmp": 25, "Cnt": 35, "Dec": 50, "Det": 20, "Fla": 15, "Ldr": 15, "OtB": 15, "Pos": 50, "Tea": 55, "Vis": 30, "Wor": 60, "Acc": 50, "Agi": 35, "Bal": 35, "Jum": 20, "Nat": 20, "Pac": 65, "Sta": 65, "Str": 30
+    },
+    "DR/L - Generic": {
+      "Cor": 10, "Cro": 20, "Dri": 10, "Fin": 10, "Fir": 30, "Fre": 10, "Hea": 20, "Lon": 10, "Mar": 30, "Pas": 20, "Pen": 10, "Tck": 40, "Tec": 20, "Agg": 0, "Ant": 30, "Bra": 20, "Cmp": 20, "Cnt": 40, "Dec": 70, "Det": 0, "Fla": 0, "Ldr": 0, "OtB": 10, "Pos": 40, "Vis": 20, "Wor": 20, "Acc": 70, "Agi": 60, "Bal": 20, "Jum": 20, "Nat": 0, "Pac": 50, "Sta": 60, "Str": 40, "Tea": 20, "L Th": 0
+    },
+    "DR/L - IWB": {
+      "Cor": 10, "Cro": 10, "Dri": 35, "Fin": 25, "Fir": 55, "Fre": 5, "Hea": 30, "Lon": 35, "L Th": 10, "Mar": 50, "Pas": 55, "Pen": 5, "Tck": 45, "Tec": 55, "Agg": 40, "Ant": 65, "Bra": 35, "Cmp": 60, "Cnt": 50, "Dec": 55, "Det": 5, "Fla": 5, "Ldr": 5, "OtB": 50, "Pos": 50, "Tea": 20, "Vis": 35, "Wor": 70, "Acc": 65, "Agi": 50, "Bal": 35, "Jum": 30, "Nat": 25, "Pac": 45, "Sta": 70, "Str": 35
+    },
+    "DR/L - WB": {
+      "Cor": 1, "Cro": 50, "Dri": 35, "Fin": 10, "Fir": 35, "Fre": 5, "Hea": 20, "Lon": 10, "L Th": 1, "Mar": 30, "Pas": 35, "Pen": 10, "Tck": 35, "Tec": 30, "Agg": 0, "Ant": 35, "Bra": 20, "Cmp": 25, "Cnt": 35, "Dec": 65, "Det": 0, "Fla": 0, "Ldr": 10, "OtB": 0, "Pos": 40, "Tea": 20, "Vis": 20, "Wor": 30, "Acc": 65, "Agi": 55, "Bal": 20, "Jum": 30, "Nat": 0, "Pac": 50, "Sta": 65, "Str": 45
+    },
+    "WBR/L - CWB - Su": {
+      "Cor": 10, "Cro": 45, "Dri": 50, "Fin": 20, "Fir": 50, "Fre": 10, "Hea": 15, "Lon": 20, "L Th": 5, "Mar": 25, "Pas": 40, "Pen": 10, "Tck": 30, "Tec": 30, "Agg": 15, "Ant": 40, "Bra": 20, "Cmp": 25, "Cnt": 45, "Dec": 55, "Det": 0, "Fla": 20, "Ldr": 10, "OtB": 10, "Pos": 45, "Tea": 20, "Vis": 35, "Wor": 50, "Acc": 85, "Agi": 60, "Bal": 45, "Jum": 20, "Nat": 30, "Pac": 80, "Sta": 75, "Str": 35
+    },
+    "WBR/L - Generic": {
+      "Cor": 10, "Cro": 30, "Dri": 20, "Fin": 10, "Fir": 30, "Fre": 10, "Hea": 10, "Lon": 10, "L Th": 10, "Mar": 20, "Pas": 30, "Pen": 10, "Tck": 30, "Tec": 30, "Agg": 0, "Ant": 30, "Bra": 10, "Cmp": 20, "Cnt": 30, "Dec": 50, "Det": 0, "Fla": 0, "Ldr": 10, "OtB": 10, "Pos": 50, "Tea": 20, "Vis": 40, "Wor": 40, "Acc": 80, "Agi": 50, "Bal": 20, "Jum": 10, "Nat": 0, "Pac": 60, "Sta": 70, "Str": 40
+    },
+    "WBR/L - IWB - At": {
+      "Cor": 30, "Cro": 25, "Dri": 55, "Fin": 20, "Fir": 30, "Fre": 10, "Hea": 20, "Lon": 35, "L Th": 30, "Mar": 45, "Pas": 45, "Pen": 10, "Tck": 35, "Tec": 45, "Agg": 45, "Ant": 45, "Bra": 20, "Cmp": 30, "Cnt": 45, "Dec": 45, "Det": 20, "Fla": 20, "Ldr": 10, "OtB": 70, "Pos": 30, "Tea": 10, "Vis": 25, "Wor": 90, "Acc": 100, "Agi": 60, "Bal": 25, "Jum": 40, "Nat": 10, "Pac": 90, "Sta": 100, "Str": 25
+    },
+    "WBR/L - WB - Su": {
+      "Cor": 0, "Cro": 50, "Dri": 35, "Fin": 10, "Fir": 35, "Fre": 5, "Hea": 20, "Lon": 10, "L Th": 0, "Mar": 30, "Pas": 35, "Pen": 10, "Tck": 35, "Tec": 30, "Agg": 0, "Ant": 35, "Bra": 20, "Cmp": 25, "Cnt": 35, "Dec": 65, "Det": 0, "Fla": 0, "Ldr": 10, "OtB": 0, "Pos": 40, "Tea": 20, "Vis": 20, "Wor": 30, "Acc": 65, "Agi": 55, "Bal": 20, "Jum": 30, "Nat": 0, "Pac": 50, "Sta": 65, "Str": 45
+    },
+    "DM - DLP - De": {
+      "Cor": 15, "Cro": 10, "Dri": 30, "Fin": 15, "Fir": 60, "Fre": 0, "Hea": 10, "Lon": 20, "L Th": 0, "Mar": 25, "Pas": 55, "Pen": 15, "Tck": 40, "Tec": 55, "Agg": 20, "Ant": 55, "Bra": 10, "Cmp": 35, "Cnt": 35, "Dec": 75, "Det": 0, "Fla": 20, "Ldr": 10, "OtB": 55, "Pos": 70, "Tea": 25, "Vis": 55, "Wor": 40, "Acc": 40, "Agi": 20, "Bal": 10, "Jum": 0, "Nat": 30, "Pac": 25, "Sta": 40, "Str": 35
+    },
+    "DM - DLP - Su": {
+      "Cor": 15, "Cro": 10, "Dri": 30, "Fin": 15, "Fir": 60, "Fre": 0, "Hea": 10, "Lon": 20, "L Th": 0, "Mar": 25, "Pas": 65, "Pen": 15, "Tck": 30, "Tec": 60, "Agg": 20, "Ant": 55, "Bra": 10, "Cmp": 35, "Cnt": 35, "Dec": 75, "Det": 0, "Fla": 20, "Ldr": 10, "OtB": 55, "Pos": 70, "Tea": 25, "Vis": 55, "Wor": 35, "Acc": 35, "Agi": 20, "Bal": 10, "Jum": 0, "Nat": 30, "Pac": 30, "Sta": 40, "Str": 35
+    },
+    "DM - DM - De": {
+      "Cor": 20, "Cro": 20, "Dri": 30, "Fin": 15, "Fir": 55, "Fre": 5, "Hea": 15, "Lon": 50, "L Th": 5, "Mar": 55, "Pas": 50, "Pen": 5, "Tck": 45, "Tec": 50, "Agg": 55, "Ant": 60, "Bra": 30, "Cmp": 60, "Cnt": 50, "Dec": 70, "Det": 10, "Fla": 10, "Ldr": 20, "OtB": 50, "Pos": 35, "Tea": 50, "Vis": 70, "Wor": 70, "Acc": 60, "Agi": 35, "Bal": 25, "Jum": 10, "Nat": 0, "Pac": 45, "Sta": 70, "Str": 45
+    },
+    "DM - DM - Su": {
+      "Cor": 20, "Cro": 35, "Dri": 35, "Fin": 25, "Fir": 55, "Fre": 5, "Hea": 15, "Lon": 50, "L Th": 5, "Mar": 15, "Pas": 65, "Pen": 5, "Tck": 35, "Tec": 55, "Agg": 30, "Ant": 55, "Bra": 30, "Cmp": 60, "Cnt": 50, "Dec": 70, "Det": 10, "Fla": 10, "Ldr": 20, "OtB": 50, "Pos": 35, "Tea": 50, "Vis": 75, "Wor": 70, "Acc": 55, "Agi": 35, "Bal": 25, "Jum": 10, "Nat": 0, "Pac": 50, "Sta": 70, "Str": 45
+    },
+    "DM - Generic": {
+      "Cor": 10, "Cro": 10, "Dri": 20, "Fin": 20, "Fir": 40, "Fre": 10, "Hea": 10, "Lon": 30, "L Th": 10, "Mar": 30, "Pas": 40, "Pen": 10, "Tck": 70, "Tec": 30, "Agg": 0, "Ant": 50, "Bra": 10, "Cmp": 20, "Cnt": 30, "Dec": 80, "Det": 0, "Fla": 0, "Ldr": 10, "OtB": 10, "Pos": 50, "Tea": 20, "Vis": 40, "Wor": 60, "Acc": 60, "Agi": 20, "Bal": 10, "Jum": 0, "Nat": 40, "Pac": 40, "Sta": 40, "Str": 50
+    },
+    "DM - RPM - Su": {
+      "Cor": 10, "Cro": 10, "Dri": 45, "Fin": 20, "Fir": 50, "Fre": 30, "Hea": 10, "Lon": 40, "L Th": 5, "Mar": 20, "Pas": 65, "Pen": 10, "Tck": 35, "Tec": 50, "Agg": 50, "Ant": 55, "Bra": 30, "Cmp": 60, "Cnt": 50, "Dec": 65, "Det": 20, "Fla": 50, "Ldr": 10, "OtB": 40, "Pos": 65, "Tea": 10, "Vis": 55, "Wor": 90, "Acc": 65, "Agi": 45, "Bal": 35, "Jum": 15, "Nat": 10, "Pac": 70, "Sta": 70, "Str": 35
+    },
+    "DM - VOL - Su": {
+      "Cor": 20, "Cro": 20, "Dri": 40, "Fin": 35, "Fir": 50, "Fre": 5, "Hea": 15, "Lon": 55, "L Th": 5, "Mar": 55, "Pas": 40, "Pen": 5, "Tck": 40, "Tec": 55, "Agg": 55, "Ant": 60, "Bra": 30, "Cmp": 60, "Cnt": 50, "Dec": 70, "Det": 10, "Fla": 30, "Ldr": 20, "OtB": 35, "Pos": 55, "Tea": 50, "Vis": 50, "Wor": 70, "Acc": 50, "Agi": 35, "Bal": 25, "Jum": 10, "Nat": 0, "Pac": 60, "Sta": 70, "Str": 55
+    },
+    "MC - AP - Att": {
+      "Cor": 30, "Cro": 35, "Dri": 55, "Fin": 35, "Fir": 65, "Fre": 15, "Hea": 15, "Lon": 30, "L Th": 5, "Mar": 15, "Pas": 55, "Pen": 15, "Tck": 20, "Tec": 65, "Agg": 25, "Ant": 70, "Bra": 20, "Cmp": 55, "Cnt": 30, "Dec": 50, "Det": 15, "Fla": 65, "Ldr": 15, "OtB": 60, "Pos": 35, "Tea": 45, "Vis": 65, "Wor": 25, "Acc": 75, "Agi": 75, "Bal": 45, "Jum": 15, "Nat": 0, "Pac": 50, "Sta": 50, "Str": 20
+    },
+    "MC - BBM - Su": {
+      "Cor": 10, "Cro": 10, "Dri": 50, "Fin": 40, "Fir": 55, "Fre": 20, "Hea": 10, "Lon": 50, "L Th": 5, "Mar": 20, "Pas": 55, "Pen": 10, "Tck": 35, "Tec": 60, "Agg": 60, "Ant": 50, "Bra": 30, "Cmp": 55, "Cnt": 45, "Dec": 60, "Det": 20, "Fla": 30, "Ldr": 10, "OtB": 50, "Pos": 60, "Tea": 40, "Vis": 45, "Wor": 65, "Acc": 65, "Agi": 45, "Bal": 45, "Jum": 15, "Nat": 10, "Pac": 55, "Sta": 70, "Str": 40
+    },
+    "MC - BWM - De": {
+      "Cor": 20, "Cro": 20, "Dri": 30, "Fin": 15, "Fir": 50, "Fre": 5, "Hea": 15, "Lon": 45, "L Th": 5, "Mar": 60, "Pas": 45, "Pen": 5, "Tck": 60, "Tec": 50, "Agg": 55, "Ant": 60, "Bra": 30, "Cmp": 60, "Cnt": 50, "Dec": 70, "Det": 10, "Fla": 10, "Ldr": 20, "OtB": 35, "Pos": 55, "Tea": 50, "Vis": 50, "Wor": 80, "Acc": 45, "Agi": 35, "Bal": 25, "Jum": 10, "Nat": 0, "Pac": 55, "Sta": 70, "Str": 55
+    },
+    "MC - CM - Att": {
+      "Cor": 20, "Cro": 35, "Dri": 50, "Fin": 25, "Fir": 50, "Fre": 5, "Hea": 15, "Lon": 50, "L Th": 5, "Mar": 15, "Pas": 50, "Pen": 5, "Tck": 30, "Tec": 55, "Agg": 30, "Ant": 55, "Bra": 30, "Cmp": 55, "Cnt": 50, "Dec": 75, "Det": 10, "Fla": 10, "Ldr": 20, "OtB": 55, "Pos": 35, "Tea": 50, "Vis": 65, "Wor": 65, "Acc": 55, "Agi": 35, "Bal": 25, "Jum": 10, "Nat": 0, "Pac": 50, "Sta": 75, "Str": 40
+    },
+    "MC - CM - De": {
+      "Cor": 20, "Cro": 20, "Dri": 30, "Fin": 15, "Fir": 55, "Fre": 5, "Hea": 15, "Lon": 50, "L Th": 5, "Mar": 55, "Pas": 50, "Pen": 5, "Tck": 45, "Tec": 50, "Agg": 55, "Ant": 60, "Bra": 30, "Cmp": 60, "Cnt": 50, "Dec": 70, "Det": 10, "Fla": 10, "Ldr": 20, "OtB": 50, "Pos": 35, "Tea": 50, "Vis": 70, "Wor": 70, "Acc": 60, "Agi": 35, "Bal": 25, "Jum": 10, "Nat": 0, "Pac": 45, "Sta": 70, "Str": 45
+    },
+    "MC - CM - Su": {
+      "Cor": 20, "Cro": 35, "Dri": 35, "Fin": 25, "Fir": 55, "Fre": 5, "Hea": 15, "Lon": 50, "L Th": 5, "Mar": 15, "Pas": 65, "Pen": 5, "Tck": 35, "Tec": 55, "Agg": 30, "Ant": 55, "Bra": 30, "Cmp": 60, "Cnt": 50, "Dec": 70, "Det": 10, "Fla": 10, "Ldr": 20, "OtB": 50, "Pos": 35, "Tea": 50, "Vis": 75, "Wor": 70, "Acc": 55, "Agi": 35, "Bal": 25, "Jum": 10, "Nat": 0, "Pac": 50, "Sta": 70, "Str": 45
+    },
+    "MC - Generic": {
+      "Cor": 10, "Cro": 10, "Dri": 20, "Fin": 20, "Fir": 60, "Fre": 10, "Hea": 10, "Lon": 30, "L Th": 10, "Mar": 30, "Pas": 60, "Pen": 10, "Tck": 30, "Tec": 40, "Agg": 0, "Ant": 30, "Bra": 10, "Cmp": 30, "Cnt": 20, "Dec": 70, "Det": 0, "Fla": 0, "Ldr": 10, "OtB": 30, "Pos": 30, "Tea": 20, "Vis": 60, "Wor": 30, "Acc": 60, "Agi": 60, "Bal": 20, "Jum": 10, "Nat": 0, "Pac": 50, "Sta": 60, "Str": 40
+    },
+    "MC - MEZ - At": {
+      "Cor": 10, "Cro": 35, "Dri": 55, "Fin": 40, "Fir": 60, "Fre": 10, "Hea": 15, "Lon": 35, "L Th": 10, "Mar": 25, "Pas": 45, "Pen": 10, "Tck": 20, "Tec": 55, "Agg": 5, "Ant": 30, "Bra": 10, "Cmp": 40, "Cnt": 15, "Dec": 50, "Det": 0, "Fla": 5, "Ldr": 5, "OtB": 35, "Pos": 30, "Tea": 25, "Vis": 55, "Wor": 45, "Acc": 70, "Agi": 55, "Bal": 25, "Jum": 10, "Nat": 0, "Pac": 55, "Sta": 55, "Str": 25
+    },
+    "MC - MEZ - Su": {
+      "Cor": 10, "Cro": 30, "Dri": 45, "Fin": 30, "Fir": 60, "Fre": 10, "Hea": 15, "Lon": 35, "L Th": 10, "Mar": 25, "Pas": 50, "Pen": 10, "Tck": 25, "Tec": 55, "Agg": 5, "Ant": 30, "Bra": 10, "Cmp": 35, "Cnt": 15, "Dec": 55, "Det": 0, "Fla": 5, "Ldr": 5, "OtB": 35, "Pos": 30, "Tea": 25, "Vis": 55, "Wor": 45, "Acc": 65, "Agi": 50, "Bal": 25, "Jum": 10, "Nat": 0, "Pac": 55, "Sta": 55, "Str": 30
+    },
+    "MC - RPM - Su": {
+      "Cor": 10, "Cro": 10, "Dri": 50, "Fin": 20, "Fir": 50, "Fre": 30, "Hea": 10, "Lon": 40, "L Th": 5, "Mar": 20, "Pas": 70, "Pen": 10, "Tck": 35, "Tec": 50, "Agg": 50, "Ant": 55, "Bra": 30, "Cmp": 60, "Cnt": 50, "Dec": 65, "Det": 20, "Fla": 50, "Ldr": 10, "OtB": 40, "Pos": 65, "Tea": 10, "Vis": 60, "Wor": 80, "Acc": 70, "Agi": 45, "Bal": 35, "Jum": 15, "Nat": 10, "Pac": 60, "Sta": 65, "Str": 35
+    },
+    "MR/L - IW - At": {
+      "Cor": 30, "Cro": 55, "Dri": 65, "Fin": 35, "Fir": 30, "Fre": 10, "Hea": 10, "Lon": 10, "L Th": 30, "Mar": 35, "Pas": 50, "Pen": 15, "Tck": 35, "Tec": 50, "Agg": 35, "Ant": 35, "Bra": 15, "Cmp": 30, "Cnt": 35, "Dec": 35, "Det": 20, "Fla": 20, "Ldr": 10, "OtB": 40, "Pos": 35, "Tea": 10, "Vis": 30, "Wor": 60, "Acc": 90, "Agi": 50, "Bal": 15, "Jum": 10, "Nat": 10, "Pac": 100, "Sta": 75, "Str": 30
+    },
+    "MR/L - IW - Su": {
+      "Cor": 30, "Cro": 25, "Dri": 50, "Fin": 45, "Fir": 55, "Fre": 10, "Hea": 10, "Lon": 40, "L Th": 0, "Mar": 20, "Pas": 60, "Pen": 15, "Tck": 10, "Tec": 55, "Agg": 35, "Ant": 45, "Bra": 15, "Cmp": 30, "Cnt": 35, "Dec": 35, "Det": 20, "Fla": 20, "Ldr": 10, "OtB": 40, "Pos": 35, "Tea": 75, "Vis": 60, "Wor": 55, "Acc": 90, "Agi": 55, "Bal": 20, "Jum": 10, "Nat": 10, "Pac": 75, "Sta": 70, "Str": 35
+    },
+    "MR/L - WG - At": {
+      "Cor": 30, "Cro": 65, "Dri": 55, "Fin": 15, "Fir": 30, "Fre": 10, "Hea": 10, "Lon": 10, "L Th": 0, "Mar": 35, "Pas": 50, "Pen": 15, "Tck": 35, "Tec": 50, "Agg": 35, "Ant": 45, "Bra": 15, "Cmp": 30, "Cnt": 35, "Dec": 35, "Det": 20, "Fla": 20, "Ldr": 10, "OtB": 40, "Pos": 35, "Tea": 75, "Vis": 35, "Wor": 40, "Acc": 100, "Agi": 50, "Bal": 15, "Jum": 10, "Nat": 10, "Pac": 100, "Sta": 75, "Str": 30
+    },
+    "MR/L - WG - Su": {
+      "Cor": 30, "Cro": 70, "Dri": 45, "Fin": 15, "Fir": 30, "Fre": 10, "Hea": 10, "Lon": 10, "L Th": 0, "Mar": 40, "Pas": 60, "Pen": 15, "Tck": 40, "Tec": 55, "Agg": 35, "Ant": 45, "Bra": 15, "Cmp": 30, "Cnt": 35, "Dec": 35, "Det": 20, "Fla": 20, "Ldr": 10, "OtB": 40, "Pos": 35, "Tea": 75, "Vis": 55, "Wor": 40, "Acc": 100, "Agi": 50, "Bal": 15, "Jum": 10, "Nat": 10, "Pac": 100, "Sta": 75, "Str": 30
+    },
+    "MR/L Generic": {
+      "Cor": 10, "Cro": 50, "Dri": 30, "Fin": 20, "Fir": 40, "Fre": 10, "Hea": 10, "Lon": 20, "L Th": 10, "Mar": 10, "Pas": 30, "Pen": 10, "Tck": 20, "Tec": 40, "Agg": 0, "Ant": 30, "Bra": 10, "Cmp": 30, "Cnt": 20, "Dec": 50, "Det": 0, "Fla": 0, "Ldr": 10, "OtB": 20, "Pos": 10, "Tea": 20, "Vis": 30, "Wor": 30, "Acc": 80, "Agi": 60, "Bal": 20, "Jum": 10, "Nat": 0, "Pac": 60, "Sta": 50, "Str": 30
+    },
+    "AMC - AM - At": {
+      "Cor": 20, "Cro": 35, "Dri": 65, "Fin": 40, "Fir": 55, "Fre": 5, "Hea": 15, "Lon": 55, "L Th": 5, "Mar": 15, "Pas": 50, "Pen": 5, "Tck": 25, "Tec": 55, "Agg": 30, "Ant": 55, "Bra": 30, "Cmp": 55, "Cnt": 50, "Dec": 75, "Det": 10, "Fla": 20, "Ldr": 20, "OtB": 55, "Pos": 35, "Tea": 50, "Vis": 60, "Wor": 105, "Acc": 70, "Agi": 35, "Bal": 25, "Jum": 10, "Nat": 0, "Pac": 50, "Sta": 75, "Str": 40
+    },
+    "AMC - AM - Su": {
+      "Cor": 20, "Cro": 35, "Dri": 65, "Fin": 30, "Fir": 50, "Fre": 5, "Hea": 15, "Lon": 55, "L Th": 5, "Mar": 15, "Pas": 50, "Pen": 5, "Tck": 25, "Tec": 55, "Agg": 30, "Ant": 55, "Bra": 30, "Cmp": 55, "Cnt": 50, "Dec": 75, "Det": 10, "Fla": 10, "Ldr": 20, "OtB": 55, "Pos": 35, "Tea": 50, "Vis": 65, "Wor": 65, "Acc": 65, "Agi": 35, "Bal": 25, "Jum": 10, "Nat": 0, "Pac": 50, "Sta": 75, "Str": 40
+    },
+    "AMC - AP - At": {
+      "Cor": 30, "Cro": 35, "Dri": 60, "Fin": 40, "Fir": 65, "Fre": 15, "Hea": 15, "Lon": 30, "L Th": 5, "Mar": 15, "Pas": 60, "Pen": 15, "Tck": 20, "Tec": 65, "Agg": 25, "Ant": 70, "Bra": 20, "Cmp": 55, "Cnt": 30, "Dec": 50, "Det": 15, "Fla": 65, "Ldr": 15, "OtB": 60, "Pos": 35, "Tea": 45, "Vis": 60, "Wor": 25, "Acc": 70, "Agi": 65, "Bal": 45, "Jum": 15, "Nat": 0, "Pac": 50, "Sta": 50, "Str": 20
+    },
+    "AMC - Generic": {
+      "Cor": 10, "Cro": 10, "Dri": 30, "Fin": 30, "Fir": 50, "Fre": 10, "Hea": 10, "Lon": 30, "L Th": 10, "Mar": 10, "Pas": 40, "Pen": 10, "Tck": 20, "Tec": 50, "Agg": 0, "Ant": 30, "Bra": 10, "Cmp": 30, "Cnt": 20, "Dec": 60, "Det": 0, "Fla": 0, "Ldr": 10, "OtB": 30, "Pos": 20, "Tea": 20, "Vis": 60, "Wor": 30, "Acc": 90, "Agi": 60, "Bal": 20, "Jum": 10, "Nat": 0, "Pac": 70, "Sta": 60, "Str": 30
+    },
+    "AMC - SS - At": {
+      "Cor": 5, "Cro": 5, "Dri": 65, "Fin": 65, "Fir": 40, "Fre": 30, "Hea": 10, "Lon": 20, "L Th": 1, "Mar": 5, "Pas": 50, "Pen": 15, "Tck": 15, "Tec": 65, "Agg": 50, "Ant": 70, "Bra": 20, "Cmp": 35, "Cnt": 25, "Dec": 40, "Det": 20, "Fla": 20, "Ldr": 10, "OtB": 35, "Pos": 10, "Tea": 10, "Vis": 30, "Wor": 80, "Acc": 100, "Agi": 30, "Bal": 50, "Jum": 10, "Nat": 10, "Pac": 80, "Sta": 80, "Str": 30
+    },
+    "AMC - T - At": {
+      "Cor": 5, "Cro": 20, "Dri": 75, "Fin": 55, "Fir": 70, "Fre": 5, "Hea": 35, "Lon": 35, "L Th": 0, "Mar": 0, "Pas": 60, "Pen": 20, "Tck": 5, "Tec": 65, "Agg": 50, "Ant": 55, "Bra": 20, "Cmp": 45, "Cnt": 5, "Dec": 55, "Det": 20, "Fla": 35, "Ldr": 10, "OtB": 55, "Pos": 5, "Tea": 10, "Vis": 65, "Wor": 30, "Acc": 75, "Agi": 30, "Bal": 45, "Jum": 20, "Nat": 10, "Pac": 60, "Sta": 45, "Str": 25
+    },
+    "AMR - WG - At": {
+      "Cor": 30, "Cro": 65, "Dri": 55, "Fin": 15, "Fir": 30, "Fre": 10, "Hea": 10, "Lon": 10, "L Th": 0, "Mar": 35, "Pas": 50, "Pen": 15, "Tck": 35, "Tec": 50, "Agg": 35, "Ant": 45, "Bra": 15, "Cmp": 30, "Cnt": 35, "Dec": 35, "Det": 20, "Fla": 20, "Ldr": 10, "OtB": 40, "Pos": 35, "Tea": 75, "Vis": 35, "Wor": 40, "Acc": 100, "Agi": 50, "Bal": 15, "Jum": 10, "Nat": 10, "Pac": 100, "Sta": 75, "Str": 30
+    },
+    "AMR/L - Generic": {
+      "Cor": 10, "Cro": 50, "Dri": 50, "Fin": 20, "Fir": 50, "Fre": 10, "Hea": 10, "Lon": 20, "L Th": 10, "Mar": 10, "Pas": 20, "Pen": 10, "Tck": 20, "Tec": 40, "Agg": 0, "Ant": 30, "Bra": 10, "Cmp": 30, "Cnt": 20, "Dec": 50, "Det": 0, "Fla": 0, "Ldr": 10, "OtB": 20, "Pos": 10, "Tea": 20, "Vis": 30, "Wor": 30, "Acc": 100, "Agi": 60, "Bal": 20, "Jum": 10, "Nat": 0, "Pac": 100, "Sta": 70, "Str": 30
+    },
+    "AMR/L - IF - At": {
+      "Cor": 30, "Cro": 25, "Dri": 60, "Fin": 50, "Fir": 45, "Fre": 10, "Hea": 10, "Lon": 40, "L Th": 0, "Mar": 20, "Pas": 50, "Pen": 15, "Tck": 10, "Tec": 55, "Agg": 35, "Ant": 45, "Bra": 15, "Cmp": 30, "Cnt": 35, "Dec": 35, "Det": 20, "Fla": 20, "Ldr": 10, "OtB": 40, "Pos": 35, "Tea": 75, "Vis": 50, "Wor": 55, "Acc": 85, "Agi": 55, "Bal": 20, "Jum": 10, "Nat": 10, "Pac": 75, "Sta": 70, "Str": 35
+    },
+    "AMR/L - IF - Su": {
+      "Cor": 30, "Cro": 25, "Dri": 50, "Fin": 45, "Fir": 55, "Fre": 10, "Hea": 10, "Lon": 40, "L Th": 0, "Mar": 20, "Pas": 60, "Pen": 15, "Tck": 10, "Tec": 55, "Agg": 35, "Ant": 45, "Bra": 15, "Cmp": 30, "Cnt": 35, "Dec": 35, "Det": 20, "Fla": 20, "Ldr": 10, "OtB": 40, "Pos": 35, "Tea": 75, "Vis": 60, "Wor": 55, "Acc": 90, "Agi": 55, "Bal": 20, "Jum": 10, "Nat": 10, "Pac": 75, "Sta": 70, "Str": 35
+    },
+    "AMR/L - IW - At": {
+      "Cor": 30, "Cro": 55, "Dri": 65, "Fin": 35, "Fir": 30, "Fre": 10, "Hea": 10, "Lon": 10, "L Th": 30, "Mar": 35, "Pas": 50, "Pen": 15, "Tck": 35, "Tec": 50, "Agg": 35, "Ant": 35, "Bra": 15, "Cmp": 30, "Cnt": 35, "Dec": 35, "Det": 20, "Fla": 20, "Ldr": 10, "OtB": 40, "Pos": 35, "Tea": 10, "Vis": 30, "Wor": 60, "Acc": 90, "Agi": 50, "Bal": 15, "Jum": 10, "Nat": 10, "Pac": 100, "Sta": 75, "Str": 30
+    },
+    "AMR/L - IW - Su": {
+      "Cor": 30, "Cro": 65, "Dri": 55, "Fin": 15, "Fir": 30, "Fre": 10, "Hea": 10, "Lon": 10, "L Th": 30, "Mar": 35, "Pas": 50, "Pen": 15, "Tck": 35, "Tec": 50, "Agg": 35, "Ant": 45, "Bra": 15, "Cmp": 30, "Cnt": 35, "Dec": 35, "Det": 20, "Fla": 20, "Ldr": 10, "OtB": 40, "Pos": 35, "Tea": 10, "Vis": 35, "Wor": 75, "Acc": 100, "Agi": 50, "Bal": 15, "Jum": 10, "Nat": 10, "Pac": 100, "Sta": 75, "Str": 30
+    },
+    "AMR/L - WG - At": {
+      "Cor": 30, "Cro": 65, "Dri": 55, "Fin": 30, "Fir": 30, "Fre": 10, "Hea": 10, "Lon": 25, "L Th": 0, "Mar": 25, "Pas": 55, "Pen": 15, "Tck": 25, "Tec": 50, "Agg": 35, "Ant": 45, "Bra": 15, "Cmp": 30, "Cnt": 35, "Dec": 35, "Det": 20, "Fla": 20, "Ldr": 10, "OtB": 40, "Pos": 35, "Tea": 75, "Vis": 40, "Wor": 50, "Acc": 100, "Agi": 50, "Bal": 15, "Jum": 10, "Nat": 10, "Pac": 100, "Sta": 75, "Str": 30
+    },
+    "AMR/L - WG - Su": {
+      "Cor": 30, "Cro": 70, "Dri": 45, "Fin": 15, "Fir": 30, "Fre": 10, "Hea": 10, "Lon": 10, "L Th": 0, "Mar": 40, "Pas": 60, "Pen": 15, "Tck": 40, "Tec": 55, "Agg": 35, "Ant": 45, "Bra": 15, "Cmp": 30, "Cnt": 35, "Dec": 35, "Det": 20, "Fla": 20, "Ldr": 10, "OtB": 40, "Pos": 35, "Tea": 75, "Vis": 55, "Wor": 40, "Acc": 100, "Agi": 50, "Bal": 15, "Jum": 10, "Nat": 10, "Pac": 100, "Sta": 75, "Str": 30
+    },
+    "ST - AF - At": {
+      "Cor": 5, "Cro": 5, "Dri": 75, "Fin": 80, "Fir": 50, "Fre": 5, "Hea": 25, "Lon": 25, "L Th": 1, "Mar": 1, "Pas": 40, "Pen": 20, "Tck": 5, "Tec": 65, "Agg": 50, "Ant": 50, "Bra": 20, "Cmp": 35, "Cnt": 5, "Dec": 45, "Det": 20, "Fla": 25, "Ldr": 10, "OtB": 45, "Pos": 5, "Tea": 10, "Vis": 20, "Wor": 60, "Acc": 100, "Agi": 30, "Bal": 50, "Jum": 20, "Nat": 10, "Pac": 70, "Sta": 65, "Str": 25
+    },
+    "ST - CF - At": {
+      "Cor": 5, "Cro": 20, "Dri": 65, "Fin": 70, "Fir": 65, "Fre": 5, "Hea": 55, "Lon": 50, "L Th": 0, "Mar": 0, "Pas": 40, "Pen": 20, "Tck": 5, "Tec": 45, "Agg": 50, "Ant": 60, "Bra": 35, "Cmp": 55, "Cnt": 25, "Dec": 55, "Det": 20, "Fla": 35, "Ldr": 10, "OtB": 60, "Pos": 5, "Tea": 50, "Vis": 35, "Wor": 50, "Acc": 80, "Agi": 50, "Bal": 45, "Jum": 40, "Nat": 30, "Pac": 70, "Sta": 55, "Str": 50
+    },
+    "ST - CF - Su": {
+      "Cor": 5, "Cro": 20, "Dri": 75, "Fin": 60, "Fir": 75, "Fre": 5, "Hea": 50, "Lon": 50, "L Th": 0, "Mar": 0, "Pas": 50, "Pen": 20, "Tck": 5, "Tec": 45, "Agg": 50, "Ant": 60, "Bra": 35, "Cmp": 55, "Cnt": 25, "Dec": 55, "Det": 20, "Fla": 35, "Ldr": 10, "OtB": 60, "Pos": 5, "Tea": 50, "Vis": 40, "Wor": 50, "Acc": 75, "Agi": 50, "Bal": 45, "Jum": 40, "Nat": 30, "Pac": 55, "Sta": 50, "Str": 45
+    },
+    "ST - DLF - At": {
+      "Cor": 5, "Cro": 20, "Dri": 45, "Fin": 75, "Fir": 55, "Fre": 5, "Hea": 45, "Lon": 40, "L Th": 0, "Mar": 0, "Pas": 40, "Pen": 20, "Tck": 5, "Tec": 50, "Agg": 35, "Ant": 65, "Bra": 35, "Cmp": 70, "Cnt": 25, "Dec": 60, "Det": 20, "Fla": 45, "Ldr": 10, "OtB": 65, "Pos": 5, "Tea": 55, "Vis": 35, "Wor": 45, "Acc": 45, "Agi": 50, "Bal": 35, "Jum": 30, "Nat": 30, "Pac": 55, "Sta": 55, "Str": 65
+    },
+    "ST - DLF - Su": {
+      "Cor": 5, "Cro": 20, "Dri": 55, "Fin": 65, "Fir": 55, "Fre": 5, "Hea": 45, "Lon": 40, "L Th": 0, "Mar": 0, "Pas": 50, "Pen": 20, "Tck": 5, "Tec": 45, "Agg": 35, "Ant": 65, "Bra": 35, "Cmp": 70, "Cnt": 25, "Dec": 60, "Det": 20, "Fla": 45, "Ldr": 10, "OtB": 65, "Pos": 5, "Tea": 55, "Vis": 60, "Wor": 45, "Acc": 45, "Agi": 50, "Bal": 35, "Jum": 30, "Nat": 30, "Pac": 55, "Sta": 55, "Str": 60
+    },
+    "ST - F9 - Su": {
+      "Cor": 30, "Cro": 35, "Dri": 55, "Fin": 35, "Fir": 65, "Fre": 15, "Hea": 15, "Lon": 30, "L Th": 5, "Mar": 15, "Pas": 55, "Pen": 15, "Tck": 20, "Tec": 65, "Agg": 25, "Ant": 70, "Bra": 20, "Cmp": 55, "Cnt": 30, "Dec": 50, "Det": 15, "Fla": 65, "Ldr": 15, "OtB": 60, "Pos": 35, "Tea": 45, "Vis": 65, "Wor": 25, "Acc": 75, "Agi": 75, "Bal": 45, "Jum": 15, "Nat": 0, "Pac": 50, "Sta": 50, "Str": 20
+    },
+    "ST - Generic": {
+      "Cor": 10, "Cro": 20, "Dri": 50, "Fin": 80, "Fir": 60, "Fre": 10, "Hea": 60, "Lon": 20, "L Th": 10, "Mar": 10, "Pas": 20, "Pen": 10, "Tck": 10, "Tec": 40, "Agg": 0, "Ant": 50, "Bra": 10, "Cmp": 60, "Cnt": 20, "Dec": 50, "Det": 0, "Fla": 0, "Ldr": 10, "OtB": 60, "Pos": 20, "Tea": 10, "Vis": 20, "Wor": 20, "Acc": 100, "Agi": 60, "Bal": 20, "Jum": 50, "Nat": 0, "Pac": 70, "Sta": 60, "Str": 60
+    },
+    "ST - PF - At": {
+      "Cor": 10, "Cro": 30, "Dri": 45, "Fin": 65, "Fir": 70, "Fre": 10, "Hea": 15, "Lon": 35, "L Th": 10, "Mar": 25, "Pas": 40, "Pen": 10, "Tck": 25, "Tec": 55, "Agg": 35, "Ant": 55, "Bra": 50, "Cmp": 60, "Cnt": 35, "Dec": 60, "Det": 0, "Fla": 5, "Ldr": 5, "OtB": 65, "Pos": 30, "Tea": 60, "Vis": 30, "Wor": 70, "Acc": 75, "Agi": 50, "Bal": 35, "Jum": 10, "Nat": 0, "Pac": 55, "Sta": 55, "Str": 40
+    },
+    "ST - PF - De": {
+      "Cor": 10, "Cro": 30, "Dri": 35, "Fin": 50, "Fir": 65, "Fre": 10, "Hea": 15, "Lon": 35, "L Th": 10, "Mar": 25, "Pas": 50, "Pen": 10, "Tck": 25, "Tec": 55, "Agg": 35, "Ant": 55, "Bra": 50, "Cmp": 60, "Cnt": 35, "Dec": 60, "Det": 0, "Fla": 5, "Ldr": 5, "OtB": 45, "Pos": 30, "Tea": 60, "Vis": 35, "Wor": 70, "Acc": 65, "Agi": 50, "Bal": 35, "Jum": 10, "Nat": 0, "Pac": 55, "Sta": 55, "Str": 40
+    },
+    "ST - PF - Su": {
+      "Cor": 10, "Cro": 30, "Dri": 40, "Fin": 55, "Fir": 60, "Fre": 10, "Hea": 15, "Lon": 35, "L Th": 10, "Mar": 25, "Pas": 60, "Pen": 10, "Tck": 25, "Tec": 55, "Agg": 35, "Ant": 55, "Bra": 50, "Cmp": 60, "Cnt": 35, "Dec": 60, "Det": 0, "Fla": 5, "Ldr": 5, "OtB": 65, "Pos": 30, "Tea": 60, "Vis": 35, "Wor": 70, "Acc": 65, "Agi": 50, "Bal": 35, "Jum": 10, "Nat": 0, "Pac": 55, "Sta": 55, "Str": 40
+    },
+    "ST - POA - At": {
+      "Cor": 5, "Cro": 5, "Dri": 55, "Fin": 75, "Fir": 70, "Fre": 5, "Hea": 55, "Lon": 25, "L Th": 0, "Mar": 0, "Pas": 25, "Pen": 20, "Tck": 5, "Tec": 50, "Agg": 50, "Ant": 70, "Bra": 20, "Cmp": 35, "Cnt": 5, "Dec": 55, "Det": 20, "Fla": 25, "Ldr": 10, "OtB": 60, "Pos": 5, "Tea": 10, "Vis": 20, "Wor": 40, "Acc": 100, "Agi": 30, "Bal": 50, "Jum": 35, "Nat": 10, "Pac": 55, "Sta": 55, "Str": 35
+    },
+    "ST - T - At": {
+      "Cor": 5, "Cro": 20, "Dri": 75, "Fin": 60, "Fir": 70, "Fre": 5, "Hea": 35, "Lon": 35, "L Th": 0, "Mar": 0, "Pas": 55, "Pen": 20, "Tck": 5, "Tec": 65, "Agg": 50, "Ant": 55, "Bra": 20, "Cmp": 45, "Cnt": 5, "Dec": 55, "Det": 20, "Fla": 35, "Ldr": 10, "OtB": 55, "Pos": 5, "Tea": 10, "Vis": 60, "Wor": 30, "Acc": 85, "Agi": 30, "Bal": 45, "Jum": 20, "Nat": 10, "Pac": 60, "Sta": 45, "Str": 25
+    },
+    "ST - TF - At": {
+      "Cor": 10, "Cro": 30, "Dri": 35, "Fin": 80, "Fir": 65, "Fre": 10, "Hea": 60, "Lon": 30, "L Th": 10, "Mar": 25, "Pas": 35, "Pen": 10, "Tck": 15, "Tec": 35, "Agg": 60, "Ant": 65, "Bra": 55, "Cmp": 65, "Cnt": 35, "Dec": 65, "Det": 0, "Fla": 5, "Ldr": 5, "OtB": 70, "Pos": 30, "Tea": 50, "Vis": 25, "Wor": 50, "Acc": 40, "Agi": 35, "Bal": 50, "Jum": 60, "Nat": 0, "Pac": 55, "Sta": 40, "Str": 70
+    },
+    "ST - TF - Su": {
+      "Cor": 10, "Cro": 30, "Dri": 35, "Fin": 75, "Fir": 60, "Fre": 10, "Hea": 60, "Lon": 30, "L Th": 10, "Mar": 25, "Pas": 45, "Pen": 10, "Tck": 15, "Tec": 35, "Agg": 60, "Ant": 65, "Bra": 55, "Cmp": 65, "Cnt": 35, "Dec": 65, "Det": 0, "Fla": 5, "Ldr": 5, "OtB": 70, "Pos": 30, "Tea": 50, "Vis": 35, "Wor": 50, "Acc": 40, "Agi": 35, "Bal": 50, "Jum": 60, "Nat": 0, "Pac": 55, "Sta": 40, "Str": 65
+    }
+  }
