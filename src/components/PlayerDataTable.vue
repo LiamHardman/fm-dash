@@ -38,7 +38,7 @@
                             @click="
                                 sortTable(
                                     col.name,
-                                    col.isFifaStat || col.isAttribute,
+                                    col.isFifaStat || col.isOverallStat,
                                 )
                             "
                         >
@@ -68,7 +68,9 @@
                             :key="col.name"
                             :props="props"
                         >
-                            <template v-if="col.isFifaStat">
+                            <template
+                                v-if="col.isFifaStat || col.isOverallStat"
+                            >
                                 <span
                                     :class="
                                         getFifaStatClass(props.row[col.field])
@@ -98,6 +100,35 @@
                                     {{ props.row[col.field] || "-" }}
                                 </span>
                             </template>
+                            <template
+                                v-else-if="col.name === 'nationality_display'"
+                            >
+                                <div class="flex items-center no-wrap">
+                                    <img
+                                        v-if="props.row.nationality_iso"
+                                        :src="`https://flagcdn.com/w20/${props.row.nationality_iso.toLowerCase()}.png`"
+                                        :alt="props.row.nationality || 'Flag'"
+                                        width="20"
+                                        height="13"
+                                        class="q-mr-xs"
+                                        style="
+                                            border: 1px solid #ccc;
+                                            object-fit: cover;
+                                        "
+                                        @error="onFlagError($event, props.row)"
+                                    />
+                                    <q-icon
+                                        v-else
+                                        name="flag"
+                                        size="xs"
+                                        color="grey-6"
+                                        class="q-mr-xs"
+                                    />
+                                    <span>{{
+                                        props.row.nationality || "-"
+                                    }}</span>
+                                </div>
+                            </template>
                             <template v-else>
                                 <span>{{
                                     props.row[col.field] !== undefined &&
@@ -109,10 +140,11 @@
                         </q-td>
                     </q-tr>
                 </template>
+
                 <template v-slot:loading>
-                    <q-inner-loading showing color="primary">
-                        <q-spinner size="50px" color="primary" />
-                    </q-inner-loading>
+                    <q-inner-loading showing color="primary"
+                        ><q-spinner size="50px" color="primary"
+                    /></q-inner-loading>
                 </template>
 
                 <template v-slot:pagination="scope">
@@ -171,21 +203,15 @@ import { ref, computed, reactive, watch } from "vue";
 export default {
     name: "PlayerDataTable",
     props: {
-        players: {
-            type: Array,
-            required: true,
-        },
-        loading: {
-            type: Boolean,
-            default: false,
-        },
+        players: { type: Array, required: true },
+        loading: { type: Boolean, default: false },
     },
-    emits: ["update:sort", "player-selected"], // Added 'player-selected'
+    emits: ["update:sort", "player-selected"],
 
     setup(props, { emit }) {
         const sortField = ref(null);
         const sortDirection = ref("asc");
-        const rowsPerPageOptions = [10, 15, 20, 50, 0]; // 0 for 'All'
+        const rowsPerPageOptions = [10, 15, 20, 50, 0];
         const maxPagesToShow = 7;
 
         const pagination = reactive({
@@ -194,32 +220,27 @@ export default {
             page: 1,
             rowsPerPage: 15,
         });
-
-        const pagesNumber = computed(() => {
-            if (pagination.rowsPerPage === 0 || props.players.length === 0)
-                return 1;
-            return Math.ceil(props.players.length / pagination.rowsPerPage);
-        });
+        const pagesNumber = computed(() =>
+            pagination.rowsPerPage === 0 || props.players.length === 0
+                ? 1
+                : Math.ceil(props.players.length / pagination.rowsPerPage),
+        );
 
         watch(
             () => props.players.length,
             () => {
-                pagination.page = 1; // Reset to first page when player list changes
+                pagination.page = 1;
             },
         );
-
         watch(
             () => pagination.rowsPerPage,
             () => {
-                // Adjust page number if it becomes invalid after changing rowsPerPage
-                if (pagination.page > pagesNumber.value) {
+                if (pagination.page > pagesNumber.value)
                     pagination.page =
                         pagesNumber.value > 0 ? pagesNumber.value : 1;
-                }
             },
         );
 
-        // Column Definitions
         const baseColumns = [
             {
                 name: "name",
@@ -228,13 +249,22 @@ export default {
                 sortable: true,
                 align: "left",
             },
+            // START: Add Nationality Column Definition
+            {
+                name: "nationality_display", // Unique name for this column to avoid conflict with 'nationality' field if used for sorting
+                label: "Nationality",
+                field: "nationality", // Sort by the full nationality name
+                sortable: true,
+                align: "left",
+            },
+            // END: Add Nationality Column Definition
             {
                 name: "position",
                 label: "Position",
                 field: "position",
                 sortable: true,
                 align: "left",
-            }, // This is the original position string
+            },
             {
                 name: "club",
                 label: "Club",
@@ -245,19 +275,29 @@ export default {
             {
                 name: "transfer_value",
                 label: "Transfer Value",
-                field: "transfer_value", // Display field
+                field: "transfer_value",
                 sortable: true,
                 align: "right",
-                sortField: "transferValueAmount", // Actual sort field
+                sortField: "transferValueAmount",
             },
             {
                 name: "wage",
-                label: "Salary", // Display label
-                field: "wage", // Display field
+                label: "Salary",
+                field: "wage",
                 sortable: true,
                 align: "right",
-                sortField: "wageAmount", // Actual sort field
+                sortField: "wageAmount",
             },
+            // START: Add Overall Column Definition
+            {
+                name: "Overall",
+                label: "Overall",
+                field: "Overall", // The field calculated in PlayerUploadPage
+                sortable: true,
+                align: "center",
+                isOverallStat: true, // Custom flag for styling
+            },
+            // END: Add Overall Column Definition
         ];
 
         const fifaStatColumns = ref([
@@ -316,211 +356,164 @@ export default {
             ...fifaStatColumns.value,
         ]);
 
-        const isFifaStatColumn = (colName) => {
-            return fifaStatColumns.value.some((col) => col.name === colName);
-        };
-
         const getSortFieldKey = (colName) => {
-            const baseCol = baseColumns.find((c) => c.name === colName);
-            if (baseCol && baseCol.sortField) return baseCol.sortField;
-
-            const fifaCol = fifaStatColumns.value.find(
-                (c) => c.name === colName,
-            );
-            if (fifaCol) return fifaCol.field; // FIFA stats are direct properties now
-
-            return colName; // Default to column name itself
+            const colDef = allColumns.value.find((c) => c.name === colName);
+            return colDef?.sortField || colDef?.field || colName;
         };
 
         const sortedPlayers = computed(() => {
             if (!sortField.value) return props.players;
-
             const fieldKey = getSortFieldKey(sortField.value);
             const direction = sortDirection.value;
-
             return [...props.players].sort((a, b) => {
-                let valA = a[fieldKey];
-                let valB = b[fieldKey];
-
+                let vA = a[fieldKey];
+                let vB = b[fieldKey];
                 if (
-                    (valA === null || valA === undefined) &&
-                    (valB === null || valB === undefined)
+                    (vA === null || vA === undefined) &&
+                    (vB === null || vB === undefined)
                 )
                     return 0;
-                if (valA === null || valA === undefined)
+                if (vA === null || vA === undefined)
                     return direction === "asc" ? 1 : -1;
-                if (valB === null || valB === undefined)
+                if (vB === null || vB === undefined)
                     return direction === "asc" ? -1 : 1;
-
-                if (typeof valA === "number" && typeof valB === "number") {
-                    return direction === "asc" ? valA - valB : valB - valA;
-                }
-
-                if (typeof valA === "string" && typeof valB === "string") {
-                    valA = valA.toLowerCase();
-                    valB = valB.toLowerCase();
-                    if (valA < valB) return direction === "asc" ? -1 : 1;
-                    if (valA > valB) return direction === "asc" ? 1 : -1;
+                if (typeof vA === "number" && typeof vB === "number")
+                    return direction === "asc" ? vA - vB : vB - vA;
+                if (typeof vA === "string" && typeof vB === "string") {
+                    vA = vA.toLowerCase();
+                    vB = vB.toLowerCase();
+                    if (vA < vB) return direction === "asc" ? -1 : 1;
+                    if (vA > vB) return direction === "asc" ? 1 : -1;
                     return 0;
                 }
-
                 return 0;
             });
         });
 
-        const displayedPlayers = computed(() => {
-            if (pagination.rowsPerPage === 0) return sortedPlayers.value;
-
-            const firstIndex = (pagination.page - 1) * pagination.rowsPerPage;
-            const lastIndex = Math.min(
-                firstIndex + pagination.rowsPerPage,
-                sortedPlayers.value.length,
-            );
-
-            return sortedPlayers.value.slice(firstIndex, lastIndex);
-        });
-
-        // Styling Functions
-        const getFifaStatClass = (value) => {
-            if (value === null || value === undefined || value === "-")
+        const getFifaStatClass = (v) => {
+            if (v === null || v === undefined || v === "-")
                 return "attribute-na";
-            const numValue =
-                typeof value === "number" ? value : parseInt(value, 10);
-            if (isNaN(numValue)) return "attribute-na";
-            if (numValue >= 90) return "attribute-elite";
-            if (numValue >= 80) return "attribute-excellent";
-            if (numValue >= 70) return "attribute-very-good";
-            if (numValue >= 60) return "attribute-good";
-            if (numValue >= 50) return "attribute-average";
-            if (numValue >= 40) return "attribute-below-average";
-            if (numValue >= 30) return "attribute-poor";
+            const n = typeof v === "number" ? v : parseInt(v, 10);
+            if (isNaN(n)) return "attribute-na";
+            if (n >= 90) return "attribute-elite";
+            if (n >= 80) return "attribute-excellent";
+            if (n >= 70) return "attribute-very-good";
+            if (n >= 60) return "attribute-good";
+            if (n >= 50) return "attribute-average";
+            if (n >= 40) return "attribute-below-average";
+            if (n >= 30) return "attribute-poor";
             return "attribute-very-poor";
         };
-
-        const getMoneyClass = (value) => {
-            // This function assumes `value` is the display string (e.g., "€1.5M")
-            // For robust classification, it should parse this string into a number.
-            // However, sorting uses pre-calculated `transferValueAmount` and `wageAmount`.
-            // This is a simplified version for display styling.
-            let amount = 0;
-            if (typeof value === "string") {
-                const cleaned = value.replace(/[^0-9.MKmk]/g, ""); // Keep M, K, m, k
-                if (cleaned.toLowerCase().includes("m"))
-                    amount = parseFloat(cleaned) * 1000000;
-                else if (cleaned.toLowerCase().includes("k"))
-                    amount = parseFloat(cleaned) * 1000;
-                else amount = parseFloat(cleaned);
-                if (isNaN(amount)) amount = 0;
-            } else if (typeof value === "number") {
-                amount = value; // If it's already a number (e.g. from direct binding if data changes)
-            }
-
-            if (amount >= 10000000) return "money-very-high";
-            if (amount >= 1000000) return "money-high";
-            if (amount >= 100000) return "money-medium-high";
-            if (amount >= 10000) return "money-medium";
-            if (amount > 0) return "money-low";
+        const getMoneyClass = (v) => {
+            let a = 0;
+            if (typeof v === "string") {
+                const c = v.replace(/[^0-9.MKmk]/g, "");
+                if (c.toLowerCase().includes("m")) a = parseFloat(c) * 1000000;
+                else if (c.toLowerCase().includes("k"))
+                    a = parseFloat(c) * 1000;
+                else a = parseFloat(c);
+                if (isNaN(a)) a = 0;
+            } else if (typeof v === "number") a = v;
+            if (a >= 10000000) return "money-very-high";
+            if (a >= 1000000) return "money-high";
+            if (a >= 100000) return "money-medium-high";
+            if (a >= 10000) return "money-medium";
+            if (a > 0) return "money-low";
             return "money-na";
         };
 
-        const onRequest = (requestProps) => {
-            const { page, rowsPerPage, sortBy, descending } =
-                requestProps.pagination;
+        const onFlagError = (event, player) => {
+            // console.warn(`Flag image failed to load for ${player?.name} (${player?.nationality_iso}): ${event.target.src}`);
+            event.target.style.display = "none"; // Hide broken image
+            // Optionally, find the q-icon next to it and show it if it was hidden.
+            const iconElement = event.target.nextElementSibling;
+            if (iconElement && iconElement.tagName === "I") {
+                // Check if it's a q-icon (rendered as <i>)
+                iconElement.style.display = "inline-flex";
+            }
+        };
+
+        const onRequest = (rp) => {
+            const { page, rowsPerPage, sortBy, descending } = rp.pagination;
             pagination.page = page;
             pagination.rowsPerPage = rowsPerPage;
-
             if (sortBy) {
-                const newSortField = sortBy;
-                const newSortDirection = descending ? "desc" : "asc";
-
-                if (
-                    sortField.value !== newSortField ||
-                    sortDirection.value !== newSortDirection
-                ) {
-                    sortField.value = newSortField;
-                    sortDirection.value = newSortDirection;
-
+                const nF = sortBy;
+                const nD = descending ? "desc" : "asc";
+                if (sortField.value !== nF || sortDirection.value !== nD) {
+                    sortField.value = nF;
+                    sortDirection.value = nD;
                     emit("update:sort", {
                         key: getSortFieldKey(sortField.value),
                         direction: sortDirection.value,
-                        isAttribute: false,
-                        isFifaStat: isFifaStatColumn(sortField.value),
+                        isFifaStat: allColumns.value.find((c) => c.name === nF)
+                            ?.isFifaStat,
+                        isOverallStat: allColumns.value.find(
+                            (c) => c.name === nF,
+                        )?.isOverallStat,
                         displayField: sortField.value,
                     });
                 }
             }
         };
-
-        const onPageChange = (page) => {
-            pagination.page = page;
+        const onPageChange = (p) => {
+            pagination.page = p;
         };
-
-        const onRowsPerPageChange = (rowsPerPage) => {
-            pagination.rowsPerPage = rowsPerPage;
-            pagination.page = 1; // Reset to first page
+        const onRowsPerPageChange = (rpp) => {
+            pagination.rowsPerPage = rpp;
+            pagination.page = 1;
         };
-
-        const customSort = (rows, sortBy, descending) => {
-            const fieldKey = getSortFieldKey(sortBy);
-            const direction = descending ? "desc" : "asc";
-
-            return [...rows].sort((a, b) => {
-                let valA = a[fieldKey];
-                let valB = b[fieldKey];
-
+        const customSort = (r, sB, d) => {
+            const fK = getSortFieldKey(sB);
+            const dir = d ? "desc" : "asc";
+            return [...r].sort((a, b) => {
+                let vA = a[fK];
+                let vB = b[fK];
                 if (
-                    (valA === null || valA === undefined) &&
-                    (valB === null || valB === undefined)
+                    (vA === null || vA === undefined) &&
+                    (vB === null || vB === undefined)
                 )
                     return 0;
-                if (valA === null || valA === undefined)
-                    return direction === "asc" ? 1 : -1;
-                if (valB === null || valB === undefined)
-                    return direction === "asc" ? -1 : 1;
-
-                if (typeof valA === "number" && typeof valB === "number") {
-                    return direction === "asc" ? valA - valB : valB - valA;
-                }
-                if (typeof valA === "string" && typeof valB === "string") {
-                    valA = valA.toLowerCase();
-                    valB = valB.toLowerCase();
-                    if (valA < valB) return direction === "asc" ? -1 : 1;
-                    if (valA > valB) return direction === "asc" ? 1 : -1;
+                if (vA === null || vA === undefined)
+                    return dir === "asc" ? 1 : -1;
+                if (vB === null || vB === undefined)
+                    return dir === "asc" ? -1 : 1;
+                if (typeof vA === "number" && typeof vB === "number")
+                    return dir === "asc" ? vA - vB : vB - vA;
+                if (typeof vA === "string" && typeof vB === "string") {
+                    vA = vA.toLowerCase();
+                    vB = vB.toLowerCase();
+                    if (vA < vB) return dir === "asc" ? -1 : 1;
+                    if (vA > vB) return dir === "asc" ? 1 : -1;
                     return 0;
                 }
                 return 0;
             });
         };
-
-        const sortTable = (field, isFifaOrAttribute = false) => {
-            const actualSortKey = getSortFieldKey(field);
-
-            if (sortField.value === field) {
+        const sortTable = (f) => {
+            const aSK = getSortFieldKey(f);
+            if (sortField.value === f)
                 sortDirection.value =
                     sortDirection.value === "asc" ? "desc" : "asc";
-            } else {
-                sortField.value = field;
+            else {
+                sortField.value = f;
                 sortDirection.value = "asc";
             }
-
-            pagination.sortBy = field;
+            pagination.sortBy = f;
             pagination.descending = sortDirection.value === "desc";
-
             emit("update:sort", {
-                key: actualSortKey,
+                key: aSK,
                 direction: sortDirection.value,
-                isAttribute: false,
-                isFifaStat: isFifaStatColumn(field),
-                displayField: field,
+                isFifaStat: allColumns.value.find((c) => c.name === f)
+                    ?.isFifaStat,
+                isOverallStat: allColumns.value.find((c) => c.name === f)
+                    ?.isOverallStat,
+                displayField: f,
             });
         };
-
-        // --- START: Row Click Handler ---
-        const onRowClick = (player) => {
-            // console.log('Player selected from table:', player);
-            emit("player-selected", player); // Emit the full player object
+        const onRowClick = (p) => {
+            emit("player-selected", p);
         };
-        // --- END: Row Click Handler ---
 
         return {
             sortField,
@@ -531,16 +524,15 @@ export default {
             maxPagesToShow,
             allColumns,
             sortedPlayers,
-            displayedPlayers,
-            isFifaStatColumn,
             getFifaStatClass,
             getMoneyClass,
+            onFlagError,
             onRequest,
             onPageChange,
             onRowsPerPageChange,
             customSort,
             sortTable,
-            onRowClick, // Expose the row click handler
+            onRowClick,
         };
     },
 };
@@ -549,84 +541,69 @@ export default {
 <style scoped>
 .player-data-table {
     width: 100%;
-    overflow-x: auto; /* Ensures table is scrollable horizontally if needed */
+    overflow-x: auto;
 }
-
 :deep(.q-table th) {
     font-weight: 600;
     background-color: #f3f5f9;
-    white-space: nowrap; /* Prevent header text wrapping */
+    white-space: nowrap;
 }
-
 :deep(.q-table td) {
-    white-space: nowrap; /* Prevent cell text wrapping */
-}
-
+    white-space: nowrap;
+    vertical-align: middle;
+} /* Align items vertically in cells */
 :deep(.q-table tr:nth-child(even)) {
     background-color: #f9fafb;
 }
-
-/* :deep(.q-table tr:hover) { background-color: #e5f1fb; } */ /* Default hover is fine, or use custom below */
-
+.table-row-hover:hover {
+    background-color: #eef6ff !important;
+}
 :deep(.q-pagination .q-btn.q-btn--active) {
     background-color: var(--q-primary);
     color: white;
 }
-
 .attribute-value {
-    /* General styling for stat values */
     display: inline-block;
-    min-width: 30px; /* Adjusted min-width for 0-100 scale */
+    min-width: 30px;
     text-align: center;
     font-weight: 600;
-    padding: 2px 5px; /* Adjusted padding */
+    padding: 2px 5px;
     border-radius: 3px;
-    font-size: 0.85em; /* Slightly smaller font for denser table */
+    font-size: 0.85em;
 }
-
-/* FIFA Stat Specific Styling (0-100 scale) */
 .fifa-stat-value {
-    font-size: 1.1em; /* Make FIFA stats a bit more prominent in the table */
+    font-size: 1.1em;
     padding: 4px 8px;
 }
-
 .attribute-elite {
-    /* 90-100 */
-    background-color: #9c27b0; /* Accent color for elite */
+    background-color: #9c27b0;
     color: white;
 }
 .attribute-excellent {
-    /* 80-89 */
     background-color: #20c997;
     color: white;
 }
 .attribute-very-good {
-    /* 70-79 */
     background-color: #4dabf7;
     color: white;
 }
 .attribute-good {
-    /* 60-69 */
     background-color: #82c91e;
     color: #212529;
 }
 .attribute-average {
-    /* 50-59 */
-    background-color: #ffc107; /* Brighter yellow for average */
+    background-color: #ffc107;
     color: #212529;
 }
 .attribute-below-average {
-    /* 40-49 */
-    background-color: #fab005; /* Original average, now below average */
+    background-color: #fab005;
     color: #212529;
 }
 .attribute-poor {
-    /* 30-39 */
     background-color: #ff922b;
     color: #212529;
 }
 .attribute-very-poor {
-    /* < 30 */
     background-color: #fa5252;
     color: white;
 }
@@ -634,8 +611,6 @@ export default {
     background-color: #e9ecef;
     color: #868e96;
 }
-
-/* Money value styling (remains the same) */
 .money-value {
     display: inline-block;
     font-weight: 500;
@@ -661,10 +636,9 @@ export default {
 .money-na {
     color: #868e96;
 }
-
-/* Style for clickable rows */
-.table-row-hover:hover {
-    background-color: #eef6ff !important; /* A light blueish hover, !important can help override Quasar's default even/odd row styling on hover */
-    /* Or use a Quasar color: background-color: var(--q-primary-light) !important; */
+/* Ensure flag and text are aligned in the nationality cell */
+.flex.items-center .q-icon,
+.flex.items-center img {
+    flex-shrink: 0; /* Prevent icon/image from shrinking */
 }
 </style>

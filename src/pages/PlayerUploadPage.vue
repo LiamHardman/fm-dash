@@ -14,6 +14,10 @@
                         <li>Ensure the Go API is running.</li>
                         <li>Select an HTML file. Click "Upload and Parse".</li>
                         <li>
+                            The table will now include Nationality and Overall
+                            rating columns.
+                        </li>
+                        <li>
                             Use filters for Name, Club, Position, Nationality,
                             and Transfer Value.
                         </li>
@@ -365,65 +369,60 @@ export default {
             club: "",
             transferValue: "",
             position: null,
-            nationality: "", // Added nationality filter
+            nationality: "",
         });
 
-        const hasActiveFilters = computed(() => {
-            return (
+        const hasActiveFilters = computed(
+            () =>
                 filters.name !== "" ||
                 filters.club !== "" ||
                 filters.transferValue !== "" ||
                 filters.position !== null ||
-                filters.nationality !== ""
-            );
-        });
+                filters.nationality !== "",
+        );
         const uniqueClubsCount = computed(
             () =>
                 new Set(allPlayers.value.map((p) => p.club).filter(Boolean))
                     .size,
         );
         const uniqueParsedPositionsCount = computed(() => {
-            const positions = new Set();
+            const p = new Set();
             allPlayers.value.forEach((player) =>
-                player.parsedPositions?.forEach((pos) => positions.add(pos)),
+                player.parsedPositions?.forEach((pos) => p.add(pos)),
             );
-            return positions.size;
+            return p.size;
         });
-        // START: Unique Nationalities Count
         const uniqueNationalitiesCount = computed(
             () =>
                 new Set(
                     allPlayers.value.map((p) => p.nationality).filter(Boolean),
                 ).size,
         );
-        // END: Unique Nationalities Count
 
         const parseMonetaryValue = (valueStr) => {
             if (typeof valueStr !== "string" || !valueStr) return 0;
-            const cleanedStr = valueStr.split(" p/w")[0];
-            let multiplier = 1;
-            const lowerStr = cleanedStr.toLowerCase();
-            if (lowerStr.includes("m")) multiplier = 1000000;
-            else if (lowerStr.includes("k")) multiplier = 1000;
-            let numStr = cleanedStr.replace(/[^0-9,.]/g, "");
-            if (numStr.includes(",") && !numStr.includes(".")) {
-                const parts = numStr.split(",");
-                let isThousandsSeparator = true;
-                for (let i = 1; i < parts.length; i++) {
-                    if (parts[i].length !== 3) {
-                        isThousandsSeparator = false;
+            const c = valueStr.split(" p/w")[0];
+            let m = 1;
+            const l = c.toLowerCase();
+            if (l.includes("m")) m = 1000000;
+            else if (l.includes("k")) m = 1000;
+            let n = c.replace(/[^0-9,.]/g, "");
+            if (n.includes(",") && !n.includes(".")) {
+                const p = n.split(",");
+                let i = true;
+                for (let k = 1; k < p.length; k++) {
+                    if (p[k].length !== 3) {
+                        i = false;
                         break;
                     }
                 }
-                if (isThousandsSeparator) numStr = numStr.replace(/,/g, "");
-                else numStr = numStr.replace(/,([^,]*)$/, ".$1");
-            } else if (numStr.includes(",")) {
-                numStr = numStr.replace(/,/g, "");
+                if (i) n = n.replace(/,/g, "");
+                else n = n.replace(/,([^,]*)$/, ".$1");
+            } else if (n.includes(",")) {
+                n = n.replace(/,/g, "");
             }
-            const numericValue = parseFloat(numStr);
-            return Math.round(
-                isNaN(numericValue) ? 0 : numericValue * multiplier,
-            );
+            const v = parseFloat(n);
+            return Math.round(isNaN(v) ? 0 : v * m);
         };
         const fifaStatCategories = {
             PHY: ["Acc", "Pac", "Bal", "Jum", "Nat", "Sta", "Str"],
@@ -447,18 +446,14 @@ export default {
             ],
         };
         const calculateFifaStat = (attributes, categoryName) => {
-            const statNames = fifaStatCategories[categoryName];
-            if (!statNames || statNames.length === 0) return 0;
+            const s = fifaStatCategories[categoryName];
+            if (!s || s.length === 0) return 0;
             let sum = 0;
             let count = 0;
-            statNames.forEach((statName) => {
-                const value = attributes[statName];
-                if (
-                    value !== undefined &&
-                    value !== null &&
-                    !isNaN(parseInt(value, 10))
-                ) {
-                    sum += parseInt(value, 10);
+            s.forEach((n) => {
+                const v = attributes[n];
+                if (v !== undefined && v !== null && !isNaN(parseInt(v, 10))) {
+                    sum += parseInt(v, 10);
                     count++;
                 }
             });
@@ -486,48 +481,62 @@ export default {
                 const playerPosGroups = getPlayerPositionGroups(
                     parsedPlayerPositions,
                 );
-                // The backend now sends `nationality` as a top-level field.
+
+                const phy = calculateFifaStat(numericAttributes, "PHY");
+                const sho = calculateFifaStat(numericAttributes, "SHO");
+                const pas = calculateFifaStat(numericAttributes, "PAS");
+                const dri = calculateFifaStat(numericAttributes, "DRI");
+                const def = calculateFifaStat(numericAttributes, "DEF");
+                const men = calculateFifaStat(numericAttributes, "MEN");
+
+                // START: Calculate Overall Rating
+                const fifaStatsForOverall = [phy, sho, pas, dri, def, men];
+                const overallSum = fifaStatsForOverall.reduce(
+                    (acc, current) => acc + current,
+                    0,
+                );
+                const overall =
+                    fifaStatsForOverall.length > 0
+                        ? Math.round(overallSum / fifaStatsForOverall.length)
+                        : 0;
+                // END: Calculate Overall Rating
+
                 return {
                     ...player,
                     age: parseInt(player.age, 10) || 0,
                     transferValueAmount: transferValue,
                     wageAmount: wageValue,
                     attributes: numericAttributes,
-                    PHY: calculateFifaStat(numericAttributes, "PHY"),
-                    SHO: calculateFifaStat(numericAttributes, "SHO"),
-                    PAS: calculateFifaStat(numericAttributes, "PAS"),
-                    DRI: calculateFifaStat(numericAttributes, "DRI"),
-                    DEF: calculateFifaStat(numericAttributes, "DEF"),
-                    MEN: calculateFifaStat(numericAttributes, "MEN"),
+                    PHY: phy,
+                    SHO: sho,
+                    PAS: pas,
+                    DRI: dri,
+                    DEF: def,
+                    MEN: men,
+                    Overall: overall, // Add Overall rating to player object
                     parsedPositions: parsedPlayerPositions,
                     positionGroups: playerPosGroups,
-                    // nationality: player.nationality // This should already be on the player object from Go
                 };
             });
         };
 
         const positionFilterOptions = computed(() => {
-            const options = [];
-            Object.keys(positionGroups).forEach((groupName) => {
-                options.push({
-                    label: `${groupName} (Group)`,
-                    value: groupName,
-                });
+            const o = [];
+            Object.keys(positionGroups).forEach((g) => {
+                o.push({ label: `${g} (Group)`, value: g });
             });
-            const specificPlayerPositions = new Set();
-            allPlayers.value.forEach((player) => {
-                player.parsedPositions?.forEach((pos) =>
-                    specificPlayerPositions.add(pos),
-                );
+            const s = new Set();
+            allPlayers.value.forEach((p) => {
+                p.parsedPositions?.forEach((pos) => s.add(pos));
             });
-            Array.from(specificPlayerPositions)
+            Array.from(s)
                 .sort()
                 .forEach((pos) => {
                     if (!positionGroups[pos]) {
-                        options.push({ label: pos, value: pos });
+                        o.push({ label: pos, value: pos });
                     }
                 });
-            return options;
+            return o;
         });
 
         const filteredPlayers = computed(() => {
@@ -550,47 +559,40 @@ export default {
                             .includes(filters.club.toLowerCase()),
                 );
             if (filters.transferValue) {
-                let operator = "includes";
-                let compareValueNum = 0;
-                let filterValStr = filters.transferValue;
-                if (filterValStr.startsWith(">")) {
-                    operator = ">";
-                    filterValStr = filterValStr.substring(1);
-                } else if (filterValStr.startsWith("<")) {
-                    operator = "<";
-                    filterValStr = filterValStr.substring(1);
+                let o = "includes";
+                let c = 0;
+                let f = filters.transferValue;
+                if (f.startsWith(">")) {
+                    o = ">";
+                    f = f.substring(1);
+                } else if (f.startsWith("<")) {
+                    o = "<";
+                    f = f.substring(1);
                 }
-                if (operator !== "includes")
-                    compareValueNum = parseMonetaryValue(filterValStr);
+                if (o !== "includes") c = parseMonetaryValue(f);
                 tempPlayers = tempPlayers.filter((p) => {
-                    const playerValueNum = p.transferValueAmount || 0;
-                    if (operator === ">")
-                        return playerValueNum > compareValueNum;
-                    if (operator === "<")
-                        return playerValueNum < compareValueNum;
+                    const v = p.transferValueAmount || 0;
+                    if (o === ">") return v > c;
+                    if (o === "<") return v < c;
                     return String(p.transfer_value || "")
                         .toLowerCase()
                         .includes(filters.transferValue.toLowerCase());
                 });
             }
             if (filters.position) {
-                const selectedFilter = filters.position;
-                if (positionGroups[selectedFilter]) {
+                const s = filters.position;
+                if (positionGroups[s]) {
                     tempPlayers = tempPlayers.filter(
-                        (p) =>
-                            p.positionGroups &&
-                            p.positionGroups.includes(selectedFilter),
+                        (p) => p.positionGroups && p.positionGroups.includes(s),
                     );
                 } else {
                     tempPlayers = tempPlayers.filter(
                         (p) =>
-                            p.parsedPositions &&
-                            p.parsedPositions.includes(selectedFilter),
+                            p.parsedPositions && p.parsedPositions.includes(s),
                     );
                 }
             }
-            // START: Nationality Filtering
-            if (filters.nationality) {
+            if (filters.nationality)
                 tempPlayers = tempPlayers.filter(
                     (p) =>
                         p.nationality &&
@@ -598,15 +600,13 @@ export default {
                             .toLowerCase()
                             .includes(filters.nationality.toLowerCase()),
                 );
-            }
-            // END: Nationality Filtering
             if (sortState.key) return sortPlayersLogic([...tempPlayers]);
             return tempPlayers;
         });
 
         const sortPlayersLogic = (playersToSort) => {
             if (!sortState.key) return playersToSort;
-            const sortKey = sortState.isAttribute
+            const k = sortState.isAttribute
                 ? sortState.key
                 : allPlayers.value.length > 0 &&
                     Object.keys(allPlayers.value[0]).includes(
@@ -615,26 +615,24 @@ export default {
                   ? sortState.key + "Amount"
                   : sortState.key;
             return [...playersToSort].sort((a, b) => {
-                let valA, valB;
+                let vA, vB;
                 if (sortState.isAttribute) {
-                    valA = a.attributes ? a.attributes[sortKey] : null;
-                    valB = b.attributes ? b.attributes[sortKey] : null;
+                    vA = a.attributes ? a.attributes[k] : null;
+                    vB = b.attributes ? b.attributes[k] : null;
                 } else {
-                    valA = a[sortKey];
-                    valB = b[sortKey];
+                    vA = a[k];
+                    vB = b[k];
                 }
-                if (valA == null && valB == null) return 0;
-                if (valA == null) return sortState.direction === "asc" ? 1 : -1;
-                if (valB == null) return sortState.direction === "asc" ? -1 : 1;
-                if (typeof valA === "number" && typeof valB === "number") {
-                    return sortState.direction === "asc"
-                        ? valA - valB
-                        : valB - valA;
+                if (vA == null && vB == null) return 0;
+                if (vA == null) return sortState.direction === "asc" ? 1 : -1;
+                if (vB == null) return sortState.direction === "asc" ? -1 : 1;
+                if (typeof vA === "number" && typeof vB === "number") {
+                    return sortState.direction === "asc" ? vA - vB : vB - vA;
                 }
-                valA = String(valA).toLowerCase();
-                valB = String(valB).toLowerCase();
-                if (valA < valB) return sortState.direction === "asc" ? -1 : 1;
-                if (valA > valB) return sortState.direction === "asc" ? 1 : -1;
+                vA = String(vA).toLowerCase();
+                vB = String(vB).toLowerCase();
+                if (vA < vB) return sortState.direction === "asc" ? -1 : 1;
+                if (vA > vB) return sortState.direction === "asc" ? 1 : -1;
                 return 0;
             });
         };
@@ -646,15 +644,15 @@ export default {
             loading.value = true;
             error.value = "";
             try {
-                const formData = new FormData();
-                formData.append("playerFile", playerFile.value);
-                const response = await playerService.uploadPlayerFile(formData);
-                allPlayers.value = processPlayerData(response);
+                const f = new FormData();
+                f.append("playerFile", playerFile.value);
+                const r = await playerService.uploadPlayerFile(f);
+                allPlayers.value = processPlayerData(r);
                 sortState.key = null;
                 sortState.direction = "asc";
                 clearAllFilters();
-            } catch (err) {
-                error.value = `Failed to parse player data: ${err.message || "Unknown error"}`;
+            } catch (e) {
+                error.value = `Failed to parse player data: ${e.message || "Unknown error"}`;
                 allPlayers.value = [];
             } finally {
                 loading.value = false;
@@ -671,7 +669,7 @@ export default {
             filters.club = "";
             filters.transferValue = "";
             filters.position = null;
-            filters.nationality = ""; /* Clear nationality */
+            filters.nationality = "";
         };
         const handleSearch = () => {
             /* Reactive filtering */
@@ -689,7 +687,7 @@ export default {
             filteredPlayers,
             uniqueClubsCount,
             uniqueParsedPositionsCount,
-            uniqueNationalitiesCount, // Added uniqueNationalitiesCount
+            uniqueNationalitiesCount,
             filters,
             hasActiveFilters,
             positionFilterOptions,
