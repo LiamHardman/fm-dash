@@ -57,49 +57,58 @@
                     </q-tr>
                 </template>
 
-                <template v-slot:body-cell="props">
-                    <q-td :props="props">
-                        <template v-if="props.col.isFifaStat">
-                            <span
-                                :class="getFifaStatClass(props.value)"
-                                class="attribute-value fifa-stat-value"
-                            >
-                                {{
-                                    props.value !== undefined
-                                        ? props.value
-                                        : "-"
-                                }}
-                            </span>
-                        </template>
-                        <template
-                            v-else-if="props.col.name === 'transfer_value'"
+                <template v-slot:body="props">
+                    <q-tr
+                        :props="props"
+                        @click="onRowClick(props.row)"
+                        class="cursor-pointer table-row-hover"
+                    >
+                        <q-td
+                            v-for="col in props.cols"
+                            :key="col.name"
+                            :props="props"
                         >
-                            <span
-                                :class="getMoneyClass(props.value)"
-                                class="money-value"
-                            >
-                                {{ props.value || "-" }}
-                            </span>
-                        </template>
-                        <template v-else-if="props.col.name === 'wage'">
-                            <span
-                                :class="getMoneyClass(props.value)"
-                                class="money-value"
-                            >
-                                {{ props.value || "-" }}
-                            </span>
-                        </template>
-                        <template v-else>
-                            <span>{{
-                                props.value !== undefined &&
-                                props.value !== null
-                                    ? props.value
-                                    : "-"
-                            }}</span>
-                        </template>
-                    </q-td>
+                            <template v-if="col.isFifaStat">
+                                <span
+                                    :class="
+                                        getFifaStatClass(props.row[col.field])
+                                    "
+                                    class="attribute-value fifa-stat-value"
+                                >
+                                    {{
+                                        props.row[col.field] !== undefined
+                                            ? props.row[col.field]
+                                            : "-"
+                                    }}
+                                </span>
+                            </template>
+                            <template v-else-if="col.name === 'transfer_value'">
+                                <span
+                                    :class="getMoneyClass(props.row[col.field])"
+                                    class="money-value"
+                                >
+                                    {{ props.row[col.field] || "-" }}
+                                </span>
+                            </template>
+                            <template v-else-if="col.name === 'wage'">
+                                <span
+                                    :class="getMoneyClass(props.row[col.field])"
+                                    class="money-value"
+                                >
+                                    {{ props.row[col.field] || "-" }}
+                                </span>
+                            </template>
+                            <template v-else>
+                                <span>{{
+                                    props.row[col.field] !== undefined &&
+                                    props.row[col.field] !== null
+                                        ? props.row[col.field]
+                                        : "-"
+                                }}</span>
+                            </template>
+                        </q-td>
+                    </q-tr>
                 </template>
-
                 <template v-slot:loading>
                     <q-inner-loading showing color="primary">
                         <q-spinner size="50px" color="primary" />
@@ -171,7 +180,7 @@ export default {
             default: false,
         },
     },
-    emits: ["update:sort"],
+    emits: ["update:sort", "player-selected"], // Added 'player-selected'
 
     setup(props, { emit }) {
         const sortField = ref(null);
@@ -202,6 +211,7 @@ export default {
         watch(
             () => pagination.rowsPerPage,
             () => {
+                // Adjust page number if it becomes invalid after changing rowsPerPage
                 if (pagination.page > pagesNumber.value) {
                     pagination.page =
                         pagesNumber.value > 0 ? pagesNumber.value : 1;
@@ -209,7 +219,7 @@ export default {
             },
         );
 
-        // --- START: Column Definitions ---
+        // Column Definitions
         const baseColumns = [
             {
                 name: "name",
@@ -224,8 +234,7 @@ export default {
                 field: "position",
                 sortable: true,
                 align: "left",
-            },
-            // { name: 'age', label: 'Age', field: 'age', sortable: true, align: 'left' }, // Age was not requested
+            }, // This is the original position string
             {
                 name: "club",
                 label: "Club",
@@ -236,22 +245,21 @@ export default {
             {
                 name: "transfer_value",
                 label: "Transfer Value",
-                field: "transfer_value", // This is the display field
+                field: "transfer_value", // Display field
                 sortable: true,
                 align: "right",
-                sortField: "transferValueAmount", // Field to use for actual sorting
+                sortField: "transferValueAmount", // Actual sort field
             },
             {
-                name: "wage", // 'Wage' is used in main.go, 'Salary' in user request. Assuming 'Wage' is correct from code.
-                label: "Salary", // Display label as 'Salary'
-                field: "wage", // This is the display field
+                name: "wage",
+                label: "Salary", // Display label
+                field: "wage", // Display field
                 sortable: true,
                 align: "right",
-                sortField: "wageAmount", // Field to use for actual sorting
+                sortField: "wageAmount", // Actual sort field
             },
         ];
 
-        // FIFA Stat columns (now static)
         const fifaStatColumns = ref([
             {
                 name: "PHY",
@@ -307,22 +315,19 @@ export default {
             ...baseColumns,
             ...fifaStatColumns.value,
         ]);
-        // --- END: Column Definitions ---
 
-        // Check if a column is a FIFA stat column (used for styling/sorting)
         const isFifaStatColumn = (colName) => {
             return fifaStatColumns.value.some((col) => col.name === colName);
         };
 
-        // Get the actual field to sort by from a column name
         const getSortFieldKey = (colName) => {
             const baseCol = baseColumns.find((c) => c.name === colName);
-            if (baseCol && baseCol.sortField) return baseCol.sortField; // e.g. transferValueAmount
+            if (baseCol && baseCol.sortField) return baseCol.sortField;
 
             const fifaCol = fifaStatColumns.value.find(
                 (c) => c.name === colName,
             );
-            if (fifaCol) return fifaCol.field; // e.g. PHY
+            if (fifaCol) return fifaCol.field; // FIFA stats are direct properties now
 
             return colName; // Default to column name itself
         };
@@ -332,19 +337,11 @@ export default {
 
             const fieldKey = getSortFieldKey(sortField.value);
             const direction = sortDirection.value;
-            const isFifa = isFifaStatColumn(sortField.value);
 
-            // console.log(`Sorting players by ${fieldKey} (${direction}), isFifaStat: ${isFifa}`);
+            return [...props.players].sort((a, b) => {
+                let valA = a[fieldKey];
+                let valB = b[fieldKey];
 
-            const sortedList = [...props.players].sort((a, b) => {
-                let valA, valB;
-
-                // Get values based on sort field
-                // FIFA stats are now direct properties on the player object from PlayerUploadPage
-                valA = a[fieldKey];
-                valB = b[fieldKey];
-
-                // Handle null/empty/undefined values
                 if (
                     (valA === null || valA === undefined) &&
                     (valB === null || valB === undefined)
@@ -355,12 +352,10 @@ export default {
                 if (valB === null || valB === undefined)
                     return direction === "asc" ? -1 : 1;
 
-                // Direct number comparison
                 if (typeof valA === "number" && typeof valB === "number") {
                     return direction === "asc" ? valA - valB : valB - valA;
                 }
 
-                // String comparison for text fields (e.g., name, club, position)
                 if (typeof valA === "string" && typeof valB === "string") {
                     valA = valA.toLowerCase();
                     valB = valB.toLowerCase();
@@ -369,21 +364,14 @@ export default {
                     return 0;
                 }
 
-                // Fallback comparison (should ideally not be reached if data is clean)
-                const strA = String(valA).toLowerCase();
-                const strB = String(valB).toLowerCase();
-                if (strA < strB) return direction === "asc" ? -1 : 1;
-                if (strA > strB) return direction === "asc" ? 1 : -1;
                 return 0;
             });
-            return sortedList;
         });
 
         const displayedPlayers = computed(() => {
-            if (pagination.rowsPerPage === 0) return sortedPlayers.value; // Show all if rowsPerPage is 0
+            if (pagination.rowsPerPage === 0) return sortedPlayers.value;
 
             const firstIndex = (pagination.page - 1) * pagination.rowsPerPage;
-            // Ensure lastIndex does not exceed the length of sortedPlayers
             const lastIndex = Math.min(
                 firstIndex + pagination.rowsPerPage,
                 sortedPlayers.value.length,
@@ -392,47 +380,39 @@ export default {
             return sortedPlayers.value.slice(firstIndex, lastIndex);
         });
 
-        // --- START: Styling Functions ---
-        // New styling for FIFA stats (0-100 scale)
+        // Styling Functions
         const getFifaStatClass = (value) => {
             if (value === null || value === undefined || value === "-")
                 return "attribute-na";
             const numValue =
                 typeof value === "number" ? value : parseInt(value, 10);
             if (isNaN(numValue)) return "attribute-na";
-
-            if (numValue >= 90) return "attribute-elite"; // 90-100
-            if (numValue >= 80) return "attribute-excellent"; // 80-89
-            if (numValue >= 70) return "attribute-very-good"; // 70-79
-            if (numValue >= 60) return "attribute-good"; // 60-69
-            if (numValue >= 50) return "attribute-average"; // 50-59
-            if (numValue >= 40) return "attribute-below-average"; // 40-49
-            if (numValue >= 30) return "attribute-poor"; // 30-39
-            return "attribute-very-poor"; // < 30
+            if (numValue >= 90) return "attribute-elite";
+            if (numValue >= 80) return "attribute-excellent";
+            if (numValue >= 70) return "attribute-very-good";
+            if (numValue >= 60) return "attribute-good";
+            if (numValue >= 50) return "attribute-average";
+            if (numValue >= 40) return "attribute-below-average";
+            if (numValue >= 30) return "attribute-poor";
+            return "attribute-very-poor";
         };
 
-        // Existing styling for money values
         const getMoneyClass = (value) => {
-            if (value === null || value === undefined || value === "-")
-                return "money-na";
-            // Assuming parseMonetaryValue is available or value is already numeric
-            // For simplicity, let's assume PlayerUploadPage has already converted these to numbers if needed for sorting
-            // Here, we'd typically parse it if it's still a string.
-            // const amount = parseMonetaryValue(value); // This function would be needed here if not pre-processed
-            // For now, we'll rely on the `transferValueAmount` and `wageAmount` for actual numeric value
-            // and this function might need adjustment if `value` is the raw string.
-            // Let's assume `value` for display is the string, and we need to parse for class.
-            // This is a simplified version, real parsing should be robust.
+            // This function assumes `value` is the display string (e.g., "€1.5M")
+            // For robust classification, it should parse this string into a number.
+            // However, sorting uses pre-calculated `transferValueAmount` and `wageAmount`.
+            // This is a simplified version for display styling.
             let amount = 0;
             if (typeof value === "string") {
-                const cleaned = value.replace(/[^0-9.MKmk]/g, "");
+                const cleaned = value.replace(/[^0-9.MKmk]/g, ""); // Keep M, K, m, k
                 if (cleaned.toLowerCase().includes("m"))
                     amount = parseFloat(cleaned) * 1000000;
                 else if (cleaned.toLowerCase().includes("k"))
                     amount = parseFloat(cleaned) * 1000;
                 else amount = parseFloat(cleaned);
+                if (isNaN(amount)) amount = 0;
             } else if (typeof value === "number") {
-                amount = value;
+                amount = value; // If it's already a number (e.g. from direct binding if data changes)
             }
 
             if (amount >= 10000000) return "money-very-high";
@@ -442,18 +422,13 @@ export default {
             if (amount > 0) return "money-low";
             return "money-na";
         };
-        // --- END: Styling Functions ---
 
         const onRequest = (requestProps) => {
             const { page, rowsPerPage, sortBy, descending } =
                 requestProps.pagination;
-            // console.log(`Q-Table onRequest: page ${page}, rows ${rowsPerPage}, sortBy ${sortBy}, descending ${descending}`);
-
             pagination.page = page;
             pagination.rowsPerPage = rowsPerPage;
 
-            // If sortBy is provided by q-table, update our local sort state
-            // This happens when user clicks q-table's native sort icons (if not overridden by custom header)
             if (sortBy) {
                 const newSortField = sortBy;
                 const newSortDirection = descending ? "desc" : "asc";
@@ -464,13 +439,11 @@ export default {
                 ) {
                     sortField.value = newSortField;
                     sortDirection.value = newSortDirection;
-                    // console.log(`Sort updated by q-table internal: ${sortField.value} (${sortDirection.value})`);
 
-                    // Emit update to parent if needed, or handle sorting directly via `sortedPlayers` computed prop
                     emit("update:sort", {
                         key: getSortFieldKey(sortField.value),
                         direction: sortDirection.value,
-                        isAttribute: false, // Determine this based on column def if necessary
+                        isAttribute: false,
                         isFifaStat: isFifaStatColumn(sortField.value),
                         displayField: sortField.value,
                     });
@@ -479,51 +452,15 @@ export default {
         };
 
         const onPageChange = (page) => {
-            // console.log(`Page changed to: ${page}`);
             pagination.page = page;
         };
 
         const onRowsPerPageChange = (rowsPerPage) => {
-            // console.log(`Rows per page changed to: ${rowsPerPage}`);
             pagination.rowsPerPage = rowsPerPage;
             pagination.page = 1; // Reset to first page
         };
 
-        // This method is called by q-table if `sort-method` prop is used.
-        // It should return the sorted array.
-        // Our `sortedPlayers` computed property already handles the sorting,
-        // so this customSort can just return the already sorted `sortedPlayers.value`.
-        // However, q-table expects this to take `rows, sortBy, descending`.
         const customSort = (rows, sortBy, descending) => {
-            // console.log(`Q-Table customSort called: sortBy ${sortBy}, descending ${descending}. Rows count: ${rows.length}`);
-            // Update internal sort state if q-table tries to sort
-            if (sortBy) {
-                if (
-                    sortField.value !== sortBy ||
-                    sortDirection.value !== (descending ? "desc" : "asc")
-                ) {
-                    sortField.value = sortBy;
-                    sortDirection.value = descending ? "desc" : "asc";
-                    // console.log(`Sort state updated from customSort: ${sortField.value} (${sortDirection.value})`);
-                    // Emit to parent to synchronize if PlayerUploadPage manages the primary sort state
-                    emit("update:sort", {
-                        key: getSortFieldKey(sortField.value),
-                        direction: sortDirection.value,
-                        isAttribute: false, // Simplified, adjust if needed
-                        isFifaStat: isFifaStatColumn(sortField.value),
-                        displayField: sortField.value,
-                    });
-                }
-            }
-            // The actual sorting is done by the `sortedPlayers` computed property,
-            // which reacts to `sortField` and `sortDirection`.
-            // `rows` passed here would be the unsorted `props.players`.
-            // We need to sort `rows` based on `sortBy` and `descending` for q-table.
-            // Or, ensure q-table uses `sortedPlayers`.
-            // For simplicity with the current setup, let `sortedPlayers` handle it.
-            // If q-table's `sort-method` is used, it expects this function to perform the sort.
-            // Let's re-implement the sort here based on sortBy and descending for q-table's expectation.
-
             const fieldKey = getSortFieldKey(sortBy);
             const direction = descending ? "desc" : "asc";
 
@@ -555,7 +492,6 @@ export default {
             });
         };
 
-        // This is triggered by clicking custom header cells
         const sortTable = (field, isFifaOrAttribute = false) => {
             const actualSortKey = getSortFieldKey(field);
 
@@ -563,24 +499,28 @@ export default {
                 sortDirection.value =
                     sortDirection.value === "asc" ? "desc" : "asc";
             } else {
-                sortField.value = field; // This should be the display field name (e.g. 'PHY', 'name')
+                sortField.value = field;
                 sortDirection.value = "asc";
             }
 
-            // Update pagination sort props to potentially trigger q-table's internal sort if not fully overridden
-            pagination.sortBy = field; // Use display field for q-table's `sortBy` state
+            pagination.sortBy = field;
             pagination.descending = sortDirection.value === "desc";
 
-            // console.log(`Sort request from header click: ${field} → actual key ${actualSortKey} (${sortDirection.value})`);
-
             emit("update:sort", {
-                key: actualSortKey, // The actual data key for sorting (e.g. PHY, transferValueAmount)
+                key: actualSortKey,
                 direction: sortDirection.value,
-                isAttribute: false, // For simplicity, can be refined if original attributes are still used
-                isFifaStat: isFifaStatColumn(field), // Check if it's a FIFA stat
-                displayField: field, // Original field name for UI
+                isAttribute: false,
+                isFifaStat: isFifaStatColumn(field),
+                displayField: field,
             });
         };
+
+        // --- START: Row Click Handler ---
+        const onRowClick = (player) => {
+            // console.log('Player selected from table:', player);
+            emit("player-selected", player); // Emit the full player object
+        };
+        // --- END: Row Click Handler ---
 
         return {
             sortField,
@@ -590,16 +530,17 @@ export default {
             rowsPerPageOptions,
             maxPagesToShow,
             allColumns,
-            sortedPlayers, // Use this for the table rows
-            displayedPlayers, // This is now correctly paginating sortedPlayers
+            sortedPlayers,
+            displayedPlayers,
             isFifaStatColumn,
             getFifaStatClass,
             getMoneyClass,
             onRequest,
             onPageChange,
             onRowsPerPageChange,
-            customSort, // Provide this to q-table
+            customSort,
             sortTable,
+            onRowClick, // Expose the row click handler
         };
     },
 };
@@ -625,9 +566,7 @@ export default {
     background-color: #f9fafb;
 }
 
-:deep(.q-table tr:hover) {
-    background-color: #e5f1fb;
-}
+/* :deep(.q-table tr:hover) { background-color: #e5f1fb; } */ /* Default hover is fine, or use custom below */
 
 :deep(.q-pagination .q-btn.q-btn--active) {
     background-color: var(--q-primary);
@@ -647,7 +586,8 @@ export default {
 
 /* FIFA Stat Specific Styling (0-100 scale) */
 .fifa-stat-value {
-    /* Can add specific styles if different from generic .attribute-value */
+    font-size: 1.1em; /* Make FIFA stats a bit more prominent in the table */
+    padding: 4px 8px;
 }
 
 .attribute-elite {
@@ -720,5 +660,11 @@ export default {
 }
 .money-na {
     color: #868e96;
+}
+
+/* Style for clickable rows */
+.table-row-hover:hover {
+    background-color: #eef6ff !important; /* A light blueish hover, !important can help override Quasar's default even/odd row styling on hover */
+    /* Or use a Quasar color: background-color: var(--q-primary-light) !important; */
 }
 </style>

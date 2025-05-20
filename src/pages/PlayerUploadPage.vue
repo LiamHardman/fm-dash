@@ -21,8 +21,12 @@
                         </li>
                         <li>Click "Upload and Parse".</li>
                         <li>
-                            Use the new "Position / Group" filter along with
-                            other filters.
+                            Click on any player row in the table to see their
+                            detailed attributes.
+                        </li>
+                        <li>
+                            Use the "Position / Group" filter along with other
+                            filters.
                         </li>
                     </ol>
                 </q-card-section>
@@ -182,6 +186,7 @@
                     :players="filteredPlayers"
                     :loading="loading"
                     @update:sort="handleSort"
+                    @player-selected="handlePlayerSelected"
                 />
             </template>
 
@@ -191,15 +196,22 @@
                 <div class="text-grey-7">Upload a file to see player data</div>
             </q-card>
         </div>
+
+        <PlayerDetailDialog
+            :player="selectedPlayer"
+            :show="showPlayerDetailDialog"
+            @close="showPlayerDetailDialog = false"
+        />
     </q-page>
 </template>
 
 <script>
 import { ref, computed, reactive } from "vue";
 import PlayerDataTable from "../components/PlayerDataTable.vue";
+import PlayerDetailDialog from "../components/PlayerDetailDialog.vue"; // Import the new dialog component
 import playerService from "../services/playerService";
 
-// --- START: Position Parsing and Mapping Logic ---
+// --- START: Position Parsing and Mapping Logic (Copied from previous version) ---
 const positionRoleMap = {
     GK: "Goalkeeper",
     SW: "Sweeper",
@@ -211,10 +223,7 @@ const positionRoleMap = {
     ST: "Striker",
     F: "Forward",
 };
-
 const positionSideMap = { R: "Right", L: "Left", C: "Centre" };
-
-// Defines the standardized specific position names we want to use
 const standardizedPositionNameMap = {
     "Goalkeeper (Centre)": "Goalkeeper",
     Goalkeeper: "Goalkeeper",
@@ -225,7 +234,7 @@ const standardizedPositionNameMap = {
     "Defender (Centre)": "Centre Back",
     "Wing-Back (Right)": "Right Wing-Back",
     "Wing-Back (Left)": "Left Wing-Back",
-    "Wing-Back (Centre)": "Centre Wing-Back", // Though (C) is rare for WB
+    "Wing-Back (Centre)": "Centre Wing-Back",
     "Defensive Midfielder (Right)": "Right Defensive Midfielder",
     "Defensive Midfielder (Left)": "Left Defensive Midfielder",
     "Defensive Midfielder (Centre)": "Centre Defensive Midfielder",
@@ -239,10 +248,8 @@ const standardizedPositionNameMap = {
     Striker: "Striker",
     "Forward (Right)": "Right Forward",
     "Forward (Left)": "Left Forward",
-    "Forward (Centre)": "Centre Forward", // If F appears
+    "Forward (Centre)": "Centre Forward",
 };
-
-// Position Groups for filtering
 const positionGroups = {
     Goalkeepers: ["Goalkeeper"],
     Defenders: [
@@ -267,36 +274,22 @@ const positionGroups = {
     ],
     Attackers: ["Striker", "Right Forward", "Left Forward", "Centre Forward"],
 };
-
-/**
- * Parses a raw Football Manager position string into an array of standardized position names.
- * Example: "M (C), AM (RC)" -> ["Centre Midfielder", "Right Attacking Midfielder", "Centre Attacking Midfielder"]
- * @param {string} positionStr - The raw position string from the player data.
- * @returns {string[]} An array of standardized position names.
- */
 function parsePlayerPositions(positionStr) {
     if (!positionStr || typeof positionStr !== "string") return [];
     const parsedPositions = new Set();
-
     const parts = positionStr
         .split(",")
         .map((p) => p.trim())
         .filter((p) => p);
-
     parts.forEach((part) => {
         const match = part.match(/^([A-Z]+)(?:\s*\(([A-Z]+)\))?$/);
         if (!match) return;
-
-        const roleKey = match[1]; // e.g., M, AM
-        const sideKeysStr = match[2]; // e.g., C, RC, or undefined
-
+        const roleKey = match[1];
+        const sideKeysStr = match[2];
         const roleFullName = positionRoleMap[roleKey];
         if (!roleFullName) return;
-
         if (sideKeysStr) {
-            // Sides are specified e.g. (C), (RL), (RLC)
             for (const sideKey of sideKeysStr) {
-                // Iterate over R, L, C
                 const sideFullName = positionSideMap[sideKey];
                 if (sideFullName) {
                     const detailedName = `${roleFullName} (${sideFullName})`;
@@ -307,34 +300,28 @@ function parsePlayerPositions(positionStr) {
                 }
             }
         } else {
-            // No sides specified, assume central for most roles or use base role
+            // No sides specified
             if (["D", "DM", "M", "AM", "ST", "F", "WB"].includes(roleKey)) {
-                // WB also often implies central if no side
                 const detailedName = `${roleFullName} (Centre)`;
                 parsedPositions.add(
                     standardizedPositionNameMap[detailedName] || detailedName,
                 );
             } else if (["GK", "SW"].includes(roleKey)) {
+                // GK, SW are inherently central
                 parsedPositions.add(
                     standardizedPositionNameMap[roleFullName] || roleFullName,
                 );
             } else {
-                parsedPositions.add(roleFullName); // Fallback for unknown role structure
+                // Fallback for roles without explicit side or inherent centrality
+                parsedPositions.add(roleFullName);
             }
         }
     });
     return Array.from(parsedPositions);
 }
-
-/**
- * Determines which position groups a player belongs to based on their parsed positions.
- * @param {string[]} parsedPositionsArray - Array of standardized position names.
- * @returns {string[]} An array of group names (e.g., ["Defenders", "Midfielders"]).
- */
 function getPlayerPositionGroups(parsedPositionsArray) {
     const groups = new Set();
     if (!parsedPositionsArray || parsedPositionsArray.length === 0) return [];
-
     parsedPositionsArray.forEach((pos) => {
         for (const groupName in positionGroups) {
             if (positionGroups[groupName].includes(pos)) {
@@ -350,6 +337,7 @@ export default {
     name: "PlayerUploadPage",
     components: {
         PlayerDataTable,
+        PlayerDetailDialog, // Register the dialog component
     },
 
     setup() {
@@ -358,20 +346,23 @@ export default {
         const error = ref("");
         const allPlayers = ref([]);
 
+        // --- START: State for Player Detail Dialog ---
+        const selectedPlayer = ref(null); // Holds the data for the player to show in the dialog
+        const showPlayerDetailDialog = ref(false); // Controls visibility of the dialog
+        // --- END: State for Player Detail Dialog ---
+
         const sortState = reactive({
             key: null,
             direction: "asc",
             isAttribute: false,
             displayField: null,
         });
-
         const filters = reactive({
             name: "",
             club: "",
             transferValue: "",
-            position: null, // Changed from '' to null for q-select clearable
+            position: null,
         });
-
         const hasActiveFilters = computed(() => {
             return (
                 filters.name !== "" ||
@@ -380,7 +371,6 @@ export default {
                 filters.position !== null
             );
         });
-
         const uniqueClubsCount = computed(() => {
             const clubs = new Set();
             allPlayers.value.forEach((player) => {
@@ -388,8 +378,6 @@ export default {
             });
             return clubs.size;
         });
-
-        // Updated to count unique PARSED positions
         const uniqueParsedPositionsCount = computed(() => {
             const positions = new Set();
             allPlayers.value.forEach((player) => {
@@ -399,7 +387,6 @@ export default {
         });
 
         const parseMonetaryValue = (valueStr) => {
-            // (Monetary parsing logic - kept from previous version, assumed correct)
             if (typeof valueStr !== "string" || !valueStr) return 0;
             const cleanedStr = valueStr.split(" p/w")[0];
             let multiplier = 1;
@@ -448,7 +435,6 @@ export default {
                 "Wor",
             ],
         };
-
         const calculateFifaStat = (attributes, categoryName) => {
             const statNames = fifaStatCategories[categoryName];
             if (!statNames || statNames.length === 0) return 0;
@@ -483,56 +469,50 @@ export default {
                                 : 0;
                     });
                 }
-
-                // Parse positions and determine groups
                 const parsedPlayerPositions = parsePlayerPositions(
                     player.position,
                 );
                 const playerPosGroups = getPlayerPositionGroups(
                     parsedPlayerPositions,
                 );
-
                 return {
-                    ...player,
+                    // Ensure all necessary fields are present for both table and dialog
+                    ...player, // original data
                     age: parseInt(player.age, 10) || 0,
-                    transferValueAmount: transferValue,
-                    wageAmount: wageValue,
-                    attributes: numericAttributes,
+                    transferValueAmount: transferValue, // for sorting
+                    wageAmount: wageValue, // for sorting
+                    attributes: numericAttributes, // processed attributes
+                    // FIFA stats
                     PHY: calculateFifaStat(numericAttributes, "PHY"),
                     SHO: calculateFifaStat(numericAttributes, "SHO"),
                     PAS: calculateFifaStat(numericAttributes, "PAS"),
                     DRI: calculateFifaStat(numericAttributes, "DRI"),
                     DEF: calculateFifaStat(numericAttributes, "DEF"),
                     MEN: calculateFifaStat(numericAttributes, "MEN"),
-                    parsedPositions: parsedPlayerPositions, // Add parsed positions to player object
-                    positionGroups: playerPosGroups, // Add position groups to player object
+                    // Positional data
+                    parsedPositions: parsedPlayerPositions,
+                    positionGroups: playerPosGroups,
                 };
             });
         };
 
-        // Options for the position filter dropdown
         const positionFilterOptions = computed(() => {
             const options = [];
-            // Add groups first
             Object.keys(positionGroups).forEach((groupName) => {
                 options.push({
                     label: `${groupName} (Group)`,
                     value: groupName,
                 });
             });
-
-            // Add unique specific positions found in the data
             const specificPlayerPositions = new Set();
             allPlayers.value.forEach((player) => {
                 player.parsedPositions?.forEach((pos) =>
                     specificPlayerPositions.add(pos),
                 );
             });
-
             Array.from(specificPlayerPositions)
                 .sort()
                 .forEach((pos) => {
-                    // Avoid adding if a group has the same name (unlikely here)
                     if (!positionGroups[pos]) {
                         options.push({ label: pos, value: pos });
                     }
@@ -543,8 +523,7 @@ export default {
         const filteredPlayers = computed(() => {
             if (!allPlayers.value.length) return [];
             let tempPlayers = [...allPlayers.value];
-
-            // Apply text filters
+            // Name filter
             if (filters.name) {
                 tempPlayers = tempPlayers.filter(
                     (p) =>
@@ -554,6 +533,7 @@ export default {
                             .includes(filters.name.toLowerCase()),
                 );
             }
+            // Club filter
             if (filters.club) {
                 tempPlayers = tempPlayers.filter(
                     (p) =>
@@ -563,13 +543,11 @@ export default {
                             .includes(filters.club.toLowerCase()),
                 );
             }
-
-            // Apply Transfer Value Filter
+            // Transfer value filter
             if (filters.transferValue) {
                 let operator = "includes";
                 let compareValueNum = 0;
                 let filterValStr = filters.transferValue;
-
                 if (filterValStr.startsWith(">")) {
                     operator = ">";
                     filterValStr = filterValStr.substring(1);
@@ -577,35 +555,31 @@ export default {
                     operator = "<";
                     filterValStr = filterValStr.substring(1);
                 }
-
                 if (operator !== "includes")
                     compareValueNum = parseMonetaryValue(filterValStr);
-
                 tempPlayers = tempPlayers.filter((p) => {
                     const playerValueNum = p.transferValueAmount || 0;
                     if (operator === ">")
                         return playerValueNum > compareValueNum;
                     if (operator === "<")
                         return playerValueNum < compareValueNum;
-                    // 'includes' logic for string search on original transfer_value
                     return String(p.transfer_value || "")
                         .toLowerCase()
                         .includes(filters.transferValue.toLowerCase());
                 });
             }
-
-            // Apply Position Filter
+            // Position filter
             if (filters.position) {
                 const selectedFilter = filters.position;
                 if (positionGroups[selectedFilter]) {
-                    // It's a group filter
+                    // Is it a group?
                     tempPlayers = tempPlayers.filter(
                         (p) =>
                             p.positionGroups &&
                             p.positionGroups.includes(selectedFilter),
                     );
                 } else {
-                    // It's a specific position filter
+                    // Is it a specific position?
                     tempPlayers = tempPlayers.filter(
                         (p) =>
                             p.parsedPositions &&
@@ -613,33 +587,36 @@ export default {
                     );
                 }
             }
-
             // Apply sorting
             if (sortState.key) {
-                return sortPlayersLogic([...tempPlayers]); // Use a separate sorting function
+                return sortPlayersLogic([...tempPlayers]);
             }
             return tempPlayers;
         });
 
         const sortPlayersLogic = (playersToSort) => {
-            // Renamed to avoid conflict
             if (!sortState.key) return playersToSort;
+            // Determine the actual key to sort by (e.g. 'transferValueAmount' vs 'transfer_value')
+            const sortKey = sortState.isAttribute
+                ? sortState.key
+                : allPlayers.value.length > 0 &&
+                    Object.keys(allPlayers.value[0]).includes(
+                        sortState.key + "Amount",
+                    )
+                  ? sortState.key + "Amount"
+                  : sortState.key;
+
             return [...playersToSort].sort((a, b) => {
                 let valA, valB;
-                if (
-                    ["PHY", "SHO", "PAS", "DRI", "DEF", "MEN"].includes(
-                        sortState.key,
-                    ) ||
-                    ["transferValueAmount", "wageAmount", "age"].includes(
-                        sortState.key,
-                    )
-                ) {
-                    valA = a[sortState.key];
-                    valB = b[sortState.key];
+
+                if (sortState.isAttribute) {
+                    // Sorting by an original attribute (less likely now with FIFA stats)
+                    valA = a.attributes ? a.attributes[sortKey] : null;
+                    valB = b.attributes ? b.attributes[sortKey] : null;
                 } else {
-                    // name, club, position (original string)
-                    valA = String(a[sortState.key] || "").toLowerCase();
-                    valB = String(b[sortState.key] || "").toLowerCase();
+                    // Sorting by a direct player property (name, club, PHY, transferValueAmount, etc.)
+                    valA = a[sortKey];
+                    valB = b[sortKey];
                 }
 
                 if (valA == null && valB == null) return 0;
@@ -651,6 +628,9 @@ export default {
                         ? valA - valB
                         : valB - valA;
                 }
+                // Fallback to string comparison
+                valA = String(valA).toLowerCase();
+                valB = String(valB).toLowerCase();
                 if (valA < valB) return sortState.direction === "asc" ? -1 : 1;
                 if (valA > valB) return sortState.direction === "asc" ? 1 : -1;
                 return 0;
@@ -669,11 +649,9 @@ export default {
                 formData.append("playerFile", playerFile.value);
                 const response = await playerService.uploadPlayerFile(formData);
                 allPlayers.value = processPlayerData(response);
-                // console.log("Processed players (first 3):", allPlayers.value.slice(0,3).map(p => ({name: p.name, pos: p.position, parsed: p.parsedPositions, groups: p.positionGroups })));
-
                 sortState.key = null;
                 sortState.direction = "asc";
-                clearAllFilters(); // Clear all filters on new upload
+                clearAllFilters();
             } catch (err) {
                 error.value = `Failed to parse player data: ${err.message || "Unknown error"}`;
                 allPlayers.value = [];
@@ -685,20 +663,26 @@ export default {
         const handleSort = (sortParams) => {
             sortState.key = sortParams.key;
             sortState.direction = sortParams.direction;
-            sortState.isAttribute = sortParams.isAttribute; // Though less relevant now for FIFA stats
+            sortState.isAttribute = sortParams.isAttribute;
             sortState.displayField = sortParams.displayField;
         };
-
         const clearAllFilters = () => {
             filters.name = "";
             filters.club = "";
             filters.transferValue = "";
-            filters.position = null; // Reset position filter
+            filters.position = null;
+        };
+        const handleSearch = () => {
+            /* Reactive filtering handles this */
         };
 
-        const handleSearch = () => {
-            /* Filtering is reactive via computed props */
+        // --- START: Method to handle player selection and show dialog ---
+        const handlePlayerSelected = (player) => {
+            // console.log('Player selected in PlayerUploadPage to show dialog:', player);
+            selectedPlayer.value = player; // Set the selected player data
+            showPlayerDetailDialog.value = true; // Trigger the dialog to show
         };
+        // --- END: Method to handle player selection ---
 
         return {
             playerFile,
@@ -707,14 +691,18 @@ export default {
             allPlayers,
             filteredPlayers,
             uniqueClubsCount,
-            uniqueParsedPositionsCount, // Updated stat counts
+            uniqueParsedPositionsCount,
             filters,
             hasActiveFilters,
-            positionFilterOptions, // Added for position filter
+            positionFilterOptions,
             uploadAndParse,
             handleSort,
             handleSearch,
-            clearAllFilters, // Updated clear function
+            clearAllFilters,
+            // Expose refs and method for the dialog
+            selectedPlayer,
+            showPlayerDetailDialog,
+            handlePlayerSelected,
         };
     },
 };
