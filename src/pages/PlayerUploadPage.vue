@@ -252,6 +252,18 @@
                         >
                     </div>
                 </div>
+                
+                <!-- Upgrade Finder Button -->
+                <div class="row justify-end q-mb-md">
+                    <q-btn
+                        color="primary"
+                        icon="upgrade"
+                        label="Find Upgrades"
+                        @click="showUpgradeFinder = true"
+                        :disable="filteredPlayers.length === 0"
+                    />
+                </div>
+                
                 <PlayerDataTable
                     :players="filteredPlayers"
                     :loading="loading"
@@ -272,6 +284,13 @@
             :show="showPlayerDetailDialog"
             @close="showPlayerDetailDialog = false"
         />
+        
+        <!-- Upgrade Finder Dialog -->
+        <UpgradeFinderDialog
+            :show="showUpgradeFinder"
+            :players="allPlayers"
+            @close="showUpgradeFinder = false"
+        />
     </q-page>
 </template>
 
@@ -279,6 +298,7 @@
 import { ref, computed, reactive, onMounted, watch } from "vue";
 import PlayerDataTable from "../components/PlayerDataTable.vue";
 import PlayerDetailDialog from "../components/PlayerDetailDialog.vue";
+import UpgradeFinderDialog from "../components/UpgradeFinderDialog.vue";
 import playerService from "../services/playerService";
 
 // Position groups for filtering - this can remain client-side for filter generation
@@ -320,7 +340,7 @@ function debounce(fn, delay) {
 
 export default {
     name: "PlayerUploadPage",
-    components: { PlayerDataTable, PlayerDetailDialog },
+    components: { PlayerDataTable, PlayerDetailDialog, UpgradeFinderDialog },
     setup() {
         const playerFile = ref(null);
         const loading = ref(false);
@@ -329,6 +349,7 @@ export default {
         const filteredPlayers = ref([]);
         const selectedPlayer = ref(null);
         const showPlayerDetailDialog = ref(false);
+        const showUpgradeFinder = ref(false);
 
         // Refs for client-side feedback about weight files, not for calculation
         const attributeWeightsLoadedForFeedback = ref(false);
@@ -646,6 +667,7 @@ export default {
             attributeWeightsErrorForFeedback,
             roleSpecificOverallWeightsLoadedForFeedback,
             roleSpecificOverallWeightsErrorForFeedback,
+            showUpgradeFinder,
         };
     },
 };
