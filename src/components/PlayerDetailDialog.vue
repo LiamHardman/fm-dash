@@ -14,123 +14,170 @@
             </q-bar>
 
             <q-card-section v-if="player" class="q-card__section--main-content">
-                <div class="row q-col-gutter-x-lg q-col-gutter-y-md q-mb-lg">
+                <div class="row q-col-gutter-x-md q-col-gutter-y-sm q-mb-md">
                     <div class="col-12 col-md-6">
-                        <q-list bordered separator class="rounded-borders">
-                            <q-item>
-                                <q-item-section avatar>
-                                    <q-icon color="grey-7" name="badge" />
-                                </q-item-section>
-                                <q-item-section>
-                                    <q-item-label caption>Name</q-item-label>
-                                    <q-item-label class="text-weight-medium">{{
-                                        player.name || "-"
-                                    }}</q-item-label>
-                                </q-item-section>
-                            </q-item>
-                            <q-item>
-                                <q-item-section avatar>
+                        <div
+                            class="q-pa-sm rounded-borders"
+                            style="border: 1px solid #e0e0e0; height: 100%"
+                        >
+                            <div class="row items-start q-mb-xs">
+                                <div class="col-auto q-mr-sm q-pt-xs">
+                                    <q-icon
+                                        name="badge"
+                                        color="grey-7"
+                                        size="1.1em"
+                                    />
+                                </div>
+                                <div class="col">
+                                    <q-item-label caption class="q-mb-none"
+                                        >Name</q-item-label
+                                    >
+                                    <q-item-label
+                                        class="text-weight-medium text-body2"
+                                        >{{ player.name || "-" }}</q-item-label
+                                    >
+                                </div>
+                                <div
+                                    class="col-auto q-ml-md row items-center no-wrap"
+                                >
                                     <img
                                         v-if="player.nationality_iso"
                                         :src="`https://flagcdn.com/w40/${player.nationality_iso.toLowerCase()}.png`"
                                         :alt="player.nationality || 'Flag'"
-                                        width="30"
-                                        class="q-mr-sm player-flag"
+                                        width="26"
+                                        class="player-flag q-mr-xs"
                                         @error="onFlagError"
                                         :title="player.nationality"
                                     />
-                                    <q-icon v-else color="grey-7" name="flag" />
-                                </q-item-section>
-                                <q-item-section>
-                                    <q-item-label caption
-                                        >Nationality</q-item-label
-                                    >
-                                    <q-item-label>{{
+                                    <q-icon
+                                        v-else
+                                        color="grey-7"
+                                        name="flag"
+                                        size="1.1em"
+                                        class="q-mr-xs"
+                                    />
+                                    <q-item-label class="text-body2">{{
                                         player.nationality || "-"
                                     }}</q-item-label>
-                                </q-item-section>
-                            </q-item>
-                            <q-item>
-                                <q-item-section avatar>
+                                </div>
+                            </div>
+
+                            <q-separator spaced="xs" />
+
+                            <div class="row items-start q-mb-xs">
+                                <div class="col-auto q-mr-sm q-pt-xs">
                                     <q-icon
-                                        color="grey-7"
                                         name="sports_soccer"
+                                        color="grey-7"
+                                        size="1.1em"
                                     />
-                                </q-item-section>
-                                <q-item-section>
-                                    <q-item-label caption>Club</q-item-label>
-                                    <q-item-label>{{
+                                </div>
+                                <div class="col">
+                                    <q-item-label caption class="q-mb-none"
+                                        >Club</q-item-label
+                                    >
+                                    <q-item-label class="text-body2">{{
                                         player.club || "-"
                                     }}</q-item-label>
-                                </q-item-section>
-                            </q-item>
-                            <q-item>
-                                <q-item-section avatar>
-                                    <q-icon color="grey-7" name="engineering" />
-                                </q-item-section>
-                                <q-item-section>
-                                    <q-item-label caption
+                                </div>
+                                <div class="col-auto q-ml-md">
+                                    <q-item-label caption class="q-mb-none"
                                         >Position(s)</q-item-label
                                     >
-                                    <q-item-label>{{
-                                        player.parsedPositions?.join(", ") ||
-                                        player.position ||
-                                        "-"
-                                    }}</q-item-label>
-                                </q-item-section>
-                            </q-item>
-                            <q-item>
-                                <q-item-section avatar>
-                                    <q-icon color="grey-7" name="euro_symbol" />
-                                </q-item-section>
-                                <q-item-section>
-                                    <q-item-label caption
-                                        >Transfer Value</q-item-label
+                                    <q-item-label
+                                        class="text-body2 ellipsis"
+                                        style="max-width: 150px"
+                                        :title="
+                                            player.parsedPositions?.join(
+                                                ', ',
+                                            ) ||
+                                            player.position ||
+                                            '-'
+                                        "
                                     >
-                                    <q-item-label>{{
+                                        {{
+                                            player.parsedPositions?.join(
+                                                ", ",
+                                            ) ||
+                                            player.position ||
+                                            "-"
+                                        }}
+                                    </q-item-label>
+                                </div>
+                            </div>
+
+                            <q-separator spaced="xs" />
+
+                            <div class="row items-start q-mb-xs">
+                                <div class="col-auto q-mr-sm q-pt-xs">
+                                    <q-icon
+                                        name="euro_symbol"
+                                        color="grey-7"
+                                        size="1.1em"
+                                    />
+                                </div>
+                                <div class="col">
+                                    <q-item-label caption class="q-mb-none"
+                                        >Value</q-item-label
+                                    >
+                                    <q-item-label class="text-body2">{{
                                         player.transfer_value || "-"
                                     }}</q-item-label>
-                                </q-item-section>
-                            </q-item>
-                            <q-item>
-                                <q-item-section avatar>
-                                    <q-icon color="grey-7" name="payments" />
-                                </q-item-section>
-                                <q-item-section>
-                                    <q-item-label caption>Salary</q-item-label>
-                                    <q-item-label>{{
-                                        player.wage || "-"
-                                    }}</q-item-label>
-                                </q-item-section>
-                            </q-item>
-                            <q-item>
-                                <q-item-section avatar>
-                                    <q-icon color="grey-7" name="star" />
-                                </q-item-section>
-                                <q-item-section>
-                                    <q-item-label caption
-                                        >Overall Rating (Best
-                                        Role)</q-item-label
+                                </div>
+                                <div
+                                    class="col-auto q-ml-md row items-center no-wrap"
+                                >
+                                    <q-icon
+                                        name="payments"
+                                        color="grey-7"
+                                        size="1.1em"
+                                        class="q-mr-xs"
+                                    />
+                                    <div class="col">
+                                        <q-item-label caption class="q-mb-none"
+                                            >Salary</q-item-label
+                                        >
+                                        <q-item-label class="text-body2">{{
+                                            player.wage || "-"
+                                        }}</q-item-label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <q-separator spaced="xs" />
+
+                            <div class="row items-start">
+                                <div class="col-auto q-mr-sm q-pt-xs">
+                                    <q-icon
+                                        name="star"
+                                        color="grey-7"
+                                        size="1.1em"
+                                    />
+                                </div>
+                                <div class="col">
+                                    <q-item-label caption class="q-mb-none"
+                                        >Overall (Best Role)</q-item-label
                                     >
                                     <q-item-label
-                                        class="text-weight-bold text-h6"
+                                        class="text-weight-bold text-subtitle1"
                                         :class="
                                             getFifaStatClass(player.Overall)
                                         "
                                     >
                                         {{ player.Overall || "N/A" }}
                                     </q-item-label>
-                                </q-item-section>
-                            </q-item>
-                        </q-list>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+
                     <div class="col-12 col-md-6">
                         <div
-                            class="text-subtitle1 q-mb-sm text-center text-weight-medium"
+                            class="text-subtitle1 q-mb-xs text-center text-weight-medium"
                         >
                             FIFA-Style Ratings
                         </div>
-                        <div class="row q-col-gutter-sm text-center">
+                        <div class="row q-col-gutter-xs text-center">
                             <div
                                 v-for="stat in fifaStatsOrder"
                                 :key="stat.name"
@@ -139,7 +186,7 @@
                                 <q-card
                                     flat
                                     bordered
-                                    class="q-pa-sm rounded-borders full-height"
+                                    class="q-pa-xs rounded-borders full-height"
                                 >
                                     <div class="text-caption text-grey-8">
                                         {{ stat.label }}
@@ -148,7 +195,7 @@
                                         :class="
                                             getFifaStatClass(player[stat.name])
                                         "
-                                        class="attribute-value fifa-stat-value text-h6"
+                                        class="attribute-value fifa-stat-value text-subtitle1"
                                     >
                                         {{
                                             player[stat.name] !== undefined
@@ -550,7 +597,14 @@ export default defineComponent({
         };
 
         const onFlagError = (event) => {
-            event.target.style.display = "none";
+            // Hide the img tag if the flag image fails to load
+            if (event.target) {
+                event.target.style.display = "none";
+                // Optionally, find the sibling q-icon (if we decide to add one as a fallback for failed image loads)
+                // and display it. This requires a more complex DOM traversal or a Vue ref.
+                // For simplicity, we're just hiding the broken image for now.
+                // A more robust solution might involve a data property to toggle between img and a placeholder q-icon.
+            }
         };
 
         const sortedRoleSpecificOveralls = computed(() => {
@@ -593,7 +647,7 @@ export default defineComponent({
 .player-detail-dialog-card > .q-card__section--main-content {
     flex-grow: 1;
     overflow-y: auto;
-    padding: 20px;
+    padding: 16px;
 }
 
 .player-detail-dialog-card > .q-card__actions {
@@ -609,62 +663,70 @@ export default defineComponent({
     border: 1px solid #ddd;
     border-radius: 3px;
     object-fit: cover;
+    vertical-align: middle;
+}
+
+/* Styles for the refactored player info section */
+.q-item-label.text-body2 {
+    font-size: 0.875rem; /* Standard body2 size */
+    line-height: 1.25;
+}
+.q-item-label.q-mb-none {
+    /* Custom class to remove bottom margin from captions */
+    margin-bottom: 0 !important;
+}
+.q-pt-xs {
+    /* Align icons better with text */
+    padding-top: 2px;
 }
 
 /* Attribute Columns Layout */
 .attribute-columns-row > .column {
-    /* Each of the three main columns */
     display: flex;
     flex-direction: column;
 }
 
-/* For Technical and Mental attribute cards and their lists */
 .full-height-card {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
-    min-height: 0; /* Important for flex item children to shrink properly */
+    min-height: 0;
 }
 
 .full-height-card .scroll-list {
-    /* q-list inside Technical/Mental cards */
     flex-grow: 1;
     overflow-y: auto;
-    min-height: 0; /* Allows the list to shrink and scroll */
+    min-height: 0;
 }
 
-/* Styling for attribute card headers */
 .q-card .q-card__section.bg-grey-2 {
-    padding: 10px 14px;
+    padding: 8px 12px;
 }
 .q-card .text-subtitle2 {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: #555;
 }
 
-/* Constrained height and scrolling for lists in the Roles card */
 .constrained-scroll-list {
-    /* General class for lists that might scroll if needed */
     overflow-y: auto;
 }
 
 .role-specific-ratings-list {
-    /* Specifically for the roles list */
-    max-height: 200px; /* Ensures this list scrolls within a defined height */
+    max-height: 180px;
 }
 
 /* Attribute Value Styling (0-20 scale for FM-style attributes) */
 .attribute-value {
     display: inline-block;
-    min-width: 32px;
+    min-width: 30px;
     text-align: center;
     font-weight: 600;
-    padding: 3px 6px;
+    padding: 2px 5px;
     border-radius: 4px;
-    font-size: 0.8rem;
-    line-height: 1.4;
+    font-size: 0.75rem;
+    line-height: 1.3;
 }
 .attribute-excellent-fm {
     background-color: #1976d2;
@@ -693,8 +755,9 @@ export default defineComponent({
 
 /* FIFA Stat Value Styling (0-100 scale) */
 .fifa-stat-value {
-    font-size: 1.05em;
-    padding: 4px 8px;
+    /* Inherits .attribute-value styles, then these override/add */
+    font-size: 0.9em; /* Relative to its container's font size (text-subtitle1) */
+    padding: 3px 6px;
 }
 .attribute-elite {
     background-color: #7b1fa2;
@@ -734,7 +797,6 @@ export default defineComponent({
     color: #fff;
 }
 
-/* Highlight for best role */
 .best-role-highlight {
     background-color: #e3f2fd !important;
     border-left: 3px solid var(--q-primary);
@@ -743,20 +805,36 @@ export default defineComponent({
     font-weight: 500;
 }
 
-/* Dense list item padding */
 .q-list--dense .q-item,
 .constrained-scroll-list .q-item {
-    /* Apply to new scrollable lists too */
-    padding: 6px 12px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    padding-left: 10px;
+    padding-right: 10px;
+    min-height: auto;
 }
+.q-list--dense .q-item__section--avatar {
+    min-width: 38px;
+    padding-right: 10px;
+}
+
 .q-item__section--side {
     padding-right: 0;
 }
 
-/* Ensure FIFA stat cards in the grid take full height of their row */
 .row.text-center > .col-4 > .q-card.full-height {
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: center; /* Vertically centers content in FIFA stat cards */
+    min-height: 60px; /* Ensure FIFA stat cards have some min height */
+}
+
+.q-list--dense .q-item__label--caption {
+    font-size: 0.7rem;
+    line-height: 1.2;
+}
+.q-list--dense .q-item__label:not(.q-item__label--caption) {
+    font-size: 0.85rem;
+    line-height: 1.3;
 }
 </style>
