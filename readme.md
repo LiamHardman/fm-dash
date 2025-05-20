@@ -58,3 +58,8 @@ npm run build
 ```
 
 This will generate static files in the `dist` directory that can be served by any static file server.
+
+
+# Querying LLM:
+
+Use this -> codeweaver --ignore "node_modules,\.git"
