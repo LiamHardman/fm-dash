@@ -15,28 +15,39 @@
                     <div class="col-12 col-md-6">
                         <q-list bordered separator>
                             <q-item>
-                                <q-item-section avatar
-                                    ><q-icon color="grey-7" name="badge"
-                                /></q-item-section>
-                                <q-item-section
-                                    ><q-item-label caption>Name</q-item-label
-                                    ><q-item-label class="text-weight-medium">{{
+                                <q-item-section avatar>
+                                    <q-icon color="grey-7" name="badge" />
+                                </q-item-section>
+                                <q-item-section>
+                                    <q-item-label caption>Name</q-item-label>
+                                    <q-item-label class="text-weight-medium">{{
                                         player.name || "-"
-                                    }}</q-item-label></q-item-section
-                                >
+                                    }}</q-item-label>
+                                </q-item-section>
                             </q-item>
+
                             <q-item>
-                                <q-item-section avatar
-                                    ><q-icon color="grey-7" name="flag"
-                                /></q-item-section>
-                                <q-item-section
-                                    ><q-item-label caption
+                                <q-item-section avatar>
+                                    <img
+                                        v-if="player.nationality_iso"
+                                        :src="`https://flagcdn.com/w40/${player.nationality_iso.toLowerCase()}.png`"
+                                        :alt="player.nationality || 'Flag'"
+                                        width="30"
+                                        class="q-mr-sm"
+                                        @error="onFlagError"
+                                    />
+                                    <q-icon v-else color="grey-7" name="flag" />
+                                </q-item-section>
+                                <q-item-section>
+                                    <q-item-label caption
                                         >Nationality</q-item-label
-                                    ><q-item-label>{{
+                                    >
+                                    <q-item-label>{{
                                         player.nationality || "-"
-                                    }}</q-item-label></q-item-section
-                                >
+                                    }}</q-item-label>
+                                </q-item-section>
                             </q-item>
+
                             <q-item>
                                 <q-item-section avatar
                                     ><q-icon
@@ -411,12 +422,23 @@ export default defineComponent({
             if (numValue >= 30) return "attribute-poor";
             return "attribute-very-poor";
         };
+
+        // Fallback for flag images
+        const onFlagError = (event) => {
+            // console.warn(`Flag image failed to load: ${event.target.src}`);
+            // You could replace it with a default placeholder flag or hide it
+            event.target.style.display = "none"; // Hide broken image icon
+            // Or, to show a placeholder:
+            // event.target.src = 'https://placehold.co/30x20/cccccc/969696?text=N/A';
+        };
+
         return {
             attributeCategories,
             attributeFullNameMap,
             getAttributeClass,
             getFifaStatClass,
             fifaStatsOrder,
+            onFlagError,
         };
     },
 });
@@ -508,5 +530,11 @@ export default defineComponent({
 }
 .q-item__section--side {
     padding-right: 0;
+}
+/* Style for the flag image */
+.q-item img {
+    border: 1px solid #eee; /* Optional: adds a light border around the flag */
+    border-radius: 2px; /* Optional: slightly rounded corners for the flag */
+    object-fit: cover; /* Ensures the flag image covers the area without distortion */
 }
 </style>

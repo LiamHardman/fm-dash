@@ -22,14 +22,16 @@ const (
 
 // Player struct
 type Player struct {
-	Name          string            `json:"name"`
-	Position      string            `json:"position"`
-	Age           string            `json:"age"`
-	Club          string            `json:"club"`
-	TransferValue string            `json:"transfer_value"`
-	Wage          string            `json:"wage"`
-	Nationality   string            `json:"nationality"` // Will store the full country name
-	Attributes    map[string]string `json:"attributes"`
+	Name                string            `json:"name"`
+	Position            string            `json:"position"`
+	Age                 string            `json:"age"`
+	Club                string            `json:"club"`
+	TransferValue       string            `json:"transfer_value"`
+	Wage                string            `json:"wage"`
+	Nationality         string            `json:"nationality"`           // Full country name
+	NationalityISO      string            `json:"nationality_iso"`       // 2-letter ISO code for flags
+	NationalityFIFACode string            `json:"nationality_fifa_code"` // Original 3-letter FIFA code
+	Attributes          map[string]string `json:"attributes"`
 }
 
 // PlayerParseResult is used for concurrent processing.
@@ -38,7 +40,7 @@ type PlayerParseResult struct {
 	Err    error
 }
 
-// START: FIFA Country Code Map
+// START: FIFA Country Code Maps
 var fifaCountryCodes = map[string]string{
 	"AFG": "Afghanistan", "ALB": "Albania", "ALG": "Algeria", "ASA": "American Samoa", "AND": "Andorra",
 	"ANG": "Angola", "AIA": "Anguilla", "ATG": "Antigua and Barbuda", "ARG": "Argentina", "ARM": "Armenia",
@@ -60,7 +62,7 @@ var fifaCountryCodes = map[string]string{
 	"GUY": "Guyana", "HAI": "Haiti", "HON": "Honduras", "HKG": "Hong Kong", "HUN": "Hungary",
 	"ISL": "Iceland", "IND": "India", "IDN": "Indonesia", "IRN": "Iran", "IRQ": "Iraq",
 	"IRL": "Republic of Ireland", "ISR": "Israel", "ITA": "Italy", "JAM": "Jamaica", "JPN": "Japan",
-	"JOR": "Jordan", "KAZ": "Kazakhstan", "KEN": "Kenya", "PRK": "Korea DPR", "KOR": "Korea Republic",
+	"JOR": "Jordan", "KAZ": "Kazakhstan", "KEN": "Kenya", "PRK": "North Korea", "KOR": "South Korea", // Adjusted for clarity
 	"KVX": "Kosovo", "KUW": "Kuwait", "KGZ": "Kyrgyzstan", "LAO": "Laos", "LVA": "Latvia",
 	"LBN": "Lebanon", "LES": "Lesotho", "LBR": "Liberia", "LBY": "Libya", "LIE": "Liechtenstein",
 	"LTU": "Lithuania", "LUX": "Luxembourg", "MAC": "Macau", "MAD": "Madagascar", "MWI": "Malawi",
@@ -83,10 +85,43 @@ var fifaCountryCodes = map[string]string{
 	"UGA": "Uganda", "UKR": "Ukraine", "UAE": "United Arab Emirates", "USA": "USA", "URU": "Uruguay",
 	"VIR": "US Virgin Islands", "UZB": "Uzbekistan", "VAN": "Vanuatu", "VEN": "Venezuela", "VIE": "Vietnam",
 	"WAL": "Wales", "YEM": "Yemen", "ZAM": "Zambia", "ZIM": "Zimbabwe",
-	// Add more codes if needed
 }
 
-// END: FIFA Country Code Map
+var fifaToISO2 = map[string]string{
+	"AFG": "AF", "ALB": "AL", "ALG": "DZ", "ASA": "AS", "AND": "AD", "ANG": "AO", "AIA": "AI",
+	"ATG": "AG", "ARG": "AR", "ARM": "AM", "ARU": "AW", "AUS": "AU", "AUT": "AT", "AZE": "AZ",
+	"BAH": "BS", "BHR": "BH", "BAN": "BD", "BRB": "BB", "BLR": "BY", "BEL": "BE", "BLZ": "BZ",
+	"BEN": "BJ", "BER": "BM", "BHU": "BT", "BOL": "BO", "BIH": "BA", "BOT": "BW", "BRA": "BR",
+	"VGB": "VG", "BRU": "BN", "BUL": "BG", "BFA": "BF", "BDI": "BI", "CAM": "KH", "CMR": "CM",
+	"CAN": "CA", "CPV": "CV", "CAY": "KY", "CTA": "CF", "CHA": "TD", "CHI": "CL", "CHN": "CN",
+	"TPE": "TW", "COL": "CO", "COM": "KM", "CGO": "CG", "COD": "CD", "COK": "CK", "CRC": "CR",
+	"CIV": "CI", "CRO": "HR", "CUB": "CU", "CUW": "CW", "CYP": "CY", "CZE": "CZ", "DEN": "DK",
+	"DJI": "DJ", "DMA": "DM", "DOM": "DO", "ECU": "EC", "EGY": "EG", "SLV": "SV",
+	"ENG": "gb-eng", "EQG": "GQ", "ERI": "ER", "EST": "EE", "SWZ": "SZ", "ETH": "ET", "FRO": "FO",
+	"FIJ": "FJ", "FIN": "FI", "FRA": "FR", "GAB": "GA", "GAM": "GM", "GEO": "GE", "GER": "DE",
+	"GHA": "GH", "GIB": "GI", "GRE": "GR", "GRN": "GD", "GUM": "GU", "GUA": "GT", "GUI": "GN",
+	"GNB": "GW", "GUY": "GY", "HAI": "HT", "HON": "HN", "HKG": "HK", "HUN": "HU", "ISL": "IS",
+	"IND": "IN", "IDN": "ID", "IRN": "IR", "IRQ": "IQ", "IRL": "IE", "ISR": "IL", "ITA": "IT",
+	"JAM": "JM", "JPN": "JP", "JOR": "JO", "KAZ": "KZ", "KEN": "KE", "PRK": "KP", "KOR": "KR",
+	"KVX": "XK", "KUW": "KW", "KGZ": "KG", "LAO": "LA", "LVA": "LV", "LBN": "LB", "LES": "LS",
+	"LBR": "LR", "LBY": "LY", "LIE": "LI", "LTU": "LT", "LUX": "LU", "MAC": "MO", "MAD": "MG",
+	"MWI": "MW", "MAS": "MY", "MDV": "MV", "MLI": "ML", "MLT": "MT", "MTN": "MR", "MRI": "MU",
+	"MEX": "MX", "MDA": "MD", "MNG": "MN", "MNE": "ME", "MSR": "MS", "MAR": "MA", "MOZ": "MZ",
+	"MYA": "MM", "NAM": "NA", "NEP": "NP", "NED": "NL", "NCL": "NC", "NZL": "NZ", "NCA": "NI",
+	"NIG": "NE", "NGA": "NG", "MKD": "MK", "NIR": "gb-nir", "NOR": "NO", "OMA": "OM", "PAK": "PK",
+	"PLE": "PS", "PAN": "PA", "PNG": "PG", "PAR": "PY", "PER": "PE", "PHI": "PH", "POL": "PL",
+	"POR": "PT", "PUR": "PR", "QAT": "QA", "ROU": "RO", "RUS": "RU", "RWA": "RW",
+	"SKN": "KN", "LCA": "LC", "VIN": "VC", "SAM": "WS", "SMR": "SM", "STP": "ST", "KSA": "SA",
+	"SCO": "gb-sct", "SEN": "SN", "SRB": "RS", "SEY": "SC", "SLE": "SL", "SIN": "SG", "SVK": "SK",
+	"SVN": "SI", "SOL": "SB", "SOM": "SO", "RSA": "ZA", "SSD": "SS", "ESP": "ES", "SRI": "LK",
+	"SDN": "SD", "SUR": "SR", "SWE": "SE", "SUI": "CH", "SYR": "SY", "TAH": "PF", // Tahiti is French Polynesia
+	"TJK": "TJ", "TAN": "TZ", "THA": "TH", "TLS": "TL", "TOG": "TG", "TGA": "TO", "TRI": "TT",
+	"TUN": "TN", "TUR": "TR", "TKM": "TM", "TCA": "TC", "UGA": "UG", "UKR": "UA", "UAE": "AE",
+	"USA": "US", "URU": "UY", "VIR": "VI", "UZB": "UZ", "VAN": "VU", "VEN": "VE", "VIE": "VN",
+	"WAL": "gb-wls", "YEM": "YE", "ZAM": "ZM", "ZIM": "ZW",
+}
+
+// END: FIFA Country Code Maps
 
 // getNodeTextOptimized remains the same
 func getNodeTextOptimized(n *html.Node) string {
@@ -120,7 +155,7 @@ func parseTransferValue(rawValue string) string {
 	return rawValue
 }
 
-// uploadHandler remains largely the same, details omitted for brevity, ensure it's as per your latest version
+// uploadHandler remains largely the same
 func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Only POST method is allowed", http.StatusMethodNotAllowed)
@@ -333,8 +368,7 @@ func parseRowToPlayer(tr *html.Node, headers []string) (Player, error) {
 	}
 
 	knownNonAttributeHeaders := map[string]bool{
-		"Inf": true, // Common for player status icons/info
-		// "Nat" is handled specially, so it's not listed here.
+		"Inf": true,
 	}
 
 	foundName := false
@@ -366,18 +400,27 @@ func parseRowToPlayer(tr *html.Node, headers []string) (Player, error) {
 				player.Wage = cellValue
 				isAnAttributeField = false
 			case "Nat":
+				fifaCode := strings.ToUpper(cellValue)
+				player.NationalityFIFACode = fifaCode // Store the original 3-letter code
+
 				if player.Nationality == "" { // First "Nat" column is Nationality
-					// Convert 3-letter code to full name
-					if fullName, ok := fifaCountryCodes[strings.ToUpper(cellValue)]; ok {
+					if fullName, ok := fifaCountryCodes[fifaCode]; ok {
 						player.Nationality = fullName
 					} else {
 						player.Nationality = cellValue // Default to the code if not found in map
-						log.Printf("Warning: FIFA country code '%s' not found in map. Using original value.", cellValue)
+						log.Printf("Warning: FIFA country code '%s' not found in full name map. Using original value.", cellValue)
+					}
+
+					if isoCode, ok := fifaToISO2[fifaCode]; ok {
+						player.NationalityISO = isoCode
+					} else {
+						player.NationalityISO = strings.ToLower(cellValue) // Fallback for ISO, try lowercase 3-letter code
+						log.Printf("Warning: FIFA country code '%s' not found in ISO2 map. Using lowercase original value as fallback.", cellValue)
 					}
 					isAnAttributeField = false
 				} else {
 					// Subsequent "Nat" column is treated as "Natural Fitness" attribute
-					// isAnAttributeField remains true
+					// isAnAttributeField remains true, will be added to Attributes map
 				}
 			}
 
