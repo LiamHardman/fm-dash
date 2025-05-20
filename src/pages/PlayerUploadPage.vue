@@ -11,23 +11,13 @@
                         Instructions:
                     </div>
                     <ol class="q-ml-md">
+                        <li>Ensure the Go API is running.</li>
+                        <li>Select an HTML file. Click "Upload and Parse".</li>
                         <li>
-                            Ensure the Go API (main.go) is running (usually on
-                            http://localhost:8091).
+                            Use filters for Name, Club, Position, Nationality,
+                            and Transfer Value.
                         </li>
-                        <li>
-                            Select an HTML file exported from Football Manager
-                            containing player data.
-                        </li>
-                        <li>Click "Upload and Parse".</li>
-                        <li>
-                            Click on any player row in the table to see their
-                            detailed attributes.
-                        </li>
-                        <li>
-                            Use the "Position / Group" filter along with other
-                            filters.
-                        </li>
+                        <li>Click on any player row for a detailed view.</li>
                     </ol>
                 </q-card-section>
             </q-card>
@@ -42,9 +32,9 @@
                         outlined
                         counter
                     >
-                        <template v-slot:prepend>
-                            <q-icon name="attach_file" />
-                        </template>
+                        <template v-slot:prepend
+                            ><q-icon name="attach_file"
+                        /></template>
                     </q-file>
                     <q-btn
                         class="q-mt-md full-width"
@@ -61,7 +51,7 @@
                 <q-card-section>
                     <div class="text-subtitle1 q-mb-sm">Search Players</div>
                     <div class="row q-col-gutter-md">
-                        <div class="col-12 col-sm-6 col-md-3">
+                        <div class="col-12 col-sm-6 col-md-2">
                             <q-input
                                 v-model="filters.name"
                                 label="Player Name"
@@ -71,7 +61,7 @@
                                 @update:model-value="handleSearch"
                             />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-3">
+                        <div class="col-12 col-sm-6 col-md-2">
                             <q-input
                                 v-model="filters.club"
                                 label="Club"
@@ -91,6 +81,16 @@
                                 clearable
                                 emit-value
                                 map-options
+                                @update:model-value="handleSearch"
+                            />
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-2">
+                            <q-input
+                                v-model="filters.nationality"
+                                label="Nationality"
+                                dense
+                                outlined
+                                clearable
                                 @update:model-value="handleSearch"
                             />
                         </div>
@@ -124,64 +124,78 @@
                 rounded
             >
                 {{ error }}
-                <template v-slot:action>
-                    <q-btn
+                <template v-slot:action
+                    ><q-btn
                         flat
                         color="white"
                         label="Dismiss"
                         @click="error = ''"
-                    />
-                </template>
+                /></template>
             </q-banner>
 
             <template v-if="allPlayers.length > 0">
                 <div class="row q-col-gutter-md q-mb-md">
-                    <div class="col-12 col-md-3">
-                        <q-card class="text-center">
-                            <q-card-section>
-                                <div class="text-h6">
+                    <div class="col-12 col-md-2">
+                        <q-card class="text-center"
+                            ><q-card-section
+                                ><div class="text-h6">
                                     {{ allPlayers.length }}
                                 </div>
-                                <div class="text-subtitle2">Total Players</div>
-                            </q-card-section>
-                        </q-card>
+                                <div class="text-subtitle2">
+                                    Total Players
+                                </div></q-card-section
+                            ></q-card
+                        >
                     </div>
-                    <div class="col-12 col-md-3">
-                        <q-card class="text-center">
-                            <q-card-section>
-                                <div class="text-h6">
+                    <div class="col-12 col-md-2">
+                        <q-card class="text-center"
+                            ><q-card-section
+                                ><div class="text-h6">
                                     {{ filteredPlayers.length }}
                                 </div>
                                 <div class="text-subtitle2">
-                                    Filtered Players
-                                </div>
-                            </q-card-section>
-                        </q-card>
+                                    Filtered
+                                </div></q-card-section
+                            ></q-card
+                        >
                     </div>
-                    <div class="col-12 col-md-3">
-                        <q-card class="text-center">
-                            <q-card-section>
-                                <div class="text-h6">
+                    <div class="col-12 col-md-2">
+                        <q-card class="text-center"
+                            ><q-card-section
+                                ><div class="text-h6">
                                     {{ uniqueClubsCount }}
                                 </div>
-                                <div class="text-subtitle2">Unique Clubs</div>
-                            </q-card-section>
-                        </q-card>
+                                <div class="text-subtitle2">
+                                    Clubs
+                                </div></q-card-section
+                            ></q-card
+                        >
                     </div>
                     <div class="col-12 col-md-3">
-                        <q-card class="text-center">
-                            <q-card-section>
-                                <div class="text-h6">
+                        <q-card class="text-center"
+                            ><q-card-section
+                                ><div class="text-h6">
                                     {{ uniqueParsedPositionsCount }}
                                 </div>
                                 <div class="text-subtitle2">
-                                    Unique Positions
+                                    Positions
+                                </div></q-card-section
+                            ></q-card
+                        >
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <q-card class="text-center"
+                            ><q-card-section
+                                ><div class="text-h6">
+                                    {{ uniqueNationalitiesCount }}
                                 </div>
-                            </q-card-section>
-                        </q-card>
+                                <div class="text-subtitle2">
+                                    Nationalities
+                                </div></q-card-section
+                            ></q-card
+                        >
                     </div>
                 </div>
-
                 <PlayerDataTable
                     :players="filteredPlayers"
                     :loading="loading"
@@ -208,10 +222,10 @@
 <script>
 import { ref, computed, reactive } from "vue";
 import PlayerDataTable from "../components/PlayerDataTable.vue";
-import PlayerDetailDialog from "../components/PlayerDetailDialog.vue"; // Import the new dialog component
+import PlayerDetailDialog from "../components/PlayerDetailDialog.vue";
 import playerService from "../services/playerService";
 
-// --- START: Position Parsing and Mapping Logic (Copied from previous version) ---
+// Position Parsing Logic (assumed to be correct from previous steps)
 const positionRoleMap = {
     GK: "Goalkeeper",
     SW: "Sweeper",
@@ -300,19 +314,16 @@ function parsePlayerPositions(positionStr) {
                 }
             }
         } else {
-            // No sides specified
             if (["D", "DM", "M", "AM", "ST", "F", "WB"].includes(roleKey)) {
                 const detailedName = `${roleFullName} (Centre)`;
                 parsedPositions.add(
                     standardizedPositionNameMap[detailedName] || detailedName,
                 );
             } else if (["GK", "SW"].includes(roleKey)) {
-                // GK, SW are inherently central
                 parsedPositions.add(
                     standardizedPositionNameMap[roleFullName] || roleFullName,
                 );
             } else {
-                // Fallback for roles without explicit side or inherent centrality
                 parsedPositions.add(roleFullName);
             }
         }
@@ -331,25 +342,17 @@ function getPlayerPositionGroups(parsedPositionsArray) {
     });
     return Array.from(groups);
 }
-// --- END: Position Parsing and Mapping Logic ---
 
 export default {
     name: "PlayerUploadPage",
-    components: {
-        PlayerDataTable,
-        PlayerDetailDialog, // Register the dialog component
-    },
-
+    components: { PlayerDataTable, PlayerDetailDialog },
     setup() {
         const playerFile = ref(null);
         const loading = ref(false);
         const error = ref("");
         const allPlayers = ref([]);
-
-        // --- START: State for Player Detail Dialog ---
-        const selectedPlayer = ref(null); // Holds the data for the player to show in the dialog
-        const showPlayerDetailDialog = ref(false); // Controls visibility of the dialog
-        // --- END: State for Player Detail Dialog ---
+        const selectedPlayer = ref(null);
+        const showPlayerDetailDialog = ref(false);
 
         const sortState = reactive({
             key: null,
@@ -362,29 +365,38 @@ export default {
             club: "",
             transferValue: "",
             position: null,
+            nationality: "", // Added nationality filter
         });
+
         const hasActiveFilters = computed(() => {
             return (
                 filters.name !== "" ||
                 filters.club !== "" ||
                 filters.transferValue !== "" ||
-                filters.position !== null
+                filters.position !== null ||
+                filters.nationality !== ""
             );
         });
-        const uniqueClubsCount = computed(() => {
-            const clubs = new Set();
-            allPlayers.value.forEach((player) => {
-                if (player.club) clubs.add(player.club);
-            });
-            return clubs.size;
-        });
+        const uniqueClubsCount = computed(
+            () =>
+                new Set(allPlayers.value.map((p) => p.club).filter(Boolean))
+                    .size,
+        );
         const uniqueParsedPositionsCount = computed(() => {
             const positions = new Set();
-            allPlayers.value.forEach((player) => {
-                player.parsedPositions?.forEach((pos) => positions.add(pos));
-            });
+            allPlayers.value.forEach((player) =>
+                player.parsedPositions?.forEach((pos) => positions.add(pos)),
+            );
             return positions.size;
         });
+        // START: Unique Nationalities Count
+        const uniqueNationalitiesCount = computed(
+            () =>
+                new Set(
+                    allPlayers.value.map((p) => p.nationality).filter(Boolean),
+                ).size,
+        );
+        // END: Unique Nationalities Count
 
         const parseMonetaryValue = (valueStr) => {
             if (typeof valueStr !== "string" || !valueStr) return 0;
@@ -413,7 +425,6 @@ export default {
                 isNaN(numericValue) ? 0 : numericValue * multiplier,
             );
         };
-
         const fifaStatCategories = {
             PHY: ["Acc", "Pac", "Bal", "Jum", "Nat", "Sta", "Str"],
             SHO: ["Fin", "Lon", "Pen", "Tec", "Cmp", "OtB", "Hea"],
@@ -475,23 +486,22 @@ export default {
                 const playerPosGroups = getPlayerPositionGroups(
                     parsedPlayerPositions,
                 );
+                // The backend now sends `nationality` as a top-level field.
                 return {
-                    // Ensure all necessary fields are present for both table and dialog
-                    ...player, // original data
+                    ...player,
                     age: parseInt(player.age, 10) || 0,
-                    transferValueAmount: transferValue, // for sorting
-                    wageAmount: wageValue, // for sorting
-                    attributes: numericAttributes, // processed attributes
-                    // FIFA stats
+                    transferValueAmount: transferValue,
+                    wageAmount: wageValue,
+                    attributes: numericAttributes,
                     PHY: calculateFifaStat(numericAttributes, "PHY"),
                     SHO: calculateFifaStat(numericAttributes, "SHO"),
                     PAS: calculateFifaStat(numericAttributes, "PAS"),
                     DRI: calculateFifaStat(numericAttributes, "DRI"),
                     DEF: calculateFifaStat(numericAttributes, "DEF"),
                     MEN: calculateFifaStat(numericAttributes, "MEN"),
-                    // Positional data
                     parsedPositions: parsedPlayerPositions,
                     positionGroups: playerPosGroups,
+                    // nationality: player.nationality // This should already be on the player object from Go
                 };
             });
         };
@@ -523,8 +533,7 @@ export default {
         const filteredPlayers = computed(() => {
             if (!allPlayers.value.length) return [];
             let tempPlayers = [...allPlayers.value];
-            // Name filter
-            if (filters.name) {
+            if (filters.name)
                 tempPlayers = tempPlayers.filter(
                     (p) =>
                         p.name &&
@@ -532,9 +541,7 @@ export default {
                             .toLowerCase()
                             .includes(filters.name.toLowerCase()),
                 );
-            }
-            // Club filter
-            if (filters.club) {
+            if (filters.club)
                 tempPlayers = tempPlayers.filter(
                     (p) =>
                         p.club &&
@@ -542,8 +549,6 @@ export default {
                             .toLowerCase()
                             .includes(filters.club.toLowerCase()),
                 );
-            }
-            // Transfer value filter
             if (filters.transferValue) {
                 let operator = "includes";
                 let compareValueNum = 0;
@@ -568,18 +573,15 @@ export default {
                         .includes(filters.transferValue.toLowerCase());
                 });
             }
-            // Position filter
             if (filters.position) {
                 const selectedFilter = filters.position;
                 if (positionGroups[selectedFilter]) {
-                    // Is it a group?
                     tempPlayers = tempPlayers.filter(
                         (p) =>
                             p.positionGroups &&
                             p.positionGroups.includes(selectedFilter),
                     );
                 } else {
-                    // Is it a specific position?
                     tempPlayers = tempPlayers.filter(
                         (p) =>
                             p.parsedPositions &&
@@ -587,16 +589,23 @@ export default {
                     );
                 }
             }
-            // Apply sorting
-            if (sortState.key) {
-                return sortPlayersLogic([...tempPlayers]);
+            // START: Nationality Filtering
+            if (filters.nationality) {
+                tempPlayers = tempPlayers.filter(
+                    (p) =>
+                        p.nationality &&
+                        p.nationality
+                            .toLowerCase()
+                            .includes(filters.nationality.toLowerCase()),
+                );
             }
+            // END: Nationality Filtering
+            if (sortState.key) return sortPlayersLogic([...tempPlayers]);
             return tempPlayers;
         });
 
         const sortPlayersLogic = (playersToSort) => {
             if (!sortState.key) return playersToSort;
-            // Determine the actual key to sort by (e.g. 'transferValueAmount' vs 'transfer_value')
             const sortKey = sortState.isAttribute
                 ? sortState.key
                 : allPlayers.value.length > 0 &&
@@ -605,30 +614,23 @@ export default {
                     )
                   ? sortState.key + "Amount"
                   : sortState.key;
-
             return [...playersToSort].sort((a, b) => {
                 let valA, valB;
-
                 if (sortState.isAttribute) {
-                    // Sorting by an original attribute (less likely now with FIFA stats)
                     valA = a.attributes ? a.attributes[sortKey] : null;
                     valB = b.attributes ? b.attributes[sortKey] : null;
                 } else {
-                    // Sorting by a direct player property (name, club, PHY, transferValueAmount, etc.)
                     valA = a[sortKey];
                     valB = b[sortKey];
                 }
-
                 if (valA == null && valB == null) return 0;
                 if (valA == null) return sortState.direction === "asc" ? 1 : -1;
                 if (valB == null) return sortState.direction === "asc" ? -1 : 1;
-
                 if (typeof valA === "number" && typeof valB === "number") {
                     return sortState.direction === "asc"
                         ? valA - valB
                         : valB - valA;
                 }
-                // Fallback to string comparison
                 valA = String(valA).toLowerCase();
                 valB = String(valB).toLowerCase();
                 if (valA < valB) return sortState.direction === "asc" ? -1 : 1;
@@ -636,7 +638,6 @@ export default {
                 return 0;
             });
         };
-
         const uploadAndParse = async () => {
             if (!playerFile.value) {
                 error.value = "Please select an HTML file first.";
@@ -659,7 +660,6 @@ export default {
                 loading.value = false;
             }
         };
-
         const handleSort = (sortParams) => {
             sortState.key = sortParams.key;
             sortState.direction = sortParams.direction;
@@ -671,18 +671,15 @@ export default {
             filters.club = "";
             filters.transferValue = "";
             filters.position = null;
+            filters.nationality = ""; /* Clear nationality */
         };
         const handleSearch = () => {
-            /* Reactive filtering handles this */
+            /* Reactive filtering */
         };
-
-        // --- START: Method to handle player selection and show dialog ---
         const handlePlayerSelected = (player) => {
-            // console.log('Player selected in PlayerUploadPage to show dialog:', player);
-            selectedPlayer.value = player; // Set the selected player data
-            showPlayerDetailDialog.value = true; // Trigger the dialog to show
+            selectedPlayer.value = player;
+            showPlayerDetailDialog.value = true;
         };
-        // --- END: Method to handle player selection ---
 
         return {
             playerFile,
@@ -692,6 +689,7 @@ export default {
             filteredPlayers,
             uniqueClubsCount,
             uniqueParsedPositionsCount,
+            uniqueNationalitiesCount, // Added uniqueNationalitiesCount
             filters,
             hasActiveFilters,
             positionFilterOptions,
@@ -699,7 +697,6 @@ export default {
             handleSort,
             handleSearch,
             clearAllFilters,
-            // Expose refs and method for the dialog
             selectedPlayer,
             showPlayerDetailDialog,
             handlePlayerSelected,

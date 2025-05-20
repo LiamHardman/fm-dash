@@ -15,68 +15,77 @@
                     <div class="col-12 col-md-6">
                         <q-list bordered separator>
                             <q-item>
-                                <q-item-section avatar>
-                                    <q-icon color="grey-7" name="badge" />
-                                </q-item-section>
-                                <q-item-section>
-                                    <q-item-label caption>Name</q-item-label>
-                                    <q-item-label class="text-weight-medium">{{
+                                <q-item-section avatar
+                                    ><q-icon color="grey-7" name="badge"
+                                /></q-item-section>
+                                <q-item-section
+                                    ><q-item-label caption>Name</q-item-label
+                                    ><q-item-label class="text-weight-medium">{{
                                         player.name || "-"
-                                    }}</q-item-label>
-                                </q-item-section>
+                                    }}</q-item-label></q-item-section
+                                >
                             </q-item>
                             <q-item>
-                                <q-item-section avatar>
-                                    <q-icon
+                                <q-item-section avatar
+                                    ><q-icon color="grey-7" name="flag"
+                                /></q-item-section>
+                                <q-item-section
+                                    ><q-item-label caption
+                                        >Nationality</q-item-label
+                                    ><q-item-label>{{
+                                        player.nationality || "-"
+                                    }}</q-item-label></q-item-section
+                                >
+                            </q-item>
+                            <q-item>
+                                <q-item-section avatar
+                                    ><q-icon
                                         color="grey-7"
                                         name="sports_soccer"
-                                    />
-                                </q-item-section>
-                                <q-item-section>
-                                    <q-item-label caption>Club</q-item-label>
-                                    <q-item-label>{{
+                                /></q-item-section>
+                                <q-item-section
+                                    ><q-item-label caption>Club</q-item-label
+                                    ><q-item-label>{{
                                         player.club || "-"
-                                    }}</q-item-label>
-                                </q-item-section>
+                                    }}</q-item-label></q-item-section
+                                >
                             </q-item>
                             <q-item>
-                                <q-item-section avatar>
-                                    <q-icon color="grey-7" name="engineering" />
-                                </q-item-section>
-                                <q-item-section>
-                                    <q-item-label caption
+                                <q-item-section avatar
+                                    ><q-icon color="grey-7" name="engineering"
+                                /></q-item-section>
+                                <q-item-section
+                                    ><q-item-label caption
                                         >Position(s)</q-item-label
-                                    >
-                                    <q-item-label>{{
+                                    ><q-item-label>{{
                                         player.parsedPositions?.join(", ") ||
                                         player.position ||
                                         "-"
-                                    }}</q-item-label>
-                                </q-item-section>
+                                    }}</q-item-label></q-item-section
+                                >
                             </q-item>
                             <q-item>
-                                <q-item-section avatar>
-                                    <q-icon color="grey-7" name="euro_symbol" />
-                                </q-item-section>
-                                <q-item-section>
-                                    <q-item-label caption
+                                <q-item-section avatar
+                                    ><q-icon color="grey-7" name="euro_symbol"
+                                /></q-item-section>
+                                <q-item-section
+                                    ><q-item-label caption
                                         >Transfer Value</q-item-label
-                                    >
-                                    <q-item-label>{{
+                                    ><q-item-label>{{
                                         player.transfer_value || "-"
-                                    }}</q-item-label>
-                                </q-item-section>
+                                    }}</q-item-label></q-item-section
+                                >
                             </q-item>
                             <q-item>
-                                <q-item-section avatar>
-                                    <q-icon color="grey-7" name="payments" />
-                                </q-item-section>
-                                <q-item-section>
-                                    <q-item-label caption>Salary</q-item-label>
-                                    <q-item-label>{{
+                                <q-item-section avatar
+                                    ><q-icon color="grey-7" name="payments"
+                                /></q-item-section>
+                                <q-item-section
+                                    ><q-item-label caption>Salary</q-item-label
+                                    ><q-item-label>{{
                                         player.wage || "-"
-                                    }}</q-item-label>
-                                </q-item-section>
+                                    }}</q-item-label></q-item-section
+                                >
                             </q-item>
                         </q-list>
                     </div>
@@ -122,11 +131,11 @@
                 <div class="row q-col-gutter-md">
                     <div class="col-12 col-md-4">
                         <q-card flat bordered>
-                            <q-card-section class="bg-grey-2">
-                                <div class="text-subtitle1 text-weight-medium">
+                            <q-card-section class="bg-grey-2"
+                                ><div class="text-subtitle1 text-weight-medium">
                                     Technical
-                                </div>
-                            </q-card-section>
+                                </div></q-card-section
+                            >
                             <q-list separator dense>
                                 <q-item
                                     v-for="attrKey in attributeCategories.technical"
@@ -135,23 +144,22 @@
                                     <q-item-section>{{
                                         attributeFullNameMap[attrKey] || attrKey
                                     }}</q-item-section>
-                                    <q-item-section side>
-                                        <span
+                                    <q-item-section side
+                                        ><span
                                             :class="
                                                 getAttributeClass(
                                                     player.attributes[attrKey],
                                                 )
                                             "
                                             class="attribute-value"
-                                        >
-                                            {{
+                                            >{{
                                                 player.attributes[attrKey] !==
                                                 undefined
                                                     ? player.attributes[attrKey]
                                                     : "-"
-                                            }}
-                                        </span>
-                                    </q-item-section>
+                                            }}</span
+                                        ></q-item-section
+                                    >
                                 </q-item>
                                 <q-item
                                     v-if="!attributeCategories.technical.length"
@@ -163,14 +171,13 @@
                             </q-list>
                         </q-card>
                     </div>
-
                     <div class="col-12 col-md-4">
                         <q-card flat bordered>
-                            <q-card-section class="bg-grey-2">
-                                <div class="text-subtitle1 text-weight-medium">
+                            <q-card-section class="bg-grey-2"
+                                ><div class="text-subtitle1 text-weight-medium">
                                     Mental
-                                </div>
-                            </q-card-section>
+                                </div></q-card-section
+                            >
                             <q-list separator dense>
                                 <q-item
                                     v-for="attrKey in attributeCategories.mental"
@@ -179,23 +186,22 @@
                                     <q-item-section>{{
                                         attributeFullNameMap[attrKey] || attrKey
                                     }}</q-item-section>
-                                    <q-item-section side>
-                                        <span
+                                    <q-item-section side
+                                        ><span
                                             :class="
                                                 getAttributeClass(
                                                     player.attributes[attrKey],
                                                 )
                                             "
                                             class="attribute-value"
-                                        >
-                                            {{
+                                            >{{
                                                 player.attributes[attrKey] !==
                                                 undefined
                                                     ? player.attributes[attrKey]
                                                     : "-"
-                                            }}
-                                        </span>
-                                    </q-item-section>
+                                            }}</span
+                                        ></q-item-section
+                                    >
                                 </q-item>
                                 <q-item
                                     v-if="!attributeCategories.mental.length"
@@ -207,14 +213,13 @@
                             </q-list>
                         </q-card>
                     </div>
-
                     <div class="col-12 col-md-4">
                         <q-card flat bordered>
-                            <q-card-section class="bg-grey-2">
-                                <div class="text-subtitle1 text-weight-medium">
+                            <q-card-section class="bg-grey-2"
+                                ><div class="text-subtitle1 text-weight-medium">
                                     Physical
-                                </div>
-                            </q-card-section>
+                                </div></q-card-section
+                            >
                             <q-list separator dense>
                                 <q-item
                                     v-for="attrKey in attributeCategories.physical"
@@ -223,23 +228,22 @@
                                     <q-item-section>{{
                                         attributeFullNameMap[attrKey] || attrKey
                                     }}</q-item-section>
-                                    <q-item-section side>
-                                        <span
+                                    <q-item-section side
+                                        ><span
                                             :class="
                                                 getAttributeClass(
                                                     player.attributes[attrKey],
                                                 )
                                             "
                                             class="attribute-value"
-                                        >
-                                            {{
+                                            >{{
                                                 player.attributes[attrKey] !==
                                                 undefined
                                                     ? player.attributes[attrKey]
                                                     : "-"
-                                            }}
-                                        </span>
-                                    </q-item-section>
+                                            }}</span
+                                        ></q-item-section
+                                    >
                                 </q-item>
                                 <q-item
                                     v-if="!attributeCategories.physical.length"
@@ -257,15 +261,13 @@
                 <q-spinner color="primary" size="3em" />
                 <div class="q-mt-md text-grey-7">Loading player data...</div>
             </q-card-section>
-
-            <q-card-actions align="right" class="bg-grey-1 q-pa-md">
-                <q-btn
+            <q-card-actions align="right" class="bg-grey-1 q-pa-md"
+                ><q-btn
                     label="Close"
                     color="primary"
                     flat
                     @click="$emit('close')"
-                />
-            </q-card-actions>
+            /></q-card-actions>
         </q-card>
     </q-dialog>
 </template>
@@ -273,10 +275,7 @@
 <script>
 import { defineComponent, computed } from "vue";
 
-// --- START: Attribute Definitions ---
-// Map for short codes to full attribute names
 const attributeFullNameMap = {
-    // Technical
     Cor: "Corners",
     Cro: "Crossing",
     Dri: "Dribbling",
@@ -285,14 +284,12 @@ const attributeFullNameMap = {
     Fre: "Free Kick Taking",
     Hea: "Heading",
     Lon: "Long Shots",
-    "L Th": "Long Throws", // Key with space, correctly quoted
+    "L Th": "Long Throws",
     Mar: "Marking",
     Pas: "Passing",
     Pen: "Penalty Taking",
     Tck: "Tackling",
     Tec: "Technique",
-
-    // Mental
     Agg: "Aggression",
     Ant: "Anticipation",
     Bra: "Bravery",
@@ -307,8 +304,6 @@ const attributeFullNameMap = {
     Tea: "Teamwork",
     Vis: "Vision",
     Wor: "Work Rate",
-
-    // Physical
     Acc: "Acceleration",
     Agi: "Agility",
     Bal: "Balance",
@@ -318,8 +313,6 @@ const attributeFullNameMap = {
     Sta: "Stamina",
     Str: "Strength",
 };
-
-// Define the desired order of attributes within each category
 const technicalAttrsOrdered = [
     "Cor",
     "Cro",
@@ -329,7 +322,7 @@ const technicalAttrsOrdered = [
     "Fre",
     "Hea",
     "Lon",
-    "L Th", // "L Th" is correctly placed here
+    "L Th",
     "Mar",
     "Pas",
     "Pen",
@@ -362,46 +355,26 @@ const physicalAttrsOrdered = [
     "Sta",
     "Str",
 ];
-// --- END: Attribute Definitions ---
 
 export default defineComponent({
     name: "PlayerDetailDialog",
     props: {
-        player: {
-            type: Object,
-            default: () => null,
-        },
-        show: {
-            type: Boolean,
-            default: false,
-        },
+        player: { type: Object, default: () => null },
+        show: { type: Boolean, default: false },
     },
     emits: ["close"],
-
     setup(props) {
-        // This function filters the predefined ordered list of attribute keys
-        // to include only those that actually exist in the current player's attributes.
         const getPlayerAttributesInOrder = (categoryOrderedKeys) => {
-            if (!props.player || !props.player.attributes) {
-                // console.warn("Player data or attributes missing for getPlayerAttributesInOrder");
-                return [];
-            }
-            // For debugging: Log the keys available in player.attributes
-            // if (categoryOrderedKeys === technicalAttrsOrdered) { // Log only for technical to reduce spam
-            //   console.log("Available player attributes keys:", Object.keys(props.player.attributes));
-            //   console.log("Checking for 'L Th' in player attributes:", props.player.attributes.hasOwnProperty('L Th'));
-            // }
+            if (!props.player || !props.player.attributes) return [];
             return categoryOrderedKeys.filter((key) =>
                 props.player.attributes.hasOwnProperty(key),
             );
         };
-
         const attributeCategories = computed(() => ({
             technical: getPlayerAttributesInOrder(technicalAttrsOrdered),
             mental: getPlayerAttributesInOrder(mentalAttrsOrdered),
             physical: getPlayerAttributesInOrder(physicalAttrsOrdered),
         }));
-
         const fifaStatsOrder = [
             { name: "PHY", label: "PHY" },
             { name: "SHO", label: "SHO" },
@@ -410,7 +383,6 @@ export default defineComponent({
             { name: "DEF", label: "DEF" },
             { name: "MEN", label: "MEN" },
         ];
-
         const getAttributeClass = (value) => {
             if (value === null || value === undefined || value === "-")
                 return "attribute-na";
@@ -424,7 +396,6 @@ export default defineComponent({
             if (numValue >= 6) return "attribute-poor-fm";
             return "attribute-very-poor-fm";
         };
-
         const getFifaStatClass = (value) => {
             if (value === null || value === undefined || value === "-")
                 return "attribute-na";
@@ -440,10 +411,9 @@ export default defineComponent({
             if (numValue >= 30) return "attribute-poor";
             return "attribute-very-poor";
         };
-
         return {
             attributeCategories,
-            attributeFullNameMap, // Expose the map to the template
+            attributeFullNameMap,
             getAttributeClass,
             getFifaStatClass,
             fifaStatsOrder,
@@ -460,7 +430,6 @@ export default defineComponent({
     border-top-left-radius: 8px;
     border-top-right-radius: 8px;
 }
-
 .attribute-value {
     display: inline-block;
     min-width: 30px;
@@ -470,8 +439,6 @@ export default defineComponent({
     border-radius: 3px;
     font-size: 0.85em;
 }
-
-/* FM Style Attributes (0-20) */
 .attribute-excellent-fm {
     background-color: #20c997;
     color: white;
@@ -496,8 +463,6 @@ export default defineComponent({
     background-color: #fa5252;
     color: white;
 }
-
-/* FIFA Style Attributes (0-100) */
 .fifa-stat-value {
     font-size: 1.1em;
     padding: 4px 8px;
@@ -534,12 +499,10 @@ export default defineComponent({
     background-color: #fa5252;
     color: white;
 }
-
 .attribute-na {
     background-color: #e9ecef;
     color: #868e96;
 }
-
 .q-list--dense .q-item {
     padding: 6px 12px;
 }

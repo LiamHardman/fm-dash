@@ -28,7 +28,8 @@ type Player struct {
 	Club          string            `json:"club"`
 	TransferValue string            `json:"transfer_value"`
 	Wage          string            `json:"wage"`
-	Attributes    map[string]string `json:"attributes"` // This will store all other columns as attributes
+	Nationality   string            `json:"nationality"` // Added Nationality field
+	Attributes    map[string]string `json:"attributes"`
 }
 
 // PlayerParseResult is used to send results (or errors) from worker goroutines.
@@ -42,18 +43,28 @@ func getNodeTextOptimized(n *html.Node) string {
 	if n == nil {
 		return ""
 	}
+	// If it's a text node, return its data directly. Normalization will happen at a higher level.
 	if n.Type == html.TextNode {
 		return n.Data
 	}
+
+	// For element nodes, recursively gather text from children.
 	var sb strings.Builder
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		sb.WriteString(getNodeTextOptimized(c))
+		// Add a space after processing a child node if it's an element node
+		// and it's not the last child. This helps separate words from different tags.
+		// strings.Fields will handle multiple spaces or leading/trailing spaces later.
 		if c.Type == html.ElementNode && c.NextSibling != nil {
 			sb.WriteByte(' ')
 		} else if c.Type == html.TextNode && c.NextSibling != nil && c.NextSibling.Type == html.ElementNode {
+			// Add a space if text node is followed by an element node
 			sb.WriteByte(' ')
 		}
 	}
+
+	// strings.Fields splits the string by whitespace and removes empty strings.
+	// strings.Join then joins them with a single space. This normalizes all whitespace.
 	return strings.Join(strings.Fields(sb.String()), " ")
 }
 
@@ -110,7 +121,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			if tableNode != nil {
+			if tableNode != nil { // Optimization: stop searching if already found
 				return
 			}
 			findTable(c)
@@ -123,9 +134,11 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// --- Header Parsing (Sequential) ---
 	var headers []string
-	var headerRowNode *html.Node
+	var headerRowNode *html.Node // Keep track of the header row to skip it later
 
+	// Find the header row
 	var findHeaderRow func(n *html.Node) bool
 	findHeaderRow = func(n *html.Node) bool {
 		if n.Type == html.ElementNode && n.Data == "tr" {
@@ -141,9 +154,10 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 				headers = tempHeaders
 				headerRowNode = n
 				log.Printf("Parsed Headers: %v", headers)
-				return true
+				return true // Header found
 			}
 		}
+		// Check within tbody or directly under table or thead
 		if n.Type == html.ElementNode && (n.Data == "tbody" || n.Data == "table" || n.Data == "thead") {
 			for c := n.FirstChild; c != nil; c = c.NextSibling {
 				if findHeaderRow(c) {
@@ -154,7 +168,9 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return false
 	}
 
+	// Search for headers starting from the table node
 	if !findHeaderRow(tableNode) {
+		// Fallback: if no <th> based header found, try to use the very first row.
 		firstRow := true
 		for tr := tableNode.FirstChild; tr != nil; tr = tr.NextSibling {
 			if tr.Type == html.ElementNode && tr.Data == "tbody" {
@@ -169,11 +185,11 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 							}
 							log.Printf("Warning: No <th> header row found. Using first row as header: %v", headers)
 							firstRow = false
-							break
+							break // Found first row
 						}
 					}
 				}
-				break
+				break // Processed tbody
 			} else if tr.Type == html.ElementNode && tr.Data == "tr" {
 				if firstRow {
 					headerRowNode = tr
@@ -184,7 +200,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 					}
 					log.Printf("Warning: No <th> header row found. Using first row as header (direct tr): %v", headers)
 					firstRow = false
-					break
+					break // Found first row
 				}
 			}
 			if !firstRow {
@@ -199,16 +215,19 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// --- Concurrent Row Processing ---
 	players := make([]Player, 0, defaultPlayerCapacity)
-	rowNodesToProcess := make([]*html.Node, 0, defaultPlayerCapacity)
+	rowNodesToProcess := make([]*html.Node, 0, defaultPlayerCapacity) // Collect data rows first
 
+	// Collect all data row nodes (excluding the identified header row)
 	var collectDataRows func(*html.Node)
 	collectDataRows = func(n *html.Node) {
 		if n.Type == html.ElementNode && n.Data == "tr" {
-			if n != headerRowNode {
+			if n != headerRowNode { // Skip the already processed header row
 				rowNodesToProcess = append(rowNodesToProcess, n)
 			}
 		}
+		// Traverse into tbody or directly look for trs
 		if n.Type == html.ElementNode && (n.Data == "tbody" || n.Data == "table") {
 			for c := n.FirstChild; c != nil; c = c.NextSibling {
 				collectDataRows(c)
@@ -220,6 +239,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	numRowsToProcess := len(rowNodesToProcess)
 	if numRowsToProcess == 0 {
 		log.Println("No data rows found to process after header parsing.")
+		// Proceed to send empty player list if no data rows
 	}
 
 	numWorkers := runtime.NumCPU()
@@ -230,13 +250,14 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		numWorkers = 1
 	}
 
-	rowNodeChan := make(chan *html.Node, numRowsToProcess)
-	resultsChan := make(chan PlayerParseResult, numRowsToProcess)
+	rowNodeChan := make(chan *html.Node, numRowsToProcess)        // Buffered channel
+	resultsChan := make(chan PlayerParseResult, numRowsToProcess) // Buffered channel
 	var wg sync.WaitGroup
 
 	headersSnapshot := make([]string, len(headers))
 	copy(headersSnapshot, headers)
 
+	// Start worker goroutines
 	for i := 0; i < numWorkers; i++ {
 		wg.Add(1)
 		go func() {
@@ -248,16 +269,19 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		}()
 	}
 
+	// Distribute row nodes to workers
 	for _, rowNode := range rowNodesToProcess {
 		rowNodeChan <- rowNode
 	}
-	close(rowNodeChan)
+	close(rowNodeChan) // Signal workers that no more rows will be sent
 
+	// Closer goroutine for resultsChan
 	go func() {
 		wg.Wait()
 		close(resultsChan)
 	}()
 
+	// Collect results
 	for result := range resultsChan {
 		if result.Err == nil {
 			players = append(players, result.Player)
@@ -268,11 +292,12 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	parseDuration := time.Since(parseStartTime)
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "*") // For local testing
 	if err := json.NewEncoder(w).Encode(players); err != nil {
 		http.Error(w, "Error encoding JSON: "+err.Error(), http.StatusInternalServerError)
 	}
 
+	// Performance Logging
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
 	rowsPerSecond := 0.0
@@ -299,7 +324,7 @@ func parseRowToPlayer(tr *html.Node, headers []string) (Player, error) {
 	cells = make([]string, 0, cellCap)
 
 	for td := tr.FirstChild; td != nil; td = td.NextSibling {
-		if td.Type == html.ElementNode && (td.Data == "td" || td.Data == "th") {
+		if td.Type == html.ElementNode && (td.Data == "td" || td.Data == "th") { // Also consider th if data rows might have them
 			cells = append(cells, getNodeTextOptimized(td))
 		}
 	}
@@ -308,28 +333,23 @@ func parseRowToPlayer(tr *html.Node, headers []string) (Player, error) {
 		return Player{}, errors.New("cannot process row: headers are empty")
 	}
 	if len(cells) == 0 {
+		// This case might occur if a row is completely empty or malformed.
 		return Player{}, errors.New("skipped row: no cells found in row")
 	}
 
 	// Initialize player with default attribute capacity
 	player := Player{
 		Attributes: make(map[string]string, defaultAttributeCapacity),
+		// Nationality will be empty by default, to be filled if a "Nat" column is found
 	}
 
-	// Define known non-attribute column headers.
-	// These should match exactly how they appear after getNodeTextOptimized.
-	// IMPORTANT: Ensure these keys are exactly what you expect from your HTML headers.
+	// Define known non-attribute column headers that are NOT the primary player fields.
+	// "Nat" is intentionally excluded here because we handle it specially below.
 	knownNonAttributeHeaders := map[string]bool{
-		"Name":           true,
-		"Position":       true,
-		"Age":            true,
-		"Club":           true,
-		"Transfer Value": true,
-		"Wage":           true,
-		"Nat":            true, // If "Nat" is for Nationality column, not Natural Fitness attribute
-		"Inf":            true, // Common for player status icons/info
+		"Inf": true, // Common for player status icons/info
 		// Add any other specific non-attribute columns that might appear in your tables
 		// e.g., "UID", "Personality", "Media Handling", etc.
+		// DO NOT add "Nat" here.
 	}
 
 	// Iterate through all headers and cells to populate player fields and attributes
@@ -337,6 +357,7 @@ func parseRowToPlayer(tr *html.Node, headers []string) (Player, error) {
 	for i, headerName := range headers {
 		if i < len(cells) { // Ensure we have a corresponding cell for the header
 			cellValue := strings.TrimSpace(cells[i])
+			isAnAttributeField := true // Assume it's an attribute unless explicitly handled by a case
 
 			switch headerName {
 			case "Name":
@@ -344,27 +365,50 @@ func parseRowToPlayer(tr *html.Node, headers []string) (Player, error) {
 				if cellValue != "" {
 					foundName = true
 				}
+				isAnAttributeField = false // This is a main field, not an attribute
 			case "Position":
 				player.Position = cellValue
+				isAnAttributeField = false
 			case "Age":
 				player.Age = cellValue
+				isAnAttributeField = false
 			case "Club":
 				player.Club = cellValue
+				isAnAttributeField = false
 			case "Transfer Value":
 				player.TransferValue = parseTransferValue(cellValue)
+				isAnAttributeField = false
 			case "Wage":
 				player.Wage = cellValue
-			default:
-				// If the header is not one of the known non-attribute fields, treat it as an attribute.
-				if _, isNonAttribute := knownNonAttributeHeaders[headerName]; !isNonAttribute {
+				isAnAttributeField = false
+			case "Nat": // Special handling for "Nat"
+				// The first "Nat" column encountered is assumed to be Nationality.
+				// Any subsequent "Nat" column will be treated as the "Natural Fitness" attribute.
+				if player.Nationality == "" { // If Nationality field is not yet set, this is it.
+					player.Nationality = cellValue
+					isAnAttributeField = false // This "Nat" is handled as the main Nationality.
+				} else {
+					// If player.Nationality is already set, this "Nat" must be the "Natural Fitness" attribute.
+					// isAnAttributeField remains true, so it will be added to Attributes map below.
+					// No action needed here, the logic below will handle it.
+				}
+				// No default case needed here, logic below handles attributes
+			}
+
+			// If isAnAttributeField is true, it means the header was not one of the main player fields
+			// (Name, Position, Age, Club, Transfer Value, Wage) OR the first "Nat" (Nationality).
+			// It could be an actual attribute (like "Acc", "Fin", or the second "Nat" for Natural Fitness)
+			// or something we explicitly want to ignore (like "Inf").
+			if isAnAttributeField {
+				// Check if it's a known non-attribute header we want to ignore (e.g., "Inf")
+				if _, isKnownNonAttr := knownNonAttributeHeaders[headerName]; !isKnownNonAttr {
+					// It's not a main field, not the first "Nat", and not in the explicit ignore list.
+					// So, treat it as a player attribute.
 					// Only add if the attribute name and value are not empty and value is not "-"
 					if headerName != "" && cellValue != "" && cellValue != "-" {
 						player.Attributes[headerName] = cellValue
 					}
 				}
-				// If it IS a known non-attribute but not one of the main fields (e.g. "Nat" for Nationality)
-				// and you want to store it elsewhere on the Player struct, add that logic here.
-				// For now, we only explicitly handle the main fields and dynamically add others to Attributes.
 			}
 		}
 	}
@@ -382,7 +426,7 @@ func parseRowToPlayer(tr *html.Node, headers []string) (Player, error) {
 		if isPotentiallyMeaningfulRow {
 			return Player{}, errors.New("skipped row: 'Name' field is missing or empty. First few cells: " + strings.Join(getFirstNCells(cells, 5), ", "))
 		}
-		return Player{}, errors.New("skipped row: 'Name' field missing and row appears empty")
+		return Player{}, errors.New("skipped row: 'Name' field missing and row appears empty") // Less verbose for truly empty rows
 	}
 
 	return player, nil
@@ -399,33 +443,14 @@ func getFirstNCells(slice []string, n int) []string {
 	return slice[:n]
 }
 
-// getHeaderIndex finds the index of a header string in a slice of headers.
-// Not strictly needed with the new attribute parsing logic but can be kept for other uses.
-func getHeaderIndex(headers []string, headerName string) int {
-	for i, h := range headers {
-		if h == headerName {
-			return i
-		}
-	}
-	return -1
-}
-
-// safeGet safely retrieves an element from a slice by index, returning "" if out of bounds.
-// Not strictly needed with the new attribute parsing logic.
-func safeGet(slice []string, index int) string {
-	if index >= 0 && index < len(slice) {
-		return strings.TrimSpace(slice[index])
-	}
-	return ""
-}
-
-// bToMb converts bytes to megabytes.
+// bToMb converts bytes to megabytes for logging.
 func bToMb(b uint64) float64 {
 	return float64(b) / 1024 / 1024
 }
 
 // main function to start the server.
 func main() {
+	// Serve index.html at the root
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)
@@ -436,7 +461,7 @@ func main() {
 
 	http.HandleFunc("/upload", uploadHandler)
 
-	port := "8091" // Changed from 8080 to 8091 as per your vite.config.js
+	port := "8091" // Ensure this matches your frontend proxy and desired port
 	log.Printf("Server starting on http://localhost:%s", port)
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatal("ListenAndServe: ", err)
