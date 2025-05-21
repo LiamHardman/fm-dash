@@ -200,7 +200,7 @@ export default {
     props: {
         players: { type: Array, required: true },
         loading: { type: Boolean, default: false },
-        isGoalkeeperView: { type: Boolean, default: false }, // NEW PROP
+        isGoalkeeperView: { type: Boolean, default: false },
     },
     emits: ["update:sort", "player-selected"],
 
@@ -313,9 +313,17 @@ export default {
             },
         ];
 
-        const fifaStatColumnsBase = ref([
-            // Renamed to Base
-            {
+        // Define all possible FIFA stat columns
+        const allFifaStatDefinitions = {
+            GK: {
+                name: "GK",
+                label: "GK",
+                field: "GK",
+                sortable: true,
+                align: "center",
+                isFifaStat: true,
+            },
+            PHY: {
                 name: "PHY",
                 label: "PHY",
                 field: "PHY",
@@ -323,15 +331,7 @@ export default {
                 align: "center",
                 isFifaStat: true,
             },
-            {
-                name: "SHO",
-                label: "SHO",
-                field: "SHO",
-                sortable: true,
-                align: "center",
-                isFifaStat: true,
-            },
-            {
+            PAS: {
                 name: "PAS",
                 label: "PAS",
                 field: "PAS",
@@ -339,23 +339,7 @@ export default {
                 align: "center",
                 isFifaStat: true,
             },
-            {
-                name: "DRI",
-                label: "DRI",
-                field: "DRI",
-                sortable: true,
-                align: "center",
-                isFifaStat: true,
-            },
-            {
-                name: "DEF",
-                label: "DEF",
-                field: "DEF",
-                sortable: true,
-                align: "center",
-                isFifaStat: true,
-            },
-            {
+            MEN: {
                 name: "MEN",
                 label: "MEN",
                 field: "MEN",
@@ -363,40 +347,65 @@ export default {
                 align: "center",
                 isFifaStat: true,
             },
-        ]);
-
-        const gkStatColumnDefinition = {
-            // Defined once
-            name: "GK",
-            label: "GK",
-            field: "GK",
-            sortable: true,
-            align: "center",
-            isFifaStat: true,
+            DRI: {
+                name: "DRI",
+                label: "DRI",
+                field: "DRI",
+                sortable: true,
+                align: "center",
+                isFifaStat: true,
+            },
+            DEF: {
+                name: "DEF",
+                label: "DEF",
+                field: "DEF",
+                sortable: true,
+                align: "center",
+                isFifaStat: true,
+            },
+            SHO: {
+                name: "SHO",
+                label: "SHO",
+                field: "SHO",
+                sortable: true,
+                align: "center",
+                isFifaStat: true,
+            },
         };
 
-        // This computed property will now build the columns dynamically
         const currentColumns = computed(() => {
-            let columns = [...baseColumns, ...fifaStatColumnsBase.value];
+            let fifaColumnsOrdered = [];
             if (props.isGoalkeeperView) {
-                const menIndex = columns.findIndex((col) => col.name === "MEN");
-                if (menIndex !== -1) {
-                    columns.splice(menIndex + 1, 0, gkStatColumnDefinition);
-                } else {
-                    // Fallback: add to the end if MEN column isn't found for some reason
-                    columns.push(gkStatColumnDefinition);
-                }
+                // Order for GKs: GK, PHY, PAS, MEN, DRI, DEF, SHO
+                fifaColumnsOrdered = [
+                    allFifaStatDefinitions.GK,
+                    allFifaStatDefinitions.PHY,
+                    allFifaStatDefinitions.PAS,
+                    allFifaStatDefinitions.MEN,
+                    allFifaStatDefinitions.DRI,
+                    allFifaStatDefinitions.DEF,
+                    allFifaStatDefinitions.SHO, // SHO is last for GKs as per new request
+                ];
+            } else {
+                // Default order for outfield players: PHY, SHO, PAS, DRI, DEF, MEN
+                fifaColumnsOrdered = [
+                    allFifaStatDefinitions.PHY,
+                    allFifaStatDefinitions.SHO,
+                    allFifaStatDefinitions.PAS,
+                    allFifaStatDefinitions.DRI,
+                    allFifaStatDefinitions.DEF,
+                    allFifaStatDefinitions.MEN,
+                ];
             }
-            return columns;
+            return [...baseColumns, ...fifaColumnsOrdered];
         });
 
         const getSortFieldKey = (colName) => {
-            const colDef = currentColumns.value.find((c) => c.name === colName); // Use currentColumns
+            const colDef = currentColumns.value.find((c) => c.name === colName);
             return colDef?.sortField || colDef?.field || colName;
         };
 
         const sortedPlayers = computed(() => {
-            // ... (existing sorting logic, should work with dynamic columns) ...
             if (!sortField.value) return props.players;
             const fieldKey = getSortFieldKey(sortField.value);
             const direction = sortDirection.value;
@@ -426,7 +435,6 @@ export default {
         });
 
         const getFifaStatClass = (v) => {
-            /* ... existing logic ... */
             if (v === null || v === undefined || v === "-")
                 return "attribute-na";
             const n = typeof v === "number" ? v : parseInt(v, 10);
@@ -441,7 +449,6 @@ export default {
             return "attribute-very-poor";
         };
         const getMoneyClass = (v) => {
-            /* ... existing logic ... */
             let a = 0;
             if (typeof v === "string") {
                 const c = v.replace(/[^0-9.MKmk]/g, "");
@@ -459,7 +466,6 @@ export default {
             return "money-na";
         };
         const onFlagError = (event, player) => {
-            /* ... existing logic ... */
             event.target.style.display = "none";
             const iconElement = event.target.nextElementSibling;
             if (iconElement && iconElement.tagName === "I") {
@@ -482,10 +488,10 @@ export default {
                         direction: sortDirection.value,
                         isFifaStat: currentColumns.value.find(
                             (c) => c.name === nF,
-                        )?.isFifaStat, // Use currentColumns
+                        )?.isFifaStat,
                         isOverallStat: currentColumns.value.find(
                             (c) => c.name === nF,
-                        )?.isOverallStat, // Use currentColumns
+                        )?.isOverallStat,
                         displayField: sortField.value,
                     });
                 }
@@ -499,7 +505,6 @@ export default {
             pagination.page = 1;
         };
         const customSort = (r, sB, d) => {
-            /* ... existing logic, ensure getSortFieldKey uses currentColumns ... */
             const fK = getSortFieldKey(sB);
             const dir = d ? "desc" : "asc";
             return [...r].sort((a, b) => {
@@ -541,9 +546,9 @@ export default {
                 key: aSK,
                 direction: sortDirection.value,
                 isFifaStat: currentColumns.value.find((c) => c.name === f)
-                    ?.isFifaStat, // Use currentColumns
+                    ?.isFifaStat,
                 isOverallStat: currentColumns.value.find((c) => c.name === f)
-                    ?.isOverallStat, // Use currentColumns
+                    ?.isOverallStat,
                 displayField: f,
             });
         };
@@ -558,7 +563,7 @@ export default {
             pagesNumber,
             rowsPerPageOptions,
             maxPagesToShow,
-            currentColumns, // Use this instead of allColumns
+            currentColumns,
             sortedPlayers,
             getFifaStatClass,
             getMoneyClass,
@@ -575,7 +580,6 @@ export default {
 </script>
 
 <style scoped>
-/* ... (existing styles) ... */
 .player-data-table {
     width: 100%;
     overflow-x: auto;

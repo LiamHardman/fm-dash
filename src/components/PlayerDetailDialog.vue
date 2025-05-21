@@ -543,6 +543,7 @@
 <script>
 import { defineComponent, computed } from "vue";
 
+// Attribute mappings and ordered keys
 const attributeFullNameMap = {
     Cor: "Corners",
     Cro: "Crossing",
@@ -580,7 +581,7 @@ const attributeFullNameMap = {
     Pac: "Pace",
     Sta: "Stamina",
     Str: "Strength",
-    // New Goalkeeper Attributes
+    // Goalkeeper Attributes
     Aer: "Aerial Reach",
     Cmd: "Command of Area",
     Com: "Communication",
@@ -589,8 +590,9 @@ const attributeFullNameMap = {
     Kic: "Kicking",
     "1v1": "One on Ones",
     Ref: "Reflexes",
-    TRO: "Tendency To Rush Out",
+    TRO: "Rushing Out (Tendency)",
     Thr: "Throwing",
+    Pun: "Punching (Tendency)",
 };
 
 const technicalAttrsOrdered = [
@@ -635,14 +637,18 @@ const physicalAttrsOrdered = [
     "Sta",
     "Str",
 ];
+// Updated order and content for GK attributes section
 const goalkeepingAttrsOrdered = [
     "Aer",
     "Cmd",
     "Com",
     "Ecc",
+    "Fir",
     "Han",
     "Kic",
     "1v1",
+    "Pas",
+    "Pun",
     "Ref",
     "TRO",
     "Thr",
@@ -683,33 +689,32 @@ export default defineComponent({
                 : [],
         }));
 
-        const fifaStatsOrderBase = [
-            { name: "PHY", label: "PHY" },
-            { name: "SHO", label: "SHO" },
-            { name: "PAS", label: "PAS" },
-            { name: "DRI", label: "DRI" },
-            { name: "DEF", label: "DEF" },
-            { name: "MEN", label: "MEN" },
-        ];
-
         const fifaStatsToDisplay = computed(() => {
-            let stats = [...fifaStatsOrderBase];
+            let orderedStats = [];
             if (isGoalkeeper.value && props.player?.GK !== undefined) {
-                // Check if GK stat exists
-                const shoIndex = stats.findIndex((s) => s.name === "SHO");
-                if (shoIndex !== -1) {
-                    stats.splice(shoIndex, 1, { name: "GK", label: "GK" });
-                } else {
-                    stats.push({ name: "GK", label: "GK" }); // Add if SHO wasn't there
-                }
+                orderedStats = [
+                    { name: "GK", label: "GK" },
+                    { name: "PHY", label: "PHY" },
+                    { name: "PAS", label: "PAS" },
+                    { name: "MEN", label: "MEN" },
+                    { name: "DRI", label: "DRI" },
+                    { name: "DEF", label: "DEF" },
+                    { name: "SHO", label: "SHO" }, // SHO is last for GKs
+                ];
+            } else {
+                orderedStats = [
+                    { name: "PHY", label: "PHY" },
+                    { name: "SHO", label: "SHO" },
+                    { name: "PAS", label: "PAS" },
+                    { name: "DRI", label: "DRI" },
+                    { name: "DEF", label: "DEF" },
+                    { name: "MEN", label: "MEN" },
+                ];
             }
-            // Ensure SHO is removed if it's a GK and GK stat is being shown instead
-            if (isGoalkeeper.value && stats.some((s) => s.name === "GK")) {
-                stats = stats.filter(
-                    (s) => s.name !== "SHO" || s.name === "GK",
-                );
-            }
-            return stats;
+            // Filter out stats that might not exist on the player object (e.g. GK for an outfield player)
+            return orderedStats.filter(
+                (stat) => props.player?.[stat.name] !== undefined,
+            );
         });
 
         const getAttributeClass = (value) => {
@@ -820,6 +825,11 @@ export default defineComponent({
     display: flex;
     flex-direction: column;
 }
+/* Ensure 3 columns for attributes */
+.attribute-columns-row > .col-md-4 {
+    flex-basis: 33.3333%;
+    max-width: 33.3333%;
+}
 
 .full-height-card {
     flex-grow: 1;
@@ -851,6 +861,8 @@ export default defineComponent({
 
 .role-specific-ratings-list {
     max-height: 180px;
+    /* If physical attributes card is short, this might need to be taller */
+    /* Consider flex-grow for the parent card if it's in a column with other cards */
 }
 
 .attribute-value {
