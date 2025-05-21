@@ -1,199 +1,234 @@
 <template>
-    <div class="player-data-table">
-        <div v-if="sortField" class="text-caption q-mb-sm q-pa-xs bg-grey-2">
-            Current Sort: {{ sortField }} ({{ sortDirection }})
+    <div class="player-data-table-container">
+        <div
+            v-if="sortField"
+            class="text-caption q-mb-sm q-pa-xs rounded-borders"
+            :class="
+                $q.dark.isActive
+                    ? 'bg-grey-8 text-grey-4'
+                    : 'bg-grey-2 text-grey-7'
+            "
+        >
+            Current Sort: {{ getColumnLabel(sortField) }} ({{
+                sortDirection === "asc" ? "Ascending" : "Descending"
+            }})
         </div>
 
-        <q-card v-if="players.length === 0" class="q-pa-md text-center">
-            <p class="text-grey-7">
-                {{
-                    loading
-                        ? "Loading player data..."
-                        : "No players match your search criteria."
-                }}
+        <q-card
+            v-if="players.length === 0 && !loading"
+            class="q-pa-md text-center"
+            :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-1'"
+            flat
+            bordered
+        >
+            <p :class="$q.dark.isActive ? 'text-grey-5' : 'text-grey-7'">
+                No players match your search criteria.
             </p>
         </q-card>
 
-        <div v-else>
-            <q-table
-                :rows="sortedPlayers"
-                :columns="currentColumns"
-                :loading="loading"
-                row-key="name"
-                :pagination.sync="pagination"
-                :rows-per-page-options="rowsPerPageOptions"
-                @request="onRequest"
-                :sort-method="customSort"
-                binary-state-sort
-                flat
-                bordered
-            >
-                <template v-slot:header="props">
-                    <q-tr :props="props">
-                        <q-th
-                            v-for="col in props.cols"
-                            :key="col.name"
-                            :props="props"
-                            class="cursor-pointer"
-                            @click="sortTable(col.name)"
-                        >
-                            {{ col.label }}
-                            <q-icon
-                                v-if="sortField === col.name"
-                                :name="
-                                    sortDirection === 'asc'
-                                        ? 'arrow_upward'
-                                        : 'arrow_downward'
-                                "
-                                size="xs"
-                                class="q-ml-xs"
-                            />
-                        </q-th>
-                    </q-tr>
-                </template>
-
-                <template v-slot:body="props">
-                    <q-tr
+        <q-table
+            v-else
+            :rows="sortedPlayers"
+            :columns="currentColumns"
+            :loading="loading"
+            row-key="name"
+            :pagination.sync="pagination"
+            :rows-per-page-options="rowsPerPageOptions"
+            @request="onRequest"
+            :sort-method="customSort"
+            binary-state-sort
+            flat
+            bordered
+            class="player-q-table"
+            :class="$q.dark.isActive ? 'q-table--dark' : ''"
+            table-header-class="player-table-header"
+        >
+            <template v-slot:header="props">
+                <q-tr
+                    :props="props"
+                    :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-2'"
+                >
+                    <q-th
+                        v-for="col in props.cols"
+                        :key="col.name"
                         :props="props"
-                        @click="onRowClick(props.row)"
-                        class="cursor-pointer table-row-hover"
+                        class="cursor-pointer text-weight-bold"
+                        @click="sortTable(col.name)"
+                        :class="[
+                            $q.dark.isActive ? 'text-grey-3' : 'text-grey-8',
+                            col.headerClasses,
+                        ]"
+                        :style="col.headerStyle"
                     >
-                        <q-td
-                            v-for="col in props.cols"
-                            :key="col.name"
-                            :props="props"
-                        >
-                            <template
-                                v-if="col.isFifaStat || col.isOverallStat"
+                        {{ col.label }}
+                        <q-icon
+                            v-if="sortField === col.name"
+                            :name="
+                                sortDirection === 'asc'
+                                    ? 'arrow_upward'
+                                    : 'arrow_downward'
+                            "
+                            size="xs"
+                            class="q-ml-xs sort-icon"
+                        />
+                    </q-th>
+                </q-tr>
+            </template>
+
+            <template v-slot:body="props">
+                <q-tr
+                    :props="props"
+                    @click="onRowClick(props.row)"
+                    class="cursor-pointer table-row-hover"
+                >
+                    <q-td
+                        v-for="col in props.cols"
+                        :key="col.name"
+                        :props="props"
+                        :class="[
+                            $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                            col.classes,
+                        ]"
+                        :style="col.style"
+                    >
+                        <template v-if="col.isFifaStat || col.isOverallStat">
+                            <span
+                                :class="
+                                    getUnifiedRatingClass(
+                                        props.row[col.field],
+                                        100,
+                                    )
+                                "
+                                class="attribute-value fifa-stat-value"
                             >
-                                <span
-                                    :class="
-                                        getFifaStatClass(props.row[col.field])
-                                    "
-                                    class="attribute-value fifa-stat-value"
-                                >
-                                    {{
-                                        props.row[col.field] !== undefined
-                                            ? props.row[col.field]
-                                            : "-"
-                                    }}
-                                </span>
-                            </template>
-                            <template v-else-if="col.name === 'transfer_value'">
-                                <span
-                                    :class="getMoneyClass(props.row[col.field])"
-                                    class="money-value"
-                                >
-                                    {{ props.row[col.field] || "-" }}
-                                </span>
-                            </template>
-                            <template v-else-if="col.name === 'wage'">
-                                <span
-                                    :class="getMoneyClass(props.row[col.field])"
-                                    class="money-value"
-                                >
-                                    {{ props.row[col.field] || "-" }}
-                                </span>
-                            </template>
-                            <template
-                                v-else-if="col.name === 'nationality_display'"
-                            >
-                                <div class="flex items-center no-wrap">
-                                    <img
-                                        v-if="props.row.nationality_iso"
-                                        :src="`https://flagcdn.com/w20/${props.row.nationality_iso.toLowerCase()}.png`"
-                                        :alt="props.row.nationality || 'Flag'"
-                                        width="20"
-                                        height="13"
-                                        class="q-mr-xs"
-                                        style="
-                                            border: 1px solid #ccc;
-                                            object-fit: cover;
-                                        "
-                                        @error="onFlagError($event, props.row)"
-                                    />
-                                    <q-icon
-                                        v-else
-                                        name="flag"
-                                        size="xs"
-                                        color="grey-6"
-                                        class="q-mr-xs"
-                                    />
-                                    <span>{{
-                                        props.row.nationality || "-"
-                                    }}</span>
-                                </div>
-                            </template>
-                            <template v-else>
-                                <span>{{
-                                    props.row[col.field] !== undefined &&
-                                    props.row[col.field] !== null
+                                {{
+                                    props.row[col.field] !== undefined
                                         ? props.row[col.field]
                                         : "-"
-                                }}</span>
-                            </template>
-                        </q-td>
-                    </q-tr>
-                </template>
+                                }}
+                            </span>
+                        </template>
+                        <template
+                            v-else-if="
+                                col.name === 'transfer_value' ||
+                                col.name === 'wage'
+                            "
+                        >
+                            <span
+                                :class="getMoneyClass(props.row[col.field])"
+                                class="money-value"
+                            >
+                                {{ props.row[col.field] || "-" }}
+                            </span>
+                        </template>
+                        <template
+                            v-else-if="col.name === 'nationality_display'"
+                        >
+                            <div class="flex items-center no-wrap">
+                                <img
+                                    v-if="props.row.nationality_iso"
+                                    :src="`https://flagcdn.com/w20/${props.row.nationality_iso.toLowerCase()}.png`"
+                                    :alt="props.row.nationality || 'Flag'"
+                                    width="20"
+                                    height="13"
+                                    class="q-mr-xs nationality-flag"
+                                    @error="onFlagError($event, props.row)"
+                                />
+                                <q-icon
+                                    v-else
+                                    name="flag"
+                                    size="xs"
+                                    :color="
+                                        $q.dark.isActive ? 'grey-6' : 'grey-7'
+                                    "
+                                    class="q-mr-xs"
+                                />
+                                <span>{{ props.row.nationality || "-" }}</span>
+                            </div>
+                        </template>
+                        <template v-else>
+                            <span>{{
+                                props.row[col.field] !== undefined &&
+                                props.row[col.field] !== null
+                                    ? props.row[col.field]
+                                    : "-"
+                            }}</span>
+                        </template>
+                    </q-td>
+                </q-tr>
+            </template>
 
-                <template v-slot:loading>
-                    <q-inner-loading showing color="primary"
-                        ><q-spinner size="50px" color="primary"
-                    /></q-inner-loading>
-                </template>
+            <template v-slot:loading>
+                <q-inner-loading showing color="primary">
+                    <q-spinner size="50px" color="primary" />
+                </q-inner-loading>
+            </template>
 
-                <template v-slot:pagination="scope">
-                    <q-pagination
-                        v-model="scope.pagination.page"
-                        :max="pagesNumber"
-                        :max-pages="maxPagesToShow"
-                        boundary-links
-                        direction-links
-                        @update:model-value="onPageChange"
-                    />
-                    <q-space />
-                    <span class="text-caption q-mr-sm">Rows per page:</span>
-                    <q-select
-                        v-model="pagination.rowsPerPage"
-                        :options="rowsPerPageOptions"
-                        dense
-                        options-dense
-                        emit-value
-                        map-options
-                        style="min-width: 100px"
-                        @update:model-value="onRowsPerPageChange"
-                        :option-label="
-                            (opt) => (opt === 0 ? 'All' : opt.toString())
-                        "
-                        borderless
-                    />
-                    <span class="q-ml-md text-caption">
-                        {{
-                            pagination.rowsPerPage === 0
-                                ? 1
-                                : (pagination.page - 1) *
-                                      pagination.rowsPerPage +
-                                  1
-                        }}
-                        -
-                        {{
-                            pagination.rowsPerPage === 0
-                                ? players.length
-                                : Math.min(
-                                      pagination.page * pagination.rowsPerPage,
-                                      players.length,
-                                  )
-                        }}
-                        of {{ players.length }}
-                    </span>
-                </template>
-            </q-table>
-        </div>
+            <template v-slot:pagination="scope">
+                <q-pagination
+                    v-model="scope.pagination.page"
+                    :max="pagesNumber"
+                    :max-pages="maxPagesToShow"
+                    boundary-links
+                    direction-links
+                    @update:model-value="onPageChange"
+                    :color="$q.dark.isActive ? 'grey-6' : 'primary'"
+                    :active-color="$q.dark.isActive ? 'primary' : 'primary'"
+                    :text-color="$q.dark.isActive ? 'white' : 'primary'"
+                    :active-text-color="$q.dark.isActive ? 'white' : 'white'"
+                />
+                <q-space />
+                <span
+                    class="text-caption q-mr-sm"
+                    :class="$q.dark.isActive ? 'text-grey-4' : 'text-grey-7'"
+                    >Rows per page:</span
+                >
+                <q-select
+                    v-model="pagination.rowsPerPage"
+                    :options="rowsPerPageOptions"
+                    dense
+                    options-dense
+                    emit-value
+                    map-options
+                    style="min-width: 100px"
+                    @update:model-value="onRowsPerPageChange"
+                    :option-label="
+                        (opt) => (opt === 0 ? 'All' : opt.toString())
+                    "
+                    borderless
+                    :class="$q.dark.isActive ? 'text-grey-3 bg-grey-8' : ''"
+                    :popup-content-class="
+                        $q.dark.isActive ? 'bg-grey-8 text-white' : ''
+                    "
+                />
+                <span
+                    class="q-ml-md text-caption"
+                    :class="$q.dark.isActive ? 'text-grey-4' : 'text-grey-7'"
+                >
+                    {{
+                        pagination.rowsPerPage === 0
+                            ? 1
+                            : (pagination.page - 1) * pagination.rowsPerPage + 1
+                    }}
+                    -
+                    {{
+                        pagination.rowsPerPage === 0
+                            ? players.length
+                            : Math.min(
+                                  pagination.page * pagination.rowsPerPage,
+                                  players.length,
+                              )
+                    }}
+                    of {{ players.length }}
+                </span>
+            </template>
+        </q-table>
     </div>
 </template>
 
 <script>
 import { ref, computed, reactive, watch } from "vue";
+import { useQuasar } from "quasar";
 
 export default {
     name: "PlayerDataTable",
@@ -205,6 +240,7 @@ export default {
     emits: ["update:sort", "player-selected"],
 
     setup(props, { emit }) {
+        const $q = useQuasar();
         const sortField = ref(null);
         const sortDirection = ref("asc");
         const rowsPerPageOptions = [10, 15, 20, 50, 0];
@@ -237,6 +273,16 @@ export default {
             },
         );
 
+        // Define base width for columns to prevent major shifts
+        const columnBaseStyle =
+            "min-width: 120px; width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
+        const narrowColumnStyle =
+            "min-width: 80px; width: 80px; text-align: center; white-space: nowrap;";
+        const widerColumnStyle =
+            "min-width: 150px; width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
+        const nameColumnStyle =
+            "min-width: 180px; width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
+
         const baseColumns = [
             {
                 name: "name",
@@ -244,6 +290,8 @@ export default {
                 field: "name",
                 sortable: true,
                 align: "left",
+                style: nameColumnStyle,
+                headerStyle: nameColumnStyle,
             },
             {
                 name: "age",
@@ -251,6 +299,8 @@ export default {
                 field: "age",
                 sortable: true,
                 align: "center",
+                style: narrowColumnStyle,
+                headerStyle: narrowColumnStyle,
             },
             {
                 name: "nationality_display",
@@ -258,6 +308,8 @@ export default {
                 field: "nationality",
                 sortable: true,
                 align: "left",
+                style: columnBaseStyle,
+                headerStyle: columnBaseStyle,
             },
             {
                 name: "position",
@@ -265,6 +317,8 @@ export default {
                 field: "position",
                 sortable: true,
                 align: "left",
+                style: columnBaseStyle,
+                headerStyle: columnBaseStyle,
             },
             {
                 name: "club",
@@ -272,6 +326,8 @@ export default {
                 field: "club",
                 sortable: true,
                 align: "left",
+                style: widerColumnStyle,
+                headerStyle: widerColumnStyle,
             },
             {
                 name: "media_handling",
@@ -279,6 +335,8 @@ export default {
                 field: "media_handling",
                 sortable: true,
                 align: "left",
+                style: columnBaseStyle,
+                headerStyle: columnBaseStyle,
             },
             {
                 name: "personality",
@@ -286,6 +344,8 @@ export default {
                 field: "personality",
                 sortable: true,
                 align: "left",
+                style: columnBaseStyle,
+                headerStyle: columnBaseStyle,
             },
             {
                 name: "transfer_value",
@@ -294,6 +354,8 @@ export default {
                 sortable: true,
                 align: "right",
                 sortField: "transferValueAmount",
+                style: columnBaseStyle,
+                headerStyle: columnBaseStyle,
             },
             {
                 name: "wage",
@@ -302,6 +364,8 @@ export default {
                 sortable: true,
                 align: "right",
                 sortField: "wageAmount",
+                style: columnBaseStyle,
+                headerStyle: columnBaseStyle,
             },
             {
                 name: "Overall",
@@ -310,10 +374,11 @@ export default {
                 sortable: true,
                 align: "center",
                 isOverallStat: true,
+                style: narrowColumnStyle,
+                headerStyle: narrowColumnStyle,
             },
         ];
 
-        // Define all possible FIFA stat columns
         const allFifaStatDefinitions = {
             GK: {
                 name: "GK",
@@ -322,6 +387,8 @@ export default {
                 sortable: true,
                 align: "center",
                 isFifaStat: true,
+                style: narrowColumnStyle,
+                headerStyle: narrowColumnStyle,
             },
             PHY: {
                 name: "PHY",
@@ -330,6 +397,8 @@ export default {
                 sortable: true,
                 align: "center",
                 isFifaStat: true,
+                style: narrowColumnStyle,
+                headerStyle: narrowColumnStyle,
             },
             PAS: {
                 name: "PAS",
@@ -338,6 +407,8 @@ export default {
                 sortable: true,
                 align: "center",
                 isFifaStat: true,
+                style: narrowColumnStyle,
+                headerStyle: narrowColumnStyle,
             },
             MEN: {
                 name: "MEN",
@@ -346,6 +417,8 @@ export default {
                 sortable: true,
                 align: "center",
                 isFifaStat: true,
+                style: narrowColumnStyle,
+                headerStyle: narrowColumnStyle,
             },
             DRI: {
                 name: "DRI",
@@ -354,6 +427,8 @@ export default {
                 sortable: true,
                 align: "center",
                 isFifaStat: true,
+                style: narrowColumnStyle,
+                headerStyle: narrowColumnStyle,
             },
             DEF: {
                 name: "DEF",
@@ -362,6 +437,8 @@ export default {
                 sortable: true,
                 align: "center",
                 isFifaStat: true,
+                style: narrowColumnStyle,
+                headerStyle: narrowColumnStyle,
             },
             SHO: {
                 name: "SHO",
@@ -370,13 +447,14 @@ export default {
                 sortable: true,
                 align: "center",
                 isFifaStat: true,
+                style: narrowColumnStyle,
+                headerStyle: narrowColumnStyle,
             },
         };
 
         const currentColumns = computed(() => {
             let fifaColumnsOrdered = [];
             if (props.isGoalkeeperView) {
-                // Order for GKs: GK, PHY, PAS, MEN, DRI, DEF, SHO
                 fifaColumnsOrdered = [
                     allFifaStatDefinitions.GK,
                     allFifaStatDefinitions.PHY,
@@ -384,10 +462,9 @@ export default {
                     allFifaStatDefinitions.MEN,
                     allFifaStatDefinitions.DRI,
                     allFifaStatDefinitions.DEF,
-                    allFifaStatDefinitions.SHO, // SHO is last for GKs as per new request
+                    allFifaStatDefinitions.SHO,
                 ];
             } else {
-                // Default order for outfield players: PHY, SHO, PAS, DRI, DEF, MEN
                 fifaColumnsOrdered = [
                     allFifaStatDefinitions.PHY,
                     allFifaStatDefinitions.SHO,
@@ -399,6 +476,11 @@ export default {
             }
             return [...baseColumns, ...fifaColumnsOrdered];
         });
+
+        const getColumnLabel = (fieldName) => {
+            const col = currentColumns.value.find((c) => c.name === fieldName);
+            return col ? col.label : fieldName;
+        };
 
         const getSortFieldKey = (colName) => {
             const colDef = currentColumns.value.find((c) => c.name === colName);
@@ -434,20 +516,24 @@ export default {
             });
         });
 
-        const getFifaStatClass = (v) => {
-            if (v === null || v === undefined || v === "-")
-                return "attribute-na";
-            const n = typeof v === "number" ? v : parseInt(v, 10);
-            if (isNaN(n)) return "attribute-na";
-            if (n >= 90) return "attribute-elite";
-            if (n >= 80) return "attribute-excellent";
-            if (n >= 70) return "attribute-very-good";
-            if (n >= 60) return "attribute-good";
-            if (n >= 50) return "attribute-average";
-            if (n >= 40) return "attribute-below-average";
-            if (n >= 30) return "attribute-poor";
-            return "attribute-very-poor";
+        const getUnifiedRatingClass = (value, maxScale) => {
+            const numValue = parseInt(value, 10);
+            if (
+                isNaN(numValue) ||
+                value === null ||
+                value === undefined ||
+                value === "-"
+            )
+                return "rating-na";
+            const percentage = (numValue / maxScale) * 100;
+            if (percentage >= 90) return "rating-tier-6";
+            if (percentage >= 80) return "rating-tier-5";
+            if (percentage >= 70) return "rating-tier-4";
+            if (percentage >= 55) return "rating-tier-3";
+            if (percentage >= 40) return "rating-tier-2";
+            return "rating-tier-1";
         };
+
         const getMoneyClass = (v) => {
             let a = 0;
             if (typeof v === "string") {
@@ -465,8 +551,9 @@ export default {
             if (a > 0) return "money-low";
             return "money-na";
         };
-        const onFlagError = (event, player) => {
-            event.target.style.display = "none";
+
+        const onFlagError = (event) => {
+            if (event.target) event.target.style.display = "none";
             const iconElement = event.target.nextElementSibling;
             if (iconElement && iconElement.tagName === "I") {
                 iconElement.style.display = "inline-flex";
@@ -504,6 +591,7 @@ export default {
             pagination.rowsPerPage = rpp;
             pagination.page = 1;
         };
+
         const customSort = (r, sB, d) => {
             const fK = getSortFieldKey(sB);
             const dir = d ? "desc" : "asc";
@@ -557,6 +645,7 @@ export default {
         };
 
         return {
+            $q,
             sortField,
             sortDirection,
             pagination,
@@ -565,7 +654,8 @@ export default {
             maxPagesToShow,
             currentColumns,
             sortedPlayers,
-            getFifaStatClass,
+            getColumnLabel,
+            getUnifiedRatingClass,
             getMoneyClass,
             onFlagError,
             onRequest,
@@ -579,78 +669,74 @@ export default {
 };
 </script>
 
-<style scoped>
-.player-data-table {
+<style lang="scss" scoped>
+.player-data-table-container {
     width: 100%;
     overflow-x: auto;
 }
-:deep(.q-table th) {
-    font-weight: 600;
-    background-color: #f8f9fa;
-    white-space: nowrap;
-    padding: 10px 16px;
-    border-bottom: 1px solid #dee2e6;
-    border-right: 0;
+
+.player-q-table {
+    th .sort-icon {
+        vertical-align: middle;
+        margin-left: 4px;
+    }
+
+    &.q-table--dark {
+        th {
+            color: $grey-3;
+            border-bottom-color: rgba(255, 255, 255, 0.15);
+        }
+        td {
+            border-bottom-color: rgba(255, 255, 255, 0.1);
+            color: $grey-4;
+        }
+        tr:last-child td {
+            border-bottom: 0;
+        }
+        .q-table__bottom {
+            border-top-color: rgba(255, 255, 255, 0.15);
+        }
+    }
+
+    &:not(.q-table--dark) {
+        th {
+            background-color: #f0f4f8;
+            color: $grey-8;
+            border-bottom: 1px solid #dde2e6;
+        }
+        td {
+            border-bottom: 1px solid #eef2f5;
+            color: $grey-9;
+        }
+        tr:last-child td {
+            border-bottom: 0;
+        }
+        .q-table__bottom {
+            border-top: 1px solid #dde2e6;
+        }
+    }
+
+    th {
+        font-weight: 600;
+        padding: 12px 10px;
+        border-right: 0;
+    }
+    td {
+        vertical-align: middle;
+        padding: 10px 10px;
+        border-right: 0;
+    }
 }
-:deep(.q-table td) {
-    white-space: nowrap;
-    vertical-align: middle;
-    padding: 10px 16px;
-    border-bottom: 1px solid #eff2f5;
-    border-right: 0;
-}
-:deep(.q-table tr:last-child td) {
-    border-bottom: 0;
-}
-:deep(.q-table tr:nth-child(even)) {
-    background-color: #fdfdfe;
-}
-.table-row-hover:hover {
-    background-color: #eef6ff !important;
-}
-:deep(.q-pagination .q-btn.q-btn--active) {
-    background-color: var(--q-primary);
-    color: white;
-}
-.attribute-value {
-    display: inline-block;
-    min-width: 30px;
-    text-align: center;
-    font-weight: 600;
-    padding: 1px 3px;
-    border-radius: 3px;
-    font-size: 0.85em;
-}
-.fifa-stat-value {
-    font-size: 1.1em;
-    padding: 2px 4px;
-}
-.attribute-elite {
-    color: #9c27b0;
-}
-.attribute-excellent {
-    color: #1e88e5;
-}
-.attribute-very-good {
-    color: #00acc1;
-}
-.attribute-good {
-    color: #43a047;
-}
-.attribute-average {
-    color: #b28e00;
-}
-.attribute-below-average {
-    color: #fb8c00;
-}
-.attribute-poor {
-    color: #e53935;
-}
-.attribute-very-poor {
-    color: #d32f2f;
-}
-.attribute-na {
-    color: #757575;
+
+.table-row-hover {
+    &:hover {
+        .body--dark & {
+            background-color: rgba(255, 255, 255, 0.08) !important;
+        }
+        .body--light & {
+            background-color: #e3f2fd !important;
+        }
+    }
 }
 
 .money-value {
@@ -660,27 +746,64 @@ export default {
     border-radius: 3px;
 }
 .money-very-high {
-    color: #2b8a3e;
+    color: #1b5e20;
     font-weight: 700;
 }
 .money-high {
-    color: #388e3c;
+    color: #2e7d32;
 }
 .money-medium-high {
-    color: #689f38;
+    color: #4caf50;
 }
 .money-medium {
-    color: #37474f;
+    color: #757575;
 }
 .money-low {
-    color: #546e7a;
+    color: #9e9e9e;
 }
 .money-na {
-    color: #757575;
+    color: #bdbdbd;
+}
+
+.body--dark {
+    .money-very-high {
+        color: #a5d6a7;
+        font-weight: 700;
+    }
+    .money-high {
+        color: #81c784;
+    }
+    .money-medium-high {
+        color: #66bb6a;
+    }
+    .money-medium {
+        color: #b0bec5;
+    }
+    .money-low {
+        color: #90a4ae;
+    }
+    .money-na {
+        color: #78909c;
+    }
+}
+
+.nationality-flag {
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    object-fit: cover;
+    .body--dark & {
+        border: 1px solid rgba(255, 255, 255, 0.15);
+    }
 }
 
 .flex.items-center .q-icon,
 .flex.items-center img {
     flex-shrink: 0;
+}
+
+:deep(.q-table__bottom .q-select .q-field__native),
+:deep(.q-table__bottom .q-select .q-field__input) {
+    .body--dark & {
+        color: $grey-3;
+    }
 }
 </style>

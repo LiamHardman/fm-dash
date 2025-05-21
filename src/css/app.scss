@@ -1,12 +1,122 @@
 // src/css/app.scss
-@import '~quasar/src/css/variables.sass';
+
+// Quasar SCSS variables are available here due to vite.config.js additionalData
 
 .q-card {
-  border-radius: 8px; // Or another value like $generic-border-radius if defined and suitable
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06); // Softer shadow
+    border-radius: 8px;
+    box-shadow:
+        0 1px 3px rgba(0, 0, 0, 0.1),
+        0 1px 2px rgba(0, 0, 0, 0.06);
+    .body--dark & {
+        // Ensure dark mode cards have appropriate borders if any
+        border-color: rgba(255, 255, 255, 0.2);
+    }
 }
 
-// If we want to ensure bordered cards also use a subtle color:
 .q-card--bordered {
-  border-color: rgba(0,0,0,0.08);
+    border-color: rgba(0, 0, 0, 0.08);
+    .body--dark & {
+        border-color: rgba(255, 255, 255, 0.25);
+    }
+}
+
+// Unified Rating Tier Colors (GLOBAL)
+// These classes are used for both FM attributes (1-20) and FIFA stats (0-100)
+// The JS logic maps the value ranges to these tiers.
+
+// Tier 6 (Elite) - Purple
+.rating-tier-6 {
+    background-color: #7e57c2; // Purple
+    color: white !important; // Ensure text color overrides defaults
+    font-weight: 700;
+    border: 1px solid #5e35b1;
+    .body--dark & {
+        background-color: #9575cd;
+        color: white !important;
+        border-color: #7e57c2;
+    }
+}
+
+// Tier 5 (Excellent/Very Good) - Bright Green / Teal
+.rating-tier-5 {
+    background-color: #26a69a; // Teal
+    color: white !important;
+    .body--dark & {
+        background-color: #00897b; // Darker Teal
+        color: white !important;
+    }
+}
+
+// Tier 4 (Good) - Green
+.rating-tier-4 {
+    background-color: #66bb6a; // Green
+    color: white !important;
+    .body--dark & {
+        background-color: #4caf50; // Slightly darker Green
+        color: white !important;
+    }
+}
+
+// Tier 3 (Average) - Light Blue / Sky Blue
+.rating-tier-3 {
+    background-color: #42a5f5; // Light Blue
+    color: white !important;
+    .body--dark & {
+        background-color: #2196f3; // Standard Blue
+        color: white !important;
+    }
+}
+
+// Tier 2 (Below Average/Poor) - Orange
+.rating-tier-2 {
+    background-color: #ffa726; // Orange
+    color: #333333 !important; // Dark text for contrast on orange
+    .body--dark & {
+        background-color: #fb8c00; // Darker Orange
+        color: white !important;
+    }
+}
+
+// Tier 1 (Very Poor) - Red
+.rating-tier-1 {
+    background-color: #ef5350; // Red
+    color: white !important;
+    .body--dark & {
+        background-color: #e53935; // Darker Red
+        color: white !important;
+    }
+}
+
+// NA (Not Applicable / No Value)
+.rating-na {
+    background-color: $grey-4;
+    color: $grey-8 !important;
+    font-weight: normal;
+    border: 1px solid $grey-5;
+    .body--dark & {
+        background-color: $grey-8;
+        color: $grey-5 !important;
+        border: 1px solid $grey-7;
+    }
+}
+
+// General styling for elements that will use these rating classes
+.attribute-value {
+    // This class is used in both PlayerDetailDialog and PlayerDataTable
+    display: inline-block;
+    min-width: 32px;
+    text-align: center;
+    font-weight: 600;
+    padding: 3px 6px;
+    border-radius: 4px;
+    line-height: 1.4;
+    transition:
+        background-color 0.3s ease,
+        color 0.3s ease;
+    font-size: 0.9em; // Default size, can be overridden
+}
+
+.fifa-stat-value {
+    // For the table primarily
+    font-size: 1em; // Slightly larger for table FIFA stats
 }

@@ -1,5 +1,10 @@
 // src/quasar-variables.scss
 
+// REMOVED: @import '~quasar/src/css/variables.sass';
+// The @quasar/vite-plugin should make Quasar's default SASS variables
+// (like $primary, $grey-1, etc.) globally available.
+// Your custom variable definitions below will override or augment these.
+
 // Quasar SCSS (& Sass) Variables
 // --------------------------------------------------
 // To customize the look and feel of this app, you can override
@@ -12,16 +17,22 @@
 
 // It's highly recommended to change the default colors
 // to match your app's branding.
+// Tip: Use the Quasar Color Palette Generator to find the ideal shades
+// -> https://quasar.dev/style/color-palette#color-palette-generator
 
-$primary   : #2E74B5;
-$secondary : #6c757d;
-$accent    : #545B62;
+$primary: #2e74b5; // Your custom primary
+$secondary: #6c757d; // Your custom secondary
+$accent: #545b62; // Your custom accent
 
-$dark      : #1D1D1D;
+$dark: #1d1d1d; // Your custom dark page background for dark mode
 
-$positive  : #28a745;
-$negative  : #dc3545;
-$info      : #17a2b8;
-$warning   : #ffc107;
+$positive: #28a745; // Your custom positive
+$negative: #dc3545; // Your custom negative
+$info: #17a2b8; // Your custom info
+$warning: #ffc107; // Your custom warning
 
-$typography-font-family: 'Inter', sans-serif !default;
+// Example: Overriding a specific grey from Quasar's palette if needed
+// $grey-1: #fefefe; // This would override Quasar's default $grey-1
+// $grey-4: #bdbdbd; // Example if you needed to define it, but Quasar provides these
+
+$typography-font-family: "Inter", sans-serif !default;

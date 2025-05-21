@@ -1,11 +1,21 @@
 <template>
     <q-page padding>
         <div class="q-pa-md">
-            <h1 class="text-h4 text-center q-mb-lg">
+            <h1
+                class="text-h4 text-center q-mb-lg page-title"
+                :class="$q.dark.isActive ? 'text-grey-2' : 'text-grey-9'"
+            >
                 Football Manager HTML Player Parser
             </h1>
 
-            <q-card class="q-mb-md bg-blue-1">
+            <q-card
+                class="q-mb-md instructions-card"
+                :class="
+                    $q.dark.isActive
+                        ? 'bg-grey-9 text-grey-3'
+                        : 'bg-blue-grey-1 text-blue-grey-10'
+                "
+            >
                 <q-card-section>
                     <div class="text-subtitle1 text-weight-bold">
                         Instructions:
@@ -49,7 +59,10 @@
                 </q-card-section>
             </q-card>
 
-            <q-card class="q-mb-md">
+            <q-card
+                class="q-mb-md upload-card"
+                :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-white'"
+            >
                 <q-card-section>
                     <div class="text-subtitle1 q-mb-sm">Upload HTML File:</div>
                     <q-file
@@ -58,6 +71,8 @@
                         accept=".html"
                         outlined
                         counter
+                        :label-color="$q.dark.isActive ? 'grey-4' : ''"
+                        :input-class="$q.dark.isActive ? 'text-grey-3' : ''"
                     >
                         <template v-slot:prepend
                             ><q-icon name="attach_file"
@@ -88,7 +103,11 @@
                 </q-card-section>
             </q-card>
 
-            <q-card class="q-mb-md" v-if="allPlayers.length > 0">
+            <q-card
+                class="q-mb-md filter-card"
+                v-if="allPlayers.length > 0"
+                :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-white'"
+            >
                 <q-card-section>
                     <div class="text-subtitle1 q-mb-sm">Search Players</div>
                     <div class="row q-col-gutter-md items-end">
@@ -100,6 +119,10 @@
                                 outlined
                                 clearable
                                 @update:model-value="debouncedApplyFilters"
+                                :label-color="$q.dark.isActive ? 'grey-4' : ''"
+                                :input-class="
+                                    $q.dark.isActive ? 'text-grey-3' : ''
+                                "
                             />
                         </div>
                         <div class="col-12 col-sm-6 col-md-3 col-lg-2">
@@ -116,6 +139,12 @@
                                 input-debounce="300"
                                 @filter="filterClubOptions"
                                 @update:model-value="applyFiltersAndSort"
+                                :label-color="$q.dark.isActive ? 'grey-4' : ''"
+                                :popup-content-class="
+                                    $q.dark.isActive
+                                        ? 'bg-grey-8 text-white'
+                                        : ''
+                                "
                             >
                                 <template v-slot:no-option>
                                     <q-item>
@@ -140,6 +169,12 @@
                                 input-debounce="300"
                                 @filter="filterNationalityOptions"
                                 @update:model-value="applyFiltersAndSort"
+                                :label-color="$q.dark.isActive ? 'grey-4' : ''"
+                                :popup-content-class="
+                                    $q.dark.isActive
+                                        ? 'bg-grey-8 text-white'
+                                        : ''
+                                "
                             >
                                 <template v-slot:no-option>
                                     <q-item>
@@ -161,6 +196,12 @@
                                 emit-value
                                 map-options
                                 @update:model-value="applyFiltersAndSort"
+                                :label-color="$q.dark.isActive ? 'grey-4' : ''"
+                                :popup-content-class="
+                                    $q.dark.isActive
+                                        ? 'bg-grey-8 text-white'
+                                        : ''
+                                "
                             />
                         </div>
                         <div class="col-12 col-sm-6 col-md-3 col-lg-2">
@@ -176,6 +217,12 @@
                                 emit-value
                                 map-options
                                 @update:model-value="applyFiltersAndSort"
+                                :label-color="$q.dark.isActive ? 'grey-4' : ''"
+                                :popup-content-class="
+                                    $q.dark.isActive
+                                        ? 'bg-grey-8 text-white'
+                                        : ''
+                                "
                             />
                         </div>
                         <div class="col-12 col-sm-6 col-md-3 col-lg-2">
@@ -191,6 +238,12 @@
                                 emit-value
                                 map-options
                                 @update:model-value="applyFiltersAndSort"
+                                :label-color="$q.dark.isActive ? 'grey-4' : ''"
+                                :popup-content-class="
+                                    $q.dark.isActive
+                                        ? 'bg-grey-8 text-white'
+                                        : ''
+                                "
                             />
                         </div>
                         <div class="col-12 col-sm-4 col-md-2 col-lg-1">
@@ -203,6 +256,10 @@
                                 clearable
                                 :min="0"
                                 @update:model-value="debouncedApplyFilters"
+                                :label-color="$q.dark.isActive ? 'grey-4' : ''"
+                                :input-class="
+                                    $q.dark.isActive ? 'text-grey-3' : ''
+                                "
                             />
                         </div>
                         <div class="col-12 col-sm-4 col-md-2 col-lg-1">
@@ -215,11 +272,22 @@
                                 clearable
                                 :min="0"
                                 @update:model-value="debouncedApplyFilters"
+                                :label-color="$q.dark.isActive ? 'grey-4' : ''"
+                                :input-class="
+                                    $q.dark.isActive ? 'text-grey-3' : ''
+                                "
                             />
                         </div>
 
                         <div class="col-12 col-md-6 col-lg-4">
-                            <div class="text-caption q-mb-xs">
+                            <div
+                                class="text-caption q-mb-xs"
+                                :class="
+                                    $q.dark.isActive
+                                        ? 'text-grey-4'
+                                        : 'text-grey-7'
+                                "
+                            >
                                 Transfer Value
                             </div>
                             <div class="row items-center q-col-gutter-x-sm">
@@ -235,6 +303,14 @@
                                         "
                                         :disable="allPlayers.length === 0"
                                         placeholder="Any"
+                                        :label-color="
+                                            $q.dark.isActive ? 'grey-4' : ''
+                                        "
+                                        :input-class="
+                                            $q.dark.isActive
+                                                ? 'text-grey-3'
+                                                : ''
+                                        "
                                     />
                                 </div>
                                 <div class="col-auto">
@@ -247,8 +323,16 @@
                                         rounded
                                         unelevated
                                         toggle-color="primary"
-                                        color="white"
-                                        text-color="primary"
+                                        :color="
+                                            $q.dark.isActive
+                                                ? 'grey-7'
+                                                : 'white'
+                                        "
+                                        :text-color="
+                                            $q.dark.isActive
+                                                ? 'white'
+                                                : 'primary'
+                                        "
                                         size="sm"
                                         padding="xs md"
                                         :options="[
@@ -300,7 +384,12 @@
                                 color="primary"
                             />
                             <div
-                                class="text-caption text-grey-7 q-mt-xs"
+                                class="text-caption q-mt-xs"
+                                :class="
+                                    $q.dark.isActive
+                                        ? 'text-grey-5'
+                                        : 'text-grey-7'
+                                "
                                 v-if="filters.selectedTransferValue !== null"
                             >
                                 Current filter:
@@ -320,10 +409,14 @@
                         <div class="col-12 flex items-center q-mt-md">
                             <q-btn
                                 color="grey"
+                                :text-color="
+                                    $q.dark.isActive ? 'white' : 'dark'
+                                "
                                 label="Clear All Filters"
                                 class="full-width"
                                 @click="clearAllFilters"
                                 :disable="!hasActiveFilters"
+                                outline
                             />
                         </div>
                     </div>
@@ -366,66 +459,91 @@
             </q-banner>
 
             <template v-if="allPlayers.length > 0">
-                <div class="row q-col-gutter-md q-mb-md">
+                <div class="row q-col-gutter-md q-mb-md summary-cards">
                     <div class="col-12 col-md-2">
-                        <q-card class="text-center"
-                            ><q-card-section
-                                ><div class="text-h6">
+                        <q-card
+                            class="text-center summary-card"
+                            :class="
+                                $q.dark.isActive ? 'bg-grey-8' : 'bg-grey-2'
+                            "
+                            flat
+                            bordered
+                        >
+                            <q-card-section>
+                                <div class="text-h6">
                                     {{ allPlayers.length }}
                                 </div>
-                                <div class="text-subtitle2">
-                                    Total Players
-                                </div></q-card-section
-                            ></q-card
-                        >
+                                <div class="text-subtitle2">Total Players</div>
+                            </q-card-section>
+                        </q-card>
                     </div>
                     <div class="col-12 col-md-2">
-                        <q-card class="text-center"
-                            ><q-card-section
-                                ><div class="text-h6">
+                        <q-card
+                            class="text-center summary-card"
+                            :class="
+                                $q.dark.isActive ? 'bg-grey-8' : 'bg-grey-2'
+                            "
+                            flat
+                            bordered
+                        >
+                            <q-card-section>
+                                <div class="text-h6">
                                     {{ filteredPlayers.length }}
                                 </div>
-                                <div class="text-subtitle2">
-                                    Filtered
-                                </div></q-card-section
-                            ></q-card
-                        >
+                                <div class="text-subtitle2">Filtered</div>
+                            </q-card-section>
+                        </q-card>
                     </div>
                     <div class="col-12 col-md-2">
-                        <q-card class="text-center"
-                            ><q-card-section
-                                ><div class="text-h6">
+                        <q-card
+                            class="text-center summary-card"
+                            :class="
+                                $q.dark.isActive ? 'bg-grey-8' : 'bg-grey-2'
+                            "
+                            flat
+                            bordered
+                        >
+                            <q-card-section>
+                                <div class="text-h6">
                                     {{ uniqueClubsCount }}
                                 </div>
-                                <div class="text-subtitle2">
-                                    Clubs
-                                </div></q-card-section
-                            ></q-card
-                        >
+                                <div class="text-subtitle2">Clubs</div>
+                            </q-card-section>
+                        </q-card>
                     </div>
                     <div class="col-12 col-md-3">
-                        <q-card class="text-center"
-                            ><q-card-section
-                                ><div class="text-h6">
+                        <q-card
+                            class="text-center summary-card"
+                            :class="
+                                $q.dark.isActive ? 'bg-grey-8' : 'bg-grey-2'
+                            "
+                            flat
+                            bordered
+                        >
+                            <q-card-section>
+                                <div class="text-h6">
                                     {{ uniqueParsedPositionsCount }}
                                 </div>
-                                <div class="text-subtitle2">
-                                    Positions
-                                </div></q-card-section
-                            ></q-card
-                        >
+                                <div class="text-subtitle2">Positions</div>
+                            </q-card-section>
+                        </q-card>
                     </div>
                     <div class="col-12 col-md-3">
-                        <q-card class="text-center"
-                            ><q-card-section
-                                ><div class="text-h6">
+                        <q-card
+                            class="text-center summary-card"
+                            :class="
+                                $q.dark.isActive ? 'bg-grey-8' : 'bg-grey-2'
+                            "
+                            flat
+                            bordered
+                        >
+                            <q-card-section>
+                                <div class="text-h6">
                                     {{ uniqueNationalitiesCount }}
                                 </div>
-                                <div class="text-subtitle2">
-                                    Nationalities
-                                </div></q-card-section
-                            ></q-card
-                        >
+                                <div class="text-subtitle2">Nationalities</div>
+                            </q-card-section>
+                        </q-card>
                     </div>
                 </div>
 
@@ -436,6 +554,7 @@
                         label="Find Upgrades"
                         @click="showUpgradeFinder = true"
                         :disable="allPlayers.length === 0"
+                        class="q-px-lg"
                     />
                 </div>
 
@@ -448,10 +567,20 @@
                 />
             </template>
 
-            <q-card v-else-if="!loading" class="q-pa-lg text-center">
-                <q-icon name="upload_file" size="4rem" color="grey-7" />
+            <q-card
+                v-else-if="!loading"
+                class="q-pa-lg text-center no-data-card"
+                :class="
+                    $q.dark.isActive
+                        ? 'bg-grey-9 text-grey-5'
+                        : 'bg-grey-1 text-grey-7'
+                "
+                flat
+                bordered
+            >
+                <q-icon name="upload_file" size="4rem" />
                 <div class="text-h6 q-mt-md">No Player Data Yet</div>
-                <div class="text-grey-7">Upload a file to see player data</div>
+                <div>Upload a file to see player data</div>
             </q-card>
         </div>
 
@@ -470,6 +599,7 @@
 </template>
 
 <script>
+// ... (script remains the same as your provided version)
 import { ref, computed, reactive, onMounted, watch } from "vue";
 import PlayerDataTable from "../components/PlayerDataTable.vue";
 import PlayerDetailDialog from "../components/PlayerDetailDialog.vue";
@@ -558,7 +688,6 @@ export default {
         const mediaHandlingOptions = ref([]);
         const personalityOptions = ref([]);
 
-        // Make these reactive
         const allUniqueClubs = ref([]);
         const allUniqueNationalities = ref([]);
         const allUniqueMediaHandlings = ref([]);
@@ -586,7 +715,7 @@ export default {
                 filters.maxAge !== null,
         );
 
-        const uniqueClubsCount = computed(() => allUniqueClubs.value.length); // Use .value
+        const uniqueClubsCount = computed(() => allUniqueClubs.value.length);
         const uniqueParsedPositionsCount = computed(() => {
             const s = new Set();
             allPlayers.value.forEach((player) =>
@@ -596,7 +725,7 @@ export default {
         });
         const uniqueNationalitiesCount = computed(
             () => allUniqueNationalities.value.length,
-        ); // Use .value
+        );
 
         const formatSliderValue = (value) => {
             if (value === null || value === undefined) return "";
@@ -879,14 +1008,12 @@ export default {
             if (filters.position) {
                 const selectedPosFilter = filters.position;
                 if (positionGroups[selectedPosFilter]) {
-                    // It's a group
                     tempPlayers = tempPlayers.filter(
                         (p) =>
                             p.positionGroups &&
                             p.positionGroups.includes(selectedPosFilter),
                     );
                 } else {
-                    // It's an individual position
                     tempPlayers = tempPlayers.filter(
                         (p) =>
                             p.parsedPositions &&
@@ -1024,14 +1151,14 @@ export default {
             if (val === "") {
                 update(() => {
                     clubOptions.value = allUniqueClubs.value;
-                }); // Use .value
+                });
                 return;
             }
             update(() => {
                 const needle = val.toLowerCase();
                 clubOptions.value = allUniqueClubs.value.filter(
                     (v) => v.toLowerCase().indexOf(needle) > -1,
-                ); // Use .value
+                );
             });
         };
 
@@ -1039,14 +1166,14 @@ export default {
             if (val === "") {
                 update(() => {
                     nationalityOptions.value = allUniqueNationalities.value;
-                }); // Use .value
+                });
                 return;
             }
             update(() => {
                 const needle = val.toLowerCase();
                 nationalityOptions.value = allUniqueNationalities.value.filter(
                     (v) => v.toLowerCase().indexOf(needle) > -1,
-                ); // Use .value
+                );
             });
         };
 
@@ -1106,9 +1233,50 @@ export default {
 };
 </script>
 
-<style>
+<style lang="scss" scoped>
 .q-page {
     max-width: 1600px;
     margin: 0 auto;
+    padding-top: 24px;
+    padding-bottom: 24px;
+}
+
+.page-title {
+    // Already has text-center
+}
+
+.instructions-card {
+    // Dynamic classes applied in template for dark/light
+    // :class="$q.dark.isActive ? 'bg-grey-9 text-grey-3' : 'bg-blue-grey-1 text-blue-grey-10'"
+    border-radius: $generic-border-radius;
+    ol {
+        padding-left: 20px; // Standard padding for ordered lists
+        li {
+            margin-bottom: 0.5em;
+        }
+    }
+}
+
+.upload-card,
+.filter-card,
+.summary-card,
+.no-data-card {
+    border-radius: $generic-border-radius;
+    // Dynamic classes for background applied in template
+}
+
+.summary-cards .q-card {
+    height: 100%;
+}
+
+.filter-card .q-select,
+.filter-card .q-input {
+    // Ensure filter inputs look good in both modes
+}
+
+// Ensure q-file also adapts
+:deep(.q-field__native),
+:deep(.q-field__label) {
+    color: currentColor; // Inherit color for better dark mode adaptability
 }
 </style>
