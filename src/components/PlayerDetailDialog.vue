@@ -16,7 +16,6 @@
             <q-card-section v-if="player" class="q-card__section--main-content">
                 <div class="row q-col-gutter-x-md q-col-gutter-y-sm q-mb-md">
                     <div class="col-12 col-md-7">
-                        {/* Adjusted column width */}
                         <div
                             class="q-pa-sm rounded-borders"
                             style="border: 1px solid #e0e0e0; height: 100%"
@@ -42,9 +41,9 @@
                                     <q-item-label caption class="q-mb-none"
                                         >Age</q-item-label
                                     >
-                                    <q-item-label class="text-body2">
-                                        {{ player.age || "-" }}
-                                    </q-item-label>
+                                    <q-item-label class="text-body2">{{
+                                        player.age || "-"
+                                    }}</q-item-label>
                                 </div>
                                 <div
                                     class="col-auto q-ml-md row items-center no-wrap"
@@ -70,9 +69,7 @@
                                     }}</q-item-label>
                                 </div>
                             </div>
-
                             <q-separator spaced="xs" />
-
                             <div class="row items-start q-mb-xs">
                                 <div class="col-auto q-mr-sm q-pt-xs">
                                     <q-icon
@@ -114,7 +111,6 @@
                                     </q-item-label>
                                 </div>
                             </div>
-
                             <q-separator spaced="xs" />
                             <div class="row items-start q-mb-xs">
                                 <div class="col-auto q-mr-sm q-pt-xs">
@@ -148,9 +144,7 @@
                                     }}</q-item-label>
                                 </div>
                             </div>
-
                             <q-separator spaced="xs" />
-
                             <div class="row items-start q-mb-xs">
                                 <div class="col-auto q-mr-sm q-pt-xs">
                                     <q-icon
@@ -186,9 +180,7 @@
                                     </div>
                                 </div>
                             </div>
-
                             <q-separator spaced="xs" />
-
                             <div class="row items-start">
                                 <div class="col-auto q-mr-sm q-pt-xs">
                                     <q-icon
@@ -215,7 +207,6 @@
                     </div>
 
                     <div class="col-12 col-md-5">
-                        {/* Adjusted column width */}
                         <div
                             class="text-subtitle1 q-mb-xs text-center text-weight-medium"
                         >
@@ -223,7 +214,7 @@
                         </div>
                         <div class="row q-col-gutter-xs text-center">
                             <div
-                                v-for="stat in fifaStatsOrder"
+                                v-for="stat in fifaStatsToDisplay"
                                 :key="stat.name"
                                 class="col-4"
                             >
@@ -259,6 +250,7 @@
                 <div class="row q-col-gutter-md attribute-columns-row">
                     <div class="col-12 col-md-4 column">
                         <q-card
+                            v-if="!isGoalkeeper"
                             flat
                             bordered
                             class="full-height-card rounded-borders"
@@ -305,6 +297,62 @@
                                     <q-item-section
                                         class="text-grey-6 text-center q-py-md"
                                         >No technical
+                                        attributes.</q-item-section
+                                    >
+                                </q-item>
+                            </q-list>
+                        </q-card>
+                        <q-card
+                            v-if="isGoalkeeper"
+                            flat
+                            bordered
+                            class="full-height-card rounded-borders"
+                        >
+                            <q-card-section class="bg-grey-2 q-pa-sm">
+                                <div
+                                    class="text-subtitle2 text-weight-medium text-center"
+                                >
+                                    Goalkeeping
+                                </div>
+                            </q-card-section>
+                            <q-list separator dense class="col scroll-list">
+                                <q-item
+                                    v-for="attrKey in attributeCategories.goalkeeping"
+                                    :key="attrKey"
+                                >
+                                    <q-item-section>
+                                        <q-item-label lines="1">{{
+                                            attributeFullNameMap[attrKey] ||
+                                            attrKey
+                                        }}</q-item-label>
+                                    </q-item-section>
+                                    <q-item-section side>
+                                        <span
+                                            :class="
+                                                getAttributeClass(
+                                                    player.attributes[attrKey],
+                                                )
+                                            "
+                                            class="attribute-value"
+                                        >
+                                            {{
+                                                player.attributes[attrKey] !==
+                                                undefined
+                                                    ? player.attributes[attrKey]
+                                                    : "-"
+                                            }}
+                                        </span>
+                                    </q-item-section>
+                                </q-item>
+                                <q-item
+                                    v-if="
+                                        !attributeCategories.goalkeeping ||
+                                        !attributeCategories.goalkeeping.length
+                                    "
+                                >
+                                    <q-item-section
+                                        class="text-grey-6 text-center q-py-md"
+                                        >No goalkeeping
                                         attributes.</q-item-section
                                     >
                                 </q-item>
@@ -495,7 +543,6 @@
 <script>
 import { defineComponent, computed } from "vue";
 
-// Attribute mappings and ordered keys
 const attributeFullNameMap = {
     Cor: "Corners",
     Cro: "Crossing",
@@ -533,7 +580,19 @@ const attributeFullNameMap = {
     Pac: "Pace",
     Sta: "Stamina",
     Str: "Strength",
+    // New Goalkeeper Attributes
+    Aer: "Aerial Reach",
+    Cmd: "Command of Area",
+    Com: "Communication",
+    Ecc: "Eccentricity",
+    Han: "Handling",
+    Kic: "Kicking",
+    "1v1": "One on Ones",
+    Ref: "Reflexes",
+    TRO: "Tendency To Rush Out",
+    Thr: "Throwing",
 };
+
 const technicalAttrsOrdered = [
     "Cor",
     "Cro",
@@ -576,6 +635,18 @@ const physicalAttrsOrdered = [
     "Sta",
     "Str",
 ];
+const goalkeepingAttrsOrdered = [
+    "Aer",
+    "Cmd",
+    "Com",
+    "Ecc",
+    "Han",
+    "Kic",
+    "1v1",
+    "Ref",
+    "TRO",
+    "Thr",
+];
 
 export default defineComponent({
     name: "PlayerDetailDialog",
@@ -585,6 +656,14 @@ export default defineComponent({
     },
     emits: ["close"],
     setup(props) {
+        const isGoalkeeper = computed(() => {
+            if (!props.player) return false;
+            return (
+                props.player.positionGroups?.includes("Goalkeepers") ||
+                props.player.parsedPositions?.includes("Goalkeeper")
+            );
+        });
+
         const getPlayerAttributesInOrder = (categoryOrderedKeys) => {
             if (!props.player || !props.player.attributes) return [];
             return categoryOrderedKeys.filter((key) =>
@@ -599,9 +678,12 @@ export default defineComponent({
             technical: getPlayerAttributesInOrder(technicalAttrsOrdered),
             mental: getPlayerAttributesInOrder(mentalAttrsOrdered),
             physical: getPlayerAttributesInOrder(physicalAttrsOrdered),
+            goalkeeping: isGoalkeeper.value
+                ? getPlayerAttributesInOrder(goalkeepingAttrsOrdered)
+                : [],
         }));
 
-        const fifaStatsOrder = [
+        const fifaStatsOrderBase = [
             { name: "PHY", label: "PHY" },
             { name: "SHO", label: "SHO" },
             { name: "PAS", label: "PAS" },
@@ -609,6 +691,26 @@ export default defineComponent({
             { name: "DEF", label: "DEF" },
             { name: "MEN", label: "MEN" },
         ];
+
+        const fifaStatsToDisplay = computed(() => {
+            let stats = [...fifaStatsOrderBase];
+            if (isGoalkeeper.value && props.player?.GK !== undefined) {
+                // Check if GK stat exists
+                const shoIndex = stats.findIndex((s) => s.name === "SHO");
+                if (shoIndex !== -1) {
+                    stats.splice(shoIndex, 1, { name: "GK", label: "GK" });
+                } else {
+                    stats.push({ name: "GK", label: "GK" }); // Add if SHO wasn't there
+                }
+            }
+            // Ensure SHO is removed if it's a GK and GK stat is being shown instead
+            if (isGoalkeeper.value && stats.some((s) => s.name === "GK")) {
+                stats = stats.filter(
+                    (s) => s.name !== "SHO" || s.name === "GK",
+                );
+            }
+            return stats;
+        });
 
         const getAttributeClass = (value) => {
             if (value === null || value === undefined || value === "-")
@@ -641,9 +743,7 @@ export default defineComponent({
         };
 
         const onFlagError = (event) => {
-            if (event.target) {
-                event.target.style.display = "none";
-            }
+            if (event.target) event.target.style.display = "none";
         };
 
         const sortedRoleSpecificOveralls = computed(() => {
@@ -660,9 +760,10 @@ export default defineComponent({
             attributeFullNameMap,
             getAttributeClass,
             getFifaStatClass,
-            fifaStatsOrder,
+            fifaStatsToDisplay,
             onFlagError,
             sortedRoleSpecificOveralls,
+            isGoalkeeper,
         };
     },
 });
@@ -680,13 +781,12 @@ export default defineComponent({
 .player-detail-dialog-card > .q-bar {
     border-top-left-radius: 10px;
     border-top-right-radius: 10px;
-    padding: 8px 16px;
 }
 
 .player-detail-dialog-card > .q-card__section--main-content {
     flex-grow: 1;
     overflow-y: auto;
-    padding: 16px;
+    padding: 20px;
 }
 
 .player-detail-dialog-card > .q-card__actions {
@@ -705,21 +805,17 @@ export default defineComponent({
     vertical-align: middle;
 }
 
-/* Styles for the refactored player info section */
 .q-item-label.text-body2 {
-    font-size: 0.875rem; /* Standard body2 size */
+    font-size: 0.875rem;
     line-height: 1.25;
 }
 .q-item-label.q-mb-none {
-    /* Custom class to remove bottom margin from captions */
     margin-bottom: 0 !important;
 }
 .q-pt-xs {
-    /* Align icons better with text */
     padding-top: 2px;
 }
 
-/* Attribute Columns Layout */
 .attribute-columns-row > .column {
     display: flex;
     flex-direction: column;
@@ -729,23 +825,24 @@ export default defineComponent({
     flex-grow: 1;
     display: flex;
     flex-direction: column;
-    min-height: 0;
+    min-height: 0; /* Allow shrinking */
 }
 
 .full-height-card .scroll-list {
     flex-grow: 1;
     overflow-y: auto;
-    min-height: 0;
+    min-height: 0; /* Allow shrinking */
 }
 
-.q-card .q-card__section.bg-grey-2 {
-    padding: 8px 12px;
+.full-height-card .q-card__section.bg-grey-2 {
+    background-color: #f8f9fa !important;
+    padding: 10px 12px;
 }
-.q-card .text-subtitle2 {
-    font-size: 0.85rem;
+.full-height-card .text-subtitle2 {
+    font-size: 0.9rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: #555;
+    color: #495057;
 }
 
 .constrained-scroll-list {
@@ -753,104 +850,87 @@ export default defineComponent({
 }
 
 .role-specific-ratings-list {
-    max-height: 180px; /* Adjust as needed */
+    max-height: 180px;
 }
 
-/* Attribute Value Styling (0-20 scale for FM-style attributes) */
 .attribute-value {
     display: inline-block;
     min-width: 30px;
     text-align: center;
     font-weight: 600;
-    padding: 2px 5px;
+    padding: 1px 3px;
     border-radius: 4px;
-    font-size: 0.75rem;
+    font-size: 0.85rem;
     line-height: 1.3;
 }
+
 .attribute-excellent-fm {
-    background-color: #1976d2;
-    color: white;
+    color: #1565c0;
 }
 .attribute-very-good-fm {
-    background-color: #26a69a;
-    color: white;
+    color: #00897b;
 }
 .attribute-good-fm {
-    background-color: #66bb6a;
-    color: white;
+    color: #388e3c;
 }
 .attribute-average-fm {
-    background-color: #ffee58;
-    color: #333;
+    color: #b28e00;
 }
 .attribute-poor-fm {
-    background-color: #ffa726;
-    color: white;
+    color: #d84315;
 }
 .attribute-very-poor-fm {
-    background-color: #ef5350;
-    color: white;
+    color: #c62828;
 }
 
-/* FIFA Stat Value Styling (0-100 scale) */
 .fifa-stat-value {
-    /* Inherits .attribute-value styles, then these override/add */
-    font-size: 0.9em; /* Relative to its container's font size (text-subtitle1) */
-    padding: 3px 6px;
+    font-size: 0.9em;
+    padding: 2px 4px;
 }
 .attribute-elite {
-    background-color: #7b1fa2;
-    color: white;
+    color: #9c27b0;
 }
 .attribute-excellent {
-    background-color: #1976d2;
-    color: white;
+    color: #1e88e5;
 }
 .attribute-very-good {
-    background-color: #26a69a;
-    color: white;
+    color: #00acc1;
 }
 .attribute-good {
-    background-color: #66bb6a;
-    color: white;
+    color: #43a047;
 }
 .attribute-average {
-    background-color: #ffee58;
-    color: #333;
+    color: #b28e00;
 }
 .attribute-below-average {
-    background-color: #ffca28;
-    color: #333;
+    color: #fb8c00;
 }
 .attribute-poor {
-    background-color: #ffa726;
-    color: white;
+    color: #e53935;
 }
 .attribute-very-poor {
-    background-color: #ef5350;
-    color: white;
+    color: #d32f2f;
 }
-
 .attribute-na {
-    background-color: #bdbdbd;
-    color: #fff;
+    color: #757575;
 }
 
 .best-role-highlight {
-    background-color: #e3f2fd !important;
-    border-left: 3px solid var(--q-primary);
+    background-color: #e8f5e9 !important;
+    border-left: 3px solid var(--q-positive);
 }
 .best-role-highlight .q-item__label {
-    font-weight: 500;
+    font-weight: 600;
+    color: var(--q-positive);
 }
 
 .q-list--dense .q-item,
 .constrained-scroll-list .q-item {
-    padding-top: 4px;
-    padding-bottom: 4px;
-    padding-left: 10px;
-    padding-right: 10px;
+    padding: 6px 12px;
     min-height: auto;
+}
+.q-list--separator > .q-item:not(:first-child):before {
+    border-top: 1px solid #eff2f5;
 }
 .q-list--dense .q-item__section--avatar {
     min-width: 38px;
@@ -864,8 +944,8 @@ export default defineComponent({
 .row.text-center > .col-4 > .q-card.full-height {
     display: flex;
     flex-direction: column;
-    justify-content: center; /* Vertically centers content in FIFA stat cards */
-    min-height: 60px; /* Ensure FIFA stat cards have some min height */
+    justify-content: center;
+    min-height: 60px;
 }
 
 .q-list--dense .q-item__label--caption {
@@ -875,5 +955,13 @@ export default defineComponent({
 .q-list--dense .q-item__label:not(.q-item__label--caption) {
     font-size: 0.85rem;
     line-height: 1.3;
+}
+
+/* Ensure the FIFA stats cards have consistent height */
+.row.q-col-gutter-xs.text-center .q-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
 }
 </style>

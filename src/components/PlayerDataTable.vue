@@ -17,7 +17,7 @@
         <div v-else>
             <q-table
                 :rows="sortedPlayers"
-                :columns="allColumns"
+                :columns="currentColumns"
                 :loading="loading"
                 row-key="name"
                 :pagination.sync="pagination"
@@ -35,12 +35,7 @@
                             :key="col.name"
                             :props="props"
                             class="cursor-pointer"
-                            @click="
-                                sortTable(
-                                    col.name,
-                                    col.isFifaStat || col.isOverallStat,
-                                )
-                            "
+                            @click="sortTable(col.name)"
                         >
                             {{ col.label }}
                             <q-icon
@@ -205,6 +200,7 @@ export default {
     props: {
         players: { type: Array, required: true },
         loading: { type: Boolean, default: false },
+        isGoalkeeperView: { type: Boolean, default: false }, // NEW PROP
     },
     emits: ["update:sort", "player-selected"],
 
@@ -252,7 +248,7 @@ export default {
             {
                 name: "age",
                 label: "Age",
-                field: "age", // Assumes player.age is available and numeric
+                field: "age",
                 sortable: true,
                 align: "center",
             },
@@ -278,16 +274,16 @@ export default {
                 align: "left",
             },
             {
-                name: "media_handling", // New column
+                name: "media_handling",
                 label: "Media Handling",
-                field: "media_handling", // Assumes player.media_handling from API
+                field: "media_handling",
                 sortable: true,
                 align: "left",
             },
             {
-                name: "personality", // New column
+                name: "personality",
                 label: "Personality",
-                field: "personality", // Assumes player.personality from API
+                field: "personality",
                 sortable: true,
                 align: "left",
             },
@@ -317,7 +313,8 @@ export default {
             },
         ];
 
-        const fifaStatColumns = ref([
+        const fifaStatColumnsBase = ref([
+            // Renamed to Base
             {
                 name: "PHY",
                 label: "PHY",
@@ -368,17 +365,38 @@ export default {
             },
         ]);
 
-        const allColumns = computed(() => [
-            ...baseColumns,
-            ...fifaStatColumns.value,
-        ]);
+        const gkStatColumnDefinition = {
+            // Defined once
+            name: "GK",
+            label: "GK",
+            field: "GK",
+            sortable: true,
+            align: "center",
+            isFifaStat: true,
+        };
+
+        // This computed property will now build the columns dynamically
+        const currentColumns = computed(() => {
+            let columns = [...baseColumns, ...fifaStatColumnsBase.value];
+            if (props.isGoalkeeperView) {
+                const menIndex = columns.findIndex((col) => col.name === "MEN");
+                if (menIndex !== -1) {
+                    columns.splice(menIndex + 1, 0, gkStatColumnDefinition);
+                } else {
+                    // Fallback: add to the end if MEN column isn't found for some reason
+                    columns.push(gkStatColumnDefinition);
+                }
+            }
+            return columns;
+        });
 
         const getSortFieldKey = (colName) => {
-            const colDef = allColumns.value.find((c) => c.name === colName);
+            const colDef = currentColumns.value.find((c) => c.name === colName); // Use currentColumns
             return colDef?.sortField || colDef?.field || colName;
         };
 
         const sortedPlayers = computed(() => {
+            // ... (existing sorting logic, should work with dynamic columns) ...
             if (!sortField.value) return props.players;
             const fieldKey = getSortFieldKey(sortField.value);
             const direction = sortDirection.value;
@@ -408,6 +426,7 @@ export default {
         });
 
         const getFifaStatClass = (v) => {
+            /* ... existing logic ... */
             if (v === null || v === undefined || v === "-")
                 return "attribute-na";
             const n = typeof v === "number" ? v : parseInt(v, 10);
@@ -422,6 +441,7 @@ export default {
             return "attribute-very-poor";
         };
         const getMoneyClass = (v) => {
+            /* ... existing logic ... */
             let a = 0;
             if (typeof v === "string") {
                 const c = v.replace(/[^0-9.MKmk]/g, "");
@@ -438,8 +458,8 @@ export default {
             if (a > 0) return "money-low";
             return "money-na";
         };
-
         const onFlagError = (event, player) => {
+            /* ... existing logic ... */
             event.target.style.display = "none";
             const iconElement = event.target.nextElementSibling;
             if (iconElement && iconElement.tagName === "I") {
@@ -460,11 +480,12 @@ export default {
                     emit("update:sort", {
                         key: getSortFieldKey(sortField.value),
                         direction: sortDirection.value,
-                        isFifaStat: allColumns.value.find((c) => c.name === nF)
-                            ?.isFifaStat,
-                        isOverallStat: allColumns.value.find(
+                        isFifaStat: currentColumns.value.find(
                             (c) => c.name === nF,
-                        )?.isOverallStat,
+                        )?.isFifaStat, // Use currentColumns
+                        isOverallStat: currentColumns.value.find(
+                            (c) => c.name === nF,
+                        )?.isOverallStat, // Use currentColumns
                         displayField: sortField.value,
                     });
                 }
@@ -478,6 +499,7 @@ export default {
             pagination.page = 1;
         };
         const customSort = (r, sB, d) => {
+            /* ... existing logic, ensure getSortFieldKey uses currentColumns ... */
             const fK = getSortFieldKey(sB);
             const dir = d ? "desc" : "asc";
             return [...r].sort((a, b) => {
@@ -518,10 +540,10 @@ export default {
             emit("update:sort", {
                 key: aSK,
                 direction: sortDirection.value,
-                isFifaStat: allColumns.value.find((c) => c.name === f)
-                    ?.isFifaStat,
-                isOverallStat: allColumns.value.find((c) => c.name === f)
-                    ?.isOverallStat,
+                isFifaStat: currentColumns.value.find((c) => c.name === f)
+                    ?.isFifaStat, // Use currentColumns
+                isOverallStat: currentColumns.value.find((c) => c.name === f)
+                    ?.isOverallStat, // Use currentColumns
                 displayField: f,
             });
         };
@@ -536,7 +558,7 @@ export default {
             pagesNumber,
             rowsPerPageOptions,
             maxPagesToShow,
-            allColumns,
+            currentColumns, // Use this instead of allColumns
             sortedPlayers,
             getFifaStatClass,
             getMoneyClass,
@@ -553,21 +575,31 @@ export default {
 </script>
 
 <style scoped>
+/* ... (existing styles) ... */
 .player-data-table {
     width: 100%;
     overflow-x: auto;
 }
 :deep(.q-table th) {
     font-weight: 600;
-    background-color: #f3f5f9;
+    background-color: #f8f9fa;
     white-space: nowrap;
+    padding: 10px 16px;
+    border-bottom: 1px solid #dee2e6;
+    border-right: 0;
 }
 :deep(.q-table td) {
     white-space: nowrap;
     vertical-align: middle;
-} /* Align items vertically in cells */
+    padding: 10px 16px;
+    border-bottom: 1px solid #eff2f5;
+    border-right: 0;
+}
+:deep(.q-table tr:last-child td) {
+    border-bottom: 0;
+}
 :deep(.q-table tr:nth-child(even)) {
-    background-color: #f9fafb;
+    background-color: #fdfdfe;
 }
 .table-row-hover:hover {
     background-color: #eef6ff !important;
@@ -581,50 +613,42 @@ export default {
     min-width: 30px;
     text-align: center;
     font-weight: 600;
-    padding: 2px 5px;
+    padding: 1px 3px;
     border-radius: 3px;
     font-size: 0.85em;
 }
 .fifa-stat-value {
     font-size: 1.1em;
-    padding: 4px 8px;
+    padding: 2px 4px;
 }
 .attribute-elite {
-    background-color: #9c27b0;
-    color: white;
+    color: #9c27b0;
 }
 .attribute-excellent {
-    background-color: #20c997;
-    color: white;
+    color: #1e88e5;
 }
 .attribute-very-good {
-    background-color: #4dabf7;
-    color: white;
+    color: #00acc1;
 }
 .attribute-good {
-    background-color: #82c91e;
-    color: #212529;
+    color: #43a047;
 }
 .attribute-average {
-    background-color: #ffc107;
-    color: #212529;
+    color: #b28e00;
 }
 .attribute-below-average {
-    background-color: #fab005;
-    color: #212529;
+    color: #fb8c00;
 }
 .attribute-poor {
-    background-color: #ff922b;
-    color: #212529;
+    color: #e53935;
 }
 .attribute-very-poor {
-    background-color: #fa5252;
-    color: white;
+    color: #d32f2f;
 }
 .attribute-na {
-    background-color: #e9ecef;
-    color: #868e96;
+    color: #757575;
 }
+
 .money-value {
     display: inline-block;
     font-weight: 500;
@@ -636,23 +660,23 @@ export default {
     font-weight: 700;
 }
 .money-high {
-    color: #2b8a3e;
+    color: #388e3c;
 }
 .money-medium-high {
-    color: #5c940d;
+    color: #689f38;
 }
 .money-medium {
-    color: #212529;
+    color: #37474f;
 }
 .money-low {
-    color: #495057;
+    color: #546e7a;
 }
 .money-na {
-    color: #868e96;
+    color: #757575;
 }
-/* Ensure flag and text are aligned in the nationality cell */
+
 .flex.items-center .q-icon,
 .flex.items-center img {
-    flex-shrink: 0; /* Prevent icon/image from shrinking */
+    flex-shrink: 0;
 }
 </style>

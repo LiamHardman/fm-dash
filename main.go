@@ -56,6 +56,7 @@ type Player struct {
 	DRI                  int                `json:"DRI"`                      // Calculated Dribbling stat
 	DEF                  int                `json:"DEF"`                      // Calculated Defending stat
 	MEN                  int                `json:"MEN"`                      // Calculated Mental stat
+	GK                   int                `json:"GK,omitempty"`             // Calculated Goalkeeping stat (NEW)
 	Overall              int                `json:"Overall"`                  // Best overall rating
 	RoleSpecificOveralls []RoleOverallScore `json:"roleSpecificOveralls"`     // All calculated role overalls
 	TransferValueAmount  int64              `json:"transferValueAmount"`      // Numeric transfer value for sorting
@@ -86,27 +87,55 @@ var defaultAttributeWeightsGo = map[string]map[string]int{
 	"DRI": {"Dri": 6, "Fir": 5, "Tec": 4, "Agi": 3, "Bal": 2, "Fla": 1},
 	"DEF": {"Tck": 6, "Mar": 5, "Hea": 4, "Pos": 3, "Cnt": 2, "Ant": 1},
 	"MEN": {"Wor": 11, "Dec": 10, "Tea": 9, "Det": 8, "Bra": 7, "Ldr": 6, "Vis": 5, "Agg": 4, "OtB": 3, "Pos": 2, "Ant": 1},
+	"GK":  {"Han": 20, "Ref": 20, "Cmd": 15, "Aer": 15, "1v1": 10, "Kic": 5, "TRO": 5, "Com": 3, "Thr": 3, "Ecc": 1}, // NEW GK Weights
 }
 
-// A small subset of default role specific weights for brevity in this example.
-// In a real scenario, this would be the full default map.
+// Default role specific weights.
 var defaultRoleSpecificOverallWeightsGo = map[string]map[string]int{
 	"DC - BPD":     {"Cor": 5, "Cro": 1, "Dri": 40, "Fin": 10, "Fir": 35, "Fre": 10, "Hea": 55, "Lon": 10, "Tea": 20, "L Th": 0, "Mar": 55, "Pas": 55, "Pen": 10, "Tck": 40, "Tec": 35, "Agg": 40, "Ant": 50, "Bra": 30, "Cmp": 80, "Cnt": 50, "Dec": 50, "Det": 20, "Fla": 10, "Ldr": 10, "OtB": 10, "Pos": 55, "Vis": 50, "Wor": 55, "Acc": 90, "Agi": 60, "Bal": 35, "Jum": 65, "Nat": 10, "Pac": 90, "Sta": 30, "Str": 50},
 	"ST - AF - At": {"Cor": 5, "Cro": 5, "Dri": 75, "Fin": 80, "Fir": 50, "Fre": 5, "Hea": 25, "Lon": 25, "L Th": 1, "Mar": 1, "Pas": 40, "Pen": 20, "Tck": 5, "Tec": 65, "Agg": 50, "Ant": 50, "Bra": 20, "Cmp": 35, "Cnt": 5, "Dec": 45, "Det": 20, "Fla": 25, "Ldr": 10, "OtB": 45, "Pos": 5, "Tea": 10, "Vis": 20, "Wor": 60, "Acc": 100, "Agi": 30, "Bal": 50, "Jum": 20, "Nat": 10, "Pac": 70, "Sta": 65, "Str": 25},
-	// ... (include all other default roles as in your public/role_specific_overall_weights.json)
+	// ... (other existing roles) ...
+	// NEW GOALKEEPER ROLES
+	"GK - GK - De": {
+		"Aer": 80, "Cmd": 75, "Com": 50, "Ecc": 10, "Han": 90, "Kic": 40, "1v1": 80, "Ref": 90, "TRO": 30, "Thr": 40, // GK Attributes
+		"Ant": 60, "Cmp": 60, "Cnt": 70, "Dec": 70, "Pos": 75, // Mental Attributes
+		"Agi": 50, "Jum": 60, "Str": 50, "Acc": 30, "Pac": 30, // Physical Attributes
+		"Det": 50, "Ldr": 40, "Bra": 60, "Wor": 40, "Tea": 40, // Other Mental
+	},
+	"GK - SK - De": {
+		"Aer": 75, "Cmd": 70, "Com": 55, "Ecc": 20, "Han": 85, "Kic": 60, "1v1": 75, "Ref": 85, "TRO": 60, "Thr": 50, // GK Attributes
+		"Ant": 65, "Cmp": 65, "Cnt": 65, "Dec": 75, "Pos": 70, // Mental Attributes
+		"Acc": 50, "Agi": 55, "Jum": 55, "Pac": 50, "Str": 45, // Physical Attributes
+		"Fir": 40, "Pas": 40, "Tec": 30, "Vis": 30, // Technical for SK
+		"Det": 50, "Ldr": 40, "Bra": 60, "Wor": 40, "Tea": 40,
+	},
+	"GK - SK - Su": {
+		"Aer": 70, "Cmd": 65, "Com": 60, "Ecc": 30, "Han": 80, "Kic": 75, "1v1": 70, "Ref": 80, "TRO": 75, "Thr": 65, // GK Attributes
+		"Ant": 70, "Cmp": 70, "Cnt": 60, "Dec": 80, "Pos": 65, "Vis": 50, // Mental Attributes
+		"Acc": 60, "Agi": 60, "Jum": 50, "Pac": 60, "Str": 40, // Physical Attributes
+		"Fir": 60, "Pas": 60, "Tec": 50, // Technical for SK
+		"Det": 50, "Ldr": 40, "Bra": 50, "Wor": 50, "Tea": 50, "Fla": 20, "OtB": 30,
+	},
+	"GK - SK - At": {
+		"Aer": 65, "Cmd": 60, "Com": 65, "Ecc": 40, "Han": 75, "Kic": 85, "1v1": 65, "Ref": 75, "TRO": 85, "Thr": 75, // GK Attributes
+		"Ant": 75, "Cmp": 75, "Cnt": 55, "Dec": 85, "Pos": 60, "Vis": 65, "Fla": 40, "OtB": 40, // Mental Attributes
+		"Acc": 70, "Agi": 65, "Jum": 45, "Pac": 70, "Str": 35, // Physical Attributes
+		"Fir": 70, "Pas": 70, "Tec": 60, // Technical for SK
+		"Det": 50, "Ldr": 40, "Bra": 40, "Wor": 50, "Tea": 50,
+	},
 }
 
 func loadJSONWeights(filePath string, defaultWeights map[string]map[string]int) (map[string]map[string]int, error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		log.Printf("Warning: Could not read %s: %v. Using default weights.", filePath, err)
-		return defaultWeights, err // Return default weights but also the error for context
+		return defaultWeights, err
 	}
 
 	var weights map[string]map[string]int
 	if err := json.Unmarshal(data, &weights); err != nil {
 		log.Printf("Warning: Could not unmarshal %s: %v. Using default weights.", filePath, err)
-		return defaultWeights, err // Return default weights but also the error for context
+		return defaultWeights, err
 	}
 	log.Printf("Successfully loaded weights from %s", filePath)
 	return weights, nil
@@ -155,14 +184,14 @@ var (
 		"Attackers":   {"Striker", "Right Forward", "Left Forward", "Centre Forward"},
 	}
 	parsedPositionToBaseRoleKeyGo = map[string]string{
-		"Goalkeeper":                  nullString, // Or handle GK separately if no roles apply
+		"Goalkeeper":                  "GK", // UPDATED for GK roles
 		"Sweeper":                     "DC",
 		"Right Back":                  "DR/L",
 		"Left Back":                   "DR/L",
 		"Centre Back":                 "DC",
 		"Right Wing-Back":             "WBR/L",
 		"Left Wing-Back":              "WBR/L",
-		"Centre Wing-Back":            "WBR/L", // Check if this is correct or needs a specific base key
+		"Centre Wing-Back":            "WBR/L",
 		"Right Defensive Midfielder":  "DM",
 		"Left Defensive Midfielder":   "DM",
 		"Centre Defensive Midfielder": "DM",
@@ -177,10 +206,11 @@ var (
 		"Left Forward":                "AMR/L",
 		"Centre Forward":              "ST",
 	}
-	nullString = "" // To represent null-like behavior for map lookups if needed
+	nullString = ""
 )
 
 func parsePlayerPositionsGo(positionStr string) []string {
+	// ... (existing logic, should handle "GK" correctly via positionRoleMapGo and standardizedPositionNameMapGo) ...
 	if positionStr == "" {
 		return []string{}
 	}
@@ -219,8 +249,13 @@ func parsePlayerPositionsGo(positionStr string) []string {
 			roleFullName, roleExists := positionRoleMapGo[roleKey]
 			if roleExists {
 				sidesToIterate := explicitSidesArray
-				if len(sidesToIterate) == 0 { // Default to Centre if no sides specified
-					sidesToIterate = []string{"C"}
+				if len(sidesToIterate) == 0 {
+					// Default to Centre if no sides specified, unless it's GK which is always Centre implicitly
+					if roleKey == "GK" {
+						sidesToIterate = []string{"C"} // Standardize GK as "Goalkeeper (Centre)" before map lookup
+					} else {
+						sidesToIterate = []string{"C"}
+					}
 				}
 
 				for _, sideKey := range sidesToIterate {
@@ -231,12 +266,19 @@ func parsePlayerPositionsGo(positionStr string) []string {
 						if ok {
 							finalPositionsSet[standardizedName] = struct{}{}
 						} else {
+							// If GK and not in map as "Goalkeeper (Centre)", try just "Goalkeeper"
+							if roleKey == "GK" {
+								standardizedNameGK, okGK := standardizedPositionNameMapGo[roleFullName]
+								if okGK {
+									finalPositionsSet[standardizedNameGK] = struct{}{}
+									continue
+								}
+							}
 							finalPositionsSet[detailedName] = struct{}{} // Fallback
 						}
 					}
 				}
 			} else {
-				// If not in positionRoleMap, check if it's a pre-standardized name
 				standardizedName, ok := standardizedPositionNameMapGo[roleKey]
 				if ok {
 					finalPositionsSet[standardizedName] = struct{}{}
@@ -249,11 +291,12 @@ func parsePlayerPositionsGo(positionStr string) []string {
 	for pos := range finalPositionsSet {
 		finalPositions = append(finalPositions, pos)
 	}
-	sort.Strings(finalPositions) // Consistent order
+	sort.Strings(finalPositions)
 	return finalPositions
 }
 
 func getPlayerPositionGroupsGo(parsedPositionsArray []string) []string {
+	// ... (existing logic) ...
 	groupsSet := make(map[string]struct{})
 	if len(parsedPositionsArray) == 0 {
 		return []string{}
@@ -272,7 +315,7 @@ func getPlayerPositionGroupsGo(parsedPositionsArray []string) []string {
 	for group := range groupsSet {
 		groups = append(groups, group)
 	}
-	sort.Strings(groups) // Consistent order
+	sort.Strings(groups)
 	return groups
 }
 
@@ -282,13 +325,13 @@ func getPlayerPositionGroupsGo(parsedPositionsArray []string) []string {
 
 func calculateFifaStatGo(playerNumericAttributes map[string]int, categoryName string) int {
 	muAttributeWeights.RLock()
-	currentCategoryWeightsSource := attributeWeights // Use loaded, possibly from file
+	currentCategoryWeightsSource := attributeWeights
 	muAttributeWeights.RUnlock()
 
 	categoryAttributeWeights, ok := currentCategoryWeightsSource[categoryName]
 	if !ok {
 		log.Printf("Warning: Attribute weights for category '%s' not found. Using defaults for this category.", categoryName)
-		categoryAttributeWeights, ok = defaultAttributeWeightsGo[categoryName] // Fallback to hardcoded defaults for this specific category
+		categoryAttributeWeights, ok = defaultAttributeWeightsGo[categoryName]
 		if !ok {
 			log.Printf("Error: Default attribute weights for category '%s' also not found. Returning 0.", categoryName)
 			return 0
@@ -301,7 +344,6 @@ func calculateFifaStatGo(playerNumericAttributes map[string]int, categoryName st
 	for attrName, attrWeight := range categoryAttributeWeights {
 		attrValue, exists := playerNumericAttributes[attrName]
 		if exists {
-			// FM attributes are 1-20.
 			if attrValue >= 1 && attrValue <= 20 {
 				weightedSum += float64(attrValue * attrWeight)
 				totalWeightOfPresentAttributes += float64(attrWeight)
@@ -312,9 +354,8 @@ func calculateFifaStatGo(playerNumericAttributes map[string]int, categoryName st
 	if totalWeightOfPresentAttributes == 0 {
 		return 0
 	}
-	// Weighted average (1-20 scale), then scale to roughly 0-99
 	weightedAverage := weightedSum / totalWeightOfPresentAttributes
-	return int(math.Round(weightedAverage * 5.3)) // Scale to 0-100 (max 20*5 = 100)
+	return int(math.Round(weightedAverage * 5.3))
 }
 
 func calculateOverallForRoleGo(playerNumericAttributes map[string]int, roleSpecificAttrWeights map[string]int) int {
@@ -328,7 +369,6 @@ func calculateOverallForRoleGo(playerNumericAttributes map[string]int, roleSpeci
 	for attrKey, weightForAttribute := range roleSpecificAttrWeights {
 		attributeValue, exists := playerNumericAttributes[attrKey]
 		if exists {
-			// Ensure attributeValue is within 0-20 range for calculation consistency
 			validAttributeValue := math.Max(0, math.Min(20, float64(attributeValue)))
 			weightedAttributeSum += validAttributeValue * float64(weightForAttribute)
 			totalApplicableWeightsSum += float64(weightForAttribute)
@@ -340,7 +380,6 @@ func calculateOverallForRoleGo(playerNumericAttributes map[string]int, roleSpeci
 	}
 
 	rawPositionalOverall := weightedAttributeSum / totalApplicableWeightsSum
-	// Apply scaling factor and cap at 99
 	return int(math.Min(99, math.Round(rawPositionalOverall*overallScalingFactor)))
 }
 
@@ -430,6 +469,7 @@ var fifaToISO2 = map[string]string{ /* ... same as existing ... */
 // --- END: FIFA Country Code Maps ---
 
 func getNodeTextOptimized(n *html.Node) string {
+	// ... (existing logic) ...
 	if n == nil {
 		return ""
 	}
@@ -449,9 +489,8 @@ func getNodeTextOptimized(n *html.Node) string {
 }
 
 func parseMonetaryValueGo(rawValue string) (string, int64) {
+	// ... (existing logic) ...
 	cleanedValue := strings.TrimSpace(rawValue)
-	// Handle ranges like "€1.5M - €2.5M", take the higher value or average if needed.
-	// For simplicity, this example takes the part after " - " if it exists.
 	if strings.Contains(cleanedValue, " - ") {
 		parts := strings.Split(cleanedValue, " - ")
 		if len(parts) == 2 {
@@ -460,9 +499,8 @@ func parseMonetaryValueGo(rawValue string) (string, int64) {
 	}
 
 	var numericValue int64
-	originalStr := cleanedValue // Keep the original string for display
+	originalStr := cleanedValue
 
-	// Remove currency symbols and " p/w" for parsing
 	cleanedValue = strings.ReplaceAll(cleanedValue, "€", "")
 	cleanedValue = strings.ReplaceAll(cleanedValue, "£", "")
 	cleanedValue = strings.ReplaceAll(cleanedValue, "$", "")
@@ -476,24 +514,23 @@ func parseMonetaryValueGo(rawValue string) (string, int64) {
 		multiplier = 1000
 		cleanedValue = strings.TrimSuffix(cleanedValue, "K")
 	}
-	cleanedValue = strings.ReplaceAll(cleanedValue, ",", "") // Remove commas for float parsing
+	cleanedValue = strings.ReplaceAll(cleanedValue, ",", "")
 
 	valFloat, err := strconv.ParseFloat(cleanedValue, 64)
 	if err == nil {
 		numericValue = int64(valFloat * float64(multiplier))
-	} else {
-		// log.Printf("Could not parse monetary value '%s' (cleaned: '%s'): %v", rawValue, cleanedValue, err)
 	}
 	return originalStr, numericValue
 }
 
 func uploadHandler(w http.ResponseWriter, r *http.Request) {
+	// ... (existing logic for file upload and initial parsing) ...
 	if r.Method != http.MethodPost {
 		http.Error(w, "Only POST method is allowed", http.StatusMethodNotAllowed)
 		return
 	}
 	startTime := time.Now()
-	if err := r.ParseMultipartForm(10 << 20); err != nil { // 10 MB limit
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		http.Error(w, "Error parsing multipart form: "+err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -565,7 +602,6 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !findHeaderRow(tableNode) {
-		// Fallback to first row if no <th> found (same as existing)
 		firstRow := true
 		for tr := tableNode.FirstChild; tr != nil; tr = tr.NextSibling {
 			if tr.Type == html.ElementNode && tr.Data == "tbody" {
@@ -585,7 +621,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 				break
-			} else if tr.Type == html.ElementNode && tr.Data == "tr" { // Direct TR under table
+			} else if tr.Type == html.ElementNode && tr.Data == "tr" {
 				if firstRow {
 					headerRowNode = tr
 					for td := tr.FirstChild; td != nil; td = td.NextSibling {
@@ -615,11 +651,10 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	var collectDataRows func(*html.Node)
 	collectDataRows = func(n *html.Node) {
 		if n.Type == html.ElementNode && n.Data == "tr" {
-			if n != headerRowNode { // Skip the header row itself
+			if n != headerRowNode {
 				rowNodesToProcess = append(rowNodesToProcess, n)
 			}
 		}
-		// Traverse into tbody or table directly for rows
 		if n.Type == html.ElementNode && (n.Data == "tbody" || n.Data == "table") {
 			for c := n.FirstChild; c != nil; c = c.NextSibling {
 				collectDataRows(c)
@@ -631,14 +666,13 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	numRowsToProcess := len(rowNodesToProcess)
 	if numRowsToProcess == 0 {
 		log.Println("No data rows found.")
-		// Proceed to send empty array if no data rows
 	}
 
 	numWorkers := runtime.NumCPU()
 	if numRowsToProcess < numWorkers {
 		numWorkers = numRowsToProcess
 	}
-	if numWorkers == 0 && numRowsToProcess > 0 { // Ensure at least one worker if there are rows
+	if numWorkers == 0 && numRowsToProcess > 0 {
 		numWorkers = 1
 	}
 
@@ -646,7 +680,6 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	resultsChan := make(chan PlayerParseResult, numRowsToProcess)
 	var wg sync.WaitGroup
 
-	// Create a snapshot of headers for concurrent use
 	headersSnapshot := make([]string, len(headers))
 	copy(headersSnapshot, headers)
 
@@ -657,7 +690,6 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			for rowNode := range rowNodeChan {
 				player, err := parseRowToPlayer(rowNode, headersSnapshot)
 				if err == nil {
-					// Perform calculations after basic parsing
 					enhancePlayerWithCalculations(&player)
 				}
 				resultsChan <- PlayerParseResult{Player: player, Err: err}
@@ -686,7 +718,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	parseDuration := time.Since(parseStartTime)
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*") // For development
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	if err := json.NewEncoder(w).Encode(players); err != nil {
 		http.Error(w, "Error encoding JSON: "+err.Error(), http.StatusInternalServerError)
 	}
@@ -705,30 +737,27 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 // enhancePlayerWithCalculations populates calculated fields.
 func enhancePlayerWithCalculations(player *Player) {
-	// 1. Convert string attributes to numeric
 	player.NumericAttributes = make(map[string]int, len(player.Attributes))
 	for key, valStr := range player.Attributes {
 		valInt, err := strconv.Atoi(valStr)
 		if err == nil {
 			player.NumericAttributes[key] = valInt
 		} else {
-			player.NumericAttributes[key] = 0 // Default to 0 if parsing fails
+			player.NumericAttributes[key] = 0
 		}
 	}
 
-	// 2. Parse positions
 	player.ParsedPositions = parsePlayerPositionsGo(player.Position)
 	player.PositionGroups = getPlayerPositionGroupsGo(player.ParsedPositions)
 
-	// 3. Calculate FIFA-style stats
 	player.PHY = calculateFifaStatGo(player.NumericAttributes, "PHY")
 	player.SHO = calculateFifaStatGo(player.NumericAttributes, "SHO")
 	player.PAS = calculateFifaStatGo(player.NumericAttributes, "PAS")
 	player.DRI = calculateFifaStatGo(player.NumericAttributes, "DRI")
 	player.DEF = calculateFifaStatGo(player.NumericAttributes, "DEF")
 	player.MEN = calculateFifaStatGo(player.NumericAttributes, "MEN")
+	player.GK = calculateFifaStatGo(player.NumericAttributes, "GK") // NEW
 
-	// 4. Calculate role-specific overalls and determine best overall
 	maxOverall := 0
 	calculatedRoleOveralls := []RoleOverallScore{}
 
@@ -742,13 +771,16 @@ func enhancePlayerWithCalculations(player *Player) {
 		for _, parsedPos := range player.ParsedPositions {
 			baseRoleKey, ok := parsedPositionToBaseRoleKeyGo[parsedPos]
 			if !ok || baseRoleKey == nullString {
-				continue // Skip if no base role mapping
+				// If it's "Goalkeeper" and no direct baseRoleKey mapping led to "GK",
+				// ensure we still consider GK roles.
+				if parsedPos == "Goalkeeper" {
+					baseRoleKey = "GK" // Explicitly set for Goalkeeper position
+				} else {
+					continue
+				}
 			}
 
-			// Iterate through all role-specific keys in the loaded JSON
 			for roleKeyInJson, specificWeights := range currentRoleWeightsSource {
-				// Check if the JSON key starts with the baseRoleKey (e.g., "DC - BPD" starts with "DC")
-				// Or if it's the generic version for that base role (e.g., "DC - Generic")
 				if strings.HasPrefix(roleKeyInJson, baseRoleKey+" - ") {
 					overallForThisRole := calculateOverallForRoleGo(player.NumericAttributes, specificWeights)
 					calculatedRoleOveralls = append(calculatedRoleOveralls, RoleOverallScore{RoleName: roleKeyInJson, Score: overallForThisRole})
@@ -757,12 +789,10 @@ func enhancePlayerWithCalculations(player *Player) {
 					}
 				}
 			}
-			// Add generic calculation for the base role if not already covered
 			genericRoleKey := baseRoleKey + " - Generic"
 			if specificWeights, exists := currentRoleWeightsSource[genericRoleKey]; exists {
 				if _, considered := uniqueBaseRoleKeysConsidered[genericRoleKey]; !considered {
 					overallForThisRole := calculateOverallForRoleGo(player.NumericAttributes, specificWeights)
-					// Avoid duplicate addition if a specific role already matched this generic key structure
 					alreadyAdded := false
 					for _, cro := range calculatedRoleOveralls {
 						if cro.RoleName == genericRoleKey {
@@ -780,22 +810,20 @@ func enhancePlayerWithCalculations(player *Player) {
 				}
 			}
 		}
-	} else { // If no parsed positions, try to find a "Generic" role for common base types if possible
-		// This part might need refinement based on how "Generic" roles are defined and preferred.
-		// For example, try a very generic "ST - Generic" or "MC - Generic" if player.Position hints at it.
-		// For now, if no parsed positions, maxOverall remains 0 or based on a single default role if applicable.
 	}
 
 	player.Overall = maxOverall
 	player.RoleSpecificOveralls = calculatedRoleOveralls
 
-	// Sort RoleSpecificOveralls by score descending for consistent output (optional, but good for display)
 	sort.Slice(player.RoleSpecificOveralls, func(i, j int) bool {
 		return player.RoleSpecificOveralls[i].Score > player.RoleSpecificOveralls[j].Score
 	})
 }
 
 func parseRowToPlayer(tr *html.Node, headers []string) (Player, error) {
+	// ... (existing logic for parsing most fields) ...
+	// Ensure new GK attributes (Aer, Cmd, Com, Ecc, Han, Kic, 1v1, Ref, TRO, Thr)
+	// are captured into player.Attributes if they appear as headers.
 	var cells []string
 	cellCap := defaultCellCapacity
 	if len(headers) > 0 {
@@ -831,13 +859,16 @@ func parseRowToPlayer(tr *html.Node, headers []string) (Player, error) {
 
 	knownNonAttributeHeaders := map[string]bool{
 		"Inf": true,
+		// Add other known non-attribute column headers here if any, e.g. "Left Foot", "Right Foot"
+		// if they are not meant to be treated as general player attributes for rating calculations.
+		// The new GK attributes (Aer, Cmd, etc.) SHOULD be treated as attributes.
 	}
 
 	foundName := false
 	for i, headerName := range headers {
 		if i < len(cells) {
 			cellValue := strings.TrimSpace(cells[i])
-			isAnAttributeField := true
+			isAnAttributeField := true // Assume it's an attribute by default
 
 			switch headerName {
 			case "Name":
@@ -861,17 +892,19 @@ func parseRowToPlayer(tr *html.Node, headers []string) (Player, error) {
 			case "Wage":
 				player.Wage, player.WageAmount = parseMonetaryValueGo(cellValue)
 				isAnAttributeField = false
-			case "Personality": // New Case
+			case "Personality":
 				player.Personality = cellValue
 				isAnAttributeField = false
-			case "Media Handling": // New Case
+			case "Media Handling":
 				player.MediaHandling = cellValue
 				isAnAttributeField = false
-			case "Nat":
+			case "Nat": // This handles the primary "Nat" for Nationality
+				// If "Nat" appears again (for Natural Fitness), it will be caught by the default case
+				// and added to attributes, which is correct.
 				fifaCode := strings.ToUpper(cellValue)
 				player.NationalityFIFACode = fifaCode
 
-				if player.Nationality == "" {
+				if player.Nationality == "" { // Only set nationality info once
 					if fullName, ok := fifaCountryCodes[fifaCode]; ok {
 						player.Nationality = fullName
 					} else {
@@ -884,12 +917,15 @@ func parseRowToPlayer(tr *html.Node, headers []string) (Player, error) {
 						player.NationalityISO = strings.ToLower(cellValue)
 					}
 					isAnAttributeField = false
-				} else {
-					// This handles the case where "Nat" might appear again as an attribute (e.g. Natural Fitness)
-					// The current logic will add it to player.Attributes[headerName] if isAnAttributeField remains true.
 				}
+			// Add cases for other specific non-attribute fields if necessary
+			// e.g., "Left Foot", "Right Foot" if they are present and not attributes
+			case "Left Foot", "Right Foot": // Example: if these are not for calculation
+				// player.Attributes[headerName] = cellValue // Or store them in dedicated fields
+				isAnAttributeField = false // Assuming these are informational, not for calc
 			default:
-				// Any other header is potentially an attribute
+				// All other headers are treated as attributes, including new GK ones like "Aer", "Cmd", etc.
+				// and also "Nat" when it refers to Natural Fitness.
 			}
 
 			if isAnAttributeField {
@@ -920,6 +956,7 @@ func parseRowToPlayer(tr *html.Node, headers []string) (Player, error) {
 }
 
 func getFirstNCells(slice []string, n int) []string {
+	// ... (existing logic) ...
 	if n < 0 {
 		n = 0
 	}
@@ -930,11 +967,12 @@ func getFirstNCells(slice []string, n int) []string {
 }
 
 func bToMb(b uint64) float64 {
+	// ... (existing logic) ...
 	return float64(b) / 1024 / 1024
 }
 
 func main() {
-	// Serve index.html at the root
+	// ... (existing logic) ...
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)
