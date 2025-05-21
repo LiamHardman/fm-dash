@@ -41,23 +41,25 @@ type Player struct {
 	Club                 string             `json:"club"`
 	TransferValue        string             `json:"transfer_value"`
 	Wage                 string             `json:"wage"`
-	Nationality          string             `json:"nationality"`           // Full country name
-	NationalityISO       string             `json:"nationality_iso"`       // 2-letter ISO code for flags
-	NationalityFIFACode  string             `json:"nationality_fifa_code"` // Original 3-letter FIFA code
-	Attributes           map[string]string  `json:"attributes"`            // Raw string attributes
-	NumericAttributes    map[string]int     `json:"-"`                     // Parsed numeric attributes (internal use)
-	ParsedPositions      []string           `json:"parsedPositions"`       // Standardized positions
-	PositionGroups       []string           `json:"positionGroups"`        // General groups like "Defenders", "Midfielders"
-	PHY                  int                `json:"PHY"`                   // Calculated Physical stat
-	SHO                  int                `json:"SHO"`                   // Calculated Shooting stat
-	PAS                  int                `json:"PAS"`                   // Calculated Passing stat
-	DRI                  int                `json:"DRI"`                   // Calculated Dribbling stat
-	DEF                  int                `json:"DEF"`                   // Calculated Defending stat
-	MEN                  int                `json:"MEN"`                   // Calculated Mental stat
-	Overall              int                `json:"Overall"`               // Best overall rating
-	RoleSpecificOveralls []RoleOverallScore `json:"roleSpecificOveralls"`  // All calculated role overalls
-	TransferValueAmount  int64              `json:"transferValueAmount"`   // Numeric transfer value for sorting
-	WageAmount           int64              `json:"wageAmount"`            // Numeric wage for sorting
+	Personality          string             `json:"personality,omitempty"`    // New field
+	MediaHandling        string             `json:"media_handling,omitempty"` // New field
+	Nationality          string             `json:"nationality"`              // Full country name
+	NationalityISO       string             `json:"nationality_iso"`          // 2-letter ISO code for flags
+	NationalityFIFACode  string             `json:"nationality_fifa_code"`    // Original 3-letter FIFA code
+	Attributes           map[string]string  `json:"attributes"`               // Raw string attributes
+	NumericAttributes    map[string]int     `json:"-"`                        // Parsed numeric attributes (internal use)
+	ParsedPositions      []string           `json:"parsedPositions"`          // Standardized positions
+	PositionGroups       []string           `json:"positionGroups"`           // General groups like "Defenders", "Midfielders"
+	PHY                  int                `json:"PHY"`                      // Calculated Physical stat
+	SHO                  int                `json:"SHO"`                      // Calculated Shooting stat
+	PAS                  int                `json:"PAS"`                      // Calculated Passing stat
+	DRI                  int                `json:"DRI"`                      // Calculated Dribbling stat
+	DEF                  int                `json:"DEF"`                      // Calculated Defending stat
+	MEN                  int                `json:"MEN"`                      // Calculated Mental stat
+	Overall              int                `json:"Overall"`                  // Best overall rating
+	RoleSpecificOveralls []RoleOverallScore `json:"roleSpecificOveralls"`     // All calculated role overalls
+	TransferValueAmount  int64              `json:"transferValueAmount"`      // Numeric transfer value for sorting
+	WageAmount           int64              `json:"wageAmount"`               // Numeric wage for sorting
 }
 
 // PlayerParseResult is used for concurrent processing.
@@ -427,7 +429,7 @@ var fifaToISO2 = map[string]string{ /* ... same as existing ... */
 
 // --- END: FIFA Country Code Maps ---
 
-func getNodeTextOptimized(n *html.Node) string { /* ... same as existing ... */
+func getNodeTextOptimized(n *html.Node) string {
 	if n == nil {
 		return ""
 	}
@@ -485,7 +487,7 @@ func parseMonetaryValueGo(rawValue string) (string, int64) {
 	return originalStr, numericValue
 }
 
-func uploadHandler(w http.ResponseWriter, r *http.Request) { /* ... */
+func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Only POST method is allowed", http.StatusMethodNotAllowed)
 		return
@@ -793,7 +795,7 @@ func enhancePlayerWithCalculations(player *Player) {
 	})
 }
 
-func parseRowToPlayer(tr *html.Node, headers []string) (Player, error) { /* ... */
+func parseRowToPlayer(tr *html.Node, headers []string) (Player, error) {
 	var cells []string
 	cellCap := defaultCellCapacity
 	if len(headers) > 0 {
@@ -811,7 +813,6 @@ func parseRowToPlayer(tr *html.Node, headers []string) (Player, error) { /* ... 
 		return Player{}, errors.New("cannot process row: headers are empty")
 	}
 	if len(cells) == 0 {
-		// Check if it's just an empty row vs a row with empty cells
 		isEmptyRow := true
 		for _, cellContent := range cells {
 			if strings.TrimSpace(cellContent) != "" {
@@ -819,10 +820,9 @@ func parseRowToPlayer(tr *html.Node, headers []string) (Player, error) { /* ... 
 				break
 			}
 		}
-		if isEmptyRow && len(cells) < len(headers)/2 { // Heuristic: if very few cells and all empty, likely ignorable
+		if isEmptyRow && len(cells) < len(headers)/2 {
 			return Player{}, errors.New("skipped row: appears to be an empty or malformed row")
 		}
-		// If not entirely empty but no useful cells, it might still be an error later if Name is missing.
 	}
 
 	player := Player{
@@ -830,14 +830,14 @@ func parseRowToPlayer(tr *html.Node, headers []string) (Player, error) { /* ... 
 	}
 
 	knownNonAttributeHeaders := map[string]bool{
-		"Inf": true, // "Inf" column often contains non-attribute data
+		"Inf": true,
 	}
 
 	foundName := false
 	for i, headerName := range headers {
 		if i < len(cells) {
 			cellValue := strings.TrimSpace(cells[i])
-			isAnAttributeField := true // Assume it's an attribute unless specified
+			isAnAttributeField := true
 
 			switch headerName {
 			case "Name":
@@ -847,7 +847,7 @@ func parseRowToPlayer(tr *html.Node, headers []string) (Player, error) { /* ... 
 				}
 				isAnAttributeField = false
 			case "Position":
-				player.Position = cellValue // Store original position string
+				player.Position = cellValue
 				isAnAttributeField = false
 			case "Age":
 				player.Age = cellValue
@@ -861,40 +861,39 @@ func parseRowToPlayer(tr *html.Node, headers []string) (Player, error) { /* ... 
 			case "Wage":
 				player.Wage, player.WageAmount = parseMonetaryValueGo(cellValue)
 				isAnAttributeField = false
+			case "Personality": // New Case
+				player.Personality = cellValue
+				isAnAttributeField = false
+			case "Media Handling": // New Case
+				player.MediaHandling = cellValue
+				isAnAttributeField = false
 			case "Nat":
 				fifaCode := strings.ToUpper(cellValue)
 				player.NationalityFIFACode = fifaCode
 
-				// The first "Nat" column is Nationality
 				if player.Nationality == "" {
 					if fullName, ok := fifaCountryCodes[fifaCode]; ok {
 						player.Nationality = fullName
 					} else {
-						player.Nationality = cellValue // Default to the code if not found
-						// log.Printf("Warning: FIFA country code '%s' not found in full name map. Using original value.", cellValue)
+						player.Nationality = cellValue
 					}
 
 					if isoCode, ok := fifaToISO2[fifaCode]; ok {
 						player.NationalityISO = isoCode
 					} else {
-						player.NationalityISO = strings.ToLower(cellValue) // Fallback for ISO
-						// log.Printf("Warning: FIFA country code '%s' not found in ISO2 map. Using lowercase original value as fallback.", cellValue)
+						player.NationalityISO = strings.ToLower(cellValue)
 					}
 					isAnAttributeField = false
 				} else {
-					// Subsequent "Nat" column is treated as "Natural Fitness" attribute
-					// isAnAttributeField remains true, will be added to Attributes map
-					// Ensure this doesn't overwrite a previous "Nat" if the header is reused.
-					// The current logic correctly adds it to player.Attributes with headerName "Nat"
+					// This handles the case where "Nat" might appear again as an attribute (e.g. Natural Fitness)
+					// The current logic will add it to player.Attributes[headerName] if isAnAttributeField remains true.
 				}
-
 			default:
 				// Any other header is potentially an attribute
 			}
 
 			if isAnAttributeField {
 				if _, isKnownNonAttr := knownNonAttributeHeaders[headerName]; !isKnownNonAttr {
-					// Only add if headerName is not empty, cellValue is not empty and not just "-"
 					if headerName != "" && cellValue != "" && cellValue != "-" {
 						player.Attributes[headerName] = cellValue
 					}
@@ -904,7 +903,6 @@ func parseRowToPlayer(tr *html.Node, headers []string) (Player, error) { /* ... 
 	}
 
 	if !foundName {
-		// Check if the row contains any meaningful data before discarding
 		isPotentiallyMeaningfulRow := false
 		for _, cellContent := range cells {
 			if strings.TrimSpace(cellContent) != "" {
@@ -921,7 +919,7 @@ func parseRowToPlayer(tr *html.Node, headers []string) (Player, error) { /* ... 
 	return player, nil
 }
 
-func getFirstNCells(slice []string, n int) []string { /* ... same as existing ... */
+func getFirstNCells(slice []string, n int) []string {
 	if n < 0 {
 		n = 0
 	}
@@ -931,7 +929,7 @@ func getFirstNCells(slice []string, n int) []string { /* ... same as existing ..
 	return slice[:n]
 }
 
-func bToMb(b uint64) float64 { /* ... same as existing ... */
+func bToMb(b uint64) float64 {
 	return float64(b) / 1024 / 1024
 }
 
@@ -942,20 +940,15 @@ func main() {
 			http.NotFound(w, r)
 			return
 		}
-		// Correctly serve index.html from the project root
 		http.ServeFile(w, r, filepath.Join(".", "index.html"))
 	})
 
-	// Serve static files from the "public" directory (for JSON weight files if accessed directly)
-	// And also for assets referenced by index.html if it were more complex.
-	// Vite dev server usually handles this for the frontend, but good for Go server to be aware.
 	fs := http.FileServer(http.Dir("./public"))
 	http.Handle("/public/", http.StripPrefix("/public/", fs))
 
-	// API endpoint
 	http.HandleFunc("/upload", uploadHandler)
 
-	port := "8091" // Ensure this matches your frontend's proxy and playerService.js
+	port := "8091"
 	log.Printf("Server starting on http://localhost:%s", port)
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatal("ListenAndServe: ", err)

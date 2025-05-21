@@ -249,15 +249,20 @@ export default {
                 sortable: true,
                 align: "left",
             },
-            // START: Add Nationality Column Definition
             {
-                name: "nationality_display", // Unique name for this column to avoid conflict with 'nationality' field if used for sorting
+                name: "age",
+                label: "Age",
+                field: "age", // Assumes player.age is available and numeric
+                sortable: true,
+                align: "center",
+            },
+            {
+                name: "nationality_display",
                 label: "Nationality",
-                field: "nationality", // Sort by the full nationality name
+                field: "nationality",
                 sortable: true,
                 align: "left",
             },
-            // END: Add Nationality Column Definition
             {
                 name: "position",
                 label: "Position",
@@ -269,6 +274,20 @@ export default {
                 name: "club",
                 label: "Club",
                 field: "club",
+                sortable: true,
+                align: "left",
+            },
+            {
+                name: "media_handling", // New column
+                label: "Media Handling",
+                field: "media_handling", // Assumes player.media_handling from API
+                sortable: true,
+                align: "left",
+            },
+            {
+                name: "personality", // New column
+                label: "Personality",
+                field: "personality", // Assumes player.personality from API
                 sortable: true,
                 align: "left",
             },
@@ -288,16 +307,14 @@ export default {
                 align: "right",
                 sortField: "wageAmount",
             },
-            // START: Add Overall Column Definition
             {
                 name: "Overall",
                 label: "Overall",
-                field: "Overall", // The field calculated in PlayerUploadPage
+                field: "Overall",
                 sortable: true,
                 align: "center",
-                isOverallStat: true, // Custom flag for styling
+                isOverallStat: true,
             },
-            // END: Add Overall Column Definition
         ];
 
         const fifaStatColumns = ref([
@@ -423,12 +440,9 @@ export default {
         };
 
         const onFlagError = (event, player) => {
-            // console.warn(`Flag image failed to load for ${player?.name} (${player?.nationality_iso}): ${event.target.src}`);
-            event.target.style.display = "none"; // Hide broken image
-            // Optionally, find the q-icon next to it and show it if it was hidden.
+            event.target.style.display = "none";
             const iconElement = event.target.nextElementSibling;
             if (iconElement && iconElement.tagName === "I") {
-                // Check if it's a q-icon (rendered as <i>)
                 iconElement.style.display = "inline-flex";
             }
         };

@@ -28,12 +28,13 @@
                         <li>
                             The table will display players with pre-calculated
                             FIFA-style stats (PHY, SHO, etc.), parsed positions,
-                            and Overall ratings (based on their best role).
+                            Overall ratings (based on their best role), Age,
+                            Media Handling, and Personality.
                         </li>
                         <li>
                             Use filters for Name, Club, Position, Nationality,
-                            and Transfer Value. Input fields are debounced for
-                            performance.
+                            Transfer Value, Media Handling, Personality, and Age
+                            range. Input fields are debounced for performance.
                         </li>
                         <li>
                             Click on any player row for a detailed view, which
@@ -87,7 +88,7 @@
                 <q-card-section>
                     <div class="text-subtitle1 q-mb-sm">Search Players</div>
                     <div class="row q-col-gutter-md">
-                        <div class="col-12 col-sm-6 col-md-2">
+                        <div class="col-12 col-sm-6 col-md-3 col-lg-2">
                             <q-input
                                 v-model="filters.name"
                                 label="Player Name"
@@ -97,7 +98,7 @@
                                 @update:model-value="debouncedApplyFilters"
                             />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-2">
+                        <div class="col-12 col-sm-6 col-md-3 col-lg-2">
                             <q-input
                                 v-model="filters.club"
                                 label="Club"
@@ -107,7 +108,7 @@
                                 @update:model-value="debouncedApplyFilters"
                             />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-3">
+                        <div class="col-12 col-sm-6 col-md-3 col-lg-2">
                             <q-select
                                 v-model="filters.position"
                                 :options="positionFilterOptions"
@@ -120,7 +121,7 @@
                                 @update:model-value="applyFiltersAndSort"
                             />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-2">
+                        <div class="col-12 col-sm-6 col-md-3 col-lg-2">
                             <q-input
                                 v-model="filters.nationality"
                                 label="Nationality"
@@ -130,7 +131,51 @@
                                 @update:model-value="debouncedApplyFilters"
                             />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-3">
+                        <div class="col-12 col-sm-6 col-md-3 col-lg-2">
+                            <q-input
+                                v-model="filters.mediaHandling"
+                                label="Media Handling"
+                                dense
+                                outlined
+                                clearable
+                                @update:model-value="debouncedApplyFilters"
+                            />
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-3 col-lg-2">
+                            <q-input
+                                v-model="filters.personality"
+                                label="Personality"
+                                dense
+                                outlined
+                                clearable
+                                @update:model-value="debouncedApplyFilters"
+                            />
+                        </div>
+                        <div class="col-12 col-sm-4 col-md-2 col-lg-1">
+                            <q-input
+                                v-model.number="filters.minAge"
+                                type="number"
+                                label="Min Age"
+                                dense
+                                outlined
+                                clearable
+                                :min="0"
+                                @update:model-value="debouncedApplyFilters"
+                            />
+                        </div>
+                        <div class="col-12 col-sm-4 col-md-2 col-lg-1">
+                            <q-input
+                                v-model.number="filters.maxAge"
+                                type="number"
+                                label="Max Age"
+                                dense
+                                outlined
+                                clearable
+                                :min="0"
+                                @update:model-value="debouncedApplyFilters"
+                            />
+                        </div>
+                        <div class="col-12 col-sm-4 col-md-4 col-lg-2">
                             <q-input
                                 v-model="filters.transferValue"
                                 label="Transfer Value"
@@ -252,8 +297,7 @@
                         >
                     </div>
                 </div>
-                
-                <!-- Upgrade Finder Button -->
+
                 <div class="row justify-end q-mb-md">
                     <q-btn
                         color="primary"
@@ -263,7 +307,7 @@
                         :disable="filteredPlayers.length === 0"
                     />
                 </div>
-                
+
                 <PlayerDataTable
                     :players="filteredPlayers"
                     :loading="loading"
@@ -284,8 +328,7 @@
             :show="showPlayerDetailDialog"
             @close="showPlayerDetailDialog = false"
         />
-        
-        <!-- Upgrade Finder Dialog -->
+
         <UpgradeFinderDialog
             :show="showUpgradeFinder"
             :players="allPlayers"
@@ -351,7 +394,6 @@ export default {
         const showPlayerDetailDialog = ref(false);
         const showUpgradeFinder = ref(false);
 
-        // Refs for client-side feedback about weight files, not for calculation
         const attributeWeightsLoadedForFeedback = ref(false);
         const attributeWeightsErrorForFeedback = ref("");
         const roleSpecificOverallWeightsLoadedForFeedback = ref(false);
@@ -363,12 +405,17 @@ export default {
             isAttribute: false,
             displayField: null,
         });
+
         const filters = reactive({
             name: "",
             club: "",
             transferValue: "",
             position: null,
             nationality: "",
+            mediaHandling: "", // New filter
+            personality: "", // New filter
+            minAge: null, // New filter
+            maxAge: null, // New filter
         });
 
         const hasActiveFilters = computed(
@@ -377,8 +424,13 @@ export default {
                 filters.club !== "" ||
                 filters.transferValue !== "" ||
                 filters.position !== null ||
-                filters.nationality !== "",
+                filters.nationality !== "" ||
+                filters.mediaHandling !== "" || // New
+                filters.personality !== "" || // New
+                filters.minAge !== null || // New
+                filters.maxAge !== null, // New
         );
+
         const uniqueClubsCount = computed(
             () =>
                 new Set(allPlayers.value.map((p) => p.club).filter(Boolean))
@@ -452,7 +504,8 @@ export default {
         const processPlayersFromAPI = (playersData) => {
             return playersData.map((p) => ({
                 ...p,
-                age: parseInt(p.age, 10) || 0,
+                age: parseInt(p.age, 10) || 0, // Ensure age is numeric for filtering
+                // media_handling and personality are assumed to be strings from API
             }));
         };
 
@@ -484,6 +537,7 @@ export default {
             }
             let tempPlayers = [...allPlayers.value];
 
+            // Apply text-based filters
             if (filters.name) {
                 tempPlayers = tempPlayers.filter(
                     (p) =>
@@ -511,6 +565,40 @@ export default {
                             .includes(filters.nationality.toLowerCase()),
                 );
             }
+            if (filters.mediaHandling) {
+                // New filter logic
+                tempPlayers = tempPlayers.filter(
+                    (p) =>
+                        p.media_handling &&
+                        p.media_handling
+                            .toLowerCase()
+                            .includes(filters.mediaHandling.toLowerCase()),
+                );
+            }
+            if (filters.personality) {
+                // New filter logic
+                tempPlayers = tempPlayers.filter(
+                    (p) =>
+                        p.personality &&
+                        p.personality
+                            .toLowerCase()
+                            .includes(filters.personality.toLowerCase()),
+                );
+            }
+
+            // Apply age filter
+            if (filters.minAge !== null && filters.minAge > 0) {
+                tempPlayers = tempPlayers.filter(
+                    (p) => p.age >= filters.minAge,
+                );
+            }
+            if (filters.maxAge !== null && filters.maxAge > 0) {
+                tempPlayers = tempPlayers.filter(
+                    (p) => p.age <= filters.maxAge,
+                );
+            }
+
+            // Position filter
             if (filters.position) {
                 const selectedPosFilter = filters.position;
                 if (positionGroups[selectedPosFilter]) {
@@ -527,6 +615,8 @@ export default {
                     );
                 }
             }
+
+            // Transfer value filter
             if (filters.transferValue) {
                 let operator = "includes";
                 let compareValueNum = 0;
@@ -556,6 +646,7 @@ export default {
                 });
             }
 
+            // Sorting
             if (sortState.key) {
                 const sortKey = sortState.key;
                 tempPlayers.sort((a, b) => {
@@ -583,8 +674,7 @@ export default {
             filteredPlayers.value = tempPlayers;
         };
 
-        // Create a debounced version of the applyFiltersAndSort function
-        const debouncedApplyFilters = debounce(applyFiltersAndSort, 300); // 300ms delay
+        const debouncedApplyFilters = debounce(applyFiltersAndSort, 300);
 
         const uploadAndParse = async () => {
             if (!playerFile.value) {
@@ -599,8 +689,8 @@ export default {
                 const playersDataFromApi =
                     await playerService.uploadPlayerFile(formData);
                 allPlayers.value = processPlayersFromAPI(playersDataFromApi);
-                sortState.key = null;
-                applyFiltersAndSort();
+                sortState.key = null; // Reset sort on new data
+                applyFiltersAndSort(); // Apply initial filters (if any) and default sort
             } catch (e) {
                 error.value = `Failed to parse player data: ${e.message || "Unknown error"}`;
                 allPlayers.value = [];
@@ -622,7 +712,11 @@ export default {
             filters.transferValue = "";
             filters.position = null;
             filters.nationality = "";
-            applyFiltersAndSort(); // Apply immediately after clearing
+            filters.mediaHandling = ""; // New
+            filters.personality = ""; // New
+            filters.minAge = null; // New
+            filters.maxAge = null; // New
+            applyFiltersAndSort();
         };
 
         const handlePlayerSelected = (player) => {
@@ -630,8 +724,6 @@ export default {
             showPlayerDetailDialog.value = true;
         };
 
-        // Watchers
-        // Watch allPlayers to initialize filteredPlayers or when data is loaded/cleared
         watch(
             () => allPlayers.value,
             () => {
@@ -639,9 +731,6 @@ export default {
             },
             { deep: true },
         );
-
-        // No longer need to watch individual filters directly as debouncedApplyFilters handles text inputs,
-        // and q-select/clear button call applyFiltersAndSort directly.
 
         return {
             playerFile,
@@ -657,8 +746,8 @@ export default {
             positionFilterOptions,
             uploadAndParse,
             handleSort,
-            debouncedApplyFilters, // Use this for text inputs
-            applyFiltersAndSort, // Use this for q-select and clear button
+            debouncedApplyFilters,
+            applyFiltersAndSort,
             clearAllFilters,
             selectedPlayer,
             showPlayerDetailDialog,

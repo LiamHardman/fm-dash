@@ -15,7 +15,8 @@
 
             <q-card-section v-if="player" class="q-card__section--main-content">
                 <div class="row q-col-gutter-x-md q-col-gutter-y-sm q-mb-md">
-                    <div class="col-12 col-md-6">
+                    <div class="col-12 col-md-7">
+                        {/* Adjusted column width */}
                         <div
                             class="q-pa-sm rounded-borders"
                             style="border: 1px solid #e0e0e0; height: 100%"
@@ -36,6 +37,14 @@
                                         class="text-weight-medium text-body2"
                                         >{{ player.name || "-" }}</q-item-label
                                     >
+                                </div>
+                                <div class="col-auto q-ml-md">
+                                    <q-item-label caption class="q-mb-none"
+                                        >Age</q-item-label
+                                    >
+                                    <q-item-label class="text-body2">
+                                        {{ player.age || "-" }}
+                                    </q-item-label>
                                 </div>
                                 <div
                                     class="col-auto q-ml-md row items-center no-wrap"
@@ -107,6 +116,40 @@
                             </div>
 
                             <q-separator spaced="xs" />
+                            <div class="row items-start q-mb-xs">
+                                <div class="col-auto q-mr-sm q-pt-xs">
+                                    <q-icon
+                                        name="comment"
+                                        color="grey-7"
+                                        size="1.1em"
+                                    />
+                                </div>
+                                <div class="col">
+                                    <q-item-label caption class="q-mb-none"
+                                        >Media Handling</q-item-label
+                                    >
+                                    <q-item-label class="text-body2">{{
+                                        player.media_handling || "-"
+                                    }}</q-item-label>
+                                </div>
+                                <div class="col-auto q-mr-sm q-pt-xs q-ml-md">
+                                    <q-icon
+                                        name="psychology"
+                                        color="grey-7"
+                                        size="1.1em"
+                                    />
+                                </div>
+                                <div class="col">
+                                    <q-item-label caption class="q-mb-none"
+                                        >Personality</q-item-label
+                                    >
+                                    <q-item-label class="text-body2">{{
+                                        player.personality || "-"
+                                    }}</q-item-label>
+                                </div>
+                            </div>
+
+                            <q-separator spaced="xs" />
 
                             <div class="row items-start q-mb-xs">
                                 <div class="col-auto q-mr-sm q-pt-xs">
@@ -171,7 +214,8 @@
                         </div>
                     </div>
 
-                    <div class="col-12 col-md-6">
+                    <div class="col-12 col-md-5">
+                        {/* Adjusted column width */}
                         <div
                             class="text-subtitle1 q-mb-xs text-center text-weight-medium"
                         >
@@ -597,13 +641,8 @@ export default defineComponent({
         };
 
         const onFlagError = (event) => {
-            // Hide the img tag if the flag image fails to load
             if (event.target) {
                 event.target.style.display = "none";
-                // Optionally, find the sibling q-icon (if we decide to add one as a fallback for failed image loads)
-                // and display it. This requires a more complex DOM traversal or a Vue ref.
-                // For simplicity, we're just hiding the broken image for now.
-                // A more robust solution might involve a data property to toggle between img and a placeholder q-icon.
             }
         };
 
@@ -714,7 +753,7 @@ export default defineComponent({
 }
 
 .role-specific-ratings-list {
-    max-height: 180px;
+    max-height: 180px; /* Adjust as needed */
 }
 
 /* Attribute Value Styling (0-20 scale for FM-style attributes) */
