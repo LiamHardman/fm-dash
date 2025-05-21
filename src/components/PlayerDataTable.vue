@@ -687,12 +687,6 @@ export default {
 }
 
 .player-q-table {
-    // This class allows for overall table width adjustments if needed
-    // For example, to make it wider on desktop:
-    // @media (min-width: $breakpoint-md-min) {
-    //   min-width: 1200px; // Adjust as needed
-    // }
-
     th .sort-icon {
         vertical-align: middle;
         margin-left: 4px;
@@ -735,18 +729,17 @@ export default {
 
     th {
         font-weight: 600;
-        font-size: 0.9rem; // Slightly larger header text
-        padding: 10px 12px; // Adjusted padding
+        font-size: 1rem; // Increased header font size
+        padding: 12px 14px; // Slightly increased padding
         border-right: 0;
     }
     td {
         vertical-align: middle;
-        padding: 8px 12px; // Adjusted padding
+        padding: 10px 14px; // Slightly increased padding
         border-right: 0;
     }
-    // Increase base font size for table cells for better readability
     .table-cell-enhanced {
-        font-size: 0.95rem; // Larger text in cells
+        font-size: 1.05rem; // Further increased cell font size
     }
 }
 
