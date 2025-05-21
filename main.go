@@ -4,9 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"math"
 	"net/http"
+	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -15,98 +19,494 @@ import (
 )
 
 const (
-	defaultPlayerCapacity    = 1024 // Default capacity for the players slice
-	defaultAttributeCapacity = 64  // Default capacity for the attributes map
-	defaultCellCapacity      = 64  // Default capacity for cells slice if headers unknown
+	defaultPlayerCapacity    = 1024
+	defaultAttributeCapacity = 64
+	defaultCellCapacity      = 64
+	overallScalingFactor     = 5.85 // As used in Vue
 )
 
-// Player struct (remains the same)
-type Player struct {
-	Name          string            `json:"name"`
-	Position      string            `json:"position"`
-	Age           string            `json:"age"`
-	Club          string            `json:"club"`
-	TransferValue string            `json:"transfer_value"`
-	Wage          string            `json:"wage"`
-	Attributes    map[string]string `json:"attributes"`
+// --- START: Struct Definitions ---
+
+// RoleOverallScore stores a calculated overall score for a specific role.
+type RoleOverallScore struct {
+	RoleName string `json:"roleName"`
+	Score    int    `json:"score"`
 }
 
-// PlayerParseResult is used to send results (or errors) from worker goroutines.
+// Player struct now includes calculated stats and overall.
+type Player struct {
+	Name                 string             `json:"name"`
+	Position             string             `json:"position"` // Original position string
+	Age                  string             `json:"age"`
+	Club                 string             `json:"club"`
+	TransferValue        string             `json:"transfer_value"`
+	Wage                 string             `json:"wage"`
+	Personality          string             `json:"personality,omitempty"`    // New field
+	MediaHandling        string             `json:"media_handling,omitempty"` // New field
+	Nationality          string             `json:"nationality"`              // Full country name
+	NationalityISO       string             `json:"nationality_iso"`          // 2-letter ISO code for flags
+	NationalityFIFACode  string             `json:"nationality_fifa_code"`    // Original 3-letter FIFA code
+	Attributes           map[string]string  `json:"attributes"`               // Raw string attributes
+	NumericAttributes    map[string]int     `json:"-"`                        // Parsed numeric attributes (internal use)
+	ParsedPositions      []string           `json:"parsedPositions"`          // Standardized positions
+	PositionGroups       []string           `json:"positionGroups"`           // General groups like "Defenders", "Midfielders"
+	PHY                  int                `json:"PHY"`                      // Calculated Physical stat
+	SHO                  int                `json:"SHO"`                      // Calculated Shooting stat
+	PAS                  int                `json:"PAS"`                      // Calculated Passing stat
+	DRI                  int                `json:"DRI"`                      // Calculated Dribbling stat
+	DEF                  int                `json:"DEF"`                      // Calculated Defending stat
+	MEN                  int                `json:"MEN"`                      // Calculated Mental stat
+	Overall              int                `json:"Overall"`                  // Best overall rating
+	RoleSpecificOveralls []RoleOverallScore `json:"roleSpecificOveralls"`     // All calculated role overalls
+	TransferValueAmount  int64              `json:"transferValueAmount"`      // Numeric transfer value for sorting
+	WageAmount           int64              `json:"wageAmount"`               // Numeric wage for sorting
+}
+
+// PlayerParseResult is used for concurrent processing.
 type PlayerParseResult struct {
 	Player Player
 	Err    error
 }
 
-// getNodeTextOptimized uses a strings.Builder and strings.Fields for efficient text extraction and normalization.
+// --- END: Struct Definitions ---
+
+// --- START: Weight Data and Loading ---
+var (
+	attributeWeights             map[string]map[string]int
+	roleSpecificOverallWeights   map[string]map[string]int
+	muAttributeWeights           sync.RWMutex
+	muRoleSpecificOverallWeights sync.RWMutex
+)
+
+// Default weights (mirrors frontend defaults)
+var defaultAttributeWeightsGo = map[string]map[string]int{
+	"PHY": {"Acc": 7, "Pac": 6, "Str": 5, "Sta": 4, "Nat": 3, "Bal": 2, "Jum": 1},
+	"SHO": {"Fin": 7, "OtB": 6, "Cmp": 5, "Tec": 4, "Hea": 3, "Lon": 2, "Pen": 1},
+	"PAS": {"Pas": 7, "Vis": 6, "Tec": 5, "Cro": 4, "Fre": 3, "Cor": 2, "L Th": 1},
+	"DRI": {"Dri": 6, "Fir": 5, "Tec": 4, "Agi": 3, "Bal": 2, "Fla": 1},
+	"DEF": {"Tck": 6, "Mar": 5, "Hea": 4, "Pos": 3, "Cnt": 2, "Ant": 1},
+	"MEN": {"Wor": 11, "Dec": 10, "Tea": 9, "Det": 8, "Bra": 7, "Ldr": 6, "Vis": 5, "Agg": 4, "OtB": 3, "Pos": 2, "Ant": 1},
+}
+
+// A small subset of default role specific weights for brevity in this example.
+// In a real scenario, this would be the full default map.
+var defaultRoleSpecificOverallWeightsGo = map[string]map[string]int{
+	"DC - BPD":     {"Cor": 5, "Cro": 1, "Dri": 40, "Fin": 10, "Fir": 35, "Fre": 10, "Hea": 55, "Lon": 10, "Tea": 20, "L Th": 0, "Mar": 55, "Pas": 55, "Pen": 10, "Tck": 40, "Tec": 35, "Agg": 40, "Ant": 50, "Bra": 30, "Cmp": 80, "Cnt": 50, "Dec": 50, "Det": 20, "Fla": 10, "Ldr": 10, "OtB": 10, "Pos": 55, "Vis": 50, "Wor": 55, "Acc": 90, "Agi": 60, "Bal": 35, "Jum": 65, "Nat": 10, "Pac": 90, "Sta": 30, "Str": 50},
+	"ST - AF - At": {"Cor": 5, "Cro": 5, "Dri": 75, "Fin": 80, "Fir": 50, "Fre": 5, "Hea": 25, "Lon": 25, "L Th": 1, "Mar": 1, "Pas": 40, "Pen": 20, "Tck": 5, "Tec": 65, "Agg": 50, "Ant": 50, "Bra": 20, "Cmp": 35, "Cnt": 5, "Dec": 45, "Det": 20, "Fla": 25, "Ldr": 10, "OtB": 45, "Pos": 5, "Tea": 10, "Vis": 20, "Wor": 60, "Acc": 100, "Agi": 30, "Bal": 50, "Jum": 20, "Nat": 10, "Pac": 70, "Sta": 65, "Str": 25},
+	// ... (include all other default roles as in your public/role_specific_overall_weights.json)
+}
+
+func loadJSONWeights(filePath string, defaultWeights map[string]map[string]int) (map[string]map[string]int, error) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		log.Printf("Warning: Could not read %s: %v. Using default weights.", filePath, err)
+		return defaultWeights, err // Return default weights but also the error for context
+	}
+
+	var weights map[string]map[string]int
+	if err := json.Unmarshal(data, &weights); err != nil {
+		log.Printf("Warning: Could not unmarshal %s: %v. Using default weights.", filePath, err)
+		return defaultWeights, err // Return default weights but also the error for context
+	}
+	log.Printf("Successfully loaded weights from %s", filePath)
+	return weights, nil
+}
+
+func init() {
+	var err error
+	attributeWeights, err = loadJSONWeights(filepath.Join("public", "attribute_weights.json"), defaultAttributeWeightsGo)
+	if err != nil {
+		log.Printf("Using default attribute_weights due to error: %v", err)
+	}
+
+	roleSpecificOverallWeights, err = loadJSONWeights(filepath.Join("public", "role_specific_overall_weights.json"), defaultRoleSpecificOverallWeightsGo)
+	if err != nil {
+		log.Printf("Using default role_specific_overall_weights due to error: %v", err)
+	}
+}
+
+// --- END: Weight Data and Loading ---
+
+// --- START: Position Parsing Logic (Mirrors Vue logic) ---
+var (
+	positionRoleMapGo = map[string]string{
+		"GK": "Goalkeeper", "SW": "Sweeper", "D": "Defender", "WB": "Wing-Back",
+		"DM": "Defensive Midfielder", "M": "Midfielder", "AM": "Attacking Midfielder",
+		"ST": "Striker", "F": "Forward",
+	}
+	positionSideMapGo = map[string]string{
+		"R": "Right", "L": "Left", "C": "Centre",
+	}
+	standardizedPositionNameMapGo = map[string]string{
+		"Goalkeeper (Centre)": "Goalkeeper", "Goalkeeper": "Goalkeeper",
+		"Sweeper (Centre)": "Sweeper", "Sweeper": "Sweeper",
+		"Defender (Right)": "Right Back", "Defender (Left)": "Left Back", "Defender (Centre)": "Centre Back",
+		"Wing-Back (Right)": "Right Wing-Back", "Wing-Back (Left)": "Left Wing-Back", "Wing-Back (Centre)": "Centre Wing-Back",
+		"Defensive Midfielder (Right)": "Right Defensive Midfielder", "Defensive Midfielder (Left)": "Left Defensive Midfielder", "Defensive Midfielder (Centre)": "Centre Defensive Midfielder",
+		"Midfielder (Right)": "Right Midfielder", "Midfielder (Left)": "Left Midfielder", "Midfielder (Centre)": "Centre Midfielder",
+		"Attacking Midfielder (Right)": "Right Attacking Midfielder", "Attacking Midfielder (Left)": "Left Attacking Midfielder", "Attacking Midfielder (Centre)": "Centre Attacking Midfielder",
+		"Striker (Centre)": "Striker", "Striker": "Striker",
+		"Forward (Right)": "Right Forward", "Forward (Left)": "Left Forward", "Forward (Centre)": "Centre Forward",
+	}
+	positionGroupsGo = map[string][]string{
+		"Goalkeepers": {"Goalkeeper"},
+		"Defenders":   {"Sweeper", "Right Back", "Left Back", "Centre Back", "Right Wing-Back", "Left Wing-Back", "Centre Wing-Back"},
+		"Midfielders": {"Right Defensive Midfielder", "Left Defensive Midfielder", "Centre Defensive Midfielder", "Right Midfielder", "Left Midfielder", "Centre Midfielder", "Right Attacking Midfielder", "Left Attacking Midfielder", "Centre Attacking Midfielder"},
+		"Attackers":   {"Striker", "Right Forward", "Left Forward", "Centre Forward"},
+	}
+	parsedPositionToBaseRoleKeyGo = map[string]string{
+		"Goalkeeper":                  nullString, // Or handle GK separately if no roles apply
+		"Sweeper":                     "DC",
+		"Right Back":                  "DR/L",
+		"Left Back":                   "DR/L",
+		"Centre Back":                 "DC",
+		"Right Wing-Back":             "WBR/L",
+		"Left Wing-Back":              "WBR/L",
+		"Centre Wing-Back":            "WBR/L", // Check if this is correct or needs a specific base key
+		"Right Defensive Midfielder":  "DM",
+		"Left Defensive Midfielder":   "DM",
+		"Centre Defensive Midfielder": "DM",
+		"Right Midfielder":            "MR/L",
+		"Left Midfielder":             "MR/L",
+		"Centre Midfielder":           "MC",
+		"Right Attacking Midfielder":  "AMR/L",
+		"Left Attacking Midfielder":   "AMR/L",
+		"Centre Attacking Midfielder": "AMC",
+		"Striker":                     "ST",
+		"Right Forward":               "AMR/L",
+		"Left Forward":                "AMR/L",
+		"Centre Forward":              "ST",
+	}
+	nullString = "" // To represent null-like behavior for map lookups if needed
+)
+
+func parsePlayerPositionsGo(positionStr string) []string {
+	if positionStr == "" {
+		return []string{}
+	}
+	finalPositionsSet := make(map[string]struct{})
+	mainParts := strings.Split(positionStr, ",")
+
+	for _, part := range mainParts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+
+		var rolesStringSegment string
+		var explicitSidesArray []string
+
+		sideMatchEnd := strings.LastIndex(part, ")")
+		sideMatchStart := strings.LastIndex(part, "(")
+
+		if sideMatchEnd == len(part)-1 && sideMatchStart > 0 && sideMatchStart < sideMatchEnd {
+			rolesStringSegment = strings.TrimSpace(part[:sideMatchStart])
+			sidesStr := part[sideMatchStart+1 : sideMatchEnd]
+			for _, r := range sidesStr {
+				explicitSidesArray = append(explicitSidesArray, string(r))
+			}
+		} else {
+			rolesStringSegment = part
+		}
+
+		individualRoleKeys := strings.Split(rolesStringSegment, "/")
+		for _, roleKey := range individualRoleKeys {
+			roleKey = strings.TrimSpace(roleKey)
+			if roleKey == "" {
+				continue
+			}
+
+			roleFullName, roleExists := positionRoleMapGo[roleKey]
+			if roleExists {
+				sidesToIterate := explicitSidesArray
+				if len(sidesToIterate) == 0 { // Default to Centre if no sides specified
+					sidesToIterate = []string{"C"}
+				}
+
+				for _, sideKey := range sidesToIterate {
+					sideFullName, sideExists := positionSideMapGo[sideKey]
+					if sideExists {
+						detailedName := roleFullName + " (" + sideFullName + ")"
+						standardizedName, ok := standardizedPositionNameMapGo[detailedName]
+						if ok {
+							finalPositionsSet[standardizedName] = struct{}{}
+						} else {
+							finalPositionsSet[detailedName] = struct{}{} // Fallback
+						}
+					}
+				}
+			} else {
+				// If not in positionRoleMap, check if it's a pre-standardized name
+				standardizedName, ok := standardizedPositionNameMapGo[roleKey]
+				if ok {
+					finalPositionsSet[standardizedName] = struct{}{}
+				}
+			}
+		}
+	}
+
+	finalPositions := make([]string, 0, len(finalPositionsSet))
+	for pos := range finalPositionsSet {
+		finalPositions = append(finalPositions, pos)
+	}
+	sort.Strings(finalPositions) // Consistent order
+	return finalPositions
+}
+
+func getPlayerPositionGroupsGo(parsedPositionsArray []string) []string {
+	groupsSet := make(map[string]struct{})
+	if len(parsedPositionsArray) == 0 {
+		return []string{}
+	}
+	for _, pos := range parsedPositionsArray {
+		for groupName, groupPositions := range positionGroupsGo {
+			for _, p := range groupPositions {
+				if p == pos {
+					groupsSet[groupName] = struct{}{}
+					break
+				}
+			}
+		}
+	}
+	groups := make([]string, 0, len(groupsSet))
+	for group := range groupsSet {
+		groups = append(groups, group)
+	}
+	sort.Strings(groups) // Consistent order
+	return groups
+}
+
+// --- END: Position Parsing Logic ---
+
+// --- START: Calculation Logic ---
+
+func calculateFifaStatGo(playerNumericAttributes map[string]int, categoryName string) int {
+	muAttributeWeights.RLock()
+	currentCategoryWeightsSource := attributeWeights // Use loaded, possibly from file
+	muAttributeWeights.RUnlock()
+
+	categoryAttributeWeights, ok := currentCategoryWeightsSource[categoryName]
+	if !ok {
+		log.Printf("Warning: Attribute weights for category '%s' not found. Using defaults for this category.", categoryName)
+		categoryAttributeWeights, ok = defaultAttributeWeightsGo[categoryName] // Fallback to hardcoded defaults for this specific category
+		if !ok {
+			log.Printf("Error: Default attribute weights for category '%s' also not found. Returning 0.", categoryName)
+			return 0
+		}
+	}
+
+	var weightedSum float64
+	var totalWeightOfPresentAttributes float64
+
+	for attrName, attrWeight := range categoryAttributeWeights {
+		attrValue, exists := playerNumericAttributes[attrName]
+		if exists {
+			// FM attributes are 1-20.
+			if attrValue >= 1 && attrValue <= 20 {
+				weightedSum += float64(attrValue * attrWeight)
+				totalWeightOfPresentAttributes += float64(attrWeight)
+			}
+		}
+	}
+
+	if totalWeightOfPresentAttributes == 0 {
+		return 0
+	}
+	// Weighted average (1-20 scale), then scale to roughly 0-99
+	weightedAverage := weightedSum / totalWeightOfPresentAttributes
+	return int(math.Round(weightedAverage * 5.3)) // Scale to 0-100 (max 20*5 = 100)
+}
+
+func calculateOverallForRoleGo(playerNumericAttributes map[string]int, roleSpecificAttrWeights map[string]int) int {
+	if len(roleSpecificAttrWeights) == 0 {
+		return 0
+	}
+
+	var weightedAttributeSum float64
+	var totalApplicableWeightsSum float64
+
+	for attrKey, weightForAttribute := range roleSpecificAttrWeights {
+		attributeValue, exists := playerNumericAttributes[attrKey]
+		if exists {
+			// Ensure attributeValue is within 0-20 range for calculation consistency
+			validAttributeValue := math.Max(0, math.Min(20, float64(attributeValue)))
+			weightedAttributeSum += validAttributeValue * float64(weightForAttribute)
+			totalApplicableWeightsSum += float64(weightForAttribute)
+		}
+	}
+
+	if totalApplicableWeightsSum == 0 {
+		return 0
+	}
+
+	rawPositionalOverall := weightedAttributeSum / totalApplicableWeightsSum
+	// Apply scaling factor and cap at 99
+	return int(math.Min(99, math.Round(rawPositionalOverall*overallScalingFactor)))
+}
+
+// --- END: Calculation Logic ---
+
+// --- START: FIFA Country Code Maps ---
+var fifaCountryCodes = map[string]string{ /* ... same as existing ... */
+	"AFG": "Afghanistan", "ALB": "Albania", "ALG": "Algeria", "ASA": "American Samoa", "AND": "Andorra",
+	"ANG": "Angola", "AIA": "Anguilla", "ATG": "Antigua and Barbuda", "ARG": "Argentina", "ARM": "Armenia",
+	"ARU": "Aruba", "AUS": "Australia", "AUT": "Austria", "AZE": "Azerbaijan", "BAH": "Bahamas",
+	"BHR": "Bahrain", "BAN": "Bangladesh", "BRB": "Barbados", "BLR": "Belarus", "BEL": "Belgium",
+	"BLZ": "Belize", "BEN": "Benin", "BER": "Bermuda", "BHU": "Bhutan", "BOL": "Bolivia",
+	"BIH": "Bosnia and Herzegovina", "BOT": "Botswana", "BRA": "Brazil", "VGB": "British Virgin Islands",
+	"BRU": "Brunei Darussalam", "BUL": "Bulgaria", "BFA": "Burkina Faso", "BDI": "Burundi", "CAM": "Cambodia",
+	"CMR": "Cameroon", "CAN": "Canada", "CPV": "Cape Verde", "CAY": "Cayman Islands", "CTA": "Central African Republic",
+	"CHA": "Chad", "CHI": "Chile", "CHN": "China PR", "TPE": "Chinese Taipei", "COL": "Colombia",
+	"COM": "Comoros", "CGO": "Congo", "COD": "DR Congo", "COK": "Cook Islands", "CRC": "Costa Rica",
+	"CIV": "Ivory Coast", "CRO": "Croatia", "CUB": "Cuba", "CUW": "Curaçao", "CYP": "Cyprus",
+	"CZE": "Czech Republic", "DEN": "Denmark", "DJI": "Djibouti", "DMA": "Dominica", "DOM": "Dominican Republic",
+	"ECU": "Ecuador", "EGY": "Egypt", "SLV": "El Salvador", "ENG": "England", "EQG": "Equatorial Guinea",
+	"ERI": "Eritrea", "EST": "Estonia", "SWZ": "Eswatini", "ETH": "Ethiopia", "FRO": "Faroe Islands",
+	"FIJ": "Fiji", "FIN": "Finland", "FRA": "France", "GAB": "Gabon", "GAM": "Gambia",
+	"GEO": "Georgia", "GER": "Germany", "GHA": "Ghana", "GIB": "Gibraltar", "GRE": "Greece",
+	"GRN": "Grenada", "GUM": "Guam", "GUA": "Guatemala", "GUI": "Guinea", "GNB": "Guinea-Bissau",
+	"GUY": "Guyana", "HAI": "Haiti", "HON": "Honduras", "HKG": "Hong Kong", "HUN": "Hungary",
+	"ISL": "Iceland", "IND": "India", "IDN": "Indonesia", "IRN": "Iran", "IRQ": "Iraq",
+	"IRL": "Republic of Ireland", "ISR": "Israel", "ITA": "Italy", "JAM": "Jamaica", "JPN": "Japan",
+	"JOR": "Jordan", "KAZ": "Kazakhstan", "KEN": "Kenya", "PRK": "North Korea", "KOR": "South Korea",
+	"KVX": "Kosovo", "KUW": "Kuwait", "KGZ": "Kyrgyzstan", "LAO": "Laos", "LVA": "Latvia",
+	"LBN": "Lebanon", "LES": "Lesotho", "LBR": "Liberia", "LBY": "Libya", "LIE": "Liechtenstein",
+	"LTU": "Lithuania", "LUX": "Luxembourg", "MAC": "Macau", "MAD": "Madagascar", "MWI": "Malawi",
+	"MAS": "Malaysia", "MDV": "Maldives", "MLI": "Mali", "MLT": "Malta", "MTN": "Mauritania",
+	"MRI": "Mauritius", "MEX": "Mexico", "MDA": "Moldova", "MNG": "Mongolia", "MNE": "Montenegro",
+	"MSR": "Montserrat", "MAR": "Morocco", "MOZ": "Mozambique", "MYA": "Myanmar", "NAM": "Namibia",
+	"NEP": "Nepal", "NED": "Netherlands", "NCL": "New Caledonia", "NZL": "New Zealand", "NCA": "Nicaragua",
+	"NIG": "Niger", "NGA": "Nigeria", "MKD": "North Macedonia", "NIR": "Northern Ireland", "NOR": "Norway",
+	"OMA": "Oman", "PAK": "Pakistan", "PLE": "Palestine", "PAN": "Panama", "PNG": "Papua New Guinea",
+	"PAR": "Paraguay", "PER": "Peru", "PHI": "Philippines", "POL": "Poland", "POR": "Portugal",
+	"PUR": "Puerto Rico", "QAT": "Qatar", "ROU": "Romania", "RUS": "Russia", "RWA": "Rwanda",
+	"SKN": "St. Kitts and Nevis", "LCA": "St. Lucia", "VIN": "St. Vincent & Grenadines", "SAM": "Samoa",
+	"SMR": "San Marino", "STP": "São Tomé e Príncipe", "KSA": "Saudi Arabia", "SCO": "Scotland", "SEN": "Senegal",
+	"SRB": "Serbia", "SEY": "Seychelles", "SLE": "Sierra Leone", "SIN": "Singapore", "SVK": "Slovakia",
+	"SVN": "Slovenia", "SOL": "Solomon Islands", "SOM": "Somalia", "RSA": "South Africa", "SSD": "South Sudan",
+	"ESP": "Spain", "SRI": "Sri Lanka", "SDN": "Sudan", "SUR": "Suriname", "SWE": "Sweden",
+	"SUI": "Switzerland", "SYR": "Syria", "TAH": "Tahiti", "TJK": "Tajikistan", "TAN": "Tanzania",
+	"THA": "Thailand", "TLS": "Timor-Leste", "TOG": "Togo", "TGA": "Tonga", "TRI": "Trinidad and Tobago",
+	"TUN": "Tunisia", "TUR": "Turkey", "TKM": "Turkmenistan", "TCA": "Turks and Caicos Islands",
+	"UGA": "Uganda", "UKR": "Ukraine", "UAE": "United Arab Emirates", "USA": "USA", "URU": "Uruguay",
+	"VIR": "US Virgin Islands", "UZB": "Uzbekistan", "VAN": "Vanuatu", "VEN": "Venezuela", "VIE": "Vietnam",
+	"WAL": "Wales", "YEM": "Yemen", "ZAM": "Zambia", "ZIM": "Zimbabwe",
+}
+
+var fifaToISO2 = map[string]string{ /* ... same as existing ... */
+	"AFG": "AF", "ALB": "AL", "ALG": "DZ", "ASA": "AS", "AND": "AD", "ANG": "AO", "AIA": "AI",
+	"ATG": "AG", "ARG": "AR", "ARM": "AM", "ARU": "AW", "AUS": "AU", "AUT": "AT", "AZE": "AZ",
+	"BAH": "BS", "BHR": "BH", "BAN": "BD", "BRB": "BB", "BLR": "BY", "BEL": "BE", "BLZ": "BZ",
+	"BEN": "BJ", "BER": "BM", "BHU": "BT", "BOL": "BO", "BIH": "BA", "BOT": "BW", "BRA": "BR",
+	"VGB": "VG", "BRU": "BN", "BUL": "BG", "BFA": "BF", "BDI": "BI", "CAM": "KH", "CMR": "CM",
+	"CAN": "CA", "CPV": "CV", "CAY": "KY", "CTA": "CF", "CHA": "TD", "CHI": "CL", "CHN": "CN",
+	"TPE": "TW", "COL": "CO", "COM": "KM", "CGO": "CG", "COD": "CD", "COK": "CK", "CRC": "CR",
+	"CIV": "CI", "CRO": "HR", "CUB": "CU", "CUW": "CW", "CYP": "CY", "CZE": "CZ", "DEN": "DK",
+	"DJI": "DJ", "DMA": "DM", "DOM": "DO", "ECU": "EC", "EGY": "EG", "SLV": "SV",
+	"ENG": "gb-eng", "EQG": "GQ", "ERI": "ER", "EST": "EE", "SWZ": "SZ", "ETH": "ET", "FRO": "FO",
+	"FIJ": "FJ", "FIN": "FI", "FRA": "FR", "GAB": "GA", "GAM": "GM", "GEO": "GE", "GER": "DE",
+	"GHA": "GH", "GIB": "GI", "GRE": "GR", "GRN": "GD", "GUM": "GU", "GUA": "GT", "GUI": "GN",
+	"GNB": "GW", "GUY": "GY", "HAI": "HT", "HON": "HN", "HKG": "HK", "HUN": "HU", "ISL": "IS",
+	"IND": "IN", "IDN": "ID", "IRN": "IR", "IRQ": "IQ", "IRL": "IE", "ISR": "IL", "ITA": "IT",
+	"JAM": "JM", "JPN": "JP", "JOR": "JO", "KAZ": "KZ", "KEN": "KE", "PRK": "KP", "KOR": "KR",
+	"KVX": "XK", "KUW": "KW", "KGZ": "KG", "LAO": "LA", "LVA": "LV", "LBN": "LB", "LES": "LS",
+	"LBR": "LR", "LBY": "LY", "LIE": "LI", "LTU": "LT", "LUX": "LU", "MAC": "MO", "MAD": "MG",
+	"MWI": "MW", "MAS": "MY", "MDV": "MV", "MLI": "ML", "MLT": "MT", "MTN": "MR", "MRI": "MU",
+	"MEX": "MX", "MDA": "MD", "MNG": "MN", "MNE": "ME", "MSR": "MS", "MAR": "MA", "MOZ": "MZ",
+	"MYA": "MM", "NAM": "NA", "NEP": "NP", "NED": "NL", "NCL": "NC", "NZL": "NZ", "NCA": "NI",
+	"NIG": "NE", "NGA": "NG", "MKD": "MK", "NIR": "gb-nir", "NOR": "NO", "OMA": "OM", "PAK": "PK",
+	"PLE": "PS", "PAN": "PA", "PNG": "PG", "PAR": "PY", "PER": "PE", "PHI": "PH", "POL": "PL",
+	"POR": "PT", "PUR": "PR", "QAT": "QA", "ROU": "RO", "RUS": "RU", "RWA": "RW",
+	"SKN": "KN", "LCA": "LC", "VIN": "VC", "SAM": "WS", "SMR": "SM", "STP": "ST", "KSA": "SA",
+	"SCO": "gb-sct", "SEN": "SN", "SRB": "RS", "SEY": "SC", "SLE": "SL", "SIN": "SG", "SVK": "SK",
+	"SVN": "SI", "SOL": "SB", "SOM": "SO", "RSA": "ZA", "SSD": "SS", "ESP": "ES", "SRI": "LK",
+	"SDN": "SD", "SUR": "SR", "SWE": "SE", "SUI": "CH", "SYR": "SY", "TAH": "PF",
+	"TJK": "TJ", "TAN": "TZ", "THA": "TH", "TLS": "TL", "TOG": "TG", "TGA": "TO", "TRI": "TT",
+	"TUN": "TN", "TUR": "TR", "TKM": "TM", "TCA": "TC", "UGA": "UG", "UKR": "UA", "UAE": "AE",
+	"USA": "US", "URU": "UY", "VIR": "VI", "UZB": "UZ", "VAN": "VU", "VEN": "VE", "VIE": "VN",
+	"WAL": "gb-wls", "YEM": "YE", "ZAM": "ZM", "ZIM": "ZW",
+}
+
+// --- END: FIFA Country Code Maps ---
+
 func getNodeTextOptimized(n *html.Node) string {
 	if n == nil {
 		return ""
 	}
-	// If it's a text node, return its data directly. Normalization will happen at a higher level.
 	if n.Type == html.TextNode {
 		return n.Data
 	}
-
-	// For element nodes, recursively gather text from children.
 	var sb strings.Builder
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		sb.WriteString(getNodeTextOptimized(c))
-		// Add a space after processing a child node if it's an element node
-		// and it's not the last child. This helps separate words from different tags.
-		// strings.Fields will handle multiple spaces or leading/trailing spaces later.
 		if c.Type == html.ElementNode && c.NextSibling != nil {
 			sb.WriteByte(' ')
 		} else if c.Type == html.TextNode && c.NextSibling != nil && c.NextSibling.Type == html.ElementNode {
-			// Add a space if text node is followed by an element node
 			sb.WriteByte(' ')
 		}
 	}
-
-	// strings.Fields splits the string by whitespace and removes empty strings.
-	// strings.Join then joins them with a single space. This normalizes all whitespace.
 	return strings.Join(strings.Fields(sb.String()), " ")
 }
 
-// parseTransferValue (remains the same)
-func parseTransferValue(rawValue string) string {
-	rawValue = strings.TrimSpace(rawValue)
-	if strings.Contains(rawValue, " - ") {
-		parts := strings.Split(rawValue, " - ")
+func parseMonetaryValueGo(rawValue string) (string, int64) {
+	cleanedValue := strings.TrimSpace(rawValue)
+	// Handle ranges like "€1.5M - €2.5M", take the higher value or average if needed.
+	// For simplicity, this example takes the part after " - " if it exists.
+	if strings.Contains(cleanedValue, " - ") {
+		parts := strings.Split(cleanedValue, " - ")
 		if len(parts) == 2 {
-			return strings.TrimSpace(parts[1])
+			cleanedValue = strings.TrimSpace(parts[1])
 		}
 	}
-	return rawValue
+
+	var numericValue int64
+	originalStr := cleanedValue // Keep the original string for display
+
+	// Remove currency symbols and " p/w" for parsing
+	cleanedValue = strings.ReplaceAll(cleanedValue, "€", "")
+	cleanedValue = strings.ReplaceAll(cleanedValue, "£", "")
+	cleanedValue = strings.ReplaceAll(cleanedValue, "$", "")
+	cleanedValue = strings.TrimSpace(strings.ReplaceAll(cleanedValue, "p/w", ""))
+
+	multiplier := int64(1)
+	if strings.HasSuffix(cleanedValue, "M") {
+		multiplier = 1000000
+		cleanedValue = strings.TrimSuffix(cleanedValue, "M")
+	} else if strings.HasSuffix(cleanedValue, "K") {
+		multiplier = 1000
+		cleanedValue = strings.TrimSuffix(cleanedValue, "K")
+	}
+	cleanedValue = strings.ReplaceAll(cleanedValue, ",", "") // Remove commas for float parsing
+
+	valFloat, err := strconv.ParseFloat(cleanedValue, 64)
+	if err == nil {
+		numericValue = int64(valFloat * float64(multiplier))
+	} else {
+		// log.Printf("Could not parse monetary value '%s' (cleaned: '%s'): %v", rawValue, cleanedValue, err)
+	}
+	return originalStr, numericValue
 }
 
-// uploadHandler handles file uploads, parses HTML, and returns player data as JSON.
-// It now uses goroutines for concurrent row processing.
 func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Only POST method is allowed", http.StatusMethodNotAllowed)
 		return
 	}
-
 	startTime := time.Now()
-
-	err := r.ParseMultipartForm(10 << 20) // 10 MB max
-	if err != nil {
+	if err := r.ParseMultipartForm(10 << 20); err != nil { // 10 MB limit
 		http.Error(w, "Error parsing multipart form: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-
 	file, handler, err := r.FormFile("playerFile")
 	if err != nil {
 		http.Error(w, "Error retrieving the file: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	defer file.Close()
-
 	fileSize := handler.Size
 	log.Printf("Uploaded File: %s (Size: %d bytes)", handler.Filename, fileSize)
 
 	parseStartTime := time.Now()
-
 	doc, err := html.Parse(file)
 	if err != nil {
 		http.Error(w, "Error parsing HTML: "+err.Error(), http.StatusInternalServerError)
@@ -121,7 +521,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			if tableNode != nil { // Optimization: stop searching if already found
+			if tableNode != nil {
 				return
 			}
 			findTable(c)
@@ -134,11 +534,8 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// --- Header Parsing (Sequential) ---
 	var headers []string
-	var headerRowNode *html.Node // Keep track of the header row to skip it later
-
-	// Find the header row
+	var headerRowNode *html.Node
 	var findHeaderRow func(n *html.Node) bool
 	findHeaderRow = func(n *html.Node) bool {
 		if n.Type == html.ElementNode && n.Data == "tr" {
@@ -148,22 +545,15 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 				if cell.Type == html.ElementNode && cell.Data == "th" {
 					isHeader = true
 					tempHeaders = append(tempHeaders, getNodeTextOptimized(cell))
-				} else if cell.Type == html.ElementNode && cell.Data == "td" && !isHeader {
-					// If we see a td before any th, this row is unlikely a primary header.
-					// However, some tables might mix. For simplicity, first row with <th> wins.
-					// Or, if no <th> at all, the first row's <td>s might be considered headers.
-					// This part might need adjustment based on HTML variations.
-					// For now, we require at least one <th> for it to be a header row.
 				}
 			}
 			if isHeader && len(tempHeaders) > 0 {
 				headers = tempHeaders
 				headerRowNode = n
 				log.Printf("Parsed Headers: %v", headers)
-				return true // Header found
+				return true
 			}
 		}
-		// Check within tbody or directly under table
 		if n.Type == html.ElementNode && (n.Data == "tbody" || n.Data == "table" || n.Data == "thead") {
 			for c := n.FirstChild; c != nil; c = c.NextSibling {
 				if findHeaderRow(c) {
@@ -174,10 +564,8 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return false
 	}
 
-	// Search for headers starting from the table node
 	if !findHeaderRow(tableNode) {
-		// Fallback: if no <th> based header found, try to use the very first row.
-		// This is a heuristic and might not always be correct.
+		// Fallback to first row if no <th> found (same as existing)
 		firstRow := true
 		for tr := tableNode.FirstChild; tr != nil; tr = tr.NextSibling {
 			if tr.Type == html.ElementNode && tr.Data == "tbody" {
@@ -192,12 +580,12 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 							}
 							log.Printf("Warning: No <th> header row found. Using first row as header: %v", headers)
 							firstRow = false
-							break // Found first row
+							break
 						}
 					}
 				}
-				break // Processed tbody
-			} else if tr.Type == html.ElementNode && tr.Data == "tr" {
+				break
+			} else if tr.Type == html.ElementNode && tr.Data == "tr" { // Direct TR under table
 				if firstRow {
 					headerRowNode = tr
 					for td := tr.FirstChild; td != nil; td = td.NextSibling {
@@ -207,7 +595,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 					}
 					log.Printf("Warning: No <th> header row found. Using first row as header (direct tr): %v", headers)
 					firstRow = false
-					break // Found first row
+					break
 				}
 			}
 			if !firstRow {
@@ -215,26 +603,23 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-
 	if len(headers) == 0 {
-		log.Println("Critical: Headers could not be parsed. Aborting player data processing.")
+		log.Println("Critical: Headers could not be parsed.")
 		http.Error(w, "Could not parse table headers", http.StatusInternalServerError)
 		return
 	}
 
-	// --- Concurrent Row Processing ---
 	players := make([]Player, 0, defaultPlayerCapacity)
-	rowNodesToProcess := make([]*html.Node, 0, defaultPlayerCapacity) // Collect data rows first
+	rowNodesToProcess := make([]*html.Node, 0, defaultPlayerCapacity)
 
-	// Collect all data row nodes (excluding the identified header row)
 	var collectDataRows func(*html.Node)
 	collectDataRows = func(n *html.Node) {
 		if n.Type == html.ElementNode && n.Data == "tr" {
-			if n != headerRowNode { // Skip the already processed header row
+			if n != headerRowNode { // Skip the header row itself
 				rowNodesToProcess = append(rowNodesToProcess, n)
 			}
 		}
-		// Traverse into tbody or directly look for trs
+		// Traverse into tbody or table directly for rows
 		if n.Type == html.ElementNode && (n.Data == "tbody" || n.Data == "table") {
 			for c := n.FirstChild; c != nil; c = c.NextSibling {
 				collectDataRows(c)
@@ -245,70 +630,67 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	numRowsToProcess := len(rowNodesToProcess)
 	if numRowsToProcess == 0 {
-		log.Println("No data rows found to process after header parsing.")
-		// Proceed to send empty player list if no data rows
+		log.Println("No data rows found.")
+		// Proceed to send empty array if no data rows
 	}
 
 	numWorkers := runtime.NumCPU()
-	if numRowsToProcess < numWorkers { // Don't spin up more workers than rows
+	if numRowsToProcess < numWorkers {
 		numWorkers = numRowsToProcess
 	}
 	if numWorkers == 0 && numRowsToProcess > 0 { // Ensure at least one worker if there are rows
 		numWorkers = 1
 	}
 
-	rowNodeChan := make(chan *html.Node, numRowsToProcess)        // Buffered channel
-	resultsChan := make(chan PlayerParseResult, numRowsToProcess) // Buffered channel
+	rowNodeChan := make(chan *html.Node, numRowsToProcess)
+	resultsChan := make(chan PlayerParseResult, numRowsToProcess)
 	var wg sync.WaitGroup
 
-	// Create a snapshot of headers for workers to prevent race conditions if headers were mutable
-	// (though in this flow, they are set once before workers start).
+	// Create a snapshot of headers for concurrent use
 	headersSnapshot := make([]string, len(headers))
 	copy(headersSnapshot, headers)
 
-	// Start worker goroutines
 	for i := 0; i < numWorkers; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			for rowNode := range rowNodeChan {
 				player, err := parseRowToPlayer(rowNode, headersSnapshot)
+				if err == nil {
+					// Perform calculations after basic parsing
+					enhancePlayerWithCalculations(&player)
+				}
 				resultsChan <- PlayerParseResult{Player: player, Err: err}
 			}
 		}()
 	}
 
-	// Distribute row nodes to workers
 	for _, rowNode := range rowNodesToProcess {
 		rowNodeChan <- rowNode
 	}
-	close(rowNodeChan) // Signal workers that no more rows will be sent
+	close(rowNodeChan)
 
-	// Closer goroutine for resultsChan
 	go func() {
 		wg.Wait()
 		close(resultsChan)
 	}()
 
-	// Collect results
 	for result := range resultsChan {
 		if result.Err == nil {
 			players = append(players, result.Player)
 		} else {
-			// Log errors from parsing individual rows, but don't stop the whole process
-			log.Printf("Skipping row due to parsing error: %v", result.Err)
+			log.Printf("Skipping row due to error: %v", result.Err)
 		}
 	}
 
 	parseDuration := time.Since(parseStartTime)
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*") // For local testing
+	w.Header().Set("Access-Control-Allow-Origin", "*") // For development
 	if err := json.NewEncoder(w).Encode(players); err != nil {
 		http.Error(w, "Error encoding JSON: "+err.Error(), http.StatusInternalServerError)
 	}
 
-	// Performance Logging
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
 	rowsPerSecond := 0.0
@@ -316,29 +698,105 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		rowsPerSecond = float64(len(players)) / parseDuration.Seconds()
 	}
 	totalDuration := time.Since(startTime)
+	log.Printf("--- Perf Metrics --- File: %s, Size: %d KB, Total Time: %v, Parse Time: %v, Rows: %d, Parsed: %d, Rows/Sec: %.2f, MemAlloc: %.2f MiB, Workers: %d, Goroutines: %d ---",
+		handler.Filename, fileSize/1024, totalDuration, parseDuration, numRowsToProcess, len(players), rowsPerSecond, bToMb(memStats.Alloc), numWorkers, runtime.NumGoroutine())
 
-	log.Printf("--- Parsing & Processing Performance Metrics ---")
-	log.Printf("File: %s", handler.Filename)
-	log.Printf("File Size Processed: %d bytes (%.2f KB)", fileSize, float64(fileSize)/1024.0)
-	log.Printf("Total Request Time (Upload + Parse + Response): %v", totalDuration)
-	log.Printf("Core Parsing Time (html.Parse + row processing): %v", parseDuration)
-	log.Printf("Total Data Rows Sent to Workers: %d", numRowsToProcess)
-	log.Printf("Total Player Rows Successfully Parsed: %d", len(players))
-	log.Printf("Player Rows Parsed Per Second (core parsing): %.2f", rowsPerSecond)
-	log.Printf("Memory - Alloc: %.2f MiB", bToMb(memStats.Alloc))
-	log.Printf("Memory - TotalAlloc (cumulative): %.2f MiB", bToMb(memStats.TotalAlloc))
-	log.Printf("Memory - Sys (obtained from OS): %.2f MiB", bToMb(memStats.Sys))
-	log.Printf("Memory - NumGC: %d", memStats.NumGC)
-	log.Printf("System - NumCPU for Workers: %d (Max Available: %d)", numWorkers, runtime.NumCPU())
-	log.Printf("System - NumGoroutine at end of request: %d", runtime.NumGoroutine())
-	log.Printf("----------------------------------------------")
 }
 
-// parseRowToPlayer processes a single <tr> node into a Player object.
-// It's designed to be called by worker goroutines.
+// enhancePlayerWithCalculations populates calculated fields.
+func enhancePlayerWithCalculations(player *Player) {
+	// 1. Convert string attributes to numeric
+	player.NumericAttributes = make(map[string]int, len(player.Attributes))
+	for key, valStr := range player.Attributes {
+		valInt, err := strconv.Atoi(valStr)
+		if err == nil {
+			player.NumericAttributes[key] = valInt
+		} else {
+			player.NumericAttributes[key] = 0 // Default to 0 if parsing fails
+		}
+	}
+
+	// 2. Parse positions
+	player.ParsedPositions = parsePlayerPositionsGo(player.Position)
+	player.PositionGroups = getPlayerPositionGroupsGo(player.ParsedPositions)
+
+	// 3. Calculate FIFA-style stats
+	player.PHY = calculateFifaStatGo(player.NumericAttributes, "PHY")
+	player.SHO = calculateFifaStatGo(player.NumericAttributes, "SHO")
+	player.PAS = calculateFifaStatGo(player.NumericAttributes, "PAS")
+	player.DRI = calculateFifaStatGo(player.NumericAttributes, "DRI")
+	player.DEF = calculateFifaStatGo(player.NumericAttributes, "DEF")
+	player.MEN = calculateFifaStatGo(player.NumericAttributes, "MEN")
+
+	// 4. Calculate role-specific overalls and determine best overall
+	maxOverall := 0
+	calculatedRoleOveralls := []RoleOverallScore{}
+
+	muRoleSpecificOverallWeights.RLock()
+	currentRoleWeightsSource := roleSpecificOverallWeights
+	muRoleSpecificOverallWeights.RUnlock()
+
+	if len(player.ParsedPositions) > 0 {
+		uniqueBaseRoleKeysConsidered := make(map[string]struct{})
+
+		for _, parsedPos := range player.ParsedPositions {
+			baseRoleKey, ok := parsedPositionToBaseRoleKeyGo[parsedPos]
+			if !ok || baseRoleKey == nullString {
+				continue // Skip if no base role mapping
+			}
+
+			// Iterate through all role-specific keys in the loaded JSON
+			for roleKeyInJson, specificWeights := range currentRoleWeightsSource {
+				// Check if the JSON key starts with the baseRoleKey (e.g., "DC - BPD" starts with "DC")
+				// Or if it's the generic version for that base role (e.g., "DC - Generic")
+				if strings.HasPrefix(roleKeyInJson, baseRoleKey+" - ") {
+					overallForThisRole := calculateOverallForRoleGo(player.NumericAttributes, specificWeights)
+					calculatedRoleOveralls = append(calculatedRoleOveralls, RoleOverallScore{RoleName: roleKeyInJson, Score: overallForThisRole})
+					if overallForThisRole > maxOverall {
+						maxOverall = overallForThisRole
+					}
+				}
+			}
+			// Add generic calculation for the base role if not already covered
+			genericRoleKey := baseRoleKey + " - Generic"
+			if specificWeights, exists := currentRoleWeightsSource[genericRoleKey]; exists {
+				if _, considered := uniqueBaseRoleKeysConsidered[genericRoleKey]; !considered {
+					overallForThisRole := calculateOverallForRoleGo(player.NumericAttributes, specificWeights)
+					// Avoid duplicate addition if a specific role already matched this generic key structure
+					alreadyAdded := false
+					for _, cro := range calculatedRoleOveralls {
+						if cro.RoleName == genericRoleKey {
+							alreadyAdded = true
+							break
+						}
+					}
+					if !alreadyAdded {
+						calculatedRoleOveralls = append(calculatedRoleOveralls, RoleOverallScore{RoleName: genericRoleKey, Score: overallForThisRole})
+						if overallForThisRole > maxOverall {
+							maxOverall = overallForThisRole
+						}
+					}
+					uniqueBaseRoleKeysConsidered[genericRoleKey] = struct{}{}
+				}
+			}
+		}
+	} else { // If no parsed positions, try to find a "Generic" role for common base types if possible
+		// This part might need refinement based on how "Generic" roles are defined and preferred.
+		// For example, try a very generic "ST - Generic" or "MC - Generic" if player.Position hints at it.
+		// For now, if no parsed positions, maxOverall remains 0 or based on a single default role if applicable.
+	}
+
+	player.Overall = maxOverall
+	player.RoleSpecificOveralls = calculatedRoleOveralls
+
+	// Sort RoleSpecificOveralls by score descending for consistent output (optional, but good for display)
+	sort.Slice(player.RoleSpecificOveralls, func(i, j int) bool {
+		return player.RoleSpecificOveralls[i].Score > player.RoleSpecificOveralls[j].Score
+	})
+}
+
 func parseRowToPlayer(tr *html.Node, headers []string) (Player, error) {
 	var cells []string
-	// Estimate cell capacity based on headers length, or use a default.
 	cellCap := defaultCellCapacity
 	if len(headers) > 0 {
 		cellCap = len(headers)
@@ -346,25 +804,105 @@ func parseRowToPlayer(tr *html.Node, headers []string) (Player, error) {
 	cells = make([]string, 0, cellCap)
 
 	for td := tr.FirstChild; td != nil; td = td.NextSibling {
-		if td.Type == html.ElementNode && (td.Data == "td" || td.Data == "th") { // Also consider th if data rows might have them
+		if td.Type == html.ElementNode && (td.Data == "td" || td.Data == "th") {
 			cells = append(cells, getNodeTextOptimized(td))
 		}
 	}
 
 	if len(headers) == 0 {
-		return Player{}, errors.New("cannot process row: headers are empty (should have been caught earlier)")
+		return Player{}, errors.New("cannot process row: headers are empty")
+	}
+	if len(cells) == 0 {
+		isEmptyRow := true
+		for _, cellContent := range cells {
+			if strings.TrimSpace(cellContent) != "" {
+				isEmptyRow = false
+				break
+			}
+		}
+		if isEmptyRow && len(cells) < len(headers)/2 {
+			return Player{}, errors.New("skipped row: appears to be an empty or malformed row")
+		}
 	}
 
-	nameIdx := getHeaderIndex(headers, "Name")
-	posIdx := getHeaderIndex(headers, "Position")
-	ageIdx := getHeaderIndex(headers, "Age")
-	clubIdx := getHeaderIndex(headers, "Club")
-	transferValueIdx := getHeaderIndex(headers, "Transfer Value")
-	wageIdx := getHeaderIndex(headers, "Wage")
+	player := Player{
+		Attributes: make(map[string]string, defaultAttributeCapacity),
+	}
 
-	playerName := safeGet(cells, nameIdx)
-	if nameIdx == -1 || playerName == "" {
-		// Check if the row is potentially meaningful before logging it as a skip
+	knownNonAttributeHeaders := map[string]bool{
+		"Inf": true,
+	}
+
+	foundName := false
+	for i, headerName := range headers {
+		if i < len(cells) {
+			cellValue := strings.TrimSpace(cells[i])
+			isAnAttributeField := true
+
+			switch headerName {
+			case "Name":
+				player.Name = cellValue
+				if cellValue != "" {
+					foundName = true
+				}
+				isAnAttributeField = false
+			case "Position":
+				player.Position = cellValue
+				isAnAttributeField = false
+			case "Age":
+				player.Age = cellValue
+				isAnAttributeField = false
+			case "Club":
+				player.Club = cellValue
+				isAnAttributeField = false
+			case "Transfer Value":
+				player.TransferValue, player.TransferValueAmount = parseMonetaryValueGo(cellValue)
+				isAnAttributeField = false
+			case "Wage":
+				player.Wage, player.WageAmount = parseMonetaryValueGo(cellValue)
+				isAnAttributeField = false
+			case "Personality": // New Case
+				player.Personality = cellValue
+				isAnAttributeField = false
+			case "Media Handling": // New Case
+				player.MediaHandling = cellValue
+				isAnAttributeField = false
+			case "Nat":
+				fifaCode := strings.ToUpper(cellValue)
+				player.NationalityFIFACode = fifaCode
+
+				if player.Nationality == "" {
+					if fullName, ok := fifaCountryCodes[fifaCode]; ok {
+						player.Nationality = fullName
+					} else {
+						player.Nationality = cellValue
+					}
+
+					if isoCode, ok := fifaToISO2[fifaCode]; ok {
+						player.NationalityISO = isoCode
+					} else {
+						player.NationalityISO = strings.ToLower(cellValue)
+					}
+					isAnAttributeField = false
+				} else {
+					// This handles the case where "Nat" might appear again as an attribute (e.g. Natural Fitness)
+					// The current logic will add it to player.Attributes[headerName] if isAnAttributeField remains true.
+				}
+			default:
+				// Any other header is potentially an attribute
+			}
+
+			if isAnAttributeField {
+				if _, isKnownNonAttr := knownNonAttributeHeaders[headerName]; !isKnownNonAttr {
+					if headerName != "" && cellValue != "" && cellValue != "-" {
+						player.Attributes[headerName] = cellValue
+					}
+				}
+			}
+		}
+	}
+
+	if !foundName {
 		isPotentiallyMeaningfulRow := false
 		for _, cellContent := range cells {
 			if strings.TrimSpace(cellContent) != "" {
@@ -373,63 +911,14 @@ func parseRowToPlayer(tr *html.Node, headers []string) (Player, error) {
 			}
 		}
 		if isPotentiallyMeaningfulRow {
-			return Player{}, errors.New("skipped row: 'Name' field is missing, empty, or index out of bounds. First few cells: " + strings.Join(getFirstNCells(cells, 5), ", "))
+			return Player{}, errors.New("skipped row: 'Name' field is missing or empty. First few cells: " + strings.Join(getFirstNCells(cells, 5), ", "))
 		}
-		return Player{}, errors.New("skipped row: 'Name' field missing and row appears empty") // Less verbose for truly empty rows
+		return Player{}, errors.New("skipped row: 'Name' field missing and row appears empty")
 	}
 
-	// Validate that essential indices are within bounds of actual cells for this row
-	requiredIndices := map[string]int{
-		"Position": posIdx, "Age": ageIdx, "Club": clubIdx,
-		"Transfer Value": transferValueIdx, "Wage": wageIdx,
-	}
-	for headerName, idx := range requiredIndices {
-		if idx != -1 && idx >= len(cells) {
-			return Player{}, errors.New("skipped row for player '" + playerName + "': Not enough cells for essential data '" + headerName + "'. Cell count: " + string(len(cells)) + ", Required index: " + string(idx))
-		}
-	}
-
-	player := Player{
-		Name:          playerName,
-		Position:      safeGet(cells, posIdx),
-		Age:           safeGet(cells, ageIdx),
-		Club:          safeGet(cells, clubIdx),
-		TransferValue: parseTransferValue(safeGet(cells, transferValueIdx)),
-		Wage:          safeGet(cells, wageIdx),
-		Attributes:    make(map[string]string, defaultAttributeCapacity),
-	}
-
-	attrStartIndex := getHeaderIndex(headers, "Acc") // Example start attribute
-	attrEndIndex := getHeaderIndex(headers, "Pen")   // Example end attribute, adjust as needed
-
-	if attrStartIndex != -1 {
-		// Fallback if "Pen" is not found, try "Wor" or a sensible last known attribute
-		if attrEndIndex == -1 || attrEndIndex < attrStartIndex {
-			fallbackEndIndex := getHeaderIndex(headers, "Wor")
-			if fallbackEndIndex != -1 && fallbackEndIndex >= attrStartIndex {
-				attrEndIndex = fallbackEndIndex
-			} else {
-				// If no clear end, go up to the end of known headers or available cells
-				attrEndIndex = len(headers) - 1
-			}
-		}
-
-		for i := attrStartIndex; i <= attrEndIndex && i < len(cells) && i < len(headers); i++ {
-			attrName := headers[i]
-			attrValue := strings.TrimSpace(cells[i])
-			if attrName != "" && attrValue != "" && attrValue != "-" {
-				player.Attributes[attrName] = attrValue
-			}
-		}
-	} else {
-		// Log this as a warning, but don't fail the player if attributes are missing
-		// log.Printf("Warning: 'Acc' attribute header not found. Cannot parse attributes for player: %s", player.Name)
-	}
 	return player, nil
 }
 
-// getFirstNCells returns the first N cells or fewer if the slice is smaller.
-// (Unchanged from original, useful for logging)
 func getFirstNCells(slice []string, n int) []string {
 	if n < 0 {
 		n = 0
@@ -440,31 +929,10 @@ func getFirstNCells(slice []string, n int) []string {
 	return slice[:n]
 }
 
-// getHeaderIndex (remains the same)
-func getHeaderIndex(headers []string, headerName string) int {
-	for i, h := range headers {
-		if h == headerName {
-			return i
-		}
-	}
-	return -1
-}
-
-// safeGet (remains the same)
-func safeGet(slice []string, index int) string {
-	if index >= 0 && index < len(slice) {
-		return strings.TrimSpace(slice[index])
-	}
-	return ""
-}
-
-// bToMb converts bytes to megabytes for logging.
-// (Unchanged from original)
 func bToMb(b uint64) float64 {
 	return float64(b) / 1024 / 1024
 }
 
-// main (remains the same)
 func main() {
 	// Serve index.html at the root
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -472,22 +940,11 @@ func main() {
 			http.NotFound(w, r)
 			return
 		}
-		// Determine the path to index.html relative to the executable
-		// This assumes index.html is in the same directory as the compiled binary.
-		// For development, running `go run .` from the directory containing main.go and index.html works.
-		// For deployment, ensure index.html is placed alongside the executable.
-		// _, currentFilePath, _, ok := runtime.Caller(0)
-		// if !ok {
-		// 	http.Error(w, "Could not determine server file path", http.StatusInternalServerError)
-		// 	return
-		// }
-		// dir := filepath.Dir(currentFilePath)
-		// http.ServeFile(w, r, filepath.Join(dir, "index.html"))
-
-		// Simpler: serve from current working directory.
-		// Ensure your `index.html` is in the directory where you run the server.
 		http.ServeFile(w, r, filepath.Join(".", "index.html"))
 	})
+
+	fs := http.FileServer(http.Dir("./public"))
+	http.Handle("/public/", http.StripPrefix("/public/", fs))
 
 	http.HandleFunc("/upload", uploadHandler)
 
