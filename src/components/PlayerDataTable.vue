@@ -42,6 +42,7 @@
             class="player-q-table"
             :class="$q.dark.isActive ? 'q-table--dark' : ''"
             table-header-class="player-table-header"
+            dense
         >
             <template v-slot:header="props">
                 <q-tr
@@ -88,6 +89,7 @@
                         :class="[
                             $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
                             col.classes,
+                            'table-cell-enhanced',
                         ]"
                         :style="col.style"
                     >
@@ -198,7 +200,9 @@
                     borderless
                     :class="$q.dark.isActive ? 'text-grey-3 bg-grey-8' : ''"
                     :popup-content-class="
-                        $q.dark.isActive ? 'bg-grey-8 text-white' : ''
+                        $q.dark.isActive
+                            ? 'bg-grey-8 text-white'
+                            : 'bg-white text-dark'
                     "
                 />
                 <span
@@ -243,15 +247,16 @@ export default {
         const $q = useQuasar();
         const sortField = ref(null);
         const sortDirection = ref("asc");
-        const rowsPerPageOptions = [10, 15, 20, 50, 0];
+        const rowsPerPageOptions = [10, 15, 20, 50, 0]; // 0 means 'All'
         const maxPagesToShow = 7;
 
         const pagination = reactive({
             sortBy: null,
             descending: false,
             page: 1,
-            rowsPerPage: 15,
+            rowsPerPage: 15, // Default rows per page
         });
+
         const pagesNumber = computed(() =>
             pagination.rowsPerPage === 0 || props.players.length === 0
                 ? 1
@@ -273,15 +278,21 @@ export default {
             },
         );
 
-        // Define base width for columns to prevent major shifts
-        const columnBaseStyle =
-            "min-width: 120px; width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
-        const narrowColumnStyle =
-            "min-width: 80px; width: 80px; text-align: center; white-space: nowrap;";
-        const widerColumnStyle =
-            "min-width: 150px; width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
+        // Column definitions with adjusted styles for width and readability
         const nameColumnStyle =
-            "min-width: 180px; width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
+            "min-width: 200px; width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
+        const clubColumnStyle =
+            "min-width: 180px; width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
+        const positionColumnStyle =
+            "min-width: 160px; width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
+        const nationalityColumnStyle =
+            "min-width: 150px; width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
+        const narrowColumnStyle =
+            "min-width: 80px; width: 80px; text-align: center; white-space: nowrap;"; // For Age, Overall, FIFA stats
+        const moneyColumnStyle =
+            "min-width: 130px; width: 140px; text-align: right; white-space: nowrap;"; // For Value, Wage
+        const defaultTextColumnStyle =
+            "min-width: 140px; width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"; // For Personality, Media Handling
 
         const baseColumns = [
             {
@@ -308,8 +319,8 @@ export default {
                 field: "nationality",
                 sortable: true,
                 align: "left",
-                style: columnBaseStyle,
-                headerStyle: columnBaseStyle,
+                style: nationalityColumnStyle,
+                headerStyle: nationalityColumnStyle,
             },
             {
                 name: "position",
@@ -317,8 +328,8 @@ export default {
                 field: "position",
                 sortable: true,
                 align: "left",
-                style: columnBaseStyle,
-                headerStyle: columnBaseStyle,
+                style: positionColumnStyle,
+                headerStyle: positionColumnStyle,
             },
             {
                 name: "club",
@@ -326,8 +337,8 @@ export default {
                 field: "club",
                 sortable: true,
                 align: "left",
-                style: widerColumnStyle,
-                headerStyle: widerColumnStyle,
+                style: clubColumnStyle,
+                headerStyle: clubColumnStyle,
             },
             {
                 name: "media_handling",
@@ -335,8 +346,8 @@ export default {
                 field: "media_handling",
                 sortable: true,
                 align: "left",
-                style: columnBaseStyle,
-                headerStyle: columnBaseStyle,
+                style: defaultTextColumnStyle,
+                headerStyle: defaultTextColumnStyle,
             },
             {
                 name: "personality",
@@ -344,18 +355,18 @@ export default {
                 field: "personality",
                 sortable: true,
                 align: "left",
-                style: columnBaseStyle,
-                headerStyle: columnBaseStyle,
+                style: defaultTextColumnStyle,
+                headerStyle: defaultTextColumnStyle,
             },
             {
                 name: "transfer_value",
-                label: "Transfer Value",
+                label: "Value",
                 field: "transfer_value",
                 sortable: true,
                 align: "right",
                 sortField: "transferValueAmount",
-                style: columnBaseStyle,
-                headerStyle: columnBaseStyle,
+                style: moneyColumnStyle,
+                headerStyle: moneyColumnStyle,
             },
             {
                 name: "wage",
@@ -364,8 +375,8 @@ export default {
                 sortable: true,
                 align: "right",
                 sortField: "wageAmount",
-                style: columnBaseStyle,
-                headerStyle: columnBaseStyle,
+                style: moneyColumnStyle,
+                headerStyle: moneyColumnStyle,
             },
             {
                 name: "Overall",
@@ -676,6 +687,12 @@ export default {
 }
 
 .player-q-table {
+    // This class allows for overall table width adjustments if needed
+    // For example, to make it wider on desktop:
+    // @media (min-width: $breakpoint-md-min) {
+    //   min-width: 1200px; // Adjust as needed
+    // }
+
     th .sort-icon {
         vertical-align: middle;
         margin-left: 4px;
@@ -718,13 +735,18 @@ export default {
 
     th {
         font-weight: 600;
-        padding: 12px 10px;
+        font-size: 0.9rem; // Slightly larger header text
+        padding: 10px 12px; // Adjusted padding
         border-right: 0;
     }
     td {
         vertical-align: middle;
-        padding: 10px 10px;
+        padding: 8px 12px; // Adjusted padding
         border-right: 0;
+    }
+    // Increase base font size for table cells for better readability
+    .table-cell-enhanced {
+        font-size: 0.95rem; // Larger text in cells
     }
 }
 
