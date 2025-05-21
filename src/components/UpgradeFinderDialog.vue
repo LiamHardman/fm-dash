@@ -9,12 +9,12 @@
     >
         <q-card
             class="upgrade-finder-dialog"
-            :class="$q.dark.isActive ? 'bg-dark' : 'bg-grey-1'"
+            :class="qInstance.dark.isActive ? 'bg-dark' : 'bg-grey-1'"
         >
             <q-card-section
                 class="row items-center q-pb-none"
                 :class="
-                    $q.dark.isActive
+                    qInstance.dark.isActive
                         ? 'bg-grey-10 text-white'
                         : 'bg-primary text-white'
                 "
@@ -53,10 +53,14 @@
                                 selectedTeamPlayer = null;
                                 teamPlayersForSelection = [];
                             "
-                            :label-color="$q.dark.isActive ? 'grey-4' : ''"
-                            :input-class="$q.dark.isActive ? 'text-grey-3' : ''"
+                            :label-color="
+                                qInstance.dark.isActive ? 'grey-4' : ''
+                            "
+                            :input-class="
+                                qInstance.dark.isActive ? 'text-grey-3' : ''
+                            "
                             :popup-content-class="
-                                $q.dark.isActive
+                                qInstance.dark.isActive
                                     ? 'bg-grey-8 text-white'
                                     : 'bg-white text-dark'
                             "
@@ -87,9 +91,11 @@
                                 selectedTeamPlayer = null;
                                 teamPlayersForSelection = [];
                             "
-                            :label-color="$q.dark.isActive ? 'grey-4' : ''"
+                            :label-color="
+                                qInstance.dark.isActive ? 'grey-4' : ''
+                            "
                             :popup-content-class="
-                                $q.dark.isActive
+                                qInstance.dark.isActive
                                     ? 'bg-grey-8 text-white'
                                     : 'bg-white text-dark'
                             "
@@ -118,9 +124,11 @@
                                     ? `Base Overall: ${getBaseOverallFromSelectedPlayer()}`
                                     : 'Select a player to set base overall'
                             "
-                            :label-color="$q.dark.isActive ? 'grey-4' : ''"
+                            :label-color="
+                                qInstance.dark.isActive ? 'grey-4' : ''
+                            "
                             :popup-content-class="
-                                $q.dark.isActive
+                                qInstance.dark.isActive
                                     ? 'bg-grey-8 text-white'
                                     : 'bg-white text-dark'
                             "
@@ -128,7 +136,7 @@
                             <template v-slot:option="scope">
                                 <q-item
                                     v-bind="scope.itemProps"
-                                    :dark="$q.dark.isActive"
+                                    :dark="qInstance.dark.isActive"
                                 >
                                     <q-item-section>
                                         <q-item-label>{{
@@ -144,7 +152,7 @@
                                 </q-item>
                             </template>
                             <template v-slot:no-option>
-                                <q-item :dark="$q.dark.isActive">
+                                <q-item :dark="qInstance.dark.isActive">
                                     <q-item-section class="text-grey">
                                         {{
                                             teamName && selectedPosition
@@ -162,7 +170,7 @@
                             <div
                                 class="text-subtitle2 q-mb-xs"
                                 :class="
-                                    $q.dark.isActive
+                                    qInstance.dark.isActive
                                         ? 'text-grey-4'
                                         : 'text-grey-8'
                                 "
@@ -177,7 +185,7 @@
                                 label
                                 label-always
                                 color="primary"
-                                :dark="$q.dark.isActive"
+                                :dark="qInstance.dark.isActive"
                                 :disable="!selectedTeamPlayer"
                             />
                         </div>
@@ -189,7 +197,9 @@
                         <div
                             class="q-mb-xs text-subtitle2"
                             :class="
-                                $q.dark.isActive ? 'text-grey-4' : 'text-grey-8'
+                                qInstance.dark.isActive
+                                    ? 'text-grey-4'
+                                    : 'text-grey-8'
                             "
                         >
                             Maximum Age:
@@ -208,7 +218,9 @@
                                 class="q-ml-xs"
                                 round
                                 :text-color="
-                                    $q.dark.isActive ? 'grey-5' : 'grey-7'
+                                    qInstance.dark.isActive
+                                        ? 'grey-5'
+                                        : 'grey-7'
                                 "
                             >
                                 <q-tooltip>Clear age filter (Any)</q-tooltip>
@@ -221,7 +233,7 @@
                             :step="1"
                             label
                             color="secondary"
-                            :dark="$q.dark.isActive"
+                            :dark="qInstance.dark.isActive"
                         />
                     </div>
 
@@ -229,7 +241,9 @@
                         <div
                             class="q-mb-xs text-subtitle2"
                             :class="
-                                $q.dark.isActive ? 'text-grey-4' : 'text-grey-8'
+                                qInstance.dark.isActive
+                                    ? 'text-grey-4'
+                                    : 'text-grey-8'
                             "
                         >
                             Max Transfer Value:
@@ -257,7 +271,9 @@
                                 class="q-ml-xs"
                                 round
                                 :text-color="
-                                    $q.dark.isActive ? 'grey-5' : 'grey-7'
+                                    qInstance.dark.isActive
+                                        ? 'grey-5'
+                                        : 'grey-7'
                                 "
                             >
                                 <q-tooltip>Clear value filter (Any)</q-tooltip>
@@ -271,7 +287,7 @@
                             label
                             :label-value="formattedMaxTransferValueLabel"
                             color="secondary"
-                            :dark="$q.dark.isActive"
+                            :dark="qInstance.dark.isActive"
                             :disable="
                                 !props.players || props.players.length === 0
                             "
@@ -300,10 +316,12 @@
             </q-card-section>
 
             <q-card-section v-if="showResults" class="q-mt-md results-section">
-                <q-separator :dark="$q.dark.isActive" class="q-mb-md" />
+                <q-separator :dark="qInstance.dark.isActive" class="q-mb-md" />
                 <div
                     class="text-h6 q-mb-md"
-                    :class="$q.dark.isActive ? 'text-grey-2' : 'text-grey-9'"
+                    :class="
+                        qInstance.dark.isActive ? 'text-grey-2' : 'text-grey-9'
+                    "
                 >
                     Results
                 </div>
@@ -312,7 +330,9 @@
                     <div
                         class="text-subtitle1 q-mb-sm"
                         :class="
-                            $q.dark.isActive ? 'text-grey-3' : 'text-grey-8'
+                            qInstance.dark.isActive
+                                ? 'text-grey-3'
+                                : 'text-grey-8'
                         "
                     >
                         Baseline Player:
@@ -321,7 +341,7 @@
                         flat
                         bordered
                         :class="
-                            $q.dark.isActive
+                            qInstance.dark.isActive
                                 ? 'bg-grey-8 text-grey-3'
                                 : 'bg-blue-grey-1 text-blue-grey-10'
                         "
@@ -350,7 +370,7 @@
                                 <q-item-label
                                     caption
                                     :class="
-                                        $q.dark.isActive
+                                        qInstance.dark.isActive
                                             ? 'text-grey-5'
                                             : 'text-blue-grey-7'
                                     "
@@ -364,7 +384,7 @@
                                 <q-item-label
                                     caption
                                     :class="
-                                        $q.dark.isActive
+                                        qInstance.dark.isActive
                                             ? 'text-grey-5'
                                             : 'text-blue-grey-7'
                                     "
@@ -386,7 +406,7 @@
                         <q-card-section
                             class="q-pt-none"
                             :class="
-                                $q.dark.isActive
+                                qInstance.dark.isActive
                                     ? 'text-grey-4'
                                     : 'text-blue-grey-8'
                             "
@@ -412,7 +432,9 @@
                 <div
                     class="text-subtitle1 q-mb-sm"
                     v-if="upgradePlayers.length > 0"
-                    :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-8'"
+                    :class="
+                        qInstance.dark.isActive ? 'text-grey-3' : 'text-grey-8'
+                    "
                 >
                     Potential upgrades ({{ upgradePlayers.length }} players
                     found):
@@ -430,7 +452,7 @@
                     v-else-if="showResults && !loading && !initialLoad"
                     class="q-mt-md"
                     :class="
-                        $q.dark.isActive
+                        qInstance.dark.isActive
                             ? 'bg-blue-grey-8 text-blue-grey-2'
                             : 'bg-info text-white'
                     "
@@ -450,7 +472,7 @@
                     "
                     class="q-mt-md"
                     :class="
-                        $q.dark.isActive
+                        qInstance.dark.isActive
                             ? 'bg-orange-9 text-white'
                             : 'bg-amber text-dark'
                     "
@@ -476,7 +498,6 @@
 </template>
 
 <script>
-// Script content remains the same as your provided version
 import { ref, computed, onMounted, watch } from "vue";
 import { useQuasar } from "quasar";
 import PlayerDataTable from "./PlayerDataTable.vue";
@@ -498,7 +519,7 @@ export default {
     },
     emits: ["close"],
     setup(props, { emit }) {
-        const $q = useQuasar();
+        const $q = useQuasar(); // Original $q
         const teamName = ref(null);
         const teamOptions = ref([]);
         const allTeamNamesCache = ref([]);
@@ -657,7 +678,6 @@ export default {
                 .sort()
                 .forEach((pos) => {
                     if (!positionGroups[pos]) {
-                        // Add only if not already covered by a group entry (avoids duplicates if a single position is also a group name)
                         options.push({ label: pos, value: pos });
                     }
                 });
@@ -853,7 +873,6 @@ export default {
         };
 
         const getUnifiedRatingClass = (value, maxScale) => {
-            // Copied from PlayerDetailDialog for consistency
             const numValue = parseInt(value, 10);
             if (
                 isNaN(numValue) ||
@@ -911,7 +930,7 @@ export default {
         );
 
         return {
-            $q,
+            qInstance: $q, // Aliased $q
             teamName,
             teamOptions,
             filterTeams,

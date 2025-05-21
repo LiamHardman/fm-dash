@@ -4,7 +4,7 @@
             v-if="sortField"
             class="text-caption q-mb-sm q-pa-xs rounded-borders"
             :class="
-                $q.dark.isActive
+                qInstance.dark.isActive
                     ? 'bg-grey-8 text-grey-4'
                     : 'bg-grey-2 text-grey-7'
             "
@@ -17,11 +17,11 @@
         <q-card
             v-if="players.length === 0 && !loading"
             class="q-pa-md text-center"
-            :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-1'"
+            :class="qInstance.dark.isActive ? 'bg-grey-9' : 'bg-grey-1'"
             flat
             bordered
         >
-            <p :class="$q.dark.isActive ? 'text-grey-5' : 'text-grey-7'">
+            <p :class="qInstance.dark.isActive ? 'text-grey-5' : 'text-grey-7'">
                 No players match your search criteria.
             </p>
         </q-card>
@@ -40,14 +40,14 @@
             flat
             bordered
             class="player-q-table"
-            :class="$q.dark.isActive ? 'q-table--dark' : ''"
+            :class="qInstance.dark.isActive ? 'q-table--dark' : ''"
             table-header-class="player-table-header"
             dense
         >
             <template v-slot:header="props">
                 <q-tr
                     :props="props"
-                    :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-2'"
+                    :class="qInstance.dark.isActive ? 'bg-grey-9' : 'bg-grey-2'"
                 >
                     <q-th
                         v-for="col in props.cols"
@@ -56,7 +56,9 @@
                         class="cursor-pointer text-weight-bold"
                         @click="sortTable(col.name)"
                         :class="[
-                            $q.dark.isActive ? 'text-grey-3' : 'text-grey-8',
+                            qInstance.dark.isActive
+                                ? 'text-grey-3'
+                                : 'text-grey-8',
                             col.headerClasses,
                         ]"
                         :style="col.headerStyle"
@@ -87,7 +89,9 @@
                         :key="col.name"
                         :props="props"
                         :class="[
-                            $q.dark.isActive ? 'text-grey-4' : 'text-grey-9',
+                            qInstance.dark.isActive
+                                ? 'text-grey-4'
+                                : 'text-grey-9',
                             col.classes,
                             'table-cell-enhanced',
                         ]"
@@ -141,7 +145,9 @@
                                     name="flag"
                                     size="xs"
                                     :color="
-                                        $q.dark.isActive ? 'grey-6' : 'grey-7'
+                                        qInstance.dark.isActive
+                                            ? 'grey-6'
+                                            : 'grey-7'
                                     "
                                     class="q-mr-xs"
                                 />
@@ -174,15 +180,21 @@
                     boundary-links
                     direction-links
                     @update:model-value="onPageChange"
-                    :color="$q.dark.isActive ? 'grey-6' : 'primary'"
-                    :active-color="$q.dark.isActive ? 'primary' : 'primary'"
-                    :text-color="$q.dark.isActive ? 'white' : 'primary'"
-                    :active-text-color="$q.dark.isActive ? 'white' : 'white'"
+                    :color="qInstance.dark.isActive ? 'grey-6' : 'primary'"
+                    :active-color="
+                        qInstance.dark.isActive ? 'primary' : 'primary'
+                    "
+                    :text-color="qInstance.dark.isActive ? 'white' : 'primary'"
+                    :active-text-color="
+                        qInstance.dark.isActive ? 'white' : 'white'
+                    "
                 />
                 <q-space />
                 <span
                     class="text-caption q-mr-sm"
-                    :class="$q.dark.isActive ? 'text-grey-4' : 'text-grey-7'"
+                    :class="
+                        qInstance.dark.isActive ? 'text-grey-4' : 'text-grey-7'
+                    "
                     >Rows per page:</span
                 >
                 <q-select
@@ -198,16 +210,20 @@
                         (opt) => (opt === 0 ? 'All' : opt.toString())
                     "
                     borderless
-                    :class="$q.dark.isActive ? 'text-grey-3 bg-grey-8' : ''"
+                    :class="
+                        qInstance.dark.isActive ? 'text-grey-3 bg-grey-8' : ''
+                    "
                     :popup-content-class="
-                        $q.dark.isActive
+                        qInstance.dark.isActive
                             ? 'bg-grey-8 text-white'
                             : 'bg-white text-dark'
                     "
                 />
                 <span
                     class="q-ml-md text-caption"
-                    :class="$q.dark.isActive ? 'text-grey-4' : 'text-grey-7'"
+                    :class="
+                        qInstance.dark.isActive ? 'text-grey-4' : 'text-grey-7'
+                    "
                 >
                     {{
                         pagination.rowsPerPage === 0
@@ -244,17 +260,17 @@ export default {
     emits: ["update:sort", "player-selected"],
 
     setup(props, { emit }) {
-        const $q = useQuasar();
+        const $q = useQuasar(); // qInstance will be used in template
         const sortField = ref(null);
         const sortDirection = ref("asc");
-        const rowsPerPageOptions = [10, 15, 20, 50, 0]; // 0 means 'All'
+        const rowsPerPageOptions = [10, 15, 20, 50, 0];
         const maxPagesToShow = 7;
 
         const pagination = reactive({
             sortBy: null,
             descending: false,
             page: 1,
-            rowsPerPage: 15, // Default rows per page
+            rowsPerPage: 15,
         });
 
         const pagesNumber = computed(() =>
@@ -278,24 +294,27 @@ export default {
             },
         );
 
-        // Column definitions with adjusted styles for width and readability
         const nameColumnStyle =
-            "min-width: 200px; width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
-        const clubColumnStyle =
-            "min-width: 180px; width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
+            "min-width: 220px; width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
+        const ageColumnStyle =
+            "min-width: 70px; width: 70px; text-align: center; white-space: nowrap;";
         const positionColumnStyle =
-            "min-width: 160px; width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
-        const nationalityColumnStyle =
-            "min-width: 150px; width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
-        const narrowColumnStyle =
-            "min-width: 80px; width: 80px; text-align: center; white-space: nowrap;"; // For Age, Overall, FIFA stats
+            "min-width: 180px; width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
+        const clubColumnStyle =
+            "min-width: 200px; width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
         const moneyColumnStyle =
-            "min-width: 130px; width: 140px; text-align: right; white-space: nowrap;"; // For Value, Wage
-        const defaultTextColumnStyle =
-            "min-width: 140px; width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"; // For Personality, Media Handling
+            "min-width: 140px; width: 150px; text-align: right; white-space: nowrap;";
+        const overallColumnStyle =
+            "min-width: 90px; width: 90px; text-align: center; white-space: nowrap;";
+        const fifaStatColumnStyle =
+            "min-width: 75px; width: 75px; text-align: center; white-space: nowrap;";
+        const textColumnStyle =
+            "min-width: 160px; width: 170px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
+        const nationalityColumnStyle =
+            "min-width: 150px; width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"; // Defined for completeness
 
-        const baseColumns = [
-            {
+        const baseColumnDefinitions = {
+            name: {
                 name: "name",
                 label: "Name",
                 field: "name",
@@ -304,25 +323,16 @@ export default {
                 style: nameColumnStyle,
                 headerStyle: nameColumnStyle,
             },
-            {
+            age: {
                 name: "age",
                 label: "Age",
                 field: "age",
                 sortable: true,
                 align: "center",
-                style: narrowColumnStyle,
-                headerStyle: narrowColumnStyle,
+                style: ageColumnStyle,
+                headerStyle: ageColumnStyle,
             },
-            {
-                name: "nationality_display",
-                label: "Nationality",
-                field: "nationality",
-                sortable: true,
-                align: "left",
-                style: nationalityColumnStyle,
-                headerStyle: nationalityColumnStyle,
-            },
-            {
+            position: {
                 name: "position",
                 label: "Position",
                 field: "position",
@@ -331,7 +341,7 @@ export default {
                 style: positionColumnStyle,
                 headerStyle: positionColumnStyle,
             },
-            {
+            club: {
                 name: "club",
                 label: "Club",
                 field: "club",
@@ -340,25 +350,7 @@ export default {
                 style: clubColumnStyle,
                 headerStyle: clubColumnStyle,
             },
-            {
-                name: "media_handling",
-                label: "Media Handling",
-                field: "media_handling",
-                sortable: true,
-                align: "left",
-                style: defaultTextColumnStyle,
-                headerStyle: defaultTextColumnStyle,
-            },
-            {
-                name: "personality",
-                label: "Personality",
-                field: "personality",
-                sortable: true,
-                align: "left",
-                style: defaultTextColumnStyle,
-                headerStyle: defaultTextColumnStyle,
-            },
-            {
+            transfer_value: {
                 name: "transfer_value",
                 label: "Value",
                 field: "transfer_value",
@@ -368,7 +360,7 @@ export default {
                 style: moneyColumnStyle,
                 headerStyle: moneyColumnStyle,
             },
-            {
+            wage: {
                 name: "wage",
                 label: "Salary",
                 field: "wage",
@@ -378,17 +370,44 @@ export default {
                 style: moneyColumnStyle,
                 headerStyle: moneyColumnStyle,
             },
-            {
+            Overall: {
                 name: "Overall",
                 label: "Overall",
                 field: "Overall",
                 sortable: true,
                 align: "center",
                 isOverallStat: true,
-                style: narrowColumnStyle,
-                headerStyle: narrowColumnStyle,
+                style: overallColumnStyle,
+                headerStyle: overallColumnStyle,
             },
-        ];
+            personality: {
+                name: "personality",
+                label: "Personality",
+                field: "personality",
+                sortable: true,
+                align: "left",
+                style: textColumnStyle,
+                headerStyle: textColumnStyle,
+            },
+            media_handling: {
+                name: "media_handling",
+                label: "Media Desc.",
+                field: "media_handling",
+                sortable: true,
+                align: "left",
+                style: textColumnStyle,
+                headerStyle: textColumnStyle,
+            },
+            nationality_display: {
+                name: "nationality_display",
+                label: "Nationality",
+                field: "nationality",
+                sortable: true,
+                align: "left",
+                style: nationalityColumnStyle,
+                headerStyle: nationalityColumnStyle,
+            },
+        };
 
         const allFifaStatDefinitions = {
             GK: {
@@ -398,8 +417,8 @@ export default {
                 sortable: true,
                 align: "center",
                 isFifaStat: true,
-                style: narrowColumnStyle,
-                headerStyle: narrowColumnStyle,
+                style: fifaStatColumnStyle,
+                headerStyle: fifaStatColumnStyle,
             },
             PHY: {
                 name: "PHY",
@@ -408,8 +427,8 @@ export default {
                 sortable: true,
                 align: "center",
                 isFifaStat: true,
-                style: narrowColumnStyle,
-                headerStyle: narrowColumnStyle,
+                style: fifaStatColumnStyle,
+                headerStyle: fifaStatColumnStyle,
             },
             PAS: {
                 name: "PAS",
@@ -418,8 +437,8 @@ export default {
                 sortable: true,
                 align: "center",
                 isFifaStat: true,
-                style: narrowColumnStyle,
-                headerStyle: narrowColumnStyle,
+                style: fifaStatColumnStyle,
+                headerStyle: fifaStatColumnStyle,
             },
             MEN: {
                 name: "MEN",
@@ -428,8 +447,8 @@ export default {
                 sortable: true,
                 align: "center",
                 isFifaStat: true,
-                style: narrowColumnStyle,
-                headerStyle: narrowColumnStyle,
+                style: fifaStatColumnStyle,
+                headerStyle: fifaStatColumnStyle,
             },
             DRI: {
                 name: "DRI",
@@ -438,8 +457,8 @@ export default {
                 sortable: true,
                 align: "center",
                 isFifaStat: true,
-                style: narrowColumnStyle,
-                headerStyle: narrowColumnStyle,
+                style: fifaStatColumnStyle,
+                headerStyle: fifaStatColumnStyle,
             },
             DEF: {
                 name: "DEF",
@@ -448,8 +467,8 @@ export default {
                 sortable: true,
                 align: "center",
                 isFifaStat: true,
-                style: narrowColumnStyle,
-                headerStyle: narrowColumnStyle,
+                style: fifaStatColumnStyle,
+                headerStyle: fifaStatColumnStyle,
             },
             SHO: {
                 name: "SHO",
@@ -458,15 +477,25 @@ export default {
                 sortable: true,
                 align: "center",
                 isFifaStat: true,
-                style: narrowColumnStyle,
-                headerStyle: narrowColumnStyle,
+                style: fifaStatColumnStyle,
+                headerStyle: fifaStatColumnStyle,
             },
         };
 
         const currentColumns = computed(() => {
-            let fifaColumnsOrdered = [];
+            const newOrderBase = [
+                baseColumnDefinitions.name,
+                baseColumnDefinitions.age,
+                baseColumnDefinitions.position,
+                baseColumnDefinitions.club,
+                baseColumnDefinitions.transfer_value,
+                baseColumnDefinitions.wage,
+                baseColumnDefinitions.Overall,
+            ];
+
+            let fifaColumnsInOrder = [];
             if (props.isGoalkeeperView) {
-                fifaColumnsOrdered = [
+                fifaColumnsInOrder = [
                     allFifaStatDefinitions.GK,
                     allFifaStatDefinitions.PHY,
                     allFifaStatDefinitions.PAS,
@@ -476,7 +505,7 @@ export default {
                     allFifaStatDefinitions.SHO,
                 ];
             } else {
-                fifaColumnsOrdered = [
+                fifaColumnsInOrder = [
                     allFifaStatDefinitions.PHY,
                     allFifaStatDefinitions.SHO,
                     allFifaStatDefinitions.PAS,
@@ -485,7 +514,14 @@ export default {
                     allFifaStatDefinitions.MEN,
                 ];
             }
-            return [...baseColumns, ...fifaColumnsOrdered];
+
+            const trailingColumns = [
+                baseColumnDefinitions.personality,
+                baseColumnDefinitions.media_handling,
+                // baseColumnDefinitions.nationality_display, // Nationality is not in the new primary order but available
+            ];
+
+            return [...newOrderBase, ...fifaColumnsInOrder, ...trailingColumns];
         });
 
         const getColumnLabel = (fieldName) => {
@@ -656,7 +692,7 @@ export default {
         };
 
         return {
-            $q,
+            qInstance: $q, // Aliased for template to avoid warning
             sortField,
             sortDirection,
             pagination,
@@ -729,17 +765,17 @@ export default {
 
     th {
         font-weight: 600;
-        font-size: 1rem; // Increased header font size
-        padding: 12px 14px; // Slightly increased padding
+        font-size: 1.05rem;
+        padding: 12px 14px;
         border-right: 0;
     }
     td {
         vertical-align: middle;
-        padding: 10px 14px; // Slightly increased padding
+        padding: 10px 14px;
         border-right: 0;
     }
     .table-cell-enhanced {
-        font-size: 1.05rem; // Further increased cell font size
+        font-size: 1.1rem;
     }
 }
 
