@@ -34,9 +34,10 @@
                         <li>
                             Use filters for Name, Club (searchable dropdown),
                             Position, Nationality (searchable dropdown),
-                            Transfer Value, Media Handling (multi-select),
-                            Personality (multi-select), and Age range. Input
-                            fields are debounced for performance.
+                            Transfer Value (text input, slider, and mode), Media
+                            Handling (multi-select), Personality (multi-select),
+                            and Age range. Input fields are debounced for
+                            performance.
                         </li>
                         <li>
                             Click on any player row for a detailed view, which
@@ -89,7 +90,7 @@
             <q-card class="q-mb-md" v-if="allPlayers.length > 0">
                 <q-card-section>
                     <div class="text-subtitle1 q-mb-sm">Search Players</div>
-                    <div class="row q-col-gutter-md">
+                    <div class="row q-col-gutter-md items-end">
                         <div class="col-12 col-sm-6 col-md-3 col-lg-2">
                             <q-input
                                 v-model="filters.name"
@@ -215,18 +216,107 @@
                                 @update:model-value="debouncedApplyFilters"
                             />
                         </div>
-                        <div class="col-12 col-sm-4 col-md-4 col-lg-2">
-                            <q-input
-                                v-model="filters.transferValue"
-                                label="Transfer Value"
-                                dense
-                                outlined
-                                clearable
-                                placeholder="e.g., €1.5M, >1M, <500K"
-                                @update:model-value="debouncedApplyFilters"
+
+                        <div class="col-12 col-md-6 col-lg-4">
+                            <div class="text-caption q-mb-xs">
+                                Transfer Value
+                            </div>
+                            <div class="row items-center q-col-gutter-x-sm">
+                                <div class="col">
+                                    <q-input
+                                        v-model="transferValueTextInput"
+                                        label="Enter Value (e.g., 1.5M, 500K)"
+                                        dense
+                                        outlined
+                                        clearable
+                                        @update:model-value="
+                                            debouncedUpdateNumericValueFromTextInput
+                                        "
+                                        :disable="allPlayers.length === 0"
+                                        placeholder="Any"
+                                    />
+                                </div>
+                                <div class="col-auto">
+                                    <q-btn-toggle
+                                        v-model="filters.transferValueMode"
+                                        @update:model-value="
+                                            applyFiltersAndSort
+                                        "
+                                        no-caps
+                                        rounded
+                                        unelevated
+                                        toggle-color="primary"
+                                        color="white"
+                                        text-color="primary"
+                                        size="sm"
+                                        padding="xs md"
+                                        :options="[
+                                            {
+                                                label: '<',
+                                                value: 'less',
+                                                slot: 'less-than',
+                                            },
+                                            {
+                                                label: '>',
+                                                value: 'more',
+                                                slot: 'more-than',
+                                            },
+                                        ]"
+                                        :disable="
+                                            allPlayers.length === 0 ||
+                                            filters.selectedTransferValue ===
+                                                null
+                                        "
+                                    >
+                                        <template v-slot:less-than
+                                            ><q-tooltip
+                                                >Less than selected
+                                                value</q-tooltip
+                                            ></template
+                                        >
+                                        <template v-slot:more-than
+                                            ><q-tooltip
+                                                >More than selected
+                                                value</q-tooltip
+                                            ></template
+                                        >
+                                    </q-btn-toggle>
+                                </div>
+                            </div>
+                            <q-slider
+                                class="q-mt-sm"
+                                v-model="filters.selectedTransferValue"
+                                :min="transferValueSliderMin"
+                                :max="transferValueSliderMax"
+                                :step="transferValueSliderStep"
+                                label
+                                @update:model-value="applyFiltersAndSort"
+                                :disable="
+                                    allPlayers.length === 0 ||
+                                    transferValueSliderMin >=
+                                        transferValueSliderMax
+                                "
+                                color="primary"
                             />
+                            <div
+                                class="text-caption text-grey-7 q-mt-xs"
+                                v-if="filters.selectedTransferValue !== null"
+                            >
+                                Current filter:
+                                {{
+                                    filters.transferValueMode === "less"
+                                        ? "Less than"
+                                        : "More than"
+                                }}
+                                {{
+                                    formatSliderValue(
+                                        filters.selectedTransferValue,
+                                    )
+                                }}
+                            </div>
                         </div>
-                        <div class="col-12 flex items-center q-mt-sm">
+
+                        <div class="col-12 flex items-center q-mt-md">
                             <q-btn
                                 color="grey"
                                 label="Clear All Filters"
@@ -381,7 +471,7 @@
 import { ref, computed, reactive, onMounted, watch } from "vue";
 import PlayerDataTable from "../components/PlayerDataTable.vue";
 import PlayerDetailDialog from "../components/PlayerDetailDialog.vue";
-import UpgradeFinderDialog from "../components/UpgradeFinderDialog.vue"; // Import the new component
+import UpgradeFinderDialog from "../components/UpgradeFinderDialog.vue";
 import playerService from "../services/playerService";
 
 // Position groups for filtering
@@ -423,7 +513,7 @@ function debounce(fn, delay) {
 
 export default {
     name: "PlayerUploadPage",
-    components: { PlayerDataTable, PlayerDetailDialog, UpgradeFinderDialog }, // Add UpgradeFinderDialog
+    components: { PlayerDataTable, PlayerDetailDialog, UpgradeFinderDialog },
     setup() {
         const playerFile = ref(null);
         const loading = ref(false);
@@ -432,53 +522,53 @@ export default {
         const filteredPlayers = ref([]);
         const selectedPlayer = ref(null);
         const showPlayerDetailDialog = ref(false);
-        const showUpgradeFinder = ref(false); // For the new dialog
+        const showUpgradeFinder = ref(false);
 
-        // Feedback refs for JSON loading
         const attributeWeightsLoadedForFeedback = ref(false);
         const attributeWeightsErrorForFeedback = ref("");
         const roleSpecificOverallWeightsLoadedForFeedback = ref(false);
         const roleSpecificOverallWeightsErrorForFeedback = ref("");
 
-        // Reactive state for sorting
         const sortState = reactive({
             key: null,
             direction: "asc",
-            isAttribute: false, // Note: This might need review if attributes are sorted directly
+            isAttribute: false,
             displayField: null,
         });
 
-        // Reactive state for filters
+        // Refs for transfer value slider and text input
+        const transferValueSliderMin = ref(0);
+        const transferValueSliderMax = ref(100000000); // Default max
+        const transferValueTextInput = ref(""); // For the text input's string value
+
         const filters = reactive({
             name: "",
             club: null,
-            transferValue: "",
+            selectedTransferValue: null, // Numeric value for slider and filtering logic
+            transferValueMode: "less", // 'less' or 'more'
             position: null,
             nationality: null,
-            mediaHandling: [], // Array for multi-select
-            personality: [], // Array for multi-select
+            mediaHandling: [],
+            personality: [],
             minAge: null,
             maxAge: null,
         });
 
-        // Options for q-select dropdowns
         const clubOptions = ref([]);
         const nationalityOptions = ref([]);
         const mediaHandlingOptions = ref([]);
         const personalityOptions = ref([]);
 
-        // Store all unique values for filtering q-select options more efficiently
         let allUniqueClubs = [];
         let allUniqueNationalities = [];
-        let allUniqueMediaHandlings = []; // Will store individual styles
+        let allUniqueMediaHandlings = [];
         let allUniquePersonalities = [];
 
-        // Computed property to check if any filter is active
         const hasActiveFilters = computed(
             () =>
                 filters.name !== "" ||
                 filters.club !== null ||
-                filters.transferValue !== "" ||
+                filters.selectedTransferValue !== null ||
                 filters.position !== null ||
                 filters.nationality !== null ||
                 (Array.isArray(filters.mediaHandling) &&
@@ -489,7 +579,6 @@ export default {
                 filters.maxAge !== null,
         );
 
-        // Computed properties for summary counts
         const uniqueClubsCount = computed(() => allUniqueClubs.length);
         const uniqueParsedPositionsCount = computed(() => {
             const s = new Set();
@@ -502,34 +591,52 @@ export default {
             () => allUniqueNationalities.length,
         );
 
-        // Helper to parse monetary values from strings like "€1.5M" or "£50K p/w"
-        const parseMonetaryValueForFilter = (valueStr) => {
-            if (typeof valueStr !== "string" || !valueStr) return 0;
-            const cleanedStr = valueStr.split(" p/w")[0]; // Remove " p/w" if present
-            let multiplier = 1;
-            const lowerStr = cleanedStr.toLowerCase();
-            if (lowerStr.includes("m")) multiplier = 1000000;
-            else if (lowerStr.includes("k")) multiplier = 1000;
-            let numStr = cleanedStr.replace(/[^0-9,.]/g, ""); // Keep only numbers, comma, and dot
-            numStr = numStr.replace(/,/g, ""); // Remove commas for float parsing
-            const value = parseFloat(numStr);
-            return Math.round(isNaN(value) ? 0 : value * multiplier);
+        // Helper to format numeric value for display in text input or labels
+        const formatSliderValue = (value) => {
+            if (value === null || value === undefined) return ""; // Return empty for text input if null
+            if (value >= 1000000) return `€${(value / 1000000).toFixed(1)}M`;
+            if (value >= 1000) return `€${Math.round(value / 1000)}K`;
+            return `€${value}`;
         };
 
-        // Function to load JSON files for client-side feedback (Go API handles its own loading)
+        // Helper to parse monetary string (e.g., "1.5M", "500K") to number
+        const parseMonetaryStringToNumber = (str) => {
+            if (typeof str !== "string" || !str.trim()) return null;
+            const cleanedStr = str.trim().toUpperCase();
+            let value = parseFloat(cleanedStr.replace(/[^0-9.]/g, ""));
+            if (isNaN(value)) return null;
+
+            if (cleanedStr.endsWith("M")) value *= 1000000;
+            else if (cleanedStr.endsWith("K")) value *= 1000;
+            return Math.round(value);
+        };
+
+        // Computed property for dynamic slider step
+        const transferValueSliderStep = computed(() => {
+            const range =
+                transferValueSliderMax.value - transferValueSliderMin.value;
+            if (range <= 0) return 10000;
+            if (range < 50000) return 1000;
+            if (range < 250000) return 5000;
+            if (range < 1000000) return 10000;
+            if (range < 10000000) return 50000;
+            if (range < 50000000) return 100000;
+            return 250000;
+        });
+
         const loadJsonForFeedback = async (
             filePath,
             loadedFlagRef,
             errorRef,
         ) => {
-            errorRef.value = ""; // Clear previous error
+            errorRef.value = "";
             try {
                 const response = await fetch(filePath);
                 if (!response.ok)
                     throw new Error(
                         `HTTP error! status: ${response.status} for ${filePath}`,
                     );
-                await response.json(); // We just need to know if it's parsable
+                await response.json();
                 loadedFlagRef.value = true;
             } catch (e) {
                 console.warn(
@@ -538,36 +645,32 @@ export default {
                 );
                 errorRef.value =
                     e.message || `Unknown error loading ${filePath}.`;
-                loadedFlagRef.value = true; // Still set to true to enable upload button
+                loadedFlagRef.value = true;
             }
         };
 
-        // Load JSONs for feedback on component mount
         onMounted(() => {
             loadJsonForFeedback(
-                "/attribute_weights.json", // Assuming it's in the public folder
+                "/attribute_weights.json",
                 attributeWeightsLoadedForFeedback,
                 attributeWeightsErrorForFeedback,
             );
             loadJsonForFeedback(
-                "/role_specific_overall_weights.json", // Assuming it's in the public folder
+                "/role_specific_overall_weights.json",
                 roleSpecificOverallWeightsLoadedForFeedback,
                 roleSpecificOverallWeightsErrorForFeedback,
             );
         });
 
-        // Process players data received from the API
         const processPlayersFromAPI = (playersData) => {
             return playersData.map((p) => ({
                 ...p,
-                age: parseInt(p.age, 10) || 0, // Ensure age is a number
-                // transferValueAmount and wageAmount are assumed to be provided by Go API
+                age: parseInt(p.age, 10) || 0,
             }));
         };
 
-        // Computed property for position filter options
         const positionFilterOptions = computed(() => {
-            const options = [{ label: "Any Position", value: null }]; // Add "Any" option
+            const options = [{ label: "Any Position", value: null }];
             Object.keys(positionGroups).forEach((group) => {
                 options.push({ label: `${group} (Group)`, value: group });
             });
@@ -580,27 +683,24 @@ export default {
             Array.from(uniquePositions)
                 .sort()
                 .forEach((pos) => {
-                    // Avoid adding individual positions if they are already covered by a group value
                     if (!positionGroups[pos]) {
-                        // This check might be redundant if groups are named differently
                         options.push({ label: pos, value: pos });
                     }
                 });
             return options;
         });
 
-        // Function to update all dropdown options based on current player data
-        const updateDropdownOptions = () => {
+        const updateDropdownOptionsAndSliderBounds = () => {
             const clubs = new Set();
             const nationalities = new Set();
-            const mediaHandlingsIndividual = new Set(); // For individual styles
+            const mediaHandlingsIndividual = new Set();
             const personalities = new Set();
+            const transferValuesNumeric = [];
 
             allPlayers.value.forEach((p) => {
                 if (p.club) clubs.add(p.club);
                 if (p.nationality) nationalities.add(p.nationality);
                 if (p.media_handling) {
-                    // Split comma-separated media handling styles
                     p.media_handling.split(",").forEach((style) => {
                         const trimmedStyle = style.trim();
                         if (trimmedStyle)
@@ -608,18 +708,20 @@ export default {
                     });
                 }
                 if (p.personality) personalities.add(p.personality);
+                if (typeof p.transferValueAmount === "number") {
+                    transferValuesNumeric.push(p.transferValueAmount);
+                }
             });
 
             allUniqueClubs = Array.from(clubs).sort();
             allUniqueNationalities = Array.from(nationalities).sort();
             allUniqueMediaHandlings = Array.from(
                 mediaHandlingsIndividual,
-            ).sort(); // Now contains individual styles
+            ).sort();
             allUniquePersonalities = Array.from(personalities).sort();
 
             clubOptions.value = allUniqueClubs;
             nationalityOptions.value = allUniqueNationalities;
-            // Map individual media handling styles to options
             mediaHandlingOptions.value = allUniqueMediaHandlings.map((mh) => ({
                 label: mh,
                 value: mh,
@@ -628,9 +730,49 @@ export default {
                 label: p,
                 value: p,
             }));
+
+            if (transferValuesNumeric.length > 0) {
+                transferValueSliderMin.value = Math.min(
+                    0,
+                    ...transferValuesNumeric,
+                );
+                transferValueSliderMax.value = Math.max(
+                    ...transferValuesNumeric,
+                );
+                if (
+                    transferValueSliderMin.value >= transferValueSliderMax.value
+                ) {
+                    transferValueSliderMax.value =
+                        transferValueSliderMin.value +
+                        (transferValueSliderStep.value > 1
+                            ? transferValueSliderStep.value * 5
+                            : 50000);
+                }
+                if (
+                    transferValueSliderMin.value === 0 &&
+                    transferValueSliderMax.value === 0 &&
+                    transferValuesNumeric.some((v) => v === 0)
+                ) {
+                    transferValueSliderMax.value = 50000;
+                }
+            } else {
+                transferValueSliderMin.value = 0;
+                transferValueSliderMax.value = 100000000;
+            }
+
+            // Update filters.selectedTransferValue based on new bounds if necessary
+            // This ensures the slider doesn't get stuck if its current value is outside the new range
+            if (filters.selectedTransferValue !== null) {
+                filters.selectedTransferValue = Math.max(
+                    transferValueSliderMin.value,
+                    Math.min(
+                        filters.selectedTransferValue,
+                        transferValueSliderMax.value,
+                    ),
+                );
+            }
         };
 
-        // Main function to apply all filters and sorting
         const applyFiltersAndSort = () => {
             if (!allPlayers.value.length) {
                 filteredPlayers.value = [];
@@ -638,7 +780,6 @@ export default {
             }
             let tempPlayers = [...allPlayers.value];
 
-            // Apply text-based filters
             if (filters.name) {
                 tempPlayers = tempPlayers.filter(
                     (p) =>
@@ -659,33 +800,28 @@ export default {
                 );
             }
 
-            // Apply Media Handling filter (NEW LOGIC)
             if (filters.mediaHandling && filters.mediaHandling.length > 0) {
                 tempPlayers = tempPlayers.filter((p) => {
                     if (!p.media_handling) return false;
                     const playerStyles = p.media_handling
                         .split(",")
                         .map((s) => s.trim().toLowerCase());
-                    const filterStyles = filters.mediaHandling.map((s) =>
+                    const filterStylesLower = filters.mediaHandling.map((s) =>
                         s.toLowerCase(),
                     );
                     return playerStyles.some((style) =>
-                        filterStyles.includes(style),
+                        filterStylesLower.includes(style),
                     );
                 });
             }
 
-            // Apply Personality filter
             if (filters.personality && filters.personality.length > 0) {
                 tempPlayers = tempPlayers.filter((p) => {
                     if (!p.personality) return false;
-                    // Assuming personality is a single string, not comma-separated that needs splitting.
-                    // If personality can also be comma-separated, the logic should mirror mediaHandling.
                     return filters.personality.includes(p.personality);
                 });
             }
 
-            // Apply age filters
             if (filters.minAge !== null && filters.minAge >= 0) {
                 tempPlayers = tempPlayers.filter(
                     (p) => p.age >= filters.minAge,
@@ -697,18 +833,15 @@ export default {
                 );
             }
 
-            // Apply position filter
             if (filters.position) {
                 const selectedPosFilter = filters.position;
                 if (positionGroups[selectedPosFilter]) {
-                    // Check if it's a group
                     tempPlayers = tempPlayers.filter(
                         (p) =>
                             p.positionGroups &&
                             p.positionGroups.includes(selectedPosFilter),
                     );
                 } else {
-                    // It's an individual position
                     tempPlayers = tempPlayers.filter(
                         (p) =>
                             p.parsedPositions &&
@@ -717,61 +850,34 @@ export default {
                 }
             }
 
-            // Apply transfer value filter
-            if (filters.transferValue) {
-                let operator = "includes"; // Default for simple text match
-                let compareValueNum = 0;
-                let filterStr = filters.transferValue;
-
-                if (filterStr.startsWith(">")) {
-                    operator = ">";
-                    filterStr = filterStr.substring(1);
-                } else if (filterStr.startsWith("<")) {
-                    operator = "<";
-                    filterStr = filterStr.substring(1);
-                }
-
-                if (operator === ">" || operator === "<") {
-                    compareValueNum = parseMonetaryValueForFilter(filterStr);
-                }
-
-                tempPlayers = tempPlayers.filter((p) => {
-                    const playerValueNum = p.transferValueAmount || 0; // Use pre-parsed numeric value
-                    const playerValueStr = String(
-                        p.transfer_value || "",
-                    ).toLowerCase(); // Original string for "includes"
-
-                    if (operator === ">")
-                        return playerValueNum > compareValueNum;
-                    if (operator === "<")
-                        return playerValueNum < compareValueNum;
-                    // Fallback to "includes" for non-numeric or non-operator inputs
-                    return playerValueStr.includes(
-                        filters.transferValue.toLowerCase(),
+            if (filters.selectedTransferValue !== null) {
+                const threshold = filters.selectedTransferValue;
+                if (filters.transferValueMode === "less") {
+                    tempPlayers = tempPlayers.filter(
+                        (p) => (p.transferValueAmount || 0) < threshold,
                     );
-                });
+                } else if (filters.transferValueMode === "more") {
+                    tempPlayers = tempPlayers.filter(
+                        (p) => (p.transferValueAmount || 0) > threshold,
+                    );
+                }
             }
 
-            // Apply sorting
             if (sortState.key) {
                 const sortKey = sortState.key;
                 tempPlayers.sort((a, b) => {
                     let valA = a[sortKey];
                     let valB = b[sortKey];
-
-                    // Handle null or undefined values to sort them consistently
                     if (valA == null && valB == null) return 0;
                     if (valA == null)
-                        return sortState.direction === "asc" ? 1 : -1; // nulls last for asc, first for desc
+                        return sortState.direction === "asc" ? 1 : -1;
                     if (valB == null)
-                        return sortState.direction === "asc" ? -1 : 1; // nulls first for asc, last for desc
-
+                        return sortState.direction === "asc" ? -1 : 1;
                     if (typeof valA === "number" && typeof valB === "number") {
                         return sortState.direction === "asc"
                             ? valA - valB
                             : valB - valA;
                     }
-                    // Fallback to string comparison
                     valA = String(valA).toLowerCase();
                     valB = String(valB).toLowerCase();
                     if (valA < valB)
@@ -784,10 +890,54 @@ export default {
             filteredPlayers.value = tempPlayers;
         };
 
-        // Debounced version of filter application for text inputs
         const debouncedApplyFilters = debounce(applyFiltersAndSort, 300);
 
-        // Function to handle file upload and parsing
+        // Debounced function to update numeric value from text input
+        const updateNumericValueFromTextInput = () => {
+            const numericValue = parseMonetaryStringToNumber(
+                transferValueTextInput.value,
+            );
+            if (numericValue !== null) {
+                // Clamp the value to be within slider bounds
+                const clampedValue = Math.max(
+                    transferValueSliderMin.value,
+                    Math.min(numericValue, transferValueSliderMax.value),
+                );
+                if (filters.selectedTransferValue !== clampedValue) {
+                    filters.selectedTransferValue = clampedValue;
+                    // applyFiltersAndSort will be triggered by the watcher on filters.selectedTransferValue or by slider's @update:model-value
+                }
+            } else if (transferValueTextInput.value.trim() === "") {
+                // If input is cleared
+                if (filters.selectedTransferValue !== null) {
+                    filters.selectedTransferValue = null;
+                }
+            }
+            // If parsing fails but input is not empty, we don't change selectedTransferValue,
+            // allowing the user to correct the input. The displayed slider value won't change.
+        };
+        const debouncedUpdateNumericValueFromTextInput = debounce(
+            updateNumericValueFromTextInput,
+            400,
+        );
+
+        // Watcher for when the numeric slider value changes (e.g. by slider interaction)
+        // to update the text input display.
+        watch(
+            () => filters.selectedTransferValue,
+            (newValue, oldValue) => {
+                // Only update text input if the change wasn't due to text input itself
+                // (i.e., if parsing the current text input doesn't yield the newValue)
+                const currentTextParsed = parseMonetaryStringToNumber(
+                    transferValueTextInput.value,
+                );
+                if (currentTextParsed !== newValue) {
+                    transferValueTextInput.value = formatSliderValue(newValue);
+                }
+                // applyFiltersAndSort(); // This is already called by slider's @update:model-value
+            },
+        );
+
         const uploadAndParse = async () => {
             if (!playerFile.value) {
                 error.value = "Please select an HTML file first.";
@@ -801,48 +951,41 @@ export default {
                 const playersDataFromApi =
                     await playerService.uploadPlayerFile(formData);
                 allPlayers.value = processPlayersFromAPI(playersDataFromApi);
-                updateDropdownOptions(); // Update dropdowns after new data
-                sortState.key = null; // Reset sort
-                applyFiltersAndSort(); // Apply initial filters (if any) and sort
+                sortState.key = null;
             } catch (e) {
                 error.value = `Failed to parse player data: ${e.message || "Unknown error"}`;
                 allPlayers.value = [];
-                filteredPlayers.value = [];
             } finally {
                 loading.value = false;
             }
         };
 
-        // Handler for sort updates from PlayerDataTable
         const handleSort = (sortParams) => {
             sortState.key = sortParams.key;
             sortState.direction = sortParams.direction;
-            // sortState.isAttribute = sortParams.isAttribute; // If needed
-            // sortState.displayField = sortParams.displayField; // If needed
             applyFiltersAndSort();
         };
 
-        // Function to clear all active filters
         const clearAllFilters = () => {
             filters.name = "";
             filters.club = null;
-            filters.transferValue = "";
+            filters.selectedTransferValue = null;
+            filters.transferValueMode = "less";
+            transferValueTextInput.value = ""; // Clear text input
             filters.position = null;
             filters.nationality = null;
             filters.mediaHandling = [];
             filters.personality = [];
             filters.minAge = null;
             filters.maxAge = null;
-            applyFiltersAndSort(); // Re-apply to show all players
+            applyFiltersAndSort();
         };
 
-        // Handler for when a player row is selected (for detail view)
         const handlePlayerSelected = (player) => {
             selectedPlayer.value = player;
             showPlayerDetailDialog.value = true;
         };
 
-        // Filter functions for q-select with use-input (for Club and Nationality)
         const filterClubOptions = (val, update) => {
             if (val === "") {
                 update(() => {
@@ -873,11 +1016,17 @@ export default {
             });
         };
 
-        // Watch for changes in allPlayers to update dropdowns and re-filter
         watch(
             () => allPlayers.value,
-            () => {
-                updateDropdownOptions();
+            (newPlayers) => {
+                updateDropdownOptionsAndSliderBounds();
+                if (!newPlayers || newPlayers.length === 0) {
+                    filters.selectedTransferValue = null;
+                    transferValueTextInput.value = "";
+                }
+                // If selectedTransferValue was null and we now have players,
+                // we might want to set it to a default (e.g., min or median) or leave it null.
+                // For now, leaving it null means "Any" until user interacts.
                 applyFiltersAndSort();
             },
             { deep: true, immediate: true },
@@ -904,7 +1053,7 @@ export default {
             uploadAndParse,
             handleSort,
             debouncedApplyFilters,
-            applyFiltersAndSort, // Expose for direct calls if needed
+            applyFiltersAndSort,
             clearAllFilters,
             selectedPlayer,
             showPlayerDetailDialog,
@@ -913,7 +1062,13 @@ export default {
             attributeWeightsErrorForFeedback,
             roleSpecificOverallWeightsLoadedForFeedback,
             roleSpecificOverallWeightsErrorForFeedback,
-            showUpgradeFinder, // For the new dialog
+            showUpgradeFinder,
+            transferValueSliderMin,
+            transferValueSliderMax,
+            transferValueSliderStep,
+            formatSliderValue,
+            transferValueTextInput, // Expose for v-model
+            debouncedUpdateNumericValueFromTextInput, // Expose for text input event
         };
     },
 };
@@ -921,8 +1076,7 @@ export default {
 
 <style>
 .q-page {
-    max-width: 1600px; /* Or your preferred max width */
+    max-width: 1600px;
     margin: 0 auto;
 }
-/* Add any additional global styles or component-specific styles here if needed */
 </style>
