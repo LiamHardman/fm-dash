@@ -319,6 +319,7 @@
                     :players="upgradePlayers"
                     :loading="loading"
                     @player-selected="handlePlayerSelectedForDetailView"
+                    :is-goalkeeper-view="upgradeFinderIsGoalkeeperView"
                 />
 
                 <q-banner
@@ -365,7 +366,6 @@ import { ref, computed, onMounted, watch } from "vue";
 import PlayerDataTable from "./PlayerDataTable.vue";
 import PlayerDetailDialog from "./PlayerDetailDialog.vue";
 
-// Helper to format monetary value for display (e.g., €1.5M, €500K)
 const formatMonetaryValue = (value) => {
     if (value === null || value === undefined) return "Any";
     if (value >= 1000000) return `€${(value / 1000000).toFixed(1)}M`;
@@ -378,7 +378,7 @@ export default {
     components: { PlayerDataTable, PlayerDetailDialog },
     props: {
         show: { type: Boolean, default: false },
-        players: { type: Array, required: true }, // All players from the main page
+        players: { type: Array, required: true },
     },
     emits: ["close"],
     setup(props, { emit }) {
@@ -408,12 +408,8 @@ export default {
         const playerForDetailView = ref(null);
         const showPlayerDetailDialog = ref(false);
 
-        // Guarded function to populate team names
         const populateAllTeamNames = () => {
             if (!props || !props.players) {
-                console.warn(
-                    "populateAllTeamNames: props or props.players is undefined",
-                );
                 allTeamNamesCache.value = [];
                 teamOptions.value = [];
                 return;
@@ -428,12 +424,8 @@ export default {
             teamOptions.value = allTeamNamesCache.value;
         };
 
-        // Guarded function to update transfer value slider bounds
         const updateTransferValueSliderBounds = () => {
             if (!props || !props.players) {
-                console.warn(
-                    "updateTransferValueSliderBounds: props or props.players is undefined",
-                );
                 dynamicMinTransferValue.value = 0;
                 dynamicMaxTransferValue.value = 100000000;
                 maxTransferValueFilter.value = dynamicMaxTransferValue.value;
@@ -471,37 +463,25 @@ export default {
         };
 
         onMounted(() => {
-            // Functions are now guarded internally
             populateAllTeamNames();
             updateTransferValueSliderBounds();
-            // Set initial slider values to "Any"
             maxAgeFilter.value = ageSliderMax;
-            // maxTransferValueFilter is set to dynamicMaxTransferValue inside updateTransferValueSliderBounds
-            // or by the watcher if props.players updates.
-            // Explicitly ensure it's set if not already.
             if (props && props.players && props.players.length > 0) {
                 maxTransferValueFilter.value = dynamicMaxTransferValue.value;
             } else {
-                maxTransferValueFilter.value = 100000000; // Default if no players
+                maxTransferValueFilter.value = 100000000;
             }
         });
 
         watch(
             () => props.players,
             (newPlayers) => {
-                // Call guarded functions
                 populateAllTeamNames();
                 updateTransferValueSliderBounds();
-
                 if (newPlayers && newPlayers.length > 0) {
-                    // Ensure maxTransferValueFilter is reset to "Any" (max value of slider)
-                    // if it was previously something else or if bounds changed.
-                    // updateTransferValueSliderBounds handles this reset if value is out of new bounds.
-                    // We just need to ensure it's correctly reflecting the "Any" state.
                     maxTransferValueFilter.value =
                         dynamicMaxTransferValue.value;
                 } else {
-                    // Defaults when no players
                     allTeamNamesCache.value = [];
                     teamOptions.value = [];
                     dynamicMinTransferValue.value = 0;
@@ -550,7 +530,6 @@ export default {
             });
             const uniquePositions = new Set();
             if (props.players) {
-                // Guard access to props.players
                 props.players.forEach((player) => {
                     player.parsedPositions?.forEach((pos) =>
                         uniquePositions.add(pos),
@@ -590,7 +569,6 @@ export default {
                 props.players &&
                 props.players.length > 0
             ) {
-                // Guard props.players
                 teamPlayersForSelection.value = props.players
                     .filter((player) => {
                         if (player.club !== teamName.value) return false;
@@ -671,17 +649,12 @@ export default {
 
         const findUpgrades = async () => {
             if (!selectedTeamPlayer.value) {
-                console.warn("No baseline player selected.");
                 upgradePlayers.value = [];
                 showResults.value = true;
                 initialLoad.value = false;
                 return;
             }
             if (!props || !props.players) {
-                // Guard against props/props.players being undefined
-                console.error(
-                    "Cannot find upgrades: players data is not available.",
-                );
                 loading.value = false;
                 return;
             }
@@ -694,7 +667,6 @@ export default {
             if (baseOverall === null) {
                 loading.value = false;
                 upgradePlayers.value = [];
-                console.warn("Could not determine base overall.");
                 return;
             }
 
@@ -707,19 +679,14 @@ export default {
             try {
                 upgradePlayers.value = props.players
                     .filter((player) => {
-                        // Exclude players from the same team
                         if (player.club === teamName.value) return false;
-
-                        // Exclude players with 'Not for Sale' transfer value
                         if (
                             player.transfer_value &&
                             player.transfer_value.toLowerCase() ===
                                 "not for sale"
-                        ) {
+                        )
                             return false;
-                        }
 
-                        // Check position match
                         let matchesPosition = false;
                         const isGroup =
                             !!positionGroups[selectedPosition.value];
@@ -738,28 +705,21 @@ export default {
                         }
                         if (!matchesPosition) return false;
 
-                        // Check Overall rating
                         if ((player.Overall || 0) < targetOverall) return false;
-
-                        // Check Max Age
                         if (
                             currentMaxAge < ageSliderMax &&
                             (player.age || 0) > currentMaxAge
-                        ) {
+                        )
                             return false;
-                        }
-
-                        // Check Max Transfer Value
                         if (
                             currentMaxTransferValue <
                                 computedMaxSliderTransferValue.value &&
                             (player.transferValueAmount || 0) >
                                 currentMaxTransferValue
-                        ) {
+                        )
                             return false;
-                        }
 
-                        return true; // Player meets all criteria
+                        return true;
                     })
                     .sort((a, b) => (b.Overall || 0) - (a.Overall || 0));
             } catch (error) {
@@ -788,6 +748,14 @@ export default {
             if (n >= 30) return "attribute-poor";
             return "attribute-very-poor";
         };
+
+        // NEW: Computed property for PlayerDataTable's isGoalkeeperView prop
+        const upgradeFinderIsGoalkeeperView = computed(() => {
+            return (
+                selectedPosition.value === "Goalkeepers" ||
+                selectedPosition.value === "Goalkeeper"
+            );
+        });
 
         watch(
             () => props.show,
@@ -833,17 +801,14 @@ export default {
             selectedTeamPlayerObject,
             targetOverallForSearch,
             upgradeByValue,
-
             maxAgeFilter,
             ageSliderMin,
             ageSliderMax,
-
             maxTransferValueFilter,
             computedMinSliderTransferValue,
             computedMaxSliderTransferValue,
             computedStepSliderTransferValue,
             formattedMaxTransferValueLabel,
-
             loading,
             showResults,
             initialLoad,
@@ -854,6 +819,7 @@ export default {
             showPlayerDetailDialog,
             handlePlayerSelectedForDetailView,
             props,
+            upgradeFinderIsGoalkeeperView, // Expose new computed prop
         };
     },
 };
@@ -864,29 +830,45 @@ export default {
     border-radius: 8px;
 }
 
-.attribute-value { /* Base styles if needed, ensure padding is minimal */
+.attribute-value {
     display: inline-block;
-    /* min-width: 30px; */ /* Probably not needed here */
     text-align: center;
     font-weight: 600;
-    padding: 2px 4px; /* Minimal padding */
+    padding: 2px 4px;
     border-radius: 3px;
-    font-size: 0.85em; /* Or adjust as needed for context */
+    font-size: 0.85em;
 }
-.fifa-stat-value { /* Base styles if needed, ensure padding is minimal */
-    /* font-size: 1.1em; */ /* May inherit or be overridden by text-h6, check visuals */
-    padding: 2px 4px; /* Minimal padding */
+.fifa-stat-value {
+    padding: 2px 4px;
 }
 
-.attribute-elite { color: #9c27b0; }
-.attribute-excellent { color: #1e88e5; }
-.attribute-very-good { color: #00acc1; }
-.attribute-good { color: #43a047; }
-.attribute-average { color: #b28e00; }
-.attribute-below-average { color: #fb8c00; }
-.attribute-poor { color: #e53935; }
-.attribute-very-poor { color: #d32f2f; }
-.attribute-na { color: #757575; }
+.attribute-elite {
+    color: #9c27b0;
+}
+.attribute-excellent {
+    color: #1e88e5;
+}
+.attribute-very-good {
+    color: #00acc1;
+}
+.attribute-good {
+    color: #43a047;
+}
+.attribute-average {
+    color: #b28e00;
+}
+.attribute-below-average {
+    color: #fb8c00;
+}
+.attribute-poor {
+    color: #e53935;
+}
+.attribute-very-poor {
+    color: #d32f2f;
+}
+.attribute-na {
+    color: #757575;
+}
 
 .q-banner {
     border-radius: 4px;

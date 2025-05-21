@@ -248,12 +248,9 @@
                     Player Attributes (0-20 Scale)
                 </div>
                 <div class="row q-col-gutter-md attribute-columns-row">
-                    <div
-                        :class="
-                            isGoalkeeper ? 'col-12 col-md-3' : 'col-12 col-md-4'
-                        "
-                    >
+                    <div class="col-12 col-md-4 column">
                         <q-card
+                            v-if="!isGoalkeeper"
                             flat
                             bordered
                             class="full-height-card rounded-borders"
@@ -305,12 +302,65 @@
                                 </q-item>
                             </q-list>
                         </q-card>
+                        <q-card
+                            v-if="isGoalkeeper"
+                            flat
+                            bordered
+                            class="full-height-card rounded-borders"
+                        >
+                            <q-card-section class="bg-grey-2 q-pa-sm">
+                                <div
+                                    class="text-subtitle2 text-weight-medium text-center"
+                                >
+                                    Goalkeeping
+                                </div>
+                            </q-card-section>
+                            <q-list separator dense class="col scroll-list">
+                                <q-item
+                                    v-for="attrKey in attributeCategories.goalkeeping"
+                                    :key="attrKey"
+                                >
+                                    <q-item-section>
+                                        <q-item-label lines="1">{{
+                                            attributeFullNameMap[attrKey] ||
+                                            attrKey
+                                        }}</q-item-label>
+                                    </q-item-section>
+                                    <q-item-section side>
+                                        <span
+                                            :class="
+                                                getAttributeClass(
+                                                    player.attributes[attrKey],
+                                                )
+                                            "
+                                            class="attribute-value"
+                                        >
+                                            {{
+                                                player.attributes[attrKey] !==
+                                                undefined
+                                                    ? player.attributes[attrKey]
+                                                    : "-"
+                                            }}
+                                        </span>
+                                    </q-item-section>
+                                </q-item>
+                                <q-item
+                                    v-if="
+                                        !attributeCategories.goalkeeping ||
+                                        !attributeCategories.goalkeeping.length
+                                    "
+                                >
+                                    <q-item-section
+                                        class="text-grey-6 text-center q-py-md"
+                                        >No goalkeeping
+                                        attributes.</q-item-section
+                                    >
+                                </q-item>
+                            </q-list>
+                        </q-card>
                     </div>
-                    <div
-                        :class="
-                            isGoalkeeper ? 'col-12 col-md-3' : 'col-12 col-md-4'
-                        "
-                    >
+
+                    <div class="col-12 col-md-4 column">
                         <q-card
                             flat
                             bordered
@@ -363,12 +413,9 @@
                             </q-list>
                         </q-card>
                     </div>
-                    <div
-                        :class="
-                            isGoalkeeper ? 'col-12 col-md-3' : 'col-12 col-md-4'
-                        "
-                    >
-                        <q-card flat bordered class="rounded-borders q-mb-md">
+
+                    <div class="col-12 col-md-4 column q-gutter-y-md">
+                        <q-card flat bordered class="rounded-borders">
                             <q-card-section class="bg-grey-2 q-pa-sm">
                                 <div
                                     class="text-subtitle2 text-weight-medium text-center"
@@ -416,68 +463,6 @@
                             </q-list>
                         </q-card>
 
-                        <q-card
-                            v-if="isGoalkeeper"
-                            flat
-                            bordered
-                            class="rounded-borders q-mb-md"
-                        >
-                            <q-card-section class="bg-grey-2 q-pa-sm">
-                                <div
-                                    class="text-subtitle2 text-weight-medium text-center"
-                                >
-                                    Goalkeeping
-                                </div>
-                            </q-card-section>
-                            <q-list separator dense>
-                                <q-item
-                                    v-for="attrKey in attributeCategories.goalkeeping"
-                                    :key="attrKey"
-                                >
-                                    <q-item-section>
-                                        <q-item-label lines="1">{{
-                                            attributeFullNameMap[attrKey] ||
-                                            attrKey
-                                        }}</q-item-label>
-                                    </q-item-section>
-                                    <q-item-section side>
-                                        <span
-                                            :class="
-                                                getAttributeClass(
-                                                    player.attributes[attrKey],
-                                                )
-                                            "
-                                            class="attribute-value"
-                                        >
-                                            {{
-                                                player.attributes[attrKey] !==
-                                                undefined
-                                                    ? player.attributes[attrKey]
-                                                    : "-"
-                                            }}
-                                        </span>
-                                    </q-item-section>
-                                </q-item>
-                                <q-item
-                                    v-if="
-                                        !attributeCategories.goalkeeping ||
-                                        !attributeCategories.goalkeeping.length
-                                    "
-                                >
-                                    <q-item-section
-                                        class="text-grey-6 text-center q-py-md"
-                                        >No goalkeeping
-                                        attributes.</q-item-section
-                                    >
-                                </q-item>
-                            </q-list>
-                        </q-card>
-                    </div>
-                    <div
-                        :class="
-                            isGoalkeeper ? 'col-12 col-md-3' : 'col-12 col-md-4'
-                        "
-                    >
                         <q-card
                             flat
                             bordered
@@ -651,7 +636,6 @@ const physicalAttrsOrdered = [
     "Str",
 ];
 const goalkeepingAttrsOrdered = [
-    // NEW
     "Aer",
     "Cmd",
     "Com",
@@ -696,7 +680,7 @@ export default defineComponent({
             physical: getPlayerAttributesInOrder(physicalAttrsOrdered),
             goalkeeping: isGoalkeeper.value
                 ? getPlayerAttributesInOrder(goalkeepingAttrsOrdered)
-                : [], // NEW
+                : [],
         }));
 
         const fifaStatsOrderBase = [
@@ -709,29 +693,26 @@ export default defineComponent({
         ];
 
         const fifaStatsToDisplay = computed(() => {
-            if (isGoalkeeper.value && props.player?.GK) {
-                // For GKs, might want to show GK instead of SHO, or add it.
-                // Let's add GK and keep others for now, or replace one.
-                // Replacing SHO with GK for this example.
-                const gkSpecificStats = [...fifaStatsOrderBase];
-                const shoIndex = gkSpecificStats.findIndex(
-                    (s) => s.name === "SHO",
-                );
+            let stats = [...fifaStatsOrderBase];
+            if (isGoalkeeper.value && props.player?.GK !== undefined) {
+                // Check if GK stat exists
+                const shoIndex = stats.findIndex((s) => s.name === "SHO");
                 if (shoIndex !== -1) {
-                    gkSpecificStats.splice(shoIndex, 1, {
-                        name: "GK",
-                        label: "GK",
-                    });
+                    stats.splice(shoIndex, 1, { name: "GK", label: "GK" });
                 } else {
-                    gkSpecificStats.push({ name: "GK", label: "GK" });
+                    stats.push({ name: "GK", label: "GK" }); // Add if SHO wasn't there
                 }
-                return gkSpecificStats;
             }
-            return fifaStatsOrderBase;
+            // Ensure SHO is removed if it's a GK and GK stat is being shown instead
+            if (isGoalkeeper.value && stats.some((s) => s.name === "GK")) {
+                stats = stats.filter(
+                    (s) => s.name !== "SHO" || s.name === "GK",
+                );
+            }
+            return stats;
         });
 
         const getAttributeClass = (value) => {
-            // ... (existing logic)
             if (value === null || value === undefined || value === "-")
                 return "attribute-na";
             const numValue =
@@ -746,7 +727,6 @@ export default defineComponent({
         };
 
         const getFifaStatClass = (value) => {
-            // ... (existing logic)
             if (value === null || value === undefined || value === "-")
                 return "attribute-na";
             const numValue =
@@ -780,10 +760,10 @@ export default defineComponent({
             attributeFullNameMap,
             getAttributeClass,
             getFifaStatClass,
-            fifaStatsToDisplay, // Use this instead of fifaStatsOrder
+            fifaStatsToDisplay,
             onFlagError,
             sortedRoleSpecificOveralls,
-            isGoalkeeper, // Expose to template
+            isGoalkeeper,
         };
     },
 });
@@ -840,23 +820,18 @@ export default defineComponent({
     display: flex;
     flex-direction: column;
 }
-.attribute-columns-row > .col-12.col-md-3 {
-    /* For 4 columns when GK */
-    padding-left: 8px;
-    padding-right: 8px;
-}
 
 .full-height-card {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
-    min-height: 0;
+    min-height: 0; /* Allow shrinking */
 }
 
 .full-height-card .scroll-list {
     flex-grow: 1;
     overflow-y: auto;
-    min-height: 0;
+    min-height: 0; /* Allow shrinking */
 }
 
 .full-height-card .q-card__section.bg-grey-2 {
@@ -987,6 +962,6 @@ export default defineComponent({
     height: 100%;
     display: flex;
     flex-direction: column;
-    justify-content: space-around; /* Or center, depending on desired alignment */
+    justify-content: space-around;
 }
 </style>
