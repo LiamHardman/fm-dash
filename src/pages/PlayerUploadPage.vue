@@ -340,11 +340,11 @@
 
                 <div class="row justify-end q-mb-md">
                     <q-btn
-                        color="primary"
-                        icon="upgrade"
+                        color="secondary"
+                        icon="find_replace"
                         label="Find Upgrades"
                         @click="showUpgradeFinder = true"
-                        :disable="filteredPlayers.length === 0"
+                        :disable="allPlayers.length === 0"
                     />
                 </div>
 
@@ -381,9 +381,10 @@
 import { ref, computed, reactive, onMounted, watch } from "vue";
 import PlayerDataTable from "../components/PlayerDataTable.vue";
 import PlayerDetailDialog from "../components/PlayerDetailDialog.vue";
-import UpgradeFinderDialog from "../components/UpgradeFinderDialog.vue";
+import UpgradeFinderDialog from "../components/UpgradeFinderDialog.vue"; // Import the new component
 import playerService from "../services/playerService";
 
+// Position groups for filtering
 const positionGroups = {
     Goalkeepers: ["Goalkeeper"],
     Defenders: [
@@ -409,6 +410,7 @@ const positionGroups = {
     Attackers: ["Striker", "Right Forward", "Left Forward", "Centre Forward"],
 };
 
+// Debounce function to delay filter application
 function debounce(fn, delay) {
     let timeoutID = null;
     return function (...args) {
@@ -421,7 +423,7 @@ function debounce(fn, delay) {
 
 export default {
     name: "PlayerUploadPage",
-    components: { PlayerDataTable, PlayerDetailDialog, UpgradeFinderDialog },
+    components: { PlayerDataTable, PlayerDetailDialog, UpgradeFinderDialog }, // Add UpgradeFinderDialog
     setup() {
         const playerFile = ref(null);
         const loading = ref(false);
@@ -430,28 +432,31 @@ export default {
         const filteredPlayers = ref([]);
         const selectedPlayer = ref(null);
         const showPlayerDetailDialog = ref(false);
-        const showUpgradeFinder = ref(false);
+        const showUpgradeFinder = ref(false); // For the new dialog
 
+        // Feedback refs for JSON loading
         const attributeWeightsLoadedForFeedback = ref(false);
         const attributeWeightsErrorForFeedback = ref("");
         const roleSpecificOverallWeightsLoadedForFeedback = ref(false);
         const roleSpecificOverallWeightsErrorForFeedback = ref("");
 
+        // Reactive state for sorting
         const sortState = reactive({
             key: null,
             direction: "asc",
-            isAttribute: false,
+            isAttribute: false, // Note: This might need review if attributes are sorted directly
             displayField: null,
         });
 
+        // Reactive state for filters
         const filters = reactive({
             name: "",
-            club: null, // Changed to null for q-select
+            club: null,
             transferValue: "",
             position: null,
-            nationality: null, // Changed to null for q-select
-            mediaHandling: [], // Changed to array for multiple q-select
-            personality: [], // Changed to array for multiple q-select
+            nationality: null,
+            mediaHandling: [], // Array for multi-select
+            personality: [], // Array for multi-select
             minAge: null,
             maxAge: null,
         });
@@ -462,27 +467,29 @@ export default {
         const mediaHandlingOptions = ref([]);
         const personalityOptions = ref([]);
 
-        // Store all unique values for filtering q-select options
+        // Store all unique values for filtering q-select options more efficiently
         let allUniqueClubs = [];
         let allUniqueNationalities = [];
-        let allUniqueMediaHandlings = [];
+        let allUniqueMediaHandlings = []; // Will store individual styles
         let allUniquePersonalities = [];
 
+        // Computed property to check if any filter is active
         const hasActiveFilters = computed(
             () =>
                 filters.name !== "" ||
-                filters.club !== null || // Updated
+                filters.club !== null ||
                 filters.transferValue !== "" ||
                 filters.position !== null ||
-                filters.nationality !== null || // Updated
+                filters.nationality !== null ||
                 (Array.isArray(filters.mediaHandling) &&
-                    filters.mediaHandling.length > 0) || // Updated
+                    filters.mediaHandling.length > 0) ||
                 (Array.isArray(filters.personality) &&
-                    filters.personality.length > 0) || // Updated
+                    filters.personality.length > 0) ||
                 filters.minAge !== null ||
                 filters.maxAge !== null,
         );
 
+        // Computed properties for summary counts
         const uniqueClubsCount = computed(() => allUniqueClubs.length);
         const uniqueParsedPositionsCount = computed(() => {
             const s = new Set();
@@ -495,32 +502,34 @@ export default {
             () => allUniqueNationalities.length,
         );
 
+        // Helper to parse monetary values from strings like "€1.5M" or "£50K p/w"
         const parseMonetaryValueForFilter = (valueStr) => {
             if (typeof valueStr !== "string" || !valueStr) return 0;
-            const cleanedStr = valueStr.split(" p/w")[0];
+            const cleanedStr = valueStr.split(" p/w")[0]; // Remove " p/w" if present
             let multiplier = 1;
             const lowerStr = cleanedStr.toLowerCase();
             if (lowerStr.includes("m")) multiplier = 1000000;
             else if (lowerStr.includes("k")) multiplier = 1000;
-            let numStr = cleanedStr.replace(/[^0-9,.]/g, "");
-            numStr = numStr.replace(/,/g, "");
+            let numStr = cleanedStr.replace(/[^0-9,.]/g, ""); // Keep only numbers, comma, and dot
+            numStr = numStr.replace(/,/g, ""); // Remove commas for float parsing
             const value = parseFloat(numStr);
             return Math.round(isNaN(value) ? 0 : value * multiplier);
         };
 
+        // Function to load JSON files for client-side feedback (Go API handles its own loading)
         const loadJsonForFeedback = async (
             filePath,
             loadedFlagRef,
             errorRef,
         ) => {
-            errorRef.value = "";
+            errorRef.value = ""; // Clear previous error
             try {
                 const response = await fetch(filePath);
                 if (!response.ok)
                     throw new Error(
                         `HTTP error! status: ${response.status} for ${filePath}`,
                     );
-                await response.json();
+                await response.json(); // We just need to know if it's parsable
                 loadedFlagRef.value = true;
             } catch (e) {
                 console.warn(
@@ -529,32 +538,36 @@ export default {
                 );
                 errorRef.value =
                     e.message || `Unknown error loading ${filePath}.`;
-                loadedFlagRef.value = true;
+                loadedFlagRef.value = true; // Still set to true to enable upload button
             }
         };
 
+        // Load JSONs for feedback on component mount
         onMounted(() => {
             loadJsonForFeedback(
-                "/attribute_weights.json",
+                "/attribute_weights.json", // Assuming it's in the public folder
                 attributeWeightsLoadedForFeedback,
                 attributeWeightsErrorForFeedback,
             );
             loadJsonForFeedback(
-                "/role_specific_overall_weights.json",
+                "/role_specific_overall_weights.json", // Assuming it's in the public folder
                 roleSpecificOverallWeightsLoadedForFeedback,
                 roleSpecificOverallWeightsErrorForFeedback,
             );
         });
 
+        // Process players data received from the API
         const processPlayersFromAPI = (playersData) => {
             return playersData.map((p) => ({
                 ...p,
-                age: parseInt(p.age, 10) || 0,
+                age: parseInt(p.age, 10) || 0, // Ensure age is a number
+                // transferValueAmount and wageAmount are assumed to be provided by Go API
             }));
         };
 
+        // Computed property for position filter options
         const positionFilterOptions = computed(() => {
-            const options = [];
+            const options = [{ label: "Any Position", value: null }]; // Add "Any" option
             Object.keys(positionGroups).forEach((group) => {
                 options.push({ label: `${group} (Group)`, value: group });
             });
@@ -567,33 +580,46 @@ export default {
             Array.from(uniquePositions)
                 .sort()
                 .forEach((pos) => {
+                    // Avoid adding individual positions if they are already covered by a group value
                     if (!positionGroups[pos]) {
+                        // This check might be redundant if groups are named differently
                         options.push({ label: pos, value: pos });
                     }
                 });
             return options;
         });
 
+        // Function to update all dropdown options based on current player data
         const updateDropdownOptions = () => {
             const clubs = new Set();
             const nationalities = new Set();
-            const mediaHandlings = new Set();
+            const mediaHandlingsIndividual = new Set(); // For individual styles
             const personalities = new Set();
 
             allPlayers.value.forEach((p) => {
                 if (p.club) clubs.add(p.club);
                 if (p.nationality) nationalities.add(p.nationality);
-                if (p.media_handling) mediaHandlings.add(p.media_handling);
+                if (p.media_handling) {
+                    // Split comma-separated media handling styles
+                    p.media_handling.split(",").forEach((style) => {
+                        const trimmedStyle = style.trim();
+                        if (trimmedStyle)
+                            mediaHandlingsIndividual.add(trimmedStyle);
+                    });
+                }
                 if (p.personality) personalities.add(p.personality);
             });
 
             allUniqueClubs = Array.from(clubs).sort();
             allUniqueNationalities = Array.from(nationalities).sort();
-            allUniqueMediaHandlings = Array.from(mediaHandlings).sort();
+            allUniqueMediaHandlings = Array.from(
+                mediaHandlingsIndividual,
+            ).sort(); // Now contains individual styles
             allUniquePersonalities = Array.from(personalities).sort();
 
             clubOptions.value = allUniqueClubs;
             nationalityOptions.value = allUniqueNationalities;
+            // Map individual media handling styles to options
             mediaHandlingOptions.value = allUniqueMediaHandlings.map((mh) => ({
                 label: mh,
                 value: mh,
@@ -604,6 +630,7 @@ export default {
             }));
         };
 
+        // Main function to apply all filters and sorting
         const applyFiltersAndSort = () => {
             if (!allPlayers.value.length) {
                 filteredPlayers.value = [];
@@ -611,6 +638,7 @@ export default {
             }
             let tempPlayers = [...allPlayers.value];
 
+            // Apply text-based filters
             if (filters.name) {
                 tempPlayers = tempPlayers.filter(
                     (p) =>
@@ -621,52 +649,66 @@ export default {
                 );
             }
             if (filters.club) {
-                // Updated for q-select (single)
                 tempPlayers = tempPlayers.filter(
                     (p) => p.club === filters.club,
                 );
             }
             if (filters.nationality) {
-                // Updated for q-select (single)
                 tempPlayers = tempPlayers.filter(
                     (p) => p.nationality === filters.nationality,
                 );
             }
+
+            // Apply Media Handling filter (NEW LOGIC)
             if (filters.mediaHandling && filters.mediaHandling.length > 0) {
-                // Updated for q-select (multiple)
-                tempPlayers = tempPlayers.filter((p) =>
-                    filters.mediaHandling.includes(p.media_handling),
-                );
-            }
-            if (filters.personality && filters.personality.length > 0) {
-                // Updated for q-select (multiple)
-                tempPlayers = tempPlayers.filter((p) =>
-                    filters.personality.includes(p.personality),
-                );
+                tempPlayers = tempPlayers.filter((p) => {
+                    if (!p.media_handling) return false;
+                    const playerStyles = p.media_handling
+                        .split(",")
+                        .map((s) => s.trim().toLowerCase());
+                    const filterStyles = filters.mediaHandling.map((s) =>
+                        s.toLowerCase(),
+                    );
+                    return playerStyles.some((style) =>
+                        filterStyles.includes(style),
+                    );
+                });
             }
 
+            // Apply Personality filter
+            if (filters.personality && filters.personality.length > 0) {
+                tempPlayers = tempPlayers.filter((p) => {
+                    if (!p.personality) return false;
+                    // Assuming personality is a single string, not comma-separated that needs splitting.
+                    // If personality can also be comma-separated, the logic should mirror mediaHandling.
+                    return filters.personality.includes(p.personality);
+                });
+            }
+
+            // Apply age filters
             if (filters.minAge !== null && filters.minAge >= 0) {
-                // Ensure minAge is not negative
                 tempPlayers = tempPlayers.filter(
                     (p) => p.age >= filters.minAge,
                 );
             }
             if (filters.maxAge !== null && filters.maxAge >= 0) {
-                // Ensure maxAge is not negative
                 tempPlayers = tempPlayers.filter(
                     (p) => p.age <= filters.maxAge,
                 );
             }
 
+            // Apply position filter
             if (filters.position) {
                 const selectedPosFilter = filters.position;
                 if (positionGroups[selectedPosFilter]) {
+                    // Check if it's a group
                     tempPlayers = tempPlayers.filter(
                         (p) =>
                             p.positionGroups &&
                             p.positionGroups.includes(selectedPosFilter),
                     );
                 } else {
+                    // It's an individual position
                     tempPlayers = tempPlayers.filter(
                         (p) =>
                             p.parsedPositions &&
@@ -674,10 +716,13 @@ export default {
                     );
                 }
             }
+
+            // Apply transfer value filter
             if (filters.transferValue) {
-                let operator = "includes";
+                let operator = "includes"; // Default for simple text match
                 let compareValueNum = 0;
                 let filterStr = filters.transferValue;
+
                 if (filterStr.startsWith(">")) {
                     operator = ">";
                     filterStr = filterStr.substring(1);
@@ -685,39 +730,48 @@ export default {
                     operator = "<";
                     filterStr = filterStr.substring(1);
                 }
+
                 if (operator === ">" || operator === "<") {
                     compareValueNum = parseMonetaryValueForFilter(filterStr);
                 }
+
                 tempPlayers = tempPlayers.filter((p) => {
-                    const playerValueNum = p.transferValueAmount || 0;
+                    const playerValueNum = p.transferValueAmount || 0; // Use pre-parsed numeric value
                     const playerValueStr = String(
                         p.transfer_value || "",
-                    ).toLowerCase();
+                    ).toLowerCase(); // Original string for "includes"
+
                     if (operator === ">")
                         return playerValueNum > compareValueNum;
                     if (operator === "<")
                         return playerValueNum < compareValueNum;
+                    // Fallback to "includes" for non-numeric or non-operator inputs
                     return playerValueStr.includes(
                         filters.transferValue.toLowerCase(),
                     );
                 });
             }
 
+            // Apply sorting
             if (sortState.key) {
                 const sortKey = sortState.key;
                 tempPlayers.sort((a, b) => {
                     let valA = a[sortKey];
                     let valB = b[sortKey];
+
+                    // Handle null or undefined values to sort them consistently
                     if (valA == null && valB == null) return 0;
                     if (valA == null)
-                        return sortState.direction === "asc" ? 1 : -1;
+                        return sortState.direction === "asc" ? 1 : -1; // nulls last for asc, first for desc
                     if (valB == null)
-                        return sortState.direction === "asc" ? -1 : 1;
+                        return sortState.direction === "asc" ? -1 : 1; // nulls first for asc, last for desc
+
                     if (typeof valA === "number" && typeof valB === "number") {
                         return sortState.direction === "asc"
                             ? valA - valB
                             : valB - valA;
                     }
+                    // Fallback to string comparison
                     valA = String(valA).toLowerCase();
                     valB = String(valB).toLowerCase();
                     if (valA < valB)
@@ -730,8 +784,10 @@ export default {
             filteredPlayers.value = tempPlayers;
         };
 
+        // Debounced version of filter application for text inputs
         const debouncedApplyFilters = debounce(applyFiltersAndSort, 300);
 
+        // Function to handle file upload and parsing
         const uploadAndParse = async () => {
             if (!playerFile.value) {
                 error.value = "Please select an HTML file first.";
@@ -745,9 +801,9 @@ export default {
                 const playersDataFromApi =
                     await playerService.uploadPlayerFile(formData);
                 allPlayers.value = processPlayersFromAPI(playersDataFromApi);
-                updateDropdownOptions(); // Update dropdowns after new data is loaded
-                sortState.key = null;
-                applyFiltersAndSort();
+                updateDropdownOptions(); // Update dropdowns after new data
+                sortState.key = null; // Reset sort
+                applyFiltersAndSort(); // Apply initial filters (if any) and sort
             } catch (e) {
                 error.value = `Failed to parse player data: ${e.message || "Unknown error"}`;
                 allPlayers.value = [];
@@ -757,31 +813,36 @@ export default {
             }
         };
 
+        // Handler for sort updates from PlayerDataTable
         const handleSort = (sortParams) => {
             sortState.key = sortParams.key;
             sortState.direction = sortParams.direction;
+            // sortState.isAttribute = sortParams.isAttribute; // If needed
+            // sortState.displayField = sortParams.displayField; // If needed
             applyFiltersAndSort();
         };
 
+        // Function to clear all active filters
         const clearAllFilters = () => {
             filters.name = "";
-            filters.club = null; // Reset to null
+            filters.club = null;
             filters.transferValue = "";
             filters.position = null;
-            filters.nationality = null; // Reset to null
-            filters.mediaHandling = []; // Reset to empty array
-            filters.personality = []; // Reset to empty array
+            filters.nationality = null;
+            filters.mediaHandling = [];
+            filters.personality = [];
             filters.minAge = null;
             filters.maxAge = null;
-            applyFiltersAndSort();
+            applyFiltersAndSort(); // Re-apply to show all players
         };
 
+        // Handler for when a player row is selected (for detail view)
         const handlePlayerSelected = (player) => {
             selectedPlayer.value = player;
             showPlayerDetailDialog.value = true;
         };
 
-        // Filter functions for q-select with use-input
+        // Filter functions for q-select with use-input (for Club and Nationality)
         const filterClubOptions = (val, update) => {
             if (val === "") {
                 update(() => {
@@ -812,13 +873,14 @@ export default {
             });
         };
 
+        // Watch for changes in allPlayers to update dropdowns and re-filter
         watch(
             () => allPlayers.value,
             () => {
-                updateDropdownOptions(); // Update dropdowns when allPlayers changes
+                updateDropdownOptions();
                 applyFiltersAndSort();
             },
-            { deep: true, immediate: true }, // immediate to run on mount if allPlayers is already populated (e.g. from cache)
+            { deep: true, immediate: true },
         );
 
         return {
@@ -833,16 +895,16 @@ export default {
             filters,
             hasActiveFilters,
             positionFilterOptions,
-            clubOptions, // New
-            nationalityOptions, // New
-            mediaHandlingOptions, // New
-            personalityOptions, // New
-            filterClubOptions, // New
-            filterNationalityOptions, // New
+            clubOptions,
+            nationalityOptions,
+            mediaHandlingOptions,
+            personalityOptions,
+            filterClubOptions,
+            filterNationalityOptions,
             uploadAndParse,
             handleSort,
             debouncedApplyFilters,
-            applyFiltersAndSort,
+            applyFiltersAndSort, // Expose for direct calls if needed
             clearAllFilters,
             selectedPlayer,
             showPlayerDetailDialog,
@@ -851,7 +913,7 @@ export default {
             attributeWeightsErrorForFeedback,
             roleSpecificOverallWeightsLoadedForFeedback,
             roleSpecificOverallWeightsErrorForFeedback,
-            showUpgradeFinder,
+            showUpgradeFinder, // For the new dialog
         };
     },
 };
@@ -859,7 +921,8 @@ export default {
 
 <style>
 .q-page {
-    max-width: 1600px;
+    max-width: 1600px; /* Or your preferred max width */
     margin: 0 auto;
 }
+/* Add any additional global styles or component-specific styles here if needed */
 </style>
