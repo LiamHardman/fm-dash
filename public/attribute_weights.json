@@ -1,9 +1,56 @@
 {
-    "PHY": { "Acc": 7, "Pac": 6, "Str": 5, "Sta": 4, "Nat": 3, "Bal": 2, "Jum": 1 },
-    "SHO": { "Fin": 7, "OtB": 6, "Cmp": 5, "Tec": 4, "Hea": 3, "Lon": 2, "Pen": 1 },
-    "PAS": { "Pas": 7, "Vis": 6, "Tec": 5, "Cro": 4, "Fre": 3, "Cor": 2, "L Th": 1 },
-    "DRI": { "Dri": 6, "Fir": 5, "Tec": 4, "Agi": 3, "Bal": 2, "Fla": 1 },
-    "DEF": { "Tck": 6, "Mar": 5, "Hea": 4, "Pos": 3, "Cnt": 2, "Ant": 1 },
-    "MEN": { "Wor": 11, "Dec": 10, "Tea": 9, "Det": 8, "Bra": 7, "Ldr": 6, "Vis": 5, "Agg": 4, "OtB": 3, "Pos": 2, "Ant": 1 }
+  "PHY": {
+    "Acc": 7,
+    "Pac": 6,
+    "Str": 5,
+    "Sta": 4,
+    "Nat": 3,
+    "Bal": 2,
+    "Jum": 1
+  },
+  "SHO": {
+    "Fin": 7,
+    "OtB": 6,
+    "Cmp": 5,
+    "Tec": 4,
+    "Hea": 3,
+    "Lon": 2,
+    "Pen": 1
+  },
+  "PAS": {
+    "Pas": 7,
+    "Vis": 6,
+    "Tec": 5,
+    "Cro": 4,
+    "Fre": 3,
+    "Cor": 2,
+    "L Th": 1
+  },
+  "DRI": { "Dri": 6, "Fir": 5, "Tec": 4, "Agi": 3, "Bal": 2, "Fla": 1 },
+  "DEF": { "Tck": 6, "Mar": 5, "Hea": 4, "Pos": 3, "Cnt": 2, "Ant": 1 },
+  "MEN": {
+    "Wor": 11,
+    "Dec": 10,
+    "Tea": 9,
+    "Det": 8,
+    "Bra": 7,
+    "Ldr": 6,
+    "Vis": 5,
+    "Agg": 4,
+    "OtB": 3,
+    "Pos": 2,
+    "Ant": 1
+  },
+  "GK": {
+    "Han": 20,
+    "Ref": 20,
+    "Cmd": 15,
+    "Aer": 15,
+    "1v1": 10,
+    "Kic": 5,
+    "TRO": 5,
+    "Com": 3,
+    "Thr": 3,
+    "Ecc": 1
   }
-  
+}

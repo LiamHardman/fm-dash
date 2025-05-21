@@ -29,7 +29,8 @@
                             The table will display players with pre-calculated
                             FIFA-style stats (PHY, SHO, etc.), parsed positions,
                             Overall ratings (based on their best role), Age,
-                            Media Handling, and Personality.
+                            Media Handling, and Personality. Goalkeeping (GK)
+                            stats will appear if filtering for GKs.
                         </li>
                         <li>
                             Use filters for Name, Club (searchable dropdown),
@@ -41,8 +42,8 @@
                         </li>
                         <li>
                             Click on any player row for a detailed view, which
-                            will show all calculated role-specific overalls
-                            provided by the API.
+                            will show all calculated role-specific overalls and
+                            specific goalkeeping attributes if applicable.
                         </li>
                     </ol>
                 </q-card-section>
@@ -443,6 +444,7 @@
                     :loading="loading"
                     @update:sort="handleSort"
                     @player-selected="handlePlayerSelected"
+                    :is-goalkeeper-view="isGoalkeeperView"
                 />
             </template>
 
@@ -474,7 +476,6 @@ import PlayerDetailDialog from "../components/PlayerDetailDialog.vue";
 import UpgradeFinderDialog from "../components/UpgradeFinderDialog.vue";
 import playerService from "../services/playerService";
 
-// Position groups for filtering
 const positionGroups = {
     Goalkeepers: ["Goalkeeper"],
     Defenders: [
@@ -500,7 +501,6 @@ const positionGroups = {
     Attackers: ["Striker", "Right Forward", "Left Forward", "Centre Forward"],
 };
 
-// Debounce function to delay filter application
 function debounce(fn, delay) {
     let timeoutID = null;
     return function (...args) {
@@ -536,16 +536,15 @@ export default {
             displayField: null,
         });
 
-        // Refs for transfer value slider and text input
         const transferValueSliderMin = ref(0);
-        const transferValueSliderMax = ref(100000000); // Default max
-        const transferValueTextInput = ref(""); // For the text input's string value
+        const transferValueSliderMax = ref(100000000);
+        const transferValueTextInput = ref("");
 
         const filters = reactive({
             name: "",
             club: null,
-            selectedTransferValue: null, // Numeric value for slider and filtering logic
-            transferValueMode: "less", // 'less' or 'more'
+            selectedTransferValue: null,
+            transferValueMode: "less",
             position: null,
             nationality: null,
             mediaHandling: [],
@@ -559,10 +558,18 @@ export default {
         const mediaHandlingOptions = ref([]);
         const personalityOptions = ref([]);
 
-        let allUniqueClubs = [];
-        let allUniqueNationalities = [];
-        let allUniqueMediaHandlings = [];
-        let allUniquePersonalities = [];
+        // Make these reactive
+        const allUniqueClubs = ref([]);
+        const allUniqueNationalities = ref([]);
+        const allUniqueMediaHandlings = ref([]);
+        const allUniquePersonalities = ref([]);
+
+        const isGoalkeeperView = computed(() => {
+            return (
+                filters.position === "Goalkeepers" ||
+                filters.position === "Goalkeeper"
+            );
+        });
 
         const hasActiveFilters = computed(
             () =>
@@ -579,7 +586,7 @@ export default {
                 filters.maxAge !== null,
         );
 
-        const uniqueClubsCount = computed(() => allUniqueClubs.length);
+        const uniqueClubsCount = computed(() => allUniqueClubs.value.length); // Use .value
         const uniqueParsedPositionsCount = computed(() => {
             const s = new Set();
             allPlayers.value.forEach((player) =>
@@ -588,18 +595,15 @@ export default {
             return s.size;
         });
         const uniqueNationalitiesCount = computed(
-            () => allUniqueNationalities.length,
-        );
+            () => allUniqueNationalities.value.length,
+        ); // Use .value
 
-        // Helper to format numeric value for display in text input or labels
         const formatSliderValue = (value) => {
-            if (value === null || value === undefined) return ""; // Return empty for text input if null
+            if (value === null || value === undefined) return "";
             if (value >= 1000000) return `€${(value / 1000000).toFixed(1)}M`;
             if (value >= 1000) return `€${Math.round(value / 1000)}K`;
             return `€${value}`;
         };
-
-        // Helper to parse monetary string (e.g., "1.5M", "500K") to number
         const parseMonetaryStringToNumber = (str) => {
             if (typeof str !== "string" || !str.trim()) return null;
             const cleanedStr = str.trim().toUpperCase();
@@ -610,8 +614,6 @@ export default {
             else if (cleanedStr.endsWith("K")) value *= 1000;
             return Math.round(value);
         };
-
-        // Computed property for dynamic slider step
         const transferValueSliderStep = computed(() => {
             const range =
                 transferValueSliderMax.value - transferValueSliderMin.value;
@@ -676,6 +678,12 @@ export default {
             });
             const uniquePositions = new Set();
             allPlayers.value.forEach((player) => {
+                if (
+                    player.parsedPositions?.includes("Goalkeeper") &&
+                    !uniquePositions.has("Goalkeeper")
+                ) {
+                    uniquePositions.add("Goalkeeper");
+                }
                 player.parsedPositions?.forEach((pos) =>
                     uniquePositions.add(pos),
                 );
@@ -683,11 +691,51 @@ export default {
             Array.from(uniquePositions)
                 .sort()
                 .forEach((pos) => {
-                    if (!positionGroups[pos]) {
-                        options.push({ label: pos, value: pos });
+                    if (
+                        !options.some(
+                            (opt) =>
+                                opt.value === pos &&
+                                opt.label !== `${pos} (Group)`,
+                        )
+                    ) {
+                        if (!positionGroups[pos]) {
+                            options.push({ label: pos, value: pos });
+                        } else if (
+                            pos === "Goalkeeper" &&
+                            !options.some((o) => o.value === "Goalkeeper")
+                        ) {
+                            options.push({
+                                label: "Goalkeeper",
+                                value: "Goalkeeper",
+                            });
+                        }
                     }
                 });
-            return options;
+            if (
+                allPlayers.value.some((p) =>
+                    p.positionGroups?.includes("Goalkeepers"),
+                ) &&
+                !options.some((o) => o.value === "Goalkeepers")
+            ) {
+                options.push({
+                    label: "Goalkeepers (Group)",
+                    value: "Goalkeepers",
+                });
+            }
+
+            const finalOptionsMap = new Map();
+            options.forEach((opt) => {
+                if (
+                    !finalOptionsMap.has(opt.value) ||
+                    (finalOptionsMap.has(opt.value) &&
+                        opt.label.includes("(Group)"))
+                ) {
+                    finalOptionsMap.set(opt.value, opt);
+                }
+            });
+            return Array.from(finalOptionsMap.values()).sort((a, b) =>
+                a.label.localeCompare(b.label),
+            );
         });
 
         const updateDropdownOptionsAndSliderBounds = () => {
@@ -713,23 +761,21 @@ export default {
                 }
             });
 
-            allUniqueClubs = Array.from(clubs).sort();
-            allUniqueNationalities = Array.from(nationalities).sort();
-            allUniqueMediaHandlings = Array.from(
+            allUniqueClubs.value = Array.from(clubs).sort();
+            allUniqueNationalities.value = Array.from(nationalities).sort();
+            allUniqueMediaHandlings.value = Array.from(
                 mediaHandlingsIndividual,
             ).sort();
-            allUniquePersonalities = Array.from(personalities).sort();
+            allUniquePersonalities.value = Array.from(personalities).sort();
 
-            clubOptions.value = allUniqueClubs;
-            nationalityOptions.value = allUniqueNationalities;
-            mediaHandlingOptions.value = allUniqueMediaHandlings.map((mh) => ({
-                label: mh,
-                value: mh,
-            }));
-            personalityOptions.value = allUniquePersonalities.map((p) => ({
-                label: p,
-                value: p,
-            }));
+            clubOptions.value = allUniqueClubs.value;
+            nationalityOptions.value = allUniqueNationalities.value;
+            mediaHandlingOptions.value = allUniqueMediaHandlings.value.map(
+                (mh) => ({ label: mh, value: mh }),
+            );
+            personalityOptions.value = allUniquePersonalities.value.map(
+                (p) => ({ label: p, value: p }),
+            );
 
             if (transferValuesNumeric.length > 0) {
                 transferValueSliderMin.value = Math.min(
@@ -759,9 +805,6 @@ export default {
                 transferValueSliderMin.value = 0;
                 transferValueSliderMax.value = 100000000;
             }
-
-            // Update filters.selectedTransferValue based on new bounds if necessary
-            // This ensures the slider doesn't get stuck if its current value is outside the new range
             if (filters.selectedTransferValue !== null) {
                 filters.selectedTransferValue = Math.max(
                     transferValueSliderMin.value,
@@ -836,12 +879,14 @@ export default {
             if (filters.position) {
                 const selectedPosFilter = filters.position;
                 if (positionGroups[selectedPosFilter]) {
+                    // It's a group
                     tempPlayers = tempPlayers.filter(
                         (p) =>
                             p.positionGroups &&
                             p.positionGroups.includes(selectedPosFilter),
                     );
                 } else {
+                    // It's an individual position
                     tempPlayers = tempPlayers.filter(
                         (p) =>
                             p.parsedPositions &&
@@ -892,49 +937,38 @@ export default {
 
         const debouncedApplyFilters = debounce(applyFiltersAndSort, 300);
 
-        // Debounced function to update numeric value from text input
         const updateNumericValueFromTextInput = () => {
             const numericValue = parseMonetaryStringToNumber(
                 transferValueTextInput.value,
             );
             if (numericValue !== null) {
-                // Clamp the value to be within slider bounds
                 const clampedValue = Math.max(
                     transferValueSliderMin.value,
                     Math.min(numericValue, transferValueSliderMax.value),
                 );
                 if (filters.selectedTransferValue !== clampedValue) {
                     filters.selectedTransferValue = clampedValue;
-                    // applyFiltersAndSort will be triggered by the watcher on filters.selectedTransferValue or by slider's @update:model-value
                 }
             } else if (transferValueTextInput.value.trim() === "") {
-                // If input is cleared
                 if (filters.selectedTransferValue !== null) {
                     filters.selectedTransferValue = null;
                 }
             }
-            // If parsing fails but input is not empty, we don't change selectedTransferValue,
-            // allowing the user to correct the input. The displayed slider value won't change.
         };
         const debouncedUpdateNumericValueFromTextInput = debounce(
             updateNumericValueFromTextInput,
             400,
         );
 
-        // Watcher for when the numeric slider value changes (e.g. by slider interaction)
-        // to update the text input display.
         watch(
             () => filters.selectedTransferValue,
-            (newValue, oldValue) => {
-                // Only update text input if the change wasn't due to text input itself
-                // (i.e., if parsing the current text input doesn't yield the newValue)
+            (newValue) => {
                 const currentTextParsed = parseMonetaryStringToNumber(
                     transferValueTextInput.value,
                 );
                 if (currentTextParsed !== newValue) {
                     transferValueTextInput.value = formatSliderValue(newValue);
                 }
-                // applyFiltersAndSort(); // This is already called by slider's @update:model-value
             },
         );
 
@@ -971,7 +1005,7 @@ export default {
             filters.club = null;
             filters.selectedTransferValue = null;
             filters.transferValueMode = "less";
-            transferValueTextInput.value = ""; // Clear text input
+            transferValueTextInput.value = "";
             filters.position = null;
             filters.nationality = null;
             filters.mediaHandling = [];
@@ -989,30 +1023,30 @@ export default {
         const filterClubOptions = (val, update) => {
             if (val === "") {
                 update(() => {
-                    clubOptions.value = allUniqueClubs;
-                });
+                    clubOptions.value = allUniqueClubs.value;
+                }); // Use .value
                 return;
             }
             update(() => {
                 const needle = val.toLowerCase();
-                clubOptions.value = allUniqueClubs.filter(
+                clubOptions.value = allUniqueClubs.value.filter(
                     (v) => v.toLowerCase().indexOf(needle) > -1,
-                );
+                ); // Use .value
             });
         };
 
         const filterNationalityOptions = (val, update) => {
             if (val === "") {
                 update(() => {
-                    nationalityOptions.value = allUniqueNationalities;
-                });
+                    nationalityOptions.value = allUniqueNationalities.value;
+                }); // Use .value
                 return;
             }
             update(() => {
                 const needle = val.toLowerCase();
-                nationalityOptions.value = allUniqueNationalities.filter(
+                nationalityOptions.value = allUniqueNationalities.value.filter(
                     (v) => v.toLowerCase().indexOf(needle) > -1,
-                );
+                ); // Use .value
             });
         };
 
@@ -1024,9 +1058,6 @@ export default {
                     filters.selectedTransferValue = null;
                     transferValueTextInput.value = "";
                 }
-                // If selectedTransferValue was null and we now have players,
-                // we might want to set it to a default (e.g., min or median) or leave it null.
-                // For now, leaving it null means "Any" until user interacts.
                 applyFiltersAndSort();
             },
             { deep: true, immediate: true },
@@ -1067,8 +1098,9 @@ export default {
             transferValueSliderMax,
             transferValueSliderStep,
             formatSliderValue,
-            transferValueTextInput, // Expose for v-model
-            debouncedUpdateNumericValueFromTextInput, // Expose for text input event
+            transferValueTextInput,
+            debouncedUpdateNumericValueFromTextInput,
+            isGoalkeeperView,
         };
     },
 };
