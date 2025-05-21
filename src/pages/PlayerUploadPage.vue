@@ -32,9 +32,11 @@
                             Media Handling, and Personality.
                         </li>
                         <li>
-                            Use filters for Name, Club, Position, Nationality,
-                            Transfer Value, Media Handling, Personality, and Age
-                            range. Input fields are debounced for performance.
+                            Use filters for Name, Club (searchable dropdown),
+                            Position, Nationality (searchable dropdown),
+                            Transfer Value, Media Handling (multi-select),
+                            Personality (multi-select), and Age range. Input
+                            fields are debounced for performance.
                         </li>
                         <li>
                             Click on any player row for a detailed view, which
@@ -99,14 +101,52 @@
                             />
                         </div>
                         <div class="col-12 col-sm-6 col-md-3 col-lg-2">
-                            <q-input
+                            <q-select
                                 v-model="filters.club"
+                                :options="clubOptions"
                                 label="Club"
                                 dense
                                 outlined
                                 clearable
-                                @update:model-value="debouncedApplyFilters"
-                            />
+                                use-input
+                                hide-selected
+                                fill-input
+                                input-debounce="300"
+                                @filter="filterClubOptions"
+                                @update:model-value="applyFiltersAndSort"
+                            >
+                                <template v-slot:no-option>
+                                    <q-item>
+                                        <q-item-section class="text-grey">
+                                            No results
+                                        </q-item-section>
+                                    </q-item>
+                                </template>
+                            </q-select>
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-3 col-lg-2">
+                            <q-select
+                                v-model="filters.nationality"
+                                :options="nationalityOptions"
+                                label="Nationality"
+                                dense
+                                outlined
+                                clearable
+                                use-input
+                                hide-selected
+                                fill-input
+                                input-debounce="300"
+                                @filter="filterNationalityOptions"
+                                @update:model-value="applyFiltersAndSort"
+                            >
+                                <template v-slot:no-option>
+                                    <q-item>
+                                        <q-item-section class="text-grey">
+                                            No results
+                                        </q-item-section>
+                                    </q-item>
+                                </template>
+                            </q-select>
                         </div>
                         <div class="col-12 col-sm-6 col-md-3 col-lg-2">
                             <q-select
@@ -122,33 +162,33 @@
                             />
                         </div>
                         <div class="col-12 col-sm-6 col-md-3 col-lg-2">
-                            <q-input
-                                v-model="filters.nationality"
-                                label="Nationality"
-                                dense
-                                outlined
-                                clearable
-                                @update:model-value="debouncedApplyFilters"
-                            />
-                        </div>
-                        <div class="col-12 col-sm-6 col-md-3 col-lg-2">
-                            <q-input
+                            <q-select
                                 v-model="filters.mediaHandling"
+                                :options="mediaHandlingOptions"
                                 label="Media Handling"
                                 dense
                                 outlined
+                                multiple
+                                use-chips
                                 clearable
-                                @update:model-value="debouncedApplyFilters"
+                                emit-value
+                                map-options
+                                @update:model-value="applyFiltersAndSort"
                             />
                         </div>
                         <div class="col-12 col-sm-6 col-md-3 col-lg-2">
-                            <q-input
+                            <q-select
                                 v-model="filters.personality"
+                                :options="personalityOptions"
                                 label="Personality"
                                 dense
                                 outlined
+                                multiple
+                                use-chips
                                 clearable
-                                @update:model-value="debouncedApplyFilters"
+                                emit-value
+                                map-options
+                                @update:model-value="applyFiltersAndSort"
                             />
                         </div>
                         <div class="col-12 col-sm-4 col-md-2 col-lg-1">
@@ -344,7 +384,6 @@ import PlayerDetailDialog from "../components/PlayerDetailDialog.vue";
 import UpgradeFinderDialog from "../components/UpgradeFinderDialog.vue";
 import playerService from "../services/playerService";
 
-// Position groups for filtering - this can remain client-side for filter generation
 const positionGroups = {
     Goalkeepers: ["Goalkeeper"],
     Defenders: [
@@ -370,7 +409,6 @@ const positionGroups = {
     Attackers: ["Striker", "Right Forward", "Left Forward", "Centre Forward"],
 };
 
-// Debounce utility function
 function debounce(fn, delay) {
     let timeoutID = null;
     return function (...args) {
@@ -408,34 +446,44 @@ export default {
 
         const filters = reactive({
             name: "",
-            club: "",
+            club: null, // Changed to null for q-select
             transferValue: "",
             position: null,
-            nationality: "",
-            mediaHandling: "", // New filter
-            personality: "", // New filter
-            minAge: null, // New filter
-            maxAge: null, // New filter
+            nationality: null, // Changed to null for q-select
+            mediaHandling: [], // Changed to array for multiple q-select
+            personality: [], // Changed to array for multiple q-select
+            minAge: null,
+            maxAge: null,
         });
+
+        // Options for q-select dropdowns
+        const clubOptions = ref([]);
+        const nationalityOptions = ref([]);
+        const mediaHandlingOptions = ref([]);
+        const personalityOptions = ref([]);
+
+        // Store all unique values for filtering q-select options
+        let allUniqueClubs = [];
+        let allUniqueNationalities = [];
+        let allUniqueMediaHandlings = [];
+        let allUniquePersonalities = [];
 
         const hasActiveFilters = computed(
             () =>
                 filters.name !== "" ||
-                filters.club !== "" ||
+                filters.club !== null || // Updated
                 filters.transferValue !== "" ||
                 filters.position !== null ||
-                filters.nationality !== "" ||
-                filters.mediaHandling !== "" || // New
-                filters.personality !== "" || // New
-                filters.minAge !== null || // New
-                filters.maxAge !== null, // New
+                filters.nationality !== null || // Updated
+                (Array.isArray(filters.mediaHandling) &&
+                    filters.mediaHandling.length > 0) || // Updated
+                (Array.isArray(filters.personality) &&
+                    filters.personality.length > 0) || // Updated
+                filters.minAge !== null ||
+                filters.maxAge !== null,
         );
 
-        const uniqueClubsCount = computed(
-            () =>
-                new Set(allPlayers.value.map((p) => p.club).filter(Boolean))
-                    .size,
-        );
+        const uniqueClubsCount = computed(() => allUniqueClubs.length);
         const uniqueParsedPositionsCount = computed(() => {
             const s = new Set();
             allPlayers.value.forEach((player) =>
@@ -444,10 +492,7 @@ export default {
             return s.size;
         });
         const uniqueNationalitiesCount = computed(
-            () =>
-                new Set(
-                    allPlayers.value.map((p) => p.nationality).filter(Boolean),
-                ).size,
+            () => allUniqueNationalities.length,
         );
 
         const parseMonetaryValueForFilter = (valueStr) => {
@@ -504,8 +549,7 @@ export default {
         const processPlayersFromAPI = (playersData) => {
             return playersData.map((p) => ({
                 ...p,
-                age: parseInt(p.age, 10) || 0, // Ensure age is numeric for filtering
-                // media_handling and personality are assumed to be strings from API
+                age: parseInt(p.age, 10) || 0,
             }));
         };
 
@@ -530,6 +574,36 @@ export default {
             return options;
         });
 
+        const updateDropdownOptions = () => {
+            const clubs = new Set();
+            const nationalities = new Set();
+            const mediaHandlings = new Set();
+            const personalities = new Set();
+
+            allPlayers.value.forEach((p) => {
+                if (p.club) clubs.add(p.club);
+                if (p.nationality) nationalities.add(p.nationality);
+                if (p.media_handling) mediaHandlings.add(p.media_handling);
+                if (p.personality) personalities.add(p.personality);
+            });
+
+            allUniqueClubs = Array.from(clubs).sort();
+            allUniqueNationalities = Array.from(nationalities).sort();
+            allUniqueMediaHandlings = Array.from(mediaHandlings).sort();
+            allUniquePersonalities = Array.from(personalities).sort();
+
+            clubOptions.value = allUniqueClubs;
+            nationalityOptions.value = allUniqueNationalities;
+            mediaHandlingOptions.value = allUniqueMediaHandlings.map((mh) => ({
+                label: mh,
+                value: mh,
+            }));
+            personalityOptions.value = allUniquePersonalities.map((p) => ({
+                label: p,
+                value: p,
+            }));
+        };
+
         const applyFiltersAndSort = () => {
             if (!allPlayers.value.length) {
                 filteredPlayers.value = [];
@@ -537,7 +611,6 @@ export default {
             }
             let tempPlayers = [...allPlayers.value];
 
-            // Apply text-based filters
             if (filters.name) {
                 tempPlayers = tempPlayers.filter(
                     (p) =>
@@ -548,57 +621,43 @@ export default {
                 );
             }
             if (filters.club) {
+                // Updated for q-select (single)
                 tempPlayers = tempPlayers.filter(
-                    (p) =>
-                        p.club &&
-                        p.club
-                            .toLowerCase()
-                            .includes(filters.club.toLowerCase()),
+                    (p) => p.club === filters.club,
                 );
             }
             if (filters.nationality) {
+                // Updated for q-select (single)
                 tempPlayers = tempPlayers.filter(
-                    (p) =>
-                        p.nationality &&
-                        p.nationality
-                            .toLowerCase()
-                            .includes(filters.nationality.toLowerCase()),
+                    (p) => p.nationality === filters.nationality,
                 );
             }
-            if (filters.mediaHandling) {
-                // New filter logic
-                tempPlayers = tempPlayers.filter(
-                    (p) =>
-                        p.media_handling &&
-                        p.media_handling
-                            .toLowerCase()
-                            .includes(filters.mediaHandling.toLowerCase()),
+            if (filters.mediaHandling && filters.mediaHandling.length > 0) {
+                // Updated for q-select (multiple)
+                tempPlayers = tempPlayers.filter((p) =>
+                    filters.mediaHandling.includes(p.media_handling),
                 );
             }
-            if (filters.personality) {
-                // New filter logic
-                tempPlayers = tempPlayers.filter(
-                    (p) =>
-                        p.personality &&
-                        p.personality
-                            .toLowerCase()
-                            .includes(filters.personality.toLowerCase()),
+            if (filters.personality && filters.personality.length > 0) {
+                // Updated for q-select (multiple)
+                tempPlayers = tempPlayers.filter((p) =>
+                    filters.personality.includes(p.personality),
                 );
             }
 
-            // Apply age filter
-            if (filters.minAge !== null && filters.minAge > 0) {
+            if (filters.minAge !== null && filters.minAge >= 0) {
+                // Ensure minAge is not negative
                 tempPlayers = tempPlayers.filter(
                     (p) => p.age >= filters.minAge,
                 );
             }
-            if (filters.maxAge !== null && filters.maxAge > 0) {
+            if (filters.maxAge !== null && filters.maxAge >= 0) {
+                // Ensure maxAge is not negative
                 tempPlayers = tempPlayers.filter(
                     (p) => p.age <= filters.maxAge,
                 );
             }
 
-            // Position filter
             if (filters.position) {
                 const selectedPosFilter = filters.position;
                 if (positionGroups[selectedPosFilter]) {
@@ -615,8 +674,6 @@ export default {
                     );
                 }
             }
-
-            // Transfer value filter
             if (filters.transferValue) {
                 let operator = "includes";
                 let compareValueNum = 0;
@@ -646,7 +703,6 @@ export default {
                 });
             }
 
-            // Sorting
             if (sortState.key) {
                 const sortKey = sortState.key;
                 tempPlayers.sort((a, b) => {
@@ -689,8 +745,9 @@ export default {
                 const playersDataFromApi =
                     await playerService.uploadPlayerFile(formData);
                 allPlayers.value = processPlayersFromAPI(playersDataFromApi);
-                sortState.key = null; // Reset sort on new data
-                applyFiltersAndSort(); // Apply initial filters (if any) and default sort
+                updateDropdownOptions(); // Update dropdowns after new data is loaded
+                sortState.key = null;
+                applyFiltersAndSort();
             } catch (e) {
                 error.value = `Failed to parse player data: ${e.message || "Unknown error"}`;
                 allPlayers.value = [];
@@ -708,14 +765,14 @@ export default {
 
         const clearAllFilters = () => {
             filters.name = "";
-            filters.club = "";
+            filters.club = null; // Reset to null
             filters.transferValue = "";
             filters.position = null;
-            filters.nationality = "";
-            filters.mediaHandling = ""; // New
-            filters.personality = ""; // New
-            filters.minAge = null; // New
-            filters.maxAge = null; // New
+            filters.nationality = null; // Reset to null
+            filters.mediaHandling = []; // Reset to empty array
+            filters.personality = []; // Reset to empty array
+            filters.minAge = null;
+            filters.maxAge = null;
             applyFiltersAndSort();
         };
 
@@ -724,12 +781,44 @@ export default {
             showPlayerDetailDialog.value = true;
         };
 
+        // Filter functions for q-select with use-input
+        const filterClubOptions = (val, update) => {
+            if (val === "") {
+                update(() => {
+                    clubOptions.value = allUniqueClubs;
+                });
+                return;
+            }
+            update(() => {
+                const needle = val.toLowerCase();
+                clubOptions.value = allUniqueClubs.filter(
+                    (v) => v.toLowerCase().indexOf(needle) > -1,
+                );
+            });
+        };
+
+        const filterNationalityOptions = (val, update) => {
+            if (val === "") {
+                update(() => {
+                    nationalityOptions.value = allUniqueNationalities;
+                });
+                return;
+            }
+            update(() => {
+                const needle = val.toLowerCase();
+                nationalityOptions.value = allUniqueNationalities.filter(
+                    (v) => v.toLowerCase().indexOf(needle) > -1,
+                );
+            });
+        };
+
         watch(
             () => allPlayers.value,
             () => {
+                updateDropdownOptions(); // Update dropdowns when allPlayers changes
                 applyFiltersAndSort();
             },
-            { deep: true },
+            { deep: true, immediate: true }, // immediate to run on mount if allPlayers is already populated (e.g. from cache)
         );
 
         return {
@@ -744,6 +833,12 @@ export default {
             filters,
             hasActiveFilters,
             positionFilterOptions,
+            clubOptions, // New
+            nationalityOptions, // New
+            mediaHandlingOptions, // New
+            personalityOptions, // New
+            filterClubOptions, // New
+            filterNationalityOptions, // New
             uploadAndParse,
             handleSort,
             debouncedApplyFilters,
