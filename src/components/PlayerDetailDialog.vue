@@ -674,19 +674,19 @@ export default defineComponent({
     max-height: calc(100vh - 48px);
     display: flex;
     flex-direction: column;
-    border-radius: 10px;
+    border-radius: 10px; /* Already good from global styles potentially */
 }
 
 .player-detail-dialog-card > .q-bar {
     border-top-left-radius: 10px;
     border-top-right-radius: 10px;
-    padding: 8px 16px;
+    /* padding: 8px 16px; */ /* Consider Quasar's default or adjust slightly */
 }
 
 .player-detail-dialog-card > .q-card__section--main-content {
     flex-grow: 1;
     overflow-y: auto;
-    padding: 16px;
+    padding: 20px; /* Increase padding for more whitespace */
 }
 
 .player-detail-dialog-card > .q-card__actions {
@@ -719,6 +719,17 @@ export default defineComponent({
     padding-top: 2px;
 }
 
+/* Player Info Section (top part) */
+/* If the top section is wrapped in a q-card, it will get global styles.
+   If it's a div, style it minimally. */
+.player-info-section { /* Assuming you might wrap the top info in a div with this class */
+    background-color: #fdfdfd; /* Very light grey, or transparent */
+    padding: 16px;
+    border-radius: 6px; /* Consistent with cards */
+    /* box-shadow: 0 1px 2px rgba(0,0,0,0.05); */ /* Optional: very subtle shadow if not a card */
+    border: 1px solid #eff2f5; /* Optional: subtle border */
+}
+
 /* Attribute Columns Layout */
 .attribute-columns-row > .column {
     display: flex;
@@ -738,14 +749,16 @@ export default defineComponent({
     min-height: 0;
 }
 
-.q-card .q-card__section.bg-grey-2 {
-    padding: 8px 12px;
+/* Attribute Card Styling */
+.full-height-card .q-card__section.bg-grey-2 { /* Header of attribute cards */
+    background-color: #f8f9fa !important; /* Match table header, !important if needed */
+    padding: 10px 12px; /* Adjust padding */
 }
-.q-card .text-subtitle2 {
-    font-size: 0.85rem;
+.full-height-card .text-subtitle2 { /* Text in attribute card headers */
+    font-size: 0.9rem; /* Slightly larger if needed */
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: #555;
+    color: #495057; /* Softer color */
 }
 
 .constrained-scroll-list {
@@ -757,100 +770,89 @@ export default defineComponent({
 }
 
 /* Attribute Value Styling (0-20 scale for FM-style attributes) */
-.attribute-value {
+.attribute-value { /* Ensure this base class has appropriate padding if needed, or rely on cell/item padding */
     display: inline-block;
-    min-width: 30px;
+    min-width: 30px; /* Keep if alignment is important */
     text-align: center;
     font-weight: 600;
-    padding: 2px 5px;
+    padding: 1px 3px; /* Reduced padding */
     border-radius: 4px;
-    font-size: 0.75rem;
+    /* font-size: 0.75rem; */ /* This was very small, consider 0.8rem or 0.85rem */
+    font-size: 0.85rem; /* Increased slightly for better readability */
     line-height: 1.3;
 }
-.attribute-excellent-fm {
-    background-color: #1976d2;
-    color: white;
+
+.attribute-excellent-fm { /* e.g., 18-20 */
+    color: #1565c0; /* Dark Blue */
 }
-.attribute-very-good-fm {
-    background-color: #26a69a;
-    color: white;
+.attribute-very-good-fm { /* e.g., 15-17 */
+    color: #00897b; /* Dark Teal */
 }
-.attribute-good-fm {
-    background-color: #66bb6a;
-    color: white;
+.attribute-good-fm { /* e.g., 12-14 */
+    color: #388e3c; /* Dark Green */
 }
-.attribute-average-fm {
-    background-color: #ffee58;
-    color: #333;
+.attribute-average-fm { /* e.g., 9-11 */
+    color: #b28e00; /* Dark Yellow (same as table for consistency) */
 }
-.attribute-poor-fm {
-    background-color: #ffa726;
-    color: white;
+.attribute-poor-fm { /* e.g., 6-8 */
+    color: #d84315; /* Deep Orange */
 }
-.attribute-very-poor-fm {
-    background-color: #ef5350;
-    color: white;
+.attribute-very-poor-fm { /* e.g., 1-5 */
+    color: #c62828; /* Dark Red */
 }
 
 /* FIFA Stat Value Styling (0-100 scale) */
-.fifa-stat-value {
+.fifa-stat-value { /* Base class for these values */
     /* Inherits .attribute-value styles, then these override/add */
     font-size: 0.9em; /* Relative to its container's font size (text-subtitle1) */
-    padding: 3px 6px;
+    padding: 2px 4px; /* Reduced padding */
 }
 .attribute-elite {
-    background-color: #7b1fa2;
-    color: white;
+    color: #9c27b0; /* Purple */
 }
 .attribute-excellent {
-    background-color: #1976d2;
-    color: white;
+    color: #1e88e5; /* Strong Blue */
 }
 .attribute-very-good {
-    background-color: #26a69a;
-    color: white;
+    color: #00acc1; /* Cyan */
 }
 .attribute-good {
-    background-color: #66bb6a;
-    color: white;
+    color: #43a047; /* Green */
 }
 .attribute-average {
-    background-color: #ffee58;
-    color: #333;
+    color: #b28e00; /* Darker Yellow */
 }
 .attribute-below-average {
-    background-color: #ffca28;
-    color: #333;
+    color: #fb8c00; /* Orange */
 }
 .attribute-poor {
-    background-color: #ffa726;
-    color: white;
+    color: #e53935; /* Red */
 }
 .attribute-very-poor {
-    background-color: #ef5350;
-    color: white;
+    color: #d32f2f; /* Darker Red */
 }
 
-.attribute-na {
-    background-color: #bdbdbd;
-    color: #fff;
+.attribute-na { /* For both FM and FIFA stats if applicable */
+    color: #757575; /* Grey */
 }
 
+/* Role specific ratings list highlight */
 .best-role-highlight {
-    background-color: #e3f2fd !important;
-    border-left: 3px solid var(--q-primary);
+    background-color: #e8f5e9 !important; /* Softer green for primary highlight */
+    border-left: 3px solid var(--q-positive); /* Use positive color for border */
 }
 .best-role-highlight .q-item__label {
-    font-weight: 500;
+    font-weight: 600; /* Emphasize text more */
+    color: var(--q-positive);
 }
 
 .q-list--dense .q-item,
 .constrained-scroll-list .q-item {
-    padding-top: 4px;
-    padding-bottom: 4px;
-    padding-left: 10px;
-    padding-right: 10px;
+    padding: 6px 12px; /* Adjust item padding in lists */
     min-height: auto;
+}
+.q-list--separator > .q-item:not(:first-child):before {
+    border-top: 1px solid #eff2f5; /* Softer separator for lists */
 }
 .q-list--dense .q-item__section--avatar {
     min-width: 38px;

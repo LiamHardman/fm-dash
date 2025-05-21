@@ -8,6 +8,13 @@ export default defineConfig({
     vue(),
     quasar()
   ],
+  css: {
+    preprocessorOptions: {
+      scss: {
+        additionalData: `@import "src/quasar-variables.scss"; @import "src/css/app.scss";`
+      }
+    }
+  },
   server: {
     port: 3000,
     proxy: {

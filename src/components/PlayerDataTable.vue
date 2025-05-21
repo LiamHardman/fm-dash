@@ -559,15 +559,24 @@ export default {
 }
 :deep(.q-table th) {
     font-weight: 600;
-    background-color: #f3f5f9;
+    background-color: #f8f9fa; /* Slightly softer grey */
     white-space: nowrap;
+    padding: 10px 16px; /* Increased padding */
+    border-bottom: 1px solid #dee2e6; /* Add a subtle bottom border to header */
+    border-right: 0; /* Remove vertical grid lines if any */
 }
 :deep(.q-table td) {
     white-space: nowrap;
     vertical-align: middle;
-} /* Align items vertically in cells */
+    padding: 10px 16px; /* Increased padding */
+    border-bottom: 1px solid #eff2f5; /* Softer row separator */
+    border-right: 0; /* Remove vertical grid lines if any */
+}
+:deep(.q-table tr:last-child td) {
+    border-bottom: 0; /* Remove border for the last row */
+}
 :deep(.q-table tr:nth-child(even)) {
-    background-color: #f9fafb;
+    background-color: #fdfdfe; /* Even softer alternating row color */
 }
 .table-row-hover:hover {
     background-color: #eef6ff !important;
@@ -581,74 +590,65 @@ export default {
     min-width: 30px;
     text-align: center;
     font-weight: 600;
-    padding: 2px 5px;
+    padding: 1px 3px; /* Keep minimal */
     border-radius: 3px;
     font-size: 0.85em;
 }
 .fifa-stat-value {
     font-size: 1.1em;
-    padding: 4px 8px;
+    padding: 2px 4px; /* Keep minimal */
 }
 .attribute-elite {
-    background-color: #9c27b0;
-    color: white;
+    color: #9c27b0; /* Purple */
 }
 .attribute-excellent {
-    background-color: #20c997;
-    color: white;
+    color: #1e88e5; /* Strong Blue (was teal bg) */
 }
 .attribute-very-good {
-    background-color: #4dabf7;
-    color: white;
+    color: #00acc1; /* Cyan (was light blue bg) */
 }
 .attribute-good {
-    background-color: #82c91e;
-    color: #212529;
+    color: #43a047; /* Green */
 }
 .attribute-average {
-    background-color: #ffc107;
-    color: #212529;
+    color: #b28e00; /* Darker Yellow */
 }
 .attribute-below-average {
-    background-color: #fab005;
-    color: #212529;
+    color: #fb8c00; /* Orange (was darker yellow bg) */
 }
 .attribute-poor {
-    background-color: #ff922b;
-    color: #212529;
+    color: #e53935; /* Red (was orange bg) */
 }
 .attribute-very-poor {
-    background-color: #fa5252;
-    color: white;
+    color: #d32f2f; /* Darker Red */
 }
 .attribute-na {
-    background-color: #e9ecef;
-    color: #868e96;
+    color: #757575; /* Grey */
 }
 .money-value {
     display: inline-block;
     font-weight: 500;
-    padding: 1px 6px;
+    padding: 1px 6px; /* Padding might need adjustment - keeping as per new spec */
     border-radius: 3px;
 }
 .money-very-high {
-    color: #2b8a3e;
+    color: #2b8a3e; /* Dark Green */
     font-weight: 700;
 }
 .money-high {
-    color: #2b8a3e;
+    color: #388e3c; /* Slightly lighter, but still dark Green */
 }
 .money-medium-high {
-    color: #5c940d;
+    color: #689f38; /* Lime Green */
 }
 .money-medium {
-    color: #212529;
+    color: #37474f; /* Dark Blue Grey */
 }
 .money-low {
-    color: #495057;
+    color: #546e7a; /* Blue Grey */
 }
 .money-na {
-    color: #868e96;
+    color: #757575; /* Grey */
 }
 /* Ensure flag and text are aligned in the nationality cell */
 .flex.items-center .q-icon,

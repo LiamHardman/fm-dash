@@ -249,7 +249,7 @@
 
                 <div v-if="selectedTeamPlayerObject" class="q-mb-lg">
                     <div class="text-subtitle1 q-mb-sm">Baseline Player:</div>
-                    <q-card flat bordered class="bg-blue-grey-1">
+                    <q-card flat class="bg-grey-1">
                         <q-item>
                             <q-item-section avatar>
                                 <q-avatar>
@@ -864,55 +864,29 @@ export default {
     border-radius: 8px;
 }
 
-.attribute-value {
+.attribute-value { /* Base styles if needed, ensure padding is minimal */
     display: inline-block;
-    min-width: 30px;
+    /* min-width: 30px; */ /* Probably not needed here */
     text-align: center;
     font-weight: 600;
-    padding: 2px 5px;
+    padding: 2px 4px; /* Minimal padding */
     border-radius: 3px;
-    font-size: 0.85em;
+    font-size: 0.85em; /* Or adjust as needed for context */
 }
-.fifa-stat-value {
-    font-size: 1.1em;
-    padding: 4px 8px;
+.fifa-stat-value { /* Base styles if needed, ensure padding is minimal */
+    /* font-size: 1.1em; */ /* May inherit or be overridden by text-h6, check visuals */
+    padding: 2px 4px; /* Minimal padding */
 }
-.attribute-elite {
-    background-color: #9c27b0;
-    color: white;
-}
-.attribute-excellent {
-    background-color: #20c997;
-    color: white;
-}
-.attribute-very-good {
-    background-color: #4dabf7;
-    color: white;
-}
-.attribute-good {
-    background-color: #82c91e;
-    color: #212529;
-}
-.attribute-average {
-    background-color: #ffc107;
-    color: #212529;
-}
-.attribute-below-average {
-    background-color: #fab005;
-    color: #212529;
-}
-.attribute-poor {
-    background-color: #ff922b;
-    color: #212529;
-}
-.attribute-very-poor {
-    background-color: #fa5252;
-    color: white;
-}
-.attribute-na {
-    background-color: #e9ecef;
-    color: #868e96;
-}
+
+.attribute-elite { color: #9c27b0; }
+.attribute-excellent { color: #1e88e5; }
+.attribute-very-good { color: #00acc1; }
+.attribute-good { color: #43a047; }
+.attribute-average { color: #b28e00; }
+.attribute-below-average { color: #fb8c00; }
+.attribute-poor { color: #e53935; }
+.attribute-very-poor { color: #d32f2f; }
+.attribute-na { color: #757575; }
 
 .q-banner {
     border-radius: 4px;
