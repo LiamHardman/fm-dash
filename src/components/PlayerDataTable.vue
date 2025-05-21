@@ -263,28 +263,31 @@ export default {
         const $q = useQuasar(); // qInstance will be used in template
         const sortField = ref(null);
         const sortDirection = ref("asc");
-        const rowsPerPageOptions = [10, 15, 20, 50, 0];
-        const maxPagesToShow = 7;
+        const rowsPerPageOptions = [10, 15, 20, 50, 0]; // 0 means 'All'
+        const maxPagesToShow = 7; // For pagination controls
 
         const pagination = reactive({
             sortBy: null,
             descending: false,
             page: 1,
-            rowsPerPage: 15,
+            rowsPerPage: 15, // Default rows per page
         });
 
+        // Computed property for the total number of pages
         const pagesNumber = computed(() =>
             pagination.rowsPerPage === 0 || props.players.length === 0
                 ? 1
                 : Math.ceil(props.players.length / pagination.rowsPerPage),
         );
 
+        // Watch for changes in player count to reset to page 1
         watch(
             () => props.players.length,
             () => {
                 pagination.page = 1;
             },
         );
+        // Adjust page number if rowsPerPage changes and current page becomes invalid
         watch(
             () => pagination.rowsPerPage,
             () => {
@@ -294,25 +297,27 @@ export default {
             },
         );
 
+        // Column style definitions with max-width to control column expansion
         const nameColumnStyle =
-            "min-width: 220px; width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
+            "max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
         const ageColumnStyle =
-            "min-width: 70px; width: 70px; text-align: center; white-space: nowrap;";
+            "max-width: 60px; text-align: center; white-space: nowrap;";
         const positionColumnStyle =
-            "min-width: 180px; width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
+            "max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
         const clubColumnStyle =
-            "min-width: 200px; width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
+            "max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
         const moneyColumnStyle =
-            "min-width: 140px; width: 150px; text-align: right; white-space: nowrap;";
+            "max-width: 100px; text-align: right; white-space: nowrap;";
         const overallColumnStyle =
-            "min-width: 90px; width: 90px; text-align: center; white-space: nowrap;";
+            "max-width: 70px; text-align: center; white-space: nowrap;";
         const fifaStatColumnStyle =
-            "min-width: 75px; width: 75px; text-align: center; white-space: nowrap;";
-        const textColumnStyle =
-            "min-width: 160px; width: 170px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
+            "max-width: 60px; text-align: center; white-space: nowrap;";
+        const textColumnStyle = // For Personality, Media Handling
+            "max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
         const nationalityColumnStyle =
-            "min-width: 150px; width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"; // Defined for completeness
+            "max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
 
+        // Base definitions for all columns
         const baseColumnDefinitions = {
             name: {
                 name: "name",
@@ -356,7 +361,7 @@ export default {
                 field: "transfer_value",
                 sortable: true,
                 align: "right",
-                sortField: "transferValueAmount",
+                sortField: "transferValueAmount", // Use numeric field for sorting
                 style: moneyColumnStyle,
                 headerStyle: moneyColumnStyle,
             },
@@ -366,7 +371,7 @@ export default {
                 field: "wage",
                 sortable: true,
                 align: "right",
-                sortField: "wageAmount",
+                sortField: "wageAmount", // Use numeric field for sorting
                 style: moneyColumnStyle,
                 headerStyle: moneyColumnStyle,
             },
@@ -399,9 +404,10 @@ export default {
                 headerStyle: textColumnStyle,
             },
             nationality_display: {
+                // Column for displaying flag and name
                 name: "nationality_display",
                 label: "Nationality",
-                field: "nationality",
+                field: "nationality", // Sort by full name
                 sortable: true,
                 align: "left",
                 style: nationalityColumnStyle,
@@ -409,6 +415,7 @@ export default {
             },
         };
 
+        // FIFA stat column definitions
         const allFifaStatDefinitions = {
             GK: {
                 name: "GK",
@@ -482,9 +489,12 @@ export default {
             },
         };
 
+        // Computed property to determine which columns to display and in what order
         const currentColumns = computed(() => {
+            // Adjusted order: Name, Nationality, then other base columns
             const newOrderBase = [
                 baseColumnDefinitions.name,
+                baseColumnDefinitions.nationality_display, // Moved Nationality here
                 baseColumnDefinitions.age,
                 baseColumnDefinitions.position,
                 baseColumnDefinitions.club,
@@ -515,30 +525,156 @@ export default {
                 ];
             }
 
+            // Nationality is no longer in trailingColumns as it's moved to newOrderBase
             const trailingColumns = [
                 baseColumnDefinitions.personality,
                 baseColumnDefinitions.media_handling,
-                // baseColumnDefinitions.nationality_display, // Nationality is not in the new primary order but available
             ];
 
             return [...newOrderBase, ...fifaColumnsInOrder, ...trailingColumns];
         });
 
+        // Helper to get column label for display
         const getColumnLabel = (fieldName) => {
             const col = currentColumns.value.find((c) => c.name === fieldName);
             return col ? col.label : fieldName;
         };
 
+        // Helper to get the actual field key for sorting (e.g., 'transferValueAmount' for 'Transfer Value')
         const getSortFieldKey = (colName) => {
             const colDef = currentColumns.value.find((c) => c.name === colName);
             return colDef?.sortField || colDef?.field || colName;
         };
 
+        // Computed property for sorted players (client-side sorting)
         const sortedPlayers = computed(() => {
-            if (!sortField.value) return props.players;
+            if (!sortField.value) return props.players; // Return original if no sort field
+
             const fieldKey = getSortFieldKey(sortField.value);
             const direction = sortDirection.value;
+
             return [...props.players].sort((a, b) => {
+                let vA = a[fieldKey];
+                let vB = b[fieldKey];
+
+                // Handle null or undefined values to sort them to the end
+                if (
+                    (vA === null || vA === undefined) &&
+                    (vB === null || vB === undefined)
+                )
+                    return 0;
+                if (vA === null || vA === undefined)
+                    return direction === "asc" ? 1 : -1;
+                if (vB === null || vB === undefined)
+                    return direction === "asc" ? -1 : 1;
+
+                if (typeof vA === "number" && typeof vB === "number") {
+                    return direction === "asc" ? vA - vB : vB - vA;
+                }
+                if (typeof vA === "string" && typeof vB === "string") {
+                    vA = vA.toLowerCase();
+                    vB = vB.toLowerCase();
+                    if (vA < vB) return direction === "asc" ? -1 : 1;
+                    if (vA > vB) return direction === "asc" ? 1 : -1;
+                    return 0;
+                }
+                return 0; // Fallback for other types
+            });
+        });
+
+        // Function to get CSS class based on rating value (0-100 for FIFA/Overall, 1-20 for attributes)
+        const getUnifiedRatingClass = (value, maxScale) => {
+            const numValue = parseInt(value, 10);
+            if (
+                isNaN(numValue) ||
+                value === null ||
+                value === undefined ||
+                value === "-"
+            )
+                return "rating-na";
+            const percentage = (numValue / maxScale) * 100;
+            if (percentage >= 90) return "rating-tier-6"; // Elite
+            if (percentage >= 80) return "rating-tier-5"; // Excellent
+            if (percentage >= 70) return "rating-tier-4"; // Good
+            if (percentage >= 55) return "rating-tier-3"; // Average
+            if (percentage >= 40) return "rating-tier-2"; // Below Average
+            return "rating-tier-1"; // Poor
+        };
+
+        // Function to get CSS class based on monetary value
+        const getMoneyClass = (valueString) => {
+            let amount = 0;
+            if (typeof valueString === "string") {
+                const cleaned = valueString.replace(/[^0-9.MKmk]/g, "");
+                if (cleaned.toLowerCase().includes("m"))
+                    amount = parseFloat(cleaned) * 1000000;
+                else if (cleaned.toLowerCase().includes("k"))
+                    amount = parseFloat(cleaned) * 1000;
+                else amount = parseFloat(cleaned);
+                if (isNaN(amount)) amount = 0;
+            } else if (typeof valueString === "number") {
+                // If already numeric (e.g. wageAmount)
+                amount = valueString;
+            }
+
+            if (amount >= 10000000) return "money-very-high";
+            if (amount >= 1000000) return "money-high";
+            if (amount >= 100000) return "money-medium-high";
+            if (amount >= 10000) return "money-medium";
+            if (amount > 0) return "money-low";
+            return "money-na";
+        };
+
+        // Handle flag image loading errors
+        const onFlagError = (event) => {
+            if (event.target) event.target.style.display = "none"; // Hide broken image
+            const iconElement = event.target.nextElementSibling;
+            if (iconElement && iconElement.tagName === "I") {
+                iconElement.style.display = "inline-flex";
+            }
+        };
+
+        const onRequest = (requestProp) => {
+            const { page, rowsPerPage, sortBy, descending } =
+                requestProp.pagination;
+            pagination.page = page;
+            pagination.rowsPerPage = rowsPerPage;
+
+            if (sortBy) {
+                const newSortField = sortBy;
+                const newSortDirection = descending ? "desc" : "asc";
+                if (
+                    sortField.value !== newSortField ||
+                    sortDirection.value !== newSortDirection
+                ) {
+                    sortField.value = newSortField;
+                    sortDirection.value = newSortDirection;
+                    emit("update:sort", {
+                        key: getSortFieldKey(sortField.value),
+                        direction: sortDirection.value,
+                        isFifaStat: currentColumns.value.find(
+                            (c) => c.name === newSortField,
+                        )?.isFifaStat,
+                        isOverallStat: currentColumns.value.find(
+                            (c) => c.name === newSortField,
+                        )?.isOverallStat,
+                        displayField: sortField.value,
+                    });
+                }
+            }
+        };
+        const onPageChange = (newPage) => {
+            pagination.page = newPage;
+        };
+        const onRowsPerPageChange = (newRowsPerPage) => {
+            pagination.rowsPerPage = newRowsPerPage;
+            pagination.page = 1;
+        };
+
+        const customSort = (rows, sortBy, descending) => {
+            const fieldKey = getSortFieldKey(sortBy);
+            const direction = descending ? "desc" : "asc";
+            return [...rows].sort((a, b) => {
                 let vA = a[fieldKey];
                 let vB = b[fieldKey];
                 if (
@@ -561,138 +697,37 @@ export default {
                 }
                 return 0;
             });
-        });
-
-        const getUnifiedRatingClass = (value, maxScale) => {
-            const numValue = parseInt(value, 10);
-            if (
-                isNaN(numValue) ||
-                value === null ||
-                value === undefined ||
-                value === "-"
-            )
-                return "rating-na";
-            const percentage = (numValue / maxScale) * 100;
-            if (percentage >= 90) return "rating-tier-6";
-            if (percentage >= 80) return "rating-tier-5";
-            if (percentage >= 70) return "rating-tier-4";
-            if (percentage >= 55) return "rating-tier-3";
-            if (percentage >= 40) return "rating-tier-2";
-            return "rating-tier-1";
         };
-
-        const getMoneyClass = (v) => {
-            let a = 0;
-            if (typeof v === "string") {
-                const c = v.replace(/[^0-9.MKmk]/g, "");
-                if (c.toLowerCase().includes("m")) a = parseFloat(c) * 1000000;
-                else if (c.toLowerCase().includes("k"))
-                    a = parseFloat(c) * 1000;
-                else a = parseFloat(c);
-                if (isNaN(a)) a = 0;
-            } else if (typeof v === "number") a = v;
-            if (a >= 10000000) return "money-very-high";
-            if (a >= 1000000) return "money-high";
-            if (a >= 100000) return "money-medium-high";
-            if (a >= 10000) return "money-medium";
-            if (a > 0) return "money-low";
-            return "money-na";
-        };
-
-        const onFlagError = (event) => {
-            if (event.target) event.target.style.display = "none";
-            const iconElement = event.target.nextElementSibling;
-            if (iconElement && iconElement.tagName === "I") {
-                iconElement.style.display = "inline-flex";
-            }
-        };
-
-        const onRequest = (rp) => {
-            const { page, rowsPerPage, sortBy, descending } = rp.pagination;
-            pagination.page = page;
-            pagination.rowsPerPage = rowsPerPage;
-            if (sortBy) {
-                const nF = sortBy;
-                const nD = descending ? "desc" : "asc";
-                if (sortField.value !== nF || sortDirection.value !== nD) {
-                    sortField.value = nF;
-                    sortDirection.value = nD;
-                    emit("update:sort", {
-                        key: getSortFieldKey(sortField.value),
-                        direction: sortDirection.value,
-                        isFifaStat: currentColumns.value.find(
-                            (c) => c.name === nF,
-                        )?.isFifaStat,
-                        isOverallStat: currentColumns.value.find(
-                            (c) => c.name === nF,
-                        )?.isOverallStat,
-                        displayField: sortField.value,
-                    });
-                }
-            }
-        };
-        const onPageChange = (p) => {
-            pagination.page = p;
-        };
-        const onRowsPerPageChange = (rpp) => {
-            pagination.rowsPerPage = rpp;
-            pagination.page = 1;
-        };
-
-        const customSort = (r, sB, d) => {
-            const fK = getSortFieldKey(sB);
-            const dir = d ? "desc" : "asc";
-            return [...r].sort((a, b) => {
-                let vA = a[fK];
-                let vB = b[fK];
-                if (
-                    (vA === null || vA === undefined) &&
-                    (vB === null || vB === undefined)
-                )
-                    return 0;
-                if (vA === null || vA === undefined)
-                    return dir === "asc" ? 1 : -1;
-                if (vB === null || vB === undefined)
-                    return dir === "asc" ? -1 : 1;
-                if (typeof vA === "number" && typeof vB === "number")
-                    return dir === "asc" ? vA - vB : vB - vA;
-                if (typeof vA === "string" && typeof vB === "string") {
-                    vA = vA.toLowerCase();
-                    vB = vB.toLowerCase();
-                    if (vA < vB) return dir === "asc" ? -1 : 1;
-                    if (vA > vB) return dir === "asc" ? 1 : -1;
-                    return 0;
-                }
-                return 0;
-            });
-        };
-        const sortTable = (f) => {
-            const aSK = getSortFieldKey(f);
-            if (sortField.value === f)
+        const sortTable = (fieldName) => {
+            const actualSortKey = getSortFieldKey(fieldName);
+            if (sortField.value === fieldName) {
                 sortDirection.value =
                     sortDirection.value === "asc" ? "desc" : "asc";
-            else {
-                sortField.value = f;
+            } else {
+                sortField.value = fieldName;
                 sortDirection.value = "asc";
             }
-            pagination.sortBy = f;
+            pagination.sortBy = fieldName;
             pagination.descending = sortDirection.value === "desc";
+
             emit("update:sort", {
-                key: aSK,
+                key: actualSortKey,
                 direction: sortDirection.value,
-                isFifaStat: currentColumns.value.find((c) => c.name === f)
-                    ?.isFifaStat,
-                isOverallStat: currentColumns.value.find((c) => c.name === f)
-                    ?.isOverallStat,
-                displayField: f,
+                isFifaStat: currentColumns.value.find(
+                    (c) => c.name === fieldName,
+                )?.isFifaStat,
+                isOverallStat: currentColumns.value.find(
+                    (c) => c.name === fieldName,
+                )?.isOverallStat,
+                displayField: fieldName,
             });
         };
-        const onRowClick = (p) => {
-            emit("player-selected", p);
+        const onRowClick = (player) => {
+            emit("player-selected", player);
         };
 
         return {
-            qInstance: $q, // Aliased for template to avoid warning
+            qInstance: $q,
             sortField,
             sortDirection,
             pagination,
@@ -723,6 +758,9 @@ export default {
 }
 
 .player-q-table {
+    width: 100%;
+    table-layout: auto;
+
     th .sort-icon {
         vertical-align: middle;
         margin-left: 4px;
@@ -765,17 +803,17 @@ export default {
 
     th {
         font-weight: 600;
-        font-size: 1.05rem;
-        padding: 12px 14px;
+        font-size: 0.8rem;
+        padding: 8px 10px;
         border-right: 0;
     }
     td {
         vertical-align: middle;
-        padding: 10px 14px;
+        padding: 6px 10px;
         border-right: 0;
     }
     .table-cell-enhanced {
-        font-size: 1.1rem;
+        font-size: 0.85rem;
     }
 }
 
@@ -795,6 +833,7 @@ export default {
     font-weight: 500;
     padding: 1px 6px;
     border-radius: 3px;
+    font-size: 0.8rem;
 }
 .money-very-high {
     color: #1b5e20;
@@ -856,5 +895,11 @@ export default {
     .body--dark & {
         color: $grey-3;
     }
+}
+
+.player-q-table td,
+.player-q-table th {
+    white-space: normal;
+    word-break: break-word;
 }
 </style>
