@@ -3,13 +3,17 @@
         <q-card
             class="player-detail-dialog-card"
             :class="
-                $q.dark.isActive ? 'bg-dark text-white' : 'bg-white text-dark'
+                qInstance.dark.isActive
+                    ? 'bg-dark text-white'
+                    : 'bg-white text-dark'
             "
             style="max-width: 1000px; width: 95vw; max-height: 90vh"
         >
             <q-bar
                 :class="
-                    $q.dark.isActive ? 'bg-grey-10' : 'bg-primary text-white'
+                    qInstance.dark.isActive
+                        ? 'bg-grey-10'
+                        : 'bg-primary text-white'
                 "
             >
                 <q-icon name="person" class="q-mr-sm" />
@@ -20,7 +24,7 @@
                 <q-btn dense flat icon="close" @click="$emit('close')">
                     <q-tooltip
                         :class="
-                            $q.dark.isActive
+                            qInstance.dark.isActive
                                 ? 'bg-grey-7'
                                 : 'bg-white text-primary'
                         "
@@ -36,7 +40,9 @@
                             flat
                             bordered
                             :class="
-                                $q.dark.isActive ? 'bg-grey-9' : 'bg-grey-1'
+                                qInstance.dark.isActive
+                                    ? 'bg-grey-9'
+                                    : 'bg-grey-1'
                             "
                         >
                             <q-card-section class="q-pa-xs">
@@ -56,7 +62,7 @@
                                     <q-icon
                                         v-else
                                         :color="
-                                            $q.dark.isActive
+                                            qInstance.dark.isActive
                                                 ? 'grey-5'
                                                 : 'grey-7'
                                         "
@@ -68,7 +74,7 @@
                                     <q-badge
                                         outline
                                         :color="
-                                            $q.dark.isActive
+                                            qInstance.dark.isActive
                                                 ? 'blue-4'
                                                 : 'primary'
                                         "
@@ -93,7 +99,7 @@
                                         >
                                             <q-icon
                                                 :color="
-                                                    $q.dark.isActive
+                                                    qInstance.dark.isActive
                                                         ? 'blue-3'
                                                         : 'primary'
                                                 "
@@ -123,7 +129,7 @@
                                         >
                                             <q-icon
                                                 :color="
-                                                    $q.dark.isActive
+                                                    qInstance.dark.isActive
                                                         ? 'blue-3'
                                                         : 'primary'
                                                 "
@@ -146,10 +152,11 @@
                                                 "
                                             >
                                                 {{
-                                                    player.position ||
                                                     player.parsedPositions?.join(
+                                                        // Prefer parsedPositions for display
                                                         ", ",
                                                     ) ||
+                                                    player.position || // Fallback to raw position string
                                                     "-"
                                                 }}
                                             </q-item-label>
@@ -168,7 +175,7 @@
                                         >
                                             <q-icon
                                                 :color="
-                                                    $q.dark.isActive
+                                                    qInstance.dark.isActive
                                                         ? 'blue-3'
                                                         : 'primary'
                                                 "
@@ -198,7 +205,7 @@
                                         >
                                             <q-icon
                                                 :color="
-                                                    $q.dark.isActive
+                                                    qInstance.dark.isActive
                                                         ? 'blue-3'
                                                         : 'primary'
                                                 "
@@ -228,7 +235,7 @@
                                         >
                                             <q-icon
                                                 :color="
-                                                    $q.dark.isActive
+                                                    qInstance.dark.isActive
                                                         ? 'blue-3'
                                                         : 'primary'
                                                 "
@@ -247,7 +254,7 @@
                                         <q-item-section side>
                                             <q-icon
                                                 :color="
-                                                    $q.dark.isActive
+                                                    qInstance.dark.isActive
                                                         ? 'blue-3'
                                                         : 'primary'
                                                 "
@@ -278,7 +285,9 @@
                             flat
                             bordered
                             :class="
-                                $q.dark.isActive ? 'bg-grey-9' : 'bg-grey-1'
+                                qInstance.dark.isActive
+                                    ? 'bg-grey-9'
+                                    : 'bg-grey-1'
                             "
                             class="full-height"
                         >
@@ -295,7 +304,11 @@
                                         )
                                     "
                                 >
-                                    {{ player.Overall || "N/A" }}
+                                    {{
+                                        player.Overall > 0
+                                            ? player.Overall
+                                            : "N/A"
+                                    }}
                                 </div>
                                 <div
                                     class="text-subtitle1 q-my-xs fifa-ratings-title"
@@ -312,7 +325,7 @@
                                             flat
                                             bordered
                                             :class="
-                                                $q.dark.isActive
+                                                qInstance.dark.isActive
                                                     ? 'bg-grey-8'
                                                     : 'bg-white'
                                             "
@@ -358,14 +371,18 @@
                             flat
                             bordered
                             :class="[
-                                $q.dark.isActive ? 'bg-grey-9' : 'bg-grey-1',
+                                qInstance.dark.isActive
+                                    ? 'bg-grey-9'
+                                    : 'bg-grey-1',
                                 'full-height-card',
                                 'rounded-borders',
                             ]"
                         >
                             <q-card-section
                                 :class="
-                                    $q.dark.isActive ? 'bg-grey-8' : 'bg-grey-3'
+                                    qInstance.dark.isActive
+                                        ? 'bg-grey-8'
+                                        : 'bg-grey-3'
                                 "
                                 class="q-pa-sm attribute-category-header"
                             >
@@ -449,14 +466,18 @@
                             flat
                             bordered
                             :class="[
-                                $q.dark.isActive ? 'bg-grey-9' : 'bg-grey-1',
+                                qInstance.dark.isActive
+                                    ? 'bg-grey-9'
+                                    : 'bg-grey-1',
                                 'full-height-card',
                                 'rounded-borders',
                             ]"
                         >
                             <q-card-section
                                 :class="
-                                    $q.dark.isActive ? 'bg-grey-8' : 'bg-grey-3'
+                                    qInstance.dark.isActive
+                                        ? 'bg-grey-8'
+                                        : 'bg-grey-3'
                                 "
                                 class="q-pa-sm attribute-category-header"
                             >
@@ -522,14 +543,18 @@
                             flat
                             bordered
                             :class="[
-                                $q.dark.isActive ? 'bg-grey-9' : 'bg-grey-1',
+                                qInstance.dark.isActive
+                                    ? 'bg-grey-9'
+                                    : 'bg-grey-1',
                                 'rounded-borders',
                                 'physical-attributes-card',
                             ]"
                         >
                             <q-card-section
                                 :class="
-                                    $q.dark.isActive ? 'bg-grey-8' : 'bg-grey-3'
+                                    qInstance.dark.isActive
+                                        ? 'bg-grey-8'
+                                        : 'bg-grey-3'
                                 "
                                 class="q-pa-sm attribute-category-header"
                             >
@@ -593,7 +618,9 @@
                             flat
                             bordered
                             :class="[
-                                $q.dark.isActive ? 'bg-grey-9' : 'bg-grey-1',
+                                qInstance.dark.isActive
+                                    ? 'bg-grey-9'
+                                    : 'bg-grey-1',
                                 'rounded-borders',
                                 'role-ratings-card',
                             ]"
@@ -604,7 +631,9 @@
                         >
                             <q-card-section
                                 :class="
-                                    $q.dark.isActive ? 'bg-grey-8' : 'bg-grey-3'
+                                    qInstance.dark.isActive
+                                        ? 'bg-grey-8'
+                                        : 'bg-grey-3'
                                 "
                                 class="q-pa-sm attribute-category-header"
                             >
@@ -629,7 +658,7 @@
                                     }"
                                     :style="
                                         roleOverall.score === player.Overall
-                                            ? $q.dark.isActive
+                                            ? qInstance.dark.isActive
                                                 ? 'background-color: #2a5270 !important;'
                                                 : 'background-color: #e3f2fd !important;'
                                             : ''
@@ -664,85 +693,137 @@
                     </div>
                 </div>
 
-                <div
-                    class="text-h5 q-mt-lg q-mb-sm text-center attributes-section-title"
-                    v-if="performanceStatsToDisplay.length > 0"
-                >
-                    Performance Statistics
-                </div>
-                <q-card
-                    flat
-                    bordered
-                    :class="[
-                        $q.dark.isActive ? 'bg-grey-9' : 'bg-grey-1',
-                        'rounded-borders',
-                    ]"
-                    v-if="performanceStatsToDisplay.length > 0"
-                >
-                    <q-card-section
-                        :class="$q.dark.isActive ? 'bg-grey-8' : 'bg-grey-3'"
-                        class="q-pa-sm attribute-category-header"
-                    >
-                        <div
-                            class="text-subtitle1 text-weight-medium text-center"
-                        >
-                            Per 90 & Other Metrics (Percentiles vs. Uploaded
-                            Dataset)
+                <div class="q-mt-lg">
+                    <div class="row items-center q-mb-sm">
+                        <div class="text-h5 attributes-section-title col">
+                            Performance Statistics
                         </div>
-                    </q-card-section>
-                    <q-list separator dense class="attribute-list">
-                        <q-item
-                            v-for="stat in performanceStatsToDisplay"
-                            :key="stat.key"
-                            class="attribute-list-item performance-stat-item"
+                        <q-select
+                            v-if="performanceComparisonOptions.length > 0"
+                            :disable="performanceComparisonOptions.length <= 1"
+                            v-model="selectedComparisonGroup"
+                            :options="performanceComparisonOptions"
+                            label="Compare Against"
+                            dense
+                            outlined
+                            emit-value
+                            map-options
+                            class="col-auto q-ml-md"
+                            style="min-width: 200px"
+                            :label-color="
+                                qInstance.dark.isActive ? 'grey-4' : ''
+                            "
+                            :popup-content-class="
+                                qInstance.dark.isActive
+                                    ? 'bg-grey-8 text-white'
+                                    : 'bg-white text-dark'
+                            "
+                        />
+                        <q-tooltip
+                            v-if="
+                                performanceComparisonOptions.length <= 1 &&
+                                performanceComparisonOptions.length > 0
+                            "
                         >
-                            <q-item-section class="stat-name-section">
-                                <q-item-label
-                                    lines="1"
-                                    class="attribute-name-label"
-                                    :title="stat.name"
-                                >
-                                    {{ stat.name }}
-                                </q-item-label>
-                            </q-item-section>
-                            <q-item-section class="stat-bar-section">
-                                <div class="stat-bar-container">
-                                    <div class="stat-bar-track">
-                                        <div
-                                            class="stat-bar-fill"
-                                            :style="
-                                                getBarFillStyle(stat.percentile)
+                            Only global comparison available. More options
+                            appear if player belongs to specific position groups
+                            with percentile data.
+                        </q-tooltip>
+                    </div>
+                    <q-card
+                        flat
+                        bordered
+                        :class="[
+                            qInstance.dark.isActive ? 'bg-grey-9' : 'bg-grey-1',
+                            'rounded-borders',
+                        ]"
+                        v-if="currentPerformanceStatsToDisplay.length > 0"
+                    >
+                        <q-card-section
+                            :class="
+                                qInstance.dark.isActive
+                                    ? 'bg-grey-8'
+                                    : 'bg-grey-3'
+                            "
+                            class="q-pa-sm attribute-category-header"
+                        >
+                            <div
+                                class="text-subtitle1 text-weight-medium text-center"
+                            >
+                                Per 90 & Other Metrics (Percentiles vs.
+                                {{ selectedComparisonGroupLabel }})
+                            </div>
+                        </q-card-section>
+                        <q-list separator dense class="attribute-list">
+                            <q-item
+                                v-for="stat in currentPerformanceStatsToDisplay"
+                                :key="stat.key"
+                                class="attribute-list-item performance-stat-item"
+                            >
+                                <q-item-section class="stat-name-section">
+                                    <q-item-label
+                                        lines="1"
+                                        class="attribute-name-label"
+                                        :title="stat.name"
+                                    >
+                                        {{ stat.name }}
+                                    </q-item-label>
+                                </q-item-section>
+                                <q-item-section class="stat-bar-section">
+                                    <div class="stat-bar-container">
+                                        <div class="stat-bar-track">
+                                            <div
+                                                class="stat-bar-fill"
+                                                :style="
+                                                    getBarFillStyle(
+                                                        stat.percentile,
+                                                    )
+                                                "
+                                            ></div>
+                                        </div>
+                                        <span
+                                            v-if="
+                                                stat.percentile !== null &&
+                                                stat.percentile >= 0
                                             "
-                                        ></div>
+                                            class="stat-percentile-text"
+                                        >
+                                            {{ Math.round(stat.percentile) }}
+                                        </span>
+                                        <span
+                                            v-else
+                                            class="stat-percentile-text text-caption text-grey-6"
+                                            >N/A</span
+                                        >
                                     </div>
+                                </q-item-section>
+                                <q-item-section side class="stat-value-section">
                                     <span
-                                        v-if="
-                                            stat.percentile !== null &&
-                                            stat.percentile >= 0
-                                        "
-                                        class="stat-percentile-text"
+                                        class="attribute-value performance-stat-actual-value"
                                     >
-                                        {{ Math.round(stat.percentile) }}
+                                        {{
+                                            stat.value !== "-"
+                                                ? stat.value
+                                                : "N/A"
+                                        }}
                                     </span>
-                                    <span
-                                        v-else
-                                        class="stat-percentile-text text-caption text-grey-6"
-                                        >N/A</span
-                                    >
-                                </div>
-                            </q-item-section>
-                            <q-item-section side class="stat-value-section">
-                                <span
-                                    class="attribute-value performance-stat-actual-value"
-                                >
-                                    {{
-                                        stat.value !== "-" ? stat.value : "N/A"
-                                    }}
-                                </span>
-                            </q-item-section>
-                        </q-item>
-                    </q-list>
-                </q-card>
+                                </q-item-section>
+                            </q-item>
+                        </q-list>
+                    </q-card>
+                    <q-banner
+                        v-else
+                        class="q-mt-md text-center"
+                        :class="
+                            qInstance.dark.isActive
+                                ? 'bg-grey-8 text-grey-5'
+                                : 'bg-grey-2 text-grey-7'
+                        "
+                    >
+                        No performance data available for the selected
+                        comparison group or this player.
+                    </q-banner>
+                </div>
             </q-card-section>
 
             <q-card-section v-else class="text-center q-pa-xl">
@@ -752,12 +833,12 @@
 
             <q-card-actions
                 align="right"
-                :class="$q.dark.isActive ? 'bg-grey-10' : 'bg-grey-2'"
+                :class="qInstance.dark.isActive ? 'bg-grey-10' : 'bg-grey-2'"
                 class="q-pa-md"
             >
                 <q-btn
                     label="Close"
-                    :color="$q.dark.isActive ? 'blue-4' : 'primary'"
+                    :color="qInstance.dark.isActive ? 'blue-4' : 'primary'"
                     flat
                     @click="$emit('close')"
                 />
@@ -767,7 +848,7 @@
 </template>
 
 <script>
-import { defineComponent, computed } from "vue";
+import { defineComponent, computed, ref, watch, onMounted } from "vue"; // Added onMounted
 import { useQuasar } from "quasar";
 import { formatCurrency } from "../utils/currencyUtils";
 
@@ -816,10 +897,10 @@ const attributeFullNameMap = {
     Han: "Handling",
     Kic: "Kicking",
     "1v1": "One on Ones",
+    Pun: "Punching (Tendency)",
     Ref: "Reflexes",
     TRO: "Rushing Out (Tendency)",
     Thr: "Throwing",
-    Pun: "Punching (Tendency)",
 };
 
 // Ordered attribute categories
@@ -881,7 +962,7 @@ const goalkeepingAttrsOrdered = [
     "Thr",
 ];
 
-// Performance statistics mapping (used to get full names)
+// Performance statistics mapping
 const performanceStatMap = {
     "Asts/90": "Assists per 90",
     "Av Rat": "Average Rating",
@@ -914,13 +995,69 @@ export default defineComponent({
     name: "PlayerDetailDialog",
     props: {
         player: { type: Object, default: () => null },
-        // allPlayersData prop is removed as percentiles come from backend
         show: { type: Boolean, default: false },
         currencySymbol: { type: String, default: "$" },
     },
     emits: ["close"],
     setup(props) {
-        const $q = useQuasar();
+        const qInstance = useQuasar();
+        const selectedComparisonGroup = ref("Global");
+
+        onMounted(() => {
+            if (props.player) {
+                // Log for debugging dropdown issue
+                console.log(
+                    "PlayerDetailDialog Mounted. Player data:",
+                    JSON.parse(JSON.stringify(props.player)),
+                );
+                console.log(
+                    "Player PositionGroups:",
+                    props.player.positionGroups,
+                );
+                console.log(
+                    "Player PerformancePercentiles Keys:",
+                    Object.keys(props.player.performancePercentiles || {}),
+                );
+            }
+        });
+
+        watch(
+            () => props.player,
+            (newPlayer) => {
+                if (newPlayer) {
+                    // Log for debugging dropdown issue
+                    console.log(
+                        "PlayerDetailDialog Player Prop Changed. Player data:",
+                        JSON.parse(JSON.stringify(newPlayer)),
+                    );
+                    console.log(
+                        "Player PositionGroups:",
+                        newPlayer.positionGroups,
+                    );
+                    console.log(
+                        "Player PerformancePercentiles Keys:",
+                        Object.keys(newPlayer.performancePercentiles || {}),
+                    );
+
+                    const availableGroups = newPlayer.performancePercentiles
+                        ? Object.keys(newPlayer.performancePercentiles)
+                        : [];
+                    if (
+                        !availableGroups.includes(selectedComparisonGroup.value)
+                    ) {
+                        selectedComparisonGroup.value = "Global"; // Default to Global if current selection is not available
+                    } else if (
+                        availableGroups.length > 0 &&
+                        selectedComparisonGroup.value === null
+                    ) {
+                        selectedComparisonGroup.value = "Global"; // Default if null but options exist
+                    }
+                } else {
+                    selectedComparisonGroup.value = "Global"; // Reset if no player
+                }
+            },
+            { immediate: true, deep: true },
+        );
 
         const isGoalkeeper = computed(() => {
             if (!props.player) return false;
@@ -975,8 +1112,50 @@ export default defineComponent({
             );
         });
 
-        // Updated to use pre-calculated percentiles from the player object
-        const performanceStatsToDisplay = computed(() => {
+        const performanceComparisonOptions = computed(() => {
+            const options = [];
+            if (props.player && props.player.performancePercentiles) {
+                if (props.player.performancePercentiles["Global"]) {
+                    options.push({ label: "Overall Dataset", value: "Global" });
+                }
+                if (props.player.positionGroups) {
+                    props.player.positionGroups.forEach((group) => {
+                        if (
+                            props.player.performancePercentiles[group] &&
+                            group !== "Global"
+                        ) {
+                            const existingOption = options.find(
+                                (opt) => opt.value === group,
+                            );
+                            if (!existingOption) {
+                                options.push({
+                                    label: `vs. ${group}`,
+                                    value: group,
+                                });
+                            }
+                        }
+                    });
+                }
+            }
+            // If options is still empty (e.g. no performancePercentiles at all), add Global as a fallback to ensure q-select has at least one option if it's meant to be shown.
+            if (options.length === 0 && props.player) {
+                options.push({ label: "Overall Dataset", value: "Global" });
+            }
+            console.log(
+                "DEBUG: performanceComparisonOptions generated:",
+                options,
+            );
+            return options;
+        });
+
+        const selectedComparisonGroupLabel = computed(() => {
+            const selectedOpt = performanceComparisonOptions.value.find(
+                (opt) => opt.value === selectedComparisonGroup.value,
+            );
+            return selectedOpt ? selectedOpt.label : "Selected Group";
+        });
+
+        const currentPerformanceStatsToDisplay = computed(() => {
             if (
                 !props.player ||
                 !props.player.attributes ||
@@ -984,14 +1163,23 @@ export default defineComponent({
             ) {
                 return [];
             }
-            return Object.keys(props.player.performancePercentiles)
+            const groupKey = selectedComparisonGroup.value;
+            const percentilesForGroup =
+                props.player.performancePercentiles[groupKey];
+
+            if (!percentilesForGroup) {
+                // log.warn(`No percentiles found for group: ${groupKey}`);
+                return [];
+            }
+
+            return Object.keys(percentilesForGroup)
                 .filter(
                     (key) =>
-                        performanceStatMap[key] && // Ensure it's a known performance stat
+                        performanceStatMap[key] &&
                         Object.prototype.hasOwnProperty.call(
                             props.player.attributes,
                             key,
-                        ) && // Ensure the original value exists
+                        ) &&
                         props.player.attributes[key] !== "-" &&
                         props.player.attributes[key] !== "",
                 )
@@ -1000,9 +1188,9 @@ export default defineComponent({
                     name: performanceStatMap[key],
                     value: props.player.attributes[key],
                     percentile:
-                        props.player.performancePercentiles[key] >= 0
-                            ? props.player.performancePercentiles[key]
-                            : null, // Use null for N/A percentiles
+                        percentilesForGroup[key] >= 0
+                            ? percentilesForGroup[key]
+                            : null,
                 }))
                 .sort((a, b) => a.name.localeCompare(b.name));
         });
@@ -1025,11 +1213,6 @@ export default defineComponent({
             return "rating-tier-1";
         };
 
-        const getPerformanceStatClass = (statKey, statValue) => {
-            // This can be simplified or removed if bar color is sufficient
-            return $q.dark.isActive ? "text-grey-4" : "text-grey-9";
-        };
-
         const getBarFillStyle = (percentile) => {
             if (
                 percentile === null ||
@@ -1045,15 +1228,19 @@ export default defineComponent({
             }
             const p = Math.max(0, Math.min(100, percentile));
             let backgroundColor;
-
-            if (p <= 10) backgroundColor = "#d32f2f";
-            else if (p <= 30) backgroundColor = "#ef6c00";
-            else if (p <= 45) backgroundColor = "#fdd835";
-            else if (p <= 55) backgroundColor = "#9e9e9e";
-            else if (p <= 70) backgroundColor = "#aed581";
-            else if (p <= 90) backgroundColor = "#66bb6a";
-            else backgroundColor = "#388e3c";
-
+            if (p <= 10)
+                backgroundColor = "#d32f2f"; // Very Poor
+            else if (p <= 30)
+                backgroundColor = "#ef6c00"; // Poor
+            else if (p <= 45)
+                backgroundColor = "#fdd835"; // Below Average
+            else if (p <= 55)
+                backgroundColor = "#9e9e9e"; // Average (grey)
+            else if (p <= 70)
+                backgroundColor = "#aed581"; // Above Average
+            else if (p <= 90)
+                backgroundColor = "#66bb6a"; // Good
+            else backgroundColor = "#388e3c"; // Excellent/Elite
             return {
                 width: `${p}%`,
                 backgroundColor: backgroundColor,
@@ -1112,20 +1299,22 @@ export default defineComponent({
         });
 
         return {
-            $q,
+            qInstance,
             attributeCategories,
             attributeFullNameMap,
             getUnifiedRatingClass,
-            getPerformanceStatClass,
             getBarFillStyle,
             fifaStatsToDisplay,
-            performanceStatsToDisplay,
+            currentPerformanceStatsToDisplay,
             onFlagError,
             sortedRoleSpecificOveralls,
             isGoalkeeper,
             formattedTransferValue,
             formattedWage,
             currencyIcon,
+            selectedComparisonGroup,
+            performanceComparisonOptions,
+            selectedComparisonGroupLabel,
         };
     },
 });
@@ -1216,7 +1405,6 @@ export default defineComponent({
     display: flex;
     flex-direction: column;
 }
-
 .full-height-card {
     flex-grow: 1;
     display: flex;
@@ -1234,7 +1422,6 @@ export default defineComponent({
     flex-shrink: 0;
     overflow-y: visible;
 }
-
 .role-ratings-card .role-specific-ratings-list {
     overflow-y: auto;
     flex-shrink: 1;
@@ -1253,6 +1440,10 @@ export default defineComponent({
     border-left: 4px solid $positive;
     .body--dark & {
         border-left: 4px solid lighten($positive, 15%);
+        background-color: rgba(lighten($positive, 15%), 0.1) !important;
+    }
+    .body--light & {
+        background-color: rgba($positive, 0.1) !important;
     }
 }
 .best-role-highlight .q-item__label {
@@ -1317,7 +1508,6 @@ export default defineComponent({
     align-items: center;
     width: 100%;
 }
-
 .stat-bar-track {
     flex-grow: 1;
     height: 12px;
@@ -1329,12 +1519,10 @@ export default defineComponent({
         background-color: $grey-7;
     }
 }
-
 .stat-bar-fill {
     height: 100%;
     border-radius: 3px;
 }
-
 .stat-percentile-text {
     font-size: 0.7rem;
     min-width: 25px;
@@ -1405,7 +1593,6 @@ export default defineComponent({
         font-size: 0.6rem;
         min-width: 20px;
     }
-
     .attribute-list.no-scroll {
         overflow-y: auto;
         max-height: 30vh;
@@ -1413,14 +1600,10 @@ export default defineComponent({
     .role-ratings-card .role-specific-ratings-list {
         max-height: 12vh;
     }
-
     .performance-stat-item {
         .stat-name-section {
             flex-basis: 35%;
             font-size: 0.65rem;
-        }
-        .stat-bar-section {
-            /* Adjust if needed */
         }
         .stat-value-section {
             flex-basis: 20%;
