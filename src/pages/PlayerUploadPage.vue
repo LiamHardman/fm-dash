@@ -1,3 +1,4 @@
+// src/pages/PlayerUploadPage.vue
 <template>
     <q-page padding>
         <div class="q-pa-md">
@@ -34,7 +35,10 @@
                         <li>
                             Select an HTML file exported from Football Manager.
                         </li>
-                        <li>Click "Upload and Parse".</li>
+                        <li>
+                            Click "Upload and Parse". The data will be stored
+                            temporarily on the server.
+                        </li>
                         <li>
                             The table will display players with pre-calculated
                             FIFA-style stats (PHY, SHO, etc.), parsed positions,
@@ -54,6 +58,10 @@
                             Click on any player row for a detailed view, which
                             will show all calculated role-specific overalls and
                             specific goalkeeping attributes if applicable.
+                        </li>
+                        <li>
+                            Use the "View Team Page" button to navigate to the
+                            team analysis section using the uploaded data.
                         </li>
                     </ol>
                 </q-card-section>
@@ -547,7 +555,15 @@
                     </div>
                 </div>
 
-                <div class="row justify-end q-mb-md">
+                <div class="row justify-between items-center q-mb-md">
+                    <q-btn
+                        color="info"
+                        icon="groups"
+                        label="View Team Page"
+                        @click="goToTeamView"
+                        :disable="allPlayers.length === 0 || !currentDatasetId"
+                        class="q-px-lg"
+                    />
                     <q-btn
                         color="secondary"
                         icon="find_replace"
@@ -599,8 +615,8 @@
 </template>
 
 <script>
-// ... (script remains the same as your provided version)
 import { ref, computed, reactive, onMounted, watch } from "vue";
+import { useRouter } from "vue-router";
 import PlayerDataTable from "../components/PlayerDataTable.vue";
 import PlayerDetailDialog from "../components/PlayerDetailDialog.vue";
 import UpgradeFinderDialog from "../components/UpgradeFinderDialog.vue";
@@ -645,6 +661,7 @@ export default {
     name: "PlayerUploadPage",
     components: { PlayerDataTable, PlayerDetailDialog, UpgradeFinderDialog },
     setup() {
+        const router = useRouter();
         const playerFile = ref(null);
         const loading = ref(false);
         const error = ref("");
@@ -653,6 +670,7 @@ export default {
         const selectedPlayer = ref(null);
         const showPlayerDetailDialog = ref(false);
         const showUpgradeFinder = ref(false);
+        const currentDatasetId = ref(null); // To store the ID from the backend
 
         const attributeWeightsLoadedForFeedback = ref(false);
         const attributeWeightsErrorForFeedback = ref("");
@@ -791,6 +809,13 @@ export default {
                 roleSpecificOverallWeightsLoadedForFeedback,
                 roleSpecificOverallWeightsErrorForFeedback,
             );
+            // Attempt to load datasetID from sessionStorage if user navigates back
+            const storedDatasetId = sessionStorage.getItem("currentDatasetId");
+            if (storedDatasetId) {
+                currentDatasetId.value = storedDatasetId;
+                // Optionally, you could try to re-fetch players if datasetID exists
+                // fetchPlayersByDatasetId(storedDatasetId);
+            }
         });
 
         const processPlayersFromAPI = (playersData) => {
@@ -798,6 +823,28 @@ export default {
                 ...p,
                 age: parseInt(p.age, 10) || 0,
             }));
+        };
+
+        const fetchPlayersByDatasetId = async (datasetId) => {
+            if (!datasetId) return;
+            loading.value = true;
+            error.value = "";
+            try {
+                // This assumes playerService will be updated to have a method
+                // for fetching by ID, or you'll implement the fetch call here.
+                // For now, let's assume the upload response might also contain players.
+                // If not, this part needs a dedicated fetch.
+                const playersDataFromApi =
+                    await playerService.getPlayersByDatasetId(datasetId); // This method needs to be created in playerService
+                allPlayers.value = processPlayersFromAPI(playersDataFromApi);
+            } catch (e) {
+                error.value = `Failed to fetch player data for dataset ${datasetId}: ${e.message || "Unknown error"}`;
+                allPlayers.value = [];
+                currentDatasetId.value = null; // Clear if fetch fails
+                sessionStorage.removeItem("currentDatasetId");
+            } finally {
+                loading.value = false;
+            }
         };
 
         const positionFilterOptions = computed(() => {
@@ -1109,13 +1156,27 @@ export default {
             try {
                 const formData = new FormData();
                 formData.append("playerFile", playerFile.value);
-                const playersDataFromApi =
-                    await playerService.uploadPlayerFile(formData);
-                allPlayers.value = processPlayersFromAPI(playersDataFromApi);
-                sortState.key = null;
+                // The backend now returns { datasetId: "...", message: "..." }
+                // It might optionally also return players: []
+                const response = await playerService.uploadPlayerFile(formData);
+                currentDatasetId.value = response.datasetId;
+
+                // Store datasetId in sessionStorage for persistence across refreshes/navigation
+                sessionStorage.setItem(
+                    "currentDatasetId",
+                    currentDatasetId.value,
+                );
+
+                // Fetch the players using the new datasetId to populate the table
+                // This ensures the frontend data matches what's stored in the backend's memory for this ID
+                await fetchPlayersByDatasetId(currentDatasetId.value);
+
+                sortState.key = null; // Reset sort after new upload
             } catch (e) {
-                error.value = `Failed to parse player data: ${e.message || "Unknown error"}`;
+                error.value = `Failed to process file: ${e.message || "Unknown error"}`;
                 allPlayers.value = [];
+                currentDatasetId.value = null;
+                sessionStorage.removeItem("currentDatasetId");
             } finally {
                 loading.value = false;
             }
@@ -1190,6 +1251,20 @@ export default {
             { deep: true, immediate: true },
         );
 
+        const goToTeamView = () => {
+            if (currentDatasetId.value) {
+                // Pass datasetId to the team view page
+                // sessionStorage.setItem('currentDatasetId', currentDatasetId.value); // Already set on upload
+                router.push({
+                    name: "team-view",
+                    query: { datasetId: currentDatasetId.value },
+                });
+            } else {
+                error.value =
+                    "No data uploaded yet. Please upload a file first.";
+            }
+        };
+
         return {
             playerFile,
             loading,
@@ -1228,6 +1303,8 @@ export default {
             transferValueTextInput,
             debouncedUpdateNumericValueFromTextInput,
             isGoalkeeperView,
+            goToTeamView,
+            currentDatasetId, // Expose for disabling button
         };
     },
 };
@@ -1246,11 +1323,9 @@ export default {
 }
 
 .instructions-card {
-    // Dynamic classes applied in template for dark/light
-    // :class="$q.dark.isActive ? 'bg-grey-9 text-grey-3' : 'bg-blue-grey-1 text-blue-grey-10'"
     border-radius: $generic-border-radius;
     ol {
-        padding-left: 20px; // Standard padding for ordered lists
+        padding-left: 20px;
         li {
             margin-bottom: 0.5em;
         }
@@ -1262,21 +1337,14 @@ export default {
 .summary-card,
 .no-data-card {
     border-radius: $generic-border-radius;
-    // Dynamic classes for background applied in template
 }
 
 .summary-cards .q-card {
     height: 100%;
 }
 
-.filter-card .q-select,
-.filter-card .q-input {
-    // Ensure filter inputs look good in both modes
-}
-
-// Ensure q-file also adapts
 :deep(.q-field__native),
 :deep(.q-field__label) {
-    color: currentColor; // Inherit color for better dark mode adaptability
+    color: currentColor;
 }
 </style>
