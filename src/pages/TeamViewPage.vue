@@ -4,7 +4,9 @@
         <div class="q-pa-md">
             <h1
                 class="text-h4 text-center q-mb-lg page-title"
-                :class="$q.dark.isActive ? 'text-grey-2' : 'text-grey-9'"
+                :class="
+                    quasarInstance.dark.isActive ? 'text-grey-2' : 'text-grey-9'
+                "
             >
                 Team Analysis
             </h1>
@@ -22,7 +24,7 @@
                     flat
                     color="white"
                     label="Go to Upload Page"
-                    @click="$router.push('/')"
+                    @click="router.push('/')"
                     class="q-ml-md"
                 />
             </q-banner>
@@ -30,7 +32,7 @@
             <q-card
                 v-if="!pageLoadingError"
                 class="q-mb-md filter-card"
-                :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-white'"
+                :class="quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'"
             >
                 <q-card-section>
                     <div class="text-subtitle1 q-mb-sm">Select Team</div>
@@ -46,9 +48,11 @@
                         input-debounce="300"
                         @filter="filterTeamOptions"
                         @update:model-value="loadTeamPlayers"
-                        :label-color="$q.dark.isActive ? 'grey-4' : ''"
+                        :label-color="
+                            quasarInstance.dark.isActive ? 'grey-4' : ''
+                        "
                         :popup-content-class="
-                            $q.dark.isActive
+                            quasarInstance.dark.isActive
                                 ? 'bg-grey-8 text-white'
                                 : 'bg-white text-dark'
                         "
@@ -71,7 +75,11 @@
                 <q-spinner-dots color="primary" size="3em" />
                 <div
                     class="q-mt-md text-caption"
-                    :class="$q.dark.isActive ? 'text-grey-5' : 'text-grey-7'"
+                    :class="
+                        quasarInstance.dark.isActive
+                            ? 'text-grey-5'
+                            : 'text-grey-7'
+                    "
                 >
                     Loading player data from server...
                 </div>
@@ -80,7 +88,11 @@
                 <q-spinner-dots color="primary" size="2em" />
                 <div
                     class="q-mt-sm text-caption"
-                    :class="$q.dark.isActive ? 'text-grey-5' : 'text-grey-7'"
+                    :class="
+                        quasarInstance.dark.isActive
+                            ? 'text-grey-5'
+                            : 'text-grey-7'
+                    "
                 >
                     Loading team data...
                 </div>
@@ -90,7 +102,11 @@
                 <div v-if="selectedTeamName && !loadingTeam">
                     <q-card
                         class="q-mb-md"
-                        :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-white'"
+                        :class="
+                            quasarInstance.dark.isActive
+                                ? 'bg-grey-9'
+                                : 'bg-white'
+                        "
                     >
                         <q-card-section>
                             <div class="text-h6 q-mb-sm">
@@ -111,7 +127,7 @@
                                 v-else
                                 class="text-center"
                                 :class="
-                                    $q.dark.isActive
+                                    quasarInstance.dark.isActive
                                         ? 'bg-grey-8 text-grey-4'
                                         : 'bg-grey-2 text-grey-7'
                                 "
@@ -123,7 +139,11 @@
                     </q-card>
 
                     <q-card
-                        :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-white'"
+                        :class="
+                            quasarInstance.dark.isActive
+                                ? 'bg-grey-9'
+                                : 'bg-white'
+                        "
                     >
                         <q-card-section>
                             <div class="text-h6 q-mb-md">
@@ -139,12 +159,13 @@
                                         dense
                                         emit-value
                                         map-options
-                                        @update:model-value="calculateBestTeam"
                                         :label-color="
-                                            $q.dark.isActive ? 'grey-4' : ''
+                                            quasarInstance.dark.isActive
+                                                ? 'grey-4'
+                                                : ''
                                         "
                                         :popup-content-class="
-                                            $q.dark.isActive
+                                            quasarInstance.dark.isActive
                                                 ? 'bg-grey-8 text-white'
                                                 : 'bg-white text-dark'
                                         "
@@ -153,7 +174,7 @@
                                         v-if="bestTeamOverall !== null"
                                         class="q-mt-md text-subtitle1"
                                         :class="
-                                            $q.dark.isActive
+                                            quasarInstance.dark.isActive
                                                 ? 'text-grey-3'
                                                 : 'text-grey-8'
                                         "
@@ -183,6 +204,7 @@
                                         @player-click="
                                             handlePlayerSelectedFromTeam
                                         "
+                                        @player-moved="handlePlayerMovedOnPitch"
                                     />
                                 </div>
                             </div>
@@ -198,7 +220,7 @@
                     "
                     class="text-center q-mt-lg"
                     :class="
-                        $q.dark.isActive
+                        quasarInstance.dark.isActive
                             ? 'bg-blue-grey-8 text-blue-grey-2'
                             : 'bg-blue-1 text-primary'
                     "
@@ -218,7 +240,7 @@
                     "
                     class="text-center q-mt-lg"
                     :class="
-                        $q.dark.isActive
+                        quasarInstance.dark.isActive
                             ? 'bg-red-9 text-red-2'
                             : 'bg-red-1 text-negative'
                     "
@@ -232,7 +254,7 @@
                         flat
                         color="primary"
                         label="Go to Upload Page"
-                        @click="$router.push('/')"
+                        @click="router.push('/')"
                         class="q-ml-md"
                     />
                 </q-banner>
@@ -256,11 +278,39 @@ import PitchDisplay from "../components/PitchDisplay.vue";
 import { formations, getFormationLayout } from "../utils/formations";
 import playerService from "../services/playerService";
 
+// Mapping from formation slot roles (which are now more FM-like from formations.js)
+// to the detailed position strings found in player.parsedPositions or player.roleSpecificOveralls.
+// This map helps bridge the gap between formation slot roles and player's specific position capabilities.
+const fmSlotRoleMatcher = {
+    GK: ["Goalkeeper"],
+    "D (R)": ["Defender (Right)", "Right Back"],
+    "D (L)": ["Defender (Left)", "Left Back"],
+    "D (C)": ["Defender (Centre)", "Centre Back"],
+    "WB (R)": ["Wing-Back (Right)", "Right Wing-Back"],
+    "WB (L)": ["Wing-Back (Left)", "Left Wing-Back"],
+    "DM (C)": ["Defensive Midfielder (Centre)", "Centre Defensive Midfielder"],
+    "M (R)": ["Midfielder (Right)", "Right Midfielder"],
+    "M (L)": ["Midfielder (Left)", "Left Midfielder"],
+    "M (C)": ["Midfielder (Centre)", "Centre Midfielder"],
+    "AM (R)": [
+        "Attacking Midfielder (Right)",
+        "Right Attacking Midfielder",
+        "Winger (Right)",
+    ],
+    "AM (L)": [
+        "Attacking Midfielder (Left)",
+        "Left Attacking Midfielder",
+        "Winger (Left)",
+    ],
+    "AM (C)": ["Attacking Midfielder (Centre)", "Centre Attacking Midfielder"],
+    "ST (C)": ["Striker (Centre)", "Striker"],
+};
+
 export default {
     name: "TeamViewPage",
     components: { PlayerDataTable, PlayerDetailDialog, PitchDisplay },
     setup() {
-        const $q = useQuasar();
+        const quasarInstance = useQuasar();
         const router = useRouter();
         const route = useRoute();
 
@@ -282,6 +332,42 @@ export default {
         const playerForDetailView = ref(null);
         const showPlayerDetailDialog = ref(false);
 
+        // NEW: Map to convert descriptive position names (from fmSlotRoleMatcher)
+        // to the abbreviated prefixes used in player.roleSpecificOveralls (e.g., "MC", "DC").
+        // Keys should be uppercase as they are looked up with .toUpperCase().
+        const fmMatcherToRoleKeyPrefix = {
+            GOALKEEPER: "GK",
+            SWEEPER: "DC", // Sweepers often use DC role specifics
+            "DEFENDER (RIGHT)": "DR/L",
+            "RIGHT BACK": "DR/L",
+            "DEFENDER (LEFT)": "DR/L",
+            "LEFT BACK": "DR/L",
+            "DEFENDER (CENTRE)": "DC",
+            "CENTRE BACK": "DC",
+            "WING-BACK (RIGHT)": "WBR/L",
+            "RIGHT WING-BACK": "WBR/L",
+            "WING-BACK (LEFT)": "WBR/L",
+            "LEFT WING-BACK": "WBR/L",
+            "DEFENSIVE MIDFIELDER (CENTRE)": "DM",
+            "CENTRE DEFENSIVE MIDFIELDER": "DM",
+            "MIDFIELDER (RIGHT)": "MR/L",
+            "RIGHT MIDFIELDER": "MR/L",
+            "MIDFIELDER (LEFT)": "MR/L",
+            "LEFT MIDFIELDER": "MR/L",
+            "MIDFIELDER (CENTRE)": "MC",
+            "CENTRE MIDFIELDER": "MC",
+            "ATTACKING MIDFIELDER (RIGHT)": "AMR/L",
+            "RIGHT ATTACKING MIDFIELDER": "AMR/L",
+            "WINGER (RIGHT)": "AMR/L",
+            "ATTACKING MIDFIELDER (LEFT)": "AMR/L",
+            "LEFT ATTACKING MIDFIELDER": "AMR/L",
+            "WINGER (LEFT)": "AMR/L",
+            "ATTACKING MIDFIELDER (CENTRE)": "AMC",
+            "CENTRE ATTACKING MIDFIELDER": "AMC",
+            "STRIKER (CENTRE)": "ST",
+            STRIKER: "ST",
+        };
+
         const fetchPlayers = async (datasetId) => {
             pageLoading.value = true;
             pageLoadingError.value = "";
@@ -293,15 +379,7 @@ export default {
                     ...p,
                     age: parseInt(p.age, 10) || 0,
                 }));
-                console.log(
-                    "TeamViewPage: Successfully fetched players for dataset:",
-                    datasetId,
-                );
             } catch (err) {
-                console.error(
-                    "TeamViewPage: Error fetching players by dataset ID:",
-                    err,
-                );
                 pageLoadingError.value = `Failed to load player data: ${err.message || "Unknown server error"}. Please try uploading again.`;
                 allPlayersData.value = [];
             } finally {
@@ -333,9 +411,6 @@ export default {
             } else {
                 pageLoadingError.value =
                     "No player dataset ID found. Please upload a file on the main page.";
-                console.warn(
-                    "TeamViewPage: No datasetId in query or sessionStorage.",
-                );
                 pageLoading.value = false;
             }
 
@@ -384,6 +459,7 @@ export default {
                 bestTeamPlayers.value = {};
                 bestTeamOverall.value = null;
                 calculationMessage.value = "";
+                selectedFormationKey.value = null;
                 return;
             }
             loadingTeam.value = true;
@@ -396,10 +472,14 @@ export default {
                     teamPlayers.value = [];
                 }
                 loadingTeam.value = false;
-                selectedFormationKey.value = null;
+                selectedFormationKey.value = null; // Reset formation when team changes
                 bestTeamPlayers.value = {};
                 bestTeamOverall.value = null;
-                calculationMessage.value = "";
+                calculationMessage.value =
+                    "Select a formation to calculate Best XI.";
+                calculationMessageClass.value = quasarInstance.dark.isActive
+                    ? "text-grey-5"
+                    : "text-grey-7";
             }, 200);
         };
 
@@ -419,9 +499,6 @@ export default {
             }));
         });
 
-        // Corrected: Removed .reverse()
-        // formations.js now defines layout with attackers first (top of pitch)
-        // and GK last (bottom of pitch). PitchDisplay renders rows top-to-bottom.
         const currentFormationLayout = computed(() => {
             if (!selectedFormationKey.value) {
                 return [];
@@ -450,24 +527,65 @@ export default {
             return "rating-tier-1";
         };
 
+        // Updated getPlayerOverallForRole function
+        const getPlayerOverallForRole = (player, slotFormationRole) => {
+            if (!player || !slotFormationRole) return 0;
+
+            let scoreToReturn = 0;
+            if (
+                player.roleSpecificOveralls &&
+                player.roleSpecificOveralls.length > 0
+            ) {
+                const upperSlotRole = slotFormationRole.toUpperCase();
+                // Get the general position matchers (e.g., "Midfielder (Centre)")
+                const fmPositionMatchers = fmSlotRoleMatcher[upperSlotRole] || [
+                    upperSlotRole,
+                ];
+                // Convert these to role key prefixes (e.g., "MC")
+                const targetRoleKeyPrefixes = fmPositionMatchers
+                    .map(
+                        (matcher) =>
+                            fmMatcherToRoleKeyPrefix[matcher.toUpperCase()],
+                    )
+                    .filter((prefix) => !!prefix) // Filter out any undefined if a matcher wasn't found
+                    .reduce(
+                        (acc, val) => (acc.includes(val) ? acc : [...acc, val]),
+                        [],
+                    ); // Unique prefixes
+
+                player.roleSpecificOveralls.forEach((rso) => {
+                    // rso.roleName is like "MC - AP - Attack" or "MC - Generic"
+                    const rsoBasePosition = rso.roleName
+                        .split(" - ")[0]
+                        .trim()
+                        .toUpperCase(); // Extracts "MC"
+                    if (targetRoleKeyPrefixes.includes(rsoBasePosition)) {
+                        scoreToReturn = Math.max(scoreToReturn, rso.score);
+                    }
+                });
+            }
+            return scoreToReturn;
+        };
+
+        const MIN_SUITABILITY_THRESHOLD = 40;
+
         const calculateBestTeam = () => {
             if (!selectedFormationKey.value || teamPlayers.value.length === 0) {
                 bestTeamPlayers.value = {};
                 bestTeamOverall.value = null;
-                calculationMessage.value =
-                    "Please select a formation and ensure team players are loaded.";
+                calculationMessage.value = selectedFormationKey.value
+                    ? "No players in the selected team."
+                    : "Select a formation.";
                 calculationMessageClass.value = "bg-warning text-dark";
                 return;
             }
 
             calculationMessage.value = "Calculating best team...";
-            calculationMessageClass.value = $q.dark.isActive
+            calculationMessageClass.value = quasarInstance.dark.isActive
                 ? "bg-info text-white"
                 : "bg-blue-2 text-primary";
-            bestTeamPlayers.value = {};
-            bestTeamOverall.value = null;
 
-            // Use the layout directly from formations.js (attackers first, GK last)
+            const tempBestTeamPlayers = {};
             const formationLayoutForCalc = getFormationLayout(
                 selectedFormationKey.value,
             );
@@ -481,145 +599,202 @@ export default {
                 (row) => row.positions,
             );
             let availablePlayers = [...teamPlayers.value];
-
-            let currentTeam = {};
-            let playersAssigned = 0;
-
-            availablePlayers.sort(
-                (a, b) => (b.Overall || 0) - (a.Overall || 0),
-            );
-
             const assignedPlayerNames = new Set();
+            let playersAssignedCount = 0;
+
+            formationSlots.forEach((slot) => {
+                tempBestTeamPlayers[slot.id] = null;
+            });
 
             const gkSlot = formationSlots.find(
                 (slot) => slot.role.toUpperCase() === "GK",
             );
             if (gkSlot) {
-                const bestGk = availablePlayers
+                const goalkeepers = availablePlayers
                     .filter(
                         (p) =>
                             p.parsedPositions?.includes("Goalkeeper") &&
                             !assignedPlayerNames.has(p.name),
                     )
-                    .sort((a, b) => (b.Overall || 0) - (a.Overall || 0))[0];
-                if (bestGk) {
-                    currentTeam[gkSlot.id] = bestGk;
-                    assignedPlayerNames.add(bestGk.name);
-                    playersAssigned++;
+                    .map((p) => ({
+                        player: p,
+                        score: getPlayerOverallForRole(p, gkSlot.role),
+                    }))
+                    .filter((p) => p.score >= MIN_SUITABILITY_THRESHOLD)
+                    .sort((a, b) => b.score - a.score);
+
+                if (goalkeepers.length > 0) {
+                    const bestGk = goalkeepers[0];
+                    tempBestTeamPlayers[gkSlot.id] = {
+                        ...bestGk.player,
+                        Overall: bestGk.score,
+                    };
+                    assignedPlayerNames.add(bestGk.player.name);
+                    playersAssignedCount++;
                 }
             }
 
-            for (const slot of formationSlots) {
-                if (slot.role.toUpperCase() === "GK" && currentTeam[slot.id]) {
-                    continue;
-                }
-                if (currentTeam[slot.id]) {
-                    continue;
-                }
-
-                let bestPlayerForSlot = null;
-                let highestSuitabilityScore = -1;
-
-                for (const player of availablePlayers) {
-                    if (assignedPlayerNames.has(player.name)) {
-                        continue;
+            const playerScoresForSlots = [];
+            availablePlayers.forEach((player) => {
+                if (assignedPlayerNames.has(player.name)) return;
+                formationSlots.forEach((slot) => {
+                    if (tempBestTeamPlayers[slot.id]) return;
+                    const score = getPlayerOverallForRole(player, slot.role);
+                    if (score >= MIN_SUITABILITY_THRESHOLD) {
+                        playerScoresForSlots.push({
+                            playerId: player.name,
+                            playerObj: player,
+                            slotId: slot.id,
+                            slotRole: slot.role,
+                            score: score,
+                            originalOverall: player.Overall,
+                        });
                     }
+                });
+            });
 
-                    let suitabilityScore = 0;
-                    const slotRoleKey = slot.role.toUpperCase();
+            playerScoresForSlots.sort((a, b) => {
+                if (b.score !== a.score) return b.score - a.score;
+                return (b.originalOverall || 0) - (a.originalOverall || 0);
+            });
 
-                    const roleSpecificMatch = player.roleSpecificOveralls?.find(
-                        (rso) => {
-                            const parts = rso.roleName.split(" - ");
-                            const roleFromFile =
-                                parts.length > 1 ? parts[1].toUpperCase() : "";
-                            return roleFromFile === slotRoleKey;
-                        },
-                    );
-
-                    if (roleSpecificMatch) {
-                        suitabilityScore = roleSpecificMatch.score;
-                    } else {
-                        const playerPositions =
-                            player.parsedPositions?.map((p) =>
-                                p.toUpperCase(),
-                            ) || [];
-                        if (playerPositions.includes(slotRoleKey)) {
-                            suitabilityScore = player.Overall || 0;
-                        } else {
-                            const firstTwoSlot = slotRoleKey.substring(0, 2);
-                            if (
-                                playerPositions.some((pp) =>
-                                    pp.startsWith(firstTwoSlot),
-                                )
-                            ) {
-                                suitabilityScore = (player.Overall || 0) * 0.8;
-                            }
-                        }
-                    }
-
-                    if (suitabilityScore > highestSuitabilityScore) {
-                        highestSuitabilityScore = suitabilityScore;
-                        bestPlayerForSlot = player;
-                    }
+            playerScoresForSlots.forEach((entry) => {
+                if (
+                    !tempBestTeamPlayers[entry.slotId] &&
+                    !assignedPlayerNames.has(entry.playerId)
+                ) {
+                    tempBestTeamPlayers[entry.slotId] = {
+                        ...entry.playerObj,
+                        Overall: entry.score,
+                    };
+                    assignedPlayerNames.add(entry.playerId);
+                    playersAssignedCount++;
                 }
+            });
 
-                if (bestPlayerForSlot) {
-                    currentTeam[slot.id] = bestPlayerForSlot;
-                    assignedPlayerNames.add(bestPlayerForSlot.name);
-                    playersAssigned++;
-                }
-            }
+            bestTeamPlayers.value = tempBestTeamPlayers;
 
-            bestTeamPlayers.value = currentTeam;
-            if (playersAssigned > 0) {
-                let sumOfAssignedOveralls = 0;
-                let countOfAssignedOveralls = 0;
-                Object.values(currentTeam).forEach((player) => {
-                    if (player && typeof player.Overall === "number") {
-                        sumOfAssignedOveralls += player.Overall;
-                        countOfAssignedOveralls++;
+            if (playersAssignedCount > 0) {
+                let sumOfDisplayedOveralls = 0;
+                Object.values(bestTeamPlayers.value).forEach((playerInSlot) => {
+                    if (
+                        playerInSlot &&
+                        typeof playerInSlot.Overall === "number"
+                    ) {
+                        sumOfDisplayedOveralls += playerInSlot.Overall;
                     }
                 });
                 bestTeamOverall.value =
-                    countOfAssignedOveralls > 0
+                    playersAssignedCount > 0
                         ? Math.round(
-                              sumOfAssignedOveralls / countOfAssignedOveralls,
+                              sumOfDisplayedOveralls / playersAssignedCount,
                           )
                         : 0;
-
-                calculationMessage.value = `Best XI calculated with ${playersAssigned} players. Average Overall: ${bestTeamOverall.value}.`;
-                calculationMessageClass.value = $q.dark.isActive
+                calculationMessage.value = `Best XI calculated with ${playersAssignedCount} players. Average Overall: ${bestTeamOverall.value}.`;
+                calculationMessageClass.value = quasarInstance.dark.isActive
                     ? "bg-positive text-white"
                     : "bg-green-2 text-positive";
             } else {
                 bestTeamOverall.value = 0;
                 calculationMessage.value =
-                    "Could not assign any players to the formation.";
-                calculationMessageClass.value = $q.dark.isActive
+                    "Could not assign any suitable players.";
+                calculationMessageClass.value = quasarInstance.dark.isActive
                     ? "bg-negative text-white"
                     : "bg-red-2 text-negative";
             }
+        };
+
+        watch(selectedFormationKey, (newKey) => {
+            if (newKey) {
+                calculateBestTeam();
+            } else {
+                bestTeamPlayers.value = {};
+                bestTeamOverall.value = null;
+                calculationMessage.value = "Select a formation.";
+                calculationMessageClass.value = quasarInstance.dark.isActive
+                    ? "text-grey-5"
+                    : "text-grey-7";
+            }
+        });
+
+        const handlePlayerMovedOnPitch = (moveData) => {
+            const { player, fromSlotId, toSlotId, toSlotRole } = moveData;
+            const newBestTeam = { ...bestTeamPlayers.value };
+
+            const movedPlayerFullObject = teamPlayers.value.find(
+                (p) => p.name === player.name,
+            );
+            if (!movedPlayerFullObject) return;
+
+            const existingPlayerInTargetSlotData = newBestTeam[toSlotId];
+
+            newBestTeam[toSlotId] = {
+                ...movedPlayerFullObject,
+                Overall: getPlayerOverallForRole(
+                    movedPlayerFullObject,
+                    toSlotRole,
+                ),
+            };
+
+            if (existingPlayerInTargetSlotData && fromSlotId) {
+                const fromSlotDefinition = currentFormationLayout.value
+                    .flatMap((row) => row.positions)
+                    .find((p) => p.id === fromSlotId);
+                if (fromSlotDefinition) {
+                    const existingPlayerFullObject = teamPlayers.value.find(
+                        (p) => p.name === existingPlayerInTargetSlotData.name,
+                    );
+                    if (existingPlayerFullObject) {
+                        newBestTeam[fromSlotId] = {
+                            ...existingPlayerFullObject,
+                            Overall: getPlayerOverallForRole(
+                                existingPlayerFullObject,
+                                fromSlotDefinition.role,
+                            ),
+                        };
+                    } else {
+                        newBestTeam[fromSlotId] = null;
+                    }
+                } else {
+                    newBestTeam[fromSlotId] = null;
+                }
+            } else if (fromSlotId) {
+                newBestTeam[fromSlotId] = null;
+            }
+
+            bestTeamPlayers.value = newBestTeam;
+
+            let sumOfDisplayedOveralls = 0;
+            let countOfDisplayedOveralls = 0;
+            Object.values(bestTeamPlayers.value).forEach((playerInSlot) => {
+                if (playerInSlot && typeof playerInSlot.Overall === "number") {
+                    sumOfDisplayedOveralls += playerInSlot.Overall;
+                    countOfDisplayedOveralls++;
+                }
+            });
+            bestTeamOverall.value =
+                countOfDisplayedOveralls > 0
+                    ? Math.round(
+                          sumOfDisplayedOveralls / countOfDisplayedOveralls,
+                      )
+                    : 0;
+            calculationMessage.value = `Team adjusted. New Average Overall: ${bestTeamOverall.value}.`;
+            calculationMessageClass.value = quasarInstance.dark.isActive
+                ? "bg-info text-white"
+                : "bg-blue-2 text-primary";
         };
 
         watch(
             () => allPlayersData.value,
             (newVal) => {
                 if (pageLoading.value) return;
-
                 if (newVal && newVal.length > 0) {
                     populateTeamFilterOptions();
-                    if (selectedTeamName.value) {
-                        loadTeamPlayers();
-                    }
+                    if (selectedTeamName.value) loadTeamPlayers();
                 } else if (!pageLoadingError.value) {
+                    clearTeamSelection();
                     allTeamNamesCache.value = [];
                     teamOptions.value = [];
-                    selectedTeamName.value = null;
-                    teamPlayers.value = [];
-                    bestTeamPlayers.value = {};
-                    bestTeamOverall.value = null;
-                    calculationMessage.value = "";
                 }
             },
             { deep: true },
@@ -629,10 +804,6 @@ export default {
             () => route.query.datasetId,
             async (newId, oldId) => {
                 if (newId && newId !== oldId) {
-                    console.log(
-                        "TeamViewPage: datasetId in query changed, re-fetching.",
-                        newId,
-                    );
                     sessionStorage.setItem("currentDatasetId", newId);
                     await fetchPlayers(newId);
                     clearTeamSelection();
@@ -662,7 +833,6 @@ export default {
             currentFormationLayout,
             bestTeamPlayers,
             bestTeamOverall,
-            calculateBestTeam,
             calculationMessage,
             calculationMessageClass,
             playerForDetailView,
@@ -670,7 +840,8 @@ export default {
             handlePlayerSelectedFromTeam,
             teamIsGoalkeeperView,
             getOverallClass,
-            $q,
+            handlePlayerMovedOnPitch,
+            quasarInstance,
             router,
         };
     },
@@ -695,19 +866,20 @@ export default {
 
 .team-player-table {
     :deep(.q-table__container) {
-        max-height: 450px;
+        max-height: 450px; // Ensure this is effective
         overflow-y: auto;
     }
     :deep(th) {
         position: sticky;
         top: 0;
         z-index: 1;
+        // background-color will be handled by quasar dark mode or specific classes
     }
     .body--dark & :deep(th) {
-        background-color: $grey-9 !important;
+        background-color: $grey-9 !important; // Dark mode header
     }
     .body--light & :deep(th) {
-        background-color: $grey-2 !important;
+        background-color: $grey-2 !important; // Light mode header
     }
 }
 
@@ -719,65 +891,16 @@ export default {
     padding: 3px 6px;
     border-radius: 4px;
     line-height: 1.4;
-    font-size: 0.9em;
+    font-size: 0.9em; // Base size
 }
 
-// Rating tier classes are assumed to be globally defined or imported
+// Rating tier classes are globally defined in app.scss
+// Ensure they are correctly applied. Example:
 .rating-tier-6 {
-    background-color: #7e57c2;
-    color: white !important;
-    font-weight: 700;
-    border: 1px solid #5e35b1;
-    .body--dark & {
-        background-color: #9575cd;
-        border-color: #7e57c2;
-    }
+    /* styles from app.scss */
 }
 .rating-tier-5 {
-    background-color: #26a69a;
-    color: white !important;
-    .body--dark & {
-        background-color: #00897b;
-    }
+    /* styles from app.scss */
 }
-.rating-tier-4 {
-    background-color: #66bb6a;
-    color: white !important;
-    .body--dark & {
-        background-color: #4caf50;
-    }
-}
-.rating-tier-3 {
-    background-color: #42a5f5;
-    color: white !important;
-    .body--dark & {
-        background-color: #2196f3;
-    }
-}
-.rating-tier-2 {
-    background-color: #ffa726;
-    color: #333333 !important;
-    .body--dark & {
-        background-color: #fb8c00;
-        color: white !important;
-    }
-}
-.rating-tier-1 {
-    background-color: #ef5350;
-    color: white !important;
-    .body--dark & {
-        background-color: #e53935;
-    }
-}
-.rating-na {
-    background-color: $grey-4;
-    color: $grey-8 !important;
-    font-weight: normal;
-    border: 1px solid $grey-5;
-    .body--dark & {
-        background-color: $grey-8;
-        color: $grey-5 !important;
-        border: 1px solid $grey-7;
-    }
-}
+// ... and so on for all tiers and rating-na
 </style>

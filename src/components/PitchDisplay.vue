@@ -1,6 +1,11 @@
 // src/components/PitchDisplay.vue
 <template>
-    <div class="pitch-container" :class="{ 'dark-mode': $q.dark.isActive }">
+    <div
+        class="pitch-container"
+        :class="{ 'dark-mode': quasar.dark.isActive }"
+        @dragover.prevent="handleDragOver"
+        @drop.prevent="handleDropOnPitch"
+    >
         <div class="pitch-background">
             <div class="center-circle"></div>
             <div class="center-line"></div>
@@ -31,38 +36,32 @@
                 @click="
                     players[pos.id] && $emit('player-click', players[pos.id])
                 "
-                :title="
-                    players[pos.id]
-                        ? `${players[pos.id].name} (${players[pos.id].Overall || 'N/A'}) - ${pos.role}`
-                        : `Empty - ${pos.role}`
-                "
+                :title="getPlayerSlotTitle(players[pos.id], pos.role)"
+                :data-slot-id="pos.id"
+                :data-slot-role="pos.role"
+                @dragover.prevent
+                @drop.prevent="handleDropOnSlot($event, pos.id, pos.role)"
             >
                 <div
                     class="player-representation"
-                    :class="{ 'has-player': !!players[pos.id] }"
+                    :class="[
+                        { 'has-player': !!players[pos.id] },
+                        getPlayerOverallClass(players[pos.id]?.Overall, 100), // Applied directly
+                    ]"
+                    :draggable="!!players[pos.id]"
+                    @dragstart="
+                        handleDragStart($event, players[pos.id], pos.id)
+                    "
+                    @dragend="handleDragEnd"
                 >
-                    <q-avatar
-                        v-if="players[pos.id]"
-                        size="48px"
-                        font-size="18px"
-                        :color="getPlayerColor(players[pos.id])"
-                        text-color="white"
-                        class="player-avatar"
-                    >
-                        {{ getPlayerInitials(players[pos.id].name) }}
-                        <q-badge
-                            floating
-                            color="black"
-                            text-color="white"
-                            transparent
-                            class="player-overall-badge"
-                        >
+                    <template v-if="players[pos.id]">
+                        <span class="player-overall-display">
                             {{ players[pos.id].Overall || "N/A" }}
-                        </q-badge>
-                    </q-avatar>
+                        </span>
+                    </template>
                     <q-icon
                         v-else
-                        name="person_outline"
+                        name="add_circle_outline"
                         size="28px"
                         class="empty-slot-icon"
                     />
@@ -70,7 +69,7 @@
                 <div
                     class="position-label"
                     :class="{
-                        'dark-text': !$q.dark.isActive && !players[pos.id],
+                        'dark-text': !quasar.dark.isActive && !players[pos.id],
                     }"
                 >
                     {{ pos.role }}
@@ -78,105 +77,237 @@
                 <div
                     v-if="players[pos.id]"
                     class="player-name-label ellipsis"
-                    :class="{ 'dark-text': !$q.dark.isActive }"
+                    :class="{ 'dark-text': !quasar.dark.isActive }"
+                    :title="players[pos.id].name"
                 >
                     {{ players[pos.id].name }}
+                </div>
+                <div
+                    v-if="players[pos.id]"
+                    class="player-best-role-label ellipsis"
+                    :class="{ 'dark-text': !quasar.dark.isActive }"
+                    :title="
+                        getBestRoleForPlayerInSlot(players[pos.id], pos.role)
+                    "
+                >
+                    ({{
+                        getBestRoleForPlayerInSlot(players[pos.id], pos.role)
+                    }})
                 </div>
             </div>
         </div>
         <div v-if="formation.length === 0" class="no-formation-message">
             Select a formation to view the pitch layout.
         </div>
+
+        <div v-if="isDragging" class="drag-overlay">
+            <div
+                v-for="(row, rowIndex) in formation"
+                :key="`overlay-row-${rowIndex}`"
+                class="formation-row overlay-row"
+            >
+                <div
+                    v-for="pos in row.positions"
+                    :key="`overlay-slot-${pos.id}`"
+                    class="drop-zone"
+                    :style="getPlayerSlotStyle(row.positions.length)"
+                    :data-slot-id="pos.id"
+                    :data-slot-role="pos.role"
+                    @dragenter.prevent="handleDragEnterSlot"
+                    @dragleave.prevent="handleDragLeaveSlot"
+                    @drop.prevent="handleDropOnSlot($event, pos.id, pos.role)"
+                    @dragover.prevent
+                >
+                    <span class="drop-zone-role">{{ pos.role }}</span>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
 
 <script>
+import { ref } from "vue";
 import { useQuasar } from "quasar";
 
 export default {
     name: "PitchDisplay",
     props: {
         formation: {
-            // Array of rows, where each row has { count, positions: [{id, role}] }
             type: Array,
             default: () => [],
         },
         players: {
-            // Object mapping position ID (e.g., 'GK', 'LCB') to player object
+            // This is the bestTeamPlayers object from TeamViewPage
             type: Object,
             default: () => ({}),
         },
     },
-    emits: ["player-click"],
-    setup() {
-        const $q = useQuasar();
+    emits: ["player-click", "player-moved"],
+    setup(props, { emit }) {
+        const quasar = useQuasar();
+        const isDragging = ref(false);
+        const draggedPlayerInfo = ref(null);
 
         const getPlayerSlotStyle = (numPlayersInRow) => {
-            // Adjust width based on number of players in the row to fill space
-            // This is a simple approach; more complex layouts might need absolute positioning
             const percentageWidth = 100 / Math.max(1, numPlayersInRow);
             return {
-                flex: `1 1 ${percentageWidth}%`, // Allow shrinking but prefer defined width
+                flex: `1 1 ${percentageWidth}%`,
                 maxWidth: `${percentageWidth}%`,
             };
         };
 
-        const getPlayerInitials = (name) => {
-            if (!name) return "";
-            const parts = name.split(" ");
-            if (parts.length > 1) {
-                return (
-                    parts[0][0].toUpperCase() +
-                    parts[parts.length - 1][0].toUpperCase()
-                );
-            }
-            return name.substring(0, 2).toUpperCase();
+        // Updated to return correct class names (without -bg)
+        const getPlayerOverallClass = (overall, maxScale = 100) => {
+            const numValue = parseInt(overall, 10);
+            if (isNaN(numValue) || overall === null || overall === undefined)
+                return "rating-na"; // Corrected
+            const percentage = (numValue / maxScale) * 100;
+            if (percentage >= 90) return "rating-tier-6"; // Corrected
+            if (percentage >= 80) return "rating-tier-5"; // Corrected
+            if (percentage >= 70) return "rating-tier-4"; // Corrected
+            if (percentage >= 55) return "rating-tier-3"; // Corrected
+            if (percentage >= 40) return "rating-tier-2"; // Corrected
+            return "rating-tier-1"; // Corrected
         };
 
-        const getPlayerColor = (player) => {
-            // Basic color coding based on overall or position group
-            if (!player || player.Overall === undefined) return "grey-7";
-            if (player.Overall >= 85) return "positive";
-            if (player.Overall >= 75) return "primary";
-            if (player.Overall >= 65) return "accent";
-            if (player.positionGroups?.includes("Goalkeepers"))
-                return "deep-orange-7";
-            if (player.positionGroups?.includes("Defenders")) return "blue-7";
-            if (player.positionGroups?.includes("Midfielders")) return "teal-7";
-            if (player.positionGroups?.includes("Attackers")) return "red-7";
-            return "grey-6";
+        const getBestRoleForPlayerInSlot = (player, slotRole) => {
+            if (!player || !player.roleSpecificOveralls || !slotRole)
+                return slotRole;
+
+            const specificRole = player.roleSpecificOveralls.find((rso) => {
+                const roleParts = rso.roleName.split(" - ");
+                return (
+                    roleParts.length > 1 &&
+                    roleParts[1].toUpperCase() === slotRole.toUpperCase()
+                );
+            });
+
+            if (specificRole) return specificRole.roleName;
+
+            const broaderMatch = player.roleSpecificOveralls.find((rso) =>
+                rso.roleName.toUpperCase().startsWith(slotRole.toUpperCase()),
+            );
+            if (broaderMatch) return broaderMatch.roleName;
+
+            return slotRole;
+        };
+
+        const getPlayerSlotTitle = (player, slotRole) => {
+            if (player) {
+                const bestRoleName = getBestRoleForPlayerInSlot(
+                    player,
+                    slotRole,
+                );
+                return `${player.name} (${player.Overall || "N/A"}) - ${bestRoleName}`;
+            }
+            return `Empty - ${slotRole}`;
+        };
+
+        const handleDragStart = (event, player, fromSlotId) => {
+            isDragging.value = true;
+            draggedPlayerInfo.value = {
+                player: props.players[fromSlotId],
+                fromSlotId,
+            };
+            event.dataTransfer.effectAllowed = "move";
+            if (player && player.name) {
+                event.dataTransfer.setData("text/plain", player.name);
+            } else {
+                event.dataTransfer.setData("text/plain", "unknown_player");
+            }
+            document.body.classList.add("grabbing-cursor");
+        };
+
+        const handleDragEnd = () => {
+            isDragging.value = false;
+            draggedPlayerInfo.value = null;
+            document.body.classList.remove("grabbing-cursor");
+        };
+
+        const handleDragOver = (event) => {
+            event.preventDefault();
+        };
+
+        const handleDragEnterSlot = (event) => {
+            if (event.target.classList.contains("drop-zone")) {
+                event.target.classList.add("drop-zone-hover");
+            }
+        };
+
+        const handleDragLeaveSlot = (event) => {
+            if (event.target.classList.contains("drop-zone")) {
+                event.target.classList.remove("drop-zone-hover");
+            }
+        };
+
+        const handleDropOnSlot = (event, toSlotId, toSlotRole) => {
+            event.preventDefault();
+            let targetElement = event.target;
+            if (!targetElement.classList.contains("drop-zone")) {
+                targetElement = targetElement.closest(".drop-zone");
+            }
+            if (targetElement) {
+                targetElement.classList.remove("drop-zone-hover");
+            }
+
+            if (draggedPlayerInfo.value && draggedPlayerInfo.value.player) {
+                const { player, fromSlotId } = draggedPlayerInfo.value;
+                if (fromSlotId !== toSlotId) {
+                    emit("player-moved", {
+                        player,
+                        fromSlotId,
+                        toSlotId,
+                        toSlotRole,
+                    });
+                }
+            }
+            handleDragEnd();
+        };
+
+        const handleDropOnPitch = () => {
+            handleDragEnd();
         };
 
         return {
-            $q,
+            quasar,
+            isDragging,
             getPlayerSlotStyle,
-            getPlayerInitials,
-            getPlayerColor,
+            getPlayerOverallClass,
+            getBestRoleForPlayerInSlot,
+            getPlayerSlotTitle,
+            handleDragStart,
+            handleDragEnd,
+            handleDragOver,
+            handleDropOnSlot,
+            handleDropOnPitch,
+            handleDragEnterSlot,
+            handleDragLeaveSlot,
         };
     },
 };
 </script>
 
 <style lang="scss" scoped>
+// Styles remain the same as the previous version
 .pitch-container {
     width: 100%;
-    max-width: 600px; // Adjust as needed
-    aspect-ratio: 7 / 10; // Typical pitch aspect ratio (height / width)
-    background-color: #4caf50; // Pitch green
+    max-width: 600px;
+    aspect-ratio: 7 / 10;
+    background-color: #4caf50;
     border: 2px solid white;
     margin: 20px auto;
     position: relative;
     display: flex;
     flex-direction: column;
-    justify-content: space-around; // Distribute rows vertically
-    padding: 15px 10px; // Padding for rows from edge
+    justify-content: space-around;
+    padding: 15px 10px;
     box-sizing: border-box;
     border-radius: 8px;
     overflow: hidden;
 
     &.dark-mode {
-        background-color: #388e3c; // Slightly darker green for dark mode
-        border-color: #bdbdbd; // Lighter border for dark mode
+        background-color: #388e3c;
+        border-color: #bdbdbd;
     }
 }
 
@@ -188,7 +319,6 @@ export default {
     height: 100%;
     z-index: 0;
 
-    // Pitch Markings
     .center-line {
         position: absolute;
         top: 50%;
@@ -202,7 +332,7 @@ export default {
         position: absolute;
         top: 50%;
         left: 50%;
-        width: 18%; // Relative to pitch width
+        width: 18%;
         aspect-ratio: 1/1;
         border: 2px solid rgba(255, 255, 255, 0.6);
         border-radius: 50%;
@@ -212,8 +342,8 @@ export default {
         position: absolute;
         left: 50%;
         transform: translateX(-50%);
-        width: 66%; // Approx 40 yards on a 60 yard wide pitch
-        height: 22%; // Approx 18 yards on a 100 yard long pitch
+        width: 66%;
+        height: 22%;
         border: 2px solid rgba(255, 255, 255, 0.6);
         box-sizing: border-box;
     }
@@ -233,8 +363,8 @@ export default {
         position: absolute;
         left: 50%;
         transform: translateX(-50%);
-        width: 33%; // Approx 20 yards
-        height: 8%; // Approx 6 yards
+        width: 33%;
+        height: 8%;
         border: 1px solid rgba(255, 255, 255, 0.5);
         box-sizing: border-box;
     }
@@ -246,6 +376,7 @@ export default {
         bottom: 0;
         border-bottom: none;
     }
+
     .penalty-spot {
         position: absolute;
         left: 50%;
@@ -257,7 +388,7 @@ export default {
     }
     .penalty-spot-top {
         top: 14%;
-    } // Approx 12 yards from goal line
+    }
     .penalty-spot-bottom {
         bottom: 14%;
     }
@@ -266,14 +397,14 @@ export default {
         position: absolute;
         left: 50%;
         transform: translateX(-50%);
-        width: 25%; // Approx 10 yard radius circle part
-        aspect-ratio: 2/1; // To make it an arc
+        width: 25%;
+        aspect-ratio: 2/1;
         border: 2px solid rgba(255, 255, 255, 0.6);
         border-radius: 50% / 100%;
         box-sizing: border-box;
     }
     .penalty-arc-top {
-        top: 22%; // Edge of penalty area
+        top: 22%;
         border-top-color: transparent;
         border-left-color: transparent;
         border-right-color: transparent;
@@ -289,8 +420,8 @@ export default {
         position: absolute;
         left: 50%;
         transform: translateX(-50%);
-        width: 12%; // Approx 8 yards
-        height: 3%; // Goal depth
+        width: 12%;
+        height: 3%;
         background-color: rgba(255, 255, 255, 0.2);
         border: 2px solid white;
         box-sizing: border-box;
@@ -310,9 +441,9 @@ export default {
     justify-content: space-around;
     align-items: center;
     width: 100%;
-    position: relative; // For z-index stacking above background
+    position: relative;
     z-index: 1;
-    margin: 5px 0; // Small margin between rows
+    margin: 2px 0;
 }
 
 .player-slot {
@@ -321,19 +452,20 @@ export default {
     align-items: center;
     justify-content: center;
     text-align: center;
-    padding: 2px;
-    min-height: 70px; // Ensure slots have some height
+    padding: 1px;
+    min-height: 75px;
     cursor: pointer;
     transition: transform 0.2s ease-in-out;
+    position: relative;
 
     &:hover .player-representation.has-player {
-        transform: scale(1.1);
+        transform: scale(1.05);
     }
 }
 
 .player-representation {
-    width: 50px; // Fixed size for avatar/icon container
-    height: 50px;
+    width: 42px;
+    height: 42px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -342,63 +474,82 @@ export default {
         255,
         255,
         255,
-        0.15
-    ); // Slight background for empty slots
-    transition: background-color 0.3s;
-    margin-bottom: 2px;
+        0.1
+    ); // Default for empty or if class not applied
+    transition:
+        background-color 0.3s,
+        transform 0.2s;
+    margin-bottom: 1px;
+    color: white; // Default text color, will be overridden by rating classes
+    font-weight: bold;
+    font-size: 1rem;
+    border: 1px solid rgba(0, 0, 0, 0.2);
 
     &.has-player {
-        background-color: transparent; // No background if player avatar is present
+        // Background color and text color will be set by getPlayerOverallClass (e.g., .rating-tier-X)
+    }
+    &.dragging-feedback {
+        outline: 2px dashed #fff;
+        background-color: rgba(255, 255, 255, 0.3);
     }
 }
-.player-avatar {
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-}
-.player-overall-badge {
-    font-size: 0.6rem;
-    padding: 1px 3px;
-    min-height: 12px;
+
+.player-overall-display {
     line-height: 1;
 }
 
 .empty-slot-icon {
-    color: rgba(255, 255, 255, 0.5);
+    color: rgba(255, 255, 255, 0.4);
     .dark-mode & {
-        color: rgba(0, 0, 0, 0.4);
+        color: rgba(0, 0, 0, 0.3);
     }
 }
 
 .position-label {
-    font-size: 0.65rem;
+    font-size: 0.6rem;
     font-weight: bold;
-    color: rgba(255, 255, 255, 0.9);
-    margin-top: 1px;
+    color: rgba(255, 255, 255, 0.85);
+    margin-top: 0px;
     line-height: 1;
 
     &.dark-text {
-        // For light mode pitch, if player is not present
-        color: rgba(0, 0, 0, 0.7);
+        color: rgba(0, 0, 0, 0.65);
     }
     .dark-mode & {
-        // Ensure always light text on dark pitch
-        color: rgba(255, 255, 255, 0.9);
+        color: rgba(255, 255, 255, 0.85);
     }
 }
 
 .player-name-label {
-    font-size: 0.6rem;
-    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.55rem;
+    color: rgba(255, 255, 255, 0.75);
     margin-top: 1px;
-    line-height: 1.1;
-    max-width: 60px; // Prevent long names from breaking layout
+    line-height: 1;
+    max-width: 55px;
 
     &.dark-text {
         color: rgba(0, 0, 0, 0.6);
     }
     .dark-mode & {
-        color: rgba(255, 255, 255, 0.8);
+        color: rgba(255, 255, 255, 0.75);
     }
 }
+.player-best-role-label {
+    font-size: 0.5rem;
+    color: rgba(255, 255, 255, 0.65);
+    margin-top: 1px;
+    line-height: 1;
+    max-width: 55px;
+    font-style: italic;
+
+    &.dark-text {
+        color: rgba(0, 0, 0, 0.5);
+    }
+    .dark-mode & {
+        color: rgba(255, 255, 255, 0.65);
+    }
+}
+
 .no-formation-message {
     position: absolute;
     top: 50%;
@@ -421,4 +572,48 @@ export default {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
+.drag-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.3);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    padding: 15px 10px;
+    box-sizing: border-box;
+}
+
+.overlay-row {
+    z-index: 11;
+}
+
+.drop-zone {
+    border: 2px dashed rgba(255, 255, 255, 0.5);
+    border-radius: 8px;
+    min-height: 75px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+    box-sizing: border-box;
+    padding: 2px;
+}
+.drop-zone-role {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.8em;
+    font-weight: bold;
+    text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.5);
+}
+
+.drop-zone-hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-style: solid;
+}
+
+/* Global rating tier classes are defined in app.scss */
 </style>
