@@ -37,31 +37,36 @@
                         </li>
                         <li>
                             Click "Upload and Parse". The data will be stored
-                            temporarily on the server.
+                            temporarily on the server. The app will detect the
+                            currency symbol (e.g., €, $, £) from the data.
                         </li>
                         <li>
                             The table will display players with pre-calculated
                             FIFA-style stats (PHY, SHO, etc.), parsed positions,
                             Overall ratings (based on their best role), Age,
                             Media Handling, and Personality. Goalkeeping (GK)
-                            stats will appear if filtering for GKs.
+                            stats will appear if filtering for GKs. Monetary
+                            values will use the detected currency symbol.
                         </li>
                         <li>
                             Use filters for Name, Club (searchable dropdown),
                             Position, Nationality (searchable dropdown),
-                            Transfer Value (text input, slider, and mode), Media
-                            Handling (multi-select), Personality (multi-select),
-                            and Age range. Input fields are debounced for
-                            performance.
+                            Transfer Value (text input, slider, and mode using
+                            the detected currency), Media Handling
+                            (multi-select), Personality (multi-select), and Age
+                            range. Input fields are debounced for performance.
                         </li>
                         <li>
                             Click on any player row for a detailed view, which
                             will show all calculated role-specific overalls and
                             specific goalkeeping attributes if applicable.
+                            Monetary values will use the detected currency
+                            symbol.
                         </li>
                         <li>
                             Use the "View Team Page" button to navigate to the
-                            team analysis section using the uploaded data.
+                            team analysis section using the uploaded data and
+                            currency.
                         </li>
                     </ol>
                 </q-card-section>
@@ -117,7 +122,10 @@
                 :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-white'"
             >
                 <q-card-section>
-                    <div class="text-subtitle1 q-mb-sm">Search Players</div>
+                    <div class="text-subtitle1 q-mb-sm">
+                        Search Players (Using {{ detectedCurrencySymbol }} for
+                        values)
+                    </div>
                     <div class="row q-col-gutter-md items-end">
                         <div class="col-12 col-sm-6 col-md-3 col-lg-2">
                             <q-input
@@ -296,13 +304,13 @@
                                         : 'text-grey-7'
                                 "
                             >
-                                Transfer Value
+                                Transfer Value ({{ detectedCurrencySymbol }})
                             </div>
                             <div class="row items-center q-col-gutter-x-sm">
                                 <div class="col">
                                     <q-input
                                         v-model="transferValueTextInput"
-                                        label="Enter Value (e.g., 1.5M, 500K)"
+                                        :label="`Enter Value (e.g., ${detectedCurrencySymbol}1.5M, ${detectedCurrencySymbol}500K)`"
                                         dense
                                         outlined
                                         clearable
@@ -383,6 +391,11 @@
                                 :max="transferValueSliderMax"
                                 :step="transferValueSliderStep"
                                 label
+                                :label-value="
+                                    formatSliderValueWithCurrency(
+                                        filters.selectedTransferValue,
+                                    )
+                                "
                                 @update:model-value="applyFiltersAndSort"
                                 :disable="
                                     allPlayers.length === 0 ||
@@ -407,7 +420,7 @@
                                         : "More than"
                                 }}
                                 {{
-                                    formatSliderValue(
+                                    formatSliderValueWithCurrency(
                                         filters.selectedTransferValue,
                                     )
                                 }}
@@ -580,6 +593,7 @@
                     @update:sort="handleSort"
                     @player-selected="handlePlayerSelected"
                     :is-goalkeeper-view="isGoalkeeperView"
+                    :currency-symbol="detectedCurrencySymbol"
                 />
             </template>
 
@@ -604,12 +618,14 @@
             :player="selectedPlayer"
             :show="showPlayerDetailDialog"
             @close="showPlayerDetailDialog = false"
+            :currency-symbol="detectedCurrencySymbol"
         />
 
         <UpgradeFinderDialog
             :show="showUpgradeFinder"
             :players="allPlayers"
             @close="showUpgradeFinder = false"
+            :currency-symbol="detectedCurrencySymbol"
         />
     </q-page>
 </template>
@@ -621,6 +637,7 @@ import PlayerDataTable from "../components/PlayerDataTable.vue";
 import PlayerDetailDialog from "../components/PlayerDetailDialog.vue";
 import UpgradeFinderDialog from "../components/UpgradeFinderDialog.vue";
 import playerService from "../services/playerService";
+import { formatCurrency, parseCurrencyString } from "../utils/currencyUtils"; // Import currency utils
 
 const positionGroups = {
     Goalkeepers: ["Goalkeeper"],
@@ -670,7 +687,8 @@ export default {
         const selectedPlayer = ref(null);
         const showPlayerDetailDialog = ref(false);
         const showUpgradeFinder = ref(false);
-        const currentDatasetId = ref(null); // To store the ID from the backend
+        const currentDatasetId = ref(null);
+        const detectedCurrencySymbol = ref("$"); // Default symbol
 
         const attributeWeightsLoadedForFeedback = ref(false);
         const attributeWeightsErrorForFeedback = ref("");
@@ -745,22 +763,12 @@ export default {
             () => allUniqueNationalities.value.length,
         );
 
-        const formatSliderValue = (value) => {
+        // Use the imported formatCurrency for the slider label
+        const formatSliderValueWithCurrency = (value) => {
             if (value === null || value === undefined) return "";
-            if (value >= 1000000) return `€${(value / 1000000).toFixed(1)}M`;
-            if (value >= 1000) return `€${Math.round(value / 1000)}K`;
-            return `€${value}`;
+            return formatCurrency(value, detectedCurrencySymbol.value);
         };
-        const parseMonetaryStringToNumber = (str) => {
-            if (typeof str !== "string" || !str.trim()) return null;
-            const cleanedStr = str.trim().toUpperCase();
-            let value = parseFloat(cleanedStr.replace(/[^0-9.]/g, ""));
-            if (isNaN(value)) return null;
 
-            if (cleanedStr.endsWith("M")) value *= 1000000;
-            else if (cleanedStr.endsWith("K")) value *= 1000;
-            return Math.round(value);
-        };
         const transferValueSliderStep = computed(() => {
             const range =
                 transferValueSliderMax.value - transferValueSliderMin.value;
@@ -809,12 +817,16 @@ export default {
                 roleSpecificOverallWeightsLoadedForFeedback,
                 roleSpecificOverallWeightsErrorForFeedback,
             );
-            // Attempt to load datasetID from sessionStorage if user navigates back
             const storedDatasetId = sessionStorage.getItem("currentDatasetId");
+            const storedCurrencySymbol = sessionStorage.getItem(
+                "detectedCurrencySymbol",
+            );
             if (storedDatasetId) {
                 currentDatasetId.value = storedDatasetId;
-                // Optionally, you could try to re-fetch players if datasetID exists
-                // fetchPlayersByDatasetId(storedDatasetId);
+                if (storedCurrencySymbol) {
+                    detectedCurrencySymbol.value = storedCurrencySymbol;
+                }
+                fetchPlayersByDatasetId(storedDatasetId); // Fetch players if ID exists
             }
         });
 
@@ -830,20 +842,25 @@ export default {
             loading.value = true;
             error.value = "";
             try {
-                // This assumes playerService will be updated to have a method
-                // for fetching by ID, or you'll implement the fetch call here.
-                // For now, let's assume the upload response might also contain players.
-                // If not, this part needs a dedicated fetch.
-                const playersDataFromApi =
-                    await playerService.getPlayersByDatasetId(datasetId); // This method needs to be created in playerService
-                allPlayers.value = processPlayersFromAPI(playersDataFromApi);
+                // playerService.getPlayersByDatasetId now returns { players: [], currencySymbol: "€" }
+                const response =
+                    await playerService.getPlayersByDatasetId(datasetId);
+                allPlayers.value = processPlayersFromAPI(response.players);
+                detectedCurrencySymbol.value = response.currencySymbol || "$"; // Use detected or default
+                sessionStorage.setItem(
+                    "detectedCurrencySymbol",
+                    detectedCurrencySymbol.value,
+                );
             } catch (e) {
                 error.value = `Failed to fetch player data for dataset ${datasetId}: ${e.message || "Unknown error"}`;
                 allPlayers.value = [];
-                currentDatasetId.value = null; // Clear if fetch fails
+                currentDatasetId.value = null;
+                detectedCurrencySymbol.value = "$"; // Reset to default
                 sessionStorage.removeItem("currentDatasetId");
+                sessionStorage.removeItem("detectedCurrencySymbol");
             } finally {
                 loading.value = false;
+                // This will trigger applyFiltersAndSort due to allPlayers.value watch
             }
         };
 
@@ -989,6 +1006,12 @@ export default {
                         transferValueSliderMax.value,
                     ),
                 );
+            } else {
+                // Set to max if null, so slider shows full range initially
+                filters.selectedTransferValue = transferValueSliderMax.value;
+                transferValueTextInput.value = formatSliderValueWithCurrency(
+                    transferValueSliderMax.value,
+                );
             }
         };
 
@@ -1069,7 +1092,11 @@ export default {
                 }
             }
 
-            if (filters.selectedTransferValue !== null) {
+            if (
+                filters.selectedTransferValue !== null &&
+                filters.selectedTransferValue < transferValueSliderMax.value
+            ) {
+                // Only filter if not set to max (Any)
                 const threshold = filters.selectedTransferValue;
                 if (filters.transferValueMode === "less") {
                     tempPlayers = tempPlayers.filter(
@@ -1112,7 +1139,8 @@ export default {
         const debouncedApplyFilters = debounce(applyFiltersAndSort, 300);
 
         const updateNumericValueFromTextInput = () => {
-            const numericValue = parseMonetaryStringToNumber(
+            const numericValue = parseCurrencyString(
+                // Use the util that doesn't need symbol
                 transferValueTextInput.value,
             );
             if (numericValue !== null) {
@@ -1121,13 +1149,19 @@ export default {
                     Math.min(numericValue, transferValueSliderMax.value),
                 );
                 if (filters.selectedTransferValue !== clampedValue) {
-                    filters.selectedTransferValue = clampedValue;
+                    filters.selectedTransferValue = clampedValue; // This will trigger its own watch
                 }
             } else if (transferValueTextInput.value.trim() === "") {
-                if (filters.selectedTransferValue !== null) {
-                    filters.selectedTransferValue = null;
+                // If input is cleared, set slider to max to mean "Any"
+                if (
+                    filters.selectedTransferValue !==
+                    transferValueSliderMax.value
+                ) {
+                    filters.selectedTransferValue =
+                        transferValueSliderMax.value;
                 }
             }
+            applyFiltersAndSort(); // Apply filters after text input change
         };
         const debouncedUpdateNumericValueFromTextInput = debounce(
             updateNumericValueFromTextInput,
@@ -1137,11 +1171,19 @@ export default {
         watch(
             () => filters.selectedTransferValue,
             (newValue) => {
-                const currentTextParsed = parseMonetaryStringToNumber(
+                const currentTextParsed = parseCurrencyString(
                     transferValueTextInput.value,
                 );
-                if (currentTextParsed !== newValue) {
-                    transferValueTextInput.value = formatSliderValue(newValue);
+                // Update text input only if it's different or if new slider value means "Any"
+                if (
+                    currentTextParsed !== newValue ||
+                    newValue === transferValueSliderMax.value
+                ) {
+                    transferValueTextInput.value =
+                        newValue === transferValueSliderMax.value &&
+                        newValue !== null
+                            ? ""
+                            : formatSliderValueWithCurrency(newValue);
                 }
             },
         );
@@ -1156,27 +1198,29 @@ export default {
             try {
                 const formData = new FormData();
                 formData.append("playerFile", playerFile.value);
-                // The backend now returns { datasetId: "...", message: "..." }
-                // It might optionally also return players: []
                 const response = await playerService.uploadPlayerFile(formData);
                 currentDatasetId.value = response.datasetId;
+                detectedCurrencySymbol.value =
+                    response.detectedCurrencySymbol || "$"; // Store detected symbol
 
-                // Store datasetId in sessionStorage for persistence across refreshes/navigation
                 sessionStorage.setItem(
                     "currentDatasetId",
                     currentDatasetId.value,
                 );
+                sessionStorage.setItem(
+                    "detectedCurrencySymbol",
+                    detectedCurrencySymbol.value,
+                );
 
-                // Fetch the players using the new datasetId to populate the table
-                // This ensures the frontend data matches what's stored in the backend's memory for this ID
                 await fetchPlayersByDatasetId(currentDatasetId.value);
-
-                sortState.key = null; // Reset sort after new upload
+                sortState.key = null;
             } catch (e) {
                 error.value = `Failed to process file: ${e.message || "Unknown error"}`;
                 allPlayers.value = [];
                 currentDatasetId.value = null;
+                detectedCurrencySymbol.value = "$"; // Reset to default
                 sessionStorage.removeItem("currentDatasetId");
+                sessionStorage.removeItem("detectedCurrencySymbol");
             } finally {
                 loading.value = false;
             }
@@ -1191,9 +1235,9 @@ export default {
         const clearAllFilters = () => {
             filters.name = "";
             filters.club = null;
-            filters.selectedTransferValue = null;
+            filters.selectedTransferValue = transferValueSliderMax.value; // Reset to "Any"
             filters.transferValueMode = "less";
-            transferValueTextInput.value = "";
+            transferValueTextInput.value = ""; // Clear text input
             filters.position = null;
             filters.nationality = null;
             filters.mediaHandling = [];
@@ -1243,8 +1287,9 @@ export default {
             (newPlayers) => {
                 updateDropdownOptionsAndSliderBounds();
                 if (!newPlayers || newPlayers.length === 0) {
-                    filters.selectedTransferValue = null;
-                    transferValueTextInput.value = "";
+                    filters.selectedTransferValue =
+                        transferValueSliderMax.value; // Reset to max, effectively "Any"
+                    transferValueTextInput.value = ""; // Clear text input
                 }
                 applyFiltersAndSort();
             },
@@ -1253,11 +1298,9 @@ export default {
 
         const goToTeamView = () => {
             if (currentDatasetId.value) {
-                // Pass datasetId to the team view page
-                // sessionStorage.setItem('currentDatasetId', currentDatasetId.value); // Already set on upload
                 router.push({
                     name: "team-view",
-                    query: { datasetId: currentDatasetId.value },
+                    query: { datasetId: currentDatasetId.value }, // Currency symbol will be fetched there
                 });
             } else {
                 error.value =
@@ -1299,12 +1342,13 @@ export default {
             transferValueSliderMin,
             transferValueSliderMax,
             transferValueSliderStep,
-            formatSliderValue,
+            formatSliderValueWithCurrency, // Updated function name
             transferValueTextInput,
             debouncedUpdateNumericValueFromTextInput,
             isGoalkeeperView,
             goToTeamView,
-            currentDatasetId, // Expose for disabling button
+            currentDatasetId,
+            detectedCurrencySymbol, // Expose for use in template
         };
     },
 };

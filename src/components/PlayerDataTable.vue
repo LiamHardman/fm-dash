@@ -63,7 +63,17 @@
                         ]"
                         :style="col.headerStyle"
                     >
-                        {{ col.label }}
+                        <span
+                            v-if="
+                                col.name === 'transfer_value' ||
+                                col.name === 'wage'
+                            "
+                        >
+                            {{ col.label }} ({{ currencySymbol }})
+                        </span>
+                        <span v-else>
+                            {{ col.label }}
+                        </span>
                         <q-icon
                             v-if="sortField === col.name"
                             :name="
@@ -121,10 +131,19 @@
                             "
                         >
                             <span
-                                :class="getMoneyClass(props.row[col.field])"
+                                :class="
+                                    getMoneyClass(
+                                        props.row[col.sortField || col.field],
+                                    )
+                                "
                                 class="money-value"
                             >
-                                {{ props.row[col.field] || "-" }}
+                                {{
+                                    formatDisplayCurrency(
+                                        props.row[col.sortField || col.field],
+                                        props.row[col.field],
+                                    )
+                                }}
                             </span>
                         </template>
                         <template
@@ -249,6 +268,7 @@
 <script>
 import { ref, computed, reactive, watch } from "vue";
 import { useQuasar } from "quasar";
+import { formatCurrency } from "../utils/currencyUtils"; // Import the utility
 
 export default {
     name: "PlayerDataTable",
@@ -256,38 +276,36 @@ export default {
         players: { type: Array, required: true },
         loading: { type: Boolean, default: false },
         isGoalkeeperView: { type: Boolean, default: false },
+        currencySymbol: { type: String, default: "$" }, // New prop
     },
     emits: ["update:sort", "player-selected"],
 
     setup(props, { emit }) {
-        const $q = useQuasar(); // qInstance will be used in template
+        const $q = useQuasar();
         const sortField = ref(null);
         const sortDirection = ref("asc");
-        const rowsPerPageOptions = [10, 15, 20, 50, 0]; // 0 means 'All'
-        const maxPagesToShow = 7; // For pagination controls
+        const rowsPerPageOptions = [10, 15, 20, 50, 0];
+        const maxPagesToShow = 7;
 
         const pagination = reactive({
             sortBy: null,
             descending: false,
             page: 1,
-            rowsPerPage: 15, // Default rows per page
+            rowsPerPage: 15,
         });
 
-        // Computed property for the total number of pages
         const pagesNumber = computed(() =>
             pagination.rowsPerPage === 0 || props.players.length === 0
                 ? 1
                 : Math.ceil(props.players.length / pagination.rowsPerPage),
         );
 
-        // Watch for changes in player count to reset to page 1
         watch(
             () => props.players.length,
             () => {
                 pagination.page = 1;
             },
         );
-        // Adjust page number if rowsPerPage changes and current page becomes invalid
         watch(
             () => pagination.rowsPerPage,
             () => {
@@ -297,7 +315,6 @@ export default {
             },
         );
 
-        // Column style definitions with max-width to control column expansion
         const nameColumnStyle =
             "max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
         const ageColumnStyle =
@@ -307,17 +324,16 @@ export default {
         const clubColumnStyle =
             "max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
         const moneyColumnStyle =
-            "max-width: 100px; text-align: right; white-space: nowrap;";
+            "max-width: 110px; text-align: right; white-space: nowrap;"; // Slightly wider for currency
         const overallColumnStyle =
             "max-width: 70px; text-align: center; white-space: nowrap;";
         const fifaStatColumnStyle =
             "max-width: 60px; text-align: center; white-space: nowrap;";
-        const textColumnStyle = // For Personality, Media Handling
+        const textColumnStyle =
             "max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
         const nationalityColumnStyle =
             "max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
 
-        // Base definitions for all columns
         const baseColumnDefinitions = {
             name: {
                 name: "name",
@@ -357,21 +373,21 @@ export default {
             },
             transfer_value: {
                 name: "transfer_value",
-                label: "Value",
-                field: "transfer_value",
+                label: "Value", // Symbol will be added in header template
+                field: "transfer_value", // This is the original string for display via formatCurrency
                 sortable: true,
                 align: "right",
-                sortField: "transferValueAmount", // Use numeric field for sorting
+                sortField: "transferValueAmount", // Use numeric field for actual sorting
                 style: moneyColumnStyle,
                 headerStyle: moneyColumnStyle,
             },
             wage: {
                 name: "wage",
-                label: "Salary",
-                field: "wage",
+                label: "Salary", // Symbol will be added in header template
+                field: "wage", // This is the original string for display via formatCurrency
                 sortable: true,
                 align: "right",
-                sortField: "wageAmount", // Use numeric field for sorting
+                sortField: "wageAmount", // Use numeric field for actual sorting
                 style: moneyColumnStyle,
                 headerStyle: moneyColumnStyle,
             },
@@ -404,10 +420,9 @@ export default {
                 headerStyle: textColumnStyle,
             },
             nationality_display: {
-                // Column for displaying flag and name
                 name: "nationality_display",
                 label: "Nationality",
-                field: "nationality", // Sort by full name
+                field: "nationality",
                 sortable: true,
                 align: "left",
                 style: nationalityColumnStyle,
@@ -415,7 +430,6 @@ export default {
             },
         };
 
-        // FIFA stat column definitions
         const allFifaStatDefinitions = {
             GK: {
                 name: "GK",
@@ -489,12 +503,10 @@ export default {
             },
         };
 
-        // Computed property to determine which columns to display and in what order
         const currentColumns = computed(() => {
-            // Adjusted order: Name, Nationality, then other base columns
             const newOrderBase = [
                 baseColumnDefinitions.name,
-                baseColumnDefinitions.nationality_display, // Moved Nationality here
+                baseColumnDefinitions.nationality_display,
                 baseColumnDefinitions.age,
                 baseColumnDefinitions.position,
                 baseColumnDefinitions.club,
@@ -503,29 +515,25 @@ export default {
                 baseColumnDefinitions.Overall,
             ];
 
-            let fifaColumnsInOrder = [];
-            if (props.isGoalkeeperView) {
-                fifaColumnsInOrder = [
-                    allFifaStatDefinitions.GK,
-                    allFifaStatDefinitions.PHY,
-                    allFifaStatDefinitions.PAS,
-                    allFifaStatDefinitions.MEN,
-                    allFifaStatDefinitions.DRI,
-                    allFifaStatDefinitions.DEF,
-                    allFifaStatDefinitions.SHO,
-                ];
-            } else {
-                fifaColumnsInOrder = [
-                    allFifaStatDefinitions.PHY,
-                    allFifaStatDefinitions.SHO,
-                    allFifaStatDefinitions.PAS,
-                    allFifaStatDefinitions.DRI,
-                    allFifaStatDefinitions.DEF,
-                    allFifaStatDefinitions.MEN,
-                ];
-            }
+            let fifaColumnsInOrder = props.isGoalkeeperView
+                ? [
+                      allFifaStatDefinitions.GK,
+                      allFifaStatDefinitions.PHY,
+                      allFifaStatDefinitions.PAS,
+                      allFifaStatDefinitions.MEN,
+                      allFifaStatDefinitions.DRI,
+                      allFifaStatDefinitions.DEF,
+                      allFifaStatDefinitions.SHO,
+                  ]
+                : [
+                      allFifaStatDefinitions.PHY,
+                      allFifaStatDefinitions.SHO,
+                      allFifaStatDefinitions.PAS,
+                      allFifaStatDefinitions.DRI,
+                      allFifaStatDefinitions.DEF,
+                      allFifaStatDefinitions.MEN,
+                  ];
 
-            // Nationality is no longer in trailingColumns as it's moved to newOrderBase
             const trailingColumns = [
                 baseColumnDefinitions.personality,
                 baseColumnDefinitions.media_handling,
@@ -534,21 +542,18 @@ export default {
             return [...newOrderBase, ...fifaColumnsInOrder, ...trailingColumns];
         });
 
-        // Helper to get column label for display
         const getColumnLabel = (fieldName) => {
             const col = currentColumns.value.find((c) => c.name === fieldName);
             return col ? col.label : fieldName;
         };
 
-        // Helper to get the actual field key for sorting (e.g., 'transferValueAmount' for 'Transfer Value')
         const getSortFieldKey = (colName) => {
             const colDef = currentColumns.value.find((c) => c.name === colName);
             return colDef?.sortField || colDef?.field || colName;
         };
 
-        // Computed property for sorted players (client-side sorting)
         const sortedPlayers = computed(() => {
-            if (!sortField.value) return props.players; // Return original if no sort field
+            if (!sortField.value) return props.players;
 
             const fieldKey = getSortFieldKey(sortField.value);
             const direction = sortDirection.value;
@@ -556,8 +561,6 @@ export default {
             return [...props.players].sort((a, b) => {
                 let vA = a[fieldKey];
                 let vB = b[fieldKey];
-
-                // Handle null or undefined values to sort them to the end
                 if (
                     (vA === null || vA === undefined) &&
                     (vB === null || vB === undefined)
@@ -567,10 +570,8 @@ export default {
                     return direction === "asc" ? 1 : -1;
                 if (vB === null || vB === undefined)
                     return direction === "asc" ? -1 : 1;
-
-                if (typeof vA === "number" && typeof vB === "number") {
+                if (typeof vA === "number" && typeof vB === "number")
                     return direction === "asc" ? vA - vB : vB - vA;
-                }
                 if (typeof vA === "string" && typeof vB === "string") {
                     vA = vA.toLowerCase();
                     vB = vB.toLowerCase();
@@ -578,11 +579,10 @@ export default {
                     if (vA > vB) return direction === "asc" ? 1 : -1;
                     return 0;
                 }
-                return 0; // Fallback for other types
+                return 0;
             });
         });
 
-        // Function to get CSS class based on rating value (0-100 for FIFA/Overall, 1-20 for attributes)
         const getUnifiedRatingClass = (value, maxScale) => {
             const numValue = parseInt(value, 10);
             if (
@@ -593,45 +593,30 @@ export default {
             )
                 return "rating-na";
             const percentage = (numValue / maxScale) * 100;
-            if (percentage >= 90) return "rating-tier-6"; // Elite
-            if (percentage >= 80) return "rating-tier-5"; // Excellent
-            if (percentage >= 70) return "rating-tier-4"; // Good
-            if (percentage >= 55) return "rating-tier-3"; // Average
-            if (percentage >= 40) return "rating-tier-2"; // Below Average
-            return "rating-tier-1"; // Poor
+            if (percentage >= 90) return "rating-tier-6";
+            if (percentage >= 80) return "rating-tier-5";
+            if (percentage >= 70) return "rating-tier-4";
+            if (percentage >= 55) return "rating-tier-3";
+            if (percentage >= 40) return "rating-tier-2";
+            return "rating-tier-1";
         };
 
-        // Function to get CSS class based on monetary value
-        const getMoneyClass = (valueString) => {
-            let amount = 0;
-            if (typeof valueString === "string") {
-                const cleaned = valueString.replace(/[^0-9.MKmk]/g, "");
-                if (cleaned.toLowerCase().includes("m"))
-                    amount = parseFloat(cleaned) * 1000000;
-                else if (cleaned.toLowerCase().includes("k"))
-                    amount = parseFloat(cleaned) * 1000;
-                else amount = parseFloat(cleaned);
-                if (isNaN(amount)) amount = 0;
-            } else if (typeof valueString === "number") {
-                // If already numeric (e.g. wageAmount)
-                amount = valueString;
-            }
-
-            if (amount >= 10000000) return "money-very-high";
-            if (amount >= 1000000) return "money-high";
-            if (amount >= 100000) return "money-medium-high";
-            if (amount >= 10000) return "money-medium";
-            if (amount > 0) return "money-low";
-            return "money-na";
+        const getMoneyClass = (numericAmount) => {
+            if (numericAmount === null || numericAmount === undefined)
+                return "money-na";
+            if (numericAmount >= 10000000) return "money-very-high";
+            if (numericAmount >= 1000000) return "money-high";
+            if (numericAmount >= 100000) return "money-medium-high";
+            if (numericAmount >= 10000) return "money-medium";
+            if (numericAmount > 0) return "money-low";
+            return "money-na"; // For 0 or unparsed
         };
 
-        // Handle flag image loading errors
         const onFlagError = (event) => {
-            if (event.target) event.target.style.display = "none"; // Hide broken image
+            if (event.target) event.target.style.display = "none";
             const iconElement = event.target.nextElementSibling;
-            if (iconElement && iconElement.tagName === "I") {
+            if (iconElement && iconElement.tagName === "I")
                 iconElement.style.display = "inline-flex";
-            }
         };
 
         const onRequest = (requestProp) => {
@@ -639,7 +624,6 @@ export default {
                 requestProp.pagination;
             pagination.page = page;
             pagination.rowsPerPage = rowsPerPage;
-
             if (sortBy) {
                 const newSortField = sortBy;
                 const newSortDirection = descending ? "desc" : "asc";
@@ -670,33 +654,8 @@ export default {
             pagination.rowsPerPage = newRowsPerPage;
             pagination.page = 1;
         };
-
         const customSort = (rows, sortBy, descending) => {
-            const fieldKey = getSortFieldKey(sortBy);
-            const direction = descending ? "desc" : "asc";
-            return [...rows].sort((a, b) => {
-                let vA = a[fieldKey];
-                let vB = b[fieldKey];
-                if (
-                    (vA === null || vA === undefined) &&
-                    (vB === null || vB === undefined)
-                )
-                    return 0;
-                if (vA === null || vA === undefined)
-                    return direction === "asc" ? 1 : -1;
-                if (vB === null || vB === undefined)
-                    return direction === "asc" ? -1 : 1;
-                if (typeof vA === "number" && typeof vB === "number")
-                    return direction === "asc" ? vA - vB : vB - vA;
-                if (typeof vA === "string" && typeof vB === "string") {
-                    vA = vA.toLowerCase();
-                    vB = vB.toLowerCase();
-                    if (vA < vB) return direction === "asc" ? -1 : 1;
-                    if (vA > vB) return direction === "asc" ? 1 : -1;
-                    return 0;
-                }
-                return 0;
-            });
+            /* Uses sortedPlayers computed */ return rows;
         };
         const sortTable = (fieldName) => {
             const actualSortKey = getSortFieldKey(fieldName);
@@ -709,7 +668,6 @@ export default {
             }
             pagination.sortBy = fieldName;
             pagination.descending = sortDirection.value === "desc";
-
             emit("update:sort", {
                 key: actualSortKey,
                 direction: sortDirection.value,
@@ -724,6 +682,19 @@ export default {
         };
         const onRowClick = (player) => {
             emit("player-selected", player);
+        };
+
+        // Method to format currency for display using the utility
+        // It now takes the numeric amount first, then the original display string as a fallback.
+        const formatDisplayCurrency = (numericAmount, originalDisplayValue) => {
+            // The backend's `transferValueAmount` or `wageAmount` is the single numeric value.
+            // The `originalDisplayValue` (e.g., player.transfer_value) is the string from HTML "£85M - £99M"
+            // We prioritize formatting the numericAmount.
+            return formatCurrency(
+                numericAmount,
+                props.currencySymbol,
+                originalDisplayValue,
+            );
         };
 
         return {
@@ -746,6 +717,7 @@ export default {
             customSort,
             sortTable,
             onRowClick,
+            formatDisplayCurrency, // Expose the new formatting method
         };
     },
 };
@@ -759,7 +731,7 @@ export default {
 
 .player-q-table {
     width: 100%;
-    table-layout: auto;
+    table-layout: auto; // Allow table to determine column widths
 
     th .sort-icon {
         vertical-align: middle;
@@ -785,12 +757,12 @@ export default {
 
     &:not(.q-table--dark) {
         th {
-            background-color: #f0f4f8;
+            background-color: #f0f4f8; // Lighter header for light mode
             color: $grey-8;
             border-bottom: 1px solid #dde2e6;
         }
         td {
-            border-bottom: 1px solid #eef2f5;
+            border-bottom: 1px solid #eef2f5; // Lighter cell borders
             color: $grey-9;
         }
         tr:last-child td {
@@ -803,17 +775,17 @@ export default {
 
     th {
         font-weight: 600;
-        font-size: 0.8rem;
-        padding: 8px 10px;
-        border-right: 0;
+        font-size: 0.8rem; // Slightly smaller header text
+        padding: 8px 10px; // Consistent padding
+        border-right: 0; // Remove vertical borders between headers
     }
     td {
         vertical-align: middle;
-        padding: 6px 10px;
-        border-right: 0;
+        padding: 6px 10px; // Consistent padding
+        border-right: 0; // Remove vertical borders between cells
     }
     .table-cell-enhanced {
-        font-size: 0.85rem;
+        font-size: 0.85rem; // Slightly larger cell text
     }
 }
 
@@ -823,18 +795,20 @@ export default {
             background-color: rgba(255, 255, 255, 0.08) !important;
         }
         .body--light & {
-            background-color: #e3f2fd !important;
+            background-color: #e3f2fd !important; // Light blue hover for light mode
         }
     }
 }
 
+// Monetary value styling
 .money-value {
     display: inline-block;
     font-weight: 500;
     padding: 1px 6px;
     border-radius: 3px;
-    font-size: 0.8rem;
+    font-size: 0.8rem; // Slightly smaller money values
 }
+// Specific money classes (colors defined in app.scss or here if preferred)
 .money-very-high {
     color: #1b5e20;
     font-weight: 700;
@@ -885,11 +859,13 @@ export default {
     }
 }
 
+// Ensure icons and images in flex containers don't shrink unexpectedly
 .flex.items-center .q-icon,
 .flex.items-center img {
     flex-shrink: 0;
 }
 
+// Dark mode select in pagination
 :deep(.q-table__bottom .q-select .q-field__native),
 :deep(.q-table__bottom .q-select .q-field__input) {
     .body--dark & {
@@ -897,9 +873,10 @@ export default {
     }
 }
 
+// Allow text wrapping in cells
 .player-q-table td,
 .player-q-table th {
-    white-space: normal;
-    word-break: break-word;
+    white-space: normal; // Allow wrapping
+    word-break: break-word; // Break long words
 }
 </style>

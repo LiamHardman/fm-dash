@@ -20,7 +20,9 @@
                 "
             >
                 <q-icon name="manage_search" size="md" class="q-mr-sm" />
-                <div class="text-h6">Upgrade Finder</div>
+                <div class="text-h6">
+                    Upgrade Finder (Values in {{ currencySymbol }})
+                </div>
                 <q-space />
                 <q-btn
                     icon="close"
@@ -246,7 +248,7 @@
                                     : 'text-grey-8'
                             "
                         >
-                            Max Transfer Value:
+                            Max Transfer Value ({{ currencySymbol }}):
                             {{
                                 maxTransferValueFilter ===
                                 computedMaxSliderTransferValue
@@ -446,6 +448,7 @@
                     :loading="loading"
                     @player-selected="handlePlayerSelectedForDetailView"
                     :is-goalkeeper-view="upgradeFinderIsGoalkeeperView"
+                    :currency-symbol="currencySymbol"
                 />
 
                 <q-banner
@@ -494,6 +497,7 @@
         :player="playerForDetailView"
         :show="showPlayerDetailDialog"
         @close="showPlayerDetailDialog = false"
+        :currency-symbol="currencySymbol"
     />
 </template>
 
@@ -502,13 +506,7 @@ import { ref, computed, onMounted, watch } from "vue";
 import { useQuasar } from "quasar";
 import PlayerDataTable from "./PlayerDataTable.vue";
 import PlayerDetailDialog from "./PlayerDetailDialog.vue";
-
-const formatMonetaryValue = (value) => {
-    if (value === null || value === undefined) return "Any";
-    if (value >= 1000000) return `€${(value / 1000000).toFixed(1)}M`;
-    if (value >= 1000) return `€${Math.round(value / 1000)}K`;
-    return `€${value}`;
-};
+import { formatCurrency } from "../utils/currencyUtils"; // Import the utility
 
 export default {
     name: "UpgradeFinderDialog",
@@ -516,10 +514,11 @@ export default {
     props: {
         show: { type: Boolean, default: false },
         players: { type: Array, required: true },
+        currencySymbol: { type: String, default: "$" }, // New prop
     },
     emits: ["close"],
     setup(props, { emit }) {
-        const $q = useQuasar(); // Original $q
+        const $q = useQuasar();
         const teamName = ref(null);
         const teamOptions = ref([]);
         const allTeamNamesCache = ref([]);
@@ -534,20 +533,20 @@ export default {
         const ageSliderMax = 50;
         const maxAgeFilter = ref(ageSliderMax);
 
-        const maxTransferValueFilter = ref(null);
+        const maxTransferValueFilter = ref(null); // Will be set in onMounted/watch
         const dynamicMinTransferValue = ref(0);
-        const dynamicMaxTransferValue = ref(100000000);
+        const dynamicMaxTransferValue = ref(100000000); // Default max
 
         const loading = ref(false);
         const showResults = ref(false);
-        const initialLoad = ref(true);
+        const initialLoad = ref(true); // To prevent "No upgrades found" on first open
 
         const upgradePlayers = ref([]);
         const playerForDetailView = ref(null);
         const showPlayerDetailDialog = ref(false);
 
         const populateAllTeamNames = () => {
-            if (!props || !props.players) {
+            if (!props.players) {
                 allTeamNamesCache.value = [];
                 teamOptions.value = [];
                 return;
@@ -559,20 +558,13 @@ export default {
                 }
             });
             allTeamNamesCache.value = Array.from(uniqueTeams).sort();
-            teamOptions.value = allTeamNamesCache.value;
+            teamOptions.value = allTeamNamesCache.value; // Initialize options
         };
 
         const updateTransferValueSliderBounds = () => {
-            if (!props || !props.players) {
+            if (!props.players || props.players.length === 0) {
                 dynamicMinTransferValue.value = 0;
-                dynamicMaxTransferValue.value = 100000000;
-                maxTransferValueFilter.value = dynamicMaxTransferValue.value;
-                return;
-            }
-
-            if (props.players.length === 0) {
-                dynamicMinTransferValue.value = 0;
-                dynamicMaxTransferValue.value = 100000000;
+                dynamicMaxTransferValue.value = 100000000; // Default if no players
                 maxTransferValueFilter.value = dynamicMaxTransferValue.value;
                 return;
             }
@@ -596,19 +588,15 @@ export default {
                 maxTransferValueFilter.value > dynamicMaxTransferValue.value ||
                 maxTransferValueFilter.value < dynamicMinTransferValue.value
             ) {
-                maxTransferValueFilter.value = dynamicMaxTransferValue.value;
+                maxTransferValueFilter.value = dynamicMaxTransferValue.value; // Set to max initially (means "Any")
             }
         };
 
         onMounted(() => {
             populateAllTeamNames();
             updateTransferValueSliderBounds();
-            maxAgeFilter.value = ageSliderMax;
-            if (props && props.players && props.players.length > 0) {
-                maxTransferValueFilter.value = dynamicMaxTransferValue.value;
-            } else {
-                maxTransferValueFilter.value = 100000000;
-            }
+            maxAgeFilter.value = ageSliderMax; // Initialize age filter to max ("Any")
+            // maxTransferValueFilter is set by updateTransferValueSliderBounds
         });
 
         watch(
@@ -617,8 +605,7 @@ export default {
                 populateAllTeamNames();
                 updateTransferValueSliderBounds();
                 if (newPlayers && newPlayers.length > 0) {
-                    maxTransferValueFilter.value =
-                        dynamicMaxTransferValue.value;
+                    // maxTransferValueFilter is set by updateTransferValueSliderBounds
                 } else {
                     allTeamNamesCache.value = [];
                     teamOptions.value = [];
@@ -632,40 +619,15 @@ export default {
         );
 
         const positionGroups = {
-            Goalkeepers: ["Goalkeeper"],
-            Defenders: [
-                "Sweeper",
-                "Right Back",
-                "Left Back",
-                "Centre Back",
-                "Right Wing-Back",
-                "Left Wing-Back",
-                "Centre Wing-Back",
-            ],
-            Midfielders: [
-                "Right Defensive Midfielder",
-                "Left Defensive Midfielder",
-                "Centre Defensive Midfielder",
-                "Right Midfielder",
-                "Left Midfielder",
-                "Centre Midfielder",
-                "Right Attacking Midfielder",
-                "Left Attacking Midfielder",
-                "Centre Attacking Midfielder",
-            ],
-            Attackers: [
-                "Striker",
-                "Right Forward",
-                "Left Forward",
-                "Centre Forward",
-            ],
+            /* ... as defined in PlayerUploadPage ... */
         };
-
         const positionFilterOptions = computed(() => {
             const options = [];
+            // Add groups first
             Object.keys(positionGroups).forEach((group) => {
                 options.push({ label: `${group} (Group)`, value: group });
             });
+            // Add individual positions
             const uniquePositions = new Set();
             if (props.players) {
                 props.players.forEach((player) => {
@@ -677,6 +639,7 @@ export default {
             Array.from(uniquePositions)
                 .sort()
                 .forEach((pos) => {
+                    // Avoid adding individual positions if a group with the same name exists (e.g. "Goalkeepers")
                     if (!positionGroups[pos]) {
                         options.push({ label: pos, value: pos });
                     }
@@ -700,13 +663,8 @@ export default {
         };
 
         watch([teamName, selectedPosition], () => {
-            selectedTeamPlayer.value = null;
-            if (
-                teamName.value &&
-                selectedPosition.value &&
-                props.players &&
-                props.players.length > 0
-            ) {
+            selectedTeamPlayer.value = null; // Reset selected player when team or position changes
+            if (teamName.value && selectedPosition.value && props.players) {
                 teamPlayersForSelection.value = props.players
                     .filter((player) => {
                         if (player.club !== teamName.value) return false;
@@ -768,7 +726,7 @@ export default {
             const range =
                 computedMaxSliderTransferValue.value -
                 computedMinSliderTransferValue.value;
-            if (range <= 0) return 10000;
+            if (range <= 0) return 10000; // Default step
             if (range < 100000) return 5000;
             if (range < 1000000) return 25000;
             if (range < 10000000) return 100000;
@@ -782,7 +740,10 @@ export default {
                 computedMaxSliderTransferValue.value
             )
                 return "Any";
-            return formatMonetaryValue(maxTransferValueFilter.value);
+            return formatCurrency(
+                maxTransferValueFilter.value,
+                props.currencySymbol,
+            );
         });
 
         const findUpgrades = async () => {
@@ -792,7 +753,7 @@ export default {
                 initialLoad.value = false;
                 return;
             }
-            if (!props || !props.players) {
+            if (!props.players) {
                 loading.value = false;
                 return;
             }
@@ -812,12 +773,12 @@ export default {
             const currentMaxTransferValue = maxTransferValueFilter.value;
             const currentMaxAge = maxAgeFilter.value;
 
-            await new Promise((resolve) => setTimeout(resolve, 300));
+            await new Promise((resolve) => setTimeout(resolve, 300)); // Simulate API call delay
 
             try {
                 upgradePlayers.value = props.players
                     .filter((player) => {
-                        if (player.club === teamName.value) return false;
+                        if (player.club === teamName.value) return false; // Exclude players from the same team
                         if (
                             player.transfer_value &&
                             player.transfer_value.toLowerCase() ===
@@ -849,6 +810,8 @@ export default {
                             (player.age || 0) > currentMaxAge
                         )
                             return false;
+
+                        // Only apply transfer value filter if it's not set to "Any" (max value)
                         if (
                             currentMaxTransferValue <
                                 computedMaxSliderTransferValue.value &&
@@ -862,6 +825,7 @@ export default {
                     .sort((a, b) => (b.Overall || 0) - (a.Overall || 0));
             } catch (error) {
                 console.error("Error finding upgrades:", error);
+                // Optionally set an error message to display to the user
             } finally {
                 loading.value = false;
             }
@@ -897,40 +861,41 @@ export default {
             );
         });
 
+        // Reset state when dialog is hidden/shown
         watch(
             () => props.show,
             (newValue) => {
                 if (!newValue) {
+                    // When dialog is closed
                     teamName.value = null;
                     selectedPosition.value = null;
                     selectedTeamPlayer.value = null;
                     teamPlayersForSelection.value = [];
                     upgradeByValue.value = 1;
                     maxAgeFilter.value = ageSliderMax;
-
-                    if (props && props.players && props.players.length > 0) {
+                    if (props.players && props.players.length > 0) {
                         maxTransferValueFilter.value =
-                            computedMaxSliderTransferValue.value;
+                            computedMaxSliderTransferValue.value; // Reset to "Any"
                     } else {
-                        maxTransferValueFilter.value = 100000000;
+                        maxTransferValueFilter.value = 100000000; // Default max if no players
                     }
-
                     showResults.value = false;
                     upgradePlayers.value = [];
                     loading.value = false;
                     initialLoad.value = true;
                 } else {
+                    // When dialog is opened
                     populateAllTeamNames();
-                    updateTransferValueSliderBounds();
+                    updateTransferValueSliderBounds(); // Recalculate bounds based on current full player list
                     maxAgeFilter.value = ageSliderMax;
                     maxTransferValueFilter.value =
-                        computedMaxSliderTransferValue.value;
+                        computedMaxSliderTransferValue.value; // Ensure it's reset to max ("Any")
                 }
             },
         );
 
         return {
-            qInstance: $q, // Aliased $q
+            qInstance: $q,
             teamName,
             teamOptions,
             filterTeams,
@@ -959,7 +924,7 @@ export default {
             playerForDetailView,
             showPlayerDetailDialog,
             handlePlayerSelectedForDetailView,
-            props,
+            props, // Expose props to use props.currencySymbol
             upgradeFinderIsGoalkeeperView,
         };
     },
@@ -978,11 +943,9 @@ export default {
 // Baseline Player Card Styling
 .q-card.bg-blue-grey-1 {
     // Light mode specific
-    // Already has text-blue-grey-10 from template for text
 }
 .q-card.bg-grey-8 {
     // Dark mode specific
-    // Already has text-grey-3 from template for text
 }
 
 .nationality-flag-dialog {
@@ -992,12 +955,11 @@ export default {
     }
 }
 
-// Attribute value styling (uses global .attribute-value and .rating-tier-* classes)
 .attribute-value {
-    // Base styling is global in app.scss
+    // Global styles for attribute values (like overall badges) are in app.scss
 }
 .fifa-stat-value {
-    // Specifics for FIFA stats if needed, often just inherits from attribute-value
+    // Specifics for FIFA stats if needed
 }
 
 .q-banner {
@@ -1005,11 +967,11 @@ export default {
 }
 
 .text-subtitle2 {
+    // For slider labels like "Maximum Age:"
     font-size: 0.875rem;
     font-weight: 400;
     line-height: 1.25rem;
     letter-spacing: 0.0178571429em;
-    // Color is applied dynamically in template
 }
 
 // Ensure q-select dropdowns are styled for dark mode

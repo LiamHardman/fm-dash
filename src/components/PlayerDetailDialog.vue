@@ -238,7 +238,7 @@
                                                         ? 'blue-3'
                                                         : 'primary'
                                                 "
-                                                name="euro_symbol"
+                                                :name="currencyIcon"
                                                 size="1.1em"
                                             />
                                         </q-item-section>
@@ -247,7 +247,7 @@
                                                 >Value</q-item-label
                                             >
                                             <q-item-label class="text-body1">{{
-                                                player.transfer_value || "-"
+                                                formattedTransferValue
                                             }}</q-item-label>
                                         </q-item-section>
                                         <q-item-section side>
@@ -268,7 +268,7 @@
                                                 <q-item-label
                                                     class="text-body1"
                                                     >{{
-                                                        player.wage || "-"
+                                                        formattedWage
                                                     }}</q-item-label
                                                 >
                                             </div>
@@ -711,9 +711,9 @@
 </template>
 
 <script>
-// Script remains the same as your previous version
 import { defineComponent, computed } from "vue";
 import { useQuasar } from "quasar";
+import { formatCurrency } from "../utils/currencyUtils"; // Import the utility
 
 const attributeFullNameMap = {
     Cor: "Corners",
@@ -827,6 +827,7 @@ export default defineComponent({
     props: {
         player: { type: Object, default: () => null },
         show: { type: Boolean, default: false },
+        currencySymbol: { type: String, default: "$" }, // New prop
     },
     emits: ["close"],
     setup(props) {
@@ -920,6 +921,38 @@ export default defineComponent({
             return [];
         });
 
+        // Computed properties for formatted monetary values
+        const formattedTransferValue = computed(() => {
+            if (!props.player) return "-";
+            return formatCurrency(
+                props.player.transferValueAmount,
+                props.currencySymbol,
+                props.player.transfer_value,
+            );
+        });
+
+        const formattedWage = computed(() => {
+            if (!props.player) return "-";
+            return formatCurrency(
+                props.player.wageAmount,
+                props.currencySymbol,
+                props.player.wage,
+            );
+        });
+
+        const currencyIcon = computed(() => {
+            switch (props.currencySymbol) {
+                case "€":
+                    return "euro_symbol";
+                case "£":
+                    return "currency_pound";
+                case "$":
+                    return "attach_money";
+                default:
+                    return "payments"; // Generic fallback
+            }
+        });
+
         return {
             qInstance: $q,
             attributeCategories,
@@ -929,6 +962,9 @@ export default defineComponent({
             onFlagError,
             sortedRoleSpecificOveralls,
             isGoalkeeper,
+            formattedTransferValue, // Expose formatted values
+            formattedWage,
+            currencyIcon,
         };
     },
 });
@@ -943,7 +979,7 @@ export default defineComponent({
 
 .main-content-section {
     flex-grow: 1;
-    padding: 6px;
+    padding: 6px; // Reduced padding for denser layout
 }
 
 .player-flag {
@@ -951,18 +987,19 @@ export default defineComponent({
     border-radius: 3px;
     object-fit: cover;
     vertical-align: middle;
-    height: auto;
+    height: auto; // Maintain aspect ratio
 }
 
+// Responsive typography using clamp for better scaling
 .dialog-title {
     font-size: clamp(0.9rem, 1.4vw, 1.1rem);
 }
 .player-name-header {
-    font-size: clamp(0.95rem, 1.6vw, 1.2rem);
+    font-size: clamp(0.95rem, 1.6vw, 1.2rem); // Slightly larger for name
 }
 .player-age-badge {
     font-size: clamp(0.6rem, 0.8vw, 0.7rem);
-    padding: 1px 2px;
+    padding: 1px 2px; // Smaller padding
 }
 
 .player-info-list .q-item__label {
@@ -972,6 +1009,7 @@ export default defineComponent({
     font-size: clamp(0.55rem, 0.8vw, 0.7rem);
 }
 .player-info-list .text-body1 {
+    // For actual data like club name, position
     font-size: clamp(0.75rem, 1.2vw, 0.9rem);
 }
 
@@ -979,8 +1017,8 @@ export default defineComponent({
     font-size: clamp(0.95rem, 1.6vw, 1.2rem);
 }
 .main-overall-value {
-    font-size: clamp(1.5rem, 2.5vw, 2rem);
-    padding: 2px 5px;
+    font-size: clamp(1.5rem, 2.5vw, 2rem); // Prominent overall
+    padding: 2px 5px; // Minimal padding
 }
 .fifa-ratings-title {
     font-size: clamp(0.85rem, 1.4vw, 1rem);
@@ -989,6 +1027,7 @@ export default defineComponent({
     font-size: clamp(0.6rem, 0.8vw, 0.7rem);
 }
 .fifa-stat-card .attribute-value.text-h6 {
+    // For FIFA stat numbers
     font-size: clamp(0.85rem, 1.4vw, 1.05rem);
 }
 
@@ -1003,25 +1042,30 @@ export default defineComponent({
     font-size: clamp(0.7rem, 1.1vw, 0.85rem);
 }
 .attribute-list-item .attribute-score-value {
+    // For 1-20 attribute scores
     font-size: clamp(0.75rem, 1.2vw, 0.9rem);
 }
 
+// Ensure attribute columns and cards within them behave well
 .attribute-columns-container > .column {
     display: flex;
-    flex-direction: column;
+    flex-direction: column; // Stack cards vertically if multiple in one column (like physical + roles)
 }
 
 .full-height-card {
-    flex-grow: 1;
+    // For Technical and Mental attribute cards
+    flex-grow: 1; // Allow them to take available space
     display: flex;
     flex-direction: column;
-    min-height: 0;
+    min-height: 0; // Important for flex children in a flex container
 }
 
+// Attribute lists styling
 .attribute-list.no-scroll {
-    flex-grow: 0;
-    flex-shrink: 0;
-    overflow-y: visible;
+    // For technical, mental, physical lists that shouldn't scroll individually
+    flex-grow: 0; // Don't grow
+    flex-shrink: 0; // Don't shrink
+    overflow-y: visible; // Content determines height
 }
 .physical-attributes-card .attribute-list.physical-list.no-scroll {
     flex-grow: 0;
@@ -1030,61 +1074,68 @@ export default defineComponent({
 }
 
 .role-ratings-card .role-specific-ratings-list {
+    // For the scrollable role ratings
     overflow-y: auto;
-    flex-shrink: 1;
-    max-height: 15vh;
+    flex-shrink: 1; // Allow this list to shrink if needed, but also scroll
+    max-height: 15vh; // Limit height to make it scrollable within its card
 }
 
 .fifa-stat-card {
-    min-height: 50px;
+    min-height: 50px; // Ensure a minimum tap/view area
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 1px !important;
+    padding: 1px !important; // Minimal padding
 }
 
+// Highlighting for best role
 .best-role-highlight {
-    border-left: 4px solid $positive;
+    border-left: 4px solid $positive; // Use Quasar positive color
     .body--dark & {
         border-left: 4px solid lighten($positive, 15%);
     }
 }
 .best-role-highlight .q-item__label {
-    font-weight: 600;
+    font-weight: 600; // Bolder text for best role
 }
 
+// Dense list item padding
 .q-list--dense .q-item,
 .attribute-list-item,
 .constrained-scroll-list .q-item.attribute-list-item {
-    padding: 1px 6px;
-    min-height: auto;
+    padding: 1px 6px; // Reduced padding for density
+    min-height: auto; // Allow items to be as short as their content
 }
 .player-info-list .q-item {
-    padding: 2px 8px;
+    padding: 2px 8px; // Slightly more padding for general info
     min-height: auto;
 }
 .min-height-auto {
     min-height: auto !important;
 }
 
+// List separators
 .q-list--separator > .q-item:not(:first-child):before {
-    background: rgba(128, 128, 128, 0.2);
+    background: rgba(128, 128, 128, 0.2); // Softer separator
 }
 
+// Backgrounds for card sections (headers)
 .q-card__section.bg-grey-3 {
     background-color: #f0f0f0 !important;
-}
+} // Lighter grey for light mode
 .q-card__section.bg-grey-8 {
     background-color: #303030 !important;
-}
+} // Darker grey for dark mode
 
+// Card borders
 .q-card[flat][bordered] {
     border: 1px solid rgba(128, 128, 128, 0.3);
     .body--dark & {
-        border: 1px solid rgba(128, 128, 128, 0.4);
+        border: 1px solid rgba(128, 128, 128, 0.4); // Slightly more visible border in dark mode
     }
 }
 
+// Responsive adjustments for smaller screens
 @media (max-width: $breakpoint-xs-max) {
     .main-content-section {
         padding: 4px;
@@ -1139,12 +1190,13 @@ export default defineComponent({
         font-size: 0.75rem;
     }
 
+    // Allow attribute lists to scroll on small screens if content overflows
     .attribute-list.no-scroll {
-        overflow-y: auto;
-        max-height: 30vh;
+        overflow-y: auto; // Enable scroll if needed
+        max-height: 30vh; // Limit height
     }
     .role-ratings-card .role-specific-ratings-list {
-        max-height: 12vh;
+        max-height: 12vh; // Adjust for very small screens
     }
 }
 </style>
