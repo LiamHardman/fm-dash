@@ -666,7 +666,7 @@
 
                 <div
                     class="text-h5 q-mt-lg q-mb-sm text-center attributes-section-title"
-                    v-if="performanceStats.length > 0"
+                    v-if="performanceStatsToDisplay.length > 0"
                 >
                     Performance Statistics
                 </div>
@@ -677,7 +677,7 @@
                         $q.dark.isActive ? 'bg-grey-9' : 'bg-grey-1',
                         'rounded-borders',
                     ]"
-                    v-if="performanceStats.length > 0"
+                    v-if="performanceStatsToDisplay.length > 0"
                 >
                     <q-card-section
                         :class="$q.dark.isActive ? 'bg-grey-8' : 'bg-grey-3'"
@@ -686,16 +686,17 @@
                         <div
                             class="text-subtitle1 text-weight-medium text-center"
                         >
-                            Per 90 & Other Metrics
+                            Per 90 & Other Metrics (Percentiles vs. Uploaded
+                            Dataset)
                         </div>
                     </q-card-section>
                     <q-list separator dense class="attribute-list">
                         <q-item
-                            v-for="stat in performanceStats"
+                            v-for="stat in performanceStatsToDisplay"
                             :key="stat.key"
-                            class="attribute-list-item"
+                            class="attribute-list-item performance-stat-item"
                         >
-                            <q-item-section>
+                            <q-item-section class="stat-name-section">
                                 <q-item-label
                                     lines="1"
                                     class="attribute-name-label"
@@ -704,22 +705,38 @@
                                     {{ stat.name }}
                                 </q-item-label>
                             </q-item-section>
-                            <q-item-section side>
+                            <q-item-section class="stat-bar-section">
+                                <div class="stat-bar-container">
+                                    <div class="stat-bar-track">
+                                        <div
+                                            class="stat-bar-fill"
+                                            :style="
+                                                getBarFillStyle(stat.percentile)
+                                            "
+                                        ></div>
+                                    </div>
+                                    <span
+                                        v-if="
+                                            stat.percentile !== null &&
+                                            stat.percentile >= 0
+                                        "
+                                        class="stat-percentile-text"
+                                    >
+                                        {{ Math.round(stat.percentile) }}
+                                    </span>
+                                    <span
+                                        v-else
+                                        class="stat-percentile-text text-caption text-grey-6"
+                                        >N/A</span
+                                    >
+                                </div>
+                            </q-item-section>
+                            <q-item-section side class="stat-value-section">
                                 <span
-                                    class="attribute-value performance-stat-value"
-                                    :class="
-                                        getPerformanceStatClass(
-                                            stat.key,
-                                            player.attributes[stat.key],
-                                        )
-                                    "
+                                    class="attribute-value performance-stat-actual-value"
                                 >
                                     {{
-                                        player.attributes[stat.key] !==
-                                            undefined &&
-                                        player.attributes[stat.key] !== "-"
-                                            ? player.attributes[stat.key]
-                                            : "N/A"
+                                        stat.value !== "-" ? stat.value : "N/A"
                                     }}
                                 </span>
                             </q-item-section>
@@ -864,7 +881,7 @@ const goalkeepingAttrsOrdered = [
     "Thr",
 ];
 
-// Performance statistics mapping
+// Performance statistics mapping (used to get full names)
 const performanceStatMap = {
     "Asts/90": "Assists per 90",
     "Av Rat": "Average Rating",
@@ -897,12 +914,13 @@ export default defineComponent({
     name: "PlayerDetailDialog",
     props: {
         player: { type: Object, default: () => null },
+        // allPlayersData prop is removed as percentiles come from backend
         show: { type: Boolean, default: false },
         currencySymbol: { type: String, default: "$" },
     },
     emits: ["close"],
     setup(props) {
-        const $q = useQuasar(); // $q is now directly available in the setup scope
+        const $q = useQuasar();
 
         const isGoalkeeper = computed(() => {
             if (!props.player) return false;
@@ -952,21 +970,28 @@ export default defineComponent({
                     { name: "MEN", label: "MEN" },
                 ];
             }
-            // Ensure player object exists before trying to access its properties
             return orderedStats.filter(
                 (stat) => props.player && props.player[stat.name] !== undefined,
             );
         });
 
-        const performanceStats = computed(() => {
-            if (!props.player || !props.player.attributes) return [];
-            return Object.keys(performanceStatMap)
+        // Updated to use pre-calculated percentiles from the player object
+        const performanceStatsToDisplay = computed(() => {
+            if (
+                !props.player ||
+                !props.player.attributes ||
+                !props.player.performancePercentiles
+            ) {
+                return [];
+            }
+            return Object.keys(props.player.performancePercentiles)
                 .filter(
                     (key) =>
+                        performanceStatMap[key] && // Ensure it's a known performance stat
                         Object.prototype.hasOwnProperty.call(
                             props.player.attributes,
                             key,
-                        ) &&
+                        ) && // Ensure the original value exists
                         props.player.attributes[key] !== "-" &&
                         props.player.attributes[key] !== "",
                 )
@@ -974,6 +999,10 @@ export default defineComponent({
                     key: key,
                     name: performanceStatMap[key],
                     value: props.player.attributes[key],
+                    percentile:
+                        props.player.performancePercentiles[key] >= 0
+                            ? props.player.performancePercentiles[key]
+                            : null, // Use null for N/A percentiles
                 }))
                 .sort((a, b) => a.name.localeCompare(b.name));
         });
@@ -997,25 +1026,41 @@ export default defineComponent({
         };
 
         const getPerformanceStatClass = (statKey, statValue) => {
-            const numericValue = parseFloat(statValue);
-            if (isNaN(numericValue)) return "text-grey-6";
-
-            if (statKey === "xG/90" && numericValue > 0.5)
-                return "text-positive text-weight-bold";
-            if (statKey === "Poss Lost/90" && numericValue < 10)
-                return "text-positive";
-            if (statKey === "Poss Lost/90" && numericValue > 20)
-                return "text-negative";
-            if (statKey === "Av Rat" && numericValue > 7.5)
-                return "rating-tier-5";
-            if (statKey === "Av Rat" && numericValue < 6.5)
-                return "rating-tier-2";
-            if (statKey.endsWith("%")) {
-                if (numericValue >= 75) return "rating-tier-5";
-                if (numericValue >= 50) return "rating-tier-4";
-                if (numericValue < 25) return "rating-tier-2";
-            }
+            // This can be simplified or removed if bar color is sufficient
             return $q.dark.isActive ? "text-grey-4" : "text-grey-9";
+        };
+
+        const getBarFillStyle = (percentile) => {
+            if (
+                percentile === null ||
+                percentile === undefined ||
+                percentile < 0
+            ) {
+                return {
+                    width: "0%",
+                    backgroundColor: "#9e9e9e",
+                    height: "12px",
+                    borderRadius: "3px",
+                };
+            }
+            const p = Math.max(0, Math.min(100, percentile));
+            let backgroundColor;
+
+            if (p <= 10) backgroundColor = "#d32f2f";
+            else if (p <= 30) backgroundColor = "#ef6c00";
+            else if (p <= 45) backgroundColor = "#fdd835";
+            else if (p <= 55) backgroundColor = "#9e9e9e";
+            else if (p <= 70) backgroundColor = "#aed581";
+            else if (p <= 90) backgroundColor = "#66bb6a";
+            else backgroundColor = "#388e3c";
+
+            return {
+                width: `${p}%`,
+                backgroundColor: backgroundColor,
+                height: "12px",
+                borderRadius: "3px",
+                transition: "width 0.3s ease, background-color 0.3s ease",
+            };
         };
 
         const onFlagError = (event) => {
@@ -1072,8 +1117,9 @@ export default defineComponent({
             attributeFullNameMap,
             getUnifiedRatingClass,
             getPerformanceStatClass,
+            getBarFillStyle,
             fifaStatsToDisplay,
-            performanceStats,
+            performanceStatsToDisplay,
             onFlagError,
             sortedRoleSpecificOveralls,
             isGoalkeeper,
@@ -1152,20 +1198,18 @@ export default defineComponent({
 
 .attribute-list-item .attribute-name-label {
     font-size: clamp(0.7rem, 1.1vw, 0.85rem);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
 }
 .attribute-list-item .attribute-score-value {
     font-size: clamp(0.75rem, 1.2vw, 0.9rem);
 }
-.performance-stat-value {
-    font-size: clamp(0.75rem, 1.2vw, 0.9rem);
-    padding: 2px 4px;
-    border-radius: 3px;
-    .body--light & {
-        color: $grey-9;
-    }
-    .body--dark & {
-        color: $grey-4;
-    }
+.performance-stat-actual-value {
+    font-size: clamp(0.75rem, 1.1vw, 0.85rem);
+    min-width: 40px;
+    text-align: right;
 }
 
 .attribute-columns-container > .column {
@@ -1247,6 +1291,62 @@ export default defineComponent({
     }
 }
 
+.performance-stat-item {
+    .stat-name-section {
+        flex-basis: 40%;
+        flex-grow: 0;
+        flex-shrink: 0;
+        padding-right: 8px;
+    }
+    .stat-bar-section {
+        flex-grow: 1;
+        display: flex;
+        align-items: center;
+    }
+    .stat-value-section {
+        flex-basis: 15%;
+        flex-grow: 0;
+        flex-shrink: 0;
+        text-align: right;
+        padding-left: 8px;
+    }
+}
+
+.stat-bar-container {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.stat-bar-track {
+    flex-grow: 1;
+    height: 12px;
+    background-color: #e0e0e0;
+    border-radius: 3px;
+    margin-right: 8px;
+    overflow: hidden;
+    .body--dark & {
+        background-color: $grey-7;
+    }
+}
+
+.stat-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+}
+
+.stat-percentile-text {
+    font-size: 0.7rem;
+    min-width: 25px;
+    text-align: right;
+    .body--dark & {
+        color: $grey-5;
+    }
+    .body--light & {
+        color: $grey-7;
+    }
+}
+
 @media (max-width: $breakpoint-xs-max) {
     .main-content-section {
         padding: 4px;
@@ -1292,12 +1392,18 @@ export default defineComponent({
     }
     .attribute-list-item .attribute-name-label {
         font-size: 0.7rem;
+        max-width: 120px;
     }
     .attribute-list-item .attribute-score-value {
         font-size: 0.75rem;
     }
-    .performance-stat-value {
-        font-size: clamp(0.7rem, 1.1vw, 0.85rem);
+    .performance-stat-actual-value {
+        font-size: 0.7rem;
+        min-width: 30px;
+    }
+    .stat-percentile-text {
+        font-size: 0.6rem;
+        min-width: 20px;
     }
 
     .attribute-list.no-scroll {
@@ -1306,6 +1412,20 @@ export default defineComponent({
     }
     .role-ratings-card .role-specific-ratings-list {
         max-height: 12vh;
+    }
+
+    .performance-stat-item {
+        .stat-name-section {
+            flex-basis: 35%;
+            font-size: 0.65rem;
+        }
+        .stat-bar-section {
+            /* Adjust if needed */
+        }
+        .stat-value-section {
+            flex-basis: 20%;
+            font-size: 0.65rem;
+        }
     }
 }
 </style>
