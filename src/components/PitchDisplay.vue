@@ -76,7 +76,7 @@
                 </div>
                 <div
                     v-if="players[pos.id]"
-                    class="player-name-label ellipsis"
+                    class="player-name-label"
                     :class="{ 'dark-text': !quasar.dark.isActive }"
                     :title="players[pos.id].name"
                 >
@@ -84,7 +84,7 @@
                 </div>
                 <div
                     v-if="players[pos.id]"
-                    class="player-best-role-label ellipsis"
+                    class="player-best-role-label"
                     :class="{ 'dark-text': !quasar.dark.isActive }"
                     :title="
                         getBestRoleForPlayerInSlot(players[pos.id], pos.role)
@@ -191,9 +191,8 @@ export default {
             return "rating-tier-1";
         };
 
-        // Revised function to get the best role name
+        // Revised function to get the best role name, excluding "Generic" roles if a non-Generic alternative exists.
         const getBestRoleForPlayerInSlot = (player, slotRole) => {
-            // If no player data, no specific roles, or no slot role, return the generic slot role.
             if (
                 !player ||
                 !player.roleSpecificOveralls ||
@@ -204,36 +203,34 @@ export default {
             }
 
             const upperSlotRole = slotRole.toUpperCase();
-            // Determine the expected base position prefix (e.g., "ST", "MC", "DC") from the slotRole.
-            // Uses the map, or falls back to the first part of slotRole (e.g. "D" from "D (C)") if not in map.
             const expectedRoleKeyPrefix =
                 fmSlotRoleToKeyPrefixMap[upperSlotRole] ||
                 upperSlotRole.split(" ")[0];
 
-            let bestMatchingRoleName = slotRole; // Default to the generic slot role.
-            let highestScoreInMatchingRole = -1;
+            const matchingRoles = player.roleSpecificOveralls
+                .filter((rso) => {
+                    const rsoBasePosition = rso.roleName
+                        .split(" - ")[0]
+                        .trim()
+                        .toUpperCase();
+                    return rsoBasePosition === expectedRoleKeyPrefix;
+                })
+                .sort((a, b) => b.score - a.score); // Sort by score descending
 
-            // Iterate through all of the player's specific roles.
-            player.roleSpecificOveralls.forEach((rso) => {
-                // Extract the base position from the roleSpecificOverall name (e.g., "ST" from "ST - AF - At").
-                const rsoBasePosition = rso.roleName
-                    .split(" - ")[0]
-                    .trim()
-                    .toUpperCase();
+            if (matchingRoles.length === 0) {
+                return slotRole; // No specific roles match the slot's general position
+            }
 
-                // Check if this specific role's base position matches the expected prefix for the current slot.
-                if (rsoBasePosition === expectedRoleKeyPrefix) {
-                    // If it matches and the score is higher than previously found for this slot, update.
-                    if (rso.score > highestScoreInMatchingRole) {
-                        highestScoreInMatchingRole = rso.score;
-                        bestMatchingRoleName = rso.roleName; // This is the full specific role name, e.g., "ST - AF - At"
-                    }
-                }
-            });
+            // Try to find the best non-Generic role
+            const bestNonGenericRole = matchingRoles.find(
+                (rso) => !rso.roleName.toUpperCase().includes("GENERIC"),
+            );
 
-            // If no specific role was found that matched the prefix (highestScoreInMatchingRole remains -1),
-            // bestMatchingRoleName will still be the original generic slotRole, which is the desired fallback.
-            return bestMatchingRoleName;
+            if (bestNonGenericRole) {
+                return bestNonGenericRole.roleName;
+            }
+
+            return slotRole; // Fallback if no suitable non-Generic role is found.
         };
 
         const getPlayerSlotTitle = (player, slotRole) => {
@@ -250,7 +247,7 @@ export default {
         const handleDragStart = (event, player, fromSlotId) => {
             isDragging.value = true;
             draggedPlayerInfo.value = {
-                player: props.players[fromSlotId], // Get the player object from the slot
+                player: props.players[fromSlotId],
                 fromSlotId,
             };
             event.dataTransfer.effectAllowed = "move";
@@ -269,7 +266,7 @@ export default {
         };
 
         const handleDragOver = (event) => {
-            event.preventDefault(); // Necessary to allow dropping
+            event.preventDefault();
         };
 
         const handleDragEnterSlot = (event) => {
@@ -287,7 +284,6 @@ export default {
         const handleDropOnSlot = (event, toSlotId, toSlotRole) => {
             event.preventDefault();
             let targetElement = event.target;
-            // Ensure the drop target is the drop-zone itself
             if (!targetElement.classList.contains("drop-zone")) {
                 targetElement = targetElement.closest(".drop-zone");
             }
@@ -298,20 +294,18 @@ export default {
             if (draggedPlayerInfo.value && draggedPlayerInfo.value.player) {
                 const { player, fromSlotId } = draggedPlayerInfo.value;
                 if (fromSlotId !== toSlotId) {
-                    // Prevent dropping onto the same slot
                     emit("player-moved", {
-                        player, // The actual player object
+                        player,
                         fromSlotId,
                         toSlotId,
                         toSlotRole,
                     });
                 }
             }
-            handleDragEnd(); // Clean up dragging state
+            handleDragEnd();
         };
 
         const handleDropOnPitch = (event) => {
-            // If dropped outside a valid slot but on the pitch, just end the drag.
             handleDragEnd();
         };
 
@@ -335,7 +329,6 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-// Styles remain the same as the previous version
 .pitch-container {
     width: 100%;
     max-width: 600px;
@@ -500,7 +493,7 @@ export default {
     justify-content: center;
     text-align: center;
     padding: 1px;
-    min-height: 75px;
+    min-height: 85px; // Increased min-height to accommodate larger text
     cursor: pointer;
     transition: transform 0.2s ease-in-out;
     position: relative;
@@ -531,7 +524,6 @@ export default {
         // Background color and text color will be set by getPlayerOverallClass (e.g., .rating-tier-X)
     }
     &.dragging-feedback {
-        // This class might not be used if not explicitly added during drag
         outline: 2px dashed #fff;
         background-color: rgba(255, 255, 255, 0.3);
     }
@@ -549,7 +541,7 @@ export default {
 }
 
 .position-label {
-    font-size: 0.6rem;
+    font-size: 0.6rem; // Kept this one small as it's just the generic role
     font-weight: bold;
     color: rgba(255, 255, 255, 0.85);
     margin-top: 0px;
@@ -564,32 +556,42 @@ export default {
 }
 
 .player-name-label {
-    font-size: 0.55rem;
-    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.65rem; // Increased font size
+    color: rgba(255, 255, 255, 0.85); // Slightly more opaque
+    margin-top: 2px; // Adjusted margin
+    line-height: 1.1; // Allow slightly more line height for wrapping
+    // Removed max-width and ellipsis properties to allow wrapping
+    // white-space: nowrap; // Removed
+    // overflow: hidden; // Removed
+    // text-overflow: ellipsis; // Removed
+    width: 90%; // Allow it to take more width of the slot for better wrapping
+    word-wrap: break-word; // Ensure long names break and wrap
+
+    &.dark-text {
+        color: rgba(0, 0, 0, 0.7);
+    }
+    .dark-mode & {
+        color: rgba(255, 255, 255, 0.85);
+    }
+}
+.player-best-role-label {
+    font-size: 0.6rem; // Increased font size
+    color: rgba(255, 255, 255, 0.75); // Slightly more opaque
     margin-top: 1px;
-    line-height: 1;
-    max-width: 55px;
+    line-height: 1.1; // Allow slightly more line height for wrapping
+    font-style: italic;
+    // Removed max-width and ellipsis properties to allow wrapping
+    // white-space: nowrap; // Removed
+    // overflow: hidden; // Removed
+    // text-overflow: ellipsis; // Removed
+    width: 90%; // Allow it to take more width of the slot for better wrapping
+    word-wrap: break-word; // Ensure long role names break and wrap
 
     &.dark-text {
         color: rgba(0, 0, 0, 0.6);
     }
     .dark-mode & {
         color: rgba(255, 255, 255, 0.75);
-    }
-}
-.player-best-role-label {
-    font-size: 0.5rem;
-    color: rgba(255, 255, 255, 0.65);
-    margin-top: 1px;
-    line-height: 1;
-    max-width: 55px;
-    font-style: italic;
-
-    &.dark-text {
-        color: rgba(0, 0, 0, 0.5);
-    }
-    .dark-mode & {
-        color: rgba(255, 255, 255, 0.65);
     }
 }
 
@@ -610,11 +612,13 @@ export default {
     }
 }
 
-.ellipsis {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
+// .ellipsis class is removed from the template for these labels, so it's no longer needed here for them.
+// If you need it elsewhere, it can remain.
+// .ellipsis {
+// white-space: nowrap;
+// overflow: hidden;
+// text-overflow: ellipsis;
+// }
 
 .drag-overlay {
     position: absolute;
@@ -638,7 +642,7 @@ export default {
 .drop-zone {
     border: 2px dashed rgba(255, 255, 255, 0.5);
     border-radius: 8px;
-    min-height: 75px;
+    min-height: 75px; // Keep drop zone size consistent
     display: flex;
     align-items: center;
     justify-content: center;
