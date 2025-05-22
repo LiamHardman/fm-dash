@@ -282,7 +282,6 @@ export default {
         const playerForDetailView = ref(null);
         const showPlayerDetailDialog = ref(false);
 
-        // Function to fetch players from the backend
         const fetchPlayers = async (datasetId) => {
             pageLoading.value = true;
             pageLoadingError.value = "";
@@ -290,7 +289,6 @@ export default {
             try {
                 const players =
                     await playerService.getPlayersByDatasetId(datasetId);
-                // Process players (e.g., parse age) similar to PlayerUploadPage
                 allPlayersData.value = players.map((p) => ({
                     ...p,
                     age: parseInt(p.age, 10) || 0,
@@ -305,7 +303,7 @@ export default {
                     err,
                 );
                 pageLoadingError.value = `Failed to load player data: ${err.message || "Unknown server error"}. Please try uploading again.`;
-                allPlayersData.value = []; // Clear data on error
+                allPlayersData.value = [];
             } finally {
                 pageLoading.value = false;
             }
@@ -319,7 +317,6 @@ export default {
 
             if (datasetIdFromQuery) {
                 finalDatasetId = datasetIdFromQuery;
-                // If query ID is different from session, update session
                 if (datasetIdFromQuery !== datasetIdFromSession) {
                     sessionStorage.setItem(
                         "currentDatasetId",
@@ -328,8 +325,6 @@ export default {
                 }
             } else if (datasetIdFromSession) {
                 finalDatasetId = datasetIdFromSession;
-                // Optionally, update URL to reflect the ID being used from session
-                // This makes the URL bookmarkable/shareable for the current dataset
                 router.replace({ query: { datasetId: finalDatasetId } });
             }
 
@@ -344,10 +339,8 @@ export default {
                 pageLoading.value = false;
             }
 
-            // Populate team filters only if data loaded successfully
             if (!pageLoadingError.value && allPlayersData.value.length > 0) {
                 populateTeamFilterOptions();
-                // If a team was somehow pre-selected (e.g. from previous state not fully cleared), load its players
                 if (selectedTeamName.value) {
                     loadTeamPlayers();
                 }
@@ -426,12 +419,14 @@ export default {
             }));
         });
 
+        // Corrected: Removed .reverse()
+        // formations.js now defines layout with attackers first (top of pitch)
+        // and GK last (bottom of pitch). PitchDisplay renders rows top-to-bottom.
         const currentFormationLayout = computed(() => {
             if (!selectedFormationKey.value) {
                 return [];
             }
-            const layout = getFormationLayout(selectedFormationKey.value);
-            return layout ? [...layout].reverse() : [];
+            return getFormationLayout(selectedFormationKey.value) || [];
         });
 
         const teamIsGoalkeeperView = computed(() => {
@@ -472,16 +467,17 @@ export default {
             bestTeamPlayers.value = {};
             bestTeamOverall.value = null;
 
-            const originalFormationLayout = getFormationLayout(
+            // Use the layout directly from formations.js (attackers first, GK last)
+            const formationLayoutForCalc = getFormationLayout(
                 selectedFormationKey.value,
             );
-            if (!originalFormationLayout) {
+            if (!formationLayoutForCalc) {
                 calculationMessage.value = "Invalid formation selected.";
                 calculationMessageClass.value = "bg-negative text-white";
                 return;
             }
 
-            const formationSlots = originalFormationLayout.flatMap(
+            const formationSlots = formationLayoutForCalc.flatMap(
                 (row) => row.positions,
             );
             let availablePlayers = [...teamPlayers.value];
@@ -609,7 +605,7 @@ export default {
         watch(
             () => allPlayersData.value,
             (newVal) => {
-                if (pageLoading.value) return; // Don't run if initial page load is still happening
+                if (pageLoading.value) return;
 
                 if (newVal && newVal.length > 0) {
                     populateTeamFilterOptions();
@@ -617,7 +613,6 @@ export default {
                         loadTeamPlayers();
                     }
                 } else if (!pageLoadingError.value) {
-                    // Only clear if there wasn't a page loading error
                     allTeamNamesCache.value = [];
                     teamOptions.value = [];
                     selectedTeamName.value = null;
@@ -630,7 +625,6 @@ export default {
             { deep: true },
         );
 
-        // Watch for route query changes to re-fetch data if datasetId changes
         watch(
             () => route.query.datasetId,
             async (newId, oldId) => {
@@ -639,9 +633,8 @@ export default {
                         "TeamViewPage: datasetId in query changed, re-fetching.",
                         newId,
                     );
-                    sessionStorage.setItem("currentDatasetId", newId); // Update session storage
+                    sessionStorage.setItem("currentDatasetId", newId);
                     await fetchPlayers(newId);
-                    // Reset team selection as the dataset has changed
                     clearTeamSelection();
                     if (
                         !pageLoadingError.value &&
