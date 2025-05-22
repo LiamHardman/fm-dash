@@ -46,7 +46,7 @@
                     class="player-representation"
                     :class="[
                         { 'has-player': !!players[pos.id] },
-                        getPlayerOverallClass(players[pos.id]?.Overall, 100), // Applied directly
+                        getPlayerOverallClass(players[pos.id]?.Overall, 100),
                     ]"
                     :draggable="!!players[pos.id]"
                     @dragstart="
@@ -129,6 +129,27 @@
 import { ref } from "vue";
 import { useQuasar } from "quasar";
 
+// Helper map to convert general formation slot roles to base position key prefixes
+// used in player.roleSpecificOveralls (e.g., "ST (C)" -> "ST").
+const fmSlotRoleToKeyPrefixMap = {
+    GK: "GK",
+    "D (R)": "DR/L", // Assuming D (R) maps to a general DR/L prefix in roleSpecificOveralls
+    "D (L)": "DR/L", // Assuming D (L) maps to a general DR/L prefix
+    "D (C)": "DC",
+    "WB (R)": "WBR/L", // Assuming WB (R) maps to a general WBR/L prefix
+    "WB (L)": "WBR/L", // Assuming WB (L) maps to a general WBR/L prefix
+    "DM (C)": "DM",
+    "M (R)": "MR/L", // Assuming M (R) maps to a general MR/L prefix
+    "M (L)": "MR/L", // Assuming M (L) maps to a general MR/L prefix
+    "M (C)": "MC",
+    "AM (R)": "AMR/L", // Assuming AM (R) maps to a general AMR/L prefix
+    "AM (L)": "AMR/L", // Assuming AM (L) maps to a general AMR/L prefix
+    "AM (C)": "AMC",
+    "ST (C)": "ST",
+    // Add other generic slot roles if they appear in your formations.js and need mapping
+    // For example, if a formation slot is just "ST", you might add: "ST": "ST"
+};
+
 export default {
     name: "PitchDisplay",
     props: {
@@ -138,6 +159,7 @@ export default {
         },
         players: {
             // This is the bestTeamPlayers object from TeamViewPage
+            // OR bestTeamPlayersForPitch from TeamViewPage (if using squad depth)
             type: Object,
             default: () => ({}),
         },
@@ -156,40 +178,62 @@ export default {
             };
         };
 
-        // Updated to return correct class names (without -bg)
         const getPlayerOverallClass = (overall, maxScale = 100) => {
             const numValue = parseInt(overall, 10);
             if (isNaN(numValue) || overall === null || overall === undefined)
-                return "rating-na"; // Corrected
+                return "rating-na";
             const percentage = (numValue / maxScale) * 100;
-            if (percentage >= 90) return "rating-tier-6"; // Corrected
-            if (percentage >= 80) return "rating-tier-5"; // Corrected
-            if (percentage >= 70) return "rating-tier-4"; // Corrected
-            if (percentage >= 55) return "rating-tier-3"; // Corrected
-            if (percentage >= 40) return "rating-tier-2"; // Corrected
-            return "rating-tier-1"; // Corrected
+            if (percentage >= 90) return "rating-tier-6";
+            if (percentage >= 80) return "rating-tier-5";
+            if (percentage >= 70) return "rating-tier-4";
+            if (percentage >= 55) return "rating-tier-3";
+            if (percentage >= 40) return "rating-tier-2";
+            return "rating-tier-1";
         };
 
+        // Revised function to get the best role name
         const getBestRoleForPlayerInSlot = (player, slotRole) => {
-            if (!player || !player.roleSpecificOveralls || !slotRole)
+            // If no player data, no specific roles, or no slot role, return the generic slot role.
+            if (
+                !player ||
+                !player.roleSpecificOveralls ||
+                player.roleSpecificOveralls.length === 0 ||
+                !slotRole
+            ) {
                 return slotRole;
+            }
 
-            const specificRole = player.roleSpecificOveralls.find((rso) => {
-                const roleParts = rso.roleName.split(" - ");
-                return (
-                    roleParts.length > 1 &&
-                    roleParts[1].toUpperCase() === slotRole.toUpperCase()
-                );
+            const upperSlotRole = slotRole.toUpperCase();
+            // Determine the expected base position prefix (e.g., "ST", "MC", "DC") from the slotRole.
+            // Uses the map, or falls back to the first part of slotRole (e.g. "D" from "D (C)") if not in map.
+            const expectedRoleKeyPrefix =
+                fmSlotRoleToKeyPrefixMap[upperSlotRole] ||
+                upperSlotRole.split(" ")[0];
+
+            let bestMatchingRoleName = slotRole; // Default to the generic slot role.
+            let highestScoreInMatchingRole = -1;
+
+            // Iterate through all of the player's specific roles.
+            player.roleSpecificOveralls.forEach((rso) => {
+                // Extract the base position from the roleSpecificOverall name (e.g., "ST" from "ST - AF - At").
+                const rsoBasePosition = rso.roleName
+                    .split(" - ")[0]
+                    .trim()
+                    .toUpperCase();
+
+                // Check if this specific role's base position matches the expected prefix for the current slot.
+                if (rsoBasePosition === expectedRoleKeyPrefix) {
+                    // If it matches and the score is higher than previously found for this slot, update.
+                    if (rso.score > highestScoreInMatchingRole) {
+                        highestScoreInMatchingRole = rso.score;
+                        bestMatchingRoleName = rso.roleName; // This is the full specific role name, e.g., "ST - AF - At"
+                    }
+                }
             });
 
-            if (specificRole) return specificRole.roleName;
-
-            const broaderMatch = player.roleSpecificOveralls.find((rso) =>
-                rso.roleName.toUpperCase().startsWith(slotRole.toUpperCase()),
-            );
-            if (broaderMatch) return broaderMatch.roleName;
-
-            return slotRole;
+            // If no specific role was found that matched the prefix (highestScoreInMatchingRole remains -1),
+            // bestMatchingRoleName will still be the original generic slotRole, which is the desired fallback.
+            return bestMatchingRoleName;
         };
 
         const getPlayerSlotTitle = (player, slotRole) => {
@@ -206,7 +250,7 @@ export default {
         const handleDragStart = (event, player, fromSlotId) => {
             isDragging.value = true;
             draggedPlayerInfo.value = {
-                player: props.players[fromSlotId],
+                player: props.players[fromSlotId], // Get the player object from the slot
                 fromSlotId,
             };
             event.dataTransfer.effectAllowed = "move";
@@ -225,7 +269,7 @@ export default {
         };
 
         const handleDragOver = (event) => {
-            event.preventDefault();
+            event.preventDefault(); // Necessary to allow dropping
         };
 
         const handleDragEnterSlot = (event) => {
@@ -243,6 +287,7 @@ export default {
         const handleDropOnSlot = (event, toSlotId, toSlotRole) => {
             event.preventDefault();
             let targetElement = event.target;
+            // Ensure the drop target is the drop-zone itself
             if (!targetElement.classList.contains("drop-zone")) {
                 targetElement = targetElement.closest(".drop-zone");
             }
@@ -253,18 +298,20 @@ export default {
             if (draggedPlayerInfo.value && draggedPlayerInfo.value.player) {
                 const { player, fromSlotId } = draggedPlayerInfo.value;
                 if (fromSlotId !== toSlotId) {
+                    // Prevent dropping onto the same slot
                     emit("player-moved", {
-                        player,
+                        player, // The actual player object
                         fromSlotId,
                         toSlotId,
                         toSlotRole,
                     });
                 }
             }
-            handleDragEnd();
+            handleDragEnd(); // Clean up dragging state
         };
 
-        const handleDropOnPitch = () => {
+        const handleDropOnPitch = (event) => {
+            // If dropped outside a valid slot but on the pitch, just end the drag.
             handleDragEnd();
         };
 
@@ -470,17 +517,12 @@ export default {
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    background-color: rgba(
-        255,
-        255,
-        255,
-        0.1
-    ); // Default for empty or if class not applied
+    background-color: rgba(255, 255, 255, 0.1);
     transition:
         background-color 0.3s,
         transform 0.2s;
     margin-bottom: 1px;
-    color: white; // Default text color, will be overridden by rating classes
+    color: white;
     font-weight: bold;
     font-size: 1rem;
     border: 1px solid rgba(0, 0, 0, 0.2);
@@ -489,6 +531,7 @@ export default {
         // Background color and text color will be set by getPlayerOverallClass (e.g., .rating-tier-X)
     }
     &.dragging-feedback {
+        // This class might not be used if not explicitly added during drag
         outline: 2px dashed #fff;
         background-color: rgba(255, 255, 255, 0.3);
     }
