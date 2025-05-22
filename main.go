@@ -32,7 +32,7 @@ const (
 // --- START: Struct Definitions ---
 
 type RoleOverallScore struct {
-	RoleName string `json:"roleName"`
+	RoleName string `json:"roleName"` // Will store keys like "DC - Ball Playing Defender"
 	Score    int    `json:"score"`
 }
 
@@ -48,11 +48,12 @@ type Player struct {
 	Nationality            string                        `json:"nationality"`
 	NationalityISO         string                        `json:"nationality_iso"`
 	NationalityFIFACode    string                        `json:"nationality_fifa_code"`
-	Attributes             map[string]string             `json:"attributes"`             // Raw attributes, including performance stats
-	NumericAttributes      map[string]int                `json:"-"`                      // Parsed numeric attributes for FIFA stats
-	PerformancePercentiles map[string]map[string]float64 `json:"performancePercentiles"` // Key1: Group (Global, Defenders etc.), Key2: StatKey
+	Attributes             map[string]string             `json:"attributes"`
+	NumericAttributes      map[string]int                `json:"-"`
+	PerformancePercentiles map[string]map[string]float64 `json:"performancePercentiles"`
 	ParsedPositions        []string                      `json:"parsedPositions"`
-	PositionGroups         []string                      `json:"positionGroups"` // e.g., ["Defenders", "Midfielders"]
+	ShortPositions         []string                      `json:"shortPositions"`
+	PositionGroups         []string                      `json:"positionGroups"`
 	PHY                    int                           `json:"PHY"`
 	SHO                    int                           `json:"SHO"`
 	PAS                    int                           `json:"PAS"`
@@ -91,12 +92,11 @@ var (
 	})
 	storeMutex                   sync.RWMutex
 	attributeWeights             map[string]map[string]int
-	roleSpecificOverallWeights   map[string]map[string]int
+	roleSpecificOverallWeights   map[string]map[string]int // Keys will be like "DC - Ball Playing Defender"
 	muAttributeWeights           sync.RWMutex
 	muRoleSpecificOverallWeights sync.RWMutex
 )
 
-// Performance stat keys for percentile calculation
 var performanceStatKeys = []string{
 	"Asts/90", "Av Rat", "Blk/90", "Ch C/90", "Clr/90", "Cr C/90", "Drb/90",
 	"xA/90", "xG/90", "Gls/90", "Hdrs W/90", "Int/90", "K Ps/90", "Ps C/90",
@@ -104,10 +104,8 @@ var performanceStatKeys = []string{
 	"Pr passes/90", "Conv %", "Tck R", "Pas %", "Cr C/A",
 }
 
-// Position groups for percentile calculations
 var positionGroupsForPercentiles = []string{"Goalkeepers", "Defenders", "Midfielders", "Attackers"}
 
-// Default weights (ensure these are actually populated in your full code if JSON loading fails)
 var defaultAttributeWeightsGo = map[string]map[string]int{
 	"PHY": {"Acc": 7, "Pac": 6, "Str": 5, "Sta": 4, "Nat": 3, "Bal": 2, "Jum": 1},
 	"SHO": {"Fin": 7, "OtB": 6, "Cmp": 5, "Tec": 4, "Hea": 3, "Lon": 2, "Pen": 1},
@@ -117,10 +115,12 @@ var defaultAttributeWeightsGo = map[string]map[string]int{
 	"MEN": {"Wor": 11, "Dec": 10, "Tea": 9, "Det": 8, "Bra": 7, "Ldr": 6, "Vis": 5, "Agg": 4, "OtB": 3, "Pos": 2, "Ant": 1},
 	"GK":  {"Han": 20, "Ref": 20, "Cmd": 15, "Aer": 15, "1v1": 10, "Kic": 5, "TRO": 5, "Com": 3, "Thr": 3, "Ecc": 1},
 }
+
+// MODIFIED: Default role specific overall weights with SHORT position prefix and FULL role name
 var defaultRoleSpecificOverallWeightsGo = map[string]map[string]int{
-	"DC - Generic": {"Mar": 80, "Hea": 50, "Tck": 50, "Pos": 80, "Str": 60, "Pac": 50, "Acc": 60, "Jum": 60, "Cnt": 40, "Cmp": 20, "Bra": 20, "Ant": 50, "Fir": 20, "Pas": 20, "Tec": 10, "Wor": 20, "Ldr": 20, "Dec": 10, "Vis": 10, "OtB": 10, "Agi": 60, "Bal": 20, "Sta": 30, "Cor": 10, "Cro": 10, "Dri": 10, "Fin": 10, "Fre": 10, "Lon": 10, "L Th": 10, "Pen": 10, "Agg": 0, "Det": 0, "Fla": 0, "Nat": 0},
-	"ST - Generic": {"Fin": 80, "Fir": 60, "OtB": 60, "Cmp": 60, "Hea": 60, "Acc": 100, "Pac": 70, "Str": 60, "Jum": 50, "Tec": 40, "Ant": 50, "Dec": 50, "Dri": 50, "Wor": 20, "Sta": 60, "Cor": 10, "Cro": 20, "Fre": 10, "Lon": 20, "L Th": 10, "Mar": 10, "Pas": 20, "Pen": 10, "Tck": 10, "Agg": 0, "Bra": 10, "Cnt": 20, "Det": 0, "Fla": 0, "Ldr": 10, "Pos": 20, "Tea": 10, "Vis": 20, "Agi": 60, "Bal": 20, "Nat": 0},
-	"GK - GK - De": {"Han": 90, "Ref": 90, "Aer": 80, "Cmd": 75, "1v1": 80, "Cnt": 70, "Dec": 70, "Pos": 75, "Ant": 60, "Cmp": 60, "Bra": 60, "Com": 50, "Kic": 40, "Thr": 40, "TRO": 30, "Det": 50, "Ldr": 40, "Wor": 40, "Tea": 40, "Agi": 50, "Jum": 60, "Str": 50, "Acc": 30, "Pac": 30, "Ecc": 10},
+	"DC - Generic Defender":    {"Mar": 80, "Hea": 50, "Tck": 50, "Pos": 80, "Str": 60, "Pac": 50, "Acc": 60, "Jum": 60, "Cnt": 40, "Cmp": 20, "Bra": 20, "Ant": 50, "Fir": 20, "Pas": 20, "Tec": 10, "Wor": 20, "Ldr": 20, "Dec": 10, "Vis": 10, "OtB": 10, "Agi": 60, "Bal": 20, "Sta": 30, "Cor": 10, "Cro": 10, "Dri": 10, "Fin": 10, "Fre": 10, "Lon": 10, "L Th": 10, "Pen": 10, "Agg": 0, "Det": 0, "Fla": 0, "Nat": 0},
+	"ST - Generic Striker":     {"Fin": 80, "Fir": 60, "OtB": 60, "Cmp": 60, "Hea": 60, "Acc": 100, "Pac": 70, "Str": 60, "Jum": 50, "Tec": 40, "Ant": 50, "Dec": 50, "Dri": 50, "Wor": 20, "Sta": 60, "Cor": 10, "Cro": 20, "Fre": 10, "Lon": 20, "L Th": 10, "Mar": 10, "Pas": 20, "Pen": 10, "Tck": 10, "Agg": 0, "Bra": 10, "Cnt": 20, "Det": 0, "Fla": 0, "Ldr": 10, "Pos": 20, "Tea": 10, "Vis": 20, "Agi": 60, "Bal": 20, "Nat": 0},
+	"GK - Goalkeeper - Defend": {"Han": 90, "Ref": 90, "Aer": 80, "Cmd": 75, "1v1": 80, "Cnt": 70, "Dec": 70, "Pos": 75, "Ant": 60, "Cmp": 60, "Bra": 60, "Com": 50, "Kic": 40, "Thr": 40, "TRO": 30, "Det": 50, "Ldr": 40, "Wor": 40, "Tea": 40, "Agi": 50, "Jum": 60, "Str": 50, "Acc": 30, "Pac": 30, "Ecc": 10},
 }
 
 func loadJSONWeights(filePath string, defaultWeights map[string]map[string]int) (map[string]map[string]int, error) {
@@ -154,7 +154,6 @@ func init() {
 	}
 }
 
-// Position parsing logic
 var (
 	positionRoleMapGo = map[string]string{
 		"GK": "Goalkeeper", "SW": "Sweeper", "DC": "Defender (Centre)", "DR": "Defender (Right)", "DL": "Defender (Left)",
@@ -162,7 +161,6 @@ var (
 		"MR": "Midfielder (Right)", "ML": "Midfielder (Left)", "AMC": "Attacking Midfielder (Centre)",
 		"AMR": "Attacking Midfielder (Right)", "AML": "Attacking Midfielder (Left)", "ST": "Striker (Centre)",
 	}
-	positionSideMapGo             = map[string]string{"L": "Left", "R": "Right", "C": "Centre"}
 	standardizedPositionNameMapGo = map[string]string{
 		"Goalkeeper": "Goalkeeper", "Sweeper": "Sweeper",
 		"Defender (Centre)": "Centre Back", "Defender (Right)": "Right Back", "Defender (Left)": "Left Back",
@@ -179,17 +177,37 @@ var (
 		"Midfielders": {"Centre Defensive Midfielder", "Right Midfielder", "Left Midfielder", "Centre Midfielder", "Centre Attacking Midfielder", "Right Attacking Midfielder", "Left Attacking Midfielder"},
 		"Attackers":   {"Striker"},
 	}
+	// parsedPositionToBaseRoleKeyGo maps standardized full names (e.g., "Centre Back") to short codes (e.g., "DC")
 	parsedPositionToBaseRoleKeyGo = map[string]string{
-		"Goalkeeper": "GK", "Sweeper": "DC",
-		"Right Back": "DR/L", "Left Back": "DR/L", "Centre Back": "DC",
-		"Right Wing-Back": "WBR/L", "Left Wing-Back": "WBR/L",
+		"Goalkeeper":                  "GK",
+		"Sweeper":                     "SW",
+		"Right Back":                  "DR",
+		"Left Back":                   "DL",
+		"Centre Back":                 "DC",
+		"Right Wing-Back":             "WBR",
+		"Left Wing-Back":              "WBL",
 		"Centre Defensive Midfielder": "DM",
-		"Right Midfielder":            "MR/L", "Left Midfielder": "MR/L", "Centre Midfielder": "MC",
-		"Right Attacking Midfielder": "AMR/L", "Left Attacking Midfielder": "AMR/L", "Centre Attacking Midfielder": "AMC",
-		"Striker": "ST",
+		"Right Midfielder":            "MR",
+		"Left Midfielder":             "ML",
+		"Centre Midfielder":           "MC",
+		"Right Attacking Midfielder":  "AMR",
+		"Left Attacking Midfielder":   "AML",
+		"Centre Attacking Midfielder": "AMC",
+		"Striker":                     "ST",
 	}
 	nullString = ""
 )
+
+var shortPositionDisplayOrder = []string{
+	"GK", "SW", "DR", "DC", "DL", "WBR", "WBL", "DM", "MR", "MC", "ML", "AMR", "AMC", "AML", "ST",
+}
+var shortPositionOrderMap = func() map[string]int {
+	m := make(map[string]int)
+	for i, pos := range shortPositionDisplayOrder {
+		m[pos] = i
+	}
+	return m
+}()
 
 func parsePlayerPositionsGo(positionStr string) []string {
 	if positionStr == "" {
@@ -230,8 +248,10 @@ func parsePlayerPositionsGo(positionStr string) []string {
 
 			sidesToUse := explicitSidesArray
 			if len(sidesToUse) == 0 {
-				if roleKey == "D" || roleKey == "M" || roleKey == "AM" || roleKey == "ST" || roleKey == "DM" || roleKey == "WB" {
+				if roleKey == "D" || roleKey == "M" || roleKey == "AM" || roleKey == "ST" || roleKey == "DM" || roleKey == "WB" || roleKey == "SW" {
 					sidesToUse = []string{"C"}
+				} else if roleKey == "GK" {
+					sidesToUse = []string{""}
 				} else {
 					sidesToUse = []string{""}
 				}
@@ -242,10 +262,17 @@ func parsePlayerPositionsGo(positionStr string) []string {
 				if sideKey == "" {
 					mapLookupKey = roleKey
 				} else {
-					if roleKey == "ST" && sideKey == "C" {
-						mapLookupKey = "ST"
-					} else if roleKey == "DM" && sideKey == "C" {
-						mapLookupKey = "DM"
+					if (roleKey == "D" || roleKey == "M" || roleKey == "AM" || roleKey == "ST" || roleKey == "DM" || roleKey == "WB" || roleKey == "SW") && sideKey == "C" {
+						mapLookupKey = roleKey
+						if roleKey == "D" {
+							mapLookupKey = "DC"
+						}
+						if roleKey == "M" {
+							mapLookupKey = "MC"
+						}
+						if roleKey == "AM" {
+							mapLookupKey = "AMC"
+						}
 					} else {
 						mapLookupKey = roleKey + sideKey
 					}
@@ -829,7 +856,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	storeMutex.Unlock()
 	log.Printf("Stored %d players with DatasetID: %s. Detected Currency: %s", len(players), datasetID, datasetCurrencySymbol)
 	if len(players) > 0 {
-		log.Printf("DEBUG: Sample Player 1 after all processing: Name='%s', Overall=%d, ParsedPositions=%v, PositionGroups=%v", players[0].Name, players[0].Overall, players[0].ParsedPositions, players[0].PositionGroups)
+		log.Printf("DEBUG: Sample Player 1 after all processing: Name='%s', Overall=%d, ParsedPositions=%v, ShortPositions=%v, PositionGroups=%v", players[0].Name, players[0].Overall, players[0].ParsedPositions, players[0].ShortPositions, players[0].PositionGroups)
 		if len(players[0].PerformancePercentiles) > 0 {
 			log.Printf("DEBUG: Sample Player 1 Performance Percentile Keys: %v", getMapKeys(players[0].PerformancePercentiles))
 		}
@@ -905,6 +932,31 @@ func enhancePlayerWithCalculations(player *Player) {
 	}
 	player.ParsedPositions = parsePlayerPositionsGo(player.Position)
 	player.PositionGroups = getPlayerPositionGroupsGo(player.ParsedPositions)
+
+	shortPosSet := make(map[string]struct{})
+	for _, pPos := range player.ParsedPositions {
+		if shortKey, ok := parsedPositionToBaseRoleKeyGo[pPos]; ok && shortKey != nullString {
+			shortPosSet[shortKey] = struct{}{}
+		} else if pPos == "Goalkeeper" {
+			shortPosSet["GK"] = struct{}{}
+		}
+	}
+	player.ShortPositions = make([]string, 0, len(shortPosSet))
+	for sp := range shortPosSet {
+		player.ShortPositions = append(player.ShortPositions, sp)
+	}
+	sort.Slice(player.ShortPositions, func(i, j int) bool {
+		orderI, okI := shortPositionOrderMap[player.ShortPositions[i]]
+		orderJ, okJ := shortPositionOrderMap[player.ShortPositions[j]]
+		if !okI {
+			orderI = len(shortPositionDisplayOrder) + i
+		}
+		if !okJ {
+			orderJ = len(shortPositionDisplayOrder) + j
+		}
+		return orderI < orderJ
+	})
+
 	player.PHY = calculateFifaStatGo(player.NumericAttributes, "PHY")
 	player.SHO = calculateFifaStatGo(player.NumericAttributes, "SHO")
 	player.PAS = calculateFifaStatGo(player.NumericAttributes, "PAS")
@@ -912,41 +964,57 @@ func enhancePlayerWithCalculations(player *Player) {
 	player.DEF = calculateFifaStatGo(player.NumericAttributes, "DEF")
 	player.MEN = calculateFifaStatGo(player.NumericAttributes, "MEN")
 	player.GK = calculateFifaStatGo(player.NumericAttributes, "GK")
+
 	maxOverall := 0
 	calculatedRoleOveralls := []RoleOverallScore{}
 	muRoleSpecificOverallWeights.RLock()
 	currentRoleWeightsSource := roleSpecificOverallWeights
 	muRoleSpecificOverallWeights.RUnlock()
+
 	if len(currentRoleWeightsSource) == 0 {
 		log.Printf("Warning: roleSpecificOverallWeights is empty for player '%s'. Overall will be 0.", player.Name)
 	}
+
 	if len(player.ParsedPositions) > 0 {
-		uniqueBaseRoleKeysConsidered := make(map[string]struct{})
+		uniqueBaseRoleKeysConsidered := make(map[string]struct{}) // To avoid double-counting generic roles
 		foundAnyRoleMatch := false
-		for _, parsedPos := range player.ParsedPositions {
-			baseRoleKey, ok := parsedPositionToBaseRoleKeyGo[parsedPos]
-			if !ok || baseRoleKey == nullString {
-				if parsedPos == "Goalkeeper" {
-					baseRoleKey = "GK"
+
+		for _, parsedPos := range player.ParsedPositions { // parsedPos is a full name like "Centre Back"
+			shortKey, ok := parsedPositionToBaseRoleKeyGo[parsedPos]
+			if !ok || shortKey == nullString {
+				if parsedPos == "Goalkeeper" { // Special handling for GK if not in map
+					shortKey = "GK"
 				} else {
+					// log.Printf("Warning: No short key found for parsed position '%s' for player '%s'. Skipping role calculation for this position.", parsedPos, player.Name)
 					continue
 				}
 			}
+
+			// Iterate through all role definitions in the weights map
 			for roleKeyInJson, specificWeights := range currentRoleWeightsSource {
-				if strings.HasPrefix(roleKeyInJson, baseRoleKey+" - ") {
-					foundAnyRoleMatch = true
-					overallForThisRole := calculateOverallForRoleGo(player.NumericAttributes, specificWeights)
-					calculatedRoleOveralls = append(calculatedRoleOveralls, RoleOverallScore{RoleName: roleKeyInJson, Score: overallForThisRole})
-					if overallForThisRole > maxOverall {
-						maxOverall = overallForThisRole
+				// roleKeyInJson is like "DC - Ball Playing Defender" or "ST - Trequartista - Attack"
+				// We need to check if it starts with the player's shortKey + " - "
+				if strings.HasPrefix(roleKeyInJson, shortKey+" - ") {
+					// Check if it's NOT a generic role for this specific loop, generic roles are handled separately
+					if !strings.HasSuffix(roleKeyInJson, " - Generic") { // Avoid matching "DC - Generic" here if shortKey is "DC"
+						foundAnyRoleMatch = true
+						overallForThisRole := calculateOverallForRoleGo(player.NumericAttributes, specificWeights)
+						calculatedRoleOveralls = append(calculatedRoleOveralls, RoleOverallScore{RoleName: roleKeyInJson, Score: overallForThisRole})
+						if overallForThisRole > maxOverall {
+							maxOverall = overallForThisRole
+						}
 					}
 				}
 			}
-			genericRoleKey := baseRoleKey + " - Generic"
+
+			// Handle generic role for this shortKey
+			genericRoleKey := shortKey + " - Generic" // e.g., "DC - Generic"
 			if specificWeights, exists := currentRoleWeightsSource[genericRoleKey]; exists {
 				if _, considered := uniqueBaseRoleKeysConsidered[genericRoleKey]; !considered {
 					foundAnyRoleMatch = true
 					overallForThisRole := calculateOverallForRoleGo(player.NumericAttributes, specificWeights)
+
+					// Check if this generic role score was already added (e.g. from a different parsedPos mapping to the same shortKey)
 					alreadyAdded := false
 					for _, cro := range calculatedRoleOveralls {
 						if cro.RoleName == genericRoleKey {
@@ -965,11 +1033,13 @@ func enhancePlayerWithCalculations(player *Player) {
 			}
 		}
 		if !foundAnyRoleMatch && len(player.ParsedPositions) > 0 {
-			log.Printf("Warning: Player '%s' with ParsedPositions %v found no matching roles in roleSpecificOverallWeights. MaxOverall will be 0.", player.Name, player.ParsedPositions)
+			log.Printf("Warning: Player '%s' with ParsedPositions %v (ShortPositions: %v) found no matching roles in roleSpecificOverallWeights. MaxOverall will be 0.", player.Name, player.ParsedPositions, player.ShortPositions)
 		}
+
 	} else {
 		log.Printf("Warning: Player '%s' has no ParsedPositions. MaxOverall will be 0.", player.Name)
 	}
+
 	player.Overall = maxOverall
 	player.RoleSpecificOveralls = calculatedRoleOveralls
 	sort.Slice(player.RoleSpecificOveralls, func(i, j int) bool {
@@ -1016,7 +1086,7 @@ func parseRowToPlayer(tr *html.Node, headers []string) (Player, error) {
 	for i, headerName := range headers {
 		if i < len(cells) {
 			cellValue := strings.TrimSpace(cells[i])
-			isAnAttributeField := true // Assume it's an attribute by default
+			isAnAttributeField := true
 
 			switch headerName {
 			case "Name":
@@ -1047,19 +1117,16 @@ func parseRowToPlayer(tr *html.Node, headers []string) (Player, error) {
 				player.MediaHandling = cellValue
 				isAnAttributeField = false
 			case "Nat":
-				// Attempt to parse as an integer (Natural Fitness attribute)
 				valInt, err := strconv.Atoi(cellValue)
 				if err == nil && valInt >= 0 && valInt <= 20 {
-					// It's a number 0-20, so treat as Natural Fitness.
-					// isAnAttributeField remains true by default, so it will be added to player.Attributes.
+					// Natural Fitness attribute
 				} else {
-					// Not a valid number for Natural Fitness, so treat as Nationality Code.
 					fifaCode := strings.ToUpper(cellValue)
 					player.NationalityFIFACode = fifaCode
 					if fullName, ok := fifaCountryCodes[fifaCode]; ok {
 						player.Nationality = fullName
 					} else {
-						player.Nationality = cellValue // Fallback
+						player.Nationality = cellValue
 					}
 					if isoCode, ok := fifaToISO2[fifaCode]; ok {
 						player.NationalityISO = isoCode
@@ -1070,12 +1137,11 @@ func parseRowToPlayer(tr *html.Node, headers []string) (Player, error) {
 							player.NationalityISO = strings.ToLower(fifaCode)
 						}
 					}
-					isAnAttributeField = false // Mark that this "Nat" was handled as nationality
+					isAnAttributeField = false
 				}
 			case "Left Foot", "Right Foot":
 				isAnAttributeField = false
 			default:
-				// For any other header, it's considered an attribute if not explicitly handled above.
 			}
 
 			if isAnAttributeField {

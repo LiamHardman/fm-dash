@@ -30,7 +30,10 @@
                             <code>attribute_weights.json</code> and
                             <code>role_specific_overall_weights.json</code> from
                             its <code>public</code> folder. If not found, it
-                            uses internal defaults.
+                            uses internal defaults. (Note: Role keys in
+                            <code>role_specific_overall_weights.json</code> now
+                            expect full names like "Centre Back - Ball Playing
+                            Defender").
                         </li>
                         <li>
                             Select an HTML file exported from Football Manager.
@@ -50,16 +53,19 @@
                         </li>
                         <li>
                             Use filters for Name, Club (searchable dropdown),
-                            Position, Nationality (searchable dropdown),
-                            Transfer Value (text input, slider, and mode using
-                            the detected currency), Media Handling
-                            (multi-select), Personality (multi-select), and Age
-                            range. Input fields are debounced for performance.
+                            Position (now short names like GK, DC, ST, sorted
+                            GK-ST), Nationality (searchable dropdown), Transfer
+                            Value (text input, slider, and mode using the
+                            detected currency), Media Handling (multi-select),
+                            Personality (multi-select), and Age range. Input
+                            fields are debounced for performance.
                         </li>
                         <li>
                             Click on any player row for a detailed view, which
-                            will show all calculated role-specific overalls and
-                            specific goalkeeping attributes if applicable.
+                            will show all calculated role-specific overalls (now
+                            with full role names) and specific goalkeeping
+                            attributes if applicable. Player positions will now
+                            be displayed as short names (e.g., GK, DC, ST).
                             Monetary values will use the detected currency
                             symbol.
                         </li>
@@ -205,7 +211,7 @@
                             <q-select
                                 v-model="filters.position"
                                 :options="positionFilterOptions"
-                                label="Position / Group"
+                                label="Position"
                                 dense
                                 outlined
                                 clearable
@@ -637,32 +643,45 @@ import PlayerDataTable from "../components/PlayerDataTable.vue";
 import PlayerDetailDialog from "../components/PlayerDetailDialog.vue";
 import UpgradeFinderDialog from "../components/UpgradeFinderDialog.vue";
 import playerService from "../services/playerService";
-import { formatCurrency, parseCurrencyString } from "../utils/currencyUtils"; // Import currency utils
+import { formatCurrency, parseCurrencyString } from "../utils/currencyUtils";
 
-const positionGroups = {
-    Goalkeepers: ["Goalkeeper"],
-    Defenders: [
-        "Sweeper",
-        "Right Back",
-        "Left Back",
-        "Centre Back",
-        "Right Wing-Back",
-        "Left Wing-Back",
-        "Centre Wing-Back",
-    ],
-    Midfielders: [
-        "Right Defensive Midfielder",
-        "Left Defensive Midfielder",
-        "Centre Defensive Midfielder",
-        "Right Midfielder",
-        "Left Midfielder",
-        "Centre Midfielder",
-        "Right Attacking Midfielder",
-        "Left Attacking Midfielder",
-        "Centre Attacking Midfielder",
-    ],
-    Attackers: ["Striker", "Right Forward", "Left Forward", "Centre Forward"],
+// MODIFIED: Ordered short positions for filter dropdown
+const orderedShortPositions = [
+    "GK",
+    "DR",
+    "DC",
+    "DL",
+    "WBR",
+    "WBL",
+    "DM",
+    "MR",
+    "MC",
+    "ML",
+    "AMR",
+    "AMC",
+    "AML",
+    "ST",
+];
+
+// MODIFIED: Mapping from short position codes (filter values) to standardized full names (for matching player.parsedPositions)
+const shortToStandardizedLongPosMap = {
+    GK: ["Goalkeeper"],
+    DR: ["Right Back"],
+    DC: ["Centre Back"],
+    DL: ["Left Back"],
+    WBR: ["Right Wing-Back"],
+    WBL: ["Left Wing-Back"],
+    DM: ["Centre Defensive Midfielder"], // Assuming DM primarily maps to Centre DM for filtering
+    MR: ["Right Midfielder"],
+    MC: ["Centre Midfielder"],
+    ML: ["Left Midfielder"],
+    AMR: ["Right Attacking Midfielder", "Right Winger"], // Include winger if it's a distinct parsedPosition
+    AMC: ["Centre Attacking Midfielder"],
+    AML: ["Left Attacking Midfielder", "Left Winger"], // Include winger
+    ST: ["Striker"],
 };
+// Note: The `positionGroups` definition from the original file is not directly used for this specific filter logic,
+// but the `shortToStandardizedLongPosMap` should align with how `parsedPositions` are generated in Go.
 
 function debounce(fn, delay) {
     let timeoutID = null;
@@ -688,7 +707,7 @@ export default {
         const showPlayerDetailDialog = ref(false);
         const showUpgradeFinder = ref(false);
         const currentDatasetId = ref(null);
-        const detectedCurrencySymbol = ref("$"); // Default symbol
+        const detectedCurrencySymbol = ref("$");
 
         const attributeWeightsLoadedForFeedback = ref(false);
         const attributeWeightsErrorForFeedback = ref("");
@@ -711,7 +730,7 @@ export default {
             club: null,
             selectedTransferValue: null,
             transferValueMode: "less",
-            position: null,
+            position: null, // Will hold short position code, e.g., "DC"
             nationality: null,
             mediaHandling: [],
             personality: [],
@@ -730,10 +749,10 @@ export default {
         const allUniquePersonalities = ref([]);
 
         const isGoalkeeperView = computed(() => {
-            return (
-                filters.position === "Goalkeepers" ||
-                filters.position === "Goalkeeper"
-            );
+            // Check if the selected short position filter implies a goalkeeper view
+            if (!filters.position) return false; // No position filter active
+            const longNames = shortToStandardizedLongPosMap[filters.position];
+            return longNames ? longNames.includes("Goalkeeper") : false;
         });
 
         const hasActiveFilters = computed(
@@ -763,7 +782,6 @@ export default {
             () => allUniqueNationalities.value.length,
         );
 
-        // Use the imported formatCurrency for the slider label
         const formatSliderValueWithCurrency = (value) => {
             if (value === null || value === undefined) return "";
             return formatCurrency(value, detectedCurrencySymbol.value);
@@ -826,7 +844,7 @@ export default {
                 if (storedCurrencySymbol) {
                     detectedCurrencySymbol.value = storedCurrencySymbol;
                 }
-                fetchPlayersByDatasetId(storedDatasetId); // Fetch players if ID exists
+                fetchPlayersByDatasetId(storedDatasetId);
             }
         });
 
@@ -842,11 +860,10 @@ export default {
             loading.value = true;
             error.value = "";
             try {
-                // playerService.getPlayersByDatasetId now returns { players: [], currencySymbol: "€" }
                 const response =
                     await playerService.getPlayersByDatasetId(datasetId);
                 allPlayers.value = processPlayersFromAPI(response.players);
-                detectedCurrencySymbol.value = response.currencySymbol || "$"; // Use detected or default
+                detectedCurrencySymbol.value = response.currencySymbol || "$";
                 sessionStorage.setItem(
                     "detectedCurrencySymbol",
                     detectedCurrencySymbol.value,
@@ -855,80 +872,27 @@ export default {
                 error.value = `Failed to fetch player data for dataset ${datasetId}: ${e.message || "Unknown error"}`;
                 allPlayers.value = [];
                 currentDatasetId.value = null;
-                detectedCurrencySymbol.value = "$"; // Reset to default
+                detectedCurrencySymbol.value = "$";
                 sessionStorage.removeItem("currentDatasetId");
                 sessionStorage.removeItem("detectedCurrencySymbol");
             } finally {
                 loading.value = false;
-                // This will trigger applyFiltersAndSort due to allPlayers.value watch
             }
         };
 
+        // MODIFIED: positionFilterOptions to use short names and defined order
         const positionFilterOptions = computed(() => {
             const options = [{ label: "Any Position", value: null }];
-            Object.keys(positionGroups).forEach((group) => {
-                options.push({ label: `${group} (Group)`, value: group });
+            orderedShortPositions.forEach((shortPos) => {
+                // Check if any player can actually play this short position based on the map
+                // This ensures only relevant short positions are shown if data is sparse,
+                // though for a full dataset, all should be relevant.
+                // For simplicity now, we'll include all defined short positions.
+                // A more dynamic approach would be to check if shortToStandardizedLongPosMap[shortPos]
+                // has any corresponding player.parsedPositions in the current allPlayers.value.
+                options.push({ label: shortPos, value: shortPos });
             });
-            const uniquePositions = new Set();
-            allPlayers.value.forEach((player) => {
-                if (
-                    player.parsedPositions?.includes("Goalkeeper") &&
-                    !uniquePositions.has("Goalkeeper")
-                ) {
-                    uniquePositions.add("Goalkeeper");
-                }
-                player.parsedPositions?.forEach((pos) =>
-                    uniquePositions.add(pos),
-                );
-            });
-            Array.from(uniquePositions)
-                .sort()
-                .forEach((pos) => {
-                    if (
-                        !options.some(
-                            (opt) =>
-                                opt.value === pos &&
-                                opt.label !== `${pos} (Group)`,
-                        )
-                    ) {
-                        if (!positionGroups[pos]) {
-                            options.push({ label: pos, value: pos });
-                        } else if (
-                            pos === "Goalkeeper" &&
-                            !options.some((o) => o.value === "Goalkeeper")
-                        ) {
-                            options.push({
-                                label: "Goalkeeper",
-                                value: "Goalkeeper",
-                            });
-                        }
-                    }
-                });
-            if (
-                allPlayers.value.some((p) =>
-                    p.positionGroups?.includes("Goalkeepers"),
-                ) &&
-                !options.some((o) => o.value === "Goalkeepers")
-            ) {
-                options.push({
-                    label: "Goalkeepers (Group)",
-                    value: "Goalkeepers",
-                });
-            }
-
-            const finalOptionsMap = new Map();
-            options.forEach((opt) => {
-                if (
-                    !finalOptionsMap.has(opt.value) ||
-                    (finalOptionsMap.has(opt.value) &&
-                        opt.label.includes("(Group)"))
-                ) {
-                    finalOptionsMap.set(opt.value, opt);
-                }
-            });
-            return Array.from(finalOptionsMap.values()).sort((a, b) =>
-                a.label.localeCompare(b.label),
-            );
+            return options;
         });
 
         const updateDropdownOptionsAndSliderBounds = () => {
@@ -1007,7 +971,6 @@ export default {
                     ),
                 );
             } else {
-                // Set to max if null, so slider shows full range initially
                 filters.selectedTransferValue = transferValueSliderMax.value;
                 transferValueTextInput.value = formatSliderValueWithCurrency(
                     transferValueSliderMax.value,
@@ -1075,19 +1038,17 @@ export default {
                 );
             }
 
+            // MODIFIED: Position filtering logic
             if (filters.position) {
-                const selectedPosFilter = filters.position;
-                if (positionGroups[selectedPosFilter]) {
-                    tempPlayers = tempPlayers.filter(
-                        (p) =>
-                            p.positionGroups &&
-                            p.positionGroups.includes(selectedPosFilter),
-                    );
-                } else {
+                const targetLongNames =
+                    shortToStandardizedLongPosMap[filters.position];
+                if (targetLongNames && targetLongNames.length > 0) {
                     tempPlayers = tempPlayers.filter(
                         (p) =>
                             p.parsedPositions &&
-                            p.parsedPositions.includes(selectedPosFilter),
+                            p.parsedPositions.some((pp) =>
+                                targetLongNames.includes(pp),
+                            ),
                     );
                 }
             }
@@ -1096,7 +1057,6 @@ export default {
                 filters.selectedTransferValue !== null &&
                 filters.selectedTransferValue < transferValueSliderMax.value
             ) {
-                // Only filter if not set to max (Any)
                 const threshold = filters.selectedTransferValue;
                 if (filters.transferValueMode === "less") {
                     tempPlayers = tempPlayers.filter(
@@ -1140,7 +1100,6 @@ export default {
 
         const updateNumericValueFromTextInput = () => {
             const numericValue = parseCurrencyString(
-                // Use the util that doesn't need symbol
                 transferValueTextInput.value,
             );
             if (numericValue !== null) {
@@ -1149,10 +1108,9 @@ export default {
                     Math.min(numericValue, transferValueSliderMax.value),
                 );
                 if (filters.selectedTransferValue !== clampedValue) {
-                    filters.selectedTransferValue = clampedValue; // This will trigger its own watch
+                    filters.selectedTransferValue = clampedValue;
                 }
             } else if (transferValueTextInput.value.trim() === "") {
-                // If input is cleared, set slider to max to mean "Any"
                 if (
                     filters.selectedTransferValue !==
                     transferValueSliderMax.value
@@ -1161,7 +1119,7 @@ export default {
                         transferValueSliderMax.value;
                 }
             }
-            applyFiltersAndSort(); // Apply filters after text input change
+            applyFiltersAndSort();
         };
         const debouncedUpdateNumericValueFromTextInput = debounce(
             updateNumericValueFromTextInput,
@@ -1174,7 +1132,6 @@ export default {
                 const currentTextParsed = parseCurrencyString(
                     transferValueTextInput.value,
                 );
-                // Update text input only if it's different or if new slider value means "Any"
                 if (
                     currentTextParsed !== newValue ||
                     newValue === transferValueSliderMax.value
@@ -1201,7 +1158,7 @@ export default {
                 const response = await playerService.uploadPlayerFile(formData);
                 currentDatasetId.value = response.datasetId;
                 detectedCurrencySymbol.value =
-                    response.detectedCurrencySymbol || "$"; // Store detected symbol
+                    response.detectedCurrencySymbol || "$";
 
                 sessionStorage.setItem(
                     "currentDatasetId",
@@ -1218,7 +1175,7 @@ export default {
                 error.value = `Failed to process file: ${e.message || "Unknown error"}`;
                 allPlayers.value = [];
                 currentDatasetId.value = null;
-                detectedCurrencySymbol.value = "$"; // Reset to default
+                detectedCurrencySymbol.value = "$";
                 sessionStorage.removeItem("currentDatasetId");
                 sessionStorage.removeItem("detectedCurrencySymbol");
             } finally {
@@ -1235,9 +1192,9 @@ export default {
         const clearAllFilters = () => {
             filters.name = "";
             filters.club = null;
-            filters.selectedTransferValue = transferValueSliderMax.value; // Reset to "Any"
+            filters.selectedTransferValue = transferValueSliderMax.value;
             filters.transferValueMode = "less";
-            transferValueTextInput.value = ""; // Clear text input
+            transferValueTextInput.value = "";
             filters.position = null;
             filters.nationality = null;
             filters.mediaHandling = [];
@@ -1288,8 +1245,8 @@ export default {
                 updateDropdownOptionsAndSliderBounds();
                 if (!newPlayers || newPlayers.length === 0) {
                     filters.selectedTransferValue =
-                        transferValueSliderMax.value; // Reset to max, effectively "Any"
-                    transferValueTextInput.value = ""; // Clear text input
+                        transferValueSliderMax.value;
+                    transferValueTextInput.value = "";
                 }
                 applyFiltersAndSort();
             },
@@ -1300,7 +1257,7 @@ export default {
             if (currentDatasetId.value) {
                 router.push({
                     name: "team-view",
-                    query: { datasetId: currentDatasetId.value }, // Currency symbol will be fetched there
+                    query: { datasetId: currentDatasetId.value },
                 });
             } else {
                 error.value =
@@ -1319,7 +1276,7 @@ export default {
             uniqueNationalitiesCount,
             filters,
             hasActiveFilters,
-            positionFilterOptions,
+            positionFilterOptions, // This is now the modified one
             clubOptions,
             nationalityOptions,
             mediaHandlingOptions,
@@ -1342,13 +1299,13 @@ export default {
             transferValueSliderMin,
             transferValueSliderMax,
             transferValueSliderStep,
-            formatSliderValueWithCurrency, // Updated function name
+            formatSliderValueWithCurrency,
             transferValueTextInput,
             debouncedUpdateNumericValueFromTextInput,
             isGoalkeeperView,
             goToTeamView,
             currentDatasetId,
-            detectedCurrencySymbol, // Expose for use in template
+            detectedCurrencySymbol,
         };
     },
 };

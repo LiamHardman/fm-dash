@@ -144,7 +144,7 @@
                                             <q-item-label
                                                 class="text-body1 ellipsis"
                                                 :title="
-                                                    player.parsedPositions?.join(
+                                                    player.shortPositions?.join(
                                                         ', ',
                                                     ) ||
                                                     player.position ||
@@ -152,8 +152,7 @@
                                                 "
                                             >
                                                 {{
-                                                    player.parsedPositions?.join(
-                                                        // Prefer parsedPositions for display
+                                                    player.shortPositions?.join(
                                                         ", ",
                                                     ) ||
                                                     player.position || // Fallback to raw position string
@@ -669,6 +668,7 @@
                                         <q-item-label
                                             lines="1"
                                             class="attribute-name-label"
+                                            :title="roleOverall.roleName"
                                             >{{
                                                 roleOverall.roleName
                                             }}</q-item-label
@@ -848,7 +848,7 @@
 </template>
 
 <script>
-import { defineComponent, computed, ref, watch, onMounted } from "vue"; // Added onMounted
+import { defineComponent, computed, ref, watch, onMounted } from "vue";
 import { useQuasar } from "quasar";
 import { formatCurrency } from "../utils/currencyUtils";
 
@@ -1005,19 +1005,9 @@ export default defineComponent({
 
         onMounted(() => {
             if (props.player) {
-                // Log for debugging dropdown issue
-                console.log(
-                    "PlayerDetailDialog Mounted. Player data:",
-                    JSON.parse(JSON.stringify(props.player)),
-                );
-                console.log(
-                    "Player PositionGroups:",
-                    props.player.positionGroups,
-                );
-                console.log(
-                    "Player PerformancePercentiles Keys:",
-                    Object.keys(props.player.performancePercentiles || {}),
-                );
+                // console.log("PlayerDetailDialog Mounted. Player data:", JSON.parse(JSON.stringify(props.player)));
+                // console.log("Player PositionGroups:", props.player.positionGroups);
+                // console.log("Player PerformancePercentiles Keys:", Object.keys(props.player.performancePercentiles || {}));
             }
         });
 
@@ -1025,19 +1015,9 @@ export default defineComponent({
             () => props.player,
             (newPlayer) => {
                 if (newPlayer) {
-                    // Log for debugging dropdown issue
-                    console.log(
-                        "PlayerDetailDialog Player Prop Changed. Player data:",
-                        JSON.parse(JSON.stringify(newPlayer)),
-                    );
-                    console.log(
-                        "Player PositionGroups:",
-                        newPlayer.positionGroups,
-                    );
-                    console.log(
-                        "Player PerformancePercentiles Keys:",
-                        Object.keys(newPlayer.performancePercentiles || {}),
-                    );
+                    // console.log("PlayerDetailDialog Player Prop Changed. Player data:", JSON.parse(JSON.stringify(newPlayer)));
+                    // console.log("Player PositionGroups:", newPlayer.positionGroups);
+                    // console.log("Player PerformancePercentiles Keys:", Object.keys(newPlayer.performancePercentiles || {}));
 
                     const availableGroups = newPlayer.performancePercentiles
                         ? Object.keys(newPlayer.performancePercentiles)
@@ -1045,15 +1025,15 @@ export default defineComponent({
                     if (
                         !availableGroups.includes(selectedComparisonGroup.value)
                     ) {
-                        selectedComparisonGroup.value = "Global"; // Default to Global if current selection is not available
+                        selectedComparisonGroup.value = "Global";
                     } else if (
                         availableGroups.length > 0 &&
                         selectedComparisonGroup.value === null
                     ) {
-                        selectedComparisonGroup.value = "Global"; // Default if null but options exist
+                        selectedComparisonGroup.value = "Global";
                     }
                 } else {
-                    selectedComparisonGroup.value = "Global"; // Reset if no player
+                    selectedComparisonGroup.value = "Global";
                 }
             },
             { immediate: true, deep: true },
@@ -1061,7 +1041,9 @@ export default defineComponent({
 
         const isGoalkeeper = computed(() => {
             if (!props.player) return false;
+            // MODIFIED: Check shortPositions for GK as well, as it's more direct
             return (
+                props.player.shortPositions?.includes("GK") ||
                 props.player.positionGroups?.includes("Goalkeepers") ||
                 props.player.parsedPositions?.includes("Goalkeeper")
             );
@@ -1137,14 +1119,10 @@ export default defineComponent({
                     });
                 }
             }
-            // If options is still empty (e.g. no performancePercentiles at all), add Global as a fallback to ensure q-select has at least one option if it's meant to be shown.
             if (options.length === 0 && props.player) {
                 options.push({ label: "Overall Dataset", value: "Global" });
             }
-            console.log(
-                "DEBUG: performanceComparisonOptions generated:",
-                options,
-            );
+            // console.log("DEBUG: performanceComparisonOptions generated:", options);
             return options;
         });
 
@@ -1168,7 +1146,6 @@ export default defineComponent({
                 props.player.performancePercentiles[groupKey];
 
             if (!percentilesForGroup) {
-                // log.warn(`No percentiles found for group: ${groupKey}`);
                 return [];
             }
 
@@ -1228,19 +1205,13 @@ export default defineComponent({
             }
             const p = Math.max(0, Math.min(100, percentile));
             let backgroundColor;
-            if (p <= 10)
-                backgroundColor = "#d32f2f"; // Very Poor
-            else if (p <= 30)
-                backgroundColor = "#ef6c00"; // Poor
-            else if (p <= 45)
-                backgroundColor = "#fdd835"; // Below Average
-            else if (p <= 55)
-                backgroundColor = "#9e9e9e"; // Average (grey)
-            else if (p <= 70)
-                backgroundColor = "#aed581"; // Above Average
-            else if (p <= 90)
-                backgroundColor = "#66bb6a"; // Good
-            else backgroundColor = "#388e3c"; // Excellent/Elite
+            if (p <= 10) backgroundColor = "#d32f2f";
+            else if (p <= 30) backgroundColor = "#ef6c00";
+            else if (p <= 45) backgroundColor = "#fdd835";
+            else if (p <= 55) backgroundColor = "#9e9e9e";
+            else if (p <= 70) backgroundColor = "#aed581";
+            else if (p <= 90) backgroundColor = "#66bb6a";
+            else backgroundColor = "#388e3c";
             return {
                 width: `${p}%`,
                 backgroundColor: backgroundColor,
@@ -1390,7 +1361,7 @@ export default defineComponent({
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 180px;
+    max-width: 180px; /* Adjust as needed */
 }
 .attribute-list-item .attribute-score-value {
     font-size: clamp(0.75rem, 1.2vw, 0.9rem);
@@ -1425,7 +1396,7 @@ export default defineComponent({
 .role-ratings-card .role-specific-ratings-list {
     overflow-y: auto;
     flex-shrink: 1;
-    max-height: 15vh;
+    max-height: 15vh; /* Adjust as needed */
 }
 
 .fifa-stat-card {
@@ -1580,7 +1551,7 @@ export default defineComponent({
     }
     .attribute-list-item .attribute-name-label {
         font-size: 0.7rem;
-        max-width: 120px;
+        max-width: 120px; /* Adjust for smaller screens */
     }
     .attribute-list-item .attribute-score-value {
         font-size: 0.75rem;
@@ -1594,12 +1565,13 @@ export default defineComponent({
         min-width: 20px;
     }
     .attribute-list.no-scroll {
-        overflow-y: auto;
-        max-height: 30vh;
+        overflow-y: auto; /* Allow scroll on mobile if content overflows */
+        max-height: 30vh; /* Example max height */
     }
     .role-ratings-card .role-specific-ratings-list {
-        max-height: 12vh;
+        max-height: 12vh; /* Adjust for mobile */
     }
+
     .performance-stat-item {
         .stat-name-section {
             flex-basis: 35%;
