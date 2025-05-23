@@ -279,16 +279,12 @@
                             "
                             class="q-mb-md player-profile-card-redesigned"
                         >
-                            <q-card-section class="q-pa-sm">
-                                <div
-                                    class="row items-stretch q-col-gutter-x-sm q-mb-sm player-header-redesigned"
-                                >
-                                    <div
-                                        class="col-12 col-sm player-identity-section-redesigned"
-                                    >
-                                        <div
-                                            class="row items-center no-wrap full-height"
-                                        >
+                            <q-card-section
+                                class="q-pa-md player-profile-content"
+                            >
+                                <div class="profile-header-section">
+                                    <div class="player-identity-extended">
+                                        <div class="row items-center q-mb-xs">
                                             <div
                                                 class="col-auto q-mr-sm player-flag-container-redesigned"
                                             >
@@ -324,77 +320,126 @@
                                                 />
                                             </div>
                                             <div
-                                                class="col player-name-age-redesigned"
+                                                class="col player-name-age-positions-redesigned"
                                             >
                                                 <div
-                                                    class="text-h6 player-name-text-redesigned"
-                                                    :title="player.name || '-'"
+                                                    class="player-name-and-age"
                                                 >
-                                                    {{ player.name || "-" }}
+                                                    <div
+                                                        class="text-h6 player-name-text-redesigned"
+                                                        :title="
+                                                            player.name || '-'
+                                                        "
+                                                    >
+                                                        {{ player.name || "-" }}
+                                                    </div>
+                                                    <q-badge
+                                                        outline
+                                                        :color="
+                                                            qInstance.dark
+                                                                .isActive
+                                                                ? 'blue-4'
+                                                                : 'primary'
+                                                        "
+                                                        :label="`${player.age || '-'} yrs`"
+                                                        class="player-age-badge-redesigned q-ml-sm"
+                                                    />
                                                 </div>
-                                                <q-badge
-                                                    outline
-                                                    :color="
-                                                        qInstance.dark.isActive
-                                                            ? 'blue-4'
-                                                            : 'primary'
+                                                <div
+                                                    class="player-positions-inline q-mt-xs"
+                                                    v-if="
+                                                        player.shortPositions
+                                                            ?.length ||
+                                                        player.position
                                                     "
-                                                    :label="`${player.age || '-'} yrs`"
-                                                    class="player-age-badge-redesigned"
-                                                />
+                                                >
+                                                    <q-badge
+                                                        v-for="pos in player.shortPositions || [
+                                                            player.position,
+                                                        ]"
+                                                        :key="pos"
+                                                        outline
+                                                        :color="
+                                                            qInstance.dark
+                                                                .isActive
+                                                                ? 'blue-3'
+                                                                : 'indigo-5'
+                                                        "
+                                                        :label="pos"
+                                                        class="q-mr-xs q-mb-xs player-position-badge"
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div
-                                        class="col-12 col-sm-auto text-center player-value-section-redesigned"
-                                    >
+                                    <div class="financial-details-top-right">
                                         <div
-                                            class="text-caption value-subtitle-redesigned"
-                                            :class="
-                                                qInstance.dark.isActive
-                                                    ? 'text-grey-5'
-                                                    : 'text-grey-7'
-                                            "
-                                        >
-                                            Value
-                                        </div>
-                                        <div
-                                            class="text-h5 text-weight-bold value-text-redesigned"
-                                            :class="
-                                                qInstance.dark.isActive
-                                                    ? 'text-green-4'
-                                                    : 'text-green-7'
-                                            "
+                                            class="financial-item-large"
                                             :title="formattedTransferValue"
                                         >
-                                            {{ formattedTransferValue }}
+                                            <q-icon
+                                                name="trending_up"
+                                                class="q-mr-xs"
+                                                :color="
+                                                    qInstance.dark.isActive
+                                                        ? 'green-4'
+                                                        : 'green-7'
+                                                "
+                                            />
+                                            <span
+                                                :class="
+                                                    qInstance.dark.isActive
+                                                        ? 'text-green-4'
+                                                        : 'text-green-7'
+                                                "
+                                                >{{
+                                                    formattedTransferValue
+                                                }}</span
+                                            >
+                                        </div>
+                                        <div
+                                            class="financial-item-small"
+                                            :title="formattedWage"
+                                        >
+                                            <q-icon
+                                                name="payments"
+                                                class="q-mr-xs"
+                                                :color="
+                                                    qInstance.dark.isActive
+                                                        ? 'light-blue-4'
+                                                        : 'light-blue-7'
+                                                "
+                                            />
+                                            <span
+                                                :class="
+                                                    qInstance.dark.isActive
+                                                        ? 'text-light-blue-4'
+                                                        : 'text-light-blue-7'
+                                                "
+                                                >{{ formattedWage }}</span
+                                            >
                                         </div>
                                     </div>
                                 </div>
 
-                                <q-separator
-                                    :dark="qInstance.dark.isActive"
-                                    class="q-my-xs"
-                                />
-
                                 <div
-                                    class="row q-col-gutter-x-sm q-col-gutter-y-xs q-mt-sm q-mb-sm condensed-info-grid-redesigned"
+                                    class="row q-col-gutter-x-md q-col-gutter-y-sm q-my-md player-secondary-info-row"
                                 >
                                     <div
-                                        class="col-6 col-sm-4 info-item-redesigned"
+                                        class="col-xs-12 col-sm-4 secondary-info-item"
                                     >
                                         <q-icon
+                                            name="sports_soccer"
+                                            size="1.5em"
+                                            class="q-mr-sm info-icon-redesigned"
                                             :color="
                                                 qInstance.dark.isActive
                                                     ? 'blue-3'
                                                     : 'primary'
                                             "
-                                            name="sports_soccer"
-                                            size="1.1em"
-                                            class="q-mr-xs info-icon-redesigned"
                                         />
-                                        <div>
+                                        <div class="info-text-block">
                                             <q-item-label
                                                 caption
                                                 class="info-caption-redesigned"
@@ -410,116 +455,19 @@
                                         </div>
                                     </div>
                                     <div
-                                        class="col-6 col-sm-4 info-item-redesigned"
+                                        class="col-xs-12 col-sm-4 secondary-info-item"
                                     >
                                         <q-icon
-                                            :color="
-                                                qInstance.dark.isActive
-                                                    ? 'blue-3'
-                                                    : 'primary'
-                                            "
-                                            name="engineering"
-                                            size="1.1em"
-                                            class="q-mr-xs info-icon-redesigned"
-                                        />
-                                        <div>
-                                            <q-item-label
-                                                caption
-                                                class="info-caption-redesigned"
-                                                >Position(s)</q-item-label
-                                            >
-                                            <q-item-label
-                                                class="info-label-redesigned ellipsis"
-                                                :title="
-                                                    player.shortPositions?.join(
-                                                        ', ',
-                                                    ) ||
-                                                    player.position ||
-                                                    '-'
-                                                "
-                                            >
-                                                {{
-                                                    player.shortPositions?.join(
-                                                        ", ",
-                                                    ) ||
-                                                    player.position ||
-                                                    "-"
-                                                }}
-                                            </q-item-label>
-                                        </div>
-                                    </div>
-                                    <div
-                                        class="col-6 col-sm-4 info-item-redesigned"
-                                    >
-                                        <q-icon
-                                            :color="
-                                                qInstance.dark.isActive
-                                                    ? 'blue-3'
-                                                    : 'primary'
-                                            "
-                                            name="payments"
-                                            size="1.1em"
-                                            class="q-mr-xs info-icon-redesigned"
-                                        />
-                                        <div>
-                                            <q-item-label
-                                                caption
-                                                class="info-caption-redesigned"
-                                                >Salary</q-item-label
-                                            >
-                                            <q-item-label
-                                                class="info-label-redesigned ellipsis"
-                                                :title="formattedWage"
-                                                >{{
-                                                    formattedWage
-                                                }}</q-item-label
-                                            >
-                                        </div>
-                                    </div>
-                                    <div
-                                        class="col-6 col-sm-4 info-item-redesigned"
-                                    >
-                                        <q-icon
-                                            :color="
-                                                qInstance.dark.isActive
-                                                    ? 'blue-3'
-                                                    : 'primary'
-                                            "
-                                            name="comment"
-                                            size="1.1em"
-                                            class="q-mr-xs info-icon-redesigned"
-                                        />
-                                        <div>
-                                            <q-item-label
-                                                caption
-                                                class="info-caption-redesigned"
-                                                >Media</q-item-label
-                                            >
-                                            <q-item-label
-                                                class="info-label-redesigned ellipsis"
-                                                :title="
-                                                    player.media_handling || '-'
-                                                "
-                                                >{{
-                                                    player.media_handling || "-"
-                                                }}</q-item-label
-                                            >
-                                        </div>
-                                    </div>
-                                    <div
-                                        class="col-6 col-sm-4 info-item-redesigned"
-                                    >
-                                        <q-icon
-                                            :color="
-                                                qInstance.dark.isActive
-                                                    ? 'blue-3'
-                                                    : 'primary'
-                                            "
                                             name="psychology"
-                                            size="1.1em"
-                                            class="q-mr-xs info-icon-redesigned"
+                                            size="1.5em"
+                                            class="q-mr-sm info-icon-redesigned"
+                                            :color="
+                                                qInstance.dark.isActive
+                                                    ? 'blue-3'
+                                                    : 'primary'
+                                            "
                                         />
-                                        <div>
+                                        <div class="info-text-block">
                                             <q-item-label
                                                 caption
                                                 class="info-caption-redesigned"
@@ -536,9 +484,41 @@
                                             >
                                         </div>
                                     </div>
+                                    <div
+                                        class="col-xs-12 col-sm-4 secondary-info-item"
+                                    >
+                                        <q-icon
+                                            name="comment"
+                                            size="1.5em"
+                                            class="q-mr-sm info-icon-redesigned"
+                                            :color="
+                                                qInstance.dark.isActive
+                                                    ? 'blue-3'
+                                                    : 'primary'
+                                            "
+                                        />
+                                        <div class="info-text-block">
+                                            <q-item-label
+                                                caption
+                                                class="info-caption-redesigned"
+                                                >Media Handling</q-item-label
+                                            >
+                                            <q-item-label
+                                                class="info-label-redesigned ellipsis"
+                                                :title="
+                                                    player.media_handling || '-'
+                                                "
+                                                >{{
+                                                    player.media_handling || "-"
+                                                }}</q-item-label
+                                            >
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <div class="q-mt-md">
+                                <q-separator spaced="sm" class="q-mb-md" />
+
+                                <div class="q-mt-md fifa-stats-section">
                                     <div
                                         class="text-subtitle2 text-center q-mb-xs fifa-title-redesigned"
                                         :class="
@@ -555,7 +535,7 @@
                                         <div
                                             v-for="stat in fifaStatsToDisplay"
                                             :key="stat.name"
-                                            class="col-4 col-sm-2"
+                                            class="col-fifa-stat"
                                         >
                                             <q-card
                                                 flat
@@ -589,6 +569,7 @@
                                 </div>
                             </q-card-section>
                         </q-card>
+
                         <div
                             class="text-h5 q-mb-sm text-center attributes-section-title"
                         >
@@ -1151,7 +1132,7 @@ export default defineComponent({
         };
 
         onMounted(() => {
-            // Initialization logic if needed
+            /* Initialization logic if needed */
         });
 
         watch(
@@ -1240,11 +1221,9 @@ export default defineComponent({
                 const availablePercentileGroups = Object.keys(
                     props.player.performancePercentiles,
                 );
-
                 if (availablePercentileGroups.includes("Global")) {
                     options.push({ label: "Overall Dataset", value: "Global" });
                 }
-
                 if (props.player.positionGroups) {
                     props.player.positionGroups.forEach((group) => {
                         if (
@@ -1268,7 +1247,6 @@ export default defineComponent({
                         value: "Global",
                     });
                 }
-
                 if (
                     options.length === 0 &&
                     availablePercentileGroups.includes("Global")
@@ -1290,7 +1268,6 @@ export default defineComponent({
             const groupKey = selectedComparisonGroup.value;
             const percentilesForGroup =
                 props.player.performancePercentiles[groupKey];
-
             if (
                 !percentilesForGroup ||
                 !Object.prototype.hasOwnProperty.call(
@@ -1328,14 +1305,12 @@ export default defineComponent({
             const groupKey = selectedComparisonGroup.value;
             const percentilesForGroup =
                 props.player.performancePercentiles[groupKey];
-
             if (!percentilesForGroup) {
                 return {};
             }
 
             const result = {};
             const categoryOrder = ["Offensive", "Passing", "Defensive"];
-
             categoryOrder.forEach((categoryName) => {
                 if (performanceStatCategories[categoryName]) {
                     const statsInCategory = [];
@@ -1355,7 +1330,6 @@ export default defineComponent({
                                 );
                             const percentileValue =
                                 percentilesForGroup[statKey];
-
                             if (
                                 performanceStatMap[statKey] &&
                                 hasRawAttribute &&
@@ -1506,21 +1480,46 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
-.player-profile-card-redesigned {
-    // General container for the redesigned section
-}
+// Import Quasar SCSS variables
+$grey-1: #f5f5f5 !default;
+$grey-2: #eeeeee !default;
+$grey-3: #e0e0e0 !default;
+$grey-4: #bdbdbd !default;
+$grey-5: #9e9e9e !default;
+$grey-6: #757575 !default;
+$grey-7: #616161 !default;
+$grey-8: #424242 !default;
+$grey-9: #303030 !default;
+$grey-10: #212121 !default;
+$positive: #21ba45 !default;
+$primary: #1976d2 !default;
+$indigo-5: #3f51b5 !default;
 
-.player-header-redesigned {
-    min-height: 60px;
-    align-items: stretch;
-}
+$breakpoint-sm-max: 1023px !default;
+$breakpoint-xs-max: 599px !default;
 
-.player-identity-section-redesigned {
+.player-detail-dialog-card {
     display: flex;
-    align-items: center;
-    min-width: 160px;
-    flex-grow: 1.5; // Give more space to identity
-    flex-basis: 0;
+    flex-direction: column;
+    border-radius: 8px;
+}
+.main-content-section {
+    flex-grow: 1;
+    padding: 12px;
+}
+.dialog-title {
+    font-size: clamp(0.9rem, 1.4vw, 1.1rem);
+}
+
+.profile-header-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+.player-identity-extended {
+    flex-grow: 1;
+    padding-right: 16px;
 }
 
 .player-flag-container-redesigned {
@@ -1528,6 +1527,7 @@ export default defineComponent({
     align-items: center;
     justify-content: center;
     width: 40px;
+    padding-top: 4px;
 }
 .player-flag-redesigned {
     border: 1px solid rgba(128, 128, 128, 0.5);
@@ -1535,91 +1535,144 @@ export default defineComponent({
     object-fit: cover;
     vertical-align: middle;
 }
-.player-flag-placeholder-redesigned {
-    // Styles for the placeholder icon if needed
-}
 
-.player-name-age-redesigned {
+.player-name-age-positions-redesigned {
     display: flex;
     flex-direction: column;
     justify-content: center;
     overflow: hidden;
     text-align: left;
 }
+
+.player-name-and-age {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: nowrap;
+}
+
 .player-name-text-redesigned {
-    font-size: clamp(1rem, 1.8vw, 1.25rem);
+    font-size: clamp(1.1rem, 2vw, 1.4rem);
     line-height: 1.2;
+    font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-weight: 500;
+    margin-right: 8px;
 }
 .player-age-badge-redesigned {
-    font-size: clamp(0.65rem, 1vw, 0.75rem);
+    font-size: clamp(0.7rem, 1.1vw, 0.8rem);
     font-weight: 600;
-    padding: 2px 5px;
-    margin-top: 2px;
-    align-self: flex-start;
-}
-
-.player-value-section-redesigned {
-    padding: 0 8px; // Increased padding for better spacing
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    min-width: 120px; // Ensure enough base width for value
-    flex-grow: 1;
-    flex-basis: 0;
-}
-
-.value-subtitle-redesigned {
-    font-size: clamp(0.6rem, 0.9vw, 0.7rem);
-    line-height: 1;
-    margin-bottom: 1px;
+    padding: 2px 6px;
+    align-self: baseline;
     white-space: nowrap;
 }
-.value-text-redesigned {
-    font-size: clamp(1rem, 1.8vw, 1.3rem);
-    line-height: 1.2;
-    white-space: normal;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    width: 100%;
-    font-weight: 600;
+
+.player-positions-inline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 2px;
 }
 
-.condensed-info-grid-redesigned {
-    // Grid for Club, Position, Value etc.
+.player-position-badge {
+    font-size: clamp(0.65rem, 0.9vw, 0.75rem);
+    font-weight: 500;
+    padding: 1px 4px;
+    margin-right: 4px;
+    margin-bottom: 2px;
 }
-.info-item-redesigned {
+
+.financial-details-top-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    text-align: right;
+    min-width: 120px;
+}
+.financial-item-large {
+    font-size: clamp(1.1rem, 2.2vw, 1.5rem);
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     display: flex;
     align-items: center;
-    padding: 3px 0; // Slightly increased padding
-    min-height: auto;
 }
-.info-icon-redesigned {
-    margin-right: 6px; // Added margin to icon
+.financial-item-small {
+    font-size: clamp(0.8rem, 1.5vw, 0.95rem);
+    font-weight: 500;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    color: $grey-7;
+    .body--dark & {
+        color: $grey-4;
+    }
+}
+
+.player-secondary-info-row {
+}
+.secondary-info-item {
+    display: flex;
+    align-items: center;
+    padding: 6px 2px;
+    min-height: 40px;
+    overflow: hidden;
+}
+.info-text-block {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    text-align: left;
 }
 .info-caption-redesigned {
-    font-size: clamp(0.65rem, 0.9vw, 0.7rem); // Increased caption size
+    font-size: clamp(0.6rem, 0.8vw, 0.65rem);
     line-height: 1.1;
+    white-space: nowrap;
     color: $grey-6;
     .body--dark & {
         color: $grey-5;
     }
 }
 .info-label-redesigned {
-    font-size: clamp(0.75rem, 1.1vw, 0.85rem); // Increased label size
-    line-height: 1.25; // Adjusted line height
+    font-size: clamp(0.8rem, 1.2vw, 0.9rem);
+    line-height: 1.25;
     font-weight: 500;
+    white-space: nowrap;
+    &.ellipsis {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
 }
 
+.fifa-stats-section {
+}
 .fifa-title-redesigned {
     font-size: clamp(0.8rem, 1.3vw, 0.95rem);
     font-weight: 500;
 }
 .fifa-stats-grid-redesigned {
+}
+
+.col-fifa-stat {
+    padding: 1px;
+    flex-basis: calc(100% / 8);
+    max-width: calc(100% / 8);
+
+    @media (max-width: $breakpoint-sm-max) {
+        flex-basis: calc(100% / 6);
+        max-width: calc(100% / 6);
+    }
+    @media (max-width: $breakpoint-xs-max) {
+        flex-basis: calc(100% / 4);
+        max-width: calc(100% / 4);
+    }
 }
 
 .fifa-stat-item-redesigned {
@@ -1628,7 +1681,7 @@ export default defineComponent({
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    padding: 2px !important;
+    padding: 0px !important;
     border-width: 1px;
     overflow: hidden;
     line-height: 1.1;
@@ -1662,87 +1715,16 @@ export default defineComponent({
         color: white;
     }
 }
-
 .fifa-label-redesigned {
-    font-size: clamp(0.65rem, 1.8vw, 0.85rem);
+    font-size: clamp(0.6rem, 1.5vw, 0.75rem);
     font-weight: 500;
     margin-bottom: -2px;
     display: block;
 }
 .fifa-value-redesigned {
-    font-size: clamp(1.1rem, 2.8vw, 1.7rem);
+    font-size: clamp(0.9rem, 2.2vw, 1.4rem);
     font-weight: 700;
     display: block;
-}
-
-// --- Original Styles ---
-.player-detail-dialog-card {
-    display: flex;
-    flex-direction: column;
-    border-radius: 8px;
-}
-
-.main-content-section {
-    flex-grow: 1;
-    padding: 12px;
-}
-
-.player-flag {
-    border: 1px solid rgba(128, 128, 128, 0.5);
-    border-radius: 3px;
-    object-fit: cover;
-    vertical-align: middle;
-    height: auto;
-}
-
-.dialog-title {
-    font-size: clamp(0.9rem, 1.4vw, 1.1rem);
-}
-.player-name-header {
-    font-size: clamp(0.95rem, 1.5vw, 1.15rem);
-}
-.player-age-badge {
-    font-size: clamp(0.6rem, 0.8vw, 0.7rem);
-    padding: 1px 2px;
-}
-
-.player-info-list-condensed .q-item {
-    padding: 0px 0px;
-    min-height: auto;
-}
-.player-info-list-condensed .condensed-caption {
-    font-size: clamp(0.5rem, 0.75vw, 0.65rem);
-    line-height: 1.2;
-}
-.player-info-list-condensed .condensed-label {
-    font-size: clamp(0.7rem, 1vw, 0.8rem);
-    line-height: 1.3;
-}
-
-.overall-title-condensed {
-    font-size: clamp(0.85rem, 1.3vw, 1rem);
-}
-.main-overall-value {
-    font-size: clamp(1.5rem, 2.5vw, 2rem);
-    padding: 0px 5px;
-    margin-bottom: 2px;
-}
-.fifa-ratings-title-condensed {
-    font-size: clamp(0.75rem, 1.2vw, 0.9rem);
-}
-
-.fifa-stat-card-condensed {
-    min-height: 45px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: 2px !important;
-}
-.fifa-stat-card-condensed .fifa-stat-label {
-    font-size: clamp(0.55rem, 0.7vw, 0.65rem);
-}
-.fifa-stat-card-condensed .attribute-value.text-h6 {
-    font-size: clamp(0.8rem, 1.3vw, 1rem);
 }
 
 .attributes-section-title {
@@ -1751,7 +1733,6 @@ export default defineComponent({
 .attribute-category-header .text-subtitle1 {
     font-size: clamp(0.85rem, 1.4vw, 1rem);
 }
-
 .attribute-list-item .attribute-name-label {
     font-size: clamp(0.7rem, 1vw, 0.8rem);
     white-space: nowrap;
@@ -1762,13 +1743,11 @@ export default defineComponent({
 .attribute-list-item .attribute-score-value {
     font-size: clamp(0.75rem, 1.1vw, 0.85rem);
 }
-
 .performance-stat-actual-value {
     font-size: clamp(0.7rem, 1vw, 0.8rem);
     min-width: 35px;
     text-align: right;
 }
-
 .attribute-columns-container > .column {
     display: flex;
     flex-direction: column;
@@ -1779,13 +1758,9 @@ export default defineComponent({
     flex-direction: column;
     min-height: 0;
 }
-
-.performance-percentiles-card-left {
-}
 .percentile-content-area {
     padding: 8px;
 }
-
 .attribute-list.no-scroll {
     flex-grow: 0;
     flex-shrink: 0;
@@ -1802,7 +1777,6 @@ export default defineComponent({
     max-height: 18vh;
     min-height: 70px;
 }
-
 .best-role-highlight {
     border-left: 4px solid $positive;
     .body--dark & {
@@ -1816,36 +1790,30 @@ export default defineComponent({
 .best-role-highlight .q-item__label {
     font-weight: 600;
 }
-
 .q-list--dense .q-item,
 .attribute-list-item,
 .constrained-scroll-list .q-item.attribute-list-item {
     padding: 1px 6px;
     min-height: auto;
 }
-
 .min-height-auto {
     min-height: auto !important;
 }
-
 .q-list--separator > .q-item:not(:first-child):before {
     background: rgba(128, 128, 128, 0.2);
 }
-
 .q-card__section.bg-grey-3 {
-    background-color: #f0f0f0 !important;
+    background-color: $grey-3 !important;
 }
 .q-card__section.bg-grey-8 {
-    background-color: #303030 !important;
+    background-color: $grey-8 !important;
 }
-
 .q-card[flat][bordered] {
     border: 1px solid rgba(128, 128, 128, 0.3);
     .body--dark & {
         border: 1px solid rgba(128, 128, 128, 0.4);
     }
 }
-
 .performance-stat-item {
     .stat-name-section {
         flex-basis: 45%;
@@ -1866,7 +1834,6 @@ export default defineComponent({
         padding-left: 6px;
     }
 }
-
 .stat-bar-container {
     display: flex;
     align-items: center;
@@ -1875,7 +1842,7 @@ export default defineComponent({
 .stat-bar-track {
     flex-grow: 1;
     height: 12px;
-    background-color: #e0e0e0;
+    background-color: $grey-2;
     border-radius: 3px;
     margin-right: 6px;
     overflow: hidden;
@@ -1898,7 +1865,6 @@ export default defineComponent({
         color: $grey-7;
     }
 }
-
 hr.q-my-sm {
     border: none;
     height: 1px;
@@ -1917,23 +1883,31 @@ hr.q-my-sm {
     .player-name-text-redesigned {
         font-size: clamp(0.9rem, 1.6vw, 1.15rem);
     }
-    .value-text-redesigned {
-        font-size: clamp(0.9rem, 1.7vw, 1.2rem);
-    }
-    .info-label-redesigned {
-        font-size: clamp(0.7rem, 1vw, 0.8rem);
-    } // Adjusted for SM
-    .info-caption-redesigned {
-        font-size: clamp(0.6rem, 0.85vw, 0.68rem);
-    } // Adjusted for SM
-    .fifa-label-redesigned {
-        font-size: clamp(0.6rem, 1.3vw, 0.7rem);
-    }
-    .fifa-value-redesigned {
-        font-size: clamp(1rem, 2.1vw, 1.4rem);
-    }
     .player-age-badge-redesigned {
         font-size: clamp(0.6rem, 0.9vw, 0.7rem);
+    }
+    .player-position-badge {
+        font-size: clamp(0.6rem, 0.8vw, 0.7rem);
+    }
+    .financial-item-large {
+        font-size: clamp(1rem, 2vw, 1.3rem);
+    }
+    .financial-item-small {
+        font-size: clamp(0.75rem, 1.3vw, 0.9rem);
+    }
+    .secondary-info-item {
+        .info-label-redesigned {
+            font-size: clamp(0.75rem, 1.1vw, 0.85rem);
+        }
+        .info-caption-redesigned {
+            font-size: clamp(0.6rem, 0.8vw, 0.65rem);
+        }
+    }
+    .fifa-label-redesigned {
+        font-size: clamp(0.55rem, 1.2vw, 0.7rem);
+    }
+    .fifa-value-redesigned {
+        font-size: clamp(0.8rem, 1.8vw, 1.2rem);
     }
 }
 
@@ -1944,34 +1918,72 @@ hr.q-my-sm {
     .dialog-title {
         font-size: 0.85rem;
     }
-    .player-name-header {
-        font-size: 0.9rem;
+    .profile-header-section {
+        flex-direction: column;
+        align-items: stretch;
     }
-    .player-age-badge {
-        font-size: 0.55rem;
+    .player-identity-extended {
+        padding-right: 0;
+        margin-bottom: 8px;
+        width: 100%;
     }
-    .player-info-list-condensed .condensed-caption {
-        font-size: 0.5rem;
+    .player-name-age-positions-redesigned {
+        flex-direction: column;
+        align-items: flex-start;
     }
-    .player-info-list-condensed .condensed-label {
-        font-size: 0.65rem;
-    }
-    .overall-title-condensed {
-        font-size: 0.8rem;
-    }
-    .main-overall-value {
-        font-size: 1.4rem;
-    }
-    .fifa-ratings-title-condensed {
-        font-size: 0.7rem;
-    }
-    .fifa-stat-card-condensed .fifa-stat-label {
-        font-size: 0.5rem;
-    }
-    .fifa-stat-card-condensed .attribute-value.text-h6 {
-        font-size: 0.75rem;
+    .player-name-and-age {
+        flex-wrap: wrap;
     }
 
+    .financial-details-top-right {
+        align-items: flex-start;
+        text-align: left;
+        width: 100%;
+        margin-bottom: 8px;
+    }
+    .player-secondary-info-row {
+        .col-xs-12 {
+            flex-basis: 100%;
+            max-width: 100%;
+        }
+    }
+    .player-name-text-redesigned {
+        font-size: clamp(0.9rem, 2.8vw, 1.1rem);
+    }
+    .player-age-badge-redesigned {
+        font-size: clamp(0.65rem, 2vw, 0.75rem);
+        margin-left: 0;
+        margin-top: 2px;
+    }
+    .player-positions-inline {
+        margin-top: 4px;
+    }
+    .player-position-badge {
+        font-size: clamp(0.6rem, 1.8vw, 0.7rem);
+    }
+    .secondary-info-item {
+        min-height: 36px;
+        padding: 4px 0;
+        .q-icon {
+            font-size: 1.3em !important;
+            margin-right: 4px !important;
+        }
+        .info-label-redesigned {
+            font-size: clamp(0.7rem, 2.5vw, 0.8rem);
+        }
+        .info-caption-redesigned {
+            font-size: clamp(0.55rem, 2vw, 0.6rem);
+        }
+    }
+    .fifa-title-redesigned {
+        font-size: clamp(0.75rem, 2vw, 0.85rem);
+    }
+    .fifa-label-redesigned {
+        font-size: clamp(0.5rem, 1.3vw, 0.6rem);
+    }
+    .fifa-value-redesigned {
+        font-size: clamp(0.7rem, 2vw, 1rem);
+    }
     .attributes-section-title {
         font-size: 1rem;
     }
@@ -1993,7 +2005,6 @@ hr.q-my-sm {
         font-size: 0.6rem;
         min-width: 20px;
     }
-
     .attribute-list.no-scroll {
         overflow-y: auto;
         max-height: 22vh;
@@ -2001,7 +2012,6 @@ hr.q-my-sm {
     .role-ratings-card .role-specific-ratings-list {
         max-height: 14vh;
     }
-
     .performance-stat-item {
         .stat-name-section {
             flex-basis: 40%;
@@ -2011,60 +2021,6 @@ hr.q-my-sm {
             flex-basis: 20%;
             font-size: 0.6rem;
         }
-    }
-
-    .player-header-redesigned {
-        flex-wrap: wrap;
-        .player-identity-section-redesigned {
-            flex-basis: 100%;
-            margin-bottom: 6px;
-            order: 1;
-            padding-right: 0;
-        }
-        .player-value-section-redesigned {
-            flex-basis: 100%;
-            order: 2;
-            text-align: center;
-            align-items: center;
-            padding: 4px 0;
-        }
-    }
-    .player-name-text-redesigned {
-        font-size: clamp(0.9rem, 2.8vw, 1.1rem);
-    }
-    .player-age-badge-redesigned {
-        font-size: clamp(0.65rem, 2vw, 0.75rem);
-    }
-    .value-text-redesigned {
-        font-size: clamp(1rem, 2.8vw, 1.2rem);
-        text-align: center;
-    }
-    .value-subtitle-redesigned {
-        font-size: clamp(0.65rem, 2vw, 0.75rem);
-    }
-
-    .info-item-redesigned {
-        flex-basis: 50%;
-    }
-    .info-caption-redesigned {
-        font-size: clamp(0.6rem, 1.6vw, 0.65rem);
-    }
-    .info-label-redesigned {
-        font-size: clamp(0.7rem, 1.9vw, 0.8rem);
-    }
-
-    .fifa-title-redesigned {
-        font-size: clamp(0.75rem, 2vw, 0.85rem);
-    }
-    .fifa-stat-item-redesigned.col-4 {
-        flex-basis: calc(100% / 3);
-        max-width: calc(100% / 3);
-    }
-    .fifa-label-redesigned {
-        font-size: clamp(0.55rem, 1.5vw, 0.65rem);
-    }
-    .fifa-value-redesigned {
-        font-size: clamp(0.9rem, 2.5vw, 1.2rem);
     }
 }
 </style>
