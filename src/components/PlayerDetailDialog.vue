@@ -281,84 +281,101 @@
                         >
                             <q-card-section class="q-pa-sm">
                                 <div
-                                    class="row items-center q-mb-sm player-header-redesigned"
+                                    class="row items-stretch q-col-gutter-x-sm q-mb-sm player-header-redesigned"
                                 >
                                     <div
-                                        class="col-auto q-mr-sm player-flag-container-redesigned"
+                                        class="col-12 col-sm player-identity-section-redesigned"
                                     >
-                                        <img
-                                            v-if="
-                                                player.nationality_iso &&
-                                                !flagLoadError
-                                            "
-                                            :src="`https://flagcdn.com/w40/${player.nationality_iso.toLowerCase()}.png`"
-                                            :alt="player.nationality || 'Flag'"
-                                            width="36"
-                                            height="24"
-                                            class="player-flag-redesigned"
-                                            @error="handleFlagError"
-                                            :title="player.nationality"
-                                        />
-                                        <q-icon
-                                            v-if="
-                                                !player.nationality_iso ||
-                                                flagLoadError
-                                            "
-                                            :color="
-                                                qInstance.dark.isActive
-                                                    ? 'grey-5'
-                                                    : 'grey-7'
-                                            "
-                                            name="flag"
-                                            size="2em"
-                                            class="player-flag-placeholder-redesigned"
-                                        />
-                                    </div>
-                                    <div class="col player-name-age-redesigned">
                                         <div
-                                            class="text-h6 player-name-text-redesigned"
-                                            :title="player.name || '-'"
+                                            class="row items-center no-wrap full-height"
                                         >
-                                            {{ player.name || "-" }}
+                                            <div
+                                                class="col-auto q-mr-sm player-flag-container-redesigned"
+                                            >
+                                                <img
+                                                    v-if="
+                                                        player.nationality_iso &&
+                                                        !flagLoadError
+                                                    "
+                                                    :src="`https://flagcdn.com/w40/${player.nationality_iso.toLowerCase()}.png`"
+                                                    :alt="
+                                                        player.nationality ||
+                                                        'Flag'
+                                                    "
+                                                    width="36"
+                                                    height="24"
+                                                    class="player-flag-redesigned"
+                                                    @error="handleFlagError"
+                                                    :title="player.nationality"
+                                                />
+                                                <q-icon
+                                                    v-if="
+                                                        !player.nationality_iso ||
+                                                        flagLoadError
+                                                    "
+                                                    :color="
+                                                        qInstance.dark.isActive
+                                                            ? 'grey-5'
+                                                            : 'grey-7'
+                                                    "
+                                                    name="flag"
+                                                    size="2em"
+                                                    class="player-flag-placeholder-redesigned"
+                                                />
+                                            </div>
+                                            <div
+                                                class="col player-name-age-redesigned"
+                                            >
+                                                <div
+                                                    class="text-h6 player-name-text-redesigned"
+                                                    :title="player.name || '-'"
+                                                >
+                                                    {{ player.name || "-" }}
+                                                </div>
+                                                <q-badge
+                                                    outline
+                                                    :color="
+                                                        qInstance.dark.isActive
+                                                            ? 'blue-4'
+                                                            : 'primary'
+                                                    "
+                                                    :label="`${player.age || '-'} yrs`"
+                                                    class="player-age-badge-redesigned"
+                                                />
+                                            </div>
                                         </div>
-                                        <q-badge
-                                            outline
-                                            :color="
-                                                qInstance.dark.isActive
-                                                    ? 'blue-4'
-                                                    : 'primary'
-                                            "
-                                            :label="`${player.age || '-'} yrs`"
-                                            class="player-age-badge-redesigned"
-                                        />
                                     </div>
+
+                                    <q-separator
+                                        vertical
+                                        inset
+                                        class="q-mx-xs gt-xs"
+                                        :dark="qInstance.dark.isActive"
+                                    />
+
                                     <div
-                                        class="col-auto text-center q-ml-md player-overall-rating-redesigned"
+                                        class="col-12 col-sm-auto text-center player-value-section-redesigned"
                                     >
                                         <div
-                                            class="text-caption overall-subtitle-redesigned"
+                                            class="text-caption value-subtitle-redesigned"
                                             :class="
                                                 qInstance.dark.isActive
                                                     ? 'text-grey-5'
                                                     : 'text-grey-7'
                                             "
                                         >
-                                            Overall (Best Role)
+                                            Value
                                         </div>
                                         <div
-                                            class="text-h4 text-weight-bold overall-value-text-redesigned"
+                                            class="text-h5 text-weight-bold value-text-redesigned"
                                             :class="
-                                                getUnifiedRatingClass(
-                                                    player.Overall,
-                                                    100,
-                                                )
+                                                qInstance.dark.isActive
+                                                    ? 'text-green-4'
+                                                    : 'text-green-7'
                                             "
+                                            :title="formattedTransferValue"
                                         >
-                                            {{
-                                                player.Overall > 0
-                                                    ? player.Overall
-                                                    : "N/A"
-                                            }}
+                                            {{ formattedTransferValue }}
                                         </div>
                                     </div>
                                 </div>
@@ -436,34 +453,6 @@
                                                     "-"
                                                 }}
                                             </q-item-label>
-                                        </div>
-                                    </div>
-                                    <div
-                                        class="col-6 col-sm-4 info-item-redesigned"
-                                    >
-                                        <q-icon
-                                            :color="
-                                                qInstance.dark.isActive
-                                                    ? 'blue-3'
-                                                    : 'primary'
-                                            "
-                                            :name="currencyIcon"
-                                            size="1.1em"
-                                            class="q-mr-xs info-icon-redesigned"
-                                        />
-                                        <div>
-                                            <q-item-label
-                                                caption
-                                                class="info-caption-redesigned"
-                                                >Value</q-item-label
-                                            >
-                                            <q-item-label
-                                                class="info-label-redesigned ellipsis"
-                                                :title="formattedTransferValue"
-                                                >{{
-                                                    formattedTransferValue
-                                                }}</q-item-label
-                                            >
                                         </div>
                                     </div>
                                     <div
@@ -578,31 +567,21 @@
                                             <q-card
                                                 flat
                                                 bordered
-                                                :class="
-                                                    qInstance.dark.isActive
-                                                        ? 'bg-grey-8'
-                                                        : 'bg-grey-2'
-                                                "
-                                                class="q-pa-xs rounded-borders fifa-stat-item-redesigned text-center"
+                                                :class="[
+                                                    'q-pa-xs rounded-borders fifa-stat-item-redesigned text-center',
+                                                    getUnifiedRatingClass(
+                                                        player[stat.name],
+                                                        100,
+                                                    ),
+                                                ]"
                                             >
                                                 <div
                                                     class="text-caption fifa-label-redesigned"
-                                                    :class="
-                                                        qInstance.dark.isActive
-                                                            ? 'text-grey-5'
-                                                            : 'text-grey-7'
-                                                    "
                                                 >
                                                     {{ stat.label }}
                                                 </div>
                                                 <div
                                                     class="text-subtitle1 text-weight-medium fifa-value-redesigned"
-                                                    :class="
-                                                        getUnifiedRatingClass(
-                                                            player[stat.name],
-                                                            100,
-                                                        )
-                                                    "
                                                 >
                                                     {{
                                                         player[stat.name] !==
@@ -942,8 +921,8 @@
                                                 roleOverall.score ===
                                                 player.Overall
                                                     ? qInstance.dark.isActive
-                                                        ? 'background-color: #2a5270 !important;' // Adjusted dark highlight
-                                                        : 'background-color: #e3f2fd !important;' // Adjusted light highlight
+                                                        ? 'background-color: #2a5270 !important;'
+                                                        : 'background-color: #e3f2fd !important;'
                                                     : ''
                                             "
                                             class="attribute-list-item"
@@ -1172,10 +1151,9 @@ export default defineComponent({
     setup(props) {
         const qInstance = useQuasar();
         const selectedComparisonGroup = ref("Global");
-        const flagLoadError = ref(false); // Added for flag image error
+        const flagLoadError = ref(false);
 
         const handleFlagError = () => {
-            // Added for flag image error
             flagLoadError.value = true;
         };
 
@@ -1186,7 +1164,7 @@ export default defineComponent({
         watch(
             () => props.player,
             (newPlayer) => {
-                flagLoadError.value = false; // Reset flag error on player change
+                flagLoadError.value = false;
                 if (newPlayer && newPlayer.performancePercentiles) {
                     const availableGroups = Object.keys(
                         newPlayer.performancePercentiles,
@@ -1527,36 +1505,41 @@ export default defineComponent({
             categorizedPerformanceStats,
             averageRatingData,
             hasAnyPerformanceData,
-            flagLoadError, // Added
-            handleFlagError, // Added
+            flagLoadError,
+            handleFlagError,
         };
     },
 });
 </script>
 
 <style lang="scss" scoped>
-// Original styles from the user are preserved below.
-// New/Modified styles for the redesigned section are added here.
-
 .player-profile-card-redesigned {
     // General container for the redesigned section
 }
 
 .player-header-redesigned {
-    // Container for flag, name, age, overall rating
-    min-height: 50px; // Ensure some consistent height
+    min-height: 60px;
+    align-items: stretch;
+}
+
+.player-identity-section-redesigned {
+    display: flex;
+    align-items: center;
+    min-width: 160px;
+    flex-grow: 1.5; // Give more space to identity
+    flex-basis: 0;
 }
 
 .player-flag-container-redesigned {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px; // Fixed width for flag area
+    width: 40px;
 }
 .player-flag-redesigned {
     border: 1px solid rgba(128, 128, 128, 0.5);
     border-radius: 3px;
-    object-fit: cover; // Changed from 'contain' for better fill if aspect ratios differ
+    object-fit: cover;
     vertical-align: middle;
 }
 .player-flag-placeholder-redesigned {
@@ -1567,33 +1550,53 @@ export default defineComponent({
     display: flex;
     flex-direction: column;
     justify-content: center;
-    overflow: hidden; // For ellipsis on name
+    overflow: hidden;
+    text-align: left;
 }
 .player-name-text-redesigned {
-    font-size: clamp(1rem, 1.8vw, 1.25rem); // Slightly larger name
+    font-size: clamp(1rem, 1.8vw, 1.25rem);
     line-height: 1.2;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    font-weight: 500;
 }
 .player-age-badge-redesigned {
-    font-size: clamp(0.6rem, 0.9vw, 0.7rem);
-    padding: 1px 3px;
+    font-size: clamp(0.65rem, 1vw, 0.75rem);
+    font-weight: 600;
+    padding: 2px 5px;
     margin-top: 2px;
-    align-self: flex-start; // Align badge to the start of the flex container
+    align-self: flex-start;
 }
 
-.player-overall-rating-redesigned {
-    // Container for overall rating
+.player-value-section-redesigned {
+    padding: 0 8px; // Increased padding for better spacing
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-width: 120px; // Ensure enough base width for value
+    flex-grow: 1;
+    flex-basis: 0;
 }
-.overall-subtitle-redesigned {
-    font-size: clamp(0.65rem, 1vw, 0.75rem);
+
+.value-subtitle-redesigned {
+    font-size: clamp(0.6rem, 0.9vw, 0.7rem);
     line-height: 1;
+    margin-bottom: 1px;
+    white-space: nowrap;
 }
-.overall-value-text-redesigned {
-    font-size: clamp(1.8rem, 3vw, 2.2rem); // Prominent overall rating
-    line-height: 1.1;
+.value-text-redesigned {
+    font-size: clamp(1rem, 1.8vw, 1.3rem); // Slightly increased value text
+    line-height: 1.2; // Allow for slightly more height for ranges
+    white-space: normal; // Allow wrapping for ranges
+    overflow: hidden; // Still hide overflow if it's too long even with wrapping
+    text-overflow: ellipsis;
+    width: 100%;
+    font-weight: 600; // Bolder value
 }
+
+// Overall rating section has been removed from header
 
 .condensed-info-grid-redesigned {
     // Grid for Club, Position, Value etc.
@@ -1601,12 +1604,10 @@ export default defineComponent({
 .info-item-redesigned {
     display: flex;
     align-items: center;
-    padding: 2px 0; // Compact padding
+    padding: 2px 0;
     min-height: auto;
 }
 .info-icon-redesigned {
-    // Style for icons in the info grid
-    // margin-right: 4px; // Spacing already handled by q-mr-xs
 }
 .info-caption-redesigned {
     font-size: clamp(0.6rem, 0.8vw, 0.65rem);
@@ -1623,29 +1624,74 @@ export default defineComponent({
 }
 
 .fifa-title-redesigned {
-    font-size: clamp(0.8rem, 1.3vw, 0.95rem); // Title for FIFA stats
+    font-size: clamp(0.8rem, 1.3vw, 0.95rem);
     font-weight: 500;
 }
 .fifa-stats-grid-redesigned {
-    // Grid for FIFA stat items
 }
+
 .fifa-stat-item-redesigned {
-    min-height: 50px; // Ensure consistent height for stat cards
+    aspect-ratio: 1 / 1;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-}
-.fifa-label-redesigned {
-    font-size: clamp(0.6rem, 0.75vw, 0.7rem); // Label for FIFA stat (PHY, SHO)
-    line-height: 1;
-}
-.fifa-value-redesigned {
-    font-size: clamp(0.9rem, 1.4vw, 1.1rem); // Value for FIFA stat
-    line-height: 1.1;
+    padding: 2px !important; // Adjusted padding
+    border-width: 1px;
+    overflow: hidden;
+    line-height: 1.1; // General line height for the box
+
+    &.rating-na {
+        background-color: #757575;
+        color: white;
+    }
+    &.rating-tier-1 {
+        background-color: #d32f2f;
+        color: white;
+    }
+    &.rating-tier-2 {
+        background-color: #ef6c00;
+        color: white;
+    }
+    &.rating-tier-3 {
+        background-color: #fdd835;
+        color: #333;
+    }
+    &.rating-tier-4 {
+        background-color: #aed581;
+        color: #333;
+    }
+    &.rating-tier-5 {
+        background-color: #66bb6a;
+        color: white;
+    }
+    &.rating-tier-6 {
+        background-color: #388e3c;
+        color: white;
+    }
 }
 
-// --- Original Styles (Copied from user input, might need minor adjustments if conflicts arise) ---
+.fifa-label-redesigned {
+    font-size: clamp(
+        0.65rem,
+        1.8vw,
+        0.85rem
+    ); // Significantly increased label size
+    font-weight: 500;
+    margin-bottom: -2px; // Pull value closer
+    display: block;
+}
+.fifa-value-redesigned {
+    font-size: clamp(
+        1.1rem,
+        2.8vw,
+        1.7rem
+    ); // Significantly increased value size
+    font-weight: 700; // Bolder value
+    display: block;
+}
+
+// --- Original Styles ---
 .player-detail-dialog-card {
     display: flex;
     flex-direction: column;
@@ -1657,7 +1703,6 @@ export default defineComponent({
     padding: 12px;
 }
 
-// This class was in user's original CSS, might be for the old flag. Keeping for reference.
 .player-flag {
     border: 1px solid rgba(128, 128, 128, 0.5);
     border-radius: 3px;
@@ -1669,11 +1714,9 @@ export default defineComponent({
 .dialog-title {
     font-size: clamp(0.9rem, 1.4vw, 1.1rem);
 }
-// This was for the old player name header, new one is player-name-text-redesigned
 .player-name-header {
     font-size: clamp(0.95rem, 1.5vw, 1.15rem);
 }
-// This was for old age badge, new one is player-age-badge-redesigned
 .player-age-badge {
     font-size: clamp(0.6rem, 0.8vw, 0.7rem);
     padding: 1px 2px;
@@ -1693,17 +1736,14 @@ export default defineComponent({
 }
 
 .overall-title-condensed {
-    // Old class for overall title
     font-size: clamp(0.85rem, 1.3vw, 1rem);
 }
 .main-overall-value {
-    // Old class for overall value
     font-size: clamp(1.5rem, 2.5vw, 2rem);
     padding: 0px 5px;
     margin-bottom: 2px;
 }
 .fifa-ratings-title-condensed {
-    // Old class for FIFA title
     font-size: clamp(0.75rem, 1.2vw, 0.9rem);
 }
 
@@ -1757,11 +1797,9 @@ export default defineComponent({
 }
 
 .performance-percentiles-card-left {
-    // padding: 8px; // Moved padding to inner div
 }
 .percentile-content-area {
     padding: 8px;
-    // overflow-y: visible;
 }
 
 .attribute-list.no-scroll {
@@ -1784,17 +1822,11 @@ export default defineComponent({
 .best-role-highlight {
     border-left: 4px solid $positive;
     .body--dark & {
-        border-left: 4px solid lighten($positive, 20%); // Made dark highlight a bit lighter
-        background-color: rgba(
-            lighten($positive, 25%),
-            0.15
-        ) !important; // Adjusted dark highlight bg
+        border-left: 4px solid lighten($positive, 20%);
+        background-color: rgba(lighten($positive, 25%), 0.15) !important;
     }
     .body--light & {
-        background-color: rgba(
-            $positive,
-            0.08
-        ) !important; // Adjusted light highlight bg
+        background-color: rgba($positive, 0.08) !important;
     }
 }
 .best-role-highlight .q-item__label {
@@ -1898,18 +1930,23 @@ hr.q-my-sm {
     .role-ratings-card .role-specific-ratings-list {
         max-height: 18vh;
     }
-    // Redesigned section responsive adjustments
     .player-name-text-redesigned {
         font-size: clamp(0.9rem, 1.6vw, 1.15rem);
     }
-    .overall-value-text-redesigned {
-        font-size: clamp(1.6rem, 2.8vw, 2rem);
-    }
+    .value-text-redesigned {
+        font-size: clamp(0.9rem, 1.7vw, 1.2rem);
+    } // Adjusted for SM
     .info-label-redesigned {
         font-size: clamp(0.65rem, 0.9vw, 0.75rem);
     }
+    .fifa-label-redesigned {
+        font-size: clamp(0.6rem, 1.3vw, 0.7rem);
+    } // Adjusted for SM
     .fifa-value-redesigned {
-        font-size: clamp(0.8rem, 1.3vw, 1rem);
+        font-size: clamp(1rem, 2.1vw, 1.4rem);
+    } // Adjusted for SM
+    .player-age-badge-redesigned {
+        font-size: clamp(0.6rem, 0.9vw, 0.7rem);
     }
 }
 
@@ -1920,7 +1957,6 @@ hr.q-my-sm {
     .dialog-title {
         font-size: 0.85rem;
     }
-    // Old classes, keep for reference if other parts use them
     .player-name-header {
         font-size: 0.9rem;
     }
@@ -1990,26 +2026,38 @@ hr.q-my-sm {
         }
     }
 
-    // Redesigned section responsive adjustments for xs
     .player-header-redesigned {
         flex-wrap: wrap;
-    } // Allow wrapping for very small screens
+        .player-identity-section-redesigned {
+            flex-basis: 60%;
+            margin-bottom: 4px;
+            order: 1;
+        } // Order 1
+        .player-value-section-redesigned {
+            flex-basis: 40%;
+            order: 2;
+            text-align: right;
+            align-items: flex-end;
+            padding-right: 8px;
+        } // Order 2
+    }
     .player-name-text-redesigned {
         font-size: clamp(0.85rem, 2.5vw, 1rem);
     }
     .player-age-badge-redesigned {
-        font-size: clamp(0.55rem, 1.5vw, 0.65rem);
+        font-size: clamp(0.6rem, 1.8vw, 0.7rem);
     }
-    .overall-value-text-redesigned {
-        font-size: clamp(1.5rem, 4vw, 1.8rem);
+    .value-text-redesigned {
+        font-size: clamp(0.9rem, 2.5vw, 1.1rem);
+        text-align: right;
     }
-    .overall-subtitle-redesigned {
+    .value-subtitle-redesigned {
         font-size: clamp(0.6rem, 1.8vw, 0.7rem);
     }
 
     .info-item-redesigned {
         flex-basis: 50%;
-    } // 2 items per row on xs for info grid
+    }
     .info-caption-redesigned {
         font-size: clamp(0.55rem, 1.5vw, 0.6rem);
     }
@@ -2023,12 +2071,12 @@ hr.q-my-sm {
     .fifa-stat-item-redesigned.col-4 {
         flex-basis: calc(100% / 3);
         max-width: calc(100% / 3);
-    } // Ensure 3 FIFA stats per row
+    }
     .fifa-label-redesigned {
-        font-size: clamp(0.5rem, 1.5vw, 0.6rem);
+        font-size: clamp(0.55rem, 1.5vw, 0.65rem);
     }
     .fifa-value-redesigned {
-        font-size: clamp(0.8rem, 2.2vw, 0.95rem);
+        font-size: clamp(0.9rem, 2.5vw, 1.2rem);
     }
 }
 </style>
