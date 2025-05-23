@@ -36,11 +36,6 @@
             <q-card-section v-if="player" class="scroll main-content-section">
                 <div class="row q-col-gutter-md">
                     <div class="col-12 col-md-4">
-                        <div
-                            class="text-h5 q-mb-sm text-center attributes-section-title"
-                        >
-                            Performance Percentiles
-                        </div>
                         <q-select
                             v-if="performanceComparisonOptions.length > 0"
                             :disable="performanceComparisonOptions.length <= 1"
@@ -68,9 +63,7 @@
                                 performanceComparisonOptions.length > 0
                             "
                         >
-                            Only global comparison available. More options
-                            appear if player belongs to specific position groups
-                            with percentile data.
+                            Only global comparison available for this player.
                         </q-tooltip>
 
                         <q-card
@@ -551,16 +544,6 @@
 
                                 <div class="q-mt-md fifa-stats-section">
                                     <div
-                                        class="text-subtitle2 text-center q-mb-xs fifa-title-redesigned"
-                                        :class="
-                                            qInstance.dark.isActive
-                                                ? 'text-grey-4'
-                                                : 'text-grey-8'
-                                        "
-                                    >
-                                        FIFA-Style Ratings
-                                    </div>
-                                    <div
                                         class="row q-col-gutter-xs justify-center fifa-stats-grid-redesigned"
                                     >
                                         <div
@@ -600,12 +583,6 @@
                                 </div>
                             </q-card-section>
                         </q-card>
-
-                        <div
-                            class="text-h5 q-mb-sm text-center attributes-section-title"
-                        >
-                            Player Attributes (1-20 Scale)
-                        </div>
                         <div
                             class="row q-col-gutter-md attribute-columns-container"
                         >
@@ -977,9 +954,8 @@
 <script>
 import { defineComponent, computed, ref, watch, onMounted } from "vue";
 import { useQuasar } from "quasar";
-import { formatCurrency } from "../utils/currencyUtils"; // Assuming this path is correct
+import { formatCurrency } from "../utils/currencyUtils";
 
-// Player attribute full names mapping
 const attributeFullNameMap = {
     Cor: "Corners",
     Cro: "Crossing",
@@ -1030,7 +1006,6 @@ const attributeFullNameMap = {
     Thr: "Throwing",
 };
 
-// Ordered attribute categories
 const technicalAttrsOrdered = [
     "Cor",
     "Cro",
@@ -1089,7 +1064,6 @@ const goalkeepingAttrsOrdered = [
     "Thr",
 ];
 
-// Performance statistics mapping (key to display name)
 const performanceStatMap = {
     "Asts/90": "Assists per 90",
     "Av Rat": "Average Rating",
@@ -1118,7 +1092,6 @@ const performanceStatMap = {
     "Cr C/A": "Cross Completion %",
 };
 
-// UPDATED Categories for Performance Percentiles
 const performanceStatCategories = {
     Offensive: ["Gls/90", "xG/90", "Shot/90", "ShT/90", "Conv %", "Drb/90"],
     Passing: [
@@ -1145,6 +1118,19 @@ const performanceStatCategories = {
     ],
 };
 
+// Mapping from detailed group name (key in performancePercentiles) to the ShortPositions that define them
+const detailedGroupToShortPositionsMap = {
+    "Full-backs": ["DR", "DL"],
+    "Centre-backs": ["DC"],
+    "Wing-backs": ["WBR", "WBL"],
+    "Defensive Midfielders": ["DM"],
+    "Central Midfielders": ["MC"],
+    "Wide Midfielders": ["MR", "ML"],
+    "Attacking Midfielders (Central)": ["AMC"],
+    Wingers: ["AMR", "AML"],
+    Strikers: ["ST"],
+};
+
 export default defineComponent({
     name: "PlayerDetailDialog",
     props: {
@@ -1157,27 +1143,167 @@ export default defineComponent({
         const qInstance = useQuasar();
         const selectedComparisonGroup = ref("Global");
         const flagLoadError = ref(false);
+
         const handleFlagError = () => {
             flagLoadError.value = true;
         };
+
         onMounted(() => {
             /* Initialization logic if needed */
         });
+
+        const performanceComparisonOptions = computed(() => {
+            const options = [];
+            if (
+                !props.player ||
+                !props.player.performancePercentiles ||
+                !props.player.shortPositions ||
+                !props.player.positionGroups
+            ) {
+                // If essential player data is missing, return empty or just Global if it exists
+                if (props.player?.performancePercentiles?.Global) {
+                    return [{ label: "Overall Dataset", value: "Global" }];
+                }
+                return options;
+            }
+
+            const playerPercentiles = props.player.performancePercentiles;
+            const playerShortPositions = props.player.shortPositions; // e.g., ["DC", "DM"]
+            const playerBroadGroups = props.player.positionGroups; // e.g., ["Defenders", "Midfielders"]
+
+            const preferredOrder = [
+                "Global",
+                "Goalkeepers",
+                "Defenders",
+                "Midfielders",
+                "Attackers",
+                "Full-backs",
+                "Centre-backs",
+                "Wing-backs",
+                "Defensive Midfielders",
+                "Central Midfielders",
+                "Wide Midfielders",
+                "Attacking Midfielders (Central)",
+                "Wingers",
+                "Strikers",
+            ];
+
+            preferredOrder.forEach((groupKey) => {
+                if (
+                    Object.prototype.hasOwnProperty.call(
+                        playerPercentiles,
+                        groupKey,
+                    )
+                ) {
+                    let includeGroup = false;
+                    if (groupKey === "Global") {
+                        includeGroup = true;
+                    } else if (
+                        [
+                            "Goalkeepers",
+                            "Defenders",
+                            "Midfielders",
+                            "Attackers",
+                        ].includes(groupKey)
+                    ) {
+                        // Broad groups: check if player belongs to this broad group
+                        if (playerBroadGroups.includes(groupKey)) {
+                            includeGroup = true;
+                        }
+                    } else if (detailedGroupToShortPositionsMap[groupKey]) {
+                        // Detailed groups: check if player's short positions match any in the detailed group
+                        const requiredShortPos =
+                            detailedGroupToShortPositionsMap[groupKey];
+                        if (
+                            playerShortPositions.some((psp) =>
+                                requiredShortPos.includes(psp),
+                            )
+                        ) {
+                            includeGroup = true;
+                        }
+                    }
+
+                    if (
+                        includeGroup &&
+                        !options.some((opt) => opt.value === groupKey)
+                    ) {
+                        options.push({
+                            label:
+                                groupKey === "Global"
+                                    ? "Overall Dataset"
+                                    : `vs. ${groupKey}`,
+                            value: groupKey,
+                        });
+                    }
+                }
+            });
+
+            // Add any other percentile groups the player might have that are not in preferredOrder
+            // (This ensures if backend adds new groups not yet in preferredOrder, they still show up if relevant)
+            Object.keys(playerPercentiles).forEach((groupKey) => {
+                if (!options.some((opt) => opt.value === groupKey)) {
+                    let includeGroup = false;
+                    if (
+                        [
+                            "Goalkeepers",
+                            "Defenders",
+                            "Midfielders",
+                            "Attackers",
+                        ].includes(groupKey)
+                    ) {
+                        if (playerBroadGroups.includes(groupKey))
+                            includeGroup = true;
+                    } else if (detailedGroupToShortPositionsMap[groupKey]) {
+                        const requiredShortPos =
+                            detailedGroupToShortPositionsMap[groupKey];
+                        if (
+                            playerShortPositions.some((psp) =>
+                                requiredShortPos.includes(psp),
+                            )
+                        )
+                            includeGroup = true;
+                    } else if (groupKey === "Global") {
+                        // Should be caught by preferredOrder but good fallback
+                        includeGroup = true;
+                    }
+                    // For any other arbitrary group key not covered, we might include it if it exists,
+                    // or decide to only show explicitly defined/matched ones.
+                    // For now, let's assume if it's in playerPercentiles and not yet added, and it's not a known type we already checked,
+                    // it might be a custom group or a new one we should display.
+                    // However, to be safer and more aligned with the request, only add if it's a known type.
+                    // The current logic with preferredOrder and specific checks should cover all defined groups.
+                    // This secondary loop might not be strictly necessary if preferredOrder is exhaustive for relevant groups.
+                    // Let's refine to ensure it doesn't add groups the player doesn't belong to.
+                    if (includeGroup) {
+                        // Re-check belonging for keys not in preferredOrder
+                        options.push({
+                            label: `vs. ${groupKey}`,
+                            value: groupKey,
+                        });
+                    }
+                }
+            });
+
+            return options;
+        });
+
         watch(
             () => props.player,
             (newPlayer) => {
                 flagLoadError.value = false;
+                const newOptions = performanceComparisonOptions.value;
+
                 if (newPlayer && newPlayer.performancePercentiles) {
-                    const availableGroups = Object.keys(
-                        newPlayer.performancePercentiles,
-                    );
                     if (
-                        !availableGroups.includes(selectedComparisonGroup.value)
+                        !newOptions.some(
+                            (opt) =>
+                                opt.value === selectedComparisonGroup.value,
+                        )
                     ) {
-                        if (availableGroups.includes("Global")) {
+                        if (newOptions.some((opt) => opt.value === "Global")) {
                             selectedComparisonGroup.value = "Global";
-                        } else if (availableGroups.length > 0) {
-                            selectedComparisonGroup.value = availableGroups[0];
+                        } else if (newOptions.length > 0) {
+                            selectedComparisonGroup.value = newOptions[0].value;
                         } else {
                             selectedComparisonGroup.value = "Global";
                         }
@@ -1188,6 +1314,7 @@ export default defineComponent({
             },
             { immediate: true, deep: true },
         );
+
         const isGoalkeeper = computed(() => {
             if (!props.player) return false;
             return (
@@ -1196,6 +1323,7 @@ export default defineComponent({
                 props.player.parsedPositions?.includes("Goalkeeper")
             );
         });
+
         const getPlayerAttributesInOrder = (categoryOrderedKeys) => {
             if (!props.player || !props.player.attributes) return [];
             return categoryOrderedKeys.filter((key) =>
@@ -1205,6 +1333,7 @@ export default defineComponent({
                 ),
             );
         };
+
         const attributeCategories = computed(() => ({
             technical: getPlayerAttributesInOrder(technicalAttrsOrdered),
             mental: getPlayerAttributesInOrder(mentalAttrsOrdered),
@@ -1213,6 +1342,7 @@ export default defineComponent({
                 ? getPlayerAttributesInOrder(goalkeepingAttrsOrdered)
                 : [],
         }));
+
         const fifaStatsToDisplay = computed(() => {
             let orderedStats = [];
             if (isGoalkeeper.value) {
@@ -1238,55 +1368,14 @@ export default defineComponent({
                 (stat) => props.player && props.player[stat.name] !== undefined,
             );
         });
-        const performanceComparisonOptions = computed(() => {
-            const options = [];
-            if (props.player && props.player.performancePercentiles) {
-                const availablePercentileGroups = Object.keys(
-                    props.player.performancePercentiles,
-                );
-                if (availablePercentileGroups.includes("Global")) {
-                    options.push({ label: "Overall Dataset", value: "Global" });
-                }
-                if (props.player.positionGroups) {
-                    props.player.positionGroups.forEach((group) => {
-                        if (
-                            availablePercentileGroups.includes(group) &&
-                            group !== "Global" &&
-                            !options.some((opt) => opt.value === group)
-                        ) {
-                            options.push({
-                                label: `vs. ${group}`,
-                                value: group,
-                            });
-                        }
-                    });
-                }
-                if (
-                    !options.some((opt) => opt.value === "Global") &&
-                    availablePercentileGroups.includes("Global")
-                ) {
-                    options.unshift({
-                        label: "Overall Dataset",
-                        value: "Global",
-                    });
-                }
-                if (
-                    options.length === 0 &&
-                    availablePercentileGroups.includes("Global")
-                ) {
-                    options.push({ label: "Overall Dataset", value: "Global" });
-                }
-            }
-            return options;
-        });
+
         const averageRatingData = computed(() => {
             if (
                 !props.player ||
                 !props.player.attributes ||
                 !props.player.performancePercentiles
-            ) {
+            )
                 return null;
-            }
             const groupKey = selectedComparisonGroup.value;
             const percentilesForGroup =
                 props.player.performancePercentiles[groupKey];
@@ -1315,20 +1404,19 @@ export default defineComponent({
                         : null,
             };
         });
+
         const categorizedPerformanceStats = computed(() => {
             if (
                 !props.player ||
                 !props.player.attributes ||
                 !props.player.performancePercentiles
-            ) {
+            )
                 return {};
-            }
             const groupKey = selectedComparisonGroup.value;
             const percentilesForGroup =
                 props.player.performancePercentiles[groupKey];
-            if (!percentilesForGroup) {
-                return {};
-            }
+            if (!percentilesForGroup) return {};
+
             const result = {};
             const categoryOrder = ["Offensive", "Passing", "Defensive"];
             categoryOrder.forEach((categoryName) => {
@@ -1350,6 +1438,7 @@ export default defineComponent({
                                 );
                             const percentileValue =
                                 percentilesForGroup[statKey];
+
                             if (
                                 performanceStatMap[statKey] &&
                                 hasRawAttribute &&
@@ -1378,12 +1467,13 @@ export default defineComponent({
             });
             return result;
         });
-        const hasAnyPerformanceData = computed(() => {
-            return (
+
+        const hasAnyPerformanceData = computed(
+            () =>
                 averageRatingData.value ||
-                Object.keys(categorizedPerformanceStats.value).length > 0
-            );
-        });
+                Object.keys(categorizedPerformanceStats.value).length > 0,
+        );
+
         const getUnifiedRatingClass = (value, maxScale) => {
             const numValue = parseInt(value, 10);
             if (
@@ -1401,6 +1491,7 @@ export default defineComponent({
             if (percentage >= 40) return "rating-tier-2";
             return "rating-tier-1";
         };
+
         const getBarFillStyle = (percentile) => {
             if (
                 percentile === null ||
@@ -1431,6 +1522,7 @@ export default defineComponent({
                 transition: "width 0.3s ease, background-color 0.3s ease",
             };
         };
+
         const sortedRoleSpecificOveralls = computed(() => {
             if (props.player && props.player.roleSpecificOveralls) {
                 return [...props.player.roleSpecificOveralls].sort(
@@ -1439,6 +1531,7 @@ export default defineComponent({
             }
             return [];
         });
+
         const formattedTransferValue = computed(() => {
             if (!props.player) return "-";
             return formatCurrency(
@@ -1447,6 +1540,7 @@ export default defineComponent({
                 props.player.transfer_value,
             );
         });
+
         const formattedWage = computed(() => {
             if (!props.player) return "-";
             return formatCurrency(
@@ -1455,6 +1549,7 @@ export default defineComponent({
                 props.player.wage,
             );
         });
+
         const currencyIcon = computed(() => {
             switch (props.currencySymbol) {
                 case "€":
@@ -1467,6 +1562,7 @@ export default defineComponent({
                     return "payments";
             }
         });
+
         return {
             qInstance,
             attributeCategories,
@@ -1526,13 +1622,13 @@ $breakpoint-xs-max: 599px !default;
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 0; /* Reduced margin as additional details follow */
+    margin-bottom: 0;
 }
 .player-identity-extended {
     flex-grow: 1;
     padding-right: 16px;
     display: flex;
-    flex-direction: column; /* Ensure child divs stack */
+    flex-direction: column;
 }
 
 .player-flag-container-redesigned {
@@ -1591,22 +1687,20 @@ $breakpoint-xs-max: 599px !default;
     margin-bottom: 2px;
 }
 
-/* New styles for Club, Personality, Media Handling */
 .player-additional-details {
-    margin-top: 6px; /* Space above this block */
+    margin-top: 6px;
     .row {
-        align-items: flex-start; /* Align items to the top of the row */
+        align-items: flex-start;
     }
 }
 .additional-detail-item {
     display: flex;
-    align-items: center; /* Vertically align icon and text block */
-    padding: 2px 0; /* Minimal vertical padding */
+    align-items: center;
+    padding: 2px 0;
     line-height: 1.2;
 }
 .additional-detail-icon {
-    // color handled by :color prop in template
-    align-self: center; // center icon with the first line of text typically
+    align-self: center;
 }
 .additional-detail-text-block {
     display: flex;
@@ -1622,7 +1716,7 @@ $breakpoint-xs-max: 599px !default;
         color: $grey-5;
     }
     white-space: nowrap;
-    margin-bottom: -2px; /* Pull label closer */
+    margin-bottom: -2px;
 }
 .additional-detail-label {
     font-size: clamp(0.75rem, 1vw, 0.85rem);
@@ -1636,11 +1730,11 @@ $breakpoint-xs-max: 599px !default;
     }
 }
 .additional-detail-item-separator {
-    padding: 0 4px; // Space around the bullet
+    padding: 0 4px;
     color: $grey-5;
-    align-self: center; // Vertically center the bullet
-    font-size: 0.8em; // Make bullet slightly smaller
-    line-height: 1.2; // Match label line-height
+    align-self: center;
+    font-size: 0.8em;
+    line-height: 1.2;
 }
 
 .financial-details-top-right {
@@ -1679,7 +1773,7 @@ $breakpoint-xs-max: 599px !default;
 .q-separator.q-my-md {
     margin-top: 12px !important;
     margin-bottom: 12px !important;
-} /* Ensure separator has enough space after new section */
+}
 
 .fifa-stats-section {
 }
@@ -1690,9 +1784,9 @@ $breakpoint-xs-max: 599px !default;
 .fifa-stats-grid-redesigned {
 }
 .col-fifa-stat {
-    padding: 1px; // Small gap between boxes
-    flex-basis: calc(100% / 8); // Adjust as needed for number of items per row
-    max-width: calc(100% / 8); // Adjust as needed
+    padding: 1px;
+    flex-basis: calc(100% / 8);
+    max-width: calc(100% / 8);
     @media (max-width: $breakpoint-sm-max) {
         flex-basis: calc(100% / 6);
         max-width: calc(100% / 6);
@@ -1703,16 +1797,15 @@ $breakpoint-xs-max: 599px !default;
     }
 }
 .fifa-stat-item-redesigned {
-    // aspect-ratio: 1 / 1; /* REMOVED to allow content to dictate size */
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    padding: 4px 6px !important; /* UPDATED padding for snug fit */
+    padding: 4px 6px !important;
     border-width: 1px;
     overflow: hidden;
-    line-height: 1.1; /* Base line height for the box */
-    min-width: 40px; /* Minimum width to prevent too much squishing */
+    line-height: 1.1;
+    min-width: 40px;
 
     &.rating-na {
         background-color: #757575;
@@ -1744,14 +1837,14 @@ $breakpoint-xs-max: 599px !default;
     }
 }
 .fifa-label-redesigned {
-    font-size: clamp(0.7rem, 1.6vw, 0.85rem); /* INCREASED font size */
+    font-size: clamp(0.7rem, 1.6vw, 0.85rem);
     font-weight: 500;
-    margin-bottom: 1px; /* Adjusted for better spacing */
+    margin-bottom: 1px;
     display: block;
     line-height: 1.1;
 }
 .fifa-value-redesigned {
-    font-size: clamp(1rem, 2.4vw, 1.5rem); /* INCREASED font size */
+    font-size: clamp(1rem, 2.4vw, 1.5rem);
     font-weight: 700;
     display: block;
     line-height: 1.1;
@@ -1932,10 +2025,10 @@ hr.q-my-sm {
         font-size: clamp(0.75rem, 1.3vw, 0.9rem);
     }
     .fifa-label-redesigned {
-        font-size: clamp(0.65rem, 1.3vw, 0.8rem); /* UPDATED for sm */
+        font-size: clamp(0.65rem, 1.3vw, 0.8rem);
     }
     .fifa-value-redesigned {
-        font-size: clamp(0.9rem, 2vw, 1.3rem); /* UPDATED for sm */
+        font-size: clamp(0.9rem, 2vw, 1.3rem);
     }
 }
 
@@ -1964,16 +2057,15 @@ hr.q-my-sm {
     }
     .player-additional-details .row {
         justify-content: flex-start;
-    } /* Align items to start on mobile */
+    }
     .additional-detail-item {
-        flex-basis: 100% !important; /* Stack items fully on XS */
+        flex-basis: 100% !important;
         justify-content: flex-start;
-        margin-bottom: 2px; /* Add a bit of space between stacked items */
+        margin-bottom: 2px;
     }
     .additional-detail-item-separator {
         display: none;
-    } /* Hide separator on XS */
-
+    }
     .financial-details-top-right {
         align-items: flex-start;
         text-align: left;
@@ -2000,15 +2092,14 @@ hr.q-my-sm {
     .additional-detail-label {
         font-size: clamp(0.75rem, 2vw, 0.85rem);
     }
-
     .fifa-title-redesigned {
         font-size: clamp(0.75rem, 2vw, 0.85rem);
     }
     .fifa-label-redesigned {
-        font-size: clamp(0.6rem, 1.4vw, 0.7rem); /* UPDATED for xs */
+        font-size: clamp(0.6rem, 1.4vw, 0.7rem);
     }
     .fifa-value-redesigned {
-        font-size: clamp(0.8rem, 2.2vw, 1.1rem); /* UPDATED for xs */
+        font-size: clamp(0.8rem, 2.2vw, 1.1rem);
     }
     .attributes-section-title {
         font-size: 1rem;

@@ -53,11 +53,11 @@ type Player struct {
 	NationalityFIFACode     string                        `json:"nationality_fifa_code"`
 	Attributes              map[string]string             `json:"attributes"`
 	NumericAttributes       map[string]int                `json:"-"` // Not serialized, used for calculations
-	PerformanceStatsNumeric map[string]float64            `json:"-"` // NEW: For pre-parsed numeric performance stats
+	PerformanceStatsNumeric map[string]float64            `json:"-"` // For pre-parsed numeric performance stats
 	PerformancePercentiles  map[string]map[string]float64 `json:"performancePercentiles"`
 	ParsedPositions         []string                      `json:"parsedPositions"`
 	ShortPositions          []string                      `json:"shortPositions"`
-	PositionGroups          []string                      `json:"positionGroups"`
+	PositionGroups          []string                      `json:"positionGroups"` // Broad groups like "Defenders", "Midfielders"
 	PHY                     int                           `json:"PHY"`
 	SHO                     int                           `json:"SHO"`
 	PAS                     int                           `json:"PAS"`
@@ -113,7 +113,25 @@ var performanceStatKeys = []string{
 	"Pr passes/90", "Conv %", "Tck R", "Pas %", "Cr C/A",
 }
 
+// Existing broad position groups for percentiles
 var positionGroupsForPercentiles = []string{"Goalkeepers", "Defenders", "Midfielders", "Attackers"}
+
+// NEW: Detailed position groups for more granular percentile comparisons
+// These keys will be used in the Player.PerformancePercentiles map
+var detailedPositionGroupsForPercentiles = map[string][]string{
+	"Full-backs":                      {"DR", "DL"},
+	"Centre-backs":                    {"DC"},
+	"Wing-backs":                      {"WBR", "WBL"},
+	"Defensive Midfielders":           {"DM"},
+	"Central Midfielders":             {"MC"},
+	"Wide Midfielders":                {"MR", "ML"},
+	"Attacking Midfielders (Central)": {"AMC"},
+	"Wingers":                         {"AMR", "AML"},
+	"Strikers":                        {"ST"},
+	// Note: "Goalkeepers" is already handled by the broad positionGroupsForPercentiles.
+	// If a specific "Goalkeepers (Detailed)" is needed, it would map to {"GK"}.
+	// For now, the existing "Goalkeepers" group (mapping to "Goalkeeper" full name) should suffice.
+}
 
 var defaultAttributeWeightsGo = map[string]map[string]int{
 	"PHY": {"Acc": 7, "Pac": 6, "Str": 5, "Sta": 4, "Nat": 3, "Bal": 2, "Jum": 1},
@@ -246,12 +264,12 @@ var (
 		"Attacking Midfielder (Centre)": "Centre Attacking Midfielder", "Attacking Midfielder (Right)": "Right Attacking Midfielder", "Attacking Midfielder (Left)": "Left Attacking Midfielder",
 		"Striker (Centre)": "Striker",
 	}
-	positionGroupsGo = map[string][]string{
+	positionGroupsGo = map[string][]string{ // Broad groups, player belongs if any of their standardized long names match
 		"Goalkeepers": {"Goalkeeper"},
-		"Defenders":   {"Sweeper", "Right Back", "Left Back", "Centre Back"},
-		"Wing-Backs":  {"Right Wing-Back", "Left Wing-Back"},
+		"Defenders":   {"Sweeper", "Right Back", "Left Back", "Centre Back"}, // Includes Full-backs and Centre-backs
+		"Wing-Backs":  {"Right Wing-Back", "Left Wing-Back"},                 // This is specific
 		"Midfielders": {"Centre Defensive Midfielder", "Right Midfielder", "Left Midfielder", "Centre Midfielder", "Centre Attacking Midfielder", "Right Attacking Midfielder", "Left Attacking Midfielder"},
-		"Attackers":   {"Striker"},
+		"Attackers":   {"Striker"}, // Broad, might include wingers if they are parsed as "Attacking Midfielder (Right/Left)"
 	}
 	parsedPositionToBaseRoleKeyGo = map[string]string{
 		"Goalkeeper":                  "GK",
@@ -529,37 +547,26 @@ func parseMonetaryValueGo(rawValue string) (originalDisplay string, numericValue
 	return originalDisplay, numericValue, detectedSymbol
 }
 
-// calculatePercentileValue calculates the percentile of a given value within a sorted slice of float64 values.
-// It uses the "average rank" method for handling ties.
 func calculatePercentileValue(value float64, sortedValues []float64) float64 {
 	if len(sortedValues) == 0 {
-		return -1 // Undefined or error case
+		return -1
 	}
 	if len(sortedValues) == 1 && sortedValues[0] == value {
-		return 50.0 // Mid-point for a single value
+		return 50.0
 	}
 
-	// Count of values strictly smaller than the given value
 	countSmaller := sort.SearchFloat64s(sortedValues, value)
-
-	// Count of values equal to the given value
-	// Find the first index of a value strictly greater than the given value
 	endRangeIndex := sort.Search(len(sortedValues), func(i int) bool { return sortedValues[i] > value })
 	countEqual := endRangeIndex - countSmaller
 
-	// If value is not found (e.g., value is smaller than sortedValues[countSmaller]), countEqual should be 0.
-	// This check handles cases where 'value' is not in 'sortedValues'.
 	if countSmaller >= len(sortedValues) || (countSmaller < len(sortedValues) && sortedValues[countSmaller] != value) {
 		countEqual = 0
 	}
 
-	// Percentile calculation using the average rank method
 	percentile := (float64(countSmaller) + (0.5 * float64(countEqual))) / float64(len(sortedValues)) * 100.0
 	return math.Round(percentile)
 }
 
-// calculatePlayerPerformancePercentiles calculates and assigns performance percentiles to players.
-// It calculates global percentiles and percentiles within specific position groups.
 func calculatePlayerPerformancePercentiles(players []Player) {
 	if len(players) == 0 {
 		return
@@ -579,9 +586,7 @@ func calculatePlayerPerformancePercentiles(players []Player) {
 	for _, statKey := range performanceStatKeys {
 		allStatValues := make([]float64, 0, len(players))
 		for i := range players {
-			// Use pre-parsed numeric performance stats
 			val, ok := players[i].PerformanceStatsNumeric[statKey]
-			// Ensure val is not NaN, which indicates missing/invalid original stat
 			if ok && !math.IsNaN(val) {
 				allStatValues = append(allStatValues, val)
 			}
@@ -605,23 +610,21 @@ func calculatePlayerPerformancePercentiles(players []Player) {
 		}
 	}
 
-	// --- Positional Group Percentiles (Optimized) ---
-	// Step 1: Prepare data structures to hold stat values for each group
+	// --- Broad Positional Group Percentiles (Optimized) ---
+	// This uses player.PositionGroups (e.g., "Defenders", "Midfielders")
 	groupStatValueLists := make(map[string]map[string][]float64) // groupName -> statKey -> []values
 
 	for _, groupName := range positionGroupsForPercentiles {
 		groupStatValueLists[groupName] = make(map[string][]float64)
 		for _, statKey := range performanceStatKeys {
-			// Initialize with a reasonable capacity, though it will grow
 			groupStatValueLists[groupName][statKey] = make([]float64, 0, len(players)/len(positionGroupsForPercentiles))
 		}
 	}
 
-	// Step 2: Populate stat value lists by iterating through players ONCE
 	for i := range players {
-		player := &players[i] // Use pointer for direct modification if needed, though here mostly for reading
-		for _, pg := range player.PositionGroups {
-			if _, ok := groupStatValueLists[pg]; ok { // Check if pg is one of the groups we care about
+		player := &players[i]
+		for _, pg := range player.PositionGroups { // pg is like "Defenders", "Midfielders"
+			if _, ok := groupStatValueLists[pg]; ok {
 				for _, statKey := range performanceStatKeys {
 					val, statOk := player.PerformanceStatsNumeric[statKey]
 					if statOk && !math.IsNaN(val) {
@@ -632,10 +635,7 @@ func calculatePlayerPerformancePercentiles(players []Player) {
 		}
 	}
 
-	// Step 3: Calculate and assign percentiles for each group and stat
 	for _, groupName := range positionGroupsForPercentiles {
-		// Ensure PerformancePercentiles map for this group exists for all players
-		// (even if they are not in this group, they might have an entry from previous calcs or need one for -1)
 		for i := range players {
 			if players[i].PerformancePercentiles[groupName] == nil {
 				players[i].PerformancePercentiles[groupName] = make(map[string]float64)
@@ -646,7 +646,6 @@ func calculatePlayerPerformancePercentiles(players []Player) {
 			groupValues := groupStatValueLists[groupName][statKey]
 
 			if len(groupValues) == 0 {
-				// If no values for this stat in this group, assign -1 to players belonging to this group
 				for i := range players {
 					isPlayerInGroup := false
 					for _, pg := range players[i].PositionGroups {
@@ -680,6 +679,76 @@ func calculatePlayerPerformancePercentiles(players []Player) {
 					} else {
 						player.PerformancePercentiles[groupName][statKey] = -1
 					}
+				}
+			}
+		}
+	}
+
+	// --- DETAILED Positional Group Percentiles (NEW) ---
+	// This uses player.ShortPositions (e.g., "DC", "ST", "AMR")
+	for detailedGroupName, shortPositionsInGroup := range detailedPositionGroupsForPercentiles {
+		// Ensure PerformancePercentiles map for this detailed group exists for all players
+		for i := range players {
+			if players[i].PerformancePercentiles[detailedGroupName] == nil {
+				players[i].PerformancePercentiles[detailedGroupName] = make(map[string]float64)
+			}
+		}
+
+		// Prepare data structures for this specific detailed group
+		currentDetailedGroupStatValues := make(map[string][]float64) // statKey -> []values
+		for _, statKey := range performanceStatKeys {
+			currentDetailedGroupStatValues[statKey] = make([]float64, 0, len(players)/10) // Estimate
+		}
+
+		// Populate stat value lists for this detailed group
+		playerIndicesInDetailedGroup := []int{} // Store indices of players in this group
+
+		for i := range players {
+			player := &players[i]
+			isPlayerInThisDetailedGroup := false
+			for _, playerShortPos := range player.ShortPositions {
+				for _, requiredShortPos := range shortPositionsInGroup {
+					if playerShortPos == requiredShortPos {
+						isPlayerInThisDetailedGroup = true
+						break
+					}
+				}
+				if isPlayerInThisDetailedGroup {
+					break
+				}
+			}
+
+			if isPlayerInThisDetailedGroup {
+				playerIndicesInDetailedGroup = append(playerIndicesInDetailedGroup, i)
+				for _, statKey := range performanceStatKeys {
+					val, statOk := player.PerformanceStatsNumeric[statKey]
+					if statOk && !math.IsNaN(val) {
+						currentDetailedGroupStatValues[statKey] = append(currentDetailedGroupStatValues[statKey], val)
+					}
+				}
+			}
+		}
+
+		// Calculate and assign percentiles for this detailed group
+		for _, statKey := range performanceStatKeys {
+			statValuesForCalc := currentDetailedGroupStatValues[statKey]
+
+			if len(statValuesForCalc) == 0 {
+				// If no values for this stat in this group, assign -1 to players belonging to this group
+				for _, playerIndex := range playerIndicesInDetailedGroup {
+					players[playerIndex].PerformancePercentiles[detailedGroupName][statKey] = -1
+				}
+				continue
+			}
+			sort.Float64s(statValuesForCalc) // Sort the collected values for this stat and group
+
+			for _, playerIndex := range playerIndicesInDetailedGroup {
+				player := &players[playerIndex]
+				val, statOk := player.PerformanceStatsNumeric[statKey]
+				if statOk && !math.IsNaN(val) {
+					player.PerformancePercentiles[detailedGroupName][statKey] = calculatePercentileValue(val, statValuesForCalc)
+				} else {
+					player.PerformancePercentiles[detailedGroupName][statKey] = -1
 				}
 			}
 		}
@@ -956,7 +1025,7 @@ tokenLoop:
 	if len(playersList) > 0 {
 		log.Printf("DEBUG: Sample Player 1 after all processing: Name='%s', Overall=%d, ParsedPositions=%v, ShortPositions=%v, PositionGroups=%v", playersList[0].Name, playersList[0].Overall, playersList[0].ParsedPositions, playersList[0].ShortPositions, playersList[0].PositionGroups)
 		if pp, ok := playersList[0].PerformancePercentiles["Global"]; ok && len(pp) > 0 {
-			log.Printf("DEBUG: Sample Player 1 Global Performance Percentile Keys: %v", getMapKeys(playersList[0].PerformancePercentiles))
+			log.Printf("DEBUG: Sample Player 1 Performance Percentile Keys (Global and Detailed): %v", getMapKeys(playersList[0].PerformancePercentiles))
 		}
 	} else {
 		log.Println("No players were successfully parsed or list is empty.")
@@ -1043,10 +1112,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// enhancePlayerWithCalculations populates derived fields for a player.
-// It now also pre-parses performance statistics.
 func enhancePlayerWithCalculations(player *Player) {
-	// Initialize maps if nil
 	if player.NumericAttributes == nil {
 		player.NumericAttributes = make(map[string]int, len(player.Attributes))
 	}
@@ -1054,10 +1120,8 @@ func enhancePlayerWithCalculations(player *Player) {
 		player.PerformanceStatsNumeric = make(map[string]float64, len(performanceStatKeys))
 	}
 
-	// Populate NumericAttributes (skill attributes)
 	for key, valStr := range player.Attributes {
 		switch key {
-		// List all skill attribute keys that should be numeric (1-20)
 		case "Acc", "Pac", "Str", "Sta", "Nat", "Bal", "Jum",
 			"Fin", "OtB", "Cmp", "Tec", "Hea", "Lon", "Pen",
 			"Pas", "Vis", "Cro", "Fre", "Cor", "L Th",
@@ -1069,36 +1133,34 @@ func enhancePlayerWithCalculations(player *Player) {
 			if err == nil {
 				player.NumericAttributes[key] = valInt
 			} else {
-				player.NumericAttributes[key] = 0 // Default for unparseable skills
+				player.NumericAttributes[key] = 0
 			}
 		default:
-			// This attribute is not a skill, might be a performance stat or other info
 		}
 	}
 
-	// NEW: Pre-parse performance statistics
 	for _, statKey := range performanceStatKeys {
 		statStr, ok := player.Attributes[statKey]
 		if ok && statStr != "-" && statStr != "" {
-			statStrCleaned := strings.ReplaceAll(statStr, "%", "") // Clean percentage symbols
+			statStrCleaned := strings.ReplaceAll(statStr, "%", "")
 			if val, err := strconv.ParseFloat(statStrCleaned, 64); err == nil {
 				player.PerformanceStatsNumeric[statKey] = val
 			} else {
-				player.PerformanceStatsNumeric[statKey] = math.NaN() // Mark as invalid/missing
+				player.PerformanceStatsNumeric[statKey] = math.NaN()
 			}
 		} else {
-			player.PerformanceStatsNumeric[statKey] = math.NaN() // Mark as invalid/missing
+			player.PerformanceStatsNumeric[statKey] = math.NaN()
 		}
 	}
 
 	player.ParsedPositions = parsePlayerPositionsGo(player.Position)
-	player.PositionGroups = getPlayerPositionGroupsGo(player.ParsedPositions)
+	player.PositionGroups = getPlayerPositionGroupsGo(player.ParsedPositions) // For broad groups
 
 	shortPosSet := make(map[string]struct{})
 	for _, pPos := range player.ParsedPositions {
 		if shortKey, ok := parsedPositionToBaseRoleKeyGo[pPos]; ok && shortKey != nullString {
 			shortPosSet[shortKey] = struct{}{}
-		} else if pPos == "Goalkeeper" { // Explicitly handle Goalkeeper if not in map
+		} else if pPos == "Goalkeeper" {
 			shortPosSet["GK"] = struct{}{}
 		}
 	}
@@ -1111,7 +1173,7 @@ func enhancePlayerWithCalculations(player *Player) {
 		orderJ, okJ := shortPositionOrderMap[player.ShortPositions[j]]
 		if !okI {
 			orderI = len(shortPositionDisplayOrder) + i
-		} // Place unknown positions at the end
+		}
 		if !okJ {
 			orderJ = len(shortPositionDisplayOrder) + j
 		}
@@ -1126,7 +1188,7 @@ func enhancePlayerWithCalculations(player *Player) {
 	player.MEN = calculateFifaStatGo(player.NumericAttributes, "MEN")
 
 	isGoalkeeper := false
-	for _, posGroup := range player.PositionGroups {
+	for _, posGroup := range player.PositionGroups { // Check broad group
 		if posGroup == "Goalkeepers" {
 			isGoalkeeper = true
 			break
@@ -1135,11 +1197,11 @@ func enhancePlayerWithCalculations(player *Player) {
 	if isGoalkeeper {
 		player.GK = calculateFifaStatGo(player.NumericAttributes, "GK")
 	} else {
-		player.GK = 0 // Explicitly set to 0 if not a GK
+		player.GK = 0
 	}
 
 	maxOverall := 0
-	calculatedRoleOveralls := make([]RoleOverallScore, 0, 5) // Initial capacity
+	calculatedRoleOveralls := make([]RoleOverallScore, 0, 5)
 
 	muPrecomputedRoleWeights.RLock()
 	currentPrecomputedWeights := precomputedRoleWeights
@@ -1191,7 +1253,7 @@ func enhancePlayerWithCalculations(player *Player) {
 		for _, parsedPos := range player.ParsedPositions {
 			shortKey, ok := parsedPositionToBaseRoleKeyGo[parsedPos]
 			if !ok || shortKey == nullString {
-				if parsedPos == "Goalkeeper" { // Handle GK specifically if not mapped
+				if parsedPos == "Goalkeeper" {
 					shortKey = "GK"
 				} else {
 					continue
@@ -1242,7 +1304,7 @@ func parseCellsToPlayer(cells []string, headers []string) (Player, error) {
 
 	player := Player{
 		Attributes:              make(map[string]string, defaultAttributeCapacity),
-		PerformanceStatsNumeric: make(map[string]float64, len(performanceStatKeys)), // Initialize new map
+		PerformanceStatsNumeric: make(map[string]float64, len(performanceStatKeys)),
 		PerformancePercentiles:  make(map[string]map[string]float64),
 	}
 
@@ -1287,36 +1349,32 @@ func parseCellsToPlayer(cells []string, headers []string) (Player, error) {
 		case "Media Handling":
 			player.MediaHandling = cellValue
 			isAnAttributeField = false
-		case "Nat": // This header can be either a skill (1-20) or nationality code
+		case "Nat":
 			valInt, err := strconv.Atoi(cellValue)
 			if err == nil && valInt >= 1 && valInt <= 20 {
-				// It's the Natural Fitness attribute
 				player.Attributes[headerNameClean] = cellValue
 			} else {
-				// It's the Nationality code
 				fifaCode := strings.ToUpper(cellValue)
 				player.NationalityFIFACode = fifaCode
 				if fullName, ok := fifaCountryCodes[fifaCode]; ok {
 					player.Nationality = fullName
 				} else {
-					player.Nationality = cellValue // Fallback to the code itself
+					player.Nationality = cellValue
 				}
 				if isoCode, ok := fifaToISO2[fifaCode]; ok {
 					player.NationalityISO = isoCode
 				} else {
-					// Basic fallback for ISO code if not in map
 					if len(fifaCode) >= 2 {
 						player.NationalityISO = strings.ToLower(fifaCode[:2])
 					} else {
 						player.NationalityISO = strings.ToLower(fifaCode)
 					}
 				}
-				isAnAttributeField = false // Nationality is not a player attribute in the map
+				isAnAttributeField = false
 			}
-		case "Left Foot", "Right Foot": // These are informational, not attributes for calculation
+		case "Left Foot", "Right Foot":
 			isAnAttributeField = false
 		default:
-			// All other headers are treated as potential attributes
 		}
 
 		if isAnAttributeField {
