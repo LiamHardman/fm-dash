@@ -346,13 +346,6 @@
                                         </div>
                                     </div>
 
-                                    <q-separator
-                                        vertical
-                                        inset
-                                        class="q-mx-xs gt-xs"
-                                        :dark="qInstance.dark.isActive"
-                                    />
-
                                     <div
                                         class="col-12 col-sm-auto text-center player-value-section-redesigned"
                                     >
@@ -1587,16 +1580,14 @@ export default defineComponent({
     white-space: nowrap;
 }
 .value-text-redesigned {
-    font-size: clamp(1rem, 1.8vw, 1.3rem); // Slightly increased value text
-    line-height: 1.2; // Allow for slightly more height for ranges
-    white-space: normal; // Allow wrapping for ranges
-    overflow: hidden; // Still hide overflow if it's too long even with wrapping
+    font-size: clamp(1rem, 1.8vw, 1.3rem);
+    line-height: 1.2;
+    white-space: normal;
+    overflow: hidden;
     text-overflow: ellipsis;
     width: 100%;
-    font-weight: 600; // Bolder value
+    font-weight: 600;
 }
-
-// Overall rating section has been removed from header
 
 .condensed-info-grid-redesigned {
     // Grid for Club, Position, Value etc.
@@ -1604,13 +1595,14 @@ export default defineComponent({
 .info-item-redesigned {
     display: flex;
     align-items: center;
-    padding: 2px 0;
+    padding: 3px 0; // Slightly increased padding
     min-height: auto;
 }
 .info-icon-redesigned {
+    margin-right: 6px; // Added margin to icon
 }
 .info-caption-redesigned {
-    font-size: clamp(0.6rem, 0.8vw, 0.65rem);
+    font-size: clamp(0.65rem, 0.9vw, 0.7rem); // Increased caption size
     line-height: 1.1;
     color: $grey-6;
     .body--dark & {
@@ -1618,8 +1610,8 @@ export default defineComponent({
     }
 }
 .info-label-redesigned {
-    font-size: clamp(0.7rem, 1vw, 0.8rem);
-    line-height: 1.2;
+    font-size: clamp(0.75rem, 1.1vw, 0.85rem); // Increased label size
+    line-height: 1.25; // Adjusted line height
     font-weight: 500;
 }
 
@@ -1636,10 +1628,10 @@ export default defineComponent({
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    padding: 2px !important; // Adjusted padding
+    padding: 2px !important;
     border-width: 1px;
     overflow: hidden;
-    line-height: 1.1; // General line height for the box
+    line-height: 1.1;
 
     &.rating-na {
         background-color: #757575;
@@ -1672,22 +1664,14 @@ export default defineComponent({
 }
 
 .fifa-label-redesigned {
-    font-size: clamp(
-        0.65rem,
-        1.8vw,
-        0.85rem
-    ); // Significantly increased label size
+    font-size: clamp(0.65rem, 1.8vw, 0.85rem);
     font-weight: 500;
-    margin-bottom: -2px; // Pull value closer
+    margin-bottom: -2px;
     display: block;
 }
 .fifa-value-redesigned {
-    font-size: clamp(
-        1.1rem,
-        2.8vw,
-        1.7rem
-    ); // Significantly increased value size
-    font-weight: 700; // Bolder value
+    font-size: clamp(1.1rem, 2.8vw, 1.7rem);
+    font-weight: 700;
     display: block;
 }
 
@@ -1935,16 +1919,19 @@ hr.q-my-sm {
     }
     .value-text-redesigned {
         font-size: clamp(0.9rem, 1.7vw, 1.2rem);
-    } // Adjusted for SM
-    .info-label-redesigned {
-        font-size: clamp(0.65rem, 0.9vw, 0.75rem);
     }
+    .info-label-redesigned {
+        font-size: clamp(0.7rem, 1vw, 0.8rem);
+    } // Adjusted for SM
+    .info-caption-redesigned {
+        font-size: clamp(0.6rem, 0.85vw, 0.68rem);
+    } // Adjusted for SM
     .fifa-label-redesigned {
         font-size: clamp(0.6rem, 1.3vw, 0.7rem);
-    } // Adjusted for SM
+    }
     .fifa-value-redesigned {
         font-size: clamp(1rem, 2.1vw, 1.4rem);
-    } // Adjusted for SM
+    }
     .player-age-badge-redesigned {
         font-size: clamp(0.6rem, 0.9vw, 0.7rem);
     }
@@ -2029,40 +2016,41 @@ hr.q-my-sm {
     .player-header-redesigned {
         flex-wrap: wrap;
         .player-identity-section-redesigned {
-            flex-basis: 60%;
-            margin-bottom: 4px;
+            flex-basis: 100%;
+            margin-bottom: 6px;
             order: 1;
-        } // Order 1
+            padding-right: 0;
+        }
         .player-value-section-redesigned {
-            flex-basis: 40%;
+            flex-basis: 100%;
             order: 2;
-            text-align: right;
-            align-items: flex-end;
-            padding-right: 8px;
-        } // Order 2
+            text-align: center;
+            align-items: center;
+            padding: 4px 0;
+        }
     }
     .player-name-text-redesigned {
-        font-size: clamp(0.85rem, 2.5vw, 1rem);
+        font-size: clamp(0.9rem, 2.8vw, 1.1rem);
     }
     .player-age-badge-redesigned {
-        font-size: clamp(0.6rem, 1.8vw, 0.7rem);
+        font-size: clamp(0.65rem, 2vw, 0.75rem);
     }
     .value-text-redesigned {
-        font-size: clamp(0.9rem, 2.5vw, 1.1rem);
-        text-align: right;
+        font-size: clamp(1rem, 2.8vw, 1.2rem);
+        text-align: center;
     }
     .value-subtitle-redesigned {
-        font-size: clamp(0.6rem, 1.8vw, 0.7rem);
+        font-size: clamp(0.65rem, 2vw, 0.75rem);
     }
 
     .info-item-redesigned {
         flex-basis: 50%;
     }
     .info-caption-redesigned {
-        font-size: clamp(0.55rem, 1.5vw, 0.6rem);
+        font-size: clamp(0.6rem, 1.6vw, 0.65rem);
     }
     .info-label-redesigned {
-        font-size: clamp(0.65rem, 1.8vw, 0.7rem);
+        font-size: clamp(0.7rem, 1.9vw, 0.8rem);
     }
 
     .fifa-title-redesigned {
