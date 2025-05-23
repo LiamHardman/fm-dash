@@ -34,332 +34,6 @@
             </q-bar>
 
             <q-card-section v-if="player" class="scroll main-content-section">
-                <div class="row q-col-gutter-x-md q-col-gutter-y-xs q-mb-sm">
-                    <div class="col-12 col-md-7">
-                        <q-card
-                            flat
-                            bordered
-                            :class="
-                                qInstance.dark.isActive
-                                    ? 'bg-grey-9'
-                                    : 'bg-grey-1'
-                            "
-                            class="full-height-card-info"
-                        >
-                            <q-card-section class="q-pa-xs">
-                                <div
-                                    class="text-h6 q-mb-none flex items-center player-name-header"
-                                >
-                                    <img
-                                        v-if="player.nationality_iso"
-                                        :src="`https://flagcdn.com/w40/${player.nationality_iso.toLowerCase()}.png`"
-                                        :alt="player.nationality || 'Flag'"
-                                        width="26"
-                                        height="auto"
-                                        class="player-flag q-mr-xs"
-                                        @error="onFlagError"
-                                        :title="player.nationality"
-                                    />
-                                    <q-icon
-                                        v-else
-                                        :color="
-                                            qInstance.dark.isActive
-                                                ? 'grey-5'
-                                                : 'grey-7'
-                                        "
-                                        name="flag"
-                                        size="1.3em"
-                                        class="q-mr-xs"
-                                    />
-                                    {{ player.name || "-" }}
-                                    <q-badge
-                                        outline
-                                        :color="
-                                            qInstance.dark.isActive
-                                                ? 'blue-4'
-                                                : 'primary'
-                                        "
-                                        :label="`${player.age || '-'} yrs`"
-                                        class="q-ml-sm player-age-badge"
-                                    />
-                                </div>
-
-                                <q-list
-                                    dense
-                                    class="rounded-borders player-info-list q-pt-xs"
-                                >
-                                    <q-item
-                                        class="q-py-none q-px-xs min-height-auto"
-                                    >
-                                        <q-item-section
-                                            avatar
-                                            style="
-                                                min-width: 30px;
-                                                padding-right: 8px;
-                                            "
-                                        >
-                                            <q-icon
-                                                :color="
-                                                    qInstance.dark.isActive
-                                                        ? 'blue-3'
-                                                        : 'primary'
-                                                "
-                                                name="sports_soccer"
-                                                size="1.1em"
-                                            />
-                                        </q-item-section>
-                                        <q-item-section>
-                                            <q-item-label caption
-                                                >Club</q-item-label
-                                            >
-                                            <q-item-label class="text-body1">{{
-                                                player.club || "-"
-                                            }}</q-item-label>
-                                        </q-item-section>
-                                    </q-item>
-
-                                    <q-item
-                                        class="q-py-none q-px-xs min-height-auto"
-                                    >
-                                        <q-item-section
-                                            avatar
-                                            style="
-                                                min-width: 30px;
-                                                padding-right: 8px;
-                                            "
-                                        >
-                                            <q-icon
-                                                :color="
-                                                    qInstance.dark.isActive
-                                                        ? 'blue-3'
-                                                        : 'primary'
-                                                "
-                                                name="engineering"
-                                                size="1.1em"
-                                            />
-                                        </q-item-section>
-                                        <q-item-section>
-                                            <q-item-label caption
-                                                >Position(s)</q-item-label
-                                            >
-                                            <q-item-label
-                                                class="text-body1 ellipsis"
-                                                :title="
-                                                    player.shortPositions?.join(
-                                                        ', ',
-                                                    ) ||
-                                                    player.position ||
-                                                    '-'
-                                                "
-                                            >
-                                                {{
-                                                    player.shortPositions?.join(
-                                                        ", ",
-                                                    ) ||
-                                                    player.position ||
-                                                    "-"
-                                                }}
-                                            </q-item-label>
-                                        </q-item-section>
-                                    </q-item>
-
-                                    <q-item
-                                        class="q-py-none q-px-xs min-height-auto"
-                                    >
-                                        <q-item-section
-                                            avatar
-                                            style="
-                                                min-width: 30px;
-                                                padding-right: 8px;
-                                            "
-                                        >
-                                            <q-icon
-                                                :color="
-                                                    qInstance.dark.isActive
-                                                        ? 'blue-3'
-                                                        : 'primary'
-                                                "
-                                                name="comment"
-                                                size="1.1em"
-                                            />
-                                        </q-item-section>
-                                        <q-item-section>
-                                            <q-item-label caption
-                                                >Media Handling</q-item-label
-                                            >
-                                            <q-item-label class="text-body1">{{
-                                                player.media_handling || "-"
-                                            }}</q-item-label>
-                                        </q-item-section>
-                                    </q-item>
-
-                                    <q-item
-                                        class="q-py-none q-px-xs min-height-auto"
-                                    >
-                                        <q-item-section
-                                            avatar
-                                            style="
-                                                min-width: 30px;
-                                                padding-right: 8px;
-                                            "
-                                        >
-                                            <q-icon
-                                                :color="
-                                                    qInstance.dark.isActive
-                                                        ? 'blue-3'
-                                                        : 'primary'
-                                                "
-                                                name="psychology"
-                                                size="1.1em"
-                                            />
-                                        </q-item-section>
-                                        <q-item-section>
-                                            <q-item-label caption
-                                                >Personality</q-item-label
-                                            >
-                                            <q-item-label class="text-body1">{{
-                                                player.personality || "-"
-                                            }}</q-item-label>
-                                        </q-item-section>
-                                    </q-item>
-
-                                    <q-item
-                                        class="q-py-none q-px-xs min-height-auto"
-                                    >
-                                        <q-item-section
-                                            avatar
-                                            style="
-                                                min-width: 30px;
-                                                padding-right: 8px;
-                                            "
-                                        >
-                                            <q-icon
-                                                :color="
-                                                    qInstance.dark.isActive
-                                                        ? 'blue-3'
-                                                        : 'primary'
-                                                "
-                                                :name="currencyIcon"
-                                                size="1.1em"
-                                            />
-                                        </q-item-section>
-                                        <q-item-section>
-                                            <q-item-label caption
-                                                >Value</q-item-label
-                                            >
-                                            <q-item-label class="text-body1">{{
-                                                formattedTransferValue
-                                            }}</q-item-label>
-                                        </q-item-section>
-                                        <q-item-section side>
-                                            <q-icon
-                                                :color="
-                                                    qInstance.dark.isActive
-                                                        ? 'blue-3'
-                                                        : 'primary'
-                                                "
-                                                name="payments"
-                                                class="q-mr-xs"
-                                                size="1.1em"
-                                            />
-                                            <div>
-                                                <q-item-label caption
-                                                    >Salary</q-item-label
-                                                >
-                                                <q-item-label
-                                                    class="text-body1"
-                                                    >{{
-                                                        formattedWage
-                                                    }}</q-item-label
-                                                >
-                                            </div>
-                                        </q-item-section>
-                                    </q-item>
-                                </q-list>
-                            </q-card-section>
-                        </q-card>
-                    </div>
-
-                    <div class="col-12 col-md-5">
-                        <q-card
-                            flat
-                            bordered
-                            :class="
-                                qInstance.dark.isActive
-                                    ? 'bg-grey-9'
-                                    : 'bg-grey-1'
-                            "
-                            class="full-height-card-info"
-                        >
-                            <q-card-section class="text-center q-pa-xs">
-                                <div class="text-h6 q-mb-none overall-title">
-                                    Overall (Best Role)
-                                </div>
-                                <div
-                                    class="text-h3 text-weight-bold q-mb-none attribute-value main-overall-value"
-                                    :class="
-                                        getUnifiedRatingClass(
-                                            player.Overall,
-                                            100,
-                                        )
-                                    "
-                                >
-                                    {{
-                                        player.Overall > 0
-                                            ? player.Overall
-                                            : "N/A"
-                                    }}
-                                </div>
-                                <div
-                                    class="text-subtitle1 q-my-xs fifa-ratings-title"
-                                >
-                                    FIFA-Style Ratings
-                                </div>
-                                <div class="row q-col-gutter-xs text-center">
-                                    <div
-                                        v-for="stat in fifaStatsToDisplay"
-                                        :key="stat.name"
-                                        class="col-6 col-sm-4"
-                                    >
-                                        <q-card
-                                            flat
-                                            bordered
-                                            :class="
-                                                qInstance.dark.isActive
-                                                    ? 'bg-grey-8'
-                                                    : 'bg-white'
-                                            "
-                                            class="q-pa-xs rounded-borders full-height fifa-stat-card"
-                                        >
-                                            <div
-                                                class="text-caption text-grey-6 fifa-stat-label"
-                                            >
-                                                {{ stat.label }}
-                                            </div>
-                                            <div
-                                                :class="
-                                                    getUnifiedRatingClass(
-                                                        player[stat.name],
-                                                        100,
-                                                    )
-                                                "
-                                                class="attribute-value fifa-stat-value text-h6"
-                                            >
-                                                {{
-                                                    player[stat.name] !==
-                                                    undefined
-                                                        ? player[stat.name]
-                                                        : "-"
-                                                }}
-                                            </div>
-                                        </q-card>
-                                    </div>
-                                </div>
-                            </q-card-section>
-                        </q-card>
-                    </div>
-                </div>
-
                 <div class="row q-col-gutter-md">
                     <div class="col-12 col-md-4">
                         <div
@@ -406,17 +80,12 @@
                                 qInstance.dark.isActive
                                     ? 'bg-grey-9'
                                     : 'bg-grey-1',
-                                'rounded-borders performance-percentiles-card',
+                                'rounded-borders performance-percentiles-card-left', // New class for styling
                             ]"
-                            style="display: flex; flex-direction: column"
                         >
                             <div
                                 v-if="hasAnyPerformanceData"
-                                style="
-                                    flex-grow: 1;
-                                    overflow-y: auto;
-                                    padding: 8px;
-                                "
+                                class="percentile-content-area"
                             >
                                 <div v-if="averageRatingData" class="q-mb-sm">
                                     <q-item
@@ -502,7 +171,13 @@
                                     ) in categorizedPerformanceStats"
                                     :key="category"
                                 >
-                                    <hr v-if="index > 0" class="q-my-sm" />
+                                    <hr
+                                        v-if="
+                                            index > 0 ||
+                                            (averageRatingData && index === 0)
+                                        "
+                                        class="q-my-sm"
+                                    />
                                     <q-list
                                         separator
                                         dense
@@ -594,6 +269,361 @@
                     </div>
 
                     <div class="col-12 col-md-8">
+                        <q-card
+                            flat
+                            bordered
+                            class="q-mb-md"
+                            :class="
+                                qInstance.dark.isActive
+                                    ? 'bg-grey-9'
+                                    : 'bg-grey-1'
+                            "
+                        >
+                            <q-card-section class="q-pa-sm">
+                                <div class="row items-start">
+                                    <div class="col-12 col-sm-7 q-pr-sm-sm">
+                                        <div
+                                            class="text-h6 q-mb-xs flex items-center player-name-header"
+                                        >
+                                            <img
+                                                v-if="player.nationality_iso"
+                                                :src="`https://flagcdn.com/w40/${player.nationality_iso.toLowerCase()}.png`"
+                                                :alt="
+                                                    player.nationality || 'Flag'
+                                                "
+                                                width="26"
+                                                height="auto"
+                                                class="player-flag q-mr-xs"
+                                                @error="onFlagError"
+                                                :title="player.nationality"
+                                            />
+                                            <q-icon
+                                                v-else
+                                                :color="
+                                                    qInstance.dark.isActive
+                                                        ? 'grey-5'
+                                                        : 'grey-7'
+                                                "
+                                                name="flag"
+                                                size="1.3em"
+                                                class="q-mr-xs"
+                                            />
+                                            {{ player.name || "-" }}
+                                            <q-badge
+                                                outline
+                                                :color="
+                                                    qInstance.dark.isActive
+                                                        ? 'blue-4'
+                                                        : 'primary'
+                                                "
+                                                :label="`${player.age || '-'} yrs`"
+                                                class="q-ml-sm player-age-badge"
+                                            />
+                                        </div>
+                                        <q-list
+                                            dense
+                                            class="player-info-list-condensed"
+                                        >
+                                            <q-item
+                                                class="q-py-none q-px-none min-height-auto"
+                                            >
+                                                <q-item-section
+                                                    avatar
+                                                    style="
+                                                        min-width: 24px;
+                                                        padding-right: 6px;
+                                                    "
+                                                >
+                                                    <q-icon
+                                                        :color="
+                                                            qInstance.dark
+                                                                .isActive
+                                                                ? 'blue-3'
+                                                                : 'primary'
+                                                        "
+                                                        name="sports_soccer"
+                                                        size="1em"
+                                                    />
+                                                </q-item-section>
+                                                <q-item-section>
+                                                    <q-item-label
+                                                        caption
+                                                        class="condensed-caption"
+                                                        >Club</q-item-label
+                                                    >
+                                                    <q-item-label
+                                                        class="condensed-label"
+                                                        >{{
+                                                            player.club || "-"
+                                                        }}</q-item-label
+                                                    >
+                                                </q-item-section>
+                                            </q-item>
+                                            <q-item
+                                                class="q-py-none q-px-none min-height-auto"
+                                            >
+                                                <q-item-section
+                                                    avatar
+                                                    style="
+                                                        min-width: 24px;
+                                                        padding-right: 6px;
+                                                    "
+                                                >
+                                                    <q-icon
+                                                        :color="
+                                                            qInstance.dark
+                                                                .isActive
+                                                                ? 'blue-3'
+                                                                : 'primary'
+                                                        "
+                                                        name="engineering"
+                                                        size="1em"
+                                                    />
+                                                </q-item-section>
+                                                <q-item-section>
+                                                    <q-item-label
+                                                        caption
+                                                        class="condensed-caption"
+                                                        >Position(s)</q-item-label
+                                                    >
+                                                    <q-item-label
+                                                        class="condensed-label ellipsis"
+                                                        :title="
+                                                            player.shortPositions?.join(
+                                                                ', ',
+                                                            ) ||
+                                                            player.position ||
+                                                            '-'
+                                                        "
+                                                    >
+                                                        {{
+                                                            player.shortPositions?.join(
+                                                                ", ",
+                                                            ) ||
+                                                            player.position ||
+                                                            "-"
+                                                        }}
+                                                    </q-item-label>
+                                                </q-item-section>
+                                            </q-item>
+                                            <q-item
+                                                class="q-py-none q-px-none min-height-auto"
+                                            >
+                                                <q-item-section
+                                                    avatar
+                                                    style="
+                                                        min-width: 24px;
+                                                        padding-right: 6px;
+                                                    "
+                                                >
+                                                    <q-icon
+                                                        :color="
+                                                            qInstance.dark
+                                                                .isActive
+                                                                ? 'blue-3'
+                                                                : 'primary'
+                                                        "
+                                                        :name="currencyIcon"
+                                                        size="1em"
+                                                    />
+                                                </q-item-section>
+                                                <q-item-section>
+                                                    <q-item-label
+                                                        caption
+                                                        class="condensed-caption"
+                                                        >Value</q-item-label
+                                                    >
+                                                    <q-item-label
+                                                        class="condensed-label"
+                                                        >{{
+                                                            formattedTransferValue
+                                                        }}</q-item-label
+                                                    >
+                                                </q-item-section>
+                                                <q-item-section
+                                                    side
+                                                    class="q-pl-xs"
+                                                >
+                                                    <q-icon
+                                                        :color="
+                                                            qInstance.dark
+                                                                .isActive
+                                                                ? 'blue-3'
+                                                                : 'primary'
+                                                        "
+                                                        name="payments"
+                                                        class="q-mr-xs"
+                                                        size="1em"
+                                                    />
+                                                    <div>
+                                                        <q-item-label
+                                                            caption
+                                                            class="condensed-caption"
+                                                            >Salary</q-item-label
+                                                        >
+                                                        <q-item-label
+                                                            class="condensed-label"
+                                                            >{{
+                                                                formattedWage
+                                                            }}</q-item-label
+                                                        >
+                                                    </div>
+                                                </q-item-section>
+                                            </q-item>
+                                            <q-item
+                                                class="q-py-none q-px-none min-height-auto"
+                                            >
+                                                <q-item-section
+                                                    avatar
+                                                    style="
+                                                        min-width: 24px;
+                                                        padding-right: 6px;
+                                                    "
+                                                >
+                                                    <q-icon
+                                                        :color="
+                                                            qInstance.dark
+                                                                .isActive
+                                                                ? 'blue-3'
+                                                                : 'primary'
+                                                        "
+                                                        name="comment"
+                                                        size="1em"
+                                                    />
+                                                </q-item-section>
+                                                <q-item-section>
+                                                    <q-item-label
+                                                        caption
+                                                        class="condensed-caption"
+                                                        >Media
+                                                        Handling</q-item-label
+                                                    >
+                                                    <q-item-label
+                                                        class="condensed-label"
+                                                        >{{
+                                                            player.media_handling ||
+                                                            "-"
+                                                        }}</q-item-label
+                                                    >
+                                                </q-item-section>
+                                            </q-item>
+                                            <q-item
+                                                class="q-py-none q-px-none min-height-auto"
+                                            >
+                                                <q-item-section
+                                                    avatar
+                                                    style="
+                                                        min-width: 24px;
+                                                        padding-right: 6px;
+                                                    "
+                                                >
+                                                    <q-icon
+                                                        :color="
+                                                            qInstance.dark
+                                                                .isActive
+                                                                ? 'blue-3'
+                                                                : 'primary'
+                                                        "
+                                                        name="psychology"
+                                                        size="1em"
+                                                    />
+                                                </q-item-section>
+                                                <q-item-section>
+                                                    <q-item-label
+                                                        caption
+                                                        class="condensed-caption"
+                                                        >Personality</q-item-label
+                                                    >
+                                                    <q-item-label
+                                                        class="condensed-label"
+                                                        >{{
+                                                            player.personality ||
+                                                            "-"
+                                                        }}</q-item-label
+                                                    >
+                                                </q-item-section>
+                                            </q-item>
+                                        </q-list>
+                                    </div>
+
+                                    <div class="col-12 col-sm-5 text-center">
+                                        <div
+                                            class="text-h6 q-mb-xs overall-title-condensed"
+                                        >
+                                            Overall (Best Role)
+                                        </div>
+                                        <div
+                                            class="text-h3 text-weight-bold q-mb-xs attribute-value main-overall-value"
+                                            :class="
+                                                getUnifiedRatingClass(
+                                                    player.Overall,
+                                                    100,
+                                                )
+                                            "
+                                        >
+                                            {{
+                                                player.Overall > 0
+                                                    ? player.Overall
+                                                    : "N/A"
+                                            }}
+                                        </div>
+                                        <div
+                                            class="text-subtitle2 q-my-xs fifa-ratings-title-condensed"
+                                        >
+                                            FIFA-Style Ratings
+                                        </div>
+                                        <div
+                                            class="row q-col-gutter-xs text-center justify-center"
+                                        >
+                                            <div
+                                                v-for="stat in fifaStatsToDisplay"
+                                                :key="stat.name"
+                                                class="col-6 col-sm-4"
+                                            >
+                                                <q-card
+                                                    flat
+                                                    bordered
+                                                    :class="
+                                                        qInstance.dark.isActive
+                                                            ? 'bg-grey-8'
+                                                            : 'bg-white'
+                                                    "
+                                                    class="q-pa-xs rounded-borders fifa-stat-card-condensed"
+                                                >
+                                                    <div
+                                                        class="text-caption text-grey-6 fifa-stat-label"
+                                                    >
+                                                        {{ stat.label }}
+                                                    </div>
+                                                    <div
+                                                        :class="
+                                                            getUnifiedRatingClass(
+                                                                player[
+                                                                    stat.name
+                                                                ],
+                                                                100,
+                                                            )
+                                                        "
+                                                        class="attribute-value fifa-stat-value text-h6"
+                                                    >
+                                                        {{
+                                                            player[
+                                                                stat.name
+                                                            ] !== undefined
+                                                                ? player[
+                                                                      stat.name
+                                                                  ]
+                                                                : "-"
+                                                        }}
+                                                    </div>
+                                                </q-card>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </q-card-section>
+                        </q-card>
+
                         <div
                             class="text-h5 q-mb-sm text-center attributes-section-title"
                         >
@@ -702,7 +732,6 @@
                                     </q-list>
                                 </q-card>
                             </div>
-
                             <div class="col-12 col-md-4 column">
                                 <q-card
                                     flat
@@ -789,7 +818,6 @@
                                     </q-list>
                                 </q-card>
                             </div>
-
                             <div class="col-12 col-md-4 column q-gutter-y-md">
                                 <q-card
                                     flat
@@ -875,7 +903,6 @@
                                         </q-item>
                                     </q-list>
                                 </q-card>
-
                                 <q-card
                                     flat
                                     bordered
@@ -1167,7 +1194,14 @@ export default defineComponent({
                     if (
                         !availableGroups.includes(selectedComparisonGroup.value)
                     ) {
-                        selectedComparisonGroup.value = "Global";
+                        // If current group not available, try to set to Global, if not, first available.
+                        if (availableGroups.includes("Global")) {
+                            selectedComparisonGroup.value = "Global";
+                        } else if (availableGroups.length > 0) {
+                            selectedComparisonGroup.value = availableGroups[0];
+                        } else {
+                            selectedComparisonGroup.value = "Global"; // Fallback, though likely no data
+                        }
                     }
                 } else {
                     selectedComparisonGroup.value = "Global";
@@ -1233,65 +1267,45 @@ export default defineComponent({
         const performanceComparisonOptions = computed(() => {
             const options = [];
             if (props.player && props.player.performancePercentiles) {
-                if (props.player.performancePercentiles["Global"]) {
+                const availablePercentileGroups = Object.keys(
+                    props.player.performancePercentiles,
+                );
+
+                if (availablePercentileGroups.includes("Global")) {
                     options.push({ label: "Overall Dataset", value: "Global" });
                 }
+
                 if (props.player.positionGroups) {
                     props.player.positionGroups.forEach((group) => {
                         if (
-                            props.player.performancePercentiles[group] &&
-                            group !== "Global"
+                            availablePercentileGroups.includes(group) &&
+                            group !== "Global" && // Avoid duplicating Global if it's in positionGroups
+                            !options.some((opt) => opt.value === group) // Avoid duplicates from positionGroups
                         ) {
-                            const existingOption = options.find(
-                                (opt) => opt.value === group,
-                            );
-                            if (!existingOption) {
-                                options.push({
-                                    label: `vs. ${group}`,
-                                    value: group,
-                                });
-                            }
+                            options.push({
+                                label: `vs. ${group}`,
+                                value: group,
+                            });
                         }
                     });
                 }
-            }
-            if (
-                options.length === 0 &&
-                props.player &&
-                props.player.performancePercentiles &&
-                (props.player.performancePercentiles["Global"] ||
-                    Object.keys(props.player.performancePercentiles).length >
-                        0) &&
-                !options.find((opt) => opt.value === "Global")
-            ) {
-                // Ensure Global is an option if any percentile data exists at all
+                // If Global wasn't added (e.g. not in positionGroups but has data) and no other options, add it.
                 if (
-                    props.player.performancePercentiles["Global"] ||
-                    !options.some((opt) => opt.value === "Global")
+                    !options.some((opt) => opt.value === "Global") &&
+                    availablePercentileGroups.includes("Global")
                 ) {
-                    // Add if "Global" data exists OR if no "Global" option was added yet from positionGroups
-                    // and some data exists. This logic might need refinement based on exact desired behavior
-                    // if "Global" isn't explicitly in positionGroups but is a default.
-                    // For now, if it's in performancePercentiles, it should be an option.
-                    if (
-                        props.player.performancePercentiles["Global"] &&
-                        !options.some((opt) => opt.value === "Global")
-                    ) {
-                        options.unshift({
-                            label: "Overall Dataset",
-                            value: "Global",
-                        });
-                    } else if (
-                        options.length === 0 &&
-                        Object.keys(props.player.performancePercentiles)
-                            .length > 0 &&
-                        !props.player.performancePercentiles["Global"]
-                    ) {
-                        // If no global, but other groups exist, make the first available the default or handle as needed
-                        // This case implies 'Global' might not always be present.
-                        // Forcing 'Global' if any data exists might be too strong if 'Global' itself has no data.
-                        // The current logic correctly adds 'Global' if 'Global' data is present.
-                    }
+                    options.unshift({
+                        label: "Overall Dataset",
+                        value: "Global",
+                    });
+                }
+
+                // Fallback if no options were created but data exists (e.g. only 'Global' percentile data and 'Global' not in positionGroups)
+                if (
+                    options.length === 0 &&
+                    availablePercentileGroups.includes("Global")
+                ) {
+                    options.push({ label: "Overall Dataset", value: "Global" });
                 }
             }
             return options;
@@ -1352,43 +1366,54 @@ export default defineComponent({
             }
 
             const result = {};
-            for (const categoryName in performanceStatCategories) {
-                const statsInCategory = [];
-                performanceStatCategories[categoryName].forEach((statKey) => {
-                    const hasRawAttribute =
-                        Object.prototype.hasOwnProperty.call(
-                            props.player.attributes,
-                            statKey,
-                        );
-                    const rawAttributeValue = props.player.attributes[statKey];
-                    const hasPercentile = Object.prototype.hasOwnProperty.call(
-                        percentilesForGroup,
-                        statKey,
-                    );
-                    const percentileValue = percentilesForGroup[statKey];
+            const categoryOrder = ["Offensive", "Passing", "Defensive"]; // Define order
 
-                    if (
-                        performanceStatMap[statKey] &&
-                        hasRawAttribute &&
-                        rawAttributeValue !== "-" &&
-                        rawAttributeValue !== "" &&
-                        hasPercentile
-                    ) {
-                        statsInCategory.push({
-                            key: statKey,
-                            name: performanceStatMap[statKey],
-                            value: rawAttributeValue,
-                            percentile:
-                                percentileValue >= 0 ? percentileValue : null,
-                        });
-                    }
-                });
-                if (statsInCategory.length > 0) {
-                    result[categoryName] = statsInCategory.sort((a, b) =>
-                        a.name.localeCompare(b.name),
+            categoryOrder.forEach((categoryName) => {
+                if (performanceStatCategories[categoryName]) {
+                    const statsInCategory = [];
+                    performanceStatCategories[categoryName].forEach(
+                        (statKey) => {
+                            const hasRawAttribute =
+                                Object.prototype.hasOwnProperty.call(
+                                    props.player.attributes,
+                                    statKey,
+                                );
+                            const rawAttributeValue =
+                                props.player.attributes[statKey];
+                            const hasPercentile =
+                                Object.prototype.hasOwnProperty.call(
+                                    percentilesForGroup,
+                                    statKey,
+                                );
+                            const percentileValue =
+                                percentilesForGroup[statKey];
+
+                            if (
+                                performanceStatMap[statKey] &&
+                                hasRawAttribute &&
+                                rawAttributeValue !== "-" &&
+                                rawAttributeValue !== "" &&
+                                hasPercentile
+                            ) {
+                                statsInCategory.push({
+                                    key: statKey,
+                                    name: performanceStatMap[statKey],
+                                    value: rawAttributeValue,
+                                    percentile:
+                                        percentileValue >= 0
+                                            ? percentileValue
+                                            : null,
+                                });
+                            }
+                        },
                     );
+                    if (statsInCategory.length > 0) {
+                        result[categoryName] = statsInCategory.sort((a, b) =>
+                            a.name.localeCompare(b.name),
+                        );
+                    }
                 }
-            }
+            });
             return result;
         });
 
@@ -1517,9 +1542,9 @@ export default defineComponent({
             currencyIcon,
             selectedComparisonGroup,
             performanceComparisonOptions,
-            /* REMOVED selectedComparisonGroupLabel */ categorizedPerformanceStats,
-            averageRatingData, // ADDED
-            hasAnyPerformanceData, // ADDED
+            categorizedPerformanceStats,
+            averageRatingData,
+            hasAnyPerformanceData,
         };
     },
 });
@@ -1534,7 +1559,7 @@ export default defineComponent({
 
 .main-content-section {
     flex-grow: 1;
-    padding: 8px; // Consistent padding
+    padding: 12px; // Increased padding slightly
 }
 
 .player-flag {
@@ -1542,54 +1567,65 @@ export default defineComponent({
     border-radius: 3px;
     object-fit: cover;
     vertical-align: middle;
-    height: auto; // Maintain aspect ratio
+    height: auto;
 }
 
-// Clamped font sizes for responsiveness
 .dialog-title {
     font-size: clamp(0.9rem, 1.4vw, 1.1rem);
 }
 .player-name-header {
-    font-size: clamp(0.95rem, 1.6vw, 1.2rem);
-}
+    font-size: clamp(0.95rem, 1.5vw, 1.15rem);
+} // Slightly smaller for combined card
 .player-age-badge {
     font-size: clamp(0.6rem, 0.8vw, 0.7rem);
     padding: 1px 2px;
 }
 
-.player-info-list .q-item__label {
-    font-size: clamp(0.7rem, 1.1vw, 0.85rem);
+// Styles for the condensed player info list in the combined card
+.player-info-list-condensed .q-item {
+    padding: 0px 0px; // More compact
+    min-height: auto;
 }
-.player-info-list .q-item__label--caption {
-    font-size: clamp(0.55rem, 0.8vw, 0.7rem);
+.player-info-list-condensed .condensed-caption {
+    font-size: clamp(0.5rem, 0.75vw, 0.65rem); // Smaller caption
+    line-height: 1.2;
 }
-.player-info-list .text-body1 {
-    font-size: clamp(0.75rem, 1.2vw, 0.9rem);
+.player-info-list-condensed .condensed-label {
+    font-size: clamp(0.7rem, 1vw, 0.8rem); // Smaller label
+    line-height: 1.3;
 }
 
-.overall-title {
-    font-size: clamp(0.95rem, 1.6vw, 1.2rem);
-}
+.overall-title-condensed {
+    font-size: clamp(0.85rem, 1.3vw, 1rem);
+} // Condensed title
 .main-overall-value {
     font-size: clamp(1.5rem, 2.5vw, 2rem);
-    padding: 2px 5px;
+    padding: 0px 5px;
+    margin-bottom: 2px;
 }
-.fifa-ratings-title {
-    font-size: clamp(0.85rem, 1.4vw, 1rem);
+.fifa-ratings-title-condensed {
+    font-size: clamp(0.75rem, 1.2vw, 0.9rem);
+} // Condensed title
+
+.fifa-stat-card-condensed {
+    // For FIFA stats in the combined card
+    min-height: 45px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 2px !important;
 }
-.fifa-stat-label {
-    font-size: clamp(0.6rem, 0.8vw, 0.7rem);
+.fifa-stat-card-condensed .fifa-stat-label {
+    font-size: clamp(0.55rem, 0.7vw, 0.65rem);
 }
-.fifa-stat-card .attribute-value.text-h6 {
-    font-size: clamp(0.85rem, 1.4vw, 1.05rem);
+.fifa-stat-card-condensed .attribute-value.text-h6 {
+    font-size: clamp(0.8rem, 1.3vw, 1rem);
 }
 
 .attributes-section-title {
     font-size: clamp(1.05rem, 1.8vw, 1.3rem);
 }
-.attribute-category-header .text-subtitle1,
-.performance-category-header .text-subtitle2 {
-    // Kept for attribute sections
+.attribute-category-header .text-subtitle1 {
     font-size: clamp(0.85rem, 1.4vw, 1rem);
 }
 
@@ -1598,14 +1634,15 @@ export default defineComponent({
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 160px; // Adjust as needed
+    max-width: 150px;
 }
 .attribute-list-item .attribute-score-value {
     font-size: clamp(0.75rem, 1.1vw, 0.85rem);
 }
+
 .performance-stat-actual-value {
     font-size: clamp(0.7rem, 1vw, 0.8rem);
-    min-width: 35px; // Ensure space for 2-3 digit numbers + %
+    min-width: 35px;
     text-align: right;
 }
 
@@ -1614,24 +1651,26 @@ export default defineComponent({
     flex-direction: column;
 }
 .full-height-card {
-    // For attribute cards
     flex-grow: 1;
     display: flex;
     flex-direction: column;
-    min-height: 0; // Important for flex children in some cases
+    min-height: 0;
 }
-.full-height-card-info {
-    // For player info and overall rating cards
-    display: flex;
-    flex-direction: column;
-    height: 100%;
+
+.performance-percentiles-card-left {
+    // Styles for the left percentile card
+    // No specific height, let content determine it to avoid internal scroll
+    // padding: 8px; // Moved padding to inner div
+}
+.percentile-content-area {
+    padding: 8px; // Inner padding for content
+    // overflow-y: visible; // Ensure it doesn't scroll internally
 }
 
 .attribute-list.no-scroll {
-    // For attribute lists that shouldn't scroll individually
-    flex-grow: 0; // Don't grow
-    flex-shrink: 0; // Don't shrink
-    overflow-y: visible; // Content determines height
+    flex-grow: 0;
+    flex-shrink: 0;
+    overflow-y: visible;
 }
 .physical-attributes-card .attribute-list.physical-list.no-scroll {
     flex-grow: 0;
@@ -1640,18 +1679,9 @@ export default defineComponent({
 }
 .role-ratings-card .role-specific-ratings-list {
     overflow-y: auto;
-    flex-shrink: 1; // Allow shrinking
-    max-height: 20vh; // Max height for scroll
-    min-height: 80px; // Min height
-}
-// .performance-percentiles-card .performance-stats-list {} // No specific style needed here now
-
-.fifa-stat-card {
-    min-height: 50px; // Ensure a minimum tap target / visual size
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: 1px !important; // Compact padding
+    flex-shrink: 1;
+    max-height: 18vh; // Slightly reduced if needed
+    min-height: 70px;
 }
 
 .best-role-highlight {
@@ -1665,35 +1695,30 @@ export default defineComponent({
     }
 }
 .best-role-highlight .q-item__label {
-    font-weight: 600; // Or $text-weights.bold if using Quasar SASS vars
+    font-weight: 600;
 }
 
-// Reduce padding for dense lists and items
 .q-list--dense .q-item,
 .attribute-list-item,
 .constrained-scroll-list .q-item.attribute-list-item {
-    padding: 1px 6px; // Reduced vertical padding
+    padding: 1px 6px;
     min-height: auto;
 }
-.player-info-list .q-item {
-    padding: 2px 8px; // Slightly more for player info
-    min-height: auto;
-}
+
 .min-height-auto {
     min-height: auto !important;
 }
 
 .q-list--separator > .q-item:not(:first-child):before {
-    background: rgba(128, 128, 128, 0.2); // Lighter separator
+    background: rgba(128, 128, 128, 0.2);
 }
 
-// Explicit background colors for card sections for better theme control
 .q-card__section.bg-grey-3 {
     background-color: #f0f0f0 !important;
-} // Light theme section header
+}
 .q-card__section.bg-grey-8 {
     background-color: #303030 !important;
-} // Dark theme section header
+}
 
 .q-card[flat][bordered] {
     border: 1px solid rgba(128, 128, 128, 0.3);
@@ -1702,23 +1727,22 @@ export default defineComponent({
     }
 }
 
-// Styles for performance percentile bars
 .performance-stat-item {
     .stat-name-section {
-        flex-basis: 45%; // Adjust as needed
+        flex-basis: 45%;
         flex-grow: 0;
-        flex-shrink: 0; // Prevent shrinking
+        flex-shrink: 0;
         padding-right: 6px;
     }
     .stat-bar-section {
-        flex-grow: 1; // Take remaining space
+        flex-grow: 1;
         display: flex;
         align-items: center;
     }
     .stat-value-section {
-        flex-basis: 15%; // Adjust for value width
+        flex-basis: 15%;
         flex-grow: 0;
-        flex-shrink: 0; // Prevent shrinking
+        flex-shrink: 0;
         text-align: right;
         padding-left: 6px;
     }
@@ -1732,21 +1756,21 @@ export default defineComponent({
 .stat-bar-track {
     flex-grow: 1;
     height: 12px;
-    background-color: #e0e0e0; // Light theme track
+    background-color: #e0e0e0;
     border-radius: 3px;
     margin-right: 6px;
-    overflow: hidden; // Ensure fill stays within bounds
+    overflow: hidden;
     .body--dark & {
-        background-color: $grey-7; // Dark theme track
+        background-color: $grey-7;
     }
 }
 .stat-bar-fill {
     height: 100%;
-    border-radius: 3px; // Match track
+    border-radius: 3px;
 }
 .stat-percentile-text {
-    font-size: 0.65rem; // Small text for percentile number
-    min-width: 22px; // Space for "100"
+    font-size: 0.65rem;
+    min-width: 22px;
     text-align: right;
     .body--dark & {
         color: $grey-5;
@@ -1756,25 +1780,30 @@ export default defineComponent({
     }
 }
 
-// Responsive adjustments
+hr.q-my-sm {
+    border: none;
+    height: 1px;
+    background-color: rgba(128, 128, 128, 0.2);
+    margin-top: 8px;
+    margin-bottom: 8px;
+}
+
 @media (max-width: $breakpoint-sm-max) {
-    // Tablet
-    .attribute-columns-container .col-md-4 {
-        // Stack attribute columns
-        flex-basis: 100%;
-        max-width: 100%;
+    .main-content-section {
+        padding: 8px; // Adjust padding for tablets
     }
+    // On tablets, we might still want the two-column layout to persist for a bit longer
+    // If stacking is desired earlier, adjust col-md-* to col-lg-* or similar
     .role-ratings-card .role-specific-ratings-list {
-        max-height: 20vh; // Adjust scroll height
+        max-height: 18vh;
     }
-    .performance-percentiles-card > div[style*="overflow-y: auto"] {
-        // Target the scrollable div
-        max-height: 45vh !important;
+    .performance-percentiles-card-left .percentile-content-area {
+        // max-height: none; // Remove max-height to allow it to grow
+        // overflow-y: visible;
     }
 }
 
 @media (max-width: $breakpoint-xs-max) {
-    // Mobile
     .main-content-section {
         padding: 4px;
     }
@@ -1787,41 +1816,40 @@ export default defineComponent({
     .player-age-badge {
         font-size: 0.55rem;
     }
-    .player-info-list .q-item__label {
-        font-size: 0.7rem;
+
+    .player-info-list-condensed .condensed-caption {
+        font-size: 0.5rem;
     }
-    .player-info-list .q-item__label--caption {
-        font-size: 0.55rem;
+    .player-info-list-condensed .condensed-label {
+        font-size: 0.65rem;
     }
-    .player-info-list .text-body1 {
-        font-size: 0.75rem;
-    }
-    .overall-title {
-        font-size: 0.9rem;
+
+    .overall-title-condensed {
+        font-size: 0.8rem;
     }
     .main-overall-value {
         font-size: 1.4rem;
     }
-    .fifa-ratings-title {
-        font-size: 0.8rem;
+    .fifa-ratings-title-condensed {
+        font-size: 0.7rem;
     }
-    .fifa-stat-label {
-        font-size: 0.55rem;
+    .fifa-stat-card-condensed .fifa-stat-label {
+        font-size: 0.5rem;
     }
-    .fifa-stat-card .attribute-value.text-h6 {
-        font-size: 0.8rem;
+    .fifa-stat-card-condensed .attribute-value.text-h6 {
+        font-size: 0.75rem;
     }
+
     .attributes-section-title {
         font-size: 1rem;
     }
-    .attribute-category-header .text-subtitle1,
-    .performance-category-header .text-subtitle2 {
+    .attribute-category-header .text-subtitle1 {
         font-size: 0.8rem;
     }
     .attribute-list-item .attribute-name-label {
         font-size: 0.7rem;
-        max-width: 100px;
-    }
+        max-width: 90px;
+    } // Shorter for mobile
     .attribute-list-item .attribute-score-value {
         font-size: 0.75rem;
     }
@@ -1835,28 +1863,26 @@ export default defineComponent({
     }
 
     .attribute-list.no-scroll {
-        // Allow attribute lists to scroll on small screens if needed
         overflow-y: auto;
-        max-height: 25vh; // Example max height
+        max-height: 22vh;
     }
     .role-ratings-card .role-specific-ratings-list {
-        max-height: 15vh; // Further reduce for role ratings
+        max-height: 14vh;
     }
 
     .performance-stat-item {
-        // Adjust flex basis for smaller screens
         .stat-name-section {
             flex-basis: 40%;
             font-size: 0.6rem;
-        } // Smaller font for stat name
+        }
         .stat-value-section {
             flex-basis: 20%;
             font-size: 0.6rem;
-        } // Smaller font for stat value
+        }
     }
-    .performance-percentiles-card > div[style*="overflow-y: auto"] {
-        // Target the scrollable div
-        max-height: 40vh !important;
+    .performance-percentiles-card-left .percentile-content-area {
+        // max-height: none;
+        // overflow-y: visible;
     }
 }
 </style>
