@@ -411,42 +411,106 @@
                             style="display: flex; flex-direction: column"
                         >
                             <div
-                                v-if="
-                                    Object.keys(categorizedPerformanceStats)
-                                        .length > 0
+                                v-if="hasAnyPerformanceData"
+                                style="
+                                    flex-grow: 1;
+                                    overflow-y: auto;
+                                    padding: 8px;
                                 "
-                                style="flex-grow: 1; overflow-y: auto"
                             >
+                                <div v-if="averageRatingData" class="q-mb-sm">
+                                    <q-item
+                                        class="attribute-list-item performance-stat-item"
+                                    >
+                                        <q-item-section
+                                            class="stat-name-section"
+                                        >
+                                            <q-item-label
+                                                lines="1"
+                                                class="attribute-name-label"
+                                                :title="averageRatingData.name"
+                                            >
+                                                {{ averageRatingData.name }}
+                                            </q-item-label>
+                                        </q-item-section>
+                                        <q-item-section
+                                            class="stat-bar-section"
+                                        >
+                                            <div class="stat-bar-container">
+                                                <div class="stat-bar-track">
+                                                    <div
+                                                        class="stat-bar-fill"
+                                                        :style="
+                                                            getBarFillStyle(
+                                                                averageRatingData.percentile,
+                                                            )
+                                                        "
+                                                    ></div>
+                                                </div>
+                                                <span
+                                                    v-if="
+                                                        averageRatingData.percentile !==
+                                                            null &&
+                                                        averageRatingData.percentile >=
+                                                            0
+                                                    "
+                                                    class="stat-percentile-text"
+                                                >
+                                                    {{
+                                                        Math.round(
+                                                            averageRatingData.percentile,
+                                                        )
+                                                    }}
+                                                </span>
+                                                <span
+                                                    v-else
+                                                    class="stat-percentile-text text-caption text-grey-6"
+                                                    >N/A</span
+                                                >
+                                            </div>
+                                        </q-item-section>
+                                        <q-item-section
+                                            side
+                                            class="stat-value-section"
+                                        >
+                                            <span
+                                                class="attribute-value performance-stat-actual-value"
+                                            >
+                                                {{
+                                                    averageRatingData.value !==
+                                                    "-"
+                                                        ? averageRatingData.value
+                                                        : "N/A"
+                                                }}
+                                            </span>
+                                        </q-item-section>
+                                    </q-item>
+                                </div>
+
+                                <hr
+                                    v-if="
+                                        averageRatingData &&
+                                        Object.keys(categorizedPerformanceStats)
+                                            .length > 0
+                                    "
+                                    class="q-my-sm"
+                                />
+
                                 <div
                                     v-for="(
-                                        stats, category
+                                        stats, category, index
                                     ) in categorizedPerformanceStats"
                                     :key="category"
-                                    class="q-mb-md"
                                 >
-                                    <q-card-section
-                                        :class="
-                                            qInstance.dark.isActive
-                                                ? 'bg-grey-8'
-                                                : 'bg-grey-3'
-                                        "
-                                        class="q-pa-sm attribute-category-header performance-category-header"
-                                    >
-                                        <div
-                                            class="text-subtitle2 text-weight-medium text-center"
-                                        >
-                                            {{ category }} (vs.
-                                            {{ selectedComparisonGroupLabel }})
-                                        </div>
-                                    </q-card-section>
+                                    <hr v-if="index > 0" class="q-my-sm" />
                                     <q-list
                                         separator
                                         dense
-                                        class="attribute-list performance-stats-list"
+                                        class="attribute-list performance-stats-list q-pt-xs"
                                     >
                                         <q-item
-                                            v-for="stat in stats"
-                                            :key="stat.key"
+                                            v-for="statItem in stats"
+                                            :key="statItem.key"
                                             class="attribute-list-item performance-stat-item"
                                         >
                                             <q-item-section
@@ -455,9 +519,9 @@
                                                 <q-item-label
                                                     lines="1"
                                                     class="attribute-name-label"
-                                                    :title="stat.name"
+                                                    :title="statItem.name"
                                                 >
-                                                    {{ stat.name }}
+                                                    {{ statItem.name }}
                                                 </q-item-label>
                                             </q-item-section>
                                             <q-item-section
@@ -469,22 +533,23 @@
                                                             class="stat-bar-fill"
                                                             :style="
                                                                 getBarFillStyle(
-                                                                    stat.percentile,
+                                                                    statItem.percentile,
                                                                 )
                                                             "
                                                         ></div>
                                                     </div>
                                                     <span
                                                         v-if="
-                                                            stat.percentile !==
+                                                            statItem.percentile !==
                                                                 null &&
-                                                            stat.percentile >= 0
+                                                            statItem.percentile >=
+                                                                0
                                                         "
                                                         class="stat-percentile-text"
                                                     >
                                                         {{
                                                             Math.round(
-                                                                stat.percentile,
+                                                                statItem.percentile,
                                                             )
                                                         }}
                                                     </span>
@@ -503,8 +568,8 @@
                                                     class="attribute-value performance-stat-actual-value"
                                                 >
                                                     {{
-                                                        stat.value !== "-"
-                                                            ? stat.value
+                                                        statItem.value !== "-"
+                                                            ? statItem.value
                                                             : "N/A"
                                                     }}
                                                 </span>
@@ -908,7 +973,7 @@
 <script>
 import { defineComponent, computed, ref, watch, onMounted } from "vue";
 import { useQuasar } from "quasar";
-import { formatCurrency } from "../utils/currencyUtils";
+import { formatCurrency } from "../utils/currencyUtils"; // Assuming this path is correct
 
 // Player attribute full names mapping
 const attributeFullNameMap = {
@@ -1049,10 +1114,10 @@ const performanceStatMap = {
     "Cr C/A": "Cross Completion %",
 };
 
-// Categories for Performance Percentiles - UPDATED
+// UPDATED Categories for Performance Percentiles
 const performanceStatCategories = {
-    "Shooting & Finishing": ["Gls/90", "xG/90", "Shot/90", "ShT/90", "Conv %"],
-    "Passing, Playmaking & Crossing": [
+    Offensive: ["Gls/90", "xG/90", "Shot/90", "ShT/90", "Conv %", "Drb/90"],
+    Passing: [
         "Asts/90",
         "xA/90",
         "Ch C/90",
@@ -1062,8 +1127,9 @@ const performanceStatCategories = {
         "Pr passes/90",
         "Cr C/90",
         "Cr C/A",
+        "Poss Lost/90",
     ],
-    "Defending, Aerial & Pressing": [
+    Defensive: [
         "Tck/90",
         "Tck R",
         "Int/90",
@@ -1071,9 +1137,8 @@ const performanceStatCategories = {
         "Blk/90",
         "Hdrs W/90",
         "Pres C/90",
+        "Poss Won/90",
     ],
-    "Possession & Dribbling": ["Drb/90", "Poss Won/90", "Poss Lost/90"],
-    "Overall Performance": ["Av Rat"],
 };
 
 export default defineComponent({
@@ -1089,36 +1154,22 @@ export default defineComponent({
         const selectedComparisonGroup = ref("Global");
 
         onMounted(() => {
-            // Initialization logic if needed when component mounts with a player
+            // Initialization logic if needed
         });
 
         watch(
             () => props.player,
             (newPlayer) => {
-                console.log(
-                    "PlayerDetailDialog: Player prop changed",
-                    newPlayer ? newPlayer.name : "null",
-                );
                 if (newPlayer && newPlayer.performancePercentiles) {
-                    console.log(
-                        "Available percentile groups:",
-                        Object.keys(newPlayer.performancePercentiles),
-                    );
                     const availableGroups = Object.keys(
                         newPlayer.performancePercentiles,
                     );
                     if (
                         !availableGroups.includes(selectedComparisonGroup.value)
                     ) {
-                        console.log(
-                            `Selected group ${selectedComparisonGroup.value} not in available groups, defaulting to Global.`,
-                        );
                         selectedComparisonGroup.value = "Global";
                     }
                 } else {
-                    console.log(
-                        "No player or no performancePercentiles, defaulting selectedComparisonGroup to Global.",
-                    );
                     selectedComparisonGroup.value = "Global";
                 }
             },
@@ -1182,20 +1233,10 @@ export default defineComponent({
         const performanceComparisonOptions = computed(() => {
             const options = [];
             if (props.player && props.player.performancePercentiles) {
-                console.log(
-                    "PlayerDetailDialog: Building comparison options. Percentiles object:",
-                    JSON.parse(
-                        JSON.stringify(props.player.performancePercentiles),
-                    ),
-                );
                 if (props.player.performancePercentiles["Global"]) {
                     options.push({ label: "Overall Dataset", value: "Global" });
                 }
                 if (props.player.positionGroups) {
-                    console.log(
-                        "PlayerDetailDialog: Player position groups:",
-                        props.player.positionGroups,
-                    );
                     props.player.positionGroups.forEach((group) => {
                         if (
                             props.player.performancePercentiles[group] &&
@@ -1223,71 +1264,94 @@ export default defineComponent({
                         0) &&
                 !options.find((opt) => opt.value === "Global")
             ) {
-                options.unshift({ label: "Overall Dataset", value: "Global" });
+                // Ensure Global is an option if any percentile data exists at all
+                if (
+                    props.player.performancePercentiles["Global"] ||
+                    !options.some((opt) => opt.value === "Global")
+                ) {
+                    // Add if "Global" data exists OR if no "Global" option was added yet from positionGroups
+                    // and some data exists. This logic might need refinement based on exact desired behavior
+                    // if "Global" isn't explicitly in positionGroups but is a default.
+                    // For now, if it's in performancePercentiles, it should be an option.
+                    if (
+                        props.player.performancePercentiles["Global"] &&
+                        !options.some((opt) => opt.value === "Global")
+                    ) {
+                        options.unshift({
+                            label: "Overall Dataset",
+                            value: "Global",
+                        });
+                    } else if (
+                        options.length === 0 &&
+                        Object.keys(props.player.performancePercentiles)
+                            .length > 0 &&
+                        !props.player.performancePercentiles["Global"]
+                    ) {
+                        // If no global, but other groups exist, make the first available the default or handle as needed
+                        // This case implies 'Global' might not always be present.
+                        // Forcing 'Global' if any data exists might be too strong if 'Global' itself has no data.
+                        // The current logic correctly adds 'Global' if 'Global' data is present.
+                    }
+                }
             }
-            console.log(
-                "PlayerDetailDialog: Final performanceComparisonOptions:",
-                JSON.parse(JSON.stringify(options)),
-            );
             return options;
         });
 
-        const selectedComparisonGroupLabel = computed(() => {
-            const selectedOpt = performanceComparisonOptions.value.find(
-                (opt) => opt.value === selectedComparisonGroup.value,
-            );
-            return selectedOpt ? selectedOpt.label : "Selected Group";
+        const averageRatingData = computed(() => {
+            if (
+                !props.player ||
+                !props.player.attributes ||
+                !props.player.performancePercentiles
+            ) {
+                return null;
+            }
+            const groupKey = selectedComparisonGroup.value;
+            const percentilesForGroup =
+                props.player.performancePercentiles[groupKey];
+
+            if (
+                !percentilesForGroup ||
+                !Object.prototype.hasOwnProperty.call(
+                    props.player.attributes,
+                    "Av Rat",
+                ) ||
+                props.player.attributes["Av Rat"] === "-" ||
+                props.player.attributes["Av Rat"] === "" ||
+                !Object.prototype.hasOwnProperty.call(
+                    percentilesForGroup,
+                    "Av Rat",
+                )
+            ) {
+                return null;
+            }
+            return {
+                key: "Av Rat",
+                name: performanceStatMap["Av Rat"] || "Average Rating",
+                value: props.player.attributes["Av Rat"],
+                percentile:
+                    percentilesForGroup["Av Rat"] >= 0
+                        ? percentilesForGroup["Av Rat"]
+                        : null,
+            };
         });
 
         const categorizedPerformanceStats = computed(() => {
-            console.log(
-                "PlayerDetailDialog: Recalculating categorizedPerformanceStats",
-            );
-            if (!props.player) {
-                console.log("categorizedPerformanceStats: No player prop");
+            if (
+                !props.player ||
+                !props.player.attributes ||
+                !props.player.performancePercentiles
+            ) {
                 return {};
             }
-            if (!props.player.attributes) {
-                console.log(
-                    "categorizedPerformanceStats: No player.attributes",
-                );
-                return {};
-            }
-            if (!props.player.performancePercentiles) {
-                console.log(
-                    "categorizedPerformanceStats: No player.performancePercentiles",
-                );
-                return {};
-            }
-
             const groupKey = selectedComparisonGroup.value;
-            console.log(
-                "categorizedPerformanceStats: selectedComparisonGroup:",
-                groupKey,
-            );
-
             const percentilesForGroup =
                 props.player.performancePercentiles[groupKey];
+
             if (!percentilesForGroup) {
-                console.log(
-                    "categorizedPerformanceStats: No percentilesForGroup for key:",
-                    groupKey,
-                );
                 return {};
             }
-            console.log(
-                "categorizedPerformanceStats: percentilesForGroup data for",
-                groupKey,
-                ":",
-                JSON.parse(JSON.stringify(percentilesForGroup)),
-            );
-            console.log(
-                "categorizedPerformanceStats: player.attributes data:",
-                JSON.parse(JSON.stringify(props.player.attributes)),
-            );
 
             const result = {};
-            let totalStatsAdded = 0;
             for (const categoryName in performanceStatCategories) {
                 const statsInCategory = [];
                 performanceStatCategories[categoryName].forEach((statKey) => {
@@ -1303,8 +1367,6 @@ export default defineComponent({
                     );
                     const percentileValue = percentilesForGroup[statKey];
 
-                    // console.log(`Stat: ${statKey} | HasRaw: ${hasRawAttribute} (Val: ${rawAttributeValue}) | HasPercentile: ${hasPercentile} (Val: ${percentileValue}) | InMap: ${!!performanceStatMap[statKey]}`);
-
                     if (
                         performanceStatMap[statKey] &&
                         hasRawAttribute &&
@@ -1319,7 +1381,6 @@ export default defineComponent({
                             percentile:
                                 percentileValue >= 0 ? percentileValue : null,
                         });
-                        totalStatsAdded++;
                     }
                 });
                 if (statsInCategory.length > 0) {
@@ -1328,15 +1389,14 @@ export default defineComponent({
                     );
                 }
             }
-            console.log(
-                "categorizedPerformanceStats: Final result:",
-                JSON.parse(JSON.stringify(result)),
-            );
-            console.log(
-                "categorizedPerformanceStats: Total stats added to categories:",
-                totalStatsAdded,
-            );
             return result;
+        });
+
+        const hasAnyPerformanceData = computed(() => {
+            return (
+                averageRatingData.value ||
+                Object.keys(categorizedPerformanceStats.value).length > 0
+            );
         });
 
         const getUnifiedRatingClass = (value, maxScale) => {
@@ -1372,13 +1432,19 @@ export default defineComponent({
             }
             const p = Math.max(0, Math.min(100, percentile));
             let backgroundColor;
-            if (p <= 10) backgroundColor = "#d32f2f";
-            else if (p <= 30) backgroundColor = "#ef6c00";
-            else if (p <= 45) backgroundColor = "#fdd835";
-            else if (p <= 55) backgroundColor = "#bdbdbd";
-            else if (p <= 70) backgroundColor = "#aed581";
-            else if (p <= 90) backgroundColor = "#66bb6a";
-            else backgroundColor = "#388e3c";
+            if (p <= 10)
+                backgroundColor = "#d32f2f"; // Very Poor - Red
+            else if (p <= 30)
+                backgroundColor = "#ef6c00"; // Poor - Orange
+            else if (p <= 45)
+                backgroundColor = "#fdd835"; // Below Average - Yellow
+            else if (p <= 55)
+                backgroundColor = "#bdbdbd"; // Average - Grey
+            else if (p <= 70)
+                backgroundColor = "#aed581"; // Good - Light Green
+            else if (p <= 90)
+                backgroundColor = "#66bb6a"; // Very Good - Green
+            else backgroundColor = "#388e3c"; // Excellent - Dark Green
             return {
                 width: `${p}%`,
                 backgroundColor: backgroundColor,
@@ -1451,8 +1517,9 @@ export default defineComponent({
             currencyIcon,
             selectedComparisonGroup,
             performanceComparisonOptions,
-            selectedComparisonGroupLabel,
-            categorizedPerformanceStats,
+            /* REMOVED selectedComparisonGroupLabel */ categorizedPerformanceStats,
+            averageRatingData, // ADDED
+            hasAnyPerformanceData, // ADDED
         };
     },
 });
@@ -1467,7 +1534,7 @@ export default defineComponent({
 
 .main-content-section {
     flex-grow: 1;
-    padding: 8px;
+    padding: 8px; // Consistent padding
 }
 
 .player-flag {
@@ -1475,9 +1542,10 @@ export default defineComponent({
     border-radius: 3px;
     object-fit: cover;
     vertical-align: middle;
-    height: auto;
+    height: auto; // Maintain aspect ratio
 }
 
+// Clamped font sizes for responsiveness
 .dialog-title {
     font-size: clamp(0.9rem, 1.4vw, 1.1rem);
 }
@@ -1521,6 +1589,7 @@ export default defineComponent({
 }
 .attribute-category-header .text-subtitle1,
 .performance-category-header .text-subtitle2 {
+    // Kept for attribute sections
     font-size: clamp(0.85rem, 1.4vw, 1rem);
 }
 
@@ -1529,14 +1598,14 @@ export default defineComponent({
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 160px;
+    max-width: 160px; // Adjust as needed
 }
 .attribute-list-item .attribute-score-value {
     font-size: clamp(0.75rem, 1.1vw, 0.85rem);
 }
 .performance-stat-actual-value {
     font-size: clamp(0.7rem, 1vw, 0.8rem);
-    min-width: 35px;
+    min-width: 35px; // Ensure space for 2-3 digit numbers + %
     text-align: right;
 }
 
@@ -1545,21 +1614,24 @@ export default defineComponent({
     flex-direction: column;
 }
 .full-height-card {
+    // For attribute cards
     flex-grow: 1;
     display: flex;
     flex-direction: column;
-    min-height: 0;
+    min-height: 0; // Important for flex children in some cases
 }
 .full-height-card-info {
+    // For player info and overall rating cards
     display: flex;
     flex-direction: column;
     height: 100%;
 }
 
 .attribute-list.no-scroll {
-    flex-grow: 0;
-    flex-shrink: 0;
-    overflow-y: visible;
+    // For attribute lists that shouldn't scroll individually
+    flex-grow: 0; // Don't grow
+    flex-shrink: 0; // Don't shrink
+    overflow-y: visible; // Content determines height
 }
 .physical-attributes-card .attribute-list.physical-list.no-scroll {
     flex-grow: 0;
@@ -1568,19 +1640,18 @@ export default defineComponent({
 }
 .role-ratings-card .role-specific-ratings-list {
     overflow-y: auto;
-    flex-shrink: 1;
-    max-height: 20vh;
-    min-height: 80px;
+    flex-shrink: 1; // Allow shrinking
+    max-height: 20vh; // Max height for scroll
+    min-height: 80px; // Min height
 }
-.performance-percentiles-card .performance-stats-list {
-}
+// .performance-percentiles-card .performance-stats-list {} // No specific style needed here now
 
 .fifa-stat-card {
-    min-height: 50px;
+    min-height: 50px; // Ensure a minimum tap target / visual size
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 1px !important;
+    padding: 1px !important; // Compact padding
 }
 
 .best-role-highlight {
@@ -1594,17 +1665,18 @@ export default defineComponent({
     }
 }
 .best-role-highlight .q-item__label {
-    font-weight: 600;
+    font-weight: 600; // Or $text-weights.bold if using Quasar SASS vars
 }
 
+// Reduce padding for dense lists and items
 .q-list--dense .q-item,
 .attribute-list-item,
 .constrained-scroll-list .q-item.attribute-list-item {
-    padding: 1px 6px;
+    padding: 1px 6px; // Reduced vertical padding
     min-height: auto;
 }
 .player-info-list .q-item {
-    padding: 2px 8px;
+    padding: 2px 8px; // Slightly more for player info
     min-height: auto;
 }
 .min-height-auto {
@@ -1612,15 +1684,16 @@ export default defineComponent({
 }
 
 .q-list--separator > .q-item:not(:first-child):before {
-    background: rgba(128, 128, 128, 0.2);
+    background: rgba(128, 128, 128, 0.2); // Lighter separator
 }
 
+// Explicit background colors for card sections for better theme control
 .q-card__section.bg-grey-3 {
     background-color: #f0f0f0 !important;
-}
+} // Light theme section header
 .q-card__section.bg-grey-8 {
     background-color: #303030 !important;
-}
+} // Dark theme section header
 
 .q-card[flat][bordered] {
     border: 1px solid rgba(128, 128, 128, 0.3);
@@ -1629,22 +1702,23 @@ export default defineComponent({
     }
 }
 
+// Styles for performance percentile bars
 .performance-stat-item {
     .stat-name-section {
-        flex-basis: 45%;
+        flex-basis: 45%; // Adjust as needed
         flex-grow: 0;
-        flex-shrink: 0;
+        flex-shrink: 0; // Prevent shrinking
         padding-right: 6px;
     }
     .stat-bar-section {
-        flex-grow: 1;
+        flex-grow: 1; // Take remaining space
         display: flex;
         align-items: center;
     }
     .stat-value-section {
-        flex-basis: 15%;
+        flex-basis: 15%; // Adjust for value width
         flex-grow: 0;
-        flex-shrink: 0;
+        flex-shrink: 0; // Prevent shrinking
         text-align: right;
         padding-left: 6px;
     }
@@ -1658,21 +1732,21 @@ export default defineComponent({
 .stat-bar-track {
     flex-grow: 1;
     height: 12px;
-    background-color: #e0e0e0;
+    background-color: #e0e0e0; // Light theme track
     border-radius: 3px;
     margin-right: 6px;
-    overflow: hidden;
+    overflow: hidden; // Ensure fill stays within bounds
     .body--dark & {
-        background-color: $grey-7;
+        background-color: $grey-7; // Dark theme track
     }
 }
 .stat-bar-fill {
     height: 100%;
-    border-radius: 3px;
+    border-radius: 3px; // Match track
 }
 .stat-percentile-text {
-    font-size: 0.65rem;
-    min-width: 22px;
+    font-size: 0.65rem; // Small text for percentile number
+    min-width: 22px; // Space for "100"
     text-align: right;
     .body--dark & {
         color: $grey-5;
@@ -1682,20 +1756,25 @@ export default defineComponent({
     }
 }
 
+// Responsive adjustments
 @media (max-width: $breakpoint-sm-max) {
+    // Tablet
     .attribute-columns-container .col-md-4 {
+        // Stack attribute columns
         flex-basis: 100%;
         max-width: 100%;
     }
     .role-ratings-card .role-specific-ratings-list {
-        max-height: 20vh;
+        max-height: 20vh; // Adjust scroll height
     }
-    .performance-percentiles-card .q-scroll-area {
+    .performance-percentiles-card > div[style*="overflow-y: auto"] {
+        // Target the scrollable div
         max-height: 45vh !important;
     }
 }
 
 @media (max-width: $breakpoint-xs-max) {
+    // Mobile
     .main-content-section {
         padding: 4px;
     }
@@ -1756,24 +1835,27 @@ export default defineComponent({
     }
 
     .attribute-list.no-scroll {
+        // Allow attribute lists to scroll on small screens if needed
         overflow-y: auto;
-        max-height: 25vh;
+        max-height: 25vh; // Example max height
     }
     .role-ratings-card .role-specific-ratings-list {
-        max-height: 15vh;
+        max-height: 15vh; // Further reduce for role ratings
     }
 
     .performance-stat-item {
+        // Adjust flex basis for smaller screens
         .stat-name-section {
             flex-basis: 40%;
             font-size: 0.6rem;
-        }
+        } // Smaller font for stat name
         .stat-value-section {
             flex-basis: 20%;
             font-size: 0.6rem;
-        }
+        } // Smaller font for stat value
     }
-    .performance-percentiles-card .q-scroll-area {
+    .performance-percentiles-card > div[style*="overflow-y: auto"] {
+        // Target the scrollable div
         max-height: 40vh !important;
     }
 }
