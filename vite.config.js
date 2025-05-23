@@ -20,18 +20,9 @@ export default defineConfig({
       sassVariables: "@/quasar-variables.scss",
     }),
   ],
-  css: {
-    preprocessorOptions: {
-      scss: {
-        // Prepend your custom Quasar variables to all Vue component style blocks.
-        // This ensures your theme overrides ($primary, etc.) are available in components.
-        // Quasar's default variables (like $grey-4) should be made globally available
-        // by the quasar() plugin itself.
-        // We will import app.scss directly in main.js instead of here.
-        additionalData: `@import "@/quasar-variables.scss";\n`,
-      },
-    },
-  },
+  // CSS preprocessing is handled by the quasar plugin's sassVariables option
+  // No need for additionalData since we're using sassVariables in the quasar plugin config
+  
   server: {
     port: 3000,
     proxy: {

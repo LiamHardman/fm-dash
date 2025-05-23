@@ -55,9 +55,21 @@
                     @dragend="handleDragEnd"
                 >
                     <template v-if="players[pos.id]">
-                        <span class="player-overall-display">
-                            {{ players[pos.id].Overall || "N/A" }}
-                        </span>
+                        <div class="position-indicator-wrapper">
+                            <span
+                                v-if="players[pos.id].exactPositionMatch"
+                                class="position-match-dot exact-match"
+                                title="Natural position"
+                            ></span>
+                            <span
+                                v-else
+                                class="position-match-dot off-position"
+                                title="Off position"
+                            ></span>
+                            <span class="player-overall-display">
+                                {{ players[pos.id].Overall || "N/A" }}
+                            </span>
+                        </div>
                     </template>
                     <q-icon
                         v-else
@@ -133,21 +145,19 @@ import { useQuasar } from "quasar";
 // used in player.roleSpecificOveralls (e.g., "ST (C)" -> "ST").
 const fmSlotRoleToKeyPrefixMap = {
     GK: "GK",
-    "D (R)": "DR/L", // Assuming D (R) maps to a general DR/L prefix in roleSpecificOveralls
-    "D (L)": "DR/L", // Assuming D (L) maps to a general DR/L prefix
-    "D (C)": "DC",
-    "WB (R)": "WBR/L", // Assuming WB (R) maps to a general WBR/L prefix
-    "WB (L)": "WBR/L", // Assuming WB (L) maps to a general WBR/L prefix
-    "DM (C)": "DM",
-    "M (R)": "MR/L", // Assuming M (R) maps to a general MR/L prefix
-    "M (L)": "MR/L", // Assuming M (L) maps to a general MR/L prefix
-    "M (C)": "MC",
-    "AM (R)": "AMR/L", // Assuming AM (R) maps to a general AMR/L prefix
-    "AM (L)": "AMR/L", // Assuming AM (L) maps to a general AMR/L prefix
-    "AM (C)": "AMC",
-    "ST (C)": "ST",
-    // Add other generic slot roles if they appear in your formations.js and need mapping
-    // For example, if a formation slot is just "ST", you might add: "ST": "ST"
+    "D (R)": "DR", // Right defender maps to DR prefix
+    "D (L)": "DL", // Left defender maps to DL prefix
+    "D (C)": "DC", // Center defender maps to DC prefix
+    "WB (R)": "WBR", // Right wingback maps to WBR prefix
+    "WB (L)": "WBL", // Left wingback maps to WBL prefix
+    "DM (C)": "DM", // Defensive midfielder maps to DM prefix
+    "M (R)": "MR", // Right midfielder maps to MR prefix
+    "M (L)": "ML", // Left midfielder maps to ML prefix
+    "M (C)": "MC", // Center midfielder maps to MC prefix
+    "AM (R)": "AMR", // Right attacking midfielder maps to AMR prefix
+    "AM (L)": "AML", // Left attacking midfielder maps to AML prefix
+    "AM (C)": "AMC", // Center attacking midfielder maps to AMC prefix
+    "ST (C)": "ST", // Striker maps to ST prefix
 };
 
 export default {
@@ -191,46 +201,72 @@ export default {
             return "rating-tier-1";
         };
 
-        // Revised function to get the best role name, excluding "Generic" roles if a non-Generic alternative exists.
+        // Function to get the best role name for a player in a specific slot
         const getBestRoleForPlayerInSlot = (player, slotRole) => {
             if (
                 !player ||
                 !player.roleSpecificOveralls ||
-                player.roleSpecificOveralls.length === 0 ||
                 !slotRole
             ) {
                 return slotRole;
             }
+            
+            // Make sure we have role data in an array format
+            const roleData = Array.isArray(player.roleSpecificOveralls) 
+                ? player.roleSpecificOveralls 
+                : Object.entries(player.roleSpecificOveralls).map(([roleName, score]) => ({
+                    roleName,
+                    score
+                }));
+                
+            if (roleData.length === 0) {
+                return slotRole;
+            }
 
-            const upperSlotRole = slotRole.toUpperCase();
-            const expectedRoleKeyPrefix =
-                fmSlotRoleToKeyPrefixMap[upperSlotRole] ||
-                upperSlotRole.split(" ")[0];
-
-            const matchingRoles = player.roleSpecificOveralls
-                .filter((rso) => {
-                    const rsoBasePosition = rso.roleName
-                        .split(" - ")[0]
-                        .trim()
-                        .toUpperCase();
-                    return rsoBasePosition === expectedRoleKeyPrefix;
+            // Get the position prefix for this slot (e.g., "DR" for "D (R)")
+            const positionPrefix = fmSlotRoleToKeyPrefixMap[slotRole] || slotRole.split(" ")[0];
+            
+            // Filter for roles that match this position and sort by score
+            const matchingRoles = roleData
+                .filter(rso => {
+                    const rsoBasePosition = rso.roleName.split(" - ")[0].trim();
+                    return rsoBasePosition === positionPrefix;
                 })
                 .sort((a, b) => b.score - a.score); // Sort by score descending
 
             if (matchingRoles.length === 0) {
-                return slotRole; // No specific roles match the slot's general position
+                // No roles found for this exact position, try using the player's best overall role
+                // as a fallback (this is just for display purposes)
+                const bestOverallRole = roleData.sort((a, b) => b.score - a.score)[0];
+                if (bestOverallRole) {
+                    return `${slotRole} (${bestOverallRole.roleName.split(" - ")[1] || ''})`;
+                }
+                return slotRole;
             }
 
-            // Try to find the best non-Generic role
+            // Find the best non-Generic role for this position
             const bestNonGenericRole = matchingRoles.find(
-                (rso) => !rso.roleName.toUpperCase().includes("GENERIC"),
+                rso => !rso.roleName.includes("Generic")
             );
 
             if (bestNonGenericRole) {
+                // Return the full role name or just the role part after the position
+                const roleParts = bestNonGenericRole.roleName.split(" - ");
+                if (roleParts.length > 1) {
+                    return roleParts[1]; // Just return the role type (e.g., "Ball Playing Defender")
+                }
                 return bestNonGenericRole.roleName;
             }
 
-            return slotRole; // Fallback if no suitable non-Generic role is found.
+            // If we only have a generic role for this position, use it
+            if (matchingRoles.length > 0) {
+                const roleParts = matchingRoles[0].roleName.split(" - ");
+                if (roleParts.length > 1) {
+                    return roleParts[1] || slotRole;
+                }
+            }
+
+            return slotRole; // Fallback to the slot role name
         };
 
         const getPlayerSlotTitle = (player, slotRole) => {
@@ -527,10 +563,103 @@ export default {
         outline: 2px dashed #fff;
         background-color: rgba(255, 255, 255, 0.3);
     }
+    
+    // Rating tier styles from app.scss, adapted for circles
+    &.rating-tier-6 {
+        background-color: #7e57c2; // Purple - Elite
+        border-color: #5e35b1;
+        color: white;
+        .body--dark & {
+            background-color: #9575cd;
+            border-color: #7e57c2;
+        }
+    }
+    
+    &.rating-tier-5 {
+        background-color: #26a69a; // Teal - Excellent
+        border-color: #00897b;
+        color: white;
+        .body--dark & {
+            background-color: #00897b;
+        }
+    }
+    
+    &.rating-tier-4 {
+        background-color: #66bb6a; // Green - Good
+        border-color: #4caf50;
+        color: white;
+        .body--dark & {
+            background-color: #4caf50;
+        }
+    }
+    
+    &.rating-tier-3 {
+        background-color: #42a5f5; // Light Blue - Average
+        border-color: #2196f3;
+        color: white;
+        .body--dark & {
+            background-color: #2196f3;
+        }
+    }
+    
+    &.rating-tier-2 {
+        background-color: #ffa726; // Orange - Below Average
+        border-color: #fb8c00;
+        color: #333333;
+        .body--dark & {
+            background-color: #fb8c00;
+            color: white;
+        }
+    }
+    
+    &.rating-tier-1 {
+        background-color: #ef5350; // Red - Poor
+        border-color: #e53935;
+        color: white;
+        .body--dark & {
+            background-color: #e53935;
+        }
+    }
+    
+    &.rating-na {
+        background-color: #bdbdbd; // Grey
+        border-color: #9e9e9e;
+        color: #424242;
+        .body--dark & {
+            background-color: #424242;
+            color: #bdbdbd;
+            border-color: #616161;
+        }
+    }
 }
 
 .player-overall-display {
     line-height: 1;
+}
+
+.position-indicator-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.position-match-dot {
+    display: block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    margin-bottom: 1px;
+    
+    &.exact-match {
+        background-color: #4caf50; // Green for natural position
+        box-shadow: 0 0 2px rgba(76, 175, 80, 0.7);
+    }
+    
+    &.off-position {
+        background-color: #ff9800; // Orange for off position
+        box-shadow: 0 0 2px rgba(255, 152, 0, 0.7);
+    }
 }
 
 .empty-slot-icon {

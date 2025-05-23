@@ -325,18 +325,30 @@
                                                         </q-item-label>
                                                     </q-item-section>
                                                     <q-item-section side>
-                                                        <span
-                                                            class="attribute-value overall-badge"
-                                                            :class="
-                                                                getOverallClass(
-                                                                    playerEntry.overallInRole,
-                                                                )
-                                                            "
-                                                        >
-                                                            {{
-                                                                playerEntry.overallInRole
-                                                            }}
-                                                        </span>
+                                                        <div class="d-flex align-items-center">
+                                                            <span
+                                                                v-if="playerEntry.exactMatch"
+                                                                class="position-match-indicator exact-match q-mr-xs"
+                                                                title="Natural position"
+                                                            ></span>
+                                                            <span
+                                                                v-else
+                                                                class="position-match-indicator off-position q-mr-xs"
+                                                                title="Off position"
+                                                            ></span>
+                                                            <span
+                                                                class="attribute-value overall-badge"
+                                                                :class="
+                                                                    getOverallClass(
+                                                                        playerEntry.overallInRole,
+                                                                    )
+                                                                "
+                                                            >
+                                                                {{
+                                                                    playerEntry.overallInRole
+                                                                }}
+                                                            </span>
+                                                        </div>
                                                     </q-item-section>
                                                 </q-item>
                                                 <q-item
@@ -432,11 +444,11 @@
 import { ref, computed, onMounted, watch } from "vue";
 import { useQuasar } from "quasar";
 import { useRouter, useRoute } from "vue-router";
+import { usePlayerStore } from "../stores/playerStore";
 import PlayerDataTable from "../components/PlayerDataTable.vue";
 import PlayerDetailDialog from "../components/PlayerDetailDialog.vue";
 import PitchDisplay from "../components/PitchDisplay.vue";
 import { formations, getFormationLayout } from "../utils/formations";
-import playerService from "../services/playerService";
 // Currency utils are not directly used here for formatting,
 // but PlayerDataTable and PlayerDetailDialog will use them with the passed symbol.
 
@@ -472,8 +484,8 @@ export default {
         const quasarInstance = useQuasar();
         const router = useRouter();
         const route = useRoute();
+        const playerStore = usePlayerStore();
 
-        const allPlayersData = ref([]);
         const selectedTeamName = ref(null);
         const teamOptions = ref([]);
         const allTeamNamesCache = ref([]);
@@ -481,7 +493,10 @@ export default {
         const loadingTeam = ref(false);
         const pageLoading = ref(true);
         const pageLoadingError = ref("");
-        const detectedCurrencySymbol = ref("$"); // Default symbol, will be updated
+        
+        // Computed properties from store
+        const allPlayersData = computed(() => playerStore.allPlayers);
+        const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol);
 
         const selectedFormationKey = ref(null);
 
@@ -494,59 +509,86 @@ export default {
         const playerForDetailView = ref(null);
         const showPlayerDetailDialog = ref(false);
 
+        // Map position names to their short codes, more specific for each side
         const fmMatcherToRoleKeyPrefix = {
             GOALKEEPER: "GK",
             SWEEPER: "DC",
-            "DEFENDER (RIGHT)": "DR/L",
-            "RIGHT BACK": "DR/L",
-            "DEFENDER (LEFT)": "DR/L",
-            "LEFT BACK": "DR/L",
+            "DEFENDER (RIGHT)": "DR",
+            "RIGHT BACK": "DR",
+            "DEFENDER (LEFT)": "DL",
+            "LEFT BACK": "DL",
             "DEFENDER (CENTRE)": "DC",
             "CENTRE BACK": "DC",
-            "WING-BACK (RIGHT)": "WBR/L",
-            "RIGHT WING-BACK": "WBR/L",
-            "WING-BACK (LEFT)": "WBR/L",
-            "LEFT WING-BACK": "WBR/L",
+            "WING-BACK (RIGHT)": "WBR",
+            "RIGHT WING-BACK": "WBR",
+            "WING-BACK (LEFT)": "WBL",
+            "LEFT WING-BACK": "WBL",
             "DEFENSIVE MIDFIELDER (CENTRE)": "DM",
             "CENTRE DEFENSIVE MIDFIELDER": "DM",
-            "MIDFIELDER (RIGHT)": "MR/L",
-            "RIGHT MIDFIELDER": "MR/L",
-            "MIDFIELDER (LEFT)": "MR/L",
-            "LEFT MIDFIELDER": "MR/L",
+            "MIDFIELDER (RIGHT)": "MR",
+            "RIGHT MIDFIELDER": "MR",
+            "MIDFIELDER (LEFT)": "ML",
+            "LEFT MIDFIELDER": "ML",
             "MIDFIELDER (CENTRE)": "MC",
             "CENTRE MIDFIELDER": "MC",
-            "ATTACKING MIDFIELDER (RIGHT)": "AMR/L",
-            "RIGHT ATTACKING MIDFIELDER": "AMR/L",
-            "WINGER (RIGHT)": "AMR/L",
-            "ATTACKING MIDFIELDER (LEFT)": "AMR/L",
-            "LEFT ATTACKING MIDFIELDER": "AMR/L",
-            "WINGER (LEFT)": "AMR/L",
+            "ATTACKING MIDFIELDER (RIGHT)": "AMR",
+            "RIGHT ATTACKING MIDFIELDER": "AMR",
+            "WINGER (RIGHT)": "AMR",
+            "ATTACKING MIDFIELDER (LEFT)": "AML",
+            "LEFT ATTACKING MIDFIELDER": "AML",
+            "WINGER (LEFT)": "AML",
             "ATTACKING MIDFIELDER (CENTRE)": "AMC",
             "CENTRE ATTACKING MIDFIELDER": "AMC",
             "STRIKER (CENTRE)": "ST",
             STRIKER: "ST",
         };
+        
+        // For handling combined positions like D/WB(R)
+        // The first position is the PREFERRED position, others are fallbacks
+        const positionSideMap = {
+            // Map FM formation slots to possible shortPositions (in strict priority order)
+            "D (R)": ["DR"],                     // Right defender should ONLY be DR
+            "D (L)": ["DL"],                     // Left defender should ONLY be DL
+            "D (C)": ["DC"],                     // Center defender should ONLY be DC
+            "WB (R)": ["WBR"],                   // Right wing back should ONLY be WBR
+            "WB (L)": ["WBL"],                   // Left wing back should ONLY be WBL
+            "DM (C)": ["DM"],                    // Defensive mid should ONLY be DM
+            "M (R)": ["MR"],                     // Right mid should ONLY be MR
+            "M (L)": ["ML"],                     // Left mid should ONLY be ML
+            "M (C)": ["MC"],                     // Center mid should ONLY be MC
+            "AM (R)": ["AMR"],                   // Right attacking mid should ONLY be AMR
+            "AM (L)": ["AML"],                   // Left attacking mid should ONLY be AML
+            "AM (C)": ["AMC"],                   // Center attacking mid should ONLY be AMC
+            "ST (C)": ["ST"],                    // Striker should ONLY be ST
+            "GK": ["GK"]                         // Goalkeeper is always GK
+        };
+        
+        // Secondary fallback map - only used if no players are found for a position
+        const fallbackPositionMap = {
+            "D (R)": ["DR", "WBR", "MR"],
+            "D (L)": ["DL", "WBL", "ML"],
+            "D (C)": ["DC", "DM"],
+            "WB (R)": ["WBR", "DR", "MR"],
+            "WB (L)": ["WBL", "DL", "ML"],
+            "DM (C)": ["DM", "DC", "MC"],
+            "M (R)": ["MR", "WBR", "AMR"],
+            "M (L)": ["ML", "WBL", "AML"],
+            "M (C)": ["MC", "DM"],
+            "AM (R)": ["AMR", "MR"],
+            "AM (L)": ["AML", "ML"],
+            "AM (C)": ["AMC", "MC"],
+            "ST (C)": ["ST", "AMC"],
+            "GK": ["GK"]
+        };
 
         const fetchPlayersAndCurrency = async (datasetId) => {
             pageLoading.value = true;
             pageLoadingError.value = "";
-            allPlayersData.value = [];
             try {
-                const response =
-                    await playerService.getPlayersByDatasetId(datasetId);
-                allPlayersData.value = response.players.map((p) => ({
-                    ...p,
-                    age: parseInt(p.age, 10) || 0,
-                }));
-                detectedCurrencySymbol.value = response.currencySymbol || "$";
-                sessionStorage.setItem(
-                    "detectedCurrencySymbol",
-                    detectedCurrencySymbol.value,
-                ); // Store for other components if needed
+                await playerStore.fetchPlayersByDatasetId(datasetId);
+                // The store now handles all data processing and storage
             } catch (err) {
                 pageLoadingError.value = `Failed to load player data: ${err.message || "Unknown server error"}. Please try uploading again.`;
-                allPlayersData.value = [];
-                detectedCurrencySymbol.value = "$"; // Reset to default
             } finally {
                 pageLoading.value = false;
             }
@@ -690,9 +732,12 @@ export default {
                     squadComposition.value[slotId].length > 0
                 ) {
                     const starterEntry = squadComposition.value[slotId][0];
+                    // Use the role-specific score for this position, not their global Overall
+                    // Add the exactMatch flag to display if the player is in their natural position
                     starters[slotId] = {
-                        ...starterEntry.player, // Spread the full player object
-                        Overall: starterEntry.overallInRole, // Override Overall with role-specific score for display
+                        ...starterEntry.player,                    // Spread all player properties
+                        Overall: starterEntry.overallInRole,       // Use position-specific rating
+                        exactPositionMatch: starterEntry.exactMatch // Pass this to the pitch display
                     };
                 } else {
                     starters[slotId] = null; // No player for this slot
@@ -732,46 +777,189 @@ export default {
             if (!player || !slotFormationRole) return 0;
 
             let bestScoreForRole = 0;
-            if (
-                player.roleSpecificOveralls &&
-                player.roleSpecificOveralls.length > 0
-            ) {
-                const upperSlotRole = slotFormationRole.toUpperCase();
-                // Use fmSlotRoleMatcher to find corresponding detailed positions
-                const fmPositionMatchers = fmSlotRoleMatcher[upperSlotRole] || [
-                    upperSlotRole,
-                ]; // Fallback to direct role if not in map
-
-                // Convert detailed positions to base role key prefixes (e.g., "GK", "DC", "ST")
-                const targetRoleKeyPrefixes = fmPositionMatchers
-                    .map(
-                        (matcher) =>
-                            fmMatcherToRoleKeyPrefix[matcher.toUpperCase()],
-                    )
-                    .filter((prefix) => !!prefix) // Remove undefined/null prefixes
-                    .reduce(
-                        // Deduplicate prefixes
-                        (acc, val) => (acc.includes(val) ? acc : [...acc, val]),
-                        [],
-                    );
-
-                player.roleSpecificOveralls.forEach((rso) => {
-                    const rsoBasePosition = rso.roleName
-                        .split(" - ")[0] // "DC" from "DC - BPD"
-                        .trim()
-                        .toUpperCase();
-                    if (targetRoleKeyPrefixes.includes(rsoBasePosition)) {
-                        bestScoreForRole = Math.max(
-                            bestScoreForRole,
-                            rso.score,
-                        );
-                    }
-                });
+            let matchType = "none"; // For debugging: tracks how the match was found
+            
+            if (!player.roleSpecificOveralls) {
+                return 0; // No role overalls available
             }
-            // If no roleSpecificOveralls matched, consider the player's main Overall
-            // if the slot is very generic or as a last resort.
-            // For now, we rely on roleSpecificOveralls.
-            // If bestScoreForRole is still 0, it means they are not suitable or data is missing.
+            
+            // Check if roleSpecificOveralls exists in either array or object format
+            const hasRoleOveralls = Array.isArray(player.roleSpecificOveralls) 
+                ? player.roleSpecificOveralls.length > 0
+                : Object.keys(player.roleSpecificOveralls).length > 0;
+            
+            if (!hasRoleOveralls) {
+                return 0; // No role overalls available
+            }
+            
+            // Get the required positions for this slot (strict matching)
+            const upperSlotRoleOriginal = slotFormationRole.toUpperCase();
+            const requiredPositions = positionSideMap[upperSlotRoleOriginal] || [];
+            
+            // 1. STRICT MATCHING: Player must have the EXACT position to play here
+            if (player.shortPositions && player.shortPositions.length > 0) {
+                // Check if player has ANY of the required positions
+                const exactPositionMatches = player.shortPositions.filter(pos => 
+                    requiredPositions.includes(pos)
+                );
+                
+                if (exactPositionMatches.length > 0) {
+                    // Perfect position match! Find the best role score
+                    matchType = "exact";
+                    
+                    // Find best score from roleSpecificOveralls - handle both array and object formats
+                    if (Array.isArray(player.roleSpecificOveralls)) {
+                        player.roleSpecificOveralls.forEach(rso => {
+                            const rsoBasePosition = rso.roleName
+                                .split(" - ")[0] // "DC" from "DC - BPD"
+                                .trim();
+                            
+                            // Check if this role's position is one of the player's exact positions
+                            if (exactPositionMatches.includes(rsoBasePosition)) {
+                                bestScoreForRole = Math.max(
+                                    bestScoreForRole,
+                                    rso.score,
+                                );
+                            }
+                        });
+                    } else {
+                        // Object format
+                        Object.entries(player.roleSpecificOveralls).forEach(([roleName, score]) => {
+                            const rsoBasePosition = roleName
+                                .split(" - ")[0] // "DC" from "DC - BPD"
+                                .trim();
+                            
+                            // Check if this role's position is one of the player's exact positions
+                            if (exactPositionMatches.includes(rsoBasePosition)) {
+                                bestScoreForRole = Math.max(
+                                    bestScoreForRole,
+                                    score,
+                                );
+                            }
+                        });
+                    }
+                    
+                    // If we have an exact position match but no specific role score,
+                    // give them a baseline score
+                    if (bestScoreForRole === 0) {
+                        bestScoreForRole = MIN_SUITABILITY_THRESHOLD;
+                    }
+                    
+                    // Add a small preference boost just for sorting purposes
+                    // (we'll store the original score in a separate property)
+                }
+            }
+            
+            // Skip fallbacks if we found an exact match
+            if (bestScoreForRole > 0) {
+                // For debugging
+                //console.log(`Exact match for ${player.name} in ${slotFormationRole}: score=${bestScoreForRole}`);
+                return bestScoreForRole;
+            }
+            
+            // 2. FALLBACK MATCHING: If no exact match, try fallback positions
+            const fallbackPositions = fallbackPositionMap[upperSlotRoleOriginal] || [];
+            
+            if (player.shortPositions && player.shortPositions.length > 0) {
+                // Check if player has ANY of the fallback positions
+                const fallbackMatches = player.shortPositions.filter(pos => 
+                    fallbackPositions.includes(pos)
+                );
+                
+                if (fallbackMatches.length > 0) {
+                    // Fallback position match - these will be scored lower
+                    matchType = "fallback";
+                    
+                    // Find best score from roleSpecificOveralls with fallback positions
+                    if (Array.isArray(player.roleSpecificOveralls)) {
+                        player.roleSpecificOveralls.forEach(rso => {
+                            const rsoBasePosition = rso.roleName
+                                .split(" - ")[0] // "DC" from "DC - BPD"
+                                .trim();
+                            
+                            if (fallbackMatches.includes(rsoBasePosition)) {
+                                bestScoreForRole = Math.max(
+                                    bestScoreForRole,
+                                    rso.score,
+                                );
+                            }
+                        });
+                    } else {
+                        // Object format
+                        Object.entries(player.roleSpecificOveralls).forEach(([roleName, score]) => {
+                            const rsoBasePosition = roleName
+                                .split(" - ")[0] // "DC" from "DC - BPD"
+                                .trim();
+                            
+                            if (fallbackMatches.includes(rsoBasePosition)) {
+                                bestScoreForRole = Math.max(
+                                    bestScoreForRole,
+                                    score,
+                                );
+                            }
+                        });
+                    }
+                    
+                    // If we have a fallback position match but no specific role score,
+                    // give them a minimal score
+                    if (bestScoreForRole === 0) {
+                        bestScoreForRole = MIN_SUITABILITY_THRESHOLD - 10; // Lower threshold for fallbacks
+                    }
+                    
+                    // Note: Original score is preserved, we'll just use the exactMatch flag for sorting
+                }
+            }
+            
+            // 3. LAST RESORT: If still no match, use the old FM matcher approach
+            if (bestScoreForRole === 0) {
+                const upperSlotRole = slotFormationRole.toUpperCase();
+                const fmPositionMatchers = fmSlotRoleMatcher[upperSlotRole] || [upperSlotRole];
+                
+                // Convert detailed positions to base role key prefixes
+                const targetRoleKeyPrefixes = fmPositionMatchers
+                    .map(matcher => fmMatcherToRoleKeyPrefix[matcher.toUpperCase()])
+                    .filter(prefix => !!prefix)
+                    .reduce((acc, val) => (acc.includes(val) ? acc : [...acc, val]), []);
+                
+                // Check roleSpecificOveralls against these prefixes
+                if (Array.isArray(player.roleSpecificOveralls)) {
+                    player.roleSpecificOveralls.forEach(rso => {
+                        const rsoBasePosition = rso.roleName
+                            .split(" - ")[0] // "DC" from "DC - BPD"
+                            .trim();
+                        
+                        if (targetRoleKeyPrefixes.includes(rsoBasePosition)) {
+                            matchType = "legacy";
+                            bestScoreForRole = Math.max(
+                                bestScoreForRole,
+                                rso.score,
+                            );
+                        }
+                    });
+                } else if (player.roleSpecificOveralls) {
+                    Object.entries(player.roleSpecificOveralls).forEach(([roleName, score]) => {
+                        const rsoBasePosition = roleName
+                            .split(" - ")[0]
+                            .trim();
+                        
+                        if (targetRoleKeyPrefixes.includes(rsoBasePosition)) {
+                            matchType = "legacy";
+                            bestScoreForRole = Math.max(
+                                bestScoreForRole,
+                                score,
+                            );
+                        }
+                    });
+                }
+                
+                // Legacy matches will be sorted last by using the exactMatch flag
+            }
+            
+            // For debugging
+            //if (bestScoreForRole > 0) {
+            //    console.log(`${matchType} match for ${player.name} in ${slotFormationRole}: score=${bestScoreForRole}`);
+            //}
+            
             return bestScoreForRole;
         };
 
@@ -826,6 +1014,22 @@ export default {
                 tempSquadComposition[slot.id] = [];
             });
 
+            // ENHANCEMENT: First, compute all player scores for all positions
+            // and check which players can play in which positions
+            const playerPositionMap = new Map(); // Maps player name to positions they can play
+            
+            teamPlayers.value.forEach(player => {
+                const playablePositions = [];
+                if (player.shortPositions && player.shortPositions.length > 0) {
+                    playablePositions.push(...player.shortPositions);
+                }
+                playerPositionMap.set(player.name, playablePositions);
+                
+                // Debug: Log player positions
+                //console.log(`${player.name} positions: ${playablePositions.join(', ')}`);
+            });
+
+            // Calculate player scores for each position
             const allPotentialPlayerAssignments = [];
             formationSlots.forEach((slot) => {
                 teamPlayers.value.forEach((player) => {
@@ -833,27 +1037,112 @@ export default {
                         player,
                         slot.role, // Use the general role from formation (e.g., "ST (C)")
                     );
+                    
+                    // Only include players who meet the threshold and are properly positioned
                     if (overallInRole >= MIN_SUITABILITY_THRESHOLD) {
-                        allPotentialPlayerAssignments.push({
-                            player,
-                            slotId: slot.id,
-                            slotRole: slot.role,
-                            overallInRole,
-                        });
+                        // Get the compatible positions for this slot
+                        const slotPositions = positionSideMap[slot.role.toUpperCase()] || [];
+                        const fallbackPositions = fallbackPositionMap[slot.role.toUpperCase()] || [];
+                        
+                        // Check if player can play in this position 
+                        const playerPositions = playerPositionMap.get(player.name) || [];
+                        const isExactMatch = playerPositions.some(pos => 
+                            slotPositions.includes(pos)
+                        );
+                        const canPlayInPosition = isExactMatch || playerPositions.some(pos => 
+                            fallbackPositions.includes(pos)
+                        );
+                        
+                        // Only add if player can actually play this position and meets minimum quality
+                        if (canPlayInPosition && overallInRole >= MIN_SUITABILITY_THRESHOLD) {
+                            // Strict position filtering: 
+                            // 1. For first team selection, we want EXACT position matches only unless
+                            //    there are no players for a position
+                            // 2. For depth, we can be more flexible
+                            
+                            // Store the original role score and position match info
+                            const assignment = {
+                                player,
+                                slotId: slot.id,
+                                slotRole: slot.role,
+                                overallInRole: overallInRole,  // Store original score for display
+                                sortScore: overallInRole,      // Will be used for sorting
+                                exactMatch: isExactMatch       // Flag for UI display
+                            };
+                            
+                            // Adjust sort score (but not display score) based on position match
+                            if (isExactMatch) {
+                                // Huge boost to ensure exact matches are picked first
+                                assignment.sortScore += 10000; 
+                            } else {
+                                // Penalty for out-of-position players
+                                // They'll only be selected if no exact matches are available
+                                assignment.sortScore -= 5000; 
+                            }
+                            
+                            allPotentialPlayerAssignments.push(assignment);
+                        }
                     }
                 });
             });
 
-            allPotentialPlayerAssignments.sort(
-                (a, b) => b.overallInRole - a.overallInRole,
-            );
+            // Sort assignments by the sort score, which already includes position match bonus
+            allPotentialPlayerAssignments.sort((a, b) => {
+                return b.sortScore - a.sortScore;
+            });
 
             const assignedPlayersToSlots = new Set();
 
             for (let depthIndex = 0; depthIndex < 3; depthIndex++) {
+                // First pass: fill positions with exact matches
                 formationSlots.forEach((slot) => {
                     if (tempSquadComposition[slot.id].length === depthIndex) {
                         // If this slot needs a player at current depth
+                        for (const assignment of allPotentialPlayerAssignments) {
+                            if (
+                                assignment.slotId === slot.id &&
+                                assignment.exactMatch && // Only use exact matches in first pass
+                                !assignedPlayersToSlots.has(
+                                    assignment.player.name,
+                                )
+                            ) {
+                                // Check if this player is already a starter in *another* slot if we are filling backups
+                                let alreadyStarterElsewhere = false;
+                                if (depthIndex > 0) {
+                                    // Only check for backups
+                                    for (const sId in tempSquadComposition) {
+                                        if (
+                                            tempSquadComposition[sId].length >
+                                                0 &&
+                                            tempSquadComposition[sId][0].player
+                                                .name === assignment.player.name
+                                        ) {
+                                            alreadyStarterElsewhere = true;
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                if (!alreadyStarterElsewhere) {
+                                    tempSquadComposition[slot.id].push({
+                                        player: assignment.player,
+                                        overallInRole: assignment.overallInRole,
+                                        exactMatch: assignment.exactMatch
+                                    });
+                                    assignedPlayersToSlots.add(
+                                        assignment.player.name,
+                                    );
+                                    break; // Move to next slot for this depth level
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                // Second pass: fill remaining positions with fallback matches
+                formationSlots.forEach((slot) => {
+                    if (tempSquadComposition[slot.id].length === depthIndex) {
+                        // If this slot still needs a player after the first pass
                         for (const assignment of allPotentialPlayerAssignments) {
                             if (
                                 assignment.slotId === slot.id &&
@@ -882,6 +1171,7 @@ export default {
                                     tempSquadComposition[slot.id].push({
                                         player: assignment.player,
                                         overallInRole: assignment.overallInRole,
+                                        exactMatch: assignment.exactMatch
                                     });
                                     assignedPlayersToSlots.add(
                                         assignment.player.name,
@@ -955,10 +1245,17 @@ export default {
 
             if (!playerToMoveFullData) return;
 
+            // Calculate the role-specific rating for this player in the new position
             const overallInNewRole = getPlayerOverallForRole(
                 playerToMoveFullData,
                 toSlotRole,
             );
+            
+            // Check if player is in their natural position in the new slot
+            const playerPositions = playerToMoveFullData.shortPositions || [];
+            const slotPositions = positionSideMap[toSlotRole.toUpperCase()] || [];
+            const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos));
+            
             const playerCurrentlyInTargetSlotFullData = currentStarters[
                 toSlotId
             ]
@@ -967,10 +1264,11 @@ export default {
                   )
                 : null;
 
-            // Update target slot
+            // Update target slot with role-specific rating and position match info
             currentStarters[toSlotId] = {
                 ...playerToMoveFullData,
-                Overall: overallInNewRole, // Use role-specific overall for display
+                Overall: overallInNewRole,           // Role-specific rating for the position
+                exactPositionMatch: isExactMatch     // Position match flag for UI
             };
 
             // Update original slot
@@ -978,14 +1276,23 @@ export default {
                 const originalRoleOfFromSlot = currentFormationLayout.value
                     .flatMap((r) => r.positions)
                     .find((p) => p.id === fromSlotId)?.role;
+                    
                 if (originalRoleOfFromSlot) {
+                    // Calculate role-specific rating for the player in the original slot
                     const overallInOldRole = getPlayerOverallForRole(
                         playerCurrentlyInTargetSlotFullData,
                         originalRoleOfFromSlot,
                     );
+                    
+                    // Check if player is in their natural position in the original slot
+                    const playerPositions = playerCurrentlyInTargetSlotFullData.shortPositions || [];
+                    const slotPositions = positionSideMap[originalRoleOfFromSlot.toUpperCase()] || [];
+                    const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos));
+                    
                     currentStarters[fromSlotId] = {
                         ...playerCurrentlyInTargetSlotFullData,
-                        Overall: overallInOldRole,
+                        Overall: overallInOldRole,        // Role-specific rating
+                        exactPositionMatch: isExactMatch  // Position match flag
                     };
                 } else {
                     currentStarters[fromSlotId] = null;
@@ -1008,6 +1315,7 @@ export default {
             let countOfDisplayedOveralls = 0;
             Object.values(newPitchState).forEach((p) => {
                 if (p && typeof p.Overall === "number") {
+                    // p.Overall is now the position-specific rating
                     sumOfDisplayedOveralls += p.Overall;
                     countOfDisplayedOveralls++;
                 }
@@ -1198,6 +1506,38 @@ export default {
     .body--dark & {
         background: rgba(255, 255, 255, 0.1);
     }
+}
+
+// Position match indicators
+.position-match-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 4px;
+    flex-shrink: 0;
+    
+    &.exact-match {
+        background-color: #4caf50; // Green for natural position
+        box-shadow: 0 0 2px rgba(76, 175, 80, 0.7);
+    }
+    
+    &.off-position {
+        background-color: #ff9800; // Orange for off position
+        box-shadow: 0 0 2px rgba(255, 152, 0, 0.7);
+    }
+}
+
+.d-flex {
+    display: flex !important;
+}
+
+.align-items-center {
+    align-items: center !important;
+}
+
+.q-mr-xs {
+    margin-right: 4px !important;
 }
 
 // Ensure global rating tier colors are applied if not already via app.scss

@@ -70,76 +70,21 @@
 </template>
 
 <script>
-import { defineComponent, ref, watch, onMounted } from "vue";
-import { useQuasar } from "quasar";
+import { defineComponent, onMounted } from "vue";
+import { useUiStore } from "./stores/uiStore";
 
 export default defineComponent({
     name: "App",
     setup() {
-        const $q = useQuasar();
-        const isDarkModeActive = ref(false); // Local state for the toggle
-
-        // Function to toggle dark mode
-        const toggleDarkMode = (value) => {
-            $q.dark.set(value);
-            try {
-                localStorage.setItem("darkMode", value ? "true" : "false");
-            } catch (e) {
-                console.warn(
-                    "Could not save dark mode preference to localStorage:",
-                    e,
-                );
-            }
-        };
-
-        // On component mount, check localStorage for saved preference
+        const uiStore = useUiStore();
+        
         onMounted(() => {
-            let darkModePreference = false; // Default to light mode
-            try {
-                const storedPreference = localStorage.getItem("darkMode");
-                if (storedPreference !== null) {
-                    darkModePreference = storedPreference === "true";
-                } else {
-                    // If no preference, check system preference
-                    if (
-                        window.matchMedia &&
-                        window.matchMedia("(prefers-color-scheme: dark)")
-                            .matches
-                    ) {
-                        darkModePreference = true;
-                    }
-                }
-            } catch (e) {
-                console.warn(
-                    "Could not read dark mode preference from localStorage:",
-                    e,
-                );
-                // Fallback to system preference if localStorage fails
-                if (
-                    window.matchMedia &&
-                    window.matchMedia("(prefers-color-scheme: dark)").matches
-                ) {
-                    darkModePreference = true;
-                }
-            }
-            isDarkModeActive.value = darkModePreference;
-            $q.dark.set(darkModePreference); // Apply it
+            uiStore.initDarkMode();
         });
 
-        // Watch for changes in Quasar's dark mode state (e.g., if changed by other means)
-        // and update the toggle's local state.
-        watch(
-            () => $q.dark.isActive,
-            (newValue) => {
-                if (isDarkModeActive.value !== newValue) {
-                    isDarkModeActive.value = newValue;
-                }
-            },
-        );
-
         return {
-            isDarkModeActive,
-            toggleDarkMode,
+            isDarkModeActive: uiStore.isDarkModeActive,
+            toggleDarkMode: uiStore.toggleDarkMode,
         };
     },
 });

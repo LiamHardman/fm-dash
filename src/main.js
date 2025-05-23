@@ -1,5 +1,6 @@
 import { createApp } from "vue";
 import { Quasar } from "quasar";
+import { createPinia } from "pinia";
 import router from "./router";
 import "./css/app.scss"; // Or '@/css/app.scss' if you prefer using the alias
 // Import Quasar css
@@ -11,6 +12,7 @@ import "@quasar/extras/material-icons/material-icons.css";
 import App from "./App.vue";
 
 const app = createApp(App);
+const pinia = createPinia();
 
 app.use(Quasar, {
   plugins: {}, // import Quasar plugins as needed
@@ -28,5 +30,6 @@ app.use(Quasar, {
   },
 });
 
+app.use(pinia);
 app.use(router);
 app.mount("#app");
