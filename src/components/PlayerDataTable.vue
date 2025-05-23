@@ -12,6 +12,10 @@
             Current Sort: {{ getColumnLabel(sortField) }} ({{
                 sortDirection === "asc" ? "Ascending" : "Descending"
             }})
+            <span v-if="isSliced" class="q-ml-sm text-italic"
+                >(Displaying Top {{ MAX_DISPLAY_PLAYERS }} of
+                {{ totalSortedCount }} sorted players)</span
+            >
         </div>
 
         <q-card
@@ -25,6 +29,20 @@
                 No players match your search criteria.
             </p>
         </q-card>
+        <q-card
+            v-else-if="
+                sortedPlayers.length === 0 && players.length > 0 && !loading
+            "
+            class="q-pa-md text-center"
+            :class="qInstance.dark.isActive ? 'bg-grey-9' : 'bg-grey-1'"
+            flat
+            bordered
+        >
+            <p :class="qInstance.dark.isActive ? 'text-grey-5' : 'text-grey-7'">
+                No players to display with current sort (possibly all filtered
+                out before slicing).
+            </p>
+        </q-card>
 
         <q-table
             v-else
@@ -32,7 +50,8 @@
             :columns="currentColumns"
             :loading="loading"
             row-key="name"
-            :pagination.sync="pagination"
+            :pagination="pagination"
+            @update:pagination="onPaginationUpdate"
             :rows-per-page-options="rowsPerPageOptions"
             @request="onRequest"
             :sort-method="customSort"
@@ -43,6 +62,11 @@
             :class="qInstance.dark.isActive ? 'q-table--dark' : ''"
             table-header-class="player-table-header"
             dense
+            virtual-scroll
+            :virtual-scroll-item-size="30"
+            :virtual-scroll-sticky-size-start="32"
+            :virtual-scroll-sticky-size-end="55"
+            style="height: 70vh"
         >
             <template v-slot:header="props">
                 <q-tr
@@ -244,21 +268,11 @@
                         qInstance.dark.isActive ? 'text-grey-4' : 'text-grey-7'
                     "
                 >
-                    {{
-                        pagination.rowsPerPage === 0
-                            ? 1
-                            : (pagination.page - 1) * pagination.rowsPerPage + 1
-                    }}
-                    -
-                    {{
-                        pagination.rowsPerPage === 0
-                            ? players.length
-                            : Math.min(
-                                  pagination.page * pagination.rowsPerPage,
-                                  players.length,
-                              )
-                    }}
-                    of {{ players.length }}
+                    {{ paginationStartRow }} - {{ paginationEndRow }} of
+                    {{ paginationTotalRows }}
+                    <span v-if="isSliced" class="text-italic q-ml-xs"
+                        >(from {{ totalSortedCount }} total sorted)</span
+                    >
                 </span>
             </template>
         </q-table>
@@ -266,9 +280,11 @@
 </template>
 
 <script>
-import { ref, computed, reactive, watch, onMounted } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 import { useQuasar } from "quasar";
 import { formatCurrency } from "../utils/currencyUtils";
+
+const MAX_DISPLAY_PLAYERS = 1000;
 
 export default {
     name: "PlayerDataTable",
@@ -278,21 +294,35 @@ export default {
         isGoalkeeperView: { type: Boolean, default: false },
         currencySymbol: { type: String, default: "$" },
     },
-    emits: ["update:sort", "player-selected"],
+    emits: ["update:sort", "player-selected", "update:pagination"],
 
     setup(props, { emit }) {
+        console.log(`PlayerDataTable: Setup function start.`); // Static label
         const $q = useQuasar();
         const sortField = ref("Overall");
         const sortDirection = ref("desc");
         const rowsPerPageOptions = [10, 15, 20, 50, 0];
         const maxPagesToShow = 7;
+        const totalSortedCount = ref(0);
+        const isSliced = ref(false);
 
-        const pagination = reactive({
+        const pagination = ref({
             sortBy: "Overall",
             descending: true,
             page: 1,
             rowsPerPage: 15,
         });
+
+        watch(
+            () => props.players,
+            (newPlayers, oldPlayers) => {
+                console.log(
+                    `PlayerDataTable: props.players changed. New length: ${newPlayers?.length}, Old length: ${oldPlayers?.length}`,
+                );
+                pagination.value.page = 1;
+            },
+            { deep: true },
+        );
 
         const positionSortOrder = [
             "GK",
@@ -312,14 +342,10 @@ export default {
         ];
 
         const getPositionIndex = (positionString) => {
-            // Handles null, undefined, or non-string values by placing them after unmatchable strings.
             if (!positionString || typeof positionString !== "string") {
                 return positionSortOrder.length + 2;
             }
-
             let processedString = positionString.toUpperCase();
-            // Normalize common central roles that might be written with (C) or other variations.
-            // These map directly to codes in positionSortOrder.
             processedString = processedString.replace(/\bST\s*\(C\)/g, "ST");
             processedString = processedString.replace(/\bM\s*\(C\)/g, "MC");
             processedString = processedString.replace(/\bAM\s*\(C\)/g, "AMC");
@@ -327,99 +353,57 @@ export default {
             processedString = processedString.replace(/\bD\s*\(C\)/g, "DC");
             processedString = processedString.replace(/\bGK\s*\(C\)/g, "GK");
 
-            // Default index for roles not explicitly found in positionSortOrder.
-            // These will be sorted after matched positions but before null/undefined ones.
             let minFoundIndex = positionSortOrder.length;
-
-            // Attempt to match (XYZ) at the end of the string, indicating side(s).
             const sideMatch = processedString.match(/\(([^)]+)\)$/);
             let mainPart = processedString;
-            let sidesSpecified = []; // Stores 'R', 'L' if specified.
+            let sidesSpecified = [];
 
             if (sideMatch && sideMatch[1]) {
-                // If a side specifier like (R), (L), (RL) is found.
                 mainPart = processedString.substring(0, sideMatch.index).trim();
                 const sideSpec = sideMatch[1];
                 if (sideSpec.includes("R")) sidesSpecified.push("R");
                 if (sideSpec.includes("L")) sidesSpecified.push("L");
-                // Note: 'C' for central is typically handled by prior normalization (e.g., M(C) -> MC).
             }
-
-            // Clean up any other parentheses in the main part that weren't side specifiers.
             mainPart = mainPart.replace(/\s*\(.*?\)\s*/g, "").trim();
-
-            // Split the main part by comma or slash (e.g., "WB/M/AM" -> ["WB", "M", "AM"]).
             const basePositionCodes = mainPart
                 .split(/[,/]/)
                 .map((p) => p.trim())
                 .filter((p) => p.length > 0);
-
             const rolesToEvaluate = new Set();
 
             for (const baseCode of basePositionCodes) {
-                // e.g., "WB", "M", "AM"
                 if (sidesSpecified.length > 0) {
                     for (const side of sidesSpecified) {
-                        // e.g., "R"
-                        // Construct side-specific role: e.g., "WB" + "R" -> "WBR"
                         rolesToEvaluate.add(baseCode + side);
                     }
                 }
-                // Always add the baseCode itself. This handles:
-                // 1. Directly matched normalized codes (ST, MC).
-                // 2. Player data that is already specific (e.g., "WBR" directly).
-                // 3. Base codes when no side was specified (e.g. "DC").
                 rolesToEvaluate.add(baseCode);
             }
-
-            // Fallback if parsing yielded no roles but the original string was not empty.
-            // This can happen if the string is a single, non-standard position like "SWEEPER".
             if (rolesToEvaluate.size === 0 && positionString.trim() !== "") {
                 rolesToEvaluate.add(
                     processedString.replace(/\s*\(.*?\)\s*/g, "").trim(),
                 );
             }
+            if (rolesToEvaluate.size === 0) return positionSortOrder.length + 1;
 
-            // If, after all parsing, no roles could be determined (e.g., string was "()" or completely unparseable).
-            if (rolesToEvaluate.size === 0) {
-                return positionSortOrder.length + 1;
-            }
-
-            // Find the best match (lowest index) from positionSortOrder.
             for (const role of rolesToEvaluate) {
                 const index = positionSortOrder.indexOf(role);
                 if (index !== -1 && index < minFoundIndex) {
                     minFoundIndex = index;
                 }
             }
-
-            // If minFoundIndex is still positionSortOrder.length, it means no evaluated role matched the sortOrder.
-            // These unmatched roles are sorted after matched ones, but before null/undefined.
             return minFoundIndex === positionSortOrder.length
                 ? positionSortOrder.length + 1
                 : minFoundIndex;
         };
 
-        const pagesNumber = computed(() =>
-            pagination.rowsPerPage === 0 || props.players.length === 0
-                ? 1
-                : Math.ceil(props.players.length / pagination.rowsPerPage),
-        );
-
-        watch(
-            () => props.players.length,
-            () => {
-                pagination.page = 1;
-            },
-        );
-        watch(
-            () => pagination.rowsPerPage,
-            () => {
-                if (pagination.page > pagesNumber.value)
-                    pagination.page =
-                        pagesNumber.value > 0 ? pagesNumber.value : 1;
-            },
-        );
+        const onPaginationUpdate = (newPagination) => {
+            console.log(
+                `PlayerDataTable: onPaginationUpdate triggered. New pagination:`,
+                JSON.parse(JSON.stringify(newPagination)),
+            );
+            pagination.value = newPagination;
+        };
 
         const nameColumnStyle =
             "max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
@@ -656,15 +640,28 @@ export default {
         };
 
         const sortedPlayers = computed(() => {
-            if (!sortField.value) return props.players;
+            console.time("PlayerDataTable: sortedPlayers_computed_total"); // Static label
+            if (!props.players) {
+                totalSortedCount.value = 0;
+                isSliced.value = false;
+                console.timeEnd(
+                    "PlayerDataTable: sortedPlayers_computed_total",
+                );
+                return [];
+            }
+            console.log(
+                `PlayerDataTable: Starting sort for ${props.players.length} players. Sort by: ${sortField.value}, Direction: ${sortDirection.value}`,
+            );
 
-            const fieldKey = getSortFieldKey(sortField.value);
+            const fieldKey = getSortFieldKey(sortField.value || "Overall");
             const direction = sortDirection.value;
 
-            return [...props.players].sort((a, b) => {
+            const playersToSort = [...props.players];
+
+            console.time("PlayerDataTable: actual_sort_operation");
+            const fullSortedList = playersToSort.sort((a, b) => {
                 let vA = a[fieldKey];
                 let vB = b[fieldKey];
-
                 const aIsNull = vA === null || vA === undefined;
                 const bIsNull = vB === null || vB === undefined;
 
@@ -679,7 +676,6 @@ export default {
                         ? indexA - indexB
                         : indexB - indexA;
                 }
-
                 if (typeof vA === "number" && typeof vB === "number") {
                     return direction === "asc" ? vA - vB : vB - vA;
                 }
@@ -692,9 +688,63 @@ export default {
                 }
                 return 0;
             });
+            console.timeEnd("PlayerDataTable: actual_sort_operation");
+
+            totalSortedCount.value = fullSortedList.length;
+            let result;
+            if (fullSortedList.length > MAX_DISPLAY_PLAYERS) {
+                isSliced.value = true;
+                console.time("PlayerDataTable: slice_operation");
+                result = fullSortedList.slice(0, MAX_DISPLAY_PLAYERS);
+                console.timeEnd("PlayerDataTable: slice_operation");
+                console.log(
+                    `PlayerDataTable: Sorted list sliced to ${MAX_DISPLAY_PLAYERS} players from ${totalSortedCount.value}.`,
+                );
+            } else {
+                isSliced.value = false;
+                result = fullSortedList;
+                console.log(
+                    `PlayerDataTable: Sorted list not sliced. Length: ${totalSortedCount.value}.`,
+                );
+            }
+            console.timeEnd("PlayerDataTable: sortedPlayers_computed_total");
+            return result;
+        });
+
+        const pagesNumber = computed(() => {
+            if (
+                !sortedPlayers.value ||
+                sortedPlayers.value.length === 0 ||
+                pagination.value.rowsPerPage === 0
+            ) {
+                return 1;
+            }
+            return Math.ceil(
+                sortedPlayers.value.length / pagination.value.rowsPerPage,
+            );
+        });
+
+        const paginationTotalRows = computed(() => sortedPlayers.value.length);
+
+        const paginationStartRow = computed(() => {
+            if (paginationTotalRows.value === 0) return 0;
+            return (
+                (pagination.value.page - 1) * pagination.value.rowsPerPage + 1
+            );
+        });
+
+        const paginationEndRow = computed(() => {
+            if (paginationTotalRows.value === 0) return 0;
+            if (pagination.value.rowsPerPage === 0)
+                return paginationTotalRows.value;
+            return Math.min(
+                pagination.value.page * pagination.value.rowsPerPage,
+                paginationTotalRows.value,
+            );
         });
 
         onMounted(() => {
+            console.log(`PlayerDataTable: Component mounted.`);
             if (sortField.value) {
                 emit("update:sort", {
                     key: getSortFieldKey(sortField.value),
@@ -751,10 +801,16 @@ export default {
         };
 
         const onRequest = (requestProp) => {
+            console.log(
+                `PlayerDataTable: onRequest triggered. Props:`,
+                JSON.parse(JSON.stringify(requestProp)),
+            );
             const { page, rowsPerPage, sortBy, descending } =
                 requestProp.pagination;
-            pagination.page = page;
-            pagination.rowsPerPage = rowsPerPage;
+
+            pagination.value.page = page;
+            pagination.value.rowsPerPage = rowsPerPage;
+
             if (
                 sortBy &&
                 (sortField.value !== sortBy ||
@@ -762,6 +818,9 @@ export default {
             ) {
                 sortField.value = sortBy;
                 sortDirection.value = descending ? "desc" : "asc";
+                pagination.value.sortBy = sortBy;
+                pagination.value.descending = descending;
+
                 emit("update:sort", {
                     key: getSortFieldKey(sortField.value),
                     direction: sortDirection.value,
@@ -774,31 +833,50 @@ export default {
                     displayField: sortBy,
                 });
             }
+            emit("update:pagination", { ...pagination.value });
         };
 
         const onPageChange = (newPage) => {
-            pagination.page = newPage;
+            console.log(`PlayerDataTable: onPageChange. New page: ${newPage}`);
+            pagination.value.page = newPage;
         };
+
         const onRowsPerPageChange = (newRowsPerPage) => {
-            pagination.rowsPerPage = newRowsPerPage;
-            pagination.page = 1;
+            console.log(
+                `PlayerDataTable: onRowsPerPageChange. New rowsPerPage: ${newRowsPerPage}`,
+            );
+            pagination.value.rowsPerPage = newRowsPerPage;
+            pagination.value.page = 1;
         };
+
         const customSort = (rows) => {
+            // console.log(`PlayerDataTable: customSort called. Returning pre-sorted rows.`);
             return rows;
         };
 
         const sortTable = (fieldName) => {
+            console.time("PlayerDataTable: sortTable_execution"); // Static label
             const actualSortKey = getSortFieldKey(fieldName);
             let newDirection;
             if (sortField.value === fieldName) {
                 newDirection = sortDirection.value === "asc" ? "desc" : "asc";
             } else {
-                newDirection = "asc";
+                const colDef = currentColumns.value.find(
+                    (c) => c.name === fieldName,
+                );
+                if (colDef && (colDef.isOverallStat || colDef.isFifaStat)) {
+                    newDirection = "desc";
+                } else {
+                    newDirection = "asc";
+                }
             }
             sortField.value = fieldName;
             sortDirection.value = newDirection;
-            pagination.sortBy = fieldName;
-            pagination.descending = newDirection === "desc";
+
+            pagination.value.sortBy = fieldName;
+            pagination.value.descending = newDirection === "desc";
+            pagination.value.page = 1;
+
             emit("update:sort", {
                 key: actualSortKey,
                 direction: newDirection,
@@ -810,11 +888,14 @@ export default {
                 )?.isOverallStat,
                 displayField: fieldName,
             });
+            console.timeEnd("PlayerDataTable: sortTable_execution");
         };
 
         const onRowClick = (player) => {
+            // console.log(`PlayerDataTable: Row clicked for player:`, player.name);
             emit("player-selected", player);
         };
+
         const formatDisplayCurrency = (numericAmount, originalDisplayValue) => {
             return formatCurrency(
                 numericAmount,
@@ -823,11 +904,13 @@ export default {
             );
         };
 
+        console.log(`PlayerDataTable: Setup function end.`);
         return {
             qInstance: $q,
             sortField,
             sortDirection,
             pagination,
+            onPaginationUpdate,
             pagesNumber,
             rowsPerPageOptions,
             maxPagesToShow,
@@ -844,6 +927,12 @@ export default {
             sortTable,
             onRowClick,
             formatDisplayCurrency,
+            MAX_DISPLAY_PLAYERS,
+            totalSortedCount,
+            isSliced,
+            paginationTotalRows,
+            paginationStartRow,
+            paginationEndRow,
         };
     },
 };
@@ -852,7 +941,6 @@ export default {
 <style lang="scss" scoped>
 .player-data-table-container {
     width: 100%;
-    overflow-x: auto;
 }
 
 .player-q-table {

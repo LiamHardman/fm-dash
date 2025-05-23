@@ -145,7 +145,7 @@
                         flat
                         color="white"
                         label="Dismiss"
-                        @click="error = ''"
+                        @click="playerStore.error = ''"
                 /></template>
             </q-banner>
             <q-banner
@@ -328,9 +328,7 @@ import PlayerDataTable from "../components/PlayerDataTable.vue";
 import PlayerDetailDialog from "../components/PlayerDetailDialog.vue";
 import UpgradeFinderDialog from "../components/UpgradeFinderDialog.vue";
 import PlayerFilters from "../components/filters/PlayerFilters.vue";
-import { formatCurrency, parseCurrencyString } from "../utils/currencyUtils";
 
-// MODIFIED: Ordered short positions for filter dropdown
 const orderedShortPositions = [
     "GK",
     "DR",
@@ -348,7 +346,6 @@ const orderedShortPositions = [
     "ST",
 ];
 
-// MODIFIED: Mapping from short position codes (filter values) to standardized full names (for matching player.parsedPositions)
 const shortToStandardizedLongPosMap = {
     GK: ["Goalkeeper"],
     DR: ["Right Back"],
@@ -356,37 +353,26 @@ const shortToStandardizedLongPosMap = {
     DL: ["Left Back"],
     WBR: ["Right Wing-Back"],
     WBL: ["Left Wing-Back"],
-    DM: ["Centre Defensive Midfielder"], // Assuming DM primarily maps to Centre DM for filtering
+    DM: ["Centre Defensive Midfielder"],
     MR: ["Right Midfielder"],
     MC: ["Centre Midfielder"],
     ML: ["Left Midfielder"],
-    AMR: ["Right Attacking Midfielder", "Right Winger"], // Include winger if it's a distinct parsedPosition
+    AMR: ["Right Attacking Midfielder", "Right Winger"],
     AMC: ["Centre Attacking Midfielder"],
-    AML: ["Left Attacking Midfielder", "Left Winger"], // Include winger
+    AML: ["Left Attacking Midfielder", "Left Winger"],
     ST: ["Striker"],
 };
-// Note: The `positionGroups` definition from the original file is not directly used for this specific filter logic,
-// but the `shortToStandardizedLongPosMap` should align with how `parsedPositions` are generated in Go.
-
-function debounce(fn, delay) {
-    let timeoutID = null;
-    return function (...args) {
-        clearTimeout(timeoutID);
-        timeoutID = setTimeout(() => {
-            fn.apply(this, args);
-        }, delay);
-    };
-}
 
 export default {
     name: "PlayerUploadPage",
-    components: { 
-        PlayerDataTable, 
-        PlayerDetailDialog, 
+    components: {
+        PlayerDataTable,
+        PlayerDetailDialog,
         UpgradeFinderDialog,
-        PlayerFilters
+        PlayerFilters,
     },
     setup() {
+        console.log(`PlayerUploadPage: Setup function start.`);
         const router = useRouter();
         const playerStore = usePlayerStore();
         const playerFile = ref(null);
@@ -394,17 +380,31 @@ export default {
         const selectedPlayer = ref(null);
         const showPlayerDetailDialog = ref(false);
         const showUpgradeFinder = ref(false);
-        
-        // Derived properties from store
-        const allPlayers = computed(() => playerStore.allPlayers);
+
+        // Ensure allPlayers always returns an array
+        const allPlayers = computed(() =>
+            Array.isArray(playerStore.allPlayers) ? playerStore.allPlayers : [],
+        );
+
         const currentDatasetId = computed(() => playerStore.currentDatasetId);
-        const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol);
+        const detectedCurrencySymbol = computed(
+            () => playerStore.detectedCurrencySymbol,
+        );
         const loading = computed(() => playerStore.loading);
-        const error = computed(() => playerStore.error);
-        
+        const error = computed({
+            get: () => playerStore.error,
+            set: (value) => {
+                playerStore.error = value;
+            },
+        });
+
         const uniqueClubsCount = computed(() => playerStore.uniqueClubs.length);
-        const uniqueNationalitiesCount = computed(() => playerStore.uniqueNationalities.length);
-        const uniqueParsedPositionsCount = computed(() => playerStore.uniquePositionsCount);
+        const uniqueNationalitiesCount = computed(
+            () => playerStore.uniqueNationalities.length,
+        );
+        const uniqueParsedPositionsCount = computed(
+            () => playerStore.uniquePositionsCount,
+        );
 
         const attributeWeightsLoadedForFeedback = ref(false);
         const attributeWeightsErrorForFeedback = ref("");
@@ -418,69 +418,13 @@ export default {
             displayField: null,
         });
 
-        const transferValueTextInput = ref("");
-
-        const filters = reactive({
-            name: "",
-            club: null,
-            selectedTransferValue: null,
-            transferValueMode: "less",
-            position: null, // Will hold short position code, e.g., "DC"
-            nationality: null,
-            mediaHandling: [],
-            personality: [],
-            minAge: null,
-            maxAge: null,
-        });
-
-        const clubOptions = ref([]);
-        const nationalityOptions = ref([]);
-        const mediaHandlingOptions = ref([]);
-        const personalityOptions = ref([]);
-
-        const allUniqueClubs = ref([]);
-        const allUniqueNationalities = ref([]);
-        const allUniqueMediaHandlings = ref([]);
-        const allUniquePersonalities = ref([]);
+        const activeFilters = ref({});
 
         const isGoalkeeperView = computed(() => {
-            // Check if the selected short position filter implies a goalkeeper view
-            if (!filters.position) return false; // No position filter active
-            const longNames = shortToStandardizedLongPosMap[filters.position];
+            if (!activeFilters.value.position) return false;
+            const longNames =
+                shortToStandardizedLongPosMap[activeFilters.value.position];
             return longNames ? longNames.includes("Goalkeeper") : false;
-        });
-
-        const hasActiveFilters = computed(
-            () =>
-                filters.name !== "" ||
-                filters.club !== null ||
-                filters.selectedTransferValue !== null ||
-                filters.position !== null ||
-                filters.nationality !== null ||
-                (Array.isArray(filters.mediaHandling) &&
-                    filters.mediaHandling.length > 0) ||
-                (Array.isArray(filters.personality) &&
-                    filters.personality.length > 0) ||
-                filters.minAge !== null ||
-                filters.maxAge !== null,
-        );
-
-        // These are now replaced by the computed properties from playerStore below
-
-        const formatSliderValueWithCurrency = (value) => {
-            if (value === null || value === undefined) return "";
-            return formatCurrency(value, detectedCurrencySymbol.value);
-        };
-
-        const transferValueSliderStep = computed(() => {
-            const range = playerStore.transferValueRange.max - playerStore.transferValueRange.min;
-            if (range <= 0) return 10000;
-            if (range < 50000) return 1000;
-            if (range < 250000) return 5000;
-            if (range < 1000000) return 10000;
-            if (range < 10000000) return 50000;
-            if (range < 50000000) return 100000;
-            return 250000;
         });
 
         const loadJsonForFeedback = async (
@@ -508,152 +452,114 @@ export default {
             }
         };
 
-        onMounted(() => {
-            loadJsonForFeedback(
+        onMounted(async () => {
+            console.log(`PlayerUploadPage: Component mounted.`);
+            console.time("PlayerUploadPage_onMounted_tasks_total");
+            await loadJsonForFeedback(
                 "/attribute_weights.json",
                 attributeWeightsLoadedForFeedback,
                 attributeWeightsErrorForFeedback,
             );
-            loadJsonForFeedback(
+            await loadJsonForFeedback(
                 "/role_specific_overall_weights.json",
                 roleSpecificOverallWeightsLoadedForFeedback,
                 roleSpecificOverallWeightsErrorForFeedback,
             );
-            // Load player data from session storage via store
-            playerStore.loadFromSessionStorage();
+
+            console.time("PlayerUploadPage_playerStore_loadFromSessionStorage");
+            await playerStore.loadFromSessionStorage();
+            console.timeEnd(
+                "PlayerUploadPage_playerStore_loadFromSessionStorage",
+            );
+
+            console.timeEnd("PlayerUploadPage_onMounted_tasks_total");
         });
-
-        const processPlayersFromAPI = (playersData) => {
-            return playersData.map((p) => ({
-                ...p,
-                age: parseInt(p.age, 10) || 0,
-            }));
-        };
-
-        const fetchPlayersByDatasetId = async (datasetId) => {
-            if (!datasetId) return;
-            loading.value = true;
-            error.value = "";
-            try {
-                const response =
-                    await playerService.getPlayersByDatasetId(datasetId);
-                allPlayers.value = processPlayersFromAPI(response.players);
-                detectedCurrencySymbol.value = response.currencySymbol || "$";
-                sessionStorage.setItem(
-                    "detectedCurrencySymbol",
-                    detectedCurrencySymbol.value,
-                );
-            } catch (e) {
-                error.value = `Failed to fetch player data for dataset ${datasetId}: ${e.message || "Unknown error"}`;
-                allPlayers.value = [];
-                currentDatasetId.value = null;
-                detectedCurrencySymbol.value = "$";
-                sessionStorage.removeItem("currentDatasetId");
-                sessionStorage.removeItem("detectedCurrencySymbol");
-            } finally {
-                loading.value = false;
-            }
-        };
-
-        // MODIFIED: positionFilterOptions to use short names and defined order
-        const positionFilterOptions = computed(() => {
-            const options = [{ label: "Any Position", value: null }];
-            orderedShortPositions.forEach((shortPos) => {
-                // Check if any player can actually play this short position based on the map
-                // This ensures only relevant short positions are shown if data is sparse,
-                // though for a full dataset, all should be relevant.
-                // For simplicity now, we'll include all defined short positions.
-                // A more dynamic approach would be to check if shortToStandardizedLongPosMap[shortPos]
-                // has any corresponding player.parsedPositions in the current allPlayers.value.
-                options.push({ label: shortPos, value: shortPos });
-            });
-            return options;
-        });
-
-        // This function is no longer needed as the playerStore manages all options
-        const updateDropdownOptionsAndSliderBounds = () => {
-            // Initial value for selectedTransferValue if null
-            if (filters.selectedTransferValue === null) {
-                filters.selectedTransferValue = playerStore.transferValueRange.max;
-                transferValueTextInput.value = formatSliderValueWithCurrency(
-                    playerStore.transferValueRange.max
-                );
-            } else {
-                // Ensure selectedTransferValue is within current range
-                filters.selectedTransferValue = Math.max(
-                    playerStore.transferValueRange.min,
-                    Math.min(
-                        filters.selectedTransferValue,
-                        playerStore.transferValueRange.max
-                    )
-                );
-            }
-        };
 
         const applyFiltersAndSort = () => {
-            if (!allPlayers.value.length) {
+            console.time("PlayerUploadPage_applyFiltersAndSort_total");
+            // Ensure allPlayers.value is an array before proceeding
+            if (
+                !Array.isArray(allPlayers.value) ||
+                allPlayers.value.length === 0
+            ) {
                 filteredPlayers.value = [];
+                console.log(
+                    `PlayerUploadPage: No players in allPlayers or not an array. Filtered list empty.`,
+                );
+                console.timeEnd("PlayerUploadPage_applyFiltersAndSort_total");
                 return;
             }
-            let tempPlayers = [...allPlayers.value];
 
-            if (filters.name) {
+            let tempPlayers = [...allPlayers.value];
+            const currentFilters = activeFilters.value;
+
+            console.log(
+                `PlayerUploadPage: Applying filters:`,
+                JSON.parse(JSON.stringify(currentFilters)),
+            );
+            console.log(
+                `PlayerUploadPage: Starting with ${tempPlayers.length} players.`,
+            );
+
+            console.time("PlayerUploadPage_filtering_logic");
+            if (currentFilters.name) {
                 tempPlayers = tempPlayers.filter(
                     (p) =>
                         p.name &&
                         p.name
                             .toLowerCase()
-                            .includes(filters.name.toLowerCase()),
+                            .includes(currentFilters.name.toLowerCase()),
                 );
             }
-            if (filters.club) {
+            if (currentFilters.club) {
                 tempPlayers = tempPlayers.filter(
-                    (p) => p.club === filters.club,
+                    (p) => p.club === currentFilters.club,
                 );
             }
-            if (filters.nationality) {
+            if (currentFilters.nationality) {
                 tempPlayers = tempPlayers.filter(
-                    (p) => p.nationality === filters.nationality,
+                    (p) => p.nationality === currentFilters.nationality,
                 );
             }
-
-            if (filters.mediaHandling && filters.mediaHandling.length > 0) {
+            if (
+                currentFilters.mediaHandling &&
+                currentFilters.mediaHandling.length > 0
+            ) {
                 tempPlayers = tempPlayers.filter((p) => {
                     if (!p.media_handling) return false;
                     const playerStyles = p.media_handling
                         .split(",")
                         .map((s) => s.trim().toLowerCase());
-                    const filterStylesLower = filters.mediaHandling.map((s) =>
-                        s.toLowerCase(),
+                    const filterStylesLower = currentFilters.mediaHandling.map(
+                        (s) => s.toLowerCase(),
                     );
                     return playerStyles.some((style) =>
                         filterStylesLower.includes(style),
                     );
                 });
             }
-
-            if (filters.personality && filters.personality.length > 0) {
+            if (
+                currentFilters.personality &&
+                currentFilters.personality.length > 0
+            ) {
                 tempPlayers = tempPlayers.filter((p) => {
                     if (!p.personality) return false;
-                    return filters.personality.includes(p.personality);
+                    return currentFilters.personality.includes(p.personality);
                 });
             }
-
-            if (filters.minAge !== null && filters.minAge >= 0) {
+            if (currentFilters.minAge !== null && currentFilters.minAge >= 0) {
                 tempPlayers = tempPlayers.filter(
-                    (p) => p.age >= filters.minAge,
+                    (p) => p.age >= currentFilters.minAge,
                 );
             }
-            if (filters.maxAge !== null && filters.maxAge >= 0) {
+            if (currentFilters.maxAge !== null && currentFilters.maxAge >= 0) {
                 tempPlayers = tempPlayers.filter(
-                    (p) => p.age <= filters.maxAge,
+                    (p) => p.age <= currentFilters.maxAge,
                 );
             }
-
-            // MODIFIED: Position filtering logic
-            if (filters.position) {
+            if (currentFilters.position) {
                 const targetLongNames =
-                    shortToStandardizedLongPosMap[filters.position];
+                    shortToStandardizedLongPosMap[currentFilters.position];
                 if (targetLongNames && targetLongNames.length > 0) {
                     tempPlayers = tempPlayers.filter(
                         (p) =>
@@ -664,179 +570,97 @@ export default {
                     );
                 }
             }
-
             if (
-                filters.selectedTransferValue !== null &&
-                filters.selectedTransferValue < playerStore.transferValueRange.max
+                currentFilters.selectedTransferValue !== null &&
+                playerStore.transferValueRange &&
+                currentFilters.selectedTransferValue <
+                    playerStore.transferValueRange.max
             ) {
-                const threshold = filters.selectedTransferValue;
-                if (filters.transferValueMode === "less") {
+                const threshold = currentFilters.selectedTransferValue;
+                if (currentFilters.transferValueMode === "less") {
                     tempPlayers = tempPlayers.filter(
                         (p) => (p.transferValueAmount || 0) < threshold,
                     );
-                } else if (filters.transferValueMode === "more") {
+                } else if (currentFilters.transferValueMode === "more") {
                     tempPlayers = tempPlayers.filter(
                         (p) => (p.transferValueAmount || 0) > threshold,
                     );
                 }
             }
+            console.timeEnd("PlayerUploadPage_filtering_logic");
 
-            if (sortState.key) {
-                const sortKey = sortState.key;
-                tempPlayers.sort((a, b) => {
-                    let valA = a[sortKey];
-                    let valB = b[sortKey];
-                    if (valA == null && valB == null) return 0;
-                    if (valA == null)
-                        return sortState.direction === "asc" ? 1 : -1;
-                    if (valB == null)
-                        return sortState.direction === "asc" ? -1 : 1;
-                    if (typeof valA === "number" && typeof valB === "number") {
-                        return sortState.direction === "asc"
-                            ? valA - valB
-                            : valB - valA;
-                    }
-                    valA = String(valA).toLowerCase();
-                    valB = String(valB).toLowerCase();
-                    if (valA < valB)
-                        return sortState.direction === "asc" ? -1 : 1;
-                    if (valA > valB)
-                        return sortState.direction === "asc" ? 1 : -1;
-                    return 0;
-                });
-            }
-            filteredPlayers.value = tempPlayers;
-        };
-
-        const debouncedApplyFilters = debounce(applyFiltersAndSort, 300);
-
-        const updateNumericValueFromTextInput = () => {
-            const numericValue = parseCurrencyString(
-                transferValueTextInput.value,
+            console.log(
+                `PlayerUploadPage: After filtering, ${tempPlayers.length} players remaining.`,
             );
-            if (numericValue !== null) {
-                const clampedValue = Math.max(
-                    playerStore.transferValueRange.min,
-                    Math.min(numericValue, playerStore.transferValueRange.max),
-                );
-                if (filters.selectedTransferValue !== clampedValue) {
-                    filters.selectedTransferValue = clampedValue;
-                }
-            } else if (transferValueTextInput.value.trim() === "") {
-                if (
-                    filters.selectedTransferValue !==
-                    playerStore.transferValueRange.max
-                ) {
-                    filters.selectedTransferValue =
-                        playerStore.transferValueRange.max;
-                }
-            }
-            applyFiltersAndSort();
-        };
-        const debouncedUpdateNumericValueFromTextInput = debounce(
-            updateNumericValueFromTextInput,
-            400,
-        );
 
-        watch(
-            () => filters.selectedTransferValue,
-            (newValue) => {
-                const currentTextParsed = parseCurrencyString(
-                    transferValueTextInput.value,
-                );
-                if (
-                    currentTextParsed !== newValue ||
-                    newValue === playerStore.transferValueRange.max
-                ) {
-                    transferValueTextInput.value =
-                        newValue === playerStore.transferValueRange.max &&
-                        newValue !== null
-                            ? ""
-                            : formatSliderValueWithCurrency(newValue);
-                }
-            },
-        );
+            filteredPlayers.value = tempPlayers;
+            console.log(
+                `PlayerUploadPage: filteredPlayers updated. Length: ${filteredPlayers.value.length}`,
+            );
+            console.timeEnd("PlayerUploadPage_applyFiltersAndSort_total");
+        };
 
         const uploadAndParse = async () => {
+            console.time("PlayerUploadPage_uploadAndParse_function_total");
             if (!playerFile.value) {
                 playerStore.error = "Please select an HTML file first.";
+                console.warn(`PlayerUploadPage: Upload attempt without file.`);
+                console.timeEnd(
+                    "PlayerUploadPage_uploadAndParse_function_total",
+                );
                 return;
             }
             try {
                 const formData = new FormData();
                 formData.append("playerFile", playerFile.value);
+                console.log(
+                    `PlayerUploadPage: Calling playerStore.uploadPlayerFile.`,
+                );
                 await playerStore.uploadPlayerFile(formData);
-                sortState.key = null;
+                console.log(
+                    `PlayerUploadPage: playerStore.uploadPlayerFile completed. allPlayers length: ${allPlayers.value.length}`,
+                );
+                // The watcher on allPlayers will trigger applyFiltersAndSort
             } catch (e) {
-                // Error handling is already done in the store
-                console.error(e);
+                console.error(
+                    `PlayerUploadPage: Error during uploadAndParse:`,
+                    e,
+                );
+            } finally {
+                console.timeEnd(
+                    "PlayerUploadPage_uploadAndParse_function_total",
+                );
             }
         };
 
         const handleSort = (sortParams) => {
-            sortState.key = sortParams.key;
-            sortState.direction = sortParams.direction;
-            applyFiltersAndSort();
-        };
-
-        const clearAllFilters = () => {
-            filters.name = "";
-            filters.club = null;
-            filters.selectedTransferValue = playerStore.transferValueRange.max;
-            filters.transferValueMode = "less";
-            transferValueTextInput.value = "";
-            filters.position = null;
-            filters.nationality = null;
-            filters.mediaHandling = [];
-            filters.personality = [];
-            filters.minAge = null;
-            filters.maxAge = null;
-            applyFiltersAndSort();
+            console.log(
+                `PlayerUploadPage: handleSort called with:`,
+                JSON.parse(JSON.stringify(sortParams)),
+            );
         };
 
         const handlePlayerSelected = (player) => {
+            console.log(`PlayerUploadPage: Player selected:`, player.name);
             selectedPlayer.value = player;
             showPlayerDetailDialog.value = true;
         };
 
-        const filterClubOptions = (val, update) => {
-            if (val === "") {
-                update(() => {
-                    clubOptions.value = allUniqueClubs.value;
-                });
-                return;
-            }
-            update(() => {
-                const needle = val.toLowerCase();
-                clubOptions.value = allUniqueClubs.value.filter(
-                    (v) => v.toLowerCase().indexOf(needle) > -1,
-                );
-            });
-        };
-
-        const filterNationalityOptions = (val, update) => {
-            if (val === "") {
-                update(() => {
-                    nationalityOptions.value = allUniqueNationalities.value;
-                });
-                return;
-            }
-            update(() => {
-                const needle = val.toLowerCase();
-                nationalityOptions.value = allUniqueNationalities.value.filter(
-                    (v) => v.toLowerCase().indexOf(needle) > -1,
-                );
-            });
+        const handleFilterChanged = (newFilters) => {
+            console.log(
+                `PlayerUploadPage: handleFilterChanged from PlayerFilters:`,
+                JSON.parse(JSON.stringify(newFilters)),
+            );
+            activeFilters.value = newFilters;
+            applyFiltersAndSort();
         };
 
         watch(
-            () => allPlayers.value,
-            (newPlayers) => {
-                updateDropdownOptionsAndSliderBounds();
-                if (!newPlayers || newPlayers.length === 0) {
-                    filters.selectedTransferValue = playerStore.transferValueRange.max;
-                    transferValueTextInput.value = "";
-                }
+            allPlayers,
+            (newVal, oldVal) => {
+                console.log(
+                    `PlayerUploadPage: Watcher for allPlayers triggered. New length: ${newVal?.length}, Old length: ${oldVal?.length}`,
+                );
                 applyFiltersAndSort();
             },
             { deep: true, immediate: true },
@@ -849,20 +673,12 @@ export default {
                     query: { datasetId: playerStore.currentDatasetId },
                 });
             } else {
-                playerStore.error = "No data uploaded yet. Please upload a file first.";
+                playerStore.error =
+                    "No data uploaded yet. Please upload a file first.";
             }
         };
 
-        // Move these up before the watch statement that uses them
-        // Derived properties from store
-
-        // We're using the existing filters reactive object declared earlier
-
-        const handleFilterChanged = (newFilters) => {
-            Object.assign(filters, newFilters);
-            applyFiltersAndSort();
-        };
-
+        console.log(`PlayerUploadPage: Setup function end.`);
         return {
             playerFile,
             playerStore,
@@ -873,10 +689,8 @@ export default {
             uniqueClubsCount,
             uniqueParsedPositionsCount,
             uniqueNationalitiesCount,
-            filters,
             uploadAndParse,
             handleSort,
-            applyFiltersAndSort,
             selectedPlayer,
             showPlayerDetailDialog,
             handlePlayerSelected,
