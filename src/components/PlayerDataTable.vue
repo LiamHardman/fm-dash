@@ -266,9 +266,9 @@
 </template>
 
 <script>
-import { ref, computed, reactive, watch } from "vue";
+import { ref, computed, reactive, watch, onMounted } from "vue";
 import { useQuasar } from "quasar";
-import { formatCurrency } from "../utils/currencyUtils"; // Import the utility
+import { formatCurrency } from "../utils/currencyUtils";
 
 export default {
     name: "PlayerDataTable",
@@ -276,23 +276,129 @@ export default {
         players: { type: Array, required: true },
         loading: { type: Boolean, default: false },
         isGoalkeeperView: { type: Boolean, default: false },
-        currencySymbol: { type: String, default: "$" }, // New prop
+        currencySymbol: { type: String, default: "$" },
     },
     emits: ["update:sort", "player-selected"],
 
     setup(props, { emit }) {
         const $q = useQuasar();
-        const sortField = ref(null);
-        const sortDirection = ref("asc");
+        const sortField = ref("Overall");
+        const sortDirection = ref("desc");
         const rowsPerPageOptions = [10, 15, 20, 50, 0];
         const maxPagesToShow = 7;
 
         const pagination = reactive({
-            sortBy: null,
-            descending: false,
+            sortBy: "Overall",
+            descending: true,
             page: 1,
             rowsPerPage: 15,
         });
+
+        const positionSortOrder = [
+            "GK",
+            "DR",
+            "DC",
+            "DL",
+            "WBR",
+            "WBL",
+            "DM",
+            "MR",
+            "MC",
+            "ML",
+            "AMR",
+            "AMC",
+            "AML",
+            "ST",
+        ];
+
+        const getPositionIndex = (positionString) => {
+            // Handles null, undefined, or non-string values by placing them after unmatchable strings.
+            if (!positionString || typeof positionString !== "string") {
+                return positionSortOrder.length + 2;
+            }
+
+            let processedString = positionString.toUpperCase();
+            // Normalize common central roles that might be written with (C) or other variations.
+            // These map directly to codes in positionSortOrder.
+            processedString = processedString.replace(/\bST\s*\(C\)/g, "ST");
+            processedString = processedString.replace(/\bM\s*\(C\)/g, "MC");
+            processedString = processedString.replace(/\bAM\s*\(C\)/g, "AMC");
+            processedString = processedString.replace(/\bDM\s*\(C\)/g, "DM");
+            processedString = processedString.replace(/\bD\s*\(C\)/g, "DC");
+            processedString = processedString.replace(/\bGK\s*\(C\)/g, "GK");
+
+            // Default index for roles not explicitly found in positionSortOrder.
+            // These will be sorted after matched positions but before null/undefined ones.
+            let minFoundIndex = positionSortOrder.length;
+
+            // Attempt to match (XYZ) at the end of the string, indicating side(s).
+            const sideMatch = processedString.match(/\(([^)]+)\)$/);
+            let mainPart = processedString;
+            let sidesSpecified = []; // Stores 'R', 'L' if specified.
+
+            if (sideMatch && sideMatch[1]) {
+                // If a side specifier like (R), (L), (RL) is found.
+                mainPart = processedString.substring(0, sideMatch.index).trim();
+                const sideSpec = sideMatch[1];
+                if (sideSpec.includes("R")) sidesSpecified.push("R");
+                if (sideSpec.includes("L")) sidesSpecified.push("L");
+                // Note: 'C' for central is typically handled by prior normalization (e.g., M(C) -> MC).
+            }
+
+            // Clean up any other parentheses in the main part that weren't side specifiers.
+            mainPart = mainPart.replace(/\s*\(.*?\)\s*/g, "").trim();
+
+            // Split the main part by comma or slash (e.g., "WB/M/AM" -> ["WB", "M", "AM"]).
+            const basePositionCodes = mainPart
+                .split(/[,/]/)
+                .map((p) => p.trim())
+                .filter((p) => p.length > 0);
+
+            const rolesToEvaluate = new Set();
+
+            for (const baseCode of basePositionCodes) {
+                // e.g., "WB", "M", "AM"
+                if (sidesSpecified.length > 0) {
+                    for (const side of sidesSpecified) {
+                        // e.g., "R"
+                        // Construct side-specific role: e.g., "WB" + "R" -> "WBR"
+                        rolesToEvaluate.add(baseCode + side);
+                    }
+                }
+                // Always add the baseCode itself. This handles:
+                // 1. Directly matched normalized codes (ST, MC).
+                // 2. Player data that is already specific (e.g., "WBR" directly).
+                // 3. Base codes when no side was specified (e.g. "DC").
+                rolesToEvaluate.add(baseCode);
+            }
+
+            // Fallback if parsing yielded no roles but the original string was not empty.
+            // This can happen if the string is a single, non-standard position like "SWEEPER".
+            if (rolesToEvaluate.size === 0 && positionString.trim() !== "") {
+                rolesToEvaluate.add(
+                    processedString.replace(/\s*\(.*?\)\s*/g, "").trim(),
+                );
+            }
+
+            // If, after all parsing, no roles could be determined (e.g., string was "()" or completely unparseable).
+            if (rolesToEvaluate.size === 0) {
+                return positionSortOrder.length + 1;
+            }
+
+            // Find the best match (lowest index) from positionSortOrder.
+            for (const role of rolesToEvaluate) {
+                const index = positionSortOrder.indexOf(role);
+                if (index !== -1 && index < minFoundIndex) {
+                    minFoundIndex = index;
+                }
+            }
+
+            // If minFoundIndex is still positionSortOrder.length, it means no evaluated role matched the sortOrder.
+            // These unmatched roles are sorted after matched ones, but before null/undefined.
+            return minFoundIndex === positionSortOrder.length
+                ? positionSortOrder.length + 1
+                : minFoundIndex;
+        };
 
         const pagesNumber = computed(() =>
             pagination.rowsPerPage === 0 || props.players.length === 0
@@ -324,7 +430,7 @@ export default {
         const clubColumnStyle =
             "max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
         const moneyColumnStyle =
-            "max-width: 110px; text-align: right; white-space: nowrap;"; // Slightly wider for currency
+            "max-width: 110px; text-align: right; white-space: nowrap;";
         const overallColumnStyle =
             "max-width: 70px; text-align: center; white-space: nowrap;";
         const fifaStatColumnStyle =
@@ -373,21 +479,21 @@ export default {
             },
             transfer_value: {
                 name: "transfer_value",
-                label: "Value", // Symbol will be added in header template
-                field: "transfer_value", // This is the original string for display via formatCurrency
+                label: "Value",
+                field: "transfer_value",
                 sortable: true,
                 align: "right",
-                sortField: "transferValueAmount", // Use numeric field for actual sorting
+                sortField: "transferValueAmount",
                 style: moneyColumnStyle,
                 headerStyle: moneyColumnStyle,
             },
             wage: {
                 name: "wage",
-                label: "Salary", // Symbol will be added in header template
-                field: "wage", // This is the original string for display via formatCurrency
+                label: "Salary",
+                field: "wage",
                 sortable: true,
                 align: "right",
-                sortField: "wageAmount", // Use numeric field for actual sorting
+                sortField: "wageAmount",
                 style: moneyColumnStyle,
                 headerStyle: moneyColumnStyle,
             },
@@ -514,7 +620,6 @@ export default {
                 baseColumnDefinitions.wage,
                 baseColumnDefinitions.Overall,
             ];
-
             let fifaColumnsInOrder = props.isGoalkeeperView
                 ? [
                       allFifaStatDefinitions.GK,
@@ -533,12 +638,10 @@ export default {
                       allFifaStatDefinitions.DEF,
                       allFifaStatDefinitions.MEN,
                   ];
-
             const trailingColumns = [
                 baseColumnDefinitions.personality,
                 baseColumnDefinitions.media_handling,
             ];
-
             return [...newOrderBase, ...fifaColumnsInOrder, ...trailingColumns];
         });
 
@@ -561,17 +664,25 @@ export default {
             return [...props.players].sort((a, b) => {
                 let vA = a[fieldKey];
                 let vB = b[fieldKey];
-                if (
-                    (vA === null || vA === undefined) &&
-                    (vB === null || vB === undefined)
-                )
-                    return 0;
-                if (vA === null || vA === undefined)
-                    return direction === "asc" ? 1 : -1;
-                if (vB === null || vB === undefined)
-                    return direction === "asc" ? -1 : 1;
-                if (typeof vA === "number" && typeof vB === "number")
+
+                const aIsNull = vA === null || vA === undefined;
+                const bIsNull = vB === null || vB === undefined;
+
+                if (aIsNull && bIsNull) return 0;
+                if (aIsNull) return direction === "asc" ? 1 : -1;
+                if (bIsNull) return direction === "asc" ? -1 : 1;
+
+                if (fieldKey === "position") {
+                    const indexA = getPositionIndex(vA);
+                    const indexB = getPositionIndex(vB);
+                    return direction === "asc"
+                        ? indexA - indexB
+                        : indexB - indexA;
+                }
+
+                if (typeof vA === "number" && typeof vB === "number") {
                     return direction === "asc" ? vA - vB : vB - vA;
+                }
                 if (typeof vA === "string" && typeof vB === "string") {
                     vA = vA.toLowerCase();
                     vB = vB.toLowerCase();
@@ -581,6 +692,22 @@ export default {
                 }
                 return 0;
             });
+        });
+
+        onMounted(() => {
+            if (sortField.value) {
+                emit("update:sort", {
+                    key: getSortFieldKey(sortField.value),
+                    direction: sortDirection.value,
+                    isFifaStat: currentColumns.value.find(
+                        (c) => c.name === sortField.value,
+                    )?.isFifaStat,
+                    isOverallStat: currentColumns.value.find(
+                        (c) => c.name === sortField.value,
+                    )?.isOverallStat,
+                    displayField: sortField.value,
+                });
+            }
         });
 
         const getUnifiedRatingClass = (value, maxScale) => {
@@ -609,14 +736,18 @@ export default {
             if (numericAmount >= 100000) return "money-medium-high";
             if (numericAmount >= 10000) return "money-medium";
             if (numericAmount > 0) return "money-low";
-            return "money-na"; // For 0 or unparsed
+            return "money-na";
         };
 
         const onFlagError = (event) => {
             if (event.target) event.target.style.display = "none";
-            const iconElement = event.target.nextElementSibling;
-            if (iconElement && iconElement.tagName === "I")
-                iconElement.style.display = "inline-flex";
+            const placeholderIcon = event.target.nextElementSibling;
+            if (
+                placeholderIcon &&
+                placeholderIcon.classList.contains("q-icon")
+            ) {
+                placeholderIcon.style.display = "inline-flex";
+            }
         };
 
         const onRequest = (requestProp) => {
@@ -624,29 +755,27 @@ export default {
                 requestProp.pagination;
             pagination.page = page;
             pagination.rowsPerPage = rowsPerPage;
-            if (sortBy) {
-                const newSortField = sortBy;
-                const newSortDirection = descending ? "desc" : "asc";
-                if (
-                    sortField.value !== newSortField ||
-                    sortDirection.value !== newSortDirection
-                ) {
-                    sortField.value = newSortField;
-                    sortDirection.value = newSortDirection;
-                    emit("update:sort", {
-                        key: getSortFieldKey(sortField.value),
-                        direction: sortDirection.value,
-                        isFifaStat: currentColumns.value.find(
-                            (c) => c.name === newSortField,
-                        )?.isFifaStat,
-                        isOverallStat: currentColumns.value.find(
-                            (c) => c.name === newSortField,
-                        )?.isOverallStat,
-                        displayField: sortField.value,
-                    });
-                }
+            if (
+                sortBy &&
+                (sortField.value !== sortBy ||
+                    sortDirection.value !== (descending ? "desc" : "asc"))
+            ) {
+                sortField.value = sortBy;
+                sortDirection.value = descending ? "desc" : "asc";
+                emit("update:sort", {
+                    key: getSortFieldKey(sortField.value),
+                    direction: sortDirection.value,
+                    isFifaStat: currentColumns.value.find(
+                        (c) => c.name === sortBy,
+                    )?.isFifaStat,
+                    isOverallStat: currentColumns.value.find(
+                        (c) => c.name === sortBy,
+                    )?.isOverallStat,
+                    displayField: sortBy,
+                });
             }
         };
+
         const onPageChange = (newPage) => {
             pagination.page = newPage;
         };
@@ -654,23 +783,25 @@ export default {
             pagination.rowsPerPage = newRowsPerPage;
             pagination.page = 1;
         };
-        const customSort = (rows, sortBy, descending) => {
-            /* Uses sortedPlayers computed */ return rows;
+        const customSort = (rows) => {
+            return rows;
         };
+
         const sortTable = (fieldName) => {
             const actualSortKey = getSortFieldKey(fieldName);
+            let newDirection;
             if (sortField.value === fieldName) {
-                sortDirection.value =
-                    sortDirection.value === "asc" ? "desc" : "asc";
+                newDirection = sortDirection.value === "asc" ? "desc" : "asc";
             } else {
-                sortField.value = fieldName;
-                sortDirection.value = "asc";
+                newDirection = "asc";
             }
+            sortField.value = fieldName;
+            sortDirection.value = newDirection;
             pagination.sortBy = fieldName;
-            pagination.descending = sortDirection.value === "desc";
+            pagination.descending = newDirection === "desc";
             emit("update:sort", {
                 key: actualSortKey,
-                direction: sortDirection.value,
+                direction: newDirection,
                 isFifaStat: currentColumns.value.find(
                     (c) => c.name === fieldName,
                 )?.isFifaStat,
@@ -680,16 +811,11 @@ export default {
                 displayField: fieldName,
             });
         };
+
         const onRowClick = (player) => {
             emit("player-selected", player);
         };
-
-        // Method to format currency for display using the utility
-        // It now takes the numeric amount first, then the original display string as a fallback.
         const formatDisplayCurrency = (numericAmount, originalDisplayValue) => {
-            // The backend's `transferValueAmount` or `wageAmount` is the single numeric value.
-            // The `originalDisplayValue` (e.g., player.transfer_value) is the string from HTML "£85M - £99M"
-            // We prioritize formatting the numericAmount.
             return formatCurrency(
                 numericAmount,
                 props.currencySymbol,
@@ -717,7 +843,7 @@ export default {
             customSort,
             sortTable,
             onRowClick,
-            formatDisplayCurrency, // Expose the new formatting method
+            formatDisplayCurrency,
         };
     },
 };
@@ -731,7 +857,7 @@ export default {
 
 .player-q-table {
     width: 100%;
-    table-layout: auto; // Allow table to determine column widths
+    table-layout: auto;
 
     th .sort-icon {
         vertical-align: middle;
@@ -757,12 +883,12 @@ export default {
 
     &:not(.q-table--dark) {
         th {
-            background-color: #f0f4f8; // Lighter header for light mode
+            background-color: #f0f4f8;
             color: $grey-8;
             border-bottom: 1px solid #dde2e6;
         }
         td {
-            border-bottom: 1px solid #eef2f5; // Lighter cell borders
+            border-bottom: 1px solid #eef2f5;
             color: $grey-9;
         }
         tr:last-child td {
@@ -775,17 +901,17 @@ export default {
 
     th {
         font-weight: 600;
-        font-size: 0.8rem; // Slightly smaller header text
-        padding: 8px 10px; // Consistent padding
-        border-right: 0; // Remove vertical borders between headers
+        font-size: 0.8rem;
+        padding: 8px 10px;
+        border-right: 0;
     }
     td {
         vertical-align: middle;
-        padding: 6px 10px; // Consistent padding
-        border-right: 0; // Remove vertical borders between cells
+        padding: 6px 10px;
+        border-right: 0;
     }
     .table-cell-enhanced {
-        font-size: 0.85rem; // Slightly larger cell text
+        font-size: 0.85rem;
     }
 }
 
@@ -795,20 +921,18 @@ export default {
             background-color: rgba(255, 255, 255, 0.08) !important;
         }
         .body--light & {
-            background-color: #e3f2fd !important; // Light blue hover for light mode
+            background-color: #e3f2fd !important;
         }
     }
 }
 
-// Monetary value styling
 .money-value {
     display: inline-block;
     font-weight: 500;
     padding: 1px 6px;
     border-radius: 3px;
-    font-size: 0.8rem; // Slightly smaller money values
+    font-size: 0.8rem;
 }
-// Specific money classes (colors defined in app.scss or here if preferred)
 .money-very-high {
     color: #1b5e20;
     font-weight: 700;
@@ -859,13 +983,11 @@ export default {
     }
 }
 
-// Ensure icons and images in flex containers don't shrink unexpectedly
 .flex.items-center .q-icon,
 .flex.items-center img {
     flex-shrink: 0;
 }
 
-// Dark mode select in pagination
 :deep(.q-table__bottom .q-select .q-field__native),
 :deep(.q-table__bottom .q-select .q-field__input) {
     .body--dark & {
@@ -873,10 +995,9 @@ export default {
     }
 }
 
-// Allow text wrapping in cells
 .player-q-table td,
 .player-q-table th {
-    white-space: normal; // Allow wrapping
-    word-break: break-word; // Break long words
+    white-space: normal;
+    word-break: break-word;
 }
 </style>
