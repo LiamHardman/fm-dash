@@ -18,61 +18,57 @@ import (
 	"sync"
 	"time"
 
-	// "unicode" // No longer needed by getNodeTextOptimized
-	// "unicode/utf8" // No longer needed by getNodeTextOptimized
-
 	_ "net/http/pprof"
 
-	"github.com/google/uuid" // For generating unique IDs
+	"github.com/google/uuid"
 	"golang.org/x/net/html"
 )
 
 const (
 	defaultPlayerCapacity    = 1024
 	defaultAttributeCapacity = 64
-	defaultCellCapacity      = 64 // Used for initial slice allocation for cells in a row
+	defaultCellCapacity      = 64
 	overallScalingFactor     = 5.85
-	// Max buffer size for scanner in streaming parser, adjust if needed for very long lines/tokens
-	// This is for the bufio.Scanner used in the new text extraction method.
-	maxTokenBufferSize = 2 * 1024 * 1024 // 2MB, increased for potentially large cell content
+	maxTokenBufferSize       = 2 * 1024 * 1024 // 2MB
 )
 
 // --- START: Struct Definitions ---
 
 type RoleOverallScore struct {
-	RoleName string `json:"roleName"` // Will store keys like "DC - Ball Playing Defender"
+	RoleName string `json:"roleName"`
 	Score    int    `json:"score"`
 }
 
 type Player struct {
-	Name                   string                        `json:"name"`
-	Position               string                        `json:"position"`
-	Age                    string                        `json:"age"`
-	Club                   string                        `json:"club"`
-	TransferValue          string                        `json:"transfer_value"`
-	Wage                   string                        `json:"wage"`
-	Personality            string                        `json:"personality,omitempty"`
-	MediaHandling          string                        `json:"media_handling,omitempty"`
-	Nationality            string                        `json:"nationality"`
-	NationalityISO         string                        `json:"nationality_iso"`
-	NationalityFIFACode    string                        `json:"nationality_fifa_code"`
-	Attributes             map[string]string             `json:"attributes"`
-	NumericAttributes      map[string]int                `json:"-"` // Not serialized, used for calculations
-	PerformancePercentiles map[string]map[string]float64 `json:"performancePercentiles"`
-	ParsedPositions        []string                      `json:"parsedPositions"`
-	ShortPositions         []string                      `json:"shortPositions"`
-	PositionGroups         []string                      `json:"positionGroups"`
-	PHY                    int                           `json:"PHY"`
-	SHO                    int                           `json:"SHO"`
-	PAS                    int                           `json:"PAS"`
-	DRI                    int                           `json:"DRI"`
-	DEF                    int                           `json:"DEF"`
-	MEN                    int                           `json:"MEN"`
-	GK                     int                           `json:"GK,omitempty"`
-	Overall                int                           `json:"Overall"`
-	RoleSpecificOveralls   []RoleOverallScore            `json:"roleSpecificOveralls"`
-	TransferValueAmount    int64                         `json:"transferValueAmount"`
-	WageAmount             int64                         `json:"wageAmount"`
+	Name                    string                        `json:"name"`
+	Position                string                        `json:"position"`
+	Age                     string                        `json:"age"`
+	Club                    string                        `json:"club"`
+	TransferValue           string                        `json:"transfer_value"`
+	Wage                    string                        `json:"wage"`
+	Personality             string                        `json:"personality,omitempty"`
+	MediaHandling           string                        `json:"media_handling,omitempty"`
+	Nationality             string                        `json:"nationality"`
+	NationalityISO          string                        `json:"nationality_iso"`
+	NationalityFIFACode     string                        `json:"nationality_fifa_code"`
+	Attributes              map[string]string             `json:"attributes"`
+	NumericAttributes       map[string]int                `json:"-"` // Not serialized, used for calculations
+	PerformanceStatsNumeric map[string]float64            `json:"-"` // NEW: For pre-parsed numeric performance stats
+	PerformancePercentiles  map[string]map[string]float64 `json:"performancePercentiles"`
+	ParsedPositions         []string                      `json:"parsedPositions"`
+	ShortPositions          []string                      `json:"shortPositions"`
+	PositionGroups          []string                      `json:"positionGroups"`
+	PHY                     int                           `json:"PHY"`
+	SHO                     int                           `json:"SHO"`
+	PAS                     int                           `json:"PAS"`
+	DRI                     int                           `json:"DRI"`
+	DEF                     int                           `json:"DEF"`
+	MEN                     int                           `json:"MEN"`
+	GK                      int                           `json:"GK,omitempty"`
+	Overall                 int                           `json:"Overall"`
+	RoleSpecificOveralls    []RoleOverallScore            `json:"roleSpecificOveralls"`
+	TransferValueAmount     int64                         `json:"transferValueAmount"`
+	WageAmount              int64                         `json:"wageAmount"`
 }
 
 type PlayerParseResult struct {
@@ -100,16 +96,14 @@ var (
 	})
 	storeMutex                   sync.RWMutex
 	attributeWeights             map[string]map[string]int
-	roleSpecificOverallWeights   map[string]map[string]int // Keys will be like "DC - Ball Playing Defender"
+	roleSpecificOverallWeights   map[string]map[string]int
 	muAttributeWeights           sync.RWMutex
 	muRoleSpecificOverallWeights sync.RWMutex
-
-	// OPTIMIZATION: Pre-processed role weights for faster lookups
-	precomputedRoleWeights map[string][]struct {
+	precomputedRoleWeights       map[string][]struct {
 		RoleName string
 		Weights  map[string]int
 	}
-	muPrecomputedRoleWeights sync.RWMutex // To protect precomputedRoleWeights if it were to be modified later (currently only in init)
+	muPrecomputedRoleWeights sync.RWMutex
 )
 
 var performanceStatKeys = []string{
@@ -135,14 +129,12 @@ var defaultRoleSpecificOverallWeightsGo = map[string]map[string]int{
 	"DC - Generic Defender":    {"Mar": 80, "Hea": 50, "Tck": 50, "Pos": 80, "Str": 60, "Pac": 50, "Acc": 60, "Jum": 60, "Cnt": 40, "Cmp": 20, "Bra": 20, "Ant": 50, "Fir": 20, "Pas": 20, "Tec": 10, "Wor": 20, "Ldr": 20, "Dec": 10, "Vis": 10, "OtB": 10, "Agi": 60, "Bal": 20, "Sta": 30, "Cor": 10, "Cro": 10, "Dri": 10, "Fin": 10, "Fre": 10, "Lon": 10, "L Th": 10, "Pen": 10, "Agg": 0, "Det": 0, "Fla": 0, "Nat": 0},
 	"ST - Generic Striker":     {"Fin": 80, "Fir": 60, "OtB": 60, "Cmp": 60, "Hea": 60, "Acc": 100, "Pac": 70, "Str": 60, "Jum": 50, "Tec": 40, "Ant": 50, "Dec": 50, "Dri": 50, "Wor": 20, "Sta": 60, "Cor": 10, "Cro": 20, "Fre": 10, "Lon": 20, "L Th": 10, "Mar": 10, "Pas": 20, "Pen": 10, "Tck": 10, "Agg": 0, "Bra": 10, "Cnt": 20, "Det": 0, "Fla": 0, "Ldr": 10, "Pos": 20, "Tea": 10, "Vis": 20, "Agi": 60, "Bal": 20, "Nat": 0},
 	"GK - Goalkeeper - Defend": {"Han": 90, "Ref": 90, "Aer": 80, "Cmd": 75, "1v1": 80, "Cnt": 70, "Dec": 70, "Pos": 75, "Ant": 60, "Cmp": 60, "Bra": 60, "Com": 50, "Kic": 40, "Thr": 40, "TRO": 30, "Det": 50, "Ldr": 40, "Wor": 40, "Tea": 40, "Agi": 50, "Jum": 60, "Str": 50, "Acc": 30, "Pac": 30, "Ecc": 10},
-	// ... (other roles from your original code) ...
 }
 
 func loadJSONWeights(filePath string, defaultWeights map[string]map[string]int) (map[string]map[string]int, error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		log.Printf("Warning: Could not read %s: %v. Using default weights.", filePath, err)
-		// Create a deep copy of defaultWeights to return
 		copiedDefault := make(map[string]map[string]int, len(defaultWeights))
 		for k, v := range defaultWeights {
 			innerCopy := make(map[string]int, len(v))
@@ -156,7 +148,6 @@ func loadJSONWeights(filePath string, defaultWeights map[string]map[string]int) 
 	var weights map[string]map[string]int
 	if err := json.Unmarshal(data, &weights); err != nil {
 		log.Printf("Warning: Could not unmarshal %s: %v. Using default weights.", filePath, err)
-		// Create a deep copy of defaultWeights to return
 		copiedDefault := make(map[string]map[string]int, len(defaultWeights))
 		for k, v := range defaultWeights {
 			innerCopy := make(map[string]int, len(v))
@@ -169,7 +160,6 @@ func loadJSONWeights(filePath string, defaultWeights map[string]map[string]int) 
 	}
 	if len(weights) == 0 {
 		log.Printf("Warning: Weights file %s was loaded but is empty. Using default weights.", filePath)
-		// Create a deep copy of defaultWeights to return
 		copiedDefault := make(map[string]map[string]int, len(defaultWeights))
 		for k, v := range defaultWeights {
 			innerCopy := make(map[string]int, len(v))
@@ -186,12 +176,11 @@ func loadJSONWeights(filePath string, defaultWeights map[string]map[string]int) 
 
 func init() {
 	var errAttr, errRole error
-	// Load attribute weights
 	loadedAttrWeights, errAttr := loadJSONWeights(filepath.Join("public", "attribute_weights.json"), defaultAttributeWeightsGo)
 	if errAttr != nil {
 		log.Printf("Using default attribute_weights due to error: %v. Default attribute_weights has %d entries.", errAttr, len(defaultAttributeWeightsGo))
-		attributeWeights = make(map[string]map[string]int) // Create a new map
-		for k, v := range defaultAttributeWeightsGo {      // Deep copy
+		attributeWeights = make(map[string]map[string]int)
+		for k, v := range defaultAttributeWeightsGo {
 			innerMap := make(map[string]int)
 			for ik, iv := range v {
 				innerMap[ik] = iv
@@ -202,12 +191,11 @@ func init() {
 		attributeWeights = loadedAttrWeights
 	}
 
-	// Load role specific overall weights
 	loadedRoleWeights, errRole := loadJSONWeights(filepath.Join("public", "role_specific_overall_weights.json"), defaultRoleSpecificOverallWeightsGo)
 	if errRole != nil {
 		log.Printf("Using default role_specific_overall_weights due to error: %v. Default role_specific_overall_weights has %d entries.", errRole, len(defaultRoleSpecificOverallWeightsGo))
-		roleSpecificOverallWeights = make(map[string]map[string]int) // Create a new map
-		for k, v := range defaultRoleSpecificOverallWeightsGo {      // Deep copy
+		roleSpecificOverallWeights = make(map[string]map[string]int)
+		for k, v := range defaultRoleSpecificOverallWeightsGo {
 			innerMap := make(map[string]int)
 			for ik, iv := range v {
 				innerMap[ik] = iv
@@ -218,20 +206,16 @@ func init() {
 		roleSpecificOverallWeights = loadedRoleWeights
 	}
 
-	// OPTIMIZATION: Precompute role weights
-	muPrecomputedRoleWeights.Lock() // Though only in init, good practice if it could be dynamic later
+	muPrecomputedRoleWeights.Lock()
 	precomputedRoleWeights = make(map[string][]struct {
 		RoleName string
 		Weights  map[string]int
 	})
-	// Use the effectively loaded roleSpecificOverallWeights (either from file or default)
 	sourceWeightsToPrecompute := roleSpecificOverallWeights
 	for roleFullName, weights := range sourceWeightsToPrecompute {
-		// Extract base position key (e.g., "DC" from "DC - Ball Playing Defender")
-		parts := strings.SplitN(roleFullName, " - ", 2) // Split at the first " - "
+		parts := strings.SplitN(roleFullName, " - ", 2)
 		if len(parts) > 0 {
 			shortKey := strings.TrimSpace(parts[0])
-			// Ensure weights is not nil and make a copy if necessary, though here it's from a map iteration
 			copiedWeights := make(map[string]int, len(weights))
 			for k, v := range weights {
 				copiedWeights[k] = v
@@ -429,12 +413,10 @@ func getPlayerPositionGroupsGo(parsedPositionsArray []string) []string {
 
 func calculateFifaStatGo(playerNumericAttributes map[string]int, categoryName string) int {
 	muAttributeWeights.RLock()
-	// Ensure attributeWeights is not nil before accessing
 	var currentCategoryWeightsSource map[string]map[string]int
 	if attributeWeights != nil {
 		currentCategoryWeightsSource = attributeWeights
 	} else {
-		// Fallback if attributeWeights somehow ended up nil (should be handled by init)
 		log.Printf("Warning: attributeWeights is nil in calculateFifaStatGo. Using default for %s.", categoryName)
 		currentCategoryWeightsSource = defaultAttributeWeightsGo
 	}
@@ -442,7 +424,6 @@ func calculateFifaStatGo(playerNumericAttributes map[string]int, categoryName st
 
 	categoryAttributeWeights, ok := currentCategoryWeightsSource[categoryName]
 	if !ok {
-		// Fallback to default if category not found in loaded/current weights
 		categoryAttributeWeights, ok = defaultAttributeWeightsGo[categoryName]
 		if !ok {
 			log.Printf("Error: Default attribute weights for category '%s' also not found. Returning 0.", categoryName)
@@ -548,54 +529,66 @@ func parseMonetaryValueGo(rawValue string) (originalDisplay string, numericValue
 	return originalDisplay, numericValue, detectedSymbol
 }
 
+// calculatePercentileValue calculates the percentile of a given value within a sorted slice of float64 values.
+// It uses the "average rank" method for handling ties.
 func calculatePercentileValue(value float64, sortedValues []float64) float64 {
 	if len(sortedValues) == 0 {
-		return -1
+		return -1 // Undefined or error case
 	}
 	if len(sortedValues) == 1 && sortedValues[0] == value {
-		return 50.0
+		return 50.0 // Mid-point for a single value
 	}
 
+	// Count of values strictly smaller than the given value
 	countSmaller := sort.SearchFloat64s(sortedValues, value)
+
+	// Count of values equal to the given value
+	// Find the first index of a value strictly greater than the given value
 	endRangeIndex := sort.Search(len(sortedValues), func(i int) bool { return sortedValues[i] > value })
 	countEqual := endRangeIndex - countSmaller
 
+	// If value is not found (e.g., value is smaller than sortedValues[countSmaller]), countEqual should be 0.
+	// This check handles cases where 'value' is not in 'sortedValues'.
 	if countSmaller >= len(sortedValues) || (countSmaller < len(sortedValues) && sortedValues[countSmaller] != value) {
 		countEqual = 0
 	}
 
+	// Percentile calculation using the average rank method
 	percentile := (float64(countSmaller) + (0.5 * float64(countEqual))) / float64(len(sortedValues)) * 100.0
 	return math.Round(percentile)
 }
 
+// calculatePlayerPerformancePercentiles calculates and assigns performance percentiles to players.
+// It calculates global percentiles and percentiles within specific position groups.
 func calculatePlayerPerformancePercentiles(players []Player) {
 	if len(players) == 0 {
 		return
 	}
 
+	// Initialize PerformancePercentiles maps for all players
 	for i := range players {
 		if players[i].PerformancePercentiles == nil {
 			players[i].PerformancePercentiles = make(map[string]map[string]float64)
 		}
+		if players[i].PerformancePercentiles["Global"] == nil {
+			players[i].PerformancePercentiles["Global"] = make(map[string]float64)
+		}
 	}
 
+	// --- Global Percentiles ---
 	for _, statKey := range performanceStatKeys {
 		allStatValues := make([]float64, 0, len(players))
 		for i := range players {
-			statStr, ok := players[i].Attributes[statKey]
-			if ok && statStr != "-" && statStr != "" {
-				statStrCleaned := strings.ReplaceAll(statStr, "%", "")
-				if val, err := strconv.ParseFloat(statStrCleaned, 64); err == nil {
-					allStatValues = append(allStatValues, val)
-				}
+			// Use pre-parsed numeric performance stats
+			val, ok := players[i].PerformanceStatsNumeric[statKey]
+			// Ensure val is not NaN, which indicates missing/invalid original stat
+			if ok && !math.IsNaN(val) {
+				allStatValues = append(allStatValues, val)
 			}
 		}
 
 		if len(allStatValues) == 0 {
 			for i := range players {
-				if players[i].PerformancePercentiles["Global"] == nil {
-					players[i].PerformancePercentiles["Global"] = make(map[string]float64)
-				}
 				players[i].PerformancePercentiles["Global"][statKey] = -1
 			}
 			continue
@@ -603,93 +596,91 @@ func calculatePlayerPerformancePercentiles(players []Player) {
 		sort.Float64s(allStatValues)
 
 		for i := range players {
-			if players[i].PerformancePercentiles["Global"] == nil {
-				players[i].PerformancePercentiles["Global"] = make(map[string]float64)
-			}
-			currentPlayerStatStr, ok := players[i].Attributes[statKey]
-			if !ok || currentPlayerStatStr == "-" || currentPlayerStatStr == "" {
+			val, ok := players[i].PerformanceStatsNumeric[statKey]
+			if ok && !math.IsNaN(val) {
+				players[i].PerformancePercentiles["Global"][statKey] = calculatePercentileValue(val, allStatValues)
+			} else {
 				players[i].PerformancePercentiles["Global"][statKey] = -1
-				continue
 			}
-			currentPlayerStatStrCleaned := strings.ReplaceAll(currentPlayerStatStr, "%", "")
-			currentValue, err := strconv.ParseFloat(currentPlayerStatStrCleaned, 64)
-			if err != nil {
-				players[i].PerformancePercentiles["Global"][statKey] = -1
-				continue
-			}
-			players[i].PerformancePercentiles["Global"][statKey] = calculatePercentileValue(currentValue, allStatValues)
 		}
 	}
 
-	groupToPlayerIndices := make(map[string][]int)
-	for i, p := range players {
-		for _, pg := range p.PositionGroups {
-			groupToPlayerIndices[pg] = append(groupToPlayerIndices[pg], i)
-		}
-	}
+	// --- Positional Group Percentiles (Optimized) ---
+	// Step 1: Prepare data structures to hold stat values for each group
+	groupStatValueLists := make(map[string]map[string][]float64) // groupName -> statKey -> []values
 
 	for _, groupName := range positionGroupsForPercentiles {
-		playerIndicesInGroup, groupExists := groupToPlayerIndices[groupName]
-		if !groupExists || len(playerIndicesInGroup) == 0 {
+		groupStatValueLists[groupName] = make(map[string][]float64)
+		for _, statKey := range performanceStatKeys {
+			// Initialize with a reasonable capacity, though it will grow
+			groupStatValueLists[groupName][statKey] = make([]float64, 0, len(players)/len(positionGroupsForPercentiles))
+		}
+	}
+
+	// Step 2: Populate stat value lists by iterating through players ONCE
+	for i := range players {
+		player := &players[i] // Use pointer for direct modification if needed, though here mostly for reading
+		for _, pg := range player.PositionGroups {
+			if _, ok := groupStatValueLists[pg]; ok { // Check if pg is one of the groups we care about
+				for _, statKey := range performanceStatKeys {
+					val, statOk := player.PerformanceStatsNumeric[statKey]
+					if statOk && !math.IsNaN(val) {
+						groupStatValueLists[pg][statKey] = append(groupStatValueLists[pg][statKey], val)
+					}
+				}
+			}
+		}
+	}
+
+	// Step 3: Calculate and assign percentiles for each group and stat
+	for _, groupName := range positionGroupsForPercentiles {
+		// Ensure PerformancePercentiles map for this group exists for all players
+		// (even if they are not in this group, they might have an entry from previous calcs or need one for -1)
+		for i := range players {
+			if players[i].PerformancePercentiles[groupName] == nil {
+				players[i].PerformancePercentiles[groupName] = make(map[string]float64)
+			}
+		}
+
+		for _, statKey := range performanceStatKeys {
+			groupValues := groupStatValueLists[groupName][statKey]
+
+			if len(groupValues) == 0 {
+				// If no values for this stat in this group, assign -1 to players belonging to this group
+				for i := range players {
+					isPlayerInGroup := false
+					for _, pg := range players[i].PositionGroups {
+						if pg == groupName {
+							isPlayerInGroup = true
+							break
+						}
+					}
+					if isPlayerInGroup {
+						players[i].PerformancePercentiles[groupName][statKey] = -1
+					}
+				}
+				continue
+			}
+			sort.Float64s(groupValues)
+
 			for i := range players {
+				player := &players[i]
 				isPlayerInGroup := false
-				for _, pg := range players[i].PositionGroups {
+				for _, pg := range player.PositionGroups {
 					if pg == groupName {
 						isPlayerInGroup = true
 						break
 					}
 				}
+
 				if isPlayerInGroup {
-					if players[i].PerformancePercentiles[groupName] == nil {
-						players[i].PerformancePercentiles[groupName] = make(map[string]float64)
-					}
-					for _, sk := range performanceStatKeys {
-						players[i].PerformancePercentiles[groupName][sk] = -1
-					}
-				}
-			}
-			continue
-		}
-
-		for _, statKey := range performanceStatKeys {
-			groupStatValues := make([]float64, 0, len(playerIndicesInGroup))
-			for _, playerIndex := range playerIndicesInGroup {
-				statStr, ok := players[playerIndex].Attributes[statKey]
-				if ok && statStr != "-" && statStr != "" {
-					statStrCleaned := strings.ReplaceAll(statStr, "%", "")
-					if val, err := strconv.ParseFloat(statStrCleaned, 64); err == nil {
-						groupStatValues = append(groupStatValues, val)
+					val, statOk := player.PerformanceStatsNumeric[statKey]
+					if statOk && !math.IsNaN(val) {
+						player.PerformancePercentiles[groupName][statKey] = calculatePercentileValue(val, groupValues)
+					} else {
+						player.PerformancePercentiles[groupName][statKey] = -1
 					}
 				}
-			}
-
-			if len(groupStatValues) == 0 {
-				for _, playerIndex := range playerIndicesInGroup {
-					if players[playerIndex].PerformancePercentiles[groupName] == nil {
-						players[playerIndex].PerformancePercentiles[groupName] = make(map[string]float64)
-					}
-					players[playerIndex].PerformancePercentiles[groupName][statKey] = -1
-				}
-				continue
-			}
-			sort.Float64s(groupStatValues)
-
-			for _, playerIndex := range playerIndicesInGroup {
-				if players[playerIndex].PerformancePercentiles[groupName] == nil {
-					players[playerIndex].PerformancePercentiles[groupName] = make(map[string]float64)
-				}
-				currentPlayerStatStr, ok := players[playerIndex].Attributes[statKey]
-				if !ok || currentPlayerStatStr == "-" || currentPlayerStatStr == "" {
-					players[playerIndex].PerformancePercentiles[groupName][statKey] = -1
-					continue
-				}
-				currentPlayerStatStrCleaned := strings.ReplaceAll(currentPlayerStatStr, "%", "")
-				currentValue, err := strconv.ParseFloat(currentPlayerStatStrCleaned, 64)
-				if err != nil {
-					players[playerIndex].PerformancePercentiles[groupName][statKey] = -1
-					continue
-				}
-				players[playerIndex].PerformancePercentiles[groupName][statKey] = calculatePercentileValue(currentValue, groupStatValues)
 			}
 		}
 	}
@@ -749,12 +740,9 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	doneConsumingResults := make(chan struct{})
 	go func() {
 		defer close(doneConsumingResults)
-		// Removed datasetCurrencySymbol and foundDatasetSymbol from here
-		// as currency detection is handled after playersList is populated.
 		for result := range resultsChan {
 			if result.Err == nil {
 				playersList = append(playersList, result.Player)
-				// Currency detection logic removed from here
 			} else {
 				log.Printf("Skipping row due to error from worker: %v", result.Err)
 			}
@@ -929,7 +917,7 @@ tokenLoop:
 	finalDatasetCurrencySymbol := "$"
 	if len(playersList) > 0 {
 		var foundSymbol bool
-		for _, p := range playersList { // Iterate to find first valid currency
+		for _, p := range playersList {
 			_, _, tvSymbol := parseMonetaryValueGo(p.TransferValue)
 			if tvSymbol != "" {
 				finalDatasetCurrencySymbol = tvSymbol
@@ -950,7 +938,7 @@ tokenLoop:
 
 	if len(playersList) > 0 {
 		log.Println("Calculating player performance percentiles...")
-		calculatePlayerPerformancePercentiles(playersList)
+		calculatePlayerPerformancePercentiles(playersList) // Pass by value, modifications happen on elements
 		log.Println("Finished calculating percentiles.")
 	}
 
@@ -1002,13 +990,13 @@ func playerParserWorker(workerID int, rowCellsChan <-chan []string, resultsChan 
 	if len(headers) == 0 {
 		log.Printf("Worker %d started with NO headers. Draining rowCellsChan and exiting.", workerID)
 		for range rowCellsChan {
-		} // Drain the channel if headers are missing
+		}
 		return
 	}
 	for cells := range rowCellsChan {
 		player, err := parseCellsToPlayer(cells, headers)
 		if err == nil {
-			enhancePlayerWithCalculations(&player)
+			enhancePlayerWithCalculations(&player) // Pass pointer to modify original player
 		}
 		resultsChan <- PlayerParseResult{Player: player, Err: err}
 	}
@@ -1055,10 +1043,21 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// enhancePlayerWithCalculations populates derived fields for a player.
+// It now also pre-parses performance statistics.
 func enhancePlayerWithCalculations(player *Player) {
-	player.NumericAttributes = make(map[string]int, len(player.Attributes))
+	// Initialize maps if nil
+	if player.NumericAttributes == nil {
+		player.NumericAttributes = make(map[string]int, len(player.Attributes))
+	}
+	if player.PerformanceStatsNumeric == nil {
+		player.PerformanceStatsNumeric = make(map[string]float64, len(performanceStatKeys))
+	}
+
+	// Populate NumericAttributes (skill attributes)
 	for key, valStr := range player.Attributes {
 		switch key {
+		// List all skill attribute keys that should be numeric (1-20)
 		case "Acc", "Pac", "Str", "Sta", "Nat", "Bal", "Jum",
 			"Fin", "OtB", "Cmp", "Tec", "Hea", "Lon", "Pen",
 			"Pas", "Vis", "Cro", "Fre", "Cor", "L Th",
@@ -1070,9 +1069,25 @@ func enhancePlayerWithCalculations(player *Player) {
 			if err == nil {
 				player.NumericAttributes[key] = valInt
 			} else {
-				player.NumericAttributes[key] = 0
+				player.NumericAttributes[key] = 0 // Default for unparseable skills
 			}
 		default:
+			// This attribute is not a skill, might be a performance stat or other info
+		}
+	}
+
+	// NEW: Pre-parse performance statistics
+	for _, statKey := range performanceStatKeys {
+		statStr, ok := player.Attributes[statKey]
+		if ok && statStr != "-" && statStr != "" {
+			statStrCleaned := strings.ReplaceAll(statStr, "%", "") // Clean percentage symbols
+			if val, err := strconv.ParseFloat(statStrCleaned, 64); err == nil {
+				player.PerformanceStatsNumeric[statKey] = val
+			} else {
+				player.PerformanceStatsNumeric[statKey] = math.NaN() // Mark as invalid/missing
+			}
+		} else {
+			player.PerformanceStatsNumeric[statKey] = math.NaN() // Mark as invalid/missing
 		}
 	}
 
@@ -1083,7 +1098,7 @@ func enhancePlayerWithCalculations(player *Player) {
 	for _, pPos := range player.ParsedPositions {
 		if shortKey, ok := parsedPositionToBaseRoleKeyGo[pPos]; ok && shortKey != nullString {
 			shortPosSet[shortKey] = struct{}{}
-		} else if pPos == "Goalkeeper" {
+		} else if pPos == "Goalkeeper" { // Explicitly handle Goalkeeper if not in map
 			shortPosSet["GK"] = struct{}{}
 		}
 	}
@@ -1096,7 +1111,7 @@ func enhancePlayerWithCalculations(player *Player) {
 		orderJ, okJ := shortPositionOrderMap[player.ShortPositions[j]]
 		if !okI {
 			orderI = len(shortPositionDisplayOrder) + i
-		}
+		} // Place unknown positions at the end
 		if !okJ {
 			orderJ = len(shortPositionDisplayOrder) + j
 		}
@@ -1120,11 +1135,11 @@ func enhancePlayerWithCalculations(player *Player) {
 	if isGoalkeeper {
 		player.GK = calculateFifaStatGo(player.NumericAttributes, "GK")
 	} else {
-		player.GK = 0
+		player.GK = 0 // Explicitly set to 0 if not a GK
 	}
 
 	maxOverall := 0
-	calculatedRoleOveralls := make([]RoleOverallScore, 0, 5)
+	calculatedRoleOveralls := make([]RoleOverallScore, 0, 5) // Initial capacity
 
 	muPrecomputedRoleWeights.RLock()
 	currentPrecomputedWeights := precomputedRoleWeights
@@ -1176,7 +1191,7 @@ func enhancePlayerWithCalculations(player *Player) {
 		for _, parsedPos := range player.ParsedPositions {
 			shortKey, ok := parsedPositionToBaseRoleKeyGo[parsedPos]
 			if !ok || shortKey == nullString {
-				if parsedPos == "Goalkeeper" {
+				if parsedPos == "Goalkeeper" { // Handle GK specifically if not mapped
 					shortKey = "GK"
 				} else {
 					continue
@@ -1226,8 +1241,9 @@ func parseCellsToPlayer(cells []string, headers []string) (Player, error) {
 	}
 
 	player := Player{
-		Attributes:             make(map[string]string, defaultAttributeCapacity),
-		PerformancePercentiles: make(map[string]map[string]float64),
+		Attributes:              make(map[string]string, defaultAttributeCapacity),
+		PerformanceStatsNumeric: make(map[string]float64, len(performanceStatKeys)), // Initialize new map
+		PerformancePercentiles:  make(map[string]map[string]float64),
 	}
 
 	knownNonAttributeHeaders := map[string]bool{
@@ -1271,32 +1287,36 @@ func parseCellsToPlayer(cells []string, headers []string) (Player, error) {
 		case "Media Handling":
 			player.MediaHandling = cellValue
 			isAnAttributeField = false
-		case "Nat":
+		case "Nat": // This header can be either a skill (1-20) or nationality code
 			valInt, err := strconv.Atoi(cellValue)
 			if err == nil && valInt >= 1 && valInt <= 20 {
+				// It's the Natural Fitness attribute
 				player.Attributes[headerNameClean] = cellValue
 			} else {
+				// It's the Nationality code
 				fifaCode := strings.ToUpper(cellValue)
 				player.NationalityFIFACode = fifaCode
 				if fullName, ok := fifaCountryCodes[fifaCode]; ok {
 					player.Nationality = fullName
 				} else {
-					player.Nationality = cellValue
+					player.Nationality = cellValue // Fallback to the code itself
 				}
 				if isoCode, ok := fifaToISO2[fifaCode]; ok {
 					player.NationalityISO = isoCode
 				} else {
+					// Basic fallback for ISO code if not in map
 					if len(fifaCode) >= 2 {
 						player.NationalityISO = strings.ToLower(fifaCode[:2])
 					} else {
 						player.NationalityISO = strings.ToLower(fifaCode)
 					}
 				}
-				isAnAttributeField = false
+				isAnAttributeField = false // Nationality is not a player attribute in the map
 			}
-		case "Left Foot", "Right Foot":
+		case "Left Foot", "Right Foot": // These are informational, not attributes for calculation
 			isAnAttributeField = false
 		default:
+			// All other headers are treated as potential attributes
 		}
 
 		if isAnAttributeField {
