@@ -1044,14 +1044,21 @@ export default {
                         const slotPositions = positionSideMap[slot.role.toUpperCase()] || [];
                         const fallbackPositions = fallbackPositionMap[slot.role.toUpperCase()] || [];
                         
-                        // Check if player can play in this position 
+                        // STRICT POSITION CHECKING: Check if player can play in this position
+                        // For this to be true, the player MUST have one of the required positions 
+                        // in their shortPositions array
+                        
                         const playerPositions = playerPositionMap.get(player.name) || [];
+                        
+                        // For first XI and depth chart, we ONLY want players who can ACTUALLY play the position
+                        // isExactMatch means player has the EXACT position for this slot
                         const isExactMatch = playerPositions.some(pos => 
                             slotPositions.includes(pos)
                         );
-                        const canPlayInPosition = isExactMatch || playerPositions.some(pos => 
-                            fallbackPositions.includes(pos)
-                        );
+                        
+                        // We won't use fallback positions at all for squad depth chart
+                        // This ensures only properly positioned players are shown
+                        const canPlayInPosition = isExactMatch;
                         
                         // Only add if player can actually play this position and meets minimum quality
                         if (canPlayInPosition && overallInRole >= MIN_SUITABILITY_THRESHOLD) {
@@ -1189,6 +1196,52 @@ export default {
                 tempSquadComposition[slotId].sort(
                     (a, b) => b.overallInRole - a.overallInRole,
                 );
+            }
+            
+            // Check if any positions have no players assigned at all
+            // In that case, try to find any player who can play there as a fallback
+            for (const slot of formationSlots) {
+                if (tempSquadComposition[slot.id].length === 0) {
+                    console.log(`No exact position matches found for ${slot.role}, trying fallbacks`);
+                    
+                    // Get fallback positions for this slot
+                    const fallbackPositions = fallbackPositionMap[slot.role.toUpperCase()] || [];
+                    
+                    // Find any players who can play in fallback positions
+                    const fallbackAssignments = [];
+                    
+                    teamPlayers.value.forEach(player => {
+                        if (!assignedPlayersToSlots.has(player.name)) {
+                            const playerPositions = player.shortPositions || [];
+                            
+                            // Check if player can play any fallback position
+                            const canPlayFallback = playerPositions.some(pos => 
+                                fallbackPositions.includes(pos)
+                            );
+                            
+                            if (canPlayFallback) {
+                                const overallInRole = getPlayerOverallForRole(player, slot.role);
+                                if (overallInRole >= MIN_SUITABILITY_THRESHOLD - 10) {
+                                    fallbackAssignments.push({
+                                        player,
+                                        overallInRole,
+                                        exactMatch: false
+                                    });
+                                }
+                            }
+                        }
+                    });
+                    
+                    // Sort fallbacks by score
+                    fallbackAssignments.sort((a, b) => b.overallInRole - a.overallInRole);
+                    
+                    // Add best fallback if available
+                    if (fallbackAssignments.length > 0) {
+                        const bestFallback = fallbackAssignments[0];
+                        tempSquadComposition[slot.id].push(bestFallback);
+                        assignedPlayersToSlots.add(bestFallback.player.name);
+                    }
+                }
             }
 
             squadComposition.value = tempSquadComposition;
