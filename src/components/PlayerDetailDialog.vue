@@ -371,6 +371,130 @@
                                                 </div>
                                             </div>
                                         </div>
+                                        <div
+                                            class="player-additional-details q-mt-sm"
+                                        >
+                                            <div
+                                                class="row q-col-gutter-x-sm q-col-gutter-y-xs items-center"
+                                            >
+                                                <div
+                                                    class="col-12 col-sm-auto additional-detail-item"
+                                                >
+                                                    <q-icon
+                                                        name="sports_soccer"
+                                                        size="1.2em"
+                                                        class="q-mr-xs additional-detail-icon"
+                                                        :color="
+                                                            qInstance.dark
+                                                                .isActive
+                                                                ? 'blue-4'
+                                                                : 'primary'
+                                                        "
+                                                    />
+                                                    <div
+                                                        class="additional-detail-text-block"
+                                                    >
+                                                        <q-item-label
+                                                            caption
+                                                            class="additional-detail-caption"
+                                                            >Club</q-item-label
+                                                        >
+                                                        <q-item-label
+                                                            class="additional-detail-label ellipsis"
+                                                            :title="
+                                                                player.club ||
+                                                                '-'
+                                                            "
+                                                            >{{
+                                                                player.club ||
+                                                                "-"
+                                                            }}</q-item-label
+                                                        >
+                                                    </div>
+                                                </div>
+                                                <div
+                                                    class="col-12 col-sm-auto additional-detail-item-separator gt-xs"
+                                                >
+                                                    &bull;
+                                                </div>
+                                                <div
+                                                    class="col-12 col-sm-auto additional-detail-item"
+                                                >
+                                                    <q-icon
+                                                        name="psychology"
+                                                        size="1.2em"
+                                                        class="q-mr-xs additional-detail-icon"
+                                                        :color="
+                                                            qInstance.dark
+                                                                .isActive
+                                                                ? 'blue-4'
+                                                                : 'primary'
+                                                        "
+                                                    />
+                                                    <div
+                                                        class="additional-detail-text-block"
+                                                    >
+                                                        <q-item-label
+                                                            caption
+                                                            class="additional-detail-caption"
+                                                            >Personality</q-item-label
+                                                        >
+                                                        <q-item-label
+                                                            class="additional-detail-label ellipsis"
+                                                            :title="
+                                                                player.personality ||
+                                                                '-'
+                                                            "
+                                                            >{{
+                                                                player.personality ||
+                                                                "-"
+                                                            }}</q-item-label
+                                                        >
+                                                    </div>
+                                                </div>
+                                                <div
+                                                    class="col-12 col-sm-auto additional-detail-item-separator gt-xs"
+                                                >
+                                                    &bull;
+                                                </div>
+                                                <div
+                                                    class="col-12 col-sm-auto additional-detail-item"
+                                                >
+                                                    <q-icon
+                                                        name="comment"
+                                                        size="1.2em"
+                                                        class="q-mr-xs additional-detail-icon"
+                                                        :color="
+                                                            qInstance.dark
+                                                                .isActive
+                                                                ? 'blue-4'
+                                                                : 'primary'
+                                                        "
+                                                    />
+                                                    <div
+                                                        class="additional-detail-text-block"
+                                                    >
+                                                        <q-item-label
+                                                            caption
+                                                            class="additional-detail-caption"
+                                                            >Media
+                                                            Handling</q-item-label
+                                                        >
+                                                        <q-item-label
+                                                            class="additional-detail-label ellipsis"
+                                                            :title="
+                                                                player.media_handling ||
+                                                                '-'
+                                                            "
+                                                            >{{
+                                                                player.media_handling ||
+                                                                "-"
+                                                            }}</q-item-label
+                                                        >
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <div class="financial-details-top-right">
@@ -423,100 +547,7 @@
                                     </div>
                                 </div>
 
-                                <div
-                                    class="row q-col-gutter-x-md q-col-gutter-y-sm q-my-md player-secondary-info-row"
-                                >
-                                    <div
-                                        class="col-xs-12 col-sm-4 secondary-info-item"
-                                    >
-                                        <q-icon
-                                            name="sports_soccer"
-                                            size="1.5em"
-                                            class="q-mr-sm info-icon-redesigned"
-                                            :color="
-                                                qInstance.dark.isActive
-                                                    ? 'blue-3'
-                                                    : 'primary'
-                                            "
-                                        />
-                                        <div class="info-text-block">
-                                            <q-item-label
-                                                caption
-                                                class="info-caption-redesigned"
-                                                >Club</q-item-label
-                                            >
-                                            <q-item-label
-                                                class="info-label-redesigned ellipsis"
-                                                :title="player.club || '-'"
-                                                >{{
-                                                    player.club || "-"
-                                                }}</q-item-label
-                                            >
-                                        </div>
-                                    </div>
-                                    <div
-                                        class="col-xs-12 col-sm-4 secondary-info-item"
-                                    >
-                                        <q-icon
-                                            name="psychology"
-                                            size="1.5em"
-                                            class="q-mr-sm info-icon-redesigned"
-                                            :color="
-                                                qInstance.dark.isActive
-                                                    ? 'blue-3'
-                                                    : 'primary'
-                                            "
-                                        />
-                                        <div class="info-text-block">
-                                            <q-item-label
-                                                caption
-                                                class="info-caption-redesigned"
-                                                >Personality</q-item-label
-                                            >
-                                            <q-item-label
-                                                class="info-label-redesigned ellipsis"
-                                                :title="
-                                                    player.personality || '-'
-                                                "
-                                                >{{
-                                                    player.personality || "-"
-                                                }}</q-item-label
-                                            >
-                                        </div>
-                                    </div>
-                                    <div
-                                        class="col-xs-12 col-sm-4 secondary-info-item"
-                                    >
-                                        <q-icon
-                                            name="comment"
-                                            size="1.5em"
-                                            class="q-mr-sm info-icon-redesigned"
-                                            :color="
-                                                qInstance.dark.isActive
-                                                    ? 'blue-3'
-                                                    : 'primary'
-                                            "
-                                        />
-                                        <div class="info-text-block">
-                                            <q-item-label
-                                                caption
-                                                class="info-caption-redesigned"
-                                                >Media Handling</q-item-label
-                                            >
-                                            <q-item-label
-                                                class="info-label-redesigned ellipsis"
-                                                :title="
-                                                    player.media_handling || '-'
-                                                "
-                                                >{{
-                                                    player.media_handling || "-"
-                                                }}</q-item-label
-                                            >
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <q-separator spaced="sm" class="q-mb-md" />
+                                <q-separator spaced="sm" class="q-my-md" />
 
                                 <div class="q-mt-md fifa-stats-section">
                                     <div
@@ -1126,15 +1157,12 @@ export default defineComponent({
         const qInstance = useQuasar();
         const selectedComparisonGroup = ref("Global");
         const flagLoadError = ref(false);
-
         const handleFlagError = () => {
             flagLoadError.value = true;
         };
-
         onMounted(() => {
             /* Initialization logic if needed */
         });
-
         watch(
             () => props.player,
             (newPlayer) => {
@@ -1160,7 +1188,6 @@ export default defineComponent({
             },
             { immediate: true, deep: true },
         );
-
         const isGoalkeeper = computed(() => {
             if (!props.player) return false;
             return (
@@ -1169,7 +1196,6 @@ export default defineComponent({
                 props.player.parsedPositions?.includes("Goalkeeper")
             );
         });
-
         const getPlayerAttributesInOrder = (categoryOrderedKeys) => {
             if (!props.player || !props.player.attributes) return [];
             return categoryOrderedKeys.filter((key) =>
@@ -1179,7 +1205,6 @@ export default defineComponent({
                 ),
             );
         };
-
         const attributeCategories = computed(() => ({
             technical: getPlayerAttributesInOrder(technicalAttrsOrdered),
             mental: getPlayerAttributesInOrder(mentalAttrsOrdered),
@@ -1188,7 +1213,6 @@ export default defineComponent({
                 ? getPlayerAttributesInOrder(goalkeepingAttrsOrdered)
                 : [],
         }));
-
         const fifaStatsToDisplay = computed(() => {
             let orderedStats = [];
             if (isGoalkeeper.value) {
@@ -1214,7 +1238,6 @@ export default defineComponent({
                 (stat) => props.player && props.player[stat.name] !== undefined,
             );
         });
-
         const performanceComparisonOptions = computed(() => {
             const options = [];
             if (props.player && props.player.performancePercentiles) {
@@ -1256,7 +1279,6 @@ export default defineComponent({
             }
             return options;
         });
-
         const averageRatingData = computed(() => {
             if (
                 !props.player ||
@@ -1293,7 +1315,6 @@ export default defineComponent({
                         : null,
             };
         });
-
         const categorizedPerformanceStats = computed(() => {
             if (
                 !props.player ||
@@ -1308,7 +1329,6 @@ export default defineComponent({
             if (!percentilesForGroup) {
                 return {};
             }
-
             const result = {};
             const categoryOrder = ["Offensive", "Passing", "Defensive"];
             categoryOrder.forEach((categoryName) => {
@@ -1358,14 +1378,12 @@ export default defineComponent({
             });
             return result;
         });
-
         const hasAnyPerformanceData = computed(() => {
             return (
                 averageRatingData.value ||
                 Object.keys(categorizedPerformanceStats.value).length > 0
             );
         });
-
         const getUnifiedRatingClass = (value, maxScale) => {
             const numValue = parseInt(value, 10);
             if (
@@ -1383,7 +1401,6 @@ export default defineComponent({
             if (percentage >= 40) return "rating-tier-2";
             return "rating-tier-1";
         };
-
         const getBarFillStyle = (percentile) => {
             if (
                 percentile === null ||
@@ -1414,7 +1431,6 @@ export default defineComponent({
                 transition: "width 0.3s ease, background-color 0.3s ease",
             };
         };
-
         const sortedRoleSpecificOveralls = computed(() => {
             if (props.player && props.player.roleSpecificOveralls) {
                 return [...props.player.roleSpecificOveralls].sort(
@@ -1423,7 +1439,6 @@ export default defineComponent({
             }
             return [];
         });
-
         const formattedTransferValue = computed(() => {
             if (!props.player) return "-";
             return formatCurrency(
@@ -1432,7 +1447,6 @@ export default defineComponent({
                 props.player.transfer_value,
             );
         });
-
         const formattedWage = computed(() => {
             if (!props.player) return "-";
             return formatCurrency(
@@ -1441,7 +1455,6 @@ export default defineComponent({
                 props.player.wage,
             );
         });
-
         const currencyIcon = computed(() => {
             switch (props.currencySymbol) {
                 case "€":
@@ -1454,7 +1467,6 @@ export default defineComponent({
                     return "payments";
             }
         });
-
         return {
             qInstance,
             attributeCategories,
@@ -1494,7 +1506,6 @@ $grey-10: #212121 !default;
 $positive: #21ba45 !default;
 $primary: #1976d2 !default;
 $indigo-5: #3f51b5 !default;
-
 $breakpoint-sm-max: 1023px !default;
 $breakpoint-xs-max: 599px !default;
 
@@ -1515,11 +1526,13 @@ $breakpoint-xs-max: 599px !default;
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 12px;
+    margin-bottom: 0; /* Reduced margin as additional details follow */
 }
 .player-identity-extended {
     flex-grow: 1;
     padding-right: 16px;
+    display: flex;
+    flex-direction: column; /* Ensure child divs stack */
 }
 
 .player-flag-container-redesigned {
@@ -1543,13 +1556,11 @@ $breakpoint-xs-max: 599px !default;
     overflow: hidden;
     text-align: left;
 }
-
 .player-name-and-age {
     display: flex;
     align-items: baseline;
     flex-wrap: nowrap;
 }
-
 .player-name-text-redesigned {
     font-size: clamp(1.1rem, 2vw, 1.4rem);
     line-height: 1.2;
@@ -1566,20 +1577,70 @@ $breakpoint-xs-max: 599px !default;
     align-self: baseline;
     white-space: nowrap;
 }
-
 .player-positions-inline {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     margin-top: 2px;
 }
-
 .player-position-badge {
     font-size: clamp(0.65rem, 0.9vw, 0.75rem);
     font-weight: 500;
     padding: 1px 4px;
     margin-right: 4px;
     margin-bottom: 2px;
+}
+
+/* New styles for Club, Personality, Media Handling */
+.player-additional-details {
+    margin-top: 6px; /* Space above this block */
+    .row {
+        align-items: flex-start; /* Align items to the top of the row */
+    }
+}
+.additional-detail-item {
+    display: flex;
+    align-items: center; /* Vertically align icon and text block */
+    padding: 2px 0; /* Minimal vertical padding */
+    line-height: 1.2;
+}
+.additional-detail-icon {
+    // color handled by :color prop in template
+    align-self: center; // center icon with the first line of text typically
+}
+.additional-detail-text-block {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    text-align: left;
+}
+.additional-detail-caption {
+    font-size: clamp(0.6rem, 0.8vw, 0.65rem);
+    line-height: 1.1;
+    color: $grey-6;
+    .body--dark & {
+        color: $grey-5;
+    }
+    white-space: nowrap;
+    margin-bottom: -2px; /* Pull label closer */
+}
+.additional-detail-label {
+    font-size: clamp(0.75rem, 1vw, 0.85rem);
+    line-height: 1.2;
+    font-weight: 500;
+    white-space: nowrap;
+    &.ellipsis {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+.additional-detail-item-separator {
+    padding: 0 4px; // Space around the bullet
+    color: $grey-5;
+    align-self: center; // Vertically center the bullet
+    font-size: 0.8em; // Make bullet slightly smaller
+    line-height: 1.2; // Match label line-height
 }
 
 .financial-details-top-right {
@@ -1615,41 +1676,10 @@ $breakpoint-xs-max: 599px !default;
     }
 }
 
-.player-secondary-info-row {
-}
-.secondary-info-item {
-    display: flex;
-    align-items: center;
-    padding: 6px 2px;
-    min-height: 40px;
-    overflow: hidden;
-}
-.info-text-block {
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    text-align: left;
-}
-.info-caption-redesigned {
-    font-size: clamp(0.6rem, 0.8vw, 0.65rem);
-    line-height: 1.1;
-    white-space: nowrap;
-    color: $grey-6;
-    .body--dark & {
-        color: $grey-5;
-    }
-}
-.info-label-redesigned {
-    font-size: clamp(0.8rem, 1.2vw, 0.9rem);
-    line-height: 1.25;
-    font-weight: 500;
-    white-space: nowrap;
-    &.ellipsis {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-}
+.q-separator.q-my-md {
+    margin-top: 12px !important;
+    margin-bottom: 12px !important;
+} /* Ensure separator has enough space after new section */
 
 .fifa-stats-section {
 }
@@ -1659,12 +1689,10 @@ $breakpoint-xs-max: 599px !default;
 }
 .fifa-stats-grid-redesigned {
 }
-
 .col-fifa-stat {
-    padding: 1px;
-    flex-basis: calc(100% / 8);
-    max-width: calc(100% / 8);
-
+    padding: 1px; // Small gap between boxes
+    flex-basis: calc(100% / 8); // Adjust as needed for number of items per row
+    max-width: calc(100% / 8); // Adjust as needed
     @media (max-width: $breakpoint-sm-max) {
         flex-basis: calc(100% / 6);
         max-width: calc(100% / 6);
@@ -1674,17 +1702,17 @@ $breakpoint-xs-max: 599px !default;
         max-width: calc(100% / 4);
     }
 }
-
 .fifa-stat-item-redesigned {
-    aspect-ratio: 1 / 1;
+    // aspect-ratio: 1 / 1; /* REMOVED to allow content to dictate size */
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    padding: 0px !important;
+    padding: 4px 6px !important; /* UPDATED padding for snug fit */
     border-width: 1px;
     overflow: hidden;
-    line-height: 1.1;
+    line-height: 1.1; /* Base line height for the box */
+    min-width: 40px; /* Minimum width to prevent too much squishing */
 
     &.rating-na {
         background-color: #757575;
@@ -1716,15 +1744,17 @@ $breakpoint-xs-max: 599px !default;
     }
 }
 .fifa-label-redesigned {
-    font-size: clamp(0.6rem, 1.5vw, 0.75rem);
+    font-size: clamp(0.7rem, 1.6vw, 0.85rem); /* INCREASED font size */
     font-weight: 500;
-    margin-bottom: -2px;
+    margin-bottom: 1px; /* Adjusted for better spacing */
     display: block;
+    line-height: 1.1;
 }
 .fifa-value-redesigned {
-    font-size: clamp(0.9rem, 2.2vw, 1.4rem);
+    font-size: clamp(1rem, 2.4vw, 1.5rem); /* INCREASED font size */
     font-weight: 700;
     display: block;
+    line-height: 1.1;
 }
 
 .attributes-section-title {
@@ -1889,25 +1919,23 @@ hr.q-my-sm {
     .player-position-badge {
         font-size: clamp(0.6rem, 0.8vw, 0.7rem);
     }
+    .additional-detail-caption {
+        font-size: clamp(0.55rem, 0.7vw, 0.6rem);
+    }
+    .additional-detail-label {
+        font-size: clamp(0.7rem, 0.9vw, 0.8rem);
+    }
     .financial-item-large {
         font-size: clamp(1rem, 2vw, 1.3rem);
     }
     .financial-item-small {
         font-size: clamp(0.75rem, 1.3vw, 0.9rem);
     }
-    .secondary-info-item {
-        .info-label-redesigned {
-            font-size: clamp(0.75rem, 1.1vw, 0.85rem);
-        }
-        .info-caption-redesigned {
-            font-size: clamp(0.6rem, 0.8vw, 0.65rem);
-        }
-    }
     .fifa-label-redesigned {
-        font-size: clamp(0.55rem, 1.2vw, 0.7rem);
+        font-size: clamp(0.65rem, 1.3vw, 0.8rem); /* UPDATED for sm */
     }
     .fifa-value-redesigned {
-        font-size: clamp(0.8rem, 1.8vw, 1.2rem);
+        font-size: clamp(0.9rem, 2vw, 1.3rem); /* UPDATED for sm */
     }
 }
 
@@ -1934,18 +1962,23 @@ hr.q-my-sm {
     .player-name-and-age {
         flex-wrap: wrap;
     }
+    .player-additional-details .row {
+        justify-content: flex-start;
+    } /* Align items to start on mobile */
+    .additional-detail-item {
+        flex-basis: 100% !important; /* Stack items fully on XS */
+        justify-content: flex-start;
+        margin-bottom: 2px; /* Add a bit of space between stacked items */
+    }
+    .additional-detail-item-separator {
+        display: none;
+    } /* Hide separator on XS */
 
     .financial-details-top-right {
         align-items: flex-start;
         text-align: left;
         width: 100%;
         margin-bottom: 8px;
-    }
-    .player-secondary-info-row {
-        .col-xs-12 {
-            flex-basis: 100%;
-            max-width: 100%;
-        }
     }
     .player-name-text-redesigned {
         font-size: clamp(0.9rem, 2.8vw, 1.1rem);
@@ -1961,28 +1994,21 @@ hr.q-my-sm {
     .player-position-badge {
         font-size: clamp(0.6rem, 1.8vw, 0.7rem);
     }
-    .secondary-info-item {
-        min-height: 36px;
-        padding: 4px 0;
-        .q-icon {
-            font-size: 1.3em !important;
-            margin-right: 4px !important;
-        }
-        .info-label-redesigned {
-            font-size: clamp(0.7rem, 2.5vw, 0.8rem);
-        }
-        .info-caption-redesigned {
-            font-size: clamp(0.55rem, 2vw, 0.6rem);
-        }
+    .additional-detail-caption {
+        font-size: clamp(0.6rem, 1.5vw, 0.65rem);
     }
+    .additional-detail-label {
+        font-size: clamp(0.75rem, 2vw, 0.85rem);
+    }
+
     .fifa-title-redesigned {
         font-size: clamp(0.75rem, 2vw, 0.85rem);
     }
     .fifa-label-redesigned {
-        font-size: clamp(0.5rem, 1.3vw, 0.6rem);
+        font-size: clamp(0.6rem, 1.4vw, 0.7rem); /* UPDATED for xs */
     }
     .fifa-value-redesigned {
-        font-size: clamp(0.7rem, 2vw, 1rem);
+        font-size: clamp(0.8rem, 2.2vw, 1.1rem); /* UPDATED for xs */
     }
     .attributes-section-title {
         font-size: 1rem;
