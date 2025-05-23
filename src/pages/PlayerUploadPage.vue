@@ -122,333 +122,17 @@
                 </q-card-section>
             </q-card>
 
-            <q-card
-                class="q-mb-md filter-card"
+            <PlayerFilters
                 v-if="allPlayers.length > 0"
-                :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-white'"
-            >
-                <q-card-section>
-                    <div class="text-subtitle1 q-mb-sm">
-                        Search Players (Using {{ detectedCurrencySymbol }} for
-                        values)
-                    </div>
-                    <div class="row q-col-gutter-md items-end">
-                        <div class="col-12 col-sm-6 col-md-3 col-lg-2">
-                            <q-input
-                                v-model="filters.name"
-                                label="Player Name"
-                                dense
-                                outlined
-                                clearable
-                                @update:model-value="debouncedApplyFilters"
-                                :label-color="$q.dark.isActive ? 'grey-4' : ''"
-                                :input-class="
-                                    $q.dark.isActive ? 'text-grey-3' : ''
-                                "
-                            />
-                        </div>
-                        <div class="col-12 col-sm-6 col-md-3 col-lg-2">
-                            <q-select
-                                v-model="filters.club"
-                                :options="clubOptions"
-                                label="Club"
-                                dense
-                                outlined
-                                clearable
-                                use-input
-                                hide-selected
-                                fill-input
-                                input-debounce="300"
-                                @filter="filterClubOptions"
-                                @update:model-value="applyFiltersAndSort"
-                                :label-color="$q.dark.isActive ? 'grey-4' : ''"
-                                :popup-content-class="
-                                    $q.dark.isActive
-                                        ? 'bg-grey-8 text-white'
-                                        : ''
-                                "
-                            >
-                                <template v-slot:no-option>
-                                    <q-item>
-                                        <q-item-section class="text-grey">
-                                            No results
-                                        </q-item-section>
-                                    </q-item>
-                                </template>
-                            </q-select>
-                        </div>
-                        <div class="col-12 col-sm-6 col-md-3 col-lg-2">
-                            <q-select
-                                v-model="filters.nationality"
-                                :options="nationalityOptions"
-                                label="Nationality"
-                                dense
-                                outlined
-                                clearable
-                                use-input
-                                hide-selected
-                                fill-input
-                                input-debounce="300"
-                                @filter="filterNationalityOptions"
-                                @update:model-value="applyFiltersAndSort"
-                                :label-color="$q.dark.isActive ? 'grey-4' : ''"
-                                :popup-content-class="
-                                    $q.dark.isActive
-                                        ? 'bg-grey-8 text-white'
-                                        : ''
-                                "
-                            >
-                                <template v-slot:no-option>
-                                    <q-item>
-                                        <q-item-section class="text-grey">
-                                            No results
-                                        </q-item-section>
-                                    </q-item>
-                                </template>
-                            </q-select>
-                        </div>
-                        <div class="col-12 col-sm-6 col-md-3 col-lg-2">
-                            <q-select
-                                v-model="filters.position"
-                                :options="positionFilterOptions"
-                                label="Position"
-                                dense
-                                outlined
-                                clearable
-                                emit-value
-                                map-options
-                                @update:model-value="applyFiltersAndSort"
-                                :label-color="$q.dark.isActive ? 'grey-4' : ''"
-                                :popup-content-class="
-                                    $q.dark.isActive
-                                        ? 'bg-grey-8 text-white'
-                                        : ''
-                                "
-                            />
-                        </div>
-                        <div class="col-12 col-sm-6 col-md-3 col-lg-2">
-                            <q-select
-                                v-model="filters.mediaHandling"
-                                :options="mediaHandlingOptions"
-                                label="Media Handling"
-                                dense
-                                outlined
-                                multiple
-                                use-chips
-                                clearable
-                                emit-value
-                                map-options
-                                @update:model-value="applyFiltersAndSort"
-                                :label-color="$q.dark.isActive ? 'grey-4' : ''"
-                                :popup-content-class="
-                                    $q.dark.isActive
-                                        ? 'bg-grey-8 text-white'
-                                        : ''
-                                "
-                            />
-                        </div>
-                        <div class="col-12 col-sm-6 col-md-3 col-lg-2">
-                            <q-select
-                                v-model="filters.personality"
-                                :options="personalityOptions"
-                                label="Personality"
-                                dense
-                                outlined
-                                multiple
-                                use-chips
-                                clearable
-                                emit-value
-                                map-options
-                                @update:model-value="applyFiltersAndSort"
-                                :label-color="$q.dark.isActive ? 'grey-4' : ''"
-                                :popup-content-class="
-                                    $q.dark.isActive
-                                        ? 'bg-grey-8 text-white'
-                                        : ''
-                                "
-                            />
-                        </div>
-                        <div class="col-12 col-sm-4 col-md-2 col-lg-1">
-                            <q-input
-                                v-model.number="filters.minAge"
-                                type="number"
-                                label="Min Age"
-                                dense
-                                outlined
-                                clearable
-                                :min="0"
-                                @update:model-value="debouncedApplyFilters"
-                                :label-color="$q.dark.isActive ? 'grey-4' : ''"
-                                :input-class="
-                                    $q.dark.isActive ? 'text-grey-3' : ''
-                                "
-                            />
-                        </div>
-                        <div class="col-12 col-sm-4 col-md-2 col-lg-1">
-                            <q-input
-                                v-model.number="filters.maxAge"
-                                type="number"
-                                label="Max Age"
-                                dense
-                                outlined
-                                clearable
-                                :min="0"
-                                @update:model-value="debouncedApplyFilters"
-                                :label-color="$q.dark.isActive ? 'grey-4' : ''"
-                                :input-class="
-                                    $q.dark.isActive ? 'text-grey-3' : ''
-                                "
-                            />
-                        </div>
-
-                        <div class="col-12 col-md-6 col-lg-4">
-                            <div
-                                class="text-caption q-mb-xs"
-                                :class="
-                                    $q.dark.isActive
-                                        ? 'text-grey-4'
-                                        : 'text-grey-7'
-                                "
-                            >
-                                Transfer Value ({{ detectedCurrencySymbol }})
-                            </div>
-                            <div class="row items-center q-col-gutter-x-sm">
-                                <div class="col">
-                                    <q-input
-                                        v-model="transferValueTextInput"
-                                        :label="`Enter Value (e.g., ${detectedCurrencySymbol}1.5M, ${detectedCurrencySymbol}500K)`"
-                                        dense
-                                        outlined
-                                        clearable
-                                        @update:model-value="
-                                            debouncedUpdateNumericValueFromTextInput
-                                        "
-                                        :disable="allPlayers.length === 0"
-                                        placeholder="Any"
-                                        :label-color="
-                                            $q.dark.isActive ? 'grey-4' : ''
-                                        "
-                                        :input-class="
-                                            $q.dark.isActive
-                                                ? 'text-grey-3'
-                                                : ''
-                                        "
-                                    />
-                                </div>
-                                <div class="col-auto">
-                                    <q-btn-toggle
-                                        v-model="filters.transferValueMode"
-                                        @update:model-value="
-                                            applyFiltersAndSort
-                                        "
-                                        no-caps
-                                        rounded
-                                        unelevated
-                                        toggle-color="primary"
-                                        :color="
-                                            $q.dark.isActive
-                                                ? 'grey-7'
-                                                : 'white'
-                                        "
-                                        :text-color="
-                                            $q.dark.isActive
-                                                ? 'white'
-                                                : 'primary'
-                                        "
-                                        size="sm"
-                                        padding="xs md"
-                                        :options="[
-                                            {
-                                                label: '<',
-                                                value: 'less',
-                                                slot: 'less-than',
-                                            },
-                                            {
-                                                label: '>',
-                                                value: 'more',
-                                                slot: 'more-than',
-                                            },
-                                        ]"
-                                        :disable="
-                                            allPlayers.length === 0 ||
-                                            filters.selectedTransferValue ===
-                                                null
-                                        "
-                                    >
-                                        <template v-slot:less-than
-                                            ><q-tooltip
-                                                >Less than selected
-                                                value</q-tooltip
-                                            ></template
-                                        >
-                                        <template v-slot:more-than
-                                            ><q-tooltip
-                                                >More than selected
-                                                value</q-tooltip
-                                            ></template
-                                        >
-                                    </q-btn-toggle>
-                                </div>
-                            </div>
-                            <q-slider
-                                class="q-mt-sm"
-                                v-model="filters.selectedTransferValue"
-                                :min="transferValueSliderMin"
-                                :max="transferValueSliderMax"
-                                :step="transferValueSliderStep"
-                                label
-                                :label-value="
-                                    formatSliderValueWithCurrency(
-                                        filters.selectedTransferValue,
-                                    )
-                                "
-                                @update:model-value="applyFiltersAndSort"
-                                :disable="
-                                    allPlayers.length === 0 ||
-                                    transferValueSliderMin >=
-                                        transferValueSliderMax
-                                "
-                                color="primary"
-                            />
-                            <div
-                                class="text-caption q-mt-xs"
-                                :class="
-                                    $q.dark.isActive
-                                        ? 'text-grey-5'
-                                        : 'text-grey-7'
-                                "
-                                v-if="filters.selectedTransferValue !== null"
-                            >
-                                Current filter:
-                                {{
-                                    filters.transferValueMode === "less"
-                                        ? "Less than"
-                                        : "More than"
-                                }}
-                                {{
-                                    formatSliderValueWithCurrency(
-                                        filters.selectedTransferValue,
-                                    )
-                                }}
-                            </div>
-                        </div>
-
-                        <div class="col-12 flex items-center q-mt-md">
-                            <q-btn
-                                color="grey"
-                                :text-color="
-                                    $q.dark.isActive ? 'white' : 'dark'
-                                "
-                                label="Clear All Filters"
-                                class="full-width"
-                                @click="clearAllFilters"
-                                :disable="!hasActiveFilters"
-                                outline
-                            />
-                        </div>
-                    </div>
-                </q-card-section>
-            </q-card>
+                :players="allPlayers"
+                :currency-symbol="detectedCurrencySymbol"
+                :transfer-value-range="playerStore.transferValueRange"
+                :unique-clubs="playerStore.uniqueClubs"
+                :unique-nationalities="playerStore.uniqueNationalities"
+                :unique-media-handlings="playerStore.uniqueMediaHandlings"
+                :unique-personalities="playerStore.uniquePersonalities"
+                @filter-changed="handleFilterChanged"
+            />
 
             <q-banner
                 v-if="error"
@@ -639,10 +323,11 @@
 <script>
 import { ref, computed, reactive, onMounted, watch } from "vue";
 import { useRouter } from "vue-router";
+import { usePlayerStore } from "../stores/playerStore";
 import PlayerDataTable from "../components/PlayerDataTable.vue";
 import PlayerDetailDialog from "../components/PlayerDetailDialog.vue";
 import UpgradeFinderDialog from "../components/UpgradeFinderDialog.vue";
-import playerService from "../services/playerService";
+import PlayerFilters from "../components/filters/PlayerFilters.vue";
 import { formatCurrency, parseCurrencyString } from "../utils/currencyUtils";
 
 // MODIFIED: Ordered short positions for filter dropdown
@@ -695,19 +380,31 @@ function debounce(fn, delay) {
 
 export default {
     name: "PlayerUploadPage",
-    components: { PlayerDataTable, PlayerDetailDialog, UpgradeFinderDialog },
+    components: { 
+        PlayerDataTable, 
+        PlayerDetailDialog, 
+        UpgradeFinderDialog,
+        PlayerFilters
+    },
     setup() {
         const router = useRouter();
+        const playerStore = usePlayerStore();
         const playerFile = ref(null);
-        const loading = ref(false);
-        const error = ref("");
-        const allPlayers = ref([]);
         const filteredPlayers = ref([]);
         const selectedPlayer = ref(null);
         const showPlayerDetailDialog = ref(false);
         const showUpgradeFinder = ref(false);
-        const currentDatasetId = ref(null);
-        const detectedCurrencySymbol = ref("$");
+        
+        // Derived properties from store
+        const allPlayers = computed(() => playerStore.allPlayers);
+        const currentDatasetId = computed(() => playerStore.currentDatasetId);
+        const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol);
+        const loading = computed(() => playerStore.loading);
+        const error = computed(() => playerStore.error);
+        
+        const uniqueClubsCount = computed(() => playerStore.uniqueClubs.length);
+        const uniqueNationalitiesCount = computed(() => playerStore.uniqueNationalities.length);
+        const uniqueParsedPositionsCount = computed(() => playerStore.uniquePositionsCount);
 
         const attributeWeightsLoadedForFeedback = ref(false);
         const attributeWeightsErrorForFeedback = ref("");
@@ -721,8 +418,6 @@ export default {
             displayField: null,
         });
 
-        const transferValueSliderMin = ref(0);
-        const transferValueSliderMax = ref(100000000);
         const transferValueTextInput = ref("");
 
         const filters = reactive({
@@ -770,17 +465,7 @@ export default {
                 filters.maxAge !== null,
         );
 
-        const uniqueClubsCount = computed(() => allUniqueClubs.value.length);
-        const uniqueParsedPositionsCount = computed(() => {
-            const s = new Set();
-            allPlayers.value.forEach((player) =>
-                player.parsedPositions?.forEach((pos) => s.add(pos)),
-            );
-            return s.size;
-        });
-        const uniqueNationalitiesCount = computed(
-            () => allUniqueNationalities.value.length,
-        );
+        // These are now replaced by the computed properties from playerStore below
 
         const formatSliderValueWithCurrency = (value) => {
             if (value === null || value === undefined) return "";
@@ -788,8 +473,7 @@ export default {
         };
 
         const transferValueSliderStep = computed(() => {
-            const range =
-                transferValueSliderMax.value - transferValueSliderMin.value;
+            const range = playerStore.transferValueRange.max - playerStore.transferValueRange.min;
             if (range <= 0) return 10000;
             if (range < 50000) return 1000;
             if (range < 250000) return 5000;
@@ -835,17 +519,8 @@ export default {
                 roleSpecificOverallWeightsLoadedForFeedback,
                 roleSpecificOverallWeightsErrorForFeedback,
             );
-            const storedDatasetId = sessionStorage.getItem("currentDatasetId");
-            const storedCurrencySymbol = sessionStorage.getItem(
-                "detectedCurrencySymbol",
-            );
-            if (storedDatasetId) {
-                currentDatasetId.value = storedDatasetId;
-                if (storedCurrencySymbol) {
-                    detectedCurrencySymbol.value = storedCurrencySymbol;
-                }
-                fetchPlayersByDatasetId(storedDatasetId);
-            }
+            // Load player data from session storage via store
+            playerStore.loadFromSessionStorage();
         });
 
         const processPlayersFromAPI = (playersData) => {
@@ -895,85 +570,22 @@ export default {
             return options;
         });
 
+        // This function is no longer needed as the playerStore manages all options
         const updateDropdownOptionsAndSliderBounds = () => {
-            const clubs = new Set();
-            const nationalities = new Set();
-            const mediaHandlingsIndividual = new Set();
-            const personalities = new Set();
-            const transferValuesNumeric = [];
-
-            allPlayers.value.forEach((p) => {
-                if (p.club) clubs.add(p.club);
-                if (p.nationality) nationalities.add(p.nationality);
-                if (p.media_handling) {
-                    p.media_handling.split(",").forEach((style) => {
-                        const trimmedStyle = style.trim();
-                        if (trimmedStyle)
-                            mediaHandlingsIndividual.add(trimmedStyle);
-                    });
-                }
-                if (p.personality) personalities.add(p.personality);
-                if (typeof p.transferValueAmount === "number") {
-                    transferValuesNumeric.push(p.transferValueAmount);
-                }
-            });
-
-            allUniqueClubs.value = Array.from(clubs).sort();
-            allUniqueNationalities.value = Array.from(nationalities).sort();
-            allUniqueMediaHandlings.value = Array.from(
-                mediaHandlingsIndividual,
-            ).sort();
-            allUniquePersonalities.value = Array.from(personalities).sort();
-
-            clubOptions.value = allUniqueClubs.value;
-            nationalityOptions.value = allUniqueNationalities.value;
-            mediaHandlingOptions.value = allUniqueMediaHandlings.value.map(
-                (mh) => ({ label: mh, value: mh }),
-            );
-            personalityOptions.value = allUniquePersonalities.value.map(
-                (p) => ({ label: p, value: p }),
-            );
-
-            if (transferValuesNumeric.length > 0) {
-                transferValueSliderMin.value = Math.min(
-                    0,
-                    ...transferValuesNumeric,
+            // Initial value for selectedTransferValue if null
+            if (filters.selectedTransferValue === null) {
+                filters.selectedTransferValue = playerStore.transferValueRange.max;
+                transferValueTextInput.value = formatSliderValueWithCurrency(
+                    playerStore.transferValueRange.max
                 );
-                transferValueSliderMax.value = Math.max(
-                    ...transferValuesNumeric,
-                );
-                if (
-                    transferValueSliderMin.value >= transferValueSliderMax.value
-                ) {
-                    transferValueSliderMax.value =
-                        transferValueSliderMin.value +
-                        (transferValueSliderStep.value > 1
-                            ? transferValueSliderStep.value * 5
-                            : 50000);
-                }
-                if (
-                    transferValueSliderMin.value === 0 &&
-                    transferValueSliderMax.value === 0 &&
-                    transferValuesNumeric.some((v) => v === 0)
-                ) {
-                    transferValueSliderMax.value = 50000;
-                }
             } else {
-                transferValueSliderMin.value = 0;
-                transferValueSliderMax.value = 100000000;
-            }
-            if (filters.selectedTransferValue !== null) {
+                // Ensure selectedTransferValue is within current range
                 filters.selectedTransferValue = Math.max(
-                    transferValueSliderMin.value,
+                    playerStore.transferValueRange.min,
                     Math.min(
                         filters.selectedTransferValue,
-                        transferValueSliderMax.value,
-                    ),
-                );
-            } else {
-                filters.selectedTransferValue = transferValueSliderMax.value;
-                transferValueTextInput.value = formatSliderValueWithCurrency(
-                    transferValueSliderMax.value,
+                        playerStore.transferValueRange.max
+                    )
                 );
             }
         };
@@ -1055,7 +667,7 @@ export default {
 
             if (
                 filters.selectedTransferValue !== null &&
-                filters.selectedTransferValue < transferValueSliderMax.value
+                filters.selectedTransferValue < playerStore.transferValueRange.max
             ) {
                 const threshold = filters.selectedTransferValue;
                 if (filters.transferValueMode === "less") {
@@ -1104,8 +716,8 @@ export default {
             );
             if (numericValue !== null) {
                 const clampedValue = Math.max(
-                    transferValueSliderMin.value,
-                    Math.min(numericValue, transferValueSliderMax.value),
+                    playerStore.transferValueRange.min,
+                    Math.min(numericValue, playerStore.transferValueRange.max),
                 );
                 if (filters.selectedTransferValue !== clampedValue) {
                     filters.selectedTransferValue = clampedValue;
@@ -1113,10 +725,10 @@ export default {
             } else if (transferValueTextInput.value.trim() === "") {
                 if (
                     filters.selectedTransferValue !==
-                    transferValueSliderMax.value
+                    playerStore.transferValueRange.max
                 ) {
                     filters.selectedTransferValue =
-                        transferValueSliderMax.value;
+                        playerStore.transferValueRange.max;
                 }
             }
             applyFiltersAndSort();
@@ -1134,10 +746,10 @@ export default {
                 );
                 if (
                     currentTextParsed !== newValue ||
-                    newValue === transferValueSliderMax.value
+                    newValue === playerStore.transferValueRange.max
                 ) {
                     transferValueTextInput.value =
-                        newValue === transferValueSliderMax.value &&
+                        newValue === playerStore.transferValueRange.max &&
                         newValue !== null
                             ? ""
                             : formatSliderValueWithCurrency(newValue);
@@ -1147,39 +759,17 @@ export default {
 
         const uploadAndParse = async () => {
             if (!playerFile.value) {
-                error.value = "Please select an HTML file first.";
+                playerStore.error = "Please select an HTML file first.";
                 return;
             }
-            loading.value = true;
-            error.value = "";
             try {
                 const formData = new FormData();
                 formData.append("playerFile", playerFile.value);
-                const response = await playerService.uploadPlayerFile(formData);
-                currentDatasetId.value = response.datasetId;
-                detectedCurrencySymbol.value =
-                    response.detectedCurrencySymbol || "$";
-
-                sessionStorage.setItem(
-                    "currentDatasetId",
-                    currentDatasetId.value,
-                );
-                sessionStorage.setItem(
-                    "detectedCurrencySymbol",
-                    detectedCurrencySymbol.value,
-                );
-
-                await fetchPlayersByDatasetId(currentDatasetId.value);
+                await playerStore.uploadPlayerFile(formData);
                 sortState.key = null;
             } catch (e) {
-                error.value = `Failed to process file: ${e.message || "Unknown error"}`;
-                allPlayers.value = [];
-                currentDatasetId.value = null;
-                detectedCurrencySymbol.value = "$";
-                sessionStorage.removeItem("currentDatasetId");
-                sessionStorage.removeItem("detectedCurrencySymbol");
-            } finally {
-                loading.value = false;
+                // Error handling is already done in the store
+                console.error(e);
             }
         };
 
@@ -1192,7 +782,7 @@ export default {
         const clearAllFilters = () => {
             filters.name = "";
             filters.club = null;
-            filters.selectedTransferValue = transferValueSliderMax.value;
+            filters.selectedTransferValue = playerStore.transferValueRange.max;
             filters.transferValueMode = "less";
             transferValueTextInput.value = "";
             filters.position = null;
@@ -1244,8 +834,7 @@ export default {
             (newPlayers) => {
                 updateDropdownOptionsAndSliderBounds();
                 if (!newPlayers || newPlayers.length === 0) {
-                    filters.selectedTransferValue =
-                        transferValueSliderMax.value;
+                    filters.selectedTransferValue = playerStore.transferValueRange.max;
                     transferValueTextInput.value = "";
                 }
                 applyFiltersAndSort();
@@ -1254,19 +843,29 @@ export default {
         );
 
         const goToTeamView = () => {
-            if (currentDatasetId.value) {
+            if (playerStore.currentDatasetId) {
                 router.push({
                     name: "team-view",
-                    query: { datasetId: currentDatasetId.value },
+                    query: { datasetId: playerStore.currentDatasetId },
                 });
             } else {
-                error.value =
-                    "No data uploaded yet. Please upload a file first.";
+                playerStore.error = "No data uploaded yet. Please upload a file first.";
             }
+        };
+
+        // Move these up before the watch statement that uses them
+        // Derived properties from store
+
+        // We're using the existing filters reactive object declared earlier
+
+        const handleFilterChanged = (newFilters) => {
+            Object.assign(filters, newFilters);
+            applyFiltersAndSort();
         };
 
         return {
             playerFile,
+            playerStore,
             loading,
             error,
             allPlayers,
@@ -1275,19 +874,9 @@ export default {
             uniqueParsedPositionsCount,
             uniqueNationalitiesCount,
             filters,
-            hasActiveFilters,
-            positionFilterOptions, // This is now the modified one
-            clubOptions,
-            nationalityOptions,
-            mediaHandlingOptions,
-            personalityOptions,
-            filterClubOptions,
-            filterNationalityOptions,
             uploadAndParse,
             handleSort,
-            debouncedApplyFilters,
             applyFiltersAndSort,
-            clearAllFilters,
             selectedPlayer,
             showPlayerDetailDialog,
             handlePlayerSelected,
@@ -1296,16 +885,11 @@ export default {
             roleSpecificOverallWeightsLoadedForFeedback,
             roleSpecificOverallWeightsErrorForFeedback,
             showUpgradeFinder,
-            transferValueSliderMin,
-            transferValueSliderMax,
-            transferValueSliderStep,
-            formatSliderValueWithCurrency,
-            transferValueTextInput,
-            debouncedUpdateNumericValueFromTextInput,
             isGoalkeeperView,
             goToTeamView,
             currentDatasetId,
             detectedCurrencySymbol,
+            handleFilterChanged,
         };
     },
 };
