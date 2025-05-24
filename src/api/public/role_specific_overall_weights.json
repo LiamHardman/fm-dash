@@ -2673,7 +2673,7 @@
     "Fir": 0,
     "Pas": 0,
     "Tec": 0,
-    "Vis": 0 /* Added 0 for missing attrs for consistency */,
+    "Vis": 0,
     "Ant": 60,
     "Cmp": 60,
     "Cnt": 70,
@@ -2685,7 +2685,7 @@
     "Wor": 40,
     "Tea": 40,
     "Fla": 0,
-    "OtB": 0 /* Added 0 for missing attrs */,
+    "OtB": 0,
     "Agi": 50,
     "Jum": 60,
     "Str": 50,
@@ -2693,7 +2693,7 @@
     "Pac": 30,
     "Bal": 0,
     "Nat": 0,
-    "Sta": 0 /* Added 0 for missing attrs */
+    "Sta": 0
   },
   "GK - Sweeper Keeper - Defend": {
     "Aer": 75,
@@ -2721,7 +2721,7 @@
     "Wor": 40,
     "Tea": 40,
     "Fla": 0,
-    "OtB": 0 /* Added 0 for missing attrs */,
+    "OtB": 0,
     "Acc": 50,
     "Agi": 55,
     "Jum": 55,
@@ -2729,7 +2729,7 @@
     "Str": 45,
     "Bal": 0,
     "Nat": 0,
-    "Sta": 0 /* Added 0 for missing attrs */
+    "Sta": 0
   },
   "GK - Sweeper Keeper - Support": {
     "Aer": 70,
@@ -2765,7 +2765,7 @@
     "Str": 40,
     "Bal": 0,
     "Nat": 0,
-    "Sta": 0 /* Added 0 for missing attrs */
+    "Sta": 0
   },
   "GK - Sweeper Keeper - Attack": {
     "Aer": 65,
@@ -2801,7 +2801,7 @@
     "Str": 35,
     "Bal": 0,
     "Nat": 0,
-    "Sta": 0 /* Added 0 for missing attrs */
+    "Sta": 0
   },
   "AMR - Raumdeuter - Attack": {
     "OtB": 85,
@@ -2826,7 +2826,7 @@
     "Mar": 20,
     "Pas": 50,
     "Pen": 30,
-    "Tck": 20 /* Fillers */,
+    "Tck": 20,
     "Agg": 50,
     "Bra": 60,
     "Cnt": 60,
@@ -2834,12 +2834,12 @@
     "Fla": 60,
     "Ldr": 40,
     "Tea": 60,
-    "Vis": 50 /* Fillers */,
+    "Vis": 50,
     "Agi": 60,
     "Bal": 60,
     "Jum": 50,
     "Nat": 60,
-    "Str": 50 /* Fillers */
+    "Str": 50
   },
   "AML - Raumdeuter - Attack": {
     "OtB": 85,
@@ -2864,7 +2864,7 @@
     "Mar": 20,
     "Pas": 50,
     "Pen": 30,
-    "Tck": 20 /* Fillers */,
+    "Tck": 20,
     "Agg": 50,
     "Bra": 60,
     "Cnt": 60,
@@ -2872,12 +2872,12 @@
     "Fla": 60,
     "Ldr": 40,
     "Tea": 60,
-    "Vis": 50 /* Fillers */,
+    "Vis": 50,
     "Agi": 60,
     "Bal": 60,
     "Jum": 50,
     "Nat": 60,
-    "Str": 50 /* Fillers */
+    "Str": 50
   },
   "AMR - Trequartista - Attack": {
     "Cor": 5,
