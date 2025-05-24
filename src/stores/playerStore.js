@@ -15,7 +15,10 @@ export const usePlayerStore = defineStore("player", () => {
   const error = ref("");
   const allAvailableRoles = ref([]);
 
-  // Getters (uniqueClubs, uniqueNationalities, etc. remain the same)
+  // Default age slider values, can be accessed by components
+  const AGE_SLIDER_MIN_DEFAULT = 15;
+  const AGE_SLIDER_MAX_DEFAULT = 50;
+
   const uniqueClubs = computed(() => {
     if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0)
       return [];
@@ -87,7 +90,6 @@ export const usePlayerStore = defineStore("player", () => {
     return { min, max };
   });
 
-  // Actions
   async function uploadPlayerFile(formData) {
     loading.value = true;
     error.value = "";
@@ -104,9 +106,15 @@ export const usePlayerStore = defineStore("player", () => {
       await fetchAllAvailableRoles();
       return response;
     } catch (e) {
-      error.value = `Failed to process file: ${e.message || "Unknown error"}`;
-      resetState();
-      throw e;
+      // Check if the error has a status property (added in playerService)
+      if (e.status === 413) {
+        error.value =
+          "Upload failed: File is too large. Maximum size is 15MB (approx. 10,000 players).";
+      } else {
+        error.value = `Failed to process file: ${e.message || "Unknown error"}`;
+      }
+      resetState(); // Reset state on error
+      throw e; // Re-throw for component to potentially handle further
     } finally {
       loading.value = false;
     }
@@ -191,7 +199,7 @@ export const usePlayerStore = defineStore("player", () => {
         detectedCurrencySymbol.value = storedCurrencySymbol;
       }
       try {
-        await fetchPlayersByDatasetId(storedDatasetId); // Fetch with no filters initially
+        await fetchPlayersByDatasetId(storedDatasetId);
         await fetchAllAvailableRoles();
       } catch (e) {
         // Error handled in fetch
@@ -219,5 +227,7 @@ export const usePlayerStore = defineStore("player", () => {
     fetchAllAvailableRoles,
     resetState,
     loadFromSessionStorage,
+    AGE_SLIDER_MIN_DEFAULT, // Expose defaults
+    AGE_SLIDER_MAX_DEFAULT,
   };
 });

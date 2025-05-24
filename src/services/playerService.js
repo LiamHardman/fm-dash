@@ -9,6 +9,15 @@ export default {
         body: formData,
       });
       if (!response.ok) {
+        // Check for specific status codes to throw more informative errors
+        if (response.status === 413) {
+          // Create a custom error object or throw an error with a specific message/property
+          const error = new Error(
+            "File too large. Maximum size allowed is 15MB.",
+          );
+          error.status = 413; // Add status to the error object
+          throw error;
+        }
         const errorText = await response.text();
         throw new Error(
           `API Error: ${response.status} - ${errorText || response.statusText}`,
@@ -17,7 +26,7 @@ export default {
       return await response.json();
     } catch (error) {
       console.error("Upload error in playerService:", error);
-      throw error;
+      throw error; // Re-throw the error to be caught by the store
     }
   },
 
@@ -45,17 +54,6 @@ export default {
           params.append("minAge", ageRange.min.toString());
         }
         if (ageRange.max !== null && ageRange.max !== undefined) {
-          // Assuming your backend doesn't need maxAge if it's the slider's absolute max
-          // If it does, send it. For now, let's assume only send if not default max.
-          // This depends on your backend logic for "Any" max age.
-          // For simplicity, let's send it if it's not the default "Any" value (e.g. 50)
-          // This needs to align with how PlayerFilters defines "Any" for max age.
-          // Let's assume if ageRange.max is less than a known upper bound (e.g. 50), it's a specific filter.
-          // From PlayerFilters, ageSliderMax is 50. If filters.ageRange.max === ageSliderMax, it implies "Any".
-          // So, only send maxAge if it's *not* the default max from the slider.
-          // However, the backend will handle -1 as "not set".
-          // The PlayerFilters component sends ageRange.min and ageRange.max directly.
-          // The backend should interpret a missing param or -1 as "no filter for this bound".
           params.append("maxAge", ageRange.max.toString());
         }
       }
@@ -70,8 +68,6 @@ export default {
           transferValueRange.max !== null &&
           transferValueRange.max !== undefined
         ) {
-          // Similar logic for maxTransferValue, send if it's not the default "Any"
-          // The backend should interpret a missing param or -1 as "no filter for this bound".
           params.append("maxTransferValue", transferValueRange.max.toString());
         }
       }

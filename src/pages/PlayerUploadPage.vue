@@ -29,6 +29,18 @@
                         </li>
                         <li>
                             Select an HTML file exported from Football Manager.
+                            <br />
+                            <span
+                                class="text-caption"
+                                :class="
+                                    $q.dark.isActive
+                                        ? 'text-grey-5'
+                                        : 'text-grey-7'
+                                "
+                            >
+                                Maximum file size: 15MB (approx. 10,000
+                                players).
+                            </span>
                         </li>
                         <li>
                             Click "Upload and Parse". Currency symbol will be
@@ -71,6 +83,7 @@
                         <template v-slot:prepend
                             ><q-icon name="attach_file"
                         /></template>
+                        <template v-slot:hint> Max file size: 15MB </template>
                     </q-file>
                     <q-btn
                         class="q-mt-md full-width"
@@ -217,6 +230,7 @@
 <script>
 import { ref, computed, onMounted, watch } from "vue";
 import { useRouter } from "vue-router";
+import { useQuasar } from "quasar";
 import { usePlayerStore } from "../stores/playerStore";
 import PlayerDataTable from "../components/PlayerDataTable.vue";
 import PlayerDetailDialog from "../components/PlayerDetailDialog.vue";
@@ -234,6 +248,7 @@ export default {
     setup() {
         const router = useRouter();
         const playerStore = usePlayerStore();
+        const $q = useQuasar();
         const playerFile = ref(null);
         const filteredPlayers = ref([]);
         const selectedPlayer = ref(null);
@@ -254,9 +269,6 @@ export default {
                 playerStore.error = value;
             },
         });
-
-        // Removed uniqueClubsCount, uniqueNationalitiesCount, uniqueParsedPositionsCount
-        // as the summary cards are removed.
 
         const attributeWeightsLoadedForFeedback = ref(false);
         const roleSpecificOverallWeightsLoadedForFeedback = ref(false);
@@ -279,7 +291,7 @@ export default {
                     `Client-side check: Failed to load ${filePath}:`,
                     e,
                 );
-                loadedFlagRef.value = true; // Still set to true to enable button, backend handles actual file
+                loadedFlagRef.value = true;
             }
         };
 
@@ -368,10 +380,7 @@ export default {
                     return currentFilters.personality.includes(p.personality);
                 });
             }
-            // Age and Transfer Value range filters are now primarily handled by backend.
-            // These client-side filters are only for additional refinement if needed,
-            // or if backend filtering was not exhaustive for some edge cases.
-            // For ageRange:
+
             if (
                 currentFilters.ageRange &&
                 typeof currentFilters.ageRange.min === "number" &&
@@ -379,7 +388,7 @@ export default {
             ) {
                 if (
                     currentFilters.ageRange.min >
-                    playerStore.AGE_SLIDER_MIN_DEFAULT // Defined in playerStore
+                    playerStore.AGE_SLIDER_MIN_DEFAULT
                 ) {
                     tempPlayers = tempPlayers.filter(
                         (p) => p.age >= currentFilters.ageRange.min,
@@ -387,7 +396,7 @@ export default {
                 }
                 if (
                     currentFilters.ageRange.max <
-                    playerStore.AGE_SLIDER_MAX_DEFAULT // Defined in playerStore
+                    playerStore.AGE_SLIDER_MAX_DEFAULT
                 ) {
                     tempPlayers = tempPlayers.filter(
                         (p) => p.age <= currentFilters.ageRange.max,
@@ -395,10 +404,9 @@ export default {
                 }
             }
 
-            // For transferValueRangeLocal:
             if (
                 currentFilters.transferValueRangeLocal &&
-                playerStore.transferValueRange && // Ensure store's range is available
+                playerStore.transferValueRange &&
                 typeof currentFilters.transferValueRangeLocal.min ===
                     "number" &&
                 typeof currentFilters.transferValueRangeLocal.max === "number"
@@ -436,10 +444,59 @@ export default {
                 const formData = new FormData();
                 formData.append("playerFile", playerFile.value);
                 await playerStore.uploadPlayerFile(formData);
-                activeFilters.value = {}; // Reset filters on new upload
+                activeFilters.value = {};
+                // Clear any previous specific error notifications if successful
+                if (!playerStore.error) {
+                    $q.notify({
+                        type: "positive",
+                        message: "File uploaded and parsed successfully!",
+                        position: "top",
+                        timeout: 3000,
+                    });
+                }
             } catch (e) {
                 console.error("Upload and Parse error in page:", e);
-                // Error is set in store
+                // Error is already set in the store by uploadPlayerFile action
+                // The q-banner will display it.
+                // We can still show a Quasar notification for immediate feedback if desired,
+                // especially for the 413 error, though the store now handles the message.
+                if (
+                    e.status === 413 ||
+                    (e.message && e.message.includes("File too large"))
+                ) {
+                    $q.notify({
+                        type: "negative",
+                        message: playerStore.error, // Use the message from the store
+                        position: "top",
+                        timeout: 5000,
+                        actions: [
+                            {
+                                label: "Dismiss",
+                                color: "white",
+                                handler: () => {
+                                    /* ... */
+                                },
+                            },
+                        ],
+                    });
+                } else if (playerStore.error) {
+                    // For other errors set by the store
+                    $q.notify({
+                        type: "negative",
+                        message: playerStore.error,
+                        position: "top",
+                        timeout: 5000,
+                        actions: [
+                            {
+                                label: "Dismiss",
+                                color: "white",
+                                handler: () => {
+                                    /* ... */
+                                },
+                            },
+                        ],
+                    });
+                }
             }
         };
 
@@ -448,7 +505,6 @@ export default {
                 "PlayerUploadPage: Sort requested by PlayerDataTable:",
                 sortParams,
             );
-            // Sorting is now handled within PlayerDataTable's computed property
         };
 
         const handlePlayerSelected = (player) => {
@@ -459,7 +515,6 @@ export default {
         const handleFilterChanged = async (newFilters) => {
             activeFilters.value = newFilters;
             if (playerStore.currentDatasetId) {
-                // Fetching from backend will re-populate allPlayers, which triggers the watcher
                 await playerStore.fetchPlayersByDatasetId(
                     playerStore.currentDatasetId,
                     newFilters.position,
@@ -468,7 +523,6 @@ export default {
                     newFilters.transferValueRangeLocal,
                 );
             } else {
-                // If no dataset ID, apply filters client-side (e.g., if data was loaded from session but ID lost)
                 applyClientSideFilters(allPlayers.value, newFilters);
             }
         };
@@ -476,11 +530,9 @@ export default {
         watch(
             allPlayers,
             (newVal) => {
-                // When allPlayers (from store, after fetch) changes, re-apply client-side filters
-                // This is important because fetchPlayersByDatasetId updates allPlayers
                 applyClientSideFilters(newVal, activeFilters.value);
             },
-            { immediate: true }, // Run once on mount too
+            { immediate: true },
         );
 
         const goToTeamView = () => {
@@ -495,19 +547,14 @@ export default {
             }
         };
 
-        // Define default age slider values for comparison in applyClientSideFilters
-        // These should match the initial values in PlayerFilters.vue
-        playerStore.AGE_SLIDER_MIN_DEFAULT = 15;
-        playerStore.AGE_SLIDER_MAX_DEFAULT = 50;
-
         return {
+            $q,
             playerFile,
-            playerStore, // Expose store for template access if needed (e.g., for transferValueRange)
+            playerStore,
             loading,
             error,
             allPlayers,
             filteredPlayers,
-            // Removed counts for summary cards
             uploadAndParse,
             handleSort,
             selectedPlayer,
@@ -541,8 +588,6 @@ export default {
 }
 .upload-card,
 .no-data-card {
-    // Removed .summary-card as it's no longer used
     border-radius: 8px;
 }
-// Removed .summary-cards .q-card as it's no longer used
 </style>
