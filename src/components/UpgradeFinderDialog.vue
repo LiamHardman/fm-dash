@@ -348,6 +348,57 @@
                             class="q-px-sm"
                         />
                     </div>
+
+                    <div class="col-12 col-md-6 col-lg-3 filter-item-container">
+                        <div
+                            class="text-caption q-mb-xs slider-label"
+                            :class="
+                                qInstance.dark.isActive
+                                    ? 'text-grey-4'
+                                    : 'text-grey-7'
+                            "
+                        >
+                            Max Salary ({{ currencySymbol }}):
+                            <q-btn
+                                flat
+                                dense
+                                icon="clear"
+                                size="sm"
+                                @click="
+                                    maxSalaryFilter = computedMaxSliderSalary
+                                "
+                                v-if="
+                                    maxSalaryFilter < computedMaxSliderSalary &&
+                                    props.players &&
+                                    props.players.length > 0
+                                "
+                                class="q-ml-xs"
+                                round
+                                :text-color="
+                                    qInstance.dark.isActive
+                                        ? 'grey-5'
+                                        : 'grey-7'
+                                "
+                            >
+                                <q-tooltip>Clear salary filter (Any)</q-tooltip>
+                            </q-btn>
+                        </div>
+                        <q-slider
+                            v-model="maxSalaryFilter"
+                            :min="computedMinSliderSalary"
+                            :max="computedMaxSliderSalary"
+                            :step="computedStepSliderSalary"
+                            label
+                            label-always
+                            :label-value="formattedMaxSalaryLabel"
+                            color="primary"
+                            :dark="qInstance.dark.isActive"
+                            :disable="
+                                !props.players || props.players.length === 0
+                            "
+                            class="q-px-sm"
+                        />
+                    </div>
                 </div>
 
                 <div class="row q-col-gutter-md">
@@ -618,6 +669,10 @@ export default {
         const maxTransferValueFilter = ref(null);
         const dynamicMinTransferValue = ref(0);
         const dynamicMaxTransferValue = ref(100000000);
+        
+        const maxSalaryFilter = ref(null);
+        const dynamicMinSalary = ref(0);
+        const dynamicMaxSalary = ref(1000000);
 
         const loading = ref(false);
         const showResults = ref(false);
@@ -671,6 +726,34 @@ export default {
             }
         };
 
+        const updateSalarySliderBounds = () => {
+            if (!props.players || props.players.length === 0) {
+                dynamicMinSalary.value = 0;
+                dynamicMaxSalary.value = 1000000;
+                maxSalaryFilter.value = dynamicMaxSalary.value;
+                return;
+            }
+            let minVal = Infinity;
+            let maxVal = 0;
+            props.players.forEach((p) => {
+                if (typeof p.wageAmount === "number") {
+                    minVal = Math.min(minVal, p.wageAmount);
+                    maxVal = Math.max(maxVal, p.wageAmount);
+                }
+            });
+            dynamicMinSalary.value =
+                minVal === Infinity ? 0 : Math.max(0, minVal);
+            dynamicMaxSalary.value =
+                maxVal === 0 && minVal === Infinity ? 1000000 : maxVal;
+            if (
+                maxSalaryFilter.value === null ||
+                maxSalaryFilter.value > dynamicMaxSalary.value ||
+                maxSalaryFilter.value < dynamicMinSalary.value
+            ) {
+                maxSalaryFilter.value = dynamicMaxSalary.value;
+            }
+        };
+
         onMounted(async () => {
             if (
                 playerStore.allAvailableRoles.length === 0 &&
@@ -680,6 +763,7 @@ export default {
             }
             populateAllTeamNames();
             updateTransferValueSliderBounds();
+            updateSalarySliderBounds();
             maxAgeFilter.value = ageSliderMax;
         });
 
@@ -688,6 +772,7 @@ export default {
             (newPlayers) => {
                 populateAllTeamNames();
                 updateTransferValueSliderBounds();
+                updateSalarySliderBounds();
                 if (newPlayers && newPlayers.length > 0) {
                     if (
                         maxTransferValueFilter.value >
@@ -888,6 +973,37 @@ export default {
             );
         });
 
+        const computedMinSliderSalary = computed(
+            () => dynamicMinSalary.value,
+        );
+        const computedMaxSliderSalary = computed(
+            () => dynamicMaxSalary.value,
+        );
+
+        const computedStepSliderSalary = computed(() => {
+            const range =
+                computedMaxSliderSalary.value -
+                computedMinSliderSalary.value;
+            if (range <= 0) return 1000;
+            if (range < 50000) return 500;
+            if (range < 250000) return 2500;
+            if (range < 1000000) return 5000;
+            if (range < 10000000) return 25000;
+            return 50000;
+        });
+
+        const formattedMaxSalaryLabel = computed(() => {
+            if (
+                maxSalaryFilter.value ===
+                computedMaxSliderSalary.value
+            )
+                return "Any";
+            return formatCurrency(
+                maxSalaryFilter.value,
+                props.currencySymbol,
+            );
+        });
+
         const findUpgrades = async () => {
             if (!selectedTeamPlayer.value) {
                 upgradePlayers.value = [];
@@ -913,6 +1029,7 @@ export default {
             const targetOverall = baseOverall + upgradeByValue.value;
             const currentMaxTransferValue = maxTransferValueFilter.value;
             const currentMaxAge = maxAgeFilter.value;
+            const currentMaxSalary = maxSalaryFilter.value;
 
             await new Promise((resolve) => setTimeout(resolve, 300));
 
@@ -953,6 +1070,13 @@ export default {
                                 computedMaxSliderTransferValue.value &&
                             (player.transferValueAmount || 0) >
                                 currentMaxTransferValue
+                        )
+                            return false;
+                        if (
+                            currentMaxSalary <
+                                computedMaxSliderSalary.value &&
+                            (player.wageAmount || 0) >
+                                currentMaxSalary
                         )
                             return false;
 
@@ -1040,6 +1164,12 @@ export default {
                     } else {
                         maxTransferValueFilter.value = 100000000;
                     }
+                    if (props.players && props.players.length > 0) {
+                        maxSalaryFilter.value =
+                            computedMaxSliderSalary.value;
+                    } else {
+                        maxSalaryFilter.value = 1000000;
+                    }
                     showResults.value = false;
                     upgradePlayers.value = [];
                     loading.value = false;
@@ -1053,9 +1183,12 @@ export default {
                     }
                     populateAllTeamNames();
                     updateTransferValueSliderBounds();
+                    updateSalarySliderBounds();
                     maxAgeFilter.value = ageSliderMax;
                     maxTransferValueFilter.value =
                         computedMaxSliderTransferValue.value;
+                    maxSalaryFilter.value =
+                        computedMaxSliderSalary.value;
                 }
             },
         );
@@ -1085,6 +1218,11 @@ export default {
             computedMaxSliderTransferValue,
             computedStepSliderTransferValue,
             formattedMaxTransferValueLabel,
+            maxSalaryFilter,
+            computedMinSliderSalary,
+            computedMaxSliderSalary,
+            computedStepSliderSalary,
+            formattedMaxSalaryLabel,
             loading,
             showResults,
             initialLoad,

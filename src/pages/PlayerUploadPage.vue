@@ -117,6 +117,7 @@
                 :currency-symbol="detectedCurrencySymbol"
                 :transfer-value-range="playerStore.transferValueRange"
                 :initial-dataset-range="initialDatasetTransferRange"
+                :salary-range="salaryRange"
                 :unique-clubs="playerStore.uniqueClubs"
                 :unique-nationalities="playerStore.uniqueNationalities"
                 :unique-media-handlings="playerStore.uniqueMediaHandlings"
@@ -310,6 +311,20 @@ export default {
             set: (value) => {
                 playerStore.error = value;
             },
+        });
+
+        const salaryRange = computed(() => {
+            if (!allPlayers.value || allPlayers.value.length === 0) {
+                return { min: 0, max: 1000000 };
+            }
+            const salaries = allPlayers.value
+                .filter((p) => typeof p.wageAmount === "number")
+                .map((p) => p.wageAmount);
+            if (salaries.length === 0) return { min: 0, max: 1000000 };
+            const min = Math.min(...salaries);
+            let max = Math.max(...salaries);
+            if (min >= max) max = min + 10000; // Ensure max is always greater than min
+            return { min, max };
         });
 
         const attributeWeightsLoadedForFeedback = ref(false);
@@ -541,6 +556,19 @@ export default {
                     );
                 }
             }
+
+            // Max salary filter - only apply if not at max value (which means "Any")
+            if (
+                currentFilters.maxSalary !== null &&
+                currentFilters.maxSalary !== undefined &&
+                typeof currentFilters.maxSalary === "number" &&
+                currentFilters.maxSalary < salaryRange.value.max
+            ) {
+                tempPlayers = tempPlayers.filter(
+                    (p) => (p.wageAmount || 0) <= currentFilters.maxSalary,
+                );
+            }
+
             filteredPlayers.value = tempPlayers;
         };
 
@@ -613,6 +641,7 @@ export default {
                     newFilters.role,
                     newFilters.ageRange,
                     newFilters.transferValueRangeLocal,
+                    newFilters.maxSalary,
                 );
             } else {
                 applyClientSideFilters(allPlayers.value, newFilters);
@@ -673,6 +702,7 @@ export default {
             handleFilterChanged,
             showFileSizeLimitModal,
             initialDatasetTransferRange, // Expose for PlayerFilters
+            salaryRange, // Expose for PlayerFilters
         };
     },
 };

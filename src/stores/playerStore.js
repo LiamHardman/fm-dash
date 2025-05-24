@@ -125,6 +125,7 @@ export const usePlayerStore = defineStore("player", () => {
     roleFilter = null,
     ageRangeFilter = null,
     transferValueRangeFilter = null,
+    maxSalaryFilter = null,
   ) {
     if (!datasetId) {
       resetState(); // Clear data if no datasetId
@@ -134,7 +135,7 @@ export const usePlayerStore = defineStore("player", () => {
     error.value = "";
     try {
       console.log(
-        `playerStore: Fetching players for datasetId: ${datasetId}, Pos: ${positionFilter}, Role: ${roleFilter}, Age: ${JSON.stringify(ageRangeFilter)}, Val: ${JSON.stringify(transferValueRangeFilter)}`,
+        `playerStore: Fetching players for datasetId: ${datasetId}, Pos: ${positionFilter}, Role: ${roleFilter}, Age: ${JSON.stringify(ageRangeFilter)}, Val: ${JSON.stringify(transferValueRangeFilter)}, MaxSalary: ${maxSalaryFilter}`,
       );
       const response = await playerService.getPlayersByDatasetId(
         datasetId,
@@ -142,6 +143,7 @@ export const usePlayerStore = defineStore("player", () => {
         roleFilter,
         ageRangeFilter,
         transferValueRangeFilter,
+        maxSalaryFilter,
       );
       allPlayers.value = processPlayersFromAPI(response.players);
       detectedCurrencySymbol.value = response.currencySymbol || "$"; // Update currency symbol from response

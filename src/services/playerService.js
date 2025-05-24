@@ -36,6 +36,7 @@ export default {
     role = null,
     ageRange = null,
     transferValueRange = null,
+    maxSalary = null,
   ) {
     if (!datasetId) {
       return Promise.reject(new Error("Dataset ID is required."));
@@ -70,6 +71,9 @@ export default {
         ) {
           params.append("maxTransferValue", transferValueRange.max.toString());
         }
+      }
+      if (maxSalary !== null && maxSalary !== undefined) {
+        params.append("maxSalary", maxSalary.toString());
       }
 
       const queryString = params.toString();

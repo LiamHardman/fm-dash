@@ -1,5 +1,5 @@
 import { createApp } from "vue";
-import { Quasar } from "quasar";
+import { Quasar, Notify } from "quasar";
 import { createPinia } from "pinia";
 import router from "./router";
 import "./css/app.scss"; // Or '@/css/app.scss' if you prefer using the alias
@@ -15,7 +15,9 @@ const app = createApp(App);
 const pinia = createPinia();
 
 app.use(Quasar, {
-  plugins: {}, // import Quasar plugins as needed
+  plugins: {
+    Notify
+  }, // import Quasar plugins as needed
   config: {
     brand: {
       primary: "#1976D2",

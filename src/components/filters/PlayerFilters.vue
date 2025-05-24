@@ -217,6 +217,39 @@
                     />
                 </div>
 
+                <div class="col-12 col-sm-6 col-md-4 col-lg-3 filter-item-container">
+                    <div
+                        class="text-caption q-mb-xs slider-label"
+                        :class="
+                            quasarInstance.dark.isActive
+                                ? 'text-grey-4'
+                                : 'text-grey-7'
+                        "
+                    >
+                        Max Salary: {{
+                            filters.maxSalary === salarySliderMax
+                                ? "Any"
+                                : formatCurrency(filters.maxSalary, currencySymbol)
+                        }}
+                    </div>
+                    <q-slider
+                        v-model="filters.maxSalary"
+                        :min="salarySliderMin"
+                        :max="salarySliderMax"
+                        :step="salarySliderStep"
+                        label-always
+                        :label-value="
+                            filters.maxSalary === salarySliderMax
+                                ? 'Any'
+                                : formatCurrency(filters.maxSalary, currencySymbol)
+                        "
+                        @update:model-value="debouncedApplyFilters"
+                        color="primary"
+                        class="q-px-sm"
+                        :disable="isLoading || !isDataAvailable"
+                    />
+                </div>
+
                 <div
                     class="col-12 col-sm-6 col-md-4 col-lg-3 filter-item-container"
                 >
@@ -339,6 +372,8 @@ const orderedShortPositions = [
 
 const AGE_SLIDER_MIN = 15;
 const AGE_SLIDER_MAX = 50;
+const SALARY_SLIDER_MIN = 0;
+const SALARY_SLIDER_MAX = 1000000; // Default max, will be updated based on data
 
 function debounce(fn, delay) {
     let timeoutID = null;
@@ -363,6 +398,11 @@ export default defineComponent({
             // New prop: True global range of the *entire dataset*
             type: Object,
             default: () => ({ min: 0, max: 100000000 }),
+        },
+        salaryRange: {
+            // Range of salary values in the dataset
+            type: Object,
+            default: () => ({ min: 0, max: 1000000 }),
         },
         uniqueClubs: { type: Array, default: () => [] },
         uniqueNationalities: { type: Array, default: () => [] },
@@ -389,6 +429,7 @@ export default defineComponent({
                 min: props.transferValueRange.min,
                 max: props.transferValueRange.max,
             },
+            maxSalary: SALARY_SLIDER_MAX,
         });
 
         const clubOptions = ref([]);
@@ -402,6 +443,19 @@ export default defineComponent({
         const isDataAvailable = computed(
             () => playerStore.allPlayers && playerStore.allPlayers.length > 0,
         );
+
+        const salarySliderMin = computed(() => props.salaryRange?.min || 0);
+        const salarySliderMax = computed(() => props.salaryRange?.max || 1000000);
+
+        const salarySliderStep = computed(() => {
+            const range = salarySliderMax.value - salarySliderMin.value;
+            if (range <= 0) return 1000;
+            if (range < 50000) return 500;
+            if (range < 250000) return 2500;
+            if (range < 1000000) return 5000;
+            if (range < 10000000) return 25000;
+            return 50000;
+        });
 
         const hasActiveFilters = computed(() => {
             // Use props.initialDatasetRange for transfer value default comparison
@@ -421,7 +475,8 @@ export default defineComponent({
                 filters.value.ageRange.min !== AGE_SLIDER_MIN ||
                 filters.value.ageRange.max !== AGE_SLIDER_MAX ||
                 filters.value.transferValueRangeLocal.min !== defValMin ||
-                filters.value.transferValueRangeLocal.max !== defValMax
+                filters.value.transferValueRangeLocal.max !== defValMax ||
+                filters.value.maxSalary !== salarySliderMax.value
             );
         });
 
@@ -615,6 +670,7 @@ export default defineComponent({
                         ? props.initialDatasetRange.max
                         : 100000000,
                 },
+                maxSalary: salarySliderMax.value,
             };
             applyFilters();
         };
@@ -658,6 +714,11 @@ export default defineComponent({
                     min: props.initialDatasetRange.min,
                     max: props.initialDatasetRange.max,
                 };
+            }
+            if (props.salaryRange?.max) {
+                filters.value.maxSalary = props.salaryRange.max;
+            } else {
+                filters.value.maxSalary = SALARY_SLIDER_MAX;
             }
             filters.value.ageRange = {
                 min: AGE_SLIDER_MIN,
@@ -704,6 +765,10 @@ export default defineComponent({
             ageSliderMax: AGE_SLIDER_MAX,
             currentSliderMin, // For q-range :min
             currentSliderMax, // For q-range :max
+            salarySliderMin,
+            salarySliderMax,
+            salarySliderStep,
+            formatCurrency,
         };
     },
 });

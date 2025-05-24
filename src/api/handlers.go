@@ -215,9 +215,10 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 	maxAgeStr := queryValues.Get("maxAge")
 	minTransferValueStr := queryValues.Get("minTransferValue")
 	maxTransferValueStr := queryValues.Get("maxTransferValue")
+	maxSalaryStr := queryValues.Get("maxSalary")
 
-	log.Printf("playerDataHandler: DatasetID=%s, PositionFilter=%s, RoleFilter=%s, MinAge=%s, MaxAge=%s, MinVal=%s, MaxVal=%s",
-		datasetID, filterPosition, filterRole, minAgeStr, maxAgeStr, minTransferValueStr, maxTransferValueStr)
+	log.Printf("playerDataHandler: DatasetID=%s, PositionFilter=%s, RoleFilter=%s, MinAge=%s, MaxAge=%s, MinVal=%s, MaxVal=%s, MaxSalary=%s",
+		datasetID, filterPosition, filterRole, minAgeStr, maxAgeStr, minTransferValueStr, maxTransferValueStr, maxSalaryStr)
 
 	storeMutex.RLock()                        // Assumes storeMutex is defined in store.go
 	data, found := playerDataStore[datasetID] // Assumes playerDataStore is defined in store.go
@@ -233,6 +234,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	var minAge, maxAge int = -1, -1
 	var minTransferValue, maxTransferValue int64 = -1, -1
+	var maxSalary int64 = -1
 
 	if val, err := strconv.Atoi(minAgeStr); err == nil {
 		minAge = val
@@ -245,6 +247,9 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if val, err := strconv.ParseInt(maxTransferValueStr, 10, 64); err == nil {
 		maxTransferValue = val
+	}
+	if val, err := strconv.ParseInt(maxSalaryStr, 10, 64); err == nil {
+		maxSalary = val
 	}
 
 	for _, p := range data.Players {
@@ -280,6 +285,10 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		if maxTransferValue != -1 && playerCopy.TransferValueAmount > maxTransferValue {
+			continue
+		}
+
+		if maxSalary != -1 && playerCopy.WageAmount > maxSalary {
 			continue
 		}
 
