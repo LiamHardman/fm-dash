@@ -63,3 +63,4 @@ This will generate static files in the `dist` directory that can be served by an
 # Querying LLM:
 
 Use this -> codeweaver --ignore "node_modules,\.git"
+or ./CodeWeaver --ignore "node_modules,testdata.html,.git,CodeWeaver"

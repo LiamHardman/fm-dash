@@ -28,8 +28,12 @@ const (
 	defaultPlayerCapacity    = 1024
 	defaultAttributeCapacity = 64
 	defaultCellCapacity      = 64
-	overallScalingFactor     = 5.85
+	overallScalingFactor     = 5.85            // Used for scaling role-specific attribute averages (1-20) to 0-99
 	maxTokenBufferSize       = 2 * 1024 * 1024 // 2MB
+
+	// Factors for combining role-based and category-based overalls for outfielders
+	roleSpecificOverallFactor  = 0.8 // 80% weight for role-specific calculation
+	categoryBasedOverallFactor = 0.2 // 20% weight for category-based calculation
 )
 
 // --- START: Struct Definitions ---
@@ -65,8 +69,8 @@ type Player struct {
 	DEF                     int                           `json:"DEF"`
 	MEN                     int                           `json:"MEN"`
 	GK                      int                           `json:"GK,omitempty"`
-	Overall                 int                           `json:"Overall"`
-	RoleSpecificOveralls    []RoleOverallScore            `json:"roleSpecificOveralls"`
+	Overall                 int                           `json:"Overall"`              // This will now be the blended overall
+	RoleSpecificOveralls    []RoleOverallScore            `json:"roleSpecificOveralls"` // These remain purely role-based
 	TransferValueAmount     int64                         `json:"transferValueAmount"`
 	WageAmount              int64                         `json:"wageAmount"`
 }
@@ -95,8 +99,8 @@ var (
 		CurrencySymbol string
 	})
 	storeMutex                   sync.RWMutex
-	attributeWeights             map[string]map[string]int
-	roleSpecificOverallWeights   map[string]map[string]int
+	attributeWeights             map[string]map[string]int // For PHY, SHO etc. from individual attributes
+	roleSpecificOverallWeights   map[string]map[string]int // For role-specific overall from individual attributes
 	muAttributeWeights           sync.RWMutex
 	muRoleSpecificOverallWeights sync.RWMutex
 	precomputedRoleWeights       map[string][]struct {
@@ -104,6 +108,22 @@ var (
 		Weights  map[string]int
 	}
 	muPrecomputedRoleWeights sync.RWMutex
+
+	// Default/Fallback weights for calculating a general overall based on FIFA stat categories for outfielders
+	fifaCategoryOverallWeights = map[string]int{
+		"PHY": 25, "MEN": 25, "PAS": 15, "DEF": 15, "DRI": 10, "SHO": 10, // Sums to 100
+	}
+
+	// NEW: Position-specific weights for FIFA stat categories for outfielders
+	attackerFifaCategoryWeights = map[string]int{
+		"SHO": 30, "PHY": 25, "DRI": 20, "MEN": 15, "PAS": 10, "DEF": 0, // Sums to 100
+	}
+	midfielderFifaCategoryWeights = map[string]int{
+		"PAS": 30, "MEN": 25, "PHY": 20, "DRI": 15, "DEF": 5, "SHO": 5, // Sums to 100
+	}
+	defenderFifaCategoryWeights = map[string]int{
+		"DEF": 30, "PHY": 30, "MEN": 20, "PAS": 15, "DRI": 5, "SHO": 0, // Sums to 100
+	}
 )
 
 var performanceStatKeys = []string{
@@ -113,11 +133,8 @@ var performanceStatKeys = []string{
 	"Pr passes/90", "Conv %", "Tck R", "Pas %", "Cr C/A",
 }
 
-// Existing broad position groups for percentiles
 var positionGroupsForPercentiles = []string{"Goalkeepers", "Defenders", "Midfielders", "Attackers"}
 
-// NEW: Detailed position groups for more granular percentile comparisons
-// These keys will be used in the Player.PerformancePercentiles map
 var detailedPositionGroupsForPercentiles = map[string][]string{
 	"Full-backs":                      {"DR", "DL"},
 	"Centre-backs":                    {"DC"},
@@ -128,9 +145,6 @@ var detailedPositionGroupsForPercentiles = map[string][]string{
 	"Attacking Midfielders (Central)": {"AMC"},
 	"Wingers":                         {"AMR", "AML"},
 	"Strikers":                        {"ST"},
-	// Note: "Goalkeepers" is already handled by the broad positionGroupsForPercentiles.
-	// If a specific "Goalkeepers (Detailed)" is needed, it would map to {"GK"}.
-	// For now, the existing "Goalkeepers" group (mapping to "Goalkeeper" full name) should suffice.
 }
 
 var defaultAttributeWeightsGo = map[string]map[string]int{
@@ -429,6 +443,8 @@ func getPlayerPositionGroupsGo(parsedPositionsArray []string) []string {
 	return groups
 }
 
+// calculateFifaStatGo calculates a FIFA-style category stat (e.g., PHY, SHO) from individual attributes.
+// The result is scaled to be approximately 0-100.
 func calculateFifaStatGo(playerNumericAttributes map[string]int, categoryName string) int {
 	muAttributeWeights.RLock()
 	var currentCategoryWeightsSource map[string]map[string]int
@@ -465,10 +481,12 @@ func calculateFifaStatGo(playerNumericAttributes map[string]int, categoryName st
 	if totalWeightOfPresentAttributes == 0 {
 		return 0
 	}
-	weightedAverage := weightedSum / totalWeightOfPresentAttributes
-	return int(math.Round(weightedAverage * 5.3))
+	weightedAverage := weightedSum / totalWeightOfPresentAttributes // This is on a 1-20 scale
+	return int(math.Round(weightedAverage * 5.3))                   // Scale to approx 0-100
 }
 
+// calculateOverallForRoleGo calculates a player's suitability for a specific role based on weighted attributes.
+// The result is scaled by overallScalingFactor to be 0-99.
 func calculateOverallForRoleGo(playerNumericAttributes map[string]int, roleSpecificAttrWeights map[string]int) int {
 	if len(roleSpecificAttrWeights) == 0 {
 		return 0
@@ -486,8 +504,45 @@ func calculateOverallForRoleGo(playerNumericAttributes map[string]int, roleSpeci
 	if totalApplicableWeightsSum == 0 {
 		return 0
 	}
-	rawPositionalOverall := weightedAttributeSum / totalApplicableWeightsSum
-	return int(math.Min(99, math.Round(rawPositionalOverall*overallScalingFactor)))
+	rawPositionalOverall := weightedAttributeSum / totalApplicableWeightsSum        // This is on a 1-20 scale
+	return int(math.Min(99, math.Round(rawPositionalOverall*overallScalingFactor))) // Scale to 0-99
+}
+
+// calculateCategoryBasedOverall calculates a general overall score based on FIFA stat categories for outfield players.
+// The input FIFA stat categories (player.PHY, player.SHO etc.) are already on a 0-100 scale.
+// The result of this function will also be on a 0-100 scale.
+func calculateCategoryBasedOverall(player *Player, categoryWeights map[string]int) int {
+	categories := make(map[string]int)
+	categories["PHY"] = player.PHY
+	categories["SHO"] = player.SHO
+	categories["PAS"] = player.PAS
+	categories["DRI"] = player.DRI
+	categories["DEF"] = player.DEF
+	categories["MEN"] = player.MEN
+	// GK stat is not used for outfielders in this specific calculation.
+
+	var weightedSum float64
+	var totalWeight float64
+
+	for catName, catWeight := range categoryWeights {
+		catValue, exists := categories[catName]
+		if exists {
+			weightedSum += float64(catValue * catWeight)
+			totalWeight += float64(catWeight)
+		}
+	}
+
+	if totalWeight == 0 {
+		return 0
+	}
+	calculatedOverall := int(math.Round(weightedSum / totalWeight))
+	if calculatedOverall > 99 {
+		return 99
+	}
+	if calculatedOverall < 0 {
+		return 0
+	}
+	return calculatedOverall
 }
 
 var fifaCountryCodes = map[string]string{
@@ -611,8 +666,7 @@ func calculatePlayerPerformancePercentiles(players []Player) {
 	}
 
 	// --- Broad Positional Group Percentiles (Optimized) ---
-	// This uses player.PositionGroups (e.g., "Defenders", "Midfielders")
-	groupStatValueLists := make(map[string]map[string][]float64) // groupName -> statKey -> []values
+	groupStatValueLists := make(map[string]map[string][]float64)
 
 	for _, groupName := range positionGroupsForPercentiles {
 		groupStatValueLists[groupName] = make(map[string][]float64)
@@ -623,7 +677,7 @@ func calculatePlayerPerformancePercentiles(players []Player) {
 
 	for i := range players {
 		player := &players[i]
-		for _, pg := range player.PositionGroups { // pg is like "Defenders", "Midfielders"
+		for _, pg := range player.PositionGroups {
 			if _, ok := groupStatValueLists[pg]; ok {
 				for _, statKey := range performanceStatKeys {
 					val, statOk := player.PerformanceStatsNumeric[statKey]
@@ -685,23 +739,19 @@ func calculatePlayerPerformancePercentiles(players []Player) {
 	}
 
 	// --- DETAILED Positional Group Percentiles (NEW) ---
-	// This uses player.ShortPositions (e.g., "DC", "ST", "AMR")
 	for detailedGroupName, shortPositionsInGroup := range detailedPositionGroupsForPercentiles {
-		// Ensure PerformancePercentiles map for this detailed group exists for all players
 		for i := range players {
 			if players[i].PerformancePercentiles[detailedGroupName] == nil {
 				players[i].PerformancePercentiles[detailedGroupName] = make(map[string]float64)
 			}
 		}
 
-		// Prepare data structures for this specific detailed group
-		currentDetailedGroupStatValues := make(map[string][]float64) // statKey -> []values
+		currentDetailedGroupStatValues := make(map[string][]float64)
 		for _, statKey := range performanceStatKeys {
-			currentDetailedGroupStatValues[statKey] = make([]float64, 0, len(players)/10) // Estimate
+			currentDetailedGroupStatValues[statKey] = make([]float64, 0, len(players)/10)
 		}
 
-		// Populate stat value lists for this detailed group
-		playerIndicesInDetailedGroup := []int{} // Store indices of players in this group
+		playerIndicesInDetailedGroup := []int{}
 
 		for i := range players {
 			player := &players[i]
@@ -729,18 +779,16 @@ func calculatePlayerPerformancePercentiles(players []Player) {
 			}
 		}
 
-		// Calculate and assign percentiles for this detailed group
 		for _, statKey := range performanceStatKeys {
 			statValuesForCalc := currentDetailedGroupStatValues[statKey]
 
 			if len(statValuesForCalc) == 0 {
-				// If no values for this stat in this group, assign -1 to players belonging to this group
 				for _, playerIndex := range playerIndicesInDetailedGroup {
 					players[playerIndex].PerformancePercentiles[detailedGroupName][statKey] = -1
 				}
 				continue
 			}
-			sort.Float64s(statValuesForCalc) // Sort the collected values for this stat and group
+			sort.Float64s(statValuesForCalc)
 
 			for _, playerIndex := range playerIndicesInDetailedGroup {
 				player := &players[playerIndex]
@@ -1154,7 +1202,7 @@ func enhancePlayerWithCalculations(player *Player) {
 	}
 
 	player.ParsedPositions = parsePlayerPositionsGo(player.Position)
-	player.PositionGroups = getPlayerPositionGroupsGo(player.ParsedPositions) // For broad groups
+	player.PositionGroups = getPlayerPositionGroupsGo(player.ParsedPositions)
 
 	shortPosSet := make(map[string]struct{})
 	for _, pPos := range player.ParsedPositions {
@@ -1188,7 +1236,7 @@ func enhancePlayerWithCalculations(player *Player) {
 	player.MEN = calculateFifaStatGo(player.NumericAttributes, "MEN")
 
 	isGoalkeeper := false
-	for _, posGroup := range player.PositionGroups { // Check broad group
+	for _, posGroup := range player.PositionGroups {
 		if posGroup == "Goalkeepers" {
 			isGoalkeeper = true
 			break
@@ -1200,7 +1248,9 @@ func enhancePlayerWithCalculations(player *Player) {
 		player.GK = 0
 	}
 
-	maxOverall := 0
+	// --- START: Overall Calculation ---
+	// 1. Calculate Role-Specific Overalls and find the maximum (this is the "Role-Based Overall")
+	maxRoleBasedOverall := 0
 	calculatedRoleOveralls := make([]RoleOverallScore, 0, 5)
 
 	muPrecomputedRoleWeights.RLock()
@@ -1226,7 +1276,6 @@ func enhancePlayerWithCalculations(player *Player) {
 						continue
 					}
 				}
-
 				for roleKeyInJsonLoop, specificWeightsLoop := range fallbackWeights {
 					if strings.HasPrefix(roleKeyInJsonLoop, shortKey+" - ") || (shortKey == "GK" && roleKeyInJsonLoop == "GK - Goalkeeper - Defend") {
 						if _, alreadyProcessed := processedRoleNames[roleKeyInJsonLoop]; alreadyProcessed {
@@ -1235,15 +1284,15 @@ func enhancePlayerWithCalculations(player *Player) {
 						foundAnyRoleMatch = true
 						overallForThisRole := calculateOverallForRoleGo(player.NumericAttributes, specificWeightsLoop)
 						calculatedRoleOveralls = append(calculatedRoleOveralls, RoleOverallScore{RoleName: roleKeyInJsonLoop, Score: overallForThisRole})
-						if overallForThisRole > maxOverall {
-							maxOverall = overallForThisRole
+						if overallForThisRole > maxRoleBasedOverall {
+							maxRoleBasedOverall = overallForThisRole
 						}
 						processedRoleNames[roleKeyInJsonLoop] = struct{}{}
 					}
 				}
 			}
 			if !foundAnyRoleMatch {
-				log.Printf("Fallback Warning: Player '%s' with ParsedPositions %v found no matching roles in fallback roleSpecificOverallWeights. MaxOverall will be 0.", player.Name, player.ParsedPositions)
+				log.Printf("Fallback Warning: Player '%s' with ParsedPositions %v found no matching roles in fallback roleSpecificOverallWeights. MaxRoleBasedOverall will be 0.", player.Name, player.ParsedPositions)
 			}
 		}
 	} else if len(player.ParsedPositions) > 0 {
@@ -1268,21 +1317,20 @@ func enhancePlayerWithCalculations(player *Player) {
 					foundAnyRoleMatch = true
 					overallForThisRole := calculateOverallForRoleGo(player.NumericAttributes, roleData.Weights)
 					calculatedRoleOveralls = append(calculatedRoleOveralls, RoleOverallScore{RoleName: roleData.RoleName, Score: overallForThisRole})
-					if overallForThisRole > maxOverall {
-						maxOverall = overallForThisRole
+					if overallForThisRole > maxRoleBasedOverall {
+						maxRoleBasedOverall = overallForThisRole
 					}
 					processedRoleNames[roleData.RoleName] = struct{}{}
 				}
 			}
 		}
 		if !foundAnyRoleMatch {
-			log.Printf("Warning: Player '%s' with ParsedPositions %v (ShortPositions: %v) found no matching roles in precomputedRoleWeights. MaxOverall will be 0.", player.Name, player.ParsedPositions, player.ShortPositions)
+			log.Printf("Warning: Player '%s' with ParsedPositions %v (ShortPositions: %v) found no matching roles in precomputedRoleWeights. MaxRoleBasedOverall will be 0.", player.Name, player.ParsedPositions, player.ShortPositions)
 		}
 	} else {
-		log.Printf("Warning: Player '%s' has no ParsedPositions. MaxOverall will be 0.", player.Name)
+		log.Printf("Warning: Player '%s' has no ParsedPositions. MaxRoleBasedOverall will be 0.", player.Name)
 	}
 
-	player.Overall = maxOverall
 	player.RoleSpecificOveralls = calculatedRoleOveralls
 	sort.Slice(player.RoleSpecificOveralls, func(i, j int) bool {
 		if player.RoleSpecificOveralls[i].Score != player.RoleSpecificOveralls[j].Score {
@@ -1290,6 +1338,57 @@ func enhancePlayerWithCalculations(player *Player) {
 		}
 		return player.RoleSpecificOveralls[i].RoleName < player.RoleSpecificOveralls[j].RoleName
 	})
+
+	// MODIFIED Overall Calculation Logic
+	if isGoalkeeper {
+		player.Overall = maxRoleBasedOverall // Goalkeepers use only their role-based overall
+	} else {
+		// For outfield players, determine their primary category for FIFA stat weighting
+		var selectedCategoryWeights map[string]int
+
+		playerIsAttacker := false
+		playerIsMidfielder := false
+		playerIsDefender := false
+
+		for _, group := range player.PositionGroups {
+			if group == "Attackers" {
+				playerIsAttacker = true
+			}
+			if group == "Midfielders" {
+				playerIsMidfielder = true
+			}
+			if group == "Defenders" { // Also includes "Wing-Backs" if they are grouped under Defenders
+				playerIsDefender = true
+			}
+		}
+		// Prioritize: Attackers > Midfielders > Defenders
+		if playerIsAttacker {
+			selectedCategoryWeights = attackerFifaCategoryWeights
+			// log.Printf("Player %s classified as ATTACKER for category weights (from PositionGroups: %v).", player.Name, player.PositionGroups)
+		} else if playerIsMidfielder {
+			selectedCategoryWeights = midfielderFifaCategoryWeights
+			// log.Printf("Player %s classified as MIDFIELDER for category weights (from PositionGroups: %v).", player.Name, player.PositionGroups)
+		} else if playerIsDefender {
+			selectedCategoryWeights = defenderFifaCategoryWeights
+			// log.Printf("Player %s classified as DEFENDER for category weights (from PositionGroups: %v).", player.Name, player.PositionGroups)
+		} else {
+			selectedCategoryWeights = fifaCategoryOverallWeights // Fallback to generic if no specific group
+			// log.Printf("Player %s using GENERIC category weights (PositionGroups: %v).", player.Name, player.PositionGroups)
+		}
+
+		categoryBasedOverall := calculateCategoryBasedOverall(player, selectedCategoryWeights)
+
+		finalOverall := int(math.Round(float64(maxRoleBasedOverall)*roleSpecificOverallFactor + float64(categoryBasedOverall)*categoryBasedOverallFactor))
+
+		if finalOverall > 99 {
+			finalOverall = 99
+		}
+		if finalOverall < 0 {
+			finalOverall = 0
+		}
+		player.Overall = finalOverall
+	}
+	// --- END: Overall Calculation ---
 }
 
 func parseCellsToPlayer(cells []string, headers []string) (Player, error) {
@@ -1349,32 +1448,43 @@ func parseCellsToPlayer(cells []string, headers []string) (Player, error) {
 		case "Media Handling":
 			player.MediaHandling = cellValue
 			isAnAttributeField = false
-		case "Nat":
+		case "Nat": // This is tricky, could be "Natural Fitness" attribute or "Nationality"
+			// Attempt to parse as int (for Natural Fitness)
 			valInt, err := strconv.Atoi(cellValue)
-			if err == nil && valInt >= 1 && valInt <= 20 {
-				player.Attributes[headerNameClean] = cellValue
-			} else {
+			if err == nil && valInt >= 1 && valInt <= 20 { // Valid range for an attribute
+				player.Attributes[headerNameClean] = cellValue // Assume it's Natural Fitness
+			} else { // Assume it's Nationality (FIFA code)
 				fifaCode := strings.ToUpper(cellValue)
 				player.NationalityFIFACode = fifaCode
 				if fullName, ok := fifaCountryCodes[fifaCode]; ok {
 					player.Nationality = fullName
 				} else {
-					player.Nationality = cellValue
+					player.Nationality = cellValue // Fallback to the provided value if code not found
 				}
 				if isoCode, ok := fifaToISO2[fifaCode]; ok {
 					player.NationalityISO = isoCode
 				} else {
+					// Basic fallback for ISO code if FIFA code is unknown
 					if len(fifaCode) >= 2 {
 						player.NationalityISO = strings.ToLower(fifaCode[:2])
 					} else {
 						player.NationalityISO = strings.ToLower(fifaCode)
 					}
 				}
+				isAnAttributeField = false // It was processed as Nationality
+			}
+		case "Left Foot", "Right Foot": // These are typically ratings, not simple text
+			// Depending on how these are exported, they might be numeric or descriptive
+			// For now, let's assume they are attributes if they are numeric-like
+			// If they are just text like "Very Strong", they might not fit the current attribute model well
+			// For simplicity, let's treat them as attributes if they are not empty/hyphen
+			if cellValue != "" && cellValue != "-" {
+				player.Attributes[headerNameClean] = cellValue
+			} else {
 				isAnAttributeField = false
 			}
-		case "Left Foot", "Right Foot":
-			isAnAttributeField = false
 		default:
+			// Default case: if not explicitly handled, it's potentially an attribute
 		}
 
 		if isAnAttributeField {
