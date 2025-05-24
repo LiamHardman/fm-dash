@@ -126,100 +126,7 @@
             </q-banner>
 
             <template v-if="allPlayers.length > 0">
-                <div class="row q-col-gutter-md q-mb-md summary-cards">
-                    <div class="col-12 col-md-2">
-                        <q-card
-                            class="text-center summary-card"
-                            :class="
-                                $q.dark.isActive ? 'bg-grey-8' : 'bg-grey-2'
-                            "
-                            flat
-                            bordered
-                            ><q-card-section
-                                ><div class="text-h6">
-                                    {{ allPlayers.length }}
-                                </div>
-                                <div class="text-subtitle2">
-                                    Total Players
-                                </div></q-card-section
-                            ></q-card
-                        >
-                    </div>
-                    <div class="col-12 col-md-2">
-                        <q-card
-                            class="text-center summary-card"
-                            :class="
-                                $q.dark.isActive ? 'bg-grey-8' : 'bg-grey-2'
-                            "
-                            flat
-                            bordered
-                            ><q-card-section
-                                ><div class="text-h6">
-                                    {{ filteredPlayers.length }}
-                                </div>
-                                <div class="text-subtitle2">
-                                    Filtered
-                                </div></q-card-section
-                            ></q-card
-                        >
-                    </div>
-                    <div class="col-12 col-md-2">
-                        <q-card
-                            class="text-center summary-card"
-                            :class="
-                                $q.dark.isActive ? 'bg-grey-8' : 'bg-grey-2'
-                            "
-                            flat
-                            bordered
-                            ><q-card-section
-                                ><div class="text-h6">
-                                    {{ uniqueClubsCount }}
-                                </div>
-                                <div class="text-subtitle2">
-                                    Clubs
-                                </div></q-card-section
-                            ></q-card
-                        >
-                    </div>
-                    <div class="col-12 col-md-3">
-                        <q-card
-                            class="text-center summary-card"
-                            :class="
-                                $q.dark.isActive ? 'bg-grey-8' : 'bg-grey-2'
-                            "
-                            flat
-                            bordered
-                            ><q-card-section
-                                ><div class="text-h6">
-                                    {{ uniqueParsedPositionsCount }}
-                                </div>
-                                <div class="text-subtitle2">
-                                    Positions
-                                </div></q-card-section
-                            ></q-card
-                        >
-                    </div>
-                    <div class="col-12 col-md-3">
-                        <q-card
-                            class="text-center summary-card"
-                            :class="
-                                $q.dark.isActive ? 'bg-grey-8' : 'bg-grey-2'
-                            "
-                            flat
-                            bordered
-                            ><q-card-section
-                                ><div class="text-h6">
-                                    {{ uniqueNationalitiesCount }}
-                                </div>
-                                <div class="text-subtitle2">
-                                    Nationalities
-                                </div></q-card-section
-                            ></q-card
-                        >
-                    </div>
-                </div>
-
-                <div class="row justify-between items-center q-mb-md">
+                <div class="row justify-between items-center q-mb-md q-mt-md">
                     <q-btn
                         color="info"
                         icon="groups"
@@ -249,6 +156,7 @@
                     @player-selected="handlePlayerSelected"
                     :is-goalkeeper-view="isGoalkeeperView"
                     :currency-symbol="detectedCurrencySymbol"
+                    :filtered-player-count="filteredPlayers.length"
                 />
             </template>
 
@@ -347,13 +255,8 @@ export default {
             },
         });
 
-        const uniqueClubsCount = computed(() => playerStore.uniqueClubs.length);
-        const uniqueNationalitiesCount = computed(
-            () => playerStore.uniqueNationalities.length,
-        );
-        const uniqueParsedPositionsCount = computed(
-            () => playerStore.uniquePositionsCount,
-        );
+        // Removed uniqueClubsCount, uniqueNationalitiesCount, uniqueParsedPositionsCount
+        // as the summary cards are removed.
 
         const attributeWeightsLoadedForFeedback = ref(false);
         const roleSpecificOverallWeightsLoadedForFeedback = ref(false);
@@ -376,7 +279,7 @@ export default {
                     `Client-side check: Failed to load ${filePath}:`,
                     e,
                 );
-                loadedFlagRef.value = true;
+                loadedFlagRef.value = true; // Still set to true to enable button, backend handles actual file
             }
         };
 
@@ -476,18 +379,16 @@ export default {
             ) {
                 if (
                     currentFilters.ageRange.min >
-                    playerStore.AGE_SLIDER_MIN_DEFAULT
+                    playerStore.AGE_SLIDER_MIN_DEFAULT // Defined in playerStore
                 ) {
-                    // Assuming AGE_SLIDER_MIN_DEFAULT is defined in store or locally
                     tempPlayers = tempPlayers.filter(
                         (p) => p.age >= currentFilters.ageRange.min,
                     );
                 }
                 if (
                     currentFilters.ageRange.max <
-                    playerStore.AGE_SLIDER_MAX_DEFAULT
+                    playerStore.AGE_SLIDER_MAX_DEFAULT // Defined in playerStore
                 ) {
-                    // Assuming AGE_SLIDER_MAX_DEFAULT is defined in store or locally
                     tempPlayers = tempPlayers.filter(
                         (p) => p.age <= currentFilters.ageRange.max,
                     );
@@ -497,7 +398,7 @@ export default {
             // For transferValueRangeLocal:
             if (
                 currentFilters.transferValueRangeLocal &&
-                playerStore.transferValueRange &&
+                playerStore.transferValueRange && // Ensure store's range is available
                 typeof currentFilters.transferValueRangeLocal.min ===
                     "number" &&
                 typeof currentFilters.transferValueRangeLocal.max === "number"
@@ -535,9 +436,10 @@ export default {
                 const formData = new FormData();
                 formData.append("playerFile", playerFile.value);
                 await playerStore.uploadPlayerFile(formData);
-                activeFilters.value = {};
+                activeFilters.value = {}; // Reset filters on new upload
             } catch (e) {
                 console.error("Upload and Parse error in page:", e);
+                // Error is set in store
             }
         };
 
@@ -546,6 +448,7 @@ export default {
                 "PlayerUploadPage: Sort requested by PlayerDataTable:",
                 sortParams,
             );
+            // Sorting is now handled within PlayerDataTable's computed property
         };
 
         const handlePlayerSelected = (player) => {
@@ -556,6 +459,7 @@ export default {
         const handleFilterChanged = async (newFilters) => {
             activeFilters.value = newFilters;
             if (playerStore.currentDatasetId) {
+                // Fetching from backend will re-populate allPlayers, which triggers the watcher
                 await playerStore.fetchPlayersByDatasetId(
                     playerStore.currentDatasetId,
                     newFilters.position,
@@ -564,6 +468,7 @@ export default {
                     newFilters.transferValueRangeLocal,
                 );
             } else {
+                // If no dataset ID, apply filters client-side (e.g., if data was loaded from session but ID lost)
                 applyClientSideFilters(allPlayers.value, newFilters);
             }
         };
@@ -571,9 +476,11 @@ export default {
         watch(
             allPlayers,
             (newVal) => {
+                // When allPlayers (from store, after fetch) changes, re-apply client-side filters
+                // This is important because fetchPlayersByDatasetId updates allPlayers
                 applyClientSideFilters(newVal, activeFilters.value);
             },
-            { immediate: true },
+            { immediate: true }, // Run once on mount too
         );
 
         const goToTeamView = () => {
@@ -590,19 +497,17 @@ export default {
 
         // Define default age slider values for comparison in applyClientSideFilters
         // These should match the initial values in PlayerFilters.vue
-        playerStore.AGE_SLIDER_MIN_DEFAULT = 15; // Example, adjust if different
-        playerStore.AGE_SLIDER_MAX_DEFAULT = 50; // Example, adjust if different
+        playerStore.AGE_SLIDER_MIN_DEFAULT = 15;
+        playerStore.AGE_SLIDER_MAX_DEFAULT = 50;
 
         return {
             playerFile,
-            playerStore,
+            playerStore, // Expose store for template access if needed (e.g., for transferValueRange)
             loading,
             error,
             allPlayers,
             filteredPlayers,
-            uniqueClubsCount,
-            uniqueParsedPositionsCount,
-            uniqueNationalitiesCount,
+            // Removed counts for summary cards
             uploadAndParse,
             handleSort,
             selectedPlayer,
@@ -635,11 +540,9 @@ export default {
     }
 }
 .upload-card,
-.summary-card,
 .no-data-card {
+    // Removed .summary-card as it's no longer used
     border-radius: 8px;
 }
-.summary-cards .q-card {
-    height: 100%;
-}
+// Removed .summary-cards .q-card as it's no longer used
 </style>

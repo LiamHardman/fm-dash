@@ -1,21 +1,21 @@
 <template>
     <div class="player-data-table-container">
-        <div
-            v-if="sortField"
-            class="text-caption q-mb-sm q-pa-xs rounded-borders"
-            :class="
-                qInstance.dark.isActive
-                    ? 'bg-grey-8 text-grey-4'
-                    : 'bg-grey-2 text-grey-7'
-            "
-        >
-            Current Sort: {{ getColumnLabel(sortField) }} ({{
-                sortDirection === "asc" ? "Ascending" : "Descending"
-            }})
-            <span v-if="isSliced" class="q-ml-sm text-italic"
-                >(Displaying Top {{ MAX_DISPLAY_PLAYERS }} of
-                {{ totalSortedCount }} sorted players)</span
-            >
+        <div class="row items-center q-mb-sm table-controls-header">
+            <div class="col">
+                <div
+                    v-if="sortField"
+                    class="text-caption q-pa-xs rounded-borders sort-info-chip"
+                    :class="
+                        qInstance.dark.isActive
+                            ? 'bg-grey-8 text-grey-4'
+                            : 'bg-grey-2 text-grey-7'
+                    "
+                >
+                    Current Sort: {{ getColumnLabel(sortField) }} ({{
+                        sortDirection === "asc" ? "Ascending" : "Descending"
+                    }})
+                </div>
+            </div>
         </div>
 
         <q-card
@@ -234,35 +234,6 @@
                 />
                 <q-space />
                 <span
-                    class="text-caption q-mr-sm"
-                    :class="
-                        qInstance.dark.isActive ? 'text-grey-4' : 'text-grey-7'
-                    "
-                    >Rows per page:</span
-                >
-                <q-select
-                    v-model="pagination.rowsPerPage"
-                    :options="rowsPerPageOptions"
-                    dense
-                    options-dense
-                    emit-value
-                    map-options
-                    style="min-width: 100px"
-                    @update:model-value="onRowsPerPageChange"
-                    :option-label="
-                        (opt) => (opt === 0 ? 'All' : opt.toString())
-                    "
-                    borderless
-                    :class="
-                        qInstance.dark.isActive ? 'text-grey-3 bg-grey-8' : ''
-                    "
-                    :popup-content-class="
-                        qInstance.dark.isActive
-                            ? 'bg-grey-8 text-white'
-                            : 'bg-white text-dark'
-                    "
-                />
-                <span
                     class="q-ml-md text-caption"
                     :class="
                         qInstance.dark.isActive ? 'text-grey-4' : 'text-grey-7'
@@ -293,6 +264,7 @@ export default {
         loading: { type: Boolean, default: false },
         isGoalkeeperView: { type: Boolean, default: false },
         currencySymbol: { type: String, default: "$" },
+        filteredPlayerCount: { type: Number, default: 0 },
     },
     emits: ["update:sort", "player-selected", "update:pagination"],
 
@@ -301,7 +273,7 @@ export default {
         const $q = useQuasar();
         const sortField = ref("Overall");
         const sortDirection = ref("desc");
-        const rowsPerPageOptions = [10, 15, 20, 50, 0];
+        const rowsPerPageOptions = ref([10, 15, 20, 50, 0]); // Keep for internal logic, but selector is removed
         const maxPagesToShow = 7;
         const totalSortedCount = ref(0);
         const isSliced = ref(false);
@@ -310,7 +282,7 @@ export default {
             sortBy: "Overall",
             descending: true,
             page: 1,
-            rowsPerPage: 15,
+            rowsPerPage: 15, // Default rows per page, even if selector is hidden
         });
 
         watch(
@@ -319,7 +291,7 @@ export default {
                 console.log(
                     `PlayerDataTable: props.players changed. New length: ${newPlayers?.length}, Old length: ${oldPlayers?.length}`,
                 );
-                pagination.value.page = 1;
+                pagination.value.page = 1; // Reset to first page when player list changes
             },
             { deep: true },
         );
@@ -343,18 +315,23 @@ export default {
 
         const getPositionIndex = (positionString) => {
             if (!positionString || typeof positionString !== "string") {
-                return positionSortOrder.length + 2;
+                return positionSortOrder.length + 2; // Place invalid/empty last
             }
+            // Normalize common variations like "ST (C)" to just "ST" for sorting
             let processedString = positionString.toUpperCase();
+            // Specific replacements for common FM display formats
             processedString = processedString.replace(/\bST\s*\(C\)/g, "ST");
             processedString = processedString.replace(/\bM\s*\(C\)/g, "MC");
             processedString = processedString.replace(/\bAM\s*\(C\)/g, "AMC");
             processedString = processedString.replace(/\bDM\s*\(C\)/g, "DM");
             processedString = processedString.replace(/\bD\s*\(C\)/g, "DC");
-            processedString = processedString.replace(/\bGK\s*\(C\)/g, "GK");
+            processedString = processedString.replace(/\bGK\s*\(C\)/g, "GK"); // Though GK usually doesn't have (C)
 
-            let minFoundIndex = positionSortOrder.length;
-            const sideMatch = processedString.match(/\(([^)]+)\)$/);
+            // Extract primary position codes, handling slashes and commas
+            let minFoundIndex = positionSortOrder.length; // Default to a high value (end of sort)
+
+            // Try to find the most "primary" or first listed position
+            const sideMatch = processedString.match(/\(([^)]+)\)$/); // Check for (R), (L), (C), (RLC)
             let mainPart = processedString;
             let sidesSpecified = [];
 
@@ -363,28 +340,35 @@ export default {
                 const sideSpec = sideMatch[1];
                 if (sideSpec.includes("R")) sidesSpecified.push("R");
                 if (sideSpec.includes("L")) sidesSpecified.push("L");
+                // 'C' is often implicit or part of the base role (e.g. DC, MC)
             }
+
+            // Remove any remaining parenthesized parts and split by common delimiters
             mainPart = mainPart.replace(/\s*\(.*?\)\s*/g, "").trim();
             const basePositionCodes = mainPart
                 .split(/[,/]/)
                 .map((p) => p.trim())
                 .filter((p) => p.length > 0);
+
             const rolesToEvaluate = new Set();
 
             for (const baseCode of basePositionCodes) {
                 if (sidesSpecified.length > 0) {
                     for (const side of sidesSpecified) {
-                        rolesToEvaluate.add(baseCode + side);
+                        rolesToEvaluate.add(baseCode + side); // e.g., D + R -> DR
                     }
                 }
-                rolesToEvaluate.add(baseCode);
+                rolesToEvaluate.add(baseCode); // e.g., DC, ST
             }
+
+            // If after all processing, rolesToEvaluate is empty but original string wasn't, use the cleaned main part
             if (rolesToEvaluate.size === 0 && positionString.trim() !== "") {
                 rolesToEvaluate.add(
                     processedString.replace(/\s*\(.*?\)\s*/g, "").trim(),
                 );
             }
-            if (rolesToEvaluate.size === 0) return positionSortOrder.length + 1;
+
+            if (rolesToEvaluate.size === 0) return positionSortOrder.length + 1; // Fallback for unparseable
 
             for (const role of rolesToEvaluate) {
                 const index = positionSortOrder.indexOf(role);
@@ -400,11 +384,12 @@ export default {
         const onPaginationUpdate = (newPagination) => {
             console.log(
                 `PlayerDataTable: onPaginationUpdate triggered. New pagination:`,
-                JSON.parse(JSON.stringify(newPagination)),
+                JSON.parse(JSON.stringify(newPagination)), // Deep copy for logging
             );
             pagination.value = newPagination;
         };
 
+        // Column definitions
         const nameColumnStyle =
             "max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
         const ageColumnStyle =
@@ -656,6 +641,7 @@ export default {
             const fieldKey = getSortFieldKey(sortField.value || "Overall");
             const direction = sortDirection.value;
 
+            // Create a mutable copy for sorting
             const playersToSort = [...props.players];
 
             console.time("PlayerDataTable: actual_sort_operation");
@@ -666,8 +652,8 @@ export default {
                 const bIsNull = vB === null || vB === undefined;
 
                 if (aIsNull && bIsNull) return 0;
-                if (aIsNull) return direction === "asc" ? 1 : -1;
-                if (bIsNull) return direction === "asc" ? -1 : 1;
+                if (aIsNull) return direction === "asc" ? 1 : -1; // Nulls/undefined last for asc, first for desc
+                if (bIsNull) return direction === "asc" ? -1 : 1; // Nulls/undefined first for asc, last for desc
 
                 if (fieldKey === "position") {
                     const indexA = getPositionIndex(vA);
@@ -686,6 +672,7 @@ export default {
                     if (vA > vB) return direction === "asc" ? 1 : -1;
                     return 0;
                 }
+                // Fallback for other types or mixed types (should ideally not happen with consistent data)
                 return 0;
             });
             console.timeEnd("PlayerDataTable: actual_sort_operation");
@@ -736,7 +723,7 @@ export default {
         const paginationEndRow = computed(() => {
             if (paginationTotalRows.value === 0) return 0;
             if (pagination.value.rowsPerPage === 0)
-                return paginationTotalRows.value;
+                return paginationTotalRows.value; // All rows
             return Math.min(
                 pagination.value.page * pagination.value.rowsPerPage,
                 paginationTotalRows.value,
@@ -745,6 +732,7 @@ export default {
 
         onMounted(() => {
             console.log(`PlayerDataTable: Component mounted.`);
+            // Emit initial sort state if sortField is set
             if (sortField.value) {
                 emit("update:sort", {
                     key: getSortFieldKey(sortField.value),
@@ -755,7 +743,7 @@ export default {
                     isOverallStat: currentColumns.value.find(
                         (c) => c.name === sortField.value,
                     )?.isOverallStat,
-                    displayField: sortField.value,
+                    displayField: sortField.value, // The column name used for display
                 });
             }
         });
@@ -790,27 +778,29 @@ export default {
         };
 
         const onFlagError = (event) => {
-            if (event.target) event.target.style.display = "none";
+            if (event.target) event.target.style.display = "none"; // Hide broken image
+            // Show placeholder icon if one exists next to it
             const placeholderIcon = event.target.nextElementSibling;
             if (
                 placeholderIcon &&
                 placeholderIcon.classList.contains("q-icon")
             ) {
-                placeholderIcon.style.display = "inline-flex";
+                placeholderIcon.style.display = "inline-flex"; // Or 'block' depending on layout
             }
         };
 
         const onRequest = (requestProp) => {
             console.log(
                 `PlayerDataTable: onRequest triggered. Props:`,
-                JSON.parse(JSON.stringify(requestProp)),
+                JSON.parse(JSON.stringify(requestProp)), // Deep copy for logging
             );
             const { page, rowsPerPage, sortBy, descending } =
                 requestProp.pagination;
 
             pagination.value.page = page;
-            pagination.value.rowsPerPage = rowsPerPage;
+            // pagination.value.rowsPerPage = rowsPerPage; // Rows per page is now fixed or not user-selectable from UI
 
+            // Update sortField and sortDirection if they have changed
             if (
                 sortBy &&
                 (sortField.value !== sortBy ||
@@ -818,11 +808,11 @@ export default {
             ) {
                 sortField.value = sortBy;
                 sortDirection.value = descending ? "desc" : "asc";
-                pagination.value.sortBy = sortBy;
+                pagination.value.sortBy = sortBy; // Keep pagination object in sync
                 pagination.value.descending = descending;
 
                 emit("update:sort", {
-                    key: getSortFieldKey(sortField.value),
+                    key: getSortFieldKey(sortField.value), // The actual data key for sorting
                     direction: sortDirection.value,
                     isFifaStat: currentColumns.value.find(
                         (c) => c.name === sortBy,
@@ -830,9 +820,12 @@ export default {
                     isOverallStat: currentColumns.value.find(
                         (c) => c.name === sortBy,
                     )?.isOverallStat,
-                    displayField: sortBy,
+                    displayField: sortBy, // The column name used for display
                 });
             }
+            // Since rowsPerPage selector is removed, we don't need to emit it for external control,
+            // but QTable might still expect it if its own pagination controls are used.
+            // For simplicity, we assume QTable's internal pagination will use the current pagination.value.rowsPerPage.
             emit("update:pagination", { ...pagination.value });
         };
 
@@ -842,15 +835,16 @@ export default {
         };
 
         const onRowsPerPageChange = (newRowsPerPage) => {
+            // This function will no longer be called from the UI if the selector is removed.
+            // However, it's kept here in case rowsPerPage is set programmatically elsewhere.
             console.log(
                 `PlayerDataTable: onRowsPerPageChange. New rowsPerPage: ${newRowsPerPage}`,
             );
             pagination.value.rowsPerPage = newRowsPerPage;
-            pagination.value.page = 1;
+            pagination.value.page = 1; // Reset to first page
         };
 
         const customSort = (rows) => {
-            // console.log(`PlayerDataTable: customSort called. Returning pre-sorted rows.`);
             return rows;
         };
 
@@ -892,7 +886,6 @@ export default {
         };
 
         const onRowClick = (player) => {
-            // console.log(`PlayerDataTable: Row clicked for player:`, player.name);
             emit("player-selected", player);
         };
 
@@ -912,7 +905,7 @@ export default {
             pagination,
             onPaginationUpdate,
             pagesNumber,
-            rowsPerPageOptions,
+            rowsPerPageOptions, // Still needed for QTable's internal pagination logic
             maxPagesToShow,
             currentColumns,
             sortedPlayers,
@@ -922,7 +915,7 @@ export default {
             onFlagError,
             onRequest,
             onPageChange,
-            onRowsPerPageChange,
+            onRowsPerPageChange, // Kept for programmatic changes, though UI selector removed
             customSort,
             sortTable,
             onRowClick,
@@ -943,6 +936,20 @@ export default {
     width: 100%;
 }
 
+.table-controls-header {
+    padding: 0 4px 8px 4px;
+    align-items: center;
+}
+
+.sort-info-chip {
+    display: inline-block;
+    margin-right: 16px;
+    padding: 6px 10px;
+    font-size: 0.8rem;
+}
+
+/* Removed .player-count-display styles as the element is removed */
+
 .player-q-table {
     width: 100%;
     table-layout: auto;
@@ -952,36 +959,44 @@ export default {
         margin-left: 4px;
     }
 
+    // Dark mode specific styles
     &.q-table--dark {
         th {
             color: $grey-3;
             border-bottom-color: rgba(255, 255, 255, 0.15);
         }
+
         td {
             border-bottom-color: rgba(255, 255, 255, 0.1);
             color: $grey-4;
         }
+
         tr:last-child td {
             border-bottom: 0;
         }
+
         .q-table__bottom {
             border-top-color: rgba(255, 255, 255, 0.15);
         }
     }
 
+    // Light mode specific styles (default, but explicitly stated for clarity)
     &:not(.q-table--dark) {
         th {
             background-color: #f0f4f8;
             color: $grey-8;
             border-bottom: 1px solid #dde2e6;
         }
+
         td {
             border-bottom: 1px solid #eef2f5;
             color: $grey-9;
         }
+
         tr:last-child td {
             border-bottom: 0;
         }
+
         .q-table__bottom {
             border-top: 1px solid #dde2e6;
         }
@@ -993,11 +1008,13 @@ export default {
         padding: 8px 10px;
         border-right: 0;
     }
+
     td {
         vertical-align: middle;
         padding: 6px 10px;
         border-right: 0;
     }
+
     .table-cell-enhanced {
         font-size: 0.85rem;
     }
@@ -1008,12 +1025,14 @@ export default {
         .body--dark & {
             background-color: rgba(255, 255, 255, 0.08) !important;
         }
+
         .body--light & {
             background-color: #e3f2fd !important;
         }
     }
 }
 
+// Money value styling
 .money-value {
     display: inline-block;
     font-weight: 500;
@@ -1021,6 +1040,8 @@ export default {
     border-radius: 3px;
     font-size: 0.8rem;
 }
+
+// Specific color classes for money values (can be expanded)
 .money-very-high {
     color: #1b5e20;
     font-weight: 700;
@@ -1066,6 +1087,7 @@ export default {
 .nationality-flag {
     border: 1px solid rgba(0, 0, 0, 0.15);
     object-fit: cover;
+
     .body--dark & {
         border: 1px solid rgba(255, 255, 255, 0.15);
     }
@@ -1076,6 +1098,7 @@ export default {
     flex-shrink: 0;
 }
 
+// Ensure select in pagination is styled for dark mode (though selector is removed, :deep might affect other selects if not scoped)
 :deep(.q-table__bottom .q-select .q-field__native),
 :deep(.q-table__bottom .q-select .q-field__input) {
     .body--dark & {
