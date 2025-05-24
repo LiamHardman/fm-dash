@@ -84,9 +84,9 @@ export const usePlayerStore = defineStore("player", () => {
     if (transferValuesNumeric.length === 0) return { min: 0, max: 100000000 };
     const min = Math.min(0, ...transferValuesNumeric);
     let max = Math.max(...transferValuesNumeric);
-    if (min >= max) max = min + 50000;
+    if (min >= max) max = min + 50000; // Ensure max is always greater than min for range slider
     if (min === 0 && max === 0 && transferValuesNumeric.some((v) => v === 0))
-      max = 50000;
+      max = 50000; // Handle case where all values are 0
     return { min, max };
   });
 
@@ -102,14 +102,13 @@ export const usePlayerStore = defineStore("player", () => {
         "detectedCurrencySymbol",
         detectedCurrencySymbol.value,
       );
-      await fetchPlayersByDatasetId(currentDatasetId.value);
-      await fetchAllAvailableRoles();
+      await fetchPlayersByDatasetId(currentDatasetId.value); // Fetch all players for the new dataset
+      await fetchAllAvailableRoles(); // Fetch roles for the new dataset
       return response;
     } catch (e) {
-      // Check if the error has a status property (added in playerService)
-      if (e.status === 413) {
-        error.value =
-          "Upload failed: File is too large. Maximum size is 15MB (approx. 10,000 players).";
+      // Use the error message directly from the service if it's a 413 or other specific error
+      if (e.status === 413 && e.message) {
+        error.value = e.message; // Use the specific message from the backend
       } else {
         error.value = `Failed to process file: ${e.message || "Unknown error"}`;
       }
@@ -128,7 +127,7 @@ export const usePlayerStore = defineStore("player", () => {
     transferValueRangeFilter = null,
   ) {
     if (!datasetId) {
-      resetState();
+      resetState(); // Clear data if no datasetId
       return;
     }
     loading.value = true;
@@ -145,15 +144,15 @@ export const usePlayerStore = defineStore("player", () => {
         transferValueRangeFilter,
       );
       allPlayers.value = processPlayersFromAPI(response.players);
-      detectedCurrencySymbol.value = response.currencySymbol || "$";
+      detectedCurrencySymbol.value = response.currencySymbol || "$"; // Update currency symbol from response
       sessionStorage.setItem(
         "detectedCurrencySymbol",
         detectedCurrencySymbol.value,
-      );
-      return response;
+      ); // Persist it
+      return response; // Return the full response if needed by caller
     } catch (e) {
       error.value = `Failed to fetch player data: ${e.message || "Unknown error"}`;
-      resetState();
+      resetState(); // Clear data on error
       throw e;
     } finally {
       loading.value = false;
@@ -161,31 +160,35 @@ export const usePlayerStore = defineStore("player", () => {
   }
 
   async function fetchAllAvailableRoles(force = false) {
-    if (allAvailableRoles.value.length > 0 && !force) return;
+    // Fetches all unique role names available in the current dataset (from backend)
+    if (allAvailableRoles.value.length > 0 && !force) return; // Avoid refetch if already populated unless forced
     try {
       const roles = await playerService.getAvailableRoles();
-      allAvailableRoles.value = roles.sort();
+      allAvailableRoles.value = roles.sort(); // Sort for consistent display
     } catch (e) {
       console.error("playerStore: Error fetching available roles:", e);
-      allAvailableRoles.value = [];
+      allAvailableRoles.value = []; // Reset or handle error appropriately
     }
   }
 
   function processPlayersFromAPI(playersData) {
     if (!Array.isArray(playersData)) return [];
+    // Ensure age is an integer, default to 0 if not parsable
     return playersData.map((p) => ({
       ...p,
       age: parseInt(p.age, 10) || 0,
+      // Other per-player processing can go here if needed
     }));
   }
 
   function resetState() {
     allPlayers.value = [];
     currentDatasetId.value = null;
-    detectedCurrencySymbol.value = "$";
+    detectedCurrencySymbol.value = "$"; // Reset to default
     allAvailableRoles.value = [];
     sessionStorage.removeItem("currentDatasetId");
     sessionStorage.removeItem("detectedCurrencySymbol");
+    // Do not clear error.value here, let components decide
   }
 
   async function loadFromSessionStorage() {
@@ -199,13 +202,15 @@ export const usePlayerStore = defineStore("player", () => {
         detectedCurrencySymbol.value = storedCurrencySymbol;
       }
       try {
+        // Fetch players and roles when loading from session
         await fetchPlayersByDatasetId(storedDatasetId);
         await fetchAllAvailableRoles();
       } catch (e) {
-        // Error handled in fetch
+        // Error is handled within fetchPlayersByDatasetId and fetchAllAvailableRoles
+        // If loading from session fails, the state will be reset by those functions.
       }
     } else {
-      resetState();
+      resetState(); // If no dataset ID in session, ensure clean state
     }
   }
 

@@ -17,7 +17,10 @@ import (
 
 const (
 	// MaxUploadSize defines the maximum allowed file size for uploads (15MB)
+	// This is an approximation for about 10,000 players.
 	MaxUploadSize = 15 * 1024 * 1024
+	// User-facing error message for file size limit.
+	FileSizeLimitErrorMessage = "Only 10,000 players or less can be in a given dataset. (Max file size: 15MB)"
 )
 
 // uploadHandler handles POST requests for uploading HTML player files.
@@ -33,7 +36,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	// r.ContentLength is an int64
 	if r.ContentLength > MaxUploadSize {
 		log.Printf("Upload rejected: Content-Length (%d bytes) exceeds limit (%d bytes)", r.ContentLength, MaxUploadSize)
-		http.Error(w, "File too large. Maximum size allowed is 15MB.", http.StatusRequestEntityTooLarge)
+		http.Error(w, FileSizeLimitErrorMessage, http.StatusRequestEntityTooLarge)
 		return
 	}
 
@@ -58,7 +61,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	// Enforce the 15MB limit on the actual file size
 	if fileSize > MaxUploadSize {
 		log.Printf("Upload rejected: Actual file size (%d bytes) exceeds limit (%d bytes)", fileSize, MaxUploadSize)
-		http.Error(w, "File too large. Maximum size allowed is 15MB.", http.StatusRequestEntityTooLarge)
+		http.Error(w, FileSizeLimitErrorMessage, http.StatusRequestEntityTooLarge)
 		return
 	}
 
@@ -173,7 +176,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	response := UploadResponse{DatasetID: datasetID, Message: "File uploaded and parsed successfully.", DetectedCurrencySymbol: finalDatasetCurrencySymbol}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "*") // Ensure CORS is set if frontend is on a different domain/port
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		log.Printf("Error encoding JSON response for upload: %v", err)
 		http.Error(w, "Error encoding JSON response: "+err.Error(), http.StatusInternalServerError)
@@ -284,13 +287,22 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 			roleMatched := false
 			for _, roleOverall := range playerCopy.RoleSpecificOveralls {
 				if roleOverall.RoleName == filterRole {
-					playerCopy.Overall = roleOverall.Score
+					playerCopy.Overall = roleOverall.Score // Update player's main overall to the role-specific one for display
 					roleMatched = true
 					break
 				}
 			}
 			if !roleMatched {
-				playerCopy.Overall = 0
+				// If the role filter is active but the player doesn't have that specific role calculated,
+				// you might want to either exclude them or set their overall to 0 or a special value.
+				// For now, let's assume if a role filter is active, we only want players matching that role's overall.
+				// So, if not matched, their 'Overall' (which might be their best general overall) might not be relevant.
+				// Depending on requirements, you might set playerCopy.Overall = 0 or skip.
+				// For this example, if a role is filtered, we are primarily interested in the players' score for THAT role.
+				// If they don't have that role, they are effectively 0 for that role.
+				// However, the primary filtering for display happens on the frontend based on the RoleSpecificOveralls array.
+				// The backend here is just adjusting the main 'Overall' field if a role is specified.
+				// If no match, the original player.Overall (best general) remains.
 			}
 		}
 		processedPlayers = append(processedPlayers, playerCopy)
@@ -300,7 +312,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	response := PlayerDataWithCurrency{Players: processedPlayers, CurrencySymbol: data.CurrencySymbol}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "*") // Ensure CORS
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		log.Printf("Error encoding JSON response for playerData (DatasetID: %s): %v", datasetID, err)
 	}
@@ -321,10 +333,10 @@ func rolesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	muRoleSpecificOverallWeights.RUnlock()
 
-	sort.Strings(roleNames)
+	sort.Strings(roleNames) // Sort for consistent frontend display
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "*") // Ensure CORS
 	if err := json.NewEncoder(w).Encode(roleNames); err != nil {
 		log.Printf("Error encoding JSON response for roles: %v", err)
 		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
