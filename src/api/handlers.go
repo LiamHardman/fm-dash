@@ -15,6 +15,11 @@ import (
 	"github.com/google/uuid"
 )
 
+const (
+	// MaxUploadSize defines the maximum allowed file size for uploads (15MB)
+	MaxUploadSize = 15 * 1024 * 1024
+)
+
 // uploadHandler handles POST requests for uploading HTML player files.
 // It parses the file, processes player data concurrently, and stores the results.
 func uploadHandler(w http.ResponseWriter, r *http.Request) {
@@ -24,7 +29,18 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	startTime := time.Now()
 
-	if err := r.ParseMultipartForm(32 << 20); err != nil { // 32MB limit
+	// Check Content-Length header first for a quick check, though it can be spoofed.
+	// r.ContentLength is an int64
+	if r.ContentLength > MaxUploadSize {
+		log.Printf("Upload rejected: Content-Length (%d bytes) exceeds limit (%d bytes)", r.ContentLength, MaxUploadSize)
+		http.Error(w, "File too large. Maximum size allowed is 15MB.", http.StatusRequestEntityTooLarge)
+		return
+	}
+
+	// ParseMultipartForm will also respect the maxMemory argument for in-memory parts,
+	// but the total request size is what we're primarily concerned with for the file part.
+	// We'll check the actual file handler size after getting the file.
+	if err := r.ParseMultipartForm(32 << 20); err != nil { // 32MB for other form data, not the file itself immediately
 		http.Error(w, "Error parsing multipart form: "+err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -38,6 +54,13 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	fileSize := handler.Size
 	log.Printf("Uploaded File: %s (Size: %d bytes)", handler.Filename, fileSize)
+
+	// Enforce the 15MB limit on the actual file size
+	if fileSize > MaxUploadSize {
+		log.Printf("Upload rejected: Actual file size (%d bytes) exceeds limit (%d bytes)", fileSize, MaxUploadSize)
+		http.Error(w, "File too large. Maximum size allowed is 15MB.", http.StatusRequestEntityTooLarge)
+		return
+	}
 
 	parseStartTime := time.Now()
 	playersList := make([]Player, 0, defaultPlayerCapacity) // Assumes defaultPlayerCapacity is defined in config.go
@@ -307,7 +330,3 @@ func rolesHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
 	}
 }
-
-// NOTE: The placeholder variable declarations and comments for them at the end of the previous version
-// of handlers.go have been removed as they were the source of the "redeclared" errors.
-// The actual definitions in config.go, store.go, utils.go, etc., will be used.

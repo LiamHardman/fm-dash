@@ -1,3 +1,4 @@
+// src/components/UpgradeFinderDialog.vue
 <template>
     <q-dialog
         :model-value="show"
@@ -53,6 +54,7 @@
                             @clear="
                                 teamName = null;
                                 selectedTeamPlayer = null;
+                                selectedRole = null; // Clear role when team clears
                                 teamPlayersForSelection = [];
                             "
                             :label-color="
@@ -66,15 +68,7 @@
                                     ? 'bg-grey-8 text-white'
                                     : 'bg-white text-dark'
                             "
-                        >
-                            <template v-slot:no-option>
-                                <q-item>
-                                    <q-item-section class="text-grey">
-                                        No results
-                                    </q-item-section>
-                                </q-item>
-                            </template>
-                        </q-select>
+                        />
                     </div>
 
                     <div class="col-12 col-md-6 col-lg-3">
@@ -91,8 +85,10 @@
                             @clear="
                                 selectedPosition = null;
                                 selectedTeamPlayer = null;
+                                selectedRole = null; // Clear role when position clears
                                 teamPlayersForSelection = [];
                             "
+                            @update:model-value="onPositionOrTeamChange"
                             :label-color="
                                 qInstance.dark.isActive ? 'grey-4' : ''
                             "
@@ -102,6 +98,50 @@
                                     : 'bg-white text-dark'
                             "
                         />
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-3">
+                        <q-select
+                            v-model="selectedRole"
+                            :options="roleOptionsForSelectedPosition"
+                            label="Role"
+                            dense
+                            outlined
+                            emit-value
+                            map-options
+                            clearable
+                            @clear="selectedRole = null"
+                            :disable="
+                                !selectedPosition ||
+                                roleOptionsForSelectedPosition.length <= 1
+                            "
+                            :hint="
+                                !selectedPosition
+                                    ? 'Select position first'
+                                    : roleOptionsForSelectedPosition.length <= 1
+                                      ? 'No specific roles for this position'
+                                      : ''
+                            "
+                            :label-color="
+                                qInstance.dark.isActive ? 'grey-4' : ''
+                            "
+                            :popup-content-class="
+                                qInstance.dark.isActive
+                                    ? 'bg-grey-8 text-white'
+                                    : 'bg-white text-dark'
+                            "
+                        >
+                            <template v-slot:no-option>
+                                <q-item>
+                                    <q-item-section class="text-grey">
+                                        {{
+                                            !selectedPosition
+                                                ? "Select position first"
+                                                : "No roles available"
+                                        }}
+                                    </q-item-section>
+                                </q-item>
+                            </template>
+                        </q-select>
                     </div>
 
                     <div class="col-12 col-md-6 col-lg-3">
@@ -123,7 +163,7 @@
                             "
                             :hint="
                                 selectedTeamPlayer
-                                    ? `Base Overall: ${getBaseOverallFromSelectedPlayer()}`
+                                    ? `Base Overall (${selectedRole ? getRoleShortName(selectedRole) : getPositionShortName(selectedPosition)}): ${getBaseOverallFromSelectedPlayer()}`
                                     : 'Select a player to set base overall'
                             "
                             :label-color="
@@ -145,9 +185,21 @@
                                             scope.opt.name
                                         }}</q-item-label>
                                         <q-item-label caption
-                                            >Overall:
+                                            >Overall ({{
+                                                selectedRole
+                                                    ? getRoleShortName(
+                                                          selectedRole,
+                                                      )
+                                                    : getPositionShortName(
+                                                          selectedPosition,
+                                                      )
+                                            }}):
                                             {{
-                                                scope.opt.Overall
+                                                getPlayerOverallForRoleOrPosition(
+                                                    scope.opt,
+                                                    selectedRole,
+                                                    selectedPosition,
+                                                )
                                             }}</q-item-label
                                         >
                                     </q-item-section>
@@ -170,11 +222,11 @@
                     <div class="col-12 col-md-6 col-lg-3">
                         <div>
                             <div
-                                class="text-subtitle2 q-mb-xs"
+                                class="text-caption q-mb-xs slider-label"
                                 :class="
                                     qInstance.dark.isActive
                                         ? 'text-grey-4'
-                                        : 'text-grey-8'
+                                        : 'text-grey-7'
                                 "
                             >
                                 Upgrade By: {{ upgradeByValue }}
@@ -189,19 +241,17 @@
                                 color="primary"
                                 :dark="qInstance.dark.isActive"
                                 :disable="!selectedTeamPlayer"
+                                class="q-px-sm"
                             />
                         </div>
                     </div>
-                </div>
-
-                <div class="row q-col-gutter-x-md q-col-gutter-y-sm q-mb-md">
-                    <div class="col-12 col-md-6 col-lg-3">
+                    <div class="col-12 col-md-6 col-lg-3 filter-item-container">
                         <div
-                            class="q-mb-xs text-subtitle2"
+                            class="text-caption q-mb-xs slider-label"
                             :class="
                                 qInstance.dark.isActive
                                     ? 'text-grey-4'
-                                    : 'text-grey-8'
+                                    : 'text-grey-7'
                             "
                         >
                             Maximum Age:
@@ -234,27 +284,28 @@
                             :max="ageSliderMax"
                             :step="1"
                             label
-                            color="secondary"
+                            label-always
+                            :label-value="
+                                maxAgeFilter +
+                                (maxAgeFilter === ageSliderMax ? '+' : '') +
+                                ' yrs'
+                            "
+                            color="primary"
                             :dark="qInstance.dark.isActive"
+                            class="q-px-sm"
                         />
                     </div>
 
-                    <div class="col-12 col-md-6 col-lg-3">
+                    <div class="col-12 col-md-6 col-lg-3 filter-item-container">
                         <div
-                            class="q-mb-xs text-subtitle2"
+                            class="text-caption q-mb-xs slider-label"
                             :class="
                                 qInstance.dark.isActive
                                     ? 'text-grey-4'
-                                    : 'text-grey-8'
+                                    : 'text-grey-7'
                             "
                         >
                             Max Transfer Value ({{ currencySymbol }}):
-                            {{
-                                maxTransferValueFilter ===
-                                computedMaxSliderTransferValue
-                                    ? "Any"
-                                    : formattedMaxTransferValueLabel
-                            }}
                             <q-btn
                                 flat
                                 dense
@@ -287,12 +338,14 @@
                             :max="computedMaxSliderTransferValue"
                             :step="computedStepSliderTransferValue"
                             label
+                            label-always
                             :label-value="formattedMaxTransferValueLabel"
-                            color="secondary"
+                            color="primary"
                             :dark="qInstance.dark.isActive"
                             :disable="
                                 !props.players || props.players.length === 0
                             "
+                            class="q-px-sm"
                         />
                     </div>
                 </div>
@@ -390,18 +443,24 @@
                                             ? 'text-grey-5'
                                             : 'text-blue-grey-7'
                                     "
-                                    >Overall</q-item-label
+                                    >Overall ({{
+                                        selectedRole
+                                            ? getRoleShortName(selectedRole)
+                                            : getPositionShortName(
+                                                  selectedPosition,
+                                              )
+                                    }})</q-item-label
                                 >
                                 <div
                                     class="attribute-value fifa-stat-value text-h6"
                                     :class="
                                         getUnifiedRatingClass(
-                                            selectedTeamPlayerObject.Overall,
+                                            getBaseOverallFromSelectedPlayer(),
                                             100,
                                         )
                                     "
                                 >
-                                    {{ selectedTeamPlayerObject.Overall }}
+                                    {{ getBaseOverallFromSelectedPlayer() }}
                                 </div>
                             </q-item-section>
                         </q-item>
@@ -444,7 +503,7 @@
 
                 <PlayerDataTable
                     v-if="upgradePlayers.length > 0"
-                    :players="upgradePlayers"
+                    :players="processedUpgradePlayers"
                     :loading="loading"
                     @player-selected="handlePlayerSelectedForDetailView"
                     :is-goalkeeper-view="upgradeFinderIsGoalkeeperView"
@@ -504,9 +563,30 @@
 <script>
 import { ref, computed, onMounted, watch } from "vue";
 import { useQuasar } from "quasar";
+import { usePlayerStore } from "@/stores/playerStore"; // Corrected Import Path
 import PlayerDataTable from "./PlayerDataTable.vue";
 import PlayerDetailDialog from "./PlayerDetailDialog.vue";
-import { formatCurrency } from "../utils/currencyUtils"; // Import the utility
+import { formatCurrency } from "@/utils/currencyUtils";
+
+// From PlayerFilters.vue for consistency
+const AGE_SLIDER_MIN = 15;
+const AGE_SLIDER_MAX = 50;
+const orderedShortPositions = [
+    "GK",
+    "DR",
+    "DC",
+    "DL",
+    "WBR",
+    "WBL",
+    "DM",
+    "MR",
+    "MC",
+    "ML",
+    "AMR",
+    "AMC",
+    "AML",
+    "ST",
+];
 
 export default {
     name: "UpgradeFinderDialog",
@@ -514,32 +594,34 @@ export default {
     props: {
         show: { type: Boolean, default: false },
         players: { type: Array, required: true },
-        currencySymbol: { type: String, default: "$" }, // New prop
+        currencySymbol: { type: String, default: "$" },
     },
     emits: ["close"],
     setup(props, { emit }) {
         const $q = useQuasar();
+        const playerStore = usePlayerStore();
         const teamName = ref(null);
         const teamOptions = ref([]);
         const allTeamNamesCache = ref([]);
 
         const selectedPosition = ref(null);
+        const selectedRole = ref(null);
         const selectedTeamPlayer = ref(null);
         const teamPlayersForSelection = ref([]);
 
         const upgradeByValue = ref(1);
 
-        const ageSliderMin = 15;
-        const ageSliderMax = 50;
+        const ageSliderMin = AGE_SLIDER_MIN;
+        const ageSliderMax = AGE_SLIDER_MAX;
         const maxAgeFilter = ref(ageSliderMax);
 
-        const maxTransferValueFilter = ref(null); // Will be set in onMounted/watch
+        const maxTransferValueFilter = ref(null);
         const dynamicMinTransferValue = ref(0);
-        const dynamicMaxTransferValue = ref(100000000); // Default max
+        const dynamicMaxTransferValue = ref(100000000);
 
         const loading = ref(false);
         const showResults = ref(false);
-        const initialLoad = ref(true); // To prevent "No upgrades found" on first open
+        const initialLoad = ref(true);
 
         const upgradePlayers = ref([]);
         const playerForDetailView = ref(null);
@@ -558,17 +640,16 @@ export default {
                 }
             });
             allTeamNamesCache.value = Array.from(uniqueTeams).sort();
-            teamOptions.value = allTeamNamesCache.value; // Initialize options
+            teamOptions.value = allTeamNamesCache.value;
         };
 
         const updateTransferValueSliderBounds = () => {
             if (!props.players || props.players.length === 0) {
                 dynamicMinTransferValue.value = 0;
-                dynamicMaxTransferValue.value = 100000000; // Default if no players
+                dynamicMaxTransferValue.value = 100000000;
                 maxTransferValueFilter.value = dynamicMaxTransferValue.value;
                 return;
             }
-
             let minVal = Infinity;
             let maxVal = 0;
             props.players.forEach((p) => {
@@ -577,26 +658,29 @@ export default {
                     maxVal = Math.max(maxVal, p.transferValueAmount);
                 }
             });
-
             dynamicMinTransferValue.value =
                 minVal === Infinity ? 0 : Math.max(0, minVal);
             dynamicMaxTransferValue.value =
                 maxVal === 0 && minVal === Infinity ? 100000000 : maxVal;
-
             if (
                 maxTransferValueFilter.value === null ||
                 maxTransferValueFilter.value > dynamicMaxTransferValue.value ||
                 maxTransferValueFilter.value < dynamicMinTransferValue.value
             ) {
-                maxTransferValueFilter.value = dynamicMaxTransferValue.value; // Set to max initially (means "Any")
+                maxTransferValueFilter.value = dynamicMaxTransferValue.value;
             }
         };
 
-        onMounted(() => {
+        onMounted(async () => {
+            if (
+                playerStore.allAvailableRoles.length === 0 &&
+                playerStore.currentDatasetId
+            ) {
+                await playerStore.fetchAllAvailableRoles();
+            }
             populateAllTeamNames();
             updateTransferValueSliderBounds();
-            maxAgeFilter.value = ageSliderMax; // Initialize age filter to max ("Any")
-            // maxTransferValueFilter is set by updateTransferValueSliderBounds
+            maxAgeFilter.value = ageSliderMax;
         });
 
         watch(
@@ -605,7 +689,15 @@ export default {
                 populateAllTeamNames();
                 updateTransferValueSliderBounds();
                 if (newPlayers && newPlayers.length > 0) {
-                    // maxTransferValueFilter is set by updateTransferValueSliderBounds
+                    if (
+                        maxTransferValueFilter.value >
+                            dynamicMaxTransferValue.value ||
+                        maxTransferValueFilter.value <
+                            dynamicMinTransferValue.value
+                    ) {
+                        maxTransferValueFilter.value =
+                            dynamicMaxTransferValue.value;
+                    }
                 } else {
                     allTeamNamesCache.value = [];
                     teamOptions.value = [];
@@ -618,34 +710,42 @@ export default {
             { immediate: true, deep: true },
         );
 
-        const positionGroups = {
-            /* ... as defined in PlayerUploadPage ... */
-        };
         const positionFilterOptions = computed(() => {
-            const options = [];
-            // Add groups first
-            Object.keys(positionGroups).forEach((group) => {
-                options.push({ label: `${group} (Group)`, value: group });
+            const options = [{ label: "Any Position Group", value: null }];
+            orderedShortPositions.forEach((pos) => {
+                options.push({ label: pos, value: pos });
             });
-            // Add individual positions
-            const uniquePositions = new Set();
-            if (props.players) {
-                props.players.forEach((player) => {
-                    player.parsedPositions?.forEach((pos) =>
-                        uniquePositions.add(pos),
-                    );
-                });
-            }
-            Array.from(uniquePositions)
-                .sort()
-                .forEach((pos) => {
-                    // Avoid adding individual positions if a group with the same name exists (e.g. "Goalkeepers")
-                    if (!positionGroups[pos]) {
-                        options.push({ label: pos, value: pos });
-                    }
-                });
-            return options.sort((a, b) => a.label.localeCompare(b.label));
+            return options;
         });
+
+        const roleOptionsForSelectedPosition = computed(() => {
+            if (
+                !selectedPosition.value ||
+                !playerStore.allAvailableRoles ||
+                playerStore.allAvailableRoles.length === 0
+            ) {
+                return [{ label: "Any Role", value: null }];
+            }
+            const roles = playerStore.allAvailableRoles
+                .filter((roleFullName) =>
+                    roleFullName.startsWith(selectedPosition.value + " - "),
+                )
+                .map((roleFullName) => ({
+                    label: roleFullName,
+                    value: roleFullName,
+                }))
+                .sort((a, b) => a.label.localeCompare(b.label));
+            return [{ label: "Any Role", value: null }, ...roles];
+        });
+
+        const getRoleShortName = (fullRoleName) => {
+            if (!fullRoleName) return "";
+            const parts = fullRoleName.split(" - ");
+            return parts.length > 1 ? parts[1] : fullRoleName;
+        };
+        const getPositionShortName = (shortPos) => {
+            return shortPos || "";
+        };
 
         const filterTeams = (val, update) => {
             if (val === "") {
@@ -662,42 +762,84 @@ export default {
             });
         };
 
-        watch([teamName, selectedPosition], () => {
-            selectedTeamPlayer.value = null; // Reset selected player when team or position changes
+        const onPositionOrTeamChange = () => {
+            selectedTeamPlayer.value = null;
+            selectedRole.value = null;
+            updateTeamPlayersForSelection();
+        };
+
+        const updateTeamPlayersForSelection = () => {
             if (teamName.value && selectedPosition.value && props.players) {
                 teamPlayersForSelection.value = props.players
                     .filter((player) => {
                         if (player.club !== teamName.value) return false;
-                        const isGroup =
-                            !!positionGroups[selectedPosition.value];
-                        if (isGroup) {
-                            return (
-                                player.positionGroups &&
-                                player.positionGroups.includes(
-                                    selectedPosition.value,
-                                )
-                            );
-                        } else {
-                            return (
-                                player.parsedPositions &&
-                                player.parsedPositions.includes(
-                                    selectedPosition.value,
-                                )
-                            );
-                        }
+                        return (
+                            player.shortPositions &&
+                            player.shortPositions.includes(
+                                selectedPosition.value,
+                            )
+                        );
                     })
-                    .sort((a, b) => (b.Overall || 0) - (a.Overall || 0));
+                    .sort((a, b) => {
+                        const overallA = getPlayerOverallForRoleOrPosition(
+                            a,
+                            selectedRole.value,
+                            selectedPosition.value,
+                        );
+                        const overallB = getPlayerOverallForRoleOrPosition(
+                            b,
+                            selectedRole.value,
+                            selectedPosition.value,
+                        );
+                        return (overallB || 0) - (overallA || 0);
+                    });
             } else {
                 teamPlayersForSelection.value = [];
             }
-        });
+        };
+
+        watch(
+            [teamName, selectedPosition, selectedRole],
+            updateTeamPlayersForSelection,
+        );
+
+        const getPlayerOverallForRoleOrPosition = (player, role, position) => {
+            if (!player) return 0;
+            if (role) {
+                const roleData = player.roleSpecificOveralls?.find(
+                    (r) => r.roleName === role,
+                );
+                return roleData ? roleData.score : 0;
+            }
+            if (position) {
+                let maxOverallForPosition = 0;
+                if (player.roleSpecificOveralls) {
+                    player.roleSpecificOveralls.forEach((rso) => {
+                        if (rso.roleName.startsWith(position + " - ")) {
+                            if (rso.score > maxOverallForPosition) {
+                                maxOverallForPosition = rso.score;
+                            }
+                        }
+                    });
+                }
+                return maxOverallForPosition > 0
+                    ? maxOverallForPosition
+                    : player.Overall || 0;
+            }
+            return player.Overall || 0;
+        };
 
         const getBaseOverallFromSelectedPlayer = () => {
             if (!selectedTeamPlayer.value) return null;
             const player = teamPlayersForSelection.value.find(
                 (p) => p.name === selectedTeamPlayer.value,
             );
-            return player ? player.Overall : null;
+            if (!player) return null;
+            return getPlayerOverallForRoleOrPosition(
+                player,
+                selectedRole.value,
+                selectedPosition.value,
+            );
         };
 
         const selectedTeamPlayerObject = computed(() => {
@@ -726,7 +868,7 @@ export default {
             const range =
                 computedMaxSliderTransferValue.value -
                 computedMinSliderTransferValue.value;
-            if (range <= 0) return 10000; // Default step
+            if (range <= 0) return 10000;
             if (range < 100000) return 5000;
             if (range < 1000000) return 25000;
             if (range < 10000000) return 100000;
@@ -761,7 +903,6 @@ export default {
             loading.value = true;
             showResults.value = true;
             initialLoad.value = false;
-
             const baseOverall = getBaseOverallFromSelectedPlayer();
             if (baseOverall === null) {
                 loading.value = false;
@@ -773,45 +914,40 @@ export default {
             const currentMaxTransferValue = maxTransferValueFilter.value;
             const currentMaxAge = maxAgeFilter.value;
 
-            await new Promise((resolve) => setTimeout(resolve, 300)); // Simulate API call delay
+            await new Promise((resolve) => setTimeout(resolve, 300));
 
             try {
                 upgradePlayers.value = props.players
                     .filter((player) => {
-                        if (player.club === teamName.value) return false; // Exclude players from the same team
+                        if (player.club === teamName.value) return false;
                         if (
                             player.transfer_value &&
                             player.transfer_value.toLowerCase() ===
                                 "not for sale"
                         )
                             return false;
-
-                        let matchesPosition = false;
-                        const isGroup =
-                            !!positionGroups[selectedPosition.value];
-                        if (isGroup) {
-                            matchesPosition =
-                                player.positionGroups &&
-                                player.positionGroups.includes(
-                                    selectedPosition.value,
-                                );
-                        } else {
-                            matchesPosition =
-                                player.parsedPositions &&
-                                player.parsedPositions.includes(
-                                    selectedPosition.value,
-                                );
-                        }
-                        if (!matchesPosition) return false;
-
-                        if ((player.Overall || 0) < targetOverall) return false;
                         if (
-                            currentMaxAge < ageSliderMax &&
-                            (player.age || 0) > currentMaxAge
+                            !player.shortPositions ||
+                            !player.shortPositions.includes(
+                                selectedPosition.value,
+                            )
                         )
                             return false;
 
-                        // Only apply transfer value filter if it's not set to "Any" (max value)
+                        const playerOverallForContext =
+                            getPlayerOverallForRoleOrPosition(
+                                player,
+                                selectedRole.value,
+                                selectedPosition.value,
+                            );
+                        if ((playerOverallForContext || 0) < targetOverall)
+                            return false;
+
+                        if (
+                            currentMaxAge < ageSliderMax &&
+                            (parseInt(player.age, 10) || 0) > currentMaxAge
+                        )
+                            return false;
                         if (
                             currentMaxTransferValue <
                                 computedMaxSliderTransferValue.value &&
@@ -822,17 +958,46 @@ export default {
 
                         return true;
                     })
-                    .sort((a, b) => (b.Overall || 0) - (a.Overall || 0));
+                    .sort((a, b) => {
+                        const overallA = getPlayerOverallForRoleOrPosition(
+                            a,
+                            selectedRole.value,
+                            selectedPosition.value,
+                        );
+                        const overallB = getPlayerOverallForRoleOrPosition(
+                            b,
+                            selectedRole.value,
+                            selectedPosition.value,
+                        );
+                        return (overallB || 0) - (overallA || 0);
+                    });
             } catch (error) {
                 console.error("Error finding upgrades:", error);
-                // Optionally set an error message to display to the user
             } finally {
                 loading.value = false;
             }
         };
 
+        const processedUpgradePlayers = computed(() => {
+            return upgradePlayers.value.map((player) => {
+                const displayOverall = getPlayerOverallForRoleOrPosition(
+                    player,
+                    selectedRole.value,
+                    selectedPosition.value,
+                );
+                return {
+                    ...player,
+                    Overall: displayOverall, // This 'Overall' will be used by PlayerDataTable
+                };
+            });
+        });
+
         const handlePlayerSelectedForDetailView = (player) => {
-            playerForDetailView.value = player;
+            // Ensure we pass the original player object, not the one with potentially modified 'Overall'
+            const originalPlayer = props.players.find(
+                (p) => p.name === player.name && p.club === player.club,
+            );
+            playerForDetailView.value = originalPlayer || player;
             showPlayerDetailDialog.value = true;
         };
 
@@ -854,42 +1019,43 @@ export default {
             return "rating-tier-1";
         };
 
-        const upgradeFinderIsGoalkeeperView = computed(() => {
-            return (
-                selectedPosition.value === "Goalkeepers" ||
-                selectedPosition.value === "Goalkeeper"
-            );
-        });
+        const upgradeFinderIsGoalkeeperView = computed(
+            () => selectedPosition.value === "GK",
+        );
 
-        // Reset state when dialog is hidden/shown
         watch(
             () => props.show,
             (newValue) => {
                 if (!newValue) {
-                    // When dialog is closed
                     teamName.value = null;
                     selectedPosition.value = null;
+                    selectedRole.value = null;
                     selectedTeamPlayer.value = null;
                     teamPlayersForSelection.value = [];
                     upgradeByValue.value = 1;
                     maxAgeFilter.value = ageSliderMax;
                     if (props.players && props.players.length > 0) {
                         maxTransferValueFilter.value =
-                            computedMaxSliderTransferValue.value; // Reset to "Any"
+                            computedMaxSliderTransferValue.value;
                     } else {
-                        maxTransferValueFilter.value = 100000000; // Default max if no players
+                        maxTransferValueFilter.value = 100000000;
                     }
                     showResults.value = false;
                     upgradePlayers.value = [];
                     loading.value = false;
                     initialLoad.value = true;
                 } else {
-                    // When dialog is opened
+                    if (
+                        playerStore.allAvailableRoles.length === 0 &&
+                        playerStore.currentDatasetId
+                    ) {
+                        playerStore.fetchAllAvailableRoles();
+                    }
                     populateAllTeamNames();
-                    updateTransferValueSliderBounds(); // Recalculate bounds based on current full player list
+                    updateTransferValueSliderBounds();
                     maxAgeFilter.value = ageSliderMax;
                     maxTransferValueFilter.value =
-                        computedMaxSliderTransferValue.value; // Ensure it's reset to max ("Any")
+                        computedMaxSliderTransferValue.value;
                 }
             },
         );
@@ -901,6 +1067,10 @@ export default {
             filterTeams,
             selectedPosition,
             positionFilterOptions,
+            selectedRole,
+            roleOptionsForSelectedPosition,
+            getRoleShortName,
+            getPositionShortName,
             selectedTeamPlayer,
             teamPlayersForSelection,
             getBaseOverallFromSelectedPlayer,
@@ -919,13 +1089,16 @@ export default {
             showResults,
             initialLoad,
             upgradePlayers,
+            processedUpgradePlayers, // Use processed list for table
             findUpgrades,
             getUnifiedRatingClass,
             playerForDetailView,
             showPlayerDetailDialog,
             handlePlayerSelectedForDetailView,
-            props, // Expose props to use props.currencySymbol
+            props,
             upgradeFinderIsGoalkeeperView,
+            onPositionOrTeamChange,
+            getPlayerOverallForRoleOrPosition,
         };
     },
 };
@@ -940,7 +1113,6 @@ export default {
     // Ensure this section also adapts if needed, though q-card usually handles it
 }
 
-// Baseline Player Card Styling
 .q-card.bg-blue-grey-1 {
     // Light mode specific
 }
@@ -967,14 +1139,22 @@ export default {
 }
 
 .text-subtitle2 {
-    // For slider labels like "Maximum Age:"
     font-size: 0.875rem;
     font-weight: 400;
     line-height: 1.25rem;
     letter-spacing: 0.0178571429em;
 }
+.text-caption.slider-label {
+    padding-left: 4px; // Match PlayerFilters.vue
+    margin-bottom: 0px; // Match PlayerFilters.vue
+    line-height: 1.2; // Match PlayerFilters.vue
+}
+.q-slider.q-px-sm {
+    // Match PlayerFilters.vue
+    padding-left: 4px;
+    padding-right: 4px;
+}
 
-// Ensure q-select dropdowns are styled for dark mode
 :deep(.q-menu) {
     .body--dark & {
         background-color: $grey-8 !important;

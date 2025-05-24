@@ -1,3 +1,4 @@
+// src/api/parsing.go
 package main
 
 import (
@@ -13,20 +14,51 @@ import (
 	"golang.org/x/net/html"
 )
 
-var currencySymbolRegex = regexp.MustCompile(`([€£$])`) // Recognizes Euro, Pound, Dollar
+// Updated currencySymbolRegex to include more symbols.
+// This regex tries to match common currency symbols or specific multi-character codes.
+// It's important to order alternatives carefully if some are substrings of others (e.g., R vs R$).
+// Using non-capturing groups (?:...) for multi-character codes if needed, but simple alternation should work.
+var currencySymbolRegex = regexp.MustCompile(
+	`([€£$¥₹₽₺₩])|` + // Single character symbols (Euro, Pound, Dollar, Yen, Rupee, Ruble, Lira, Won)
+		`(R\$)|` + // Brazilian Real
+		`(CHF)|` + // Swiss Franc
+		`(A\$)|` + // Australian Dollar
+		`(CA\$)|` + // Canadian Dollar (use CA$ to distinguish from A$)
+		`(Mex\$)|` + // Mexican Peso
+		`(kr)|` + // Krona (Swedish, Norwegian, Danish) - might be too generic, consider specific like SEK, NOK, DKK if available in data
+		`(zł)|` + // Polish Zloty
+		`(R)`, // South African Rand (must be last if 'R$' is also used to avoid partial match)
+)
 
 // ParseMonetaryValueGo extracts the original display string, a numeric value, and a detected currency symbol
-// from a raw monetary string (e.g., "$1.5M", "£25K p/w").
+// from a raw monetary string (e.g., "$1.5M", "£25K p/w", "¥100M").
 func ParseMonetaryValueGo(rawValue string) (originalDisplay string, numericValue int64, detectedSymbol string) {
 	cleanedValue := strings.TrimSpace(rawValue)
 	originalDisplay = cleanedValue // Store the original formatting
 
-	// Try to detect currency symbol from the raw value
+	// Try to detect currency symbol from the raw value using the updated regex
 	matches := currencySymbolRegex.FindStringSubmatch(cleanedValue)
+	// FindStringSubmatch returns an array where matches[0] is the full match,
+	// and subsequent elements are the captures of each group in the regex.
+	// We iterate through the capture groups to find which one matched.
 	if len(matches) > 1 {
-		detectedSymbol = matches[1]
-	} else {
-		detectedSymbol = "" // Default or no symbol detected
+		for i := 1; i < len(matches); i++ {
+			if matches[i] != "" {
+				detectedSymbol = matches[i]
+				break
+			}
+		}
+	}
+	if detectedSymbol == "" {
+		// Fallback if no specific symbol from the regex is found, but common ones might exist without being in the regex groups
+		// This part might be redundant if the regex is comprehensive.
+		if strings.Contains(cleanedValue, "€") {
+			detectedSymbol = "€"
+		} else if strings.Contains(cleanedValue, "£") {
+			detectedSymbol = "£"
+		} else if strings.Contains(cleanedValue, "$") { // This could be USD, CAD, AUD etc.
+			detectedSymbol = "$" // Default to $ if only $ is found
+		}
 	}
 
 	// Handle ranges like "£10M - £15M", take the higher value or average if needed.
@@ -36,36 +68,65 @@ func ParseMonetaryValueGo(rawValue string) (originalDisplay string, numericValue
 		if len(parts) == 2 {
 			cleanedValue = strings.TrimSpace(parts[1]) // Use the second part of the range
 			// Re-detect symbol if it was in the second part
-			symbolMatchesRange := currencySymbolRegex.FindStringSubmatch(cleanedValue)
-			if len(symbolMatchesRange) > 1 {
-				detectedSymbol = symbolMatchesRange[1]
+			rangeSymbolMatches := currencySymbolRegex.FindStringSubmatch(cleanedValue)
+			if len(rangeSymbolMatches) > 1 {
+				for i := 1; i < len(rangeSymbolMatches); i++ {
+					if rangeSymbolMatches[i] != "" {
+						detectedSymbol = rangeSymbolMatches[i]
+						break
+					}
+				}
 			}
 		}
 	}
 
 	// Remove currency symbols and suffixes for parsing
-	cleanedValue = strings.ReplaceAll(cleanedValue, "€", "")
-	cleanedValue = strings.ReplaceAll(cleanedValue, "£", "")
-	cleanedValue = strings.ReplaceAll(cleanedValue, "$", "")
-	cleanedValue = strings.TrimSpace(strings.ReplaceAll(cleanedValue, "p/w", "")) // Per week
-	cleanedValue = strings.TrimSpace(strings.ReplaceAll(cleanedValue, "/w", ""))  // Per week (alternative)
+	// Create a list of all symbols/codes from the regex to remove them for numeric parsing.
+	// This needs to be robust.
+	valueToParse := cleanedValue
+	if detectedSymbol != "" { // If a symbol was detected, try removing it specifically
+		valueToParse = strings.ReplaceAll(valueToParse, detectedSymbol, "")
+	}
+	// Generic removal of common symbols as a fallback or additional cleanup
+	valueToParse = strings.ReplaceAll(valueToParse, "€", "")
+	valueToParse = strings.ReplaceAll(valueToParse, "£", "")
+	valueToParse = strings.ReplaceAll(valueToParse, "$", "") // Catches general dollars
+	valueToParse = strings.ReplaceAll(valueToParse, "¥", "")
+	valueToParse = strings.ReplaceAll(valueToParse, "₹", "")
+	valueToParse = strings.ReplaceAll(valueToParse, "₽", "")
+	valueToParse = strings.ReplaceAll(valueToParse, "₺", "")
+	valueToParse = strings.ReplaceAll(valueToParse, "₩", "")
+	valueToParse = strings.ReplaceAll(valueToParse, "R", "") // For R, R$, ensure R$ is handled first by regex
+	valueToParse = strings.ReplaceAll(valueToParse, "CHF", "")
+	valueToParse = strings.ReplaceAll(valueToParse, "kr", "")
+	valueToParse = strings.ReplaceAll(valueToParse, "zł", "")
+	// Ensure multi-character codes like CA$, A$, Mex$ are also removed if they were the detectedSymbol
+	// The current logic of `strings.ReplaceAll(valueToParse, detectedSymbol, "")` should handle this.
+
+	valueToParse = strings.TrimSpace(strings.ReplaceAll(valueToParse, "p/w", "")) // Per week
+	valueToParse = strings.TrimSpace(strings.ReplaceAll(valueToParse, "/w", ""))  // Per week (alternative)
 
 	multiplier := int64(1)
-	if strings.HasSuffix(cleanedValue, "M") || strings.HasSuffix(cleanedValue, "m") {
+	if strings.HasSuffix(strings.ToUpper(valueToParse), "M") {
 		multiplier = 1000000
-		cleanedValue = strings.TrimRight(cleanedValue, "Mm")
-	} else if strings.HasSuffix(cleanedValue, "K") || strings.HasSuffix(cleanedValue, "k") {
+		valueToParse = strings.TrimRight(valueToParse, "Mm")
+	} else if strings.HasSuffix(strings.ToUpper(valueToParse), "K") {
 		multiplier = 1000
-		cleanedValue = strings.TrimRight(cleanedValue, "Kk")
+		valueToParse = strings.TrimRight(valueToParse, "Kk")
 	}
 
-	cleanedValue = strings.ReplaceAll(cleanedValue, ",", "") // Remove commas
+	valueToParse = strings.ReplaceAll(valueToParse, ",", "") // Remove commas
 
-	valFloat, err := strconv.ParseFloat(strings.TrimSpace(cleanedValue), 64)
+	valFloat, err := strconv.ParseFloat(strings.TrimSpace(valueToParse), 64)
 	if err == nil {
 		numericValue = int64(valFloat * float64(multiplier))
 	} else {
 		numericValue = 0 // Default to 0 if parsing fails
+	}
+
+	// If no symbol was detected initially, but we have a value, set to default $
+	if detectedSymbol == "" && numericValue != 0 {
+		detectedSymbol = "$"
 	}
 
 	return originalDisplay, numericValue, detectedSymbol

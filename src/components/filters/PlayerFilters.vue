@@ -1,3 +1,4 @@
+/ src/components/filters/PlayerFilters.vue
 <template>
     <q-card
         class="q-mb-md filter-card"
@@ -316,8 +317,8 @@
 <script>
 import { ref, computed, watch, defineComponent, onMounted } from "vue";
 import { useQuasar } from "quasar";
-import { usePlayerStore } from "../../stores/playerStore";
-import { formatCurrency } from "../../utils/currencyUtils";
+import { usePlayerStore } from "@/stores/playerStore"; // Corrected Import Path
+import { formatCurrency } from "@/utils/currencyUtils";
 
 const orderedShortPositions = [
     "GK",
@@ -378,7 +379,6 @@ export default defineComponent({
             personality: [],
             ageRange: { min: AGE_SLIDER_MIN, max: AGE_SLIDER_MAX },
             transferValueRangeLocal: {
-                // This is the v-model for the q-range
                 min: props.transferValueRange.min,
                 max: props.transferValueRange.max,
             },
@@ -387,7 +387,6 @@ export default defineComponent({
         const clubOptions = ref([]);
         const nationalityOptions = ref([]);
 
-        // Store the absolute min/max of the dataset when it's first available or fundamentally changes
         const absoluteMinTransferValue = ref(props.transferValueRange.min);
         const absoluteMaxTransferValue = ref(props.transferValueRange.max);
 
@@ -398,7 +397,6 @@ export default defineComponent({
         const hasActiveFilters = computed(() => {
             const defAgeMin = AGE_SLIDER_MIN;
             const defAgeMax = AGE_SLIDER_MAX;
-            // Compare against absolute min/max for transfer value "Any" state
             const defValMin = absoluteMinTransferValue.value;
             const defValMax = absoluteMaxTransferValue.value;
 
@@ -458,7 +456,7 @@ export default defineComponent({
 
         const transferValueSliderStep = computed(() => {
             const range =
-                props.transferValueRange.max - props.transferValueRange.min; // Use props for step calculation based on current track
+                props.transferValueRange.max - props.transferValueRange.min;
             if (range <= 0) return 10000;
             if (range < 50000) return 1000;
             if (range < 250000) return 5000;
@@ -470,9 +468,7 @@ export default defineComponent({
 
         const formatRangeLabel = (value, isMaxBoundary = false) => {
             if (value === null || value === undefined) return "N/A";
-
             if (isMaxBoundary) {
-                // Show "Any" if the current selected max value IS the absolute possible maximum for the dataset.
                 if (
                     absoluteMaxTransferValue.value !== null &&
                     value === absoluteMaxTransferValue.value
@@ -480,12 +476,12 @@ export default defineComponent({
                     return "Any";
                 }
             } else {
-                // Show "Min" (or formatted value) if the current selected min value IS the absolute possible minimum.
                 if (
                     absoluteMinTransferValue.value !== null &&
                     value === absoluteMinTransferValue.value
                 ) {
-                    return formatCurrency(value, props.currencySymbol) || "Min";
+                    // For min, just show the formatted value, not "Min" or "Any"
+                    return formatCurrency(value, props.currencySymbol) || "0";
                 }
             }
             return formatCurrency(value, props.currencySymbol);
@@ -506,39 +502,44 @@ export default defineComponent({
             { immediate: true },
         );
 
-        // Watcher for the overall possible range from the parent (props.transferValueRange)
-        // This watcher primarily updates the absolute min/max if the dataset fundamentally changes
-        // and ensures the q-range component's :min and :max props are up-to-date.
-        // It should NOT directly set filters.transferValueRangeLocal in a way that overrides user's active selection
-        // unless the selection becomes invalid due to a shrinking overall range.
         watch(
             () => props.transferValueRange,
-            (newRange, oldRange) => {
+            (newRange) => {
                 if (
                     newRange &&
                     typeof newRange.min === "number" &&
                     typeof newRange.max === "number"
                 ) {
-                    // Update absolute values if the new range expands beyond current absolutes
-                    // This typically happens on a new dataset load or full filter clear.
                     if (
                         absoluteMinTransferValue.value === null ||
-                        newRange.min < absoluteMinTransferValue.value
+                        newRange.min !== absoluteMinTransferValue.value
                     ) {
                         absoluteMinTransferValue.value = newRange.min;
                     }
                     if (
                         absoluteMaxTransferValue.value === null ||
-                        newRange.max > absoluteMaxTransferValue.value
+                        newRange.max !== absoluteMaxTransferValue.value
                     ) {
                         absoluteMaxTransferValue.value = newRange.max;
                     }
-
-                    // The q-range component will use newRange.min and newRange.max for its track.
-                    // It will also internally clamp its v-model (filters.transferValueRangeLocal)
-                    // if the v-model falls outside these new track limits.
-                    // We don't need to manually adjust filters.transferValueRangeLocal here for clamping,
-                    // as q-range handles that. We only reset it fully in clearAllFilters or on initial mount.
+                    // Only reset local filter if it's outside the new absolute bounds or was never set
+                    if (
+                        filters.value.transferValueRangeLocal.min <
+                            newRange.min ||
+                        filters.value.transferValueRangeLocal.min >
+                            newRange.max ||
+                        filters.value.transferValueRangeLocal.max <
+                            newRange.min ||
+                        filters.value.transferValueRangeLocal.max >
+                            newRange.max ||
+                        filters.value.transferValueRangeLocal.min === null ||
+                        filters.value.transferValueRangeLocal.max === null
+                    ) {
+                        filters.value.transferValueRangeLocal = {
+                            min: newRange.min,
+                            max: newRange.max,
+                        };
+                    }
                 }
             },
             { deep: true, immediate: true },
@@ -612,24 +613,14 @@ export default defineComponent({
             ) {
                 await playerStore.fetchAllAvailableRoles();
             }
-            // Set initial absolute min/max based on initial props
-            if (
-                props.transferValueRange &&
-                typeof props.transferValueRange.min === "number"
-            ) {
+            if (props.transferValueRange) {
                 absoluteMinTransferValue.value = props.transferValueRange.min;
-            }
-            if (
-                props.transferValueRange &&
-                typeof props.transferValueRange.max === "number"
-            ) {
                 absoluteMaxTransferValue.value = props.transferValueRange.max;
+                filters.value.transferValueRangeLocal = {
+                    min: props.transferValueRange.min,
+                    max: props.transferValueRange.max,
+                };
             }
-            // Initialize local filter range to the absolute range
-            filters.value.transferValueRangeLocal = {
-                min: absoluteMinTransferValue.value,
-                max: absoluteMaxTransferValue.value,
-            };
             filters.value.ageRange = {
                 min: AGE_SLIDER_MIN,
                 max: AGE_SLIDER_MAX,
@@ -642,9 +633,7 @@ export default defineComponent({
                 if (newId && playerStore.allAvailableRoles.length === 0) {
                     await playerStore.fetchAllAvailableRoles();
                 }
-                // When dataset changes, reset absolute min/max and local filter range
-                if (newId) {
-                    // Assuming newId means a new dataset is loaded
+                if (newId && props.transferValueRange) {
                     absoluteMinTransferValue.value =
                         props.transferValueRange.min;
                     absoluteMaxTransferValue.value =
@@ -678,7 +667,7 @@ export default defineComponent({
             onPositionChange,
             ageSliderMin: AGE_SLIDER_MIN,
             ageSliderMax: AGE_SLIDER_MAX,
-            transferValueRange: computed(() => props.transferValueRange), // This is for the q-range's :min and :max props
+            transferValueRange: computed(() => props.transferValueRange),
         };
     },
 });
@@ -728,7 +717,10 @@ export default defineComponent({
 }
 .slider-label {
     padding-left: 4px;
-    margin-bottom: 0px;
-    line-height: 1.2;
+    margin-bottom: 0px; // Reduced from q-mb-xs default for tighter spacing
+    line-height: 1.2; // Ensure consistent line height
+}
+.filter-item-container {
+    // Ensure consistent vertical alignment if items wrap
 }
 </style>
