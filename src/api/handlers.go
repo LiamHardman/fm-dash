@@ -1,13 +1,18 @@
+// src/api/handlers.go
 package main
 
 import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	// Ensure you have a Go runtime package or similar for NumCPU if it's not standard.
+	// For this example, assuming 'runtime' is the standard Go package.
+	"runtime"
 
 	"github.com/google/uuid"
 )
@@ -60,69 +65,58 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			if result.Err == nil {
 				playersList = append(playersList, result.Player)
 			} else {
-				// Log errors from workers, but don't necessarily stop the whole process for one bad row
 				log.Printf("Skipping row due to error from worker: %v", result.Err)
 			}
 		}
 		log.Println("Finished collecting results from resultsChan.")
 	}()
 
-	// Start HTML parsing (from parsing.go)
-	// ParseHTMLPlayerTable will send data to rowCellsChan and start workers via PlayerParserWorker
 	processingError = ParseHTMLPlayerTable(file, &headersSnapshot, rowCellsChan, numWorkers, resultsChan, &wg)
 
-	// Close rowCellsChan after ParseHTMLPlayerTable has finished attempting to send all rows.
-	// This signals to workers that no more rows will be sent.
 	close(rowCellsChan)
 	log.Println("Row cells channel closed (HTML parsing attempt finished).")
 
 	if processingError != nil {
 		log.Printf("Error during HTML parsing or worker setup: %v", processingError)
-		// Ensure workers are waited for even if there was a setup error,
-		// in case some were started before the error was caught.
-		// wg.Wait() might be problematic if workers never started, so check headersSnapshot.
-		if len(headersSnapshot) > 0 { // Implies workers were likely started or attempted
+		if len(headersSnapshot) > 0 {
 			log.Println("Waiting for any potentially started workers after parsing error...")
 			wg.Wait()
 		}
-		close(resultsChan) // Close results channel to unblock collector goroutine
+		close(resultsChan)
 		<-doneConsumingResults
 		http.Error(w, processingError.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	if len(headersSnapshot) == 0 { // If no headers were found, it's a critical parsing failure
+	if len(headersSnapshot) == 0 {
 		log.Println("Critical: No headers were parsed from the HTML file.")
-		close(resultsChan) // Close results channel
+		close(resultsChan)
 		<-doneConsumingResults
 		http.Error(w, "Could not parse table headers, no data processed.", http.StatusInternalServerError)
 		return
 	}
 
 	log.Println("Waiting for all player data parser workers to finish...")
-	wg.Wait() // Wait for all PlayerParserWorker goroutines to complete
+	wg.Wait()
 	log.Println("All workers have completed (wg.Wait() returned).")
 
-	// Close resultsChan after all workers are done. This signals the collector goroutine to finish.
 	close(resultsChan)
 	log.Println("ResultsChan closed after all workers finished.")
 
-	<-doneConsumingResults // Wait for the collector goroutine to process all items from resultsChan
+	<-doneConsumingResults
 	log.Println("Results consumer goroutine finished processing all items.")
 
-	// Determine currency symbol from parsed data (if any players were parsed)
-	finalDatasetCurrencySymbol := "$" // Default
+	finalDatasetCurrencySymbol := "$"
 	if len(playersList) > 0 {
 		var foundSymbol bool
-		// Check transfer value and wage of the first few players for a symbol
 		for _, p := range playersList {
-			_, _, tvSymbol := ParseMonetaryValueGo(p.TransferValue) // Use the raw string
+			_, _, tvSymbol := ParseMonetaryValueGo(p.TransferValue)
 			if tvSymbol != "" {
 				finalDatasetCurrencySymbol = tvSymbol
 				foundSymbol = true
 				break
 			}
-			_, _, wSymbol := ParseMonetaryValueGo(p.Wage) // Use the raw string
+			_, _, wSymbol := ParseMonetaryValueGo(p.Wage)
 			if wSymbol != "" {
 				finalDatasetCurrencySymbol = wSymbol
 				foundSymbol = true
@@ -134,17 +128,15 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Calculate performance percentiles after all players are parsed and enhanced
 	if len(playersList) > 0 {
 		log.Println("Calculating player performance percentiles...")
-		CalculatePlayerPerformancePercentiles(playersList) // From performance_stats.go
+		CalculatePlayerPerformancePercentiles(playersList)
 		log.Println("Finished calculating percentiles.")
 	}
 
 	parseDuration := time.Since(parseStartTime)
 	datasetID := uuid.New().String()
 
-	// Store the processed player data (from store.go)
 	storeMutex.Lock()
 	playerDataStore[datasetID] = struct {
 		Players        []Player
@@ -155,22 +147,18 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Stored %d players with DatasetID: %s. Detected Currency: %s", len(playersList), datasetID, finalDatasetCurrencySymbol)
 	if len(playersList) > 0 {
 		log.Printf("DEBUG: Sample Player 1 after all processing: Name='%s', Overall=%d, ParsedPositions=%v, ShortPositions=%v, PositionGroups=%v", playersList[0].Name, playersList[0].Overall, playersList[0].ParsedPositions, playersList[0].ShortPositions, playersList[0].PositionGroups)
-		if globalPercentiles, ok := playersList[0].PerformancePercentiles["Global"]; ok && len(globalPercentiles) > 0 {
-			log.Printf("DEBUG: Sample Player 1 Performance Percentile Keys (Global): %v", GetMapKeysStringFloat(globalPercentiles))
-		}
 	} else {
 		log.Println("No players were successfully parsed or list is empty after processing.")
 	}
 
 	response := UploadResponse{DatasetID: datasetID, Message: "File uploaded and parsed successfully.", DetectedCurrencySymbol: finalDatasetCurrencySymbol}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*") // Consider making this configurable
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		log.Printf("Error encoding JSON response for upload: %v", err)
 		http.Error(w, "Error encoding JSON response: "+err.Error(), http.StatusInternalServerError)
 	}
 
-	// Performance logging
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
 	rowsPerSecond := 0.0
@@ -183,13 +171,13 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // playerDataHandler handles GET requests to retrieve processed player data by dataset ID.
+// It now accepts 'position' and 'role' query parameters for filtering and Overall adjustment.
 func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	// Extract dataset ID from URL path, e.g., /api/players/{datasetID}
 	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/players/"), "/")
 	if len(pathParts) == 0 || pathParts[0] == "" {
 		http.Error(w, "Dataset ID is missing in the request path", http.StatusBadRequest)
@@ -197,7 +185,13 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	datasetID := pathParts[0]
 
-	storeMutex.RLock() // Use RLock for read access
+	// Get filter parameters from query
+	filterPosition := r.URL.Query().Get("position") // e.g., "DC"
+	filterRole := r.URL.Query().Get("role")         // e.g., "DC - Central Defender - Defend"
+
+	log.Printf("playerDataHandler: DatasetID=%s, PositionFilter=%s, RoleFilter=%s", datasetID, filterPosition, filterRole)
+
+	storeMutex.RLock()
 	data, found := playerDataStore[datasetID]
 	storeMutex.RUnlock()
 
@@ -207,12 +201,105 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := PlayerDataWithCurrency{Players: data.Players, CurrencySymbol: data.CurrencySymbol}
+	// Make a copy of players to modify.
+	processedPlayers := make([]Player, 0, len(data.Players))
+
+	for _, p := range data.Players {
+		playerCopy := p // Create a copy to modify for this response
+
+		// 1. Filter by Position
+		if filterPosition != "" {
+			canPlayPosition := false
+			for _, shortPos := range playerCopy.ShortPositions {
+				if shortPos == filterPosition {
+					canPlayPosition = true
+					break
+				}
+			}
+			if !canPlayPosition {
+				continue // Skip player if they can't play the selected position
+			}
+		}
+
+		// 2. Modify Overall based on selected Role
+		if filterRole != "" {
+			roleMatched := false
+			for _, roleOverall := range playerCopy.RoleSpecificOveralls {
+				if roleOverall.RoleName == filterRole {
+					playerCopy.Overall = roleOverall.Score // Set the main Overall to this role's score
+					roleMatched = true
+					break
+				}
+			}
+			if !roleMatched {
+				// If the player can play the position (checked above) but the specific role
+				// is not found in their RoleSpecificOveralls, set their Overall for this request to 0.
+				// This indicates they are not rated for this specific role.
+				playerCopy.Overall = 0
+			}
+		}
+		// If no role filter is applied, playerCopy.Overall remains their default calculated overall.
+		// If a position filter is applied but no role filter, playerCopy.Overall is their default overall.
+
+		processedPlayers = append(processedPlayers, playerCopy)
+	}
+
+	log.Printf("playerDataHandler: Returning %d players after processing for DatasetID=%s", len(processedPlayers), datasetID)
+
+	response := PlayerDataWithCurrency{Players: processedPlayers, CurrencySymbol: data.CurrencySymbol}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Error encoding JSON response for playerData (DatasetID: %s): %v", datasetID, err)
+	}
+}
+
+// rolesHandler returns a list of all available role names.
+func rolesHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	muRoleSpecificOverallWeights.RLock() // Protects access to roleSpecificOverallWeights
+	roleNames := make([]string, 0, len(roleSpecificOverallWeights))
+	for roleName := range roleSpecificOverallWeights {
+		roleNames = append(roleNames, roleName)
+	}
+	muRoleSpecificOverallWeights.RUnlock()
+
+	sort.Strings(roleNames) // Optional: sort for consistent frontend display
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*") // Consider configurability
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.Printf("Error encoding JSON response for playerData (DatasetID: %s): %v", datasetID, err)
-		// Don't write http.Error here if headers have already been partially written by NewEncoder
+	if err := json.NewEncoder(w).Encode(roleNames); err != nil {
+		log.Printf("Error encoding JSON response for roles: %v", err)
+		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
 	}
 }
+
+// Helper to convert bytes to MB for logging (already in fm_analysis_tool_updated_backend)
+// func BToMb(b uint64) float64
+// Helper to get first N cells for logging (already in fm_analysis_tool_updated_backend)
+// func GetFirstNCells(slice []string, n int)
+// Helper to get map keys for logging (already in fm_analysis_tool_updated_backend)
+// func GetMapKeysStringFloat(m map[string]float64)
+
+// Global variables (assuming they are defined in other files within the same package 'main')
+// var defaultPlayerCapacity int (from config.go)
+// var playerDataStore map[string]struct { Players []Player; CurrencySymbol string } (from store.go)
+// var storeMutex sync.RWMutex (from store.go)
+// var muRoleSpecificOverallWeights sync.RWMutex (from config.go)
+// var roleSpecificOverallWeights map[string]map[string]int (from config.go)
+
+// Functions from other files (assuming they are in the same package 'main')
+// func ParseHTMLPlayerTable(...) (from parsing.go)
+// func CalculatePlayerPerformancePercentiles(...) (from performance_stats.go)
+// func ParseMonetaryValueGo(...) (from parsing.go)
+
+// Structs from types.go (assuming they are in the same package 'main')
+// type Player struct { ... }
+// type PlayerParseResult struct { ... }
+// type UploadResponse struct { ... }
+// type PlayerDataWithCurrency struct { ... }

@@ -14,21 +14,26 @@ export default defineConfig({
       template: { transformAssetUrls },
     }),
     quasar({
-      // This tells the Quasar plugin to use your custom SASS variables file.
-      // The plugin handles merging these with Quasar's defaults and making them
-      // globally available for Quasar components and potentially other SCSS processing.
       sassVariables: "@/quasar-variables.scss",
     }),
   ],
-  // CSS preprocessing is handled by the quasar plugin's sassVariables option
-  // No need for additionalData since we're using sassVariables in the quasar plugin config
-  
   server: {
     port: 3000,
     proxy: {
+      // Proxy for the file upload endpoint
       "/upload": {
-        target: "http://localhost:8091",
+        target: "http://localhost:8091", // Your Go backend URL
+        changeOrigin: true, // Recommended for most cases
+        // secure: false, // If your backend is HTTP and Vite is HTTPS (dev only)
+      },
+      // Proxy for all other API calls (e.g., /api/players, /api/roles)
+      "/api": {
+        target: "http://localhost:8091", // Your Go backend URL
         changeOrigin: true,
+        // secure: false,
+        // Optional: rewrite path if your Go API doesn't expect /api prefix
+        // rewrite: (path) => path.replace(/^\/api/, '')
+        // However, your Go routes are already /api/players and /api/roles, so no rewrite needed here.
       },
     },
   },

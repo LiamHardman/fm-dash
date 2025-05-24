@@ -1,4 +1,3 @@
-// src/pages/PlayerUploadPage.vue
 <template>
     <q-page padding>
         <div class="q-pa-md">
@@ -22,58 +21,34 @@
                         Instructions:
                     </div>
                     <ol class="q-ml-md">
+                        <li>Ensure the Go API (port 8091) is running.</li>
                         <li>
-                            Ensure the Go API (running on port 8091) is started.
-                        </li>
-                        <li>
-                            The Go API will attempt to load
-                            <code>attribute_weights.json</code> and
+                            API loads <code>attribute_weights.json</code> and
                             <code>role_specific_overall_weights.json</code> from
-                            its <code>public</code> folder. If not found, it
-                            uses internal defaults. (Note: Role keys in
-                            <code>role_specific_overall_weights.json</code> now
-                            expect full names like "Centre Back - Ball Playing
-                            Defender").
+                            its <code>public</code> folder.
                         </li>
                         <li>
                             Select an HTML file exported from Football Manager.
                         </li>
                         <li>
-                            Click "Upload and Parse". The data will be stored
-                            temporarily on the server. The app will detect the
-                            currency symbol (e.g., €, $, £) from the data.
+                            Click "Upload and Parse". Currency symbol will be
+                            auto-detected.
                         </li>
                         <li>
-                            The table will display players with pre-calculated
-                            FIFA-style stats (PHY, SHO, etc.), parsed positions,
-                            Overall ratings (based on their best role), Age,
-                            Media Handling, and Personality. Goalkeeping (GK)
-                            stats will appear if filtering for GKs. Monetary
-                            values will use the detected currency symbol.
+                            Table shows players with FIFA-style stats, Overall
+                            (best role), Age, etc.
                         </li>
                         <li>
-                            Use filters for Name, Club (searchable dropdown),
-                            Position (now short names like GK, DC, ST, sorted
-                            GK-ST), Nationality (searchable dropdown), Transfer
-                            Value (text input, slider, and mode using the
-                            detected currency), Media Handling (multi-select),
-                            Personality (multi-select), and Age range. Input
-                            fields are debounced for performance.
+                            Use filters: Name, Club, Position (short codes),
+                            <strong>Role (specific to position)</strong>,
+                            Nationality, Value ({{ detectedCurrencySymbol }}),
+                            Media Handling, Personality, Age.
                         </li>
                         <li>
-                            Click on any player row for a detailed view, which
-                            will show all calculated role-specific overalls (now
-                            with full role names) and specific goalkeeping
-                            attributes if applicable. Player positions will now
-                            be displayed as short names (e.g., GK, DC, ST).
-                            Monetary values will use the detected currency
-                            symbol.
+                            Click player row for detailed view (all role
+                            overalls).
                         </li>
-                        <li>
-                            Use the "View Team Page" button to navigate to the
-                            team analysis section using the uploaded data and
-                            currency.
-                        </li>
+                        <li>Use "View Team Page" for team analysis.</li>
                     </ol>
                 </q-card-section>
             </q-card>
@@ -115,15 +90,14 @@
                                 !roleSpecificOverallWeightsLoadedForFeedback
                             "
                         >
-                            Client-side check for weight files in public folder
-                            pending... (Note: Go API has its own loading logic)
+                            Client-side check for weight files pending...
                         </q-tooltip>
                     </q-btn>
                 </q-card-section>
             </q-card>
 
             <PlayerFilters
-                v-if="allPlayers.length > 0"
+                v-if="playerStore.currentDatasetId"
                 :players="allPlayers"
                 :currency-symbol="detectedCurrencySymbol"
                 :transfer-value-range="playerStore.transferValueRange"
@@ -159,14 +133,15 @@
                             "
                             flat
                             bordered
-                        >
-                            <q-card-section>
-                                <div class="text-h6">
+                            ><q-card-section
+                                ><div class="text-h6">
                                     {{ allPlayers.length }}
                                 </div>
-                                <div class="text-subtitle2">Total Players</div>
-                            </q-card-section>
-                        </q-card>
+                                <div class="text-subtitle2">
+                                    Total Players
+                                </div></q-card-section
+                            ></q-card
+                        >
                     </div>
                     <div class="col-12 col-md-2">
                         <q-card
@@ -176,14 +151,15 @@
                             "
                             flat
                             bordered
-                        >
-                            <q-card-section>
-                                <div class="text-h6">
+                            ><q-card-section
+                                ><div class="text-h6">
                                     {{ filteredPlayers.length }}
                                 </div>
-                                <div class="text-subtitle2">Filtered</div>
-                            </q-card-section>
-                        </q-card>
+                                <div class="text-subtitle2">
+                                    Filtered
+                                </div></q-card-section
+                            ></q-card
+                        >
                     </div>
                     <div class="col-12 col-md-2">
                         <q-card
@@ -193,14 +169,15 @@
                             "
                             flat
                             bordered
-                        >
-                            <q-card-section>
-                                <div class="text-h6">
+                            ><q-card-section
+                                ><div class="text-h6">
                                     {{ uniqueClubsCount }}
                                 </div>
-                                <div class="text-subtitle2">Clubs</div>
-                            </q-card-section>
-                        </q-card>
+                                <div class="text-subtitle2">
+                                    Clubs
+                                </div></q-card-section
+                            ></q-card
+                        >
                     </div>
                     <div class="col-12 col-md-3">
                         <q-card
@@ -210,14 +187,15 @@
                             "
                             flat
                             bordered
-                        >
-                            <q-card-section>
-                                <div class="text-h6">
+                            ><q-card-section
+                                ><div class="text-h6">
                                     {{ uniqueParsedPositionsCount }}
                                 </div>
-                                <div class="text-subtitle2">Positions</div>
-                            </q-card-section>
-                        </q-card>
+                                <div class="text-subtitle2">
+                                    Positions
+                                </div></q-card-section
+                            ></q-card
+                        >
                     </div>
                     <div class="col-12 col-md-3">
                         <q-card
@@ -227,14 +205,15 @@
                             "
                             flat
                             bordered
-                        >
-                            <q-card-section>
-                                <div class="text-h6">
+                            ><q-card-section
+                                ><div class="text-h6">
                                     {{ uniqueNationalitiesCount }}
                                 </div>
-                                <div class="text-subtitle2">Nationalities</div>
-                            </q-card-section>
-                        </q-card>
+                                <div class="text-subtitle2">
+                                    Nationalities
+                                </div></q-card-section
+                            ></q-card
+                        >
                     </div>
                 </div>
 
@@ -268,7 +247,7 @@
             </template>
 
             <q-card
-                v-else-if="!loading"
+                v-else-if="!loading && !playerStore.currentDatasetId"
                 class="q-pa-lg text-center no-data-card"
                 :class="
                     $q.dark.isActive
@@ -282,6 +261,28 @@
                 <div class="text-h6 q-mt-md">No Player Data Yet</div>
                 <div>Upload a file to see player data</div>
             </q-card>
+            <q-card
+                v-else-if="
+                    !loading &&
+                    playerStore.currentDatasetId &&
+                    allPlayers.length === 0
+                "
+                class="q-pa-lg text-center no-data-card"
+                :class="
+                    $q.dark.isActive
+                        ? 'bg-grey-9 text-grey-5'
+                        : 'bg-grey-1 text-grey-7'
+                "
+                flat
+                bordered
+            >
+                <q-icon name="sentiment_dissatisfied" size="4rem" />
+                <div class="text-h6 q-mt-md">No Players Found</div>
+                <div>
+                    The uploaded file might not contain player data or an error
+                    occurred during parsing.
+                </div>
+            </q-card>
         </div>
 
         <PlayerDetailDialog
@@ -290,7 +291,6 @@
             @close="showPlayerDetailDialog = false"
             :currency-symbol="detectedCurrencySymbol"
         />
-
         <UpgradeFinderDialog
             :show="showUpgradeFinder"
             :players="allPlayers"
@@ -309,23 +309,8 @@ import PlayerDetailDialog from "../components/PlayerDetailDialog.vue";
 import UpgradeFinderDialog from "../components/UpgradeFinderDialog.vue";
 import PlayerFilters from "../components/filters/PlayerFilters.vue";
 
-const orderedShortPositions = [
-    "GK",
-    "DR",
-    "DC",
-    "DL",
-    "WBR",
-    "WBL",
-    "DM",
-    "MR",
-    "MC",
-    "ML",
-    "AMR",
-    "AMC",
-    "AML",
-    "ST",
-];
-
+// This map is illustrative for client-side filtering if needed,
+// but primary position filtering is now backend.
 const shortToStandardizedLongPosMap = {
     GK: ["Goalkeeper"],
     DR: ["Right Back"],
@@ -352,7 +337,6 @@ export default {
         PlayerFilters,
     },
     setup() {
-        console.log(`PlayerUploadPage: Setup function start.`);
         const router = useRouter();
         const playerStore = usePlayerStore();
         const playerFile = ref(null);
@@ -361,10 +345,14 @@ export default {
         const showPlayerDetailDialog = ref(false);
         const showUpgradeFinder = ref(false);
 
-        // Ensure allPlayers always returns an array
-        const allPlayers = computed(() =>
-            Array.isArray(playerStore.allPlayers) ? playerStore.allPlayers : [],
-        );
+        // Ensure allPlayers always returns an array and is reactive to store changes
+        const allPlayers = computed(() => {
+            // Directly use the store's allPlayers.value which is a shallowRef.
+            // Vue's computed will re-evaluate when playerStore.allPlayers.value itself changes.
+            return Array.isArray(playerStore.allPlayers)
+                ? playerStore.allPlayers
+                : [];
+        });
 
         const currentDatasetId = computed(() => playerStore.currentDatasetId);
         const detectedCurrencySymbol = computed(
@@ -387,101 +375,79 @@ export default {
         );
 
         const attributeWeightsLoadedForFeedback = ref(false);
-        const attributeWeightsErrorForFeedback = ref("");
         const roleSpecificOverallWeightsLoadedForFeedback = ref(false);
-        const roleSpecificOverallWeightsErrorForFeedback = ref("");
 
-        const sortState = reactive({
-            key: null,
-            direction: "asc",
-            isAttribute: false,
-            displayField: null,
-        });
+        const activeFilters = ref({}); // Stores the current filter values from PlayerFilters component
 
-        const activeFilters = ref({});
-
+        // This computed property is for the PlayerDataTable's :is-goalkeeper-view prop.
+        // It hints to the table if it should prioritize GK-specific columns.
         const isGoalkeeperView = computed(() => {
-            if (!activeFilters.value.position) return false;
-            const longNames =
-                shortToStandardizedLongPosMap[activeFilters.value.position];
-            return longNames ? longNames.includes("Goalkeeper") : false;
+            // If a position filter is active and it's 'GK', consider it a goalkeeper view.
+            // The actual filtering of players to GKs is done by the backend if 'GK' is selected.
+            return activeFilters.value.position === "GK";
         });
 
-        const loadJsonForFeedback = async (
-            filePath,
-            loadedFlagRef,
-            errorRef,
-        ) => {
-            errorRef.value = "";
+        const loadJsonForFeedback = async (filePath, loadedFlagRef) => {
             try {
-                const response = await fetch(filePath);
+                const response = await fetch(filePath); // Assumes files are in public folder
                 if (!response.ok)
-                    throw new Error(
-                        `HTTP error! status: ${response.status} for ${filePath}`,
-                    );
-                await response.json();
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                await response.json(); // Just to check if it's valid JSON
                 loadedFlagRef.value = true;
             } catch (e) {
                 console.warn(
                     `Client-side check: Failed to load ${filePath}:`,
                     e,
                 );
-                errorRef.value =
-                    e.message || `Unknown error loading ${filePath}.`;
-                loadedFlagRef.value = true;
+                loadedFlagRef.value = true; // Still allow upload, backend has defaults
             }
         };
 
         onMounted(async () => {
-            console.log(`PlayerUploadPage: Component mounted.`);
-            console.time("PlayerUploadPage_onMounted_tasks_total");
+            console.log(
+                "PlayerUploadPage: Mounted. Current Dataset ID from store:",
+                playerStore.currentDatasetId,
+            );
             await loadJsonForFeedback(
-                "/attribute_weights.json",
+                "/public/attribute_weights.json",
                 attributeWeightsLoadedForFeedback,
-                attributeWeightsErrorForFeedback,
             );
             await loadJsonForFeedback(
-                "/role_specific_overall_weights.json",
+                "/public/role_specific_overall_weights.json",
                 roleSpecificOverallWeightsLoadedForFeedback,
-                roleSpecificOverallWeightsErrorForFeedback,
             );
 
-            console.time("PlayerUploadPage_playerStore_loadFromSessionStorage");
-            await playerStore.loadFromSessionStorage();
-            console.timeEnd(
-                "PlayerUploadPage_playerStore_loadFromSessionStorage",
-            );
-
-            console.timeEnd("PlayerUploadPage_onMounted_tasks_total");
+            if (!playerStore.currentDatasetId) {
+                await playerStore.loadFromSessionStorage();
+            } else if (
+                playerStore.allPlayers.length === 0 &&
+                playerStore.currentDatasetId
+            ) {
+                await playerStore.fetchPlayersByDatasetId(
+                    playerStore.currentDatasetId,
+                );
+                if (playerStore.allAvailableRoles.length === 0) {
+                    // Fetch roles if not loaded
+                    await playerStore.fetchAllAvailableRoles();
+                }
+            } else if (
+                playerStore.currentDatasetId &&
+                playerStore.allAvailableRoles.length === 0
+            ) {
+                await playerStore.fetchAllAvailableRoles();
+            }
+            // Initial application of any filters (usually none by default after fresh load)
+            if (allPlayers.value.length > 0) {
+                // Ensure allPlayers is populated before applying filters
+                applyClientSideFilters(allPlayers.value, activeFilters.value);
+            }
         });
 
-        const applyFiltersAndSort = () => {
-            console.time("PlayerUploadPage_applyFiltersAndSort_total");
-            // Ensure allPlayers.value is an array before proceeding
-            if (
-                !Array.isArray(allPlayers.value) ||
-                allPlayers.value.length === 0
-            ) {
-                filteredPlayers.value = [];
-                console.log(
-                    `PlayerUploadPage: No players in allPlayers or not an array. Filtered list empty.`,
-                );
-                console.timeEnd("PlayerUploadPage_applyFiltersAndSort_total");
-                return;
-            }
+        // This function applies client-side filters AFTER backend has potentially filtered by position/role
+        const applyClientSideFilters = (playersToFilter, currentFilters) => {
+            let tempPlayers = [...playersToFilter]; // Start with players already processed by backend (pos/role)
 
-            let tempPlayers = [...allPlayers.value];
-            const currentFilters = activeFilters.value;
-
-            console.log(
-                `PlayerUploadPage: Applying filters:`,
-                JSON.parse(JSON.stringify(currentFilters)),
-            );
-            console.log(
-                `PlayerUploadPage: Starting with ${tempPlayers.length} players.`,
-            );
-
-            console.time("PlayerUploadPage_filtering_logic");
+            // Apply client-side filters (name, club, age, value, personality, media handling)
             if (currentFilters.name) {
                 tempPlayers = tempPlayers.filter(
                     (p) =>
@@ -537,19 +503,6 @@ export default {
                     (p) => p.age <= currentFilters.maxAge,
                 );
             }
-            if (currentFilters.position) {
-                const targetLongNames =
-                    shortToStandardizedLongPosMap[currentFilters.position];
-                if (targetLongNames && targetLongNames.length > 0) {
-                    tempPlayers = tempPlayers.filter(
-                        (p) =>
-                            p.parsedPositions &&
-                            p.parsedPositions.some((pp) =>
-                                targetLongNames.includes(pp),
-                            ),
-                    );
-                }
-            }
             if (
                 currentFilters.selectedTransferValue !== null &&
                 playerStore.transferValueRange &&
@@ -567,84 +520,89 @@ export default {
                     );
                 }
             }
-            console.timeEnd("PlayerUploadPage_filtering_logic");
-
-            console.log(
-                `PlayerUploadPage: After filtering, ${tempPlayers.length} players remaining.`,
-            );
+            // Position and Role filtering are now primarily handled by the backend.
+            // The `Overall` value is already adjusted by the backend based on role.
+            // So, no explicit client-side position/role filtering on `parsedPositions` here.
 
             filteredPlayers.value = tempPlayers;
             console.log(
-                `PlayerUploadPage: filteredPlayers updated. Length: ${filteredPlayers.value.length}`,
+                `PlayerUploadPage: Client-side filters applied. Filtered players count: ${filteredPlayers.value.length}`,
             );
-            console.timeEnd("PlayerUploadPage_applyFiltersAndSort_total");
         };
 
         const uploadAndParse = async () => {
-            console.time("PlayerUploadPage_uploadAndParse_function_total");
             if (!playerFile.value) {
                 playerStore.error = "Please select an HTML file first.";
-                console.warn(`PlayerUploadPage: Upload attempt without file.`);
-                console.timeEnd(
-                    "PlayerUploadPage_uploadAndParse_function_total",
-                );
                 return;
             }
             try {
                 const formData = new FormData();
                 formData.append("playerFile", playerFile.value);
-                console.log(
-                    `PlayerUploadPage: Calling playerStore.uploadPlayerFile.`,
-                );
-                await playerStore.uploadPlayerFile(formData);
-                console.log(
-                    `PlayerUploadPage: playerStore.uploadPlayerFile completed. allPlayers length: ${allPlayers.value.length}`,
-                );
-                // The watcher on allPlayers will trigger applyFiltersAndSort
+                await playerStore.uploadPlayerFile(formData); // Corrected: Pass formData
+                // The store now handles fetching players and roles.
+                // The watcher on allPlayers will apply client-side filters.
+                activeFilters.value = {}; // Reset client-side filter state for PlayerFilters component
+                // PlayerFilters will emit its default values on next interaction or mount
             } catch (e) {
-                console.error(
-                    `PlayerUploadPage: Error during uploadAndParse:`,
-                    e,
-                );
-            } finally {
-                console.timeEnd(
-                    "PlayerUploadPage_uploadAndParse_function_total",
-                );
+                // Error is set in the store
+                console.error("Upload and Parse error in page:", e);
             }
         };
 
         const handleSort = (sortParams) => {
+            // This function is kept for potential future client-side sorting enhancements
+            // or if PlayerDataTable's internal sort needs to be overridden.
+            // Currently, PlayerDataTable handles its own sorting based on the `filteredPlayers` prop.
             console.log(
-                `PlayerUploadPage: handleSort called with:`,
-                JSON.parse(JSON.stringify(sortParams)),
+                "PlayerUploadPage: Sort requested by PlayerDataTable:",
+                sortParams,
             );
         };
 
         const handlePlayerSelected = (player) => {
-            console.log(`PlayerUploadPage: Player selected:`, player.name);
             selectedPlayer.value = player;
             showPlayerDetailDialog.value = true;
         };
 
-        const handleFilterChanged = (newFilters) => {
+        // This is the main function that reacts to filter changes from PlayerFilters.vue
+        const handleFilterChanged = async (newFilters) => {
             console.log(
-                `PlayerUploadPage: handleFilterChanged from PlayerFilters:`,
+                `PlayerUploadPage: Filters changed from PlayerFilters.vue:`,
                 JSON.parse(JSON.stringify(newFilters)),
             );
-            activeFilters.value = newFilters;
-            applyFiltersAndSort();
+            activeFilters.value = newFilters; // Store the latest filters
+
+            if (playerStore.currentDatasetId) {
+                // Fetch data from backend with position and role filters
+                // The backend will return players already filtered by position and with Overall adjusted for role.
+                await playerStore.fetchPlayersByDatasetId(
+                    playerStore.currentDatasetId,
+                    newFilters.position, // Pass selected position
+                    newFilters.role, // Pass selected role
+                );
+                // After fetch, allPlayers in the store is updated.
+                // The watcher on `allPlayers` will then apply the *remaining* client-side filters.
+            } else {
+                // If no dataset is loaded, apply client-side filters to an empty list (or current local list if any)
+                // This scenario should ideally not happen if PlayerFilters is only shown when data is present.
+                applyClientSideFilters(allPlayers.value, newFilters);
+            }
         };
 
+        // Watch for changes in the store's allPlayers list.
+        // This list is updated by fetchPlayersByDatasetId (which might include backend pos/role filtering).
+        // After it's updated, apply the remaining client-side filters.
         watch(
             allPlayers,
-            (newVal, oldVal) => {
+            (newVal) => {
                 console.log(
-                    `PlayerUploadPage: Watcher for allPlayers triggered. New length: ${newVal?.length}, Old length: ${oldVal?.length}`,
+                    `PlayerUploadPage: Watcher for allPlayers (from store) triggered. New length: ${newVal?.length}`,
                 );
-                applyFiltersAndSort();
+                // Apply client-side filters to the (potentially backend-filtered) list
+                applyClientSideFilters(newVal, activeFilters.value);
             },
-            { deep: true, immediate: true },
-        );
+            { immediate: true },
+        ); // immediate: true to run on initial load if allPlayers is already populated
 
         const goToTeamView = () => {
             if (playerStore.currentDatasetId) {
@@ -658,7 +616,6 @@ export default {
             }
         };
 
-        console.log(`PlayerUploadPage: Setup function end.`);
         return {
             playerFile,
             playerStore,
@@ -675,15 +632,13 @@ export default {
             showPlayerDetailDialog,
             handlePlayerSelected,
             attributeWeightsLoadedForFeedback,
-            attributeWeightsErrorForFeedback,
             roleSpecificOverallWeightsLoadedForFeedback,
-            roleSpecificOverallWeightsErrorForFeedback,
             showUpgradeFinder,
             isGoalkeeperView,
             goToTeamView,
             currentDatasetId,
             detectedCurrencySymbol,
-            handleFilterChanged,
+            handleFilterChanged, // Make sure this is returned
         };
     },
 };
@@ -697,33 +652,21 @@ export default {
     padding-bottom: 24px;
 }
 
-.page-title {
-    // Already has text-center
-}
-
-.instructions-card {
-    border-radius: $generic-border-radius;
-    ol {
-        padding-left: 20px;
-        li {
-            margin-bottom: 0.5em;
-        }
+.instructions-card ol {
+    padding-left: 20px; /* Standard padding for ordered lists */
+    li {
+        margin-bottom: 0.5em; /* Space between list items */
     }
 }
 
 .upload-card,
-.filter-card,
 .summary-card,
 .no-data-card {
-    border-radius: $generic-border-radius;
+    border-radius: 8px; /* Consistent border radius, use $generic-border-radius if defined */
 }
 
 .summary-cards .q-card {
-    height: 100%;
+    height: 100%; /* Make summary cards in a row take full height of their container */
 }
-
-:deep(.q-field__native),
-:deep(.q-field__label) {
-    color: currentColor;
-}
+/* Add any other specific styles for PlayerUploadPage here */
 </style>
