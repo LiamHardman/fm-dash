@@ -266,7 +266,7 @@
 <script>
 import { ref, computed, onMounted, watch } from "vue";
 import { useRouter, useRoute } from "vue-router"; // Added useRoute
-import { useQuasar } from "quasar";
+import { useQuasar, Notify } from "quasar";
 import { usePlayerStore } from "../stores/playerStore";
 import PlayerDataTable from "../components/PlayerDataTable.vue";
 import PlayerDetailDialog from "../components/PlayerDetailDialog.vue";
@@ -560,7 +560,7 @@ export default {
                 setInitialDatasetRange(); // Set the initial range AFTER allPlayers is populated by upload
                 activeFilters.value = {};
                 if (!playerStore.error) {
-                    $q.notify({
+                    Notify.create({
                         type: "positive",
                         message: "File uploaded and parsed successfully!",
                         position: "top",
@@ -570,9 +570,17 @@ export default {
             } catch (e) {
                 console.error("Upload and Parse error in page:", e);
                 if (playerStore.error) {
-                    $q.notify({
+                    Notify.create({
                         type: "negative",
                         message: playerStore.error,
+                        position: "top",
+                        timeout: 5000,
+                        actions: [{ label: "Dismiss", color: "white" }],
+                    });
+                } else {
+                    Notify.create({
+                        type: "negative",
+                        message: `Upload failed: ${e.message}`,
                         position: "top",
                         timeout: 5000,
                         actions: [{ label: "Dismiss", color: "white" }],

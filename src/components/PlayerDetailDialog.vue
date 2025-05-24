@@ -1287,6 +1287,41 @@ export default defineComponent({
             return options;
         });
 
+        const getPositionGroupForHighestRole = () => {
+            if (!props.player?.roleSpecificOveralls?.length) {
+                return null;
+            }
+
+            // Find the role with the highest overall rating
+            const highestRole = props.player.roleSpecificOveralls.reduce((max, role) => 
+                role.score > max.score ? role : max
+            );
+
+            // Extract the short position from the role name (e.g., "DM" from "DM - Defensive Midfielder - Support")
+            const shortPosition = highestRole.roleName.split(' - ')[0];
+
+            // Map short position to detailed group first
+            const detailedGroup = Object.entries(detailedGroupToShortPositionsMap).find(([groupName, positions]) =>
+                positions.includes(shortPosition)
+            );
+
+            if (detailedGroup) {
+                return detailedGroup[0]; // Return the detailed group name
+            }
+
+            // Fallback to broad position group
+            const positionToGroupMap = {
+                'GK': 'Goalkeepers',
+                'SW': 'Defenders', 'DR': 'Defenders', 'DL': 'Defenders', 'DC': 'Defenders',
+                'WBR': 'Defenders', 'WBL': 'Defenders', // Wing-backs are in defenders for broad groups
+                'DM': 'Midfielders', 'MC': 'Midfielders', 'MR': 'Midfielders', 'ML': 'Midfielders',
+                'AMC': 'Midfielders', 'AMR': 'Midfielders', 'AML': 'Midfielders',
+                'ST': 'Attackers'
+            };
+
+            return positionToGroupMap[shortPosition] || null;
+        };
+
         watch(
             () => props.player,
             (newPlayer) => {
@@ -1294,12 +1329,18 @@ export default defineComponent({
                 const newOptions = performanceComparisonOptions.value;
 
                 if (newPlayer && newPlayer.performancePercentiles) {
-                    if (
+                    // Always try to set to the position group for the highest role first
+                    const highestRoleGroup = getPositionGroupForHighestRole();
+                    
+                    if (highestRoleGroup && newOptions.some((opt) => opt.value === highestRoleGroup)) {
+                        selectedComparisonGroup.value = highestRoleGroup;
+                    } else if (
                         !newOptions.some(
                             (opt) =>
                                 opt.value === selectedComparisonGroup.value,
                         )
                     ) {
+                        // If highest role group not available and current selection is invalid, fallback
                         if (newOptions.some((opt) => opt.value === "Global")) {
                             selectedComparisonGroup.value = "Global";
                         } else if (newOptions.length > 0) {
