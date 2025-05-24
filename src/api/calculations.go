@@ -52,24 +52,16 @@ func CalculateFifaStatGo(playerNumericAttributes map[string]int, categoryName st
 
 	weightedAverage := weightedSum / totalWeightOfPresentAttributes // This average is on a 1-20 scale
 
-	// Scale to approximately 0-100. The factor 5.3 was used in the original code.
-	// (20 * 5.3 = 106, 1 * 5.3 = 5.3). Clamping to 0-99.
-	// A common approach is ((avg - 1) / 19) * 99 to map 1-20 to 0-99.
-	// Let's use a slightly adjusted scaling to better fit 0-99.
-	// If average is 1, score should be low. If 20, score should be 99.
-	// Scaled = ( (CurrentValue - MinValue) / (MaxValue - MinValue) ) * ScaleRange + ScaleMin
-	// Here, MinValue=1, MaxValue=20 for attributes. ScaleRange=99, ScaleMin=0.
-	// Scaled = ( (weightedAverage - 1) / (20 - 1) ) * 99
+	// Revert to original scaling method: Scale to approx 0-100 using factor 5.3
+	// Original: return int(math.Round(weightedAverage * 5.3))
+	finalScore := int(math.Round(weightedAverage * 5.3))
 
-	scaledScore := ((weightedAverage - 1.0) / 19.0) * 99.0
-	finalScore := int(math.Round(scaledScore))
-
-	return Clamp(finalScore, 0, 99)
+	return Clamp(finalScore, 0, 99) // Clamp from utils.go
 }
 
 // CalculateOverallForRoleGo calculates a player's suitability for a specific role.
 // playerNumericAttributes are 1-20. roleSpecificAttrWeights define importance.
-// The result is scaled by overallScalingFactor (e.g., 5.85) and clamped to 0-99.
+// The result is scaled by overallScalingFactor (e.g., 5.85 from config.go) and clamped to 0-99.
 func CalculateOverallForRoleGo(playerNumericAttributes map[string]int, roleSpecificAttrWeights map[string]int) int {
 	if len(roleSpecificAttrWeights) == 0 {
 		// log.Printf("Warning: No weights provided for role calculation. Returning 0.")
@@ -88,7 +80,12 @@ func CalculateOverallForRoleGo(playerNumericAttributes map[string]int, roleSpeci
 			// Let's assume attributes are already valid 1-20 from parsing, or 0 if invalid.
 			// We should only consider attributes > 0 for positive contribution.
 			if attributeValue > 0 { // Consider only attributes with a positive value
-				validAttributeValue := math.Max(1, math.Min(20, float64(attributeValue))) // Ensure 1-20 range
+				// The original calculation used math.Max(0, math.Min(20, float64(attributeValue)))
+				// which means a 0 attribute would contribute 0.
+				// If we only consider >0, then an attribute of 0 from parsing (e.g. failed Atoi) won't contribute.
+				// This seems fine. If an attribute is truly 0, it shouldn't contribute.
+				// If it's 1-20, it will be used as is.
+				validAttributeValue := math.Max(1, math.Min(20, float64(attributeValue))) // Ensure 1-20 range for calculation
 				weightedAttributeSum += validAttributeValue * float64(weightForAttribute)
 				totalApplicableWeightsSum += float64(weightForAttribute)
 			}
@@ -101,16 +98,12 @@ func CalculateOverallForRoleGo(playerNumericAttributes map[string]int, roleSpeci
 
 	rawPositionalOverall := weightedAttributeSum / totalApplicableWeightsSum // This is on a 1-20 scale
 
-	// Scale to 0-99 using the overallScalingFactor
+	// Scale to 0-99 using the overallScalingFactor from config.go
 	// Original: int(math.Min(99, math.Round(rawPositionalOverall*overallScalingFactor)))
-	// Let's use the same ((X-1)/19)*99 logic for consistency if overallScalingFactor is meant to achieve this.
-	// If overallScalingFactor = 5.85, then 1*5.85 = 5.85, 20*5.85 = 117.
-	// This factor seems designed to map 1-20 to a wider range then clamp.
-	// Let's stick to the original scaling method for this function if it's distinct.
-	scaledScore := rawPositionalOverall * overallScalingFactor
+	scaledScore := rawPositionalOverall * overallScalingFactor // overallScalingFactor is 5.85
 	finalScore := int(math.Round(scaledScore))
 
-	return Clamp(finalScore, 0, 99)
+	return Clamp(finalScore, 0, 99) // Clamp from utils.go
 }
 
 // CalculateCategoryBasedOverall calculates a general overall score based on FIFA stat categories (PHY, SHO, etc.).
@@ -144,5 +137,5 @@ func CalculateCategoryBasedOverall(player *Player, categoryWeights map[string]in
 
 	calculatedOverall := int(math.Round(weightedSum / totalWeight)) // Result is on 0-99 scale
 
-	return Clamp(calculatedOverall, 0, 99)
+	return Clamp(calculatedOverall, 0, 99) // Clamp from utils.go
 }
