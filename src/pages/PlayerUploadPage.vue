@@ -148,26 +148,6 @@
                         @click="playerStore.error = ''"
                 /></template>
             </q-banner>
-            <q-banner
-                v-if="attributeWeightsErrorForFeedback"
-                class="bg-warning text-dark q-mb-md"
-                rounded
-            >
-                Client feedback: Could not load
-                <code>public/attribute_weights.json</code>. The Go API will use
-                its internal defaults if it also fails to load this file. Error:
-                {{ attributeWeightsErrorForFeedback }}
-            </q-banner>
-            <q-banner
-                v-if="roleSpecificOverallWeightsErrorForFeedback"
-                class="bg-warning text-dark q-mb-md"
-                rounded
-            >
-                Client feedback: Could not load
-                <code>public/role_specific_overall_weights.json</code>. The Go
-                API will use its internal defaults if it also fails to load this
-                file. Error: {{ roleSpecificOverallWeightsErrorForFeedback }}
-            </q-banner>
 
             <template v-if="allPlayers.length > 0">
                 <div class="row q-col-gutter-md q-mb-md summary-cards">
