@@ -5,14 +5,12 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"runtime" // Standard Go runtime package
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
-
-	// Ensure you have a Go runtime package or similar for NumCPU if it's not standard.
-	// For this example, assuming 'runtime' is the standard Go package.
-	"runtime"
 
 	"github.com/google/uuid"
 )
@@ -26,8 +24,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	startTime := time.Now()
 
-	// Limit file size (e.g., 32MB)
-	if err := r.ParseMultipartForm(32 << 20); err != nil {
+	if err := r.ParseMultipartForm(32 << 20); err != nil { // 32MB limit
 		http.Error(w, "Error parsing multipart form: "+err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -43,21 +40,20 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Uploaded File: %s (Size: %d bytes)", handler.Filename, fileSize)
 
 	parseStartTime := time.Now()
-	playersList := make([]Player, 0, defaultPlayerCapacity) // From config.go
+	playersList := make([]Player, 0, defaultPlayerCapacity) // Assumes defaultPlayerCapacity is defined in config.go
 	var processingError error
 
 	numWorkers := runtime.NumCPU()
 	if numWorkers == 0 {
-		numWorkers = 1 // Ensure at least one worker
+		numWorkers = 1
 	}
-	const rowBufferMultiplier = 10 // Buffer size for channels
+	const rowBufferMultiplier = 10
 	rowCellsChan := make(chan []string, numWorkers*rowBufferMultiplier)
 	resultsChan := make(chan PlayerParseResult, numWorkers*rowBufferMultiplier)
-	var wg sync.WaitGroup // To wait for all parser workers to complete
+	var wg sync.WaitGroup
 
-	var headersSnapshot []string // To store the definitive headers for workers
+	var headersSnapshot []string
 
-	// Goroutine to collect results from workers
 	doneConsumingResults := make(chan struct{})
 	go func() {
 		defer close(doneConsumingResults)
@@ -71,7 +67,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("Finished collecting results from resultsChan.")
 	}()
 
-	processingError = ParseHTMLPlayerTable(file, &headersSnapshot, rowCellsChan, numWorkers, resultsChan, &wg)
+	processingError = ParseHTMLPlayerTable(file, &headersSnapshot, rowCellsChan, numWorkers, resultsChan, &wg) // Assumes ParseHTMLPlayerTable is in parsing.go
 
 	close(rowCellsChan)
 	log.Println("Row cells channel closed (HTML parsing attempt finished).")
@@ -106,11 +102,11 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	<-doneConsumingResults
 	log.Println("Results consumer goroutine finished processing all items.")
 
-	finalDatasetCurrencySymbol := "$"
+	finalDatasetCurrencySymbol := "$" // Default
 	if len(playersList) > 0 {
 		var foundSymbol bool
 		for _, p := range playersList {
-			_, _, tvSymbol := ParseMonetaryValueGo(p.TransferValue)
+			_, _, tvSymbol := ParseMonetaryValueGo(p.TransferValue) // Assumes ParseMonetaryValueGo is in parsing.go
 			if tvSymbol != "" {
 				finalDatasetCurrencySymbol = tvSymbol
 				foundSymbol = true
@@ -130,13 +126,14 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	if len(playersList) > 0 {
 		log.Println("Calculating player performance percentiles...")
-		CalculatePlayerPerformancePercentiles(playersList)
+		CalculatePlayerPerformancePercentiles(playersList) // Assumes CalculatePlayerPerformancePercentiles is in performance_stats.go
 		log.Println("Finished calculating percentiles.")
 	}
 
 	parseDuration := time.Since(parseStartTime)
 	datasetID := uuid.New().String()
 
+	// Assumes playerDataStore and storeMutex are defined in store.go
 	storeMutex.Lock()
 	playerDataStore[datasetID] = struct {
 		Players        []Player
@@ -166,12 +163,12 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		rowsPerSecond = float64(len(playersList)) / parseDuration.Seconds()
 	}
 	totalDuration := time.Since(startTime)
+	// Assumes BToMb is defined in utils.go
 	log.Printf("--- Perf Metrics --- File: %s, Size: %d KB, Total Time: %v, Parse Time: %v, Parsed Players: %d, Rows/Sec: %.2f, MemAlloc: %.2f MiB, Workers: %d, Goroutines: %d ---",
 		handler.Filename, fileSize/1024, totalDuration, parseDuration, len(playersList), rowsPerSecond, BToMb(memStats.Alloc), numWorkers, runtime.NumGoroutine())
 }
 
 // playerDataHandler handles GET requests to retrieve processed player data by dataset ID.
-// It now accepts 'position' and 'role' query parameters for filtering and Overall adjustment.
 func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
@@ -185,29 +182,48 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	datasetID := pathParts[0]
 
-	// Get filter parameters from query
-	filterPosition := r.URL.Query().Get("position") // e.g., "DC"
-	filterRole := r.URL.Query().Get("role")         // e.g., "DC - Central Defender - Defend"
+	queryValues := r.URL.Query()
+	filterPosition := queryValues.Get("position")
+	filterRole := queryValues.Get("role")
+	minAgeStr := queryValues.Get("minAge")
+	maxAgeStr := queryValues.Get("maxAge")
+	minTransferValueStr := queryValues.Get("minTransferValue")
+	maxTransferValueStr := queryValues.Get("maxTransferValue")
 
-	log.Printf("playerDataHandler: DatasetID=%s, PositionFilter=%s, RoleFilter=%s", datasetID, filterPosition, filterRole)
+	log.Printf("playerDataHandler: DatasetID=%s, PositionFilter=%s, RoleFilter=%s, MinAge=%s, MaxAge=%s, MinVal=%s, MaxVal=%s",
+		datasetID, filterPosition, filterRole, minAgeStr, maxAgeStr, minTransferValueStr, maxTransferValueStr)
 
-	storeMutex.RLock()
-	data, found := playerDataStore[datasetID]
+	storeMutex.RLock()                        // Assumes storeMutex is defined in store.go
+	data, found := playerDataStore[datasetID] // Assumes playerDataStore is defined in store.go
 	storeMutex.RUnlock()
 
 	if !found {
 		log.Printf("Player data not found for DatasetID: %s", datasetID)
-		http.Error(w, "Player data not found for the given ID. It might have expired, been cleared, or the ID is incorrect.", http.StatusNotFound)
+		http.Error(w, "Player data not found for the given ID.", http.StatusNotFound)
 		return
 	}
 
-	// Make a copy of players to modify.
 	processedPlayers := make([]Player, 0, len(data.Players))
 
-	for _, p := range data.Players {
-		playerCopy := p // Create a copy to modify for this response
+	var minAge, maxAge int = -1, -1
+	var minTransferValue, maxTransferValue int64 = -1, -1
 
-		// 1. Filter by Position
+	if val, err := strconv.Atoi(minAgeStr); err == nil {
+		minAge = val
+	}
+	if val, err := strconv.Atoi(maxAgeStr); err == nil {
+		maxAge = val
+	}
+	if val, err := strconv.ParseInt(minTransferValueStr, 10, 64); err == nil {
+		minTransferValue = val
+	}
+	if val, err := strconv.ParseInt(maxTransferValueStr, 10, 64); err == nil {
+		maxTransferValue = val
+	}
+
+	for _, p := range data.Players {
+		playerCopy := p
+
 		if filterPosition != "" {
 			canPlayPosition := false
 			for _, shortPos := range playerCopy.ShortPositions {
@@ -217,37 +233,49 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 			if !canPlayPosition {
-				continue // Skip player if they can't play the selected position
+				continue
 			}
 		}
 
-		// 2. Modify Overall based on selected Role
+		playerAgeVal, ageErr := strconv.Atoi(playerCopy.Age)
+		if ageErr == nil {
+			if minAge != -1 && playerAgeVal < minAge {
+				continue
+			}
+			if maxAge != -1 && playerAgeVal > maxAge {
+				continue
+			}
+		} else if minAge != -1 || maxAge != -1 {
+			log.Printf("Skipping player %s due to unparsable age '%s' while age filters are active.", playerCopy.Name, playerCopy.Age)
+			continue
+		}
+
+		if minTransferValue != -1 && playerCopy.TransferValueAmount < minTransferValue {
+			continue
+		}
+		if maxTransferValue != -1 && playerCopy.TransferValueAmount > maxTransferValue {
+			continue
+		}
+
 		if filterRole != "" {
 			roleMatched := false
 			for _, roleOverall := range playerCopy.RoleSpecificOveralls {
 				if roleOverall.RoleName == filterRole {
-					playerCopy.Overall = roleOverall.Score // Set the main Overall to this role's score
+					playerCopy.Overall = roleOverall.Score
 					roleMatched = true
 					break
 				}
 			}
 			if !roleMatched {
-				// If the player can play the position (checked above) but the specific role
-				// is not found in their RoleSpecificOveralls, set their Overall for this request to 0.
-				// This indicates they are not rated for this specific role.
 				playerCopy.Overall = 0
 			}
 		}
-		// If no role filter is applied, playerCopy.Overall remains their default calculated overall.
-		// If a position filter is applied but no role filter, playerCopy.Overall is their default overall.
-
 		processedPlayers = append(processedPlayers, playerCopy)
 	}
 
 	log.Printf("playerDataHandler: Returning %d players after processing for DatasetID=%s", len(processedPlayers), datasetID)
 
 	response := PlayerDataWithCurrency{Players: processedPlayers, CurrencySymbol: data.CurrencySymbol}
-
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
@@ -262,44 +290,24 @@ func rolesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	muRoleSpecificOverallWeights.RLock() // Protects access to roleSpecificOverallWeights
+	// Assumes muRoleSpecificOverallWeights and roleSpecificOverallWeights are defined in config.go
+	muRoleSpecificOverallWeights.RLock()
 	roleNames := make([]string, 0, len(roleSpecificOverallWeights))
 	for roleName := range roleSpecificOverallWeights {
 		roleNames = append(roleNames, roleName)
 	}
 	muRoleSpecificOverallWeights.RUnlock()
 
-	sort.Strings(roleNames) // Optional: sort for consistent frontend display
+	sort.Strings(roleNames)
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*") // Consider configurability
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	if err := json.NewEncoder(w).Encode(roleNames); err != nil {
 		log.Printf("Error encoding JSON response for roles: %v", err)
 		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
 	}
 }
 
-// Helper to convert bytes to MB for logging (already in fm_analysis_tool_updated_backend)
-// func BToMb(b uint64) float64
-// Helper to get first N cells for logging (already in fm_analysis_tool_updated_backend)
-// func GetFirstNCells(slice []string, n int)
-// Helper to get map keys for logging (already in fm_analysis_tool_updated_backend)
-// func GetMapKeysStringFloat(m map[string]float64)
-
-// Global variables (assuming they are defined in other files within the same package 'main')
-// var defaultPlayerCapacity int (from config.go)
-// var playerDataStore map[string]struct { Players []Player; CurrencySymbol string } (from store.go)
-// var storeMutex sync.RWMutex (from store.go)
-// var muRoleSpecificOverallWeights sync.RWMutex (from config.go)
-// var roleSpecificOverallWeights map[string]map[string]int (from config.go)
-
-// Functions from other files (assuming they are in the same package 'main')
-// func ParseHTMLPlayerTable(...) (from parsing.go)
-// func CalculatePlayerPerformancePercentiles(...) (from performance_stats.go)
-// func ParseMonetaryValueGo(...) (from parsing.go)
-
-// Structs from types.go (assuming they are in the same package 'main')
-// type Player struct { ... }
-// type PlayerParseResult struct { ... }
-// type UploadResponse struct { ... }
-// type PlayerDataWithCurrency struct { ... }
+// NOTE: The placeholder variable declarations and comments for them at the end of the previous version
+// of handlers.go have been removed as they were the source of the "redeclared" errors.
+// The actual definitions in config.go, store.go, utils.go, etc., will be used.

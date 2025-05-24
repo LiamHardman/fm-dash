@@ -42,7 +42,7 @@
                             Use filters: Name, Club, Position (short codes),
                             <strong>Role (specific to position)</strong>,
                             Nationality, Value ({{ detectedCurrencySymbol }}),
-                            Media Handling, Personality, Age.
+                            Media Handling, Personality, Age Range.
                         </li>
                         <li>
                             Click player row for detailed view (all role
@@ -80,7 +80,8 @@
                         :disable="
                             !playerFile ||
                             !attributeWeightsLoadedForFeedback ||
-                            !roleSpecificOverallWeightsLoadedForFeedback
+                            !roleSpecificOverallWeightsLoadedForFeedback ||
+                            loading
                         "
                         @click="uploadAndParse"
                     >
@@ -106,6 +107,7 @@
                 :unique-media-handlings="playerStore.uniqueMediaHandlings"
                 :unique-personalities="playerStore.uniquePersonalities"
                 @filter-changed="handleFilterChanged"
+                :is-loading="loading"
             />
 
             <q-banner
@@ -223,7 +225,11 @@
                         icon="groups"
                         label="View Team Page"
                         @click="goToTeamView"
-                        :disable="allPlayers.length === 0 || !currentDatasetId"
+                        :disable="
+                            allPlayers.length === 0 ||
+                            !currentDatasetId ||
+                            loading
+                        "
                         class="q-px-lg"
                     />
                     <q-btn
@@ -231,7 +237,7 @@
                         icon="find_replace"
                         label="Find Upgrades"
                         @click="showUpgradeFinder = true"
-                        :disable="allPlayers.length === 0"
+                        :disable="allPlayers.length === 0 || loading"
                         class="q-px-lg"
                     />
                 </div>
@@ -301,32 +307,13 @@
 </template>
 
 <script>
-import { ref, computed, reactive, onMounted, watch } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useRouter } from "vue-router";
 import { usePlayerStore } from "../stores/playerStore";
 import PlayerDataTable from "../components/PlayerDataTable.vue";
 import PlayerDetailDialog from "../components/PlayerDetailDialog.vue";
 import UpgradeFinderDialog from "../components/UpgradeFinderDialog.vue";
 import PlayerFilters from "../components/filters/PlayerFilters.vue";
-
-// This map is illustrative for client-side filtering if needed,
-// but primary position filtering is now backend.
-const shortToStandardizedLongPosMap = {
-    GK: ["Goalkeeper"],
-    DR: ["Right Back"],
-    DC: ["Centre Back"],
-    DL: ["Left Back"],
-    WBR: ["Right Wing-Back"],
-    WBL: ["Left Wing-Back"],
-    DM: ["Centre Defensive Midfielder"],
-    MR: ["Right Midfielder"],
-    MC: ["Centre Midfielder"],
-    ML: ["Left Midfielder"],
-    AMR: ["Right Attacking Midfielder", "Right Winger"],
-    AMC: ["Centre Attacking Midfielder"],
-    AML: ["Left Attacking Midfielder", "Left Winger"],
-    ST: ["Striker"],
-};
 
 export default {
     name: "PlayerUploadPage",
@@ -345,15 +332,9 @@ export default {
         const showPlayerDetailDialog = ref(false);
         const showUpgradeFinder = ref(false);
 
-        // Ensure allPlayers always returns an array and is reactive to store changes
-        const allPlayers = computed(() => {
-            // Directly use the store's allPlayers.value which is a shallowRef.
-            // Vue's computed will re-evaluate when playerStore.allPlayers.value itself changes.
-            return Array.isArray(playerStore.allPlayers)
-                ? playerStore.allPlayers
-                : [];
-        });
-
+        const allPlayers = computed(() =>
+            Array.isArray(playerStore.allPlayers) ? playerStore.allPlayers : [],
+        );
         const currentDatasetId = computed(() => playerStore.currentDatasetId);
         const detectedCurrencySymbol = computed(
             () => playerStore.detectedCurrencySymbol,
@@ -377,37 +358,29 @@ export default {
         const attributeWeightsLoadedForFeedback = ref(false);
         const roleSpecificOverallWeightsLoadedForFeedback = ref(false);
 
-        const activeFilters = ref({}); // Stores the current filter values from PlayerFilters component
+        const activeFilters = ref({});
 
-        // This computed property is for the PlayerDataTable's :is-goalkeeper-view prop.
-        // It hints to the table if it should prioritize GK-specific columns.
-        const isGoalkeeperView = computed(() => {
-            // If a position filter is active and it's 'GK', consider it a goalkeeper view.
-            // The actual filtering of players to GKs is done by the backend if 'GK' is selected.
-            return activeFilters.value.position === "GK";
-        });
+        const isGoalkeeperView = computed(
+            () => activeFilters.value.position === "GK",
+        );
 
         const loadJsonForFeedback = async (filePath, loadedFlagRef) => {
             try {
-                const response = await fetch(filePath); // Assumes files are in public folder
+                const response = await fetch(filePath);
                 if (!response.ok)
                     throw new Error(`HTTP error! status: ${response.status}`);
-                await response.json(); // Just to check if it's valid JSON
+                await response.json();
                 loadedFlagRef.value = true;
             } catch (e) {
                 console.warn(
                     `Client-side check: Failed to load ${filePath}:`,
                     e,
                 );
-                loadedFlagRef.value = true; // Still allow upload, backend has defaults
+                loadedFlagRef.value = true;
             }
         };
 
         onMounted(async () => {
-            console.log(
-                "PlayerUploadPage: Mounted. Current Dataset ID from store:",
-                playerStore.currentDatasetId,
-            );
             await loadJsonForFeedback(
                 "/public/attribute_weights.json",
                 attributeWeightsLoadedForFeedback,
@@ -425,9 +398,12 @@ export default {
             ) {
                 await playerStore.fetchPlayersByDatasetId(
                     playerStore.currentDatasetId,
+                    activeFilters.value.position,
+                    activeFilters.value.role,
+                    activeFilters.value.ageRange,
+                    activeFilters.value.transferValueRangeLocal,
                 );
                 if (playerStore.allAvailableRoles.length === 0) {
-                    // Fetch roles if not loaded
                     await playerStore.fetchAllAvailableRoles();
                 }
             } else if (
@@ -436,18 +412,14 @@ export default {
             ) {
                 await playerStore.fetchAllAvailableRoles();
             }
-            // Initial application of any filters (usually none by default after fresh load)
             if (allPlayers.value.length > 0) {
-                // Ensure allPlayers is populated before applying filters
                 applyClientSideFilters(allPlayers.value, activeFilters.value);
             }
         });
 
-        // This function applies client-side filters AFTER backend has potentially filtered by position/role
         const applyClientSideFilters = (playersToFilter, currentFilters) => {
-            let tempPlayers = [...playersToFilter]; // Start with players already processed by backend (pos/role)
+            let tempPlayers = [...playersToFilter];
 
-            // Apply client-side filters (name, club, age, value, personality, media handling)
             if (currentFilters.name) {
                 tempPlayers = tempPlayers.filter(
                     (p) =>
@@ -493,41 +465,65 @@ export default {
                     return currentFilters.personality.includes(p.personality);
                 });
             }
-            if (currentFilters.minAge !== null && currentFilters.minAge >= 0) {
-                tempPlayers = tempPlayers.filter(
-                    (p) => p.age >= currentFilters.minAge,
-                );
-            }
-            if (currentFilters.maxAge !== null && currentFilters.maxAge >= 0) {
-                tempPlayers = tempPlayers.filter(
-                    (p) => p.age <= currentFilters.maxAge,
-                );
-            }
+            // Age and Transfer Value range filters are now primarily handled by backend.
+            // These client-side filters are only for additional refinement if needed,
+            // or if backend filtering was not exhaustive for some edge cases.
+            // For ageRange:
             if (
-                currentFilters.selectedTransferValue !== null &&
-                playerStore.transferValueRange &&
-                currentFilters.selectedTransferValue <
-                    playerStore.transferValueRange.max
+                currentFilters.ageRange &&
+                typeof currentFilters.ageRange.min === "number" &&
+                typeof currentFilters.ageRange.max === "number"
             ) {
-                const threshold = currentFilters.selectedTransferValue;
-                if (currentFilters.transferValueMode === "less") {
+                if (
+                    currentFilters.ageRange.min >
+                    playerStore.AGE_SLIDER_MIN_DEFAULT
+                ) {
+                    // Assuming AGE_SLIDER_MIN_DEFAULT is defined in store or locally
                     tempPlayers = tempPlayers.filter(
-                        (p) => (p.transferValueAmount || 0) < threshold,
+                        (p) => p.age >= currentFilters.ageRange.min,
                     );
-                } else if (currentFilters.transferValueMode === "more") {
+                }
+                if (
+                    currentFilters.ageRange.max <
+                    playerStore.AGE_SLIDER_MAX_DEFAULT
+                ) {
+                    // Assuming AGE_SLIDER_MAX_DEFAULT is defined in store or locally
                     tempPlayers = tempPlayers.filter(
-                        (p) => (p.transferValueAmount || 0) > threshold,
+                        (p) => p.age <= currentFilters.ageRange.max,
                     );
                 }
             }
-            // Position and Role filtering are now primarily handled by the backend.
-            // The `Overall` value is already adjusted by the backend based on role.
-            // So, no explicit client-side position/role filtering on `parsedPositions` here.
 
+            // For transferValueRangeLocal:
+            if (
+                currentFilters.transferValueRangeLocal &&
+                playerStore.transferValueRange &&
+                typeof currentFilters.transferValueRangeLocal.min ===
+                    "number" &&
+                typeof currentFilters.transferValueRangeLocal.max === "number"
+            ) {
+                if (
+                    currentFilters.transferValueRangeLocal.min >
+                    playerStore.transferValueRange.min
+                ) {
+                    tempPlayers = tempPlayers.filter(
+                        (p) =>
+                            (p.transferValueAmount || 0) >=
+                            currentFilters.transferValueRangeLocal.min,
+                    );
+                }
+                if (
+                    currentFilters.transferValueRangeLocal.max <
+                    playerStore.transferValueRange.max
+                ) {
+                    tempPlayers = tempPlayers.filter(
+                        (p) =>
+                            (p.transferValueAmount || 0) <=
+                            currentFilters.transferValueRangeLocal.max,
+                    );
+                }
+            }
             filteredPlayers.value = tempPlayers;
-            console.log(
-                `PlayerUploadPage: Client-side filters applied. Filtered players count: ${filteredPlayers.value.length}`,
-            );
         };
 
         const uploadAndParse = async () => {
@@ -538,21 +534,14 @@ export default {
             try {
                 const formData = new FormData();
                 formData.append("playerFile", playerFile.value);
-                await playerStore.uploadPlayerFile(formData); // Corrected: Pass formData
-                // The store now handles fetching players and roles.
-                // The watcher on allPlayers will apply client-side filters.
-                activeFilters.value = {}; // Reset client-side filter state for PlayerFilters component
-                // PlayerFilters will emit its default values on next interaction or mount
+                await playerStore.uploadPlayerFile(formData);
+                activeFilters.value = {};
             } catch (e) {
-                // Error is set in the store
                 console.error("Upload and Parse error in page:", e);
             }
         };
 
         const handleSort = (sortParams) => {
-            // This function is kept for potential future client-side sorting enhancements
-            // or if PlayerDataTable's internal sort needs to be overridden.
-            // Currently, PlayerDataTable handles its own sorting based on the `filteredPlayers` prop.
             console.log(
                 "PlayerUploadPage: Sort requested by PlayerDataTable:",
                 sortParams,
@@ -564,45 +553,28 @@ export default {
             showPlayerDetailDialog.value = true;
         };
 
-        // This is the main function that reacts to filter changes from PlayerFilters.vue
         const handleFilterChanged = async (newFilters) => {
-            console.log(
-                `PlayerUploadPage: Filters changed from PlayerFilters.vue:`,
-                JSON.parse(JSON.stringify(newFilters)),
-            );
-            activeFilters.value = newFilters; // Store the latest filters
-
+            activeFilters.value = newFilters;
             if (playerStore.currentDatasetId) {
-                // Fetch data from backend with position and role filters
-                // The backend will return players already filtered by position and with Overall adjusted for role.
                 await playerStore.fetchPlayersByDatasetId(
                     playerStore.currentDatasetId,
-                    newFilters.position, // Pass selected position
-                    newFilters.role, // Pass selected role
+                    newFilters.position,
+                    newFilters.role,
+                    newFilters.ageRange,
+                    newFilters.transferValueRangeLocal,
                 );
-                // After fetch, allPlayers in the store is updated.
-                // The watcher on `allPlayers` will then apply the *remaining* client-side filters.
             } else {
-                // If no dataset is loaded, apply client-side filters to an empty list (or current local list if any)
-                // This scenario should ideally not happen if PlayerFilters is only shown when data is present.
                 applyClientSideFilters(allPlayers.value, newFilters);
             }
         };
 
-        // Watch for changes in the store's allPlayers list.
-        // This list is updated by fetchPlayersByDatasetId (which might include backend pos/role filtering).
-        // After it's updated, apply the remaining client-side filters.
         watch(
             allPlayers,
             (newVal) => {
-                console.log(
-                    `PlayerUploadPage: Watcher for allPlayers (from store) triggered. New length: ${newVal?.length}`,
-                );
-                // Apply client-side filters to the (potentially backend-filtered) list
                 applyClientSideFilters(newVal, activeFilters.value);
             },
             { immediate: true },
-        ); // immediate: true to run on initial load if allPlayers is already populated
+        );
 
         const goToTeamView = () => {
             if (playerStore.currentDatasetId) {
@@ -615,6 +587,11 @@ export default {
                     "No data uploaded yet. Please upload a file first.";
             }
         };
+
+        // Define default age slider values for comparison in applyClientSideFilters
+        // These should match the initial values in PlayerFilters.vue
+        playerStore.AGE_SLIDER_MIN_DEFAULT = 15; // Example, adjust if different
+        playerStore.AGE_SLIDER_MAX_DEFAULT = 50; // Example, adjust if different
 
         return {
             playerFile,
@@ -638,7 +615,7 @@ export default {
             goToTeamView,
             currentDatasetId,
             detectedCurrencySymbol,
-            handleFilterChanged, // Make sure this is returned
+            handleFilterChanged,
         };
     },
 };
@@ -651,22 +628,18 @@ export default {
     padding-top: 24px;
     padding-bottom: 24px;
 }
-
 .instructions-card ol {
-    padding-left: 20px; /* Standard padding for ordered lists */
+    padding-left: 20px;
     li {
-        margin-bottom: 0.5em; /* Space between list items */
+        margin-bottom: 0.5em;
     }
 }
-
 .upload-card,
 .summary-card,
 .no-data-card {
-    border-radius: 8px; /* Consistent border radius, use $generic-border-radius if defined */
+    border-radius: 8px;
 }
-
 .summary-cards .q-card {
-    height: 100%; /* Make summary cards in a row take full height of their container */
+    height: 100%;
 }
-/* Add any other specific styles for PlayerUploadPage here */
 </style>

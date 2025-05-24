@@ -7,13 +7,14 @@
             <div class="text-subtitle1 q-mb-sm">
                 Search Players (Using {{ currencySymbol }} for values)
             </div>
-            <div class="row q-col-gutter-md items-end">
-                <div class="col-12 col-sm-6 col-md-3 col-lg-2">
+
+            <div class="row q-col-gutter-x-md q-col-gutter-y-sm items-end">
+                <div class="col-12 col-sm-6 col-md-4 col-lg-2">
                     <q-input
                         v-model="filters.name"
                         label="Player Name"
                         dense
-                        outlined
+                        filled
                         clearable
                         @update:model-value="debouncedApplyFilters"
                         :label-color="
@@ -22,15 +23,16 @@
                         :input-class="
                             quasarInstance.dark.isActive ? 'text-grey-3' : ''
                         "
+                        :disable="isLoading"
                     />
                 </div>
-                <div class="col-12 col-sm-6 col-md-3 col-lg-2">
+                <div class="col-12 col-sm-6 col-md-4 col-lg-2">
                     <q-select
                         v-model="filters.club"
                         :options="clubOptions"
                         label="Club"
                         dense
-                        outlined
+                        filled
                         clearable
                         use-input
                         hide-selected
@@ -47,6 +49,7 @@
                                 : ''
                         "
                         behavior="menu"
+                        :disable="isLoading"
                     >
                         <template v-slot:no-option>
                             <q-item
@@ -57,13 +60,13 @@
                         </template>
                     </q-select>
                 </div>
-                <div class="col-12 col-sm-6 col-md-3 col-lg-2">
+                <div class="col-12 col-sm-6 col-md-4 col-lg-2">
                     <q-select
                         v-model="filters.nationality"
                         :options="nationalityOptions"
                         label="Nationality"
                         dense
-                        outlined
+                        filled
                         clearable
                         use-input
                         hide-selected
@@ -80,6 +83,7 @@
                                 : ''
                         "
                         behavior="menu"
+                        :disable="isLoading"
                     >
                         <template v-slot:no-option>
                             <q-item
@@ -96,7 +100,7 @@
                         :options="positionOptions"
                         label="Position"
                         dense
-                        outlined
+                        filled
                         clearable
                         emit-value
                         map-options
@@ -110,20 +114,22 @@
                                 : ''
                         "
                         behavior="menu"
+                        :disable="isLoading"
                     />
                 </div>
-                <div class="col-12 col-sm-6 col-md-3 col-lg-3">
+                <div class="col-12 col-sm-6 col-md-3 col-lg-2">
                     <q-select
                         v-model="filters.role"
                         :options="roleFilterOptions"
                         label="Role"
                         dense
-                        outlined
+                        filled
                         clearable
                         emit-value
                         map-options
                         @update:model-value="applyFilters"
                         :disable="
+                            isLoading ||
                             !filters.position ||
                             roleFilterOptions.length === 0 ||
                             (roleFilterOptions.length === 1 &&
@@ -158,7 +164,7 @@
                         :options="mediaHandlingOptions"
                         label="Media Handling"
                         dense
-                        outlined
+                        filled
                         multiple
                         use-chips
                         clearable
@@ -174,15 +180,23 @@
                                 : ''
                         "
                         behavior="menu"
+                        :disable="isLoading"
                     />
                 </div>
-                <div class="col-12 col-sm-6 col-md-3 col-lg-2">
+            </div>
+
+            <div
+                class="row q-col-gutter-x-md q-col-gutter-y-sm items-start q-mt-sm"
+            >
+                <div
+                    class="col-12 col-sm-6 col-md-4 col-lg-3 filter-item-container"
+                >
                     <q-select
                         v-model="filters.personality"
                         :options="personalityOptions"
                         label="Personality"
                         dense
-                        outlined
+                        filled
                         multiple
                         use-chips
                         clearable
@@ -198,47 +212,50 @@
                                 : ''
                         "
                         behavior="menu"
+                        :disable="isLoading"
                     />
                 </div>
-                <div class="col-12 col-sm-4 col-md-2 col-lg-1">
-                    <q-input
-                        v-model.number="filters.minAge"
-                        type="number"
-                        label="Min Age"
-                        dense
-                        outlined
-                        clearable
-                        :min="0"
-                        @update:model-value="debouncedApplyFilters"
-                        :label-color="
-                            quasarInstance.dark.isActive ? 'grey-4' : ''
-                        "
-                        :input-class="
-                            quasarInstance.dark.isActive ? 'text-grey-3' : ''
-                        "
-                    />
-                </div>
-                <div class="col-12 col-sm-4 col-md-2 col-lg-1">
-                    <q-input
-                        v-model.number="filters.maxAge"
-                        type="number"
-                        label="Max Age"
-                        dense
-                        outlined
-                        clearable
-                        :min="0"
-                        @update:model-value="debouncedApplyFilters"
-                        :label-color="
-                            quasarInstance.dark.isActive ? 'grey-4' : ''
-                        "
-                        :input-class="
-                            quasarInstance.dark.isActive ? 'text-grey-3' : ''
-                        "
-                    />
-                </div>
-                <div class="col-12 col-md-6 col-lg-4">
+
+                <div
+                    class="col-12 col-sm-6 col-md-4 col-lg-3 filter-item-container"
+                >
                     <div
-                        class="text-caption q-mb-xs"
+                        class="text-caption q-mb-xs slider-label"
+                        :class="
+                            quasarInstance.dark.isActive
+                                ? 'text-grey-4'
+                                : 'text-grey-7'
+                        "
+                    >
+                        Age Range: {{ filters.ageRange.min }} -
+                        {{
+                            filters.ageRange.max === ageSliderMax
+                                ? ageSliderMax + "+"
+                                : filters.ageRange.max
+                        }}
+                    </div>
+                    <q-range
+                        v-model="filters.ageRange"
+                        :min="ageSliderMin"
+                        :max="ageSliderMax"
+                        :step="1"
+                        label-always
+                        :left-label-value="filters.ageRange.min + ' yrs'"
+                        :right-label-value="
+                            filters.ageRange.max +
+                            (filters.ageRange.max === ageSliderMax ? '+' : '') +
+                            ' yrs'
+                        "
+                        @update:model-value="debouncedApplyFilters"
+                        color="primary"
+                        class="q-px-sm"
+                        :disable="isLoading"
+                    />
+                </div>
+
+                <div class="col-12 col-md-8 col-lg-4 filter-item-container">
+                    <div
+                        class="text-caption q-mb-xs slider-label"
                         :class="
                             quasarInstance.dark.isActive
                                 ? 'text-grey-4'
@@ -247,127 +264,37 @@
                     >
                         Transfer Value ({{ currencySymbol }})
                     </div>
-                    <div class="row items-center q-col-gutter-x-sm">
-                        <div class="col">
-                            <q-input
-                                v-model="transferValueTextInput"
-                                :label="`Enter Value (e.g., ${currencySymbol}1.5M, ${currencySymbol}500K)`"
-                                dense
-                                outlined
-                                clearable
-                                @update:model-value="
-                                    debouncedUpdateNumericValueFromTextInput
-                                "
-                                :disable="!isDataAvailable"
-                                placeholder="Any"
-                                :label-color="
-                                    quasarInstance.dark.isActive ? 'grey-4' : ''
-                                "
-                                :input-class="
-                                    quasarInstance.dark.isActive
-                                        ? 'text-grey-3'
-                                        : ''
-                                "
-                            />
-                        </div>
-                        <div class="col-auto">
-                            <q-btn-toggle
-                                v-model="filters.transferValueMode"
-                                @update:model-value="applyFilters"
-                                no-caps
-                                rounded
-                                unelevated
-                                toggle-color="primary"
-                                :color="
-                                    quasarInstance.dark.isActive
-                                        ? 'grey-7'
-                                        : 'white'
-                                "
-                                :text-color="
-                                    quasarInstance.dark.isActive
-                                        ? 'white'
-                                        : 'primary'
-                                "
-                                size="sm"
-                                padding="xs md"
-                                :options="[
-                                    {
-                                        label: '<',
-                                        value: 'less',
-                                        slot: 'less-than',
-                                    },
-                                    {
-                                        label: '>',
-                                        value: 'more',
-                                        slot: 'more-than',
-                                    },
-                                ]"
-                                :disable="
-                                    !isDataAvailable ||
-                                    filters.selectedTransferValue === null ||
-                                    filters.selectedTransferValue ===
-                                        transferValueRange.max
-                                "
-                            >
-                                <template v-slot:less-than
-                                    ><q-tooltip
-                                        >Less than selected value</q-tooltip
-                                    ></template
-                                >
-                                <template v-slot:more-than
-                                    ><q-tooltip
-                                        >More than selected value</q-tooltip
-                                    ></template
-                                >
-                            </q-btn-toggle>
-                        </div>
-                    </div>
-                    <q-slider
-                        class="q-mt-sm"
-                        v-model="filters.selectedTransferValue"
+                    <q-range
+                        v-model="filters.transferValueRangeLocal"
                         :min="transferValueRange.min"
                         :max="transferValueRange.max"
                         :step="transferValueSliderStep"
-                        label
-                        :label-value="
-                            formatSliderValueWithCurrency(
-                                filters.selectedTransferValue,
+                        label-always
+                        :left-label-value="
+                            formatRangeLabel(
+                                filters.transferValueRangeLocal.min,
+                                false,
                             )
                         "
-                        @change="applyFilters"
+                        :right-label-value="
+                            formatRangeLabel(
+                                filters.transferValueRangeLocal.max,
+                                true,
+                            )
+                        "
+                        @update:model-value="debouncedApplyFilters"
                         :disable="
+                            isLoading ||
                             !isDataAvailable ||
                             transferValueRange.min >= transferValueRange.max
                         "
                         color="primary"
+                        class="q-px-sm"
                     />
-                    <div
-                        class="text-caption q-mt-xs"
-                        :class="
-                            quasarInstance.dark.isActive
-                                ? 'text-grey-5'
-                                : 'text-grey-7'
-                        "
-                        v-if="
-                            filters.selectedTransferValue !== null &&
-                            filters.selectedTransferValue <
-                                transferValueRange.max
-                        "
-                    >
-                        Current filter:
-                        {{
-                            filters.transferValueMode === "less"
-                                ? "Less than"
-                                : "More than"
-                        }}
-                        {{
-                            formatSliderValueWithCurrency(
-                                filters.selectedTransferValue,
-                            )
-                        }}
-                    </div>
                 </div>
-                <div class="col-12 flex items-center q-mt-md">
+                <div
+                    class="col-12 col-md-4 col-lg-2 filter-item-container self-end"
+                >
                     <q-btn
                         color="grey"
                         :text-color="
@@ -376,8 +303,9 @@
                         label="Clear All Filters"
                         class="full-width"
                         @click="clearAllFilters"
-                        :disable="!hasActiveFilters"
+                        :disable="isLoading || !hasActiveFilters"
                         outline
+                        dense
                     />
                 </div>
             </div>
@@ -389,7 +317,7 @@
 import { ref, computed, watch, defineComponent, onMounted } from "vue";
 import { useQuasar } from "quasar";
 import { usePlayerStore } from "../../stores/playerStore";
-import { formatCurrency, parseCurrencyString } from "../../utils/currencyUtils";
+import { formatCurrency } from "../../utils/currencyUtils";
 
 const orderedShortPositions = [
     "GK",
@@ -408,6 +336,9 @@ const orderedShortPositions = [
     "ST",
 ];
 
+const AGE_SLIDER_MIN = 15;
+const AGE_SLIDER_MAX = 50;
+
 function debounce(fn, delay) {
     let timeoutID = null;
     return function (...args) {
@@ -421,7 +352,6 @@ function debounce(fn, delay) {
 export default defineComponent({
     name: "PlayerFilters",
     props: {
-        players: { type: Array, required: true },
         currencySymbol: { type: String, default: "$" },
         transferValueRange: {
             type: Object,
@@ -431,6 +361,7 @@ export default defineComponent({
         uniqueNationalities: { type: Array, default: () => [] },
         uniqueMediaHandlings: { type: Array, default: () => [] },
         uniquePersonalities: { type: Array, default: () => [] },
+        isLoading: { type: Boolean, default: false },
     },
     emits: ["filter-changed"],
     setup(props, { emit }) {
@@ -440,32 +371,40 @@ export default defineComponent({
         const filters = ref({
             name: "",
             club: null,
-            selectedTransferValue: props.transferValueRange.max,
-            transferValueMode: "less",
             position: null,
             role: null,
             nationality: null,
             mediaHandling: [],
             personality: [],
-            minAge: null,
-            maxAge: null,
+            ageRange: { min: AGE_SLIDER_MIN, max: AGE_SLIDER_MAX },
+            transferValueRangeLocal: {
+                // This is the v-model for the q-range
+                min: props.transferValueRange.min,
+                max: props.transferValueRange.max,
+            },
         });
 
-        const transferValueTextInput = ref("");
         const clubOptions = ref([]);
         const nationalityOptions = ref([]);
+
+        // Store the absolute min/max of the dataset when it's first available or fundamentally changes
+        const absoluteMinTransferValue = ref(props.transferValueRange.min);
+        const absoluteMaxTransferValue = ref(props.transferValueRange.max);
 
         const isDataAvailable = computed(
             () => playerStore.allPlayers && playerStore.allPlayers.length > 0,
         );
 
-        const hasActiveFilters = computed(
-            () =>
+        const hasActiveFilters = computed(() => {
+            const defAgeMin = AGE_SLIDER_MIN;
+            const defAgeMax = AGE_SLIDER_MAX;
+            // Compare against absolute min/max for transfer value "Any" state
+            const defValMin = absoluteMinTransferValue.value;
+            const defValMax = absoluteMaxTransferValue.value;
+
+            return (
                 filters.value.name !== "" ||
                 filters.value.club !== null ||
-                (filters.value.selectedTransferValue !== null &&
-                    filters.value.selectedTransferValue <
-                        props.transferValueRange.max) ||
                 filters.value.position !== null ||
                 filters.value.role !== null ||
                 filters.value.nationality !== null ||
@@ -473,9 +412,12 @@ export default defineComponent({
                     filters.value.mediaHandling.length > 0) ||
                 (Array.isArray(filters.value.personality) &&
                     filters.value.personality.length > 0) ||
-                filters.value.minAge !== null ||
-                filters.value.maxAge !== null,
-        );
+                filters.value.ageRange.min !== defAgeMin ||
+                filters.value.ageRange.max !== defAgeMax ||
+                filters.value.transferValueRangeLocal.min !== defValMin ||
+                filters.value.transferValueRangeLocal.max !== defValMax
+            );
+        });
 
         const positionOptions = computed(() => {
             const options = [{ label: "Any Position", value: null }];
@@ -516,7 +458,7 @@ export default defineComponent({
 
         const transferValueSliderStep = computed(() => {
             const range =
-                props.transferValueRange.max - props.transferValueRange.min;
+                props.transferValueRange.max - props.transferValueRange.min; // Use props for step calculation based on current track
             if (range <= 0) return 10000;
             if (range < 50000) return 1000;
             if (range < 250000) return 5000;
@@ -526,9 +468,26 @@ export default defineComponent({
             return 250000;
         });
 
-        const formatSliderValueWithCurrency = (value) => {
-            if (value === null || value === undefined) return "Any";
-            if (value === props.transferValueRange.max) return "Any";
+        const formatRangeLabel = (value, isMaxBoundary = false) => {
+            if (value === null || value === undefined) return "N/A";
+
+            if (isMaxBoundary) {
+                // Show "Any" if the current selected max value IS the absolute possible maximum for the dataset.
+                if (
+                    absoluteMaxTransferValue.value !== null &&
+                    value === absoluteMaxTransferValue.value
+                ) {
+                    return "Any";
+                }
+            } else {
+                // Show "Min" (or formatted value) if the current selected min value IS the absolute possible minimum.
+                if (
+                    absoluteMinTransferValue.value !== null &&
+                    value === absoluteMinTransferValue.value
+                ) {
+                    return formatCurrency(value, props.currencySymbol) || "Min";
+                }
+            }
             return formatCurrency(value, props.currencySymbol);
         };
 
@@ -547,124 +506,76 @@ export default defineComponent({
             { immediate: true },
         );
 
+        // Watcher for the overall possible range from the parent (props.transferValueRange)
+        // This watcher primarily updates the absolute min/max if the dataset fundamentally changes
+        // and ensures the q-range component's :min and :max props are up-to-date.
+        // It should NOT directly set filters.transferValueRangeLocal in a way that overrides user's active selection
+        // unless the selection becomes invalid due to a shrinking overall range.
         watch(
             () => props.transferValueRange,
             (newRange, oldRange) => {
                 if (
                     newRange &&
-                    (newRange.min !== oldRange?.min ||
-                        newRange.max !== oldRange?.max)
+                    typeof newRange.min === "number" &&
+                    typeof newRange.max === "number"
                 ) {
-                    filters.value.selectedTransferValue = newRange.max;
+                    // Update absolute values if the new range expands beyond current absolutes
+                    // This typically happens on a new dataset load or full filter clear.
                     if (
-                        document.activeElement !==
-                        transferValueTextInput.value?.$el?.querySelector(
-                            "input",
-                        )
+                        absoluteMinTransferValue.value === null ||
+                        newRange.min < absoluteMinTransferValue.value
                     ) {
-                        transferValueTextInput.value = "";
+                        absoluteMinTransferValue.value = newRange.min;
                     }
-                } else if (
-                    filters.value.selectedTransferValue === null &&
-                    newRange
-                ) {
-                    filters.value.selectedTransferValue = newRange.max;
                     if (
-                        document.activeElement !==
-                        transferValueTextInput.value?.$el?.querySelector(
-                            "input",
-                        )
+                        absoluteMaxTransferValue.value === null ||
+                        newRange.max > absoluteMaxTransferValue.value
                     ) {
-                        transferValueTextInput.value = "";
+                        absoluteMaxTransferValue.value = newRange.max;
                     }
+
+                    // The q-range component will use newRange.min and newRange.max for its track.
+                    // It will also internally clamp its v-model (filters.transferValueRangeLocal)
+                    // if the v-model falls outside these new track limits.
+                    // We don't need to manually adjust filters.transferValueRangeLocal here for clamping,
+                    // as q-range handles that. We only reset it fully in clearAllFilters or on initial mount.
                 }
             },
-            { immediate: true, deep: true },
+            { deep: true, immediate: true },
         );
 
         const applyFilters = () => {
-            console.log(
-                "PlayerFilters: applyFilters called with:",
-                JSON.parse(JSON.stringify(filters.value)),
-            );
+            if (props.isLoading) return;
             emit("filter-changed", { ...filters.value });
         };
-        const debouncedApplyFilters = debounce(applyFilters, 350);
+        const debouncedApplyFilters = debounce(applyFilters, 400);
 
         const onPositionChange = () => {
             filters.value.role = null;
             applyFilters();
         };
 
-        const updateNumericValueFromTextInput = () => {
-            const numericValue = parseCurrencyString(
-                transferValueTextInput.value,
-            );
-            if (numericValue !== null) {
-                filters.value.selectedTransferValue = Math.max(
-                    props.transferValueRange.min,
-                    Math.min(numericValue, props.transferValueRange.max),
-                );
-            } else if (transferValueTextInput.value.trim() === "") {
-                filters.value.selectedTransferValue =
-                    props.transferValueRange.max;
-            }
-            debouncedApplyFilters();
-        };
-        const debouncedUpdateNumericValueFromTextInput = debounce(
-            updateNumericValueFromTextInput,
-            450,
-        );
-
-        watch(
-            () => filters.value.selectedTransferValue,
-            (newValue) => {
-                const currentTextParsed = parseCurrencyString(
-                    transferValueTextInput.value,
-                );
-                if (
-                    newValue === props.transferValueRange.max &&
-                    newValue !== null
-                ) {
-                    if (transferValueTextInput.value !== "") {
-                        if (
-                            document.activeElement !==
-                            transferValueTextInput.value?.$el?.querySelector(
-                                "input",
-                            )
-                        ) {
-                            transferValueTextInput.value = "";
-                        }
-                    }
-                } else if (currentTextParsed !== newValue) {
-                    if (
-                        document.activeElement !==
-                        transferValueTextInput.value?.$el?.querySelector(
-                            "input",
-                        )
-                    ) {
-                        transferValueTextInput.value =
-                            formatSliderValueWithCurrency(newValue);
-                    }
-                }
-            },
-        );
-
         const clearAllFilters = () => {
             filters.value = {
                 name: "",
                 club: null,
-                selectedTransferValue: props.transferValueRange.max,
-                transferValueMode: "less",
                 position: null,
                 role: null,
                 nationality: null,
                 mediaHandling: [],
                 personality: [],
-                minAge: null,
-                maxAge: null,
+                ageRange: { min: AGE_SLIDER_MIN, max: AGE_SLIDER_MAX },
+                transferValueRangeLocal: {
+                    min:
+                        absoluteMinTransferValue.value !== null
+                            ? absoluteMinTransferValue.value
+                            : props.transferValueRange.min,
+                    max:
+                        absoluteMaxTransferValue.value !== null
+                            ? absoluteMaxTransferValue.value
+                            : props.transferValueRange.max,
+                },
             };
-            transferValueTextInput.value = "";
             applyFilters();
         };
 
@@ -701,8 +612,28 @@ export default defineComponent({
             ) {
                 await playerStore.fetchAllAvailableRoles();
             }
-            filters.value.selectedTransferValue = props.transferValueRange.max;
-            transferValueTextInput.value = "";
+            // Set initial absolute min/max based on initial props
+            if (
+                props.transferValueRange &&
+                typeof props.transferValueRange.min === "number"
+            ) {
+                absoluteMinTransferValue.value = props.transferValueRange.min;
+            }
+            if (
+                props.transferValueRange &&
+                typeof props.transferValueRange.max === "number"
+            ) {
+                absoluteMaxTransferValue.value = props.transferValueRange.max;
+            }
+            // Initialize local filter range to the absolute range
+            filters.value.transferValueRangeLocal = {
+                min: absoluteMinTransferValue.value,
+                max: absoluteMaxTransferValue.value,
+            };
+            filters.value.ageRange = {
+                min: AGE_SLIDER_MIN,
+                max: AGE_SLIDER_MAX,
+            };
         });
 
         watch(
@@ -711,12 +642,18 @@ export default defineComponent({
                 if (newId && playerStore.allAvailableRoles.length === 0) {
                     await playerStore.fetchAllAvailableRoles();
                 }
-            },
-        );
-        watch(
-            () => playerStore.allAvailableRoles,
-            () => {
-                // This watcher ensures roleFilterOptions updates if roles load after position is set
+                // When dataset changes, reset absolute min/max and local filter range
+                if (newId) {
+                    // Assuming newId means a new dataset is loaded
+                    absoluteMinTransferValue.value =
+                        props.transferValueRange.min;
+                    absoluteMaxTransferValue.value =
+                        props.transferValueRange.max;
+                    filters.value.transferValueRangeLocal = {
+                        min: props.transferValueRange.min,
+                        max: props.transferValueRange.max,
+                    };
+                }
             },
         );
 
@@ -724,7 +661,6 @@ export default defineComponent({
             quasarInstance,
             filters,
             hasActiveFilters,
-            transferValueTextInput,
             clubOptions,
             nationalityOptions,
             positionOptions,
@@ -736,12 +672,13 @@ export default defineComponent({
             applyFilters,
             debouncedApplyFilters,
             clearAllFilters,
-            formatSliderValueWithCurrency,
-            debouncedUpdateNumericValueFromTextInput,
+            formatRangeLabel,
             filterClubOptions,
             filterNationalityOptions,
             onPositionChange,
-            transferValueRange: computed(() => props.transferValueRange),
+            ageSliderMin: AGE_SLIDER_MIN,
+            ageSliderMax: AGE_SLIDER_MAX,
+            transferValueRange: computed(() => props.transferValueRange), // This is for the q-range's :min and :max props
         };
     },
 });
@@ -751,8 +688,17 @@ export default defineComponent({
 .filter-card {
     border-radius: 8px;
 }
-.body--dark .q-field--outlined .q-field__control:before {
-    border-color: rgba(255, 255, 255, 0.24);
+.body--dark .q-field--filled .q-field__control {
+    background-color: rgba(255, 255, 255, 0.07);
+    &:before {
+        border-bottom-color: rgba(255, 255, 255, 0.24);
+    }
+    &:hover:before {
+        border-bottom-color: rgba(255, 255, 255, 0.5);
+    }
+}
+.body--dark .q-field--filled.q-field--focused .q-field__control:after {
+    border-bottom-color: $primary;
 }
 .body--dark .q-field__label {
     color: rgba(255, 255, 255, 0.6);
@@ -760,5 +706,29 @@ export default defineComponent({
 .body--dark .q-select .q-field__input,
 .body--dark .q-input .q-field__input {
     color: rgba(255, 255, 255, 0.87);
+}
+.body--light .q-field--filled .q-field__control {
+    background-color: rgba(0, 0, 0, 0.04);
+    &:before {
+        border-bottom-color: rgba(0, 0, 0, 0.12);
+    }
+    &:hover:before {
+        border-bottom-color: rgba(0, 0, 0, 0.32);
+    }
+}
+.body--light .q-field--filled.q-field--focused .q-field__control:after {
+    border-bottom-color: $primary;
+}
+.q-mt-sm {
+    margin-top: 12px;
+}
+.q-px-sm {
+    padding-left: 4px;
+    padding-right: 4px;
+}
+.slider-label {
+    padding-left: 4px;
+    margin-bottom: 0px;
+    line-height: 1.2;
 }
 </style>

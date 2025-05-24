@@ -1,27 +1,13 @@
 // src/services/playerService.js
-
-// Ensure API_URL matches your Go backend configuration.
-// If your Go backend is running on port 8091 and Vue dev server on 3000,
-// Vite proxy in vite.config.js should handle requests to /upload, /api/players, /api/roles.
-// For direct fetch calls from client to backend (if not using proxy for all), use full URL.
-// Assuming proxy handles these paths.
 const API_BASE_URL = ""; // Use relative paths if proxy is set up for all API routes
 
 export default {
-  /**
-   * Upload a player file to the API for parsing.
-   * @param {FormData} formData - The form data containing the file.
-   * @returns {Promise<Object>} - A promise that resolves to an object
-   * { datasetId: string, message: string, detectedCurrencySymbol: string }.
-   */
   async uploadPlayerFile(formData) {
     try {
-      // Path should match proxy if used, or be full URL if not.
       const response = await fetch(`${API_BASE_URL}/upload`, {
         method: "POST",
         body: formData,
       });
-
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(
@@ -31,19 +17,17 @@ export default {
       return await response.json();
     } catch (error) {
       console.error("Upload error in playerService:", error);
-      throw error; // Re-throw to be caught by the caller in the store
+      throw error;
     }
   },
 
-  /**
-   * Fetches player data and the dataset's currency symbol from the backend.
-   * @param {string} datasetId - The ID of the dataset to retrieve.
-   * @param {string|null} position - Optional position filter (e.g., "DC").
-   * @param {string|null} role - Optional role filter (e.g., "DC - Central Defender - Defend").
-   * @returns {Promise<Object>} - A promise that resolves to an object
-   * { players: Player[], currencySymbol: string }.
-   */
-  async getPlayersByDatasetId(datasetId, position = null, role = null) {
+  async getPlayersByDatasetId(
+    datasetId,
+    position = null,
+    role = null,
+    ageRange = null,
+    transferValueRange = null,
+  ) {
     if (!datasetId) {
       return Promise.reject(new Error("Dataset ID is required."));
     }
@@ -54,8 +38,42 @@ export default {
         params.append("position", position);
       }
       if (role) {
-        // Roles can contain spaces and special characters, ensure they are encoded.
         params.append("role", role);
+      }
+      if (ageRange) {
+        if (ageRange.min !== null && ageRange.min !== undefined) {
+          params.append("minAge", ageRange.min.toString());
+        }
+        if (ageRange.max !== null && ageRange.max !== undefined) {
+          // Assuming your backend doesn't need maxAge if it's the slider's absolute max
+          // If it does, send it. For now, let's assume only send if not default max.
+          // This depends on your backend logic for "Any" max age.
+          // For simplicity, let's send it if it's not the default "Any" value (e.g. 50)
+          // This needs to align with how PlayerFilters defines "Any" for max age.
+          // Let's assume if ageRange.max is less than a known upper bound (e.g. 50), it's a specific filter.
+          // From PlayerFilters, ageSliderMax is 50. If filters.ageRange.max === ageSliderMax, it implies "Any".
+          // So, only send maxAge if it's *not* the default max from the slider.
+          // However, the backend will handle -1 as "not set".
+          // The PlayerFilters component sends ageRange.min and ageRange.max directly.
+          // The backend should interpret a missing param or -1 as "no filter for this bound".
+          params.append("maxAge", ageRange.max.toString());
+        }
+      }
+      if (transferValueRange) {
+        if (
+          transferValueRange.min !== null &&
+          transferValueRange.min !== undefined
+        ) {
+          params.append("minTransferValue", transferValueRange.min.toString());
+        }
+        if (
+          transferValueRange.max !== null &&
+          transferValueRange.max !== undefined
+        ) {
+          // Similar logic for maxTransferValue, send if it's not the default "Any"
+          // The backend should interpret a missing param or -1 as "no filter for this bound".
+          params.append("maxTransferValue", transferValueRange.max.toString());
+        }
       }
 
       const queryString = params.toString();
@@ -66,32 +84,25 @@ export default {
       console.log(`playerService: Fetching players from URL: ${url}`);
 
       const response = await fetch(url);
-
       if (!response.ok) {
         if (response.status === 404) {
-          throw new Error(
-            `Player data not found for ID: ${datasetId}. The data might have expired or the ID is incorrect.`,
-          );
+          throw new Error(`Player data not found for ID: ${datasetId}.`);
         }
         const errorText = await response.text();
         throw new Error(
           `API Error: ${response.status} - ${errorText || response.statusText}`,
         );
       }
-      return await response.json(); // Expected: { players: [], currencySymbol: "€" }
+      return await response.json();
     } catch (error) {
       console.error(
         "Error fetching players by dataset ID in playerService:",
         error,
       );
-      throw error; // Re-throw
+      throw error;
     }
   },
 
-  /**
-   * Fetches the list of all available role names from the backend.
-   * @returns {Promise<string[]>} A promise that resolves to an array of role name strings.
-   */
   async getAvailableRoles() {
     try {
       const response = await fetch(`${API_BASE_URL}/api/roles`);
@@ -101,10 +112,10 @@ export default {
           `API Error fetching roles: ${response.status} - ${errorText || response.statusText}`,
         );
       }
-      return await response.json(); // Expected: ["Role Name 1", "Role Name 2", ...]
+      return await response.json();
     } catch (error) {
       console.error("Error fetching available roles in playerService:", error);
-      throw error; // Re-throw
+      throw error;
     }
   },
 };

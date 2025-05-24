@@ -4,8 +4,7 @@ import { ref, computed, shallowRef } from "vue";
 import playerService from "../services/playerService";
 
 export const usePlayerStore = defineStore("player", () => {
-  // State
-  const allPlayers = shallowRef([]); // Use shallowRef for the large player list
+  const allPlayers = shallowRef([]);
   const currentDatasetId = ref(
     sessionStorage.getItem("currentDatasetId") || null,
   );
@@ -14,13 +13,9 @@ export const usePlayerStore = defineStore("player", () => {
   );
   const loading = ref(false);
   const error = ref("");
-  const allAvailableRoles = ref([]); // New state for roles
+  const allAvailableRoles = ref([]);
 
-  console.log(
-    `playerStore: Initializing. DatasetID from session: ${currentDatasetId.value}`,
-  );
-
-  // Getters
+  // Getters (uniqueClubs, uniqueNationalities, etc. remain the same)
   const uniqueClubs = computed(() => {
     if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0)
       return [];
@@ -78,25 +73,17 @@ export const usePlayerStore = defineStore("player", () => {
 
   const transferValueRange = computed(() => {
     if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) {
-      return { min: 0, max: 100000000 }; // Default range if no players
+      return { min: 0, max: 100000000 };
     }
     const transferValuesNumeric = allPlayers.value
       .filter((p) => typeof p.transferValueAmount === "number")
       .map((p) => p.transferValueAmount);
-
-    if (transferValuesNumeric.length === 0) return { min: 0, max: 100000000 }; // Default if no numeric values
-
-    const min = Math.min(0, ...transferValuesNumeric); // Ensure min is at least 0
+    if (transferValuesNumeric.length === 0) return { min: 0, max: 100000000 };
+    const min = Math.min(0, ...transferValuesNumeric);
     let max = Math.max(...transferValuesNumeric);
-
-    // Ensure max is greater than min, and provide a sensible default if all values are 0
-    if (min >= max) {
-      max = min + 50000; // Add a small amount if min and max are same
-    }
-    if (min === 0 && max === 0 && transferValuesNumeric.some((v) => v === 0)) {
-      // If all values are 0
-      max = 50000; // Default max if all values are 0
-    }
+    if (min >= max) max = min + 50000;
+    if (min === 0 && max === 0 && transferValuesNumeric.some((v) => v === 0))
+      max = 50000;
     return { min, max };
   });
 
@@ -113,14 +100,12 @@ export const usePlayerStore = defineStore("player", () => {
         "detectedCurrencySymbol",
         detectedCurrencySymbol.value,
       );
-
-      // Fetch initial player data (no filters) and roles
       await fetchPlayersByDatasetId(currentDatasetId.value);
       await fetchAllAvailableRoles();
       return response;
     } catch (e) {
       error.value = `Failed to process file: ${e.message || "Unknown error"}`;
-      resetState(); // Clear data on error
+      resetState();
       throw e;
     } finally {
       loading.value = false;
@@ -131,11 +116,10 @@ export const usePlayerStore = defineStore("player", () => {
     datasetId,
     positionFilter = null,
     roleFilter = null,
+    ageRangeFilter = null,
+    transferValueRangeFilter = null,
   ) {
     if (!datasetId) {
-      console.warn(
-        "playerStore: fetchPlayersByDatasetId called with no datasetId.",
-      );
       resetState();
       return;
     }
@@ -143,29 +127,24 @@ export const usePlayerStore = defineStore("player", () => {
     error.value = "";
     try {
       console.log(
-        `playerStore: Fetching players for datasetId: ${datasetId}, Position: ${positionFilter}, Role: ${roleFilter}`,
+        `playerStore: Fetching players for datasetId: ${datasetId}, Pos: ${positionFilter}, Role: ${roleFilter}, Age: ${JSON.stringify(ageRangeFilter)}, Val: ${JSON.stringify(transferValueRangeFilter)}`,
       );
       const response = await playerService.getPlayersByDatasetId(
         datasetId,
         positionFilter,
         roleFilter,
+        ageRangeFilter,
+        transferValueRangeFilter,
       );
-
-      // Update players list. shallowRef requires a new array assignment to trigger updates.
       allPlayers.value = processPlayersFromAPI(response.players);
       detectedCurrencySymbol.value = response.currencySymbol || "$";
-      // Update currency in session storage as it might change per dataset (though unlikely in this app's current design)
       sessionStorage.setItem(
         "detectedCurrencySymbol",
         detectedCurrencySymbol.value,
       );
-
-      console.log(
-        `playerStore: Fetched and processed ${allPlayers.value.length} players.`,
-      );
       return response;
     } catch (e) {
-      error.value = `Failed to fetch player data for dataset ${datasetId}: ${e.message || "Unknown error"}`;
+      error.value = `Failed to fetch player data: ${e.message || "Unknown error"}`;
       resetState();
       throw e;
     } finally {
@@ -174,75 +153,52 @@ export const usePlayerStore = defineStore("player", () => {
   }
 
   async function fetchAllAvailableRoles(force = false) {
-    // Only fetch if roles are not already populated or if forced
-    if (allAvailableRoles.value.length > 0 && !force) {
-      console.log("playerStore: Roles already loaded, skipping fetch.");
-      return;
-    }
+    if (allAvailableRoles.value.length > 0 && !force) return;
     try {
-      console.log(`playerStore: Fetching all available roles.`);
       const roles = await playerService.getAvailableRoles();
-      allAvailableRoles.value = roles.sort(); // Sort roles alphabetically
-      console.log(
-        `playerStore: Fetched ${allAvailableRoles.value.length} roles.`,
-      );
+      allAvailableRoles.value = roles.sort();
     } catch (e) {
       console.error("playerStore: Error fetching available roles:", e);
-      // Optionally set an error state for roles or just leave it empty
-      allAvailableRoles.value = []; // Set to empty on error
-      // Do not set global error.value here, as it might overwrite a more critical player data error
+      allAvailableRoles.value = [];
     }
   }
 
   function processPlayersFromAPI(playersData) {
-    if (!Array.isArray(playersData)) return []; // Ensure it's an array
+    if (!Array.isArray(playersData)) return [];
     return playersData.map((p) => ({
       ...p,
-      age: parseInt(p.age, 10) || 0, // Ensure age is a number
-      // Any other client-side processing can happen here
+      age: parseInt(p.age, 10) || 0,
     }));
   }
 
   function resetState() {
-    console.log(`playerStore: resetState called.`);
     allPlayers.value = [];
     currentDatasetId.value = null;
     detectedCurrencySymbol.value = "$";
-    allAvailableRoles.value = []; // Also reset roles
+    allAvailableRoles.value = [];
     sessionStorage.removeItem("currentDatasetId");
     sessionStorage.removeItem("detectedCurrencySymbol");
-    // No session storage for allAvailableRoles as it's fetched on demand
   }
 
   async function loadFromSessionStorage() {
-    console.time("playerStore_loadFromSessionStorage_action");
     const storedDatasetId = sessionStorage.getItem("currentDatasetId");
     const storedCurrencySymbol = sessionStorage.getItem(
       "detectedCurrencySymbol",
     );
-    console.log(
-      `playerStore: loadFromSessionStorage. Stored datasetId: ${storedDatasetId}, Stored currency: ${storedCurrencySymbol}`,
-    );
-
     if (storedDatasetId) {
       currentDatasetId.value = storedDatasetId;
       if (storedCurrencySymbol) {
         detectedCurrencySymbol.value = storedCurrencySymbol;
       }
-      // Fetch initial player data (no filters) and roles
       try {
-        // Fetch players first
-        await fetchPlayersByDatasetId(storedDatasetId);
-        // Then fetch roles, as roles might depend on a valid dataset context (though currently they don't)
+        await fetchPlayersByDatasetId(storedDatasetId); // Fetch with no filters initially
         await fetchAllAvailableRoles();
       } catch (e) {
-        console.error("Error loading from session storage in playerStore:", e);
-        // Error is handled within fetchPlayersByDatasetId, which calls resetState
+        // Error handled in fetch
       }
     } else {
-      resetState(); // Ensure clean state if no datasetId in session
+      resetState();
     }
-    console.timeEnd("playerStore_loadFromSessionStorage_action");
   }
 
   return {
@@ -257,10 +213,10 @@ export const usePlayerStore = defineStore("player", () => {
     uniquePersonalities,
     uniquePositionsCount,
     transferValueRange,
-    allAvailableRoles, // Expose roles
+    allAvailableRoles,
     uploadPlayerFile,
     fetchPlayersByDatasetId,
-    fetchAllAvailableRoles, // Expose action to fetch roles
+    fetchAllAvailableRoles,
     resetState,
     loadFromSessionStorage,
   };
