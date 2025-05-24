@@ -883,7 +883,7 @@
                                         <div
                                             class="text-subtitle1 text-weight-medium text-center"
                                         >
-                                            Role-Specific Ratings (0-100)
+                                            Best Roles
                                         </div>
                                     </q-card-section>
                                     <q-list
