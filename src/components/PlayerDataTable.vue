@@ -253,7 +253,7 @@
 <script>
 import { ref, computed, watch, onMounted } from "vue";
 import { useQuasar } from "quasar";
-import { formatCurrency } from "../utils/currencyUtils";
+import { formatCurrency } from "../utils/currencyUtils"; // Assuming this path is correct
 
 const MAX_DISPLAY_PLAYERS = 1000;
 
@@ -317,21 +317,16 @@ export default {
             if (!positionString || typeof positionString !== "string") {
                 return positionSortOrder.length + 2; // Place invalid/empty last
             }
-            // Normalize common variations like "ST (C)" to just "ST" for sorting
             let processedString = positionString.toUpperCase();
-            // Specific replacements for common FM display formats
             processedString = processedString.replace(/\bST\s*\(C\)/g, "ST");
             processedString = processedString.replace(/\bM\s*\(C\)/g, "MC");
             processedString = processedString.replace(/\bAM\s*\(C\)/g, "AMC");
             processedString = processedString.replace(/\bDM\s*\(C\)/g, "DM");
             processedString = processedString.replace(/\bD\s*\(C\)/g, "DC");
-            processedString = processedString.replace(/\bGK\s*\(C\)/g, "GK"); // Though GK usually doesn't have (C)
+            processedString = processedString.replace(/\bGK\s*\(C\)/g, "GK");
 
-            // Extract primary position codes, handling slashes and commas
-            let minFoundIndex = positionSortOrder.length; // Default to a high value (end of sort)
-
-            // Try to find the most "primary" or first listed position
-            const sideMatch = processedString.match(/\(([^)]+)\)$/); // Check for (R), (L), (C), (RLC)
+            let minFoundIndex = positionSortOrder.length;
+            const sideMatch = processedString.match(/\(([^)]+)\)$/);
             let mainPart = processedString;
             let sidesSpecified = [];
 
@@ -340,35 +335,30 @@ export default {
                 const sideSpec = sideMatch[1];
                 if (sideSpec.includes("R")) sidesSpecified.push("R");
                 if (sideSpec.includes("L")) sidesSpecified.push("L");
-                // 'C' is often implicit or part of the base role (e.g. DC, MC)
             }
 
-            // Remove any remaining parenthesized parts and split by common delimiters
             mainPart = mainPart.replace(/\s*\(.*?\)\s*/g, "").trim();
             const basePositionCodes = mainPart
                 .split(/[,/]/)
                 .map((p) => p.trim())
                 .filter((p) => p.length > 0);
-
             const rolesToEvaluate = new Set();
 
             for (const baseCode of basePositionCodes) {
                 if (sidesSpecified.length > 0) {
                     for (const side of sidesSpecified) {
-                        rolesToEvaluate.add(baseCode + side); // e.g., D + R -> DR
+                        rolesToEvaluate.add(baseCode + side);
                     }
                 }
-                rolesToEvaluate.add(baseCode); // e.g., DC, ST
+                rolesToEvaluate.add(baseCode);
             }
 
-            // If after all processing, rolesToEvaluate is empty but original string wasn't, use the cleaned main part
             if (rolesToEvaluate.size === 0 && positionString.trim() !== "") {
                 rolesToEvaluate.add(
                     processedString.replace(/\s*\(.*?\)\s*/g, "").trim(),
                 );
             }
-
-            if (rolesToEvaluate.size === 0) return positionSortOrder.length + 1; // Fallback for unparseable
+            if (rolesToEvaluate.size === 0) return positionSortOrder.length + 1;
 
             for (const role of rolesToEvaluate) {
                 const index = positionSortOrder.indexOf(role);
@@ -384,7 +374,7 @@ export default {
         const onPaginationUpdate = (newPagination) => {
             console.log(
                 `PlayerDataTable: onPaginationUpdate triggered. New pagination:`,
-                JSON.parse(JSON.stringify(newPagination)), // Deep copy for logging
+                JSON.parse(JSON.stringify(newPagination)),
             );
             pagination.value = newPagination;
         };
@@ -625,7 +615,7 @@ export default {
         };
 
         const sortedPlayers = computed(() => {
-            console.time("PlayerDataTable: sortedPlayers_computed_total"); // Static label
+            console.time("PlayerDataTable: sortedPlayers_computed_total");
             if (!props.players) {
                 totalSortedCount.value = 0;
                 isSliced.value = false;
@@ -640,8 +630,6 @@ export default {
 
             const fieldKey = getSortFieldKey(sortField.value || "Overall");
             const direction = sortDirection.value;
-
-            // Create a mutable copy for sorting
             const playersToSort = [...props.players];
 
             console.time("PlayerDataTable: actual_sort_operation");
@@ -652,8 +640,8 @@ export default {
                 const bIsNull = vB === null || vB === undefined;
 
                 if (aIsNull && bIsNull) return 0;
-                if (aIsNull) return direction === "asc" ? 1 : -1; // Nulls/undefined last for asc, first for desc
-                if (bIsNull) return direction === "asc" ? -1 : 1; // Nulls/undefined first for asc, last for desc
+                if (aIsNull) return direction === "asc" ? 1 : -1;
+                if (bIsNull) return direction === "asc" ? -1 : 1;
 
                 if (fieldKey === "position") {
                     const indexA = getPositionIndex(vA);
@@ -672,7 +660,6 @@ export default {
                     if (vA > vB) return direction === "asc" ? 1 : -1;
                     return 0;
                 }
-                // Fallback for other types or mixed types (should ideally not happen with consistent data)
                 return 0;
             });
             console.timeEnd("PlayerDataTable: actual_sort_operation");
@@ -712,18 +699,16 @@ export default {
         });
 
         const paginationTotalRows = computed(() => sortedPlayers.value.length);
-
         const paginationStartRow = computed(() => {
             if (paginationTotalRows.value === 0) return 0;
             return (
                 (pagination.value.page - 1) * pagination.value.rowsPerPage + 1
             );
         });
-
         const paginationEndRow = computed(() => {
             if (paginationTotalRows.value === 0) return 0;
             if (pagination.value.rowsPerPage === 0)
-                return paginationTotalRows.value; // All rows
+                return paginationTotalRows.value;
             return Math.min(
                 pagination.value.page * pagination.value.rowsPerPage,
                 paginationTotalRows.value,
@@ -732,7 +717,6 @@ export default {
 
         onMounted(() => {
             console.log(`PlayerDataTable: Component mounted.`);
-            // Emit initial sort state if sortField is set
             if (sortField.value) {
                 emit("update:sort", {
                     key: getSortFieldKey(sortField.value),
@@ -743,7 +727,7 @@ export default {
                     isOverallStat: currentColumns.value.find(
                         (c) => c.name === sortField.value,
                     )?.isOverallStat,
-                    displayField: sortField.value, // The column name used for display
+                    displayField: sortField.value,
                 });
             }
         });
@@ -778,29 +762,24 @@ export default {
         };
 
         const onFlagError = (event) => {
-            if (event.target) event.target.style.display = "none"; // Hide broken image
-            // Show placeholder icon if one exists next to it
+            if (event.target) event.target.style.display = "none";
             const placeholderIcon = event.target.nextElementSibling;
             if (
                 placeholderIcon &&
                 placeholderIcon.classList.contains("q-icon")
             ) {
-                placeholderIcon.style.display = "inline-flex"; // Or 'block' depending on layout
+                placeholderIcon.style.display = "inline-flex";
             }
         };
 
         const onRequest = (requestProp) => {
             console.log(
                 `PlayerDataTable: onRequest triggered. Props:`,
-                JSON.parse(JSON.stringify(requestProp)), // Deep copy for logging
+                JSON.parse(JSON.stringify(requestProp)),
             );
-            const { page, rowsPerPage, sortBy, descending } =
-                requestProp.pagination;
-
+            const { page, sortBy, descending } = requestProp.pagination;
             pagination.value.page = page;
-            // pagination.value.rowsPerPage = rowsPerPage; // Rows per page is now fixed or not user-selectable from UI
 
-            // Update sortField and sortDirection if they have changed
             if (
                 sortBy &&
                 (sortField.value !== sortBy ||
@@ -808,11 +787,11 @@ export default {
             ) {
                 sortField.value = sortBy;
                 sortDirection.value = descending ? "desc" : "asc";
-                pagination.value.sortBy = sortBy; // Keep pagination object in sync
+                pagination.value.sortBy = sortBy;
                 pagination.value.descending = descending;
 
                 emit("update:sort", {
-                    key: getSortFieldKey(sortField.value), // The actual data key for sorting
+                    key: getSortFieldKey(sortField.value),
                     direction: sortDirection.value,
                     isFifaStat: currentColumns.value.find(
                         (c) => c.name === sortBy,
@@ -820,12 +799,9 @@ export default {
                     isOverallStat: currentColumns.value.find(
                         (c) => c.name === sortBy,
                     )?.isOverallStat,
-                    displayField: sortBy, // The column name used for display
+                    displayField: sortBy,
                 });
             }
-            // Since rowsPerPage selector is removed, we don't need to emit it for external control,
-            // but QTable might still expect it if its own pagination controls are used.
-            // For simplicity, we assume QTable's internal pagination will use the current pagination.value.rowsPerPage.
             emit("update:pagination", { ...pagination.value });
         };
 
@@ -835,21 +811,22 @@ export default {
         };
 
         const onRowsPerPageChange = (newRowsPerPage) => {
-            // This function will no longer be called from the UI if the selector is removed.
-            // However, it's kept here in case rowsPerPage is set programmatically elsewhere.
             console.log(
                 `PlayerDataTable: onRowsPerPageChange. New rowsPerPage: ${newRowsPerPage}`,
             );
             pagination.value.rowsPerPage = newRowsPerPage;
-            pagination.value.page = 1; // Reset to first page
+            pagination.value.page = 1;
         };
 
         const customSort = (rows) => {
+            // The actual sorting is now done in the `sortedPlayers` computed property.
+            // QTable's `sort-method` is still needed, but we just return the rows as they are
+            // because our computed property `sortedPlayers` (bound to :rows) already handles it.
             return rows;
         };
 
         const sortTable = (fieldName) => {
-            console.time("PlayerDataTable: sortTable_execution"); // Static label
+            console.time("PlayerDataTable: sortTable_execution");
             const actualSortKey = getSortFieldKey(fieldName);
             let newDirection;
             if (sortField.value === fieldName) {
@@ -905,7 +882,7 @@ export default {
             pagination,
             onPaginationUpdate,
             pagesNumber,
-            rowsPerPageOptions, // Still needed for QTable's internal pagination logic
+            rowsPerPageOptions,
             maxPagesToShow,
             currentColumns,
             sortedPlayers,
@@ -915,7 +892,7 @@ export default {
             onFlagError,
             onRequest,
             onPageChange,
-            onRowsPerPageChange, // Kept for programmatic changes, though UI selector removed
+            onRowsPerPageChange,
             customSort,
             sortTable,
             onRowClick,
@@ -948,11 +925,9 @@ export default {
     font-size: 0.8rem;
 }
 
-/* Removed .player-count-display styles as the element is removed */
-
 .player-q-table {
     width: 100%;
-    table-layout: auto;
+    table-layout: fixed; /* CHANGED: from auto to fixed */
 
     th .sort-icon {
         vertical-align: middle;
@@ -962,13 +937,13 @@ export default {
     // Dark mode specific styles
     &.q-table--dark {
         th {
-            color: $grey-3;
+            color: $grey-3; // Make sure $grey-3 is defined or use a Quasar variable
             border-bottom-color: rgba(255, 255, 255, 0.15);
         }
 
         td {
             border-bottom-color: rgba(255, 255, 255, 0.1);
-            color: $grey-4;
+            color: $grey-4; // Make sure $grey-4 is defined or use a Quasar variable
         }
 
         tr:last-child td {
@@ -984,13 +959,13 @@ export default {
     &:not(.q-table--dark) {
         th {
             background-color: #f0f4f8;
-            color: $grey-8;
+            color: $grey-8; // Make sure $grey-8 is defined or use a Quasar variable
             border-bottom: 1px solid #dde2e6;
         }
 
         td {
             border-bottom: 1px solid #eef2f5;
-            color: $grey-9;
+            color: $grey-9; // Make sure $grey-9 is defined or use a Quasar variable
         }
 
         tr:last-child td {
@@ -1007,12 +982,18 @@ export default {
         font-size: 0.8rem;
         padding: 8px 10px;
         border-right: 0;
+        /* white-space: nowrap; // This is now handled by inline styles for specific columns */
+        /* overflow: hidden; // This is now handled by inline styles for specific columns */
+        /* text-overflow: ellipsis; // This is now handled by inline styles for specific columns */
     }
 
     td {
         vertical-align: middle;
         padding: 6px 10px;
         border-right: 0;
+        /* white-space: nowrap; // This is now handled by inline styles for specific columns */
+        /* overflow: hidden; // This is now handled by inline styles for specific columns */
+        /* text-overflow: ellipsis; // This is now handled by inline styles for specific columns */
     }
 
     .table-cell-enhanced {
@@ -1020,13 +1001,28 @@ export default {
     }
 }
 
+/*
+  This rule was likely causing the issue with text-overflow: ellipsis.
+  The inline styles for columns like 'name', 'position', and 'club' set 'white-space: nowrap',
+  which is necessary for ellipsis. This global rule would override it.
+  If you need word wrapping for other columns, apply 'white-space: normal' and 'word-break: break-word'
+  more selectively, perhaps through a class on those specific column definitions.
+*/
+.player-q-table td,
+.player-q-table th {
+    /* white-space: normal; */ /* CHANGED: Commented out to allow inline styles to take effect for ellipsis */
+    word-break: break-word; /* Keep this if you want long words without spaces to break */
+}
+
 .table-row-hover {
     &:hover {
         .body--dark & {
+            // Ensure .body--dark is a class on your body/html tag when dark mode is active
             background-color: rgba(255, 255, 255, 0.08) !important;
         }
 
         .body--light & {
+            // Ensure .body--light is a class on your body/html tag when light mode is active
             background-color: #e3f2fd !important;
         }
     }
@@ -1063,6 +1059,7 @@ export default {
 }
 
 .body--dark {
+    // Ensure .body--dark is a class on your body/html tag
     .money-very-high {
         color: #a5d6a7;
         font-weight: 700;
@@ -1089,6 +1086,7 @@ export default {
     object-fit: cover;
 
     .body--dark & {
+        // Ensure .body--dark is a class on your body/html tag
         border: 1px solid rgba(255, 255, 255, 0.15);
     }
 }
@@ -1102,13 +1100,8 @@ export default {
 :deep(.q-table__bottom .q-select .q-field__native),
 :deep(.q-table__bottom .q-select .q-field__input) {
     .body--dark & {
-        color: $grey-3;
+        // Ensure .body--dark is a class on your body/html tag
+        color: $grey-3; // Make sure $grey-3 is defined or use a Quasar variable
     }
-}
-
-.player-q-table td,
-.player-q-table th {
-    white-space: normal;
-    word-break: break-word;
 }
 </style>
