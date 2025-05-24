@@ -1,4 +1,4 @@
-/ src/components/filters/PlayerFilters.vue
+// src/components/filters/PlayerFilters.vue
 <template>
     <q-card
         class="q-mb-md filter-card"
@@ -267,8 +267,8 @@
                     </div>
                     <q-range
                         v-model="filters.transferValueRangeLocal"
-                        :min="transferValueRange.min"
-                        :max="transferValueRange.max"
+                        :min="currentSliderMin"
+                        :max="currentSliderMax"
                         :step="transferValueSliderStep"
                         label-always
                         :left-label-value="
@@ -287,7 +287,7 @@
                         :disable="
                             isLoading ||
                             !isDataAvailable ||
-                            transferValueRange.min >= transferValueRange.max
+                            currentSliderMin >= currentSliderMax
                         "
                         color="primary"
                         class="q-px-sm"
@@ -317,7 +317,7 @@
 <script>
 import { ref, computed, watch, defineComponent, onMounted } from "vue";
 import { useQuasar } from "quasar";
-import { usePlayerStore } from "@/stores/playerStore"; // Corrected Import Path
+import { usePlayerStore } from "@/stores/playerStore";
 import { formatCurrency } from "@/utils/currencyUtils";
 
 const orderedShortPositions = [
@@ -355,6 +355,12 @@ export default defineComponent({
     props: {
         currencySymbol: { type: String, default: "$" },
         transferValueRange: {
+            // Range of the *currently filtered* data in playerStore
+            type: Object,
+            default: () => ({ min: 0, max: 100000000 }),
+        },
+        initialDatasetRange: {
+            // New prop: True global range of the *entire dataset*
             type: Object,
             default: () => ({ min: 0, max: 100000000 }),
         },
@@ -379,6 +385,7 @@ export default defineComponent({
             personality: [],
             ageRange: { min: AGE_SLIDER_MIN, max: AGE_SLIDER_MAX },
             transferValueRangeLocal: {
+                // This will hold the slider's current values
                 min: props.transferValueRange.min,
                 max: props.transferValueRange.max,
             },
@@ -387,18 +394,19 @@ export default defineComponent({
         const clubOptions = ref([]);
         const nationalityOptions = ref([]);
 
-        const absoluteMinTransferValue = ref(props.transferValueRange.min);
-        const absoluteMaxTransferValue = ref(props.transferValueRange.max);
+        // These computed properties define the slider's operational min/max.
+        // They should react to props.transferValueRange (the range of currently filtered data).
+        const currentSliderMin = computed(() => props.transferValueRange.min);
+        const currentSliderMax = computed(() => props.transferValueRange.max);
 
         const isDataAvailable = computed(
             () => playerStore.allPlayers && playerStore.allPlayers.length > 0,
         );
 
         const hasActiveFilters = computed(() => {
-            const defAgeMin = AGE_SLIDER_MIN;
-            const defAgeMax = AGE_SLIDER_MAX;
-            const defValMin = absoluteMinTransferValue.value;
-            const defValMax = absoluteMaxTransferValue.value;
+            // Use props.initialDatasetRange for transfer value default comparison
+            const defValMin = props.initialDatasetRange.min;
+            const defValMax = props.initialDatasetRange.max;
 
             return (
                 filters.value.name !== "" ||
@@ -410,8 +418,8 @@ export default defineComponent({
                     filters.value.mediaHandling.length > 0) ||
                 (Array.isArray(filters.value.personality) &&
                     filters.value.personality.length > 0) ||
-                filters.value.ageRange.min !== defAgeMin ||
-                filters.value.ageRange.max !== defAgeMax ||
+                filters.value.ageRange.min !== AGE_SLIDER_MIN ||
+                filters.value.ageRange.max !== AGE_SLIDER_MAX ||
                 filters.value.transferValueRangeLocal.min !== defValMin ||
                 filters.value.transferValueRangeLocal.max !== defValMax
             );
@@ -455,8 +463,8 @@ export default defineComponent({
         );
 
         const transferValueSliderStep = computed(() => {
-            const range =
-                props.transferValueRange.max - props.transferValueRange.min;
+            // Step calculation should be based on the slider's current operational range
+            const range = currentSliderMax.value - currentSliderMin.value;
             if (range <= 0) return 10000;
             if (range < 50000) return 1000;
             if (range < 250000) return 5000;
@@ -468,19 +476,22 @@ export default defineComponent({
 
         const formatRangeLabel = (value, isMaxBoundary = false) => {
             if (value === null || value === undefined) return "N/A";
+            // "Any" logic now uses the static initialDatasetRange from props
             if (isMaxBoundary) {
                 if (
-                    absoluteMaxTransferValue.value !== null &&
-                    value === absoluteMaxTransferValue.value
+                    props.initialDatasetRange &&
+                    typeof props.initialDatasetRange.max === "number" &&
+                    value === props.initialDatasetRange.max
                 ) {
                     return "Any";
                 }
             } else {
+                // Min boundary
                 if (
-                    absoluteMinTransferValue.value !== null &&
-                    value === absoluteMinTransferValue.value
+                    props.initialDatasetRange &&
+                    typeof props.initialDatasetRange.min === "number" &&
+                    value === props.initialDatasetRange.min
                 ) {
-                    // For min, just show the formatted value, not "Min" or "Any"
                     return formatCurrency(value, props.currencySymbol) || "0";
                 }
             }
@@ -502,44 +513,59 @@ export default defineComponent({
             { immediate: true },
         );
 
+        // Watch the dynamic transferValueRange prop to update the local slider values
+        // if they fall outside the new dynamic range from the parent.
         watch(
             () => props.transferValueRange,
-            (newRange) => {
+            (newDynamicRange) => {
                 if (
-                    newRange &&
-                    typeof newRange.min === "number" &&
-                    typeof newRange.max === "number"
+                    newDynamicRange &&
+                    typeof newDynamicRange.min === "number" &&
+                    typeof newDynamicRange.max === "number"
                 ) {
+                    // Update local slider values only if they are outside the new dynamic range
+                    // or if they were uninitialized (null).
+                    let changed = false;
                     if (
-                        absoluteMinTransferValue.value === null ||
-                        newRange.min !== absoluteMinTransferValue.value
-                    ) {
-                        absoluteMinTransferValue.value = newRange.min;
-                    }
-                    if (
-                        absoluteMaxTransferValue.value === null ||
-                        newRange.max !== absoluteMaxTransferValue.value
-                    ) {
-                        absoluteMaxTransferValue.value = newRange.max;
-                    }
-                    // Only reset local filter if it's outside the new absolute bounds or was never set
-                    if (
-                        filters.value.transferValueRangeLocal.min <
-                            newRange.min ||
-                        filters.value.transferValueRangeLocal.min >
-                            newRange.max ||
-                        filters.value.transferValueRangeLocal.max <
-                            newRange.min ||
-                        filters.value.transferValueRangeLocal.max >
-                            newRange.max ||
                         filters.value.transferValueRangeLocal.min === null ||
-                        filters.value.transferValueRangeLocal.max === null
+                        filters.value.transferValueRangeLocal.min <
+                            newDynamicRange.min
                     ) {
-                        filters.value.transferValueRangeLocal = {
-                            min: newRange.min,
-                            max: newRange.max,
-                        };
+                        filters.value.transferValueRangeLocal.min =
+                            newDynamicRange.min;
+                        changed = true;
                     }
+                    if (
+                        filters.value.transferValueRangeLocal.max === null ||
+                        filters.value.transferValueRangeLocal.max >
+                            newDynamicRange.max
+                    ) {
+                        filters.value.transferValueRangeLocal.max =
+                            newDynamicRange.max;
+                        changed = true;
+                    }
+                    // If values were clamped, emit filter change
+                    if (changed) {
+                        // applyFilters(); // Or debouncedApplyFilters if preferred, but direct might be better for clamping
+                    }
+                }
+            },
+            { deep: true, immediate: true },
+        );
+        // Also watch initialDatasetRange to set the initial state of transferValueRangeLocal correctly
+        watch(
+            () => props.initialDatasetRange,
+            (newInitialRange) => {
+                if (
+                    newInitialRange &&
+                    typeof newInitialRange.min === "number" &&
+                    typeof newInitialRange.max === "number"
+                ) {
+                    // Set the initial local filter range to match the full dataset range
+                    filters.value.transferValueRangeLocal = {
+                        min: newInitialRange.min,
+                        max: newInitialRange.max,
+                    };
                 }
             },
             { deep: true, immediate: true },
@@ -547,7 +573,21 @@ export default defineComponent({
 
         const applyFilters = () => {
             if (props.isLoading) return;
-            emit("filter-changed", { ...filters.value });
+            // Ensure the emitted filter range is clamped by the current slider's operational min/max
+            // This should ideally not be necessary if v-model works correctly with q-range's :min and :max
+            const clampedMin = Math.max(
+                filters.value.transferValueRangeLocal.min,
+                currentSliderMin.value,
+            );
+            const clampedMax = Math.min(
+                filters.value.transferValueRangeLocal.max,
+                currentSliderMax.value,
+            );
+
+            emit("filter-changed", {
+                ...filters.value,
+                transferValueRangeLocal: { min: clampedMin, max: clampedMax },
+            });
         };
         const debouncedApplyFilters = debounce(applyFilters, 400);
 
@@ -567,14 +607,13 @@ export default defineComponent({
                 personality: [],
                 ageRange: { min: AGE_SLIDER_MIN, max: AGE_SLIDER_MAX },
                 transferValueRangeLocal: {
-                    min:
-                        absoluteMinTransferValue.value !== null
-                            ? absoluteMinTransferValue.value
-                            : props.transferValueRange.min,
-                    max:
-                        absoluteMaxTransferValue.value !== null
-                            ? absoluteMaxTransferValue.value
-                            : props.transferValueRange.max,
+                    // Reset to the true initial dataset range
+                    min: props.initialDatasetRange
+                        ? props.initialDatasetRange.min
+                        : 0,
+                    max: props.initialDatasetRange
+                        ? props.initialDatasetRange.max
+                        : 100000000,
                 },
             };
             applyFilters();
@@ -613,12 +652,11 @@ export default defineComponent({
             ) {
                 await playerStore.fetchAllAvailableRoles();
             }
-            if (props.transferValueRange) {
-                absoluteMinTransferValue.value = props.transferValueRange.min;
-                absoluteMaxTransferValue.value = props.transferValueRange.max;
+            // Set initial values from props if they are valid
+            if (props.initialDatasetRange) {
                 filters.value.transferValueRangeLocal = {
-                    min: props.transferValueRange.min,
-                    max: props.transferValueRange.max,
+                    min: props.initialDatasetRange.min,
+                    max: props.initialDatasetRange.max,
                 };
             }
             filters.value.ageRange = {
@@ -633,14 +671,11 @@ export default defineComponent({
                 if (newId && playerStore.allAvailableRoles.length === 0) {
                     await playerStore.fetchAllAvailableRoles();
                 }
-                if (newId && props.transferValueRange) {
-                    absoluteMinTransferValue.value =
-                        props.transferValueRange.min;
-                    absoluteMaxTransferValue.value =
-                        props.transferValueRange.max;
+                // When dataset changes, reset filters, including transferValueRangeLocal to the new initial range
+                if (newId && props.initialDatasetRange) {
                     filters.value.transferValueRangeLocal = {
-                        min: props.transferValueRange.min,
-                        max: props.transferValueRange.max,
+                        min: props.initialDatasetRange.min,
+                        max: props.initialDatasetRange.max,
                     };
                 }
             },
@@ -667,7 +702,8 @@ export default defineComponent({
             onPositionChange,
             ageSliderMin: AGE_SLIDER_MIN,
             ageSliderMax: AGE_SLIDER_MAX,
-            transferValueRange: computed(() => props.transferValueRange),
+            currentSliderMin, // For q-range :min
+            currentSliderMax, // For q-range :max
         };
     },
 });
@@ -717,8 +753,8 @@ export default defineComponent({
 }
 .slider-label {
     padding-left: 4px;
-    margin-bottom: 0px; // Reduced from q-mb-xs default for tighter spacing
-    line-height: 1.2; // Ensure consistent line height
+    margin-bottom: 0px;
+    line-height: 1.2;
 }
 .filter-item-container {
     // Ensure consistent vertical alignment if items wrap
