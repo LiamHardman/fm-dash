@@ -38,6 +38,27 @@ spec:
               value: "8080"
             - name: ENABLE_METRICS
               value: "true"
+            # MinIO Configuration
+            - name: MINIO_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: v2fmdash-minio-secret
+                  key: endpoint
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: v2fmdash-minio-secret
+                  key: access-key
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: v2fmdash-minio-secret
+                  key: secret-key
+            - name: MINIO_USE_SSL
+              valueFrom:
+                secretKeyRef:
+                  name: v2fmdash-minio-secret
+                  key: use-ssl
           # No secrets or API keys are mounted as per user request
           resources: # Optional: Define resource requests and limits
             requests:

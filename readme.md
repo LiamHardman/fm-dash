@@ -66,4 +66,23 @@ Use this -> codeweaver --ignore "node_modules,\.git"
 or ./CodeWeaver --ignore "node_modules,testdata.html,.git,CodeWeaver"
 
 
-ENABLE_METRICS=true to enable metrics
+## Configuration
+
+### Environment Variables
+
+- `ENABLE_METRICS=true` - Enable Prometheus metrics collection
+- `MINIO_ENDPOINT` - MinIO server endpoint (e.g., localhost:9000)
+- `MINIO_ACCESS_KEY` - MinIO access key
+- `MINIO_SECRET_KEY` - MinIO secret key  
+- `MINIO_USE_SSL=false` - Whether to use SSL for MinIO connection (default: false)
+
+### Storage Backend
+
+The application supports two storage backends:
+
+1. **In-Memory Storage** (default): Data is stored in memory and lost when the server restarts
+2. **MinIO Storage** (optional): Data is persisted to MinIO object storage with in-memory fallback
+
+To enable MinIO storage, set the MinIO environment variables. If MinIO is not available or not configured, the application automatically falls back to in-memory storage.
+
+The MinIO bucket name is hardcoded to `v2fmdash`.
