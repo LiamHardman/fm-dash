@@ -591,10 +591,16 @@ export default {
                 if (!playerStore.error) {
                     Notify.create({
                         type: "positive",
-                        message: "File uploaded and parsed successfully!",
+                        message: "File uploaded and parsed successfully! Redirecting to dataset view...",
                         position: "top",
-                        timeout: 3000,
+                        timeout: 2000,
                     });
+                    // Redirect to the dataset page
+                    setTimeout(() => {
+                        if (playerStore.currentDatasetId) {
+                            router.push(`/dataset/${playerStore.currentDatasetId}`);
+                        }
+                    }, 1000);
                 }
             } catch (e) {
                 console.error("Upload and Parse error in page:", e);

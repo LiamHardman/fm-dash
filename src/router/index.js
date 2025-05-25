@@ -5,6 +5,7 @@ import { createRouter, createWebHistory } from "vue-router";
 const LandingPage = () => import("../pages/LandingPage.vue");
 const PlayerUploadPage = () => import("../pages/PlayerUploadPage.vue");
 const TeamViewPage = () => import("../pages/TeamViewPage.vue");
+const DatasetPage = () => import("../pages/DatasetPage.vue");
 const DocsPage = () => import("../pages/DocsPage.vue");
 
 const routes = [
@@ -17,6 +18,12 @@ const routes = [
     path: "/upload",
     name: "upload",
     component: PlayerUploadPage,
+  },
+  {
+    path: "/dataset/:datasetId",
+    name: "dataset",
+    component: DatasetPage,
+    props: true,
   },
   {
     path: "/team-view",
