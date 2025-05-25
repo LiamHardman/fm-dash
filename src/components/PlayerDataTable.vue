@@ -1125,21 +1125,12 @@ export default {
 }
 
 .club-link {
-    color: #1976d2;
-    text-decoration: underline;
+    color: inherit;
+    text-decoration: none;
     cursor: pointer;
     
     &:hover {
-        color: #1565c0;
-        text-decoration: none;
-    }
-    
-    .body--dark & {
-        color: #42a5f5;
-        
-        &:hover {
-            color: #64b5f6;
-        }
+        text-decoration: underline;
     }
 }
 </style>

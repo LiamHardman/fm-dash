@@ -632,13 +632,14 @@ export default {
 
         const handleTeamSelected = (teamName) => {
             if (currentDatasetId.value) {
-                router.push({
+                const url = router.resolve({
                     path: '/team-view',
                     query: { 
                         datasetId: currentDatasetId.value,
                         team: teamName
                     }
                 });
+                window.open(url.href, '_blank');
             }
         };
 
