@@ -32,14 +32,12 @@ spec:
             - name: http-nginx # Port Nginx listens on inside the container
               containerPort: 8080 # This should match EXPOSE in Dockerfile and listen directive in nginx.conf
           env:
-            # PORT_GO_API and PORT_NGINX are primarily for supervisord inside the container,
-            # but can be exposed here if needed for other reasons or overrides.
-            # The Go app's port (8091) is internal to the container and proxied by Nginx.
-            # Nginx's port (8080) is what the container exposes.
             - name: PORT_GO_API # This informs supervisord which port Go app should use
               value: "8091"
             - name: PORT_NGINX # This informs supervisord which port Nginx should use
               value: "8080"
+            - name: ENABLE_METRICS
+              value: "true"
           # No secrets or API keys are mounted as per user request
           resources: # Optional: Define resource requests and limits
             requests:

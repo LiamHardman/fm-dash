@@ -7,6 +7,10 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 const (
@@ -49,6 +53,47 @@ var (
 	defenderFifaCategoryWeights = map[string]int{
 		"DEF": 30, "PHY": 30, "MEN": 20, "PAS": 15, "DRI": 5, "SHO": 0, // Sums to 100
 	}
+
+	// Metrics collection toggle
+	metricsEnabled bool
+
+
+	// Prometheus metrics
+	uploadDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Name: "fm24_upload_duration_seconds",
+		Help: "Time taken to process uploads",
+		Buckets: []float64{0.1, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0, 120.0},
+	}, []string{"type"}) // "total" or "parse"
+
+	uploadRowsPerSecond = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "fm24_upload_rows_per_second",
+		Help: "Rows processed per second in last upload",
+	})
+
+	uploadFileSize = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "fm24_upload_file_size_bytes",
+		Help: "Size of last uploaded file in bytes",
+	})
+
+	uploadPlayersProcessed = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "fm24_upload_players_processed",
+		Help: "Number of players processed in last upload",
+	})
+
+	uploadMemoryUsage = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "fm24_upload_memory_usage_mb",
+		Help: "Memory usage during last upload in MB",
+	})
+
+	uploadsTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "fm24_uploads_total",
+		Help: "Total number of file uploads processed",
+	})
+
+	uploadWorkers = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "fm24_upload_workers",
+		Help: "Number of workers used in last upload",
+	})
 )
 
 // Default attribute weights if JSON loading fails or file is missing.
@@ -221,4 +266,31 @@ func init() {
 	}
 	muPrecomputedRoleWeights.Unlock()
 	log.Printf("Precomputed %d base position keys for role weights.", len(precomputedRoleWeights))
+
+	// Initialize metrics toggle from environment variable
+	metricsEnabled = os.Getenv("ENABLE_METRICS") == "true"
+	log.Printf("Metrics collection enabled: %v", metricsEnabled)
+}
+
+// recordUploadMetrics stores metrics for a completed upload if metrics are enabled.
+func recordUploadMetrics(filename string, fileSizeBytes int64, totalDuration, parseDuration time.Duration, 
+	playersProcessed int, memoryAllocMB float64, numWorkers, numGoroutines int) {
+	if !metricsEnabled {
+		return
+	}
+
+	rowsPerSecond := 0.0
+	if parseDuration.Seconds() > 0 {
+		rowsPerSecond = float64(playersProcessed) / parseDuration.Seconds()
+	}
+
+	// Record to Prometheus metrics
+	uploadDuration.WithLabelValues("total").Observe(totalDuration.Seconds())
+	uploadDuration.WithLabelValues("parse").Observe(parseDuration.Seconds())
+	uploadRowsPerSecond.Set(rowsPerSecond)
+	uploadFileSize.Set(float64(fileSizeBytes))
+	uploadPlayersProcessed.Set(float64(playersProcessed))
+	uploadMemoryUsage.Set(memoryAllocMB)
+	uploadWorkers.Set(float64(numWorkers))
+	uploadsTotal.Inc()
 }

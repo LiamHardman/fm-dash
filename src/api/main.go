@@ -7,6 +7,8 @@ import (
 	_ "net/http/pprof" // For profiling, if needed
 	"os"
 	"path/filepath"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
@@ -48,6 +50,9 @@ func main() {
 
 	// New API endpoint for retrieving available roles
 	http.HandleFunc("/api/roles", rolesHandler) // Defined in handlers.go
+
+	// Prometheus metrics endpoint
+	http.Handle("/metrics", promhttp.Handler())
 
 	// Determine port for HTTP server
 	port := os.Getenv("PORT")

@@ -189,9 +189,15 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		rowsPerSecond = float64(len(playersList)) / parseDuration.Seconds()
 	}
 	totalDuration := time.Since(startTime)
-	// Assumes BToMb is defined in utils.go
+	memAllocMB := BToMb(memStats.Alloc) // Assumes BToMb is defined in utils.go
+	
+	// Record metrics if enabled
+	recordUploadMetrics(handler.Filename, fileSize, totalDuration, parseDuration, 
+		len(playersList), memAllocMB, numWorkers, runtime.NumGoroutine())
+	
+	// Keep existing log for backwards compatibility
 	log.Printf("--- Perf Metrics --- File: %s, Size: %d KB, Total Time: %v, Parse Time: %v, Parsed Players: %d, Rows/Sec: %.2f, MemAlloc: %.2f MiB, Workers: %d, Goroutines: %d ---",
-		handler.Filename, fileSize/1024, totalDuration, parseDuration, len(playersList), rowsPerSecond, BToMb(memStats.Alloc), numWorkers, runtime.NumGoroutine())
+		handler.Filename, fileSize/1024, totalDuration, parseDuration, len(playersList), rowsPerSecond, memAllocMB, numWorkers, runtime.NumGoroutine())
 }
 
 // playerDataHandler handles GET requests to retrieve processed player data by dataset ID.
@@ -351,3 +357,4 @@ func rolesHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
 	}
 }
+
