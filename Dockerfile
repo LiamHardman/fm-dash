@@ -26,6 +26,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     nginx \
     ca-certificates \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 COPY nginx.conf /etc/nginx/nginx.conf
@@ -41,8 +42,17 @@ COPY --from=go-builder /app-go/public ./public/
 RUN groupadd -r appgroup && useradd -r -g appgroup -d /app -s /sbin/nologin -c "Application User" appuser
 RUN chown -R appuser:appgroup /app/public
 RUN chown appuser:appgroup /app/v2fmdash-server
+RUN chown -R www-data:www-data /var/www/html
+RUN chown -R www-data:www-data /var/log/nginx
+RUN chown -R www-data:www-data /var/lib/nginx
+RUN touch /run/nginx.pid && chown www-data:www-data /run/nginx.pid
+
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 EXPOSE 8080
 
 ENV PORT_GO_API=8091
 ENV PORT_NGINX=8080
+
+CMD ["/usr/local/bin/entrypoint.sh"]
