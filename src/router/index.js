@@ -24,6 +24,12 @@ const routes = [
     component: TeamViewPage,
   },
   {
+    path: "/team-view/:datasetId",
+    name: "shared-dataset",
+    component: TeamViewPage,
+    props: true,
+  },
+  {
     path: "/docs",
     name: "docs",
     component: DocsPage,

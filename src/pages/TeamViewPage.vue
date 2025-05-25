@@ -35,7 +35,21 @@
                 :class="quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'"
             >
                 <q-card-section>
-                    <div class="text-subtitle1 q-mb-sm">Select Team</div>
+                    <div class="row items-center justify-between q-mb-sm">
+                        <div class="text-subtitle1">Select Team</div>
+                        <q-btn
+                            v-if="currentDatasetId"
+                            flat
+                            round
+                            dense
+                            icon="share"
+                            color="primary"
+                            @click="shareDataset"
+                            class="share-btn"
+                        >
+                            <q-tooltip>Share this dataset</q-tooltip>
+                        </q-btn>
+                    </div>
                     <q-select
                         v-model="selectedTeamName"
                         :options="teamOptions"
@@ -386,6 +400,7 @@ export default {
         // Computed properties from store
         const allPlayersData = computed(() => playerStore.allPlayers);
         const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol);
+        const currentDatasetId = computed(() => playerStore.currentDatasetId);
 
         const selectedFormationKey = ref(null);
 
@@ -485,8 +500,10 @@ export default {
 
         onMounted(async () => {
             const datasetIdFromQuery = route.query.datasetId;
+            const datasetIdFromRoute = route.params.datasetId;
             const teamFromQuery = route.query.team;
             let finalDatasetId =
+                datasetIdFromRoute ||
                 datasetIdFromQuery ||
                 sessionStorage.getItem("currentDatasetId");
 
@@ -1451,6 +1468,39 @@ export default {
             },
         );
 
+        const shareDataset = async () => {
+            if (!currentDatasetId.value) return;
+            
+            const shareUrl = `${window.location.origin}/team-view/${currentDatasetId.value}`;
+            
+            try {
+                await navigator.clipboard.writeText(shareUrl);
+                quasarInstance.notify({
+                    message: 'Link copied to clipboard!',
+                    color: 'positive',
+                    icon: 'check_circle',
+                    position: 'top',
+                    timeout: 2000
+                });
+            } catch (err) {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = shareUrl;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                
+                quasarInstance.notify({
+                    message: 'Link copied to clipboard!',
+                    color: 'positive',
+                    icon: 'check_circle',
+                    position: 'top',
+                    timeout: 2000
+                });
+            }
+        };
+
         return {
             allPlayersData,
             selectedTeamName,
@@ -1480,6 +1530,8 @@ export default {
             quasarInstance,
             router,
             detectedCurrencySymbol, // Expose currency symbol
+            currentDatasetId,
+            shareDataset,
         };
     },
 };
