@@ -294,7 +294,7 @@ export default {
             sortBy: "Overall",
             descending: true,
             page: 1,
-            rowsPerPage: 15, // Default rows per page, even if selector is hidden
+            rowsPerPage: 50, // Default rows per page, even if selector is hidden
         });
 
         watch(

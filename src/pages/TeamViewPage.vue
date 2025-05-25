@@ -101,45 +101,6 @@
             <div v-if="!pageLoading && !pageLoadingError">
                 <div v-if="selectedTeamName && !loadingTeam">
                     <q-card
-                        class="q-mb-md"
-                        :class="
-                            quasarInstance.dark.isActive
-                                ? 'bg-grey-9'
-                                : 'bg-white'
-                        "
-                    >
-                        <q-card-section>
-                            <div class="text-h6 q-mb-sm">
-                                Players in {{ selectedTeamName }} ({{
-                                    teamPlayers.length
-                                }})
-                            </div>
-                            <PlayerDataTable
-                                v-if="teamPlayers.length > 0"
-                                :players="teamPlayers"
-                                :loading="false"
-                                @player-selected="handlePlayerSelectedFromTeam"
-                                :is-goalkeeper-view="teamIsGoalkeeperView"
-                                :currency-symbol="detectedCurrencySymbol"
-                                table-style="max-height: 400px;"
-                                class="team-player-table"
-                            />
-                            <q-banner
-                                v-else
-                                class="text-center"
-                                :class="
-                                    quasarInstance.dark.isActive
-                                        ? 'bg-grey-8 text-grey-4'
-                                        : 'bg-grey-2 text-grey-7'
-                                "
-                            >
-                                No players found for this team with the current
-                                data.
-                            </q-banner>
-                        </q-card-section>
-                    </q-card>
-
-                    <q-card
                         :class="
                             quasarInstance.dark.isActive
                                 ? 'bg-grey-9'
@@ -200,6 +161,61 @@
                                     >
                                         {{ calculationMessage }}
                                     </q-banner>
+                                    
+                                    <!-- Compact Squad Depth -->
+                                    <div 
+                                        v-if="selectedFormationKey && Object.keys(squadComposition).length > 0"
+                                        class="q-mt-md"
+                                    >
+                                        <div class="text-subtitle2 text-weight-bold q-mb-sm">Squad Depth</div>
+                                        <div class="compact-squad-depth">
+                                            <div
+                                                v-for="slot in currentFormationLayout.flatMap(
+                                                    (row) => row.positions,
+                                                )"
+                                                :key="slot.id"
+                                                class="depth-position-compact"
+                                            >
+                                                <div class="position-label">
+                                                    {{
+                                                        getSlotDisplayName(
+                                                            slot,
+                                                            currentFormationLayout.flatMap(
+                                                                (r) => r.positions,
+                                                            ),
+                                                        )
+                                                    }}
+                                                </div>
+                                                <div 
+                                                    v-if="squadComposition[slot.id] && squadComposition[slot.id].length > 0"
+                                                    class="depth-players-compact"
+                                                >
+                                                    <div
+                                                        v-for="(playerEntry, index) in squadComposition[slot.id].slice(0, 3)"
+                                                        :key="playerEntry.player.name + '-' + slot.id + '-' + index"
+                                                        class="depth-player-compact"
+                                                        :class="{ 'starter': index === 0, 'backup': index > 0 }"
+                                                        @click="handlePlayerSelectedFromTeam(playerEntry.player)"
+                                                    >
+                                                        <span class="player-rank-compact">{{ index + 1 }}.</span>
+                                                        <span class="player-name-compact">{{ playerEntry.player.name }}</span>
+                                                        <span 
+                                                            class="overall-compact"
+                                                            :class="getOverallClass(playerEntry.overallInRole)"
+                                                        >
+                                                            {{ playerEntry.overallInRole }}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div 
+                                                    v-else
+                                                    class="no-players-compact"
+                                                >
+                                                    No players
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="col-12 col-md-8">
                                     <PitchDisplay
@@ -216,171 +232,44 @@
                     </q-card>
 
                     <q-card
-                        v-if="
-                            selectedFormationKey &&
-                            Object.keys(squadComposition).length > 0
-                        "
+                        class="q-mb-md"
                         :class="
                             quasarInstance.dark.isActive
                                 ? 'bg-grey-9'
                                 : 'bg-white'
                         "
-                        class="q-mt-md"
                     >
                         <q-card-section>
-                            <div class="text-h6 q-mb-md">Squad Depth</div>
-                            <div class="row q-col-gutter-md">
-                                <div
-                                    v-for="slot in currentFormationLayout.flatMap(
-                                        (row) => row.positions,
-                                    )"
-                                    :key="slot.id"
-                                    class="col-12 col-sm-6 col-md-4 col-lg-3"
-                                >
-                                    <q-card
-                                        flat
-                                        bordered
-                                        :class="
-                                            quasarInstance.dark.isActive
-                                                ? 'bg-grey-8'
-                                                : 'bg-grey-2'
-                                        "
-                                    >
-                                        <q-card-section class="q-pa-sm">
-                                            <div
-                                                class="text-subtitle1 text-weight-medium q-mb-xs"
-                                            >
-                                                {{
-                                                    getSlotDisplayName(
-                                                        slot,
-                                                        currentFormationLayout.flatMap(
-                                                            (r) => r.positions,
-                                                        ),
-                                                    )
-                                                }}
-                                            </div>
-                                            <q-list
-                                                dense
-                                                separator
-                                                v-if="
-                                                    squadComposition[slot.id] &&
-                                                    squadComposition[slot.id]
-                                                        .length > 0
-                                                "
-                                            >
-                                                <q-item
-                                                    v-for="(
-                                                        playerEntry, index
-                                                    ) in squadComposition[
-                                                        slot.id
-                                                    ].slice(0, 3)"
-                                                    :key="
-                                                        playerEntry.player
-                                                            .name +
-                                                        '-' +
-                                                        slot.id +
-                                                        '-' +
-                                                        index
-                                                    "
-                                                    clickable
-                                                    @click="
-                                                        handlePlayerSelectedFromTeam(
-                                                            playerEntry.player,
-                                                        )
-                                                    "
-                                                    :class="{
-                                                        'starter-highlight':
-                                                            index === 0,
-                                                    }"
-                                                    class="depth-player-item"
-                                                >
-                                                    <q-item-section
-                                                        avatar
-                                                        class="q-pr-xs"
-                                                        style="min-width: 20px"
-                                                    >
-                                                        <span
-                                                            class="player-rank"
-                                                            >{{
-                                                                index + 1
-                                                            }}.</span
-                                                        >
-                                                    </q-item-section>
-                                                    <q-item-section>
-                                                        <q-item-label
-                                                            lines="1"
-                                                            class="player-name"
-                                                        >
-                                                            {{
-                                                                playerEntry
-                                                                    .player.name
-                                                            }}
-                                                        </q-item-label>
-                                                        <q-item-label
-                                                            caption
-                                                            v-if="index > 0"
-                                                            class="backup-label"
-                                                        >
-                                                            Backup
-                                                        </q-item-label>
-                                                    </q-item-section>
-                                                    <q-item-section side>
-                                                        <div class="d-flex align-items-center">
-                                                            <span
-                                                                v-if="playerEntry.exactMatch"
-                                                                class="position-match-indicator exact-match q-mr-xs"
-                                                                title="Natural position"
-                                                            ></span>
-                                                            <span
-                                                                v-else
-                                                                class="position-match-indicator off-position q-mr-xs"
-                                                                title="Off position"
-                                                            ></span>
-                                                            <span
-                                                                class="attribute-value overall-badge"
-                                                                :class="
-                                                                    getOverallClass(
-                                                                        playerEntry.overallInRole,
-                                                                    )
-                                                                "
-                                                            >
-                                                                {{
-                                                                    playerEntry.overallInRole
-                                                                }}
-                                                            </span>
-                                                        </div>
-                                                    </q-item-section>
-                                                </q-item>
-                                                <q-item
-                                                    v-if="
-                                                        !squadComposition[
-                                                            slot.id
-                                                        ] ||
-                                                        squadComposition[
-                                                            slot.id
-                                                        ].length === 0
-                                                    "
-                                                >
-                                                    <q-item-section
-                                                        class="text-caption text-grey-6"
-                                                        >No suitable
-                                                        players</q-item-section
-                                                    >
-                                                </q-item>
-                                            </q-list>
-                                            <div
-                                                v-else
-                                                class="text-caption text-grey-6 q-pa-sm"
-                                            >
-                                                No suitable players for this
-                                                role.
-                                            </div>
-                                        </q-card-section>
-                                    </q-card>
-                                </div>
+                            <div class="text-h6 q-mb-sm">
+                                Players in {{ selectedTeamName }} ({{
+                                    teamPlayers.length
+                                }})
                             </div>
+                            <PlayerDataTable
+                                v-if="teamPlayers.length > 0"
+                                :players="teamPlayers"
+                                :loading="false"
+                                @player-selected="handlePlayerSelectedFromTeam"
+                                :is-goalkeeper-view="teamIsGoalkeeperView"
+                                :currency-symbol="detectedCurrencySymbol"
+                                table-style="max-height: 400px;"
+                                class="team-player-table"
+                            />
+                            <q-banner
+                                v-else
+                                class="text-center"
+                                :class="
+                                    quasarInstance.dark.isActive
+                                        ? 'bg-grey-8 text-grey-4'
+                                        : 'bg-grey-2 text-grey-7'
+                                "
+                            >
+                                No players found for this team with the current
+                                data.
+                            </q-banner>
                         </q-card-section>
                     </q-card>
+
                 </div>
                 <q-banner
                     v-else-if="
@@ -1727,6 +1616,139 @@ export default {
 
 .q-mr-xs {
     margin-right: 4px !important;
+}
+
+// Compact Squad Depth Styles
+.compact-squad-depth {
+    max-height: 500px;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 8px;
+    width: 100%;
+    
+    .depth-position-compact {
+        padding: 8px;
+        border-radius: 6px;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        min-height: 100px;
+        
+        .body--dark & {
+            background-color: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .body--light & {
+            background-color: rgba(0, 0, 0, 0.05);
+            border-color: rgba(0, 0, 0, 0.1);
+        }
+    }
+    
+    .position-label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        margin-bottom: 6px;
+        text-align: center;
+        color: $grey-7;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        
+        .body--dark & {
+            color: $grey-3;
+        }
+    }
+    
+    .depth-players-compact {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+    
+    .depth-player-compact {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 6px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.75rem;
+        min-height: 22px;
+        
+        &.starter {
+            font-weight: 700;
+            background-color: rgba($positive, 0.15);
+            border: 1px solid rgba($positive, 0.3);
+            
+            .body--dark & {
+                background-color: rgba($positive, 0.25);
+                border-color: rgba($positive, 0.4);
+            }
+        }
+        
+        &.backup {
+            font-weight: 500;
+            background-color: rgba($grey-5, 0.1);
+            
+            .body--dark & {
+                background-color: rgba($grey-5, 0.15);
+            }
+        }
+        
+        &:hover {
+            background-color: rgba($primary, 0.15);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            
+            .body--dark & {
+                background-color: rgba($primary, 0.25);
+            }
+        }
+    }
+    
+    .player-rank-compact {
+        font-size: 0.65rem;
+        font-weight: bold;
+        min-width: 14px;
+        color: $grey-6;
+        
+        .body--dark & {
+            color: $grey-4;
+        }
+    }
+    
+    .player-name-compact {
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 0.72rem;
+    }
+    
+    .overall-compact {
+        font-size: 0.7rem;
+        font-weight: bold;
+        padding: 2px 4px;
+        border-radius: 3px;
+        min-width: 24px;
+        text-align: center;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        
+        .body--dark & {
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+    }
+    
+    .no-players-compact {
+        font-size: 0.7rem;
+        color: $grey-6;
+        font-style: italic;
+        text-align: center;
+        padding: 8px;
+        
+        .body--dark & {
+            color: $grey-5;
+        }
+    }
 }
 
 // Ensure global rating tier colors are applied if not already via app.scss
