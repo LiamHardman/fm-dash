@@ -596,6 +596,7 @@ export default {
 
         onMounted(async () => {
             const datasetIdFromQuery = route.query.datasetId;
+            const teamFromQuery = route.query.team;
             let finalDatasetId =
                 datasetIdFromQuery ||
                 sessionStorage.getItem("currentDatasetId");
@@ -626,7 +627,12 @@ export default {
 
             if (!pageLoadingError.value && allPlayersData.value.length > 0) {
                 populateTeamFilterOptions();
-                if (selectedTeamName.value) {
+                
+                // If a team was specified in the query params, select it
+                if (teamFromQuery && teamFromQuery.trim() !== '') {
+                    selectedTeamName.value = teamFromQuery;
+                    loadTeamPlayers();
+                } else if (selectedTeamName.value) {
                     // If a team was previously selected (e.g. from state restoration)
                     loadTeamPlayers();
                 }
@@ -1422,6 +1428,16 @@ export default {
                     ) {
                         populateTeamFilterOptions();
                     }
+                }
+            },
+        );
+
+        watch(
+            () => route.query.team,
+            (newTeam) => {
+                if (newTeam && newTeam.trim() !== '' && newTeam !== selectedTeamName.value) {
+                    selectedTeamName.value = newTeam;
+                    loadTeamPlayers();
                 }
             },
         );

@@ -170,6 +170,7 @@
                     :loading="loading"
                     @update:sort="handleSort"
                     @player-selected="handlePlayerSelected"
+                    @team-selected="handleTeamSelected"
                     :is-goalkeeper-view="isGoalkeeperView"
                     :currency-symbol="detectedCurrencySymbol"
                     :filtered-player-count="filteredPlayers.length"
@@ -629,6 +630,18 @@ export default {
             showPlayerDetailDialog.value = true;
         };
 
+        const handleTeamSelected = (teamName) => {
+            if (currentDatasetId.value) {
+                router.push({
+                    path: '/team-view',
+                    query: { 
+                        datasetId: currentDatasetId.value,
+                        team: teamName
+                    }
+                });
+            }
+        };
+
         const handleFilterChanged = async (newFilters) => {
             activeFilters.value = newFilters;
             if (playerStore.currentDatasetId) {
@@ -692,6 +705,7 @@ export default {
             selectedPlayer,
             showPlayerDetailDialog,
             handlePlayerSelected,
+            handleTeamSelected,
             attributeWeightsLoadedForFeedback,
             roleSpecificOverallWeightsLoadedForFeedback,
             showUpgradeFinder,

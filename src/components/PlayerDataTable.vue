@@ -197,6 +197,18 @@
                                 <span>{{ props.row.nationality || "-" }}</span>
                             </div>
                         </template>
+                        <template v-else-if="col.name === 'club'">
+                            <span 
+                                class="club-link"
+                                @click.stop="onClubClick(props.row)"
+                                :title="`View ${props.row[col.field]} team page`"
+                            >{{
+                                props.row[col.field] !== undefined &&
+                                props.row[col.field] !== null
+                                    ? props.row[col.field]
+                                    : "-"
+                            }}</span>
+                        </template>
                         <template v-else>
                             <span>{{
                                 props.row[col.field] !== undefined &&
@@ -266,7 +278,7 @@ export default {
         currencySymbol: { type: String, default: "$" },
         filteredPlayerCount: { type: Number, default: 0 },
     },
-    emits: ["update:sort", "player-selected", "update:pagination"],
+    emits: ["update:sort", "player-selected", "update:pagination", "team-selected"],
 
     setup(props, { emit }) {
         console.log(`PlayerDataTable: Setup function start.`); // Static label
@@ -866,6 +878,12 @@ export default {
             emit("player-selected", player);
         };
 
+        const onClubClick = (player) => {
+            if (player.club && player.club.trim() !== '') {
+                emit("team-selected", player.club);
+            }
+        };
+
         const formatDisplayCurrency = (numericAmount, originalDisplayValue) => {
             return formatCurrency(
                 numericAmount,
@@ -896,6 +914,7 @@ export default {
             customSort,
             sortTable,
             onRowClick,
+            onClubClick,
             formatDisplayCurrency,
             MAX_DISPLAY_PLAYERS,
             totalSortedCount,
@@ -1102,6 +1121,25 @@ export default {
     .body--dark & {
         // Ensure .body--dark is a class on your body/html tag
         color: $grey-3; // Make sure $grey-3 is defined or use a Quasar variable
+    }
+}
+
+.club-link {
+    color: #1976d2;
+    text-decoration: underline;
+    cursor: pointer;
+    
+    &:hover {
+        color: #1565c0;
+        text-decoration: none;
+    }
+    
+    .body--dark & {
+        color: #42a5f5;
+        
+        &:hover {
+            color: #64b5f6;
+        }
     }
 }
 </style>
