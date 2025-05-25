@@ -283,28 +283,29 @@ export default {
         const filteredPlayers = computed(() => {
             if (!Array.isArray(allPlayersData.value)) return [];
             
-            return allPlayersData.value.filter((player) => {
-                // Name filter
-                if (nameFilter.value && !player.name.toLowerCase().includes(nameFilter.value.toLowerCase())) {
-                    return false;
-                }
-                
-                // Club filter
-                if (clubFilter.value && player.club !== clubFilter.value) {
-                    return false;
-                }
-                
-                // Position filter
-                if (positionFilter.value) {
-                    const hasPosition = player.shortPositions?.includes(positionFilter.value);
-                    if (!hasPosition) return false;
-                }
-                
-                // Role filter
-                if (roleFilter.value) {
-                    const hasRole = player.roleSpecificOveralls?.some(role => role.roleName === roleFilter.value);
-                    if (!hasRole) return false;
-                }
+            return allPlayersData.value
+                .filter((player) => {
+                    // Name filter
+                    if (nameFilter.value && !player.name.toLowerCase().includes(nameFilter.value.toLowerCase())) {
+                        return false;
+                    }
+                    
+                    // Club filter
+                    if (clubFilter.value && player.club !== clubFilter.value) {
+                        return false;
+                    }
+                    
+                    // Position filter
+                    if (positionFilter.value) {
+                        const hasPosition = player.shortPositions?.includes(positionFilter.value);
+                        if (!hasPosition) return false;
+                    }
+                    
+                    // Role filter
+                    if (roleFilter.value) {
+                        const hasRole = player.roleSpecificOveralls?.some(role => role.roleName === roleFilter.value);
+                        if (!hasRole) return false;
+                    }
                 
                 // Nationality filter
                 if (nationalityFilter.value && player.nationality !== nationalityFilter.value) {
@@ -345,8 +346,23 @@ export default {
                     return false;
                 }
                 
-                return true;
-            });
+                    return true;
+                })
+                .map((player) => {
+                    // If a role is selected, modify the player's overall to show role-specific rating
+                    if (roleFilter.value) {
+                        const roleMatch = player.roleSpecificOveralls?.find(role => role.roleName === roleFilter.value);
+                        if (roleMatch) {
+                            // Return a modified copy of the player with role-specific overall
+                            return {
+                                ...player,
+                                overall: roleMatch.score  // Use role-specific overall instead of best overall
+                            };
+                        }
+                    }
+                    // Return original player if no role filter or no role match
+                    return player;
+                });
         });
 
         const fetchDataset = async (datasetId) => {
