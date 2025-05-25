@@ -152,7 +152,7 @@
                 >
                     <q-card-section>
                         <PlayerFilters
-                            @filters-changed="handleFiltersChanged"
+                            @filter-changed="handleFiltersChanged"
                             :all-available-roles="allAvailableRoles"
                             :unique-clubs="uniqueClubs"
                             :unique-nationalities="uniqueNationalities"
@@ -252,14 +252,14 @@ export default {
 
         // Filter states
         const nameFilter = ref("");
-        const clubFilter = ref("");
-        const positionFilter = ref("");
-        const roleFilter = ref("");
-        const nationalityFilter = ref("");
-        const mediaHandlingFilter = ref("");
-        const personalityFilter = ref("");
-        const ageRangeFilter = ref([15, 50]);
-        const transferValueRangeFilter = ref([0, 100000000]);
+        const clubFilter = ref(null);
+        const positionFilter = ref(null);
+        const roleFilter = ref(null);
+        const nationalityFilter = ref(null);
+        const mediaHandlingFilter = ref([]);
+        const personalityFilter = ref([]);
+        const ageRangeFilter = ref({ min: 15, max: 50 });
+        const transferValueRangeFilter = ref({ min: 0, max: 100000000 });
         const maxSalaryFilter = ref(null);
 
         // Computed properties from store
@@ -312,25 +312,31 @@ export default {
                 }
                 
                 // Media handling filter
-                if (mediaHandlingFilter.value) {
-                    const hasMediaHandling = player.media_handling?.includes(mediaHandlingFilter.value);
+                if (mediaHandlingFilter.value && mediaHandlingFilter.value.length > 0) {
+                    if (!player.media_handling) return false;
+                    const playerMediaHandlings = player.media_handling.split(",").map(s => s.trim());
+                    const hasMediaHandling = mediaHandlingFilter.value.some(filter => 
+                        playerMediaHandlings.includes(filter)
+                    );
                     if (!hasMediaHandling) return false;
                 }
                 
                 // Personality filter
-                if (personalityFilter.value && player.personality !== personalityFilter.value) {
-                    return false;
+                if (personalityFilter.value && personalityFilter.value.length > 0) {
+                    if (!player.personality) return false;
+                    const hasPersonality = personalityFilter.value.includes(player.personality);
+                    if (!hasPersonality) return false;
                 }
                 
                 // Age range filter
                 const playerAge = parseInt(player.age, 10) || 0;
-                if (playerAge < ageRangeFilter.value[0] || playerAge > ageRangeFilter.value[1]) {
+                if (playerAge < ageRangeFilter.value.min || playerAge > ageRangeFilter.value.max) {
                     return false;
                 }
                 
                 // Transfer value range filter
-                if (player.transferValueAmount < transferValueRangeFilter.value[0] || 
-                    player.transferValueAmount > transferValueRangeFilter.value[1]) {
+                if (player.transferValueAmount < transferValueRangeFilter.value.min || 
+                    player.transferValueAmount > transferValueRangeFilter.value.max) {
                     return false;
                 }
                 
@@ -438,7 +444,7 @@ export default {
             mediaHandlingFilter.value = filters.mediaHandling;
             personalityFilter.value = filters.personality;
             ageRangeFilter.value = filters.ageRange;
-            transferValueRangeFilter.value = filters.transferValueRange;
+            transferValueRangeFilter.value = filters.transferValueRangeLocal;
             maxSalaryFilter.value = filters.maxSalary;
         };
 
