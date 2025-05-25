@@ -1,0 +1,85 @@
+# kubernetes_v2fmdash_unified_nginx.yaml
+# Location: Root of your project (as per current assumption)
+
+# --- Deployment for the Unified Nginx+Go Application ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: v2fmdash # Application name
+  namespace: default # Or your target namespace
+  labels:
+    app: v2fmdash # Application name
+spec:
+  replicas: 1 # Adjust as needed
+  selector:
+    matchLabels:
+      app: v2fmdash # Application name
+  template:
+    metadata:
+      labels:
+        app: v2fmdash # Application name
+    spec:
+      # Optional: Define security context if needed.
+      # Supervisord runs as root by default, and Nginx often needs to.
+      # If you run Go app as non-root under supervisord, ensure permissions.
+      # securityContext:
+      #   runAsUser: 0 # Supervisord needs to run as root
+      containers:
+        - name: v2fmdash-container # Container name
+          image: git.liamhardman.com/liam/v2fmdash:main # Image name and tag
+          imagePullPolicy: Always
+          ports:
+            - name: http-nginx # Port Nginx listens on inside the container
+              containerPort: 8080 # This should match EXPOSE in Dockerfile and listen directive in nginx.conf
+          env:
+            # PORT_GO_API and PORT_NGINX are primarily for supervisord inside the container,
+            # but can be exposed here if needed for other reasons or overrides.
+            # The Go app's port (8091) is internal to the container and proxied by Nginx.
+            # Nginx's port (8080) is what the container exposes.
+            - name: PORT_GO_API # This informs supervisord which port Go app should use
+              value: "8091"
+            - name: PORT_NGINX # This informs supervisord which port Nginx should use
+              value: "8080"
+          # No secrets or API keys are mounted as per user request
+          resources: # Optional: Define resource requests and limits
+            requests:
+              cpu: "1000m"
+              memory: "1024Mi"
+            limits:
+              cpu: "2500m"
+              memory: "2048Mi"
+          readinessProbe:
+            httpGet:
+              path: / # Vue app's root, served by Nginx
+              port: http-nginx # Use the named port
+            initialDelaySeconds: 20
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: / # Or a dedicated /healthz endpoint served by Nginx/Go
+              port: http-nginx
+            initialDelaySeconds: 45
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+---
+# --- Service for the Unified Nginx+Go Application ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: v2fmdash # Application name
+  namespace: default # Or your target namespace
+  labels:
+    app: v2fmdash # Application name
+spec:
+  type: ClusterIP # Or LoadBalancer/NodePort depending on how you expose it
+  selector:
+    app: v2fmdash # Application name
+  ports:
+    - name: http # Name for the service port
+      protocol: TCP
+      port: 80 # Port the service is available on within the cluster (can be different from targetPort)
+      targetPort: http-nginx # Named port from the Deployment (Nginx's listening port, 8080)
