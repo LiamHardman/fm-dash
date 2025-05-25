@@ -84,14 +84,17 @@ func NewMinIOStorage(endpoint, accessKey, secretKey, bucketName string, useSSL b
 		Secure: useSSL,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create MinIO client: %w", err)
+		log.Printf("Warning: Failed to create MinIO client: %v. Using fallback storage.", err)
+		return &MinIOStorage{fallback: fallback}, nil
 	}
 
 	ctx := context.Background()
 	
+	// Check if bucket exists (this tests authentication)
+	log.Printf("Testing MinIO connection by checking bucket existence: %s", bucketName)
 	exists, err := client.BucketExists(ctx, bucketName)
 	if err != nil {
-		log.Printf("Warning: Failed to check if bucket exists: %v. Using fallback storage.", err)
+		log.Printf("Warning: MinIO bucket check failed - %v. Using fallback storage.", err)
 		return &MinIOStorage{fallback: fallback}, nil
 	}
 	
@@ -102,8 +105,11 @@ func NewMinIOStorage(endpoint, accessKey, secretKey, bucketName string, useSSL b
 			return &MinIOStorage{fallback: fallback}, nil
 		}
 		log.Printf("Created MinIO bucket: %s", bucketName)
+	} else {
+		log.Printf("MinIO bucket %s already exists", bucketName)
 	}
 
+	log.Printf("Successfully connected to MinIO at %s with bucket %s", endpoint, bucketName)
 	return &MinIOStorage{
 		client:     client,
 		bucketName: bucketName,
@@ -233,6 +239,16 @@ func InitializeStorage() StorageInterface {
 		log.Println("MinIO credentials not provided. Using in-memory storage only.")
 		return inMemory
 	}
+
+	// Debug logging (only show first few chars for security)
+	accessKeyPrefix := accessKey
+	if len(accessKey) > 4 {
+		accessKeyPrefix = accessKey[:4]
+	}
+	log.Printf("MinIO Config: endpoint=%s, accessKey=%s..., useSSL=%v", 
+		minioEndpoint, 
+		accessKeyPrefix, 
+		useSSL)
 
 	minioStorage, err := NewMinIOStorage(minioEndpoint, accessKey, secretKey, "v2fmdash", useSSL, inMemory)
 	if err != nil {
