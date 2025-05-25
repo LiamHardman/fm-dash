@@ -11,7 +11,7 @@ jobs:
     env:
       REGISTRY: git.liamhardman.com # Your Gitea container registry
       IMAGE_NAMESPACE: liam # Your preferred namespace on the registry
-      IMAGE_NAME: v2fmdash-unified-nginx # Name for the unified Docker image
+      IMAGE_NAME: v2fmdash # Name for the unified Docker image
       APP_NAME_K8S: v2fmdash # Kubernetes Deployment/Service name
       KUBE_MANIFEST_FILE: kube.yaml # Name of your Kubernetes manifest file in the repo root
 
