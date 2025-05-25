@@ -18,8 +18,30 @@
                     />
                 </q-avatar>
                 <q-toolbar-title class="header-title">
-                    FM Player Parser
+                    <router-link to="/" class="app-title-link">FMDB</router-link>
                 </q-toolbar-title>
+                
+                <div class="nav-links">
+                    <q-btn
+                        flat
+                        label="Upload"
+                        @click="$router.push('/upload')"
+                        class="nav-btn"
+                    />
+                    <q-btn
+                        flat
+                        label="Team View"
+                        @click="$router.push('/team-view')"
+                        class="nav-btn"
+                    />
+                    <q-btn
+                        flat
+                        label="Docs"
+                        @click="$router.push('/docs')"
+                        class="nav-btn"
+                    />
+                </div>
+                
                 <q-space />
                 <q-toggle
                     v-model="isDarkModeActive"
@@ -61,7 +83,7 @@
         >
             <q-toolbar>
                 <q-toolbar-title class="text-caption text-center">
-                    &copy; {{ new Date().getFullYear() }} FM Player Parser. All
+                    &copy; {{ new Date().getFullYear() }} FMDB. All
                     rights reserved.
                 </q-toolbar-title>
             </q-toolbar>
@@ -112,13 +134,46 @@ export default defineComponent({
     }
 }
 
+.app-title-link {
+    text-decoration: none;
+    color: inherit;
+    font-weight: 700;
+    font-size: 1.5rem;
+    
+    &:hover {
+        opacity: 0.8;
+    }
+}
+
+.nav-links {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.nav-btn {
+    color: white;
+    font-weight: 500;
+    
+    &:hover {
+        background: rgba(255, 255, 255, 0.1);
+    }
+}
+
 // Responsive adjustments for header
 @media (max-width: $breakpoint-xs-max) {
     .header-title {
-        font-size: 1rem; // Smaller title on mobile
+        font-size: 1rem;
     }
+    
+    .app-title-link {
+        font-size: 1.2rem;
+    }
+    
+    .nav-links {
+        display: none; // Hide nav links on mobile to save space
+    }
+    
     .q-toolbar__title {
-        // Allow title to shrink if needed when toggle is present
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
