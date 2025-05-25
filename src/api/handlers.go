@@ -159,13 +159,8 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	parseDuration := time.Since(parseStartTime)
 	datasetID := uuid.New().String()
 
-	// Assumes playerDataStore and storeMutex are defined in store.go
-	storeMutex.Lock()
-	playerDataStore[datasetID] = struct {
-		Players        []Player
-		CurrencySymbol string
-	}{Players: playersList, CurrencySymbol: finalDatasetCurrencySymbol}
-	storeMutex.Unlock()
+	// Store using the new storage interface (with MinIO support and fallback)
+	SetPlayerData(datasetID, playersList, finalDatasetCurrencySymbol)
 
 	log.Printf("Stored %d players with DatasetID: %s. Detected Currency: %s", len(playersList), datasetID, finalDatasetCurrencySymbol)
 	if len(playersList) > 0 {
@@ -226,15 +221,18 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("playerDataHandler: DatasetID=%s, PositionFilter=%s, RoleFilter=%s, MinAge=%s, MaxAge=%s, MinVal=%s, MaxVal=%s, MaxSalary=%s",
 		datasetID, filterPosition, filterRole, minAgeStr, maxAgeStr, minTransferValueStr, maxTransferValueStr, maxSalaryStr)
 
-	storeMutex.RLock()                        // Assumes storeMutex is defined in store.go
-	data, found := playerDataStore[datasetID] // Assumes playerDataStore is defined in store.go
-	storeMutex.RUnlock()
-
+	// Use the new storage interface to get player data
+	players, currencySymbol, found := GetPlayerData(datasetID)
 	if !found {
 		log.Printf("Player data not found for DatasetID: %s", datasetID)
 		http.Error(w, "Player data not found for the given ID.", http.StatusNotFound)
 		return
 	}
+	
+	data := struct {
+		Players        []Player
+		CurrencySymbol string
+	}{Players: players, CurrencySymbol: currencySymbol}
 
 	processedPlayers := make([]Player, 0, len(data.Players))
 
