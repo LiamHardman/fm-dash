@@ -689,15 +689,36 @@ export default {
                 } else {
                     teamPlayers.value = [];
                 }
+                
+                // Auto-select the best formation for this team
+                if (teamPlayers.value.length > 0) {
+                    const bestFormation = calculateBestFormationForTeam();
+                    if (bestFormation) {
+                        selectedFormationKey.value = bestFormation;
+                        calculationMessage.value = `Auto-selected best formation: ${formations[bestFormation].name}. Calculating Best XI...`;
+                        calculationMessageClass.value = quasarInstance.dark.isActive
+                            ? "bg-info text-white"
+                            : "bg-blue-2 text-primary";
+                    } else {
+                        selectedFormationKey.value = null;
+                        squadComposition.value = {};
+                        bestTeamAverageOverall.value = null;
+                        calculationMessage.value = "No suitable formation found for this team.";
+                        calculationMessageClass.value = quasarInstance.dark.isActive
+                            ? "text-grey-5"
+                            : "text-grey-7";
+                    }
+                } else {
+                    selectedFormationKey.value = null;
+                    squadComposition.value = {};
+                    bestTeamAverageOverall.value = null;
+                    calculationMessage.value = "No players found for this team.";
+                    calculationMessageClass.value = quasarInstance.dark.isActive
+                        ? "text-grey-5"
+                        : "text-grey-7";
+                }
+                
                 loadingTeam.value = false;
-                selectedFormationKey.value = null; // Reset formation on team change
-                squadComposition.value = {};
-                bestTeamAverageOverall.value = null;
-                calculationMessage.value =
-                    "Select a formation to calculate Best XI and squad depth.";
-                calculationMessageClass.value = quasarInstance.dark.isActive
-                    ? "text-grey-5"
-                    : "text-grey-7";
             }, 200);
         };
 
@@ -984,6 +1005,105 @@ export default {
                 return slot.id.split("_")[0];
             }
             return slot.role; // Otherwise, use the general role name like "AM (C)"
+        };
+
+        const calculateBestFormationForTeam = () => {
+            if (teamPlayers.value.length === 0) {
+                return null;
+            }
+
+            let bestFormationKey = null;
+            let bestAverageOverall = 0;
+
+            // Test each formation to find the one with highest average overall
+            Object.keys(formations).forEach(formationKey => {
+                const formationLayoutForCalc = getFormationLayout(formationKey);
+                if (!formationLayoutForCalc) return;
+
+                const formationSlots = formationLayoutForCalc.flatMap(row => row.positions);
+                const tempSquadComposition = {};
+                
+                // Initialize slots
+                formationSlots.forEach(slot => {
+                    tempSquadComposition[slot.id] = [];
+                });
+
+                // Calculate player scores for each position in this formation
+                const allPotentialPlayerAssignments = [];
+                formationSlots.forEach(slot => {
+                    teamPlayers.value.forEach(player => {
+                        const overallInRole = getPlayerOverallForRole(player, slot.role);
+                        
+                        if (overallInRole >= MIN_SUITABILITY_THRESHOLD) {
+                            const slotPositions = positionSideMap[slot.role.toUpperCase()] || [];
+                            const playerPositions = player.shortPositions || [];
+                            const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos));
+                            
+                            if (isExactMatch || overallInRole >= MIN_SUITABILITY_THRESHOLD) {
+                                const assignment = {
+                                    player,
+                                    slotId: slot.id,
+                                    slotRole: slot.role,
+                                    overallInRole: overallInRole,
+                                    sortScore: overallInRole,
+                                    exactMatch: isExactMatch
+                                };
+                                
+                                if (isExactMatch) {
+                                    assignment.sortScore += 10000;
+                                } else {
+                                    assignment.sortScore -= 5000;
+                                }
+                                
+                                allPotentialPlayerAssignments.push(assignment);
+                            }
+                        }
+                    });
+                });
+
+                // Sort assignments by sort score
+                allPotentialPlayerAssignments.sort((a, b) => b.sortScore - a.sortScore);
+
+                const assignedPlayersToSlots = new Set();
+
+                // Fill starting XI for this formation
+                formationSlots.forEach(slot => {
+                    for (const assignment of allPotentialPlayerAssignments) {
+                        if (
+                            assignment.slotId === slot.id &&
+                            !assignedPlayersToSlots.has(assignment.player.name)
+                        ) {
+                            tempSquadComposition[slot.id].push({
+                                player: assignment.player,
+                                overallInRole: assignment.overallInRole,
+                                exactMatch: assignment.exactMatch
+                            });
+                            assignedPlayersToSlots.add(assignment.player.name);
+                            break;
+                        }
+                    }
+                });
+
+                // Calculate average overall for this formation
+                let sumOfStartersOverall = 0;
+                let startersCount = 0;
+                Object.values(tempSquadComposition).forEach(slotPlayers => {
+                    if (slotPlayers && slotPlayers.length > 0) {
+                        sumOfStartersOverall += slotPlayers[0].overallInRole;
+                        startersCount++;
+                    }
+                });
+
+                if (startersCount > 0) {
+                    const averageOverall = sumOfStartersOverall / startersCount;
+                    if (averageOverall > bestAverageOverall) {
+                        bestAverageOverall = averageOverall;
+                        bestFormationKey = formationKey;
+                    }
+                }
+            });
+
+            return bestFormationKey;
         };
 
         const calculateBestTeamAndDepth = () => {
