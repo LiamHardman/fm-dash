@@ -179,6 +179,7 @@
                             :players="filteredPlayers"
                             :loading="loading"
                             @player-selected="handlePlayerSelected"
+                            @team-selected="handleTeamSelected"
                             :is-goalkeeper-view="isGoalkeeperView"
                             :currency-symbol="detectedCurrencySymbol"
                         />
@@ -414,6 +415,20 @@ export default {
             showPlayerDetailDialog.value = true;
         };
 
+        const handleTeamSelected = (teamName) => {
+            if (currentDatasetId.value) {
+                // Open in new tab (since user requested new tab functionality)
+                const url = router.resolve({
+                    path: '/team-view',
+                    query: { 
+                        datasetId: currentDatasetId.value,
+                        team: teamName
+                    }
+                }).href;
+                window.open(url, '_blank');
+            }
+        };
+
         const handleFiltersChanged = (filters) => {
             nameFilter.value = filters.name;
             clubFilter.value = filters.club;
@@ -460,6 +475,7 @@ export default {
             viewAllPlayers,
             viewTeamAnalysis,
             handlePlayerSelected,
+            handleTeamSelected,
             handleFiltersChanged,
             quasarInstance,
             router,
