@@ -40,8 +40,7 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_NAME }}:main # Tag is 'main'
           build-args: |
-            VITE_API_BASE_URL=/api # Vue app will make calls to /api/...
-            # No API_KEY or other secrets passed as build-args
+            VITE_API_BASE_URL=/api
 
       - name: Install kubectl
         run: |
