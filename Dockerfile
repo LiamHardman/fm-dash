@@ -13,7 +13,8 @@ ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 RUN echo "Building Vue app with VITE_API_BASE_URL=${VITE_API_BASE_URL}"
 RUN npm run build
 
-FROM golang:1.23-bullseye AS go-builder
+# Updated Go version for the go-builder stage
+FROM golang:1.24-bullseye AS go-builder
 LABEL stage=go-builder
 WORKDIR /app-go
 
@@ -67,4 +68,4 @@ EXPOSE 8080
 ENV PORT_GO_API=8091
 ENV PORT_NGINX=8080
 
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
