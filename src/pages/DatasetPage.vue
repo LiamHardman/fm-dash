@@ -109,7 +109,7 @@
                     <q-card-section>
                         <div class="text-h6 q-mb-md">Quick Actions</div>
                         <div class="row q-col-gutter-md">
-                            <div class="col-12 col-sm-6">
+                            <div class="col-12 col-sm-4">
                                 <q-btn
                                     color="primary"
                                     label="View All Players"
@@ -119,12 +119,23 @@
                                     size="lg"
                                 />
                             </div>
-                            <div class="col-12 col-sm-6">
+                            <div class="col-12 col-sm-4">
                                 <q-btn
                                     color="secondary"
                                     label="Team Analysis"
                                     icon="sports_soccer"
                                     @click="viewTeamAnalysis"
+                                    class="full-width"
+                                    size="lg"
+                                />
+                            </div>
+                            <div class="col-12 col-sm-4">
+                                <q-btn
+                                    color="accent"
+                                    label="Find Upgrades"
+                                    icon="find_replace"
+                                    @click="showUpgradeFinder = true"
+                                    :disable="allPlayersData.length === 0"
                                     class="full-width"
                                     size="lg"
                                 />
@@ -204,6 +215,12 @@
             @close="showPlayerDetailDialog = false"
             :currency-symbol="detectedCurrencySymbol"
         />
+        <UpgradeFinderDialog
+            :show="showUpgradeFinder"
+            :players="allPlayersData"
+            @close="showUpgradeFinder = false"
+            :currency-symbol="detectedCurrencySymbol"
+        />
     </q-page>
 </template>
 
@@ -215,10 +232,11 @@ import { usePlayerStore } from "../stores/playerStore";
 import PlayerDataTable from "../components/PlayerDataTable.vue";
 import PlayerDetailDialog from "../components/PlayerDetailDialog.vue";
 import PlayerFilters from "../components/filters/PlayerFilters.vue";
+import UpgradeFinderDialog from "../components/UpgradeFinderDialog.vue";
 
 export default {
     name: "DatasetPage",
-    components: { PlayerDataTable, PlayerDetailDialog, PlayerFilters },
+    components: { PlayerDataTable, PlayerDetailDialog, PlayerFilters, UpgradeFinderDialog },
     setup() {
         const quasarInstance = useQuasar();
         const router = useRouter();
@@ -229,6 +247,7 @@ export default {
         const pageLoadingError = ref("");
         const playerForDetailView = ref(null);
         const showPlayerDetailDialog = ref(false);
+        const showUpgradeFinder = ref(false);
 
         // Filter states
         const nameFilter = ref("");
@@ -436,6 +455,7 @@ export default {
             filteredPlayers,
             playerForDetailView,
             showPlayerDetailDialog,
+            showUpgradeFinder,
             shareDataset,
             viewAllPlayers,
             viewTeamAnalysis,

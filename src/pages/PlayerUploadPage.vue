@@ -1,4 +1,3 @@
-// src/pages/PlayerUploadPage.vue
 <template>
     <q-page padding>
         <div class="q-pa-md">
@@ -48,20 +47,8 @@
                             auto-detected.
                         </li>
                         <li>
-                            Table shows players with FIFA-style stats, Overall
-                            (best role), Age, etc.
+                            You'll be redirected to your dataset page where you can view players, analyze teams, and share your data.
                         </li>
-                        <li>
-                            Use filters: Name, Club, Position (short codes),
-                            <strong>Role (specific to position)</strong>,
-                            Nationality, Value ({{ detectedCurrencySymbol }}),
-                            Media Handling, Personality, Age Range.
-                        </li>
-                        <li>
-                            Click player row for detailed view (all role
-                            overalls).
-                        </li>
-                        <li>Use "View Team Page" for team analysis.</li>
                     </ol>
                 </q-card-section>
             </q-card>
@@ -111,21 +98,6 @@
                 </q-card-section>
             </q-card>
 
-            <PlayerFilters
-                v-if="playerStore.currentDatasetId"
-                :players="allPlayers"
-                :currency-symbol="detectedCurrencySymbol"
-                :transfer-value-range="playerStore.transferValueRange"
-                :initial-dataset-range="initialDatasetTransferRange"
-                :salary-range="salaryRange"
-                :unique-clubs="playerStore.uniqueClubs"
-                :unique-nationalities="playerStore.uniqueNationalities"
-                :unique-media-handlings="playerStore.uniqueMediaHandlings"
-                :unique-personalities="playerStore.uniquePersonalities"
-                @filter-changed="handleFilterChanged"
-                :is-loading="loading"
-            />
-
             <q-banner
                 v-if="error"
                 class="bg-negative text-white q-mb-md"
@@ -140,94 +112,7 @@
                         @click="playerStore.error = ''"
                 /></template>
             </q-banner>
-
-            <template v-if="allPlayers.length > 0">
-                <div class="row justify-between items-center q-mb-md q-mt-md">
-                    <q-btn
-                        color="info"
-                        icon="groups"
-                        label="View Team Page"
-                        @click="goToTeamView"
-                        :disable="
-                            allPlayers.length === 0 ||
-                            !currentDatasetId ||
-                            loading
-                        "
-                        class="q-px-lg"
-                    />
-                    <q-btn
-                        color="secondary"
-                        icon="find_replace"
-                        label="Find Upgrades"
-                        @click="showUpgradeFinder = true"
-                        :disable="allPlayers.length === 0 || loading"
-                        class="q-px-lg"
-                    />
-                </div>
-
-                <PlayerDataTable
-                    :players="filteredPlayers"
-                    :loading="loading"
-                    @update:sort="handleSort"
-                    @player-selected="handlePlayerSelected"
-                    @team-selected="handleTeamSelected"
-                    :is-goalkeeper-view="isGoalkeeperView"
-                    :currency-symbol="detectedCurrencySymbol"
-                    :filtered-player-count="filteredPlayers.length"
-                />
-            </template>
-
-            <q-card
-                v-else-if="!loading && !playerStore.currentDatasetId"
-                class="q-pa-lg text-center no-data-card"
-                :class="
-                    $q.dark.isActive
-                        ? 'bg-grey-9 text-grey-5'
-                        : 'bg-grey-1 text-grey-7'
-                "
-                flat
-                bordered
-            >
-                <q-icon name="upload_file" size="4rem" />
-                <div class="text-h6 q-mt-md">No Player Data Yet</div>
-                <div>Upload a file to see player data</div>
-            </q-card>
-            <q-card
-                v-else-if="
-                    !loading &&
-                    playerStore.currentDatasetId &&
-                    allPlayers.length === 0
-                "
-                class="q-pa-lg text-center no-data-card"
-                :class="
-                    $q.dark.isActive
-                        ? 'bg-grey-9 text-grey-5'
-                        : 'bg-grey-1 text-grey-7'
-                "
-                flat
-                bordered
-            >
-                <q-icon name="sentiment_dissatisfied" size="4rem" />
-                <div class="text-h6 q-mt-md">No Players Found</div>
-                <div>
-                    The uploaded file might not contain player data or an error
-                    occurred during parsing.
-                </div>
-            </q-card>
         </div>
-
-        <PlayerDetailDialog
-            :player="selectedPlayer"
-            :show="showPlayerDetailDialog"
-            @close="showPlayerDetailDialog = false"
-            :currency-symbol="detectedCurrencySymbol"
-        />
-        <UpgradeFinderDialog
-            :show="showUpgradeFinder"
-            :players="allPlayers"
-            @close="showUpgradeFinder = false"
-            :currency-symbol="detectedCurrencySymbol"
-        />
 
         <q-dialog v-model="showFileSizeLimitModal" persistent>
             <q-card
@@ -266,46 +151,22 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, watch } from "vue";
-import { useRouter, useRoute } from "vue-router"; // Added useRoute
+import { ref, computed, onMounted } from "vue";
+import { useRouter } from "vue-router";
 import { useQuasar, Notify } from "quasar";
 import { usePlayerStore } from "../stores/playerStore";
-import PlayerDataTable from "../components/PlayerDataTable.vue";
-import PlayerDetailDialog from "../components/PlayerDetailDialog.vue";
-import UpgradeFinderDialog from "../components/UpgradeFinderDialog.vue";
-import PlayerFilters from "../components/filters/PlayerFilters.vue";
 
 const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024;
 
 export default {
     name: "PlayerUploadPage",
-    components: {
-        PlayerDataTable,
-        PlayerDetailDialog,
-        UpgradeFinderDialog,
-        PlayerFilters,
-    },
     setup() {
         const router = useRouter();
-        const route = useRoute(); // Added useRoute
         const playerStore = usePlayerStore();
         const $q = useQuasar();
         const playerFile = ref(null);
-        const filteredPlayers = ref([]);
-        const selectedPlayer = ref(null);
-        const showPlayerDetailDialog = ref(false);
-        const showUpgradeFinder = ref(false);
         const showFileSizeLimitModal = ref(false);
 
-        const initialDatasetTransferRange = ref({ min: 0, max: 100000000 }); // Default
-
-        const allPlayers = computed(() =>
-            Array.isArray(playerStore.allPlayers) ? playerStore.allPlayers : [],
-        );
-        const currentDatasetId = computed(() => playerStore.currentDatasetId);
-        const detectedCurrencySymbol = computed(
-            () => playerStore.detectedCurrencySymbol,
-        );
         const loading = computed(() => playerStore.loading);
         const error = computed({
             get: () => playerStore.error,
@@ -314,85 +175,8 @@ export default {
             },
         });
 
-        const salaryRange = computed(() => {
-            if (!allPlayers.value || allPlayers.value.length === 0) {
-                return { min: 0, max: 1000000 };
-            }
-            const salaries = allPlayers.value
-                .filter((p) => typeof p.wageAmount === "number")
-                .map((p) => p.wageAmount);
-            if (salaries.length === 0) return { min: 0, max: 1000000 };
-            const min = Math.min(...salaries);
-            let max = Math.max(...salaries);
-            if (min >= max) max = min + 10000; // Ensure max is always greater than min
-            return { min, max };
-        });
-
         const attributeWeightsLoadedForFeedback = ref(false);
         const roleSpecificOverallWeightsLoadedForFeedback = ref(false);
-
-        const activeFilters = ref({});
-
-        const isGoalkeeperView = computed(
-            () => activeFilters.value.position === "GK",
-        );
-
-        const setInitialDatasetRange = () => {
-            if (
-                Array.isArray(playerStore.allPlayers) &&
-                playerStore.allPlayers.length > 0
-            ) {
-                const values = playerStore.allPlayers
-                    .filter((p) => typeof p.transferValueAmount === "number")
-                    .map((p) => p.transferValueAmount);
-                if (values.length > 0) {
-                    const minVal = Math.min(0, ...values);
-                    let maxVal = Math.max(...values);
-                    if (minVal >= maxVal && values.length > 0)
-                        maxVal = minVal + 50000; // Ensure max > min if values exist
-                    else if (
-                        minVal === 0 &&
-                        maxVal === 0 &&
-                        values.some((v) => v === 0)
-                    )
-                        maxVal = 50000;
-                    initialDatasetTransferRange.value = {
-                        min: minVal,
-                        max: maxVal,
-                    };
-                } else {
-                    // No numeric transfer values found
-                    initialDatasetTransferRange.value = {
-                        min: 0,
-                        max: 100000000,
-                    };
-                }
-            } else {
-                // No players in store
-                initialDatasetTransferRange.value = { min: 0, max: 100000000 };
-            }
-            console.log(
-                "PlayerUploadPage: Initial dataset transfer range set:",
-                JSON.parse(JSON.stringify(initialDatasetTransferRange.value)),
-            );
-        };
-
-        const fetchAndSetInitialRange = async (datasetId) => {
-            if (
-                !playerStore.currentDatasetId ||
-                playerStore.currentDatasetId !== datasetId ||
-                playerStore.allPlayers.length === 0
-            ) {
-                await playerStore.fetchPlayersByDatasetId(datasetId); // This will populate allPlayers
-            }
-            if (
-                playerStore.allAvailableRoles.length === 0 &&
-                playerStore.currentDatasetId
-            ) {
-                await playerStore.fetchAllAvailableRoles();
-            }
-            setInitialDatasetRange(); // Set the range after allPlayers is populated
-        };
 
         const loadJsonForFeedback = async (filePath, loadedFlagRef) => {
             try {
@@ -419,159 +203,7 @@ export default {
                 "/public/role_specific_overall_weights.json",
                 roleSpecificOverallWeightsLoadedForFeedback,
             );
-
-            const storedDatasetId = sessionStorage.getItem("currentDatasetId");
-            if (storedDatasetId) {
-                playerStore.currentDatasetId = storedDatasetId;
-                playerStore.detectedCurrencySymbol =
-                    sessionStorage.getItem("detectedCurrencySymbol") || "$";
-                await fetchAndSetInitialRange(storedDatasetId);
-            } else {
-                // If no dataset ID, ensure initial range is default
-                setInitialDatasetRange();
-            }
-
-            if (allPlayers.value.length > 0) {
-                applyClientSideFilters(allPlayers.value, activeFilters.value);
-            }
         });
-
-        watch(
-            () => route.query.datasetId,
-            async (newId, oldId) => {
-                if (newId && newId !== oldId) {
-                    sessionStorage.setItem("currentDatasetId", newId);
-                    playerStore.currentDatasetId = newId;
-                    await fetchAndSetInitialRange(newId);
-                    activeFilters.value = {}; // Reset filters on dataset change
-                }
-            },
-        );
-
-        const applyClientSideFilters = (playersToFilter, currentFilters) => {
-            if (!Array.isArray(playersToFilter)) {
-                filteredPlayers.value = [];
-                return;
-            }
-
-            let tempPlayers = [...playersToFilter];
-
-            if (currentFilters.name) {
-                tempPlayers = tempPlayers.filter(
-                    (p) =>
-                        p.name &&
-                        p.name
-                            .toLowerCase()
-                            .includes(currentFilters.name.toLowerCase()),
-                );
-            }
-            if (currentFilters.club) {
-                tempPlayers = tempPlayers.filter(
-                    (p) => p.club === currentFilters.club,
-                );
-            }
-            if (currentFilters.nationality) {
-                tempPlayers = tempPlayers.filter(
-                    (p) => p.nationality === currentFilters.nationality,
-                );
-            }
-            if (
-                currentFilters.mediaHandling &&
-                currentFilters.mediaHandling.length > 0
-            ) {
-                tempPlayers = tempPlayers.filter((p) => {
-                    if (!p.media_handling) return false;
-                    const playerStyles = p.media_handling
-                        .split(",")
-                        .map((s) => s.trim().toLowerCase());
-                    const filterStylesLower = currentFilters.mediaHandling.map(
-                        (s) => s.toLowerCase(),
-                    );
-                    return playerStyles.some((style) =>
-                        filterStylesLower.includes(style),
-                    );
-                });
-            }
-            if (
-                currentFilters.personality &&
-                currentFilters.personality.length > 0
-            ) {
-                tempPlayers = tempPlayers.filter((p) => {
-                    if (!p.personality) return false;
-                    return currentFilters.personality.includes(p.personality);
-                });
-            }
-
-            if (
-                currentFilters.ageRange &&
-                typeof currentFilters.ageRange.min === "number" &&
-                typeof currentFilters.ageRange.max === "number"
-            ) {
-                if (
-                    currentFilters.ageRange.min >
-                    playerStore.AGE_SLIDER_MIN_DEFAULT
-                ) {
-                    tempPlayers = tempPlayers.filter(
-                        (p) =>
-                            (parseInt(p.age, 10) || 0) >=
-                            currentFilters.ageRange.min,
-                    );
-                }
-                if (
-                    currentFilters.ageRange.max <
-                    playerStore.AGE_SLIDER_MAX_DEFAULT
-                ) {
-                    tempPlayers = tempPlayers.filter(
-                        (p) =>
-                            (parseInt(p.age, 10) || 0) <=
-                            currentFilters.ageRange.max,
-                    );
-                }
-            }
-
-            if (
-                currentFilters.transferValueRangeLocal &&
-                initialDatasetTransferRange.value && // Use the stable initial range for comparison logic
-                typeof currentFilters.transferValueRangeLocal.min ===
-                    "number" &&
-                typeof currentFilters.transferValueRangeLocal.max === "number"
-            ) {
-                if (
-                    currentFilters.transferValueRangeLocal.min >
-                    initialDatasetTransferRange.value.min // Compare against true min
-                ) {
-                    tempPlayers = tempPlayers.filter(
-                        (p) =>
-                            (p.transferValueAmount || 0) >=
-                            currentFilters.transferValueRangeLocal.min,
-                    );
-                }
-                if (
-                    currentFilters.transferValueRangeLocal.max <
-                    initialDatasetTransferRange.value.max // Compare against true max
-                ) {
-                    tempPlayers = tempPlayers.filter(
-                        (p) =>
-                            (p.transferValueAmount || 0) <=
-                            currentFilters.transferValueRangeLocal.max,
-                    );
-                }
-            }
-
-            // Max salary filter - only apply if not at max value (which means "Any")
-            if (
-                currentFilters.maxSalary !== null &&
-                currentFilters.maxSalary !== undefined &&
-                typeof currentFilters.maxSalary === "number" &&
-                currentFilters.maxSalary < salaryRange.value.max
-            ) {
-                tempPlayers = tempPlayers.filter(
-                    (p) => (p.wageAmount || 0) <= currentFilters.maxSalary,
-                );
-            }
-
-            filteredPlayers.value = tempPlayers;
-        };
 
         const uploadAndParse = async () => {
             if (!playerFile.value) {
@@ -585,9 +217,7 @@ export default {
             try {
                 const formData = new FormData();
                 formData.append("playerFile", playerFile.value);
-                await playerStore.uploadPlayerFile(formData); // This now fetches players and roles
-                setInitialDatasetRange(); // Set the initial range AFTER allPlayers is populated by upload
-                activeFilters.value = {};
+                await playerStore.uploadPlayerFile(formData);
                 if (!playerStore.error) {
                     Notify.create({
                         type: "positive",
@@ -624,138 +254,31 @@ export default {
             }
         };
 
-        const handleSort = (sortParams) => {
-            console.log(
-                "PlayerUploadPage: Sort requested by PlayerDataTable:",
-                sortParams,
-            );
-        };
-
-        const handlePlayerSelected = (player) => {
-            selectedPlayer.value = player;
-            showPlayerDetailDialog.value = true;
-        };
-
-        const handleTeamSelected = (teamName) => {
-            if (currentDatasetId.value) {
-                const url = router.resolve({
-                    path: '/team-view',
-                    query: { 
-                        datasetId: currentDatasetId.value,
-                        team: teamName
-                    }
-                });
-                window.open(url.href, '_blank');
-            }
-        };
-
-        const handleFilterChanged = async (newFilters) => {
-            activeFilters.value = newFilters;
-            if (playerStore.currentDatasetId) {
-                // The store's fetchPlayersByDatasetId is called, which then populates allPlayers.
-                // The watcher on allPlayers will then call applyClientSideFilters.
-                // No need to directly call applyClientSideFilters here if fetch is happening.
-                await playerStore.fetchPlayersByDatasetId(
-                    playerStore.currentDatasetId,
-                    newFilters.position,
-                    newFilters.role,
-                    newFilters.ageRange,
-                    newFilters.transferValueRangeLocal,
-                    newFilters.maxSalary,
-                );
-            } else {
-                applyClientSideFilters(allPlayers.value, newFilters);
-            }
-        };
-
-        watch(
-            allPlayers,
-            (newVal) => {
-                // This watcher ensures client-side filtering is applied whenever allPlayers changes
-                // (e.g., after initial load, after upload, or after backend filter fetch)
-                applyClientSideFilters(newVal, activeFilters.value);
-                if (
-                    newVal &&
-                    newVal.length > 0 &&
-                    initialDatasetTransferRange.value.max === 100000000
-                ) {
-                    // If players are loaded and initial range hasn't been properly set, set it.
-                    // This can happen if onMounted finishes before playerStore.allPlayers is populated from session.
-                    setInitialDatasetRange();
-                }
-            },
-            { immediate: true, deep: true }, // deep: true might be heavy if allPlayers is huge. Consider alternatives if performance issues.
-        );
-
-        const goToTeamView = () => {
-            if (playerStore.currentDatasetId) {
-                router.push({
-                    name: "team-view",
-                    query: { datasetId: playerStore.currentDatasetId },
-                });
-            } else {
-                playerStore.error =
-                    "No data uploaded yet. Please upload a file first.";
-            }
-        };
-
         return {
-            $q,
             playerFile,
-            playerStore,
+            showFileSizeLimitModal,
             loading,
             error,
-            allPlayers,
-            filteredPlayers,
-            uploadAndParse,
-            handleSort,
-            selectedPlayer,
-            showPlayerDetailDialog,
-            handlePlayerSelected,
-            handleTeamSelected,
             attributeWeightsLoadedForFeedback,
             roleSpecificOverallWeightsLoadedForFeedback,
-            showUpgradeFinder,
-            isGoalkeeperView,
-            goToTeamView,
-            currentDatasetId,
-            detectedCurrencySymbol,
-            handleFilterChanged,
-            showFileSizeLimitModal,
-            initialDatasetTransferRange, // Expose for PlayerFilters
-            salaryRange, // Expose for PlayerFilters
+            uploadAndParse,
+            playerStore,
         };
     },
 };
 </script>
 
 <style lang="scss" scoped>
-.q-page {
-    max-width: 1600px;
-    margin: 0 auto;
-    padding-top: 24px;
-    padding-bottom: 24px;
-}
-
 .page-title {
-    // Styling for the main page title if needed
+    font-weight: 300;
 }
 
-.instructions-card {
-    ol {
-        padding-left: 20px;
-        li {
-            margin-bottom: 0.5em;
-        }
-    }
+.instructions-card,
+.upload-card {
+    border-radius: $generic-border-radius;
 }
 
-.upload-card,
 .no-data-card {
-    border-radius: 8px;
-}
-
-.body--dark .q-field__bottom {
-    color: rgba(255, 255, 255, 0.5) !important;
+    border-radius: $generic-border-radius;
 }
 </style>
