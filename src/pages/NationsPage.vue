@@ -120,22 +120,40 @@
                 >
                     <q-card-section>
                         <div class="text-h6 q-mb-md">Nations Overview</div>
-                        <div class="nations-grid">
+                        <div class="nations-list">
                             <div
                                 v-for="nation in nationsWithRatings"
                                 :key="nation.name"
-                                class="nation-card"
+                                class="nation-row"
                                 @click="selectNation(nation.name)"
                             >
-                                <div class="nation-flag">🏴‍☠️</div>
-                                <div class="nation-name">{{ nation.name }}</div>
-                                <div class="nation-stats">
+                                <div class="nation-flag-container">
+                                    <img
+                                        v-if="nation.nationality_iso"
+                                        :src="`https://flagcdn.com/w20/${nation.nationality_iso.toLowerCase()}.png`"
+                                        :alt="nation.name"
+                                        width="24"
+                                        height="16"
+                                        class="nationality-flag"
+                                        @error="onFlagError($event, nation)"
+                                    />
+                                    <q-icon
+                                        v-else
+                                        name="flag"
+                                        size="sm"
+                                        :color="quasarInstance.dark.isActive ? 'grey-6' : 'grey-7'"
+                                    />
+                                </div>
+                                <div class="nation-info">
+                                    <div class="nation-name">{{ nation.name }}</div>
                                     <div class="player-count">{{ nation.playerCount }} players</div>
+                                </div>
+                                <div class="nation-overall">
                                     <div 
                                         class="highest-overall"
-                                        :class="getOverallClass(nation.highestOverall)"
+                                        :class="getOverallClass(nation.bestFormationOverall)"
                                     >
-                                        {{ nation.highestOverall }} OVR
+                                        {{ nation.bestFormationOverall }} AVG
                                     </div>
                                 </div>
                             </div>
@@ -514,6 +532,7 @@ export default {
             
             const nationsMap = new Map();
             
+            // First pass: collect all players by nationality
             allPlayersData.value.forEach(player => {
                 if (player.nationality && player.nationality.trim() !== "") {
                     const nationality = player.nationality;
@@ -521,8 +540,9 @@ export default {
                     if (!nationsMap.has(nationality)) {
                         nationsMap.set(nationality, {
                             name: nationality,
+                            nationality_iso: player.nationality_iso || null,
                             playerCount: 0,
-                            highestOverall: 0,
+                            bestFormationOverall: 0,
                             players: []
                         });
                     }
@@ -531,16 +551,106 @@ export default {
                     nation.playerCount++;
                     nation.players.push(player);
                     
-                    // Track highest overall rating
-                    const playerOverall = player.Overall || 0;
-                    if (playerOverall > nation.highestOverall) {
-                        nation.highestOverall = playerOverall;
+                    // Set nationality_iso if we don't have it yet
+                    if (!nation.nationality_iso && player.nationality_iso) {
+                        nation.nationality_iso = player.nationality_iso;
                     }
                 }
             });
             
-            return Array.from(nationsMap.values())
-                .sort((a, b) => b.highestOverall - a.highestOverall);
+            // Second pass: calculate best formation overall for each nation
+            const nationsArray = Array.from(nationsMap.values());
+            nationsArray.forEach(nation => {
+                let bestOverall = 0;
+                
+                // Test each formation to find the best average overall for this nation
+                Object.keys(formations).forEach(formationKey => {
+                    const formationLayoutForCalc = getFormationLayout(formationKey);
+                    if (!formationLayoutForCalc) return;
+
+                    const formationSlots = formationLayoutForCalc.flatMap(row => row.positions);
+                    const tempSquadComposition = {};
+                    
+                    formationSlots.forEach(slot => {
+                        tempSquadComposition[slot.id] = [];
+                    });
+
+                    // Calculate player assignments for this formation
+                    const allPotentialPlayerAssignments = [];
+                    formationSlots.forEach(slot => {
+                        nation.players.forEach(player => {
+                            const overallInRole = getPlayerOverallForRole(player, slot.role);
+                            
+                            if (overallInRole >= MIN_SUITABILITY_THRESHOLD) {
+                                const slotPositions = positionSideMap[slot.role.toUpperCase()] || [];
+                                const playerPositions = player.shortPositions || [];
+                                const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos));
+                                
+                                if (isExactMatch || overallInRole >= MIN_SUITABILITY_THRESHOLD) {
+                                    const assignment = {
+                                        player,
+                                        slotId: slot.id,
+                                        slotRole: slot.role,
+                                        overallInRole: overallInRole,
+                                        sortScore: overallInRole,
+                                        exactMatch: isExactMatch
+                                    };
+                                    
+                                    if (isExactMatch) {
+                                        assignment.sortScore += 10000;
+                                    } else {
+                                        assignment.sortScore -= 5000;
+                                    }
+                                    
+                                    allPotentialPlayerAssignments.push(assignment);
+                                }
+                            }
+                        });
+                    });
+
+                    allPotentialPlayerAssignments.sort((a, b) => b.sortScore - a.sortScore);
+                    const assignedPlayersToSlots = new Set();
+
+                    // Fill starting XI for this formation
+                    formationSlots.forEach(slot => {
+                        for (const assignment of allPotentialPlayerAssignments) {
+                            if (
+                                assignment.slotId === slot.id &&
+                                !assignedPlayersToSlots.has(assignment.player.name)
+                            ) {
+                                tempSquadComposition[slot.id].push({
+                                    player: assignment.player,
+                                    overallInRole: assignment.overallInRole,
+                                    exactMatch: assignment.exactMatch
+                                });
+                                assignedPlayersToSlots.add(assignment.player.name);
+                                break;
+                            }
+                        }
+                    });
+
+                    // Calculate average overall for this formation
+                    let sumOfStartersOverall = 0;
+                    let startersCount = 0;
+                    Object.values(tempSquadComposition).forEach(slotPlayers => {
+                        if (slotPlayers && slotPlayers.length > 0) {
+                            sumOfStartersOverall += slotPlayers[0].overallInRole;
+                            startersCount++;
+                        }
+                    });
+
+                    if (startersCount > 0) {
+                        const averageOverall = Math.round(sumOfStartersOverall / startersCount);
+                        if (averageOverall > bestOverall) {
+                            bestOverall = averageOverall;
+                        }
+                    }
+                });
+                
+                nation.bestFormationOverall = bestOverall;
+            });
+            
+            return nationsArray.sort((a, b) => b.bestFormationOverall - a.bestFormationOverall);
         });
 
         const fetchPlayersAndCurrency = async (datasetId) => {
@@ -1387,6 +1497,11 @@ export default {
             },
         );
 
+        const onFlagError = (event, nation) => {
+            // Hide the broken image and fallback will show the icon
+            event.target.style.display = 'none';
+        };
+
         const shareDataset = async () => {
             if (!currentDatasetId.value) return;
             
@@ -1451,6 +1566,7 @@ export default {
             detectedCurrencySymbol,
             currentDatasetId,
             shareDataset,
+            onFlagError,
             nationsWithRatings,
         };
     },
@@ -1490,24 +1606,24 @@ export default {
     }
 }
 
-.nations-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 16px;
+.nations-list {
     max-height: 600px;
     overflow-y: auto;
 }
 
-.nation-card {
-    padding: 16px;
-    border-radius: 8px;
+.nation-row {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    border-radius: 6px;
     border: 1px solid rgba(0, 0, 0, 0.1);
+    margin-bottom: 8px;
     cursor: pointer;
     transition: all 0.2s ease;
     
     &:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
     
     .body--dark & {
@@ -1516,7 +1632,7 @@ export default {
         
         &:hover {
             background-color: rgba(255, 255, 255, 0.08);
-            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+            box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
         }
     }
     
@@ -1530,17 +1646,34 @@ export default {
     }
 }
 
-.nation-flag {
-    font-size: 2rem;
-    text-align: center;
-    margin-bottom: 8px;
+.nation-flag-container {
+    width: 32px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 16px;
+    flex-shrink: 0;
+}
+
+.nationality-flag {
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 2px;
+    
+    .body--dark & {
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+}
+
+.nation-info {
+    flex: 1;
+    min-width: 0;
 }
 
 .nation-name {
     font-size: 1rem;
     font-weight: 600;
-    text-align: center;
-    margin-bottom: 8px;
+    margin-bottom: 2px;
     
     .body--dark & {
         color: $grey-2;
@@ -1551,19 +1684,18 @@ export default {
     }
 }
 
-.nation-stats {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.85rem;
-}
-
 .player-count {
+    font-size: 0.85rem;
     color: $grey-6;
     
     .body--dark & {
         color: $grey-4;
     }
+}
+
+.nation-overall {
+    flex-shrink: 0;
+    margin-left: 16px;
 }
 
 .highest-overall {
