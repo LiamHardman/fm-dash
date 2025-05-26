@@ -14,6 +14,9 @@ import (
 func main() {
 	// Initialize storage system
 	InitStore()
+	
+	// Start automatic cleanup scheduler for old datasets
+	StartCleanupScheduler()
 	// Serve the main index.html page (assuming it's built into a 'public' or 'dist' folder by Vue)
 	// Adjust the path according to your frontend build output.
 	// If Vue serves on a different port (e.g., 3000) and proxies API calls, this might not be needed here.

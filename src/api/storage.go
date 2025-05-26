@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -20,6 +21,7 @@ type StorageInterface interface {
 	Retrieve(datasetID string) (DatasetData, error)
 	Delete(datasetID string) error
 	List() ([]string, error)
+	CleanupOldDatasets(maxAge time.Duration, excludeDatasets []string) error
 }
 
 type DatasetData struct {
@@ -70,6 +72,12 @@ func (s *InMemoryStorage) List() ([]string, error) {
 		ids = append(ids, id)
 	}
 	return ids, nil
+}
+
+func (s *InMemoryStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets []string) error {
+	// In-memory storage doesn't persist data, so no cleanup needed
+	log.Println("CleanupOldDatasets called on in-memory storage - no action needed")
+	return nil
 }
 
 type MinIOStorage struct {
@@ -220,6 +228,62 @@ func (s *MinIOStorage) List() ([]string, error) {
 
 	log.Printf("Listed %d datasets from MinIO", len(ids))
 	return ids, nil
+}
+
+func (s *MinIOStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets []string) error {
+	if s.client == nil {
+		return s.fallback.CleanupOldDatasets(maxAge, excludeDatasets)
+	}
+
+	ctx := context.Background()
+	objectCh := s.client.ListObjects(ctx, s.bucketName, minio.ListObjectsOptions{
+		Prefix:    "datasets/",
+		Recursive: true,
+	})
+
+	cutoffTime := time.Now().Add(-maxAge)
+	excludeSet := make(map[string]bool)
+	for _, dataset := range excludeDatasets {
+		excludeSet[dataset] = true
+	}
+
+	var deletedCount int
+	for object := range objectCh {
+		if object.Err != nil {
+			log.Printf("Warning: Error listing MinIO objects during cleanup: %v", object.Err)
+			continue
+		}
+		
+		if !strings.HasSuffix(object.Key, ".json") {
+			continue
+		}
+
+		// Extract dataset ID from object key
+		datasetID := strings.TrimPrefix(object.Key, "datasets/")
+		datasetID = strings.TrimSuffix(datasetID, ".json")
+
+		// Skip excluded datasets (like demo)
+		if excludeSet[datasetID] {
+			log.Printf("Skipping cleanup for excluded dataset: %s", datasetID)
+			continue
+		}
+
+		// Check if object is older than cutoff time
+		if object.LastModified.Before(cutoffTime) {
+			log.Printf("Deleting old dataset: %s (last modified: %s)", datasetID, object.LastModified.Format(time.RFC3339))
+			
+			err := s.client.RemoveObject(ctx, s.bucketName, object.Key, minio.RemoveObjectOptions{})
+			if err != nil {
+				log.Printf("Warning: Failed to delete old dataset %s from MinIO: %v", datasetID, err)
+				continue
+			}
+			
+			deletedCount++
+		}
+	}
+
+	log.Printf("Cleanup completed: deleted %d old datasets from MinIO", deletedCount)
+	return nil
 }
 
 func InitializeStorage() StorageInterface {

@@ -1,6 +1,10 @@
 package main
 
-import "sync"
+import (
+	"log"
+	"sync"
+	"time"
+)
 
 // Global storage instance
 var storage StorageInterface
@@ -47,6 +51,46 @@ func DeleteDataset(datasetID string) error {
 // ListDatasets lists all available dataset IDs
 func ListDatasets() ([]string, error) {
 	return storage.List()
+}
+
+// CleanupOldDatasets removes datasets older than the specified duration, excluding specified datasets
+func CleanupOldDatasets(maxAge time.Duration, excludeDatasets []string) error {
+	return storage.CleanupOldDatasets(maxAge, excludeDatasets)
+}
+
+// StartCleanupScheduler starts a background goroutine that periodically cleans up old datasets
+func StartCleanupScheduler() {
+	go func() {
+		ticker := time.NewTicker(24 * time.Hour) // Run cleanup once per day
+		defer ticker.Stop()
+
+		// Run initial cleanup after 1 minute (to allow server to fully start)
+		time.Sleep(1 * time.Minute)
+		runCleanup()
+
+		// Then run cleanup every 24 hours
+		for range ticker.C {
+			runCleanup()
+		}
+	}()
+	log.Println("Started automatic dataset cleanup scheduler (runs daily)")
+}
+
+func runCleanup() {
+	log.Println("Starting automatic cleanup of old datasets...")
+	
+	// Define datasets to exclude from cleanup
+	excludeDatasets := []string{"demo"}
+	
+	// Clean up datasets older than 30 days
+	maxAge := 30 * 24 * time.Hour
+	
+	err := CleanupOldDatasets(maxAge, excludeDatasets)
+	if err != nil {
+		log.Printf("Error during automatic cleanup: %v", err)
+	} else {
+		log.Println("Automatic cleanup completed successfully")
+	}
 }
 
 // Legacy functions for backward compatibility
