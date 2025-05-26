@@ -149,11 +149,23 @@
                                     <div class="player-count">{{ nation.playerCount }} players</div>
                                 </div>
                                 <div class="nation-overall">
-                                    <div 
-                                        class="highest-overall"
-                                        :class="getOverallClass(nation.bestFormationOverall)"
-                                    >
-                                        {{ nation.bestFormationOverall }} AVG
+                                    <div class="nation-rating">
+                                        <div 
+                                            class="highest-overall"
+                                            :class="getOverallClass(nation.bestFormationOverall)"
+                                        >
+                                            {{ nation.bestFormationOverall > 0 ? nation.bestFormationOverall + ' AVG' : 'N/A' }}
+                                        </div>
+                                        <div class="star-rating">
+                                            <span
+                                                v-for="star in 5"
+                                                :key="star"
+                                                class="star"
+                                                :class="getStarClass(nation.bestFormationOverall, star)"
+                                            >
+                                                ★
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -558,10 +570,26 @@ export default {
                 }
             });
             
-            // Second pass: calculate best formation overall for each nation
+            // Second pass: get top players per position for each nation and calculate best formation overall
             const nationsArray = Array.from(nationsMap.values());
             nationsArray.forEach(nation => {
+                // Get top 10 players per position to optimize performance
+                const topPlayersByPosition = {};
+                const allPositions = ['GK', 'DR', 'DL', 'DC', 'WBR', 'WBL', 'DM', 'MR', 'ML', 'MC', 'AMR', 'AML', 'AMC', 'ST'];
+                
+                allPositions.forEach(position => {
+                    const playersForPosition = nation.players.filter(player => {
+                        const playerPositions = player.shortPositions || [];
+                        return playerPositions.includes(position);
+                    });
+                    
+                    // Sort by Overall and take top 10
+                    playersForPosition.sort((a, b) => (b.Overall || 0) - (a.Overall || 0));
+                    topPlayersByPosition[position] = playersForPosition.slice(0, 10);
+                });
+                
                 let bestOverall = 0;
+                let hasFullSquad = false;
                 
                 // Test each formation to find the best average overall for this nation
                 Object.keys(formations).forEach(formationKey => {
@@ -575,35 +603,57 @@ export default {
                         tempSquadComposition[slot.id] = [];
                     });
 
-                    // Calculate player assignments for this formation
+                    // Calculate player assignments for this formation using only top players
                     const allPotentialPlayerAssignments = [];
                     formationSlots.forEach(slot => {
-                        nation.players.forEach(player => {
+                        const slotPositions = positionSideMap[slot.role.toUpperCase()] || [];
+                        const fallbackPositions = fallbackPositionMap[slot.role.toUpperCase()] || [];
+                        
+                        // Get relevant players for this slot (exact matches first, then fallbacks)
+                        let relevantPlayers = [];
+                        
+                        // Add exact position matches first
+                        slotPositions.forEach(position => {
+                            if (topPlayersByPosition[position]) {
+                                relevantPlayers = [...relevantPlayers, ...topPlayersByPosition[position]];
+                            }
+                        });
+                        
+                        // Add fallback positions if needed
+                        fallbackPositions.forEach(position => {
+                            if (topPlayersByPosition[position]) {
+                                topPlayersByPosition[position].forEach(player => {
+                                    // Only add if not already included from exact matches
+                                    if (!relevantPlayers.some(p => p.name === player.name)) {
+                                        relevantPlayers.push(player);
+                                    }
+                                });
+                            }
+                        });
+                        
+                        relevantPlayers.forEach(player => {
                             const overallInRole = getPlayerOverallForRole(player, slot.role);
                             
                             if (overallInRole >= MIN_SUITABILITY_THRESHOLD) {
-                                const slotPositions = positionSideMap[slot.role.toUpperCase()] || [];
                                 const playerPositions = player.shortPositions || [];
                                 const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos));
                                 
-                                if (isExactMatch || overallInRole >= MIN_SUITABILITY_THRESHOLD) {
-                                    const assignment = {
-                                        player,
-                                        slotId: slot.id,
-                                        slotRole: slot.role,
-                                        overallInRole: overallInRole,
-                                        sortScore: overallInRole,
-                                        exactMatch: isExactMatch
-                                    };
-                                    
-                                    if (isExactMatch) {
-                                        assignment.sortScore += 10000;
-                                    } else {
-                                        assignment.sortScore -= 5000;
-                                    }
-                                    
-                                    allPotentialPlayerAssignments.push(assignment);
+                                const assignment = {
+                                    player,
+                                    slotId: slot.id,
+                                    slotRole: slot.role,
+                                    overallInRole: overallInRole,
+                                    sortScore: overallInRole,
+                                    exactMatch: isExactMatch
+                                };
+                                
+                                if (isExactMatch) {
+                                    assignment.sortScore += 10000;
+                                } else {
+                                    assignment.sortScore -= 5000;
                                 }
+                                
+                                allPotentialPlayerAssignments.push(assignment);
                             }
                         });
                     });
@@ -629,25 +679,34 @@ export default {
                         }
                     });
 
-                    // Calculate average overall for this formation
-                    let sumOfStartersOverall = 0;
-                    let startersCount = 0;
-                    Object.values(tempSquadComposition).forEach(slotPlayers => {
-                        if (slotPlayers && slotPlayers.length > 0) {
-                            sumOfStartersOverall += slotPlayers[0].overallInRole;
-                            startersCount++;
-                        }
-                    });
+                    // Check if we have a full squad (player in every position)
+                    const filledPositions = Object.values(tempSquadComposition).filter(slotPlayers => slotPlayers.length > 0).length;
+                    const isFullSquad = filledPositions === formationSlots.length;
+                    
+                    if (isFullSquad) {
+                        hasFullSquad = true;
+                        
+                        // Calculate average overall for this formation
+                        let sumOfStartersOverall = 0;
+                        let startersCount = 0;
+                        Object.values(tempSquadComposition).forEach(slotPlayers => {
+                            if (slotPlayers && slotPlayers.length > 0) {
+                                sumOfStartersOverall += slotPlayers[0].overallInRole;
+                                startersCount++;
+                            }
+                        });
 
-                    if (startersCount > 0) {
-                        const averageOverall = Math.round(sumOfStartersOverall / startersCount);
-                        if (averageOverall > bestOverall) {
-                            bestOverall = averageOverall;
+                        if (startersCount > 0) {
+                            const averageOverall = Math.round(sumOfStartersOverall / startersCount);
+                            if (averageOverall > bestOverall) {
+                                bestOverall = averageOverall;
+                            }
                         }
                     }
                 });
                 
-                nation.bestFormationOverall = bestOverall;
+                // Only set overall if nation has at least one full squad possible
+                nation.bestFormationOverall = hasFullSquad ? bestOverall : 0;
             });
             
             return nationsArray.sort((a, b) => b.bestFormationOverall - a.bestFormationOverall);
@@ -856,7 +915,7 @@ export default {
         };
 
         const getOverallClass = (overall) => {
-            if (overall === null || overall === undefined) return "rating-na";
+            if (overall === null || overall === undefined || overall === 0) return "rating-na";
             const numericOverall = Number(overall);
             if (isNaN(numericOverall)) return "rating-na";
 
@@ -866,6 +925,36 @@ export default {
             if (numericOverall >= 55) return "rating-tier-3";
             if (numericOverall >= 40) return "rating-tier-2";
             return "rating-tier-1";
+        };
+
+        const getStarClass = (overall, starPosition) => {
+            if (!overall || overall === 0) return "star-empty";
+            
+            const starRating = getStarRating(overall);
+            
+            if (starPosition <= Math.floor(starRating)) {
+                return "star-full";
+            } else if (starPosition === Math.floor(starRating) + 1 && starRating % 1 === 0.5) {
+                return "star-half";
+            } else {
+                return "star-empty";
+            }
+        };
+
+        const getStarRating = (overall) => {
+            if (!overall || overall === 0) return 0;
+            
+            if (overall >= 85) return 5;
+            if (overall >= 82) return 4.5;
+            if (overall >= 78) return 4;
+            if (overall >= 74) return 3.5;
+            if (overall >= 70) return 3;
+            if (overall >= 67) return 2.5;
+            if (overall >= 64) return 2;
+            if (overall >= 60) return 1.5;
+            if (overall >= 55) return 1;
+            if (overall >= 50) return 0.5;
+            return 0;
         };
 
         const getPlayerOverallForRole = (player, slotFormationRole) => {
@@ -1559,6 +1648,8 @@ export default {
             handlePlayerSelectedFromNation,
             nationIsGoalkeeperView,
             getOverallClass,
+            getStarClass,
+            getStarRating,
             getSlotDisplayName,
             handlePlayerMovedOnPitch,
             quasarInstance,
@@ -1698,11 +1789,55 @@ export default {
     margin-left: 16px;
 }
 
+.nation-rating {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
 .highest-overall {
     font-weight: bold;
     padding: 2px 6px;
     border-radius: 4px;
     font-size: 0.8rem;
+    text-align: center;
+    min-width: 50px;
+}
+
+.star-rating {
+    display: flex;
+    gap: 1px;
+    font-size: 0.9rem;
+    line-height: 1;
+}
+
+.star {
+    transition: color 0.2s ease;
+    
+    &.star-full {
+        color: #FFD700; // Gold
+    }
+    
+    &.star-half {
+        background: linear-gradient(90deg, #FFD700 50%, transparent 50%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        
+        // Fallback for browsers that don't support background-clip: text
+        @supports not (-webkit-background-clip: text) {
+            color: #FFD700;
+        }
+    }
+    
+    &.star-empty {
+        color: #E0E0E0;
+        
+        .body--dark & {
+            color: #424242;
+        }
+    }
 }
 
 .attribute-value {
