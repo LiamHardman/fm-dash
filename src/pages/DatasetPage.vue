@@ -354,7 +354,8 @@ export default {
                         // Debug logging - let's see what we're working with
                         console.log("=== ROLE FILTER DEBUG ===");
                         console.log("Player name:", player.name);
-                        console.log("Player overall:", player.overall);
+                        console.log("Player Overall (capital O):", player.Overall);
+                        console.log("Player overall (lowercase o):", player.overall);
                         console.log("Selected role filter:", roleFilter.value);
                         console.log("roleSpecificOveralls type:", typeof player.roleSpecificOveralls);
                         console.log("roleSpecificOveralls is array:", Array.isArray(player.roleSpecificOveralls));
@@ -385,10 +386,10 @@ export default {
                             console.log("✅ Using role-specific overall:", roleSpecificOverall);
                             return {
                                 ...player,
-                                overall: roleSpecificOverall
+                                Overall: roleSpecificOverall  // Capital O to match PlayerDataTable
                             };
                         } else {
-                            console.log("❌ No role match found, using original overall:", player.overall);
+                            console.log("❌ No role match found, using original overall:", player.Overall);
                         }
                         console.log("=== END DEBUG ===");
                     }
