@@ -280,6 +280,15 @@ export default {
         const ageRangeFilter = ref({ min: 15, max: 50 });
         const transferValueRangeFilter = ref({ min: 0, max: 100000000 });
         const maxSalaryFilter = ref(null);
+        // FIFA-style stat minimum filters
+        const minOverallFilter = ref(0);
+        const minPHYFilter = ref(0);
+        const minSHOFilter = ref(0);
+        const minPASFilter = ref(0);
+        const minDRIFilter = ref(0);
+        const minDEFFilter = ref(0);
+        const minMENFilter = ref(0);
+        const minGKFilter = ref(0);
 
         // Computed properties from store
         const allPlayersData = computed(() => playerStore.allPlayers);
@@ -411,6 +420,32 @@ export default {
                         maxSalaryFilter.value !== null &&
                         player.wageAmount > maxSalaryFilter.value
                     ) {
+                        return false;
+                    }
+
+                    // FIFA-style stat minimum filters
+                    if (minOverallFilter.value > 0 && (player.Overall || 0) < minOverallFilter.value) {
+                        return false;
+                    }
+                    if (minPHYFilter.value > 0 && (player.PHY || 0) < minPHYFilter.value) {
+                        return false;
+                    }
+                    if (minSHOFilter.value > 0 && (player.SHO || 0) < minSHOFilter.value) {
+                        return false;
+                    }
+                    if (minPASFilter.value > 0 && (player.PAS || 0) < minPASFilter.value) {
+                        return false;
+                    }
+                    if (minDRIFilter.value > 0 && (player.DRI || 0) < minDRIFilter.value) {
+                        return false;
+                    }
+                    if (minDEFFilter.value > 0 && (player.DEF || 0) < minDEFFilter.value) {
+                        return false;
+                    }
+                    if (minMENFilter.value > 0 && (player.MEN || 0) < minMENFilter.value) {
+                        return false;
+                    }
+                    if (minGKFilter.value > 0 && (player.GK || 0) < minGKFilter.value) {
                         return false;
                     }
 
@@ -601,6 +636,15 @@ export default {
             ageRangeFilter.value = filters.ageRange;
             transferValueRangeFilter.value = filters.transferValueRangeLocal;
             maxSalaryFilter.value = filters.maxSalary;
+            // FIFA-style stat minimum filters
+            minOverallFilter.value = filters.minOverall;
+            minPHYFilter.value = filters.minPHY;
+            minSHOFilter.value = filters.minSHO;
+            minPASFilter.value = filters.minPAS;
+            minDRIFilter.value = filters.minDRI;
+            minDEFFilter.value = filters.minDEF;
+            minMENFilter.value = filters.minMEN;
+            minGKFilter.value = filters.minGK;
         };
 
         watch(

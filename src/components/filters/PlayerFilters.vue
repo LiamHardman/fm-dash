@@ -343,6 +343,289 @@
                     />
                 </div>
             </div>
+
+            <!-- Set Minimum Stats Button -->
+            <div class="row q-col-gutter-x-md q-col-gutter-y-sm items-start q-mt-sm">
+                <div
+                    class="col-12 col-md-4 col-lg-2 filter-item-container self-end"
+                >
+                    <q-btn
+                        color="primary"
+                        :label="'Set Minimum Stats' + (hasActiveStatFilters ? ' (Active)' : '')"
+                        class="full-width"
+                        @click="showMinimumStatsModal = true"
+                        :disable="isLoading"
+                        outline
+                        dense
+                        icon="tune"
+                    />
+                </div>
+            </div>
+
+            <!-- Minimum Stats Modal -->
+            <q-dialog v-model="showMinimumStatsModal" persistent>
+                <q-card
+                    style="min-width: 600px; max-width: 800px"
+                    :class="quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'"
+                >
+                    <q-card-section>
+                        <div class="text-h6">Set Minimum Stats</div>
+                        <div class="text-subtitle2 text-grey-6 q-mt-xs">
+                            Filter players by minimum stat values
+                        </div>
+                    </q-card-section>
+
+                    <q-card-section class="q-pt-none">
+                        <div class="row q-col-gutter-md">
+                            <!-- Overall Slider -->
+                            <div class="col-12 col-sm-6 col-md-4 filter-item-container">
+                                <div
+                                    class="text-caption q-mb-xs slider-label"
+                                    :class="
+                                        quasarInstance.dark.isActive
+                                            ? 'text-grey-4'
+                                            : 'text-grey-7'
+                                    "
+                                >
+                                    Min Overall:
+                                    <span 
+                                        class="stat-value-badge q-ml-xs"
+                                        :class="getStatColorClass(filters.minOverall)"
+                                    >
+                                        {{ filters.minOverall || 0 }}
+                                    </span>
+                                </div>
+                                <q-slider
+                                    v-model="filters.minOverall"
+                                    :min="0"
+                                    :max="99"
+                                    :step="1"
+                                    color="primary"
+                                    class="q-px-sm"
+                                />
+                            </div>
+
+                            <!-- PHY Slider -->
+                            <div class="col-12 col-sm-6 col-md-4 filter-item-container">
+                                <div
+                                    class="text-caption q-mb-xs slider-label"
+                                    :class="
+                                        quasarInstance.dark.isActive
+                                            ? 'text-grey-4'
+                                            : 'text-grey-7'
+                                    "
+                                >
+                                    Min PHY:
+                                    <span 
+                                        class="stat-value-badge q-ml-xs"
+                                        :class="getStatColorClass(filters.minPHY)"
+                                    >
+                                        {{ filters.minPHY || 0 }}
+                                    </span>
+                                </div>
+                                <q-slider
+                                    v-model="filters.minPHY"
+                                    :min="0"
+                                    :max="99"
+                                    :step="1"
+                                    color="primary"
+                                    class="q-px-sm"
+                                />
+                            </div>
+
+                            <!-- SHO Slider -->
+                            <div class="col-12 col-sm-6 col-md-4 filter-item-container">
+                                <div
+                                    class="text-caption q-mb-xs slider-label"
+                                    :class="
+                                        quasarInstance.dark.isActive
+                                            ? 'text-grey-4'
+                                            : 'text-grey-7'
+                                    "
+                                >
+                                    Min SHO:
+                                    <span 
+                                        class="stat-value-badge q-ml-xs"
+                                        :class="getStatColorClass(filters.minSHO)"
+                                    >
+                                        {{ filters.minSHO || 0 }}
+                                    </span>
+                                </div>
+                                <q-slider
+                                    v-model="filters.minSHO"
+                                    :min="0"
+                                    :max="99"
+                                    :step="1"
+                                    color="primary"
+                                    class="q-px-sm"
+                                />
+                            </div>
+
+                            <!-- PAS Slider -->
+                            <div class="col-12 col-sm-6 col-md-4 filter-item-container">
+                                <div
+                                    class="text-caption q-mb-xs slider-label"
+                                    :class="
+                                        quasarInstance.dark.isActive
+                                            ? 'text-grey-4'
+                                            : 'text-grey-7'
+                                    "
+                                >
+                                    Min PAS:
+                                    <span 
+                                        class="stat-value-badge q-ml-xs"
+                                        :class="getStatColorClass(filters.minPAS)"
+                                    >
+                                        {{ filters.minPAS || 0 }}
+                                    </span>
+                                </div>
+                                <q-slider
+                                    v-model="filters.minPAS"
+                                    :min="0"
+                                    :max="99"
+                                    :step="1"
+                                    color="primary"
+                                    class="q-px-sm"
+                                />
+                            </div>
+
+                            <!-- DRI Slider -->
+                            <div class="col-12 col-sm-6 col-md-4 filter-item-container">
+                                <div
+                                    class="text-caption q-mb-xs slider-label"
+                                    :class="
+                                        quasarInstance.dark.isActive
+                                            ? 'text-grey-4'
+                                            : 'text-grey-7'
+                                    "
+                                >
+                                    Min DRI:
+                                    <span 
+                                        class="stat-value-badge q-ml-xs"
+                                        :class="getStatColorClass(filters.minDRI)"
+                                    >
+                                        {{ filters.minDRI || 0 }}
+                                    </span>
+                                </div>
+                                <q-slider
+                                    v-model="filters.minDRI"
+                                    :min="0"
+                                    :max="99"
+                                    :step="1"
+                                    color="primary"
+                                    class="q-px-sm"
+                                />
+                            </div>
+
+                            <!-- DEF Slider -->
+                            <div class="col-12 col-sm-6 col-md-4 filter-item-container">
+                                <div
+                                    class="text-caption q-mb-xs slider-label"
+                                    :class="
+                                        quasarInstance.dark.isActive
+                                            ? 'text-grey-4'
+                                            : 'text-grey-7'
+                                    "
+                                >
+                                    Min DEF:
+                                    <span 
+                                        class="stat-value-badge q-ml-xs"
+                                        :class="getStatColorClass(filters.minDEF)"
+                                    >
+                                        {{ filters.minDEF || 0 }}
+                                    </span>
+                                </div>
+                                <q-slider
+                                    v-model="filters.minDEF"
+                                    :min="0"
+                                    :max="99"
+                                    :step="1"
+                                    color="primary"
+                                    class="q-px-sm"
+                                />
+                            </div>
+
+                            <!-- MEN Slider -->
+                            <div class="col-12 col-sm-6 col-md-4 filter-item-container">
+                                <div
+                                    class="text-caption q-mb-xs slider-label"
+                                    :class="
+                                        quasarInstance.dark.isActive
+                                            ? 'text-grey-4'
+                                            : 'text-grey-7'
+                                    "
+                                >
+                                    Min MEN:
+                                    <span 
+                                        class="stat-value-badge q-ml-xs"
+                                        :class="getStatColorClass(filters.minMEN)"
+                                    >
+                                        {{ filters.minMEN || 0 }}
+                                    </span>
+                                </div>
+                                <q-slider
+                                    v-model="filters.minMEN"
+                                    :min="0"
+                                    :max="99"
+                                    :step="1"
+                                    color="primary"
+                                    class="q-px-sm"
+                                />
+                            </div>
+
+                            <!-- GK Slider -->
+                            <div class="col-12 col-sm-6 col-md-4 filter-item-container">
+                                <div
+                                    class="text-caption q-mb-xs slider-label"
+                                    :class="
+                                        quasarInstance.dark.isActive
+                                            ? 'text-grey-4'
+                                            : 'text-grey-7'
+                                    "
+                                >
+                                    Min GK:
+                                    <span 
+                                        class="stat-value-badge q-ml-xs"
+                                        :class="getStatColorClass(filters.minGK)"
+                                    >
+                                        {{ filters.minGK || 0 }}
+                                    </span>
+                                </div>
+                                <q-slider
+                                    v-model="filters.minGK"
+                                    :min="0"
+                                    :max="99"
+                                    :step="1"
+                                    color="primary"
+                                    class="q-px-sm"
+                                />
+                            </div>
+                        </div>
+                    </q-card-section>
+
+                    <q-card-actions align="right" class="q-pa-md">
+                        <q-btn
+                            flat
+                            label="Reset All"
+                            color="negative"
+                            @click="resetMinimumStats"
+                            :disable="!hasActiveStatFilters"
+                        />
+                        <q-btn
+                            flat
+                            label="Cancel"
+                            color="grey"
+                            @click="showMinimumStatsModal = false"
+                        />
+                        <q-btn
+                            unelevated
+                            label="Apply"
+                            color="primary"
+                            @click="applyMinimumStats"
+                        />
+                    </q-card-actions>
+                </q-card>
+            </q-dialog>
         </q-card-section>
     </q-card>
 </template>
@@ -430,7 +713,18 @@ export default defineComponent({
                 max: props.transferValueRange.max,
             },
             maxSalary: SALARY_SLIDER_MAX,
+            // FIFA-style stat minimum filters
+            minOverall: 0,
+            minPHY: 0,
+            minSHO: 0,
+            minPAS: 0,
+            minDRI: 0,
+            minDEF: 0,
+            minMEN: 0,
+            minGK: 0,
         });
+
+        const showMinimumStatsModal = ref(false);
 
         const clubOptions = ref([]);
         const nationalityOptions = ref([]);
@@ -476,9 +770,34 @@ export default defineComponent({
                 filters.value.ageRange.max !== AGE_SLIDER_MAX ||
                 filters.value.transferValueRangeLocal.min !== defValMin ||
                 filters.value.transferValueRangeLocal.max !== defValMax ||
-                filters.value.maxSalary !== salarySliderMax.value
+                filters.value.maxSalary !== salarySliderMax.value ||
+                hasActiveStatFilters.value
             );
         });
+
+        const hasActiveStatFilters = computed(() => {
+            return (
+                filters.value.minOverall > 0 ||
+                filters.value.minPHY > 0 ||
+                filters.value.minSHO > 0 ||
+                filters.value.minPAS > 0 ||
+                filters.value.minDRI > 0 ||
+                filters.value.minDEF > 0 ||
+                filters.value.minMEN > 0 ||
+                filters.value.minGK > 0
+            );
+        });
+
+        const getStatColorClass = (value) => {
+            const numValue = parseInt(value, 10) || 0;
+            if (numValue >= 90) return 'rating-tier-6'; // Purple - Elite
+            if (numValue >= 80) return 'rating-tier-5'; // Teal - Excellent
+            if (numValue >= 70) return 'rating-tier-4'; // Green - Good
+            if (numValue >= 55) return 'rating-tier-3'; // Light Blue - Average
+            if (numValue >= 40) return 'rating-tier-2'; // Orange - Below Average
+            if (numValue > 0) return 'rating-tier-1'; // Red - Poor
+            return 'rating-na'; // Grey - N/A
+        };
 
         const positionOptions = computed(() => {
             const options = [{ label: "Any Position", value: null }];
@@ -671,6 +990,15 @@ export default defineComponent({
                         : 100000000,
                 },
                 maxSalary: salarySliderMax.value,
+                // Reset FIFA-style stat minimum filters
+                minOverall: 0,
+                minPHY: 0,
+                minSHO: 0,
+                minPAS: 0,
+                minDRI: 0,
+                minDEF: 0,
+                minMEN: 0,
+                minGK: 0,
             };
             applyFilters();
         };
@@ -742,10 +1070,31 @@ export default defineComponent({
             },
         );
 
+        const resetMinimumStats = () => {
+            filters.value.minOverall = 0;
+            filters.value.minPHY = 0;
+            filters.value.minSHO = 0;
+            filters.value.minPAS = 0;
+            filters.value.minDRI = 0;
+            filters.value.minDEF = 0;
+            filters.value.minMEN = 0;
+            filters.value.minGK = 0;
+        };
+
+        const applyMinimumStats = () => {
+            showMinimumStatsModal.value = false;
+            applyFilters();
+        };
+
         return {
             quasarInstance,
             filters,
             hasActiveFilters,
+            hasActiveStatFilters,
+            showMinimumStatsModal,
+            getStatColorClass,
+            resetMinimumStats,
+            applyMinimumStats,
             clubOptions,
             nationalityOptions,
             positionOptions,
@@ -823,5 +1172,14 @@ export default defineComponent({
 }
 .filter-item-container {
     // Ensure consistent vertical alignment if items wrap
+}
+.stat-value-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    min-width: 24px;
+    text-align: center;
 }
 </style>
