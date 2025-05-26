@@ -395,7 +395,7 @@
                                     <div
                                         class="text-h6 q-mb-sm attribute-group-title"
                                     >
-                                        FIFA-Style Stats
+                                        Stat Summaries
                                     </div>
 
                                     <div class="fifa-stat-item q-mb-md">
