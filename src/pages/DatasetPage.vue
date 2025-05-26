@@ -350,13 +350,26 @@ export default {
                 })
                 .map((player) => {
                     // If a role is selected, modify the player's overall to show role-specific rating
-                    if (roleFilter.value) {
-                        const roleMatch = player.roleSpecificOveralls?.find(role => role.roleName === roleFilter.value);
-                        if (roleMatch) {
-                            // Return a modified copy of the player with role-specific overall
+                    if (roleFilter.value && player.roleSpecificOveralls) {
+                        let roleSpecificOverall = null;
+                        
+                        // Handle both array and object formats (as seen in TeamViewPage)
+                        if (Array.isArray(player.roleSpecificOveralls)) {
+                            // Array format: [{roleName: "DM - Anchor", score: 78}, ...]
+                            const roleMatch = player.roleSpecificOveralls.find(rso => rso.roleName === roleFilter.value);
+                            if (roleMatch) {
+                                roleSpecificOverall = roleMatch.score;
+                            }
+                        } else if (typeof player.roleSpecificOveralls === 'object') {
+                            // Object format: {"DM - Anchor": 78, "DM - Deep Lying Playmaker": 76, ...}
+                            roleSpecificOverall = player.roleSpecificOveralls[roleFilter.value];
+                        }
+                        
+                        // If we found a role-specific overall, use it
+                        if (roleSpecificOverall !== null && roleSpecificOverall !== undefined) {
                             return {
                                 ...player,
-                                overall: roleMatch.score  // Use role-specific overall instead of best overall
+                                overall: roleSpecificOverall
                             };
                         }
                     }
