@@ -49,7 +49,6 @@
             </div>
 
             <div v-if="!pageLoading && !pageLoadingError">
-                <!-- Dataset Overview Card -->
                 <q-card
                     class="q-mb-md"
                     :class="
@@ -109,7 +108,6 @@
                     </q-card-section>
                 </q-card>
 
-                <!-- Quick Actions Card -->
                 <q-card
                     class="q-mb-md"
                     :class="
@@ -154,7 +152,6 @@
                     </q-card-section>
                 </q-card>
 
-                <!-- Player Filters Card -->
                 <q-card
                     v-if="allPlayersData.length > 0"
                     class="q-mb-md"
@@ -170,15 +167,19 @@
                             :unique-nationalities="uniqueNationalities"
                             :unique-media-handlings="uniqueMediaHandlings"
                             :unique-personalities="uniquePersonalities"
-                            :transfer-value-range="transferValueRange"
+                            :transfer-value-range="transferValueRangeForFilters"
+                            :initial-dataset-range="
+                                initialDatasetTransferValueRangeForFilters
+                            "
+                            :salary-range="salaryRangeForFilters"
                             :currency-symbol="detectedCurrencySymbol"
                             :age-slider-min-default="AGE_SLIDER_MIN_DEFAULT"
                             :age-slider-max-default="AGE_SLIDER_MAX_DEFAULT"
+                            :is-loading="loading"
                         />
                     </q-card-section>
                 </q-card>
 
-                <!-- Player Data Table -->
                 <q-card
                     v-if="allPlayersData.length > 0"
                     :class="
@@ -249,6 +250,75 @@ import PlayerDetailDialog from "../components/PlayerDetailDialog.vue";
 import PlayerFilters from "../components/filters/PlayerFilters.vue";
 import UpgradeFinderDialog from "../components/UpgradeFinderDialog.vue";
 
+// Define FM attribute keys for filtering (raw keys as used in player.attributes)
+const rawTechnicalAttributeKeysConst = [
+    "Cor",
+    "Cro",
+    "Dri",
+    "Fin",
+    "Fir",
+    "Fre",
+    "Hea",
+    "Lon",
+    "L Th",
+    "Mar",
+    "Pas",
+    "Pen",
+    "Tck",
+    "Tec",
+];
+const rawMentalAttributeKeysConst = [
+    "Agg",
+    "Ant",
+    "Bra",
+    "Cmp",
+    "Cnt",
+    "Dec",
+    "Det",
+    "Fla",
+    "Ldr",
+    "OtB",
+    "Pos",
+    "Tea",
+    "Vis",
+    "Wor",
+];
+const rawPhysicalAttributeKeysConst = [
+    "Acc",
+    "Agi",
+    "Bal",
+    "Jum",
+    "Nat",
+    "Pac",
+    "Sta",
+    "Str",
+];
+const rawGoalkeeperAttributeKeysConst = [
+    "Aer",
+    "Cmd",
+    "Com",
+    "Ecc",
+    "Han",
+    "Kic",
+    "1v1",
+    "Pun",
+    "Ref",
+    "TRO",
+    "Thr",
+];
+
+const allRawFmAttributeKeys = [
+    ...rawTechnicalAttributeKeysConst,
+    ...rawMentalAttributeKeysConst,
+    ...rawPhysicalAttributeKeysConst,
+    ...rawGoalkeeperAttributeKeysConst,
+];
+
+// Helper to create filter keys like 'minCor', 'minLTh' (matching PlayerFilters.vue's formatAttrKey for consistency)
+const formatFilterKeyPrefix = (attrKey) => {
+    return attrKey.replace(/\s+/g, "").replace(/\(|\)/g, "");
+};
+
 export default {
     name: "DatasetPage",
     components: {
@@ -269,75 +339,42 @@ export default {
         const showPlayerDetailDialog = ref(false);
         const showUpgradeFinder = ref(false);
 
-        // Filter states
-        const nameFilter = ref("");
-        const clubFilter = ref(null);
-        const positionFilter = ref(null);
-        const roleFilter = ref(null);
-        const nationalityFilter = ref(null);
-        const mediaHandlingFilter = ref([]);
-        const personalityFilter = ref([]);
-        const ageRangeFilter = ref({ min: 15, max: 50 });
-        const transferValueRangeFilter = ref({ min: 0, max: 100000000 });
-        const maxSalaryFilter = ref(null);
-        // FIFA-style stat minimum filters
-        const minOverallFilter = ref(0);
-        const minPHYFilter = ref(0);
-        const minSHOFilter = ref(0);
-        const minPASFilter = ref(0);
-        const minDRIFilter = ref(0);
-        const minDEFFilter = ref(0);
-        const minMENFilter = ref(0);
-        const minGKFilter = ref(0);
+        // Centralized filter state for this page
+        const currentFilters = ref({
+            name: "",
+            club: null,
+            position: null,
+            role: null,
+            nationality: null,
+            mediaHandling: [],
+            personality: [],
+            ageRange: {
+                min: playerStore.AGE_SLIDER_MIN_DEFAULT,
+                max: playerStore.AGE_SLIDER_MAX_DEFAULT,
+            },
+            transferValueRangeLocal: {
+                min:
+                    playerStore.initialDatasetTransferValueRange?.value?.min ||
+                    0,
+                max:
+                    playerStore.initialDatasetTransferValueRange?.value?.max ||
+                    100000000,
+                userSet: false,
+            },
+            maxSalary: playerStore.salaryRange?.value?.max || 1000000,
+            minOverall: 0,
+            minPHY: 0,
+            minSHO: 0,
+            minPAS: 0,
+            minDRI: 0,
+            minDEF: 0,
+            minMEN: 0,
+            minGK: 0,
+        });
 
-        // FM Attribute filters - Technical
-        const technicalAttributeKeys = [
-            'crossing', 'dribbling', 'finishing', 'first_touch', 'free_kick_taking',
-            'heading', 'long_shots', 'long_throws', 'marking', 'passing', 'penalty_taking',
-            'tackling', 'technique', 'corners'
-        ];
-
-        // FM Attribute filters - Mental
-        const mentalAttributeKeys = [
-            'aggression', 'anticipation', 'bravery', 'composure', 'concentration',
-            'decisions', 'determination', 'flair', 'leadership', 'off_the_ball',
-            'positioning', 'teamwork', 'vision', 'work_rate'
-        ];
-
-        // FM Attribute filters - Physical
-        const physicalAttributeKeys = [
-            'acceleration', 'agility', 'balance', 'jumping_reach', 'natural_fitness',
-            'pace', 'stamina', 'strength'
-        ];
-
-        // FM Attribute filters - Goalkeeping
-        const goalkeeperAttributeKeys = [
-            'aerial_reach', 'command_of_area', 'communication', 'eccentricity',
-            'handling', 'kicking', 'one_on_ones', 'punching', 'reflexes',
-            'rushing_out', 'tendency_to_punch', 'throwing'
-        ];
-
-        // Helper function to format attribute keys
-        const formatAttrKey = (attr) => {
-            return attr
-                .split('_')
-                .map((word, index) => index === 0 ? word.charAt(0).toUpperCase() + word.slice(1) : word.charAt(0).toUpperCase() + word.slice(1))
-                .join('');
-        };
-
-        // All attribute keys combined
-        const allAttributeKeys = [
-            ...technicalAttributeKeys,
-            ...mentalAttributeKeys,
-            ...physicalAttributeKeys,
-            ...goalkeeperAttributeKeys
-        ];
-
-        // Create reactive filters for all attributes
-        const attributeFilters = {};
-        allAttributeKeys.forEach(attr => {
-            const filterKey = `min${formatAttrKey(attr)}Filter`;
-            attributeFilters[filterKey] = ref(0);
+        // Initialize FM attribute filters in currentFilters
+        allRawFmAttributeKeys.forEach((attrKey) => {
+            currentFilters.value[`min${formatFilterKeyPrefix(attrKey)}`] = 0;
         });
 
         // Computed properties from store
@@ -357,9 +394,26 @@ export default {
         const uniquePersonalities = computed(
             () => playerStore.uniquePersonalities,
         );
-        const transferValueRange = computed(
-            () => playerStore.transferValueRange,
+
+        // For PlayerFilters component props - ensure safe access with fallbacks
+        const transferValueRangeForFilters = computed(
+            () =>
+                playerStore.currentDatasetTransferValueRange.value || {
+                    min: 0,
+                    max: 100000000,
+                },
         );
+        const initialDatasetTransferValueRangeForFilters = computed(
+            () =>
+                playerStore.initialDatasetTransferValueRange.value || {
+                    min: 0,
+                    max: 100000000,
+                },
+        );
+        const salaryRangeForFilters = computed(
+            () => playerStore.salaryRange.value || { min: 0, max: 1000000 },
+        );
+
         const allAvailableRoles = computed(() => playerStore.allAvailableRoles);
         const AGE_SLIDER_MIN_DEFAULT = computed(
             () => playerStore.AGE_SLIDER_MIN_DEFAULT,
@@ -370,8 +424,8 @@ export default {
 
         const isGoalkeeperView = computed(() => {
             return (
-                positionFilter.value === "GK" ||
-                roleFilter.value?.includes("Goalkeeper")
+                currentFilters.value.position === "GK" ||
+                currentFilters.value.role?.includes("Goalkeeper")
             );
         });
 
@@ -382,75 +436,81 @@ export default {
                 .filter((player) => {
                     // Name filter
                     if (
-                        nameFilter.value &&
+                        currentFilters.value.name &&
                         !player.name
                             .toLowerCase()
-                            .includes(nameFilter.value.toLowerCase())
+                            .includes(currentFilters.value.name.toLowerCase())
                     ) {
                         return false;
                     }
 
                     // Club filter
-                    if (clubFilter.value && player.club !== clubFilter.value) {
+                    if (
+                        currentFilters.value.club &&
+                        player.club !== currentFilters.value.club
+                    ) {
                         return false;
                     }
 
                     // Position filter
-                    if (positionFilter.value) {
+                    if (currentFilters.value.position) {
                         const hasPosition = player.shortPositions?.includes(
-                            positionFilter.value,
+                            currentFilters.value.position,
                         );
                         if (!hasPosition) return false;
                     }
 
                     // Role filter
-                    if (roleFilter.value) {
+                    if (currentFilters.value.role) {
                         const hasRole = player.roleSpecificOveralls?.some(
-                            (role) => role.roleName === roleFilter.value,
+                            (role) =>
+                                role.roleName === currentFilters.value.role,
                         );
                         if (!hasRole) return false;
                     }
 
                     // Nationality filter
                     if (
-                        nationalityFilter.value &&
-                        player.nationality !== nationalityFilter.value
+                        currentFilters.value.nationality &&
+                        player.nationality !== currentFilters.value.nationality
                     ) {
                         return false;
                     }
 
                     // Media handling filter
                     if (
-                        mediaHandlingFilter.value &&
-                        mediaHandlingFilter.value.length > 0
+                        currentFilters.value.mediaHandling &&
+                        currentFilters.value.mediaHandling.length > 0
                     ) {
                         if (!player.media_handling) return false;
                         const playerMediaHandlings = player.media_handling
                             .split(",")
                             .map((s) => s.trim());
-                        const hasMediaHandling = mediaHandlingFilter.value.some(
-                            (filter) => playerMediaHandlings.includes(filter),
-                        );
+                        const hasMediaHandling =
+                            currentFilters.value.mediaHandling.some((filter) =>
+                                playerMediaHandlings.includes(filter),
+                            );
                         if (!hasMediaHandling) return false;
                     }
 
                     // Personality filter
                     if (
-                        personalityFilter.value &&
-                        personalityFilter.value.length > 0
+                        currentFilters.value.personality &&
+                        currentFilters.value.personality.length > 0
                     ) {
                         if (!player.personality) return false;
-                        const hasPersonality = personalityFilter.value.includes(
-                            player.personality,
-                        );
+                        const hasPersonality =
+                            currentFilters.value.personality.includes(
+                                player.personality,
+                            );
                         if (!hasPersonality) return false;
                     }
 
                     // Age range filter
                     const playerAge = parseInt(player.age, 10) || 0;
                     if (
-                        playerAge < ageRangeFilter.value.min ||
-                        playerAge > ageRangeFilter.value.max
+                        playerAge < currentFilters.value.ageRange.min ||
+                        playerAge > currentFilters.value.ageRange.max
                     ) {
                         return false;
                     }
@@ -458,54 +518,73 @@ export default {
                     // Transfer value range filter
                     if (
                         player.transferValueAmount <
-                            transferValueRangeFilter.value.min ||
+                            currentFilters.value.transferValueRangeLocal.min ||
                         player.transferValueAmount >
-                            transferValueRangeFilter.value.max
+                            currentFilters.value.transferValueRangeLocal.max
                     ) {
                         return false;
                     }
 
                     // Max salary filter
                     if (
-                        maxSalaryFilter.value !== null &&
-                        player.wageAmount > maxSalaryFilter.value
+                        currentFilters.value.maxSalary !== null &&
+                        player.wageAmount > currentFilters.value.maxSalary
                     ) {
                         return false;
                     }
 
                     // FIFA-style stat minimum filters
-                    if (minOverallFilter.value > 0 && (player.Overall || 0) < minOverallFilter.value) {
+                    if (
+                        currentFilters.value.minOverall > 0 &&
+                        (player.Overall || 0) < currentFilters.value.minOverall
+                    )
                         return false;
-                    }
-                    if (minPHYFilter.value > 0 && (player.PHY || 0) < minPHYFilter.value) {
+                    if (
+                        currentFilters.value.minPHY > 0 &&
+                        (player.PHY || 0) < currentFilters.value.minPHY
+                    )
                         return false;
-                    }
-                    if (minSHOFilter.value > 0 && (player.SHO || 0) < minSHOFilter.value) {
+                    if (
+                        currentFilters.value.minSHO > 0 &&
+                        (player.SHO || 0) < currentFilters.value.minSHO
+                    )
                         return false;
-                    }
-                    if (minPASFilter.value > 0 && (player.PAS || 0) < minPASFilter.value) {
+                    if (
+                        currentFilters.value.minPAS > 0 &&
+                        (player.PAS || 0) < currentFilters.value.minPAS
+                    )
                         return false;
-                    }
-                    if (minDRIFilter.value > 0 && (player.DRI || 0) < minDRIFilter.value) {
+                    if (
+                        currentFilters.value.minDRI > 0 &&
+                        (player.DRI || 0) < currentFilters.value.minDRI
+                    )
                         return false;
-                    }
-                    if (minDEFFilter.value > 0 && (player.DEF || 0) < minDEFFilter.value) {
+                    if (
+                        currentFilters.value.minDEF > 0 &&
+                        (player.DEF || 0) < currentFilters.value.minDEF
+                    )
                         return false;
-                    }
-                    if (minMENFilter.value > 0 && (player.MEN || 0) < minMENFilter.value) {
+                    if (
+                        currentFilters.value.minMEN > 0 &&
+                        (player.MEN || 0) < currentFilters.value.minMEN
+                    )
                         return false;
-                    }
-                    if (minGKFilter.value > 0 && (player.GK || 0) < minGKFilter.value) {
+                    if (
+                        currentFilters.value.minGK > 0 &&
+                        (player.GK || 0) < currentFilters.value.minGK
+                    )
                         return false;
-                    }
 
                     // FM Attribute minimum filters
-                    for (const attr of allAttributeKeys) {
-                        const filterKey = `min${formatAttrKey(attr)}Filter`;
-                        const attributeFilter = attributeFilters[filterKey];
-                        if (attributeFilter && attributeFilter.value > 0) {
-                            const playerAttrValue = parseInt(player[attr], 10) || 0;
-                            if (playerAttrValue < attributeFilter.value) {
+                    for (const rawAttrKey of allRawFmAttributeKeys) {
+                        const filterKeyForVal = `min${formatFilterKeyPrefix(rawAttrKey)}`;
+                        const minVal = currentFilters.value[filterKeyForVal];
+
+                        if (minVal > 0) {
+                            const playerAttrStr = player.attributes[rawAttrKey]; // FM attributes are in player.attributes as strings
+                            const playerAttrVal =
+                                parseInt(playerAttrStr, 10) || 0;
+                            if (playerAttrVal < minVal) {
                                 return false;
                             }
                         }
@@ -514,89 +593,34 @@ export default {
                     return true;
                 })
                 .map((player) => {
-                    // If a role is selected, modify the player's overall to show role-specific rating
-                    if (roleFilter.value && player.roleSpecificOveralls) {
-                        // Debug logging - let's see what we're working with
-                        console.log("=== ROLE FILTER DEBUG ===");
-                        console.log("Player name:", player.name);
-                        console.log(
-                            "Player Overall (capital O):",
-                            player.Overall,
-                        );
-                        console.log(
-                            "Player overall (lowercase o):",
-                            player.overall,
-                        );
-                        console.log("Selected role filter:", roleFilter.value);
-                        console.log(
-                            "roleSpecificOveralls type:",
-                            typeof player.roleSpecificOveralls,
-                        );
-                        console.log(
-                            "roleSpecificOveralls is array:",
-                            Array.isArray(player.roleSpecificOveralls),
-                        );
-                        console.log(
-                            "roleSpecificOveralls content:",
-                            player.roleSpecificOveralls,
-                        );
-
+                    if (
+                        currentFilters.value.role &&
+                        player.roleSpecificOveralls
+                    ) {
                         let roleSpecificOverall = null;
-
-                        // Handle both array and object formats (as seen in TeamViewPage)
                         if (Array.isArray(player.roleSpecificOveralls)) {
-                            console.log("Processing as array...");
-                            // Array format: [{roleName: "DM - Anchor", score: 78}, ...]
                             const roleMatch = player.roleSpecificOveralls.find(
-                                (rso) => rso.roleName === roleFilter.value,
+                                (rso) =>
+                                    rso.roleName === currentFilters.value.role,
                             );
-                            console.log("Role match found:", roleMatch);
-                            if (roleMatch) {
+                            if (roleMatch)
                                 roleSpecificOverall = roleMatch.score;
-                                console.log(
-                                    "Role-specific overall from array:",
-                                    roleSpecificOverall,
-                                );
-                            }
                         } else if (
                             typeof player.roleSpecificOveralls === "object"
                         ) {
-                            console.log("Processing as object...");
-                            // Object format: {"DM - Anchor": 78, "DM - Deep Lying Playmaker": 76, ...}
-                            console.log(
-                                "Available roles:",
-                                Object.keys(player.roleSpecificOveralls),
-                            );
                             roleSpecificOverall =
-                                player.roleSpecificOveralls[roleFilter.value];
-                            console.log(
-                                "Role-specific overall from object:",
-                                roleSpecificOverall,
-                            );
+                                player.roleSpecificOveralls[
+                                    currentFilters.value.role
+                                ];
                         }
 
-                        // If we found a role-specific overall, use it
                         if (
                             roleSpecificOverall !== null &&
                             roleSpecificOverall !== undefined
                         ) {
-                            console.log(
-                                "✅ Using role-specific overall:",
-                                roleSpecificOverall,
-                            );
-                            return {
-                                ...player,
-                                Overall: roleSpecificOverall, // Capital O to match PlayerDataTable
-                            };
-                        } else {
-                            console.log(
-                                "❌ No role match found, using original overall:",
-                                player.Overall,
-                            );
+                            return { ...player, Overall: roleSpecificOverall };
                         }
-                        console.log("=== END DEBUG ===");
                     }
-                    // Return original player if no role filter or no role match
                     return player;
                 });
         });
@@ -607,8 +631,30 @@ export default {
             try {
                 await playerStore.fetchPlayersByDatasetId(datasetId);
                 await playerStore.fetchAllAvailableRoles();
+
+                // Safely access store values and provide defaults
+                const initTvRange =
+                    playerStore.initialDatasetTransferValueRange.value;
+                const initSalaryRange = playerStore.salaryRange.value;
+
+                currentFilters.value.transferValueRangeLocal = {
+                    min:
+                        initTvRange && initTvRange.min !== undefined
+                            ? initTvRange.min
+                            : 0,
+                    max:
+                        initTvRange && initTvRange.max !== undefined
+                            ? initTvRange.max
+                            : 100000000,
+                    userSet: false,
+                };
+                currentFilters.value.maxSalary =
+                    initSalaryRange && initSalaryRange.max !== undefined
+                        ? initSalaryRange.max
+                        : 1000000;
             } catch (err) {
                 pageLoadingError.value = `Failed to load dataset: ${err.message || "Unknown server error"}.`;
+                playerStore.resetState();
             } finally {
                 pageLoading.value = false;
             }
@@ -616,7 +662,6 @@ export default {
 
         onMounted(async () => {
             const datasetIdFromRoute = route.params.datasetId;
-
             if (datasetIdFromRoute) {
                 await fetchDataset(datasetIdFromRoute);
             } else {
@@ -627,9 +672,7 @@ export default {
 
         const shareDataset = async () => {
             if (!currentDatasetId.value) return;
-
             const shareUrl = `${window.location.origin}/dataset/${currentDatasetId.value}`;
-
             try {
                 await navigator.clipboard.writeText(shareUrl);
                 quasarInstance.notify({
@@ -640,14 +683,12 @@ export default {
                     timeout: 2000,
                 });
             } catch (err) {
-                // Fallback for older browsers
                 const textArea = document.createElement("textarea");
                 textArea.value = shareUrl;
                 document.body.appendChild(textArea);
                 textArea.select();
                 document.execCommand("copy");
                 document.body.removeChild(textArea);
-
                 quasarInstance.notify({
                     message: "Dataset link copied to clipboard!",
                     color: "positive",
@@ -659,9 +700,8 @@ export default {
         };
 
         const viewAllPlayers = () => {
-            // Already on the dataset page showing all players
+            /* Already on this page */
         };
-
         const viewTeamAnalysis = () => {
             if (currentDatasetId.value) {
                 router.push(`/team-view?datasetId=${currentDatasetId.value}`);
@@ -675,7 +715,6 @@ export default {
 
         const handleTeamSelected = (teamName) => {
             if (currentDatasetId.value) {
-                // Open in new tab (since user requested new tab functionality)
                 const url = router.resolve({
                     path: "/team-view",
                     query: {
@@ -687,35 +726,24 @@ export default {
             }
         };
 
-        const handleFiltersChanged = (filters) => {
-            nameFilter.value = filters.name;
-            clubFilter.value = filters.club;
-            positionFilter.value = filters.position;
-            roleFilter.value = filters.role;
-            nationalityFilter.value = filters.nationality;
-            mediaHandlingFilter.value = filters.mediaHandling;
-            personalityFilter.value = filters.personality;
-            ageRangeFilter.value = filters.ageRange;
-            transferValueRangeFilter.value = filters.transferValueRangeLocal;
-            maxSalaryFilter.value = filters.maxSalary;
-            // FIFA-style stat minimum filters
-            minOverallFilter.value = filters.minOverall;
-            minPHYFilter.value = filters.minPHY;
-            minSHOFilter.value = filters.minSHO;
-            minPASFilter.value = filters.minPAS;
-            minDRIFilter.value = filters.minDRI;
-            minDEFFilter.value = filters.minDEF;
-            minMENFilter.value = filters.minMEN;
-            minGKFilter.value = filters.minGK;
-            
-            // FM Attribute minimum filters
-            allAttributeKeys.forEach(attr => {
-                const filterKey = `min${formatAttrKey(attr)}Filter`;
-                const filtersKey = `min${formatAttrKey(attr)}`;
-                if (attributeFilters[filterKey] && filters[filtersKey] !== undefined) {
-                    attributeFilters[filterKey].value = filters[filtersKey];
-                }
-            });
+        const handleFiltersChanged = (filtersFromChild) => {
+            const newTransferRange = filtersFromChild.transferValueRangeLocal;
+            const oldTransferRange =
+                currentFilters.value.transferValueRangeLocal;
+
+            currentFilters.value = {
+                ...currentFilters.value,
+                ...filtersFromChild,
+            };
+
+            if (
+                newTransferRange &&
+                oldTransferRange &&
+                (newTransferRange.min !== oldTransferRange.min ||
+                    newTransferRange.max !== oldTransferRange.max)
+            ) {
+                currentFilters.value.transferValueRangeLocal.userSet = true;
+            }
         };
 
         watch(
@@ -725,6 +753,50 @@ export default {
                     await fetchDataset(newId);
                 }
             },
+        );
+
+        watch(
+            () => playerStore.initialDatasetTransferValueRange.value,
+            (newRange) => {
+                if (
+                    newRange &&
+                    !currentFilters.value.transferValueRangeLocal.userSet
+                ) {
+                    // Check userSet flag
+                    currentFilters.value.transferValueRangeLocal = {
+                        min: newRange.min !== undefined ? newRange.min : 0,
+                        max:
+                            newRange.max !== undefined
+                                ? newRange.max
+                                : 100000000,
+                        userSet: false, // Keep userSet as false when programmatically updating
+                    };
+                }
+            },
+            { immediate: true, deep: true },
+        );
+
+        watch(
+            () => playerStore.salaryRange.value,
+            (newRange) => {
+                const currentMaxSalary = currentFilters.value.maxSalary;
+                const storeMaxSalary = playerStore.salaryRange.value?.max;
+
+                // Only update if maxSalary hasn't been manually set by user OR is still at its initial large default OR matches the current store max
+                if (
+                    newRange &&
+                    (currentMaxSalary === 1000000 ||
+                        currentMaxSalary === null ||
+                        currentMaxSalary === storeMaxSalary)
+                ) {
+                    if (newRange.max !== undefined) {
+                        currentFilters.value.maxSalary = newRange.max;
+                    } else {
+                        currentFilters.value.maxSalary = 1000000;
+                    }
+                }
+            },
+            { immediate: true, deep: true },
         );
 
         return {
@@ -738,7 +810,9 @@ export default {
             uniqueNationalities,
             uniqueMediaHandlings,
             uniquePersonalities,
-            transferValueRange,
+            transferValueRangeForFilters,
+            initialDatasetTransferValueRangeForFilters,
+            salaryRangeForFilters,
             allAvailableRoles,
             AGE_SLIDER_MIN_DEFAULT,
             AGE_SLIDER_MAX_DEFAULT,
@@ -755,6 +829,7 @@ export default {
             handleFiltersChanged,
             quasarInstance,
             router,
+            currentFilters,
         };
     },
 };

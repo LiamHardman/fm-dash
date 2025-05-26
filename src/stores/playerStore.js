@@ -15,7 +15,6 @@ export const usePlayerStore = defineStore("player", () => {
   const error = ref("");
   const allAvailableRoles = ref([]);
 
-  // Default age slider values, can be accessed by components
   const AGE_SLIDER_MIN_DEFAULT = 15;
   const AGE_SLIDER_MAX_DEFAULT = 50;
 
@@ -74,19 +73,79 @@ export const usePlayerStore = defineStore("player", () => {
     return s.size;
   });
 
-  const transferValueRange = computed(() => {
+  // Renamed for clarity: this reflects the range of the currently loaded dataset in the store
+  const currentDatasetTransferValueRange = computed(() => {
     if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) {
-      return { min: 0, max: 100000000 };
+      return { min: 0, max: 100000000 }; // Default
     }
     const transferValuesNumeric = allPlayers.value
       .filter((p) => typeof p.transferValueAmount === "number")
       .map((p) => p.transferValueAmount);
+
     if (transferValuesNumeric.length === 0) return { min: 0, max: 100000000 };
-    const min = Math.min(0, ...transferValuesNumeric);
+
+    let min = Math.min(...transferValuesNumeric);
     let max = Math.max(...transferValuesNumeric);
-    if (min >= max) max = min + 50000; // Ensure max is always greater than min for range slider
-    if (min === 0 && max === 0 && transferValuesNumeric.some((v) => v === 0))
-      max = 50000; // Handle case where all values are 0
+
+    min = Math.max(0, min); // Ensure min is not negative
+
+    if (min >= max) {
+      // Handles cases where all values are same, or only one value
+      max = min + 50000; // Ensure max is greater for range slider
+    }
+    if (
+      min === 0 &&
+      max === 50000 &&
+      transferValuesNumeric.every((v) => v === 0)
+    ) {
+      // If all values were 0, max was set to 50000. This is fine.
+    }
+    if (transferValuesNumeric.length === 1 && min === max) {
+      // If only one player, ensure range
+      max = min + 50000;
+    }
+
+    return { min, max };
+  });
+
+  // This can be used by PlayerFilters as the true initial range of the whole dataset
+  const initialDatasetTransferValueRange = computed(() => {
+    // For now, this will be the same as currentDatasetTransferValueRange,
+    // as allPlayers.value represents the full dataset fetched.
+    // If server-side pagination/filtering were implemented, this might differ.
+    return currentDatasetTransferValueRange.value;
+  });
+
+  const salaryRange = computed(() => {
+    if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) {
+      return { min: 0, max: 1000000 }; // Default
+    }
+    const salaryAmountsNumeric = allPlayers.value
+      .filter((p) => typeof p.wageAmount === "number")
+      .map((p) => p.wageAmount);
+
+    if (salaryAmountsNumeric.length === 0) return { min: 0, max: 1000000 };
+
+    let min = Math.min(...salaryAmountsNumeric);
+    let max = Math.max(...salaryAmountsNumeric);
+
+    min = Math.max(0, min); // Ensure min is not negative
+
+    if (min >= max) {
+      // Handles cases where all values are same, or only one value
+      max = min + 10000; // Ensure max is greater for range slider
+    }
+    if (salaryAmountsNumeric.length === 1 && min === max) {
+      // If only one player, ensure range
+      max = min + 10000;
+    }
+    if (
+      min === 0 &&
+      max === 10000 &&
+      salaryAmountsNumeric.every((v) => v === 0)
+    ) {
+      // If all values were 0, max was set to 10000. This is fine.
+    }
     return { min, max };
   });
 
@@ -102,18 +161,17 @@ export const usePlayerStore = defineStore("player", () => {
         "detectedCurrencySymbol",
         detectedCurrencySymbol.value,
       );
-      await fetchPlayersByDatasetId(currentDatasetId.value); // Fetch all players for the new dataset
-      await fetchAllAvailableRoles(); // Fetch roles for the new dataset
+      await fetchPlayersByDatasetId(currentDatasetId.value);
+      await fetchAllAvailableRoles();
       return response;
     } catch (e) {
-      // Use the error message directly from the service if it's a 413 or other specific error
       if (e.status === 413 && e.message) {
-        error.value = e.message; // Use the specific message from the backend
+        error.value = e.message;
       } else {
         error.value = `Failed to process file: ${e.message || "Unknown error"}`;
       }
-      resetState(); // Reset state on error
-      throw e; // Re-throw for component to potentially handle further
+      resetState();
+      throw e;
     } finally {
       loading.value = false;
     }
@@ -128,15 +186,12 @@ export const usePlayerStore = defineStore("player", () => {
     maxSalaryFilter = null,
   ) {
     if (!datasetId) {
-      resetState(); // Clear data if no datasetId
+      resetState();
       return;
     }
     loading.value = true;
     error.value = "";
     try {
-      console.log(
-        `playerStore: Fetching players for datasetId: ${datasetId}, Pos: ${positionFilter}, Role: ${roleFilter}, Age: ${JSON.stringify(ageRangeFilter)}, Val: ${JSON.stringify(transferValueRangeFilter)}, MaxSalary: ${maxSalaryFilter}`,
-      );
       const response = await playerService.getPlayersByDatasetId(
         datasetId,
         positionFilter,
@@ -146,15 +201,15 @@ export const usePlayerStore = defineStore("player", () => {
         maxSalaryFilter,
       );
       allPlayers.value = processPlayersFromAPI(response.players);
-      detectedCurrencySymbol.value = response.currencySymbol || "$"; // Update currency symbol from response
+      detectedCurrencySymbol.value = response.currencySymbol || "$";
       sessionStorage.setItem(
         "detectedCurrencySymbol",
         detectedCurrencySymbol.value,
-      ); // Persist it
-      return response; // Return the full response if needed by caller
+      );
+      return response;
     } catch (e) {
       error.value = `Failed to fetch player data: ${e.message || "Unknown error"}`;
-      resetState(); // Clear data on error
+      resetState();
       throw e;
     } finally {
       loading.value = false;
@@ -162,35 +217,31 @@ export const usePlayerStore = defineStore("player", () => {
   }
 
   async function fetchAllAvailableRoles(force = false) {
-    // Fetches all unique role names available in the current dataset (from backend)
-    if (allAvailableRoles.value.length > 0 && !force) return; // Avoid refetch if already populated unless forced
+    if (allAvailableRoles.value.length > 0 && !force) return;
     try {
       const roles = await playerService.getAvailableRoles();
-      allAvailableRoles.value = roles.sort(); // Sort for consistent display
+      allAvailableRoles.value = roles.sort();
     } catch (e) {
       console.error("playerStore: Error fetching available roles:", e);
-      allAvailableRoles.value = []; // Reset or handle error appropriately
+      allAvailableRoles.value = [];
     }
   }
 
   function processPlayersFromAPI(playersData) {
     if (!Array.isArray(playersData)) return [];
-    // Ensure age is an integer, default to 0 if not parsable
     return playersData.map((p) => ({
       ...p,
       age: parseInt(p.age, 10) || 0,
-      // Other per-player processing can go here if needed
     }));
   }
 
   function resetState() {
     allPlayers.value = [];
     currentDatasetId.value = null;
-    detectedCurrencySymbol.value = "$"; // Reset to default
+    detectedCurrencySymbol.value = "$";
     allAvailableRoles.value = [];
     sessionStorage.removeItem("currentDatasetId");
     sessionStorage.removeItem("detectedCurrencySymbol");
-    // Do not clear error.value here, let components decide
   }
 
   async function loadFromSessionStorage() {
@@ -204,15 +255,13 @@ export const usePlayerStore = defineStore("player", () => {
         detectedCurrencySymbol.value = storedCurrencySymbol;
       }
       try {
-        // Fetch players and roles when loading from session
         await fetchPlayersByDatasetId(storedDatasetId);
         await fetchAllAvailableRoles();
       } catch (e) {
-        // Error is handled within fetchPlayersByDatasetId and fetchAllAvailableRoles
-        // If loading from session fails, the state will be reset by those functions.
+        // Error handled in fetch functions
       }
     } else {
-      resetState(); // If no dataset ID in session, ensure clean state
+      resetState();
     }
   }
 
@@ -227,14 +276,16 @@ export const usePlayerStore = defineStore("player", () => {
     uniqueMediaHandlings,
     uniquePersonalities,
     uniquePositionsCount,
-    transferValueRange,
+    currentDatasetTransferValueRange, // Use this for current range
+    initialDatasetTransferValueRange, // Use this for the full dataset's initial range
+    salaryRange, // Added salaryRange
     allAvailableRoles,
     uploadPlayerFile,
     fetchPlayersByDatasetId,
     fetchAllAvailableRoles,
     resetState,
     loadFromSessionStorage,
-    AGE_SLIDER_MIN_DEFAULT, // Expose defaults
+    AGE_SLIDER_MIN_DEFAULT,
     AGE_SLIDER_MAX_DEFAULT,
   };
 });

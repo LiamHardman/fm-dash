@@ -217,7 +217,9 @@
                     />
                 </div>
 
-                <div class="col-12 col-sm-6 col-md-4 col-lg-3 filter-item-container">
+                <div
+                    class="col-12 col-sm-6 col-md-4 col-lg-3 filter-item-container"
+                >
                     <div
                         class="text-caption q-mb-xs slider-label"
                         :class="
@@ -226,10 +228,14 @@
                                 : 'text-grey-7'
                         "
                     >
-                        Max Salary: {{
+                        Max Salary:
+                        {{
                             filters.maxSalary === salarySliderMax
                                 ? "Any"
-                                : formatCurrency(filters.maxSalary, currencySymbol)
+                                : formatCurrency(
+                                      filters.maxSalary,
+                                      currencySymbol,
+                                  )
                         }}
                     </div>
                     <q-slider
@@ -241,7 +247,10 @@
                         :label-value="
                             filters.maxSalary === salarySliderMax
                                 ? 'Any'
-                                : formatCurrency(filters.maxSalary, currencySymbol)
+                                : formatCurrency(
+                                      filters.maxSalary,
+                                      currencySymbol,
+                                  )
                         "
                         @update:model-value="debouncedApplyFilters"
                         color="primary"
@@ -344,14 +353,18 @@
                 </div>
             </div>
 
-            <!-- Set Minimum Stats Button -->
-            <div class="row q-col-gutter-x-md q-col-gutter-y-sm items-start q-mt-sm">
+            <div
+                class="row q-col-gutter-x-md q-col-gutter-y-sm items-start q-mt-sm"
+            >
                 <div
                     class="col-12 col-md-4 col-lg-2 filter-item-container self-end"
                 >
                     <q-btn
                         color="primary"
-                        :label="'Set Minimum Stats' + (hasActiveStatFilters ? ' (Active)' : '')"
+                        :label="
+                            'Set Minimum Stats' +
+                            (hasActiveStatFilters ? ' (Active)' : '')
+                        "
                         class="full-width"
                         @click="showMinimumStatsModal = true"
                         :disable="isLoading"
@@ -362,10 +375,11 @@
                 </div>
             </div>
 
-            <!-- Minimum Stats Modal -->
             <q-dialog v-model="showMinimumStatsModal" persistent maximized>
                 <q-card
-                    :class="quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'"
+                    :class="
+                        quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'
+                    "
                 >
                     <q-card-section>
                         <div class="text-h6">Set Minimum Stats</div>
@@ -376,14 +390,14 @@
 
                     <q-card-section class="q-pt-none modal-content">
                         <div class="row q-col-gutter-lg">
-                            <!-- Left Column: FIFA-Style Stats -->
                             <div class="col-12 col-md-3">
                                 <div class="attribute-group">
-                                    <div class="text-h6 q-mb-sm attribute-group-title">
+                                    <div
+                                        class="text-h6 q-mb-sm attribute-group-title"
+                                    >
                                         FIFA-Style Stats
                                     </div>
-                                    
-                                    <!-- Overall Slider -->
+
                                     <div class="fifa-stat-item q-mb-md">
                                         <div
                                             class="text-caption q-mb-xs slider-label"
@@ -394,9 +408,14 @@
                                             "
                                         >
                                             Min Overall:
-                                            <span 
+                                            <span
                                                 class="stat-value-badge q-ml-xs"
-                                                :class="getStatColorClass(filters.minOverall)"
+                                                :class="
+                                                    getUnifiedRatingClass(
+                                                        filters.minOverall,
+                                                        100,
+                                                    )
+                                                "
                                             >
                                                 {{ filters.minOverall || 0 }}
                                             </span>
@@ -411,7 +430,6 @@
                                         />
                                     </div>
 
-                                    <!-- PHY Slider -->
                                     <div class="fifa-stat-item q-mb-md">
                                         <div
                                             class="text-caption q-mb-xs slider-label"
@@ -422,9 +440,14 @@
                                             "
                                         >
                                             Min PHY:
-                                            <span 
+                                            <span
                                                 class="stat-value-badge q-ml-xs"
-                                                :class="getStatColorClass(filters.minPHY)"
+                                                :class="
+                                                    getUnifiedRatingClass(
+                                                        filters.minPHY,
+                                                        100,
+                                                    )
+                                                "
                                             >
                                                 {{ filters.minPHY || 0 }}
                                             </span>
@@ -439,7 +462,6 @@
                                         />
                                     </div>
 
-                                    <!-- SHO Slider -->
                                     <div class="fifa-stat-item q-mb-md">
                                         <div
                                             class="text-caption q-mb-xs slider-label"
@@ -450,9 +472,14 @@
                                             "
                                         >
                                             Min SHO:
-                                            <span 
+                                            <span
                                                 class="stat-value-badge q-ml-xs"
-                                                :class="getStatColorClass(filters.minSHO)"
+                                                :class="
+                                                    getUnifiedRatingClass(
+                                                        filters.minSHO,
+                                                        100,
+                                                    )
+                                                "
                                             >
                                                 {{ filters.minSHO || 0 }}
                                             </span>
@@ -467,7 +494,6 @@
                                         />
                                     </div>
 
-                                    <!-- PAS Slider -->
                                     <div class="fifa-stat-item q-mb-md">
                                         <div
                                             class="text-caption q-mb-xs slider-label"
@@ -478,9 +504,14 @@
                                             "
                                         >
                                             Min PAS:
-                                            <span 
+                                            <span
                                                 class="stat-value-badge q-ml-xs"
-                                                :class="getStatColorClass(filters.minPAS)"
+                                                :class="
+                                                    getUnifiedRatingClass(
+                                                        filters.minPAS,
+                                                        100,
+                                                    )
+                                                "
                                             >
                                                 {{ filters.minPAS || 0 }}
                                             </span>
@@ -495,7 +526,6 @@
                                         />
                                     </div>
 
-                                    <!-- DRI Slider -->
                                     <div class="fifa-stat-item q-mb-md">
                                         <div
                                             class="text-caption q-mb-xs slider-label"
@@ -506,9 +536,14 @@
                                             "
                                         >
                                             Min DRI:
-                                            <span 
+                                            <span
                                                 class="stat-value-badge q-ml-xs"
-                                                :class="getStatColorClass(filters.minDRI)"
+                                                :class="
+                                                    getUnifiedRatingClass(
+                                                        filters.minDRI,
+                                                        100,
+                                                    )
+                                                "
                                             >
                                                 {{ filters.minDRI || 0 }}
                                             </span>
@@ -523,7 +558,6 @@
                                         />
                                     </div>
 
-                                    <!-- DEF Slider -->
                                     <div class="fifa-stat-item q-mb-md">
                                         <div
                                             class="text-caption q-mb-xs slider-label"
@@ -534,9 +568,14 @@
                                             "
                                         >
                                             Min DEF:
-                                            <span 
+                                            <span
                                                 class="stat-value-badge q-ml-xs"
-                                                :class="getStatColorClass(filters.minDEF)"
+                                                :class="
+                                                    getUnifiedRatingClass(
+                                                        filters.minDEF,
+                                                        100,
+                                                    )
+                                                "
                                             >
                                                 {{ filters.minDEF || 0 }}
                                             </span>
@@ -551,7 +590,6 @@
                                         />
                                     </div>
 
-                                    <!-- MEN Slider -->
                                     <div class="fifa-stat-item q-mb-md">
                                         <div
                                             class="text-caption q-mb-xs slider-label"
@@ -562,9 +600,14 @@
                                             "
                                         >
                                             Min MEN:
-                                            <span 
+                                            <span
                                                 class="stat-value-badge q-ml-xs"
-                                                :class="getStatColorClass(filters.minMEN)"
+                                                :class="
+                                                    getUnifiedRatingClass(
+                                                        filters.minMEN,
+                                                        100,
+                                                    )
+                                                "
                                             >
                                                 {{ filters.minMEN || 0 }}
                                             </span>
@@ -579,7 +622,6 @@
                                         />
                                     </div>
 
-                                    <!-- GK Slider -->
                                     <div class="fifa-stat-item q-mb-md">
                                         <div
                                             class="text-caption q-mb-xs slider-label"
@@ -590,9 +632,14 @@
                                             "
                                         >
                                             Min GK:
-                                            <span 
+                                            <span
                                                 class="stat-value-badge q-ml-xs"
-                                                :class="getStatColorClass(filters.minGK)"
+                                                :class="
+                                                    getUnifiedRatingClass(
+                                                        filters.minGK,
+                                                        100,
+                                                    )
+                                                "
                                             >
                                                 {{ filters.minGK || 0 }}
                                             </span>
@@ -609,123 +656,282 @@
                                 </div>
                             </div>
 
-                            <!-- Right Column: FM Attributes -->
                             <div class="col-12 col-md-9">
-                                <q-card flat bordered :class="quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-blue-grey-1'">
-                                    <q-card-section class="attributes-section">
-                                        <div class="text-subtitle1 q-mb-xs attributes-section-title">
-                                            FM Attributes
-                                        </div>
-                                        
-                                        <!-- Technical Attributes -->
-                                        <div class="attribute-group q-mb-md">
-                                            <div class="text-caption text-bold q-mb-xs attribute-group-title">
-                                                Technical
-                                            </div>
-                                            <div class="row attribute-list">
-                                                <template v-for="attr in technicalAttributeKeys" :key="attr">
-                                                    <div class="col-6 col-sm-4 col-md-3 attribute-item">
-                                                        <div class="row no-wrap items-baseline q-gutter-x-xs">
-                                                            <div class="col-auto attribute-name">{{ formatAttrName(attr) }}:</div>
-                                                            <div class="col-auto text-weight-bold attribute-value">
-                                                                <span 
-                                                                    :class="getAttributeColorClass(filters[`min${formatAttrKey(attr)}`])"
-                                                                    class="clickable-attribute"
-                                                                    @click="openAttributeEditor(attr)"
-                                                                >
-                                                                    {{ filters[`min${formatAttrKey(attr)}`] || 0 }}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </template>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Mental Attributes -->
-                                        <div class="attribute-group q-mb-md">
-                                            <div class="text-caption text-bold q-mb-xs attribute-group-title">
-                                                Mental
-                                            </div>
-                                            <div class="row attribute-list">
-                                                <template v-for="attr in mentalAttributeKeys" :key="attr">
-                                                    <div class="col-6 col-sm-4 col-md-3 attribute-item">
-                                                        <div class="row no-wrap items-baseline q-gutter-x-xs">
-                                                            <div class="col-auto attribute-name">{{ formatAttrName(attr) }}:</div>
-                                                            <div class="col-auto text-weight-bold attribute-value">
-                                                                <span 
-                                                                    :class="getAttributeColorClass(filters[`min${formatAttrKey(attr)}`])"
-                                                                    class="clickable-attribute"
-                                                                    @click="openAttributeEditor(attr)"
-                                                                >
-                                                                    {{ filters[`min${formatAttrKey(attr)}`] || 0 }}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </template>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Physical Attributes -->
-                                        <div class="attribute-group q-mb-md">
-                                            <div class="text-caption text-bold q-mb-xs attribute-group-title">
-                                                Physical
-                                            </div>
-                                            <div class="row attribute-list">
-                                                <template v-for="attr in physicalAttributeKeys" :key="attr">
-                                                    <div class="col-6 col-sm-4 col-md-3 attribute-item">
-                                                        <div class="row no-wrap items-baseline q-gutter-x-xs">
-                                                            <div class="col-auto attribute-name">{{ formatAttrName(attr) }}:</div>
-                                                            <div class="col-auto text-weight-bold attribute-value">
-                                                                <span 
-                                                                    :class="getAttributeColorClass(filters[`min${formatAttrKey(attr)}`])"
-                                                                    class="clickable-attribute"
-                                                                    @click="openAttributeEditor(attr)"
-                                                                >
-                                                                    {{ filters[`min${formatAttrKey(attr)}`] || 0 }}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </template>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Goalkeeping Attributes -->
-                                        <div class="attribute-group">
-                                            <div class="text-caption text-bold q-mb-xs attribute-group-title">
-                                                Goalkeeping
-                                            </div>
-                                            <div class="row attribute-list">
-                                                <template v-for="attr in goalkeeperAttributeKeys" :key="attr">
-                                                    <div class="col-6 col-sm-4 col-md-3 attribute-item">
-                                                        <div class="row no-wrap items-baseline q-gutter-x-xs">
-                                                            <div class="col-auto attribute-name">{{ formatAttrName(attr) }}:</div>
-                                                            <div class="col-auto text-weight-bold attribute-value">
-                                                                <span 
-                                                                    :class="getAttributeColorClass(filters[`min${formatAttrKey(attr)}`])"
-                                                                    class="clickable-attribute"
-                                                                    @click="openAttributeEditor(attr)"
-                                                                >
-                                                                    {{ filters[`min${formatAttrKey(attr)}`] || 0 }}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </template>
-                                            </div>
-                                        </div>
-                                    </q-card-section>
-                                </q-card>
+                                <div
+                                    class="text-subtitle1 q-mb-sm attributes-section-title"
+                                >
+                                    FM Attributes (Min 0-20)
+                                </div>
+                                <div class="row q-col-gutter-md">
+                                    <div class="col-12 col-lg-3 col-md-6">
+                                        <q-card
+                                            flat
+                                            bordered
+                                            class="attribute-category-card"
+                                        >
+                                            <q-card-section
+                                                class="attribute-category-header-styled"
+                                            >
+                                                <div
+                                                    class="text-subtitle1 text-weight-medium text-center"
+                                                >
+                                                    Technical
+                                                </div>
+                                            </q-card-section>
+                                            <q-list
+                                                separator
+                                                dense
+                                                class="attribute-list-column-styled"
+                                            >
+                                                <q-item
+                                                    v-for="attr in technicalAttributeKeys"
+                                                    :key="attr"
+                                                    class="attribute-item-column-styled"
+                                                >
+                                                    <q-item-section
+                                                        class="attribute-name-column-styled"
+                                                    >
+                                                        {{
+                                                            formatAttrName(attr)
+                                                        }}
+                                                    </q-item-section>
+                                                    <q-item-section
+                                                        side
+                                                        class="attribute-value-column-styled"
+                                                    >
+                                                        <span
+                                                            :class="
+                                                                getUnifiedRatingClass(
+                                                                    filters[
+                                                                        `min${formatAttrKey(attr)}`
+                                                                    ],
+                                                                    20,
+                                                                )
+                                                            "
+                                                            class="clickable-attribute attribute-badge-styled"
+                                                            @click="
+                                                                openAttributeEditor(
+                                                                    attr,
+                                                                )
+                                                            "
+                                                        >
+                                                            {{
+                                                                filters[
+                                                                    `min${formatAttrKey(attr)}`
+                                                                ] || 0
+                                                            }}
+                                                        </span>
+                                                    </q-item-section>
+                                                </q-item>
+                                            </q-list>
+                                        </q-card>
+                                    </div>
+                                    <div class="col-12 col-lg-3 col-md-6">
+                                        <q-card
+                                            flat
+                                            bordered
+                                            class="attribute-category-card"
+                                        >
+                                            <q-card-section
+                                                class="attribute-category-header-styled"
+                                            >
+                                                <div
+                                                    class="text-subtitle1 text-weight-medium text-center"
+                                                >
+                                                    Mental
+                                                </div>
+                                            </q-card-section>
+                                            <q-list
+                                                separator
+                                                dense
+                                                class="attribute-list-column-styled"
+                                            >
+                                                <q-item
+                                                    v-for="attr in mentalAttributeKeys"
+                                                    :key="attr"
+                                                    class="attribute-item-column-styled"
+                                                >
+                                                    <q-item-section
+                                                        class="attribute-name-column-styled"
+                                                    >
+                                                        {{
+                                                            formatAttrName(attr)
+                                                        }}
+                                                    </q-item-section>
+                                                    <q-item-section
+                                                        side
+                                                        class="attribute-value-column-styled"
+                                                    >
+                                                        <span
+                                                            :class="
+                                                                getUnifiedRatingClass(
+                                                                    filters[
+                                                                        `min${formatAttrKey(attr)}`
+                                                                    ],
+                                                                    20,
+                                                                )
+                                                            "
+                                                            class="clickable-attribute attribute-badge-styled"
+                                                            @click="
+                                                                openAttributeEditor(
+                                                                    attr,
+                                                                )
+                                                            "
+                                                        >
+                                                            {{
+                                                                filters[
+                                                                    `min${formatAttrKey(attr)}`
+                                                                ] || 0
+                                                            }}
+                                                        </span>
+                                                    </q-item-section>
+                                                </q-item>
+                                            </q-list>
+                                        </q-card>
+                                    </div>
+                                    <div class="col-12 col-lg-3 col-md-6">
+                                        <q-card
+                                            flat
+                                            bordered
+                                            class="attribute-category-card"
+                                        >
+                                            <q-card-section
+                                                class="attribute-category-header-styled"
+                                            >
+                                                <div
+                                                    class="text-subtitle1 text-weight-medium text-center"
+                                                >
+                                                    Physical
+                                                </div>
+                                            </q-card-section>
+                                            <q-list
+                                                separator
+                                                dense
+                                                class="attribute-list-column-styled"
+                                            >
+                                                <q-item
+                                                    v-for="attr in physicalAttributeKeys"
+                                                    :key="attr"
+                                                    class="attribute-item-column-styled"
+                                                >
+                                                    <q-item-section
+                                                        class="attribute-name-column-styled"
+                                                    >
+                                                        {{
+                                                            formatAttrName(attr)
+                                                        }}
+                                                    </q-item-section>
+                                                    <q-item-section
+                                                        side
+                                                        class="attribute-value-column-styled"
+                                                    >
+                                                        <span
+                                                            :class="
+                                                                getUnifiedRatingClass(
+                                                                    filters[
+                                                                        `min${formatAttrKey(attr)}`
+                                                                    ],
+                                                                    20,
+                                                                )
+                                                            "
+                                                            class="clickable-attribute attribute-badge-styled"
+                                                            @click="
+                                                                openAttributeEditor(
+                                                                    attr,
+                                                                )
+                                                            "
+                                                        >
+                                                            {{
+                                                                filters[
+                                                                    `min${formatAttrKey(attr)}`
+                                                                ] || 0
+                                                            }}
+                                                        </span>
+                                                    </q-item-section>
+                                                </q-item>
+                                            </q-list>
+                                        </q-card>
+                                    </div>
+                                    <div class="col-12 col-lg-3 col-md-6">
+                                        <q-card
+                                            flat
+                                            bordered
+                                            class="attribute-category-card"
+                                        >
+                                            <q-card-section
+                                                class="attribute-category-header-styled"
+                                            >
+                                                <div
+                                                    class="text-subtitle1 text-weight-medium text-center"
+                                                >
+                                                    Goalkeeping
+                                                </div>
+                                            </q-card-section>
+                                            <q-list
+                                                separator
+                                                dense
+                                                class="attribute-list-column-styled"
+                                            >
+                                                <q-item
+                                                    v-for="attr in goalkeeperAttributeKeys"
+                                                    :key="attr"
+                                                    class="attribute-item-column-styled"
+                                                >
+                                                    <q-item-section
+                                                        class="attribute-name-column-styled"
+                                                    >
+                                                        {{
+                                                            formatAttrName(attr)
+                                                        }}
+                                                    </q-item-section>
+                                                    <q-item-section
+                                                        side
+                                                        class="attribute-value-column-styled"
+                                                    >
+                                                        <span
+                                                            :class="
+                                                                getUnifiedRatingClass(
+                                                                    filters[
+                                                                        `min${formatAttrKey(attr)}`
+                                                                    ],
+                                                                    20,
+                                                                )
+                                                            "
+                                                            class="clickable-attribute attribute-badge-styled"
+                                                            @click="
+                                                                openAttributeEditor(
+                                                                    attr,
+                                                                )
+                                                            "
+                                                        >
+                                                            {{
+                                                                filters[
+                                                                    `min${formatAttrKey(attr)}`
+                                                                ] || 0
+                                                            }}
+                                                        </span>
+                                                    </q-item-section>
+                                                </q-item>
+                                            </q-list>
+                                        </q-card>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Attribute Editor Dialog -->
                         <q-dialog v-model="showAttributeEditor" persistent>
-                            <q-card>
+                            <q-card
+                                :class="
+                                    quasarInstance.dark.isActive
+                                        ? 'bg-grey-8'
+                                        : 'bg-white'
+                                "
+                            >
                                 <q-card-section>
-                                    <div class="text-h6">Set Minimum {{ formatAttrName(editingAttribute) }}</div>
+                                    <div class="text-h6">
+                                        Set Minimum
+                                        {{ formatAttrName(editingAttribute) }}
+                                    </div>
                                 </q-card-section>
 
                                 <q-card-section class="q-pt-none">
@@ -738,13 +944,38 @@
                                         filled
                                         autofocus
                                         @keyup.enter="saveAttributeValue"
+                                        :label-color="
+                                            quasarInstance.dark.isActive
+                                                ? 'grey-4'
+                                                : ''
+                                        "
+                                        :input-class="
+                                            quasarInstance.dark.isActive
+                                                ? 'text-grey-3'
+                                                : ''
+                                        "
                                     />
                                 </q-card-section>
 
                                 <q-card-actions align="right">
-                                    <q-btn flat label="Cancel" color="grey" @click="cancelAttributeEdit" />
-                                    <q-btn flat label="Clear" color="negative" @click="clearAttributeValue" />
-                                    <q-btn unelevated label="Save" color="primary" @click="saveAttributeValue" />
+                                    <q-btn
+                                        flat
+                                        label="Cancel"
+                                        color="grey"
+                                        @click="cancelAttributeEdit"
+                                    />
+                                    <q-btn
+                                        flat
+                                        label="Clear"
+                                        color="negative"
+                                        @click="clearAttributeValue"
+                                    />
+                                    <q-btn
+                                        unelevated
+                                        label="Save"
+                                        color="primary"
+                                        @click="saveAttributeValue"
+                                    />
                                 </q-card-actions>
                             </q-card>
                         </q-dialog>
@@ -783,6 +1014,115 @@ import { useQuasar } from "quasar";
 import { usePlayerStore } from "@/stores/playerStore";
 import { formatCurrency } from "@/utils/currencyUtils";
 
+// Define attribute keys (ensure these match keys in player.attributes)
+// These are the raw keys from the data.
+const rawTechnicalAttributeKeys = [
+    "Cor",
+    "Cro",
+    "Dri",
+    "Fin",
+    "Fir",
+    "Fre",
+    "Hea",
+    "Lon",
+    "L Th",
+    "Mar",
+    "Pas",
+    "Pen",
+    "Tck",
+    "Tec",
+];
+const rawMentalAttributeKeys = [
+    "Agg",
+    "Ant",
+    "Bra",
+    "Cmp",
+    "Cnt",
+    "Dec",
+    "Det",
+    "Fla",
+    "Ldr",
+    "OtB",
+    "Pos",
+    "Tea",
+    "Vis",
+    "Wor",
+];
+const rawPhysicalAttributeKeys = [
+    "Acc",
+    "Agi",
+    "Bal",
+    "Jum",
+    "Nat",
+    "Pac",
+    "Sta",
+    "Str",
+];
+const rawGoalkeeperAttributeKeys = [
+    "Aer",
+    "Cmd",
+    "Com",
+    "Ecc",
+    "Han",
+    "Kic",
+    "1v1",
+    "Pun",
+    "Ref",
+    "TRO",
+    "Thr",
+];
+
+// Full names for display
+const attributeFullNameMap = {
+    Cor: "Corners",
+    Cro: "Crossing",
+    Dri: "Dribbling",
+    Fin: "Finishing",
+    Fir: "First Touch",
+    Fre: "Free Kick Taking",
+    Hea: "Heading",
+    Lon: "Long Shots",
+    "L Th": "Long Throws",
+    Mar: "Marking",
+    Pas: "Passing",
+    Pen: "Penalty Taking",
+    Tck: "Tackling",
+    Tec: "Technique",
+    Agg: "Aggression",
+    Ant: "Anticipation",
+    Bra: "Bravery",
+    Cmp: "Composure",
+    Cnt: "Concentration",
+    Dec: "Decisions",
+    Det: "Determination",
+    Fla: "Flair",
+    Ldr: "Leadership",
+    OtB: "Off the Ball",
+    Pos: "Positioning",
+    Tea: "Teamwork",
+    Vis: "Vision",
+    Wor: "Work Rate",
+    Acc: "Acceleration",
+    Agi: "Agility",
+    Bal: "Balance",
+    Jum: "Jumping Reach",
+    Nat: "Natural Fitness",
+    Pac: "Pace",
+    Sta: "Stamina",
+    Str: "Strength",
+    Aer: "Aerial Reach",
+    Cmd: "Command of Area",
+    Com: "Communication",
+    Ecc: "Eccentricity",
+    Han: "Handling",
+    Kic: "Kicking",
+    "1v1": "One on Ones",
+    Pun: "Punching (Tendency)",
+    Ref: "Reflexes",
+    TRO: "Rushing Out (Tendency)",
+    Thr: "Throwing",
+};
+
 const orderedShortPositions = [
     "GK",
     "DR",
@@ -820,17 +1160,14 @@ export default defineComponent({
     props: {
         currencySymbol: { type: String, default: "$" },
         transferValueRange: {
-            // Range of the *currently filtered* data in playerStore
             type: Object,
             default: () => ({ min: 0, max: 100000000 }),
         },
         initialDatasetRange: {
-            // New prop: True global range of the *entire dataset*
             type: Object,
             default: () => ({ min: 0, max: 100000000 }),
         },
         salaryRange: {
-            // Range of salary values in the dataset
             type: Object,
             default: () => ({ min: 0, max: 1000000 }),
         },
@@ -855,12 +1192,10 @@ export default defineComponent({
             personality: [],
             ageRange: { min: AGE_SLIDER_MIN, max: AGE_SLIDER_MAX },
             transferValueRangeLocal: {
-                // This will hold the slider's current values
                 min: props.transferValueRange.min,
                 max: props.transferValueRange.max,
             },
             maxSalary: SALARY_SLIDER_MAX,
-            // FIFA-style stat minimum filters
             minOverall: 0,
             minPHY: 0,
             minSHO: 0,
@@ -873,69 +1208,59 @@ export default defineComponent({
 
         const showMinimumStatsModal = ref(false);
         const showAttributeEditor = ref(false);
-        const editingAttribute = ref('');
+        const editingAttribute = ref("");
         const editingValue = ref(0);
 
-        // Helper functions for attributes
-        const formatAttrName = (attr) => {
-            return attr
-                .replace(/_/g, ' ')
-                .split(' ')
-                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                .join(' ');
+        const formatAttrName = (attrKey) =>
+            attributeFullNameMap[attrKey] || attrKey;
+
+        const formatAttrKey = (attrKey) => {
+            return attrKey.replace(/\s+/g, "").replace(/\(|\)/g, "");
         };
 
-        const formatAttrKey = (attr) => {
-            return attr
-                .split('_')
-                .map((word, index) => index === 0 ? word.charAt(0).toUpperCase() + word.slice(1) : word.charAt(0).toUpperCase() + word.slice(1))
-                .join('');
+        const getUnifiedRatingClass = (value, maxScale = 20) => {
+            const numValue = parseInt(value, 10);
+            if (
+                isNaN(numValue) ||
+                value === null ||
+                value === undefined ||
+                value === "-"
+            )
+                return "rating-na";
+
+            const percentage = (numValue / maxScale) * 100;
+
+            if (maxScale === 20) {
+                if (numValue >= 18) return "rating-tier-6";
+                if (numValue >= 15) return "rating-tier-5";
+                if (numValue >= 13) return "rating-tier-4";
+                if (numValue >= 10) return "rating-tier-3";
+                if (numValue >= 7) return "rating-tier-2";
+                if (numValue >= 1) return "rating-tier-1";
+            } else {
+                if (percentage >= 90) return "rating-tier-6";
+                if (percentage >= 80) return "rating-tier-5";
+                if (percentage >= 70) return "rating-tier-4";
+                if (percentage >= 55) return "rating-tier-3";
+                if (percentage >= 40) return "rating-tier-2";
+                if (percentage > 0) return "rating-tier-1";
+            }
+            return "rating-na";
         };
 
-        const getAttributeColorClass = (value) => {
-            const numValue = parseInt(value, 10) || 0;
-            if (numValue >= 15) return 'text-green-10';
-            if (numValue >= 13) return 'text-green-8';
-            if (numValue >= 10) return 'text-amber-8';
-            if (numValue >= 7) return 'text-orange';
-            if (numValue > 0) return 'text-red';
-            return 'rating-na'; // Grey - N/A
-        };
+        const technicalAttributeKeys = rawTechnicalAttributeKeys;
+        const mentalAttributeKeys = rawMentalAttributeKeys;
+        const physicalAttributeKeys = rawPhysicalAttributeKeys;
+        const goalkeeperAttributeKeys = rawGoalkeeperAttributeKeys;
 
-        // Attribute keys for FM attributes (same as PlayerAttributesSection)
-        const technicalAttributeKeys = [
-            'crossing', 'dribbling', 'finishing', 'first_touch', 'free_kick_taking',
-            'heading', 'long_shots', 'long_throws', 'marking', 'passing', 'penalty_taking',
-            'tackling', 'technique', 'corners'
-        ];
-
-        const mentalAttributeKeys = [
-            'aggression', 'anticipation', 'bravery', 'composure', 'concentration',
-            'decisions', 'determination', 'flair', 'leadership', 'off_the_ball',
-            'positioning', 'teamwork', 'vision', 'work_rate'
-        ];
-
-        const physicalAttributeKeys = [
-            'acceleration', 'agility', 'balance', 'jumping_reach', 'natural_fitness',
-            'pace', 'stamina', 'strength'
-        ];
-
-        const goalkeeperAttributeKeys = [
-            'aerial_reach', 'command_of_area', 'communication', 'eccentricity',
-            'handling', 'kicking', 'one_on_ones', 'punching', 'reflexes',
-            'rushing_out', 'tendency_to_punch', 'throwing'
-        ];
-
-        // Add all attribute filters to the filters object
         const allAttributeKeys = [
             ...technicalAttributeKeys,
             ...mentalAttributeKeys,
             ...physicalAttributeKeys,
-            ...goalkeeperAttributeKeys
+            ...goalkeeperAttributeKeys,
         ];
 
-        // Initialize all attribute filters
-        allAttributeKeys.forEach(attr => {
+        allAttributeKeys.forEach((attr) => {
             const filterKey = `min${formatAttrKey(attr)}`;
             if (!filters.value[filterKey]) {
                 filters.value[filterKey] = 0;
@@ -944,18 +1269,15 @@ export default defineComponent({
 
         const clubOptions = ref([]);
         const nationalityOptions = ref([]);
-
-        // These computed properties define the slider's operational min/max.
-        // They should react to props.transferValueRange (the range of currently filtered data).
         const currentSliderMin = computed(() => props.transferValueRange.min);
         const currentSliderMax = computed(() => props.transferValueRange.max);
-
         const isDataAvailable = computed(
             () => playerStore.allPlayers && playerStore.allPlayers.length > 0,
         );
-
         const salarySliderMin = computed(() => props.salaryRange?.min || 0);
-        const salarySliderMax = computed(() => props.salaryRange?.max || 1000000);
+        const salarySliderMax = computed(
+            () => props.salaryRange?.max || SALARY_SLIDER_MAX,
+        );
 
         const salarySliderStep = computed(() => {
             const range = salarySliderMax.value - salarySliderMin.value;
@@ -967,11 +1289,26 @@ export default defineComponent({
             return 50000;
         });
 
+        const hasActiveStatFilters = computed(() => {
+            const hasActiveFifaStats =
+                filters.value.minOverall > 0 ||
+                filters.value.minPHY > 0 ||
+                filters.value.minSHO > 0 ||
+                filters.value.minPAS > 0 ||
+                filters.value.minDRI > 0 ||
+                filters.value.minDEF > 0 ||
+                filters.value.minMEN > 0 ||
+                filters.value.minGK > 0;
+            const hasActiveAttributeFilters = allAttributeKeys.some((attr) => {
+                const filterKey = `min${formatAttrKey(attr)}`;
+                return filters.value[filterKey] > 0;
+            });
+            return hasActiveFifaStats || hasActiveAttributeFilters;
+        });
+
         const hasActiveFilters = computed(() => {
-            // Use props.initialDatasetRange for transfer value default comparison
             const defValMin = props.initialDatasetRange.min;
             const defValMax = props.initialDatasetRange.max;
-
             return (
                 filters.value.name !== "" ||
                 filters.value.club !== null ||
@@ -990,37 +1327,6 @@ export default defineComponent({
                 hasActiveStatFilters.value
             );
         });
-
-        const hasActiveStatFilters = computed(() => {
-            const hasActiveFifaStats = (
-                filters.value.minOverall > 0 ||
-                filters.value.minPHY > 0 ||
-                filters.value.minSHO > 0 ||
-                filters.value.minPAS > 0 ||
-                filters.value.minDRI > 0 ||
-                filters.value.minDEF > 0 ||
-                filters.value.minMEN > 0 ||
-                filters.value.minGK > 0
-            );
-            
-            const hasActiveAttributeFilters = allAttributeKeys.some(attr => {
-                const filterKey = `min${formatAttrKey(attr)}`;
-                return filters.value[filterKey] > 0;
-            });
-            
-            return hasActiveFifaStats || hasActiveAttributeFilters;
-        });
-
-        const getStatColorClass = (value) => {
-            const numValue = parseInt(value, 10) || 0;
-            if (numValue >= 90) return 'rating-tier-6'; // Purple - Elite
-            if (numValue >= 80) return 'rating-tier-5'; // Teal - Excellent
-            if (numValue >= 70) return 'rating-tier-4'; // Green - Good
-            if (numValue >= 55) return 'rating-tier-3'; // Light Blue - Average
-            if (numValue >= 40) return 'rating-tier-2'; // Orange - Below Average
-            if (numValue > 0) return 'rating-tier-1'; // Red - Poor
-            return 'rating-na'; // Grey - N/A
-        };
 
         const positionOptions = computed(() => {
             const options = [{ label: "Any Position", value: null }];
@@ -1054,13 +1360,11 @@ export default defineComponent({
         const mediaHandlingOptions = computed(() =>
             props.uniqueMediaHandlings.map((mh) => ({ label: mh, value: mh })),
         );
-
         const personalityOptions = computed(() =>
             props.uniquePersonalities.map((p) => ({ label: p, value: p })),
         );
 
         const transferValueSliderStep = computed(() => {
-            // Step calculation should be based on the slider's current operational range
             const range = currentSliderMax.value - currentSliderMin.value;
             if (range <= 0) return 10000;
             if (range < 50000) return 1000;
@@ -1073,7 +1377,6 @@ export default defineComponent({
 
         const formatRangeLabel = (value, isMaxBoundary = false) => {
             if (value === null || value === undefined) return "N/A";
-            // "Any" logic now uses the static initialDatasetRange from props
             if (isMaxBoundary) {
                 if (
                     props.initialDatasetRange &&
@@ -1083,7 +1386,6 @@ export default defineComponent({
                     return "Any";
                 }
             } else {
-                // Min boundary
                 if (
                     props.initialDatasetRange &&
                     typeof props.initialDatasetRange.min === "number" &&
@@ -1109,9 +1411,6 @@ export default defineComponent({
             },
             { immediate: true },
         );
-
-        // Watch the dynamic transferValueRange prop to update the local slider values
-        // if they fall outside the new dynamic range from the parent.
         watch(
             () => props.transferValueRange,
             (newDynamicRange) => {
@@ -1120,8 +1419,6 @@ export default defineComponent({
                     typeof newDynamicRange.min === "number" &&
                     typeof newDynamicRange.max === "number"
                 ) {
-                    // Update local slider values only if they are outside the new dynamic range
-                    // or if they were uninitialized (null).
                     let changed = false;
                     if (
                         filters.value.transferValueRangeLocal.min === null ||
@@ -1141,15 +1438,10 @@ export default defineComponent({
                             newDynamicRange.max;
                         changed = true;
                     }
-                    // If values were clamped, emit filter change
-                    if (changed) {
-                        // applyFilters(); // Or debouncedApplyFilters if preferred, but direct might be better for clamping
-                    }
                 }
             },
             { deep: true, immediate: true },
         );
-        // Also watch initialDatasetRange to set the initial state of transferValueRangeLocal correctly
         watch(
             () => props.initialDatasetRange,
             (newInitialRange) => {
@@ -1158,7 +1450,6 @@ export default defineComponent({
                     typeof newInitialRange.min === "number" &&
                     typeof newInitialRange.max === "number"
                 ) {
-                    // Set the initial local filter range to match the full dataset range
                     filters.value.transferValueRangeLocal = {
                         min: newInitialRange.min,
                         max: newInitialRange.max,
@@ -1170,8 +1461,6 @@ export default defineComponent({
 
         const applyFilters = () => {
             if (props.isLoading) return;
-            // Ensure the emitted filter range is clamped by the current slider's operational min/max
-            // This should ideally not be necessary if v-model works correctly with q-range's :min and :max
             const clampedMin = Math.max(
                 filters.value.transferValueRangeLocal.min,
                 currentSliderMin.value,
@@ -1180,7 +1469,6 @@ export default defineComponent({
                 filters.value.transferValueRangeLocal.max,
                 currentSliderMax.value,
             );
-
             emit("filter-changed", {
                 ...filters.value,
                 transferValueRangeLocal: { min: clampedMin, max: clampedMax },
@@ -1204,7 +1492,6 @@ export default defineComponent({
                 personality: [],
                 ageRange: { min: AGE_SLIDER_MIN, max: AGE_SLIDER_MAX },
                 transferValueRangeLocal: {
-                    // Reset to the true initial dataset range
                     min: props.initialDatasetRange
                         ? props.initialDatasetRange.min
                         : 0,
@@ -1213,7 +1500,6 @@ export default defineComponent({
                         : 100000000,
                 },
                 maxSalary: salarySliderMax.value,
-                // Reset FIFA-style stat minimum filters
                 minOverall: 0,
                 minPHY: 0,
                 minSHO: 0,
@@ -1223,11 +1509,8 @@ export default defineComponent({
                 minMEN: 0,
                 minGK: 0,
             };
-            
-            // Reset all attribute filters
-            allAttributeKeys.forEach(attr => {
-                const filterKey = `min${formatAttrKey(attr)}`;
-                filters.value[filterKey] = 0;
+            allAttributeKeys.forEach((attr) => {
+                filters.value[`min${formatAttrKey(attr)}`] = 0;
             });
             applyFilters();
         };
@@ -1244,7 +1527,6 @@ export default defineComponent({
                 );
             });
         };
-
         const filterNationalityOptions = (val, update, abort) => {
             if (val.length < 1 && val !== "") {
                 abort();
@@ -1265,18 +1547,14 @@ export default defineComponent({
             ) {
                 await playerStore.fetchAllAvailableRoles();
             }
-            // Set initial values from props if they are valid
             if (props.initialDatasetRange) {
                 filters.value.transferValueRangeLocal = {
                     min: props.initialDatasetRange.min,
                     max: props.initialDatasetRange.max,
                 };
             }
-            if (props.salaryRange?.max) {
-                filters.value.maxSalary = props.salaryRange.max;
-            } else {
-                filters.value.maxSalary = SALARY_SLIDER_MAX;
-            }
+            filters.value.maxSalary =
+                props.salaryRange?.max || SALARY_SLIDER_MAX;
             filters.value.ageRange = {
                 min: AGE_SLIDER_MIN,
                 max: AGE_SLIDER_MAX,
@@ -1289,7 +1567,6 @@ export default defineComponent({
                 if (newId && playerStore.allAvailableRoles.length === 0) {
                     await playerStore.fetchAllAvailableRoles();
                 }
-                // When dataset changes, reset filters, including transferValueRangeLocal to the new initial range
                 if (newId && props.initialDatasetRange) {
                     filters.value.transferValueRangeLocal = {
                         min: props.initialDatasetRange.min,
@@ -1300,7 +1577,6 @@ export default defineComponent({
         );
 
         const resetMinimumStats = () => {
-            // Reset FIFA-style stats
             filters.value.minOverall = 0;
             filters.value.minPHY = 0;
             filters.value.minSHO = 0;
@@ -1309,11 +1585,8 @@ export default defineComponent({
             filters.value.minDEF = 0;
             filters.value.minMEN = 0;
             filters.value.minGK = 0;
-            
-            // Reset all attribute filters
-            allAttributeKeys.forEach(attr => {
-                const filterKey = `min${formatAttrKey(attr)}`;
-                filters.value[filterKey] = 0;
+            allAttributeKeys.forEach((attr) => {
+                filters.value[`min${formatAttrKey(attr)}`] = 0;
             });
         };
 
@@ -1328,19 +1601,19 @@ export default defineComponent({
             editingValue.value = filters.value[filterKey] || 0;
             showAttributeEditor.value = true;
         };
-
         const saveAttributeValue = () => {
             const filterKey = `min${formatAttrKey(editingAttribute.value)}`;
-            filters.value[filterKey] = Math.max(0, Math.min(20, editingValue.value || 0));
+            filters.value[filterKey] = Math.max(
+                0,
+                Math.min(20, editingValue.value || 0),
+            );
             showAttributeEditor.value = false;
         };
-
         const clearAttributeValue = () => {
             const filterKey = `min${formatAttrKey(editingAttribute.value)}`;
             filters.value[filterKey] = 0;
             showAttributeEditor.value = false;
         };
-
         const cancelAttributeEdit = () => {
             showAttributeEditor.value = false;
         };
@@ -1354,8 +1627,7 @@ export default defineComponent({
             showAttributeEditor,
             editingAttribute,
             editingValue,
-            getStatColorClass,
-            getAttributeColorClass,
+            getUnifiedRatingClass,
             formatAttrName,
             formatAttrKey,
             technicalAttributeKeys,
@@ -1385,8 +1657,8 @@ export default defineComponent({
             onPositionChange,
             ageSliderMin: AGE_SLIDER_MIN,
             ageSliderMax: AGE_SLIDER_MAX,
-            currentSliderMin, // For q-range :min
-            currentSliderMax, // For q-range :max
+            currentSliderMin,
+            currentSliderMax,
             salarySliderMin,
             salarySliderMax,
             salarySliderStep,
@@ -1397,6 +1669,9 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
+// SCSS variables from quasar-variables.scss are available here
+// e.g. $primary, $grey-1, etc.
+
 .filter-card {
     border-radius: 8px;
 }
@@ -1419,6 +1694,7 @@ export default defineComponent({
 .body--dark .q-input .q-field__input {
     color: rgba(255, 255, 255, 0.87);
 }
+
 .body--light .q-field--filled .q-field__control {
     background-color: rgba(0, 0, 0, 0.04);
     &:before {
@@ -1431,6 +1707,7 @@ export default defineComponent({
 .body--light .q-field--filled.q-field--focused .q-field__control:after {
     border-bottom-color: $primary;
 }
+
 .q-mt-sm {
     margin-top: 12px;
 }
@@ -1443,31 +1720,38 @@ export default defineComponent({
     margin-bottom: 0px;
     line-height: 1.2;
 }
-.filter-item-container {
-    // Ensure consistent vertical alignment if items wrap
-}
+
 .stat-value-badge {
     display: inline-block;
-    padding: 2px 6px;
+    padding: 3px 8px;
     border-radius: 4px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    min-width: 24px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    min-width: 30px;
     text-align: center;
+    color: white;
+    line-height: 1;
+    vertical-align: middle;
 }
+
 .modal-content {
     max-height: 80vh;
     overflow-y: auto;
+    .col-md-9 {
+        // No specific padding here, let child cards handle it.
+    }
 }
+
 .attribute-group-title {
     color: $primary;
     border-bottom: 1px solid $primary;
     padding-bottom: 4px;
     margin-bottom: 12px;
-    
+    font-weight: 500;
+
     .body--dark & {
-        color: lighten($primary, 20%);
-        border-bottom-color: lighten($primary, 20%);
+        color: lighten($primary, 25%);
+        border-bottom-color: lighten($primary, 25%);
     }
 }
 
@@ -1475,44 +1759,168 @@ export default defineComponent({
     width: 100%;
 }
 
-.clickable-attribute {
-    cursor: pointer;
-    padding: 2px 4px;
-    border-radius: 3px;
-    transition: background-color 0.2s ease;
-    
-    &:hover {
-        background-color: rgba(0, 0, 0, 0.1);
-        
+.attributes-section {
+    padding: 0;
+} // Remove padding from parent to use card's padding
+.attributes-section-title {
+    font-weight: 600;
+    margin-bottom: 12px;
+} // Add margin to title
+
+.attribute-category-card {
+    margin-bottom: 16px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background-color: transparent !important; // Make card background transparent
+    border: 1px solid rgba(0, 0, 0, 0.08); // Add subtle border to card
+    .body--dark & {
+        border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+}
+
+.attribute-category-header-styled {
+    background-color: rgba(0, 0, 0, 0.03);
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    text-align: center;
+
+    .body--dark & {
+        background-color: rgba(255, 255, 255, 0.05);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    .text-subtitle1 {
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+}
+
+.attribute-list-column-styled {
+    padding: 8px 4px; // Add some padding inside the list
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+.attribute-item-column-styled {
+    padding: 4px 8px; // Reduced padding for denser list
+    min-height: 32px; // Reduced min-height
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    &.q-item--dark {
+        // Ensure dark mode items are styled correctly
+        // color: $grey-3; // If needed
+    }
+    &:not(:last-child):after {
+        // Quasar's default separator might be too dark/light
+        background-color: rgba(0, 0, 0, 0.08) !important;
         .body--dark & {
-            background-color: rgba(255, 255, 255, 0.1);
+            background-color: rgba(255, 255, 255, 0.1) !important;
         }
     }
 }
 
-.attributes-section {
-    padding: 12px;
-}
+.attribute-name-column-styled {
+    font-size: 0.75rem; // Smaller font for attribute name
+    color: $grey-8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-right: 6px; // Slightly less padding
 
-.attributes-section-title {
-    font-weight: 600;
-}
-
-.attribute-item {
-    margin-bottom: 6px;
-    padding-right: 8px;
-}
-
-.attribute-name {
-    font-size: 0.85rem;
-    color: rgba(0, 0, 0, 0.7);
-    
     .body--dark & {
-        color: rgba(255, 255, 255, 0.7);
+        color: $grey-4;
     }
 }
 
-.attribute-value {
-    font-size: 0.9rem;
+.attribute-value-column-styled {
+    // No specific styles needed here, badge itself is styled
+}
+
+.attribute-badge-styled {
+    cursor: pointer;
+    padding: 3px 7px;
+    border-radius: 4px;
+    transition:
+        background-color 0.2s ease,
+        box-shadow 0.2s ease;
+    display: inline-block;
+    min-width: 28px;
+    text-align: center;
+    font-weight: 600;
+    line-height: 1.2;
+    font-size: 0.8rem; // Slightly smaller font in badge
+    color: white;
+
+    &:hover {
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        .body--dark & {
+            box-shadow: 0 1px 3px rgba(255, 255, 255, 0.2);
+        }
+    }
+}
+
+// Global rating tier classes from app.scss (ensure these are consistent)
+.rating-tier-6 {
+    background-color: #7e57c2;
+    color: white !important;
+    .body--dark & {
+        background-color: #9575cd;
+    }
+}
+.rating-tier-5 {
+    background-color: #26a69a;
+    color: white !important;
+    .body--dark & {
+        background-color: #00897b;
+    }
+}
+.rating-tier-4 {
+    background-color: #66bb6a;
+    color: white !important;
+    .body--dark & {
+        background-color: #4caf50;
+    }
+}
+.rating-tier-3 {
+    background-color: #42a5f5;
+    color: white !important;
+    .body--dark & {
+        background-color: #2196f3;
+    }
+}
+.rating-tier-2 {
+    background-color: #ffa726;
+    color: #333333 !important;
+    .body--dark & {
+        background-color: #fb8c00;
+        color: white !important;
+    }
+}
+.rating-tier-1 {
+    background-color: #ef5350;
+    color: white !important;
+    .body--dark & {
+        background-color: #e53935;
+    }
+}
+.rating-na {
+    background-color: #bdbdbd;
+    color: #424242 !important;
+    .body--dark & {
+        background-color: #424242;
+        color: #bdbdbd !important;
+    }
+}
+
+.rating-tier-1,
+.rating-tier-2,
+.rating-tier-3,
+.rating-tier-4,
+.rating-tier-5,
+.rating-tier-6,
+.rating-na {
+    border: none !important;
 }
 </style>
