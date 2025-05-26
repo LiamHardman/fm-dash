@@ -2,14 +2,6 @@
     <q-page padding class="dataset-page">
         <div class="q-pa-md">
             <div class="row items-center justify-between q-mb-lg">
-                <h1
-                    class="text-h4 page-title col"
-                    :class="
-                        quasarInstance.dark.isActive ? 'text-grey-2' : 'text-grey-9'
-                    "
-                >
-                    Dataset Analysis
-                </h1>
                 <q-btn
                     v-if="currentDatasetId"
                     flat
@@ -60,7 +52,9 @@
                 <!-- Dataset Overview Card -->
                 <q-card
                     class="q-mb-md"
-                    :class="quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'"
+                    :class="
+                        quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'
+                    "
                 >
                     <q-card-section>
                         <div class="text-h6 q-mb-md">Dataset Overview</div>
@@ -68,15 +62,21 @@
                             <div class="col-12 col-sm-6 col-md-3">
                                 <q-card flat bordered class="stats-card">
                                     <q-card-section class="text-center">
-                                        <div class="text-h4 text-primary">{{ allPlayersData.length }}</div>
-                                        <div class="text-subtitle2">Total Players</div>
+                                        <div class="text-h4 text-primary">
+                                            {{ allPlayersData.length }}
+                                        </div>
+                                        <div class="text-subtitle2">
+                                            Total Players
+                                        </div>
                                     </q-card-section>
                                 </q-card>
                             </div>
                             <div class="col-12 col-sm-6 col-md-3">
                                 <q-card flat bordered class="stats-card">
                                     <q-card-section class="text-center">
-                                        <div class="text-h4 text-secondary">{{ uniqueClubs.length }}</div>
+                                        <div class="text-h4 text-secondary">
+                                            {{ uniqueClubs.length }}
+                                        </div>
                                         <div class="text-subtitle2">Teams</div>
                                     </q-card-section>
                                 </q-card>
@@ -84,16 +84,24 @@
                             <div class="col-12 col-sm-6 col-md-3">
                                 <q-card flat bordered class="stats-card">
                                     <q-card-section class="text-center">
-                                        <div class="text-h4 text-accent">{{ uniqueNationalities.length }}</div>
-                                        <div class="text-subtitle2">Nationalities</div>
+                                        <div class="text-h4 text-accent">
+                                            {{ uniqueNationalities.length }}
+                                        </div>
+                                        <div class="text-subtitle2">
+                                            Nationalities
+                                        </div>
                                     </q-card-section>
                                 </q-card>
                             </div>
                             <div class="col-12 col-sm-6 col-md-3">
                                 <q-card flat bordered class="stats-card">
                                     <q-card-section class="text-center">
-                                        <div class="text-h4 text-positive">{{ detectedCurrencySymbol }}</div>
-                                        <div class="text-subtitle2">Currency</div>
+                                        <div class="text-h4 text-positive">
+                                            {{ detectedCurrencySymbol }}
+                                        </div>
+                                        <div class="text-subtitle2">
+                                            Currency
+                                        </div>
                                     </q-card-section>
                                 </q-card>
                             </div>
@@ -104,7 +112,9 @@
                 <!-- Quick Actions Card -->
                 <q-card
                     class="q-mb-md"
-                    :class="quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'"
+                    :class="
+                        quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'
+                    "
                 >
                     <q-card-section>
                         <div class="text-h6 q-mb-md">Quick Actions</div>
@@ -148,7 +158,9 @@
                 <q-card
                     v-if="allPlayersData.length > 0"
                     class="q-mb-md"
-                    :class="quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'"
+                    :class="
+                        quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'
+                    "
                 >
                     <q-card-section>
                         <PlayerFilters
@@ -169,7 +181,9 @@
                 <!-- Player Data Table -->
                 <q-card
                     v-if="allPlayersData.length > 0"
-                    :class="quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'"
+                    :class="
+                        quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'
+                    "
                 >
                     <q-card-section>
                         <div class="text-h6 q-mb-sm">
@@ -237,7 +251,12 @@ import UpgradeFinderDialog from "../components/UpgradeFinderDialog.vue";
 
 export default {
     name: "DatasetPage",
-    components: { PlayerDataTable, PlayerDetailDialog, PlayerFilters, UpgradeFinderDialog },
+    components: {
+        PlayerDataTable,
+        PlayerDetailDialog,
+        PlayerFilters,
+        UpgradeFinderDialog,
+    },
     setup() {
         const quasarInstance = useQuasar();
         const router = useRouter();
@@ -264,88 +283,137 @@ export default {
 
         // Computed properties from store
         const allPlayersData = computed(() => playerStore.allPlayers);
-        const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol);
+        const detectedCurrencySymbol = computed(
+            () => playerStore.detectedCurrencySymbol,
+        );
         const currentDatasetId = computed(() => playerStore.currentDatasetId);
         const loading = computed(() => playerStore.loading);
         const uniqueClubs = computed(() => playerStore.uniqueClubs);
-        const uniqueNationalities = computed(() => playerStore.uniqueNationalities);
-        const uniqueMediaHandlings = computed(() => playerStore.uniqueMediaHandlings);
-        const uniquePersonalities = computed(() => playerStore.uniquePersonalities);
-        const transferValueRange = computed(() => playerStore.transferValueRange);
+        const uniqueNationalities = computed(
+            () => playerStore.uniqueNationalities,
+        );
+        const uniqueMediaHandlings = computed(
+            () => playerStore.uniqueMediaHandlings,
+        );
+        const uniquePersonalities = computed(
+            () => playerStore.uniquePersonalities,
+        );
+        const transferValueRange = computed(
+            () => playerStore.transferValueRange,
+        );
         const allAvailableRoles = computed(() => playerStore.allAvailableRoles);
-        const AGE_SLIDER_MIN_DEFAULT = computed(() => playerStore.AGE_SLIDER_MIN_DEFAULT);
-        const AGE_SLIDER_MAX_DEFAULT = computed(() => playerStore.AGE_SLIDER_MAX_DEFAULT);
+        const AGE_SLIDER_MIN_DEFAULT = computed(
+            () => playerStore.AGE_SLIDER_MIN_DEFAULT,
+        );
+        const AGE_SLIDER_MAX_DEFAULT = computed(
+            () => playerStore.AGE_SLIDER_MAX_DEFAULT,
+        );
 
         const isGoalkeeperView = computed(() => {
-            return positionFilter.value === "GK" || roleFilter.value?.includes("Goalkeeper");
+            return (
+                positionFilter.value === "GK" ||
+                roleFilter.value?.includes("Goalkeeper")
+            );
         });
 
         const filteredPlayers = computed(() => {
             if (!Array.isArray(allPlayersData.value)) return [];
-            
+
             return allPlayersData.value
                 .filter((player) => {
                     // Name filter
-                    if (nameFilter.value && !player.name.toLowerCase().includes(nameFilter.value.toLowerCase())) {
+                    if (
+                        nameFilter.value &&
+                        !player.name
+                            .toLowerCase()
+                            .includes(nameFilter.value.toLowerCase())
+                    ) {
                         return false;
                     }
-                    
+
                     // Club filter
                     if (clubFilter.value && player.club !== clubFilter.value) {
                         return false;
                     }
-                    
+
                     // Position filter
                     if (positionFilter.value) {
-                        const hasPosition = player.shortPositions?.includes(positionFilter.value);
+                        const hasPosition = player.shortPositions?.includes(
+                            positionFilter.value,
+                        );
                         if (!hasPosition) return false;
                     }
-                    
+
                     // Role filter
                     if (roleFilter.value) {
-                        const hasRole = player.roleSpecificOveralls?.some(role => role.roleName === roleFilter.value);
+                        const hasRole = player.roleSpecificOveralls?.some(
+                            (role) => role.roleName === roleFilter.value,
+                        );
                         if (!hasRole) return false;
                     }
-                
-                // Nationality filter
-                if (nationalityFilter.value && player.nationality !== nationalityFilter.value) {
-                    return false;
-                }
-                
-                // Media handling filter
-                if (mediaHandlingFilter.value && mediaHandlingFilter.value.length > 0) {
-                    if (!player.media_handling) return false;
-                    const playerMediaHandlings = player.media_handling.split(",").map(s => s.trim());
-                    const hasMediaHandling = mediaHandlingFilter.value.some(filter => 
-                        playerMediaHandlings.includes(filter)
-                    );
-                    if (!hasMediaHandling) return false;
-                }
-                
-                // Personality filter
-                if (personalityFilter.value && personalityFilter.value.length > 0) {
-                    if (!player.personality) return false;
-                    const hasPersonality = personalityFilter.value.includes(player.personality);
-                    if (!hasPersonality) return false;
-                }
-                
-                // Age range filter
-                const playerAge = parseInt(player.age, 10) || 0;
-                if (playerAge < ageRangeFilter.value.min || playerAge > ageRangeFilter.value.max) {
-                    return false;
-                }
-                
-                // Transfer value range filter
-                if (player.transferValueAmount < transferValueRangeFilter.value.min || 
-                    player.transferValueAmount > transferValueRangeFilter.value.max) {
-                    return false;
-                }
-                
-                // Max salary filter
-                if (maxSalaryFilter.value !== null && player.wageAmount > maxSalaryFilter.value) {
-                    return false;
-                }
-                
+
+                    // Nationality filter
+                    if (
+                        nationalityFilter.value &&
+                        player.nationality !== nationalityFilter.value
+                    ) {
+                        return false;
+                    }
+
+                    // Media handling filter
+                    if (
+                        mediaHandlingFilter.value &&
+                        mediaHandlingFilter.value.length > 0
+                    ) {
+                        if (!player.media_handling) return false;
+                        const playerMediaHandlings = player.media_handling
+                            .split(",")
+                            .map((s) => s.trim());
+                        const hasMediaHandling = mediaHandlingFilter.value.some(
+                            (filter) => playerMediaHandlings.includes(filter),
+                        );
+                        if (!hasMediaHandling) return false;
+                    }
+
+                    // Personality filter
+                    if (
+                        personalityFilter.value &&
+                        personalityFilter.value.length > 0
+                    ) {
+                        if (!player.personality) return false;
+                        const hasPersonality = personalityFilter.value.includes(
+                            player.personality,
+                        );
+                        if (!hasPersonality) return false;
+                    }
+
+                    // Age range filter
+                    const playerAge = parseInt(player.age, 10) || 0;
+                    if (
+                        playerAge < ageRangeFilter.value.min ||
+                        playerAge > ageRangeFilter.value.max
+                    ) {
+                        return false;
+                    }
+
+                    // Transfer value range filter
+                    if (
+                        player.transferValueAmount <
+                            transferValueRangeFilter.value.min ||
+                        player.transferValueAmount >
+                            transferValueRangeFilter.value.max
+                    ) {
+                        return false;
+                    }
+
+                    // Max salary filter
+                    if (
+                        maxSalaryFilter.value !== null &&
+                        player.wageAmount > maxSalaryFilter.value
+                    ) {
+                        return false;
+                    }
+
                     return true;
                 })
                 .map((player) => {
@@ -354,42 +422,80 @@ export default {
                         // Debug logging - let's see what we're working with
                         console.log("=== ROLE FILTER DEBUG ===");
                         console.log("Player name:", player.name);
-                        console.log("Player Overall (capital O):", player.Overall);
-                        console.log("Player overall (lowercase o):", player.overall);
+                        console.log(
+                            "Player Overall (capital O):",
+                            player.Overall,
+                        );
+                        console.log(
+                            "Player overall (lowercase o):",
+                            player.overall,
+                        );
                         console.log("Selected role filter:", roleFilter.value);
-                        console.log("roleSpecificOveralls type:", typeof player.roleSpecificOveralls);
-                        console.log("roleSpecificOveralls is array:", Array.isArray(player.roleSpecificOveralls));
-                        console.log("roleSpecificOveralls content:", player.roleSpecificOveralls);
-                        
+                        console.log(
+                            "roleSpecificOveralls type:",
+                            typeof player.roleSpecificOveralls,
+                        );
+                        console.log(
+                            "roleSpecificOveralls is array:",
+                            Array.isArray(player.roleSpecificOveralls),
+                        );
+                        console.log(
+                            "roleSpecificOveralls content:",
+                            player.roleSpecificOveralls,
+                        );
+
                         let roleSpecificOverall = null;
-                        
+
                         // Handle both array and object formats (as seen in TeamViewPage)
                         if (Array.isArray(player.roleSpecificOveralls)) {
                             console.log("Processing as array...");
                             // Array format: [{roleName: "DM - Anchor", score: 78}, ...]
-                            const roleMatch = player.roleSpecificOveralls.find(rso => rso.roleName === roleFilter.value);
+                            const roleMatch = player.roleSpecificOveralls.find(
+                                (rso) => rso.roleName === roleFilter.value,
+                            );
                             console.log("Role match found:", roleMatch);
                             if (roleMatch) {
                                 roleSpecificOverall = roleMatch.score;
-                                console.log("Role-specific overall from array:", roleSpecificOverall);
+                                console.log(
+                                    "Role-specific overall from array:",
+                                    roleSpecificOverall,
+                                );
                             }
-                        } else if (typeof player.roleSpecificOveralls === 'object') {
+                        } else if (
+                            typeof player.roleSpecificOveralls === "object"
+                        ) {
                             console.log("Processing as object...");
                             // Object format: {"DM - Anchor": 78, "DM - Deep Lying Playmaker": 76, ...}
-                            console.log("Available roles:", Object.keys(player.roleSpecificOveralls));
-                            roleSpecificOverall = player.roleSpecificOveralls[roleFilter.value];
-                            console.log("Role-specific overall from object:", roleSpecificOverall);
+                            console.log(
+                                "Available roles:",
+                                Object.keys(player.roleSpecificOveralls),
+                            );
+                            roleSpecificOverall =
+                                player.roleSpecificOveralls[roleFilter.value];
+                            console.log(
+                                "Role-specific overall from object:",
+                                roleSpecificOverall,
+                            );
                         }
-                        
+
                         // If we found a role-specific overall, use it
-                        if (roleSpecificOverall !== null && roleSpecificOverall !== undefined) {
-                            console.log("✅ Using role-specific overall:", roleSpecificOverall);
+                        if (
+                            roleSpecificOverall !== null &&
+                            roleSpecificOverall !== undefined
+                        ) {
+                            console.log(
+                                "✅ Using role-specific overall:",
+                                roleSpecificOverall,
+                            );
                             return {
                                 ...player,
-                                Overall: roleSpecificOverall  // Capital O to match PlayerDataTable
+                                Overall: roleSpecificOverall, // Capital O to match PlayerDataTable
                             };
                         } else {
-                            console.log("❌ No role match found, using original overall:", player.Overall);
+                            console.log(
+                                "❌ No role match found, using original overall:",
+                                player.Overall,
+                            );
                         }
                         console.log("=== END DEBUG ===");
                     }
@@ -413,7 +519,7 @@ export default {
 
         onMounted(async () => {
             const datasetIdFromRoute = route.params.datasetId;
-            
+
             if (datasetIdFromRoute) {
                 await fetchDataset(datasetIdFromRoute);
             } else {
@@ -424,33 +530,33 @@ export default {
 
         const shareDataset = async () => {
             if (!currentDatasetId.value) return;
-            
+
             const shareUrl = `${window.location.origin}/dataset/${currentDatasetId.value}`;
-            
+
             try {
                 await navigator.clipboard.writeText(shareUrl);
                 quasarInstance.notify({
-                    message: 'Dataset link copied to clipboard!',
-                    color: 'positive',
-                    icon: 'check_circle',
-                    position: 'top',
-                    timeout: 2000
+                    message: "Dataset link copied to clipboard!",
+                    color: "positive",
+                    icon: "check_circle",
+                    position: "top",
+                    timeout: 2000,
                 });
             } catch (err) {
                 // Fallback for older browsers
-                const textArea = document.createElement('textarea');
+                const textArea = document.createElement("textarea");
                 textArea.value = shareUrl;
                 document.body.appendChild(textArea);
                 textArea.select();
-                document.execCommand('copy');
+                document.execCommand("copy");
                 document.body.removeChild(textArea);
-                
+
                 quasarInstance.notify({
-                    message: 'Dataset link copied to clipboard!',
-                    color: 'positive',
-                    icon: 'check_circle',
-                    position: 'top',
-                    timeout: 2000
+                    message: "Dataset link copied to clipboard!",
+                    color: "positive",
+                    icon: "check_circle",
+                    position: "top",
+                    timeout: 2000,
                 });
             }
         };
@@ -474,13 +580,13 @@ export default {
             if (currentDatasetId.value) {
                 // Open in new tab (since user requested new tab functionality)
                 const url = router.resolve({
-                    path: '/team-view',
-                    query: { 
+                    path: "/team-view",
+                    query: {
                         datasetId: currentDatasetId.value,
-                        team: teamName
-                    }
+                        team: teamName,
+                    },
                 }).href;
-                window.open(url, '_blank');
+                window.open(url, "_blank");
             }
         };
 
@@ -503,7 +609,7 @@ export default {
                 if (newId && newId !== oldId) {
                     await fetchDataset(newId);
                 }
-            }
+            },
         );
 
         return {
@@ -557,15 +663,15 @@ export default {
 .stats-card {
     height: 100%;
     transition: transform 0.2s ease;
-    
+
     &:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
-    
+
     .body--dark & {
         background-color: rgba(255, 255, 255, 0.05);
-        
+
         &:hover {
             box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
         }
