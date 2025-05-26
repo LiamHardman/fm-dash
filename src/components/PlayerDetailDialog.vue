@@ -36,35 +36,57 @@
             <q-card-section v-if="player" class="scroll main-content-section">
                 <div class="row q-col-gutter-md">
                     <div class="col-12 col-md-4">
-                        <q-select
-                            v-if="performanceComparisonOptions.length > 0"
-                            :disable="performanceComparisonOptions.length <= 1"
-                            v-model="selectedComparisonGroup"
-                            :options="performanceComparisonOptions"
-                            label="Compare Against"
-                            dense
-                            outlined
-                            emit-value
-                            map-options
-                            class="q-mb-md"
-                            style="min-width: 200px"
-                            :label-color="
-                                qInstance.dark.isActive ? 'grey-4' : ''
-                            "
-                            :popup-content-class="
-                                qInstance.dark.isActive
-                                    ? 'bg-grey-8 text-white'
-                                    : 'bg-white text-dark'
-                            "
-                        />
-                        <q-tooltip
-                            v-if="
-                                performanceComparisonOptions.length <= 1 &&
-                                performanceComparisonOptions.length > 0
-                            "
-                        >
-                            Only global comparison available for this player.
-                        </q-tooltip>
+                        <div class="row q-col-gutter-xs q-mb-md">
+                            <div class="col-6">
+                                <q-select
+                                    v-if="performanceComparisonOptions.length > 0"
+                                    :disable="performanceComparisonOptions.length <= 1"
+                                    v-model="selectedComparisonGroup"
+                                    :options="performanceComparisonOptions"
+                                    label="Compare Position"
+                                    dense
+                                    outlined
+                                    emit-value
+                                    map-options
+                                    :label-color="
+                                        qInstance.dark.isActive ? 'grey-4' : ''
+                                    "
+                                    :popup-content-class="
+                                        qInstance.dark.isActive
+                                            ? 'bg-grey-8 text-white'
+                                            : 'bg-white text-dark'
+                                    "
+                                />
+                                <q-tooltip
+                                    v-if="
+                                        performanceComparisonOptions.length <= 1 &&
+                                        performanceComparisonOptions.length > 0
+                                    "
+                                >
+                                    Only global comparison available for this player.
+                                </q-tooltip>
+                            </div>
+                            <div class="col-6">
+                                <q-select
+                                    v-model="divisionFilter"
+                                    :options="divisionFilterOptions"
+                                    label="Compare Division"
+                                    dense
+                                    outlined
+                                    emit-value
+                                    map-options
+                                    :label-color="
+                                        qInstance.dark.isActive ? 'grey-4' : ''
+                                    "
+                                    :popup-content-class="
+                                        qInstance.dark.isActive
+                                            ? 'bg-grey-8 text-white'
+                                            : 'bg-white text-dark'
+                                    "
+                                    @update:model-value="onDivisionFilterChange"
+                                />
+                            </div>
+                        </div>
 
                         <q-card
                             flat
@@ -955,6 +977,7 @@
 import { defineComponent, computed, ref, watch, onMounted } from "vue";
 import { useQuasar } from "quasar";
 import { formatCurrency } from "../utils/currencyUtils";
+import { usePlayerStore } from "../stores/playerStore";
 
 const attributeFullNameMap = {
     Cor: "Corners",
@@ -1137,12 +1160,15 @@ export default defineComponent({
         player: { type: Object, default: () => null },
         show: { type: Boolean, default: false },
         currencySymbol: { type: String, default: "$" },
+        datasetId: { type: String, default: null },
     },
     emits: ["close"],
     setup(props) {
         const qInstance = useQuasar();
+        const playerStore = usePlayerStore();
         const selectedComparisonGroup = ref("Global");
         const flagLoadError = ref(false);
+        const divisionFilter = ref("all");
 
         const handleFlagError = () => {
             flagLoadError.value = true;
@@ -1355,6 +1381,48 @@ export default defineComponent({
             },
             { immediate: true, deep: true },
         );
+
+        const divisionFilterOptions = computed(() => [
+            { label: "All", value: "all" },
+            { label: "Same", value: "same" },
+            { label: "Top 5", value: "top5" },
+        ]);
+
+        const getTargetDivision = () => {
+            if (!props.player?.division) return null;
+            return props.player.division;
+        };
+
+        const onDivisionFilterChange = async () => {
+            if (!props.datasetId || !props.player) return;
+            
+            try {
+                const targetDivision = getTargetDivision();
+                // Instead of refetching all data, we need to fetch just updated percentiles for this player
+                // For now, let's create a dedicated API call for this
+                const response = await fetch(`/api/percentiles/${props.datasetId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        playerName: props.player.name,
+                        divisionFilter: divisionFilter.value,
+                        targetDivision: targetDivision
+                    })
+                });
+                
+                if (response.ok) {
+                    const updatedPercentiles = await response.json();
+                    // Update the player's percentiles without affecting the main dataset
+                    if (props.player.performancePercentiles) {
+                        Object.assign(props.player.performancePercentiles, updatedPercentiles);
+                    }
+                }
+            } catch (error) {
+                console.error("Error updating percentiles with division filter:", error);
+            }
+        };
 
         const isGoalkeeper = computed(() => {
             if (!props.player) return false;
@@ -1623,6 +1691,9 @@ export default defineComponent({
             hasAnyPerformanceData,
             flagLoadError,
             handleFlagError,
+            divisionFilter,
+            divisionFilterOptions,
+            onDivisionFilterChange,
         };
     },
 });

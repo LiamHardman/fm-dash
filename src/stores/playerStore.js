@@ -184,6 +184,9 @@ export const usePlayerStore = defineStore("player", () => {
     ageRangeFilter = null,
     transferValueRangeFilter = null,
     maxSalaryFilter = null,
+    divisionFilter = "all",
+    targetDivision = null,
+    positionCompare = "all",
   ) {
     if (!datasetId) {
       resetState();
@@ -199,6 +202,9 @@ export const usePlayerStore = defineStore("player", () => {
         ageRangeFilter,
         transferValueRangeFilter,
         maxSalaryFilter,
+        divisionFilter,
+        targetDivision,
+        positionCompare,
       );
       allPlayers.value = processPlayersFromAPI(response.players);
       detectedCurrencySymbol.value = response.currencySymbol || "$";

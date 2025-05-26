@@ -1432,6 +1432,7 @@ export default defineComponent({
             props.uniquePersonalities.map((p) => ({ label: p, value: p })),
         );
 
+
         const transferValueSliderStep = computed(() => {
             const range = currentSliderMax.value - currentSliderMin.value;
             if (range <= 0) return 10000;
@@ -1548,6 +1549,7 @@ export default defineComponent({
             filters.value.role = null;
             applyFilters();
         };
+
 
         const clearAllFilters = () => {
             filters.value = {

@@ -37,6 +37,9 @@ export default {
     ageRange = null,
     transferValueRange = null,
     maxSalary = null,
+    divisionFilter = "all",
+    targetDivision = null,
+    positionCompare = "all",
   ) {
     if (!datasetId) {
       return Promise.reject(new Error("Dataset ID is required."));
@@ -74,6 +77,15 @@ export default {
       }
       if (maxSalary !== null && maxSalary !== undefined) {
         params.append("maxSalary", maxSalary.toString());
+      }
+      if (divisionFilter && divisionFilter !== "all") {
+        params.append("divisionFilter", divisionFilter);
+      }
+      if (targetDivision) {
+        params.append("targetDivision", targetDivision);
+      }
+      if (positionCompare && positionCompare !== "all") {
+        params.append("positionCompare", positionCompare);
       }
 
       const queryString = params.toString();

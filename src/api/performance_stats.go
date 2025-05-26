@@ -40,10 +40,67 @@ func calculatePercentileValue(value float64, sortedValues []float64) float64 {
 	return math.Round(percentile)
 }
 
+// DivisionFilter represents the different division filtering options
+type DivisionFilter int
+
+const (
+	DivisionFilterAll DivisionFilter = iota
+	DivisionFilterSame
+	DivisionFilterTop5
+)
+
+// TopDivisions lists the top 5 divisions for filtering
+var TopDivisions = []string{
+	"Premier League",
+	"Championship", 
+	"Serie A",
+	"Bundesliga",
+	"La Liga",
+}
+
+// isPlayerInTargetDivision checks if a player should be included based on division filter
+func isPlayerInTargetDivision(player *Player, divisionFilter DivisionFilter, targetDivision string) bool {
+	switch divisionFilter {
+	case DivisionFilterAll:
+		return true
+	case DivisionFilterSame:
+		return player.Division == targetDivision
+	case DivisionFilterTop5:
+		if targetDivision == "" {
+			return false
+		}
+		// Check if player's current division is in top 5
+		for _, topDiv := range TopDivisions {
+			if player.Division == topDiv {
+				return true
+			}
+		}
+		// Check if target division is in top 5, and if so, include players from top 5
+		for _, topDiv := range TopDivisions {
+			if targetDivision == topDiv {
+				for _, playerTopDiv := range TopDivisions {
+					if player.Division == playerTopDiv {
+						return true
+					}
+				}
+				return false
+			}
+		}
+		return false
+	default:
+		return true
+	}
+}
+
 // CalculatePlayerPerformancePercentiles computes and populates percentile ranks for various performance statistics
 // for a list of players. It calculates global percentiles and percentiles within broad and detailed position groups.
 // Modifies the Player objects in the players slice directly.
 func CalculatePlayerPerformancePercentiles(players []Player) {
+	CalculatePlayerPerformancePercentilesWithDivisionFilter(players, DivisionFilterAll, "")
+}
+
+// CalculatePlayerPerformancePercentilesWithDivisionFilter computes and populates percentile ranks with division filtering
+func CalculatePlayerPerformancePercentilesWithDivisionFilter(players []Player, divisionFilter DivisionFilter, targetDivision string) {
 	if len(players) == 0 {
 		return
 	}
@@ -59,12 +116,12 @@ func CalculatePlayerPerformancePercentiles(players []Player) {
 		}
 	}
 
-	// --- Global Percentiles ---
+	// --- Global Percentiles (with division filtering) ---
 	for _, statKey := range PerformanceStatKeys { // PerformanceStatKeys from config.go
 		allStatValues := make([]float64, 0, len(players))
 		for i := range players { // Iterate by index to modify original slice elements
 			val, ok := players[i].PerformanceStatsNumeric[statKey]
-			if ok && !math.IsNaN(val) { // Only include valid, non-NaN numbers
+			if ok && !math.IsNaN(val) && isPlayerInTargetDivision(&players[i], divisionFilter, targetDivision) {
 				allStatValues = append(allStatValues, val)
 			}
 		}
@@ -98,9 +155,12 @@ func CalculatePlayerPerformancePercentiles(players []Player) {
 		}
 	}
 
-	// Populate the stat lists for each group
+	// Populate the stat lists for each group (with division filtering)
 	for i := range players {
 		player := &players[i]                      // Work with a pointer to the player
+		if !isPlayerInTargetDivision(player, divisionFilter, targetDivision) {
+			continue // Skip players not in target division filter
+		}
 		for _, pg := range player.PositionGroups { // Player's broad position groups
 			if _, ok := groupStatValueLists[pg]; ok { // If this is a group we're tracking
 				for _, statKey := range PerformanceStatKeys {
@@ -181,9 +241,12 @@ func CalculatePlayerPerformancePercentiles(players []Player) {
 
 		playerIndicesInDetailedGroup := []int{} // Store indices of players belonging to this detailed group
 
-		// Collect stat values and player indices for the current detailed group
+		// Collect stat values and player indices for the current detailed group (with division filtering)
 		for i := range players {
 			player := &players[i]
+			if !isPlayerInTargetDivision(player, divisionFilter, targetDivision) {
+				continue // Skip players not in target division filter
+			}
 			isPlayerInThisDetailedGroup := false
 			for _, playerShortPos := range player.ShortPositions { // Check against player's short codes
 				for _, requiredShortPos := range shortPositionsInGroup {

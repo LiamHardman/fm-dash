@@ -240,6 +240,7 @@
             :show="showPlayerDetailDialog"
             @close="showPlayerDetailDialog = false"
             :currency-symbol="detectedCurrencySymbol"
+            :dataset-id="currentDatasetId"
         />
         <UpgradeFinderDialog
             :show="showUpgradeFinder"
@@ -741,6 +742,7 @@ export default {
             }
         };
 
+
         const handleFiltersChanged = (filtersFromChild) => {
             const newTransferRange = filtersFromChild.transferValueRangeLocal;
             const oldTransferRange =
@@ -769,6 +771,7 @@ export default {
                 }
             },
         );
+
 
         watch(
             () => playerStore.initialDatasetTransferValueRange.value,

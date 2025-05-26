@@ -240,9 +240,12 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 	minTransferValueStr := queryValues.Get("minTransferValue")
 	maxTransferValueStr := queryValues.Get("maxTransferValue")
 	maxSalaryStr := queryValues.Get("maxSalary")
+	divisionFilterStr := queryValues.Get("divisionFilter") // "all", "same", "top5"
+	targetDivision := queryValues.Get("targetDivision")
+	positionCompare := queryValues.Get("positionCompare") // "all", "broad", "detailed"
 
-	log.Printf("playerDataHandler: DatasetID=%s, PositionFilter=%s, RoleFilter=%s, MinAge=%s, MaxAge=%s, MinVal=%s, MaxVal=%s, MaxSalary=%s",
-		datasetID, filterPosition, filterRole, minAgeStr, maxAgeStr, minTransferValueStr, maxTransferValueStr, maxSalaryStr)
+	log.Printf("playerDataHandler: DatasetID=%s, PositionFilter=%s, RoleFilter=%s, MinAge=%s, MaxAge=%s, MinVal=%s, MaxVal=%s, MaxSalary=%s, DivisionFilter=%s, TargetDivision=%s, PositionCompare=%s",
+		datasetID, filterPosition, filterRole, minAgeStr, maxAgeStr, minTransferValueStr, maxTransferValueStr, maxSalaryStr, divisionFilterStr, targetDivision, positionCompare)
 
 	// Use the new storage interface to get player data
 	players, currencySymbol, found := GetPlayerData(datasetID)
@@ -250,6 +253,28 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Player data not found for DatasetID: %s", datasetID)
 		http.Error(w, "Player data not found for the given ID.", http.StatusNotFound)
 		return
+	}
+
+	// Parse division filter
+	var divisionFilter DivisionFilter = DivisionFilterAll
+	switch divisionFilterStr {
+	case "same":
+		divisionFilter = DivisionFilterSame
+	case "top5":
+		divisionFilter = DivisionFilterTop5
+	case "all", "":
+		divisionFilter = DivisionFilterAll
+	}
+
+	// Recalculate percentiles with division filtering if not "all"
+	if divisionFilter != DivisionFilterAll {
+		// Make a copy of players to avoid modifying the stored data
+		playersCopy := make([]Player, len(players))
+		copy(playersCopy, players)
+		
+		// Recalculate percentiles with division filter
+		CalculatePlayerPerformancePercentilesWithDivisionFilter(playersCopy, divisionFilter, targetDivision)
+		players = playersCopy
 	}
 	
 	data := struct {
@@ -570,6 +595,86 @@ func processTeamsData(players []Player, division string) []Team {
 	})
 	
 	return teams
+}
+
+// PercentileRequest represents the request body for percentile recalculation
+type PercentileRequest struct {
+	PlayerName      string `json:"playerName"`
+	DivisionFilter  string `json:"divisionFilter"`
+	TargetDivision  string `json:"targetDivision"`
+}
+
+// percentilesHandler handles POST requests to recalculate percentiles for a specific player with division filtering
+func percentilesHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Only POST method is allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/percentiles/"), "/")
+	if len(pathParts) == 0 || pathParts[0] == "" {
+		http.Error(w, "Dataset ID is missing in the request path", http.StatusBadRequest)
+		return
+	}
+	datasetID := pathParts[0]
+
+	var req PercentileRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Error parsing request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("percentilesHandler: DatasetID=%s, PlayerName=%s, DivisionFilter=%s, TargetDivision=%s",
+		datasetID, req.PlayerName, req.DivisionFilter, req.TargetDivision)
+
+	// Get the full dataset
+	players, _, found := GetPlayerData(datasetID)
+	if !found {
+		log.Printf("Player data not found for DatasetID: %s", datasetID)
+		http.Error(w, "Player data not found for the given ID.", http.StatusNotFound)
+		return
+	}
+
+	// Find the specific player
+	var targetPlayerIndex = -1
+	for i, player := range players {
+		if player.Name == req.PlayerName {
+			targetPlayerIndex = i
+			break
+		}
+	}
+
+	if targetPlayerIndex == -1 {
+		http.Error(w, "Player not found in dataset", http.StatusNotFound)
+		return
+	}
+
+	// Parse division filter
+	var divisionFilter DivisionFilter = DivisionFilterAll
+	switch req.DivisionFilter {
+	case "same":
+		divisionFilter = DivisionFilterSame
+	case "top5":
+		divisionFilter = DivisionFilterTop5
+	case "all", "":
+		divisionFilter = DivisionFilterAll
+	}
+
+	// Create a copy of the dataset and recalculate percentiles with division filtering
+	playersCopy := make([]Player, len(players))
+	copy(playersCopy, players)
+	
+	CalculatePlayerPerformancePercentilesWithDivisionFilter(playersCopy, divisionFilter, req.TargetDivision)
+
+	// Return only the updated percentiles for the target player
+	updatedPercentiles := playersCopy[targetPlayerIndex].PerformancePercentiles
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	if err := json.NewEncoder(w).Encode(updatedPercentiles); err != nil {
+		log.Printf("Error encoding JSON response for percentiles (DatasetID: %s): %v", datasetID, err)
+		http.Error(w, "Error encoding response", http.StatusInternalServerError)
+	}
 }
 
 // TeamRatings holds the calculated ratings for a team

@@ -62,6 +62,9 @@ func main() {
 	// API endpoint for retrieving teams data for a specific league
 	http.HandleFunc("/api/teams/", teamsHandler) // Defined in handlers.go
 
+	// API endpoint for updating player percentiles with division filtering
+	http.HandleFunc("/api/percentiles/", percentilesHandler) // Defined in handlers.go
+
 	// Prometheus metrics endpoint
 	http.Handle("/metrics", promhttp.Handler())
 

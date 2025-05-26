@@ -8,7 +8,6 @@ const TeamViewPage = () => import("../pages/TeamViewPage.vue");
 const DatasetPage = () => import("../pages/DatasetPage.vue");
 const NationsPage = () => import("../pages/NationsPage.vue");
 const LeaguesPage = () => import("../pages/LeaguesPage.vue");
-const TeamsPage = () => import("../pages/TeamsPage.vue");
 const DocsPage = () => import("../pages/DocsPage.vue");
 
 const routes = [
@@ -59,12 +58,6 @@ const routes = [
     path: "/leagues/:datasetId",
     name: "shared-leagues",
     component: LeaguesPage,
-    props: true,
-  },
-  {
-    path: "/teams/:datasetId/:division",
-    name: "teams",
-    component: TeamsPage,
     props: true,
   },
   {
