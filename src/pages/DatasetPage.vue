@@ -290,6 +290,56 @@ export default {
         const minMENFilter = ref(0);
         const minGKFilter = ref(0);
 
+        // FM Attribute filters - Technical
+        const technicalAttributeKeys = [
+            'crossing', 'dribbling', 'finishing', 'first_touch', 'free_kick_taking',
+            'heading', 'long_shots', 'long_throws', 'marking', 'passing', 'penalty_taking',
+            'tackling', 'technique', 'corners'
+        ];
+
+        // FM Attribute filters - Mental
+        const mentalAttributeKeys = [
+            'aggression', 'anticipation', 'bravery', 'composure', 'concentration',
+            'decisions', 'determination', 'flair', 'leadership', 'off_the_ball',
+            'positioning', 'teamwork', 'vision', 'work_rate'
+        ];
+
+        // FM Attribute filters - Physical
+        const physicalAttributeKeys = [
+            'acceleration', 'agility', 'balance', 'jumping_reach', 'natural_fitness',
+            'pace', 'stamina', 'strength'
+        ];
+
+        // FM Attribute filters - Goalkeeping
+        const goalkeeperAttributeKeys = [
+            'aerial_reach', 'command_of_area', 'communication', 'eccentricity',
+            'handling', 'kicking', 'one_on_ones', 'punching', 'reflexes',
+            'rushing_out', 'tendency_to_punch', 'throwing'
+        ];
+
+        // Helper function to format attribute keys
+        const formatAttrKey = (attr) => {
+            return attr
+                .split('_')
+                .map((word, index) => index === 0 ? word.charAt(0).toUpperCase() + word.slice(1) : word.charAt(0).toUpperCase() + word.slice(1))
+                .join('');
+        };
+
+        // All attribute keys combined
+        const allAttributeKeys = [
+            ...technicalAttributeKeys,
+            ...mentalAttributeKeys,
+            ...physicalAttributeKeys,
+            ...goalkeeperAttributeKeys
+        ];
+
+        // Create reactive filters for all attributes
+        const attributeFilters = {};
+        allAttributeKeys.forEach(attr => {
+            const filterKey = `min${formatAttrKey(attr)}Filter`;
+            attributeFilters[filterKey] = ref(0);
+        });
+
         // Computed properties from store
         const allPlayersData = computed(() => playerStore.allPlayers);
         const detectedCurrencySymbol = computed(
@@ -447,6 +497,18 @@ export default {
                     }
                     if (minGKFilter.value > 0 && (player.GK || 0) < minGKFilter.value) {
                         return false;
+                    }
+
+                    // FM Attribute minimum filters
+                    for (const attr of allAttributeKeys) {
+                        const filterKey = `min${formatAttrKey(attr)}Filter`;
+                        const attributeFilter = attributeFilters[filterKey];
+                        if (attributeFilter && attributeFilter.value > 0) {
+                            const playerAttrValue = parseInt(player[attr], 10) || 0;
+                            if (playerAttrValue < attributeFilter.value) {
+                                return false;
+                            }
+                        }
                     }
 
                     return true;
@@ -645,6 +707,15 @@ export default {
             minDEFFilter.value = filters.minDEF;
             minMENFilter.value = filters.minMEN;
             minGKFilter.value = filters.minGK;
+            
+            // FM Attribute minimum filters
+            allAttributeKeys.forEach(attr => {
+                const filterKey = `min${formatAttrKey(attr)}Filter`;
+                const filtersKey = `min${formatAttrKey(attr)}`;
+                if (attributeFilters[filterKey] && filters[filtersKey] !== undefined) {
+                    attributeFilters[filterKey].value = filters[filtersKey];
+                }
+            });
         };
 
         watch(

@@ -363,9 +363,8 @@
             </div>
 
             <!-- Minimum Stats Modal -->
-            <q-dialog v-model="showMinimumStatsModal" persistent>
+            <q-dialog v-model="showMinimumStatsModal" persistent maximized>
                 <q-card
-                    style="min-width: 600px; max-width: 800px"
                     :class="quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'"
                 >
                     <q-card-section>
@@ -375,232 +374,380 @@
                         </div>
                     </q-card-section>
 
-                    <q-card-section class="q-pt-none">
-                        <div class="row q-col-gutter-md">
-                            <!-- Overall Slider -->
-                            <div class="col-12 col-sm-6 col-md-4 filter-item-container">
-                                <div
-                                    class="text-caption q-mb-xs slider-label"
-                                    :class="
-                                        quasarInstance.dark.isActive
-                                            ? 'text-grey-4'
-                                            : 'text-grey-7'
-                                    "
-                                >
-                                    Min Overall:
-                                    <span 
-                                        class="stat-value-badge q-ml-xs"
-                                        :class="getStatColorClass(filters.minOverall)"
-                                    >
-                                        {{ filters.minOverall || 0 }}
-                                    </span>
+                    <q-card-section class="q-pt-none modal-content">
+                        <div class="row q-col-gutter-lg">
+                            <!-- Left Column: FIFA-Style Stats -->
+                            <div class="col-12 col-md-3">
+                                <div class="attribute-group">
+                                    <div class="text-h6 q-mb-sm attribute-group-title">
+                                        FIFA-Style Stats
+                                    </div>
+                                    
+                                    <!-- Overall Slider -->
+                                    <div class="fifa-stat-item q-mb-md">
+                                        <div
+                                            class="text-caption q-mb-xs slider-label"
+                                            :class="
+                                                quasarInstance.dark.isActive
+                                                    ? 'text-grey-4'
+                                                    : 'text-grey-7'
+                                            "
+                                        >
+                                            Min Overall:
+                                            <span 
+                                                class="stat-value-badge q-ml-xs"
+                                                :class="getStatColorClass(filters.minOverall)"
+                                            >
+                                                {{ filters.minOverall || 0 }}
+                                            </span>
+                                        </div>
+                                        <q-slider
+                                            v-model="filters.minOverall"
+                                            :min="0"
+                                            :max="99"
+                                            :step="1"
+                                            color="primary"
+                                            class="q-px-sm"
+                                        />
+                                    </div>
+
+                                    <!-- PHY Slider -->
+                                    <div class="fifa-stat-item q-mb-md">
+                                        <div
+                                            class="text-caption q-mb-xs slider-label"
+                                            :class="
+                                                quasarInstance.dark.isActive
+                                                    ? 'text-grey-4'
+                                                    : 'text-grey-7'
+                                            "
+                                        >
+                                            Min PHY:
+                                            <span 
+                                                class="stat-value-badge q-ml-xs"
+                                                :class="getStatColorClass(filters.minPHY)"
+                                            >
+                                                {{ filters.minPHY || 0 }}
+                                            </span>
+                                        </div>
+                                        <q-slider
+                                            v-model="filters.minPHY"
+                                            :min="0"
+                                            :max="99"
+                                            :step="1"
+                                            color="primary"
+                                            class="q-px-sm"
+                                        />
+                                    </div>
+
+                                    <!-- SHO Slider -->
+                                    <div class="fifa-stat-item q-mb-md">
+                                        <div
+                                            class="text-caption q-mb-xs slider-label"
+                                            :class="
+                                                quasarInstance.dark.isActive
+                                                    ? 'text-grey-4'
+                                                    : 'text-grey-7'
+                                            "
+                                        >
+                                            Min SHO:
+                                            <span 
+                                                class="stat-value-badge q-ml-xs"
+                                                :class="getStatColorClass(filters.minSHO)"
+                                            >
+                                                {{ filters.minSHO || 0 }}
+                                            </span>
+                                        </div>
+                                        <q-slider
+                                            v-model="filters.minSHO"
+                                            :min="0"
+                                            :max="99"
+                                            :step="1"
+                                            color="primary"
+                                            class="q-px-sm"
+                                        />
+                                    </div>
+
+                                    <!-- PAS Slider -->
+                                    <div class="fifa-stat-item q-mb-md">
+                                        <div
+                                            class="text-caption q-mb-xs slider-label"
+                                            :class="
+                                                quasarInstance.dark.isActive
+                                                    ? 'text-grey-4'
+                                                    : 'text-grey-7'
+                                            "
+                                        >
+                                            Min PAS:
+                                            <span 
+                                                class="stat-value-badge q-ml-xs"
+                                                :class="getStatColorClass(filters.minPAS)"
+                                            >
+                                                {{ filters.minPAS || 0 }}
+                                            </span>
+                                        </div>
+                                        <q-slider
+                                            v-model="filters.minPAS"
+                                            :min="0"
+                                            :max="99"
+                                            :step="1"
+                                            color="primary"
+                                            class="q-px-sm"
+                                        />
+                                    </div>
+
+                                    <!-- DRI Slider -->
+                                    <div class="fifa-stat-item q-mb-md">
+                                        <div
+                                            class="text-caption q-mb-xs slider-label"
+                                            :class="
+                                                quasarInstance.dark.isActive
+                                                    ? 'text-grey-4'
+                                                    : 'text-grey-7'
+                                            "
+                                        >
+                                            Min DRI:
+                                            <span 
+                                                class="stat-value-badge q-ml-xs"
+                                                :class="getStatColorClass(filters.minDRI)"
+                                            >
+                                                {{ filters.minDRI || 0 }}
+                                            </span>
+                                        </div>
+                                        <q-slider
+                                            v-model="filters.minDRI"
+                                            :min="0"
+                                            :max="99"
+                                            :step="1"
+                                            color="primary"
+                                            class="q-px-sm"
+                                        />
+                                    </div>
+
+                                    <!-- DEF Slider -->
+                                    <div class="fifa-stat-item q-mb-md">
+                                        <div
+                                            class="text-caption q-mb-xs slider-label"
+                                            :class="
+                                                quasarInstance.dark.isActive
+                                                    ? 'text-grey-4'
+                                                    : 'text-grey-7'
+                                            "
+                                        >
+                                            Min DEF:
+                                            <span 
+                                                class="stat-value-badge q-ml-xs"
+                                                :class="getStatColorClass(filters.minDEF)"
+                                            >
+                                                {{ filters.minDEF || 0 }}
+                                            </span>
+                                        </div>
+                                        <q-slider
+                                            v-model="filters.minDEF"
+                                            :min="0"
+                                            :max="99"
+                                            :step="1"
+                                            color="primary"
+                                            class="q-px-sm"
+                                        />
+                                    </div>
+
+                                    <!-- MEN Slider -->
+                                    <div class="fifa-stat-item q-mb-md">
+                                        <div
+                                            class="text-caption q-mb-xs slider-label"
+                                            :class="
+                                                quasarInstance.dark.isActive
+                                                    ? 'text-grey-4'
+                                                    : 'text-grey-7'
+                                            "
+                                        >
+                                            Min MEN:
+                                            <span 
+                                                class="stat-value-badge q-ml-xs"
+                                                :class="getStatColorClass(filters.minMEN)"
+                                            >
+                                                {{ filters.minMEN || 0 }}
+                                            </span>
+                                        </div>
+                                        <q-slider
+                                            v-model="filters.minMEN"
+                                            :min="0"
+                                            :max="99"
+                                            :step="1"
+                                            color="primary"
+                                            class="q-px-sm"
+                                        />
+                                    </div>
+
+                                    <!-- GK Slider -->
+                                    <div class="fifa-stat-item q-mb-md">
+                                        <div
+                                            class="text-caption q-mb-xs slider-label"
+                                            :class="
+                                                quasarInstance.dark.isActive
+                                                    ? 'text-grey-4'
+                                                    : 'text-grey-7'
+                                            "
+                                        >
+                                            Min GK:
+                                            <span 
+                                                class="stat-value-badge q-ml-xs"
+                                                :class="getStatColorClass(filters.minGK)"
+                                            >
+                                                {{ filters.minGK || 0 }}
+                                            </span>
+                                        </div>
+                                        <q-slider
+                                            v-model="filters.minGK"
+                                            :min="0"
+                                            :max="99"
+                                            :step="1"
+                                            color="primary"
+                                            class="q-px-sm"
+                                        />
+                                    </div>
                                 </div>
-                                <q-slider
-                                    v-model="filters.minOverall"
-                                    :min="0"
-                                    :max="99"
-                                    :step="1"
-                                    color="primary"
-                                    class="q-px-sm"
-                                />
                             </div>
 
-                            <!-- PHY Slider -->
-                            <div class="col-12 col-sm-6 col-md-4 filter-item-container">
-                                <div
-                                    class="text-caption q-mb-xs slider-label"
-                                    :class="
-                                        quasarInstance.dark.isActive
-                                            ? 'text-grey-4'
-                                            : 'text-grey-7'
-                                    "
-                                >
-                                    Min PHY:
-                                    <span 
-                                        class="stat-value-badge q-ml-xs"
-                                        :class="getStatColorClass(filters.minPHY)"
-                                    >
-                                        {{ filters.minPHY || 0 }}
-                                    </span>
-                                </div>
-                                <q-slider
-                                    v-model="filters.minPHY"
-                                    :min="0"
-                                    :max="99"
-                                    :step="1"
-                                    color="primary"
-                                    class="q-px-sm"
-                                />
-                            </div>
-
-                            <!-- SHO Slider -->
-                            <div class="col-12 col-sm-6 col-md-4 filter-item-container">
-                                <div
-                                    class="text-caption q-mb-xs slider-label"
-                                    :class="
-                                        quasarInstance.dark.isActive
-                                            ? 'text-grey-4'
-                                            : 'text-grey-7'
-                                    "
-                                >
-                                    Min SHO:
-                                    <span 
-                                        class="stat-value-badge q-ml-xs"
-                                        :class="getStatColorClass(filters.minSHO)"
-                                    >
-                                        {{ filters.minSHO || 0 }}
-                                    </span>
-                                </div>
-                                <q-slider
-                                    v-model="filters.minSHO"
-                                    :min="0"
-                                    :max="99"
-                                    :step="1"
-                                    color="primary"
-                                    class="q-px-sm"
-                                />
-                            </div>
-
-                            <!-- PAS Slider -->
-                            <div class="col-12 col-sm-6 col-md-4 filter-item-container">
-                                <div
-                                    class="text-caption q-mb-xs slider-label"
-                                    :class="
-                                        quasarInstance.dark.isActive
-                                            ? 'text-grey-4'
-                                            : 'text-grey-7'
-                                    "
-                                >
-                                    Min PAS:
-                                    <span 
-                                        class="stat-value-badge q-ml-xs"
-                                        :class="getStatColorClass(filters.minPAS)"
-                                    >
-                                        {{ filters.minPAS || 0 }}
-                                    </span>
-                                </div>
-                                <q-slider
-                                    v-model="filters.minPAS"
-                                    :min="0"
-                                    :max="99"
-                                    :step="1"
-                                    color="primary"
-                                    class="q-px-sm"
-                                />
-                            </div>
-
-                            <!-- DRI Slider -->
-                            <div class="col-12 col-sm-6 col-md-4 filter-item-container">
-                                <div
-                                    class="text-caption q-mb-xs slider-label"
-                                    :class="
-                                        quasarInstance.dark.isActive
-                                            ? 'text-grey-4'
-                                            : 'text-grey-7'
-                                    "
-                                >
-                                    Min DRI:
-                                    <span 
-                                        class="stat-value-badge q-ml-xs"
-                                        :class="getStatColorClass(filters.minDRI)"
-                                    >
-                                        {{ filters.minDRI || 0 }}
-                                    </span>
-                                </div>
-                                <q-slider
-                                    v-model="filters.minDRI"
-                                    :min="0"
-                                    :max="99"
-                                    :step="1"
-                                    color="primary"
-                                    class="q-px-sm"
-                                />
-                            </div>
-
-                            <!-- DEF Slider -->
-                            <div class="col-12 col-sm-6 col-md-4 filter-item-container">
-                                <div
-                                    class="text-caption q-mb-xs slider-label"
-                                    :class="
-                                        quasarInstance.dark.isActive
-                                            ? 'text-grey-4'
-                                            : 'text-grey-7'
-                                    "
-                                >
-                                    Min DEF:
-                                    <span 
-                                        class="stat-value-badge q-ml-xs"
-                                        :class="getStatColorClass(filters.minDEF)"
-                                    >
-                                        {{ filters.minDEF || 0 }}
-                                    </span>
-                                </div>
-                                <q-slider
-                                    v-model="filters.minDEF"
-                                    :min="0"
-                                    :max="99"
-                                    :step="1"
-                                    color="primary"
-                                    class="q-px-sm"
-                                />
-                            </div>
-
-                            <!-- MEN Slider -->
-                            <div class="col-12 col-sm-6 col-md-4 filter-item-container">
-                                <div
-                                    class="text-caption q-mb-xs slider-label"
-                                    :class="
-                                        quasarInstance.dark.isActive
-                                            ? 'text-grey-4'
-                                            : 'text-grey-7'
-                                    "
-                                >
-                                    Min MEN:
-                                    <span 
-                                        class="stat-value-badge q-ml-xs"
-                                        :class="getStatColorClass(filters.minMEN)"
-                                    >
-                                        {{ filters.minMEN || 0 }}
-                                    </span>
-                                </div>
-                                <q-slider
-                                    v-model="filters.minMEN"
-                                    :min="0"
-                                    :max="99"
-                                    :step="1"
-                                    color="primary"
-                                    class="q-px-sm"
-                                />
-                            </div>
-
-                            <!-- GK Slider -->
-                            <div class="col-12 col-sm-6 col-md-4 filter-item-container">
-                                <div
-                                    class="text-caption q-mb-xs slider-label"
-                                    :class="
-                                        quasarInstance.dark.isActive
-                                            ? 'text-grey-4'
-                                            : 'text-grey-7'
-                                    "
-                                >
-                                    Min GK:
-                                    <span 
-                                        class="stat-value-badge q-ml-xs"
-                                        :class="getStatColorClass(filters.minGK)"
-                                    >
-                                        {{ filters.minGK || 0 }}
-                                    </span>
-                                </div>
-                                <q-slider
-                                    v-model="filters.minGK"
-                                    :min="0"
-                                    :max="99"
-                                    :step="1"
-                                    color="primary"
-                                    class="q-px-sm"
-                                />
+                            <!-- Right Column: FM Attributes -->
+                            <div class="col-12 col-md-9">
+                                <q-card flat bordered :class="quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-blue-grey-1'">
+                                    <q-card-section class="attributes-section">
+                                        <div class="text-subtitle1 q-mb-xs attributes-section-title">
+                                            FM Attributes
+                                        </div>
+                                        
+                                        <!-- Technical Attributes -->
+                                        <div class="attribute-group q-mb-md">
+                                            <div class="text-caption text-bold q-mb-xs attribute-group-title">
+                                                Technical
+                                            </div>
+                                            <div class="row attribute-list">
+                                                <template v-for="attr in technicalAttributeKeys" :key="attr">
+                                                    <div class="col-6 col-sm-4 col-md-3 attribute-item">
+                                                        <div class="row no-wrap items-baseline q-gutter-x-xs">
+                                                            <div class="col-auto attribute-name">{{ formatAttrName(attr) }}:</div>
+                                                            <div class="col-auto text-weight-bold attribute-value">
+                                                                <span 
+                                                                    :class="getAttributeColorClass(filters[`min${formatAttrKey(attr)}`])"
+                                                                    class="clickable-attribute"
+                                                                    @click="openAttributeEditor(attr)"
+                                                                >
+                                                                    {{ filters[`min${formatAttrKey(attr)}`] || 0 }}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Mental Attributes -->
+                                        <div class="attribute-group q-mb-md">
+                                            <div class="text-caption text-bold q-mb-xs attribute-group-title">
+                                                Mental
+                                            </div>
+                                            <div class="row attribute-list">
+                                                <template v-for="attr in mentalAttributeKeys" :key="attr">
+                                                    <div class="col-6 col-sm-4 col-md-3 attribute-item">
+                                                        <div class="row no-wrap items-baseline q-gutter-x-xs">
+                                                            <div class="col-auto attribute-name">{{ formatAttrName(attr) }}:</div>
+                                                            <div class="col-auto text-weight-bold attribute-value">
+                                                                <span 
+                                                                    :class="getAttributeColorClass(filters[`min${formatAttrKey(attr)}`])"
+                                                                    class="clickable-attribute"
+                                                                    @click="openAttributeEditor(attr)"
+                                                                >
+                                                                    {{ filters[`min${formatAttrKey(attr)}`] || 0 }}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Physical Attributes -->
+                                        <div class="attribute-group q-mb-md">
+                                            <div class="text-caption text-bold q-mb-xs attribute-group-title">
+                                                Physical
+                                            </div>
+                                            <div class="row attribute-list">
+                                                <template v-for="attr in physicalAttributeKeys" :key="attr">
+                                                    <div class="col-6 col-sm-4 col-md-3 attribute-item">
+                                                        <div class="row no-wrap items-baseline q-gutter-x-xs">
+                                                            <div class="col-auto attribute-name">{{ formatAttrName(attr) }}:</div>
+                                                            <div class="col-auto text-weight-bold attribute-value">
+                                                                <span 
+                                                                    :class="getAttributeColorClass(filters[`min${formatAttrKey(attr)}`])"
+                                                                    class="clickable-attribute"
+                                                                    @click="openAttributeEditor(attr)"
+                                                                >
+                                                                    {{ filters[`min${formatAttrKey(attr)}`] || 0 }}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Goalkeeping Attributes -->
+                                        <div class="attribute-group">
+                                            <div class="text-caption text-bold q-mb-xs attribute-group-title">
+                                                Goalkeeping
+                                            </div>
+                                            <div class="row attribute-list">
+                                                <template v-for="attr in goalkeeperAttributeKeys" :key="attr">
+                                                    <div class="col-6 col-sm-4 col-md-3 attribute-item">
+                                                        <div class="row no-wrap items-baseline q-gutter-x-xs">
+                                                            <div class="col-auto attribute-name">{{ formatAttrName(attr) }}:</div>
+                                                            <div class="col-auto text-weight-bold attribute-value">
+                                                                <span 
+                                                                    :class="getAttributeColorClass(filters[`min${formatAttrKey(attr)}`])"
+                                                                    class="clickable-attribute"
+                                                                    @click="openAttributeEditor(attr)"
+                                                                >
+                                                                    {{ filters[`min${formatAttrKey(attr)}`] || 0 }}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </q-card-section>
+                                </q-card>
                             </div>
                         </div>
+
+                        <!-- Attribute Editor Dialog -->
+                        <q-dialog v-model="showAttributeEditor" persistent>
+                            <q-card>
+                                <q-card-section>
+                                    <div class="text-h6">Set Minimum {{ formatAttrName(editingAttribute) }}</div>
+                                </q-card-section>
+
+                                <q-card-section class="q-pt-none">
+                                    <q-input
+                                        v-model.number="editingValue"
+                                        type="number"
+                                        :min="0"
+                                        :max="20"
+                                        label="Minimum value (0-20)"
+                                        filled
+                                        autofocus
+                                        @keyup.enter="saveAttributeValue"
+                                    />
+                                </q-card-section>
+
+                                <q-card-actions align="right">
+                                    <q-btn flat label="Cancel" color="grey" @click="cancelAttributeEdit" />
+                                    <q-btn flat label="Clear" color="negative" @click="clearAttributeValue" />
+                                    <q-btn unelevated label="Save" color="primary" @click="saveAttributeValue" />
+                                </q-card-actions>
+                            </q-card>
+                        </q-dialog>
                     </q-card-section>
 
                     <q-card-actions align="right" class="q-pa-md">
@@ -725,6 +872,75 @@ export default defineComponent({
         });
 
         const showMinimumStatsModal = ref(false);
+        const showAttributeEditor = ref(false);
+        const editingAttribute = ref('');
+        const editingValue = ref(0);
+
+        // Helper functions for attributes
+        const formatAttrName = (attr) => {
+            return attr
+                .replace(/_/g, ' ')
+                .split(' ')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ');
+        };
+
+        const formatAttrKey = (attr) => {
+            return attr
+                .split('_')
+                .map((word, index) => index === 0 ? word.charAt(0).toUpperCase() + word.slice(1) : word.charAt(0).toUpperCase() + word.slice(1))
+                .join('');
+        };
+
+        const getAttributeColorClass = (value) => {
+            const numValue = parseInt(value, 10) || 0;
+            if (numValue >= 15) return 'text-green-10';
+            if (numValue >= 13) return 'text-green-8';
+            if (numValue >= 10) return 'text-amber-8';
+            if (numValue >= 7) return 'text-orange';
+            if (numValue > 0) return 'text-red';
+            return 'rating-na'; // Grey - N/A
+        };
+
+        // Attribute keys for FM attributes (same as PlayerAttributesSection)
+        const technicalAttributeKeys = [
+            'crossing', 'dribbling', 'finishing', 'first_touch', 'free_kick_taking',
+            'heading', 'long_shots', 'long_throws', 'marking', 'passing', 'penalty_taking',
+            'tackling', 'technique', 'corners'
+        ];
+
+        const mentalAttributeKeys = [
+            'aggression', 'anticipation', 'bravery', 'composure', 'concentration',
+            'decisions', 'determination', 'flair', 'leadership', 'off_the_ball',
+            'positioning', 'teamwork', 'vision', 'work_rate'
+        ];
+
+        const physicalAttributeKeys = [
+            'acceleration', 'agility', 'balance', 'jumping_reach', 'natural_fitness',
+            'pace', 'stamina', 'strength'
+        ];
+
+        const goalkeeperAttributeKeys = [
+            'aerial_reach', 'command_of_area', 'communication', 'eccentricity',
+            'handling', 'kicking', 'one_on_ones', 'punching', 'reflexes',
+            'rushing_out', 'tendency_to_punch', 'throwing'
+        ];
+
+        // Add all attribute filters to the filters object
+        const allAttributeKeys = [
+            ...technicalAttributeKeys,
+            ...mentalAttributeKeys,
+            ...physicalAttributeKeys,
+            ...goalkeeperAttributeKeys
+        ];
+
+        // Initialize all attribute filters
+        allAttributeKeys.forEach(attr => {
+            const filterKey = `min${formatAttrKey(attr)}`;
+            if (!filters.value[filterKey]) {
+                filters.value[filterKey] = 0;
+            }
+        });
 
         const clubOptions = ref([]);
         const nationalityOptions = ref([]);
@@ -776,7 +992,7 @@ export default defineComponent({
         });
 
         const hasActiveStatFilters = computed(() => {
-            return (
+            const hasActiveFifaStats = (
                 filters.value.minOverall > 0 ||
                 filters.value.minPHY > 0 ||
                 filters.value.minSHO > 0 ||
@@ -786,6 +1002,13 @@ export default defineComponent({
                 filters.value.minMEN > 0 ||
                 filters.value.minGK > 0
             );
+            
+            const hasActiveAttributeFilters = allAttributeKeys.some(attr => {
+                const filterKey = `min${formatAttrKey(attr)}`;
+                return filters.value[filterKey] > 0;
+            });
+            
+            return hasActiveFifaStats || hasActiveAttributeFilters;
         });
 
         const getStatColorClass = (value) => {
@@ -1000,6 +1223,12 @@ export default defineComponent({
                 minMEN: 0,
                 minGK: 0,
             };
+            
+            // Reset all attribute filters
+            allAttributeKeys.forEach(attr => {
+                const filterKey = `min${formatAttrKey(attr)}`;
+                filters.value[filterKey] = 0;
+            });
             applyFilters();
         };
 
@@ -1071,6 +1300,7 @@ export default defineComponent({
         );
 
         const resetMinimumStats = () => {
+            // Reset FIFA-style stats
             filters.value.minOverall = 0;
             filters.value.minPHY = 0;
             filters.value.minSHO = 0;
@@ -1079,11 +1309,40 @@ export default defineComponent({
             filters.value.minDEF = 0;
             filters.value.minMEN = 0;
             filters.value.minGK = 0;
+            
+            // Reset all attribute filters
+            allAttributeKeys.forEach(attr => {
+                const filterKey = `min${formatAttrKey(attr)}`;
+                filters.value[filterKey] = 0;
+            });
         };
 
         const applyMinimumStats = () => {
             showMinimumStatsModal.value = false;
             applyFilters();
+        };
+
+        const openAttributeEditor = (attr) => {
+            editingAttribute.value = attr;
+            const filterKey = `min${formatAttrKey(attr)}`;
+            editingValue.value = filters.value[filterKey] || 0;
+            showAttributeEditor.value = true;
+        };
+
+        const saveAttributeValue = () => {
+            const filterKey = `min${formatAttrKey(editingAttribute.value)}`;
+            filters.value[filterKey] = Math.max(0, Math.min(20, editingValue.value || 0));
+            showAttributeEditor.value = false;
+        };
+
+        const clearAttributeValue = () => {
+            const filterKey = `min${formatAttrKey(editingAttribute.value)}`;
+            filters.value[filterKey] = 0;
+            showAttributeEditor.value = false;
+        };
+
+        const cancelAttributeEdit = () => {
+            showAttributeEditor.value = false;
         };
 
         return {
@@ -1092,9 +1351,23 @@ export default defineComponent({
             hasActiveFilters,
             hasActiveStatFilters,
             showMinimumStatsModal,
+            showAttributeEditor,
+            editingAttribute,
+            editingValue,
             getStatColorClass,
+            getAttributeColorClass,
+            formatAttrName,
+            formatAttrKey,
+            technicalAttributeKeys,
+            mentalAttributeKeys,
+            physicalAttributeKeys,
+            goalkeeperAttributeKeys,
             resetMinimumStats,
             applyMinimumStats,
+            openAttributeEditor,
+            saveAttributeValue,
+            clearAttributeValue,
+            cancelAttributeEdit,
             clubOptions,
             nationalityOptions,
             positionOptions,
@@ -1181,5 +1454,65 @@ export default defineComponent({
     font-weight: 600;
     min-width: 24px;
     text-align: center;
+}
+.modal-content {
+    max-height: 80vh;
+    overflow-y: auto;
+}
+.attribute-group-title {
+    color: $primary;
+    border-bottom: 1px solid $primary;
+    padding-bottom: 4px;
+    margin-bottom: 12px;
+    
+    .body--dark & {
+        color: lighten($primary, 20%);
+        border-bottom-color: lighten($primary, 20%);
+    }
+}
+
+.fifa-stat-item {
+    width: 100%;
+}
+
+.clickable-attribute {
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 3px;
+    transition: background-color 0.2s ease;
+    
+    &:hover {
+        background-color: rgba(0, 0, 0, 0.1);
+        
+        .body--dark & {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+    }
+}
+
+.attributes-section {
+    padding: 12px;
+}
+
+.attributes-section-title {
+    font-weight: 600;
+}
+
+.attribute-item {
+    margin-bottom: 6px;
+    padding-right: 8px;
+}
+
+.attribute-name {
+    font-size: 0.85rem;
+    color: rgba(0, 0, 0, 0.7);
+    
+    .body--dark & {
+        color: rgba(255, 255, 255, 0.7);
+    }
+}
+
+.attribute-value {
+    font-size: 0.9rem;
 }
 </style>
