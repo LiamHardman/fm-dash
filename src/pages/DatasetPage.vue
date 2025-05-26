@@ -351,27 +351,46 @@ export default {
                 .map((player) => {
                     // If a role is selected, modify the player's overall to show role-specific rating
                     if (roleFilter.value && player.roleSpecificOveralls) {
+                        // Debug logging - let's see what we're working with
+                        console.log("=== ROLE FILTER DEBUG ===");
+                        console.log("Player name:", player.name);
+                        console.log("Player overall:", player.overall);
+                        console.log("Selected role filter:", roleFilter.value);
+                        console.log("roleSpecificOveralls type:", typeof player.roleSpecificOveralls);
+                        console.log("roleSpecificOveralls is array:", Array.isArray(player.roleSpecificOveralls));
+                        console.log("roleSpecificOveralls content:", player.roleSpecificOveralls);
+                        
                         let roleSpecificOverall = null;
                         
                         // Handle both array and object formats (as seen in TeamViewPage)
                         if (Array.isArray(player.roleSpecificOveralls)) {
+                            console.log("Processing as array...");
                             // Array format: [{roleName: "DM - Anchor", score: 78}, ...]
                             const roleMatch = player.roleSpecificOveralls.find(rso => rso.roleName === roleFilter.value);
+                            console.log("Role match found:", roleMatch);
                             if (roleMatch) {
                                 roleSpecificOverall = roleMatch.score;
+                                console.log("Role-specific overall from array:", roleSpecificOverall);
                             }
                         } else if (typeof player.roleSpecificOveralls === 'object') {
+                            console.log("Processing as object...");
                             // Object format: {"DM - Anchor": 78, "DM - Deep Lying Playmaker": 76, ...}
+                            console.log("Available roles:", Object.keys(player.roleSpecificOveralls));
                             roleSpecificOverall = player.roleSpecificOveralls[roleFilter.value];
+                            console.log("Role-specific overall from object:", roleSpecificOverall);
                         }
                         
                         // If we found a role-specific overall, use it
                         if (roleSpecificOverall !== null && roleSpecificOverall !== undefined) {
+                            console.log("✅ Using role-specific overall:", roleSpecificOverall);
                             return {
                                 ...player,
                                 overall: roleSpecificOverall
                             };
+                        } else {
+                            console.log("❌ No role match found, using original overall:", player.overall);
                         }
+                        console.log("=== END DEBUG ===");
                     }
                     // Return original player if no role filter or no role match
                     return player;
