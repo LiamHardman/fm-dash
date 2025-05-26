@@ -700,6 +700,10 @@
                                                         class="attribute-value-column-styled"
                                                     >
                                                         <span
+                                                            v-if="
+                                                                inlineEditingAttributeKey !==
+                                                                attr
+                                                            "
                                                             :class="
                                                                 getUnifiedRatingClass(
                                                                     filters[
@@ -710,7 +714,7 @@
                                                             "
                                                             class="clickable-attribute attribute-badge-styled"
                                                             @click="
-                                                                openAttributeEditor(
+                                                                startInlineEdit(
                                                                     attr,
                                                                 )
                                                             "
@@ -721,6 +725,32 @@
                                                                 ] || 0
                                                             }}
                                                         </span>
+                                                        <q-input
+                                                            v-else
+                                                            :ref="
+                                                                (el) =>
+                                                                    (attributeInputRefs[
+                                                                        attr
+                                                                    ] = el)
+                                                            "
+                                                            v-model.number="
+                                                                inlineEditingValue
+                                                            "
+                                                            type="number"
+                                                            min="0"
+                                                            max="20"
+                                                            step="1"
+                                                            dense
+                                                            filled
+                                                            autofocus
+                                                            class="inline-attribute-input"
+                                                            @keyup.enter="
+                                                                finishInlineEdit
+                                                            "
+                                                            @blur="
+                                                                finishInlineEdit
+                                                            "
+                                                        />
                                                     </q-item-section>
                                                 </q-item>
                                             </q-list>
@@ -763,6 +793,10 @@
                                                         class="attribute-value-column-styled"
                                                     >
                                                         <span
+                                                            v-if="
+                                                                inlineEditingAttributeKey !==
+                                                                attr
+                                                            "
                                                             :class="
                                                                 getUnifiedRatingClass(
                                                                     filters[
@@ -773,7 +807,7 @@
                                                             "
                                                             class="clickable-attribute attribute-badge-styled"
                                                             @click="
-                                                                openAttributeEditor(
+                                                                startInlineEdit(
                                                                     attr,
                                                                 )
                                                             "
@@ -784,6 +818,32 @@
                                                                 ] || 0
                                                             }}
                                                         </span>
+                                                        <q-input
+                                                            v-else
+                                                            :ref="
+                                                                (el) =>
+                                                                    (attributeInputRefs[
+                                                                        attr
+                                                                    ] = el)
+                                                            "
+                                                            v-model.number="
+                                                                inlineEditingValue
+                                                            "
+                                                            type="number"
+                                                            min="0"
+                                                            max="20"
+                                                            step="1"
+                                                            dense
+                                                            filled
+                                                            autofocus
+                                                            class="inline-attribute-input"
+                                                            @keyup.enter="
+                                                                finishInlineEdit
+                                                            "
+                                                            @blur="
+                                                                finishInlineEdit
+                                                            "
+                                                        />
                                                     </q-item-section>
                                                 </q-item>
                                             </q-list>
@@ -826,6 +886,10 @@
                                                         class="attribute-value-column-styled"
                                                     >
                                                         <span
+                                                            v-if="
+                                                                inlineEditingAttributeKey !==
+                                                                attr
+                                                            "
                                                             :class="
                                                                 getUnifiedRatingClass(
                                                                     filters[
@@ -836,7 +900,7 @@
                                                             "
                                                             class="clickable-attribute attribute-badge-styled"
                                                             @click="
-                                                                openAttributeEditor(
+                                                                startInlineEdit(
                                                                     attr,
                                                                 )
                                                             "
@@ -847,6 +911,32 @@
                                                                 ] || 0
                                                             }}
                                                         </span>
+                                                        <q-input
+                                                            v-else
+                                                            :ref="
+                                                                (el) =>
+                                                                    (attributeInputRefs[
+                                                                        attr
+                                                                    ] = el)
+                                                            "
+                                                            v-model.number="
+                                                                inlineEditingValue
+                                                            "
+                                                            type="number"
+                                                            min="0"
+                                                            max="20"
+                                                            step="1"
+                                                            dense
+                                                            filled
+                                                            autofocus
+                                                            class="inline-attribute-input"
+                                                            @keyup.enter="
+                                                                finishInlineEdit
+                                                            "
+                                                            @blur="
+                                                                finishInlineEdit
+                                                            "
+                                                        />
                                                     </q-item-section>
                                                 </q-item>
                                             </q-list>
@@ -889,6 +979,10 @@
                                                         class="attribute-value-column-styled"
                                                     >
                                                         <span
+                                                            v-if="
+                                                                inlineEditingAttributeKey !==
+                                                                attr
+                                                            "
                                                             :class="
                                                                 getUnifiedRatingClass(
                                                                     filters[
@@ -899,7 +993,7 @@
                                                             "
                                                             class="clickable-attribute attribute-badge-styled"
                                                             @click="
-                                                                openAttributeEditor(
+                                                                startInlineEdit(
                                                                     attr,
                                                                 )
                                                             "
@@ -910,6 +1004,32 @@
                                                                 ] || 0
                                                             }}
                                                         </span>
+                                                        <q-input
+                                                            v-else
+                                                            :ref="
+                                                                (el) =>
+                                                                    (attributeInputRefs[
+                                                                        attr
+                                                                    ] = el)
+                                                            "
+                                                            v-model.number="
+                                                                inlineEditingValue
+                                                            "
+                                                            type="number"
+                                                            min="0"
+                                                            max="20"
+                                                            step="1"
+                                                            dense
+                                                            filled
+                                                            autofocus
+                                                            class="inline-attribute-input"
+                                                            @keyup.enter="
+                                                                finishInlineEdit
+                                                            "
+                                                            @blur="
+                                                                finishInlineEdit
+                                                            "
+                                                        />
                                                     </q-item-section>
                                                 </q-item>
                                             </q-list>
@@ -918,67 +1038,6 @@
                                 </div>
                             </div>
                         </div>
-
-                        <q-dialog v-model="showAttributeEditor" persistent>
-                            <q-card
-                                :class="
-                                    quasarInstance.dark.isActive
-                                        ? 'bg-grey-8'
-                                        : 'bg-white'
-                                "
-                            >
-                                <q-card-section>
-                                    <div class="text-h6">
-                                        Set Minimum
-                                        {{ formatAttrName(editingAttribute) }}
-                                    </div>
-                                </q-card-section>
-
-                                <q-card-section class="q-pt-none">
-                                    <q-input
-                                        v-model.number="editingValue"
-                                        type="number"
-                                        :min="0"
-                                        :max="20"
-                                        label="Minimum value (0-20)"
-                                        filled
-                                        autofocus
-                                        @keyup.enter="saveAttributeValue"
-                                        :label-color="
-                                            quasarInstance.dark.isActive
-                                                ? 'grey-4'
-                                                : ''
-                                        "
-                                        :input-class="
-                                            quasarInstance.dark.isActive
-                                                ? 'text-grey-3'
-                                                : ''
-                                        "
-                                    />
-                                </q-card-section>
-
-                                <q-card-actions align="right">
-                                    <q-btn
-                                        flat
-                                        label="Cancel"
-                                        color="grey"
-                                        @click="cancelAttributeEdit"
-                                    />
-                                    <q-btn
-                                        flat
-                                        label="Clear"
-                                        color="negative"
-                                        @click="clearAttributeValue"
-                                    />
-                                    <q-btn
-                                        unelevated
-                                        label="Save"
-                                        color="primary"
-                                        @click="saveAttributeValue"
-                                    />
-                                </q-card-actions>
-                            </q-card>
-                        </q-dialog>
                     </q-card-section>
 
                     <q-card-actions align="right" class="q-pa-md">
@@ -1009,7 +1068,14 @@
 </template>
 
 <script>
-import { ref, computed, watch, defineComponent, onMounted } from "vue";
+import {
+    ref,
+    computed,
+    watch,
+    defineComponent,
+    onMounted,
+    nextTick,
+} from "vue"; // Added nextTick
 import { useQuasar } from "quasar";
 import { usePlayerStore } from "@/stores/playerStore";
 import { formatCurrency } from "@/utils/currencyUtils";
@@ -1143,7 +1209,7 @@ const orderedShortPositions = [
 const AGE_SLIDER_MIN = 15;
 const AGE_SLIDER_MAX = 50;
 const SALARY_SLIDER_MIN = 0;
-const SALARY_SLIDER_MAX = 1000000; // Default max, will be updated based on data
+const SALARY_SLIDER_MAX = 1000000;
 
 function debounce(fn, delay) {
     let timeoutID = null;
@@ -1207,9 +1273,11 @@ export default defineComponent({
         });
 
         const showMinimumStatsModal = ref(false);
-        const showAttributeEditor = ref(false);
-        const editingAttribute = ref("");
-        const editingValue = ref(0);
+
+        // State for inline editing
+        const inlineEditingAttributeKey = ref(null); // e.g., "Cor", "Agg"
+        const inlineEditingValue = ref(0);
+        const attributeInputRefs = ref({}); // To store refs to q-input components
 
         const formatAttrName = (attrKey) =>
             attributeFullNameMap[attrKey] || attrKey;
@@ -1591,31 +1659,34 @@ export default defineComponent({
         };
 
         const applyMinimumStats = () => {
+            finishInlineEdit(); // Ensure any pending inline edit is saved
             showMinimumStatsModal.value = false;
             applyFilters();
         };
 
-        const openAttributeEditor = (attr) => {
-            editingAttribute.value = attr;
-            const filterKey = `min${formatAttrKey(attr)}`;
-            editingValue.value = filters.value[filterKey] || 0;
-            showAttributeEditor.value = true;
+        const startInlineEdit = (attrKey) => {
+            finishInlineEdit(); // Save any previous edit first
+            inlineEditingAttributeKey.value = attrKey;
+            const filterKey = `min${formatAttrKey(attrKey)}`;
+            inlineEditingValue.value = filters.value[filterKey] || 0;
+            nextTick(() => {
+                const inputEl = attributeInputRefs.value[attrKey];
+                if (inputEl && inputEl.focus) {
+                    setTimeout(() => inputEl.focus(), 0); // Timeout to ensure focus works after render
+                }
+            });
         };
-        const saveAttributeValue = () => {
-            const filterKey = `min${formatAttrKey(editingAttribute.value)}`;
-            filters.value[filterKey] = Math.max(
-                0,
-                Math.min(20, editingValue.value || 0),
-            );
-            showAttributeEditor.value = false;
-        };
-        const clearAttributeValue = () => {
-            const filterKey = `min${formatAttrKey(editingAttribute.value)}`;
-            filters.value[filterKey] = 0;
-            showAttributeEditor.value = false;
-        };
-        const cancelAttributeEdit = () => {
-            showAttributeEditor.value = false;
+
+        const finishInlineEdit = () => {
+            if (inlineEditingAttributeKey.value) {
+                const attrKey = inlineEditingAttributeKey.value;
+                const filterKey = `min${formatAttrKey(attrKey)}`;
+                let val = parseInt(inlineEditingValue.value, 10);
+                if (isNaN(val) || val < 0) val = 0;
+                if (val > 20) val = 20;
+                filters.value[filterKey] = val;
+                inlineEditingAttributeKey.value = null;
+            }
         };
 
         return {
@@ -1624,9 +1695,9 @@ export default defineComponent({
             hasActiveFilters,
             hasActiveStatFilters,
             showMinimumStatsModal,
-            showAttributeEditor,
-            editingAttribute,
-            editingValue,
+            inlineEditingAttributeKey,
+            inlineEditingValue,
+            attributeInputRefs, // For inline editing
             getUnifiedRatingClass,
             formatAttrName,
             formatAttrKey,
@@ -1636,10 +1707,8 @@ export default defineComponent({
             goalkeeperAttributeKeys,
             resetMinimumStats,
             applyMinimumStats,
-            openAttributeEditor,
-            saveAttributeValue,
-            clearAttributeValue,
-            cancelAttributeEdit,
+            startInlineEdit,
+            finishInlineEdit, // Inline editing methods
             clubOptions,
             nationalityOptions,
             positionOptions,
@@ -1737,9 +1806,6 @@ export default defineComponent({
 .modal-content {
     max-height: 80vh;
     overflow-y: auto;
-    .col-md-9 {
-        // No specific padding here, let child cards handle it.
-    }
 }
 
 .attribute-group-title {
@@ -1761,19 +1827,19 @@ export default defineComponent({
 
 .attributes-section {
     padding: 0;
-} // Remove padding from parent to use card's padding
+}
 .attributes-section-title {
     font-weight: 600;
     margin-bottom: 12px;
-} // Add margin to title
+}
 
 .attribute-category-card {
     margin-bottom: 16px;
     height: 100%;
     display: flex;
     flex-direction: column;
-    background-color: transparent !important; // Make card background transparent
-    border: 1px solid rgba(0, 0, 0, 0.08); // Add subtle border to card
+    background-color: transparent !important;
+    border: 1px solid rgba(0, 0, 0, 0.08);
     .body--dark & {
         border: 1px solid rgba(255, 255, 255, 0.12);
     }
@@ -1796,24 +1862,21 @@ export default defineComponent({
 }
 
 .attribute-list-column-styled {
-    padding: 8px 4px; // Add some padding inside the list
+    padding: 8px 4px;
     flex-grow: 1;
     overflow-y: auto;
 }
 
 .attribute-item-column-styled {
-    padding: 4px 8px; // Reduced padding for denser list
-    min-height: 32px; // Reduced min-height
+    padding: 4px 8px;
+    min-height: 32px;
     display: flex;
     justify-content: space-between;
     align-items: center;
 
     &.q-item--dark {
-        // Ensure dark mode items are styled correctly
-        // color: $grey-3; // If needed
     }
     &:not(:last-child):after {
-        // Quasar's default separator might be too dark/light
         background-color: rgba(0, 0, 0, 0.08) !important;
         .body--dark & {
             background-color: rgba(255, 255, 255, 0.1) !important;
@@ -1822,12 +1885,12 @@ export default defineComponent({
 }
 
 .attribute-name-column-styled {
-    font-size: 0.75rem; // Smaller font for attribute name
+    font-size: 0.75rem;
     color: $grey-8;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    padding-right: 6px; // Slightly less padding
+    padding-right: 6px;
 
     .body--dark & {
         color: $grey-4;
@@ -1835,7 +1898,10 @@ export default defineComponent({
 }
 
 .attribute-value-column-styled {
-    // No specific styles needed here, badge itself is styled
+    // Styles for the container of the badge/input
+    min-width: 40px; // Ensure enough space for the input
+    display: flex;
+    justify-content: flex-end;
 }
 
 .attribute-badge-styled {
@@ -1850,7 +1916,7 @@ export default defineComponent({
     text-align: center;
     font-weight: 600;
     line-height: 1.2;
-    font-size: 0.8rem; // Slightly smaller font in badge
+    font-size: 0.8rem;
     color: white;
 
     &:hover {
@@ -1858,6 +1924,30 @@ export default defineComponent({
         .body--dark & {
             box-shadow: 0 1px 3px rgba(255, 255, 255, 0.2);
         }
+    }
+}
+
+.inline-attribute-input {
+    width: 55px; // Adjust width as needed
+    :deep(.q-field__control) {
+        height: 28px; // Make it compact
+        padding: 0 4px;
+        min-height: 28px !important;
+    }
+    :deep(.q-field__native) {
+        font-size: 0.8rem;
+        text-align: center;
+        font-weight: 600;
+        padding: 0;
+    }
+    // Remove spinner buttons for number input for a cleaner look
+    :deep(input[type="number"]::-webkit-inner-spin-button),
+    :deep(input[type="number"]::-webkit-outer-spin-button) {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+    :deep(input[type="number"]) {
+        -moz-appearance: textfield; // Firefox
     }
 }
 
