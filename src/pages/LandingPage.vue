@@ -16,6 +16,15 @@
                     >
                         Get Started
                     </q-btn>
+                    <q-btn
+                        color="secondary"
+                        size="lg"
+                        class="demo-btn"
+                        @click="navigateToDemo"
+                        unelevated
+                    >
+                        Demo
+                    </q-btn>
                 </div>
             </div>
         </div>
@@ -35,8 +44,13 @@ export default defineComponent({
             router.push("/upload");
         };
 
+        const navigateToDemo = () => {
+            router.push("/dataset/demo");
+        };
+
         return {
             navigateToUpload,
+            navigateToDemo,
         };
     },
 });
@@ -97,6 +111,25 @@ export default defineComponent({
     &:hover {
         transform: translateY(-2px);
         box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    }
+    
+    transition: all 0.3s ease;
+}
+
+.demo-btn {
+    padding: 12px 32px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 2px solid white;
+    
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        background: white;
+        color: var(--q-secondary);
     }
     
     transition: all 0.3s ease;

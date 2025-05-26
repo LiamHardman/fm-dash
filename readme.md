@@ -46,9 +46,10 @@ The frontend will run on http://localhost:3000.
 
 1. Start both the backend API and frontend development server
 2. Access the frontend at http://localhost:3000
-3. Select an HTML file exported from Football Manager containing player data
-4. Click "Upload and Parse" to process the file
-5. Use search, sort, and pagination to explore the data
+3. Choose one of the following options:
+   - **Demo**: Click the "Demo" button on the homepage to view pre-loaded sample data (dataset ID: demo)
+   - **Upload**: Select an HTML file exported from Football Manager containing player data and click "Upload and Parse"
+4. Use search, sort, and pagination to explore the data
 
 ## Building for Production
 
