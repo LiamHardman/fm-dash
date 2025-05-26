@@ -2,69 +2,27 @@
     <q-layout view="hHh lpR fFf">
         <q-header
             flat
-            bordered
-            :class="
-                $q.dark.isActive
-                    ? 'bg-dark text-white'
-                    : 'bg-primary text-white'
-            "
             class="app-header"
         >
-            <q-toolbar>
-                <q-avatar class="q-mr-sm">
-                    <img
-                        src="https://cdn.quasar.dev/logo-v2/svg/logo-mono-white.svg"
-                        alt="App Logo"
-                    />
-                </q-avatar>
+            <q-toolbar class="header-toolbar">
                 <q-toolbar-title class="header-title">
                     <router-link to="/" class="app-title-link">FMDB</router-link>
                 </q-toolbar-title>
                 
                 <div class="nav-links">
-                    <q-btn
-                        flat
-                        label="Upload"
-                        @click="$router.push('/upload')"
-                        class="nav-btn"
-                    />
-                    <q-btn
-                        flat
-                        label="Team View"
-                        @click="$router.push('/team-view')"
-                        class="nav-btn"
-                    />
-                    <q-btn
-                        flat
-                        label="Docs"
-                        @click="$router.push('/docs')"
-                        class="nav-btn"
-                    />
+                    <router-link to="/upload" class="nav-link">Upload</router-link>
+                    <router-link to="/team-view" class="nav-link">Team View</router-link>
+                    <router-link to="/docs" class="nav-link">Docs</router-link>
                 </div>
                 
                 <q-space />
-                <q-toggle
-                    v-model="isDarkModeActive"
-                    checked-icon="dark_mode"
-                    unchecked-icon="light_mode"
-                    :color="$q.dark.isActive ? 'yellow' : 'grey-4'"
-                    size="lg"
-                    @update:model-value="toggleDarkMode"
-                    class="dark-mode-toggle"
-                >
-                    <q-tooltip
-                        anchor="center left"
-                        self="center right"
-                        :offset="[10, 10]"
-                        :class="
-                            $q.dark.isActive
-                                ? 'bg-grey-7 text-white'
-                                : 'bg-grey-3 text-dark'
-                        "
-                    >
-                        Toggle {{ $q.dark.isActive ? "Light" : "Dark" }} Mode
-                    </q-tooltip>
-                </q-toggle>
+                <q-btn
+                    flat
+                    round
+                    :icon="$q.dark.isActive ? 'light_mode' : 'dark_mode'"
+                    @click="toggleDarkMode"
+                    class="dark-mode-btn"
+                />
             </q-toolbar>
         </q-header>
 
@@ -72,21 +30,10 @@
             <router-view />
         </q-page-container>
 
-        <q-footer
-            elevated
-            :class="
-                $q.dark.isActive
-                    ? 'bg-grey-9 text-grey-5'
-                    : 'bg-grey-2 text-grey-7'
-            "
-            class="app-footer"
-        >
-            <q-toolbar>
-                <q-toolbar-title class="text-caption text-center">
-                    &copy; {{ new Date().getFullYear() }} FMDB. All
-                    rights reserved.
-                </q-toolbar-title>
-            </q-toolbar>
+        <q-footer class="app-footer">
+            <div class="footer-content">
+                <p>&copy; {{ new Date().getFullYear() }} Liam Hardman. All rights reserved.</p>
+            </div>
         </q-footer>
     </q-layout>
 </template>
@@ -114,72 +61,158 @@ export default defineComponent({
 
 <style lang="scss" scoped>
 .app-header {
-    padding: 0 8px; // Add some padding to the header
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(26, 35, 126, 0.1);
+    
+    .body--dark & {
+        background: rgba(30, 30, 30, 0.95);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+}
+
+.header-toolbar {
+    padding: 0 2rem;
+    min-height: 60px;
 }
 
 .header-title {
-    font-weight: 600; // Make title a bit bolder
-    font-size: 1.25rem; // Slightly larger title
-}
-
-.dark-mode-toggle {
-    // Styles for the toggle if needed, e.g., margins
-    margin-right: 8px;
-}
-
-.app-footer {
-    border-top: 1px solid rgba(0, 0, 0, 0.12);
-    .body--dark & {
-        border-top: 1px solid rgba(255, 255, 255, 0.12);
-    }
+    flex: 0 0 auto;
 }
 
 .app-title-link {
     text-decoration: none;
-    color: inherit;
-    font-weight: 700;
+    color: #1a237e;
+    font-weight: 300;
     font-size: 1.5rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    transition: opacity 0.2s ease;
     
     &:hover {
-        opacity: 0.8;
+        opacity: 0.7;
+    }
+    
+    .body--dark & {
+        color: rgba(255, 255, 255, 0.9);
     }
 }
 
 .nav-links {
     display: flex;
-    gap: 0.5rem;
+    gap: 2rem;
+    margin-left: 3rem;
 }
 
-.nav-btn {
-    color: white;
-    font-weight: 500;
+.nav-link {
+    text-decoration: none;
+    color: #666;
+    font-weight: 400;
+    font-size: 0.9rem;
+    letter-spacing: 0.5px;
+    padding: 0.5rem 0;
+    position: relative;
+    transition: color 0.2s ease;
     
     &:hover {
-        background: rgba(255, 255, 255, 0.1);
+        color: #1a237e;
+    }
+    
+    &.router-link-active {
+        color: #1a237e;
+        
+        &::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #1a237e;
+        }
+    }
+    
+    .body--dark & {
+        color: rgba(255, 255, 255, 0.7);
+        
+        &:hover {
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        &.router-link-active {
+            color: rgba(255, 255, 255, 0.9);
+            
+            &::after {
+                background: rgba(255, 255, 255, 0.9);
+            }
+        }
     }
 }
 
-// Responsive adjustments for header
-@media (max-width: $breakpoint-xs-max) {
-    .header-title {
-        font-size: 1rem;
+.dark-mode-btn {
+    color: #666;
+    
+    &:hover {
+        color: #1a237e;
+        background: rgba(26, 35, 126, 0.05);
+    }
+    
+    .body--dark & {
+        color: rgba(255, 255, 255, 0.7);
+        
+        &:hover {
+            color: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 0.05);
+        }
+    }
+}
+
+.app-footer {
+    background: transparent;
+    border-top: 1px solid rgba(26, 35, 126, 0.1);
+    
+    .body--dark & {
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+}
+
+.footer-content {
+    padding: 1rem 2rem;
+    text-align: center;
+    
+    p {
+        margin: 0;
+        color: #666;
+        font-size: 0.85rem;
+        font-weight: 300;
+        
+        .body--dark & {
+            color: rgba(255, 255, 255, 0.6);
+        }
+    }
+}
+
+@media (max-width: 768px) {
+    .header-toolbar {
+        padding: 0 1rem;
+        min-height: 56px;
     }
     
     .app-title-link {
         font-size: 1.2rem;
+        letter-spacing: 1px;
     }
     
     .nav-links {
-        display: none; // Hide nav links on mobile to save space
+        display: none;
     }
     
-    .q-toolbar__title {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-    .dark-mode-toggle {
-        margin-right: 0;
+    .footer-content {
+        padding: 1rem;
+        
+        p {
+            font-size: 0.8rem;
+        }
     }
 }
 </style>
