@@ -166,6 +166,38 @@
                                                 ★
                                             </span>
                                         </div>
+                                        <div 
+                                            v-if="nation.bestFormationOverall > 0"
+                                            class="section-ratings"
+                                        >
+                                            <div class="section-rating att">
+                                                <span class="section-label">ATT</span>
+                                                <span 
+                                                    class="section-value"
+                                                    :class="getOverallClass(nation.attRating)"
+                                                >
+                                                    {{ nation.attRating }}
+                                                </span>
+                                            </div>
+                                            <div class="section-rating mid">
+                                                <span class="section-label">MID</span>
+                                                <span 
+                                                    class="section-value"
+                                                    :class="getOverallClass(nation.midRating)"
+                                                >
+                                                    {{ nation.midRating }}
+                                                </span>
+                                            </div>
+                                            <div class="section-rating def">
+                                                <span class="section-label">DEF</span>
+                                                <span 
+                                                    class="section-value"
+                                                    :class="getOverallClass(nation.defRating)"
+                                                >
+                                                    {{ nation.defRating }}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -210,24 +242,59 @@
                                     />
                                     <div
                                         v-if="bestNationAverageOverall !== null"
-                                        class="q-mt-md text-subtitle1"
-                                        :class="
-                                            quasarInstance.dark.isActive
-                                                ? 'text-grey-3'
-                                                : 'text-grey-8'
-                                        "
+                                        class="q-mt-md"
                                     >
-                                        Best XI Average Overall:
-                                        <span
-                                            class="text-weight-bold attribute-value"
+                                        <div class="text-subtitle1 q-mb-sm"
                                             :class="
-                                                getOverallClass(
-                                                    bestNationAverageOverall,
-                                                )
+                                                quasarInstance.dark.isActive
+                                                    ? 'text-grey-3'
+                                                    : 'text-grey-8'
                                             "
                                         >
-                                            {{ bestNationAverageOverall }}
-                                        </span>
+                                            Best XI Average Overall:
+                                            <span
+                                                class="text-weight-bold attribute-value"
+                                                :class="
+                                                    getOverallClass(
+                                                        bestNationAverageOverall,
+                                                    )
+                                                "
+                                            >
+                                                {{ bestNationAverageOverall }}
+                                            </span>
+                                        </div>
+                                        <div 
+                                            v-if="currentNationSectionRatings.attRating > 0"
+                                            class="section-ratings-detail"
+                                        >
+                                            <div class="section-rating-detail att">
+                                                <span class="section-label-detail">ATT</span>
+                                                <span 
+                                                    class="section-value-detail"
+                                                    :class="getOverallClass(currentNationSectionRatings.attRating)"
+                                                >
+                                                    {{ currentNationSectionRatings.attRating }}
+                                                </span>
+                                            </div>
+                                            <div class="section-rating-detail mid">
+                                                <span class="section-label-detail">MID</span>
+                                                <span 
+                                                    class="section-value-detail"
+                                                    :class="getOverallClass(currentNationSectionRatings.midRating)"
+                                                >
+                                                    {{ currentNationSectionRatings.midRating }}
+                                                </span>
+                                            </div>
+                                            <div class="section-rating-detail def">
+                                                <span class="section-label-detail">DEF</span>
+                                                <span 
+                                                    class="section-value-detail"
+                                                    :class="getOverallClass(currentNationSectionRatings.defRating)"
+                                                >
+                                                    {{ currentNationSectionRatings.defRating }}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
                                     <q-banner
                                         v-if="calculationMessage"
@@ -590,6 +657,7 @@ export default {
                 
                 let bestOverall = 0;
                 let hasFullSquad = false;
+                let bestSectionRatings = { attRating: 0, midRating: 0, defRating: 0 };
                 
                 // Test each formation to find the best average overall for this nation
                 Object.keys(formations).forEach(formationKey => {
@@ -700,6 +768,8 @@ export default {
                             const averageOverall = Math.round(sumOfStartersOverall / startersCount);
                             if (averageOverall > bestOverall) {
                                 bestOverall = averageOverall;
+                                // Calculate section ratings for this formation
+                                bestSectionRatings = calculateSectionRatings(tempSquadComposition, formationLayoutForCalc);
                             }
                         }
                     }
@@ -707,6 +777,9 @@ export default {
                 
                 // Only set overall if nation has at least one full squad possible
                 nation.bestFormationOverall = hasFullSquad ? bestOverall : 0;
+                nation.attRating = hasFullSquad ? bestSectionRatings.attRating : 0;
+                nation.midRating = hasFullSquad ? bestSectionRatings.midRating : 0;
+                nation.defRating = hasFullSquad ? bestSectionRatings.defRating : 0;
             });
             
             return nationsArray.sort((a, b) => b.bestFormationOverall - a.bestFormationOverall);
@@ -903,6 +976,13 @@ export default {
             return starters;
         });
 
+        const currentNationSectionRatings = computed(() => {
+            if (!squadComposition.value || !currentFormationLayout.value) {
+                return { attRating: 0, midRating: 0, defRating: 0 };
+            }
+            return calculateSectionRatings(squadComposition.value, currentFormationLayout.value);
+        });
+
         const nationIsGoalkeeperView = computed(() => {
             return nationPlayers.value.some((p) =>
                 p.positionGroups?.includes("Goalkeepers"),
@@ -955,6 +1035,48 @@ export default {
             if (overall >= 55) return 1;
             if (overall >= 50) return 0.5;
             return 0;
+        };
+
+        const calculateSectionRatings = (squadComposition, formationLayout) => {
+            if (!squadComposition || !formationLayout) {
+                return { attRating: 0, midRating: 0, defRating: 0 };
+            }
+
+            const formationSlots = formationLayout.flatMap(row => row.positions);
+            
+            // Define position categories
+            const defensivePositions = ['GK', 'D (R)', 'D (L)', 'D (C)', 'WB (R)', 'WB (L)'];
+            const midfielderPositions = ['DM (C)', 'M (R)', 'M (L)', 'M (C)', 'AM (C)'];
+            const attackingPositions = ['AM (R)', 'AM (L)', 'ST (C)'];
+            
+            let attSum = 0, attCount = 0;
+            let midSum = 0, midCount = 0;
+            let defSum = 0, defCount = 0;
+            
+            formationSlots.forEach(slot => {
+                const slotPlayers = squadComposition[slot.id];
+                if (slotPlayers && slotPlayers.length > 0) {
+                    const starter = slotPlayers[0];
+                    const rating = starter.overallInRole;
+                    
+                    if (attackingPositions.includes(slot.role)) {
+                        attSum += rating;
+                        attCount++;
+                    } else if (midfielderPositions.includes(slot.role)) {
+                        midSum += rating;
+                        midCount++;
+                    } else if (defensivePositions.includes(slot.role)) {
+                        defSum += rating;
+                        defCount++;
+                    }
+                }
+            });
+            
+            return {
+                attRating: attCount > 0 ? Math.round(attSum / attCount) : 0,
+                midRating: midCount > 0 ? Math.round(midSum / midCount) : 0,
+                defRating: defCount > 0 ? Math.round(defSum / defCount) : 0
+            };
         };
 
         const getPlayerOverallForRole = (player, slotFormationRole) => {
@@ -1641,6 +1763,7 @@ export default {
             squadComposition,
             bestNationPlayersForPitch,
             bestNationAverageOverall,
+            currentNationSectionRatings,
             calculationMessage,
             calculationMessageClass,
             playerForDetailView,
@@ -1650,6 +1773,7 @@ export default {
             getOverallClass,
             getStarClass,
             getStarRating,
+            calculateSectionRatings,
             getSlotDisplayName,
             handlePlayerMovedOnPitch,
             quasarInstance,
@@ -1794,6 +1918,7 @@ export default {
     flex-direction: column;
     align-items: center;
     gap: 4px;
+    min-width: 100px;
 }
 
 .highest-overall {
@@ -1836,6 +1961,117 @@ export default {
         
         .body--dark & {
             color: #424242;
+        }
+    }
+}
+
+.section-ratings {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.section-rating {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    
+    .section-label {
+        font-size: 0.65rem;
+        font-weight: 600;
+        color: $grey-6;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        
+        .body--dark & {
+            color: $grey-4;
+        }
+    }
+    
+    .section-value {
+        font-size: 0.7rem;
+        font-weight: bold;
+        padding: 1px 4px;
+        border-radius: 3px;
+        min-width: 20px;
+        text-align: center;
+    }
+    
+    &.att .section-label {
+        color: #F44336; // Red for attack
+        
+        .body--dark & {
+            color: #FF5722;
+        }
+    }
+    
+    &.mid .section-label {
+        color: #2196F3; // Blue for midfield
+        
+        .body--dark & {
+            color: #03A9F4;
+        }
+    }
+    
+    &.def .section-label {
+        color: #4CAF50; // Green for defense
+        
+        .body--dark & {
+            color: #8BC34A;
+        }
+    }
+}
+
+.section-ratings-detail {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.section-rating-detail {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    
+    .section-label-detail {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        min-width: 28px;
+    }
+    
+    .section-value-detail {
+        font-size: 0.8rem;
+        font-weight: bold;
+        padding: 2px 6px;
+        border-radius: 4px;
+        min-width: 28px;
+        text-align: center;
+    }
+    
+    &.att .section-label-detail {
+        color: #F44336; // Red for attack
+        
+        .body--dark & {
+            color: #FF5722;
+        }
+    }
+    
+    &.mid .section-label-detail {
+        color: #2196F3; // Blue for midfield
+        
+        .body--dark & {
+            color: #03A9F4;
+        }
+    }
+    
+    &.def .section-label-detail {
+        color: #4CAF50; // Green for defense
+        
+        .body--dark & {
+            color: #8BC34A;
         }
     }
 }
