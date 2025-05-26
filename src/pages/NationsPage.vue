@@ -148,55 +148,63 @@
                                     <div class="nation-name">{{ nation.name }}</div>
                                     <div class="player-count">{{ nation.playerCount }} players</div>
                                 </div>
+                                <div class="nation-section-ratings">
+                                    <div 
+                                        v-if="nation.bestFormationOverall > 0"
+                                        class="section-ratings-large"
+                                    >
+                                        <div class="section-rating-large att">
+                                            <span class="section-label-large">ATT</span>
+                                            <span 
+                                                class="section-value-large"
+                                                :class="getOverallClass(nation.attRating)"
+                                            >
+                                                {{ nation.attRating }}
+                                            </span>
+                                        </div>
+                                        <div class="section-rating-large mid">
+                                            <span class="section-label-large">MID</span>
+                                            <span 
+                                                class="section-value-large"
+                                                :class="getOverallClass(nation.midRating)"
+                                            >
+                                                {{ nation.midRating }}
+                                            </span>
+                                        </div>
+                                        <div class="section-rating-large def">
+                                            <span class="section-label-large">DEF</span>
+                                            <span 
+                                                class="section-value-large"
+                                                :class="getOverallClass(nation.defRating)"
+                                            >
+                                                {{ nation.defRating }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div 
+                                        v-else
+                                        class="no-rating-message"
+                                    >
+                                        Incomplete Squad
+                                    </div>
+                                </div>
                                 <div class="nation-overall">
                                     <div class="nation-rating">
                                         <div 
-                                            class="highest-overall"
+                                            class="highest-overall-large"
                                             :class="getOverallClass(nation.bestFormationOverall)"
                                         >
                                             {{ nation.bestFormationOverall > 0 ? nation.bestFormationOverall + ' AVG' : 'N/A' }}
                                         </div>
-                                        <div class="star-rating">
+                                        <div class="star-rating-large">
                                             <span
                                                 v-for="star in 5"
                                                 :key="star"
-                                                class="star"
+                                                class="star-large"
                                                 :class="getStarClass(nation.bestFormationOverall, star)"
                                             >
                                                 ★
                                             </span>
-                                        </div>
-                                        <div 
-                                            v-if="nation.bestFormationOverall > 0"
-                                            class="section-ratings"
-                                        >
-                                            <div class="section-rating att">
-                                                <span class="section-label">ATT</span>
-                                                <span 
-                                                    class="section-value"
-                                                    :class="getOverallClass(nation.attRating)"
-                                                >
-                                                    {{ nation.attRating }}
-                                                </span>
-                                            </div>
-                                            <div class="section-rating mid">
-                                                <span class="section-label">MID</span>
-                                                <span 
-                                                    class="section-value"
-                                                    :class="getOverallClass(nation.midRating)"
-                                                >
-                                                    {{ nation.midRating }}
-                                                </span>
-                                            </div>
-                                            <div class="section-rating def">
-                                                <span class="section-label">DEF</span>
-                                                <span 
-                                                    class="section-value"
-                                                    :class="getOverallClass(nation.defRating)"
-                                                >
-                                                    {{ nation.defRating }}
-                                                </span>
-                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -1881,8 +1889,8 @@ export default {
 }
 
 .nation-info {
-    flex: 1;
-    min-width: 0;
+    flex-shrink: 0;
+    min-width: 120px;
 }
 
 .nation-name {
@@ -1908,6 +1916,83 @@ export default {
     }
 }
 
+.nation-section-ratings {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0 16px;
+}
+
+.section-ratings-large {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
+.section-rating-large {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    
+    .section-label-large {
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+    }
+    
+    .section-value-large {
+        font-size: 1.1rem;
+        font-weight: bold;
+        padding: 4px 8px;
+        border-radius: 6px;
+        min-width: 32px;
+        text-align: center;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        
+        .body--dark & {
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+    }
+    
+    &.att .section-label-large {
+        color: #F44336; // Red for attack
+        
+        .body--dark & {
+            color: #FF5722;
+        }
+    }
+    
+    &.mid .section-label-large {
+        color: #2196F3; // Blue for midfield
+        
+        .body--dark & {
+            color: #03A9F4;
+        }
+    }
+    
+    &.def .section-label-large {
+        color: #4CAF50; // Green for defense
+        
+        .body--dark & {
+            color: #8BC34A;
+        }
+    }
+}
+
+.no-rating-message {
+    font-size: 0.9rem;
+    color: $grey-6;
+    font-style: italic;
+    text-align: center;
+    
+    .body--dark & {
+        color: $grey-5;
+    }
+}
+
 .nation-overall {
     flex-shrink: 0;
     margin-left: 16px;
@@ -1917,10 +2002,55 @@ export default {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
-    min-width: 100px;
+    gap: 6px;
+    min-width: 120px;
 }
 
+.highest-overall-large {
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 1rem;
+    text-align: center;
+    min-width: 60px;
+}
+
+.star-rating-large {
+    display: flex;
+    gap: 2px;
+    font-size: 1.2rem;
+    line-height: 1;
+}
+
+.star-large {
+    transition: color 0.2s ease;
+    
+    &.star-full {
+        color: #FFD700; // Gold
+    }
+    
+    &.star-half {
+        background: linear-gradient(90deg, #FFD700 50%, transparent 50%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        
+        // Fallback for browsers that don't support background-clip: text
+        @supports not (-webkit-background-clip: text) {
+            color: #FFD700;
+        }
+    }
+    
+    &.star-empty {
+        color: #E0E0E0;
+        
+        .body--dark & {
+            color: #424242;
+        }
+    }
+}
+
+// Keep the original smaller versions for compatibility
 .highest-overall {
     font-weight: bold;
     padding: 2px 6px;
