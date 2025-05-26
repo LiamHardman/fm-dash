@@ -15,6 +15,29 @@ import (
 	"github.com/google/uuid"
 )
 
+// League represents a division/league with its teams
+type League struct {
+	Name            string `json:"name"`
+	TeamCount       int    `json:"teamCount"`
+	PlayerCount     int    `json:"playerCount"`
+	BestOverall     int    `json:"bestOverall"`
+	AttRating       int    `json:"attRating"`
+	MidRating       int    `json:"midRating"`
+	DefRating       int    `json:"defRating"`
+}
+
+// Team represents a team with its ratings and stats
+type Team struct {
+	Name            string   `json:"name"`
+	Division        string   `json:"division"`
+	PlayerCount     int      `json:"playerCount"`
+	BestOverall     int      `json:"bestOverall"`
+	AttRating       int      `json:"attRating"`
+	MidRating       int      `json:"midRating"`
+	DefRating       int      `json:"defRating"`
+	Players         []Player `json:"players,omitempty"`
+}
+
 const (
 	// MaxUploadSize defines the maximum allowed file size for uploads (15MB)
 	// This is an approximation for about 10,000 players.
@@ -354,5 +377,309 @@ func rolesHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error encoding JSON response for roles: %v", err)
 		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
 	}
+}
+
+// leaguesHandler returns league data with teams and their ratings
+func leaguesHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/leagues/"), "/")
+	if len(pathParts) == 0 || pathParts[0] == "" {
+		http.Error(w, "Dataset ID is missing in the request path", http.StatusBadRequest)
+		return
+	}
+	datasetID := pathParts[0]
+
+	log.Printf("leaguesHandler: DatasetID=%s", datasetID)
+
+	// Get player data from storage
+	players, _, found := GetPlayerData(datasetID)
+	if !found {
+		log.Printf("Player data not found for DatasetID: %s", datasetID)
+		http.Error(w, "Player data not found for the given ID.", http.StatusNotFound)
+		return
+	}
+
+	// Process leagues data
+	leaguesData := processLeaguesData(players)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	if err := json.NewEncoder(w).Encode(leaguesData); err != nil {
+		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
+		log.Printf("Error encoding JSON response for leagues (DatasetID: %s): %v", datasetID, err)
+	}
+}
+
+// teamsHandler returns detailed team data for a specific league
+func teamsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/teams/"), "/")
+	if len(pathParts) < 2 || pathParts[0] == "" || pathParts[1] == "" {
+		http.Error(w, "Dataset ID and Division are required in the request path", http.StatusBadRequest)
+		return
+	}
+	datasetID := pathParts[0]
+	division := pathParts[1]
+
+	log.Printf("teamsHandler: DatasetID=%s, Division=%s", datasetID, division)
+
+	// Get player data from storage
+	players, _, found := GetPlayerData(datasetID)
+	if !found {
+		log.Printf("Player data not found for DatasetID: %s", datasetID)
+		http.Error(w, "Player data not found for the given ID.", http.StatusNotFound)
+		return
+	}
+
+	// Process teams data for the specific division
+	teamsData := processTeamsData(players, division)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	if err := json.NewEncoder(w).Encode(teamsData); err != nil {
+		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
+		log.Printf("Error encoding JSON response for teams (DatasetID: %s, Division: %s): %v", datasetID, division, err)
+	}
+}
+
+// processLeaguesData groups players by division and calculates league statistics
+func processLeaguesData(players []Player) []League {
+	divisionMap := make(map[string][]Player)
+	
+	// Group players by division
+	for _, player := range players {
+		if player.Division != "" {
+			divisionMap[player.Division] = append(divisionMap[player.Division], player)
+		}
+	}
+	
+	var leagues []League
+	for divisionName, divisionPlayers := range divisionMap {
+		league := League{
+			Name:        divisionName,
+			PlayerCount: len(divisionPlayers),
+		}
+		
+		// Group players by team within this division
+		teamMap := make(map[string][]Player)
+		for _, player := range divisionPlayers {
+			if player.Club != "" {
+				teamMap[player.Club] = append(teamMap[player.Club], player)
+			}
+		}
+		
+		league.TeamCount = len(teamMap)
+		
+		// Calculate league ratings based on best teams
+		var teamOveralls []int
+		var allAttRatings []int
+		var allMidRatings []int
+		var allDefRatings []int
+		
+		for _, teamPlayers := range teamMap {
+			if len(teamPlayers) >= 11 { // Only consider teams with enough players
+				teamRatings := calculateTeamRatings(teamPlayers)
+				if teamRatings.BestOverall > 0 {
+					teamOveralls = append(teamOveralls, teamRatings.BestOverall)
+					allAttRatings = append(allAttRatings, teamRatings.AttRating)
+					allMidRatings = append(allMidRatings, teamRatings.MidRating)
+					allDefRatings = append(allDefRatings, teamRatings.DefRating)
+				}
+			}
+		}
+		
+		// League overall is the average of the top teams
+		if len(teamOveralls) > 0 {
+			sort.Ints(teamOveralls)
+			sort.Ints(allAttRatings)
+			sort.Ints(allMidRatings)
+			sort.Ints(allDefRatings)
+			
+			// Take top 50% of teams or at least 3 teams
+			topTeamsCount := len(teamOveralls) / 2
+			if topTeamsCount < 3 && len(teamOveralls) >= 3 {
+				topTeamsCount = 3
+			} else if topTeamsCount < 1 {
+				topTeamsCount = len(teamOveralls)
+			}
+			
+			league.BestOverall = calculateAverage(teamOveralls[len(teamOveralls)-topTeamsCount:])
+			league.AttRating = calculateAverage(allAttRatings[len(allAttRatings)-topTeamsCount:])
+			league.MidRating = calculateAverage(allMidRatings[len(allMidRatings)-topTeamsCount:])
+			league.DefRating = calculateAverage(allDefRatings[len(allDefRatings)-topTeamsCount:])
+		}
+		
+		leagues = append(leagues, league)
+	}
+	
+	// Sort leagues by overall rating
+	sort.Slice(leagues, func(i, j int) bool {
+		return leagues[i].BestOverall > leagues[j].BestOverall
+	})
+	
+	return leagues
+}
+
+// processTeamsData returns detailed team data for a specific division
+func processTeamsData(players []Player, division string) []Team {
+	// Filter players by division
+	var divisionPlayers []Player
+	for _, player := range players {
+		if player.Division == division {
+			divisionPlayers = append(divisionPlayers, player)
+		}
+	}
+	
+	// Group by team
+	teamMap := make(map[string][]Player)
+	for _, player := range divisionPlayers {
+		if player.Club != "" {
+			teamMap[player.Club] = append(teamMap[player.Club], player)
+		}
+	}
+	
+	var teams []Team
+	for teamName, teamPlayers := range teamMap {
+		team := Team{
+			Name:        teamName,
+			Division:    division,
+			PlayerCount: len(teamPlayers),
+			Players:     teamPlayers,
+		}
+		
+		ratings := calculateTeamRatings(teamPlayers)
+		team.BestOverall = ratings.BestOverall
+		team.AttRating = ratings.AttRating
+		team.MidRating = ratings.MidRating
+		team.DefRating = ratings.DefRating
+		
+		teams = append(teams, team)
+	}
+	
+	// Sort teams by overall rating
+	sort.Slice(teams, func(i, j int) bool {
+		return teams[i].BestOverall > teams[j].BestOverall
+	})
+	
+	return teams
+}
+
+// TeamRatings holds the calculated ratings for a team
+type TeamRatings struct {
+	BestOverall int
+	AttRating   int
+	MidRating   int
+	DefRating   int
+}
+
+// calculateTeamRatings calculates the overall and section ratings for a team
+func calculateTeamRatings(players []Player) TeamRatings {
+	if len(players) < 11 {
+		return TeamRatings{}
+	}
+	
+	// Sort players by overall rating
+	sort.Slice(players, func(i, j int) bool {
+		return players[i].Overall > players[j].Overall
+	})
+	
+	// Take the top 11 players as the best XI
+	bestXI := players[:11]
+	
+	// Calculate average overall
+	var totalOverall int
+	for _, player := range bestXI {
+		totalOverall += player.Overall
+	}
+	bestOverall := totalOverall / 11
+	
+	// Calculate section ratings based on positions
+	var attPlayers, midPlayers, defPlayers []Player
+	
+	for _, player := range bestXI {
+		// Categorize based on position groups
+		isAttacker := false
+		isMidfielder := false
+		isDefender := false
+		
+		for _, posGroup := range player.PositionGroups {
+			switch posGroup {
+			case "Attackers":
+				isAttacker = true
+			case "Midfielders":
+				isMidfielder = true
+			case "Defenders":
+				isDefender = true
+			}
+		}
+		
+		// Assign to categories (players can be in multiple)
+		if isAttacker {
+			attPlayers = append(attPlayers, player)
+		}
+		if isMidfielder {
+			midPlayers = append(midPlayers, player)
+		}
+		if isDefender {
+			defPlayers = append(defPlayers, player)
+		}
+	}
+	
+	// Calculate section averages
+	attRating := 0
+	if len(attPlayers) > 0 {
+		var attSum int
+		for _, player := range attPlayers {
+			attSum += player.Overall
+		}
+		attRating = attSum / len(attPlayers)
+	}
+	
+	midRating := 0
+	if len(midPlayers) > 0 {
+		var midSum int
+		for _, player := range midPlayers {
+			midSum += player.Overall
+		}
+		midRating = midSum / len(midPlayers)
+	}
+	
+	defRating := 0
+	if len(defPlayers) > 0 {
+		var defSum int
+		for _, player := range defPlayers {
+			defSum += player.Overall
+		}
+		defRating = defSum / len(defPlayers)
+	}
+	
+	return TeamRatings{
+		BestOverall: bestOverall,
+		AttRating:   attRating,
+		MidRating:   midRating,
+		DefRating:   defRating,
+	}
+}
+
+// calculateAverage calculates the average of a slice of integers
+func calculateAverage(numbers []int) int {
+	if len(numbers) == 0 {
+		return 0
+	}
+	
+	sum := 0
+	for _, num := range numbers {
+		sum += num
+	}
+	
+	return sum / len(numbers)
 }
 

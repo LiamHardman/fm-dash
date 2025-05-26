@@ -60,6 +60,9 @@ func parseCellsToPlayer(cells []string, headers []string) (Player, error) {
 		case "Club":
 			player.Club = cellValue
 			isAnAttributeField = false
+		case "Division":
+			player.Division = cellValue
+			isAnAttributeField = false
 		case "Transfer Value":
 			player.TransferValue, player.TransferValueAmount, _ = ParseMonetaryValueGo(cellValue) // Currency symbol detection handled by caller if needed globally
 			isAnAttributeField = false

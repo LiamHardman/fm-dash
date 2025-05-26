@@ -14,6 +14,7 @@ type Player struct {
 	Position                string                        `json:"position"` // Raw position string from HTML
 	Age                     string                        `json:"age"`
 	Club                    string                        `json:"club"`
+	Division                string                        `json:"division"`
 	TransferValue           string                        `json:"transfer_value"` // Original string representation
 	Wage                    string                        `json:"wage"`           // Original string representation
 	Personality             string                        `json:"personality,omitempty"`

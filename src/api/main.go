@@ -56,6 +56,12 @@ func main() {
 	// New API endpoint for retrieving available roles
 	http.HandleFunc("/api/roles", rolesHandler) // Defined in handlers.go
 
+	// API endpoint for retrieving leagues data
+	http.HandleFunc("/api/leagues/", leaguesHandler) // Defined in handlers.go
+
+	// API endpoint for retrieving teams data for a specific league
+	http.HandleFunc("/api/teams/", teamsHandler) // Defined in handlers.go
+
 	// Prometheus metrics endpoint
 	http.Handle("/metrics", promhttp.Handler())
 

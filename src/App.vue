@@ -12,6 +12,8 @@
                 <div class="nav-links">
                     <router-link to="/upload" class="nav-link">Upload</router-link>
                     <router-link to="/team-view" class="nav-link">Team View</router-link>
+                    <router-link to="/nations" class="nav-link">Nations</router-link>
+                    <router-link to="/leagues" class="nav-link">Leagues</router-link>
                     <router-link to="/docs" class="nav-link">Docs</router-link>
                 </div>
                 
