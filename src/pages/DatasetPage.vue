@@ -127,7 +127,7 @@
                                     size="lg"
                                 />
                             </div>
-                            <div class="col-12 col-sm-4">
+                            <div class="col-12 col-sm-3">
                                 <q-btn
                                     color="secondary"
                                     label="Team Analysis"
@@ -137,7 +137,17 @@
                                     size="lg"
                                 />
                             </div>
-                            <div class="col-12 col-sm-4">
+                            <div class="col-12 col-sm-3">
+                                <q-btn
+                                    color="info"
+                                    label="Nations Analysis"
+                                    icon="flag"
+                                    @click="viewNationsAnalysis"
+                                    class="full-width"
+                                    size="lg"
+                                />
+                            </div>
+                            <div class="col-12 col-sm-3">
                                 <q-btn
                                     color="accent"
                                     label="Find Upgrades"
@@ -707,6 +717,11 @@ export default {
                 router.push(`/team-view?datasetId=${currentDatasetId.value}`);
             }
         };
+        const viewNationsAnalysis = () => {
+            if (currentDatasetId.value) {
+                router.push(`/nations?datasetId=${currentDatasetId.value}`);
+            }
+        };
 
         const handlePlayerSelected = (player) => {
             playerForDetailView.value = player;
@@ -824,6 +839,7 @@ export default {
             shareDataset,
             viewAllPlayers,
             viewTeamAnalysis,
+            viewNationsAnalysis,
             handlePlayerSelected,
             handleTeamSelected,
             handleFiltersChanged,

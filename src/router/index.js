@@ -6,6 +6,7 @@ const LandingPage = () => import("../pages/LandingPage.vue");
 const PlayerUploadPage = () => import("../pages/PlayerUploadPage.vue");
 const TeamViewPage = () => import("../pages/TeamViewPage.vue");
 const DatasetPage = () => import("../pages/DatasetPage.vue");
+const NationsPage = () => import("../pages/NationsPage.vue");
 const DocsPage = () => import("../pages/DocsPage.vue");
 
 const routes = [
@@ -34,6 +35,17 @@ const routes = [
     path: "/team-view/:datasetId",
     name: "shared-dataset",
     component: TeamViewPage,
+    props: true,
+  },
+  {
+    path: "/nations",
+    name: "nations",
+    component: NationsPage,
+  },
+  {
+    path: "/nations/:datasetId",
+    name: "shared-nations",
+    component: NationsPage,
     props: true,
   },
   {
