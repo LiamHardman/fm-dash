@@ -39,15 +39,15 @@
                         <div class="text-subtitle1">Select Team</div>
                         <q-btn
                             v-if="currentDatasetId"
-                            flat
-                            round
-                            dense
+                            unelevated
                             icon="share"
-                            color="primary"
+                            label="Share Dataset"
+                            color="positive"
                             @click="shareDataset"
-                            class="share-btn"
+                            class="share-btn-enhanced"
+                            size="sm"
                         >
-                            <q-tooltip>Share this dataset</q-tooltip>
+                            <q-tooltip>Copy shareable link to clipboard</q-tooltip>
                         </q-btn>
                     </div>
                     <q-select
@@ -1799,6 +1799,27 @@ export default {
         
         .body--dark & {
             color: $grey-5;
+        }
+    }
+}
+
+// Enhanced share button styling
+.share-btn-enhanced {
+    font-weight: 600;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+    
+    &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+    
+    .body--dark & {
+        box-shadow: 0 2px 4px rgba(255, 255, 255, 0.1);
+        
+        &:hover {
+            box-shadow: 0 4px 8px rgba(255, 255, 255, 0.15);
         }
     }
 }

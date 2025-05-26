@@ -4,15 +4,15 @@
             <div class="row items-center justify-between q-mb-lg">
                 <q-btn
                     v-if="currentDatasetId"
-                    flat
-                    round
+                    unelevated
                     icon="share"
-                    color="primary"
+                    label="Share Dataset"
+                    color="positive"
                     @click="shareDataset"
-                    class="share-btn"
+                    class="share-btn-enhanced"
                     size="md"
                 >
-                    <q-tooltip>Share this dataset</q-tooltip>
+                    <q-tooltip>Copy shareable link to clipboard</q-tooltip>
                 </q-btn>
             </div>
 
@@ -845,9 +845,25 @@ export default {
     margin: 0;
 }
 
-.share-btn {
-    min-width: 48px;
-    min-height: 48px;
+.share-btn-enhanced {
+    font-weight: 600;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+    min-width: 140px;
+    
+    &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+    
+    .body--dark & {
+        box-shadow: 0 2px 4px rgba(255, 255, 255, 0.1);
+        
+        &:hover {
+            box-shadow: 0 4px 8px rgba(255, 255, 255, 0.15);
+        }
+    }
 }
 
 .stats-card {
