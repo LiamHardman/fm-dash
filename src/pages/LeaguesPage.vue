@@ -132,53 +132,13 @@
                                     <div class="team-count">{{ league.teamCount }} teams</div>
                                     <div class="player-count">{{ league.playerCount }} players</div>
                                 </div>
-                                <div class="league-section-ratings">
-                                    <div 
-                                        v-if="league.bestOverall > 0"
-                                        class="section-ratings-large"
-                                    >
-                                        <div class="section-rating-large att">
-                                            <span class="section-label-large">ATT</span>
-                                            <span 
-                                                class="section-value-large"
-                                                :class="getOverallClass(league.attRating)"
-                                            >
-                                                {{ league.attRating }}
-                                            </span>
-                                        </div>
-                                        <div class="section-rating-large mid">
-                                            <span class="section-label-large">MID</span>
-                                            <span 
-                                                class="section-value-large"
-                                                :class="getOverallClass(league.midRating)"
-                                            >
-                                                {{ league.midRating }}
-                                            </span>
-                                        </div>
-                                        <div class="section-rating-large def">
-                                            <span class="section-label-large">DEF</span>
-                                            <span 
-                                                class="section-value-large"
-                                                :class="getOverallClass(league.defRating)"
-                                            >
-                                                {{ league.defRating }}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div 
-                                        v-else
-                                        class="no-rating-message"
-                                    >
-                                        Incomplete Teams
-                                    </div>
-                                </div>
                                 <div class="league-overall">
                                     <div class="league-rating">
                                         <div 
                                             class="highest-overall-large"
                                             :class="getOverallClass(league.bestOverall)"
                                         >
-                                            {{ league.bestOverall > 0 ? league.bestOverall + ' AVG' : 'N/A' }}
+                                            {{ league.bestOverall > 0 ? league.bestOverall : 'N/A' }}
                                         </div>
                                         <div class="star-rating-large">
                                             <span
@@ -235,53 +195,13 @@
                                         <div class="team-name">{{ team.name }}</div>
                                         <div class="team-player-count">{{ team.playerCount }} players</div>
                                     </div>
-                                    <div class="team-section-ratings">
-                                        <div 
-                                            v-if="team.bestOverall > 0"
-                                            class="section-ratings-large"
-                                        >
-                                            <div class="section-rating-large att">
-                                                <span class="section-label-large">ATT</span>
-                                                <span 
-                                                    class="section-value-large"
-                                                    :class="getOverallClass(team.attRating)"
-                                                >
-                                                    {{ team.attRating }}
-                                                </span>
-                                            </div>
-                                            <div class="section-rating-large mid">
-                                                <span class="section-label-large">MID</span>
-                                                <span 
-                                                    class="section-value-large"
-                                                    :class="getOverallClass(team.midRating)"
-                                                >
-                                                    {{ team.midRating }}
-                                                </span>
-                                            </div>
-                                            <div class="section-rating-large def">
-                                                <span class="section-label-large">DEF</span>
-                                                <span 
-                                                    class="section-value-large"
-                                                    :class="getOverallClass(team.defRating)"
-                                                >
-                                                    {{ team.defRating }}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div 
-                                            v-else
-                                            class="no-rating-message"
-                                        >
-                                            Incomplete Squad
-                                        </div>
-                                    </div>
                                     <div class="team-overall">
                                         <div class="team-rating">
                                             <div 
                                                 class="highest-overall-large"
                                                 :class="getOverallClass(team.bestOverall)"
                                             >
-                                                {{ team.bestOverall > 0 ? team.bestOverall + ' AVG' : 'N/A' }}
+                                                {{ team.bestOverall > 0 ? team.bestOverall : 'N/A' }}
                                             </div>
                                             <div class="star-rating-large">
                                                 <span

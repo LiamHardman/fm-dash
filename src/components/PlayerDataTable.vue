@@ -135,15 +135,15 @@
                             <span
                                 :class="
                                     getUnifiedRatingClass(
-                                        props.row[col.field],
+                                        getDisplayValue(props.row, col),
                                         100,
                                     )
                                 "
                                 class="attribute-value fifa-stat-value"
                             >
                                 {{
-                                    props.row[col.field] !== undefined
-                                        ? props.row[col.field]
+                                    getDisplayValue(props.row, col) !== undefined
+                                        ? getDisplayValue(props.row, col)
                                         : "-"
                                 }}
                             </span>
@@ -951,6 +951,29 @@ export default {
             );
         };
 
+        const getDisplayValue = (player, col) => {
+            // For non-goalkeeper view, map GK stats to standard FIFA stats if the player is a goalkeeper
+            if (!props.isGoalkeeperView && player.position && player.position.includes('GK')) {
+                // Map GK stats to standard FIFA stats
+                const gkStatMapping = {
+                    'PAC': 'DIV',  // Diving -> Pace
+                    'SHO': 'HAN',  // Handling -> Shooting  
+                    'PAS': 'KIC',  // Kicking -> Passing
+                    'DRI': 'REF',  // Reflexes -> Dribbling
+                    'DEF': 'SPD',  // Speed -> Defending
+                    'PHY': 'POS'   // Positioning -> Physical
+                };
+                
+                const mappedStat = gkStatMapping[col.name];
+                if (mappedStat && player[mappedStat] !== undefined) {
+                    return player[mappedStat];
+                }
+            }
+            
+            // Default behavior - use the column's field
+            return player[col.field];
+        };
+
         console.log(`PlayerDataTable: Setup function end.`);
         return {
             qInstance: $q,
@@ -975,6 +998,7 @@ export default {
             onRowClick,
             onClubClick,
             formatDisplayCurrency,
+            getDisplayValue,
             MAX_DISPLAY_PLAYERS,
             totalSortedCount,
             isSliced,
