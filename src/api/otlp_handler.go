@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"log/slog"
+	"os"
 
 	"go.opentelemetry.io/otel/log"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
@@ -21,7 +22,7 @@ func NewOTLPHandler(loggerProvider *sdklog.LoggerProvider) *OTLPHandler {
 	logger := loggerProvider.Logger("v2fmdash-api")
 	
 	// Create a fallback handler for local console output
-	fallbackHandler := slog.NewTextHandler(nil, &slog.HandlerOptions{
+	fallbackHandler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
 	})
 	
