@@ -38,6 +38,10 @@ spec:
               value: "8080"
             - name: ENABLE_METRICS
               value: "true"
+            - name: INSECURE_MODE
+              value: "true"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "signoz.signoz:4317" 
             # MinIO Configuration
             - name: MINIO_ENDPOINT
               valueFrom:

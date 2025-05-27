@@ -2,16 +2,85 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	_ "net/http/pprof" // For profiling, if needed
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"google.golang.org/grpc/credentials"
 )
 
+var (
+	serviceName  = getEnvWithDefault("SERVICE_NAME", "fm24-api")
+	collectorURL = getEnvWithDefault("OTEL_EXPORTER_OTLP_ENDPOINT", "signoz.signoz:4317")
+	insecure     = getEnvWithDefault("INSECURE_MODE", "true")
+)
+
+func getEnvWithDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+func initTracer() func(context.Context) error {
+	var secureOption otlptracegrpc.Option
+
+	if strings.ToLower(insecure) == "false" || insecure == "0" || strings.ToLower(insecure) == "f" {
+		secureOption = otlptracegrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
+	} else {
+		secureOption = otlptracegrpc.WithInsecure()
+	}
+
+	exporter, err := otlptrace.New(
+		context.Background(),
+		otlptracegrpc.NewClient(
+			secureOption,
+			otlptracegrpc.WithEndpoint(collectorURL),
+		),
+	)
+
+	if err != nil {
+		log.Fatalf("Failed to create exporter: %v", err)
+	}
+	
+	resources, err := resource.New(
+		context.Background(),
+		resource.WithAttributes(
+			attribute.String("service.name", serviceName),
+			attribute.String("library.language", "go"),
+		),
+	)
+	if err != nil {
+		log.Fatalf("Could not set resources: %v", err)
+	}
+
+	otel.SetTracerProvider(
+		sdktrace.NewTracerProvider(
+			sdktrace.WithSampler(sdktrace.AlwaysSample()),
+			sdktrace.WithBatcher(exporter),
+			sdktrace.WithResource(resources),
+		),
+	)
+	return exporter.Shutdown
+}
+
 func main() {
+	// Initialize OpenTelemetry tracer
+	cleanup := initTracer()
+	defer cleanup(context.Background())
+
 	// Initialize storage system
 	InitStore()
 	
@@ -21,7 +90,7 @@ func main() {
 	// Adjust the path according to your frontend build output.
 	// If Vue serves on a different port (e.g., 3000) and proxies API calls, this might not be needed here.
 	// However, if Go is serving everything, ensure this path is correct.
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	http.Handle("/", otelhttp.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			// Fallback to serving static files if not root, or let fsPublic handle it
 			// For a Single Page Application, usually all non-API routes serve index.html
@@ -37,7 +106,7 @@ func main() {
 		// If your Vue build output is elsewhere, adjust this path.
 		// For example, if Vue builds to '../dist', it might be filepath.Join("..", "dist", "index.html")
 		http.ServeFile(w, r, filepath.Join(".", "public", "index.html"))
-	})
+	}), "index"))
 
 	// Serve static files from the "public" directory (e.g., CSS, JS from Vue build, weight JSONs)
 	// This path also assumes the 'public' folder is relative to where the Go executable is run.
@@ -48,22 +117,22 @@ func main() {
 	// http.Handle("/assets/", http.StripPrefix("/assets/", fsAssets))
 
 	// API endpoint for file uploads
-	http.HandleFunc("/upload", uploadHandler) // Defined in handlers.go
+	http.Handle("/upload", otelhttp.NewHandler(http.HandlerFunc(uploadHandler), "upload"))
 
 	// API endpoint for retrieving player data
-	http.HandleFunc("/api/players/", playerDataHandler) // Defined in handlers.go
+	http.Handle("/api/players/", otelhttp.NewHandler(http.HandlerFunc(playerDataHandler), "player-data"))
 
 	// New API endpoint for retrieving available roles
-	http.HandleFunc("/api/roles", rolesHandler) // Defined in handlers.go
+	http.Handle("/api/roles", otelhttp.NewHandler(http.HandlerFunc(rolesHandler), "roles"))
 
 	// API endpoint for retrieving leagues data
-	http.HandleFunc("/api/leagues/", leaguesHandler) // Defined in handlers.go
+	http.Handle("/api/leagues/", otelhttp.NewHandler(http.HandlerFunc(leaguesHandler), "leagues"))
 
 	// API endpoint for retrieving teams data for a specific league
-	http.HandleFunc("/api/teams/", teamsHandler) // Defined in handlers.go
+	http.Handle("/api/teams/", otelhttp.NewHandler(http.HandlerFunc(teamsHandler), "teams"))
 
 	// API endpoint for updating player percentiles with division filtering
-	http.HandleFunc("/api/percentiles/", percentilesHandler) // Defined in handlers.go
+	http.Handle("/api/percentiles/", otelhttp.NewHandler(http.HandlerFunc(percentilesHandler), "percentiles"))
 
 	// Prometheus metrics endpoint
 	http.Handle("/metrics", promhttp.Handler())
