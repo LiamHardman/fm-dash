@@ -387,6 +387,8 @@ import PlayerDataTable from "../components/PlayerDataTable.vue";
 import PlayerDetailDialog from "../components/PlayerDetailDialog.vue";
 import PitchDisplay from "../components/PitchDisplay.vue";
 import { formations, getFormationLayout } from "../utils/formations";
+import { debounce } from "../utils/debounce";
+import { formationCache } from "../utils/formationCache";
 // Currency utils are not directly used here for formatting,
 // but PlayerDataTable and PlayerDetailDialog will use them with the passed symbol.
 
@@ -596,7 +598,7 @@ export default {
             teamOptions.value = allTeamNamesCache.value;
         };
 
-        const filterTeamOptions = (val, update) => {
+        const filterTeamOptionsImmediate = (val, update) => {
             if (val === "") {
                 update(() => {
                     teamOptions.value = allTeamNamesCache.value;
@@ -611,7 +613,9 @@ export default {
             });
         };
 
-        const loadTeamPlayers = () => {
+        const filterTeamOptions = debounce(filterTeamOptionsImmediate, 200);
+
+        const loadTeamPlayersImmediate = () => {
             if (!selectedTeamName.value) {
                 teamPlayers.value = [];
                 squadComposition.value = {};
@@ -620,48 +624,51 @@ export default {
                 selectedFormationKey.value = null;
                 return;
             }
+            
             loadingTeam.value = true;
-            setTimeout(() => {
-                // Simulate async operation if needed
-                if (Array.isArray(allPlayersData.value)) {
-                    teamPlayers.value = allPlayersData.value.filter(
-                        (p) => p.club === selectedTeamName.value,
-                    );
-                } else {
-                    teamPlayers.value = [];
-                }
-                
-                // Auto-select the best formation for this team
-                if (teamPlayers.value.length > 0) {
-                    const bestFormation = calculateBestFormationForTeam();
-                    if (bestFormation) {
-                        selectedFormationKey.value = bestFormation;
-                        calculationMessage.value = `Auto-selected best formation: ${formations[bestFormation].name}. Calculating Best XI...`;
-                        calculationMessageClass.value = quasarInstance.dark.isActive
-                            ? "bg-info text-white"
-                            : "bg-blue-2 text-primary";
-                    } else {
-                        selectedFormationKey.value = null;
-                        squadComposition.value = {};
-                        bestTeamAverageOverall.value = null;
-                        calculationMessage.value = "No suitable formation found for this team.";
-                        calculationMessageClass.value = quasarInstance.dark.isActive
-                            ? "text-grey-5"
-                            : "text-grey-7";
-                    }
+            
+            // Filter players for the selected team
+            if (Array.isArray(allPlayersData.value)) {
+                teamPlayers.value = allPlayersData.value.filter(
+                    (p) => p.club === selectedTeamName.value,
+                );
+            } else {
+                teamPlayers.value = [];
+            }
+            
+            // Auto-select the best formation for this team
+            if (teamPlayers.value.length > 0) {
+                const bestFormation = calculateBestFormationForTeam();
+                if (bestFormation) {
+                    selectedFormationKey.value = bestFormation;
+                    calculationMessage.value = `Auto-selected best formation: ${formations[bestFormation].name}. Calculating Best XI...`;
+                    calculationMessageClass.value = quasarInstance.dark.isActive
+                        ? "bg-info text-white"
+                        : "bg-blue-2 text-primary";
                 } else {
                     selectedFormationKey.value = null;
                     squadComposition.value = {};
                     bestTeamAverageOverall.value = null;
-                    calculationMessage.value = "No players found for this team.";
+                    calculationMessage.value = "No suitable formation found for this team.";
                     calculationMessageClass.value = quasarInstance.dark.isActive
                         ? "text-grey-5"
                         : "text-grey-7";
                 }
-                
-                loadingTeam.value = false;
-            }, 200);
+            } else {
+                selectedFormationKey.value = null;
+                squadComposition.value = {};
+                bestTeamAverageOverall.value = null;
+                calculationMessage.value = "No players found for this team.";
+                calculationMessageClass.value = quasarInstance.dark.isActive
+                    ? "text-grey-5"
+                    : "text-grey-7";
+            }
+            
+            loadingTeam.value = false;
         };
+
+        // Debounced version for better performance
+        const loadTeamPlayers = debounce(loadTeamPlayersImmediate, 300);
 
         const clearTeamSelection = () => {
             selectedTeamName.value = null;
@@ -1002,6 +1009,14 @@ export default {
                 return null;
             }
 
+            // Check cache first
+            const cacheKey = formationCache.generateKey(teamPlayers.value, 'team-best');
+            const cachedResult = formationCache.get(cacheKey);
+            if (cachedResult) {
+                console.log('Using cached formation result for team:', selectedTeamName.value);
+                return cachedResult.bestFormationKey;
+            }
+
             let bestFormationKey = null;
             let bestAverageOverall = 0;
 
@@ -1093,6 +1108,15 @@ export default {
                 }
             });
 
+            // Cache the result
+            if (bestFormationKey) {
+                formationCache.set(cacheKey, {
+                    bestFormationKey,
+                    bestAverageOverall,
+                    teamName: selectedTeamName.value
+                });
+            }
+
             return bestFormationKey;
         };
 
@@ -1104,6 +1128,20 @@ export default {
                     ? "No players in the selected team."
                     : "Select a formation.";
                 calculationMessageClass.value = "bg-warning text-dark";
+                return;
+            }
+
+            // Check cache first for squad composition
+            const cacheKey = formationCache.generateKey(teamPlayers.value, `team-depth-${selectedFormationKey.value}`);
+            const cachedResult = formationCache.get(cacheKey);
+            if (cachedResult) {
+                console.log('Using cached squad composition for team:', selectedTeamName.value);
+                squadComposition.value = cachedResult.squadComposition;
+                bestTeamAverageOverall.value = cachedResult.bestTeamAverageOverall;
+                calculationMessage.value = `Best XI & Depth calculated (cached). Average Overall: ${cachedResult.bestTeamAverageOverall}.`;
+                calculationMessageClass.value = quasarInstance.dark.isActive
+                    ? "bg-positive text-white"
+                    : "bg-green-2 text-positive";
                 return;
             }
 
@@ -1386,6 +1424,16 @@ export default {
                 calculationMessageClass.value = quasarInstance.dark.isActive
                     ? "bg-negative text-white"
                     : "bg-red-2 text-negative";
+            }
+
+            // Cache the result
+            if (bestTeamAverageOverall.value > 0) {
+                formationCache.set(cacheKey, {
+                    squadComposition: squadComposition.value,
+                    bestTeamAverageOverall: bestTeamAverageOverall.value,
+                    teamName: selectedTeamName.value,
+                    formation: selectedFormationKey.value
+                });
             }
         };
 

@@ -210,6 +210,19 @@
                                 </div>
                             </div>
                         </div>
+                        
+                        <!-- Show More Button -->
+                        <div v-if="!showAllNations && allPlayersData.length > 0" class="text-center q-mt-md">
+                            <q-btn
+                                flat
+                                color="primary"
+                                @click="showAllNations = true"
+                                class="show-more-btn"
+                            >
+                                Show All Nations
+                                <q-icon name="expand_more" class="q-ml-sm" />
+                            </q-btn>
+                        </div>
                     </q-card-section>
                 </q-card>
 
@@ -487,6 +500,8 @@ import PlayerDataTable from "../components/PlayerDataTable.vue";
 import PlayerDetailDialog from "../components/PlayerDetailDialog.vue";
 import PitchDisplay from "../components/PitchDisplay.vue";
 import { formations, getFormationLayout } from "../utils/formations";
+import { debounce } from "../utils/debounce";
+import { formationCache } from "../utils/formationCache";
 
 const fmSlotRoleMatcher = {
     GK: ["Goalkeeper"],
@@ -613,6 +628,10 @@ export default {
             "ST (C)": ["ST", "AMC"],
             "GK": ["GK"]
         };
+
+        // Reactive refs for pagination
+        const showAllNations = ref(false);
+        const INITIAL_NATIONS_LIMIT = 50;
 
         const nationsWithRatings = computed(() => {
             if (!allPlayersData.value || allPlayersData.value.length === 0) return [];
@@ -790,7 +809,14 @@ export default {
                 nation.defRating = hasFullSquad ? bestSectionRatings.defRating : 0;
             });
             
-            return nationsArray.sort((a, b) => b.bestFormationOverall - a.bestFormationOverall);
+            const sortedNations = nationsArray.sort((a, b) => b.bestFormationOverall - a.bestFormationOverall);
+            
+            // Limit initial rendering for performance
+            if (!showAllNations.value && sortedNations.length > INITIAL_NATIONS_LIMIT) {
+                return sortedNations.slice(0, INITIAL_NATIONS_LIMIT);
+            }
+            
+            return sortedNations;
         });
 
         const fetchPlayersAndCurrency = async (datasetId) => {
@@ -1253,6 +1279,14 @@ export default {
                 return null;
             }
 
+            // Check cache first
+            const cacheKey = formationCache.generateKey(nationPlayers.value, 'nation-best');
+            const cachedResult = formationCache.get(cacheKey);
+            if (cachedResult) {
+                console.log('Using cached formation result for nation:', selectedNationName.value);
+                return cachedResult.bestFormationKey;
+            }
+
             let bestFormationKey = null;
             let bestAverageOverall = 0;
 
@@ -1337,6 +1371,15 @@ export default {
                     }
                 }
             });
+
+            // Cache the result
+            if (bestFormationKey) {
+                formationCache.set(cacheKey, {
+                    bestFormationKey,
+                    bestAverageOverall,
+                    nationName: selectedNationName.value
+                });
+            }
 
             return bestFormationKey;
         };
@@ -1791,6 +1834,7 @@ export default {
             shareDataset,
             onFlagError,
             nationsWithRatings,
+            showAllNations,
         };
     },
 };
@@ -2365,6 +2409,22 @@ export default {
         
         &:hover {
             box-shadow: 0 4px 8px rgba(255, 255, 255, 0.15);
+        }
+    }
+}
+
+.show-more-btn {
+    font-weight: 500;
+    border-radius: 8px;
+    padding: 8px 24px;
+    transition: all 0.2s ease;
+    
+    &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        
+        .body--dark & {
+            box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
         }
     }
 }

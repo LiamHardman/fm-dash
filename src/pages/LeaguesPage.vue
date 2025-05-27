@@ -122,7 +122,7 @@
                         <div class="text-h6 q-mb-md">Leagues Overview</div>
                         <div class="leagues-list">
                             <div
-                                v-for="league in allLeaguesData"
+                                v-for="league in displayedLeagues"
                                 :key="league.name"
                                 class="league-row"
                                 @click="selectLeague(league.name)"
@@ -193,6 +193,19 @@
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                        
+                        <!-- Show More Button -->
+                        <div v-if="!showAllLeagues && allLeaguesData.length > INITIAL_LEAGUES_LIMIT" class="text-center q-mt-md">
+                            <q-btn
+                                flat
+                                color="primary"
+                                @click="showAllLeagues = true"
+                                class="show-more-btn"
+                            >
+                                Show All Leagues
+                                <q-icon name="expand_more" class="q-ml-sm" />
+                            </q-btn>
                         </div>
                     </q-card-section>
                 </q-card>
@@ -350,6 +363,7 @@ import { useQuasar } from "quasar";
 import { useRouter, useRoute } from "vue-router";
 import { usePlayerStore } from "../stores/playerStore";
 import PlayerDetailDialog from "../components/PlayerDetailDialog.vue";
+import { debounce } from "../utils/debounce";
 
 export default {
     name: "LeaguesPage",
@@ -369,9 +383,24 @@ export default {
         const pageLoading = ref(true);
         const pageLoadingError = ref("");
         
+        // Pagination for leagues
+        const showAllLeagues = ref(false);
+        const INITIAL_LEAGUES_LIMIT = 30;
+        
         // Computed properties from store
         const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol);
         const currentDatasetId = computed(() => playerStore.currentDatasetId);
+
+        // Limited leagues for initial rendering
+        const displayedLeagues = computed(() => {
+            if (!allLeaguesData.value || allLeaguesData.value.length === 0) return [];
+            
+            if (!showAllLeagues.value && allLeaguesData.value.length > INITIAL_LEAGUES_LIMIT) {
+                return allLeaguesData.value.slice(0, INITIAL_LEAGUES_LIMIT);
+            }
+            
+            return allLeaguesData.value;
+        });
 
         const playerForDetailView = ref(null);
         const showPlayerDetailDialog = ref(false);
@@ -642,6 +671,9 @@ export default {
             detectedCurrencySymbol,
             currentDatasetId,
             shareDataset,
+            displayedLeagues,
+            showAllLeagues,
+            INITIAL_LEAGUES_LIMIT,
         };
     },
 };
@@ -889,6 +921,22 @@ export default {
         
         &:hover {
             box-shadow: 0 4px 8px rgba(255, 255, 255, 0.15);
+        }
+    }
+}
+
+.show-more-btn {
+    font-weight: 500;
+    border-radius: 8px;
+    padding: 8px 24px;
+    transition: all 0.2s ease;
+    
+    &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        
+        .body--dark & {
+            box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
         }
     }
 }
