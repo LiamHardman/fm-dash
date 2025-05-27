@@ -5,9 +5,6 @@
             <div class="hero-section">
                 <div class="hero-content">
                     <h1 class="hero-title">Upload Your FM24 Data</h1>
-                    <p class="hero-subtitle">
-                        Import your Football Manager 2024 player data to start analyzing and exploring your squad
-                    </p>
                 </div>
                 <div class="hero-stats">
                     <div class="stat-item">
@@ -15,7 +12,11 @@
                         <div class="stat-text">Fast Processing</div>
                     </div>
                     <div class="stat-item">
-                        <q-icon name="security" size="1.5rem" color="secondary" />
+                        <q-icon
+                            name="security"
+                            size="1.5rem"
+                            color="secondary"
+                        />
                         <div class="stat-text">Secure Upload</div>
                     </div>
                     <div class="stat-item">
@@ -25,68 +26,65 @@
                 </div>
             </div>
 
-            <!-- Help Section -->
-            <div class="help-section">
-                <q-card flat class="help-card">
-                    <q-card-section class="text-center">
-                        <q-icon name="help_outline" size="1.5rem" color="info" class="q-mb-sm" />
-                        <div class="help-text">Need help getting started?</div>
-                        <q-btn 
-                            unelevated 
-                            color="info" 
-                            label="View Documentation" 
-                            @click="$router.push('/docs')"
-                            class="q-mt-sm"
-                        />
-                    </q-card-section>
-                </q-card>
-            </div>
-
-            <!-- Notification Preferences - Subtle -->
-            <div class="notification-preferences" v-if="notificationSupported">
-                <div class="subtle-preference">
-                    <q-toggle
-                        v-model="uiStore.notificationsEnabled"
-                        @update:model-value="uiStore.toggleNotifications"
-                        color="primary"
-                        size="sm"
-                    />
-                    <div class="preference-text">
-                        <span class="preference-label">Desktop notifications</span>
-                        <span class="preference-hint">Get notified when large uploads finish</span>
-                    </div>
-                </div>
-            </div>
-
             <!-- Upload Section -->
             <div class="upload-section">
                 <q-card class="upload-card" flat bordered>
                     <q-card-section>
                         <div class="upload-header">
-                            <q-icon name="cloud_upload" size="3rem" color="primary" class="upload-icon" />
-                            <h3 class="upload-title">Select Your FM24 Export File</h3>
+                            <q-icon
+                                name="cloud_upload"
+                                size="3rem"
+                                color="primary"
+                                class="upload-icon"
+                            />
+                            <h3 class="upload-title">
+                                Select Your FM24 Export File
+                            </h3>
                             <p class="upload-description">
-                                Choose your exported HTML file from Football Manager 2024
+                                Choose your exported HTML file from Football
+                                Manager 2024
                             </p>
                         </div>
 
-                        <div class="upload-dropzone" :class="{ 'file-selected': playerFile }">
+                        <div
+                            class="upload-dropzone"
+                            :class="{ 'file-selected': playerFile }"
+                        >
                             <div v-if="!playerFile" class="dropzone-content">
-                                <q-icon name="file_upload" size="4rem" color="grey-5" class="q-mb-md" />
+                                <q-icon
+                                    name="file_upload"
+                                    size="4rem"
+                                    color="grey-5"
+                                    class="q-mb-md"
+                                />
                                 <div class="dropzone-text">
-                                    <div class="dropzone-primary">Drop your HTML file here or click to browse</div>
-                                    <div class="dropzone-secondary">Supports .html files up to 15MB</div>
+                                    <div class="dropzone-primary">
+                                        Drop your HTML file here or click to
+                                        browse
+                                    </div>
+                                    <div class="dropzone-secondary">
+                                        Supports .html files up to 15MB
+                                    </div>
                                 </div>
                             </div>
-                            
+
                             <div v-else class="file-selected-content">
-                                <q-icon name="description" size="2rem" color="positive" class="q-mb-sm" />
-                                <div class="selected-file-name">{{ playerFile.name }}</div>
-                                <div class="selected-file-size">{{ formatFileSize(playerFile.size) }}</div>
-                                <q-btn 
-                                    flat 
-                                    icon="close" 
-                                    size="sm" 
+                                <q-icon
+                                    name="description"
+                                    size="2rem"
+                                    color="positive"
+                                    class="q-mb-sm"
+                                />
+                                <div class="selected-file-name">
+                                    {{ playerFile.name }}
+                                </div>
+                                <div class="selected-file-size">
+                                    {{ formatFileSize(playerFile.size) }}
+                                </div>
+                                <q-btn
+                                    flat
+                                    icon="close"
+                                    size="sm"
                                     @click="playerFile = null"
                                     class="remove-file-btn"
                                 >
@@ -105,15 +103,27 @@
                         <!-- File Requirements -->
                         <div class="file-requirements">
                             <div class="requirement-item">
-                                <q-icon name="check_circle" size="1.2rem" color="positive" />
+                                <q-icon
+                                    name="check_circle"
+                                    size="1.2rem"
+                                    color="positive"
+                                />
                                 <span>HTML format only</span>
                             </div>
                             <div class="requirement-item">
-                                <q-icon name="check_circle" size="1.2rem" color="positive" />
+                                <q-icon
+                                    name="check_circle"
+                                    size="1.2rem"
+                                    color="positive"
+                                />
                                 <span>Maximum 15MB file size</span>
                             </div>
                             <div class="requirement-item">
-                                <q-icon name="check_circle" size="1.2rem" color="positive" />
+                                <q-icon
+                                    name="check_circle"
+                                    size="1.2rem"
+                                    color="positive"
+                                />
                                 <span>Up to 10,000 players supported</span>
                             </div>
                         </div>
@@ -135,11 +145,57 @@
                                 class="upload-btn-modern"
                             >
                                 <q-icon name="cloud_upload" class="q-mr-sm" />
-                                {{ loading ? "Processing..." : "Upload and Process" }}
+                                {{
+                                    loading
+                                        ? "Processing..."
+                                        : "Upload and Process"
+                                }}
                             </q-btn>
                         </div>
                     </q-card-section>
                 </q-card>
+            </div>
+
+            <!-- Help Section -->
+            <div class="help-section">
+                <q-card flat class="help-card">
+                    <q-card-section class="text-center">
+                        <q-icon
+                            name="help_outline"
+                            size="1.5rem"
+                            color="info"
+                            class="q-mb-sm"
+                        />
+                        <div class="help-text">Need help getting started?</div>
+                        <q-btn
+                            unelevated
+                            color="info"
+                            label="View Documentation"
+                            @click="$router.push('/docs')"
+                            class="q-mt-sm"
+                        />
+                    </q-card-section>
+                </q-card>
+            </div>
+
+            <!-- Notification Preferences - Subtle -->
+            <div class="notification-preferences" v-if="notificationSupported">
+                <div class="subtle-preference">
+                    <q-toggle
+                        v-model="uiStore.notificationsEnabled"
+                        @update:model-value="uiStore.toggleNotifications"
+                        color="primary"
+                        size="sm"
+                    />
+                    <div class="preference-text">
+                        <span class="preference-label"
+                            >Desktop notifications</span
+                        >
+                        <span class="preference-hint"
+                            >Get notified when large uploads finish</span
+                        >
+                    </div>
+                </div>
             </div>
 
             <div v-if="error" class="error-message">
@@ -213,7 +269,7 @@ export default {
         const $q = useQuasar();
         const playerFile = ref(null);
         const showFileSizeLimitModal = ref(false);
-        
+
         // Web notification setup
         const {
             isSupported: notificationSupported,
@@ -262,17 +318,19 @@ export default {
                 "/public/role_specific_overall_weights.json",
                 roleSpecificOverallWeightsLoadedForFeedback,
             );
-            
+
             // Initialize UI preferences
             uiStore.initNotifications();
         });
 
         const formatFileSize = (bytes) => {
-            if (bytes === 0) return '0 Bytes';
+            if (bytes === 0) return "0 Bytes";
             const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const sizes = ["Bytes", "KB", "MB", "GB"];
             const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            return (
+                parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
+            );
         };
 
         const onFileSelected = (file) => {
@@ -291,23 +349,24 @@ export default {
                 showFileSizeLimitModal.value = true;
                 return;
             }
-            
+
             const isLargeFile = playerFile.value.size > LARGE_FILE_SIZE_BYTES;
-            
+
             try {
                 const formData = new FormData();
                 formData.append("playerFile", playerFile.value);
                 await playerStore.uploadPlayerFile(formData);
                 if (!playerStore.error) {
-                    const successMessage = "File uploaded and parsed successfully! Redirecting to dataset view...";
-                    
+                    const successMessage =
+                        "File uploaded and parsed successfully! Redirecting to dataset view...";
+
                     Notify.create({
                         type: "positive",
                         message: successMessage,
                         position: "top",
                         timeout: 2000,
                     });
-                    
+
                     // Show web notification for large files if enabled and supported
                     if (
                         isLargeFile &&
@@ -317,7 +376,7 @@ export default {
                     ) {
                         showNotification();
                     }
-                    
+
                     // Redirect to the dataset page
                     setTimeout(() => {
                         if (playerStore.currentDatasetId) {
@@ -387,11 +446,11 @@ export default {
 .hero-section {
     text-align: center;
     margin-bottom: 3rem;
-    
+
     .hero-content {
         margin-bottom: 2rem;
     }
-    
+
     .hero-title {
         font-size: 3rem;
         font-weight: 300;
@@ -403,7 +462,7 @@ export default {
             color: rgba(255, 255, 255, 0.9);
         }
     }
-    
+
     .hero-subtitle {
         font-size: 1.2rem;
         color: #666;
@@ -417,24 +476,24 @@ export default {
             color: rgba(255, 255, 255, 0.7);
         }
     }
-    
+
     .hero-stats {
         display: flex;
         justify-content: center;
         gap: 3rem;
         margin-top: 2rem;
-        
+
         .stat-item {
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 0.5rem;
-            
+
             .stat-text {
                 font-size: 0.9rem;
                 color: #666;
                 font-weight: 500;
-                
+
                 .body--dark & {
                     color: rgba(255, 255, 255, 0.7);
                 }
@@ -446,21 +505,21 @@ export default {
 // Help Section
 .help-section {
     margin-bottom: 2rem;
-    
+
     .help-card {
         border-radius: 12px;
         border: 1px solid rgba(26, 35, 126, 0.1);
-        
+
         .body--dark & {
             background: rgba(255, 255, 255, 0.03);
             border-color: rgba(255, 255, 255, 0.1);
         }
-        
+
         .help-text {
             font-size: 1rem;
             color: #666;
             margin-bottom: 0.5rem;
-            
+
             .body--dark & {
                 color: rgba(255, 255, 255, 0.7);
             }
@@ -471,7 +530,7 @@ export default {
 // Notification Preferences - Subtle
 .notification-preferences {
     margin-bottom: 2rem;
-    
+
     .subtle-preference {
         display: flex;
         align-items: flex-start;
@@ -480,31 +539,31 @@ export default {
         background: rgba(26, 35, 126, 0.02);
         border-radius: 8px;
         border: 1px solid rgba(26, 35, 126, 0.05);
-        
+
         .body--dark & {
             background: rgba(255, 255, 255, 0.02);
             border-color: rgba(255, 255, 255, 0.05);
         }
-        
+
         .preference-text {
             display: flex;
             flex-direction: column;
             gap: 0.25rem;
-            
+
             .preference-label {
                 font-size: 0.9rem;
                 color: #333;
                 font-weight: 500;
-                
+
                 .body--dark & {
                     color: rgba(255, 255, 255, 0.9);
                 }
             }
-            
+
             .preference-hint {
                 font-size: 0.8rem;
                 color: #666;
-                
+
                 .body--dark & {
                     color: rgba(255, 255, 255, 0.6);
                 }
@@ -516,48 +575,48 @@ export default {
 // Upload Section
 .upload-section {
     margin-bottom: 2rem;
-    
+
     .upload-card {
         border-radius: 16px;
         border: 1px solid rgba(26, 35, 126, 0.1);
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-        
+
         .body--dark & {
             background: rgba(255, 255, 255, 0.03);
             border-color: rgba(255, 255, 255, 0.1);
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
         }
-        
+
         .upload-header {
             text-align: center;
             margin-bottom: 2rem;
-            
+
             .upload-icon {
                 margin-bottom: 1rem;
             }
-            
+
             .upload-title {
                 font-size: 1.5rem;
                 font-weight: 500;
                 color: #333;
                 margin: 0 0 0.5rem 0;
-                
+
                 .body--dark & {
                     color: rgba(255, 255, 255, 0.9);
                 }
             }
-            
+
             .upload-description {
                 color: #666;
                 font-size: 1rem;
                 margin: 0;
-                
+
                 .body--dark & {
                     color: rgba(255, 255, 255, 0.7);
                 }
             }
         }
-        
+
         .upload-dropzone {
             border: 2px dashed rgba(26, 35, 126, 0.3);
             border-radius: 12px;
@@ -567,31 +626,31 @@ export default {
             transition: all 0.3s ease;
             margin-bottom: 2rem;
             position: relative;
-            
+
             &:hover {
                 border-color: rgba(26, 35, 126, 0.5);
                 background: rgba(26, 35, 126, 0.02);
             }
-            
+
             &.file-selected {
                 border-color: #4caf50;
                 background: rgba(76, 175, 80, 0.05);
             }
-            
+
             .body--dark & {
                 border-color: rgba(255, 255, 255, 0.3);
-                
+
                 &:hover {
                     border-color: rgba(255, 255, 255, 0.5);
                     background: rgba(255, 255, 255, 0.02);
                 }
-                
+
                 &.file-selected {
                     border-color: #4caf50;
                     background: rgba(76, 175, 80, 0.1);
                 }
             }
-            
+
             .dropzone-content {
                 .dropzone-text {
                     .dropzone-primary {
@@ -599,23 +658,23 @@ export default {
                         color: #333;
                         font-weight: 500;
                         margin-bottom: 0.5rem;
-                        
+
                         .body--dark & {
                             color: rgba(255, 255, 255, 0.9);
                         }
                     }
-                    
+
                     .dropzone-secondary {
                         color: #666;
                         font-size: 0.9rem;
-                        
+
                         .body--dark & {
                             color: rgba(255, 255, 255, 0.6);
                         }
                     }
                 }
             }
-            
+
             .file-selected-content {
                 .selected-file-name {
                     font-size: 1.1rem;
@@ -623,24 +682,24 @@ export default {
                     color: #4caf50;
                     margin-bottom: 0.25rem;
                 }
-                
+
                 .selected-file-size {
                     color: #666;
                     font-size: 0.9rem;
                     margin-bottom: 1rem;
-                    
+
                     .body--dark & {
                         color: rgba(255, 255, 255, 0.6);
                     }
                 }
-                
+
                 .remove-file-btn {
                     position: absolute;
                     top: 1rem;
                     right: 1rem;
                 }
             }
-            
+
             .hidden-file-input {
                 position: absolute;
                 top: 0;
@@ -649,35 +708,35 @@ export default {
                 height: 100%;
                 opacity: 0;
                 cursor: pointer;
-                
+
                 :deep(.q-field__inner) {
                     display: none;
                 }
             }
         }
-        
+
         .file-requirements {
             display: flex;
             justify-content: center;
             gap: 2rem;
             margin-bottom: 2rem;
-            
+
             .requirement-item {
                 display: flex;
                 align-items: center;
                 gap: 0.5rem;
                 font-size: 0.9rem;
                 color: #666;
-                
+
                 .body--dark & {
                     color: rgba(255, 255, 255, 0.7);
                 }
             }
         }
-        
+
         .upload-actions {
             text-align: center;
-            
+
             .upload-btn-modern {
                 padding: 1rem 2rem;
                 font-weight: 500;
@@ -685,12 +744,12 @@ export default {
                 border-radius: 12px;
                 min-width: 200px;
                 transition: all 0.3s ease;
-                
+
                 &:hover {
                     transform: translateY(-2px);
                     box-shadow: 0 8px 25px rgba(26, 35, 126, 0.3);
                 }
-                
+
                 &:disabled {
                     transform: none;
                     box-shadow: none;
@@ -759,15 +818,15 @@ export default {
         .hero-title {
             font-size: 2.2rem;
         }
-        
+
         .hero-subtitle {
             font-size: 1rem;
         }
-        
+
         .hero-stats {
             flex-direction: column;
             gap: 1.5rem;
-            
+
             .stat-item {
                 flex-direction: row;
                 justify-content: center;
@@ -775,19 +834,19 @@ export default {
             }
         }
     }
-    
+
     .upload-section {
         .upload-card {
             .upload-dropzone {
                 padding: 2rem 1rem;
             }
-            
+
             .file-requirements {
                 flex-direction: column;
                 gap: 1rem;
                 text-align: left;
             }
-            
+
             .upload-btn-modern {
                 min-width: 100%;
             }
@@ -800,7 +859,7 @@ export default {
         .hero-title {
             font-size: 1.8rem;
         }
-        
+
         .hero-stats {
             .stat-item {
                 .stat-text {
@@ -809,14 +868,14 @@ export default {
             }
         }
     }
-    
+
     .upload-section {
         .upload-card {
             .upload-header {
                 .upload-title {
                     font-size: 1.2rem;
                 }
-                
+
                 .upload-description {
                     font-size: 0.9rem;
                 }
