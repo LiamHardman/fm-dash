@@ -2,7 +2,6 @@ package main
 
 import (
 	"log/slog"
-	"time"
 )
 
 // DemoStructuredLogging shows examples of structured logging that will be streamed to OTLP when enabled
