@@ -254,6 +254,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 // playerDataHandler handles GET requests to retrieve processed player data by dataset ID.
 func playerDataHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	if r.Method != http.MethodGet {
 		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
 		return
@@ -278,13 +279,23 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 	targetDivision := queryValues.Get("targetDivision")
 	positionCompare := queryValues.Get("positionCompare") // "all", "broad", "detailed"
 
-	log.Printf("playerDataHandler: DatasetID=%s, PositionFilter=%s, RoleFilter=%s, MinAge=%s, MaxAge=%s, MinVal=%s, MaxVal=%s, MaxSalary=%s, DivisionFilter=%s, TargetDivision=%s, PositionCompare=%s",
-		datasetID, filterPosition, filterRole, minAgeStr, maxAgeStr, minTransferValueStr, maxTransferValueStr, maxSalaryStr, divisionFilterStr, targetDivision, positionCompare)
+	logInfo(ctx, "Processing player data request",
+		"dataset_id", datasetID,
+		"position_filter", filterPosition,
+		"role_filter", filterRole,
+		"min_age", minAgeStr,
+		"max_age", maxAgeStr,
+		"min_transfer_value", minTransferValueStr,
+		"max_transfer_value", maxTransferValueStr,
+		"max_salary", maxSalaryStr,
+		"division_filter", divisionFilterStr,
+		"target_division", targetDivision,
+		"position_compare", positionCompare)
 
 	// Use the new storage interface to get player data
 	players, currencySymbol, found := GetPlayerData(datasetID)
 	if !found {
-		log.Printf("Player data not found for DatasetID: %s", datasetID)
+		logWarn(ctx, "Player data not found", "dataset_id", datasetID)
 		http.Error(w, "Player data not found for the given ID.", http.StatusNotFound)
 		return
 	}
@@ -403,7 +414,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 		processedPlayers = append(processedPlayers, playerCopy)
 	}
 
-	log.Printf("playerDataHandler: Returning %d players after processing for DatasetID=%s", len(processedPlayers), datasetID)
+	logInfo(ctx, "Returning processed players", "dataset_id", datasetID, "player_count", len(processedPlayers))
 
 	response := PlayerDataWithCurrency{Players: processedPlayers, CurrencySymbol: data.CurrencySymbol}
 	w.Header().Set("Content-Type", "application/json")
@@ -440,6 +451,7 @@ func rolesHandler(w http.ResponseWriter, r *http.Request) {
 
 // leaguesHandler returns league data with teams and their ratings
 func leaguesHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	if r.Method != http.MethodGet {
 		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
 		return
@@ -452,12 +464,12 @@ func leaguesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	datasetID := pathParts[0]
 
-	log.Printf("leaguesHandler: DatasetID=%s", datasetID)
+	logInfo(ctx, "Processing leagues request", "dataset_id", datasetID)
 
 	// Get player data from storage
 	players, _, found := GetPlayerData(datasetID)
 	if !found {
-		log.Printf("Player data not found for DatasetID: %s", datasetID)
+		logWarn(ctx, "Player data not found", "dataset_id", datasetID)
 		http.Error(w, "Player data not found for the given ID.", http.StatusNotFound)
 		return
 	}
@@ -475,6 +487,7 @@ func leaguesHandler(w http.ResponseWriter, r *http.Request) {
 
 // teamsHandler returns detailed team data for a specific league
 func teamsHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	if r.Method != http.MethodGet {
 		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
 		return
@@ -488,12 +501,12 @@ func teamsHandler(w http.ResponseWriter, r *http.Request) {
 	datasetID := pathParts[0]
 	division := pathParts[1]
 
-	log.Printf("teamsHandler: DatasetID=%s, Division=%s", datasetID, division)
+	logInfo(ctx, "Processing teams request", "dataset_id", datasetID, "division", division)
 
 	// Get player data from storage
 	players, _, found := GetPlayerData(datasetID)
 	if !found {
-		log.Printf("Player data not found for DatasetID: %s", datasetID)
+		logWarn(ctx, "Player data not found", "dataset_id", datasetID)
 		http.Error(w, "Player data not found for the given ID.", http.StatusNotFound)
 		return
 	}
@@ -640,6 +653,7 @@ type PercentileRequest struct {
 
 // percentilesHandler handles POST requests to recalculate percentiles for a specific player with division filtering
 func percentilesHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	if r.Method != http.MethodPost {
 		http.Error(w, "Only POST method is allowed", http.StatusMethodNotAllowed)
 		return
@@ -658,13 +672,16 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("percentilesHandler: DatasetID=%s, PlayerName=%s, DivisionFilter=%s, TargetDivision=%s",
-		datasetID, req.PlayerName, req.DivisionFilter, req.TargetDivision)
+	logInfo(ctx, "Processing percentiles request", 
+		"dataset_id", datasetID,
+		"player_name", req.PlayerName, 
+		"division_filter", req.DivisionFilter, 
+		"target_division", req.TargetDivision)
 
 	// Get the full dataset
 	players, _, found := GetPlayerData(datasetID)
 	if !found {
-		log.Printf("Player data not found for DatasetID: %s", datasetID)
+		logWarn(ctx, "Player data not found", "dataset_id", datasetID)
 		http.Error(w, "Player data not found for the given ID.", http.StatusNotFound)
 		return
 	}

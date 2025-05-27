@@ -61,6 +61,11 @@ func (h *OTLPHandler) Handle(ctx context.Context, record slog.Record) error {
 			log.String("trace_id", spanCtx.TraceID().String()),
 			log.String("span_id", spanCtx.SpanID().String()),
 		)
+	} else {
+		// Add debugging - check if we're getting context but no span
+		logRecord.AddAttributes(
+			log.String("debug_context", "no_valid_span_context"),
+		)
 	}
 	
 	// Add attributes from slog record
