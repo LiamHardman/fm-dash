@@ -38,12 +38,14 @@ spec:
               value: "8080"
             - name: ENABLE_METRICS
               value: "true"
+            - name: OTEL_ENABLED
+              value: "true"
             - name: INSECURE_MODE
               value: "true"
             - name: SERVICE_NAME
               value: "v2fmdash-api"
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: "signoz-otel-collector.signoz-helm:4317" 
+              value: "signoz-otel-collector.signoz-helm:4317"
             # MinIO Configuration
             - name: MINIO_ENDPOINT
               valueFrom:
