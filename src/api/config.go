@@ -36,18 +36,18 @@ var (
 
 	// Default/Fallback weights for calculating a general overall based on FIFA stat categories for outfielders
 	fifaCategoryOverallWeights = map[string]int{
-		"PHY": 20, "PAC": 20, "PAS": 15, "DEF": 15, "DRI": 15, "SHO": 15, // Sums to 100
+		"PHY": 15, "PAC": 30, "PAS": 15, "DEF": 15, "DRI": 15, "SHO": 10, // Sums to 100
 	}
 
 	// Position-specific weights for FIFA stat categories for outfielders
 	attackerFifaCategoryWeights = map[string]int{
-		"SHO": 30, "PAC": 25, "DRI": 20, "PHY": 15, "PAS": 10, "DEF": 0, // Sums to 100
+		"SHO": 25, "PAC": 35, "DRI": 20, "PHY": 15, "PAS": 5, "DEF": 0, // Sums to 100
 	}
 	midfielderFifaCategoryWeights = map[string]int{
-		"PAS": 30, "PHY": 20, "PAC": 20, "DRI": 15, "DEF": 10, "SHO": 5, // Sums to 100
+		"PAS": 25, "PHY": 15, "PAC": 30, "DRI": 15, "DEF": 10, "SHO": 5, // Sums to 100
 	}
 	defenderFifaCategoryWeights = map[string]int{
-		"DEF": 30, "PHY": 25, "PAC": 20, "PAS": 15, "DRI": 5, "SHO": 5, // Sums to 100
+		"DEF": 25, "PHY": 20, "PAC": 30, "PAS": 15, "DRI": 5, "SHO": 5, // Sums to 100
 	}
 
 	// Metrics collection toggle
@@ -56,7 +56,7 @@ var (
 
 // Default attribute weights if JSON loading fails or file is missing.
 var defaultAttributeWeightsGo = map[string]map[string]int{
-	"PAC": {"Acc": 8, "Pac": 8, "Agi": 5},
+	"PAC": {"Acc": 12, "Pac": 12, "Agi": 5},
 	"SHO": {"Fin": 8, "Lon": 6, "Pen": 4, "Hea": 5, "Cmp": 6, "Tec": 5, "Ant": 4, "Dec": 4, "Fla": 3},
 	"PAS": {"Pas": 8, "Cro": 6, "Fre": 4, "Vis": 7, "Tec": 5, "Tea": 4, "Dec": 4, "Cor": 3, "Fir": 4, "OtB": 3},
 	"DRI": {"Dri": 8, "Fir": 7, "Tec": 6, "Fla": 5, "Cmp": 4, "OtB": 3},
@@ -81,12 +81,12 @@ var defaultRoleSpecificOverallWeightsGo = map[string]map[string]int{
 	"DC - Ball Playing Defender - Defend": {
 		"Cor": 5, "Cro": 1, "Dri": 40, "Fin": 10, "Fir": 35, "Fre": 10, "Hea": 55, "Lon": 10, "Tea": 20, "L Th": 0, "Mar": 55, "Pas": 55, "Pen": 10, "Tck": 40, "Tec": 35,
 		"Agg": 40, "Ant": 50, "Bra": 30, "Cmp": 80, "Cnt": 50, "Dec": 50, "Det": 20, "Fla": 10, "Ldr": 10, "OtB": 10, "Pos": 55, "Vis": 50, "Wor": 55,
-		"Acc": 90, "Agi": 60, "Bal": 35, "Jum": 65, "Nat": 10, "Pac": 90, "Sta": 30, "Str": 50,
+		"Acc": 100, "Agi": 60, "Bal": 35, "Jum": 65, "Nat": 10, "Pac": 100, "Sta": 30, "Str": 50,
 	},
 	"DC - Central Defender - Defend": {
 		"Cor": 10, "Cro": 10, "Dri": 30, "Fin": 10, "Fir": 30, "Fre": 5, "Hea": 60, "Lon": 0, "L Th": 0, "Mar": 70, "Pas": 40, "Pen": 0, "Tck": 70, "Tec": 30,
 		"Agg": 60, "Ant": 65, "Bra": 50, "Cmp": 80, "Cnt": 65, "Dec": 65, "Det": 20, "Fla": 10, "Ldr": 10, "OtB": 10, "Pos": 65, "Tea": 20, "Vis": 30, "Wor": 60,
-		"Acc": 60, "Agi": 30, "Bal": 30, "Jum": 65, "Nat": 10, "Pac": 70, "Sta": 40, "Str": 60,
+		"Acc": 80, "Agi": 30, "Bal": 30, "Jum": 65, "Nat": 10, "Pac": 90, "Sta": 40, "Str": 60,
 	},
 }
 
