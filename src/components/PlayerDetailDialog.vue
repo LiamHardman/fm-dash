@@ -1456,21 +1456,21 @@ export default defineComponent({
             let orderedStats = [];
             if (isGoalkeeper.value) {
                 orderedStats = [
-                    { name: "GK", label: "GK" },
-                    { name: "PHY", label: "PHY" },
-                    { name: "PAS", label: "PAS" },
-                    { name: "MEN", label: "MEN" },
-                    { name: "DRI", label: "DRI" },
-                    { name: "DEF", label: "DEF" },
+                    { name: "DIV", label: "DIV" },
+                    { name: "HAN", label: "HAN" },
+                    { name: "REF", label: "REF" },
+                    { name: "KIC", label: "KIC" },
+                    { name: "SPD", label: "SPD" },
+                    { name: "POS", label: "POS" },
                 ];
             } else {
                 orderedStats = [
-                    { name: "PHY", label: "PHY" },
+                    { name: "PAC", label: "PAC" },
                     { name: "SHO", label: "SHO" },
                     { name: "PAS", label: "PAS" },
                     { name: "DRI", label: "DRI" },
                     { name: "DEF", label: "DEF" },
-                    { name: "MEN", label: "MEN" },
+                    { name: "PHY", label: "PHY" },
                 ];
             }
             return orderedStats.filter(

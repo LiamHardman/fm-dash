@@ -374,13 +374,19 @@ export default {
             },
             maxSalary: playerStore.salaryRange?.value?.max || 1000000,
             minOverall: 0,
-            minPHY: 0,
+            minPAC: 0,
             minSHO: 0,
             minPAS: 0,
             minDRI: 0,
             minDEF: 0,
-            minMEN: 0,
+            minPHY: 0,
             minGK: 0,
+            minDIV: 0,
+            minHAN: 0,
+            minREF: 0,
+            minKIC: 0,
+            minSPD: 0,
+            minPOS: 0,
         });
 
         // Initialize FM attribute filters in currentFilters
@@ -551,8 +557,8 @@ export default {
                     )
                         return false;
                     if (
-                        currentFilters.value.minPHY > 0 &&
-                        (player.PHY || 0) < currentFilters.value.minPHY
+                        currentFilters.value.minPAC > 0 &&
+                        (player.PAC || 0) < currentFilters.value.minPAC
                     )
                         return false;
                     if (
@@ -576,13 +582,43 @@ export default {
                     )
                         return false;
                     if (
-                        currentFilters.value.minMEN > 0 &&
-                        (player.MEN || 0) < currentFilters.value.minMEN
+                        currentFilters.value.minPHY > 0 &&
+                        (player.PHY || 0) < currentFilters.value.minPHY
                     )
                         return false;
                     if (
                         currentFilters.value.minGK > 0 &&
                         (player.GK || 0) < currentFilters.value.minGK
+                    )
+                        return false;
+                    if (
+                        currentFilters.value.minDIV > 0 &&
+                        (player.DIV || 0) < currentFilters.value.minDIV
+                    )
+                        return false;
+                    if (
+                        currentFilters.value.minHAN > 0 &&
+                        (player.HAN || 0) < currentFilters.value.minHAN
+                    )
+                        return false;
+                    if (
+                        currentFilters.value.minREF > 0 &&
+                        (player.REF || 0) < currentFilters.value.minREF
+                    )
+                        return false;
+                    if (
+                        currentFilters.value.minKIC > 0 &&
+                        (player.KIC || 0) < currentFilters.value.minKIC
+                    )
+                        return false;
+                    if (
+                        currentFilters.value.minSPD > 0 &&
+                        (player.SPD || 0) < currentFilters.value.minSPD
+                    )
+                        return false;
+                    if (
+                        currentFilters.value.minPOS > 0 &&
+                        (player.POS || 0) < currentFilters.value.minPOS
                     )
                         return false;
 

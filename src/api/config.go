@@ -24,7 +24,7 @@ const (
 // Global variables for attribute and role weights.
 // These are populated at startup from JSON files or defaults.
 var (
-	attributeWeights             map[string]map[string]int // For PHY, SHO etc. from individual attributes
+	attributeWeights             map[string]map[string]int // For PAC, SHO etc. from individual attributes
 	roleSpecificOverallWeights   map[string]map[string]int // For role-specific overall from individual attributes
 	muAttributeWeights           sync.RWMutex
 	muRoleSpecificOverallWeights sync.RWMutex
@@ -36,18 +36,18 @@ var (
 
 	// Default/Fallback weights for calculating a general overall based on FIFA stat categories for outfielders
 	fifaCategoryOverallWeights = map[string]int{
-		"PHY": 25, "MEN": 25, "PAS": 15, "DEF": 15, "DRI": 10, "SHO": 10, // Sums to 100
+		"PHY": 20, "PAC": 20, "PAS": 15, "DEF": 15, "DRI": 15, "SHO": 15, // Sums to 100
 	}
 
 	// Position-specific weights for FIFA stat categories for outfielders
 	attackerFifaCategoryWeights = map[string]int{
-		"SHO": 30, "PHY": 25, "DRI": 20, "MEN": 15, "PAS": 10, "DEF": 0, // Sums to 100
+		"SHO": 30, "PAC": 25, "DRI": 20, "PHY": 15, "PAS": 10, "DEF": 0, // Sums to 100
 	}
 	midfielderFifaCategoryWeights = map[string]int{
-		"PAS": 30, "MEN": 25, "PHY": 20, "DRI": 15, "DEF": 5, "SHO": 5, // Sums to 100
+		"PAS": 30, "PHY": 20, "PAC": 20, "DRI": 15, "DEF": 10, "SHO": 5, // Sums to 100
 	}
 	defenderFifaCategoryWeights = map[string]int{
-		"DEF": 30, "PHY": 30, "MEN": 20, "PAS": 15, "DRI": 5, "SHO": 0, // Sums to 100
+		"DEF": 30, "PHY": 25, "PAC": 20, "PAS": 15, "DRI": 5, "SHO": 5, // Sums to 100
 	}
 
 	// Metrics collection toggle
@@ -56,13 +56,19 @@ var (
 
 // Default attribute weights if JSON loading fails or file is missing.
 var defaultAttributeWeightsGo = map[string]map[string]int{
-	"PHY": {"Acc": 7, "Pac": 6, "Str": 5, "Sta": 4, "Nat": 3, "Bal": 2, "Jum": 1},
-	"SHO": {"Fin": 7, "OtB": 6, "Cmp": 5, "Tec": 4, "Hea": 3, "Lon": 2, "Pen": 1},
-	"PAS": {"Pas": 7, "Vis": 6, "Tec": 5, "Cro": 4, "Fre": 3, "Cor": 2, "L Th": 1},
-	"DRI": {"Dri": 6, "Fir": 5, "Tec": 4, "Agi": 3, "Bal": 2, "Fla": 1},
-	"DEF": {"Tck": 6, "Mar": 5, "Hea": 4, "Pos": 3, "Cnt": 2, "Ant": 1},
-	"MEN": {"Wor": 11, "Dec": 10, "Tea": 9, "Det": 8, "Bra": 7, "Ldr": 6, "Vis": 5, "Agg": 4, "OtB": 3, "Pos": 2, "Ant": 1},
+	"PAC": {"Acc": 8, "Pac": 8, "Agi": 5},
+	"SHO": {"Fin": 8, "Lon": 6, "Pen": 4, "Hea": 5, "Cmp": 6, "Tec": 5, "Ant": 4, "Dec": 4, "Fla": 3},
+	"PAS": {"Pas": 8, "Cro": 6, "Fre": 4, "Vis": 7, "Tec": 5, "Tea": 4, "Dec": 4, "Cor": 3, "Fir": 4, "OtB": 3},
+	"DRI": {"Dri": 8, "Fir": 7, "Tec": 6, "Fla": 5, "Cmp": 4, "OtB": 3},
+	"DEF": {"Mar": 8, "Tck": 8, "Hea": 6, "Ant": 7, "Cnt": 6, "Pos": 7, "Dec": 5, "Cmp": 4, "Bra": 5, "Agg": 4, "Wor": 4},
+	"PHY": {"Str": 8, "Sta": 7, "Nat": 6, "Jum": 5, "Bal": 4, "Agg": 5, "Bra": 4, "Wor": 4},
 	"GK":  {"Han": 20, "Ref": 20, "Cmd": 15, "Aer": 15, "1v1": 10, "Kic": 5, "TRO": 5, "Com": 3, "Thr": 3, "Ecc": 1},
+	"DIV": {"Aer": 8, "Ref": 7, "Agi": 6, "1v1": 7, "Han": 5},
+	"HAN": {"Han": 10, "Cmd": 7, "Cmp": 5, "Cnt": 4},
+	"REF": {"Ref": 10, "Ant": 6, "Cnt": 5, "1v1": 5},
+	"KIC": {"Kic": 8, "Thr": 6, "Tec": 5, "Vis": 4, "Pas": 3},
+	"SPD": {"Acc": 8, "Pac": 8, "TRO": 6},
+	"POS": {"Pos": 8, "Cmd": 7, "Ant": 6, "Dec": 5, "TRO": 4, "Cnt": 4, "Com": 3},
 }
 
 // Default role-specific overall weights if JSON loading fails or file is missing.
@@ -162,7 +168,7 @@ func loadJSONWeights(filePath string, defaultWeights map[string]map[string]int) 
 func init() {
 	var errAttr, errRole error
 
-	// Load attribute weights for FIFA stats (PHY, SHO, etc.)
+	// Load attribute weights for FIFA stats (PAC, SHO, etc.)
 	loadedAttrWeights, errAttr := loadJSONWeights(filepath.Join("public", "attribute_weights.json"), defaultAttributeWeightsGo)
 	muAttributeWeights.Lock()
 	if errAttr != nil {

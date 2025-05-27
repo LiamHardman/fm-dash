@@ -29,13 +29,19 @@ type Player struct {
 	ParsedPositions         []string                      `json:"parsedPositions"`        // Standardized long position names
 	ShortPositions          []string                      `json:"shortPositions"`         // Standardized short position codes (e.g., DC, ST)
 	PositionGroups          []string                      `json:"positionGroups"`         // Broad groups like "Defenders", "Midfielders"
-	PHY                     int                           `json:"PHY"`                    // Calculated Physical category score (0-99)
+	PAC                     int                           `json:"PAC"`                    // Calculated Pace category score (0-99)
 	SHO                     int                           `json:"SHO"`                    // Calculated Shooting category score (0-99)
 	PAS                     int                           `json:"PAS"`                    // Calculated Passing category score (0-99)
 	DRI                     int                           `json:"DRI"`                    // Calculated Dribbling category score (0-99)
 	DEF                     int                           `json:"DEF"`                    // Calculated Defending category score (0-99)
-	MEN                     int                           `json:"MEN"`                    // Calculated Mental category score (0-99)
+	PHY                     int                           `json:"PHY"`                    // Calculated Physical category score (0-99)
 	GK                      int                           `json:"GK,omitempty"`           // Calculated Goalkeeping category score (0-99)
+	DIV                     int                           `json:"DIV,omitempty"`          // Calculated Diving category score (0-99)
+	HAN                     int                           `json:"HAN,omitempty"`          // Calculated Handling category score (0-99)
+	REF                     int                           `json:"REF,omitempty"`          // Calculated Reflexes category score (0-99)
+	KIC                     int                           `json:"KIC,omitempty"`          // Calculated Kicking category score (0-99)
+	SPD                     int                           `json:"SPD,omitempty"`          // Calculated Speed category score (0-99)
+	POS                     int                           `json:"POS,omitempty"`          // Calculated Positioning category score (0-99)
 	Overall                 int                           `json:"Overall"`                // Blended overall score (0-99)
 	RoleSpecificOveralls    []RoleOverallScore            `json:"roleSpecificOveralls"`   // Overall scores for specific roles
 	TransferValueAmount     int64                         `json:"transferValueAmount"`    // Numeric transfer value

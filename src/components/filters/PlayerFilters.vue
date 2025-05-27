@@ -439,21 +439,21 @@
                                                     : 'text-grey-7'
                                             "
                                         >
-                                            Min PHY:
+                                            Min PAC:
                                             <span
                                                 class="stat-value-badge q-ml-xs"
                                                 :class="
                                                     getUnifiedRatingClass(
-                                                        filters.minPHY,
+                                                        filters.minPAC,
                                                         100,
                                                     )
                                                 "
                                             >
-                                                {{ filters.minPHY || 0 }}
+                                                {{ filters.minPAC || 0 }}
                                             </span>
                                         </div>
                                         <q-slider
-                                            v-model="filters.minPHY"
+                                            v-model="filters.minPAC"
                                             :min="0"
                                             :max="99"
                                             :step="1"
@@ -599,21 +599,21 @@
                                                     : 'text-grey-7'
                                             "
                                         >
-                                            Min MEN:
+                                            Min PHY:
                                             <span
                                                 class="stat-value-badge q-ml-xs"
                                                 :class="
                                                     getUnifiedRatingClass(
-                                                        filters.minMEN,
+                                                        filters.minPHY,
                                                         100,
                                                     )
                                                 "
                                             >
-                                                {{ filters.minMEN || 0 }}
+                                                {{ filters.minPHY || 0 }}
                                             </span>
                                         </div>
                                         <q-slider
-                                            v-model="filters.minMEN"
+                                            v-model="filters.minPHY"
                                             :min="0"
                                             :max="99"
                                             :step="1"

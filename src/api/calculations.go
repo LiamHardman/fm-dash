@@ -106,18 +106,18 @@ func CalculateOverallForRoleGo(playerNumericAttributes map[string]int, roleSpeci
 	return Clamp(finalScore, 0, 99) // Clamp from utils.go
 }
 
-// CalculateCategoryBasedOverall calculates a general overall score based on FIFA stat categories (PHY, SHO, etc.).
-// The input FIFA stat categories (player.PHY, player.SHO) are already on a 0-100 (clamped 0-99) scale.
+// CalculateCategoryBasedOverall calculates a general overall score based on FIFA stat categories (PAC, SHO, etc.).
+// The input FIFA stat categories (player.PAC, player.SHO) are already on a 0-100 (clamped 0-99) scale.
 // The categoryWeights define the importance of each category for this specific overall type.
 // The result of this function will also be on a 0-99 scale.
 func CalculateCategoryBasedOverall(player *Player, categoryWeights map[string]int) int {
 	categories := make(map[string]int)
-	categories["PHY"] = player.PHY
+	categories["PAC"] = player.PAC
 	categories["SHO"] = player.SHO
 	categories["PAS"] = player.PAS
 	categories["DRI"] = player.DRI
 	categories["DEF"] = player.DEF
-	categories["MEN"] = player.MEN
+	categories["PHY"] = player.PHY
 	// GK stat is not typically used for outfielders in this type of calculation.
 
 	var weightedSum float64

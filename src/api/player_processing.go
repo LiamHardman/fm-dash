@@ -259,14 +259,7 @@ func EnhancePlayerWithCalculations(player *Player) {
 		return orderI < orderJ
 	})
 
-	// Calculate FIFA-style category stats (PHY, SHO, etc.)
-	player.PHY = CalculateFifaStatGo(player.NumericAttributes, "PHY") // CalculateFifaStatGo from calculations.go
-	player.SHO = CalculateFifaStatGo(player.NumericAttributes, "SHO")
-	player.PAS = CalculateFifaStatGo(player.NumericAttributes, "PAS")
-	player.DRI = CalculateFifaStatGo(player.NumericAttributes, "DRI")
-	player.DEF = CalculateFifaStatGo(player.NumericAttributes, "DEF")
-	player.MEN = CalculateFifaStatGo(player.NumericAttributes, "MEN")
-
+	// Determine if player is a goalkeeper first
 	isGoalkeeper := false
 	for _, posGroup := range player.PositionGroups {
 		if posGroup == "Goalkeepers" {
@@ -274,10 +267,40 @@ func EnhancePlayerWithCalculations(player *Player) {
 			break
 		}
 	}
+
+	// Calculate FIFA-style category stats based on player type
 	if isGoalkeeper {
+		// Goalkeepers get goalkeeper-specific stats
 		player.GK = CalculateFifaStatGo(player.NumericAttributes, "GK")
+		player.DIV = CalculateFifaStatGo(player.NumericAttributes, "DIV")
+		player.HAN = CalculateFifaStatGo(player.NumericAttributes, "HAN")
+		player.REF = CalculateFifaStatGo(player.NumericAttributes, "REF")
+		player.KIC = CalculateFifaStatGo(player.NumericAttributes, "KIC")
+		player.SPD = CalculateFifaStatGo(player.NumericAttributes, "SPD")
+		player.POS = CalculateFifaStatGo(player.NumericAttributes, "POS")
+		// Set outfield stats to 0 for goalkeepers
+		player.PAC = 0
+		player.SHO = 0
+		player.PAS = 0
+		player.DRI = 0
+		player.DEF = 0
+		player.PHY = 0
 	} else {
-		player.GK = 0 // Non-GKs have 0 GK rating
+		// Outfield players get outfield stats
+		player.PAC = CalculateFifaStatGo(player.NumericAttributes, "PAC") // CalculateFifaStatGo from calculations.go
+		player.SHO = CalculateFifaStatGo(player.NumericAttributes, "SHO")
+		player.PAS = CalculateFifaStatGo(player.NumericAttributes, "PAS")
+		player.DRI = CalculateFifaStatGo(player.NumericAttributes, "DRI")
+		player.DEF = CalculateFifaStatGo(player.NumericAttributes, "DEF")
+		player.PHY = CalculateFifaStatGo(player.NumericAttributes, "PHY")
+		// Set goalkeeper stats to 0 for outfield players
+		player.GK = 0
+		player.DIV = 0
+		player.HAN = 0
+		player.REF = 0
+		player.KIC = 0
+		player.SPD = 0
+		player.POS = 0
 	}
 
 	// --- START: Overall Calculation ---
@@ -400,8 +423,8 @@ func EnhancePlayerWithCalculations(player *Player) {
 
 	// --- START DEBUG LOGGING ---
 	if isSamplePlayer {
-		log.Printf("DEBUG EnhancePlayer END for %s. Final Overall: %d, PHY: %d, SHO: %d, PAS: %d, DRI: %d, DEF: %d, MEN: %d, GK: %d",
-			player.Name, player.Overall, player.PHY, player.SHO, player.PAS, player.DRI, player.DEF, player.MEN, player.GK)
+		log.Printf("DEBUG EnhancePlayer END for %s. Final Overall: %d, PAC: %d, SHO: %d, PAS: %d, DRI: %d, DEF: %d, PHY: %d, GK: %d, DIV: %d, HAN: %d, REF: %d, KIC: %d, SPD: %d, POS: %d",
+			player.Name, player.Overall, player.PAC, player.SHO, player.PAS, player.DRI, player.DEF, player.PHY, player.GK, player.DIV, player.HAN, player.REF, player.KIC, player.SPD, player.POS)
 		log.Printf("DEBUG EnhancePlayer END for %s. RoleSpecificOveralls: %v", player.Name, player.RoleSpecificOveralls)
 	}
 	// --- END DEBUG LOGGING ---
