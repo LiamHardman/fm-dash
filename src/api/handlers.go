@@ -2,10 +2,12 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log"
+	"log/slog"
 	"net/http"
-	"runtime" // Standard Go runtime package
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -14,6 +16,19 @@ import (
 
 	"github.com/google/uuid"
 )
+
+// Structured logging helpers with trace context
+func logInfo(ctx context.Context, msg string, args ...any) {
+	slog.InfoContext(ctx, msg, args...)
+}
+
+func logWarn(ctx context.Context, msg string, args ...any) {
+	slog.WarnContext(ctx, msg, args...)
+}
+
+func logError(ctx context.Context, msg string, args ...any) {
+	slog.ErrorContext(ctx, msg, args...)
+}
 
 // League represents a division/league with its teams
 type League struct {
@@ -49,6 +64,7 @@ const (
 // uploadHandler handles POST requests for uploading HTML player files.
 // It parses the file, processes player data concurrently, and stores the results.
 func uploadHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	if r.Method != http.MethodPost {
 		http.Error(w, "Only POST method is allowed", http.StatusMethodNotAllowed)
 		return
@@ -58,7 +74,9 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	// Check Content-Length header first for a quick check, though it can be spoofed.
 	// r.ContentLength is an int64
 	if r.ContentLength > MaxUploadSize {
-		log.Printf("Upload rejected: Content-Length (%d bytes) exceeds limit (%d bytes)", r.ContentLength, MaxUploadSize)
+		logWarn(ctx, "Upload rejected: Content-Length exceeds limit", 
+			"content_length_bytes", r.ContentLength, 
+			"max_size_bytes", MaxUploadSize)
 		http.Error(w, FileSizeLimitErrorMessage, http.StatusRequestEntityTooLarge)
 		return
 	}
@@ -79,11 +97,16 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 
 	fileSize := handler.Size
-	log.Printf("Uploaded File: %s (Size: %d bytes)", handler.Filename, fileSize)
+	logInfo(ctx, "File uploaded", 
+		"filename", handler.Filename, 
+		"size_bytes", fileSize)
 
 	// Enforce the 15MB limit on the actual file size
 	if fileSize > MaxUploadSize {
-		log.Printf("Upload rejected: Actual file size (%d bytes) exceeds limit (%d bytes)", fileSize, MaxUploadSize)
+		logWarn(ctx, "Upload rejected: File size exceeds limit", 
+			"filename", handler.Filename,
+			"file_size_bytes", fileSize, 
+			"max_size_bytes", MaxUploadSize)
 		http.Error(w, FileSizeLimitErrorMessage, http.StatusRequestEntityTooLarge)
 		return
 	}
@@ -185,7 +208,10 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	// Store using the new storage interface (with MinIO support and fallback)
 	SetPlayerData(datasetID, playersList, finalDatasetCurrencySymbol)
 
-	log.Printf("Stored %d players with DatasetID: %s. Detected Currency: %s", len(playersList), datasetID, finalDatasetCurrencySymbol)
+	logInfo(ctx, "Player data stored successfully", 
+		"dataset_id", datasetID,
+		"player_count", len(playersList),
+		"detected_currency", finalDatasetCurrencySymbol)
 	if len(playersList) > 0 {
 		log.Printf("DEBUG: Sample Player 1 after all processing: Name='%s', Overall=%d, ParsedPositions=%v, ShortPositions=%v, PositionGroups=%v", playersList[0].Name, playersList[0].Overall, playersList[0].ParsedPositions, playersList[0].ShortPositions, playersList[0].PositionGroups)
 	} else {
@@ -213,9 +239,17 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	recordUploadMetrics(handler.Filename, fileSize, totalDuration, parseDuration, 
 		len(playersList), memAllocMB, numWorkers, runtime.NumGoroutine())
 	
-	// Keep existing log for backwards compatibility
-	log.Printf("--- Perf Metrics --- File: %s, Size: %d KB, Total Time: %v, Parse Time: %v, Parsed Players: %d, Rows/Sec: %.2f, MemAlloc: %.2f MiB, Workers: %d, Goroutines: %d ---",
-		handler.Filename, fileSize/1024, totalDuration, parseDuration, len(playersList), rowsPerSecond, memAllocMB, numWorkers, runtime.NumGoroutine())
+	// Log performance metrics with trace context
+	logInfo(ctx, "Upload processing completed", 
+		"filename", handler.Filename,
+		"file_size_kb", fileSize/1024,
+		"total_duration_ms", totalDuration.Milliseconds(),
+		"parse_duration_ms", parseDuration.Milliseconds(),
+		"players_parsed", len(playersList),
+		"rows_per_second", rowsPerSecond,
+		"memory_alloc_mb", memAllocMB,
+		"workers", numWorkers,
+		"goroutines", runtime.NumGoroutine())
 }
 
 // playerDataHandler handles GET requests to retrieve processed player data by dataset ID.

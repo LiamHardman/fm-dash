@@ -9,6 +9,7 @@ import (
 
 	"go.opentelemetry.io/otel/log"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // OTLPHandler implements slog.Handler to stream logs to OTLP
@@ -52,6 +53,15 @@ func (h *OTLPHandler) Handle(ctx context.Context, record slog.Record) error {
 	logRecord.SetTimestamp(record.Time)
 	logRecord.SetSeverity(severity)
 	logRecord.SetBody(log.StringValue(record.Message))
+	
+	// Add trace context if available
+	if span := trace.SpanFromContext(ctx); span.SpanContext().IsValid() {
+		spanCtx := span.SpanContext()
+		logRecord.AddAttributes(
+			log.String("trace_id", spanCtx.TraceID().String()),
+			log.String("span_id", spanCtx.SpanID().String()),
+		)
+	}
 	
 	// Add attributes from slog record
 	record.Attrs(func(attr slog.Attr) bool {

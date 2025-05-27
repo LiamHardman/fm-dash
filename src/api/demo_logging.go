@@ -1,29 +1,31 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 )
 
 // DemoStructuredLogging shows examples of structured logging that will be streamed to OTLP when enabled
 func DemoStructuredLogging() {
+	ctx := context.Background()
 	// These logs will be streamed to your OTLP endpoint when OTEL_ENABLED=true
-	slog.Info("Application started successfully", 
+	slog.InfoContext(ctx, "Application started successfully", 
 		"version", "2.0.0", 
 		"environment", "production",
 		"startup_time_ms", 150)
 	
-	slog.Warn("Configuration warning", 
+	slog.WarnContext(ctx, "Configuration warning", 
 		"component", "storage", 
 		"message", "MinIO not configured, using memory storage",
 		"impact", "data_loss_on_restart")
 	
-	slog.Error("Operation failed", 
+	slog.ErrorContext(ctx, "Operation failed", 
 		"operation", "file_upload", 
 		"error", "file_too_large",
 		"max_size_mb", 50,
 		"actual_size_mb", 75)
 	
-	slog.Debug("Performance metrics", 
+	slog.DebugContext(ctx, "Performance metrics", 
 		"component", "parser",
 		"players_processed", 1500,
 		"processing_time_ms", 2340,
