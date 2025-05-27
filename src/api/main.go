@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"log"
+	"log/slog"
 	"net/http"
 	_ "net/http/pprof" // For profiling, if needed
 	"os"
@@ -29,9 +30,12 @@ func main() {
 	if otelEnabled {
 		cleanup = initOTel()
 		defer cleanup(context.Background())
-		log.Println("OpenTelemetry initialized")
+		slog.Info("OpenTelemetry initialized", "logs_streaming", true)
+		
+		// Demo structured logging that will be streamed to OTLP
+		DemoStructuredLogging()
 	} else {
-		log.Println("OpenTelemetry disabled")
+		slog.Info("OpenTelemetry disabled", "logs_streaming", false)
 	}
 
 	// Initialize storage system
@@ -94,7 +98,7 @@ func main() {
 		port = "8091" // Default port for the Go API
 	}
 
-	log.Printf("Server starting on http://localhost:%s", port)
+	slog.Info("Server starting", "port", port, "url", "http://localhost:"+port)
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatal("ListenAndServe Error: ", err)
 	}

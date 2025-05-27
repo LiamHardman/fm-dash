@@ -1,0 +1,95 @@
+//go:build !no_otel
+
+package main
+
+import (
+	"context"
+	"log/slog"
+
+	"go.opentelemetry.io/otel/log"
+	sdklog "go.opentelemetry.io/otel/sdk/log"
+)
+
+// OTLPHandler implements slog.Handler to stream logs to OTLP
+type OTLPHandler struct {
+	logger       log.Logger
+	fallbackHandler slog.Handler
+}
+
+// NewOTLPHandler creates a new OTLP handler
+func NewOTLPHandler(loggerProvider *sdklog.LoggerProvider) *OTLPHandler {
+	logger := loggerProvider.Logger("v2fmdash-api")
+	
+	// Create a fallback handler for local console output
+	fallbackHandler := slog.NewTextHandler(nil, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	})
+	
+	return &OTLPHandler{
+		logger:          logger,
+		fallbackHandler: fallbackHandler,
+	}
+}
+
+// Enabled reports whether the handler handles records at the given level
+func (h *OTLPHandler) Enabled(_ context.Context, level slog.Level) bool {
+	return level >= slog.LevelDebug
+}
+
+// Handle processes a log record
+func (h *OTLPHandler) Handle(ctx context.Context, record slog.Record) error {
+	// Send to fallback handler for local logging
+	if err := h.fallbackHandler.Handle(ctx, record); err != nil {
+		// Don't fail if local logging fails
+	}
+	
+	// Convert slog level to OTEL severity
+	severity := convertLevel(record.Level)
+	
+	// Create OTEL log record
+	var logRecord log.Record
+	logRecord.SetTimestamp(record.Time)
+	logRecord.SetSeverity(severity)
+	logRecord.SetBody(log.StringValue(record.Message))
+	
+	// Add attributes from slog record
+	record.Attrs(func(attr slog.Attr) bool {
+		logRecord.AddAttributes(log.String(attr.Key, attr.Value.String()))
+		return true
+	})
+	
+	// Emit the log record
+	h.logger.Emit(ctx, logRecord)
+	
+	return nil
+}
+
+// WithAttrs returns a new handler with the given attributes
+func (h *OTLPHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return &OTLPHandler{
+		logger:          h.logger,
+		fallbackHandler: h.fallbackHandler.WithAttrs(attrs),
+	}
+}
+
+// WithGroup returns a new handler with the given group
+func (h *OTLPHandler) WithGroup(name string) slog.Handler {
+	return &OTLPHandler{
+		logger:          h.logger,
+		fallbackHandler: h.fallbackHandler.WithGroup(name),
+	}
+}
+
+// convertLevel converts slog.Level to log.Severity
+func convertLevel(level slog.Level) log.Severity {
+	switch {
+	case level >= slog.LevelError:
+		return log.SeverityError
+	case level >= slog.LevelWarn:
+		return log.SeverityWarn
+	case level >= slog.LevelInfo:
+		return log.SeverityInfo
+	default:
+		return log.SeverityDebug
+	}
+}

@@ -5,16 +5,19 @@ package main
 import (
 	"context"
 	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
+	sdklog "go.opentelemetry.io/otel/sdk/log"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/grpc/credentials"
@@ -35,6 +38,7 @@ func initOTel() func(context.Context) error {
 		secureOption = otlptracegrpc.WithInsecure()
 	}
 
+	// Create trace exporter
 	exporter, err := otlptrace.New(
 		context.Background(),
 		otlptracegrpc.NewClient(
@@ -42,11 +46,12 @@ func initOTel() func(context.Context) error {
 			otlptracegrpc.WithEndpoint(collectorURL),
 		),
 	)
-
 	if err != nil {
-		log.Fatalf("Failed to create exporter: %v", err)
+		log.Printf("Warning: Failed to create trace exporter: %v. OTEL tracing disabled.", err)
+		return func(ctx context.Context) error { return nil }
 	}
 	
+	// Create shared resources
 	resources, err := resource.New(
 		context.Background(),
 		resource.WithAttributes(
@@ -55,9 +60,11 @@ func initOTel() func(context.Context) error {
 		),
 	)
 	if err != nil {
-		log.Fatalf("Could not set resources: %v", err)
+		log.Printf("Warning: Could not set resources: %v. OTEL disabled.", err)
+		return func(ctx context.Context) error { return nil }
 	}
 
+	// Initialize tracing
 	otel.SetTracerProvider(
 		sdktrace.NewTracerProvider(
 			sdktrace.WithSampler(sdktrace.AlwaysSample()),
@@ -80,7 +87,8 @@ func initOTel() func(context.Context) error {
 		otlpmetricgrpc.WithEndpoint(collectorURL),
 	)
 	if err != nil {
-		log.Fatalf("Failed to create metric exporter: %v", err)
+		log.Printf("Warning: Failed to create metric exporter: %v. OTEL metrics disabled.", err)
+		// Continue without metrics, only traces
 	}
 
 	meterProvider := sdkmetric.NewMeterProvider(
@@ -89,12 +97,51 @@ func initOTel() func(context.Context) error {
 	)
 	otel.SetMeterProvider(meterProvider)
 
+	// Initialize logs
+	var logSecureOption otlploggrpc.Option
+	if strings.ToLower(insecure) == "false" || insecure == "0" || strings.ToLower(insecure) == "f" {
+		logSecureOption = otlploggrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
+	} else {
+		logSecureOption = otlploggrpc.WithInsecure()
+	}
+
+	logExporter, err := otlploggrpc.New(
+		context.Background(),
+		logSecureOption,
+		otlploggrpc.WithEndpoint(collectorURL),
+	)
+	if err != nil {
+		log.Printf("Warning: Failed to create log exporter: %v. OTEL logs disabled.", err)
+		// Continue without log streaming
+		if exporter != nil {
+			return func(ctx context.Context) error {
+				if err := exporter.Shutdown(ctx); err != nil {
+					log.Printf("Error shutting down trace exporter: %v", err)
+				}
+				return nil
+			}
+		}
+		return func(ctx context.Context) error { return nil }
+	}
+
+	loggerProvider := sdklog.NewLoggerProvider(
+		sdklog.WithResource(resources),
+		sdklog.WithProcessor(sdklog.NewBatchProcessor(logExporter)),
+	)
+
+	// Set up structured logging with OTLP
+	handler := NewOTLPHandler(loggerProvider)
+	slog.SetDefault(slog.New(handler))
+
 	return func(ctx context.Context) error {
 		if err := exporter.Shutdown(ctx); err != nil {
 			log.Printf("Error shutting down trace exporter: %v", err)
 		}
 		if err := meterProvider.Shutdown(ctx); err != nil {
 			log.Printf("Error shutting down meter provider: %v", err)
+		}
+		if err := loggerProvider.Shutdown(ctx); err != nil {
+			log.Printf("Error shutting down log provider: %v", err)
 		}
 		return nil
 	}

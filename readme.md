@@ -94,7 +94,7 @@ The MinIO bucket name is hardcoded to `v2fmdash`.
 
 ### Observability
 
-The application supports optional OpenTelemetry integration for tracing and metrics:
+The application supports optional OpenTelemetry integration for **tracing**, **metrics**, and **log streaming**:
 
 #### Enabling Observability
 
@@ -103,9 +103,30 @@ The application supports optional OpenTelemetry integration for tracing and metr
    - Default build: `go build` (includes OTEL libraries, controlled by OTEL_ENABLED)
    - Minimal build: `go build -tags no_otel` (excludes OTEL libraries entirely)
 
+#### Log Streaming to OTLP
+
+When `OTEL_ENABLED=true`, all application logs are automatically streamed to your OTLP endpoint using structured logging:
+
+```bash
+# Enable log streaming to your observability backend
+export OTEL_ENABLED=true
+export OTEL_EXPORTER_OTLP_ENDPOINT=your-otlp-endpoint:4317
+export SERVICE_NAME=v2fmdash-api
+
+# Start the application - logs will stream to your OTLP endpoint
+go run main.go
+```
+
+**Log Features:**
+- Structured logging with key-value pairs for better searchability
+- Automatic conversion from Go's `slog` to OTLP log format
+- Dual output: logs appear both locally (console) and remotely (OTLP)
+- Graceful fallback if OTLP endpoint is unavailable
+
 #### Benefits of the OTEL_ENABLED Flag
 
 - **Performance**: When disabled, OTEL libraries are still imported but no telemetry overhead occurs
 - **Resource Usage**: Reduces memory and CPU usage when observability isn't needed
 - **Deployment Flexibility**: Same binary can run with or without observability
 - **Build Size**: Use `-tags no_otel` for smaller binaries without OTEL dependencies
+- **Log Streaming**: Centralized log collection when enabled, local-only when disabled
