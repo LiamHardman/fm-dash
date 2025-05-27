@@ -238,6 +238,7 @@ func init() {
 	// Initialize OpenTelemetry metrics
 	if metricsEnabled {
 		initMetrics()
+		initEnhancedMetrics()
 	}
 }
 

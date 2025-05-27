@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 // Structured logging helpers with trace context
@@ -70,13 +71,38 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	startTime := time.Now()
+	
+	// Start comprehensive tracing
+	ctx, span := StartSpan(ctx, "upload.handler")
+	defer span.End()
+	
+	// Track active requests
+	IncrementActiveRequests(ctx, "/upload")
+	defer DecrementActiveRequests(ctx, "/upload")
+	
+	// Record API operation metrics at the end
+	defer func() {
+		status := http.StatusOK
+		if span.SpanContext().IsValid() {
+			// Check if there was an error by inspecting span status
+			// We'll update this in error cases below
+		}
+		RecordAPIOperation(ctx, r.Method, "/upload", status, time.Since(startTime))
+	}()
 
 	// Check Content-Length header first for a quick check, though it can be spoofed.
 	// r.ContentLength is an int64
+	SetSpanAttributes(ctx, 
+		attribute.String("http.method", r.Method),
+		attribute.String("http.route", "/upload"),
+		attribute.Int64("http.request.content_length", r.ContentLength),
+	)
+	
 	if r.ContentLength > MaxUploadSize {
 		logWarn(ctx, "Upload rejected: Content-Length exceeds limit", 
 			"content_length_bytes", r.ContentLength, 
 			"max_size_bytes", MaxUploadSize)
+		SetSpanAttributes(ctx, attribute.String("upload.rejection_reason", "content_length_exceeded"))
 		http.Error(w, FileSizeLimitErrorMessage, http.StatusRequestEntityTooLarge)
 		return
 	}
@@ -89,14 +115,23 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	AddSpanEvent(ctx, "multipart.form.parsed")
+	
 	file, handler, err := r.FormFile("playerFile")
 	if err != nil {
+		RecordError(ctx, err, "Failed to retrieve uploaded file")
 		http.Error(w, "Error retrieving the file: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	defer file.Close()
 
 	fileSize := handler.Size
+	SetSpanAttributes(ctx,
+		attribute.String("file.name", handler.Filename),
+		attribute.Int64("file.size", fileSize),
+		attribute.String("file.content_type", handler.Header.Get("Content-Type")),
+	)
+	
 	logInfo(ctx, "File uploaded", 
 		"filename", handler.Filename, 
 		"size_bytes", fileSize)
@@ -107,6 +142,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			"filename", handler.Filename,
 			"file_size_bytes", fileSize, 
 			"max_size_bytes", MaxUploadSize)
+		SetSpanAttributes(ctx, attribute.String("upload.rejection_reason", "file_size_exceeded"))
 		http.Error(w, FileSizeLimitErrorMessage, http.StatusRequestEntityTooLarge)
 		return
 	}
@@ -119,6 +155,11 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	if numWorkers == 0 {
 		numWorkers = 1
 	}
+	SetSpanAttributes(ctx, 
+		attribute.Int("workers.count", numWorkers),
+		attribute.String("processing.phase", "setup"),
+	)
+	
 	const rowBufferMultiplier = 10
 	rowCellsChan := make(chan []string, numWorkers*rowBufferMultiplier)
 	resultsChan := make(chan PlayerParseResult, numWorkers*rowBufferMultiplier)
@@ -139,12 +180,17 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("Finished collecting results from resultsChan.")
 	}()
 
-	processingError = ParseHTMLPlayerTable(file, &headersSnapshot, rowCellsChan, numWorkers, resultsChan, &wg) // Assumes ParseHTMLPlayerTable is in parsing.go
+	// Wrap file parsing in a child span
+	err = TraceFileProcessing(ctx, handler.Filename, fileSize, func(spanCtx context.Context) error {
+		return ParseHTMLPlayerTable(file, &headersSnapshot, rowCellsChan, numWorkers, resultsChan, &wg)
+	})
+	processingError = err
 
 	close(rowCellsChan)
 	log.Println("Row cells channel closed (HTML parsing attempt finished).")
 
 	if processingError != nil {
+		RecordError(ctx, processingError, "HTML parsing failed")
 		log.Printf("Error during HTML parsing or worker setup: %v", processingError)
 		if len(headersSnapshot) > 0 {
 			log.Println("Waiting for any potentially started workers after parsing error...")
@@ -157,15 +203,18 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(headersSnapshot) == 0 {
-		log.Println("Critical: No headers were parsed from the HTML file.")
+		logError(ctx, "Critical: No headers were parsed from the HTML file")
+		SetSpanAttributes(ctx, attribute.String("error.type", "no_headers_parsed"))
 		close(resultsChan)
 		<-doneConsumingResults
 		http.Error(w, "Could not parse table headers, no data processed.", http.StatusInternalServerError)
 		return
 	}
 
+	AddSpanEvent(ctx, "workers.waiting_for_completion")
 	log.Println("Waiting for all player data parser workers to finish...")
 	wg.Wait()
+	AddSpanEvent(ctx, "workers.completed")
 	log.Println("All workers have completed (wg.Wait() returned).")
 
 	close(resultsChan)
@@ -197,16 +246,26 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(playersList) > 0 {
+		ctx, percentileSpan := StartSpan(ctx, "calculations.percentiles")
+		SetSpanAttributes(ctx, attribute.Int("players.count", len(playersList)))
 		log.Println("Calculating player performance percentiles...")
 		CalculatePlayerPerformancePercentiles(playersList) // Assumes CalculatePlayerPerformancePercentiles is in performance_stats.go
 		log.Println("Finished calculating percentiles.")
+		percentileSpan.End()
 	}
 
 	parseDuration := time.Since(parseStartTime)
 	datasetID := uuid.New().String()
 
 	// Store using the new storage interface (with MinIO support and fallback)
+	ctx, storageSpan := StartSpan(ctx, "storage.save_dataset")
+	SetSpanAttributes(ctx, 
+		attribute.String("dataset.id", datasetID),
+		attribute.Int("dataset.player_count", len(playersList)),
+		attribute.String("dataset.currency", finalDatasetCurrencySymbol),
+	)
 	SetPlayerData(datasetID, playersList, finalDatasetCurrencySymbol)
+	storageSpan.End()
 
 	logInfo(ctx, "Player data stored successfully", 
 		"dataset_id", datasetID,
@@ -221,10 +280,15 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	response := UploadResponse{DatasetID: datasetID, Message: "File uploaded and parsed successfully.", DetectedCurrencySymbol: finalDatasetCurrencySymbol}
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*") // Ensure CORS is set if frontend is on a different domain/port
+	
+	ctx, responseSpan := StartSpan(ctx, "response.encode")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
+		RecordError(ctx, err, "Failed to encode JSON response")
 		log.Printf("Error encoding JSON response for upload: %v", err)
 		http.Error(w, "Error encoding JSON response: "+err.Error(), http.StatusInternalServerError)
+		return
 	}
+	responseSpan.End()
 
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
@@ -235,9 +299,31 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	totalDuration := time.Since(startTime)
 	memAllocMB := BToMb(memStats.Alloc) // Assumes BToMb is defined in utils.go
 	
+	// Record comprehensive business operation metrics
+	RecordBusinessOperation(ctx, "file_upload", true, map[string]interface{}{
+		"filename": handler.Filename,
+		"file_size_bytes": fileSize,
+		"players_processed": len(playersList),
+		"workers_used": numWorkers,
+		"currency_detected": finalDatasetCurrencySymbol,
+		"rows_per_second": rowsPerSecond,
+		"memory_mb": memAllocMB,
+	})
+	
 	// Record metrics if enabled
 	recordUploadMetrics(handler.Filename, fileSize, totalDuration, parseDuration, 
 		len(playersList), memAllocMB, numWorkers, runtime.NumGoroutine())
+	
+	// Add final span attributes with performance metrics
+	SetSpanAttributes(ctx,
+		attribute.String("upload.status", "success"),
+		attribute.String("dataset.id", datasetID),
+		attribute.Int("players.processed", len(playersList)),
+		attribute.Float64("performance.rows_per_second", rowsPerSecond),
+		attribute.Float64("performance.memory_mb", memAllocMB),
+		attribute.Int64("performance.total_duration_ms", totalDuration.Milliseconds()),
+		attribute.Int64("performance.parse_duration_ms", parseDuration.Milliseconds()),
+	)
 	
 	// Log performance metrics with trace context
 	logInfo(ctx, "Upload processing completed", 
@@ -249,23 +335,51 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		"rows_per_second", rowsPerSecond,
 		"memory_alloc_mb", memAllocMB,
 		"workers", numWorkers,
-		"goroutines", runtime.NumGoroutine())
+		"goroutines", runtime.NumGoroutine(),
+		"trace_id", GetTraceID(ctx),
+		"span_id", GetSpanID(ctx))
 }
 
 // playerDataHandler handles GET requests to retrieve processed player data by dataset ID.
 func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	startTime := time.Now()
+	
+	// Start comprehensive tracing
+	ctx, span := StartSpan(ctx, "api.players.get")
+	defer span.End()
+	
+	// Track active requests
+	IncrementActiveRequests(ctx, "/api/players")
+	defer DecrementActiveRequests(ctx, "/api/players")
+	
+	// Record API operation metrics at the end
+	defer func() {
+		status := http.StatusOK
+		// We'll update this in error cases below
+		RecordAPIOperation(ctx, r.Method, "/api/players", status, time.Since(startTime))
+	}()
+	
 	if r.Method != http.MethodGet {
 		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	
+	SetSpanAttributes(ctx, 
+		attribute.String("http.method", r.Method),
+		attribute.String("http.route", "/api/players"),
+	)
 
 	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/players/"), "/")
 	if len(pathParts) == 0 || pathParts[0] == "" {
+		logWarn(ctx, "Dataset ID missing in request path")
+		SetSpanAttributes(ctx, attribute.String("error.type", "missing_dataset_id"))
 		http.Error(w, "Dataset ID is missing in the request path", http.StatusBadRequest)
 		return
 	}
 	datasetID := pathParts[0]
+
+	SetSpanAttributes(ctx, attribute.String("dataset.id", datasetID))
 
 	queryValues := r.URL.Query()
 	filterPosition := queryValues.Get("position")
@@ -293,12 +407,21 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 		"position_compare", positionCompare)
 
 	// Use the new storage interface to get player data
+	ctx, dataSpan := StartSpan(ctx, "storage.get_dataset")
 	players, currencySymbol, found := GetPlayerData(datasetID)
+	dataSpan.End()
+
 	if !found {
 		logWarn(ctx, "Player data not found", "dataset_id", datasetID)
+		SetSpanAttributes(ctx, attribute.String("error.type", "dataset_not_found"))
 		http.Error(w, "Player data not found for the given ID.", http.StatusNotFound)
 		return
 	}
+
+	SetSpanAttributes(ctx, 
+		attribute.Int("dataset.initial_player_count", len(players)),
+		attribute.String("dataset.currency", currencySymbol),
+	)
 
 	// Parse division filter
 	var divisionFilter DivisionFilter = DivisionFilterAll

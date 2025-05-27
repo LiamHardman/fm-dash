@@ -14,6 +14,7 @@ import (
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 type StorageInterface interface {
@@ -41,19 +42,46 @@ func NewInMemoryStorage() *InMemoryStorage {
 }
 
 func (s *InMemoryStorage) Store(datasetID string, data DatasetData) error {
+	ctx := context.Background()
+	ctx, span := StartSpan(ctx, "storage.memory.store")
+	defer span.End()
+	
+	SetSpanAttributes(ctx,
+		attribute.String("dataset.id", datasetID),
+		attribute.Int("dataset.player_count", len(data.Players)),
+		attribute.String("storage.type", "memory"),
+	)
+	
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	s.data[datasetID] = data
+	
+	RecordDBOperation(ctx, "store", "datasets", 0, 1)
 	return nil
 }
 
 func (s *InMemoryStorage) Retrieve(datasetID string) (DatasetData, error) {
+	ctx := context.Background()
+	ctx, span := StartSpan(ctx, "storage.memory.retrieve")
+	defer span.End()
+	
+	SetSpanAttributes(ctx,
+		attribute.String("dataset.id", datasetID),
+		attribute.String("storage.type", "memory"),
+	)
+	
+	start := time.Now()
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
+	
 	data, exists := s.data[datasetID]
 	if !exists {
+		RecordError(ctx, fmt.Errorf("dataset %s not found", datasetID), "Dataset not found in memory storage")
 		return DatasetData{}, fmt.Errorf("dataset %s not found", datasetID)
 	}
+	
+	SetSpanAttributes(ctx, attribute.Int("dataset.player_count", len(data.Players)))
+	RecordDBOperation(ctx, "retrieve", "datasets", time.Since(start), 1)
 	return data, nil
 }
 
@@ -126,58 +154,104 @@ func NewMinIOStorage(endpoint, accessKey, secretKey, bucketName string, useSSL b
 }
 
 func (s *MinIOStorage) Store(datasetID string, data DatasetData) error {
+	ctx := context.Background()
+	ctx, span := StartSpan(ctx, "storage.minio.store")
+	defer span.End()
+	
+	SetSpanAttributes(ctx,
+		attribute.String("dataset.id", datasetID),
+		attribute.Int("dataset.player_count", len(data.Players)),
+		attribute.String("storage.type", "minio"),
+	)
+	
 	if s.client == nil {
+		AddSpanEvent(ctx, "storage.fallback_to_memory")
 		return s.fallback.Store(datasetID, data)
 	}
 
+	start := time.Now()
 	jsonData, err := json.Marshal(data)
 	if err != nil {
+		RecordError(ctx, err, "Failed to marshal dataset data")
 		return fmt.Errorf("failed to marshal data: %w", err)
 	}
 
 	objectName := fmt.Sprintf("datasets/%s.json", datasetID)
 	reader := bytes.NewReader(jsonData)
 	
-	ctx := context.Background()
+	SetSpanAttributes(ctx,
+		attribute.String("minio.bucket", s.bucketName),
+		attribute.String("minio.object", objectName),
+		attribute.Int("data.size_bytes", len(jsonData)),
+	)
+	
 	_, err = s.client.PutObject(ctx, s.bucketName, objectName, reader, int64(len(jsonData)), minio.PutObjectOptions{
 		ContentType: "application/json",
 	})
 	if err != nil {
+		RecordError(ctx, err, "Failed to store to MinIO")
 		log.Printf("Warning: Failed to store to MinIO: %v. Using fallback storage.", err)
+		AddSpanEvent(ctx, "storage.fallback_to_memory", attribute.String("reason", "minio_store_failed"))
 		return s.fallback.Store(datasetID, data)
 	}
 
+	RecordDBOperation(ctx, "store", "minio_datasets", time.Since(start), 1)
 	log.Printf("Stored dataset %s to MinIO", datasetID)
 	return nil
 }
 
 func (s *MinIOStorage) Retrieve(datasetID string) (DatasetData, error) {
+	ctx := context.Background()
+	ctx, span := StartSpan(ctx, "storage.minio.retrieve")
+	defer span.End()
+	
+	SetSpanAttributes(ctx,
+		attribute.String("dataset.id", datasetID),
+		attribute.String("storage.type", "minio"),
+	)
+	
 	if s.client == nil {
+		AddSpanEvent(ctx, "storage.fallback_to_memory")
 		return s.fallback.Retrieve(datasetID)
 	}
 
 	objectName := fmt.Sprintf("datasets/%s.json", datasetID)
-	ctx := context.Background()
 	
+	SetSpanAttributes(ctx,
+		attribute.String("minio.bucket", s.bucketName),
+		attribute.String("minio.object", objectName),
+	)
+	
+	start := time.Now()
 	object, err := s.client.GetObject(ctx, s.bucketName, objectName, minio.GetObjectOptions{})
 	if err != nil {
+		RecordError(ctx, err, "Failed to retrieve from MinIO")
 		log.Printf("Warning: Failed to retrieve from MinIO: %v. Trying fallback storage.", err)
+		AddSpanEvent(ctx, "storage.fallback_to_memory", attribute.String("reason", "minio_get_failed"))
 		return s.fallback.Retrieve(datasetID)
 	}
 	defer object.Close()
 
 	data, err := io.ReadAll(object)
 	if err != nil {
+		RecordError(ctx, err, "Failed to read MinIO object data")
 		log.Printf("Warning: Failed to read from MinIO object: %v. Trying fallback storage.", err)
+		AddSpanEvent(ctx, "storage.fallback_to_memory", attribute.String("reason", "minio_read_failed"))
 		return s.fallback.Retrieve(datasetID)
 	}
+
+	SetSpanAttributes(ctx, attribute.Int("data.size_bytes", len(data)))
 
 	var dataset DatasetData
 	if err := json.Unmarshal(data, &dataset); err != nil {
+		RecordError(ctx, err, "Failed to unmarshal MinIO data")
 		log.Printf("Warning: Failed to unmarshal MinIO data: %v. Trying fallback storage.", err)
+		AddSpanEvent(ctx, "storage.fallback_to_memory", attribute.String("reason", "unmarshal_failed"))
 		return s.fallback.Retrieve(datasetID)
 	}
 
+	SetSpanAttributes(ctx, attribute.Int("dataset.player_count", len(dataset.Players)))
+	RecordDBOperation(ctx, "retrieve", "minio_datasets", time.Since(start), 1)
 	log.Printf("Retrieved dataset %s from MinIO", datasetID)
 	return dataset, nil
 }
