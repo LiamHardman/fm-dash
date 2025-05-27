@@ -8,6 +8,9 @@ export const useUiStore = defineStore("ui", () => {
   // Initialize with a default value, initDarkMode will override this.
   // Defaulting to true here to align with the user's intent for dark mode by default.
   const isDarkModeActive = ref(true);
+  
+  // Notification preferences
+  const notificationsEnabled = ref(true);
 
   // Function to toggle dark mode
   function toggleDarkMode() {
@@ -21,6 +24,19 @@ export const useUiStore = defineStore("ui", () => {
       );
     } catch (e) {
       console.warn("Could not save dark mode preference to localStorage:", e);
+    }
+  }
+
+  // Function to toggle notifications
+  function toggleNotifications() {
+    notificationsEnabled.value = !notificationsEnabled.value;
+    try {
+      localStorage.setItem(
+        "notificationsEnabled",
+        notificationsEnabled.value ? "true" : "false",
+      );
+    } catch (e) {
+      console.warn("Could not save notification preference to localStorage:", e);
     }
   }
 
@@ -51,6 +67,18 @@ export const useUiStore = defineStore("ui", () => {
     $q.dark.set(darkModePreference);
   }
 
+  // Initialize notification preferences
+  function initNotifications() {
+    try {
+      const storedPreference = localStorage.getItem("notificationsEnabled");
+      if (storedPreference !== null) {
+        notificationsEnabled.value = storedPreference === "true";
+      }
+    } catch (e) {
+      console.warn("Could not read notification preference from localStorage:", e);
+    }
+  }
+
   // Watch for changes in Quasar's dark mode state and update the store
   // This is generally not needed if the store is the single source of truth
   // and all changes go through toggleDarkMode.
@@ -73,5 +101,8 @@ export const useUiStore = defineStore("ui", () => {
     isDarkModeActive,
     toggleDarkMode,
     initDarkMode,
+    notificationsEnabled,
+    toggleNotifications,
+    initNotifications,
   };
 });

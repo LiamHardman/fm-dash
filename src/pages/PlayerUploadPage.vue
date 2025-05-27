@@ -10,6 +10,21 @@
                 </q-btn>
             </div>
 
+            <div class="notification-preferences" v-if="notificationSupported">
+                <div class="preference-item">
+                    <q-toggle
+                        v-model="uiStore.notificationsEnabled"
+                        @update:model-value="uiStore.toggleNotifications"
+                        color="primary"
+                        label="Enable desktop notifications for large uploads (>20MB)"
+                        left-label
+                    />
+                    <div class="preference-hint">
+                        Get notified when large file processing is complete
+                    </div>
+                </div>
+            </div>
+
             <div class="upload-section">
                 <h2 class="section-title">Select File</h2>
                 <div class="upload-area">
@@ -99,17 +114,33 @@ import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useQuasar, Notify } from "quasar";
 import { usePlayerStore } from "../stores/playerStore";
+import { useUiStore } from "../stores/uiStore";
+import { useWebNotification } from "@vueuse/core";
 
 const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024;
+const LARGE_FILE_SIZE_BYTES = 20 * 1024 * 1024;
 
 export default {
     name: "PlayerUploadPage",
     setup() {
         const router = useRouter();
         const playerStore = usePlayerStore();
+        const uiStore = useUiStore();
         const $q = useQuasar();
         const playerFile = ref(null);
         const showFileSizeLimitModal = ref(false);
+        
+        // Web notification setup
+        const {
+            isSupported: notificationSupported,
+            permissionGranted,
+            show: showNotification,
+        } = useWebNotification({
+            title: "FM24 Data Processing Complete",
+            body: "Your large file has been processed and is ready to view!",
+            icon: "/favicon.ico",
+            tag: "upload-complete",
+        });
 
         const loading = computed(() => playerStore.loading);
         const error = computed({
@@ -147,6 +178,9 @@ export default {
                 "/public/role_specific_overall_weights.json",
                 roleSpecificOverallWeightsLoadedForFeedback,
             );
+            
+            // Initialize UI preferences
+            uiStore.initNotifications();
         });
 
         const uploadAndParse = async () => {
@@ -158,18 +192,33 @@ export default {
                 showFileSizeLimitModal.value = true;
                 return;
             }
+            
+            const isLargeFile = playerFile.value.size > LARGE_FILE_SIZE_BYTES;
+            
             try {
                 const formData = new FormData();
                 formData.append("playerFile", playerFile.value);
                 await playerStore.uploadPlayerFile(formData);
                 if (!playerStore.error) {
+                    const successMessage = "File uploaded and parsed successfully! Redirecting to dataset view...";
+                    
                     Notify.create({
                         type: "positive",
-                        message:
-                            "File uploaded and parsed successfully! Redirecting to dataset view...",
+                        message: successMessage,
                         position: "top",
                         timeout: 2000,
                     });
+                    
+                    // Show web notification for large files if enabled and supported
+                    if (
+                        isLargeFile &&
+                        uiStore.notificationsEnabled &&
+                        notificationSupported.value &&
+                        permissionGranted.value
+                    ) {
+                        showNotification();
+                    }
+                    
                     // Redirect to the dataset page
                     setTimeout(() => {
                         if (playerStore.currentDatasetId) {
@@ -210,6 +259,8 @@ export default {
             roleSpecificOverallWeightsLoadedForFeedback,
             uploadAndParse,
             playerStore,
+            uiStore,
+            notificationSupported,
         };
     },
 };
@@ -275,6 +326,35 @@ export default {
 .help-section {
     text-align: center;
     margin-bottom: 2rem;
+}
+
+.notification-preferences {
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    border: 1px solid rgba(26, 35, 126, 0.1);
+
+    .body--dark & {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+}
+
+.preference-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.preference-hint {
+    color: #666;
+    font-size: 0.85rem;
+    margin-left: 2rem;
+
+    .body--dark & {
+        color: rgba(255, 255, 255, 0.6);
+    }
 }
 
 .docs-btn {
