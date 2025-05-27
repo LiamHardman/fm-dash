@@ -40,8 +40,10 @@ spec:
               value: "true"
             - name: INSECURE_MODE
               value: "true"
+            - name: SERVICE_NAME
+              value: "v2fmdash-api"
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: "signoz.signoz:4317" 
+              value: "signoz-otel-collector.signoz-helm:4317" 
             # MinIO Configuration
             - name: MINIO_ENDPOINT
               valueFrom:
