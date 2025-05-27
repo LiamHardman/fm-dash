@@ -9,8 +9,9 @@
                 Search Players (Using {{ currencySymbol }} for values)
             </div>
 
-            <div class="row q-col-gutter-x-md q-col-gutter-y-sm items-end">
-                <div class="col-12 col-sm-6 col-md-4 col-lg-2">
+            <!-- First Row: Basic Filters -->
+            <div class="row q-col-gutter-md q-mb-md">
+                <div class="col-12 col-sm-6 col-md-3">
                     <q-input
                         v-model="filters.name"
                         label="Player Name"
@@ -27,7 +28,7 @@
                         :disable="isLoading"
                     />
                 </div>
-                <div class="col-12 col-sm-6 col-md-4 col-lg-2">
+                <div class="col-12 col-sm-6 col-md-3">
                     <q-select
                         v-model="filters.club"
                         :options="clubOptions"
@@ -61,7 +62,7 @@
                         </template>
                     </q-select>
                 </div>
-                <div class="col-12 col-sm-6 col-md-4 col-lg-2">
+                <div class="col-12 col-sm-6 col-md-3">
                     <q-select
                         v-model="filters.nationality"
                         :options="nationalityOptions"
@@ -95,7 +96,7 @@
                         </template>
                     </q-select>
                 </div>
-                <div class="col-12 col-sm-6 col-md-3 col-lg-2">
+                <div class="col-12 col-sm-6 col-md-3">
                     <q-select
                         v-model="filters.position"
                         :options="positionOptions"
@@ -118,7 +119,11 @@
                         :disable="isLoading"
                     />
                 </div>
-                <div class="col-12 col-sm-6 col-md-3 col-lg-2">
+            </div>
+
+            <!-- Second Row: Advanced Filters -->
+            <div class="row q-col-gutter-md q-mb-md">
+                <div class="col-12 col-sm-6 col-md-3">
                     <q-select
                         v-model="filters.role"
                         :options="roleFilterOptions"
@@ -159,7 +164,7 @@
                         </template>
                     </q-select>
                 </div>
-                <div class="col-12 col-sm-6 col-md-3 col-lg-2">
+                <div class="col-12 col-sm-6 col-md-3">
                     <q-select
                         v-model="filters.mediaHandling"
                         :options="mediaHandlingOptions"
@@ -184,14 +189,7 @@
                         :disable="isLoading"
                     />
                 </div>
-            </div>
-
-            <div
-                class="row q-col-gutter-x-md q-col-gutter-y-sm items-start q-mt-sm"
-            >
-                <div
-                    class="col-12 col-sm-6 col-md-4 col-lg-3 filter-item-container"
-                >
+                <div class="col-12 col-sm-6 col-md-3">
                     <q-select
                         v-model="filters.personality"
                         :options="personalityOptions"
@@ -216,10 +214,61 @@
                         :disable="isLoading"
                     />
                 </div>
+                <div class="col-12 col-sm-6 col-md-3">
+                    <q-btn
+                        color="primary"
+                        :label="
+                            'Set Minimum Stats' +
+                            (hasActiveStatFilters ? ' (Active)' : '')
+                        "
+                        class="full-width"
+                        @click="showMinimumStatsModal = true"
+                        :disable="isLoading"
+                        outline
+                        icon="tune"
+                        style="height: 40px;"
+                    />
+                </div>
+            </div>
 
-                <div
-                    class="col-12 col-sm-6 col-md-4 col-lg-3 filter-item-container"
-                >
+            <!-- Third Row: Range Sliders -->
+            <div class="row q-col-gutter-md">
+                <div class="col-12 col-md-3">
+                    <div
+                        class="text-caption q-mb-xs slider-label"
+                        :class="
+                            quasarInstance.dark.isActive
+                                ? 'text-grey-4'
+                                : 'text-grey-7'
+                        "
+                    >
+                        Age Range: {{ filters.ageRange.min }} -
+                        {{
+                            filters.ageRange.max === ageSliderMax
+                                ? ageSliderMax + "+"
+                                : filters.ageRange.max
+                        }}
+                    </div>
+                    <q-range
+                        v-model="filters.ageRange"
+                        :min="ageSliderMin"
+                        :max="ageSliderMax"
+                        :step="1"
+                        label-always
+                        :left-label-value="filters.ageRange.min + ' yrs'"
+                        :right-label-value="
+                            filters.ageRange.max +
+                            (filters.ageRange.max === ageSliderMax ? '+' : '') +
+                            ' yrs'
+                        "
+                        @update:model-value="debouncedApplyFilters"
+                        color="primary"
+                        class="q-px-sm"
+                        :disable="isLoading"
+                    />
+                </div>
+
+                <div class="col-12 col-md-3">
                     <div
                         class="text-caption q-mb-xs slider-label"
                         :class="
@@ -259,44 +308,7 @@
                     />
                 </div>
 
-                <div
-                    class="col-12 col-sm-6 col-md-4 col-lg-3 filter-item-container"
-                >
-                    <div
-                        class="text-caption q-mb-xs slider-label"
-                        :class="
-                            quasarInstance.dark.isActive
-                                ? 'text-grey-4'
-                                : 'text-grey-7'
-                        "
-                    >
-                        Age Range: {{ filters.ageRange.min }} -
-                        {{
-                            filters.ageRange.max === ageSliderMax
-                                ? ageSliderMax + "+"
-                                : filters.ageRange.max
-                        }}
-                    </div>
-                    <q-range
-                        v-model="filters.ageRange"
-                        :min="ageSliderMin"
-                        :max="ageSliderMax"
-                        :step="1"
-                        label-always
-                        :left-label-value="filters.ageRange.min + ' yrs'"
-                        :right-label-value="
-                            filters.ageRange.max +
-                            (filters.ageRange.max === ageSliderMax ? '+' : '') +
-                            ' yrs'
-                        "
-                        @update:model-value="debouncedApplyFilters"
-                        color="primary"
-                        class="q-px-sm"
-                        :disable="isLoading"
-                    />
-                </div>
-
-                <div class="col-12 col-md-8 col-lg-4 filter-item-container">
+                <div class="col-12 col-md-4">
                     <div
                         class="text-caption q-mb-xs slider-label"
                         :class="
@@ -335,42 +347,19 @@
                         class="q-px-sm"
                     />
                 </div>
-                <div
-                    class="col-12 col-md-4 col-lg-2 filter-item-container self-end"
-                >
+
+                <div class="col-12 col-md-2">
                     <q-btn
                         color="grey"
                         :text-color="
                             quasarInstance.dark.isActive ? 'white' : 'dark'
                         "
-                        label="Clear All Filters"
+                        label="Clear All"
                         class="full-width"
                         @click="clearAllFilters"
                         :disable="isLoading || !hasActiveFilters"
                         outline
-                        dense
-                    />
-                </div>
-            </div>
-
-            <div
-                class="row q-col-gutter-x-md q-col-gutter-y-sm items-start q-mt-sm"
-            >
-                <div
-                    class="col-12 col-md-4 col-lg-2 filter-item-container self-end"
-                >
-                    <q-btn
-                        color="primary"
-                        :label="
-                            'Set Minimum Stats' +
-                            (hasActiveStatFilters ? ' (Active)' : '')
-                        "
-                        class="full-width"
-                        @click="showMinimumStatsModal = true"
-                        :disable="isLoading"
-                        outline
-                        dense
-                        icon="tune"
+                        style="height: 40px;"
                     />
                 </div>
             </div>

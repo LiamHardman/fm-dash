@@ -55,108 +55,132 @@
                         quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'
                     "
                 >
-                    <q-card-section>
-                        <div class="text-h6 q-mb-md">Dataset Overview</div>
-                        <div class="row q-col-gutter-md">
-                            <div class="col-12 col-sm-6 col-md-3">
-                                <q-card flat bordered class="stats-card">
-                                    <q-card-section class="text-center">
-                                        <div class="text-h4 text-primary">
-                                            {{ allPlayersData.length }}
-                                        </div>
-                                        <div class="text-subtitle2">
-                                            Total Players
-                                        </div>
-                                    </q-card-section>
-                                </q-card>
-                            </div>
-                            <div class="col-12 col-sm-6 col-md-3">
-                                <q-card flat bordered class="stats-card">
-                                    <q-card-section class="text-center">
-                                        <div class="text-h4 text-secondary">
-                                            {{ uniqueClubs.length }}
-                                        </div>
-                                        <div class="text-subtitle2">Teams</div>
-                                    </q-card-section>
-                                </q-card>
-                            </div>
-                            <div class="col-12 col-sm-6 col-md-3">
-                                <q-card flat bordered class="stats-card">
-                                    <q-card-section class="text-center">
-                                        <div class="text-h4 text-accent">
-                                            {{ uniqueNationalities.length }}
-                                        </div>
-                                        <div class="text-subtitle2">
-                                            Nationalities
-                                        </div>
-                                    </q-card-section>
-                                </q-card>
-                            </div>
-                            <div class="col-12 col-sm-6 col-md-3">
-                                <q-card flat bordered class="stats-card">
-                                    <q-card-section class="text-center">
-                                        <div class="text-h4 text-positive">
-                                            {{ detectedCurrencySymbol }}
-                                        </div>
-                                        <div class="text-subtitle2">
-                                            Currency
-                                        </div>
-                                    </q-card-section>
-                                </q-card>
-                            </div>
-                        </div>
-                    </q-card-section>
                 </q-card>
 
                 <q-card
-                    class="q-mb-md"
+                    class="q-mb-md quick-actions-card"
                     :class="
                         quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'
                     "
                 >
                     <q-card-section>
-                        <div class="text-h6 q-mb-md">Quick Actions</div>
-                        <div class="row q-col-gutter-md">
-                            <div class="col-12 col-sm-4">
-                                <q-btn
-                                    color="primary"
-                                    label="View All Players"
-                                    icon="group"
-                                    @click="viewAllPlayers"
-                                    class="full-width"
-                                    size="lg"
-                                />
+                        <div class="text-h6 q-mb-lg text-center">
+                            Quick Actions
+                        </div>
+                        <div class="row q-col-gutter-lg justify-center">
+                            <div class="col-12 col-sm-6 col-md-3">
+                                <q-card flat bordered class="action-card">
+                                    <q-card-section class="text-center q-pa-lg">
+                                        <q-icon
+                                            name="sports"
+                                            size="2rem"
+                                            color="primary"
+                                            class="q-mb-sm"
+                                        />
+                                        <div class="text-subtitle1 q-mb-sm">
+                                            View Leagues
+                                        </div>
+                                        <div
+                                            class="text-caption text-grey-6 q-mb-md"
+                                        >
+                                            Explore leagues and competitions in
+                                            your dataset
+                                        </div>
+                                        <q-btn
+                                            color="primary"
+                                            label="View Leagues"
+                                            @click="viewLeagues"
+                                            class="full-width"
+                                            unelevated
+                                        />
+                                    </q-card-section>
+                                </q-card>
                             </div>
-                            <div class="col-12 col-sm-3">
-                                <q-btn
-                                    color="secondary"
-                                    label="Team Analysis"
-                                    icon="sports_soccer"
-                                    @click="viewTeamAnalysis"
-                                    class="full-width"
-                                    size="lg"
-                                />
+                            <div class="col-12 col-sm-6 col-md-3">
+                                <q-card flat bordered class="action-card">
+                                    <q-card-section class="text-center q-pa-lg">
+                                        <q-icon
+                                            name="sports_soccer"
+                                            size="2rem"
+                                            color="secondary"
+                                            class="q-mb-sm"
+                                        />
+                                        <div class="text-subtitle1 q-mb-sm">
+                                            Team Analysis
+                                        </div>
+                                        <div
+                                            class="text-caption text-grey-6 q-mb-md"
+                                        >
+                                            Analyze teams and squad compositions
+                                        </div>
+                                        <q-btn
+                                            color="secondary"
+                                            label="View Teams"
+                                            @click="viewTeamAnalysis"
+                                            class="full-width"
+                                            unelevated
+                                        />
+                                    </q-card-section>
+                                </q-card>
                             </div>
-                            <div class="col-12 col-sm-3">
-                                <q-btn
-                                    color="info"
-                                    label="Nations Analysis"
-                                    icon="flag"
-                                    @click="viewNationsAnalysis"
-                                    class="full-width"
-                                    size="lg"
-                                />
+                            <div class="col-12 col-sm-6 col-md-3">
+                                <q-card flat bordered class="action-card">
+                                    <q-card-section class="text-center q-pa-lg">
+                                        <q-icon
+                                            name="flag"
+                                            size="2rem"
+                                            color="info"
+                                            class="q-mb-sm"
+                                        />
+                                        <div class="text-subtitle1 q-mb-sm">
+                                            Nations Analysis
+                                        </div>
+                                        <div
+                                            class="text-caption text-grey-6 q-mb-md"
+                                        >
+                                            Explore player distributions by
+                                            nationality
+                                        </div>
+                                        <q-btn
+                                            color="info"
+                                            label="View Nations"
+                                            @click="viewNationsAnalysis"
+                                            class="full-width"
+                                            unelevated
+                                        />
+                                    </q-card-section>
+                                </q-card>
                             </div>
-                            <div class="col-12 col-sm-3">
-                                <q-btn
-                                    color="accent"
-                                    label="Find Upgrades"
-                                    icon="find_replace"
-                                    @click="showUpgradeFinder = true"
-                                    :disable="allPlayersData.length === 0"
-                                    class="full-width"
-                                    size="lg"
-                                />
+                            <div class="col-12 col-sm-6 col-md-3">
+                                <q-card flat bordered class="action-card">
+                                    <q-card-section class="text-center q-pa-lg">
+                                        <q-icon
+                                            name="find_replace"
+                                            size="2rem"
+                                            color="accent"
+                                            class="q-mb-sm"
+                                        />
+                                        <div class="text-subtitle1 q-mb-sm">
+                                            Find Upgrades
+                                        </div>
+                                        <div
+                                            class="text-caption text-grey-6 q-mb-md"
+                                        >
+                                            Search for player upgrades and
+                                            comparisons
+                                        </div>
+                                        <q-btn
+                                            color="accent"
+                                            label="Find Upgrades"
+                                            @click="showUpgradeFinder = true"
+                                            :disable="
+                                                allPlayersData.length === 0
+                                            "
+                                            class="full-width"
+                                            unelevated
+                                        />
+                                    </q-card-section>
+                                </q-card>
                             </div>
                         </div>
                     </q-card-section>
@@ -746,8 +770,10 @@ export default {
             }
         };
 
-        const viewAllPlayers = () => {
-            /* Already on this page */
+        const viewLeagues = () => {
+            if (currentDatasetId.value) {
+                router.push(`/leagues?datasetId=${currentDatasetId.value}`);
+            }
         };
         const viewTeamAnalysis = () => {
             if (currentDatasetId.value) {
@@ -778,7 +804,6 @@ export default {
             }
         };
 
-
         const handleFiltersChanged = (filtersFromChild) => {
             const newTransferRange = filtersFromChild.transferValueRangeLocal;
             const oldTransferRange =
@@ -807,7 +832,6 @@ export default {
                 }
             },
         );
-
 
         watch(
             () => playerStore.initialDatasetTransferValueRange.value,
@@ -876,7 +900,7 @@ export default {
             showPlayerDetailDialog,
             showUpgradeFinder,
             shareDataset,
-            viewAllPlayers,
+            viewLeagues,
             viewTeamAnalysis,
             viewNationsAnalysis,
             handlePlayerSelected,
@@ -906,15 +930,15 @@ export default {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     transition: all 0.2s ease;
     min-width: 140px;
-    
+
     &:hover {
         transform: translateY(-1px);
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
     }
-    
+
     .body--dark & {
         box-shadow: 0 2px 4px rgba(255, 255, 255, 0.1);
-        
+
         &:hover {
             box-shadow: 0 4px 8px rgba(255, 255, 255, 0.15);
         }
@@ -941,5 +965,35 @@ export default {
 
 .q-card {
     border-radius: $generic-border-radius;
+}
+
+.quick-actions-card {
+    .action-card {
+        height: 100%;
+        transition: all 0.3s ease;
+        border-radius: 12px;
+
+        &:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+        }
+
+        .body--dark & {
+            background-color: rgba(255, 255, 255, 0.03);
+
+            &:hover {
+                background-color: rgba(255, 255, 255, 0.06);
+                box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            }
+        }
+
+        .body--light & {
+            background-color: rgba(0, 0, 0, 0.02);
+
+            &:hover {
+                background-color: rgba(0, 0, 0, 0.04);
+            }
+        }
+    }
 }
 </style>

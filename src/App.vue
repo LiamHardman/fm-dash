@@ -11,6 +11,13 @@
                 
                 <div class="nav-links">
                     <router-link to="/upload" class="nav-link">Upload</router-link>
+                    <router-link 
+                        v-if="currentDatasetId" 
+                        :to="`/dataset/${currentDatasetId}`" 
+                        class="nav-link"
+                    >
+                        Players
+                    </router-link>
                     <router-link to="/team-view" class="nav-link">Team View</router-link>
                     <router-link to="/nations" class="nav-link">Nations</router-link>
                     <router-link to="/leagues" class="nav-link">Leagues</router-link>
@@ -41,21 +48,26 @@
 </template>
 
 <script>
-import { defineComponent, onMounted } from "vue";
+import { defineComponent, onMounted, computed } from "vue";
 import { useUiStore } from "./stores/uiStore";
+import { usePlayerStore } from "./stores/playerStore";
 
 export default defineComponent({
     name: "App",
     setup() {
         const uiStore = useUiStore();
+        const playerStore = usePlayerStore();
         
         onMounted(() => {
             uiStore.initDarkMode();
         });
 
+        const currentDatasetId = computed(() => playerStore.currentDatasetId);
+
         return {
             isDarkModeActive: uiStore.isDarkModeActive,
             toggleDarkMode: uiStore.toggleDarkMode,
+            currentDatasetId,
         };
     },
 });
