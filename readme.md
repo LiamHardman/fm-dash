@@ -71,7 +71,11 @@ or ./CodeWeaver --ignore "node_modules,testdata.html,.git,CodeWeaver"
 
 ### Environment Variables
 
-- `ENABLE_METRICS=true` - Enable Prometheus metrics collection
+- `OTEL_ENABLED=true` - Enable OpenTelemetry tracing and metrics collection (default: false)
+- `ENABLE_METRICS=true` - Enable detailed metrics collection (requires OTEL_ENABLED=true)
+- `SERVICE_NAME=v2fmdash-api` - Service name for OpenTelemetry
+- `OTEL_EXPORTER_OTLP_ENDPOINT=signoz.signoz:4317` - OTLP exporter endpoint
+- `INSECURE_MODE=true` - Whether to use insecure gRPC connection for OTLP
 - `MINIO_ENDPOINT` - MinIO server endpoint (e.g., localhost:9000)
 - `MINIO_ACCESS_KEY` - MinIO access key
 - `MINIO_SECRET_KEY` - MinIO secret key  
@@ -87,3 +91,21 @@ The application supports two storage backends:
 To enable MinIO storage, set the MinIO environment variables. If MinIO is not available or not configured, the application automatically falls back to in-memory storage.
 
 The MinIO bucket name is hardcoded to `v2fmdash`.
+
+### Observability
+
+The application supports optional OpenTelemetry integration for tracing and metrics:
+
+#### Enabling Observability
+
+1. **Runtime Control**: Set `OTEL_ENABLED=true` to enable OpenTelemetry features
+2. **Build-time Control**: Use build tags to completely exclude OTEL libraries:
+   - Default build: `go build` (includes OTEL libraries, controlled by OTEL_ENABLED)
+   - Minimal build: `go build -tags no_otel` (excludes OTEL libraries entirely)
+
+#### Benefits of the OTEL_ENABLED Flag
+
+- **Performance**: When disabled, OTEL libraries are still imported but no telemetry overhead occurs
+- **Resource Usage**: Reduces memory and CPU usage when observability isn't needed
+- **Deployment Flexibility**: Same binary can run with or without observability
+- **Build Size**: Use `-tags no_otel` for smaller binaries without OTEL dependencies

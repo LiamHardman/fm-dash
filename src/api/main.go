@@ -9,23 +9,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
-	"go.opentelemetry.io/otel/sdk/resource"
-	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"google.golang.org/grpc/credentials"
 )
 
 var (
-	serviceName  = getEnvWithDefault("SERVICE_NAME", "v2fmdash-api")
-	collectorURL = getEnvWithDefault("OTEL_EXPORTER_OTLP_ENDPOINT", "signoz.signoz:4317")
-	insecure     = getEnvWithDefault("INSECURE_MODE", "true")
+	otelEnabled = strings.ToLower(getEnvWithDefault("OTEL_ENABLED", "false")) == "true"
 )
 
 func getEnvWithDefault(key, defaultValue string) string {
@@ -35,84 +22,17 @@ func getEnvWithDefault(key, defaultValue string) string {
 	return defaultValue
 }
 
-func initOTel() func(context.Context) error {
-	var secureOption otlptracegrpc.Option
-
-	if strings.ToLower(insecure) == "false" || insecure == "0" || strings.ToLower(insecure) == "f" {
-		secureOption = otlptracegrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
-	} else {
-		secureOption = otlptracegrpc.WithInsecure()
-	}
-
-	exporter, err := otlptrace.New(
-		context.Background(),
-		otlptracegrpc.NewClient(
-			secureOption,
-			otlptracegrpc.WithEndpoint(collectorURL),
-		),
-	)
-
-	if err != nil {
-		log.Fatalf("Failed to create exporter: %v", err)
-	}
-	
-	resources, err := resource.New(
-		context.Background(),
-		resource.WithAttributes(
-			attribute.String("service.name", serviceName),
-			attribute.String("library.language", "go"),
-		),
-	)
-	if err != nil {
-		log.Fatalf("Could not set resources: %v", err)
-	}
-
-	otel.SetTracerProvider(
-		sdktrace.NewTracerProvider(
-			sdktrace.WithSampler(sdktrace.AlwaysSample()),
-			sdktrace.WithBatcher(exporter),
-			sdktrace.WithResource(resources),
-		),
-	)
-
-	// Initialize metrics
-	var metricSecureOption otlpmetricgrpc.Option
-	if strings.ToLower(insecure) == "false" || insecure == "0" || strings.ToLower(insecure) == "f" {
-		metricSecureOption = otlpmetricgrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
-	} else {
-		metricSecureOption = otlpmetricgrpc.WithInsecure()
-	}
-
-	metricExporter, err := otlpmetricgrpc.New(
-		context.Background(),
-		metricSecureOption,
-		otlpmetricgrpc.WithEndpoint(collectorURL),
-	)
-	if err != nil {
-		log.Fatalf("Failed to create metric exporter: %v", err)
-	}
-
-	meterProvider := sdkmetric.NewMeterProvider(
-		sdkmetric.WithResource(resources),
-		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(metricExporter)),
-	)
-	otel.SetMeterProvider(meterProvider)
-
-	return func(ctx context.Context) error {
-		if err := exporter.Shutdown(ctx); err != nil {
-			log.Printf("Error shutting down trace exporter: %v", err)
-		}
-		if err := meterProvider.Shutdown(ctx); err != nil {
-			log.Printf("Error shutting down meter provider: %v", err)
-		}
-		return nil
-	}
-}
 
 func main() {
-	// Initialize OpenTelemetry (tracing and metrics)
-	cleanup := initOTel()
-	defer cleanup(context.Background())
+	// Initialize OpenTelemetry (tracing and metrics) if enabled
+	var cleanup func(context.Context) error
+	if otelEnabled {
+		cleanup = initOTel()
+		defer cleanup(context.Background())
+		log.Println("OpenTelemetry initialized")
+	} else {
+		log.Println("OpenTelemetry disabled")
+	}
 
 	// Initialize storage system
 	InitStore()
@@ -123,7 +43,7 @@ func main() {
 	// Adjust the path according to your frontend build output.
 	// If Vue serves on a different port (e.g., 3000) and proxies API calls, this might not be needed here.
 	// However, if Go is serving everything, ensure this path is correct.
-	http.Handle("/", otelhttp.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	indexHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			// Fallback to serving static files if not root, or let fsPublic handle it
 			// For a Single Page Application, usually all non-API routes serve index.html
@@ -139,7 +59,8 @@ func main() {
 		// If your Vue build output is elsewhere, adjust this path.
 		// For example, if Vue builds to '../dist', it might be filepath.Join("..", "dist", "index.html")
 		http.ServeFile(w, r, filepath.Join(".", "public", "index.html"))
-	}), "index"))
+	})
+	http.Handle("/", wrapHandler(indexHandler, "index"))
 
 	// Serve static files from the "public" directory (e.g., CSS, JS from Vue build, weight JSONs)
 	// This path also assumes the 'public' folder is relative to where the Go executable is run.
@@ -150,22 +71,22 @@ func main() {
 	// http.Handle("/assets/", http.StripPrefix("/assets/", fsAssets))
 
 	// API endpoint for file uploads
-	http.Handle("/upload", otelhttp.NewHandler(http.HandlerFunc(uploadHandler), "upload"))
+	http.Handle("/upload", wrapHandler(http.HandlerFunc(uploadHandler), "upload"))
 
 	// API endpoint for retrieving player data
-	http.Handle("/api/players/", otelhttp.NewHandler(http.HandlerFunc(playerDataHandler), "player-data"))
+	http.Handle("/api/players/", wrapHandler(http.HandlerFunc(playerDataHandler), "player-data"))
 
 	// New API endpoint for retrieving available roles
-	http.Handle("/api/roles", otelhttp.NewHandler(http.HandlerFunc(rolesHandler), "roles"))
+	http.Handle("/api/roles", wrapHandler(http.HandlerFunc(rolesHandler), "roles"))
 
 	// API endpoint for retrieving leagues data
-	http.Handle("/api/leagues/", otelhttp.NewHandler(http.HandlerFunc(leaguesHandler), "leagues"))
+	http.Handle("/api/leagues/", wrapHandler(http.HandlerFunc(leaguesHandler), "leagues"))
 
 	// API endpoint for retrieving teams data for a specific league
-	http.Handle("/api/teams/", otelhttp.NewHandler(http.HandlerFunc(teamsHandler), "teams"))
+	http.Handle("/api/teams/", wrapHandler(http.HandlerFunc(teamsHandler), "teams"))
 
 	// API endpoint for updating player percentiles with division filtering
-	http.Handle("/api/percentiles/", otelhttp.NewHandler(http.HandlerFunc(percentilesHandler), "percentiles"))
+	http.Handle("/api/percentiles/", wrapHandler(http.HandlerFunc(percentilesHandler), "percentiles"))
 
 	// Determine port for HTTP server
 	port := os.Getenv("PORT")
