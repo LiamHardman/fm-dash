@@ -648,7 +648,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	logInfo(ctx, "Returning processed players", "dataset_id", datasetID, "player_count", len(processedPlayers))
 
-	response := PlayerDataWithCurrency{Players: processedPlayers, CurrencySymbol: data.CurrencySymbol}
+	response := PlayerDataWithCurrency{Players: processedPlayers, CurrencySymbol: currencySymbol}
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*") // Ensure CORS
 	if err := json.NewEncoder(w).Encode(response); err != nil {
@@ -706,8 +706,9 @@ func leaguesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Process leagues data
-	leaguesData := processLeaguesData(players)
+	// Process leagues data with concurrent processing
+	processor := NewConcurrentLeagueProcessor(runtime.NumCPU())
+	leaguesData := processor.ProcessLeaguesAsync(ctx, players)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")

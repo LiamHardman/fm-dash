@@ -141,9 +141,27 @@ type MinIOStorage struct {
 	client     *minio.Client
 	bucketName string
 	fallback   StorageInterface
+	// Connection pool for async operations
+	operationsChan chan storageOperation
+	workerPool     sync.WaitGroup
+	shutdown       chan struct{}
+}
+
+type storageOperation struct {
+	opType     string // "store", "retrieve", "delete"
+	datasetID  string
+	data       *DatasetData
+	resultChan chan storageResult
+}
+
+type storageResult struct {
+	data DatasetData
+	err  error
 }
 
 func NewMinIOStorage(endpoint, accessKey, secretKey, bucketName string, useSSL bool, fallback StorageInterface) (*MinIOStorage, error) {
+	const workerPoolSize = 5
+	const operationsBuffer = 100
 	client, err := minio.New(endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
 		Secure: useSSL,
@@ -175,14 +193,91 @@ func NewMinIOStorage(endpoint, accessKey, secretKey, bucketName string, useSSL b
 	}
 
 	log.Printf("Successfully connected to MinIO at %s with bucket %s", endpoint, bucketName)
-	return &MinIOStorage{
-		client:     client,
-		bucketName: bucketName,
-		fallback:   fallback,
-	}, nil
+	
+	// Initialize async storage with worker pool
+	storage := &MinIOStorage{
+		client:         client,
+		bucketName:     bucketName,
+		fallback:       fallback,
+		operationsChan: make(chan storageOperation, operationsBuffer),
+		shutdown:       make(chan struct{}),
+	}
+	
+	// Start worker pool for async operations
+	for i := 0; i < workerPoolSize; i++ {
+		storage.workerPool.Add(1)
+		go storage.asyncWorker()
+	}
+	
+	return storage, nil
 }
 
+// asyncWorker processes storage operations asynchronously
+func (s *MinIOStorage) asyncWorker() {
+	defer s.workerPool.Done()
+	
+	for {
+		select {
+		case op := <-s.operationsChan:
+			switch op.opType {
+			case "store":
+				err := s.storeSync(op.datasetID, *op.data)
+				op.resultChan <- storageResult{err: err}
+			case "retrieve":
+				data, err := s.retrieveSync(op.datasetID)
+				op.resultChan <- storageResult{data: data, err: err}
+			case "delete":
+				err := s.deleteSync(op.datasetID)
+				op.resultChan <- storageResult{err: err}
+			}
+		case <-s.shutdown:
+			return
+		}
+	}
+}
+
+// Shutdown gracefully stops the async workers
+func (s *MinIOStorage) Shutdown() {
+	close(s.shutdown)
+	s.workerPool.Wait()
+	close(s.operationsChan)
+}
+
+// StoreAsync performs asynchronous storage operation
+func (s *MinIOStorage) StoreAsync(datasetID string, data DatasetData) <-chan error {
+	resultChan := make(chan storageResult, 1)
+	errorChan := make(chan error, 1)
+	
+	select {
+	case s.operationsChan <- storageOperation{
+		opType:     "store",
+		datasetID:  datasetID,
+		data:       &data,
+		resultChan: resultChan,
+	}:
+		go func() {
+			result := <-resultChan
+			errorChan <- result.err
+			close(errorChan)
+		}()
+		return errorChan
+	default:
+		// If channel is full, fall back to synchronous operation
+		go func() {
+			errorChan <- s.Store(datasetID, data)
+			close(errorChan)
+		}()
+		return errorChan
+	}
+}
+
+// Store is the public synchronous interface
 func (s *MinIOStorage) Store(datasetID string, data DatasetData) error {
+	return s.storeSync(datasetID, data)
+}
+
+// storeSync performs synchronous storage operation
+func (s *MinIOStorage) storeSync(datasetID string, data DatasetData) error {
 	ctx := context.Background()
 	ctx, span := StartSpan(ctx, "storage.minio.store")
 	defer span.End()
@@ -239,7 +334,13 @@ func (s *MinIOStorage) Store(datasetID string, data DatasetData) error {
 	return nil
 }
 
+// Retrieve is the public synchronous interface  
 func (s *MinIOStorage) Retrieve(datasetID string) (DatasetData, error) {
+	return s.retrieveSync(datasetID)
+}
+
+// retrieveSync performs synchronous retrieval operation
+func (s *MinIOStorage) retrieveSync(datasetID string) (DatasetData, error) {
 	ctx := context.Background()
 	ctx, span := StartSpan(ctx, "storage.minio.retrieve")
 	defer span.End()
@@ -322,7 +423,13 @@ func (s *MinIOStorage) Retrieve(datasetID string) (DatasetData, error) {
 	return dataset, nil
 }
 
+// Delete is the public synchronous interface
 func (s *MinIOStorage) Delete(datasetID string) error {
+	return s.deleteSync(datasetID)
+}
+
+// deleteSync performs synchronous deletion operation
+func (s *MinIOStorage) deleteSync(datasetID string) error {
 	if s.client == nil {
 		return s.fallback.Delete(datasetID)
 	}
