@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -16,6 +17,34 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"go.opentelemetry.io/otel/attribute"
 )
+
+// compressData compresses data using gzip
+func compressData(data []byte) ([]byte, error) {
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	defer gz.Close()
+	
+	if _, err := gz.Write(data); err != nil {
+		return nil, err
+	}
+	
+	if err := gz.Close(); err != nil {
+		return nil, err
+	}
+	
+	return buf.Bytes(), nil
+}
+
+// decompressData decompresses gzip data
+func decompressData(data []byte) ([]byte, error) {
+	reader, err := gzip.NewReader(bytes.NewReader(data))
+	if err != nil {
+		return nil, err
+	}
+	defer reader.Close()
+	
+	return io.ReadAll(reader)
+}
 
 type StorageInterface interface {
 	Store(datasetID string, data DatasetData) error
@@ -176,17 +205,27 @@ func (s *MinIOStorage) Store(datasetID string, data DatasetData) error {
 		return fmt.Errorf("failed to marshal data: %w", err)
 	}
 
-	objectName := fmt.Sprintf("datasets/%s.json", datasetID)
-	reader := bytes.NewReader(jsonData)
+	// Compress the JSON data
+	compressedData, err := compressData(jsonData)
+	if err != nil {
+		RecordError(ctx, err, "Failed to compress dataset data")
+		return fmt.Errorf("failed to compress data: %w", err)
+	}
+
+	objectName := fmt.Sprintf("datasets/%s.json.gz", datasetID)
+	reader := bytes.NewReader(compressedData)
 	
 	SetSpanAttributes(ctx,
 		attribute.String("minio.bucket", s.bucketName),
 		attribute.String("minio.object", objectName),
 		attribute.Int("data.size_bytes", len(jsonData)),
+		attribute.Int("compressed.size_bytes", len(compressedData)),
+		attribute.Float64("compression.ratio", float64(len(jsonData))/float64(len(compressedData))),
 	)
 	
-	_, err = s.client.PutObject(ctx, s.bucketName, objectName, reader, int64(len(jsonData)), minio.PutObjectOptions{
-		ContentType: "application/json",
+	_, err = s.client.PutObject(ctx, s.bucketName, objectName, reader, int64(len(compressedData)), minio.PutObjectOptions{
+		ContentType:     "application/gzip",
+		ContentEncoding: "gzip",
 	})
 	if err != nil {
 		RecordError(ctx, err, "Failed to store to MinIO")
@@ -215,7 +254,9 @@ func (s *MinIOStorage) Retrieve(datasetID string) (DatasetData, error) {
 		return s.fallback.Retrieve(datasetID)
 	}
 
-	objectName := fmt.Sprintf("datasets/%s.json", datasetID)
+	// Try compressed file first, then fall back to uncompressed
+	objectName := fmt.Sprintf("datasets/%s.json.gz", datasetID)
+	isCompressed := true
 	
 	SetSpanAttributes(ctx,
 		attribute.String("minio.bucket", s.bucketName),
@@ -225,10 +266,17 @@ func (s *MinIOStorage) Retrieve(datasetID string) (DatasetData, error) {
 	start := time.Now()
 	object, err := s.client.GetObject(ctx, s.bucketName, objectName, minio.GetObjectOptions{})
 	if err != nil {
-		RecordError(ctx, err, "Failed to retrieve from MinIO")
-		log.Printf("Warning: Failed to retrieve from MinIO: %v. Trying fallback storage.", err)
-		AddSpanEvent(ctx, "storage.fallback_to_memory", attribute.String("reason", "minio_get_failed"))
-		return s.fallback.Retrieve(datasetID)
+		// Try uncompressed file
+		objectName = fmt.Sprintf("datasets/%s.json", datasetID)
+		isCompressed = false
+		SetSpanAttributes(ctx, attribute.String("minio.object", objectName))
+		object, err = s.client.GetObject(ctx, s.bucketName, objectName, minio.GetObjectOptions{})
+		if err != nil {
+			RecordError(ctx, err, "Failed to retrieve from MinIO")
+			log.Printf("Warning: Failed to retrieve from MinIO: %v. Trying fallback storage.", err)
+			AddSpanEvent(ctx, "storage.fallback_to_memory", attribute.String("reason", "minio_get_failed"))
+			return s.fallback.Retrieve(datasetID)
+		}
 	}
 	defer object.Close()
 
@@ -240,10 +288,28 @@ func (s *MinIOStorage) Retrieve(datasetID string) (DatasetData, error) {
 		return s.fallback.Retrieve(datasetID)
 	}
 
-	SetSpanAttributes(ctx, attribute.Int("data.size_bytes", len(data)))
+	SetSpanAttributes(ctx, 
+		attribute.Int("data.size_bytes", len(data)),
+		attribute.Bool("data.compressed", isCompressed),
+	)
+
+	// Decompress if necessary
+	var jsonData []byte
+	if isCompressed {
+		jsonData, err = decompressData(data)
+		if err != nil {
+			RecordError(ctx, err, "Failed to decompress MinIO data")
+			log.Printf("Warning: Failed to decompress MinIO data: %v. Trying fallback storage.", err)
+			AddSpanEvent(ctx, "storage.fallback_to_memory", attribute.String("reason", "decompress_failed"))
+			return s.fallback.Retrieve(datasetID)
+		}
+		SetSpanAttributes(ctx, attribute.Int("data.decompressed_size_bytes", len(jsonData)))
+	} else {
+		jsonData = data
+	}
 
 	var dataset DatasetData
-	if err := json.Unmarshal(data, &dataset); err != nil {
+	if err := json.Unmarshal(jsonData, &dataset); err != nil {
 		RecordError(ctx, err, "Failed to unmarshal MinIO data")
 		log.Printf("Warning: Failed to unmarshal MinIO data: %v. Trying fallback storage.", err)
 		AddSpanEvent(ctx, "storage.fallback_to_memory", attribute.String("reason", "unmarshal_failed"))

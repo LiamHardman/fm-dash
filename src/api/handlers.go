@@ -18,6 +18,56 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 )
 
+
+// processPercentilesAsync calculates percentiles asynchronously and updates stored dataset
+func processPercentilesAsync(datasetID string, players []Player) {
+	go func() {
+		log.Printf("Starting async percentile calculation for dataset %s with %d players", datasetID, len(players))
+		
+		// Calculate percentiles
+		CalculatePlayerPerformancePercentiles(players)
+		
+		// Get currency from stored data to preserve it
+		_, currencySymbol, found := GetPlayerData(datasetID)
+		if !found {
+			log.Printf("Warning: Dataset %s not found when updating percentiles", datasetID)
+			return
+		}
+		
+		// Update stored dataset with percentiles
+		SetPlayerData(datasetID, players, currencySymbol)
+		log.Printf("Completed async percentile calculation and storage update for dataset %s", datasetID)
+	}()
+}
+
+// calculateOptimalBufferSize determines optimal channel buffer size based on system resources
+func calculateOptimalBufferSize(numWorkers int, fileSize int64) int {
+	const baseBufferMultiplier = 10
+	const maxBufferSize = 1000
+	const minBufferSize = 20
+	
+	// Base calculation
+	baseSize := numWorkers * baseBufferMultiplier
+	
+	// Adjust based on file size - larger files get bigger buffers
+	sizeAdjustment := int(fileSize / (1024 * 1024)) // MB
+	if sizeAdjustment > 50 {
+		sizeAdjustment = 50 // Cap the adjustment
+	}
+	
+	adjustedSize := baseSize + sizeAdjustment
+	
+	// Ensure within bounds
+	if adjustedSize > maxBufferSize {
+		return maxBufferSize
+	}
+	if adjustedSize < minBufferSize {
+		return minBufferSize
+	}
+	
+	return adjustedSize
+}
+
 // Structured logging helpers with trace context
 func logInfo(ctx context.Context, msg string, args ...any) {
 	slog.InfoContext(ctx, msg, args...)
@@ -160,9 +210,10 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		attribute.String("processing.phase", "setup"),
 	)
 	
-	const rowBufferMultiplier = 10
-	rowCellsChan := make(chan []string, numWorkers*rowBufferMultiplier)
-	resultsChan := make(chan PlayerParseResult, numWorkers*rowBufferMultiplier)
+	// Dynamic buffer sizing based on available memory and system resources
+	bufferSize := calculateOptimalBufferSize(numWorkers, fileSize)
+	rowCellsChan := make(chan []string, bufferSize)
+	resultsChan := make(chan PlayerParseResult, bufferSize)
 	var wg sync.WaitGroup
 
 	var headersSnapshot []string
@@ -245,15 +296,6 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if len(playersList) > 0 {
-		ctx, percentileSpan := StartSpan(ctx, "calculations.percentiles")
-		SetSpanAttributes(ctx, attribute.Int("players.count", len(playersList)))
-		log.Println("Calculating player performance percentiles...")
-		CalculatePlayerPerformancePercentiles(playersList) // Assumes CalculatePlayerPerformancePercentiles is in performance_stats.go
-		log.Println("Finished calculating percentiles.")
-		percentileSpan.End()
-	}
-
 	parseDuration := time.Since(parseStartTime)
 	datasetID := uuid.New().String()
 
@@ -266,6 +308,73 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	)
 	SetPlayerData(datasetID, playersList, finalDatasetCurrencySymbol)
 	storageSpan.End()
+
+	// Process percentiles asynchronously to avoid blocking the upload response
+	if len(playersList) > 0 {
+		// Make a deep copy for async processing to avoid data races
+		playersListCopy := make([]Player, len(playersList))
+		for i, player := range playersList {
+			// Deep copy each player to avoid concurrent map access
+			playersListCopy[i] = Player{
+				Name:                    player.Name,
+				Position:                player.Position,
+				Age:                     player.Age,
+				Club:                    player.Club,
+				Division:                player.Division,
+				TransferValue:           player.TransferValue,
+				Wage:                    player.Wage,
+				Personality:             player.Personality,
+				MediaHandling:           player.MediaHandling,
+				Nationality:             player.Nationality,
+				NationalityISO:          player.NationalityISO,
+				NationalityFIFACode:     player.NationalityFIFACode,
+				TransferValueAmount:     player.TransferValueAmount,
+				WageAmount:              player.WageAmount,
+				PAC:                     player.PAC,
+				SHO:                     player.SHO,
+				PAS:                     player.PAS,
+				DRI:                     player.DRI,
+				DEF:                     player.DEF,
+				PHY:                     player.PHY,
+				GK:                      player.GK,
+				DIV:                     player.DIV,
+				HAN:                     player.HAN,
+				REF:                     player.REF,
+				KIC:                     player.KIC,
+				SPD:                     player.SPD,
+				POS:                     player.POS,
+				Overall:                 player.Overall,
+				// Deep copy maps
+				Attributes:              make(map[string]string),
+				NumericAttributes:       make(map[string]int),
+				PerformanceStatsNumeric: make(map[string]float64),
+				PerformancePercentiles:  make(map[string]map[string]float64),
+				// Copy slices
+				ParsedPositions:      append([]string(nil), player.ParsedPositions...),
+				ShortPositions:       append([]string(nil), player.ShortPositions...),
+				PositionGroups:       append([]string(nil), player.PositionGroups...),
+				RoleSpecificOveralls: append([]RoleOverallScore(nil), player.RoleSpecificOveralls...),
+			}
+			
+			// Copy map contents
+			for k, v := range player.Attributes {
+				playersListCopy[i].Attributes[k] = v
+			}
+			for k, v := range player.NumericAttributes {
+				playersListCopy[i].NumericAttributes[k] = v
+			}
+			for k, v := range player.PerformanceStatsNumeric {
+				playersListCopy[i].PerformanceStatsNumeric[k] = v
+			}
+			for k, v := range player.PerformancePercentiles {
+				playersListCopy[i].PerformancePercentiles[k] = make(map[string]float64)
+				for kk, vv := range v {
+					playersListCopy[i].PerformancePercentiles[k][kk] = vv
+				}
+			}
+		}
+		processPercentilesAsync(datasetID, playersListCopy)
+	}
 
 	logInfo(ctx, "Player data stored successfully", 
 		"dataset_id", datasetID,

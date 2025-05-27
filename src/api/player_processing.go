@@ -25,9 +25,9 @@ func parseCellsToPlayer(cells []string, headers []string) (Player, error) {
 
 	player := Player{
 		Attributes:              make(map[string]string, defaultAttributeCapacity),
-		NumericAttributes:       make(map[string]int, defaultAttributeCapacity), // Initialize for direct use
+		NumericAttributes:       make(map[string]int, defaultAttributeCapacity),
 		PerformanceStatsNumeric: make(map[string]float64, len(PerformanceStatKeys)),
-		PerformancePercentiles:  make(map[string]map[string]float64), // Initialize top-level map
+		PerformancePercentiles:  make(map[string]map[string]float64),
 	}
 
 	// Headers that are known not to be player attributes (e.g., "Inf", "Rec" for recommendations).

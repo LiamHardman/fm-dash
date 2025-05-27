@@ -3,7 +3,12 @@ package main
 import (
 	"sort"
 	"strings"
+	"sync"
 )
+
+// Cache for position group lookups to avoid repeated map iterations
+var positionGroupCache = make(map[string][]string)
+var positionGroupMutex sync.RWMutex
 
 // positionRoleMapGo maps short position codes (from HTML) to more descriptive role names.
 var positionRoleMapGo = map[string]string{
@@ -238,10 +243,24 @@ func ParsePlayerPositionsGo(positionStr string) []string {
 // GetPlayerPositionGroupsGo determines the broad position groups (e.g., "Defenders", "Midfielders")
 // a player belongs to based on their standardized parsed positions.
 func GetPlayerPositionGroupsGo(parsedPositionsArray []string) []string {
-	groupsSet := make(map[string]struct{})
 	if len(parsedPositionsArray) == 0 {
 		return []string{}
 	}
+
+	// Create a cache key from sorted positions
+	sort.Strings(parsedPositionsArray) // Ensure consistent key generation
+	cacheKey := strings.Join(parsedPositionsArray, "|")
+
+	// Check cache first
+	positionGroupMutex.RLock()
+	if cached, found := positionGroupCache[cacheKey]; found {
+		positionGroupMutex.RUnlock()
+		return cached
+	}
+	positionGroupMutex.RUnlock()
+
+	// Calculate if not in cache
+	groupsSet := make(map[string]struct{})
 	for _, pos := range parsedPositionsArray { // e.g., pos = "Centre Back"
 		for groupName, groupPositions := range positionGroupsGo { // e.g., groupName = "Defenders", groupPositions = ["Sweeper", "Right Back", ...]
 			for _, p := range groupPositions {
@@ -257,5 +276,11 @@ func GetPlayerPositionGroupsGo(parsedPositionsArray []string) []string {
 		groups = append(groups, group)
 	}
 	sort.Strings(groups) // Ensure consistent order
+
+	// Cache the result
+	positionGroupMutex.Lock()
+	positionGroupCache[cacheKey] = groups
+	positionGroupMutex.Unlock()
+
 	return groups
 }

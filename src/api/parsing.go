@@ -10,9 +10,24 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"golang.org/x/net/html"
 )
+
+// sendRowWithBackpressure attempts to send row data to channel with timeout handling
+func sendRowWithBackpressure(rowCellsChan chan []string, cells []string, timeout time.Duration) bool {
+	cellsCopy := make([]string, len(cells))
+	copy(cellsCopy, cells)
+	
+	select {
+	case rowCellsChan <- cellsCopy:
+		return true
+	case <-time.After(timeout):
+		log.Printf("Warning: Channel send timeout after %v, dropping row with %d cells", timeout, len(cells))
+		return false
+	}
+}
 
 // Updated currencySymbolRegex to include more symbols.
 // This regex tries to match common currency symbols or specific multi-character codes.
@@ -161,9 +176,7 @@ tokenLoop:
 			err := tokenizer.Err()
 			if err == io.EOF {
 				if inDataRow && len(currentCells) > 0 && workersStarted {
-					cellsCopy := make([]string, len(currentCells))
-					copy(cellsCopy, currentCells)
-					rowCellsChan <- cellsCopy
+					sendRowWithBackpressure(rowCellsChan, currentCells, 5*time.Second)
 				}
 				break tokenLoop
 			}
@@ -264,9 +277,7 @@ tokenLoop:
 				} else if inDataRow { // This was a data row that just ended
 					inDataRow = false // Reset for the next row
 					if len(currentCells) > 0 && workersStarted {
-						cellsCopy := make([]string, len(currentCells))
-						copy(cellsCopy, currentCells)
-						rowCellsChan <- cellsCopy
+						sendRowWithBackpressure(rowCellsChan, currentCells, 5*time.Second)
 					} else if len(currentCells) > 0 && !workersStarted && len(localHeadersForWorker) > 0 {
 						// Fallback: headers were found, but workers didn't start (e.g. no tbody, thead).
 						// This data row ending might be the trigger.
@@ -277,9 +288,7 @@ tokenLoop:
 							go PlayerParserWorker(i, rowCellsChan, resultsChan, wg, localHeadersForWorker)
 						}
 						workersStarted = true
-						cellsCopy := make([]string, len(currentCells)) // Send the current row
-						copy(cellsCopy, currentCells)
-						rowCellsChan <- cellsCopy
+						sendRowWithBackpressure(rowCellsChan, currentCells, 5*time.Second) // Send the current row
 					}
 				}
 			case "thead":
