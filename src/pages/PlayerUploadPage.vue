@@ -1,61 +1,145 @@
 <template>
     <q-page class="upload-page">
         <div class="upload-container">
-            <div class="page-header"></div>
-
-            <div class="help-section">
-                <q-btn flat class="docs-btn" @click="$router.push('/docs')">
-                    <q-icon name="help_outline" class="q-mr-sm" />
-                    First time? Check out the getting started guide
-                </q-btn>
-            </div>
-
-            <div class="notification-preferences" v-if="notificationSupported">
-                <div class="preference-item">
-                    <q-toggle
-                        v-model="uiStore.notificationsEnabled"
-                        @update:model-value="uiStore.toggleNotifications"
-                        color="primary"
-                        label="Enable desktop notifications for large uploads (>20MB)"
-                        left-label
-                    />
-                    <div class="preference-hint">
-                        Get notified when large file processing is complete
+            <!-- Hero Section -->
+            <div class="hero-section">
+                <div class="hero-content">
+                    <h1 class="hero-title">Upload Your FM24 Data</h1>
+                    <p class="hero-subtitle">
+                        Import your Football Manager 2024 player data to start analyzing and exploring your squad
+                    </p>
+                </div>
+                <div class="hero-stats">
+                    <div class="stat-item">
+                        <q-icon name="speed" size="1.5rem" color="primary" />
+                        <div class="stat-text">Fast Processing</div>
+                    </div>
+                    <div class="stat-item">
+                        <q-icon name="security" size="1.5rem" color="secondary" />
+                        <div class="stat-text">Secure Upload</div>
+                    </div>
+                    <div class="stat-item">
+                        <q-icon name="analytics" size="1.5rem" color="accent" />
+                        <div class="stat-text">Detailed Analysis</div>
                     </div>
                 </div>
             </div>
 
-            <div class="upload-section">
-                <h2 class="section-title">Select File</h2>
-                <div class="upload-area">
-                    <q-file
-                        v-model="playerFile"
-                        label="Choose HTML file"
-                        accept=".html"
-                        outlined
-                        class="file-input"
-                    >
-                        <template v-slot:prepend>
-                            <q-icon name="upload_file" />
-                        </template>
-                    </q-file>
-                    <div class="file-hint">Maximum file size: 15MB</div>
+            <!-- Help Section -->
+            <div class="help-section">
+                <q-card flat class="help-card">
+                    <q-card-section class="text-center">
+                        <q-icon name="help_outline" size="1.5rem" color="info" class="q-mb-sm" />
+                        <div class="help-text">Need help getting started?</div>
+                        <q-btn 
+                            unelevated 
+                            color="info" 
+                            label="View Documentation" 
+                            @click="$router.push('/docs')"
+                            class="q-mt-sm"
+                        />
+                    </q-card-section>
+                </q-card>
+            </div>
 
-                    <q-btn
-                        class="upload-btn"
-                        :loading="loading"
-                        :disable="
-                            !playerFile ||
-                            !attributeWeightsLoadedForFeedback ||
-                            !roleSpecificOverallWeightsLoadedForFeedback ||
-                            loading
-                        "
-                        @click="uploadAndParse"
-                        flat
-                    >
-                        {{ loading ? "Processing..." : "Upload and Parse" }}
-                    </q-btn>
+            <!-- Notification Preferences - Subtle -->
+            <div class="notification-preferences" v-if="notificationSupported">
+                <div class="subtle-preference">
+                    <q-toggle
+                        v-model="uiStore.notificationsEnabled"
+                        @update:model-value="uiStore.toggleNotifications"
+                        color="primary"
+                        size="sm"
+                    />
+                    <div class="preference-text">
+                        <span class="preference-label">Desktop notifications</span>
+                        <span class="preference-hint">Get notified when large uploads finish</span>
+                    </div>
                 </div>
+            </div>
+
+            <!-- Upload Section -->
+            <div class="upload-section">
+                <q-card class="upload-card" flat bordered>
+                    <q-card-section>
+                        <div class="upload-header">
+                            <q-icon name="cloud_upload" size="3rem" color="primary" class="upload-icon" />
+                            <h3 class="upload-title">Select Your FM24 Export File</h3>
+                            <p class="upload-description">
+                                Choose your exported HTML file from Football Manager 2024
+                            </p>
+                        </div>
+
+                        <div class="upload-dropzone" :class="{ 'file-selected': playerFile }">
+                            <div v-if="!playerFile" class="dropzone-content">
+                                <q-icon name="file_upload" size="4rem" color="grey-5" class="q-mb-md" />
+                                <div class="dropzone-text">
+                                    <div class="dropzone-primary">Drop your HTML file here or click to browse</div>
+                                    <div class="dropzone-secondary">Supports .html files up to 15MB</div>
+                                </div>
+                            </div>
+                            
+                            <div v-else class="file-selected-content">
+                                <q-icon name="description" size="2rem" color="positive" class="q-mb-sm" />
+                                <div class="selected-file-name">{{ playerFile.name }}</div>
+                                <div class="selected-file-size">{{ formatFileSize(playerFile.size) }}</div>
+                                <q-btn 
+                                    flat 
+                                    icon="close" 
+                                    size="sm" 
+                                    @click="playerFile = null"
+                                    class="remove-file-btn"
+                                >
+                                    <q-tooltip>Remove file</q-tooltip>
+                                </q-btn>
+                            </div>
+
+                            <q-file
+                                v-model="playerFile"
+                                accept=".html"
+                                class="hidden-file-input"
+                                @update:model-value="onFileSelected"
+                            />
+                        </div>
+
+                        <!-- File Requirements -->
+                        <div class="file-requirements">
+                            <div class="requirement-item">
+                                <q-icon name="check_circle" size="1.2rem" color="positive" />
+                                <span>HTML format only</span>
+                            </div>
+                            <div class="requirement-item">
+                                <q-icon name="check_circle" size="1.2rem" color="positive" />
+                                <span>Maximum 15MB file size</span>
+                            </div>
+                            <div class="requirement-item">
+                                <q-icon name="check_circle" size="1.2rem" color="positive" />
+                                <span>Up to 10,000 players supported</span>
+                            </div>
+                        </div>
+
+                        <!-- Upload Button -->
+                        <div class="upload-actions">
+                            <q-btn
+                                unelevated
+                                color="primary"
+                                size="lg"
+                                :loading="loading"
+                                :disable="
+                                    !playerFile ||
+                                    !attributeWeightsLoadedForFeedback ||
+                                    !roleSpecificOverallWeightsLoadedForFeedback ||
+                                    loading
+                                "
+                                @click="uploadAndParse"
+                                class="upload-btn-modern"
+                            >
+                                <q-icon name="cloud_upload" class="q-mr-sm" />
+                                {{ loading ? "Processing..." : "Upload and Process" }}
+                            </q-btn>
+                        </div>
+                    </q-card-section>
+                </q-card>
             </div>
 
             <div v-if="error" class="error-message">
@@ -183,6 +267,21 @@ export default {
             uiStore.initNotifications();
         });
 
+        const formatFileSize = (bytes) => {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        };
+
+        const onFileSelected = (file) => {
+            if (file && file.size > MAX_FILE_SIZE_BYTES) {
+                showFileSizeLimitModal.value = true;
+                playerFile.value = null;
+            }
+        };
+
         const uploadAndParse = async () => {
             if (!playerFile.value) {
                 playerStore.error = "Please select an HTML file first.";
@@ -258,6 +357,8 @@ export default {
             attributeWeightsLoadedForFeedback,
             roleSpecificOverallWeightsLoadedForFeedback,
             uploadAndParse,
+            formatFileSize,
+            onFileSelected,
             playerStore,
             uiStore,
             notificationSupported,
@@ -277,200 +378,324 @@ export default {
 }
 
 .upload-container {
-    max-width: 800px;
+    max-width: 900px;
     margin: 0 auto;
-    padding: 3rem 2rem;
+    padding: 2rem;
 }
 
-.page-header {
+// Hero Section
+.hero-section {
     text-align: center;
     margin-bottom: 3rem;
-}
-
-.page-title {
-    font-size: 2.5rem;
-    font-weight: 300;
-    color: #1a237e;
-    margin: 0 0 1rem 0;
-    letter-spacing: 1px;
-
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.9);
+    
+    .hero-content {
+        margin-bottom: 2rem;
     }
-}
-
-.page-subtitle {
-    font-size: 1.1rem;
-    color: #666;
-    margin: 0;
-    font-weight: 300;
-    line-height: 1.6;
-
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.7);
-    }
-}
-
-.section-title {
-    font-size: 1.3rem;
-    font-weight: 400;
-    color: #1a237e;
-    margin: 0 0 1.5rem 0;
-    letter-spacing: 0.5px;
-
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.9);
-    }
-}
-
-.help-section {
-    text-align: center;
-    margin-bottom: 2rem;
-}
-
-.notification-preferences {
-    background: rgba(255, 255, 255, 0.7);
-    border-radius: 8px;
-    padding: 1.5rem;
-    margin-bottom: 2rem;
-    border: 1px solid rgba(26, 35, 126, 0.1);
-
-    .body--dark & {
-        background: rgba(255, 255, 255, 0.05);
-        border-color: rgba(255, 255, 255, 0.1);
-    }
-}
-
-.preference-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.preference-hint {
-    color: #666;
-    font-size: 0.85rem;
-    margin-left: 2rem;
-
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.6);
-    }
-}
-
-.docs-btn {
-    color: #666;
-    font-size: 0.9rem;
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    border: 1px solid rgba(26, 35, 126, 0.2);
-    background: rgba(26, 35, 126, 0.02);
-
-    &:hover {
+    
+    .hero-title {
+        font-size: 3rem;
+        font-weight: 300;
         color: #1a237e;
-        background: rgba(26, 35, 126, 0.05);
-        border-color: rgba(26, 35, 126, 0.3);
-    }
-
-    .q-icon {
-        font-size: 1.1rem;
-    }
-
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.7);
-        border-color: rgba(255, 255, 255, 0.2);
-        background: rgba(255, 255, 255, 0.02);
-
-        &:hover {
-            color: rgba(255, 255, 255, 0.9);
-            background: rgba(255, 255, 255, 0.05);
-            border-color: rgba(255, 255, 255, 0.3);
-        }
-    }
-}
-
-.upload-section {
-    margin-bottom: 2rem;
-}
-
-.upload-area {
-    background: rgba(255, 255, 255, 0.9);
-    border-radius: 12px;
-    padding: 2rem;
-    border: 2px dashed rgba(26, 35, 126, 0.2);
-    text-align: center;
-
-    .body--dark & {
-        background: rgba(255, 255, 255, 0.05);
-        border-color: rgba(255, 255, 255, 0.2);
-    }
-}
-
-.file-input {
-    margin-bottom: 1rem;
-
-    .q-field__control {
-        border-color: rgba(26, 35, 126, 0.3);
-        border-radius: 8px;
+        margin: 0 0 1rem 0;
+        letter-spacing: 1px;
 
         .body--dark & {
-            border-color: rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.9);
         }
     }
-
-    .q-field__label {
+    
+    .hero-subtitle {
+        font-size: 1.2rem;
         color: #666;
+        margin: 0;
+        font-weight: 300;
+        line-height: 1.6;
+        max-width: 600px;
+        margin: 0 auto;
 
         .body--dark & {
             color: rgba(255, 255, 255, 0.7);
         }
     }
-}
-
-.file-hint {
-    color: #666;
-    font-size: 0.85rem;
-    margin-bottom: 1.5rem;
-
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.6);
-    }
-}
-
-.upload-btn {
-    background: #1a237e;
-    color: white;
-    padding: 12px 32px;
-    font-weight: 500;
-    letter-spacing: 0.5px;
-    border-radius: 8px;
-    min-width: 160px;
-
-    &:hover {
-        background: #283593;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(26, 35, 126, 0.3);
-    }
-
-    &:disabled {
-        background: #ccc;
-        color: #999;
-        transform: none;
-        box-shadow: none;
-    }
-
-    transition: all 0.2s ease;
-
-    .body--dark & {
-        background: rgba(255, 255, 255, 0.9);
-        color: #1a237e;
-
-        &:hover {
-            background: white;
+    
+    .hero-stats {
+        display: flex;
+        justify-content: center;
+        gap: 3rem;
+        margin-top: 2rem;
+        
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            
+            .stat-text {
+                font-size: 0.9rem;
+                color: #666;
+                font-weight: 500;
+                
+                .body--dark & {
+                    color: rgba(255, 255, 255, 0.7);
+                }
+            }
         }
+    }
+}
 
-        &:disabled {
-            background: rgba(255, 255, 255, 0.3);
-            color: rgba(255, 255, 255, 0.5);
+// Help Section
+.help-section {
+    margin-bottom: 2rem;
+    
+    .help-card {
+        border-radius: 12px;
+        border: 1px solid rgba(26, 35, 126, 0.1);
+        
+        .body--dark & {
+            background: rgba(255, 255, 255, 0.03);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .help-text {
+            font-size: 1rem;
+            color: #666;
+            margin-bottom: 0.5rem;
+            
+            .body--dark & {
+                color: rgba(255, 255, 255, 0.7);
+            }
+        }
+    }
+}
+
+// Notification Preferences - Subtle
+.notification-preferences {
+    margin-bottom: 2rem;
+    
+    .subtle-preference {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 1rem;
+        background: rgba(26, 35, 126, 0.02);
+        border-radius: 8px;
+        border: 1px solid rgba(26, 35, 126, 0.05);
+        
+        .body--dark & {
+            background: rgba(255, 255, 255, 0.02);
+            border-color: rgba(255, 255, 255, 0.05);
+        }
+        
+        .preference-text {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            
+            .preference-label {
+                font-size: 0.9rem;
+                color: #333;
+                font-weight: 500;
+                
+                .body--dark & {
+                    color: rgba(255, 255, 255, 0.9);
+                }
+            }
+            
+            .preference-hint {
+                font-size: 0.8rem;
+                color: #666;
+                
+                .body--dark & {
+                    color: rgba(255, 255, 255, 0.6);
+                }
+            }
+        }
+    }
+}
+
+// Upload Section
+.upload-section {
+    margin-bottom: 2rem;
+    
+    .upload-card {
+        border-radius: 16px;
+        border: 1px solid rgba(26, 35, 126, 0.1);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        
+        .body--dark & {
+            background: rgba(255, 255, 255, 0.03);
+            border-color: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .upload-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            
+            .upload-icon {
+                margin-bottom: 1rem;
+            }
+            
+            .upload-title {
+                font-size: 1.5rem;
+                font-weight: 500;
+                color: #333;
+                margin: 0 0 0.5rem 0;
+                
+                .body--dark & {
+                    color: rgba(255, 255, 255, 0.9);
+                }
+            }
+            
+            .upload-description {
+                color: #666;
+                font-size: 1rem;
+                margin: 0;
+                
+                .body--dark & {
+                    color: rgba(255, 255, 255, 0.7);
+                }
+            }
+        }
+        
+        .upload-dropzone {
+            border: 2px dashed rgba(26, 35, 126, 0.3);
+            border-radius: 12px;
+            padding: 3rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 2rem;
+            position: relative;
+            
+            &:hover {
+                border-color: rgba(26, 35, 126, 0.5);
+                background: rgba(26, 35, 126, 0.02);
+            }
+            
+            &.file-selected {
+                border-color: #4caf50;
+                background: rgba(76, 175, 80, 0.05);
+            }
+            
+            .body--dark & {
+                border-color: rgba(255, 255, 255, 0.3);
+                
+                &:hover {
+                    border-color: rgba(255, 255, 255, 0.5);
+                    background: rgba(255, 255, 255, 0.02);
+                }
+                
+                &.file-selected {
+                    border-color: #4caf50;
+                    background: rgba(76, 175, 80, 0.1);
+                }
+            }
+            
+            .dropzone-content {
+                .dropzone-text {
+                    .dropzone-primary {
+                        font-size: 1.1rem;
+                        color: #333;
+                        font-weight: 500;
+                        margin-bottom: 0.5rem;
+                        
+                        .body--dark & {
+                            color: rgba(255, 255, 255, 0.9);
+                        }
+                    }
+                    
+                    .dropzone-secondary {
+                        color: #666;
+                        font-size: 0.9rem;
+                        
+                        .body--dark & {
+                            color: rgba(255, 255, 255, 0.6);
+                        }
+                    }
+                }
+            }
+            
+            .file-selected-content {
+                .selected-file-name {
+                    font-size: 1.1rem;
+                    font-weight: 500;
+                    color: #4caf50;
+                    margin-bottom: 0.25rem;
+                }
+                
+                .selected-file-size {
+                    color: #666;
+                    font-size: 0.9rem;
+                    margin-bottom: 1rem;
+                    
+                    .body--dark & {
+                        color: rgba(255, 255, 255, 0.6);
+                    }
+                }
+                
+                .remove-file-btn {
+                    position: absolute;
+                    top: 1rem;
+                    right: 1rem;
+                }
+            }
+            
+            .hidden-file-input {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                opacity: 0;
+                cursor: pointer;
+                
+                :deep(.q-field__inner) {
+                    display: none;
+                }
+            }
+        }
+        
+        .file-requirements {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+            
+            .requirement-item {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                font-size: 0.9rem;
+                color: #666;
+                
+                .body--dark & {
+                    color: rgba(255, 255, 255, 0.7);
+                }
+            }
+        }
+        
+        .upload-actions {
+            text-align: center;
+            
+            .upload-btn-modern {
+                padding: 1rem 2rem;
+                font-weight: 500;
+                letter-spacing: 0.5px;
+                border-radius: 12px;
+                min-width: 200px;
+                transition: all 0.3s ease;
+                
+                &:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 8px 25px rgba(26, 35, 126, 0.3);
+                }
+                
+                &:disabled {
+                    transform: none;
+                    box-shadow: none;
+                }
+            }
         }
     }
 }
@@ -524,32 +749,79 @@ export default {
     }
 }
 
+// Responsive Design
 @media (max-width: 768px) {
     .upload-container {
-        padding: 2rem 1rem;
-    }
-
-    .page-title {
-        font-size: 2rem;
-    }
-
-    .page-subtitle {
-        font-size: 1rem;
-    }
-
-    .instruction-item {
         padding: 1rem;
-        gap: 0.75rem;
     }
 
-    .step-number {
-        width: 28px;
-        height: 28px;
-        font-size: 0.8rem;
+    .hero-section {
+        .hero-title {
+            font-size: 2.2rem;
+        }
+        
+        .hero-subtitle {
+            font-size: 1rem;
+        }
+        
+        .hero-stats {
+            flex-direction: column;
+            gap: 1.5rem;
+            
+            .stat-item {
+                flex-direction: row;
+                justify-content: center;
+                gap: 1rem;
+            }
+        }
     }
+    
+    .upload-section {
+        .upload-card {
+            .upload-dropzone {
+                padding: 2rem 1rem;
+            }
+            
+            .file-requirements {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: left;
+            }
+            
+            .upload-btn-modern {
+                min-width: 100%;
+            }
+        }
+    }
+}
 
-    .upload-area {
-        padding: 1.5rem;
+@media (max-width: 480px) {
+    .hero-section {
+        .hero-title {
+            font-size: 1.8rem;
+        }
+        
+        .hero-stats {
+            .stat-item {
+                .stat-text {
+                    font-size: 0.8rem;
+                }
+            }
+        }
+    }
+    
+    .upload-section {
+        .upload-card {
+            .upload-header {
+                .upload-title {
+                    font-size: 1.2rem;
+                }
+                
+                .upload-description {
+                    font-size: 0.9rem;
+                }
+            }
+        }
     }
 }
 </style>
