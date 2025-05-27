@@ -133,23 +133,15 @@
                                     <div class="player-count">{{ league.playerCount }} players</div>
                                 </div>
                                 <div class="league-overall">
-                                    <div class="league-rating">
-                                        <div 
-                                            class="highest-overall-large"
-                                            :class="getOverallClass(league.bestOverall)"
+                                    <div class="star-rating-large">
+                                        <span
+                                            v-for="star in 5"
+                                            :key="star"
+                                            class="star-large"
+                                            :class="getStarClass(league.bestOverall, star)"
                                         >
-                                            {{ league.bestOverall > 0 ? league.bestOverall : 'N/A' }}
-                                        </div>
-                                        <div class="star-rating-large">
-                                            <span
-                                                v-for="star in 5"
-                                                :key="star"
-                                                class="star-large"
-                                                :class="getStarClass(league.bestOverall, star)"
-                                            >
-                                                ★
-                                            </span>
-                                        </div>
+                                            ★
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -196,23 +188,15 @@
                                         <div class="team-player-count">{{ team.playerCount }} players</div>
                                     </div>
                                     <div class="team-overall">
-                                        <div class="team-rating">
-                                            <div 
-                                                class="highest-overall-large"
-                                                :class="getOverallClass(team.bestOverall)"
+                                        <div class="star-rating-large">
+                                            <span
+                                                v-for="star in 5"
+                                                :key="star"
+                                                class="star-large"
+                                                :class="getStarClass(team.bestOverall, star)"
                                             >
-                                                {{ team.bestOverall > 0 ? team.bestOverall : 'N/A' }}
-                                            </div>
-                                            <div class="star-rating-large">
-                                                <span
-                                                    v-for="star in 5"
-                                                    :key="star"
-                                                    class="star-large"
-                                                    :class="getStarClass(team.bestOverall, star)"
-                                                >
-                                                    ★
-                                                </span>
-                                            </div>
+                                                ★
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
@@ -769,16 +753,9 @@ export default {
 .league-overall,
 .team-overall {
     flex-shrink: 0;
-    margin-left: 16px;
-}
-
-.league-rating,
-.team-rating {
+    margin-left: auto;
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    min-width: 120px;
+    justify-content: flex-end;
 }
 
 .highest-overall-large {
@@ -792,8 +769,8 @@ export default {
 
 .star-rating-large {
     display: flex;
-    gap: 2px;
-    font-size: 1.2rem;
+    gap: 4px;
+    font-size: 2rem;
     line-height: 1;
 }
 
