@@ -1,7 +1,7 @@
 <template>
     <q-dialog :model-value="show" @hide="$emit('close')">
         <q-card
-            class="player-detail-dialog-card"
+            class="player-detail-dialog-card modern-dialog-card"
             :class="
                 qInstance.dark.isActive
                     ? 'bg-dark text-white'
@@ -10,18 +10,24 @@
             style="max-width: 1300px; width: 95vw; max-height: 90vh"
         >
             <q-bar
+                class="modern-dialog-header"
                 :class="
                     qInstance.dark.isActive
                         ? 'bg-grey-10'
                         : 'bg-primary text-white'
                 "
             >
-                <q-icon name="person" class="q-mr-sm" />
-                <div class="text-subtitle1 dialog-title">
-                    {{ player?.name || "Player" }} - Detailed View
+                <div class="dialog-header-content">
+                    <q-icon name="person" class="q-mr-sm header-icon" />
+                    <div class="header-text">
+                        <div class="text-subtitle1 dialog-title">
+                            {{ player?.name || "Player" }}
+                        </div>
+                        <div class="dialog-subtitle">Detailed Analysis</div>
+                    </div>
                 </div>
                 <q-space />
-                <q-btn dense flat icon="close" @click="$emit('close')">
+                <q-btn dense flat icon="close" @click="$emit('close')" class="close-btn">
                     <q-tooltip
                         :class="
                             qInstance.dark.isActive
@@ -95,7 +101,7 @@
                                 qInstance.dark.isActive
                                     ? 'bg-grey-9'
                                     : 'bg-grey-1',
-                                'rounded-borders performance-percentiles-card-left',
+                                'rounded-borders performance-percentiles-card-left modern-stats-card',
                             ]"
                         >
                             <div
@@ -292,7 +298,7 @@
                                     ? 'bg-grey-9'
                                     : 'bg-grey-1'
                             "
-                            class="q-mb-md player-profile-card-redesigned"
+                            class="q-mb-md player-profile-card-redesigned modern-profile-card"
                         >
                             <q-card-section
                                 class="q-pa-md player-profile-content"
@@ -618,6 +624,7 @@
                                             : 'bg-grey-1',
                                         'full-height-card',
                                         'rounded-borders',
+                                        'modern-attribute-card',
                                     ]"
                                 >
                                     <q-card-section
@@ -718,6 +725,7 @@
                                             : 'bg-grey-1',
                                         'full-height-card',
                                         'rounded-borders',
+                                        'modern-attribute-card',
                                     ]"
                                 >
                                     <q-card-section
@@ -2250,6 +2258,177 @@ hr.q-my-sm {
             flex-basis: 20%;
             font-size: 0.6rem;
         }
+    }
+}
+
+// Modern Dialog Enhancements
+.modern-dialog-card {
+    border-radius: 16px !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    
+    .body--dark & {
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+}
+
+.modern-dialog-header {
+    background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+    padding: 16px 20px;
+    min-height: 60px;
+    
+    .dialog-header-content {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        
+        .header-icon {
+            font-size: 1.5rem;
+            opacity: 0.9;
+        }
+        
+        .header-text {
+            .dialog-title {
+                font-weight: 600;
+                margin: 0;
+                font-size: 1.2rem;
+            }
+            
+            .dialog-subtitle {
+                font-size: 0.85rem;
+                opacity: 0.8;
+                margin-top: 2px;
+            }
+        }
+    }
+    
+    .close-btn {
+        border-radius: 8px;
+        transition: all 0.2s ease;
+        
+        &:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: scale(1.05);
+        }
+    }
+}
+
+.modern-stats-card {
+    border-radius: 12px !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+    
+    .body--dark & {
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+}
+
+.modern-profile-card {
+    border-radius: 12px !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    
+    .body--dark & {
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .player-profile-content {
+        padding: 20px !important;
+    }
+}
+
+.modern-attribute-card {
+    border-radius: 12px !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    }
+    
+    .body--dark & {
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        
+        &:hover {
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+        }
+    }
+    
+    .attribute-category-header {
+        background: linear-gradient(135deg, rgba(25, 118, 210, 0.1) 0%, rgba(25, 118, 210, 0.05) 100%);
+        border-radius: 12px 12px 0 0;
+        
+        .body--dark & {
+            background: linear-gradient(135deg, rgba(144, 202, 249, 0.1) 0%, rgba(144, 202, 249, 0.05) 100%);
+        }
+        
+        .text-subtitle1 {
+            color: #1976d2;
+            font-weight: 600;
+            
+            .body--dark & {
+                color: #90caf9;
+            }
+        }
+    }
+}
+
+// Enhanced attribute list items
+.attribute-list-item {
+    transition: background-color 0.2s ease;
+    border-radius: 4px;
+    margin: 2px 4px;
+    
+    &:hover {
+        background: rgba(25, 118, 210, 0.05);
+        
+        .body--dark & {
+            background: rgba(144, 202, 249, 0.05);
+        }
+    }
+}
+
+// Enhanced FIFA stats
+.fifa-stat-item-redesigned {
+    transition: transform 0.2s ease;
+    border-radius: 8px !important;
+    
+    &:hover {
+        transform: scale(1.05);
+    }
+}
+
+// Enhanced performance stats
+.performance-stat-item {
+    transition: background-color 0.2s ease;
+    border-radius: 4px;
+    margin: 2px 0;
+    
+    &:hover {
+        background: rgba(25, 118, 210, 0.05);
+        
+        .body--dark & {
+            background: rgba(144, 202, 249, 0.05);
+        }
+    }
+}
+
+.stat-bar-fill {
+    transition: width 0.5s ease, background-color 0.3s ease;
+}
+
+// Enhanced badges and positions
+.player-position-badge, .player-age-badge-redesigned {
+    transition: all 0.2s ease;
+    
+    &:hover {
+        transform: scale(1.05);
     }
 }
 </style>
