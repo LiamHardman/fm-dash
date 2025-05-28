@@ -7,8 +7,6 @@
       :placeholder="hasDatasetId ? 'Search players, teams, leagues, nations...' : 'Upload a dataset first to search'"
       :disable="!hasDatasetId"
       class="search-input"
-      @input="onSearchInput"
-      @keyup="onKeyUp"
       @keyup.escape="clearSearch"
       ref="searchInput"
     >
@@ -68,106 +66,82 @@
         <div class="text-caption">No results found</div>
       </q-card-section>
     </q-card>
+
+    <!-- Player Detail Dialog -->
+    <PlayerDetailDialog
+      :player="playerForDetailView"
+      :show="showPlayerDetailDialog"
+      @close="showPlayerDetailDialog = false"
+      :currency-symbol="detectedCurrencySymbol"
+      :dataset-id="currentDatasetId"
+    />
   </div>
 </template>
 
 <script>
 import { defineComponent, ref, computed, watch, nextTick, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { usePlayerStore } from '../stores/playerStore'
 import { debounce } from '../utils/debounce'
+import PlayerDetailDialog from './PlayerDetailDialog.vue'
 
 export default defineComponent({
   name: 'UniversalSearch',
+  components: {
+    PlayerDetailDialog,
+  },
   setup() {
-    console.log('🔍 UniversalSearch component is being created!');
+    const router = useRouter()
     const playerStore = usePlayerStore()
     const searchQuery = ref('')
     const results = ref([])
     const isLoading = ref(false)
     const searchInput = ref(null)
+    const playerForDetailView = ref(null)
+    const showPlayerDetailDialog = ref(false)
     
-    console.log('UniversalSearch: Component setup started')
-    console.log('UniversalSearch: Current dataset ID:', playerStore.currentDatasetId)
-    
-    const showSearch = computed(() => {
-      const shouldShow = !!playerStore.currentDatasetId
-      console.log('UniversalSearch: showSearch computed:', shouldShow, 'datasetId:', playerStore.currentDatasetId)
-      return shouldShow
-    })
     const showResults = computed(() => searchQuery.value.length > 0)
     const hasDatasetId = computed(() => !!playerStore.currentDatasetId)
+    const currentDatasetId = computed(() => playerStore.currentDatasetId)
+    const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol || '$')
     
     const searchAPI = async (query) => {
-      console.log('🔍 searchAPI called with:', {
-        query: query.trim(),
-        datasetId: playerStore.currentDatasetId,
-        queryLength: query.trim().length,
-        hasDatasetId: !!playerStore.currentDatasetId
-      });
-      
-      if (!query.trim()) {
-        console.log('🔍 Search skipped: empty query')
-        return []
-      }
-      
-      if (!playerStore.currentDatasetId) {
-        console.log('🔍 Search skipped: no dataset ID available')
-        console.log('🔍 Player store current state:', {
-          currentDatasetId: playerStore.currentDatasetId,
-          hasPlayers: playerStore.allPlayers?.length > 0
-        })
+      if (!query.trim() || !playerStore.currentDatasetId) {
         return []
       }
       
       const url = `/api/search/${playerStore.currentDatasetId}?q=${encodeURIComponent(query)}`
-      console.log('🔍 Making search request to:', url)
       
       try {
         const response = await fetch(url)
-        console.log('🔍 Search response status:', response.status)
-        
         if (response.ok) {
           const data = await response.json()
-          console.log('🔍 Search results received:', data.length, 'items')
           return data
         } else {
-          const errorText = await response.text()
-          console.error('🔍 Search API error:', response.status, errorText)
+          console.error('Search API error:', response.status)
         }
       } catch (error) {
-        console.error('🔍 Search network error:', error)
+        console.error('Search network error:', error)
       }
       return []
     }
     
     const debouncedSearch = debounce(async (query) => {
-      console.log('🔍 debouncedSearch called with query:', query)
-      
       if (!query.trim()) {
-        console.log('🔍 debouncedSearch: clearing results for empty query')
         results.value = []
         isLoading.value = false
         return
       }
       
-      console.log('🔍 debouncedSearch: starting search...')
       isLoading.value = true
       results.value = await searchAPI(query)
       isLoading.value = false
-      console.log('🔍 debouncedSearch: search completed')
     }, 300)
     
-    const onSearchInput = () => {
-      console.log('🔍 onSearchInput called with query:', searchQuery.value)
-      console.log('🔍 onSearchInput: hasDatasetId:', !!playerStore.currentDatasetId)
-      debouncedSearch(searchQuery.value)
-    }
-    
-    const onKeyUp = () => {
-      console.log('🔍 onKeyUp called with query:', searchQuery.value)
-      console.log('🔍 onKeyUp: hasDatasetId:', !!playerStore.currentDatasetId)
-      debouncedSearch(searchQuery.value)
-    }
+    // Watch searchQuery and trigger debounced search
+    watch(searchQuery, (newQuery) => {
+      debouncedSearch(newQuery)
+    })
     
     const clearSearch = () => {
       searchQuery.value = ''
@@ -195,40 +169,55 @@ export default defineComponent({
       }
     }
     
+    const findPlayerByName = (playerName) => {
+      return playerStore.allPlayers?.find(player => 
+        player.name?.toLowerCase() === playerName.toLowerCase()
+      )
+    }
+    
     const handleResultClick = (result) => {
-      // Generate proper URL with current dataset ID
-      let url = result.url
-      
-      // Replace empty dataset ID placeholder with actual dataset ID
-      if (url.includes('/dataset/')) {
-        url = url.replace('/dataset/', `/dataset/${playerStore.currentDatasetId}`)
-      }
-      
-      // Handle different result types with appropriate navigation
       if (result.type === 'player') {
-        // Navigate to dataset page with player search filter
-        url = `/dataset/${playerStore.currentDatasetId}?search=${encodeURIComponent(result.name)}`
+        // Find the full player object and open detail dialog
+        const player = findPlayerByName(result.name)
+        if (player) {
+          playerForDetailView.value = player
+          showPlayerDetailDialog.value = true
+        } else {
+          // Fallback: navigate to dataset page with search filter
+          router.push({
+            path: `/dataset/${playerStore.currentDatasetId}`,
+            query: { search: result.name }
+          })
+        }
       } else if (result.type === 'team') {
-        // Navigate to dataset page with team filter
-        url = `/dataset/${playerStore.currentDatasetId}?team=${encodeURIComponent(result.name)}`
+        // Navigate to team view page
+        const url = router.resolve({
+          path: "/team-view",
+          query: {
+            datasetId: playerStore.currentDatasetId,
+            team: result.name,
+          },
+        }).href
+        window.open(url, "_blank")
       } else if (result.type === 'league') {
         // Navigate to leagues page with league filter
-        url = `/leagues?league=${encodeURIComponent(result.name)}`
+        router.push({
+          path: `/leagues/${playerStore.currentDatasetId}`,
+          query: { league: result.name }
+        })
       } else if (result.type === 'nation') {
-        // Navigate to nations page with nation filter  
-        url = `/nations?nation=${encodeURIComponent(result.name)}`
+        // Navigate to nations page with nation filter
+        router.push({
+          path: `/nations/${playerStore.currentDatasetId}`,
+          query: { nation: result.name }
+        })
       }
       
-      // Use router navigation instead of opening new tab for better UX
-      // TODO: Implement router navigation when router is available
-      // For now, navigate in the same tab
-      window.location.href = url
       clearSearch()
     }
     
     // Focus search input when dataset changes
-    watch(() => playerStore.currentDatasetId, (newId, oldId) => {
-      console.log('UniversalSearch: Dataset ID changed from', oldId, 'to', newId)
+    watch(() => playerStore.currentDatasetId, (newId) => {
       if (newId) {
         nextTick(() => {
           if (searchInput.value) {
@@ -238,30 +227,21 @@ export default defineComponent({
       }
     })
     
-    // Watch searchQuery changes to debug v-model
-    watch(searchQuery, (newQuery, oldQuery) => {
-      console.log('🔍 searchQuery watcher:', { newQuery, oldQuery })
-    })
-    
-    // Add onMounted to see if component is being created
-    onMounted(() => {
-      console.log('UniversalSearch: Component mounted, dataset ID:', playerStore.currentDatasetId)
-    })
-    
     return {
       searchQuery,
       results,
       isLoading,
-      showSearch,
       showResults,
       searchInput,
-      onSearchInput,
-      onKeyUp,
       clearSearch,
       getResultIcon,
       getResultColor,
       handleResultClick,
-      hasDatasetId
+      hasDatasetId,
+      playerForDetailView,
+      showPlayerDetailDialog,
+      currentDatasetId,
+      detectedCurrencySymbol,
     }
   }
 })
