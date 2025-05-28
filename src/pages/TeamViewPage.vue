@@ -131,7 +131,30 @@
                     <!-- Team Performance Dashboard -->
                     <div class="performance-dashboard">
                         <div class="dashboard-header">
-                            <h2 class="team-name">{{ selectedTeamName }}</h2>
+                            <div class="team-info-container">
+                                <div class="team-basic-info">
+                                    <h2 class="team-name">{{ selectedTeamName }}</h2>
+                                    <div v-if="teamDivision" class="team-division">
+                                        <q-icon name="sports" size="1rem" class="division-icon" />
+                                        <span>{{ teamDivision }}</span>
+                                    </div>
+                                </div>
+                                <div v-if="bestTeamAverageOverall !== null" class="team-star-rating">
+                                    <div class="star-rating-container">
+                                        <div class="star-rating-large">
+                                            <span
+                                                v-for="star in 5"
+                                                :key="star"
+                                                class="star-large"
+                                                :class="getStarClass(bestTeamAverageOverall, star)"
+                                            >
+                                                ★
+                                            </span>
+                                        </div>
+                                        <div class="star-rating-label">Team Rating</div>
+                                    </div>
+                                </div>
+                            </div>
                             <p class="dashboard-subtitle">Squad Performance Analysis</p>
                         </div>
                         
@@ -753,6 +776,44 @@ export default {
                 p.positionGroups?.includes("Goalkeepers"),
             );
         });
+
+        const teamDivision = computed(() => {
+            // Get the division from the first player in the team
+            if (teamPlayers.value.length > 0) {
+                return teamPlayers.value[0].division;
+            }
+            return null;
+        });
+
+        const getStarRating = (overall) => {
+            if (!overall || overall === 0) return 0;
+            
+            if (overall >= 85) return 5;
+            if (overall >= 82) return 4.5;
+            if (overall >= 78) return 4;
+            if (overall >= 74) return 3.5;
+            if (overall >= 70) return 3;
+            if (overall >= 67) return 2.5;
+            if (overall >= 64) return 2;
+            if (overall >= 60) return 1.5;
+            if (overall >= 55) return 1;
+            if (overall >= 50) return 0.5;
+            return 0;
+        };
+
+        const getStarClass = (overall, starPosition) => {
+            if (!overall || overall === 0) return "star-empty";
+            
+            const starRating = getStarRating(overall);
+            
+            if (starPosition <= Math.floor(starRating)) {
+                return "star-full";
+            } else if (starPosition === Math.floor(starRating) + 1 && starRating % 1 === 0.5) {
+                return "star-half";
+            } else {
+                return "star-empty";
+            }
+        };
 
         const handlePlayerSelectedFromTeam = (player) => {
             playerForDetailView.value = player;
@@ -1675,6 +1736,9 @@ export default {
             showPlayerDetailDialog,
             handlePlayerSelectedFromTeam,
             teamIsGoalkeeperView,
+            teamDivision,
+            getStarRating,
+            getStarClass,
             getOverallClass,
             getSlotDisplayName,
             handlePlayerMovedOnPitch,
@@ -1848,14 +1912,70 @@ export default {
         text-align: center;
         margin-bottom: 2rem;
         
-        .team-name {
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin: 0 0 0.5rem 0;
-            color: #1a237e;
+        .team-info-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
             
-            .body--dark & {
-                color: rgba(255, 255, 255, 0.9);
+            .team-basic-info {
+                display: flex;
+                flex-direction: column;
+                
+                .team-name {
+                    font-size: 2.5rem;
+                    font-weight: 700;
+                    margin: 0 0 0.5rem 0;
+                    color: #1a237e;
+                    
+                    .body--dark & {
+                        color: rgba(255, 255, 255, 0.9);
+                    }
+                }
+                
+                .team-division {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    font-size: 1rem;
+                    color: #666;
+                    
+                    .body--dark & {
+                        color: rgba(255, 255, 255, 0.7);
+                    }
+                    
+                    .division-icon {
+                        font-size: 1rem;
+                        color: #8bc34a;
+                    }
+                }
+            }
+            
+            .team-star-rating {
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+                
+                .star-rating-container {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    
+                    .star-rating-large {
+                        display: flex;
+                        gap: 4px;
+                        
+                        .star-large {
+                            font-size: 1.2rem;
+                            color: #ffd700;
+                        }
+                    }
+                    
+                    .star-rating-label {
+                        font-size: 1rem;
+                        color: #fff;
+                    }
+                }
             }
         }
         
@@ -2335,4 +2455,60 @@ export default {
     /* styles from app.scss */
 }
 // ... etc. for all tiers
+
+// Star rating styles
+.star-rating-large {
+    display: flex;
+    gap: 2px;
+    
+    .star-large {
+        font-size: 1.5rem;
+        transition: all 0.2s ease;
+        
+        &.star-full {
+            color: #ffd700;
+            text-shadow: 0 0 4px rgba(255, 215, 0, 0.5);
+        }
+        
+        &.star-half {
+            color: #ffd700;
+            opacity: 0.6;
+            text-shadow: 0 0 4px rgba(255, 215, 0, 0.3);
+        }
+        
+        &.star-empty {
+            color: #e0e0e0;
+            
+            .body--dark & {
+                color: #424242;
+            }
+        }
+    }
+}
+
+.star-rating-label {
+    font-size: 1rem;
+    color: #666;
+    font-weight: 500;
+    
+    .body--dark & {
+        color: rgba(255, 255, 255, 0.7);
+    }
+}
+
+@media (max-width: 768px) {
+    .team-info-container {
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        
+        .team-basic-info {
+            text-align: center;
+        }
+        
+        .team-star-rating {
+            justify-content: center;
+        }
+    }
+}
 </style>
