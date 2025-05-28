@@ -135,6 +135,9 @@ func main() {
 	// API endpoint for universal search (players, teams, leagues, nations)
 	http.Handle("/api/search/", wrapHandler(http.HandlerFunc(searchHandler), "search"))
 
+	// API endpoint for configuration values
+	http.Handle("/api/config", wrapHandler(http.HandlerFunc(configHandler), "config"))
+
 	// Determine port for HTTP server with validation
 	port := os.Getenv("PORT")
 	if port == "" {

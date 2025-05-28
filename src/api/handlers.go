@@ -9,6 +9,7 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"os"
 	"runtime"
 	"sort"
 	"strconv"
@@ -129,13 +130,29 @@ type Team struct {
 	Players         []Player `json:"players,omitempty"`
 }
 
-const (
-	// MaxUploadSize defines the maximum allowed file size for uploads (15MB)
-	// This is an approximation for about 10,000 players.
-	MaxUploadSize = 50 * 1024 * 1024
-	// User-facing error message for file size limit.
-	FileSizeLimitErrorMessage = "Only 10,000 players or less can be in a given dataset. (Max file size: 15MB)"
-)
+// getMaxUploadSize reads the MAX_UPLOAD_SIZE environment variable and returns the size in bytes.
+// If not set or invalid, defaults to 15MB.
+func getMaxUploadSize() int64 {
+	envValue := os.Getenv("MAX_UPLOAD_SIZE")
+	if envValue == "" {
+		return 15 * 1024 * 1024 // Default 15MB
+	}
+	
+	// Parse as integer (expecting value in MB)
+	sizeInMB, err := strconv.Atoi(envValue)
+	if err != nil || sizeInMB <= 0 {
+		log.Printf("Invalid MAX_UPLOAD_SIZE environment variable '%s', defaulting to 15MB", envValue)
+		return 15 * 1024 * 1024 // Default 15MB
+	}
+	
+	return int64(sizeInMB) * 1024 * 1024
+}
+
+// getFileSizeLimitErrorMessage returns the user-facing error message with the current upload limit
+func getFileSizeLimitErrorMessage() string {
+	maxUploadSizeMB := getMaxUploadSize() / (1024 * 1024)
+	return fmt.Sprintf("Only 10,000 players or less can be in a given dataset. (Max file size: %dMB)", maxUploadSizeMB)
+}
 
 // uploadHandler handles POST requests for uploading HTML player files.
 // It parses the file, processes player data concurrently, and stores the results.
@@ -173,12 +190,12 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		attribute.Int64("http.request.content_length", r.ContentLength),
 	)
 	
-	if r.ContentLength > MaxUploadSize {
+	if r.ContentLength > getMaxUploadSize() {
 		logWarn(ctx, "Upload rejected: Content-Length exceeds limit", 
 			"content_length_bytes", r.ContentLength, 
-			"max_size_bytes", MaxUploadSize)
+			"max_size_bytes", getMaxUploadSize())
 		SetSpanAttributes(ctx, attribute.String("upload.rejection_reason", "content_length_exceeded"))
-		http.Error(w, FileSizeLimitErrorMessage, http.StatusRequestEntityTooLarge)
+		http.Error(w, getFileSizeLimitErrorMessage(), http.StatusRequestEntityTooLarge)
 		return
 	}
 
@@ -201,14 +218,14 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 
 	// Validate actual file size by reading content (more secure than relying on headers)
-	limitedReader := http.MaxBytesReader(w, file, MaxUploadSize)
+	limitedReader := http.MaxBytesReader(w, file, getMaxUploadSize())
 	fileContent, err := io.ReadAll(limitedReader)
 	if err != nil {
 		RecordError(ctx, err, "File size validation failed - file too large or read error")
 		logWarn(ctx, "Upload rejected: File content exceeds size limit or read error", 
-			"max_size_bytes", MaxUploadSize,
+			"max_size_bytes", getMaxUploadSize(),
 			"filename", handler.Filename)
-		http.Error(w, FileSizeLimitErrorMessage, http.StatusRequestEntityTooLarge)
+		http.Error(w, getFileSizeLimitErrorMessage(), http.StatusRequestEntityTooLarge)
 		return
 	}
 
@@ -224,14 +241,14 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		"filename", handler.Filename, 
 		"size_bytes", actualFileSize)
 
-	// Enforce the 15MB limit on the actual file size
-	if actualFileSize > MaxUploadSize {
+	// Enforce the 50MB limit on the actual file size
+	if actualFileSize > getMaxUploadSize() {
 		logWarn(ctx, "Upload rejected: File size exceeds limit", 
 			"filename", handler.Filename,
 			"file_size_bytes", actualFileSize, 
-			"max_size_bytes", MaxUploadSize)
+			"max_size_bytes", getMaxUploadSize())
 		SetSpanAttributes(ctx, attribute.String("upload.rejection_reason", "file_size_exceeded"))
-		http.Error(w, FileSizeLimitErrorMessage, http.StatusRequestEntityTooLarge)
+		http.Error(w, getFileSizeLimitErrorMessage(), http.StatusRequestEntityTooLarge)
 		return
 	}
 
@@ -1292,5 +1309,28 @@ func performSearch(players []Player, query string) []SearchResult {
 	}
 
 	return results
+}
+
+// configHandler returns configuration values to the frontend
+func configHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	config := struct {
+		MaxUploadSizeMB int64 `json:"maxUploadSizeMB"`
+		MaxUploadSizeBytes int64 `json:"maxUploadSizeBytes"`
+	}{
+		MaxUploadSizeMB: getMaxUploadSize() / (1024 * 1024),
+		MaxUploadSizeBytes: getMaxUploadSize(),
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	setCORSHeaders(w, r)
+	if err := json.NewEncoder(w).Encode(config); err != nil {
+		log.Printf("Error encoding JSON response for config: %v", err)
+		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
+	}
 }
 

@@ -2,7 +2,7 @@
 const API_BASE_URL = ""; // Use relative paths if proxy is set up for all API routes
 
 export default {
-  async uploadPlayerFile(formData) {
+  async uploadPlayerFile(formData, maxSizeBytes = 15 * 1024 * 1024) {
     try {
       const response = await fetch(`${API_BASE_URL}/upload`, {
         method: "POST",
@@ -12,8 +12,9 @@ export default {
         // Check for specific status codes to throw more informative errors
         if (response.status === 413) {
           // Create a custom error object or throw an error with a specific message/property
+          const maxSizeMB = Math.round(maxSizeBytes / (1024 * 1024));
           const error = new Error(
-            "File too large. Maximum size allowed is 15MB.",
+            `File too large. Maximum size allowed is ${maxSizeMB}MB.`,
           );
           error.status = 413; // Add status to the error object
           throw error;
@@ -128,6 +129,26 @@ export default {
     } catch (error) {
       console.error("Error fetching available roles in playerService:", error);
       throw error;
+    }
+  },
+
+  async getConfig() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/config`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `API Error fetching config: ${response.status} - ${errorText || response.statusText}`,
+        );
+      }
+      return await response.json();
+    } catch (error) {
+      console.error("Error fetching config in playerService:", error);
+      // Return default values if config fetch fails
+      return {
+        maxUploadSizeMB: 15,
+        maxUploadSizeBytes: 15 * 1024 * 1024,
+      };
     }
   },
 };

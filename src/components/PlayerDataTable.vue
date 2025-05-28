@@ -745,12 +745,6 @@ export default {
             return colDef?.sortField || colDef?.field || colName;
         };
 
-        // Memoized sorting cache for better performance
-        const sortCache = new Map();
-        const getCacheKey = (players, fieldKey, direction) => {
-            return `${players?.length || 0}-${fieldKey}-${direction}`;
-        };
-
         const sortedPlayers = computed(() => {
             if (!props.players || props.players.length === 0) {
                 totalSortedCount.value = 0;
@@ -760,21 +754,13 @@ export default {
 
             const fieldKey = getSortFieldKey(sortField.value || "Overall");
             const direction = sortDirection.value;
-            const cacheKey = getCacheKey(props.players, fieldKey, direction);
-            
-            // Check cache first
-            if (sortCache.has(cacheKey)) {
-                const cached = sortCache.get(cacheKey);
-                totalSortedCount.value = cached.total;
-                isSliced.value = cached.isSliced;
-                return cached.result;
-            }
 
-            // Sort only when necessary
+            // Sort the players array - create a copy to avoid mutations
             const playersToSort = [...props.players];
             const fullSortedList = playersToSort.sort((a, b) => {
-                let vA = a[fieldKey];
-                let vB = b[fieldKey];
+                // Use getPlayerValue to ensure GK stat mapping is applied for sorting
+                let vA = getPlayerValue(a, fieldKey, sortField.value);
+                let vB = getPlayerValue(b, fieldKey, sortField.value);
                 const aIsNull = vA === null || vA === undefined;
                 const bIsNull = vB === null || vB === undefined;
 
@@ -812,17 +798,6 @@ export default {
             }
             
             isSliced.value = sliced;
-
-            // Cache result (keep cache size reasonable)
-            if (sortCache.size > 10) {
-                sortCache.clear(); // Simple cache eviction
-            }
-            sortCache.set(cacheKey, {
-                result,
-                total: totalSortedCount.value,
-                isSliced: sliced
-            });
-
             return result;
         });
 
@@ -1026,27 +1001,32 @@ export default {
             );
         };
 
-        const getDisplayValue = (player, col) => {
+        // GK stat mapping for both display and sorting consistency
+        const gkStatMapping = {
+            'PAC': 'DIV',  // Diving -> Pace
+            'SHO': 'HAN',  // Handling -> Shooting  
+            'PAS': 'KIC',  // Kicking -> Passing
+            'DRI': 'REF',  // Reflexes -> Dribbling
+            'DEF': 'SPD',  // Speed -> Defending
+            'PHY': 'POS'   // Positioning -> Physical
+        };
+
+        // Get the actual value for sorting or display, with GK mapping applied
+        const getPlayerValue = (player, fieldKey, columnName = null) => {
             // For non-goalkeeper view, map GK stats to standard FIFA stats if the player is a goalkeeper
             if (!props.isGoalkeeperView && player.position && player.position.includes('GK')) {
-                // Map GK stats to standard FIFA stats
-                const gkStatMapping = {
-                    'PAC': 'DIV',  // Diving -> Pace
-                    'SHO': 'HAN',  // Handling -> Shooting  
-                    'PAS': 'KIC',  // Kicking -> Passing
-                    'DRI': 'REF',  // Reflexes -> Dribbling
-                    'DEF': 'SPD',  // Speed -> Defending
-                    'PHY': 'POS'   // Positioning -> Physical
-                };
-                
-                const mappedStat = gkStatMapping[col.name];
+                const mappedStat = gkStatMapping[columnName || fieldKey];
                 if (mappedStat && player[mappedStat] !== undefined) {
                     return player[mappedStat];
                 }
             }
             
-            // Default behavior - use the column's field
-            return player[col.field];
+            // Default behavior - use the field key
+            return player[fieldKey];
+        };
+
+        const getDisplayValue = (player, col) => {
+            return getPlayerValue(player, col.field, col.name);
         };
 
         const contextMenuPlayer = ref(null);

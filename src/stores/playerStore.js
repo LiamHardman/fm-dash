@@ -155,11 +155,11 @@ export const usePlayerStore = defineStore("player", () => {
     return result;
   });
 
-  async function uploadPlayerFile(formData) {
+  async function uploadPlayerFile(formData, maxSizeBytes = 15 * 1024 * 1024) {
     loading.value = true;
     error.value = "";
     try {
-      const response = await playerService.uploadPlayerFile(formData);
+      const response = await playerService.uploadPlayerFile(formData, maxSizeBytes);
       currentDatasetId.value = response.datasetId;
       detectedCurrencySymbol.value = response.detectedCurrencySymbol || "$";
       sessionStorage.setItem("currentDatasetId", currentDatasetId.value);

@@ -63,7 +63,7 @@
                                         browse
                                     </div>
                                     <div class="dropzone-secondary">
-                                        Supports .html files up to 15MB
+                                        Supports .html files up to {{ maxFileSizeMB }}MB
                                     </div>
                                 </div>
                             </div>
@@ -116,7 +116,7 @@
                                     size="1.2rem"
                                     color="positive"
                                 />
-                                <span>Maximum 15MB file size</span>
+                                <span>Maximum {{ maxFileSizeMB }}MB file size</span>
                             </div>
                             <div class="requirement-item">
                                 <q-icon
@@ -232,7 +232,7 @@
 
                 <q-card-section class="q-pt-none">
                     Please ensure your HTML export contains 10,000 players or
-                    less. (Max file size: 15MB)
+                    less. (Max file size: {{ maxFileSizeMB }}MB)
                 </q-card-section>
 
                 <q-card-actions align="right">
@@ -256,9 +256,7 @@ import { useQuasar, Notify } from "quasar";
 import { usePlayerStore } from "../stores/playerStore";
 import { useUiStore } from "../stores/uiStore";
 import { useWebNotification } from "@vueuse/core";
-
-const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024;
-const LARGE_FILE_SIZE_BYTES = 20 * 1024 * 1024;
+import playerService from "../services/playerService";
 
 export default {
     name: "PlayerUploadPage",
@@ -269,6 +267,11 @@ export default {
         const $q = useQuasar();
         const playerFile = ref(null);
         const showFileSizeLimitModal = ref(false);
+        
+        // Dynamic config values
+        const maxFileSizeBytes = ref(15 * 1024 * 1024); // Default 15MB
+        const maxFileSizeMB = ref(15); // Default 15MB
+        const largeFileSizeBytes = ref(20 * 1024 * 1024); // 20MB threshold for notifications
 
         // Web notification setup
         const {
@@ -310,6 +313,15 @@ export default {
         };
 
         onMounted(async () => {
+            // Fetch config first
+            try {
+                const config = await playerService.getConfig();
+                maxFileSizeBytes.value = config.maxUploadSizeBytes;
+                maxFileSizeMB.value = config.maxUploadSizeMB;
+            } catch (error) {
+                console.warn("Failed to fetch config, using defaults:", error);
+            }
+            
             await loadJsonForFeedback(
                 "/public/attribute_weights.json",
                 attributeWeightsLoadedForFeedback,
@@ -334,7 +346,7 @@ export default {
         };
 
         const onFileSelected = (file) => {
-            if (file && file.size > MAX_FILE_SIZE_BYTES) {
+            if (file && file.size > maxFileSizeBytes.value) {
                 showFileSizeLimitModal.value = true;
                 playerFile.value = null;
             }
@@ -345,17 +357,17 @@ export default {
                 playerStore.error = "Please select an HTML file first.";
                 return;
             }
-            if (playerFile.value.size > MAX_FILE_SIZE_BYTES) {
+            if (playerFile.value.size > maxFileSizeBytes.value) {
                 showFileSizeLimitModal.value = true;
                 return;
             }
 
-            const isLargeFile = playerFile.value.size > LARGE_FILE_SIZE_BYTES;
+            const isLargeFile = playerFile.value.size > largeFileSizeBytes.value;
 
             try {
                 const formData = new FormData();
                 formData.append("playerFile", playerFile.value);
-                await playerStore.uploadPlayerFile(formData);
+                await playerStore.uploadPlayerFile(formData, maxFileSizeBytes.value);
                 if (!playerStore.error) {
                     const successMessage =
                         "File uploaded and parsed successfully! Redirecting to dataset view...";
@@ -421,6 +433,7 @@ export default {
             playerStore,
             uiStore,
             notificationSupported,
+            maxFileSizeMB,
         };
     },
 };

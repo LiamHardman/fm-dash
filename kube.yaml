@@ -46,6 +46,9 @@ spec:
               value: "v2fmdash-api"
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: "signoz-otel-collector.signoz-helm:4317"
+            # Upload Configuration
+            - name: MAX_UPLOAD_SIZE
+              value: "50"
             # MinIO Configuration
             - name: MINIO_ENDPOINT
               valueFrom:
