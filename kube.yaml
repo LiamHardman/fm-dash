@@ -73,11 +73,11 @@ spec:
           # No secrets or API keys are mounted as per user request
           resources: # Optional: Define resource requests and limits
             requests:
-              cpu: "250m"
-              memory: "384Mi"
+              cpu: "500m"
+              memory: "512Mi"
             limits:
-              cpu: "1500m"
-              memory: "768Mi"
+              cpu: "4500m"
+              memory: "2048Mi"
           readinessProbe:
             httpGet:
               path: / # Vue app's root, served by Nginx
