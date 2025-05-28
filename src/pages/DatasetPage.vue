@@ -1,21 +1,6 @@
 <template>
-    <q-page padding class="dataset-page">
+    <q-page class="dataset-page">
         <div class="q-pa-md">
-            <div class="row items-center justify-between q-mb-lg">
-                <q-btn
-                    v-if="currentDatasetId"
-                    unelevated
-                    icon="share"
-                    label="Share Dataset"
-                    color="positive"
-                    @click="shareDataset"
-                    class="share-btn-enhanced"
-                    size="md"
-                >
-                    <q-tooltip>Copy shareable link to clipboard</q-tooltip>
-                </q-btn>
-            </div>
-
             <q-banner
                 v-if="pageLoadingError"
                 class="text-white bg-negative q-mb-md"
@@ -49,13 +34,54 @@
             </div>
 
             <div v-if="!pageLoading && !pageLoadingError">
-                <q-card
-                    class="q-mb-md"
-                    :class="
-                        quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'
-                    "
-                >
-                </q-card>
+                <!-- Hero Section -->
+                <div class="hero-section">
+                    <div class="hero-container">
+                        <div class="hero-content">
+                            <div class="hero-badge">
+                                <q-icon name="analytics" size="1.2rem" />
+                                <span>Dataset Analysis</span>
+                            </div>
+                            <h1 class="hero-title">
+                                Your Football Manager
+                                <span class="gradient-text">Data Hub</span>
+                            </h1>
+                            <p class="hero-subtitle">
+                                Explore comprehensive player analysis, team formations, and strategic insights 
+                                from your Football Manager dataset.
+                            </p>
+                        </div>
+                        <div class="hero-stats">
+                            <div class="stat-card">
+                                <div class="stat-number">{{ formatNumber(allPlayersData.length) }}</div>
+                                <div class="stat-label">Players</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number">{{ formatNumber(uniqueClubs.length) }}</div>
+                                <div class="stat-label">Clubs</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number">{{ formatNumber(uniqueNationalities.length) }}</div>
+                                <div class="stat-label">Nations</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Share Button positioned after hero -->
+                <div v-if="currentDatasetId" class="share-button-container">
+                    <q-btn
+                        unelevated
+                        icon="share"
+                        label="Share Dataset"
+                        color="positive"
+                        @click="shareDataset"
+                        class="share-btn-enhanced"
+                        size="md"
+                    >
+                        <q-tooltip>Copy shareable link to clipboard</q-tooltip>
+                    </q-btn>
+                </div>
 
                 <q-card
                     class="q-mb-md quick-actions-card"
@@ -877,6 +903,17 @@ export default {
             { immediate: true, deep: true },
         );
 
+        // Utility function to format large numbers
+        const formatNumber = (num) => {
+            if (num >= 1000000) {
+                return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+            }
+            if (num >= 1000) {
+                return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+            }
+            return num?.toString() || '0';
+        };
+
         return {
             pageLoading,
             pageLoadingError,
@@ -909,6 +946,7 @@ export default {
             quasarInstance,
             router,
             currentFilters,
+            formatNumber,
         };
     },
 };
@@ -992,6 +1030,141 @@ export default {
 
             &:hover {
                 background-color: rgba(0, 0, 0, 0.04);
+            }
+        }
+    }
+}
+
+.share-button-container {
+    display: flex;
+    justify-content: flex-end;
+    margin: 2rem 0;
+    padding: 0 2rem;
+}
+
+// Hero Section
+.hero-section {
+    padding: 4rem 0;
+    background: linear-gradient(135deg, #1a237e 0%, #283593 50%, #3949ab 100%);
+    color: white;
+    position: relative;
+    overflow: hidden;
+    margin: -1.5rem -1.5rem 2rem -1.5rem;
+    
+    &::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: radial-gradient(
+            circle at 30% 20%,
+            rgba(255, 255, 255, 0.05) 0%,
+            transparent 50%
+        );
+        pointer-events: none;
+    }
+    
+    .hero-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 2rem;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 4rem;
+        align-items: center;
+        position: relative;
+        z-index: 1;
+        
+        @media (max-width: 768px) {
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            text-align: center;
+        }
+    }
+    
+    .hero-content {
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 2rem;
+            backdrop-filter: blur(10px);
+        }
+        
+        .hero-title {
+            font-size: 3.5rem;
+            font-weight: 700;
+            line-height: 1.1;
+            margin: 0 0 1.5rem 0;
+            
+            @media (max-width: 768px) {
+                font-size: 2.5rem;
+            }
+            
+            .gradient-text {
+                background: linear-gradient(135deg, #64b5f6 0%, #42a5f5 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+            }
+        }
+        
+        .hero-subtitle {
+            font-size: 1.2rem;
+            line-height: 1.6;
+            margin: 0;
+            opacity: 0.9;
+            font-weight: 300;
+            max-width: 500px;
+            
+            @media (max-width: 768px) {
+                font-size: 1.1rem;
+                max-width: none;
+            }
+        }
+    }
+    
+    .hero-stats {
+        display: flex;
+        gap: 1.5rem;
+        
+        @media (max-width: 768px) {
+            justify-content: center;
+        }
+        
+        @media (max-width: 480px) {
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 1.5rem;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            min-width: 100px;
+            
+            .stat-number {
+                font-size: 2.2rem;
+                font-weight: 700;
+                color: #64b5f6;
+                margin-bottom: 0.5rem;
+                line-height: 1;
+            }
+            
+            .stat-label {
+                font-size: 0.9rem;
+                opacity: 0.8;
+                font-weight: 500;
             }
         }
     }
