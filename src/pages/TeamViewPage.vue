@@ -139,74 +139,49 @@
                                         <span>{{ teamDivision }}</span>
                                     </div>
                                 </div>
+                                <div class="team-ratings-row">
+                                    <div v-if="currentTeamSectionRatings.attRating > 0 || currentTeamSectionRatings.midRating > 0 || currentTeamSectionRatings.defRating > 0" class="section-ratings-centered">
+                                        <div v-if="currentTeamSectionRatings.attRating > 0" class="section-rating-large att">
+                                            <div class="section-label-large">ATT</div>
+                                            <div class="section-value-large" :class="getOverallClass(currentTeamSectionRatings.attRating)">
+                                                {{ currentTeamSectionRatings.attRating }}
+                                            </div>
+                                        </div>
+                                        <div v-if="currentTeamSectionRatings.midRating > 0" class="section-rating-large mid">
+                                            <div class="section-label-large">MID</div>
+                                            <div class="section-value-large" :class="getOverallClass(currentTeamSectionRatings.midRating)">
+                                                {{ currentTeamSectionRatings.midRating }}
+                                            </div>
+                                        </div>
+                                        <div v-if="currentTeamSectionRatings.defRating > 0" class="section-rating-large def">
+                                            <div class="section-label-large">DEF</div>
+                                            <div class="section-value-large" :class="getOverallClass(currentTeamSectionRatings.defRating)">
+                                                {{ currentTeamSectionRatings.defRating }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                                 <div v-if="bestTeamAverageOverall !== null" class="team-star-rating">
                                     <div class="star-rating-container">
-                                        <div class="star-rating-large">
+                                        <div class="star-rating-extra-large">
                                             <span
                                                 v-for="star in 5"
                                                 :key="star"
-                                                class="star-large"
+                                                class="star-extra-large"
                                                 :class="getStarClass(bestTeamAverageOverall, star)"
                                             >
                                                 ★
                                             </span>
                                         </div>
-                                        <div class="star-rating-label">Team Rating</div>
                                     </div>
                                 </div>
                             </div>
-                            <p class="dashboard-subtitle">Squad Performance Analysis</p>
                         </div>
                         
-                        <div v-if="bestTeamAverageOverall !== null" class="performance-cards">
-                            <div class="performance-card overall-card">
-                                <div class="card-icon">
-                                    <q-icon name="sports_soccer" size="2rem" />
-                                </div>
-                                <div class="card-content">
-                                    <div class="card-label">Overall Rating</div>
-                                    <div class="card-value" :class="getOverallClass(bestTeamAverageOverall)">
-                                        {{ bestTeamAverageOverall }}
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div v-if="currentTeamSectionRatings.attRating > 0" class="performance-card attack-card">
-                                <div class="card-icon attack-icon">
-                                    <q-icon name="trending_up" size="2rem" />
-                                </div>
-                                <div class="card-content">
-                                    <div class="card-label">Attack</div>
-                                    <div class="card-value" :class="getOverallClass(currentTeamSectionRatings.attRating)">
-                                        {{ currentTeamSectionRatings.attRating }}
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div v-if="currentTeamSectionRatings.midRating > 0" class="performance-card midfield-card">
-                                <div class="card-icon midfield-icon">
-                                    <q-icon name="control_camera" size="2rem" />
-                                </div>
-                                <div class="card-content">
-                                    <div class="card-label">Midfield</div>
-                                    <div class="card-value" :class="getOverallClass(currentTeamSectionRatings.midRating)">
-                                        {{ currentTeamSectionRatings.midRating }}
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div v-if="currentTeamSectionRatings.defRating > 0" class="performance-card defense-card">
-                                <div class="card-icon defense-icon">
-                                    <q-icon name="security" size="2rem" />
-                                </div>
-                                <div class="card-content">
-                                    <div class="card-label">Defense</div>
-                                    <div class="card-value" :class="getOverallClass(currentTeamSectionRatings.defRating)">
-                                        {{ currentTeamSectionRatings.defRating }}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <!-- Performance cards removed - now using minimalist ratings in header -->
+                        <!-- <div v-if="bestTeamAverageOverall !== null" class="performance-cards">
+                            ... performance cards content removed ...
+                        </div> -->
                     </div>
 
                     <q-card
@@ -1951,29 +1926,106 @@ export default {
                 }
             }
             
+            .team-ratings-row {
+                display: flex;
+                flex: 1;
+                justify-content: center;
+                align-items: center;
+                
+                .section-ratings-centered {
+                    display: flex;
+                    gap: 2rem;
+                    
+                    .section-rating-large {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        gap: 0.5rem;
+                        
+                        .section-label-large {
+                            font-size: 1rem;
+                            font-weight: 700;
+                            text-transform: uppercase;
+                            letter-spacing: 1px;
+                        }
+                        
+                        .section-value-large {
+                            font-size: 2.5rem;
+                            font-weight: 800;
+                            padding: 0.5rem 1rem;
+                            border-radius: 12px;
+                            min-width: 80px;
+                            text-align: center;
+                            border: 2px solid rgba(0, 0, 0, 0.1);
+                            
+                            .body--dark & {
+                                border-color: rgba(255, 255, 255, 0.2);
+                            }
+                        }
+                        
+                        &.att .section-label-large {
+                            color: #F44336;
+                            
+                            .body--dark & {
+                                color: #FF5722;
+                            }
+                        }
+                        
+                        &.mid .section-label-large {
+                            color: #2196F3;
+                            
+                            .body--dark & {
+                                color: #03A9F4;
+                            }
+                        }
+                        
+                        &.def .section-label-large {
+                            color: #4CAF50;
+                            
+                            .body--dark & {
+                                color: #8BC34A;
+                            }
+                        }
+                    }
+                }
+            }
+            
             .team-star-rating {
                 display: flex;
                 align-items: center;
-                gap: 1rem;
                 
                 .star-rating-container {
                     display: flex;
                     align-items: center;
                     gap: 0.5rem;
                     
-                    .star-rating-large {
+                    .star-rating-extra-large {
                         display: flex;
-                        gap: 4px;
+                        gap: 6px;
                         
-                        .star-large {
-                            font-size: 1.2rem;
-                            color: #ffd700;
+                        .star-extra-large {
+                            font-size: 2.5rem;
+                            transition: all 0.2s ease;
+                            
+                            &.star-full {
+                                color: #ffd700;
+                                text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+                            }
+                            
+                            &.star-half {
+                                color: #ffd700;
+                                opacity: 0.6;
+                                text-shadow: 0 0 6px rgba(255, 215, 0, 0.4);
+                            }
+                            
+                            &.star-empty {
+                                color: #e0e0e0;
+                                
+                                .body--dark & {
+                                    color: #424242;
+                                }
+                            }
                         }
-                    }
-                    
-                    .star-rating-label {
-                        font-size: 1rem;
-                        color: #fff;
                     }
                 }
             }
@@ -2500,14 +2552,78 @@ export default {
     .team-info-container {
         flex-direction: column;
         align-items: center;
-        gap: 1rem;
+        gap: 2rem;
         
         .team-basic-info {
             text-align: center;
         }
         
+        .team-ratings-row {
+            width: 100%;
+            
+            .section-ratings-centered {
+                gap: 1.5rem;
+                
+                .section-rating-large {
+                    .section-label-large {
+                        font-size: 0.9rem;
+                    }
+                    
+                    .section-value-large {
+                        font-size: 2rem;
+                        min-width: 60px;
+                        padding: 0.4rem 0.8rem;
+                    }
+                }
+            }
+        }
+        
         .team-star-rating {
-            justify-content: center;
+            .star-rating-container {
+                .star-rating-extra-large {
+                    gap: 4px;
+                    
+                    .star-extra-large {
+                        font-size: 2rem;
+                    }
+                }
+            }
+        }
+    }
+}
+
+@media (max-width: 480px) {
+    .team-info-container {
+        gap: 1.5rem;
+        
+        .team-ratings-row {
+            .section-ratings-centered {
+                gap: 1rem;
+                
+                .section-rating-large {
+                    .section-label-large {
+                        font-size: 0.8rem;
+                    }
+                    
+                    .section-value-large {
+                        font-size: 1.8rem;
+                        min-width: 50px;
+                        padding: 0.3rem 0.6rem;
+                    }
+                }
+            }
+        }
+        
+        .team-star-rating {
+            .star-rating-container {
+                .star-rating-extra-large {
+                    gap: 3px;
+                    
+                    .star-extra-large {
+                        font-size: 1.8rem;
+                    }
+                }
+            }
         }
     }
 }
