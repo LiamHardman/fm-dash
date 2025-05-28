@@ -72,18 +72,20 @@
                 <q-tr
                     :props="props"
                     :class="qInstance.dark.isActive ? 'bg-grey-9' : 'bg-grey-2'"
+                    class="modern-table-header"
                 >
                     <q-th
                         v-for="col in props.cols"
                         :key="col.name"
                         :props="props"
-                        class="cursor-pointer text-weight-bold"
+                        class="cursor-pointer text-weight-bold modern-header-cell"
                         @click="sortTable(col.name)"
                         :class="[
                             qInstance.dark.isActive
                                 ? 'text-grey-3'
                                 : 'text-grey-8',
                             col.headerClasses,
+                            { 'active-sort': sortField === col.name }
                         ]"
                         :style="col.headerStyle"
                     >
@@ -116,7 +118,7 @@
                 <q-tr
                     :props="props"
                     @click="onRowClick(props.row)"
-                    class="cursor-pointer table-row-hover"
+                    class="cursor-pointer table-row-hover modern-table-row"
                 >
                     <q-td
                         v-for="col in props.cols"
@@ -139,7 +141,7 @@
                                         100,
                                     )
                                 "
-                                class="attribute-value fifa-stat-value"
+                                class="attribute-value fifa-stat-value modern-stat-badge"
                             >
                                 {{
                                     getDisplayValue(props.row, col) !== undefined
@@ -1084,6 +1086,7 @@ export default {
         font-size: 0.8rem;
         padding: 8px 10px;
         border-right: 0;
+        transition: all 0.2s ease;
         /* white-space: nowrap; // This is now handled by inline styles for specific columns */
         /* overflow: hidden; // This is now handled by inline styles for specific columns */
         /* text-overflow: ellipsis; // This is now handled by inline styles for specific columns */
@@ -1214,6 +1217,89 @@ export default {
     
     &:hover {
         text-decoration: underline;
+    }
+}
+
+// Modern Table Enhancements
+.modern-table-header {
+    background: linear-gradient(180deg, rgba(240, 244, 248, 0.8) 0%, rgba(240, 244, 248, 1) 100%);
+    
+    .body--dark & {
+        background: linear-gradient(180deg, rgba(66, 66, 66, 0.8) 0%, rgba(66, 66, 66, 1) 100%);
+    }
+}
+
+.modern-header-cell {
+    &:hover {
+        background: rgba(25, 118, 210, 0.08);
+        
+        .body--dark & {
+            background: rgba(144, 202, 249, 0.08);
+        }
+    }
+    
+    &.active-sort {
+        background: rgba(25, 118, 210, 0.12);
+        color: #1976d2;
+        
+        .body--dark & {
+            background: rgba(144, 202, 249, 0.12);
+            color: #90caf9;
+        }
+    }
+}
+
+.modern-table-row {
+    transition: all 0.2s ease;
+    
+    &:hover {
+        transform: scale(1.001);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        
+        .body--dark & {
+            box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
+        }
+    }
+}
+
+.modern-stat-badge {
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-align: center;
+    min-width: 32px;
+    display: inline-block;
+    transition: transform 0.2s ease;
+    
+    &:hover {
+        transform: scale(1.05);
+    }
+}
+
+// Enhanced sort info chip
+.sort-info-chip {
+    background: linear-gradient(135deg, rgba(25, 118, 210, 0.1) 0%, rgba(25, 118, 210, 0.05) 100%);
+    border: 1px solid rgba(25, 118, 210, 0.2);
+    color: #1976d2;
+    
+    .body--dark & {
+        background: linear-gradient(135deg, rgba(144, 202, 249, 0.1) 0%, rgba(144, 202, 249, 0.05) 100%);
+        border: 1px solid rgba(144, 202, 249, 0.2);
+        color: #90caf9;
+    }
+}
+
+// Enhanced table container
+.player-data-table-container {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+    
+    .body--dark & {
+        background: rgba(255, 255, 255, 0.02);
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
     }
 }
 </style>
