@@ -1,15 +1,26 @@
 // src/pages/TeamViewPage.vue
 <template>
-    <q-page padding class="team-view-page">
+    <q-page class="team-view-page">
+        <!-- Hero Section -->
+        <div class="hero-section">
+            <div class="hero-container">
+                <div class="hero-content">
+                    <div class="hero-badge">
+                        <q-icon name="sports_soccer" size="1.2rem" />
+                        <span>Team Performance</span>
+                    </div>
+                    <h1 class="hero-title">
+                        Squad
+                        <span class="gradient-text">Analytics</span>
+                    </h1>
+                    <p class="hero-subtitle">
+                        Analyze team compositions, tactical formations, and squad chemistry. Identify strengths and optimize performance.
+                    </p>
+                </div>
+            </div>
+        </div>
+        
         <div class="q-pa-md">
-            <h1
-                class="text-h4 text-center q-mb-lg page-title"
-                :class="
-                    quasarInstance.dark.isActive ? 'text-grey-2' : 'text-grey-9'
-                "
-            >
-                Team Analysis
-            </h1>
 
             <q-banner
                 v-if="pageLoadingError"
@@ -29,27 +40,29 @@
                 />
             </q-banner>
 
-            <q-card
-                v-if="!pageLoadingError"
-                class="q-mb-md filter-card"
-                :class="quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'"
-            >
-                <q-card-section>
-                    <div class="row items-center justify-between q-mb-sm">
-                        <div class="text-subtitle1">Select Team</div>
-                        <q-btn
-                            v-if="currentDatasetId"
-                            unelevated
-                            icon="share"
-                            label="Share Dataset"
-                            color="positive"
-                            @click="shareDataset"
-                            class="share-btn-enhanced"
-                            size="sm"
-                        >
-                            <q-tooltip>Copy shareable link to clipboard</q-tooltip>
-                        </q-btn>
-                    </div>
+            <!-- Share Button -->
+            <div v-if="!pageLoadingError && currentDatasetId" class="share-button-container">
+                <q-btn
+                    unelevated
+                    icon="share"
+                    label="Share Dataset"
+                    color="positive"
+                    @click="shareDataset"
+                    class="share-btn-enhanced"
+                    size="md"
+                >
+                    <q-tooltip>Copy shareable link to clipboard</q-tooltip>
+                </q-btn>
+            </div>
+
+            <div v-if="!pageLoadingError" class="modern-filter-section">
+                <div class="filter-header">
+                    <h2 class="filter-title">Team Selection</h2>
+                    <p class="filter-subtitle">Choose a team to analyze tactical formation and squad performance</p>
+                </div>
+                <div class="filter-card"
+                     :class="quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'">
+                    <div class="filter-content">
                     <q-select
                         v-model="selectedTeamName"
                         :options="teamOptions"
@@ -82,8 +95,9 @@
                             </q-item>
                         </template>
                     </q-select>
-                </q-card-section>
-            </q-card>
+                    </div>
+                </div>
+            </div>
 
             <div v-if="pageLoading" class="text-center q-my-xl">
                 <q-spinner-dots color="primary" size="3em" />
@@ -114,17 +128,76 @@
 
             <div v-if="!pageLoading && !pageLoadingError">
                 <div v-if="selectedTeamName && !loadingTeam">
+                    <!-- Team Performance Dashboard -->
+                    <div class="performance-dashboard">
+                        <div class="dashboard-header">
+                            <h2 class="team-name">{{ selectedTeamName }}</h2>
+                            <p class="dashboard-subtitle">Squad Performance Analysis</p>
+                        </div>
+                        
+                        <div v-if="bestTeamAverageOverall !== null" class="performance-cards">
+                            <div class="performance-card overall-card">
+                                <div class="card-icon">
+                                    <q-icon name="sports_soccer" size="2rem" />
+                                </div>
+                                <div class="card-content">
+                                    <div class="card-label">Overall Rating</div>
+                                    <div class="card-value" :class="getOverallClass(bestTeamAverageOverall)">
+                                        {{ bestTeamAverageOverall }}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div v-if="currentTeamSectionRatings.attRating > 0" class="performance-card attack-card">
+                                <div class="card-icon attack-icon">
+                                    <q-icon name="trending_up" size="2rem" />
+                                </div>
+                                <div class="card-content">
+                                    <div class="card-label">Attack</div>
+                                    <div class="card-value" :class="getOverallClass(currentTeamSectionRatings.attRating)">
+                                        {{ currentTeamSectionRatings.attRating }}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div v-if="currentTeamSectionRatings.midRating > 0" class="performance-card midfield-card">
+                                <div class="card-icon midfield-icon">
+                                    <q-icon name="control_camera" size="2rem" />
+                                </div>
+                                <div class="card-content">
+                                    <div class="card-label">Midfield</div>
+                                    <div class="card-value" :class="getOverallClass(currentTeamSectionRatings.midRating)">
+                                        {{ currentTeamSectionRatings.midRating }}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div v-if="currentTeamSectionRatings.defRating > 0" class="performance-card defense-card">
+                                <div class="card-icon defense-icon">
+                                    <q-icon name="security" size="2rem" />
+                                </div>
+                                <div class="card-content">
+                                    <div class="card-label">Defense</div>
+                                    <div class="card-value" :class="getOverallClass(currentTeamSectionRatings.defRating)">
+                                        {{ currentTeamSectionRatings.defRating }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <q-card
                         :class="
                             quasarInstance.dark.isActive
                                 ? 'bg-grey-9'
                                 : 'bg-white'
                         "
-                        class="q-mb-md"
+                        class="q-mb-md modern-formation-card"
                     >
                         <q-card-section>
-                            <div class="text-h6 q-mb-md">
-                                Team Formation & Best XI
+                            <div class="formation-header">
+                                <h3 class="formation-title">Tactical Formation</h3>
+                                <p class="formation-subtitle">Optimize your squad with the best formation</p>
                             </div>
                             <div class="row q-col-gutter-md items-start">
                                 <div class="col-12 col-md-4">
@@ -147,62 +220,6 @@
                                                 : 'bg-white text-dark'
                                         "
                                     />
-                                    <div
-                                        v-if="bestTeamAverageOverall !== null"
-                                        class="q-mt-md"
-                                    >
-                                        <div class="text-subtitle1 q-mb-sm"
-                                            :class="
-                                                quasarInstance.dark.isActive
-                                                    ? 'text-grey-3'
-                                                    : 'text-grey-8'
-                                            "
-                                        >
-                                            Best XI Average Overall:
-                                            <span
-                                                class="text-weight-bold attribute-value"
-                                                :class="
-                                                    getOverallClass(
-                                                        bestTeamAverageOverall,
-                                                    )
-                                                "
-                                            >
-                                                {{ bestTeamAverageOverall }}
-                                            </span>
-                                        </div>
-                                        <div 
-                                            v-if="currentTeamSectionRatings.attRating > 0"
-                                            class="section-ratings-detail"
-                                        >
-                                            <div class="section-rating-detail att">
-                                                <span class="section-label-detail">ATT</span>
-                                                <span 
-                                                    class="section-value-detail"
-                                                    :class="getOverallClass(currentTeamSectionRatings.attRating)"
-                                                >
-                                                    {{ currentTeamSectionRatings.attRating }}
-                                                </span>
-                                            </div>
-                                            <div class="section-rating-detail mid">
-                                                <span class="section-label-detail">MID</span>
-                                                <span 
-                                                    class="section-value-detail"
-                                                    :class="getOverallClass(currentTeamSectionRatings.midRating)"
-                                                >
-                                                    {{ currentTeamSectionRatings.midRating }}
-                                                </span>
-                                            </div>
-                                            <div class="section-rating-detail def">
-                                                <span class="section-label-detail">DEF</span>
-                                                <span 
-                                                    class="section-value-detail"
-                                                    :class="getOverallClass(currentTeamSectionRatings.defRating)"
-                                                >
-                                                    {{ currentTeamSectionRatings.defRating }}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
                                     <q-banner
                                         v-if="calculationMessage"
                                         class="q-mt-sm"
@@ -1675,6 +1692,305 @@ export default {
 .team-view-page {
     max-width: 1600px;
     margin: 0 auto;
+}
+
+// Hero Section
+.hero-section {
+    padding: 4rem 0;
+    background: linear-gradient(135deg, #1a237e 0%, #283593 50%, #3949ab 100%);
+    color: white;
+    position: relative;
+    overflow: hidden;
+    margin: -1.5rem -1.5rem 2rem -1.5rem;
+    
+    &::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: radial-gradient(
+            circle at 30% 20%,
+            rgba(255, 255, 255, 0.05) 0%,
+            transparent 50%
+        );
+        pointer-events: none;
+    }
+    
+    .hero-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 2rem;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .hero-content {
+        text-align: center;
+        
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 2rem;
+            backdrop-filter: blur(10px);
+        }
+        
+        .hero-title {
+            font-size: 3.5rem;
+            font-weight: 700;
+            line-height: 1.1;
+            margin: 0 0 1.5rem 0;
+            
+            @media (max-width: 768px) {
+                font-size: 2.5rem;
+            }
+            
+            .gradient-text {
+                background: linear-gradient(135deg, #64b5f6 0%, #42a5f5 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+            }
+        }
+        
+        .hero-subtitle {
+            font-size: 1.2rem;
+            line-height: 1.6;
+            margin: 0;
+            opacity: 0.9;
+            font-weight: 300;
+            max-width: 600px;
+            margin: 0 auto;
+            
+            @media (max-width: 768px) {
+                font-size: 1.1rem;
+            }
+        }
+    }
+}
+
+.share-button-container {
+    display: flex;
+    justify-content: flex-end;
+    margin: 2rem 0;
+    padding: 0 2rem;
+}
+
+// Modern Filter Section
+.modern-filter-section {
+    margin: 3rem 0;
+    
+    .filter-header {
+        text-align: center;
+        margin-bottom: 2rem;
+        
+        .filter-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0 0 0.5rem 0;
+            color: #1a237e;
+            
+            .body--dark & {
+                color: rgba(255, 255, 255, 0.9);
+            }
+        }
+        
+        .filter-subtitle {
+            font-size: 1rem;
+            color: #666;
+            margin: 0;
+            
+            .body--dark & {
+                color: rgba(255, 255, 255, 0.7);
+            }
+        }
+    }
+    
+    .filter-card {
+        background: white;
+        border-radius: 16px;
+        padding: 2rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        max-width: 600px;
+        margin: 0 auto;
+        
+        .body--dark & {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .filter-content {
+            .q-field {
+                .q-field__control {
+                    border-radius: 12px;
+                }
+            }
+        }
+    }
+}
+
+// Performance Dashboard
+.performance-dashboard {
+    margin: 3rem 0;
+    
+    .dashboard-header {
+        text-align: center;
+        margin-bottom: 2rem;
+        
+        .team-name {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 0 0 0.5rem 0;
+            color: #1a237e;
+            
+            .body--dark & {
+                color: rgba(255, 255, 255, 0.9);
+            }
+        }
+        
+        .dashboard-subtitle {
+            font-size: 1.1rem;
+            color: #666;
+            margin: 0;
+            
+            .body--dark & {
+                color: rgba(255, 255, 255, 0.7);
+            }
+        }
+    }
+    
+    .performance-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        max-width: 1000px;
+        margin: 0 auto;
+        
+        @media (max-width: 768px) {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+        
+        @media (max-width: 480px) {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    .performance-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        transition: transform 0.3s ease;
+        
+        &:hover {
+            transform: translateY(-4px);
+        }
+        
+        .body--dark & {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .card-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            flex-shrink: 0;
+            
+            &.attack-icon {
+                background: linear-gradient(135deg, #f44336 0%, #ff5722 100%);
+            }
+            
+            &.midfield-icon {
+                background: linear-gradient(135deg, #2196f3 0%, #03a9f4 100%);
+            }
+            
+            &.defense-icon {
+                background: linear-gradient(135deg, #4caf50 0%, #8bc34a 100%);
+            }
+        }
+        
+        .card-content {
+            flex: 1;
+            
+            .card-label {
+                font-size: 0.9rem;
+                color: #666;
+                margin-bottom: 0.25rem;
+                font-weight: 500;
+                
+                .body--dark & {
+                    color: rgba(255, 255, 255, 0.7);
+                }
+            }
+            
+            .card-value {
+                font-size: 2rem;
+                font-weight: 700;
+                line-height: 1;
+            }
+        }
+        
+        &.overall-card .card-icon {
+            background: linear-gradient(135deg, #1a237e 0%, #3949ab 100%);
+        }
+    }
+}
+
+// Formation Card
+.modern-formation-card {
+    border-radius: 20px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    
+    .body--dark & {
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .formation-header {
+        margin-bottom: 2rem;
+        
+        .formation-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin: 0 0 0.5rem 0;
+            color: #1a237e;
+            
+            .body--dark & {
+                color: rgba(255, 255, 255, 0.9);
+            }
+        }
+        
+        .formation-subtitle {
+            font-size: 1rem;
+            color: #666;
+            margin: 0;
+            
+            .body--dark & {
+                color: rgba(255, 255, 255, 0.7);
+            }
+        }
+    }
 }
 
 .page-title {
