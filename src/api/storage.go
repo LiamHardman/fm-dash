@@ -165,6 +165,8 @@ func NewMinIOStorage(endpoint, accessKey, secretKey, bucketName string, useSSL b
 	client, err := minio.New(endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
 		Secure: useSSL,
+		// Disable chunked transfer encoding to avoid aws-chunked content-encoding conflicts
+		Region: "us-east-1", // Set a default region
 	})
 	if err != nil {
 		log.Printf("Warning: Failed to create MinIO client: %v. Using fallback storage.", err)
@@ -319,8 +321,11 @@ func (s *MinIOStorage) storeSync(datasetID string, data DatasetData) error {
 	)
 	
 	_, err = s.client.PutObject(ctx, s.bucketName, objectName, reader, int64(len(compressedData)), minio.PutObjectOptions{
-		ContentType:     "application/gzip",
-		ContentEncoding: "gzip",
+		ContentType: "application/gzip",
+		UserMetadata: map[string]string{
+			"compression": "gzip",
+			"original-size": fmt.Sprintf("%d", len(jsonData)),
+		},
 	})
 	if err != nil {
 		RecordError(ctx, err, "Failed to store to MinIO")
