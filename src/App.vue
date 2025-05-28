@@ -23,6 +23,11 @@
                     <router-link to="/leagues" class="nav-link">Leagues</router-link>
                     <router-link to="/docs" class="nav-link">Docs</router-link>
                 </div>
+
+                <!-- Universal Search Component -->
+                <div v-if="currentDatasetId" class="search-container">
+                    <UniversalSearch />
+                </div>
                 
                 <q-space />
                 <q-btn
@@ -51,9 +56,13 @@
 import { defineComponent, onMounted, computed } from "vue";
 import { useUiStore } from "./stores/uiStore";
 import { usePlayerStore } from "./stores/playerStore";
+import UniversalSearch from "./components/UniversalSearch.vue";
 
 export default defineComponent({
     name: "App",
+    components: {
+        UniversalSearch,
+    },
     setup() {
         const uiStore = useUiStore();
         const playerStore = usePlayerStore();
@@ -116,6 +125,11 @@ export default defineComponent({
     display: flex;
     gap: 2rem;
     margin-left: 3rem;
+}
+
+.search-container {
+    margin-left: 2rem;
+    margin-right: 1rem;
 }
 
 .nav-link {
@@ -219,6 +233,11 @@ export default defineComponent({
     
     .nav-links {
         display: none;
+    }
+    
+    .search-container {
+        margin-left: 1rem;
+        margin-right: 0.5rem;
     }
     
     .footer-content {

@@ -92,6 +92,9 @@ func main() {
 	// API endpoint for updating player percentiles with division filtering
 	http.Handle("/api/percentiles/", wrapHandler(http.HandlerFunc(percentilesHandler), "percentiles"))
 
+	// API endpoint for universal search (players, teams, leagues, nations)
+	http.Handle("/api/search/", wrapHandler(http.HandlerFunc(searchHandler), "search"))
+
 	// Determine port for HTTP server
 	port := os.Getenv("PORT")
 	if port == "" {

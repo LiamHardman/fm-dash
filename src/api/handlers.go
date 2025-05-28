@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
@@ -1070,5 +1071,188 @@ func calculateAverage(numbers []int) int {
 	}
 	
 	return sum / len(numbers)
+}
+
+// SearchResult represents a search result item
+type SearchResult struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Type        string `json:"type"`        // "player", "team", "league", "nation"
+	Description string `json:"description"` // Additional context (e.g., team/division for player)
+	URL         string `json:"url"`         // URL to navigate to
+}
+
+// searchHandler handles GET requests for searching players, teams, leagues, and nations
+func searchHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if r.Method != http.MethodGet {
+		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Start tracing
+	ctx, span := StartSpan(ctx, "search.handler")
+	defer span.End()
+
+	// Track active requests
+	IncrementActiveRequests(ctx, "/search")
+	defer DecrementActiveRequests(ctx, "/search")
+
+	// Extract dataset ID from URL path
+	pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	if len(pathParts) < 3 || pathParts[0] != "api" || pathParts[1] != "search" {
+		http.Error(w, "Invalid URL format. Expected /api/search/{datasetId}", http.StatusBadRequest)
+		return
+	}
+
+	datasetID := pathParts[2]
+	if datasetID == "" {
+		http.Error(w, "Dataset ID is required", http.StatusBadRequest)
+		return
+	}
+
+	// Get search query from URL parameters
+	query := strings.TrimSpace(r.URL.Query().Get("q"))
+	if query == "" {
+		// Return empty results for empty query
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]SearchResult{})
+		return
+	}
+
+	SetSpanAttributes(ctx,
+		attribute.String("dataset.id", datasetID),
+		attribute.String("search.query", query),
+	)
+
+	// Get player data
+	players, _, found := GetPlayerData(datasetID)
+	if !found {
+		http.Error(w, "Dataset not found", http.StatusNotFound)
+		return
+	}
+
+	logInfo(ctx, "Performing search", "dataset_id", datasetID, "query", query, "player_count", len(players))
+
+	// Perform search
+	results := performSearch(players, query)
+
+	SetSpanAttributes(ctx, attribute.Int("search.results_count", len(results)))
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(results); err != nil {
+		RecordError(ctx, err, "Failed to encode search results")
+		http.Error(w, "Error encoding response", http.StatusInternalServerError)
+		return
+	}
+
+	logInfo(ctx, "Search completed", "results_count", len(results))
+}
+
+// performSearch searches through players, teams, leagues, and nations
+func performSearch(players []Player, query string) []SearchResult {
+	var results []SearchResult
+	queryLower := strings.ToLower(query)
+	
+	// Collect unique teams, leagues, and nations
+	teams := make(map[string]struct {
+		division string
+		players  int
+	})
+	leagues := make(map[string]int)  // league -> player count
+	nations := make(map[string]int)  // nation -> player count
+
+	// Search players and collect team/league/nation data
+	for _, player := range players {
+		// Search players by name
+		if strings.Contains(strings.ToLower(player.Name), queryLower) {
+			results = append(results, SearchResult{
+				ID:          player.Name, // Using name as ID for players
+				Name:        player.Name,
+				Type:        "player",
+				Description: fmt.Sprintf("%s • %s", player.Club, player.Division),
+				URL:         fmt.Sprintf("/dataset/%s?search=%s", "", player.Name), // Frontend will fill dataset ID
+			})
+		}
+
+		// Collect team data
+		if player.Club != "" {
+			if _, exists := teams[player.Club]; !exists {
+				teams[player.Club] = struct {
+					division string
+					players  int
+				}{division: player.Division, players: 0}
+			}
+			teamData := teams[player.Club]
+			teamData.players++
+			teams[player.Club] = teamData
+		}
+
+		// Collect league data
+		if player.Division != "" {
+			leagues[player.Division]++
+		}
+
+		// Collect nation data
+		if player.Nationality != "" {
+			nations[player.Nationality]++
+		}
+	}
+
+	// Search teams
+	for teamName, teamData := range teams {
+		if strings.Contains(strings.ToLower(teamName), queryLower) {
+			results = append(results, SearchResult{
+				ID:          teamName,
+				Name:        teamName,
+				Type:        "team",
+				Description: fmt.Sprintf("%s • %d players", teamData.division, teamData.players),
+				URL:         fmt.Sprintf("/dataset/%s?team=%s", "", teamName), // Frontend will fill dataset ID
+			})
+		}
+	}
+
+	// Search leagues
+	for leagueName, playerCount := range leagues {
+		if strings.Contains(strings.ToLower(leagueName), queryLower) {
+			results = append(results, SearchResult{
+				ID:          leagueName,
+				Name:        leagueName,
+				Type:        "league",
+				Description: fmt.Sprintf("%d players", playerCount),
+				URL:         fmt.Sprintf("/leagues?league=%s", leagueName),
+			})
+		}
+	}
+
+	// Search nations
+	for nationName, playerCount := range nations {
+		if strings.Contains(strings.ToLower(nationName), queryLower) {
+			results = append(results, SearchResult{
+				ID:          nationName,
+				Name:        nationName,
+				Type:        "nation",
+				Description: fmt.Sprintf("%d players", playerCount),
+				URL:         fmt.Sprintf("/nations?nation=%s", nationName),
+			})
+		}
+	}
+
+	// Sort results by type priority (players first, then teams, leagues, nations) and then by name
+	sort.Slice(results, func(i, j int) bool {
+		typePriority := map[string]int{"player": 1, "team": 2, "league": 3, "nation": 4}
+		if typePriority[results[i].Type] != typePriority[results[j].Type] {
+			return typePriority[results[i].Type] < typePriority[results[j].Type]
+		}
+		return strings.ToLower(results[i].Name) < strings.ToLower(results[j].Name)
+	})
+
+	// Limit results to avoid overwhelming the UI
+	maxResults := 50
+	if len(results) > maxResults {
+		results = results[:maxResults]
+	}
+
+	return results
 }
 
