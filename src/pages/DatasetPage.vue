@@ -138,6 +138,18 @@
                                 </p>
                             </div>
                         </div>
+
+                        <div class="action-feature-card" @click="showWonderkids = true" :class="{ 'disabled': allPlayersData.length === 0 }">
+                            <div class="feature-icon-container wonderkids-gradient">
+                                <q-icon name="stars" size="2.5rem" />
+                            </div>
+                            <div class="feature-content">
+                                <h3 class="feature-title">Find Wonderkids</h3>
+                                <p class="feature-description">
+                                    Discover the 25 best young talents aged 15-21. Filter by transfer value and salary to find your next star.
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -227,6 +239,13 @@
             @close="showUpgradeFinder = false"
             :currency-symbol="detectedCurrencySymbol"
         />
+        <WonderkidsDialog
+            :show="showWonderkids"
+            :players="allPlayersData"
+            @close="showWonderkids = false"
+            :currency-symbol="detectedCurrencySymbol"
+            :dataset-id="currentDatasetId"
+        />
     </q-page>
 </template>
 
@@ -240,6 +259,7 @@ import PlayerDataTable from "../components/PlayerDataTable.vue";
 import PlayerDetailDialog from "../components/PlayerDetailDialog.vue";
 import PlayerFilters from "../components/filters/PlayerFilters.vue";
 import UpgradeFinderDialog from "../components/UpgradeFinderDialog.vue";
+import WonderkidsDialog from "../components/WonderkidsDialog.vue";
 
 // Define FM attribute keys for filtering (raw keys as used in player.attributes)
 const rawTechnicalAttributeKeysConst = [
@@ -317,6 +337,7 @@ export default {
         PlayerDetailDialog,
         PlayerFilters,
         UpgradeFinderDialog,
+        WonderkidsDialog,
     },
     setup() {
         const quasarInstance = useQuasar();
@@ -330,6 +351,7 @@ export default {
         const playerForDetailView = ref(null);
         const showPlayerDetailDialog = ref(false);
         const showUpgradeFinder = ref(false);
+        const showWonderkids = ref(false);
 
         // Centralized filter state for this page
         const currentFilters = ref({
@@ -877,6 +899,7 @@ export default {
             playerForDetailView,
             showPlayerDetailDialog,
             showUpgradeFinder,
+            showWonderkids,
             shareDataset,
             viewLeagues,
             viewTeamAnalysis,
@@ -1251,6 +1274,10 @@ export default {
             
             &.accent-gradient {
                 background: linear-gradient(135deg, #c2185b 0%, #f06292 100%);
+            }
+            
+            &.wonderkids-gradient {
+                background: linear-gradient(135deg, #ffd700 0%, #ffa500 100%);
             }
         }
         
