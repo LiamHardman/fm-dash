@@ -998,8 +998,13 @@ export default {
         };
 
         const onClubClick = (player) => {
+            console.log('onClubClick called with player:', player);
+            console.log('Club name:', player.club);
             if (player.club && player.club.trim() !== '') {
+                console.log('Emitting team-selected event with club:', player.club);
                 emit("team-selected", player.club);
+            } else {
+                console.log('Club name is empty or invalid');
             }
         };
 

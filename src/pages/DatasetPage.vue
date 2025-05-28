@@ -748,6 +748,8 @@ export default {
         };
 
         const handleTeamSelected = (teamName) => {
+            console.log('DatasetPage handleTeamSelected called with team:', teamName);
+            console.log('currentDatasetId:', currentDatasetId.value);
             if (currentDatasetId.value) {
                 const url = router.resolve({
                     path: "/team-view",
@@ -756,7 +758,16 @@ export default {
                         team: teamName,
                     },
                 }).href;
-                window.open(url, "_blank");
+                console.log('Generated URL:', url);
+                console.log('Attempting to open in new tab...');
+                const newWindow = window.open(url, "_blank");
+                if (!newWindow) {
+                    console.error('Failed to open new window - likely blocked by popup blocker');
+                } else {
+                    console.log('Successfully opened new window');
+                }
+            } else {
+                console.log('No currentDatasetId available');
             }
         };
 
