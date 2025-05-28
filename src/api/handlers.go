@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"log/slog"
 	"net/http"
@@ -19,6 +20,29 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 )
 
+// setCORSHeaders sets secure CORS headers based on the request origin
+func setCORSHeaders(w http.ResponseWriter, r *http.Request) {
+	origin := r.Header.Get("Origin")
+	
+	// Define allowed origins for production
+	allowedOrigins := []string{
+		"http://localhost:3000",   // Development frontend
+		"http://localhost:8080",   // Production nginx
+		"https://localhost:8080",  // Production nginx with SSL
+	}
+	
+	// Check if the origin is in our allowed list
+	for _, allowedOrigin := range allowedOrigins {
+		if origin == allowedOrigin {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			return
+		}
+	}
+	
+	// If no allowed origin matches, don't set CORS headers (more secure default)
+	// For completely public APIs, you might set a restrictive default here
+}
 
 // processPercentilesAsync calculates percentiles asynchronously and updates stored dataset
 func processPercentilesAsync(datasetID string, players []Player) {
@@ -176,22 +200,35 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	fileSize := handler.Size
+	// Validate actual file size by reading content (more secure than relying on headers)
+	limitedReader := http.MaxBytesReader(w, file, MaxUploadSize)
+	fileContent, err := io.ReadAll(limitedReader)
+	if err != nil {
+		RecordError(ctx, err, "File size validation failed - file too large or read error")
+		logWarn(ctx, "Upload rejected: File content exceeds size limit or read error", 
+			"max_size_bytes", MaxUploadSize,
+			"filename", handler.Filename)
+		http.Error(w, FileSizeLimitErrorMessage, http.StatusRequestEntityTooLarge)
+		return
+	}
+
+	actualFileSize := int64(len(fileContent))
 	SetSpanAttributes(ctx,
 		attribute.String("file.name", handler.Filename),
-		attribute.Int64("file.size", fileSize),
+		attribute.Int64("file.size", actualFileSize),
 		attribute.String("file.content_type", handler.Header.Get("Content-Type")),
+		attribute.Int64("file.size_from_header", handler.Size),
 	)
 	
 	logInfo(ctx, "File uploaded", 
 		"filename", handler.Filename, 
-		"size_bytes", fileSize)
+		"size_bytes", actualFileSize)
 
 	// Enforce the 15MB limit on the actual file size
-	if fileSize > MaxUploadSize {
+	if actualFileSize > MaxUploadSize {
 		logWarn(ctx, "Upload rejected: File size exceeds limit", 
 			"filename", handler.Filename,
-			"file_size_bytes", fileSize, 
+			"file_size_bytes", actualFileSize, 
 			"max_size_bytes", MaxUploadSize)
 		SetSpanAttributes(ctx, attribute.String("upload.rejection_reason", "file_size_exceeded"))
 		http.Error(w, FileSizeLimitErrorMessage, http.StatusRequestEntityTooLarge)
@@ -212,7 +249,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	)
 	
 	// Dynamic buffer sizing based on available memory and system resources
-	bufferSize := calculateOptimalBufferSize(numWorkers, fileSize)
+	bufferSize := calculateOptimalBufferSize(numWorkers, actualFileSize)
 	rowCellsChan := make(chan []string, bufferSize)
 	resultsChan := make(chan PlayerParseResult, bufferSize)
 	var wg sync.WaitGroup
@@ -232,9 +269,10 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("Finished collecting results from resultsChan.")
 	}()
 
-	// Wrap file parsing in a child span
-	err = TraceFileProcessing(ctx, handler.Filename, fileSize, func(spanCtx context.Context) error {
-		return ParseHTMLPlayerTable(file, &headersSnapshot, rowCellsChan, numWorkers, resultsChan, &wg)
+	// Wrap file parsing in a child span using the already-read content
+	err = TraceFileProcessing(ctx, handler.Filename, actualFileSize, func(spanCtx context.Context) error {
+		contentReader := strings.NewReader(string(fileContent))
+		return ParseHTMLPlayerTable(contentReader, &headersSnapshot, rowCellsChan, numWorkers, resultsChan, &wg)
 	})
 	processingError = err
 
@@ -389,7 +427,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	response := UploadResponse{DatasetID: datasetID, Message: "File uploaded and parsed successfully.", DetectedCurrencySymbol: finalDatasetCurrencySymbol}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*") // Ensure CORS is set if frontend is on a different domain/port
+	setCORSHeaders(w, r)
 	
 	ctx, responseSpan := StartSpan(ctx, "response.encode")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
@@ -412,7 +450,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	// Record comprehensive business operation metrics
 	RecordBusinessOperation(ctx, "file_upload", true, map[string]interface{}{
 		"filename": handler.Filename,
-		"file_size_bytes": fileSize,
+		"file_size_bytes": actualFileSize,
 		"players_processed": len(playersList),
 		"workers_used": numWorkers,
 		"currency_detected": finalDatasetCurrencySymbol,
@@ -421,7 +459,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	})
 	
 	// Record metrics if enabled
-	recordUploadMetrics(handler.Filename, fileSize, totalDuration, parseDuration, 
+	recordUploadMetrics(handler.Filename, actualFileSize, totalDuration, parseDuration, 
 		len(playersList), memAllocMB, numWorkers, runtime.NumGoroutine())
 	
 	// Add final span attributes with performance metrics
@@ -438,7 +476,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	// Log performance metrics with trace context
 	logInfo(ctx, "Upload processing completed", 
 		"filename", handler.Filename,
-		"file_size_kb", fileSize/1024,
+		"file_size_kb", actualFileSize/1024,
 		"total_duration_ms", totalDuration.Milliseconds(),
 		"parse_duration_ms", parseDuration.Milliseconds(),
 		"players_parsed", len(playersList),
@@ -651,7 +689,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	response := PlayerDataWithCurrency{Players: processedPlayers, CurrencySymbol: currencySymbol}
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*") // Ensure CORS
+	setCORSHeaders(w, r)
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		log.Printf("Error encoding JSON response for playerData (DatasetID: %s): %v", datasetID, err)
 	}
@@ -675,7 +713,7 @@ func rolesHandler(w http.ResponseWriter, r *http.Request) {
 	sort.Strings(roleNames) // Sort for consistent frontend display
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*") // Ensure CORS
+	setCORSHeaders(w, r)
 	if err := json.NewEncoder(w).Encode(roleNames); err != nil {
 		log.Printf("Error encoding JSON response for roles: %v", err)
 		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
@@ -712,7 +750,7 @@ func leaguesHandler(w http.ResponseWriter, r *http.Request) {
 	leaguesData := processor.ProcessLeaguesAsync(ctx, players)
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	setCORSHeaders(w, r)
 	if err := json.NewEncoder(w).Encode(leaguesData); err != nil {
 		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
 		log.Printf("Error encoding JSON response for leagues (DatasetID: %s): %v", datasetID, err)
@@ -749,7 +787,7 @@ func teamsHandler(w http.ResponseWriter, r *http.Request) {
 	teamsData := processTeamsData(players, division)
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	setCORSHeaders(w, r)
 	if err := json.NewEncoder(w).Encode(teamsData); err != nil {
 		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
 		log.Printf("Error encoding JSON response for teams (DatasetID: %s, Division: %s): %v", datasetID, division, err)
@@ -955,7 +993,7 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 	updatedPercentiles := playersCopy[targetPlayerIndex].PerformancePercentiles
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	setCORSHeaders(w, r)
 	if err := json.NewEncoder(w).Encode(updatedPercentiles); err != nil {
 		log.Printf("Error encoding JSON response for percentiles (DatasetID: %s): %v", datasetID, err)
 		http.Error(w, "Error encoding response", http.StatusInternalServerError)

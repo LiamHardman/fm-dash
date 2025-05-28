@@ -557,14 +557,11 @@ func InitializeStorage() StorageInterface {
 	}
 
 	// Debug logging (only show first few chars for security)
-	accessKeyPrefix := accessKey
-	if len(accessKey) > 4 {
-		accessKeyPrefix = accessKey[:4]
-	}
-	log.Printf("MinIO Config: endpoint=%s, accessKey=%s..., useSSL=%v", 
+	// Log configuration without sensitive credentials
+	log.Printf("MinIO Config: endpoint=%s, useSSL=%v, credentials_provided=%t", 
 		minioEndpoint, 
-		accessKeyPrefix, 
-		useSSL)
+		useSSL,
+		accessKey != "" && secretKey != "")
 
 	minioStorage, err := NewMinIOStorage(minioEndpoint, accessKey, secretKey, "v2fmdash", useSSL, inMemory)
 	if err != nil {

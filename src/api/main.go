@@ -3,12 +3,14 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
 	_ "net/http/pprof" // For profiling, if needed
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -23,13 +25,51 @@ func getEnvWithDefault(key, defaultValue string) string {
 	return defaultValue
 }
 
+// validateEnvironmentVariables performs security validation on environment variables
+func validateEnvironmentVariables() error {
+	// Validate OTEL_EXPORTER_OTLP_ENDPOINT if set
+	if endpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"); endpoint != "" {
+		if !strings.Contains(endpoint, ":") {
+			return fmt.Errorf("invalid OTEL_EXPORTER_OTLP_ENDPOINT: %s (must include port)", endpoint)
+		}
+	}
+	
+	// Validate MINIO_ENDPOINT format if set
+	if endpoint := os.Getenv("MINIO_ENDPOINT"); endpoint != "" {
+		if !strings.Contains(endpoint, ":") && !strings.HasPrefix(endpoint, "http") {
+			return fmt.Errorf("invalid MINIO_ENDPOINT format: %s (should include port or be full URL)", endpoint)
+		}
+	}
+	
+	// Validate SERVICE_NAME doesn't contain dangerous characters
+	if serviceName := os.Getenv("SERVICE_NAME"); serviceName != "" {
+		if strings.ContainsAny(serviceName, " \t\n\r;|&$`") {
+			return fmt.Errorf("invalid SERVICE_NAME: contains unsafe characters")
+		}
+	}
+	
+	return nil
+}
+
 
 func main() {
+	// Validate environment variables first
+	if err := validateEnvironmentVariables(); err != nil {
+		log.Fatalf("Environment validation failed: %v", err)
+	}
+	
 	// Initialize OpenTelemetry (tracing and metrics) if enabled
 	var cleanup func(context.Context) error
 	if otelEnabled {
 		cleanup = initOTel()
-		defer cleanup(context.Background())
+		if cleanup == nil {
+			log.Fatal("Failed to initialize OpenTelemetry: initOTel returned nil cleanup function")
+		}
+		defer func() {
+			if err := cleanup(context.Background()); err != nil {
+				log.Printf("Warning: Error during OpenTelemetry cleanup: %v", err)
+			}
+		}()
 		slog.Info("OpenTelemetry initialized", "logs_streaming", true)
 		
 		// Demo structured logging that will be streamed to OTLP
@@ -95,10 +135,15 @@ func main() {
 	// API endpoint for universal search (players, teams, leagues, nations)
 	http.Handle("/api/search/", wrapHandler(http.HandlerFunc(searchHandler), "search"))
 
-	// Determine port for HTTP server
+	// Determine port for HTTP server with validation
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8091" // Default port for the Go API
+	} else {
+		// Validate port is a valid number and in reasonable range
+		if portNum, err := strconv.Atoi(port); err != nil || portNum <= 0 || portNum > 65535 {
+			log.Fatalf("Invalid PORT environment variable: %s. Must be a number between 1-65535", port)
+		}
 	}
 
 	slog.Info("Server starting", "port", port, "url", "http://localhost:"+port)
