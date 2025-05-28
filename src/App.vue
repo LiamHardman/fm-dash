@@ -21,6 +21,20 @@
                     <router-link to="/team-view" class="nav-link">Team View</router-link>
                     <router-link to="/nations" class="nav-link">Nations</router-link>
                     <router-link to="/leagues" class="nav-link">Leagues</router-link>
+                    <router-link 
+                        v-if="currentDatasetId" 
+                        to="/wishlist" 
+                        class="nav-link wishlist-link"
+                    >
+                        <q-icon name="favorite" size="1rem" class="q-mr-xs" />
+                        Wishlist
+                        <q-badge 
+                            v-if="wishlistCount > 0" 
+                            :label="wishlistCount" 
+                            color="positive" 
+                            class="q-ml-xs"
+                        />
+                    </router-link>
                     <router-link to="/docs" class="nav-link">Docs</router-link>
                 </div>
 
@@ -56,6 +70,7 @@
 import { defineComponent, onMounted, computed } from "vue";
 import { useUiStore } from "./stores/uiStore";
 import { usePlayerStore } from "./stores/playerStore";
+import { useWishlistStore } from "./stores/wishlistStore";
 import UniversalSearch from "./components/UniversalSearch.vue";
 
 export default defineComponent({
@@ -66,17 +81,22 @@ export default defineComponent({
     setup() {
         const uiStore = useUiStore();
         const playerStore = usePlayerStore();
+        const wishlistStore = useWishlistStore();
         
         onMounted(() => {
             uiStore.initDarkMode();
         });
 
         const currentDatasetId = computed(() => playerStore.currentDatasetId);
+        const wishlistCount = computed(() => 
+            wishlistStore.getWishlistCount(currentDatasetId.value)
+        );
 
         return {
             isDarkModeActive: uiStore.isDarkModeActive,
             toggleDarkMode: uiStore.toggleDarkMode,
             currentDatasetId,
+            wishlistCount,
         };
     },
 });
@@ -141,6 +161,8 @@ export default defineComponent({
     padding: 0.5rem 0;
     position: relative;
     transition: color 0.2s ease;
+    display: flex;
+    align-items: center;
     
     &:hover {
         color: #1a237e;
@@ -174,6 +196,12 @@ export default defineComponent({
                 background: rgba(255, 255, 255, 0.9);
             }
         }
+    }
+}
+
+.wishlist-link {
+    .q-icon {
+        transition: color 0.2s ease;
     }
 }
 

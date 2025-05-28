@@ -118,6 +118,7 @@
                 <q-tr
                     :props="props"
                     @click="onRowClick(props.row)"
+                    @contextmenu="onRightClick($event, props.row)"
                     class="cursor-pointer table-row-hover modern-table-row"
                 >
                     <q-td
@@ -261,12 +262,62 @@
                 </span>
             </template>
         </q-table>
+
+        <!-- Context Menu -->
+        <q-menu 
+            ref="contextMenu"
+            touch-position 
+            context-menu
+            :offset="[10, 10]"
+        >
+            <q-list dense style="min-width: 180px">
+                <q-item 
+                    clickable 
+                    v-close-popup 
+                    @click="handleAddToWishlist"
+                    v-if="contextMenuPlayer && !isPlayerInWishlist(contextMenuPlayer)"
+                >
+                    <q-item-section avatar>
+                        <q-icon name="favorite_border" color="positive" />
+                    </q-item-section>
+                    <q-item-section>Add to Wishlist</q-item-section>
+                </q-item>
+                
+                <q-item 
+                    clickable 
+                    v-close-popup 
+                    @click="handleRemoveFromWishlist"
+                    v-if="contextMenuPlayer && isPlayerInWishlist(contextMenuPlayer)"
+                >
+                    <q-item-section avatar>
+                        <q-icon name="favorite" color="negative" />
+                    </q-item-section>
+                    <q-item-section>Remove from Wishlist</q-item-section>
+                </q-item>
+                
+                <q-separator />
+                
+                <q-item 
+                    clickable 
+                    v-close-popup 
+                    @click="handlePlayerDetails"
+                    v-if="contextMenuPlayer"
+                >
+                    <q-item-section avatar>
+                        <q-icon name="info" color="info" />
+                    </q-item-section>
+                    <q-item-section>View Details</q-item-section>
+                </q-item>
+            </q-list>
+        </q-menu>
     </div>
 </template>
 
 <script>
 import { ref, computed, watch, onMounted } from "vue";
 import { useQuasar } from "quasar";
+import { usePlayerStore } from "../stores/playerStore";
+import { useWishlistStore } from "../stores/wishlistStore";
 import { formatCurrency } from "../utils/currencyUtils"; // Assuming this path is correct
 
 const MAX_DISPLAY_PLAYERS = 1000;
@@ -279,12 +330,16 @@ export default {
         isGoalkeeperView: { type: Boolean, default: false },
         currencySymbol: { type: String, default: "$" },
         filteredPlayerCount: { type: Number, default: 0 },
+        showWishlistActions: { type: Boolean, default: false },
     },
-    emits: ["update:sort", "player-selected", "update:pagination", "team-selected"],
+    emits: ["update:sort", "player-selected", "update:pagination", "team-selected", "remove-from-wishlist"],
 
     setup(props, { emit }) {
         console.log(`PlayerDataTable: Setup function start.`); // Static label
         const $q = useQuasar();
+        const playerStore = usePlayerStore();
+        const wishlistStore = useWishlistStore();
+        const contextMenu = ref(null);
         const sortField = ref("Overall");
         const sortDirection = ref("desc");
         const rowsPerPageOptions = ref([10, 15, 20, 50, 0]); // Keep for internal logic, but selector is removed
@@ -298,6 +353,9 @@ export default {
             page: 1,
             rowsPerPage: 50, // Default rows per page, even if selector is hidden
         });
+
+        // Get current dataset ID
+        const currentDatasetId = computed(() => playerStore.currentDatasetId);
 
         watch(
             () => props.players,
@@ -976,6 +1034,62 @@ export default {
             return player[col.field];
         };
 
+        const contextMenuPlayer = ref(null);
+        
+        const isPlayerInWishlist = (player) => {
+            if (!player || !currentDatasetId.value) return false;
+            return wishlistStore.isInWishlist(currentDatasetId.value, player);
+        };
+
+        const handleAddToWishlist = () => {
+            if (contextMenuPlayer.value && currentDatasetId.value) {
+                const success = wishlistStore.addToWishlist(currentDatasetId.value, contextMenuPlayer.value);
+                if (success) {
+                    $q.notify({
+                        type: 'positive',
+                        message: `${contextMenuPlayer.value.name} added to wishlist`,
+                        position: 'top',
+                        timeout: 2000,
+                    });
+                } else {
+                    $q.notify({
+                        type: 'warning',
+                        message: `${contextMenuPlayer.value.name} is already in wishlist`,
+                        position: 'top',
+                        timeout: 2000,
+                    });
+                }
+            }
+        };
+
+        const handleRemoveFromWishlist = () => {
+            if (contextMenuPlayer.value && currentDatasetId.value) {
+                const success = wishlistStore.removeFromWishlist(currentDatasetId.value, contextMenuPlayer.value);
+                if (success) {
+                    $q.notify({
+                        type: 'positive',
+                        message: `${contextMenuPlayer.value.name} removed from wishlist`,
+                        position: 'top',
+                        timeout: 2000,
+                    });
+                    if (props.showWishlistActions) {
+                        emit("remove-from-wishlist", contextMenuPlayer.value);
+                    }
+                }
+            }
+        };
+
+        const handlePlayerDetails = () => {
+            if (contextMenuPlayer.value) {
+                emit("player-selected", contextMenuPlayer.value);
+            }
+        };
+
+        const onRightClick = (event, player) => {
+            event.preventDefault();
+            contextMenuPlayer.value = player;
+        };
+
         console.log(`PlayerDataTable: Setup function end.`);
         return {
             qInstance: $q,
@@ -1007,6 +1121,13 @@ export default {
             paginationTotalRows,
             paginationStartRow,
             paginationEndRow,
+            contextMenu,
+            contextMenuPlayer,
+            isPlayerInWishlist,
+            handleAddToWishlist,
+            handleRemoveFromWishlist,
+            handlePlayerDetails,
+            onRightClick,
         };
     },
 };

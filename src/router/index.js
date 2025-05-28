@@ -9,6 +9,7 @@ const DatasetPage = () => import("../pages/DatasetPage.vue");
 const NationsPage = () => import("../pages/NationsPage.vue");
 const LeaguesPage = () => import("../pages/LeaguesPage.vue");
 const DocsPage = () => import("../pages/DocsPage.vue");
+const WishlistPage = () => import("../pages/WishlistPage.vue");
 
 const routes = [
   {
@@ -59,6 +60,11 @@ const routes = [
     name: "shared-leagues",
     component: LeaguesPage,
     props: true,
+  },
+  {
+    path: "/wishlist",
+    name: "wishlist",
+    component: WishlistPage,
   },
   {
     path: "/docs",
