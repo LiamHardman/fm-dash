@@ -605,6 +605,22 @@
                                                             : "-"
                                                     }}
                                                 </div>
+                                                <q-tooltip
+                                                    :class="
+                                                        qInstance.dark.isActive
+                                                            ? 'bg-grey-7 text-white'
+                                                            : 'bg-white text-dark'
+                                                    "
+                                                    :delay="500"
+                                                    max-width="300px"
+                                                >
+                                                    <div class="text-weight-medium q-mb-xs">
+                                                        {{ stat.label }}
+                                                    </div>
+                                                    <div class="text-caption">
+                                                        {{ fifaAttributeDescriptions[stat.name] || 'No description available' }}
+                                                    </div>
+                                                </q-tooltip>
                                             </q-card>
                                         </div>
                                     </div>
@@ -667,6 +683,22 @@
                                                         ] || attrKey
                                                     }}</q-item-label
                                                 >
+                                                <q-tooltip
+                                                    :class="
+                                                        qInstance.dark.isActive
+                                                            ? 'bg-grey-7 text-white'
+                                                            : 'bg-white text-dark'
+                                                    "
+                                                    :delay="500"
+                                                    max-width="300px"
+                                                >
+                                                    <div class="text-weight-medium q-mb-xs">
+                                                        {{ attributeFullNameMap[attrKey] || attrKey }}
+                                                    </div>
+                                                    <div class="text-caption">
+                                                        {{ attributeDescriptions[attrKey] || 'No description available' }}
+                                                    </div>
+                                                </q-tooltip>
                                             </q-item-section>
                                             <q-item-section side>
                                                 <span
@@ -762,6 +794,22 @@
                                                         ] || attrKey
                                                     }}</q-item-label
                                                 >
+                                                <q-tooltip
+                                                    :class="
+                                                        qInstance.dark.isActive
+                                                            ? 'bg-grey-7 text-white'
+                                                            : 'bg-white text-dark'
+                                                    "
+                                                    :delay="500"
+                                                    max-width="300px"
+                                                >
+                                                    <div class="text-weight-medium q-mb-xs">
+                                                        {{ attributeFullNameMap[attrKey] || attrKey }}
+                                                    </div>
+                                                    <div class="text-caption">
+                                                        {{ attributeDescriptions[attrKey] || 'No description available' }}
+                                                    </div>
+                                                </q-tooltip>
                                             </q-item-section>
                                             <q-item-section side>
                                                 <span
@@ -848,6 +896,22 @@
                                                         ] || attrKey
                                                     }}</q-item-label
                                                 >
+                                                <q-tooltip
+                                                    :class="
+                                                        qInstance.dark.isActive
+                                                            ? 'bg-grey-7 text-white'
+                                                            : 'bg-white text-dark'
+                                                    "
+                                                    :delay="500"
+                                                    max-width="300px"
+                                                >
+                                                    <div class="text-weight-medium q-mb-xs">
+                                                        {{ attributeFullNameMap[attrKey] || attrKey }}
+                                                    </div>
+                                                    <div class="text-caption">
+                                                        {{ attributeDescriptions[attrKey] || 'No description available' }}
+                                                    </div>
+                                                </q-tooltip>
                                             </q-item-section>
                                             <q-item-section side>
                                                 <span
@@ -1035,6 +1099,81 @@ const attributeFullNameMap = {
     Ref: "Reflexes",
     TRO: "Rushing Out (Tendency)",
     Thr: "Throwing",
+};
+
+const attributeDescriptions = {
+    // Technical Attributes
+    Cor: "Ability to deliver effective corner kicks with accuracy and technique",
+    Cro: "Quality of crosses from wide positions, affecting accuracy and delivery timing",
+    Dri: "Skill in close ball control while running, beating opponents in 1v1 situations",
+    Fin: "Composure and ability to score when presented with goal-scoring opportunities",
+    Fir: "Quality of the first touch when receiving the ball under pressure",
+    Fre: "Ability to score or create chances from free kick situations",
+    Hea: "Effectiveness when using the head to win aerial duels and score goals",
+    Lon: "Ability to score or create chances from shots taken outside the penalty area",
+    "L Th": "Capability to throw the ball long distances accurately from throw-in situations",
+    Mar: "Defensive positioning and ability to track and stay close to opposing players",
+    Pas: "Accuracy and effectiveness of short and medium-range passing",
+    Pen: "Composure and technique when taking penalty kicks",
+    Tck: "Timing and success rate of defensive challenges and tackles",
+    Tec: "Overall technical ability with the ball, including touch and ball manipulation",
+    
+    // Mental Attributes
+    Agg: "Willingness to compete physically and commit to challenges",
+    Ant: "Ability to read the game and anticipate what will happen next",
+    Bra: "Courage when facing physical challenges or difficult situations",
+    Cmp: "Ability to remain calm under pressure and in high-stakes situations",
+    Cnt: "Mental focus and ability to maintain concentration throughout the match",
+    Dec: "Quality of decision-making in various game situations",
+    Det: "Drive and willingness to work hard and overcome obstacles",
+    Fla: "Creativity and unpredictability in play, ability to produce unexpected moments",
+    Ldr: "Ability to motivate teammates and take responsibility in crucial moments",
+    OtB: "Intelligence in finding space and making runs without the ball",
+    Pos: "Understanding of where to be positioned tactically and defensively",
+    Tea: "Willingness to work for the team and follow tactical instructions",
+    Vis: "Ability to spot and execute passes that others might not see",
+    Wor: "Stamina and willingness to maintain effort levels throughout the match",
+    
+    // Physical Attributes
+    Acc: "Speed of reaching maximum velocity from a standing start",
+    Agi: "Ability to change direction quickly and maintain balance during movement",
+    Bal: "Ability to maintain equilibrium and stay on feet when challenged",
+    Jum: "Height and timing achieved when jumping for aerial challenges",
+    Nat: "Inherent fitness level and resistance to fatigue and injury",
+    Pac: "Maximum running speed when in full sprint",
+    Sta: "Ability to maintain physical performance throughout the entire match",
+    Str: "Physical power for winning challenges and holding off opponents",
+    
+    // Goalkeeping Attributes
+    Aer: "Ability to deal with high balls and crosses in the penalty area",
+    Cmd: "Presence and ability to organize the defense and claim crosses",
+    Com: "Effectiveness in communicating with defenders and organizing the backline",
+    Ecc: "Unpredictability in decision-making and unconventional actions",
+    Han: "Security when catching and holding onto the ball",
+    Kic: "Power and accuracy when distributing the ball with kicks",
+    "1v1": "Ability to save in one-on-one situations with attackers",
+    Pun: "Tendency to punch the ball away rather than catch it",
+    Ref: "Speed of reaction when making saves",
+    TRO: "Tendency to rush out of goal to close down attackers",
+    Thr: "Accuracy and effectiveness when throwing the ball to teammates"
+};
+
+const fifaAttributeDescriptions = {
+    // Outfield Player FIFA Stats
+    PAC: "Pace combines Acceleration and Sprint Speed to determine how fast a player can move",
+    SHO: "Shooting represents finishing ability, shot power, long shots, volleys, and penalties",
+    PAS: "Passing includes short passing, long passing, vision, crossing, and free kick accuracy",
+    DRI: "Dribbling covers ball control, dribbling skill, agility, balance, and reactions",
+    DEF: "Defending encompasses marking, standing tackle, sliding tackle, and heading accuracy",
+    PHY: "Physical attributes include strength, stamina, aggression, jumping, and balance",
+    
+    // Goalkeeper FIFA Stats
+    DIV: "Diving ability to reach shots in different areas of the goal",
+    HAN: "Handling security when catching or parrying shots and crosses",
+    KIC: "Kicking power and accuracy for goal kicks and distribution",
+    REF: "Reflexes and reaction speed when making saves",
+    SPD: "Speed when rushing out or moving around the penalty area",
+    POS: "Positioning and decision-making when coming off the goal line"
 };
 
 const technicalAttrsOrdered = [
@@ -1684,6 +1823,8 @@ export default defineComponent({
             qInstance,
             attributeCategories,
             attributeFullNameMap,
+            attributeDescriptions,
+            fifaAttributeDescriptions,
             getUnifiedRatingClass,
             getBarFillStyle,
             fifaStatsToDisplay,
