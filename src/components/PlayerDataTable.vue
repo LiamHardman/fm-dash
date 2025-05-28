@@ -318,7 +318,7 @@ import { ref, computed, watch, onMounted } from "vue";
 import { useQuasar } from "quasar";
 import { usePlayerStore } from "../stores/playerStore";
 import { useWishlistStore } from "../stores/wishlistStore";
-import { formatCurrency } from "../utils/currencyUtils"; // Assuming this path is correct
+import { formatCurrency } from "../utils/currencyUtils";
 
 const MAX_DISPLAY_PLAYERS = 1000;
 
@@ -339,6 +339,8 @@ export default {
         const $q = useQuasar();
         const playerStore = usePlayerStore();
         const wishlistStore = useWishlistStore();
+        
+        
         const contextMenu = ref(null);
         const sortField = ref("Overall");
         const sortDirection = ref("desc");
