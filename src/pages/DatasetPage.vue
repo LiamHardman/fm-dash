@@ -83,134 +83,63 @@
                     </q-btn>
                 </div>
 
-                <q-card
-                    class="q-mb-md quick-actions-card"
-                    :class="
-                        quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'
-                    "
-                >
-                    <q-card-section>
-                        <div class="text-h6 q-mb-lg text-center">
-                            Quick Actions
-                        </div>
-                        <div class="row q-col-gutter-lg justify-center">
-                            <div class="col-12 col-sm-6 col-md-3">
-                                <q-card flat bordered class="action-card">
-                                    <q-card-section class="text-center q-pa-lg">
-                                        <q-icon
-                                            name="sports"
-                                            size="2rem"
-                                            color="primary"
-                                            class="q-mb-sm"
-                                        />
-                                        <div class="text-subtitle1 q-mb-sm">
-                                            View Leagues
-                                        </div>
-                                        <div
-                                            class="text-caption text-grey-6 q-mb-md"
-                                        >
-                                            Explore leagues and competitions in
-                                            your dataset
-                                        </div>
-                                        <q-btn
-                                            color="primary"
-                                            label="View Leagues"
-                                            @click="viewLeagues"
-                                            class="full-width"
-                                            unelevated
-                                        />
-                                    </q-card-section>
-                                </q-card>
+                <!-- Enhanced Quick Actions -->
+                <div class="quick-actions-section">
+                    <div class="actions-header">
+                        <h2 class="actions-title">Quick Actions</h2>
+                        <p class="actions-subtitle">Explore your dataset with these powerful analysis tools</p>
+                    </div>
+                    
+                    <div class="actions-grid">
+                        <div class="action-feature-card" @click="viewLeagues">
+                            <div class="feature-icon-container primary-gradient">
+                                <q-icon name="sports" size="2.5rem" />
                             </div>
-                            <div class="col-12 col-sm-6 col-md-3">
-                                <q-card flat bordered class="action-card">
-                                    <q-card-section class="text-center q-pa-lg">
-                                        <q-icon
-                                            name="sports_soccer"
-                                            size="2rem"
-                                            color="secondary"
-                                            class="q-mb-sm"
-                                        />
-                                        <div class="text-subtitle1 q-mb-sm">
-                                            Team Analysis
-                                        </div>
-                                        <div
-                                            class="text-caption text-grey-6 q-mb-md"
-                                        >
-                                            Analyze teams and squad compositions
-                                        </div>
-                                        <q-btn
-                                            color="secondary"
-                                            label="View Teams"
-                                            @click="viewTeamAnalysis"
-                                            class="full-width"
-                                            unelevated
-                                        />
-                                    </q-card-section>
-                                </q-card>
-                            </div>
-                            <div class="col-12 col-sm-6 col-md-3">
-                                <q-card flat bordered class="action-card">
-                                    <q-card-section class="text-center q-pa-lg">
-                                        <q-icon
-                                            name="flag"
-                                            size="2rem"
-                                            color="info"
-                                            class="q-mb-sm"
-                                        />
-                                        <div class="text-subtitle1 q-mb-sm">
-                                            Nations Analysis
-                                        </div>
-                                        <div
-                                            class="text-caption text-grey-6 q-mb-md"
-                                        >
-                                            Explore player distributions by
-                                            nationality
-                                        </div>
-                                        <q-btn
-                                            color="info"
-                                            label="View Nations"
-                                            @click="viewNationsAnalysis"
-                                            class="full-width"
-                                            unelevated
-                                        />
-                                    </q-card-section>
-                                </q-card>
-                            </div>
-                            <div class="col-12 col-sm-6 col-md-3">
-                                <q-card flat bordered class="action-card">
-                                    <q-card-section class="text-center q-pa-lg">
-                                        <q-icon
-                                            name="find_replace"
-                                            size="2rem"
-                                            color="accent"
-                                            class="q-mb-sm"
-                                        />
-                                        <div class="text-subtitle1 q-mb-sm">
-                                            Find Upgrades
-                                        </div>
-                                        <div
-                                            class="text-caption text-grey-6 q-mb-md"
-                                        >
-                                            Search for player upgrades and
-                                            comparisons
-                                        </div>
-                                        <q-btn
-                                            color="accent"
-                                            label="Find Upgrades"
-                                            @click="showUpgradeFinder = true"
-                                            :disable="
-                                                allPlayersData.length === 0
-                                            "
-                                            class="full-width"
-                                            unelevated
-                                        />
-                                    </q-card-section>
-                                </q-card>
+                            <div class="feature-content">
+                                <h3 class="feature-title">League Explorer</h3>
+                                <p class="feature-description">
+                                    Dive deep into leagues and competitions. Compare performance across different tournaments and discover emerging talents.
+                                </p>
                             </div>
                         </div>
-                    </q-card-section>
-                </q-card>
+
+                        <div class="action-feature-card" @click="viewTeamAnalysis">
+                            <div class="feature-icon-container secondary-gradient">
+                                <q-icon name="sports_soccer" size="2.5rem" />
+                            </div>
+                            <div class="feature-content">
+                                <h3 class="feature-title">Team Analytics</h3>
+                                <p class="feature-description">
+                                    Analyze squad compositions, tactical formations, and team chemistry. Identify strengths and weaknesses.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="action-feature-card" @click="viewNationsAnalysis">
+                            <div class="feature-icon-container info-gradient">
+                                <q-icon name="flag" size="2.5rem" />
+                            </div>
+                            <div class="feature-content">
+                                <h3 class="feature-title">Nations Insights</h3>
+                                <p class="feature-description">
+                                    Explore player distributions by nationality. Discover hidden gems and understand global talent pools.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="action-feature-card" @click="showUpgradeFinder = true" :class="{ 'disabled': allPlayersData.length === 0 }">
+                            <div class="feature-icon-container accent-gradient">
+                                <q-icon name="find_replace" size="2.5rem" />
+                            </div>
+                            <div class="feature-content">
+                                <h3 class="feature-title">Upgrade Finder</h3>
+                                <p class="feature-description">
+                                    Find potential player upgrades and compare similar profiles. Build your dream squad strategically.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 <q-card
                     v-if="allPlayersData.length > 0"
@@ -1165,6 +1094,198 @@ export default {
                 font-size: 0.9rem;
                 opacity: 0.8;
                 font-weight: 500;
+            }
+        }
+    }
+}
+
+// Enhanced Quick Actions Section
+.quick-actions-section {
+    margin: 3rem 0;
+    padding: 0 1rem;
+    
+    .actions-header {
+        text-align: center;
+        margin-bottom: 3rem;
+        
+        .actions-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 0 0 1rem 0;
+            color: #1a237e;
+            
+            .body--dark & {
+                color: rgba(255, 255, 255, 0.9);
+            }
+        }
+        
+        .actions-subtitle {
+            font-size: 1.1rem;
+            color: #666;
+            margin: 0;
+            max-width: 600px;
+            margin: 0 auto;
+            
+            .body--dark & {
+                color: rgba(255, 255, 255, 0.7);
+            }
+        }
+    }
+    
+    .actions-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 2rem;
+        max-width: 1400px;
+        margin: 0 auto;
+        
+        @media (max-width: 1200px) {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        @media (max-width: 768px) {
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+    }
+    
+    .action-feature-card {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 1.5rem;
+        position: relative;
+        overflow: hidden;
+        
+        &::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(26, 35, 126, 0.02) 0%, transparent 100%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        &:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+            
+            &::before {
+                opacity: 1;
+            }
+            
+            .feature-icon-container {
+                transform: scale(1.1) rotate(5deg);
+            }
+        }
+        
+        &.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            
+            &:hover {
+                transform: none;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+                
+                .feature-icon-container {
+                    transform: none;
+                }
+            }
+        }
+        
+        .body--dark & {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            
+            &:hover {
+                background: rgba(255, 255, 255, 0.08);
+                box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+            }
+        }
+        
+        .feature-icon-container {
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            flex-shrink: 0;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            
+            &.primary-gradient {
+                background: linear-gradient(135deg, #1976d2 0%, #42a5f5 100%);
+            }
+            
+            &.secondary-gradient {
+                background: linear-gradient(135deg, #7b1fa2 0%, #ba68c8 100%);
+            }
+            
+            &.info-gradient {
+                background: linear-gradient(135deg, #0288d1 0%, #4fc3f7 100%);
+            }
+            
+            &.accent-gradient {
+                background: linear-gradient(135deg, #c2185b 0%, #f06292 100%);
+            }
+        }
+        
+        .feature-content {
+            .feature-title {
+                font-size: 1.4rem;
+                font-weight: 600;
+                margin: 0 0 0.5rem 0;
+                color: #1a237e;
+                
+                .body--dark & {
+                    color: rgba(255, 255, 255, 0.9);
+                }
+            }
+            
+            .feature-description {
+                font-size: 0.9rem;
+                line-height: 1.5;
+                color: #666;
+                margin: 0;
+                
+                .body--dark & {
+                    color: rgba(255, 255, 255, 0.7);
+                }
+            }
+        }
+        
+        @media (max-width: 768px) {
+            padding: 1.5rem;
+            
+            .feature-icon-container {
+                width: 60px;
+                height: 60px;
+                
+                .q-icon {
+                    font-size: 2rem !important;
+                }
+            }
+            
+            .feature-content {
+                .feature-title {
+                    font-size: 1.2rem;
+                }
+                
+                .feature-description {
+                    font-size: 0.85rem;
+                }
             }
         }
     }
