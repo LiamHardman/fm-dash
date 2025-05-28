@@ -82,7 +82,9 @@ export const usePlayerStore = defineStore("player", () => {
       .filter((p) => typeof p.transferValueAmount === "number")
       .map((p) => p.transferValueAmount);
 
-    if (transferValuesNumeric.length === 0) return { min: 0, max: 100000000 };
+    if (transferValuesNumeric.length === 0) {
+      return { min: 0, max: 100000000 };
+    }
 
     let min = Math.min(...transferValuesNumeric);
     let max = Math.max(...transferValuesNumeric);
@@ -105,7 +107,8 @@ export const usePlayerStore = defineStore("player", () => {
       max = min + 50000;
     }
 
-    return { min, max };
+    const result = { min, max };
+    return result;
   });
 
   // This can be used by PlayerFilters as the true initial range of the whole dataset
@@ -124,7 +127,9 @@ export const usePlayerStore = defineStore("player", () => {
       .filter((p) => typeof p.wageAmount === "number")
       .map((p) => p.wageAmount);
 
-    if (salaryAmountsNumeric.length === 0) return { min: 0, max: 1000000 };
+    if (salaryAmountsNumeric.length === 0) {
+      return { min: 0, max: 1000000 };
+    }
 
     let min = Math.min(...salaryAmountsNumeric);
     let max = Math.max(...salaryAmountsNumeric);
@@ -146,7 +151,8 @@ export const usePlayerStore = defineStore("player", () => {
     ) {
       // If all values were 0, max was set to 10000. This is fine.
     }
-    return { min, max };
+    const result = { min, max };
+    return result;
   });
 
   async function uploadPlayerFile(formData) {

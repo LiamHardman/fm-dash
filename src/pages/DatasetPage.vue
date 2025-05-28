@@ -343,15 +343,11 @@ export default {
                 max: playerStore.AGE_SLIDER_MAX_DEFAULT,
             },
             transferValueRangeLocal: {
-                min:
-                    playerStore.initialDatasetTransferValueRange?.value?.min ||
-                    0,
-                max:
-                    playerStore.initialDatasetTransferValueRange?.value?.max ||
-                    100000000,
+                min: 0,
+                max: 100000000,
                 userSet: false,
             },
-            maxSalary: playerStore.salaryRange?.value?.max || 1000000,
+            maxSalary: 1000000,
             minOverall: 0,
             minPAC: 0,
             minSHO: 0,
@@ -392,23 +388,24 @@ export default {
         );
 
         // For PlayerFilters component props - ensure safe access with fallbacks
-        const transferValueRangeForFilters = computed(
-            () =>
-                playerStore.currentDatasetTransferValueRange.value || {
-                    min: 0,
-                    max: 100000000,
-                },
-        );
-        const initialDatasetTransferValueRangeForFilters = computed(
-            () =>
-                playerStore.initialDatasetTransferValueRange.value || {
-                    min: 0,
-                    max: 100000000,
-                },
-        );
-        const salaryRangeForFilters = computed(
-            () => playerStore.salaryRange.value || { min: 0, max: 1000000 },
-        );
+        const transferValueRangeForFilters = computed(() => {
+            const range = playerStore.currentDatasetTransferValueRange || {
+                min: 0,
+                max: 100000000,
+            };
+            return range;
+        });
+        const initialDatasetTransferValueRangeForFilters = computed(() => {
+            const range = playerStore.initialDatasetTransferValueRange || {
+                min: 0,
+                max: 100000000,
+            };
+            return range;
+        });
+        const salaryRangeForFilters = computed(() => {
+            const range = playerStore.salaryRange || { min: 0, max: 1000000 };
+            return range;
+        });
 
         const allAvailableRoles = computed(() => playerStore.allAvailableRoles);
         const AGE_SLIDER_MIN_DEFAULT = computed(
@@ -659,9 +656,8 @@ export default {
                 await playerStore.fetchAllAvailableRoles();
 
                 // Safely access store values and provide defaults
-                const initTvRange =
-                    playerStore.initialDatasetTransferValueRange.value;
-                const initSalaryRange = playerStore.salaryRange.value;
+                const initTvRange = playerStore.initialDatasetTransferValueRange;
+                const initSalaryRange = playerStore.salaryRange;
 
                 currentFilters.value.transferValueRangeLocal = {
                     min:
@@ -789,7 +785,7 @@ export default {
         );
 
         watch(
-            () => playerStore.initialDatasetTransferValueRange.value,
+            () => playerStore.initialDatasetTransferValueRange,
             (newRange) => {
                 if (
                     newRange &&
@@ -810,10 +806,10 @@ export default {
         );
 
         watch(
-            () => playerStore.salaryRange.value,
+            () => playerStore.salaryRange,
             (newRange) => {
                 const currentMaxSalary = currentFilters.value.maxSalary;
-                const storeMaxSalary = playerStore.salaryRange.value?.max;
+                const storeMaxSalary = playerStore.salaryRange?.max;
 
                 // Only update if maxSalary hasn't been manually set by user OR is still at its initial large default OR matches the current store max
                 if (

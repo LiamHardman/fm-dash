@@ -1247,8 +1247,8 @@ export default defineComponent({
             personality: [],
             ageRange: { min: AGE_SLIDER_MIN, max: AGE_SLIDER_MAX },
             transferValueRangeLocal: {
-                min: props.transferValueRange.min,
-                max: props.transferValueRange.max,
+                min: 0,
+                max: 100000000,
             },
             maxSalary: SALARY_SLIDER_MAX,
             minOverall: 0,
@@ -1477,24 +1477,27 @@ export default defineComponent({
                     typeof newDynamicRange.min === "number" &&
                     typeof newDynamicRange.max === "number"
                 ) {
-                    let changed = false;
-                    if (
-                        filters.value.transferValueRangeLocal.min === null ||
-                        filters.value.transferValueRangeLocal.min <
-                            newDynamicRange.min
-                    ) {
-                        filters.value.transferValueRangeLocal.min =
-                            newDynamicRange.min;
-                        changed = true;
-                    }
-                    if (
-                        filters.value.transferValueRangeLocal.max === null ||
-                        filters.value.transferValueRangeLocal.max >
-                            newDynamicRange.max
-                    ) {
-                        filters.value.transferValueRangeLocal.max =
-                            newDynamicRange.max;
-                        changed = true;
+                    // Only update if we don't have valid values yet or if the new range is different
+                    const currentMin = filters.value.transferValueRangeLocal.min;
+                    const currentMax = filters.value.transferValueRangeLocal.max;
+                    
+                    if (currentMin === 0 && currentMax === 100000000) {
+                        // We still have default values, so update with real data
+                        filters.value.transferValueRangeLocal = {
+                            min: newDynamicRange.min,
+                            max: newDynamicRange.max,
+                        };
+                    } else {
+                        // Clamp existing values to new valid range
+                        let changed = false;
+                        if (currentMin < newDynamicRange.min) {
+                            filters.value.transferValueRangeLocal.min = newDynamicRange.min;
+                            changed = true;
+                        }
+                        if (currentMax > newDynamicRange.max) {
+                            filters.value.transferValueRangeLocal.max = newDynamicRange.max;
+                            changed = true;
+                        }
                     }
                 }
             },
@@ -1508,10 +1511,28 @@ export default defineComponent({
                     typeof newInitialRange.min === "number" &&
                     typeof newInitialRange.max === "number"
                 ) {
-                    filters.value.transferValueRangeLocal = {
-                        min: newInitialRange.min,
-                        max: newInitialRange.max,
-                    };
+                    // Only update if we still have default values
+                    const currentMin = filters.value.transferValueRangeLocal.min;
+                    const currentMax = filters.value.transferValueRangeLocal.max;
+                    
+                    if (currentMin === 0 && currentMax === 100000000) {
+                        filters.value.transferValueRangeLocal = {
+                            min: newInitialRange.min,
+                            max: newInitialRange.max,
+                        };
+                    }
+                }
+            },
+            { deep: true, immediate: true },
+        );
+        watch(
+            () => props.salaryRange,
+            (newSalaryRange) => {
+                if (newSalaryRange?.max && typeof newSalaryRange.max === 'number') {
+                    // Only update if we still have the default value
+                    if (filters.value.maxSalary === SALARY_SLIDER_MAX) {
+                        filters.value.maxSalary = newSalaryRange.max;
+                    }
                 }
             },
             { deep: true, immediate: true },
@@ -1606,14 +1627,29 @@ export default defineComponent({
             ) {
                 await playerStore.fetchAllAvailableRoles();
             }
-            if (props.initialDatasetRange) {
+            
+            // Initialize transfer value range from the correct prop
+            if (props.initialDatasetRange && 
+                typeof props.initialDatasetRange.min === 'number' && 
+                typeof props.initialDatasetRange.max === 'number') {
                 filters.value.transferValueRangeLocal = {
                     min: props.initialDatasetRange.min,
                     max: props.initialDatasetRange.max,
                 };
+            } else if (props.transferValueRange &&
+                typeof props.transferValueRange.min === 'number' && 
+                typeof props.transferValueRange.max === 'number') {
+                filters.value.transferValueRangeLocal = {
+                    min: props.transferValueRange.min,
+                    max: props.transferValueRange.max,
+                };
             }
-            filters.value.maxSalary =
-                props.salaryRange?.max || SALARY_SLIDER_MAX;
+            
+            // Initialize max salary from salary range prop
+            if (props.salaryRange?.max && typeof props.salaryRange.max === 'number') {
+                filters.value.maxSalary = props.salaryRange.max;
+            }
+            
             filters.value.ageRange = {
                 min: AGE_SLIDER_MIN,
                 max: AGE_SLIDER_MAX,
