@@ -1067,6 +1067,7 @@ import {
 } from "vue";
 import { useQuasar } from "quasar";
 import { usePlayerStore } from "@/stores/playerStore";
+import { memoizedComputed } from "@/composables/useMemoization";
 import { formatCurrency } from "@/utils/currencyUtils";
 
 // Define attribute keys (ensure these match keys in player.attributes)

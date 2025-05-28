@@ -44,30 +44,30 @@
             </p>
         </q-card>
 
-        <q-table
-            v-else
-            :rows="sortedPlayers"
-            :columns="currentColumns"
-            :loading="loading"
-            row-key="name"
-            :pagination="pagination"
-            @update:pagination="onPaginationUpdate"
-            :rows-per-page-options="rowsPerPageOptions"
-            @request="onRequest"
-            :sort-method="customSort"
-            binary-state-sort
-            flat
-            bordered
-            class="player-q-table"
-            :class="qInstance.dark.isActive ? 'q-table--dark' : ''"
-            table-header-class="player-table-header"
-            dense
-            virtual-scroll
-            :virtual-scroll-item-size="30"
-            :virtual-scroll-sticky-size-start="32"
-            :virtual-scroll-sticky-size-end="55"
-            style="height: 70vh"
-        >
+        <div v-else class="relative-position">
+            <q-table
+                :rows="sortedPlayers"
+                :columns="currentColumns"
+                :loading="loading"
+                row-key="name"
+                :pagination="pagination"
+                @update:pagination="onPaginationUpdate"
+                :rows-per-page-options="rowsPerPageOptions"
+                @request="onRequest"
+                :sort-method="customSort"
+                binary-state-sort
+                flat
+                bordered
+                class="player-q-table"
+                :class="qInstance.dark.isActive ? 'q-table--dark' : ''"
+                table-header-class="player-table-header"
+                dense
+                virtual-scroll
+                :virtual-scroll-item-size="30"
+                :virtual-scroll-sticky-size-start="32"
+                :virtual-scroll-sticky-size-end="55"
+                style="height: 70vh"
+            >
             <template v-slot:header="props">
                 <q-tr
                     :props="props"
@@ -78,16 +78,18 @@
                         v-for="col in props.cols"
                         :key="col.name"
                         :props="props"
-                        class="cursor-pointer text-weight-bold modern-header-cell"
-                        @click="sortTable(col.name)"
+                        class="text-weight-bold modern-header-cell"
                         :class="[
                             qInstance.dark.isActive
                                 ? 'text-grey-3'
                                 : 'text-grey-8',
                             col.headerClasses,
-                            { 'active-sort': sortField === col.name }
+                            { 'active-sort': sortField === col.name },
+                            { 'cursor-pointer': !isAsyncSorting },
+                            { 'cursor-not-allowed opacity-60': isAsyncSorting }
                         ]"
                         :style="col.headerStyle"
+                        @click="!isAsyncSorting && sortTable(col.name)"
                     >
                         <span
                             v-if="
@@ -263,6 +265,26 @@
             </template>
         </q-table>
 
+        <!-- Async Sorting Overlay -->
+        <div
+            v-if="isAsyncSorting"
+            class="absolute-full flex flex-center bg-black bg-opacity-30"
+            style="z-index: 1000; backdrop-filter: blur(2px);"
+        >
+            <q-card class="q-pa-md">
+                <div class="row items-center q-gutter-md">
+                    <q-spinner-dots size="2em" color="primary" />
+                    <div>
+                        <div class="text-subtitle2">Sorting large dataset...</div>
+                        <div class="text-caption text-grey-6">
+                            Processing {{ totalSortedCount }} players
+                        </div>
+                    </div>
+                </div>
+            </q-card>
+        </div>
+    </div>
+
         <!-- Context Menu -->
         <q-menu 
             ref="contextMenu"
@@ -314,11 +336,14 @@
 </template>
 
 <script>
-import { ref, computed, watch, onMounted } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { useQuasar } from "quasar";
 import { usePlayerStore } from "../stores/playerStore";
 import { useWishlistStore } from "../stores/wishlistStore";
 import { formatCurrency } from "../utils/currencyUtils";
+import { useOptimizedSorting } from "../composables/useVirtualScrolling";
+import { memoize, memoizedComputed, useMemoizedComputeds } from "../composables/useMemoization";
+import { usePlayerCalculationWorker } from "../composables/useWebWorkers";
 
 const MAX_DISPLAY_PLAYERS = 1000;
 
@@ -340,6 +365,9 @@ export default {
         const playerStore = usePlayerStore();
         const wishlistStore = useWishlistStore();
         
+        // Initialize optimized sorting and web workers
+        const { sortLargeArray, clearSortCache } = useOptimizedSorting();
+        const { sortPlayers: sortPlayersWorker, getPendingTaskCount, terminateWorker } = usePlayerCalculationWorker();
         
         const contextMenu = ref(null);
         const sortField = ref("Overall");
@@ -347,6 +375,7 @@ export default {
         const rowsPerPageOptions = ref([10, 15, 20, 50, 0]); // Keep for internal logic, but selector is removed
         const maxPagesToShow = 7;
         const totalSortedCount = ref(0);
+        const isAsyncSorting = ref(false);
         const isSliced = ref(false);
 
         const pagination = ref({
@@ -387,7 +416,8 @@ export default {
             "ST",
         ];
 
-        const getPositionIndex = (positionString) => {
+        // Memoized position index calculation (expensive string processing)
+        const getPositionIndex = memoize((positionString) => {
             if (!positionString || typeof positionString !== "string") {
                 return positionSortOrder.length + 2; // Place invalid/empty last
             }
@@ -443,7 +473,11 @@ export default {
             return minFoundIndex === positionSortOrder.length
                 ? positionSortOrder.length + 1
                 : minFoundIndex;
-        };
+        }, {
+            maxSize: 100, // Cache position calculations
+            keyGenerator: (positionString) => positionString,
+            cacheKey: 'positionIndex'
+        });
 
         const onPaginationUpdate = (newPagination) => {
             console.log(
@@ -702,7 +736,8 @@ export default {
             },
         };
 
-        const currentColumns = computed(() => {
+        // Memoized computed for columns (recalculated when isGoalkeeperView changes)
+        const currentColumns = memoizedComputed(() => {
             const newOrderBase = [
                 baseColumnDefinitions.name,
                 baseColumnDefinitions.nationality_display,
@@ -735,6 +770,8 @@ export default {
                 baseColumnDefinitions.media_handling,
             ];
             return [...newOrderBase, ...fifaColumnsInOrder, ...trailingColumns];
+        }, {
+            dependencies: [() => props.isGoalkeeperView]
         });
 
         const getColumnLabel = (fieldName) => {
@@ -747,61 +784,165 @@ export default {
             return colDef?.sortField || colDef?.field || colName;
         };
 
+        // Cache for sorted results to avoid re-sorting on pagination changes
+        const sortedPlayersCache = ref(null);
+        const lastSortKey = ref('');
+
+        // Separate reactive flag to prevent infinite loops
+        const sortKeyChanged = ref('');
+        const asyncSortTimeout = ref(null);
+
         const sortedPlayers = computed(() => {
             if (!props.players || props.players.length === 0) {
                 totalSortedCount.value = 0;
                 isSliced.value = false;
+                sortedPlayersCache.value = null;
                 return [];
             }
 
             const fieldKey = getSortFieldKey(sortField.value || "Overall");
             const direction = sortDirection.value;
+            const currentSortKey = `${fieldKey}-${direction}-${props.players.length}`;
 
-            // Sort the players array - create a copy to avoid mutations
-            const playersToSort = [...props.players];
-            const fullSortedList = playersToSort.sort((a, b) => {
+            // Return cached result if sort parameters haven't changed
+            if (sortedPlayersCache.value && lastSortKey.value === currentSortKey) {
+                return sortedPlayersCache.value;
+            }
+
+            // Custom sort function for complex sorting logic
+            const customSortFn = (a, b, field, dir) => {
                 // Use getPlayerValue to ensure GK stat mapping is applied for sorting
-                let vA = getPlayerValue(a, fieldKey, sortField.value);
-                let vB = getPlayerValue(b, fieldKey, sortField.value);
+                let vA = getPlayerValue(a, field, sortField.value);
+                let vB = getPlayerValue(b, field, sortField.value);
                 const aIsNull = vA === null || vA === undefined;
                 const bIsNull = vB === null || vB === undefined;
 
                 if (aIsNull && bIsNull) return 0;
-                if (aIsNull) return direction === "asc" ? 1 : -1;
-                if (bIsNull) return direction === "asc" ? -1 : 1;
+                if (aIsNull) return dir === "asc" ? 1 : -1;
+                if (bIsNull) return dir === "asc" ? -1 : 1;
 
-                if (fieldKey === "position") {
+                if (field === "position") {
                     const indexA = getPositionIndex(vA);
                     const indexB = getPositionIndex(vB);
-                    return direction === "asc" ? indexA - indexB : indexB - indexA;
+                    return dir === "asc" ? indexA - indexB : indexB - indexA;
                 }
                 if (typeof vA === "number" && typeof vB === "number") {
-                    return direction === "asc" ? vA - vB : vB - vA;
+                    return dir === "asc" ? vA - vB : vB - vA;
                 }
                 if (typeof vA === "string" && typeof vB === "string") {
                     vA = vA.toLowerCase();
                     vB = vB.toLowerCase();
-                    if (vA < vB) return direction === "asc" ? -1 : 1;
-                    if (vA > vB) return direction === "asc" ? 1 : -1;
+                    if (vA < vB) return dir === "asc" ? -1 : 1;
+                    if (vA > vB) return dir === "asc" ? 1 : -1;
                     return 0;
                 }
                 return 0;
-            });
+            };
 
-            totalSortedCount.value = fullSortedList.length;
-            let result;
-            let sliced = false;
-            
-            if (fullSortedList.length > MAX_DISPLAY_PLAYERS) {
-                sliced = true;
-                result = fullSortedList.slice(0, MAX_DISPLAY_PLAYERS);
+            // For small arrays, use synchronous sorting
+            if (props.players.length <= 1000) {
+                const playersToSort = [...props.players];
+                const fullSortedList = playersToSort.sort((a, b) => customSortFn(a, b, fieldKey, direction));
+                
+                totalSortedCount.value = fullSortedList.length;
+                let result;
+                let sliced = false;
+                
+                if (fullSortedList.length > MAX_DISPLAY_PLAYERS) {
+                    sliced = true;
+                    result = fullSortedList.slice(0, MAX_DISPLAY_PLAYERS);
+                } else {
+                    result = fullSortedList;
+                }
+                
+                isSliced.value = sliced;
+                sortedPlayersCache.value = result;
+                lastSortKey.value = currentSortKey;
+                
+                // Make sure async sorting flag is false for small datasets
+                isAsyncSorting.value = false;
+                
+                return result;
+            }
+
+            // For large arrays, mark that we need async sorting but don't trigger it here
+            if (sortKeyChanged.value !== currentSortKey) {
+                sortKeyChanged.value = currentSortKey;
+                
+                // Clear any existing timeout
+                if (asyncSortTimeout.value) {
+                    clearTimeout(asyncSortTimeout.value);
+                }
+                
+                // Debounce async sorting to prevent rapid successive calls
+                asyncSortTimeout.value = setTimeout(() => {
+                    if (!isAsyncSorting.value && sortKeyChanged.value === currentSortKey) {
+                        triggerAsyncSort(fieldKey, direction, customSortFn, currentSortKey);
+                    }
+                }, 100); // 100ms debounce
+            }
+
+            // Return previous cache or maintain visible data while sorting to prevent layout shift
+            if (sortedPlayersCache.value && sortedPlayersCache.value.length > 0) {
+                return sortedPlayersCache.value;
             } else {
-                result = fullSortedList;
+                // If no cache yet, return a slice of original data to maintain table height
+                // This prevents the jarring empty table during initial sort
+                const fallbackResult = [...props.players].slice(0, Math.min(MAX_DISPLAY_PLAYERS, props.players.length));
+                return fallbackResult;
+            }
+        });
+
+        // Async sorting for large datasets using web workers
+        const triggerAsyncSort = async (fieldKey, direction, customSortFn, sortKey) => {
+            // Prevent concurrent async sorting operations
+            if (isAsyncSorting.value) {
+                console.log('Async sorting already in progress, skipping');
+                return;
             }
             
-            isSliced.value = sliced;
-            return result;
-        });
+            isAsyncSorting.value = true;
+            
+            try {
+                let fullSortedList;
+                
+                // For now, always use optimized main thread sorting
+                // TODO: Re-enable web workers once they're fully tested
+                console.log('Using optimized main thread sorting for large dataset');
+                fullSortedList = await sortLargeArray(
+                    [...props.players], 
+                    fieldKey, 
+                    direction, 
+                    customSortFn,
+                    1000 // chunk size
+                );
+
+                totalSortedCount.value = fullSortedList.length;
+                let result;
+                let sliced = false;
+                
+                if (fullSortedList.length > MAX_DISPLAY_PLAYERS) {
+                    sliced = true;
+                    result = fullSortedList.slice(0, MAX_DISPLAY_PLAYERS);
+                } else {
+                    result = fullSortedList;
+                }
+                
+                isSliced.value = sliced;
+                sortedPlayersCache.value = result;
+                lastSortKey.value = sortKey;
+            } catch (error) {
+                console.error('Error during async sorting:', error.message || error);
+                // Fallback to direct assignment if async sorting fails
+                const fallbackResult = [...props.players].slice(0, MAX_DISPLAY_PLAYERS);
+                sortedPlayersCache.value = fallbackResult;
+                totalSortedCount.value = props.players.length;
+                isSliced.value = props.players.length > MAX_DISPLAY_PLAYERS;
+                lastSortKey.value = sortKey;
+            } finally {
+                isAsyncSorting.value = false;
+            }
+        };
 
         const pagesNumber = computed(() => {
             if (
@@ -850,7 +991,8 @@ export default {
             }
         });
 
-        const getUnifiedRatingClass = (value, maxScale) => {
+        // Memoized rating class calculation (called frequently in table rendering)
+        const getUnifiedRatingClass = memoize((value, maxScale) => {
             const numValue = parseInt(value, 10);
             if (
                 isNaN(numValue) ||
@@ -866,7 +1008,11 @@ export default {
             if (percentage >= 55) return "rating-tier-3";
             if (percentage >= 40) return "rating-tier-2";
             return "rating-tier-1";
-        };
+        }, {
+            maxSize: 200, // Cache up to 200 different rating calculations
+            keyGenerator: (value, maxScale) => `${value}-${maxScale}`,
+            cacheKey: 'unifiedRatingClass'
+        });
 
         const getMoneyClass = (numericAmount) => {
             if (numericAmount === null || numericAmount === undefined)
@@ -945,6 +1091,20 @@ export default {
 
         const sortTable = (fieldName) => {
             console.time("PlayerDataTable: sortTable_execution");
+            
+            // Clear any pending async sorting
+            if (asyncSortTimeout.value) {
+                clearTimeout(asyncSortTimeout.value);
+                asyncSortTimeout.value = null;
+            }
+            
+            // Clear sort cache when sort parameters change
+            clearSortCache();
+            // Don't clear sortedPlayersCache immediately to prevent layout shift
+            // It will be updated when the new sort completes
+            lastSortKey.value = '';
+            sortKeyChanged.value = '';
+            
             const actualSortKey = getSortFieldKey(fieldName);
             let newDirection;
             if (sortField.value === fieldName) {
@@ -1013,8 +1173,8 @@ export default {
             'PHY': 'POS'   // Positioning -> Physical
         };
 
-        // Get the actual value for sorting or display, with GK mapping applied
-        const getPlayerValue = (player, fieldKey, columnName = null) => {
+        // Memoized player value getter (called frequently during sorting and rendering)
+        const getPlayerValue = memoize((player, fieldKey, columnName = null) => {
             // For non-goalkeeper view, map GK stats to standard FIFA stats if the player is a goalkeeper
             if (!props.isGoalkeeperView && player.position && player.position.includes('GK')) {
                 const mappedStat = gkStatMapping[columnName || fieldKey];
@@ -1025,11 +1185,19 @@ export default {
             
             // Default behavior - use the field key
             return player[fieldKey];
-        };
+        }, {
+            maxSize: 1000, // Cache player value lookups
+            keyGenerator: (player, fieldKey, columnName) => `${player.name}-${fieldKey}-${columnName || ''}`,
+            cacheKey: 'playerValue'
+        });
 
-        const getDisplayValue = (player, col) => {
+        const getDisplayValue = memoize((player, col) => {
             return getPlayerValue(player, col.field, col.name);
-        };
+        }, {
+            maxSize: 500,
+            keyGenerator: (player, col) => `${player.name}-${col.field}-${col.name}`,
+            cacheKey: 'displayValue'
+        });
 
         const contextMenuPlayer = ref(null);
         
@@ -1087,6 +1255,34 @@ export default {
             contextMenuPlayer.value = player;
         };
 
+        // Clear memoization caches when component unmounts or when players prop changes significantly
+        watch(() => props.players?.length, () => {
+            // Clear all memoization caches when dataset changes
+            getUnifiedRatingClass.clearCache();
+            getPlayerValue.clearCache();
+            getDisplayValue.clearCache();
+            getPositionIndex.clearCache();
+        });
+
+        watch(() => props.isGoalkeeperView, () => {
+            // Clear player value cache when view mode changes
+            getPlayerValue.clearCache();
+            getDisplayValue.clearCache();
+        });
+
+        onUnmounted(() => {
+            // Clear all caches on component cleanup
+            getUnifiedRatingClass.clearCache();
+            getPlayerValue.clearCache();
+            getDisplayValue.clearCache();
+            getPositionIndex.clearCache();
+            
+            // Clear async sort timeout
+            if (asyncSortTimeout.value) {
+                clearTimeout(asyncSortTimeout.value);
+            }
+        });
+
         console.log(`PlayerDataTable: Setup function end.`);
         return {
             qInstance: $q,
@@ -1115,6 +1311,7 @@ export default {
             MAX_DISPLAY_PLAYERS,
             totalSortedCount,
             isSliced,
+            isAsyncSorting,
             paginationTotalRows,
             paginationStartRow,
             paginationEndRow,
