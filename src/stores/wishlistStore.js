@@ -1,9 +1,11 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
+import wishlistService from "../services/wishlistService";
 
 export const useWishlistStore = defineStore("wishlist", () => {
   // Wishlist data structure: { [datasetId]: [player objects] }
   const wishlistsByDataset = ref({});
+  const loading = ref(false);
 
   // Get wishlist for current dataset
   const getWishlistForDataset = (datasetId) => {
@@ -11,10 +13,42 @@ export const useWishlistStore = defineStore("wishlist", () => {
     return wishlistsByDataset.value[datasetId] || [];
   };
 
+  // Load wishlist for specific dataset (from MinIO with localStorage fallback)
+  const loadWishlistForDataset = async (datasetId) => {
+    if (!datasetId) return [];
+    
+    loading.value = true;
+    try {
+      const wishlistData = await wishlistService.loadWishlist(datasetId);
+      wishlistsByDataset.value[datasetId] = wishlistData || [];
+      return wishlistsByDataset.value[datasetId];
+    } catch (error) {
+      console.error(`Failed to load wishlist for dataset ${datasetId}:`, error);
+      // Fallback to empty array
+      wishlistsByDataset.value[datasetId] = [];
+      return [];
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  // Save wishlist for specific dataset (to MinIO with localStorage fallback)
+  const saveWishlistForDataset = async (datasetId) => {
+    if (!datasetId || !wishlistsByDataset.value[datasetId]) return;
+    
+    try {
+      await wishlistService.saveWishlist(datasetId, wishlistsByDataset.value[datasetId]);
+    } catch (error) {
+      // Error is already logged in service, wishlist is saved to localStorage as fallback
+      console.error(`Failed to save wishlist for dataset ${datasetId} to MinIO:`, error);
+    }
+  };
+
   // Add player to wishlist for specific dataset
-  const addToWishlist = (datasetId, player) => {
+  const addToWishlist = async (datasetId, player) => {
     if (!datasetId || !player) return false;
     
+    // Ensure dataset wishlist exists
     if (!wishlistsByDataset.value[datasetId]) {
       wishlistsByDataset.value[datasetId] = [];
     }
@@ -26,7 +60,7 @@ export const useWishlistStore = defineStore("wishlist", () => {
     
     if (existingIndex === -1) {
       wishlistsByDataset.value[datasetId].push(player);
-      saveToLocalStorage();
+      await saveWishlistForDataset(datasetId);
       return true;
     }
     
@@ -34,7 +68,7 @@ export const useWishlistStore = defineStore("wishlist", () => {
   };
 
   // Remove player from wishlist for specific dataset
-  const removeFromWishlist = (datasetId, player) => {
+  const removeFromWishlist = async (datasetId, player) => {
     if (!datasetId || !player || !wishlistsByDataset.value[datasetId]) return false;
     
     const index = wishlistsByDataset.value[datasetId].findIndex(
@@ -43,7 +77,7 @@ export const useWishlistStore = defineStore("wishlist", () => {
     
     if (index !== -1) {
       wishlistsByDataset.value[datasetId].splice(index, 1);
-      saveToLocalStorage();
+      await saveWishlistForDataset(datasetId);
       return true;
     }
     
@@ -60,10 +94,17 @@ export const useWishlistStore = defineStore("wishlist", () => {
   };
 
   // Clear wishlist for specific dataset
-  const clearWishlistForDataset = (datasetId) => {
+  const clearWishlistForDataset = async (datasetId) => {
     if (datasetId && wishlistsByDataset.value[datasetId]) {
-      delete wishlistsByDataset.value[datasetId];
-      saveToLocalStorage();
+      wishlistsByDataset.value[datasetId] = [];
+      await saveWishlistForDataset(datasetId);
+      
+      // Also delete from both MinIO and localStorage
+      try {
+        await wishlistService.deleteWishlist(datasetId);
+      } catch (error) {
+        console.error(`Failed to delete wishlist for dataset ${datasetId}:`, error);
+      }
     }
   };
 
@@ -73,39 +114,53 @@ export const useWishlistStore = defineStore("wishlist", () => {
     return wishlistsByDataset.value[datasetId]?.length || 0;
   };
 
-  // Save to localStorage
-  const saveToLocalStorage = () => {
-    try {
-      localStorage.setItem("fmdb_wishlists", JSON.stringify(wishlistsByDataset.value));
-    } catch (error) {
-      console.error("Failed to save wishlists to localStorage:", error);
+  // Initialize wishlists for a dataset (call this when dataset is loaded)
+  const initializeWishlistForDataset = async (datasetId) => {
+    if (!datasetId) return;
+    
+    // Only load if not already loaded
+    if (!wishlistsByDataset.value[datasetId]) {
+      await loadWishlistForDataset(datasetId);
     }
   };
 
-  // Load from localStorage
-  const loadFromLocalStorage = () => {
+  // Migrate from old localStorage format to new service-based approach
+  const migrateFromOldLocalStorage = async () => {
     try {
-      const stored = localStorage.getItem("fmdb_wishlists");
-      if (stored) {
-        wishlistsByDataset.value = JSON.parse(stored);
+      const oldData = localStorage.getItem("fmdb_wishlists");
+      if (oldData) {
+        const parsedData = JSON.parse(oldData);
+        
+        // Migrate each dataset's wishlist
+        for (const [datasetId, wishlistData] of Object.entries(parsedData)) {
+          if (Array.isArray(wishlistData) && wishlistData.length > 0) {
+            wishlistsByDataset.value[datasetId] = wishlistData;
+            await saveWishlistForDataset(datasetId);
+          }
+        }
+        
+        // Remove old localStorage entry after successful migration
+        localStorage.removeItem("fmdb_wishlists");
+        console.log("Successfully migrated wishlists from old localStorage format");
       }
     } catch (error) {
-      console.error("Failed to load wishlists from localStorage:", error);
-      wishlistsByDataset.value = {};
+      console.error("Failed to migrate wishlists from old localStorage format:", error);
     }
   };
 
-  // Initialize from localStorage
-  loadFromLocalStorage();
+  // Auto-migrate on store initialization
+  migrateFromOldLocalStorage();
 
   return {
     wishlistsByDataset,
+    loading,
     getWishlistForDataset,
+    loadWishlistForDataset,
     addToWishlist,
     removeFromWishlist,
     isInWishlist,
     clearWishlistForDataset,
     getWishlistCount,
-    loadFromLocalStorage,
+    initializeWishlistForDataset,
   };
 }); 

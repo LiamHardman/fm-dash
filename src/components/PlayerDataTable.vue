@@ -1041,9 +1041,9 @@ export default {
             return wishlistStore.isInWishlist(currentDatasetId.value, player);
         };
 
-        const handleAddToWishlist = () => {
+        const handleAddToWishlist = async () => {
             if (contextMenuPlayer.value && currentDatasetId.value) {
-                const success = wishlistStore.addToWishlist(currentDatasetId.value, contextMenuPlayer.value);
+                const success = await wishlistStore.addToWishlist(currentDatasetId.value, contextMenuPlayer.value);
                 if (success) {
                     $q.notify({
                         type: 'positive',
@@ -1062,9 +1062,9 @@ export default {
             }
         };
 
-        const handleRemoveFromWishlist = () => {
+        const handleRemoveFromWishlist = async () => {
             if (contextMenuPlayer.value && currentDatasetId.value) {
-                const success = wishlistStore.removeFromWishlist(currentDatasetId.value, contextMenuPlayer.value);
+                const success = await wishlistStore.removeFromWishlist(currentDatasetId.value, contextMenuPlayer.value);
                 if (success) {
                     $q.notify({
                         type: 'positive',

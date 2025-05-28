@@ -235,6 +235,7 @@ import { ref, computed, onMounted, watch } from "vue";
 import { useQuasar } from "quasar";
 import { useRouter, useRoute } from "vue-router";
 import { usePlayerStore } from "../stores/playerStore";
+import { useWishlistStore } from "../stores/wishlistStore";
 import PlayerDataTable from "../components/PlayerDataTable.vue";
 import PlayerDetailDialog from "../components/PlayerDetailDialog.vue";
 import PlayerFilters from "../components/filters/PlayerFilters.vue";
@@ -322,6 +323,7 @@ export default {
         const router = useRouter();
         const route = useRoute();
         const playerStore = usePlayerStore();
+        const wishlistStore = useWishlistStore();
 
         const pageLoading = ref(true);
         const pageLoadingError = ref("");
@@ -654,6 +656,9 @@ export default {
             try {
                 await playerStore.fetchPlayersByDatasetId(datasetId);
                 await playerStore.fetchAllAvailableRoles();
+
+                // Initialize wishlist for this dataset
+                await wishlistStore.initializeWishlistForDataset(datasetId);
 
                 // Safely access store values and provide defaults
                 const initTvRange = playerStore.initialDatasetTransferValueRange;

@@ -91,7 +91,7 @@
                         </div>
                         <PlayerDataTable
                             :players="wishlistPlayers"
-                            :loading="false"
+                            :loading="wishlistStore.loading"
                             @player-selected="handlePlayerSelected"
                             @team-selected="handleTeamSelected"
                             :is-goalkeeper-view="false"
@@ -165,21 +165,30 @@
                 </q-card-actions>
             </q-card>
         </q-dialog>
+
+        <!-- Player Detail Dialog -->
+        <PlayerDetailDialog
+            :player="playerForDetailView"
+            :show="showPlayerDetailDialog"
+            @close="showPlayerDetailDialog = false"
+        />
     </q-page>
 </template>
 
 <script>
-import { defineComponent, computed, ref } from "vue";
+import { defineComponent, computed, ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useQuasar } from "quasar";
 import { usePlayerStore } from "../stores/playerStore";
 import { useWishlistStore } from "../stores/wishlistStore";
 import PlayerDataTable from "../components/PlayerDataTable.vue";
+import PlayerDetailDialog from "../components/PlayerDetailDialog.vue";
 
 export default defineComponent({
     name: "WishlistPage",
     components: {
         PlayerDataTable,
+        PlayerDetailDialog,
     },
     setup() {
         const router = useRouter();
@@ -187,6 +196,8 @@ export default defineComponent({
         const playerStore = usePlayerStore();
         const wishlistStore = useWishlistStore();
         const showClearDialog = ref(false);
+        const showPlayerDetailDialog = ref(false);
+        const playerForDetailView = ref(null);
 
         const currentDatasetId = computed(() => playerStore.currentDatasetId);
         const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol);
@@ -211,6 +222,13 @@ export default defineComponent({
             return nationalities.size;
         });
 
+        // Initialize wishlist when component is mounted
+        onMounted(async () => {
+            if (currentDatasetId.value) {
+                await wishlistStore.initializeWishlistForDataset(currentDatasetId.value);
+            }
+        });
+
         const goToDataset = () => {
             if (currentDatasetId.value) {
                 router.push(`/dataset/${currentDatasetId.value}`);
@@ -223,8 +241,8 @@ export default defineComponent({
             showClearDialog.value = true;
         };
 
-        const clearWishlist = () => {
-            wishlistStore.clearWishlistForDataset(currentDatasetId.value);
+        const clearWishlist = async () => {
+            await wishlistStore.clearWishlistForDataset(currentDatasetId.value);
             quasarInstance.notify({
                 type: 'positive',
                 message: 'Wishlist cleared successfully',
@@ -233,17 +251,25 @@ export default defineComponent({
         };
 
         const handlePlayerSelected = (player) => {
-            // Could implement player detail view in the future
-            console.log('Player selected:', player);
+            playerForDetailView.value = player;
+            showPlayerDetailDialog.value = true;
         };
 
         const handleTeamSelected = (team) => {
-            // Could implement team view navigation
-            console.log('Team selected:', team);
+            if (currentDatasetId.value) {
+                const url = router.resolve({
+                    path: "/team-view",
+                    query: {
+                        datasetId: currentDatasetId.value,
+                        team: team,
+                    },
+                }).href;
+                window.open(url, "_blank");
+            }
         };
 
-        const handleRemoveFromWishlist = (player) => {
-            const success = wishlistStore.removeFromWishlist(currentDatasetId.value, player);
+        const handleRemoveFromWishlist = async (player) => {
+            const success = await wishlistStore.removeFromWishlist(currentDatasetId.value, player);
             if (success) {
                 quasarInstance.notify({
                     type: 'positive',
@@ -256,12 +282,15 @@ export default defineComponent({
         return {
             router,
             quasarInstance,
+            wishlistStore,
             currentDatasetId,
             detectedCurrencySymbol,
             wishlistPlayers,
             uniqueClubsCount,
             uniqueNationalitiesCount,
             showClearDialog,
+            showPlayerDetailDialog,
+            playerForDetailView,
             goToDataset,
             confirmClearWishlist,
             clearWishlist,
