@@ -719,7 +719,13 @@ func rolesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Assumes muRoleSpecificOverallWeights and roleSpecificOverallWeights are defined in config.go
+	// Ensure config is initialized with timeout
+	if err := EnsureConfigInitialized(5 * time.Second); err != nil {
+		log.Printf("Configuration not ready for roles request: %v", err)
+		http.Error(w, "Configuration loading, please try again", http.StatusServiceUnavailable)
+		return
+	}
+
 	muRoleSpecificOverallWeights.RLock()
 	roleNames := make([]string, 0, len(roleSpecificOverallWeights))
 	for roleName := range roleSpecificOverallWeights {

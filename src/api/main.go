@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var (
@@ -149,8 +150,44 @@ func main() {
 		}
 	}
 
-	slog.Info("Server starting", "port", port, "url", "http://localhost:"+port)
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
+	// Create HTTP server with timeouts and middleware
+	mux := http.NewServeMux()
+	
+	// Apply middleware chain to all routes
+	var handler http.Handler = mux
+	handler = RequestTimeoutMiddleware(30 * time.Second)(handler) // 30 second request timeout
+	handler = LoggingMiddleware(handler)
+	
+	// Re-register all routes with the new mux
+	mux.Handle("/", wrapHandler(indexHandler, "index"))
+	mux.Handle("/public/", http.StripPrefix("/public/", fsPublic))
+	mux.Handle("/upload", wrapHandler(http.HandlerFunc(uploadHandler), "upload"))
+	mux.Handle("/api/players/", wrapHandler(http.HandlerFunc(playerDataHandler), "player-data"))
+	mux.Handle("/api/roles", wrapHandler(http.HandlerFunc(rolesHandler), "roles"))
+	mux.Handle("/api/leagues/", wrapHandler(http.HandlerFunc(leaguesHandler), "leagues"))
+	mux.Handle("/api/teams/", wrapHandler(http.HandlerFunc(teamsHandler), "teams"))
+	mux.Handle("/api/percentiles/", wrapHandler(http.HandlerFunc(percentilesHandler), "percentiles"))
+	mux.Handle("/api/search/", wrapHandler(http.HandlerFunc(searchHandler), "search"))
+	mux.Handle("/api/config", wrapHandler(http.HandlerFunc(configHandler), "config"))
+	
+	// Create server with proper timeouts
+	server := &http.Server{
+		Addr:         ":" + port,
+		Handler:      handler,
+		ReadTimeout:  15 * time.Second,  // Time to read request
+		WriteTimeout: 30 * time.Second,  // Time to write response  
+		IdleTimeout:  60 * time.Second,  // Time to keep connection open
+		ReadHeaderTimeout: 5 * time.Second, // Time to read request headers
+	}
+
+	slog.Info("Server starting", 
+		"port", port, 
+		"url", "http://localhost:"+port,
+		"read_timeout", "15s",
+		"write_timeout", "30s",
+		"idle_timeout", "60s")
+		
+	if err := server.ListenAndServe(); err != nil {
 		log.Fatal("ListenAndServe Error: ", err)
 	}
 }

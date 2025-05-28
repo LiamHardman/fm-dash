@@ -64,46 +64,45 @@ func CalculateFifaStatGo(playerNumericAttributes map[string]int, categoryName st
 // The result is scaled by overallScalingFactor (e.g., 5.85 from config.go) and clamped to 0-99.
 func CalculateOverallForRoleGo(playerNumericAttributes map[string]int, roleSpecificAttrWeights map[string]int) int {
 	if len(roleSpecificAttrWeights) == 0 {
-		// log.Printf("Warning: No weights provided for role calculation. Returning 0.")
 		return 0
 	}
 
 	var weightedAttributeSum float64
 	var totalApplicableWeightsSum float64
 
+	// Optimized loop: reduce math operations and casting
 	for attrKey, weightForAttribute := range roleSpecificAttrWeights {
-		attributeValue, exists := playerNumericAttributes[attrKey]
-		if exists {
-			// Clamp attribute value to 1-20 for calculation, though they should already be.
-			// Using 0 for missing/invalid attributes is also an option.
-			// Original code used math.Max(0, math.Min(20, float64(attributeValue)))
-			// Let's assume attributes are already valid 1-20 from parsing, or 0 if invalid.
-			// We should only consider attributes > 0 for positive contribution.
-			if attributeValue > 0 { // Consider only attributes with a positive value
-				// The original calculation used math.Max(0, math.Min(20, float64(attributeValue)))
-				// which means a 0 attribute would contribute 0.
-				// If we only consider >0, then an attribute of 0 from parsing (e.g. failed Atoi) won't contribute.
-				// This seems fine. If an attribute is truly 0, it shouldn't contribute.
-				// If it's 1-20, it will be used as is.
-				validAttributeValue := math.Max(1, math.Min(20, float64(attributeValue))) // Ensure 1-20 range for calculation
-				weightedAttributeSum += validAttributeValue * float64(weightForAttribute)
-				totalApplicableWeightsSum += float64(weightForAttribute)
+		if attributeValue, exists := playerNumericAttributes[attrKey]; exists && attributeValue > 0 {
+			// Fast path: assume attributes are already in valid 1-20 range
+			// Only clamp if outside expected range (rare case)
+			var validValue float64
+			if attributeValue >= 1 && attributeValue <= 20 {
+				validValue = float64(attributeValue) // Fast path - no math.Max/Min needed
+			} else {
+				validValue = math.Max(1, math.Min(20, float64(attributeValue))) // Slow path - clamp
 			}
+			
+			weightFloat := float64(weightForAttribute)
+			weightedAttributeSum += validValue * weightFloat
+			totalApplicableWeightsSum += weightFloat
 		}
 	}
 
 	if totalApplicableWeightsSum == 0 {
-		return 0 // No relevant attributes for this role or all weights were zero
+		return 0
 	}
 
-	rawPositionalOverall := weightedAttributeSum / totalApplicableWeightsSum // This is on a 1-20 scale
+	// Combined scaling and rounding operation
+	scaledScore := (weightedAttributeSum / totalApplicableWeightsSum) * overallScalingFactor
+	finalScore := int(scaledScore + 0.5) // Faster than math.Round for positive numbers
 
-	// Scale to 0-99 using the overallScalingFactor from config.go
-	// Original: int(math.Min(99, math.Round(rawPositionalOverall*overallScalingFactor)))
-	scaledScore := rawPositionalOverall * overallScalingFactor // overallScalingFactor is 5.85
-	finalScore := int(math.Round(scaledScore))
-
-	return Clamp(finalScore, 0, 99) // Clamp from utils.go
+	// Clamp result to 0-99 range
+	if finalScore > 99 {
+		return 99
+	} else if finalScore < 0 {
+		return 0
+	}
+	return finalScore
 }
 
 // CalculateCategoryBasedOverall calculates a general overall score based on FIFA stat categories (PAC, SHO, etc.).

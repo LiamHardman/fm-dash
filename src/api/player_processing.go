@@ -7,6 +7,25 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
+)
+
+// Memory pools for reducing allocations during role calculations
+var (
+	roleSlicePool = sync.Pool{
+		New: func() interface{} {
+			return make([]struct {
+				name    string
+				weights map[string]int
+			}, 0, 24)
+		},
+	}
+	
+	processedRoleNamesPool = sync.Pool{
+		New: func() interface{} {
+			return make(map[string]struct{}, 16)
+		},
+	}
 )
 
 // parseCellsToPlayer converts a slice of string cells (a row from the HTML table)
@@ -303,9 +322,19 @@ func EnhancePlayerWithCalculations(player *Player) {
 		player.POS = 0
 	}
 
-	// --- START: Overall Calculation ---
+	// --- START: Overall Calculation (Optimized) ---
 	maxRoleBasedOverall := 0
-	calculatedRoleOveralls := make([]RoleOverallScore, 0, 5) // Estimate capacity
+	calculatedRoleOveralls := make([]RoleOverallScore, 0, 8) // Increased estimate capacity
+
+	// Get processedRoleNames from pool and ensure it's clean
+	processedRoleNames := processedRoleNamesPool.Get().(map[string]struct{})
+	defer func() {
+		// Clear the map and return to pool
+		for k := range processedRoleNames {
+			delete(processedRoleNames, k)
+		}
+		processedRoleNamesPool.Put(processedRoleNames)
+	}()
 
 	muPrecomputedRoleWeights.RLock()
 	currentPrecomputedWeights := precomputedRoleWeights // Use a local copy of the map pointer (precomputedRoleWeights from config.go)
@@ -327,48 +356,84 @@ func EnhancePlayerWithCalculations(player *Player) {
 		fallbackWeights := roleSpecificOverallWeights
 		muRoleSpecificOverallWeights.RUnlock()
 
-		processedRoleNames := make(map[string]struct{})
+		// Get matchingRoles slice from pool
+		matchingRoles := roleSlicePool.Get().([]struct {
+			name    string
+			weights map[string]int
+		})
+		matchingRoles = matchingRoles[:0] // Reset length but keep capacity
+		defer roleSlicePool.Put(matchingRoles)
 
+		// Collect all matching roles first (avoid redundant string operations)
 		for _, shortPosKey := range player.ShortPositions {
+			posPrefix := shortPosKey + " - "
+			isGK := shortPosKey == "GK"
+			
 			for roleFullName, specificWeights := range fallbackWeights {
-				if strings.HasPrefix(roleFullName, shortPosKey+" - ") || (shortPosKey == "GK" && roleFullName == "GK - Goalkeeper - Defend") {
-					if _, alreadyProcessed := processedRoleNames[roleFullName]; alreadyProcessed {
-						continue
-					}
-					overallForThisRole := CalculateOverallForRoleGo(player.NumericAttributes, specificWeights) // CalculateOverallForRoleGo from calculations.go
-					calculatedRoleOveralls = append(calculatedRoleOveralls, RoleOverallScore{RoleName: roleFullName, Score: overallForThisRole})
-					if overallForThisRole > maxRoleBasedOverall {
-						maxRoleBasedOverall = overallForThisRole
-					}
+				if _, alreadyProcessed := processedRoleNames[roleFullName]; alreadyProcessed {
+					continue
+				}
+				
+				if strings.HasPrefix(roleFullName, posPrefix) || (isGK && roleFullName == "GK - Goalkeeper - Defend") {
+					matchingRoles = append(matchingRoles, struct{
+						name    string
+						weights map[string]int
+					}{name: roleFullName, weights: specificWeights})
 					processedRoleNames[roleFullName] = struct{}{}
 				}
 			}
 		}
+
+		// Batch process all matching roles
+		for _, role := range matchingRoles {
+			overallForThisRole := CalculateOverallForRoleGo(player.NumericAttributes, role.weights)
+			calculatedRoleOveralls = append(calculatedRoleOveralls, RoleOverallScore{RoleName: role.name, Score: overallForThisRole})
+			if overallForThisRole > maxRoleBasedOverall {
+				maxRoleBasedOverall = overallForThisRole
+			}
+		}
+		
 		if len(calculatedRoleOveralls) == 0 && len(player.ShortPositions) > 0 {
 			log.Printf("Fallback Warning: Player '%s' with ShortPositions %v found no matching roles in fallback roleSpecificOverallWeights. MaxRoleBasedOverall will be 0.", player.Name, player.ShortPositions)
 		}
 
 	} else if len(player.ShortPositions) > 0 {
 		foundAnyRoleMatch := false
-		processedRoleNames := make(map[string]struct{})
 
+		// Get allApplicableRoles slice from pool
+		allApplicableRoles := roleSlicePool.Get().([]struct {
+			name    string
+			weights map[string]int
+		})
+		allApplicableRoles = allApplicableRoles[:0] // Reset length but keep capacity
+		defer roleSlicePool.Put(allApplicableRoles)
+
+		// Collect all applicable roles from all positions in one pass
 		for _, shortKey := range player.ShortPositions {
 			if applicableRoles, found := currentPrecomputedWeights[shortKey]; found {
+				foundAnyRoleMatch = true
 				for _, roleData := range applicableRoles {
-					if _, alreadyProcessed := processedRoleNames[roleData.RoleName]; alreadyProcessed {
-						continue
+					if _, alreadyProcessed := processedRoleNames[roleData.RoleName]; !alreadyProcessed {
+						allApplicableRoles = append(allApplicableRoles, struct{
+							name string
+							weights map[string]int
+						}{name: roleData.RoleName, weights: roleData.Weights})
+						processedRoleNames[roleData.RoleName] = struct{}{}
 					}
-					foundAnyRoleMatch = true
-					overallForThisRole := CalculateOverallForRoleGo(player.NumericAttributes, roleData.Weights)
-					calculatedRoleOveralls = append(calculatedRoleOveralls, RoleOverallScore{RoleName: roleData.RoleName, Score: overallForThisRole})
-					if overallForThisRole > maxRoleBasedOverall {
-						maxRoleBasedOverall = overallForThisRole
-					}
-					processedRoleNames[roleData.RoleName] = struct{}{}
 				}
 			}
 		}
-		if !foundAnyRoleMatch && len(player.ShortPositions) > 0 { // Added check for ShortPositions to avoid logging for players with no positions
+
+		// Batch process all applicable roles
+		for _, role := range allApplicableRoles {
+			overallForThisRole := CalculateOverallForRoleGo(player.NumericAttributes, role.weights)
+			calculatedRoleOveralls = append(calculatedRoleOveralls, RoleOverallScore{RoleName: role.name, Score: overallForThisRole})
+			if overallForThisRole > maxRoleBasedOverall {
+				maxRoleBasedOverall = overallForThisRole
+			}
+		}
+		
+		if !foundAnyRoleMatch && len(player.ShortPositions) > 0 {
 			log.Printf("Warning: Player '%s' with ShortPositions %v found no matching roles in precomputedRoleWeights. MaxRoleBasedOverall will be 0.", player.Name, player.ShortPositions)
 		}
 	} else {

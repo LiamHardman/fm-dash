@@ -3,10 +3,12 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 )
 
 const (
@@ -163,62 +165,124 @@ func loadJSONWeights(filePath string, defaultWeights map[string]map[string]int) 
 	return weights, nil
 }
 
-// init is automatically called when the package is loaded.
-// It loads attribute and role weights from JSON files or uses defaults.
+// Configuration loading state
+var (
+	configInitialized = false
+	configInitOnce    sync.Once
+	configInitError   error
+)
+
+// init is called when the package is loaded but only does minimal setup
 func init() {
-	var errAttr, errRole error
+	// Only initialize metrics toggle from environment variable
+	metricsEnabled = os.Getenv("ENABLE_METRICS") == "true"
+	log.Printf("Metrics collection enabled: %v", metricsEnabled)
 
-	// Load attribute weights for FIFA stats (PAC, SHO, etc.)
-	loadedAttrWeights, errAttr := loadJSONWeights(filepath.Join("public", "attribute_weights.json"), defaultAttributeWeightsGo)
-	muAttributeWeights.Lock()
-	if errAttr != nil {
-		log.Printf("Using default attribute_weights due to error: %v. Default attribute_weights has %d entries.", errAttr, len(defaultAttributeWeightsGo))
-		attributeWeights = make(map[string]map[string]int)
-		for k, v := range defaultAttributeWeightsGo { // Deep copy
-			innerMap := make(map[string]int)
-			for ik, iv := range v {
-				innerMap[ik] = iv
-			}
-			attributeWeights[k] = innerMap
-		}
-	} else {
-		attributeWeights = loadedAttrWeights
+	// Initialize OpenTelemetry metrics if enabled (lightweight operation)
+	if metricsEnabled {
+		initMetrics()
+		initEnhancedMetrics()
 	}
-	muAttributeWeights.Unlock()
 
-	// Load role-specific overall weights
-	loadedRoleWeights, errRole := loadJSONWeights(filepath.Join("public", "role_specific_overall_weights.json"), defaultRoleSpecificOverallWeightsGo)
-	muRoleSpecificOverallWeights.Lock()
-	if errRole != nil {
-		log.Printf("Using default role_specific_overall_weights due to error: %v. Default role_specific_overall_weights has %d entries.", errRole, len(defaultRoleSpecificOverallWeightsGo))
-		roleSpecificOverallWeights = make(map[string]map[string]int)
-		for k, v := range defaultRoleSpecificOverallWeightsGo { // Deep copy
-			innerMap := make(map[string]int)
-			for ik, iv := range v {
-				innerMap[ik] = iv
-			}
-			roleSpecificOverallWeights[k] = innerMap
+	// Start async configuration loading in background
+	go func() {
+		configInitOnce.Do(initializeConfigAsync)
+	}()
+}
+
+// initializeConfigAsync loads configuration files asynchronously
+func initializeConfigAsync() {
+	defer func() {
+		configInitialized = true
+		if configInitError != nil {
+			log.Printf("Configuration initialization completed with errors: %v", configInitError)
+		} else {
+			log.Printf("Configuration initialization completed successfully")
 		}
-	} else {
-		roleSpecificOverallWeights = loadedRoleWeights
-	}
-	muRoleSpecificOverallWeights.Unlock()
+	}()
 
-	// Precompute role weights for faster lookup during player processing
+	var wg sync.WaitGroup
+	var attrErr, roleErr error
+
+	// Load attribute weights asynchronously
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		loadedAttrWeights, err := loadJSONWeights(filepath.Join("public", "attribute_weights.json"), defaultAttributeWeightsGo)
+		
+		muAttributeWeights.Lock()
+		defer muAttributeWeights.Unlock()
+		
+		if err != nil {
+			log.Printf("Using default attribute_weights due to error: %v. Default attribute_weights has %d entries.", err, len(defaultAttributeWeightsGo))
+			attributeWeights = deepCopyWeights(defaultAttributeWeightsGo)
+			attrErr = err
+		} else {
+			attributeWeights = loadedAttrWeights
+		}
+	}()
+
+	// Load role-specific weights asynchronously
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		loadedRoleWeights, err := loadJSONWeights(filepath.Join("public", "role_specific_overall_weights.json"), defaultRoleSpecificOverallWeightsGo)
+		
+		muRoleSpecificOverallWeights.Lock()
+		defer muRoleSpecificOverallWeights.Unlock()
+		
+		if err != nil {
+			log.Printf("Using default role_specific_overall_weights due to error: %v. Default role_specific_overall_weights has %d entries.", err, len(defaultRoleSpecificOverallWeightsGo))
+			roleSpecificOverallWeights = deepCopyWeights(defaultRoleSpecificOverallWeightsGo)
+			roleErr = err
+		} else {
+			roleSpecificOverallWeights = loadedRoleWeights
+		}
+	}()
+
+	// Wait for both file loads to complete
+	wg.Wait()
+
+	// Precompute role weights after both loads complete
+	precomputeRoleWeights()
+
+	// Set overall error status
+	if attrErr != nil || roleErr != nil {
+		configInitError = fmt.Errorf("attribute error: %v, role error: %v", attrErr, roleErr)
+	}
+}
+
+// deepCopyWeights creates a deep copy of weight maps
+func deepCopyWeights(source map[string]map[string]int) map[string]map[string]int {
+	result := make(map[string]map[string]int, len(source))
+	for k, v := range source {
+		innerMap := make(map[string]int, len(v))
+		for ik, iv := range v {
+			innerMap[ik] = iv
+		}
+		result[k] = innerMap
+	}
+	return result
+}
+
+// precomputeRoleWeights computes role weights for faster lookup
+func precomputeRoleWeights() {
 	muPrecomputedRoleWeights.Lock()
+	defer muPrecomputedRoleWeights.Unlock()
+	
 	precomputedRoleWeights = make(map[string][]struct {
 		RoleName string
 		Weights  map[string]int
 	})
-	// Use the just loaded (or defaulted) roleSpecificOverallWeights for precomputation
-	sourceWeightsToPrecompute := roleSpecificOverallWeights
-	for roleFullName, weights := range sourceWeightsToPrecompute {
-		// Extract short position key (e.g., "DC" from "DC - Central Defender - Defend")
-		// This logic might need adjustment based on the exact format of roleFullName in your JSON
-		shortKey := GetShortPositionKeyFromRoleName(roleFullName) // Assumes GetShortPositionKeyFromRoleName is defined, e.g., in positions.go
 
+	muRoleSpecificOverallWeights.RLock()
+	sourceWeights := roleSpecificOverallWeights
+	muRoleSpecificOverallWeights.RUnlock()
+
+	for roleFullName, weights := range sourceWeights {
+		shortKey := GetShortPositionKeyFromRoleName(roleFullName)
 		if shortKey != "" {
-			copiedWeights := make(map[string]int, len(weights)) // Deep copy weights
+			copiedWeights := make(map[string]int, len(weights))
 			for k, v := range weights {
 				copiedWeights[k] = v
 			}
@@ -228,17 +292,31 @@ func init() {
 			}{RoleName: roleFullName, Weights: copiedWeights})
 		}
 	}
-	muPrecomputedRoleWeights.Unlock()
 	log.Printf("Precomputed %d base position keys for role weights.", len(precomputedRoleWeights))
+}
 
-	// Initialize metrics toggle from environment variable
-	metricsEnabled = os.Getenv("ENABLE_METRICS") == "true"
-	log.Printf("Metrics collection enabled: %v", metricsEnabled)
+// EnsureConfigInitialized waits for configuration to be loaded (with timeout)
+func EnsureConfigInitialized(timeout time.Duration) error {
+	if configInitialized {
+		return configInitError
+	}
 
-	// Initialize OpenTelemetry metrics
-	if metricsEnabled {
-		initMetrics()
-		initEnhancedMetrics()
+	// Wait for initialization with timeout using a ticker for better performance
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
+	
+	deadline := time.Now().Add(timeout)
+	
+	for {
+		select {
+		case <-ticker.C:
+			if configInitialized {
+				return configInitError
+			}
+			if time.Now().After(deadline) {
+				return fmt.Errorf("configuration initialization timed out after %v", timeout)
+			}
+		}
 	}
 }
 
