@@ -105,7 +105,10 @@ export default defineComponent({
     const currentDatasetId = computed(() => playerStore.currentDatasetId)
     const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol || '$')
     
-    const searchAPI = async (query) => {
+    // Request cancellation support
+    let currentSearchController = null
+    
+    const searchAPI = async (query, signal) => {
       if (!query.trim() || !playerStore.currentDatasetId) {
         return []
       }
@@ -113,7 +116,7 @@ export default defineComponent({
       const url = `/api/search/${playerStore.currentDatasetId}?q=${encodeURIComponent(query)}`
       
       try {
-        const response = await fetch(url)
+        const response = await fetch(url, { signal })
         if (response.ok) {
           const data = await response.json()
           return data
@@ -121,26 +124,52 @@ export default defineComponent({
           console.error('Search API error:', response.status)
         }
       } catch (error) {
+        if (error.name === 'AbortError') {
+          console.log('Search request cancelled')
+          return []
+        }
         console.error('Search network error:', error)
       }
       return []
     }
     
-    const debouncedSearch = debounce(async (query) => {
+    // Create stable debounced function with cancellation support
+    const debouncedSearchFn = debounce(async (query) => {
+      // Cancel previous request if it exists
+      if (currentSearchController) {
+        currentSearchController.abort()
+      }
+      
       if (!query.trim()) {
         results.value = []
         isLoading.value = false
+        currentSearchController = null
         return
       }
       
+      // Create new AbortController for this request
+      currentSearchController = new AbortController()
+      const signal = currentSearchController.signal
+      
       isLoading.value = true
-      results.value = await searchAPI(query)
-      isLoading.value = false
+      try {
+        results.value = await searchAPI(query, signal)
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          console.error('Search failed:', error)
+          results.value = []
+        }
+      } finally {
+        if (!signal.aborted) {
+          isLoading.value = false
+        }
+        currentSearchController = null
+      }
     }, 300)
     
     // Watch searchQuery and trigger debounced search
     watch(searchQuery, (newQuery) => {
-      debouncedSearch(newQuery)
+      debouncedSearchFn(newQuery)
     })
     
     const clearSearch = () => {

@@ -745,25 +745,33 @@ export default {
             return colDef?.sortField || colDef?.field || colName;
         };
 
+        // Memoized sorting cache for better performance
+        const sortCache = new Map();
+        const getCacheKey = (players, fieldKey, direction) => {
+            return `${players?.length || 0}-${fieldKey}-${direction}`;
+        };
+
         const sortedPlayers = computed(() => {
-            console.time("PlayerDataTable: sortedPlayers_computed_total");
-            if (!props.players) {
+            if (!props.players || props.players.length === 0) {
                 totalSortedCount.value = 0;
                 isSliced.value = false;
-                console.timeEnd(
-                    "PlayerDataTable: sortedPlayers_computed_total",
-                );
                 return [];
             }
-            console.log(
-                `PlayerDataTable: Starting sort for ${props.players.length} players. Sort by: ${sortField.value}, Direction: ${sortDirection.value}`,
-            );
 
             const fieldKey = getSortFieldKey(sortField.value || "Overall");
             const direction = sortDirection.value;
-            const playersToSort = [...props.players];
+            const cacheKey = getCacheKey(props.players, fieldKey, direction);
+            
+            // Check cache first
+            if (sortCache.has(cacheKey)) {
+                const cached = sortCache.get(cacheKey);
+                totalSortedCount.value = cached.total;
+                isSliced.value = cached.isSliced;
+                return cached.result;
+            }
 
-            console.time("PlayerDataTable: actual_sort_operation");
+            // Sort only when necessary
+            const playersToSort = [...props.players];
             const fullSortedList = playersToSort.sort((a, b) => {
                 let vA = a[fieldKey];
                 let vB = b[fieldKey];
@@ -777,9 +785,7 @@ export default {
                 if (fieldKey === "position") {
                     const indexA = getPositionIndex(vA);
                     const indexB = getPositionIndex(vB);
-                    return direction === "asc"
-                        ? indexA - indexB
-                        : indexB - indexA;
+                    return direction === "asc" ? indexA - indexB : indexB - indexA;
                 }
                 if (typeof vA === "number" && typeof vB === "number") {
                     return direction === "asc" ? vA - vB : vB - vA;
@@ -793,26 +799,30 @@ export default {
                 }
                 return 0;
             });
-            console.timeEnd("PlayerDataTable: actual_sort_operation");
 
             totalSortedCount.value = fullSortedList.length;
             let result;
+            let sliced = false;
+            
             if (fullSortedList.length > MAX_DISPLAY_PLAYERS) {
-                isSliced.value = true;
-                console.time("PlayerDataTable: slice_operation");
+                sliced = true;
                 result = fullSortedList.slice(0, MAX_DISPLAY_PLAYERS);
-                console.timeEnd("PlayerDataTable: slice_operation");
-                console.log(
-                    `PlayerDataTable: Sorted list sliced to ${MAX_DISPLAY_PLAYERS} players from ${totalSortedCount.value}.`,
-                );
             } else {
-                isSliced.value = false;
                 result = fullSortedList;
-                console.log(
-                    `PlayerDataTable: Sorted list not sliced. Length: ${totalSortedCount.value}.`,
-                );
             }
-            console.timeEnd("PlayerDataTable: sortedPlayers_computed_total");
+            
+            isSliced.value = sliced;
+
+            // Cache result (keep cache size reasonable)
+            if (sortCache.size > 10) {
+                sortCache.clear(); // Simple cache eviction
+            }
+            sortCache.set(cacheKey, {
+                result,
+                total: totalSortedCount.value,
+                isSliced: sliced
+            });
+
             return result;
         });
 

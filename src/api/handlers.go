@@ -132,7 +132,7 @@ type Team struct {
 const (
 	// MaxUploadSize defines the maximum allowed file size for uploads (15MB)
 	// This is an approximation for about 10,000 players.
-	MaxUploadSize = 15 * 1024 * 1024
+	MaxUploadSize = 50 * 1024 * 1024
 	// User-facing error message for file size limit.
 	FileSizeLimitErrorMessage = "Only 10,000 players or less can be in a given dataset. (Max file size: 15MB)"
 )

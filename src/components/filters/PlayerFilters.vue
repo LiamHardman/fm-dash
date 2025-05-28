@@ -1064,7 +1064,7 @@ import {
     defineComponent,
     onMounted,
     nextTick,
-} from "vue"; // Added nextTick
+} from "vue";
 import { useQuasar } from "quasar";
 import { usePlayerStore } from "@/stores/playerStore";
 import { formatCurrency } from "@/utils/currencyUtils";
@@ -1236,7 +1236,6 @@ export default defineComponent({
     setup(props, { emit }) {
         const quasarInstance = useQuasar();
         const playerStore = usePlayerStore();
-
         const filters = ref({
             name: "",
             club: null,

@@ -1661,6 +1661,9 @@ export default defineComponent({
             };
         });
 
+        // Cache for performance stats to avoid rebuilding on every change
+        const performanceStatsCache = new Map();
+        
         const categorizedPerformanceStats = computed(() => {
             if (
                 !props.player ||
@@ -1668,59 +1671,59 @@ export default defineComponent({
                 !props.player.performancePercentiles
             )
                 return {};
+                
             const groupKey = selectedComparisonGroup.value;
-            const percentilesForGroup =
-                props.player.performancePercentiles[groupKey];
+            const percentilesForGroup = props.player.performancePercentiles[groupKey];
             if (!percentilesForGroup) return {};
+
+            // Create cache key based on player ID and group
+            const cacheKey = `${props.player.id || 'unknown'}-${groupKey}`;
+            
+            // Return cached result if available
+            if (performanceStatsCache.has(cacheKey)) {
+                return performanceStatsCache.get(cacheKey);
+            }
 
             const result = {};
             const categoryOrder = ["Offensive", "Passing", "Defensive"];
+            
             categoryOrder.forEach((categoryName) => {
                 if (performanceStatCategories[categoryName]) {
                     const statsInCategory = [];
-                    performanceStatCategories[categoryName].forEach(
-                        (statKey) => {
-                            const hasRawAttribute =
-                                Object.prototype.hasOwnProperty.call(
-                                    props.player.attributes,
-                                    statKey,
-                                );
-                            const rawAttributeValue =
-                                props.player.attributes[statKey];
-                            const hasPercentile =
-                                Object.prototype.hasOwnProperty.call(
-                                    percentilesForGroup,
-                                    statKey,
-                                );
-                            const percentileValue =
-                                percentilesForGroup[statKey];
+                    performanceStatCategories[categoryName].forEach((statKey) => {
+                        const rawAttributeValue = props.player.attributes[statKey];
+                        const percentileValue = percentilesForGroup[statKey];
 
-                            if (
-                                performanceStatMap[statKey] &&
-                                hasRawAttribute &&
-                                rawAttributeValue !== "-" &&
-                                rawAttributeValue !== "" &&
-                                hasPercentile
-                            ) {
-                                statsInCategory.push({
-                                    key: statKey,
-                                    name: performanceStatMap[statKey],
-                                    value: rawAttributeValue,
-                                    percentile:
-                                        percentileValue >= 0
-                                            ? percentileValue
-                                            : null,
-                                });
-                            }
-                        },
-                    );
+                        if (
+                            performanceStatMap[statKey] &&
+                            rawAttributeValue !== undefined &&
+                            rawAttributeValue !== "-" &&
+                            rawAttributeValue !== "" &&
+                            percentileValue !== undefined
+                        ) {
+                            statsInCategory.push({
+                                key: statKey,
+                                name: performanceStatMap[statKey],
+                                value: rawAttributeValue,
+                                percentile: percentileValue >= 0 ? percentileValue : null,
+                            });
+                        }
+                    });
+                    
                     if (statsInCategory.length > 0) {
                         result[categoryName] = statsInCategory.sort((a, b) =>
-                            a.name.localeCompare(b.name),
+                            a.name.localeCompare(b.name)
                         );
                     }
                 }
             });
+
+            // Cache result (limit cache size)
+            if (performanceStatsCache.size > 20) {
+                performanceStatsCache.clear();
+            }
+            performanceStatsCache.set(cacheKey, result);
+            
             return result;
         });
 
@@ -1780,12 +1783,17 @@ export default defineComponent({
         };
 
         const sortedRoleSpecificOveralls = computed(() => {
-            if (props.player && props.player.roleSpecificOveralls) {
-                return [...props.player.roleSpecificOveralls].sort(
-                    (a, b) => b.score - a.score,
-                );
+            if (!props.player?.roleSpecificOveralls) {
+                return [];
             }
-            return [];
+            
+            // Only sort if the array has changed, avoiding unnecessary operations
+            const roleOveralls = props.player.roleSpecificOveralls;
+            if (roleOveralls.length <= 1) {
+                return roleOveralls;
+            }
+            
+            return [...roleOveralls].sort((a, b) => b.score - a.score);
         });
 
         const formattedTransferValue = computed(() => {
