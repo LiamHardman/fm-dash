@@ -1,14 +1,25 @@
 <template>
-    <q-page padding class="leagues-page">
+    <q-page class="leagues-page">
+        <!-- Hero Section -->
+        <div class="hero-section">
+            <div class="hero-container">
+                <div class="hero-content">
+                    <div class="hero-badge">
+                        <q-icon name="sports" size="1.2rem" />
+                        <span>League Explorer</span>
+                    </div>
+                    <h1 class="hero-title">
+                        League
+                        <span class="gradient-text">Analytics</span>
+                    </h1>
+                    <p class="hero-subtitle">
+                        Dive deep into leagues and competitions. Compare performance across different tournaments and discover emerging talents.
+                    </p>
+                </div>
+            </div>
+        </div>
+        
         <div class="q-pa-md">
-            <h1
-                class="text-h4 text-center q-mb-lg page-title"
-                :class="
-                    quasarInstance.dark.isActive ? 'text-grey-2' : 'text-grey-9'
-                "
-            >
-                Leagues Analysis
-            </h1>
 
             <q-banner
                 v-if="pageLoadingError"
@@ -28,27 +39,29 @@
                 />
             </q-banner>
 
-            <q-card
-                v-if="!pageLoadingError"
-                class="q-mb-md filter-card"
-                :class="quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'"
-            >
-                <q-card-section>
-                    <div class="row items-center justify-between q-mb-sm">
-                        <div class="text-subtitle1">Select League</div>
-                        <q-btn
-                            v-if="currentDatasetId"
-                            unelevated
-                            icon="share"
-                            label="Share Dataset"
-                            color="positive"
-                            @click="shareDataset"
-                            class="share-btn-enhanced"
-                            size="sm"
-                        >
-                            <q-tooltip>Copy shareable link to clipboard</q-tooltip>
-                        </q-btn>
-                    </div>
+            <!-- Share Button -->
+            <div v-if="!pageLoadingError && currentDatasetId" class="share-button-container">
+                <q-btn
+                    unelevated
+                    icon="share"
+                    label="Share Dataset"
+                    color="positive"
+                    @click="shareDataset"
+                    class="share-btn-enhanced"
+                    size="md"
+                >
+                    <q-tooltip>Copy shareable link to clipboard</q-tooltip>
+                </q-btn>
+            </div>
+
+            <div v-if="!pageLoadingError" class="modern-filter-section">
+                <div class="filter-header">
+                    <h2 class="filter-title">League Selection</h2>
+                    <p class="filter-subtitle">Choose a league to analyze teams and player distributions</p>
+                </div>
+                <div class="filter-card"
+                     :class="quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'">
+                    <div class="filter-content">
                     <q-select
                         v-model="selectedLeagueName"
                         :options="leagueOptions"
@@ -81,8 +94,9 @@
                             </q-item>
                         </template>
                     </q-select>
-                </q-card-section>
-            </q-card>
+                    </div>
+                </div>
+            </div>
 
             <div v-if="pageLoading" class="text-center q-my-xl">
                 <q-spinner-dots color="primary" size="3em" />
@@ -587,6 +601,152 @@ export default {
 .leagues-page {
     max-width: 1600px;
     margin: 0 auto;
+}
+
+// Hero Section
+.hero-section {
+    padding: 4rem 0;
+    background: linear-gradient(135deg, #1a237e 0%, #283593 50%, #3949ab 100%);
+    color: white;
+    position: relative;
+    overflow: hidden;
+    margin: -1.5rem -1.5rem 2rem -1.5rem;
+    
+    &::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: radial-gradient(
+            circle at 30% 20%,
+            rgba(255, 255, 255, 0.05) 0%,
+            transparent 50%
+        );
+        pointer-events: none;
+    }
+    
+    .hero-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 2rem;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .hero-content {
+        text-align: center;
+        
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 2rem;
+            backdrop-filter: blur(10px);
+        }
+        
+        .hero-title {
+            font-size: 3.5rem;
+            font-weight: 700;
+            line-height: 1.1;
+            margin: 0 0 1.5rem 0;
+            
+            @media (max-width: 768px) {
+                font-size: 2.5rem;
+            }
+            
+            .gradient-text {
+                background: linear-gradient(135deg, #64b5f6 0%, #42a5f5 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+            }
+        }
+        
+        .hero-subtitle {
+            font-size: 1.2rem;
+            line-height: 1.6;
+            margin: 0;
+            opacity: 0.9;
+            font-weight: 300;
+            max-width: 600px;
+            margin: 0 auto;
+            
+            @media (max-width: 768px) {
+                font-size: 1.1rem;
+            }
+        }
+    }
+}
+
+.share-button-container {
+    display: flex;
+    justify-content: flex-end;
+    margin: 2rem 0;
+    padding: 0 2rem;
+}
+
+// Modern Filter Section
+.modern-filter-section {
+    margin: 3rem 0;
+    
+    .filter-header {
+        text-align: center;
+        margin-bottom: 2rem;
+        
+        .filter-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0 0 0.5rem 0;
+            color: #1a237e;
+            
+            .body--dark & {
+                color: rgba(255, 255, 255, 0.9);
+            }
+        }
+        
+        .filter-subtitle {
+            font-size: 1rem;
+            color: #666;
+            margin: 0;
+            
+            .body--dark & {
+                color: rgba(255, 255, 255, 0.7);
+            }
+        }
+    }
+    
+    .filter-card {
+        background: white;
+        border-radius: 16px;
+        padding: 2rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        max-width: 600px;
+        margin: 0 auto;
+        
+        .body--dark & {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .filter-content {
+            .q-field {
+                .q-field__control {
+                    border-radius: 12px;
+                }
+            }
+        }
+    }
 }
 
 .page-title {
