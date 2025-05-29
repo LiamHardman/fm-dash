@@ -250,670 +250,558 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, watch } from "vue";
-import { useQuasar } from "quasar";
-import { useRouter, useRoute } from "vue-router";
-import { usePlayerStore } from "../stores/playerStore";
-import { useWishlistStore } from "../stores/wishlistStore";
-import PlayerDataTable from "../components/PlayerDataTable.vue";
-import PlayerDetailDialog from "../components/PlayerDetailDialog.vue";
-import PlayerFilters from "../components/filters/PlayerFilters.vue";
-import UpgradeFinderDialog from "../components/UpgradeFinderDialog.vue";
-import WonderkidsDialog from "../components/WonderkidsDialog.vue";
+import { useQuasar } from 'quasar'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import PlayerDataTable from '../components/PlayerDataTable.vue'
+import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
+import UpgradeFinderDialog from '../components/UpgradeFinderDialog.vue'
+import WonderkidsDialog from '../components/WonderkidsDialog.vue'
+import PlayerFilters from '../components/filters/PlayerFilters.vue'
+import { usePlayerStore } from '../stores/playerStore'
+import { useWishlistStore } from '../stores/wishlistStore'
 
 // Define FM attribute keys for filtering (raw keys as used in player.attributes)
 const rawTechnicalAttributeKeysConst = [
-    "Cor",
-    "Cro",
-    "Dri",
-    "Fin",
-    "Fir",
-    "Fre",
-    "Hea",
-    "Lon",
-    "L Th",
-    "Mar",
-    "Pas",
-    "Pen",
-    "Tck",
-    "Tec",
-];
+  'Cor',
+  'Cro',
+  'Dri',
+  'Fin',
+  'Fir',
+  'Fre',
+  'Hea',
+  'Lon',
+  'L Th',
+  'Mar',
+  'Pas',
+  'Pen',
+  'Tck',
+  'Tec'
+]
 const rawMentalAttributeKeysConst = [
-    "Agg",
-    "Ant",
-    "Bra",
-    "Cmp",
-    "Cnt",
-    "Dec",
-    "Det",
-    "Fla",
-    "Ldr",
-    "OtB",
-    "Pos",
-    "Tea",
-    "Vis",
-    "Wor",
-];
-const rawPhysicalAttributeKeysConst = [
-    "Acc",
-    "Agi",
-    "Bal",
-    "Jum",
-    "Nat",
-    "Pac",
-    "Sta",
-    "Str",
-];
+  'Agg',
+  'Ant',
+  'Bra',
+  'Cmp',
+  'Cnt',
+  'Dec',
+  'Det',
+  'Fla',
+  'Ldr',
+  'OtB',
+  'Pos',
+  'Tea',
+  'Vis',
+  'Wor'
+]
+const rawPhysicalAttributeKeysConst = ['Acc', 'Agi', 'Bal', 'Jum', 'Nat', 'Pac', 'Sta', 'Str']
 const rawGoalkeeperAttributeKeysConst = [
-    "Aer",
-    "Cmd",
-    "Com",
-    "Ecc",
-    "Han",
-    "Kic",
-    "1v1",
-    "Pun",
-    "Ref",
-    "TRO",
-    "Thr",
-];
+  'Aer',
+  'Cmd',
+  'Com',
+  'Ecc',
+  'Han',
+  'Kic',
+  '1v1',
+  'Pun',
+  'Ref',
+  'TRO',
+  'Thr'
+]
 
 const allRawFmAttributeKeys = [
-    ...rawTechnicalAttributeKeysConst,
-    ...rawMentalAttributeKeysConst,
-    ...rawPhysicalAttributeKeysConst,
-    ...rawGoalkeeperAttributeKeysConst,
-];
+  ...rawTechnicalAttributeKeysConst,
+  ...rawMentalAttributeKeysConst,
+  ...rawPhysicalAttributeKeysConst,
+  ...rawGoalkeeperAttributeKeysConst
+]
 
 // Helper to create filter keys like 'minCor', 'minLTh' (matching PlayerFilters.vue's formatAttrKey for consistency)
-const formatFilterKeyPrefix = (attrKey) => {
-    return attrKey.replace(/\s+/g, "").replace(/\(|\)/g, "");
-};
+const formatFilterKeyPrefix = attrKey => {
+  return attrKey.replace(/\s+/g, '').replace(/\(|\)/g, '')
+}
 
 export default {
-    name: "DatasetPage",
-    components: {
-        PlayerDataTable,
-        PlayerDetailDialog,
-        PlayerFilters,
-        UpgradeFinderDialog,
-        WonderkidsDialog,
-    },
-    setup() {
-        const quasarInstance = useQuasar();
-        const router = useRouter();
-        const route = useRoute();
-        const playerStore = usePlayerStore();
-        const wishlistStore = useWishlistStore();
+  name: 'DatasetPage',
+  components: {
+    PlayerDataTable,
+    PlayerDetailDialog,
+    PlayerFilters,
+    UpgradeFinderDialog,
+    WonderkidsDialog
+  },
+  setup() {
+    const quasarInstance = useQuasar()
+    const router = useRouter()
+    const route = useRoute()
+    const playerStore = usePlayerStore()
+    const wishlistStore = useWishlistStore()
 
-        const pageLoading = ref(true);
-        const pageLoadingError = ref("");
-        const playerForDetailView = ref(null);
-        const showPlayerDetailDialog = ref(false);
-        const showUpgradeFinder = ref(false);
-        const showWonderkids = ref(false);
+    const pageLoading = ref(true)
+    const pageLoadingError = ref('')
+    const playerForDetailView = ref(null)
+    const showPlayerDetailDialog = ref(false)
+    const showUpgradeFinder = ref(false)
+    const showWonderkids = ref(false)
 
-        // Centralized filter state for this page
-        const currentFilters = ref({
-            name: "",
-            club: null,
-            position: null,
-            role: null,
-            nationality: null,
-            mediaHandling: [],
-            personality: [],
-            ageRange: {
-                min: playerStore.AGE_SLIDER_MIN_DEFAULT,
-                max: playerStore.AGE_SLIDER_MAX_DEFAULT,
-            },
-            transferValueRangeLocal: {
-                min: 0,
-                max: 100000000,
-                userSet: false,
-            },
-            maxSalary: 1000000,
-            minOverall: 0,
-            minPAC: 0,
-            minSHO: 0,
-            minPAS: 0,
-            minDRI: 0,
-            minDEF: 0,
-            minPHY: 0,
-            minGK: 0,
-            minDIV: 0,
-            minHAN: 0,
-            minREF: 0,
-            minKIC: 0,
-            minSPD: 0,
-            minPOS: 0,
-        });
+    // Centralized filter state for this page
+    const currentFilters = ref({
+      name: '',
+      club: null,
+      position: null,
+      role: null,
+      nationality: null,
+      mediaHandling: [],
+      personality: [],
+      ageRange: {
+        min: playerStore.AGE_SLIDER_MIN_DEFAULT,
+        max: playerStore.AGE_SLIDER_MAX_DEFAULT
+      },
+      transferValueRangeLocal: {
+        min: 0,
+        max: 100000000,
+        userSet: false
+      },
+      maxSalary: 1000000,
+      minOverall: 0,
+      minPAC: 0,
+      minSHO: 0,
+      minPAS: 0,
+      minDRI: 0,
+      minDEF: 0,
+      minPHY: 0,
+      minGK: 0,
+      minDIV: 0,
+      minHAN: 0,
+      minREF: 0,
+      minKIC: 0,
+      minSPD: 0,
+      minPOS: 0
+    })
 
-        // Initialize FM attribute filters in currentFilters
-        allRawFmAttributeKeys.forEach((attrKey) => {
-            currentFilters.value[`min${formatFilterKeyPrefix(attrKey)}`] = 0;
-        });
+    // Initialize FM attribute filters in currentFilters
+    allRawFmAttributeKeys.forEach(attrKey => {
+      currentFilters.value[`min${formatFilterKeyPrefix(attrKey)}`] = 0
+    })
 
-        // Computed properties from store
-        const allPlayersData = computed(() => playerStore.allPlayers);
-        const detectedCurrencySymbol = computed(
-            () => playerStore.detectedCurrencySymbol,
-        );
-        const currentDatasetId = computed(() => playerStore.currentDatasetId);
-        const loading = computed(() => playerStore.loading);
-        const uniqueClubs = computed(() => playerStore.uniqueClubs);
-        const uniqueNationalities = computed(
-            () => playerStore.uniqueNationalities,
-        );
-        const uniqueMediaHandlings = computed(
-            () => playerStore.uniqueMediaHandlings,
-        );
-        const uniquePersonalities = computed(
-            () => playerStore.uniquePersonalities,
-        );
+    // Computed properties from store
+    const allPlayersData = computed(() => playerStore.allPlayers)
+    const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol)
+    const currentDatasetId = computed(() => playerStore.currentDatasetId)
+    const loading = computed(() => playerStore.loading)
+    const uniqueClubs = computed(() => playerStore.uniqueClubs)
+    const uniqueNationalities = computed(() => playerStore.uniqueNationalities)
+    const uniqueMediaHandlings = computed(() => playerStore.uniqueMediaHandlings)
+    const uniquePersonalities = computed(() => playerStore.uniquePersonalities)
 
-        // For PlayerFilters component props - ensure safe access with fallbacks
-        const transferValueRangeForFilters = computed(() => {
-            const range = playerStore.currentDatasetTransferValueRange || {
-                min: 0,
-                max: 100000000,
-            };
-            return range;
-        });
-        const initialDatasetTransferValueRangeForFilters = computed(() => {
-            const range = playerStore.initialDatasetTransferValueRange || {
-                min: 0,
-                max: 100000000,
-            };
-            return range;
-        });
-        const salaryRangeForFilters = computed(() => {
-            const range = playerStore.salaryRange || { min: 0, max: 1000000 };
-            return range;
-        });
+    // For PlayerFilters component props - ensure safe access with fallbacks
+    const transferValueRangeForFilters = computed(() => {
+      const range = playerStore.currentDatasetTransferValueRange || {
+        min: 0,
+        max: 100000000
+      }
+      return range
+    })
+    const initialDatasetTransferValueRangeForFilters = computed(() => {
+      const range = playerStore.initialDatasetTransferValueRange || {
+        min: 0,
+        max: 100000000
+      }
+      return range
+    })
+    const salaryRangeForFilters = computed(() => {
+      const range = playerStore.salaryRange || { min: 0, max: 1000000 }
+      return range
+    })
 
-        const allAvailableRoles = computed(() => playerStore.allAvailableRoles);
-        const AGE_SLIDER_MIN_DEFAULT = computed(
-            () => playerStore.AGE_SLIDER_MIN_DEFAULT,
-        );
-        const AGE_SLIDER_MAX_DEFAULT = computed(
-            () => playerStore.AGE_SLIDER_MAX_DEFAULT,
-        );
+    const allAvailableRoles = computed(() => playerStore.allAvailableRoles)
+    const AGE_SLIDER_MIN_DEFAULT = computed(() => playerStore.AGE_SLIDER_MIN_DEFAULT)
+    const AGE_SLIDER_MAX_DEFAULT = computed(() => playerStore.AGE_SLIDER_MAX_DEFAULT)
 
-        const isGoalkeeperView = computed(() => {
-            return (
-                currentFilters.value.position === "GK" ||
-                currentFilters.value.role?.includes("Goalkeeper")
-            );
-        });
+    const isGoalkeeperView = computed(() => {
+      return (
+        currentFilters.value.position === 'GK' || currentFilters.value.role?.includes('Goalkeeper')
+      )
+    })
 
-        const filteredPlayers = computed(() => {
-            if (!Array.isArray(allPlayersData.value)) return [];
+    const filteredPlayers = computed(() => {
+      if (!Array.isArray(allPlayersData.value)) return []
 
-            return allPlayersData.value
-                .filter((player) => {
-                    // Name filter
-                    if (
-                        currentFilters.value.name &&
-                        !player.name
-                            .toLowerCase()
-                            .includes(currentFilters.value.name.toLowerCase())
-                    ) {
-                        return false;
-                    }
+      return allPlayersData.value
+        .filter(player => {
+          // Name filter
+          if (
+            currentFilters.value.name &&
+            !player.name.toLowerCase().includes(currentFilters.value.name.toLowerCase())
+          ) {
+            return false
+          }
 
-                    // Club filter
-                    if (
-                        currentFilters.value.club &&
-                        player.club !== currentFilters.value.club
-                    ) {
-                        return false;
-                    }
+          // Club filter
+          if (currentFilters.value.club && player.club !== currentFilters.value.club) {
+            return false
+          }
 
-                    // Position filter
-                    if (currentFilters.value.position) {
-                        const hasPosition = player.shortPositions?.includes(
-                            currentFilters.value.position,
-                        );
-                        if (!hasPosition) return false;
-                    }
+          // Position filter
+          if (currentFilters.value.position) {
+            const hasPosition = player.shortPositions?.includes(currentFilters.value.position)
+            if (!hasPosition) return false
+          }
 
-                    // Role filter
-                    if (currentFilters.value.role) {
-                        const hasRole = player.roleSpecificOveralls?.some(
-                            (role) =>
-                                role.roleName === currentFilters.value.role,
-                        );
-                        if (!hasRole) return false;
-                    }
+          // Role filter
+          if (currentFilters.value.role) {
+            const hasRole = player.roleSpecificOveralls?.some(
+              role => role.roleName === currentFilters.value.role
+            )
+            if (!hasRole) return false
+          }
 
-                    // Nationality filter
-                    if (
-                        currentFilters.value.nationality &&
-                        player.nationality !== currentFilters.value.nationality
-                    ) {
-                        return false;
-                    }
+          // Nationality filter
+          if (
+            currentFilters.value.nationality &&
+            player.nationality !== currentFilters.value.nationality
+          ) {
+            return false
+          }
 
-                    // Media handling filter
-                    if (
-                        currentFilters.value.mediaHandling &&
-                        currentFilters.value.mediaHandling.length > 0
-                    ) {
-                        if (!player.media_handling) return false;
-                        const playerMediaHandlings = player.media_handling
-                            .split(",")
-                            .map((s) => s.trim());
-                        const hasMediaHandling =
-                            currentFilters.value.mediaHandling.some((filter) =>
-                                playerMediaHandlings.includes(filter),
-                            );
-                        if (!hasMediaHandling) return false;
-                    }
+          // Media handling filter
+          if (currentFilters.value.mediaHandling && currentFilters.value.mediaHandling.length > 0) {
+            if (!player.media_handling) return false
+            const playerMediaHandlings = player.media_handling.split(',').map(s => s.trim())
+            const hasMediaHandling = currentFilters.value.mediaHandling.some(filter =>
+              playerMediaHandlings.includes(filter)
+            )
+            if (!hasMediaHandling) return false
+          }
 
-                    // Personality filter
-                    if (
-                        currentFilters.value.personality &&
-                        currentFilters.value.personality.length > 0
-                    ) {
-                        if (!player.personality) return false;
-                        const hasPersonality =
-                            currentFilters.value.personality.includes(
-                                player.personality,
-                            );
-                        if (!hasPersonality) return false;
-                    }
+          // Personality filter
+          if (currentFilters.value.personality && currentFilters.value.personality.length > 0) {
+            if (!player.personality) return false
+            const hasPersonality = currentFilters.value.personality.includes(player.personality)
+            if (!hasPersonality) return false
+          }
 
-                    // Age range filter
-                    const playerAge = parseInt(player.age, 10) || 0;
-                    if (
-                        playerAge < currentFilters.value.ageRange.min ||
-                        playerAge > currentFilters.value.ageRange.max
-                    ) {
-                        return false;
-                    }
+          // Age range filter
+          const playerAge = Number.parseInt(player.age, 10) || 0
+          if (
+            playerAge < currentFilters.value.ageRange.min ||
+            playerAge > currentFilters.value.ageRange.max
+          ) {
+            return false
+          }
 
-                    // Transfer value range filter
-                    if (
-                        player.transferValueAmount <
-                            currentFilters.value.transferValueRangeLocal.min ||
-                        player.transferValueAmount >
-                            currentFilters.value.transferValueRangeLocal.max
-                    ) {
-                        return false;
-                    }
+          // Transfer value range filter
+          if (
+            player.transferValueAmount < currentFilters.value.transferValueRangeLocal.min ||
+            player.transferValueAmount > currentFilters.value.transferValueRangeLocal.max
+          ) {
+            return false
+          }
 
-                    // Max salary filter
-                    if (
-                        currentFilters.value.maxSalary !== null &&
-                        player.wageAmount > currentFilters.value.maxSalary
-                    ) {
-                        return false;
-                    }
+          // Max salary filter
+          if (
+            currentFilters.value.maxSalary !== null &&
+            player.wageAmount > currentFilters.value.maxSalary
+          ) {
+            return false
+          }
 
-                    // FIFA-style stat minimum filters
-                    if (
-                        currentFilters.value.minOverall > 0 &&
-                        (player.Overall || 0) < currentFilters.value.minOverall
-                    )
-                        return false;
-                    if (
-                        currentFilters.value.minPAC > 0 &&
-                        (player.PAC || 0) < currentFilters.value.minPAC
-                    )
-                        return false;
-                    if (
-                        currentFilters.value.minSHO > 0 &&
-                        (player.SHO || 0) < currentFilters.value.minSHO
-                    )
-                        return false;
-                    if (
-                        currentFilters.value.minPAS > 0 &&
-                        (player.PAS || 0) < currentFilters.value.minPAS
-                    )
-                        return false;
-                    if (
-                        currentFilters.value.minDRI > 0 &&
-                        (player.DRI || 0) < currentFilters.value.minDRI
-                    )
-                        return false;
-                    if (
-                        currentFilters.value.minDEF > 0 &&
-                        (player.DEF || 0) < currentFilters.value.minDEF
-                    )
-                        return false;
-                    if (
-                        currentFilters.value.minPHY > 0 &&
-                        (player.PHY || 0) < currentFilters.value.minPHY
-                    )
-                        return false;
-                    if (
-                        currentFilters.value.minGK > 0 &&
-                        (player.GK || 0) < currentFilters.value.minGK
-                    )
-                        return false;
-                    if (
-                        currentFilters.value.minDIV > 0 &&
-                        (player.DIV || 0) < currentFilters.value.minDIV
-                    )
-                        return false;
-                    if (
-                        currentFilters.value.minHAN > 0 &&
-                        (player.HAN || 0) < currentFilters.value.minHAN
-                    )
-                        return false;
-                    if (
-                        currentFilters.value.minREF > 0 &&
-                        (player.REF || 0) < currentFilters.value.minREF
-                    )
-                        return false;
-                    if (
-                        currentFilters.value.minKIC > 0 &&
-                        (player.KIC || 0) < currentFilters.value.minKIC
-                    )
-                        return false;
-                    if (
-                        currentFilters.value.minSPD > 0 &&
-                        (player.SPD || 0) < currentFilters.value.minSPD
-                    )
-                        return false;
-                    if (
-                        currentFilters.value.minPOS > 0 &&
-                        (player.POS || 0) < currentFilters.value.minPOS
-                    )
-                        return false;
+          // FIFA-style stat minimum filters
+          if (
+            currentFilters.value.minOverall > 0 &&
+            (player.Overall || 0) < currentFilters.value.minOverall
+          )
+            return false
+          if (currentFilters.value.minPAC > 0 && (player.PAC || 0) < currentFilters.value.minPAC)
+            return false
+          if (currentFilters.value.minSHO > 0 && (player.SHO || 0) < currentFilters.value.minSHO)
+            return false
+          if (currentFilters.value.minPAS > 0 && (player.PAS || 0) < currentFilters.value.minPAS)
+            return false
+          if (currentFilters.value.minDRI > 0 && (player.DRI || 0) < currentFilters.value.minDRI)
+            return false
+          if (currentFilters.value.minDEF > 0 && (player.DEF || 0) < currentFilters.value.minDEF)
+            return false
+          if (currentFilters.value.minPHY > 0 && (player.PHY || 0) < currentFilters.value.minPHY)
+            return false
+          if (currentFilters.value.minGK > 0 && (player.GK || 0) < currentFilters.value.minGK)
+            return false
+          if (currentFilters.value.minDIV > 0 && (player.DIV || 0) < currentFilters.value.minDIV)
+            return false
+          if (currentFilters.value.minHAN > 0 && (player.HAN || 0) < currentFilters.value.minHAN)
+            return false
+          if (currentFilters.value.minREF > 0 && (player.REF || 0) < currentFilters.value.minREF)
+            return false
+          if (currentFilters.value.minKIC > 0 && (player.KIC || 0) < currentFilters.value.minKIC)
+            return false
+          if (currentFilters.value.minSPD > 0 && (player.SPD || 0) < currentFilters.value.minSPD)
+            return false
+          if (currentFilters.value.minPOS > 0 && (player.POS || 0) < currentFilters.value.minPOS)
+            return false
 
-                    // FM Attribute minimum filters
-                    for (const rawAttrKey of allRawFmAttributeKeys) {
-                        const filterKeyForVal = `min${formatFilterKeyPrefix(rawAttrKey)}`;
-                        const minVal = currentFilters.value[filterKeyForVal];
+          // FM Attribute minimum filters
+          for (const rawAttrKey of allRawFmAttributeKeys) {
+            const filterKeyForVal = `min${formatFilterKeyPrefix(rawAttrKey)}`
+            const minVal = currentFilters.value[filterKeyForVal]
 
-                        if (minVal > 0) {
-                            const playerAttrStr = player.attributes[rawAttrKey]; // FM attributes are in player.attributes as strings
-                            const playerAttrVal =
-                                parseInt(playerAttrStr, 10) || 0;
-                            if (playerAttrVal < minVal) {
-                                return false;
-                            }
-                        }
-                    }
-
-                    return true;
-                })
-                .map((player) => {
-                    if (
-                        currentFilters.value.role &&
-                        player.roleSpecificOveralls
-                    ) {
-                        let roleSpecificOverall = null;
-                        if (Array.isArray(player.roleSpecificOveralls)) {
-                            const roleMatch = player.roleSpecificOveralls.find(
-                                (rso) =>
-                                    rso.roleName === currentFilters.value.role,
-                            );
-                            if (roleMatch)
-                                roleSpecificOverall = roleMatch.score;
-                        } else if (
-                            typeof player.roleSpecificOveralls === "object"
-                        ) {
-                            roleSpecificOverall =
-                                player.roleSpecificOveralls[
-                                    currentFilters.value.role
-                                ];
-                        }
-
-                        if (
-                            roleSpecificOverall !== null &&
-                            roleSpecificOverall !== undefined
-                        ) {
-                            return { ...player, Overall: roleSpecificOverall };
-                        }
-                    }
-                    return player;
-                });
-        });
-
-        const fetchDataset = async (datasetId) => {
-            pageLoading.value = true;
-            pageLoadingError.value = "";
-            try {
-                await playerStore.fetchPlayersByDatasetId(datasetId);
-                await playerStore.fetchAllAvailableRoles();
-
-                // Initialize wishlist for this dataset
-                await wishlistStore.initializeWishlistForDataset(datasetId);
-
-                // Safely access store values and provide defaults
-                const initTvRange = playerStore.initialDatasetTransferValueRange;
-                const initSalaryRange = playerStore.salaryRange;
-
-                currentFilters.value.transferValueRangeLocal = {
-                    min:
-                        initTvRange && initTvRange.min !== undefined
-                            ? initTvRange.min
-                            : 0,
-                    max:
-                        initTvRange && initTvRange.max !== undefined
-                            ? initTvRange.max
-                            : 100000000,
-                    userSet: false,
-                };
-                currentFilters.value.maxSalary =
-                    initSalaryRange && initSalaryRange.max !== undefined
-                        ? initSalaryRange.max
-                        : 1000000;
-            } catch (err) {
-                pageLoadingError.value = `Failed to load dataset: ${err.message || "Unknown server error"}.`;
-                playerStore.resetState();
-            } finally {
-                pageLoading.value = false;
+            if (minVal > 0) {
+              const playerAttrStr = player.attributes[rawAttrKey] // FM attributes are in player.attributes as strings
+              const playerAttrVal = Number.parseInt(playerAttrStr, 10) || 0
+              if (playerAttrVal < minVal) {
+                return false
+              }
             }
-        };
+          }
 
-        onMounted(async () => {
-            const datasetIdFromRoute = route.params.datasetId;
-            if (datasetIdFromRoute) {
-                await fetchDataset(datasetIdFromRoute);
-            } else {
-                pageLoadingError.value = "No dataset ID provided in URL.";
-                pageLoading.value = false;
+          return true
+        })
+        .map(player => {
+          if (currentFilters.value.role && player.roleSpecificOveralls) {
+            let roleSpecificOverall = null
+            if (Array.isArray(player.roleSpecificOveralls)) {
+              const roleMatch = player.roleSpecificOveralls.find(
+                rso => rso.roleName === currentFilters.value.role
+              )
+              if (roleMatch) roleSpecificOverall = roleMatch.score
+            } else if (typeof player.roleSpecificOveralls === 'object') {
+              roleSpecificOverall = player.roleSpecificOveralls[currentFilters.value.role]
             }
-        });
 
-        const shareDataset = async () => {
-            if (!currentDatasetId.value) return;
-            const shareUrl = `${window.location.origin}/dataset/${currentDatasetId.value}`;
-            try {
-                await navigator.clipboard.writeText(shareUrl);
-                quasarInstance.notify({
-                    message: "Dataset link copied to clipboard!",
-                    color: "positive",
-                    icon: "check_circle",
-                    position: "top",
-                    timeout: 2000,
-                });
-            } catch (err) {
-                const textArea = document.createElement("textarea");
-                textArea.value = shareUrl;
-                document.body.appendChild(textArea);
-                textArea.select();
-                document.execCommand("copy");
-                document.body.removeChild(textArea);
-                quasarInstance.notify({
-                    message: "Dataset link copied to clipboard!",
-                    color: "positive",
-                    icon: "check_circle",
-                    position: "top",
-                    timeout: 2000,
-                });
+            if (roleSpecificOverall !== null && roleSpecificOverall !== undefined) {
+              return { ...player, Overall: roleSpecificOverall }
             }
-        };
+          }
+          return player
+        })
+    })
 
-        const viewLeagues = () => {
-            if (currentDatasetId.value) {
-                router.push(`/leagues?datasetId=${currentDatasetId.value}`);
-            }
-        };
-        const viewTeamAnalysis = () => {
-            if (currentDatasetId.value) {
-                router.push(`/team-view?datasetId=${currentDatasetId.value}`);
-            }
-        };
-        const viewNationsAnalysis = () => {
-            if (currentDatasetId.value) {
-                router.push(`/nations?datasetId=${currentDatasetId.value}`);
-            }
-        };
+    const fetchDataset = async datasetId => {
+      pageLoading.value = true
+      pageLoadingError.value = ''
+      try {
+        await playerStore.fetchPlayersByDatasetId(datasetId)
+        await playerStore.fetchAllAvailableRoles()
 
-        const handlePlayerSelected = (player) => {
-            playerForDetailView.value = player;
-            showPlayerDetailDialog.value = true;
-        };
+        // Initialize wishlist for this dataset
+        await wishlistStore.initializeWishlistForDataset(datasetId)
 
-        const handleTeamSelected = (teamName) => {
-            console.log('DatasetPage handleTeamSelected called with team:', teamName);
-            console.log('currentDatasetId:', currentDatasetId.value);
-            if (currentDatasetId.value) {
-                const url = router.resolve({
-                    path: "/team-view",
-                    query: {
-                        datasetId: currentDatasetId.value,
-                        team: teamName,
-                    },
-                }).href;
-                console.log('Generated URL:', url);
-                console.log('Attempting to open in new tab...');
-                const newWindow = window.open(url, "_blank");
-                if (!newWindow) {
-                    console.error('Failed to open new window - likely blocked by popup blocker');
-                } else {
-                    console.log('Successfully opened new window');
-                }
-            } else {
-                console.log('No currentDatasetId available');
-            }
-        };
+        // Safely access store values and provide defaults
+        const initTvRange = playerStore.initialDatasetTransferValueRange
+        const initSalaryRange = playerStore.salaryRange
 
-        const handleFiltersChanged = (filtersFromChild) => {
-            const newTransferRange = filtersFromChild.transferValueRangeLocal;
-            const oldTransferRange =
-                currentFilters.value.transferValueRangeLocal;
+        currentFilters.value.transferValueRangeLocal = {
+          min: initTvRange && initTvRange.min !== undefined ? initTvRange.min : 0,
+          max: initTvRange && initTvRange.max !== undefined ? initTvRange.max : 100000000,
+          userSet: false
+        }
+        currentFilters.value.maxSalary =
+          initSalaryRange && initSalaryRange.max !== undefined ? initSalaryRange.max : 1000000
+      } catch (err) {
+        pageLoadingError.value = `Failed to load dataset: ${err.message || 'Unknown server error'}.`
+        playerStore.resetState()
+      } finally {
+        pageLoading.value = false
+      }
+    }
 
-            currentFilters.value = {
-                ...currentFilters.value,
-                ...filtersFromChild,
-            };
+    onMounted(async () => {
+      const datasetIdFromRoute = route.params.datasetId
+      if (datasetIdFromRoute) {
+        await fetchDataset(datasetIdFromRoute)
+      } else {
+        pageLoadingError.value = 'No dataset ID provided in URL.'
+        pageLoading.value = false
+      }
+    })
 
-            if (
-                newTransferRange &&
-                oldTransferRange &&
-                (newTransferRange.min !== oldTransferRange.min ||
-                    newTransferRange.max !== oldTransferRange.max)
-            ) {
-                currentFilters.value.transferValueRangeLocal.userSet = true;
-            }
-        };
+    const shareDataset = async () => {
+      if (!currentDatasetId.value) return
+      const shareUrl = `${window.location.origin}/dataset/${currentDatasetId.value}`
+      try {
+        await navigator.clipboard.writeText(shareUrl)
+        quasarInstance.notify({
+          message: 'Dataset link copied to clipboard!',
+          color: 'positive',
+          icon: 'check_circle',
+          position: 'top',
+          timeout: 2000
+        })
+      } catch (err) {
+        const textArea = document.createElement('textarea')
+        textArea.value = shareUrl
+        document.body.appendChild(textArea)
+        textArea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textArea)
+        quasarInstance.notify({
+          message: 'Dataset link copied to clipboard!',
+          color: 'positive',
+          icon: 'check_circle',
+          position: 'top',
+          timeout: 2000
+        })
+      }
+    }
 
-        watch(
-            () => route.params.datasetId,
-            async (newId, oldId) => {
-                if (newId && newId !== oldId) {
-                    await fetchDataset(newId);
-                }
-            },
-        );
+    const viewLeagues = () => {
+      if (currentDatasetId.value) {
+        router.push(`/leagues?datasetId=${currentDatasetId.value}`)
+      }
+    }
+    const viewTeamAnalysis = () => {
+      if (currentDatasetId.value) {
+        router.push(`/team-view?datasetId=${currentDatasetId.value}`)
+      }
+    }
+    const viewNationsAnalysis = () => {
+      if (currentDatasetId.value) {
+        router.push(`/nations?datasetId=${currentDatasetId.value}`)
+      }
+    }
 
-        watch(
-            () => playerStore.initialDatasetTransferValueRange,
-            (newRange) => {
-                if (
-                    newRange &&
-                    !currentFilters.value.transferValueRangeLocal.userSet
-                ) {
-                    // Check userSet flag
-                    currentFilters.value.transferValueRangeLocal = {
-                        min: newRange.min !== undefined ? newRange.min : 0,
-                        max:
-                            newRange.max !== undefined
-                                ? newRange.max
-                                : 100000000,
-                        userSet: false, // Keep userSet as false when programmatically updating
-                    };
-                }
-            },
-            { immediate: true, deep: true },
-        );
+    const handlePlayerSelected = player => {
+      playerForDetailView.value = player
+      showPlayerDetailDialog.value = true
+    }
 
-        watch(
-            () => playerStore.salaryRange,
-            (newRange) => {
-                const currentMaxSalary = currentFilters.value.maxSalary;
-                const storeMaxSalary = playerStore.salaryRange?.max;
+    const handleTeamSelected = teamName => {
+      console.log('DatasetPage handleTeamSelected called with team:', teamName)
+      console.log('currentDatasetId:', currentDatasetId.value)
+      if (currentDatasetId.value) {
+        const url = router.resolve({
+          path: '/team-view',
+          query: {
+            datasetId: currentDatasetId.value,
+            team: teamName
+          }
+        }).href
+        console.log('Generated URL:', url)
+        console.log('Attempting to open in new tab...')
+        const newWindow = window.open(url, '_blank')
+        if (!newWindow) {
+          console.error('Failed to open new window - likely blocked by popup blocker')
+        } else {
+          console.log('Successfully opened new window')
+        }
+      } else {
+        console.log('No currentDatasetId available')
+      }
+    }
 
-                // Only update if maxSalary hasn't been manually set by user OR is still at its initial large default OR matches the current store max
-                if (
-                    newRange &&
-                    (currentMaxSalary === 1000000 ||
-                        currentMaxSalary === null ||
-                        currentMaxSalary === storeMaxSalary)
-                ) {
-                    if (newRange.max !== undefined) {
-                        currentFilters.value.maxSalary = newRange.max;
-                    } else {
-                        currentFilters.value.maxSalary = 1000000;
-                    }
-                }
-            },
-            { immediate: true, deep: true },
-        );
+    const handleFiltersChanged = filtersFromChild => {
+      const newTransferRange = filtersFromChild.transferValueRangeLocal
+      const oldTransferRange = currentFilters.value.transferValueRangeLocal
 
-        // Utility function to format large numbers
-        const formatNumber = (num) => {
-            if (num >= 1000000) {
-                return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
-            }
-            if (num >= 1000) {
-                return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
-            }
-            return num?.toString() || '0';
-        };
+      currentFilters.value = {
+        ...currentFilters.value,
+        ...filtersFromChild
+      }
 
-        return {
-            pageLoading,
-            pageLoadingError,
-            allPlayersData,
-            detectedCurrencySymbol,
-            currentDatasetId,
-            loading,
-            uniqueClubs,
-            uniqueNationalities,
-            uniqueMediaHandlings,
-            uniquePersonalities,
-            transferValueRangeForFilters,
-            initialDatasetTransferValueRangeForFilters,
-            salaryRangeForFilters,
-            allAvailableRoles,
-            AGE_SLIDER_MIN_DEFAULT,
-            AGE_SLIDER_MAX_DEFAULT,
-            isGoalkeeperView,
-            filteredPlayers,
-            playerForDetailView,
-            showPlayerDetailDialog,
-            showUpgradeFinder,
-            showWonderkids,
-            shareDataset,
-            viewLeagues,
-            viewTeamAnalysis,
-            viewNationsAnalysis,
-            handlePlayerSelected,
-            handleTeamSelected,
-            handleFiltersChanged,
-            quasarInstance,
-            router,
-            currentFilters,
-            formatNumber,
-        };
-    },
-};
+      if (
+        newTransferRange &&
+        oldTransferRange &&
+        (newTransferRange.min !== oldTransferRange.min ||
+          newTransferRange.max !== oldTransferRange.max)
+      ) {
+        currentFilters.value.transferValueRangeLocal.userSet = true
+      }
+    }
+
+    watch(
+      () => route.params.datasetId,
+      async (newId, oldId) => {
+        if (newId && newId !== oldId) {
+          await fetchDataset(newId)
+        }
+      }
+    )
+
+    watch(
+      () => playerStore.initialDatasetTransferValueRange,
+      newRange => {
+        if (newRange && !currentFilters.value.transferValueRangeLocal.userSet) {
+          // Check userSet flag
+          currentFilters.value.transferValueRangeLocal = {
+            min: newRange.min !== undefined ? newRange.min : 0,
+            max: newRange.max !== undefined ? newRange.max : 100000000,
+            userSet: false // Keep userSet as false when programmatically updating
+          }
+        }
+      },
+      { immediate: true, deep: true }
+    )
+
+    watch(
+      () => playerStore.salaryRange,
+      newRange => {
+        const currentMaxSalary = currentFilters.value.maxSalary
+        const storeMaxSalary = playerStore.salaryRange?.max
+
+        // Only update if maxSalary hasn't been manually set by user OR is still at its initial large default OR matches the current store max
+        if (
+          newRange &&
+          (currentMaxSalary === 1000000 ||
+            currentMaxSalary === null ||
+            currentMaxSalary === storeMaxSalary)
+        ) {
+          if (newRange.max !== undefined) {
+            currentFilters.value.maxSalary = newRange.max
+          } else {
+            currentFilters.value.maxSalary = 1000000
+          }
+        }
+      },
+      { immediate: true, deep: true }
+    )
+
+    // Utility function to format large numbers
+    const formatNumber = num => {
+      if (num >= 1000000) {
+        return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M'
+      }
+      if (num >= 1000) {
+        return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K'
+      }
+      return num?.toString() || '0'
+    }
+
+    return {
+      pageLoading,
+      pageLoadingError,
+      allPlayersData,
+      detectedCurrencySymbol,
+      currentDatasetId,
+      loading,
+      uniqueClubs,
+      uniqueNationalities,
+      uniqueMediaHandlings,
+      uniquePersonalities,
+      transferValueRangeForFilters,
+      initialDatasetTransferValueRangeForFilters,
+      salaryRangeForFilters,
+      allAvailableRoles,
+      AGE_SLIDER_MIN_DEFAULT,
+      AGE_SLIDER_MAX_DEFAULT,
+      isGoalkeeperView,
+      filteredPlayers,
+      playerForDetailView,
+      showPlayerDetailDialog,
+      showUpgradeFinder,
+      showWonderkids,
+      shareDataset,
+      viewLeagues,
+      viewTeamAnalysis,
+      viewNationsAnalysis,
+      handlePlayerSelected,
+      handleTeamSelected,
+      handleFiltersChanged,
+      quasarInstance,
+      router,
+      currentFilters,
+      formatNumber
+    }
+  }
+}
 </script>
 
 <style lang="scss" scoped>

@@ -459,191 +459,184 @@
 </template>
 
 <script>
-import { defineComponent, ref } from "vue";
+import { defineComponent, ref } from 'vue'
 
 export default defineComponent({
-    name: "DocsPage",
-    setup() {
-        const activeSection = ref("getting-started");
-        const mobileSidebarOpen = ref(false);
+  name: 'DocsPage',
+  setup() {
+    const activeSection = ref('getting-started')
+    const mobileSidebarOpen = ref(false)
 
-        const docSections = [
-            {
-                id: "getting-started",
-                title: "Getting Started",
-                subtitle: "Setup and basics",
-                icon: "rocket_launch",
-            },
-            {
-                id: "player-analysis",
-                title: "Player Analysis",
-                subtitle: "Analyze performance",
-                icon: "analytics",
-            },
-            {
-                id: "team-management",
-                title: "Team Management",
-                subtitle: "Organize teams",
-                icon: "groups",
-            },
-            {
-                id: "api-reference",
-                title: "API Reference",
-                subtitle: "Developer docs",
-                icon: "code",
-            },
-        ];
+    const docSections = [
+      {
+        id: 'getting-started',
+        title: 'Getting Started',
+        subtitle: 'Setup and basics',
+        icon: 'rocket_launch'
+      },
+      {
+        id: 'player-analysis',
+        title: 'Player Analysis',
+        subtitle: 'Analyze performance',
+        icon: 'analytics'
+      },
+      {
+        id: 'team-management',
+        title: 'Team Management',
+        subtitle: 'Organize teams',
+        icon: 'groups'
+      },
+      {
+        id: 'api-reference',
+        title: 'API Reference',
+        subtitle: 'Developer docs',
+        icon: 'code'
+      }
+    ]
 
-        const heroFeatures = [
-            { id: 1, icon: "analytics", title: "Player Analysis" },
-            { id: 2, icon: "groups", title: "Team Management" },
-            { id: 3, icon: "sports_soccer", title: "Formation Tools" },
-            { id: 4, icon: "api", title: "API Access" },
-        ];
+    const heroFeatures = [
+      { id: 1, icon: 'analytics', title: 'Player Analysis' },
+      { id: 2, icon: 'groups', title: 'Team Management' },
+      { id: 3, icon: 'sports_soccer', title: 'Formation Tools' },
+      { id: 4, icon: 'api', title: 'API Access' }
+    ]
 
-        const quickStartSteps = [
-            {
-                title: "Upload Your Data",
-                description:
-                    "Import your Football Manager player data using our secure upload system.",
-            },
-            {
-                title: "Explore Analysis Tools",
-                description:
-                    "Use powerful analysis features to evaluate player performance and potential.",
-            },
-            {
-                title: "Manage Your Team",
-                description:
-                    "View formations, optimize lineups, and track team performance metrics.",
-            },
-        ];
+    const quickStartSteps = [
+      {
+        title: 'Upload Your Data',
+        description: 'Import your Football Manager player data using our secure upload system.'
+      },
+      {
+        title: 'Explore Analysis Tools',
+        description: 'Use powerful analysis features to evaluate player performance and potential.'
+      },
+      {
+        title: 'Manage Your Team',
+        description: 'View formations, optimize lineups, and track team performance metrics.'
+      }
+    ]
 
-        const systemRequirements = [
-            {
-                id: 1,
-                icon: "web",
-                title: "Modern Web Browser",
-                description:
-                    "Chrome, Firefox, Safari, or Edge (latest versions)",
-            },
-            {
-                id: 2,
-                icon: "sports_soccer",
-                title: "Football Manager Data",
-                description: "Exported player data from FM (HTML only)",
-            },
-            {
-                id: 3,
-                icon: "memory",
-                title: "4GB+ RAM",
-                description: "For optimal performance with large datasets",
-            },
-        ];
+    const systemRequirements = [
+      {
+        id: 1,
+        icon: 'web',
+        title: 'Modern Web Browser',
+        description: 'Chrome, Firefox, Safari, or Edge (latest versions)'
+      },
+      {
+        id: 2,
+        icon: 'sports_soccer',
+        title: 'Football Manager Data',
+        description: 'Exported player data from FM (HTML only)'
+      },
+      {
+        id: 3,
+        icon: 'memory',
+        title: '4GB+ RAM',
+        description: 'For optimal performance with large datasets'
+      }
+    ]
 
-        const analysisFeatures = [
-            {
-                id: 1,
-                icon: "star_rate",
-                color: "amber",
-                title: "Attribute Weighting",
-                description: "Role-specific attribute importance calculation",
-            },
-            {
-                id: 2,
-                icon: "trending_up",
-                color: "green",
-                title: "Performance Tracking",
-                description: "Monitor player development and statistics",
-            },
-            {
-                id: 3,
-                icon: "compare_arrows",
-                color: "blue",
-                title: "Player Comparison",
-                description: "Side-by-side analysis of multiple players",
-            },
-            {
-                id: 4,
-                icon: "location_on",
-                color: "purple",
-                title: "Position Analysis",
-                description: "Suitability ratings for different positions",
-            },
-        ];
+    const analysisFeatures = [
+      {
+        id: 1,
+        icon: 'star_rate',
+        color: 'amber',
+        title: 'Attribute Weighting',
+        description: 'Role-specific attribute importance calculation'
+      },
+      {
+        id: 2,
+        icon: 'trending_up',
+        color: 'green',
+        title: 'Performance Tracking',
+        description: 'Monitor player development and statistics'
+      },
+      {
+        id: 3,
+        icon: 'compare_arrows',
+        color: 'blue',
+        title: 'Player Comparison',
+        description: 'Side-by-side analysis of multiple players'
+      },
+      {
+        id: 4,
+        icon: 'location_on',
+        color: 'purple',
+        title: 'Position Analysis',
+        description: 'Suitability ratings for different positions'
+      }
+    ]
 
-        const teamFeatures = [
-            {
-                id: 1,
-                icon: "visibility",
-                title: "Visual Formation Display",
-                description: "See your team's tactical setup at a glance",
-            },
-            {
-                id: 2,
-                icon: "place",
-                title: "Player Positioning",
-                description: "Optimal positioning based on attributes",
-            },
-            {
-                id: 3,
-                icon: "group",
-                title: "Squad Overview",
-                description: "Complete squad analysis and depth charts",
-            },
-        ];
+    const teamFeatures = [
+      {
+        id: 1,
+        icon: 'visibility',
+        title: 'Visual Formation Display',
+        description: "See your team's tactical setup at a glance"
+      },
+      {
+        id: 2,
+        icon: 'place',
+        title: 'Player Positioning',
+        description: 'Optimal positioning based on attributes'
+      },
+      {
+        id: 3,
+        icon: 'group',
+        title: 'Squad Overview',
+        description: 'Complete squad analysis and depth charts'
+      }
+    ]
 
-        const apiEndpoints = [
-            {
-                id: 1,
-                method: "POST",
-                path: "/api/upload",
-                description:
-                    "Upload and process Football Manager player data files",
-            },
-            {
-                id: 2,
-                method: "GET",
-                path: "/api/players",
-                description:
-                    "Retrieve player information with filtering and pagination",
-            },
-            {
-                id: 3,
-                method: "GET",
-                path: "/api/teams",
-                description:
-                    "Get team data including formations and statistics",
-            },
-            {
-                id: 4,
-                method: "GET",
-                path: "/api/analysis",
-                description: "Access advanced analysis results and metrics",
-            },
-        ];
+    const apiEndpoints = [
+      {
+        id: 1,
+        method: 'POST',
+        path: '/api/upload',
+        description: 'Upload and process Football Manager player data files'
+      },
+      {
+        id: 2,
+        method: 'GET',
+        path: '/api/players',
+        description: 'Retrieve player information with filtering and pagination'
+      },
+      {
+        id: 3,
+        method: 'GET',
+        path: '/api/teams',
+        description: 'Get team data including formations and statistics'
+      },
+      {
+        id: 4,
+        method: 'GET',
+        path: '/api/analysis',
+        description: 'Access advanced analysis results and metrics'
+      }
+    ]
 
-        const dataFormats = ["HTML"];
+    const dataFormats = ['HTML']
 
-        const setActiveSection = (sectionId) => {
-            activeSection.value = sectionId;
-        };
+    const setActiveSection = sectionId => {
+      activeSection.value = sectionId
+    }
 
-        return {
-            activeSection,
-            mobileSidebarOpen,
-            docSections,
-            heroFeatures,
-            quickStartSteps,
-            systemRequirements,
-            analysisFeatures,
-            teamFeatures,
-            apiEndpoints,
-            dataFormats,
-            setActiveSection,
-        };
-    },
-});
+    return {
+      activeSection,
+      mobileSidebarOpen,
+      docSections,
+      heroFeatures,
+      quickStartSteps,
+      systemRequirements,
+      analysisFeatures,
+      teamFeatures,
+      apiEndpoints,
+      dataFormats,
+      setActiveSection
+    }
+  }
+})
 </script>
 
 <style lang="scss" scoped>

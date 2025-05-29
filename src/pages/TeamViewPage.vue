@@ -394,1342 +394,1256 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, watch } from "vue";
-import { useQuasar } from "quasar";
-import { useRouter, useRoute } from "vue-router";
-import { usePlayerStore } from "../stores/playerStore";
-import PlayerDataTable from "../components/PlayerDataTable.vue";
-import PlayerDetailDialog from "../components/PlayerDetailDialog.vue";
-import PitchDisplay from "../components/PitchDisplay.vue";
-import { formations, getFormationLayout } from "../utils/formations";
-import { debounce } from "../utils/debounce";
-import { formationCache } from "../utils/formationCache";
+import { useQuasar } from 'quasar'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import PitchDisplay from '../components/PitchDisplay.vue'
+import PlayerDataTable from '../components/PlayerDataTable.vue'
+import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
+import { usePlayerStore } from '../stores/playerStore'
+import { debounce } from '../utils/debounce'
+import { formationCache } from '../utils/formationCache'
+import { formations, getFormationLayout } from '../utils/formations'
 // Currency utils are not directly used here for formatting,
 // but PlayerDataTable and PlayerDetailDialog will use them with the passed symbol.
 
 const fmSlotRoleMatcher = {
-    GK: ["Goalkeeper"],
-    "D (R)": ["Defender (Right)", "Right Back"],
-    "D (L)": ["Defender (Left)", "Left Back"],
-    "D (C)": ["Defender (Centre)", "Centre Back"],
-    "WB (R)": ["Wing-Back (Right)", "Right Wing-Back"],
-    "WB (L)": ["Wing-Back (Left)", "Left Wing-Back"],
-    "DM (C)": ["Defensive Midfielder (Centre)", "Centre Defensive Midfielder"],
-    "M (R)": ["Midfielder (Right)", "Right Midfielder"],
-    "M (L)": ["Midfielder (Left)", "Left Midfielder"],
-    "M (C)": ["Midfielder (Centre)", "Centre Midfielder"],
-    "AM (R)": [
-        "Attacking Midfielder (Right)",
-        "Right Attacking Midfielder",
-        "Winger (Right)",
-    ],
-    "AM (L)": [
-        "Attacking Midfielder (Left)",
-        "Left Attacking Midfielder",
-        "Winger (Left)",
-    ],
-    "AM (C)": ["Attacking Midfielder (Centre)", "Centre Attacking Midfielder"],
-    "ST (C)": ["Striker (Centre)", "Striker"],
-};
+  GK: ['Goalkeeper'],
+  'D (R)': ['Defender (Right)', 'Right Back'],
+  'D (L)': ['Defender (Left)', 'Left Back'],
+  'D (C)': ['Defender (Centre)', 'Centre Back'],
+  'WB (R)': ['Wing-Back (Right)', 'Right Wing-Back'],
+  'WB (L)': ['Wing-Back (Left)', 'Left Wing-Back'],
+  'DM (C)': ['Defensive Midfielder (Centre)', 'Centre Defensive Midfielder'],
+  'M (R)': ['Midfielder (Right)', 'Right Midfielder'],
+  'M (L)': ['Midfielder (Left)', 'Left Midfielder'],
+  'M (C)': ['Midfielder (Centre)', 'Centre Midfielder'],
+  'AM (R)': ['Attacking Midfielder (Right)', 'Right Attacking Midfielder', 'Winger (Right)'],
+  'AM (L)': ['Attacking Midfielder (Left)', 'Left Attacking Midfielder', 'Winger (Left)'],
+  'AM (C)': ['Attacking Midfielder (Centre)', 'Centre Attacking Midfielder'],
+  'ST (C)': ['Striker (Centre)', 'Striker']
+}
 
 export default {
-    name: "TeamViewPage",
-    components: { PlayerDataTable, PlayerDetailDialog, PitchDisplay },
-    setup() {
-        const quasarInstance = useQuasar();
-        const router = useRouter();
-        const route = useRoute();
-        const playerStore = usePlayerStore();
+  name: 'TeamViewPage',
+  components: { PlayerDataTable, PlayerDetailDialog, PitchDisplay },
+  setup() {
+    const quasarInstance = useQuasar()
+    const router = useRouter()
+    const route = useRoute()
+    const playerStore = usePlayerStore()
 
-        const selectedTeamName = ref(null);
-        const teamOptions = ref([]);
-        const allTeamNamesCache = ref([]);
-        const teamPlayers = ref([]);
-        const loadingTeam = ref(false);
-        const pageLoading = ref(true);
-        const pageLoadingError = ref("");
-        
-        // Computed properties from store
-        const allPlayersData = computed(() => playerStore.allPlayers);
-        const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol);
-        const currentDatasetId = computed(() => playerStore.currentDatasetId);
+    const selectedTeamName = ref(null)
+    const teamOptions = ref([])
+    const allTeamNamesCache = ref([])
+    const teamPlayers = ref([])
+    const loadingTeam = ref(false)
+    const pageLoading = ref(true)
+    const pageLoadingError = ref('')
 
-        const selectedFormationKey = ref(null);
+    // Computed properties from store
+    const allPlayersData = computed(() => playerStore.allPlayers)
+    const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol)
+    const currentDatasetId = computed(() => playerStore.currentDatasetId)
 
-        const squadComposition = ref({});
+    const selectedFormationKey = ref(null)
 
-        const bestTeamAverageOverall = ref(null);
-        const calculationMessage = ref("");
-        const calculationMessageClass = ref("");
+    const squadComposition = ref({})
 
-        const playerForDetailView = ref(null);
-        const showPlayerDetailDialog = ref(false);
+    const bestTeamAverageOverall = ref(null)
+    const calculationMessage = ref('')
+    const calculationMessageClass = ref('')
 
-        // Map position names to their short codes, more specific for each side
-        const fmMatcherToRoleKeyPrefix = {
-            GOALKEEPER: "GK",
-            SWEEPER: "DC",
-            "DEFENDER (RIGHT)": "DR",
-            "RIGHT BACK": "DR",
-            "DEFENDER (LEFT)": "DL",
-            "LEFT BACK": "DL",
-            "DEFENDER (CENTRE)": "DC",
-            "CENTRE BACK": "DC",
-            "WING-BACK (RIGHT)": "WBR",
-            "RIGHT WING-BACK": "WBR",
-            "WING-BACK (LEFT)": "WBL",
-            "LEFT WING-BACK": "WBL",
-            "DEFENSIVE MIDFIELDER (CENTRE)": "DM",
-            "CENTRE DEFENSIVE MIDFIELDER": "DM",
-            "MIDFIELDER (RIGHT)": "MR",
-            "RIGHT MIDFIELDER": "MR",
-            "MIDFIELDER (LEFT)": "ML",
-            "LEFT MIDFIELDER": "ML",
-            "MIDFIELDER (CENTRE)": "MC",
-            "CENTRE MIDFIELDER": "MC",
-            "ATTACKING MIDFIELDER (RIGHT)": "AMR",
-            "RIGHT ATTACKING MIDFIELDER": "AMR",
-            "WINGER (RIGHT)": "AMR",
-            "ATTACKING MIDFIELDER (LEFT)": "AML",
-            "LEFT ATTACKING MIDFIELDER": "AML",
-            "WINGER (LEFT)": "AML",
-            "ATTACKING MIDFIELDER (CENTRE)": "AMC",
-            "CENTRE ATTACKING MIDFIELDER": "AMC",
-            "STRIKER (CENTRE)": "ST",
-            STRIKER: "ST",
-        };
-        
-        // For handling combined positions like D/WB(R)
-        // The first position is the PREFERRED position, others are fallbacks
-        const positionSideMap = {
-            // Map FM formation slots to possible shortPositions (in strict priority order)
-            "D (R)": ["DR"],                     // Right defender should ONLY be DR
-            "D (L)": ["DL"],                     // Left defender should ONLY be DL
-            "D (C)": ["DC"],                     // Center defender should ONLY be DC
-            "WB (R)": ["WBR"],                   // Right wing back should ONLY be WBR
-            "WB (L)": ["WBL"],                   // Left wing back should ONLY be WBL
-            "DM (C)": ["DM"],                    // Defensive mid should ONLY be DM
-            "M (R)": ["MR"],                     // Right mid should ONLY be MR
-            "M (L)": ["ML"],                     // Left mid should ONLY be ML
-            "M (C)": ["MC"],                     // Center mid should ONLY be MC
-            "AM (R)": ["AMR"],                   // Right attacking mid should ONLY be AMR
-            "AM (L)": ["AML"],                   // Left attacking mid should ONLY be AML
-            "AM (C)": ["AMC"],                   // Center attacking mid should ONLY be AMC
-            "ST (C)": ["ST"],                    // Striker should ONLY be ST
-            "GK": ["GK"]                         // Goalkeeper is always GK
-        };
-        
-        // Secondary fallback map - only used if no players are found for a position
-        const fallbackPositionMap = {
-            "D (R)": ["DR", "WBR", "MR"],
-            "D (L)": ["DL", "WBL", "ML"],
-            "D (C)": ["DC", "DM"],
-            "WB (R)": ["WBR", "DR", "MR"],
-            "WB (L)": ["WBL", "DL", "ML"],
-            "DM (C)": ["DM", "DC", "MC"],
-            "M (R)": ["MR", "WBR", "AMR"],
-            "M (L)": ["ML", "WBL", "AML"],
-            "M (C)": ["MC", "DM"],
-            "AM (R)": ["AMR", "MR"],
-            "AM (L)": ["AML", "ML"],
-            "AM (C)": ["AMC", "MC"],
-            "ST (C)": ["ST", "AMC"],
-            "GK": ["GK"]
-        };
+    const playerForDetailView = ref(null)
+    const showPlayerDetailDialog = ref(false)
 
-        const fetchPlayersAndCurrency = async (datasetId) => {
-            pageLoading.value = true;
-            pageLoadingError.value = "";
-            try {
-                await playerStore.fetchPlayersByDatasetId(datasetId);
-                // The store now handles all data processing and storage
-            } catch (err) {
-                pageLoadingError.value = `Failed to load player data: ${err.message || "Unknown server error"}. Please try uploading again.`;
-            } finally {
-                pageLoading.value = false;
+    // Map position names to their short codes, more specific for each side
+    const fmMatcherToRoleKeyPrefix = {
+      GOALKEEPER: 'GK',
+      SWEEPER: 'DC',
+      'DEFENDER (RIGHT)': 'DR',
+      'RIGHT BACK': 'DR',
+      'DEFENDER (LEFT)': 'DL',
+      'LEFT BACK': 'DL',
+      'DEFENDER (CENTRE)': 'DC',
+      'CENTRE BACK': 'DC',
+      'WING-BACK (RIGHT)': 'WBR',
+      'RIGHT WING-BACK': 'WBR',
+      'WING-BACK (LEFT)': 'WBL',
+      'LEFT WING-BACK': 'WBL',
+      'DEFENSIVE MIDFIELDER (CENTRE)': 'DM',
+      'CENTRE DEFENSIVE MIDFIELDER': 'DM',
+      'MIDFIELDER (RIGHT)': 'MR',
+      'RIGHT MIDFIELDER': 'MR',
+      'MIDFIELDER (LEFT)': 'ML',
+      'LEFT MIDFIELDER': 'ML',
+      'MIDFIELDER (CENTRE)': 'MC',
+      'CENTRE MIDFIELDER': 'MC',
+      'ATTACKING MIDFIELDER (RIGHT)': 'AMR',
+      'RIGHT ATTACKING MIDFIELDER': 'AMR',
+      'WINGER (RIGHT)': 'AMR',
+      'ATTACKING MIDFIELDER (LEFT)': 'AML',
+      'LEFT ATTACKING MIDFIELDER': 'AML',
+      'WINGER (LEFT)': 'AML',
+      'ATTACKING MIDFIELDER (CENTRE)': 'AMC',
+      'CENTRE ATTACKING MIDFIELDER': 'AMC',
+      'STRIKER (CENTRE)': 'ST',
+      STRIKER: 'ST'
+    }
+
+    // For handling combined positions like D/WB(R)
+    // The first position is the PREFERRED position, others are fallbacks
+    const positionSideMap = {
+      // Map FM formation slots to possible shortPositions (in strict priority order)
+      'D (R)': ['DR'], // Right defender should ONLY be DR
+      'D (L)': ['DL'], // Left defender should ONLY be DL
+      'D (C)': ['DC'], // Center defender should ONLY be DC
+      'WB (R)': ['WBR'], // Right wing back should ONLY be WBR
+      'WB (L)': ['WBL'], // Left wing back should ONLY be WBL
+      'DM (C)': ['DM'], // Defensive mid should ONLY be DM
+      'M (R)': ['MR'], // Right mid should ONLY be MR
+      'M (L)': ['ML'], // Left mid should ONLY be ML
+      'M (C)': ['MC'], // Center mid should ONLY be MC
+      'AM (R)': ['AMR'], // Right attacking mid should ONLY be AMR
+      'AM (L)': ['AML'], // Left attacking mid should ONLY be AML
+      'AM (C)': ['AMC'], // Center attacking mid should ONLY be AMC
+      'ST (C)': ['ST'], // Striker should ONLY be ST
+      GK: ['GK'] // Goalkeeper is always GK
+    }
+
+    // Secondary fallback map - only used if no players are found for a position
+    const fallbackPositionMap = {
+      'D (R)': ['DR', 'WBR', 'MR'],
+      'D (L)': ['DL', 'WBL', 'ML'],
+      'D (C)': ['DC', 'DM'],
+      'WB (R)': ['WBR', 'DR', 'MR'],
+      'WB (L)': ['WBL', 'DL', 'ML'],
+      'DM (C)': ['DM', 'DC', 'MC'],
+      'M (R)': ['MR', 'WBR', 'AMR'],
+      'M (L)': ['ML', 'WBL', 'AML'],
+      'M (C)': ['MC', 'DM'],
+      'AM (R)': ['AMR', 'MR'],
+      'AM (L)': ['AML', 'ML'],
+      'AM (C)': ['AMC', 'MC'],
+      'ST (C)': ['ST', 'AMC'],
+      GK: ['GK']
+    }
+
+    const fetchPlayersAndCurrency = async datasetId => {
+      pageLoading.value = true
+      pageLoadingError.value = ''
+      try {
+        await playerStore.fetchPlayersByDatasetId(datasetId)
+        // The store now handles all data processing and storage
+      } catch (err) {
+        pageLoadingError.value = `Failed to load player data: ${err.message || 'Unknown server error'}. Please try uploading again.`
+      } finally {
+        pageLoading.value = false
+      }
+    }
+
+    onMounted(async () => {
+      const datasetIdFromQuery = route.query.datasetId
+      const datasetIdFromRoute = route.params.datasetId
+      const teamFromQuery = route.query.team
+      const finalDatasetId =
+        datasetIdFromRoute || datasetIdFromQuery || sessionStorage.getItem('currentDatasetId')
+
+      if (finalDatasetId) {
+        if (
+          datasetIdFromQuery &&
+          datasetIdFromQuery !== sessionStorage.getItem('currentDatasetId')
+        ) {
+          sessionStorage.setItem('currentDatasetId', datasetIdFromQuery)
+        } else if (!datasetIdFromQuery && sessionStorage.getItem('currentDatasetId')) {
+          // If loading from session, ensure query param is updated for consistency/bookmarking
+          router.replace({ query: { datasetId: finalDatasetId } })
+        }
+        await fetchPlayersAndCurrency(finalDatasetId)
+      } else {
+        pageLoadingError.value =
+          'No player dataset ID found. Please upload a file on the main page.'
+        pageLoading.value = false
+      }
+
+      if (!pageLoadingError.value && allPlayersData.value.length > 0) {
+        populateTeamFilterOptions()
+
+        // If a team was specified in the query params, select it
+        if (teamFromQuery && teamFromQuery.trim() !== '') {
+          selectedTeamName.value = teamFromQuery
+          loadTeamPlayers()
+        } else if (selectedTeamName.value) {
+          // If a team was previously selected (e.g. from state restoration)
+          loadTeamPlayers()
+        }
+      }
+    })
+
+    const populateTeamFilterOptions = () => {
+      if (!allPlayersData.value || allPlayersData.value.length === 0) {
+        allTeamNamesCache.value = []
+        teamOptions.value = []
+        return
+      }
+      const uniqueTeams = new Set()
+      allPlayersData.value.forEach(player => {
+        if (player.club && player.club.trim() !== '') {
+          uniqueTeams.add(player.club)
+        }
+      })
+      allTeamNamesCache.value = Array.from(uniqueTeams).sort()
+      teamOptions.value = allTeamNamesCache.value
+    }
+
+    const filterTeamOptionsImmediate = (val, update) => {
+      if (val === '') {
+        update(() => {
+          teamOptions.value = allTeamNamesCache.value
+        })
+        return
+      }
+      update(() => {
+        const needle = val.toLowerCase()
+        teamOptions.value = allTeamNamesCache.value.filter(
+          team => team.toLowerCase().indexOf(needle) > -1
+        )
+      })
+    }
+
+    const filterTeamOptions = debounce(filterTeamOptionsImmediate, 200)
+
+    const loadTeamPlayersImmediate = () => {
+      if (!selectedTeamName.value) {
+        teamPlayers.value = []
+        squadComposition.value = {}
+        bestTeamAverageOverall.value = null
+        calculationMessage.value = ''
+        selectedFormationKey.value = null
+        return
+      }
+
+      loadingTeam.value = true
+
+      // Filter players for the selected team
+      if (Array.isArray(allPlayersData.value)) {
+        teamPlayers.value = allPlayersData.value.filter(p => p.club === selectedTeamName.value)
+      } else {
+        teamPlayers.value = []
+      }
+
+      // Auto-select the best formation for this team
+      if (teamPlayers.value.length > 0) {
+        const bestFormation = calculateBestFormationForTeam()
+        if (bestFormation) {
+          selectedFormationKey.value = bestFormation
+          calculationMessage.value = `Auto-selected best formation: ${formations[bestFormation].name}. Calculating Best XI...`
+          calculationMessageClass.value = quasarInstance.dark.isActive
+            ? 'bg-info text-white'
+            : 'bg-blue-2 text-primary'
+        } else {
+          selectedFormationKey.value = null
+          squadComposition.value = {}
+          bestTeamAverageOverall.value = null
+          calculationMessage.value = 'No suitable formation found for this team.'
+          calculationMessageClass.value = quasarInstance.dark.isActive
+            ? 'text-grey-5'
+            : 'text-grey-7'
+        }
+      } else {
+        selectedFormationKey.value = null
+        squadComposition.value = {}
+        bestTeamAverageOverall.value = null
+        calculationMessage.value = 'No players found for this team.'
+        calculationMessageClass.value = quasarInstance.dark.isActive ? 'text-grey-5' : 'text-grey-7'
+      }
+
+      loadingTeam.value = false
+    }
+
+    // Debounced version for better performance
+    const loadTeamPlayers = debounce(loadTeamPlayersImmediate, 300)
+
+    const clearTeamSelection = () => {
+      selectedTeamName.value = null
+      teamPlayers.value = []
+      selectedFormationKey.value = null
+      squadComposition.value = {}
+      bestTeamAverageOverall.value = null
+      calculationMessage.value = ''
+    }
+
+    const formationOptions = computed(() => {
+      return Object.keys(formations).map(key => ({
+        label: formations[key].name,
+        value: key
+      }))
+    })
+
+    const currentFormationLayout = computed(() => {
+      if (!selectedFormationKey.value) {
+        return []
+      }
+      return getFormationLayout(selectedFormationKey.value) || []
+    })
+
+    const bestTeamPlayersForPitch = computed(() => {
+      const starters = {}
+      if (!squadComposition.value || Object.keys(squadComposition.value).length === 0) {
+        return starters
+      }
+      for (const slotId in squadComposition.value) {
+        if (squadComposition.value[slotId] && squadComposition.value[slotId].length > 0) {
+          const starterEntry = squadComposition.value[slotId][0]
+          // Use the role-specific score for this position, not their global Overall
+          // Add the exactMatch flag to display if the player is in their natural position
+          starters[slotId] = {
+            ...starterEntry.player, // Spread all player properties
+            Overall: starterEntry.overallInRole, // Use position-specific rating
+            exactPositionMatch: starterEntry.exactMatch // Pass this to the pitch display
+          }
+        } else {
+          starters[slotId] = null // No player for this slot
+        }
+      }
+      return starters
+    })
+
+    const currentTeamSectionRatings = computed(() => {
+      if (!squadComposition.value || !currentFormationLayout.value) {
+        return { attRating: 0, midRating: 0, defRating: 0 }
+      }
+      return calculateSectionRatings(squadComposition.value, currentFormationLayout.value)
+    })
+
+    const teamIsGoalkeeperView = computed(() => {
+      // This computed property is for the PlayerDataTable on this page.
+      // It should only show goalkeeper view if the majority of players are goalkeepers,
+      // otherwise default to outfield player view which is what users typically want to see.
+      if (teamPlayers.value.length === 0) return false
+
+      const goalkeeperCount = teamPlayers.value.filter(p =>
+        p.positionGroups?.includes('Goalkeepers')
+      ).length
+
+      // Only show goalkeeper view if more than half the players are goalkeepers
+      return goalkeeperCount > teamPlayers.value.length / 2
+    })
+
+    const teamDivision = computed(() => {
+      // Get the division from the first player in the team
+      if (teamPlayers.value.length > 0) {
+        return teamPlayers.value[0].division
+      }
+      return null
+    })
+
+    const getStarRating = overall => {
+      if (!overall || overall === 0) return 0
+
+      if (overall >= 85) return 5
+      if (overall >= 82) return 4.5
+      if (overall >= 78) return 4
+      if (overall >= 74) return 3.5
+      if (overall >= 70) return 3
+      if (overall >= 67) return 2.5
+      if (overall >= 64) return 2
+      if (overall >= 60) return 1.5
+      if (overall >= 55) return 1
+      if (overall >= 50) return 0.5
+      return 0
+    }
+
+    const getStarClass = (overall, starPosition) => {
+      if (!overall || overall === 0) return 'star-empty'
+
+      const starRating = getStarRating(overall)
+
+      if (starPosition <= Math.floor(starRating)) {
+        return 'star-full'
+      } else if (starPosition === Math.floor(starRating) + 1 && starRating % 1 === 0.5) {
+        return 'star-half'
+      } else {
+        return 'star-empty'
+      }
+    }
+
+    const handlePlayerSelectedFromTeam = player => {
+      playerForDetailView.value = player
+      showPlayerDetailDialog.value = true
+    }
+
+    const getOverallClass = overall => {
+      if (overall === null || overall === undefined) return 'rating-na'
+      const numericOverall = Number(overall)
+      if (isNaN(numericOverall)) return 'rating-na'
+
+      if (numericOverall >= 90) return 'rating-tier-6'
+      if (numericOverall >= 80) return 'rating-tier-5'
+      if (numericOverall >= 70) return 'rating-tier-4'
+      if (numericOverall >= 55) return 'rating-tier-3'
+      if (numericOverall >= 40) return 'rating-tier-2'
+      return 'rating-tier-1'
+    }
+
+    const calculateSectionRatings = (squadComposition, formationLayout) => {
+      if (!squadComposition || !formationLayout) {
+        return { attRating: 0, midRating: 0, defRating: 0 }
+      }
+
+      const formationSlots = formationLayout.flatMap(row => row.positions)
+
+      // Define position categories
+      const defensivePositions = ['GK', 'D (R)', 'D (L)', 'D (C)', 'WB (R)', 'WB (L)']
+      const midfielderPositions = ['DM (C)', 'M (R)', 'M (L)', 'M (C)', 'AM (C)']
+      const attackingPositions = ['AM (R)', 'AM (L)', 'ST (C)']
+
+      let attSum = 0,
+        attCount = 0
+      let midSum = 0,
+        midCount = 0
+      let defSum = 0,
+        defCount = 0
+
+      formationSlots.forEach(slot => {
+        const slotPlayers = squadComposition[slot.id]
+        if (slotPlayers && slotPlayers.length > 0) {
+          const starter = slotPlayers[0]
+          const rating = starter.overallInRole
+
+          if (attackingPositions.includes(slot.role)) {
+            attSum += rating
+            attCount++
+          } else if (midfielderPositions.includes(slot.role)) {
+            midSum += rating
+            midCount++
+          } else if (defensivePositions.includes(slot.role)) {
+            defSum += rating
+            defCount++
+          }
+        }
+      })
+
+      return {
+        attRating: attCount > 0 ? Math.round(attSum / attCount) : 0,
+        midRating: midCount > 0 ? Math.round(midSum / midCount) : 0,
+        defRating: defCount > 0 ? Math.round(defSum / defCount) : 0
+      }
+    }
+
+    const getPlayerOverallForRole = (player, slotFormationRole) => {
+      if (!player || !slotFormationRole) return 0
+
+      let bestScoreForRole = 0
+      let matchType = 'none' // For debugging: tracks how the match was found
+
+      if (!player.roleSpecificOveralls) {
+        return 0 // No role overalls available
+      }
+
+      // Check if roleSpecificOveralls exists in either array or object format
+      const hasRoleOveralls = Array.isArray(player.roleSpecificOveralls)
+        ? player.roleSpecificOveralls.length > 0
+        : Object.keys(player.roleSpecificOveralls).length > 0
+
+      if (!hasRoleOveralls) {
+        return 0 // No role overalls available
+      }
+
+      // Get the required positions for this slot (strict matching)
+      const upperSlotRoleOriginal = slotFormationRole.toUpperCase()
+      const requiredPositions = positionSideMap[upperSlotRoleOriginal] || []
+
+      // 1. STRICT MATCHING: Player must have the EXACT position to play here
+      if (player.shortPositions && player.shortPositions.length > 0) {
+        // Check if player has ANY of the required positions
+        const exactPositionMatches = player.shortPositions.filter(pos =>
+          requiredPositions.includes(pos)
+        )
+
+        if (exactPositionMatches.length > 0) {
+          // Perfect position match! Find the best role score
+          matchType = 'exact'
+
+          // Find best score from roleSpecificOveralls - handle both array and object formats
+          if (Array.isArray(player.roleSpecificOveralls)) {
+            player.roleSpecificOveralls.forEach(rso => {
+              const rsoBasePosition = rso.roleName
+                .split(' - ')[0] // "DC" from "DC - BPD"
+                .trim()
+
+              // Check if this role's position is one of the player's exact positions
+              if (exactPositionMatches.includes(rsoBasePosition)) {
+                bestScoreForRole = Math.max(bestScoreForRole, rso.score)
+              }
+            })
+          } else {
+            // Object format
+            Object.entries(player.roleSpecificOveralls).forEach(([roleName, score]) => {
+              const rsoBasePosition = roleName
+                .split(' - ')[0] // "DC" from "DC - BPD"
+                .trim()
+
+              // Check if this role's position is one of the player's exact positions
+              if (exactPositionMatches.includes(rsoBasePosition)) {
+                bestScoreForRole = Math.max(bestScoreForRole, score)
+              }
+            })
+          }
+
+          // If we have an exact position match but no specific role score,
+          // give them a baseline score
+          if (bestScoreForRole === 0) {
+            bestScoreForRole = MIN_SUITABILITY_THRESHOLD
+          }
+
+          // Add a small preference boost just for sorting purposes
+          // (we'll store the original score in a separate property)
+        }
+      }
+
+      // Skip fallbacks if we found an exact match
+      if (bestScoreForRole > 0) {
+        // For debugging
+        //console.log(`Exact match for ${player.name} in ${slotFormationRole}: score=${bestScoreForRole}`);
+        return bestScoreForRole
+      }
+
+      // 2. FALLBACK MATCHING: If no exact match, try fallback positions
+      const fallbackPositions = fallbackPositionMap[upperSlotRoleOriginal] || []
+
+      if (player.shortPositions && player.shortPositions.length > 0) {
+        // Check if player has ANY of the fallback positions
+        const fallbackMatches = player.shortPositions.filter(pos => fallbackPositions.includes(pos))
+
+        if (fallbackMatches.length > 0) {
+          // Fallback position match - these will be scored lower
+          matchType = 'fallback'
+
+          // Find best score from roleSpecificOveralls with fallback positions
+          if (Array.isArray(player.roleSpecificOveralls)) {
+            player.roleSpecificOveralls.forEach(rso => {
+              const rsoBasePosition = rso.roleName
+                .split(' - ')[0] // "DC" from "DC - BPD"
+                .trim()
+
+              if (fallbackMatches.includes(rsoBasePosition)) {
+                bestScoreForRole = Math.max(bestScoreForRole, rso.score)
+              }
+            })
+          } else {
+            // Object format
+            Object.entries(player.roleSpecificOveralls).forEach(([roleName, score]) => {
+              const rsoBasePosition = roleName
+                .split(' - ')[0] // "DC" from "DC - BPD"
+                .trim()
+
+              if (fallbackMatches.includes(rsoBasePosition)) {
+                bestScoreForRole = Math.max(bestScoreForRole, score)
+              }
+            })
+          }
+
+          // If we have a fallback position match but no specific role score,
+          // give them a minimal score
+          if (bestScoreForRole === 0) {
+            bestScoreForRole = MIN_SUITABILITY_THRESHOLD - 10 // Lower threshold for fallbacks
+          }
+
+          // Note: Original score is preserved, we'll just use the exactMatch flag for sorting
+        }
+      }
+
+      // 3. LAST RESORT: If still no match, use the old FM matcher approach
+      if (bestScoreForRole === 0) {
+        const upperSlotRole = slotFormationRole.toUpperCase()
+        const fmPositionMatchers = fmSlotRoleMatcher[upperSlotRole] || [upperSlotRole]
+
+        // Convert detailed positions to base role key prefixes
+        const targetRoleKeyPrefixes = fmPositionMatchers
+          .map(matcher => fmMatcherToRoleKeyPrefix[matcher.toUpperCase()])
+          .filter(prefix => !!prefix)
+          .reduce((acc, val) => (acc.includes(val) ? acc : [...acc, val]), [])
+
+        // Check roleSpecificOveralls against these prefixes
+        if (Array.isArray(player.roleSpecificOveralls)) {
+          player.roleSpecificOveralls.forEach(rso => {
+            const rsoBasePosition = rso.roleName
+              .split(' - ')[0] // "DC" from "DC - BPD"
+              .trim()
+
+            if (targetRoleKeyPrefixes.includes(rsoBasePosition)) {
+              matchType = 'legacy'
+              bestScoreForRole = Math.max(bestScoreForRole, rso.score)
             }
-        };
+          })
+        } else if (player.roleSpecificOveralls) {
+          Object.entries(player.roleSpecificOveralls).forEach(([roleName, score]) => {
+            const rsoBasePosition = roleName.split(' - ')[0].trim()
 
-        onMounted(async () => {
-            const datasetIdFromQuery = route.query.datasetId;
-            const datasetIdFromRoute = route.params.datasetId;
-            const teamFromQuery = route.query.team;
-            let finalDatasetId =
-                datasetIdFromRoute ||
-                datasetIdFromQuery ||
-                sessionStorage.getItem("currentDatasetId");
+            if (targetRoleKeyPrefixes.includes(rsoBasePosition)) {
+              matchType = 'legacy'
+              bestScoreForRole = Math.max(bestScoreForRole, score)
+            }
+          })
+        }
 
-            if (finalDatasetId) {
-                if (
-                    datasetIdFromQuery &&
-                    datasetIdFromQuery !==
-                        sessionStorage.getItem("currentDatasetId")
-                ) {
-                    sessionStorage.setItem(
-                        "currentDatasetId",
-                        datasetIdFromQuery,
-                    );
-                } else if (
-                    !datasetIdFromQuery &&
-                    sessionStorage.getItem("currentDatasetId")
-                ) {
-                    // If loading from session, ensure query param is updated for consistency/bookmarking
-                    router.replace({ query: { datasetId: finalDatasetId } });
+        // Legacy matches will be sorted last by using the exactMatch flag
+      }
+
+      // For debugging
+      //if (bestScoreForRole > 0) {
+      //    console.log(`${matchType} match for ${player.name} in ${slotFormationRole}: score=${bestScoreForRole}`);
+      //}
+
+      return bestScoreForRole
+    }
+
+    const MIN_SUITABILITY_THRESHOLD = 40
+
+    const getSlotDisplayName = (slot, allSlots) => {
+      const roleCounts = allSlots.reduce((acc, s) => {
+        acc[s.role] = (acc[s.role] || 0) + 1
+        return acc
+      }, {})
+
+      if (roleCounts[slot.role] > 1) {
+        // If multiple slots have the same base role (e.g., two "ST (C)"),
+        // use the more specific ID (like "STCL", "STCR").
+        // Extract the prefix from ID, e.g., "STCL" from "STCL_41212N"
+        return slot.id.split('_')[0]
+      }
+      return slot.role // Otherwise, use the general role name like "AM (C)"
+    }
+
+    const calculateBestFormationForTeam = () => {
+      if (teamPlayers.value.length === 0) {
+        return null
+      }
+
+      // Check cache first
+      const cacheKey = formationCache.generateKey(teamPlayers.value, 'team-best')
+      const cachedResult = formationCache.get(cacheKey)
+      if (cachedResult) {
+        console.log('Using cached formation result for team:', selectedTeamName.value)
+        return cachedResult.bestFormationKey
+      }
+
+      let bestFormationKey = null
+      let bestAverageOverall = 0
+
+      // Test each formation to find the one with highest average overall
+      Object.keys(formations).forEach(formationKey => {
+        const formationLayoutForCalc = getFormationLayout(formationKey)
+        if (!formationLayoutForCalc) return
+
+        const formationSlots = formationLayoutForCalc.flatMap(row => row.positions)
+        const tempSquadComposition = {}
+
+        // Initialize slots
+        formationSlots.forEach(slot => {
+          tempSquadComposition[slot.id] = []
+        })
+
+        // Calculate player scores for each position in this formation
+        const allPotentialPlayerAssignments = []
+        formationSlots.forEach(slot => {
+          teamPlayers.value.forEach(player => {
+            const overallInRole = getPlayerOverallForRole(player, slot.role)
+
+            if (overallInRole >= MIN_SUITABILITY_THRESHOLD) {
+              const slotPositions = positionSideMap[slot.role.toUpperCase()] || []
+              const playerPositions = player.shortPositions || []
+              const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos))
+
+              if (isExactMatch || overallInRole >= MIN_SUITABILITY_THRESHOLD) {
+                const assignment = {
+                  player,
+                  slotId: slot.id,
+                  slotRole: slot.role,
+                  overallInRole: overallInRole,
+                  sortScore: overallInRole,
+                  exactMatch: isExactMatch
                 }
-                await fetchPlayersAndCurrency(finalDatasetId);
-            } else {
-                pageLoadingError.value =
-                    "No player dataset ID found. Please upload a file on the main page.";
-                pageLoading.value = false;
-            }
 
-            if (!pageLoadingError.value && allPlayersData.value.length > 0) {
-                populateTeamFilterOptions();
-                
-                // If a team was specified in the query params, select it
-                if (teamFromQuery && teamFromQuery.trim() !== '') {
-                    selectedTeamName.value = teamFromQuery;
-                    loadTeamPlayers();
-                } else if (selectedTeamName.value) {
-                    // If a team was previously selected (e.g. from state restoration)
-                    loadTeamPlayers();
-                }
-            }
-        });
-
-        const populateTeamFilterOptions = () => {
-            if (!allPlayersData.value || allPlayersData.value.length === 0) {
-                allTeamNamesCache.value = [];
-                teamOptions.value = [];
-                return;
-            }
-            const uniqueTeams = new Set();
-            allPlayersData.value.forEach((player) => {
-                if (player.club && player.club.trim() !== "") {
-                    uniqueTeams.add(player.club);
-                }
-            });
-            allTeamNamesCache.value = Array.from(uniqueTeams).sort();
-            teamOptions.value = allTeamNamesCache.value;
-        };
-
-        const filterTeamOptionsImmediate = (val, update) => {
-            if (val === "") {
-                update(() => {
-                    teamOptions.value = allTeamNamesCache.value;
-                });
-                return;
-            }
-            update(() => {
-                const needle = val.toLowerCase();
-                teamOptions.value = allTeamNamesCache.value.filter(
-                    (team) => team.toLowerCase().indexOf(needle) > -1,
-                );
-            });
-        };
-
-        const filterTeamOptions = debounce(filterTeamOptionsImmediate, 200);
-
-        const loadTeamPlayersImmediate = () => {
-            if (!selectedTeamName.value) {
-                teamPlayers.value = [];
-                squadComposition.value = {};
-                bestTeamAverageOverall.value = null;
-                calculationMessage.value = "";
-                selectedFormationKey.value = null;
-                return;
-            }
-            
-            loadingTeam.value = true;
-            
-            // Filter players for the selected team
-            if (Array.isArray(allPlayersData.value)) {
-                teamPlayers.value = allPlayersData.value.filter(
-                    (p) => p.club === selectedTeamName.value,
-                );
-            } else {
-                teamPlayers.value = [];
-            }
-            
-            // Auto-select the best formation for this team
-            if (teamPlayers.value.length > 0) {
-                const bestFormation = calculateBestFormationForTeam();
-                if (bestFormation) {
-                    selectedFormationKey.value = bestFormation;
-                    calculationMessage.value = `Auto-selected best formation: ${formations[bestFormation].name}. Calculating Best XI...`;
-                    calculationMessageClass.value = quasarInstance.dark.isActive
-                        ? "bg-info text-white"
-                        : "bg-blue-2 text-primary";
+                if (isExactMatch) {
+                  assignment.sortScore += 10000
                 } else {
-                    selectedFormationKey.value = null;
-                    squadComposition.value = {};
-                    bestTeamAverageOverall.value = null;
-                    calculationMessage.value = "No suitable formation found for this team.";
-                    calculationMessageClass.value = quasarInstance.dark.isActive
-                        ? "text-grey-5"
-                        : "text-grey-7";
+                  assignment.sortScore -= 5000
                 }
-            } else {
-                selectedFormationKey.value = null;
-                squadComposition.value = {};
-                bestTeamAverageOverall.value = null;
-                calculationMessage.value = "No players found for this team.";
-                calculationMessageClass.value = quasarInstance.dark.isActive
-                    ? "text-grey-5"
-                    : "text-grey-7";
+
+                allPotentialPlayerAssignments.push(assignment)
+              }
             }
-            
-            loadingTeam.value = false;
-        };
+          })
+        })
 
-        // Debounced version for better performance
-        const loadTeamPlayers = debounce(loadTeamPlayersImmediate, 300);
+        // Sort assignments by sort score
+        allPotentialPlayerAssignments.sort((a, b) => b.sortScore - a.sortScore)
 
-        const clearTeamSelection = () => {
-            selectedTeamName.value = null;
-            teamPlayers.value = [];
-            selectedFormationKey.value = null;
-            squadComposition.value = {};
-            bestTeamAverageOverall.value = null;
-            calculationMessage.value = "";
-        };
+        const assignedPlayersToSlots = new Set()
 
-        const formationOptions = computed(() => {
-            return Object.keys(formations).map((key) => ({
-                label: formations[key].name,
-                value: key,
-            }));
-        });
-
-        const currentFormationLayout = computed(() => {
-            if (!selectedFormationKey.value) {
-                return [];
-            }
-            return getFormationLayout(selectedFormationKey.value) || [];
-        });
-
-        const bestTeamPlayersForPitch = computed(() => {
-            const starters = {};
+        // Fill starting XI for this formation
+        formationSlots.forEach(slot => {
+          for (const assignment of allPotentialPlayerAssignments) {
             if (
-                !squadComposition.value ||
-                Object.keys(squadComposition.value).length === 0
+              assignment.slotId === slot.id &&
+              !assignedPlayersToSlots.has(assignment.player.name)
             ) {
-                return starters;
+              tempSquadComposition[slot.id].push({
+                player: assignment.player,
+                overallInRole: assignment.overallInRole,
+                exactMatch: assignment.exactMatch
+              })
+              assignedPlayersToSlots.add(assignment.player.name)
+              break
             }
-            for (const slotId in squadComposition.value) {
-                if (
-                    squadComposition.value[slotId] &&
-                    squadComposition.value[slotId].length > 0
-                ) {
-                    const starterEntry = squadComposition.value[slotId][0];
-                    // Use the role-specific score for this position, not their global Overall
-                    // Add the exactMatch flag to display if the player is in their natural position
-                    starters[slotId] = {
-                        ...starterEntry.player,                    // Spread all player properties
-                        Overall: starterEntry.overallInRole,       // Use position-specific rating
-                        exactPositionMatch: starterEntry.exactMatch // Pass this to the pitch display
-                    };
-                } else {
-                    starters[slotId] = null; // No player for this slot
-                }
+          }
+        })
+
+        // Calculate average overall for this formation
+        let sumOfStartersOverall = 0
+        let startersCount = 0
+        Object.values(tempSquadComposition).forEach(slotPlayers => {
+          if (slotPlayers && slotPlayers.length > 0) {
+            sumOfStartersOverall += slotPlayers[0].overallInRole
+            startersCount++
+          }
+        })
+
+        if (startersCount > 0) {
+          const averageOverall = sumOfStartersOverall / startersCount
+          if (averageOverall > bestAverageOverall) {
+            bestAverageOverall = averageOverall
+            bestFormationKey = formationKey
+          }
+        }
+      })
+
+      // Cache the result
+      if (bestFormationKey) {
+        formationCache.set(cacheKey, {
+          bestFormationKey,
+          bestAverageOverall,
+          teamName: selectedTeamName.value
+        })
+      }
+
+      return bestFormationKey
+    }
+
+    const calculateBestTeamAndDepth = () => {
+      if (!selectedFormationKey.value || teamPlayers.value.length === 0) {
+        squadComposition.value = {}
+        bestTeamAverageOverall.value = null
+        calculationMessage.value = selectedFormationKey.value
+          ? 'No players in the selected team.'
+          : 'Select a formation.'
+        calculationMessageClass.value = 'bg-warning text-dark'
+        return
+      }
+
+      // Check cache first for squad composition
+      const cacheKey = formationCache.generateKey(
+        teamPlayers.value,
+        `team-depth-${selectedFormationKey.value}`
+      )
+      const cachedResult = formationCache.get(cacheKey)
+      if (cachedResult) {
+        console.log('Using cached squad composition for team:', selectedTeamName.value)
+        squadComposition.value = cachedResult.squadComposition
+        bestTeamAverageOverall.value = cachedResult.bestTeamAverageOverall
+        calculationMessage.value = `Best XI & Depth calculated (cached). Average Overall: ${cachedResult.bestTeamAverageOverall}.`
+        calculationMessageClass.value = quasarInstance.dark.isActive
+          ? 'bg-positive text-white'
+          : 'bg-green-2 text-positive'
+        return
+      }
+
+      calculationMessage.value = 'Calculating best team and depth...'
+      calculationMessageClass.value = quasarInstance.dark.isActive
+        ? 'bg-info text-white'
+        : 'bg-blue-2 text-primary'
+
+      const tempSquadComposition = {}
+      const formationLayoutForCalc = getFormationLayout(selectedFormationKey.value)
+      if (!formationLayoutForCalc) {
+        calculationMessage.value = 'Invalid formation selected.'
+        calculationMessageClass.value = 'bg-negative text-white'
+        return
+      }
+
+      const formationSlots = formationLayoutForCalc.flatMap(row => row.positions)
+
+      formationSlots.forEach(slot => {
+        tempSquadComposition[slot.id] = []
+      })
+
+      // ENHANCEMENT: First, compute all player scores for all positions
+      // and check which players can play in which positions
+      const playerPositionMap = new Map() // Maps player name to positions they can play
+
+      teamPlayers.value.forEach(player => {
+        const playablePositions = []
+        if (player.shortPositions && player.shortPositions.length > 0) {
+          playablePositions.push(...player.shortPositions)
+        }
+        playerPositionMap.set(player.name, playablePositions)
+
+        // Debug: Log player positions
+        //console.log(`${player.name} positions: ${playablePositions.join(', ')}`);
+      })
+
+      // Calculate player scores for each position
+      const allPotentialPlayerAssignments = []
+      formationSlots.forEach(slot => {
+        teamPlayers.value.forEach(player => {
+          const overallInRole = getPlayerOverallForRole(
+            player,
+            slot.role // Use the general role from formation (e.g., "ST (C)")
+          )
+
+          // Only include players who meet the threshold and are properly positioned
+          if (overallInRole >= MIN_SUITABILITY_THRESHOLD) {
+            // Get the compatible positions for this slot
+            const slotPositions = positionSideMap[slot.role.toUpperCase()] || []
+            const fallbackPositions = fallbackPositionMap[slot.role.toUpperCase()] || []
+
+            // STRICT POSITION CHECKING: Check if player can play in this position
+            // For this to be true, the player MUST have one of the required positions
+            // in their shortPositions array
+
+            const playerPositions = playerPositionMap.get(player.name) || []
+
+            // For first XI and depth chart, we ONLY want players who can ACTUALLY play the position
+            // isExactMatch means player has the EXACT position for this slot
+            const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos))
+
+            // We won't use fallback positions at all for squad depth chart
+            // This ensures only properly positioned players are shown
+            const canPlayInPosition = isExactMatch
+
+            // Only add if player can actually play this position and meets minimum quality
+            if (canPlayInPosition && overallInRole >= MIN_SUITABILITY_THRESHOLD) {
+              // Strict position filtering:
+              // 1. For first team selection, we want EXACT position matches only unless
+              //    there are no players for a position
+              // 2. For depth, we can be more flexible
+
+              // Store the original role score and position match info
+              const assignment = {
+                player,
+                slotId: slot.id,
+                slotRole: slot.role,
+                overallInRole: overallInRole, // Store original score for display
+                sortScore: overallInRole, // Will be used for sorting
+                exactMatch: isExactMatch // Flag for UI display
+              }
+
+              // Adjust sort score (but not display score) based on position match
+              if (isExactMatch) {
+                // Huge boost to ensure exact matches are picked first
+                assignment.sortScore += 10000
+              } else {
+                // Penalty for out-of-position players
+                // They'll only be selected if no exact matches are available
+                assignment.sortScore -= 5000
+              }
+
+              allPotentialPlayerAssignments.push(assignment)
             }
-            return starters;
-        });
+          }
+        })
+      })
 
-        const currentTeamSectionRatings = computed(() => {
-            if (!squadComposition.value || !currentFormationLayout.value) {
-                return { attRating: 0, midRating: 0, defRating: 0 };
-            }
-            return calculateSectionRatings(squadComposition.value, currentFormationLayout.value);
-        });
+      // Sort assignments by the sort score, which already includes position match bonus
+      allPotentialPlayerAssignments.sort((a, b) => {
+        return b.sortScore - a.sortScore
+      })
 
-        const teamIsGoalkeeperView = computed(() => {
-            // This computed property is for the PlayerDataTable on this page.
-            // It should only show goalkeeper view if the majority of players are goalkeepers,
-            // otherwise default to outfield player view which is what users typically want to see.
-            if (teamPlayers.value.length === 0) return false;
-            
-            const goalkeeperCount = teamPlayers.value.filter((p) =>
-                p.positionGroups?.includes("Goalkeepers"),
-            ).length;
-            
-            // Only show goalkeeper view if more than half the players are goalkeepers
-            return goalkeeperCount > (teamPlayers.value.length / 2);
-        });
+      const assignedPlayersToSlots = new Set()
 
-        const teamDivision = computed(() => {
-            // Get the division from the first player in the team
-            if (teamPlayers.value.length > 0) {
-                return teamPlayers.value[0].division;
-            }
-            return null;
-        });
-
-        const getStarRating = (overall) => {
-            if (!overall || overall === 0) return 0;
-            
-            if (overall >= 85) return 5;
-            if (overall >= 82) return 4.5;
-            if (overall >= 78) return 4;
-            if (overall >= 74) return 3.5;
-            if (overall >= 70) return 3;
-            if (overall >= 67) return 2.5;
-            if (overall >= 64) return 2;
-            if (overall >= 60) return 1.5;
-            if (overall >= 55) return 1;
-            if (overall >= 50) return 0.5;
-            return 0;
-        };
-
-        const getStarClass = (overall, starPosition) => {
-            if (!overall || overall === 0) return "star-empty";
-            
-            const starRating = getStarRating(overall);
-            
-            if (starPosition <= Math.floor(starRating)) {
-                return "star-full";
-            } else if (starPosition === Math.floor(starRating) + 1 && starRating % 1 === 0.5) {
-                return "star-half";
-            } else {
-                return "star-empty";
-            }
-        };
-
-        const handlePlayerSelectedFromTeam = (player) => {
-            playerForDetailView.value = player;
-            showPlayerDetailDialog.value = true;
-        };
-
-        const getOverallClass = (overall) => {
-            if (overall === null || overall === undefined) return "rating-na";
-            const numericOverall = Number(overall);
-            if (isNaN(numericOverall)) return "rating-na";
-
-            if (numericOverall >= 90) return "rating-tier-6";
-            if (numericOverall >= 80) return "rating-tier-5";
-            if (numericOverall >= 70) return "rating-tier-4";
-            if (numericOverall >= 55) return "rating-tier-3";
-            if (numericOverall >= 40) return "rating-tier-2";
-            return "rating-tier-1";
-        };
-
-        const calculateSectionRatings = (squadComposition, formationLayout) => {
-            if (!squadComposition || !formationLayout) {
-                return { attRating: 0, midRating: 0, defRating: 0 };
-            }
-
-            const formationSlots = formationLayout.flatMap(row => row.positions);
-            
-            // Define position categories
-            const defensivePositions = ['GK', 'D (R)', 'D (L)', 'D (C)', 'WB (R)', 'WB (L)'];
-            const midfielderPositions = ['DM (C)', 'M (R)', 'M (L)', 'M (C)', 'AM (C)'];
-            const attackingPositions = ['AM (R)', 'AM (L)', 'ST (C)'];
-            
-            let attSum = 0, attCount = 0;
-            let midSum = 0, midCount = 0;
-            let defSum = 0, defCount = 0;
-            
-            formationSlots.forEach(slot => {
-                const slotPlayers = squadComposition[slot.id];
-                if (slotPlayers && slotPlayers.length > 0) {
-                    const starter = slotPlayers[0];
-                    const rating = starter.overallInRole;
-                    
-                    if (attackingPositions.includes(slot.role)) {
-                        attSum += rating;
-                        attCount++;
-                    } else if (midfielderPositions.includes(slot.role)) {
-                        midSum += rating;
-                        midCount++;
-                    } else if (defensivePositions.includes(slot.role)) {
-                        defSum += rating;
-                        defCount++;
-                    }
-                }
-            });
-            
-            return {
-                attRating: attCount > 0 ? Math.round(attSum / attCount) : 0,
-                midRating: midCount > 0 ? Math.round(midSum / midCount) : 0,
-                defRating: defCount > 0 ? Math.round(defSum / defCount) : 0
-            };
-        };
-
-        const getPlayerOverallForRole = (player, slotFormationRole) => {
-            if (!player || !slotFormationRole) return 0;
-
-            let bestScoreForRole = 0;
-            let matchType = "none"; // For debugging: tracks how the match was found
-            
-            if (!player.roleSpecificOveralls) {
-                return 0; // No role overalls available
-            }
-            
-            // Check if roleSpecificOveralls exists in either array or object format
-            const hasRoleOveralls = Array.isArray(player.roleSpecificOveralls) 
-                ? player.roleSpecificOveralls.length > 0
-                : Object.keys(player.roleSpecificOveralls).length > 0;
-            
-            if (!hasRoleOveralls) {
-                return 0; // No role overalls available
-            }
-            
-            // Get the required positions for this slot (strict matching)
-            const upperSlotRoleOriginal = slotFormationRole.toUpperCase();
-            const requiredPositions = positionSideMap[upperSlotRoleOriginal] || [];
-            
-            // 1. STRICT MATCHING: Player must have the EXACT position to play here
-            if (player.shortPositions && player.shortPositions.length > 0) {
-                // Check if player has ANY of the required positions
-                const exactPositionMatches = player.shortPositions.filter(pos => 
-                    requiredPositions.includes(pos)
-                );
-                
-                if (exactPositionMatches.length > 0) {
-                    // Perfect position match! Find the best role score
-                    matchType = "exact";
-                    
-                    // Find best score from roleSpecificOveralls - handle both array and object formats
-                    if (Array.isArray(player.roleSpecificOveralls)) {
-                        player.roleSpecificOveralls.forEach(rso => {
-                            const rsoBasePosition = rso.roleName
-                                .split(" - ")[0] // "DC" from "DC - BPD"
-                                .trim();
-                            
-                            // Check if this role's position is one of the player's exact positions
-                            if (exactPositionMatches.includes(rsoBasePosition)) {
-                                bestScoreForRole = Math.max(
-                                    bestScoreForRole,
-                                    rso.score,
-                                );
-                            }
-                        });
-                    } else {
-                        // Object format
-                        Object.entries(player.roleSpecificOveralls).forEach(([roleName, score]) => {
-                            const rsoBasePosition = roleName
-                                .split(" - ")[0] // "DC" from "DC - BPD"
-                                .trim();
-                            
-                            // Check if this role's position is one of the player's exact positions
-                            if (exactPositionMatches.includes(rsoBasePosition)) {
-                                bestScoreForRole = Math.max(
-                                    bestScoreForRole,
-                                    score,
-                                );
-                            }
-                        });
-                    }
-                    
-                    // If we have an exact position match but no specific role score,
-                    // give them a baseline score
-                    if (bestScoreForRole === 0) {
-                        bestScoreForRole = MIN_SUITABILITY_THRESHOLD;
-                    }
-                    
-                    // Add a small preference boost just for sorting purposes
-                    // (we'll store the original score in a separate property)
-                }
-            }
-            
-            // Skip fallbacks if we found an exact match
-            if (bestScoreForRole > 0) {
-                // For debugging
-                //console.log(`Exact match for ${player.name} in ${slotFormationRole}: score=${bestScoreForRole}`);
-                return bestScoreForRole;
-            }
-            
-            // 2. FALLBACK MATCHING: If no exact match, try fallback positions
-            const fallbackPositions = fallbackPositionMap[upperSlotRoleOriginal] || [];
-            
-            if (player.shortPositions && player.shortPositions.length > 0) {
-                // Check if player has ANY of the fallback positions
-                const fallbackMatches = player.shortPositions.filter(pos => 
-                    fallbackPositions.includes(pos)
-                );
-                
-                if (fallbackMatches.length > 0) {
-                    // Fallback position match - these will be scored lower
-                    matchType = "fallback";
-                    
-                    // Find best score from roleSpecificOveralls with fallback positions
-                    if (Array.isArray(player.roleSpecificOveralls)) {
-                        player.roleSpecificOveralls.forEach(rso => {
-                            const rsoBasePosition = rso.roleName
-                                .split(" - ")[0] // "DC" from "DC - BPD"
-                                .trim();
-                            
-                            if (fallbackMatches.includes(rsoBasePosition)) {
-                                bestScoreForRole = Math.max(
-                                    bestScoreForRole,
-                                    rso.score,
-                                );
-                            }
-                        });
-                    } else {
-                        // Object format
-                        Object.entries(player.roleSpecificOveralls).forEach(([roleName, score]) => {
-                            const rsoBasePosition = roleName
-                                .split(" - ")[0] // "DC" from "DC - BPD"
-                                .trim();
-                            
-                            if (fallbackMatches.includes(rsoBasePosition)) {
-                                bestScoreForRole = Math.max(
-                                    bestScoreForRole,
-                                    score,
-                                );
-                            }
-                        });
-                    }
-                    
-                    // If we have a fallback position match but no specific role score,
-                    // give them a minimal score
-                    if (bestScoreForRole === 0) {
-                        bestScoreForRole = MIN_SUITABILITY_THRESHOLD - 10; // Lower threshold for fallbacks
-                    }
-                    
-                    // Note: Original score is preserved, we'll just use the exactMatch flag for sorting
-                }
-            }
-            
-            // 3. LAST RESORT: If still no match, use the old FM matcher approach
-            if (bestScoreForRole === 0) {
-                const upperSlotRole = slotFormationRole.toUpperCase();
-                const fmPositionMatchers = fmSlotRoleMatcher[upperSlotRole] || [upperSlotRole];
-                
-                // Convert detailed positions to base role key prefixes
-                const targetRoleKeyPrefixes = fmPositionMatchers
-                    .map(matcher => fmMatcherToRoleKeyPrefix[matcher.toUpperCase()])
-                    .filter(prefix => !!prefix)
-                    .reduce((acc, val) => (acc.includes(val) ? acc : [...acc, val]), []);
-                
-                // Check roleSpecificOveralls against these prefixes
-                if (Array.isArray(player.roleSpecificOveralls)) {
-                    player.roleSpecificOveralls.forEach(rso => {
-                        const rsoBasePosition = rso.roleName
-                            .split(" - ")[0] // "DC" from "DC - BPD"
-                            .trim();
-                        
-                        if (targetRoleKeyPrefixes.includes(rsoBasePosition)) {
-                            matchType = "legacy";
-                            bestScoreForRole = Math.max(
-                                bestScoreForRole,
-                                rso.score,
-                            );
-                        }
-                    });
-                } else if (player.roleSpecificOveralls) {
-                    Object.entries(player.roleSpecificOveralls).forEach(([roleName, score]) => {
-                        const rsoBasePosition = roleName
-                            .split(" - ")[0]
-                            .trim();
-                        
-                        if (targetRoleKeyPrefixes.includes(rsoBasePosition)) {
-                            matchType = "legacy";
-                            bestScoreForRole = Math.max(
-                                bestScoreForRole,
-                                score,
-                            );
-                        }
-                    });
-                }
-                
-                // Legacy matches will be sorted last by using the exactMatch flag
-            }
-            
-            // For debugging
-            //if (bestScoreForRole > 0) {
-            //    console.log(`${matchType} match for ${player.name} in ${slotFormationRole}: score=${bestScoreForRole}`);
-            //}
-            
-            return bestScoreForRole;
-        };
-
-        const MIN_SUITABILITY_THRESHOLD = 40;
-
-        const getSlotDisplayName = (slot, allSlots) => {
-            const roleCounts = allSlots.reduce((acc, s) => {
-                acc[s.role] = (acc[s.role] || 0) + 1;
-                return acc;
-            }, {});
-
-            if (roleCounts[slot.role] > 1) {
-                // If multiple slots have the same base role (e.g., two "ST (C)"),
-                // use the more specific ID (like "STCL", "STCR").
-                // Extract the prefix from ID, e.g., "STCL" from "STCL_41212N"
-                return slot.id.split("_")[0];
-            }
-            return slot.role; // Otherwise, use the general role name like "AM (C)"
-        };
-
-        const calculateBestFormationForTeam = () => {
-            if (teamPlayers.value.length === 0) {
-                return null;
-            }
-
-            // Check cache first
-            const cacheKey = formationCache.generateKey(teamPlayers.value, 'team-best');
-            const cachedResult = formationCache.get(cacheKey);
-            if (cachedResult) {
-                console.log('Using cached formation result for team:', selectedTeamName.value);
-                return cachedResult.bestFormationKey;
-            }
-
-            let bestFormationKey = null;
-            let bestAverageOverall = 0;
-
-            // Test each formation to find the one with highest average overall
-            Object.keys(formations).forEach(formationKey => {
-                const formationLayoutForCalc = getFormationLayout(formationKey);
-                if (!formationLayoutForCalc) return;
-
-                const formationSlots = formationLayoutForCalc.flatMap(row => row.positions);
-                const tempSquadComposition = {};
-                
-                // Initialize slots
-                formationSlots.forEach(slot => {
-                    tempSquadComposition[slot.id] = [];
-                });
-
-                // Calculate player scores for each position in this formation
-                const allPotentialPlayerAssignments = [];
-                formationSlots.forEach(slot => {
-                    teamPlayers.value.forEach(player => {
-                        const overallInRole = getPlayerOverallForRole(player, slot.role);
-                        
-                        if (overallInRole >= MIN_SUITABILITY_THRESHOLD) {
-                            const slotPositions = positionSideMap[slot.role.toUpperCase()] || [];
-                            const playerPositions = player.shortPositions || [];
-                            const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos));
-                            
-                            if (isExactMatch || overallInRole >= MIN_SUITABILITY_THRESHOLD) {
-                                const assignment = {
-                                    player,
-                                    slotId: slot.id,
-                                    slotRole: slot.role,
-                                    overallInRole: overallInRole,
-                                    sortScore: overallInRole,
-                                    exactMatch: isExactMatch
-                                };
-                                
-                                if (isExactMatch) {
-                                    assignment.sortScore += 10000;
-                                } else {
-                                    assignment.sortScore -= 5000;
-                                }
-                                
-                                allPotentialPlayerAssignments.push(assignment);
-                            }
-                        }
-                    });
-                });
-
-                // Sort assignments by sort score
-                allPotentialPlayerAssignments.sort((a, b) => b.sortScore - a.sortScore);
-
-                const assignedPlayersToSlots = new Set();
-
-                // Fill starting XI for this formation
-                formationSlots.forEach(slot => {
-                    for (const assignment of allPotentialPlayerAssignments) {
-                        if (
-                            assignment.slotId === slot.id &&
-                            !assignedPlayersToSlots.has(assignment.player.name)
-                        ) {
-                            tempSquadComposition[slot.id].push({
-                                player: assignment.player,
-                                overallInRole: assignment.overallInRole,
-                                exactMatch: assignment.exactMatch
-                            });
-                            assignedPlayersToSlots.add(assignment.player.name);
-                            break;
-                        }
-                    }
-                });
-
-                // Calculate average overall for this formation
-                let sumOfStartersOverall = 0;
-                let startersCount = 0;
-                Object.values(tempSquadComposition).forEach(slotPlayers => {
-                    if (slotPlayers && slotPlayers.length > 0) {
-                        sumOfStartersOverall += slotPlayers[0].overallInRole;
-                        startersCount++;
-                    }
-                });
-
-                if (startersCount > 0) {
-                    const averageOverall = sumOfStartersOverall / startersCount;
-                    if (averageOverall > bestAverageOverall) {
-                        bestAverageOverall = averageOverall;
-                        bestFormationKey = formationKey;
-                    }
-                }
-            });
-
-            // Cache the result
-            if (bestFormationKey) {
-                formationCache.set(cacheKey, {
-                    bestFormationKey,
-                    bestAverageOverall,
-                    teamName: selectedTeamName.value
-                });
-            }
-
-            return bestFormationKey;
-        };
-
-        const calculateBestTeamAndDepth = () => {
-            if (!selectedFormationKey.value || teamPlayers.value.length === 0) {
-                squadComposition.value = {};
-                bestTeamAverageOverall.value = null;
-                calculationMessage.value = selectedFormationKey.value
-                    ? "No players in the selected team."
-                    : "Select a formation.";
-                calculationMessageClass.value = "bg-warning text-dark";
-                return;
-            }
-
-            // Check cache first for squad composition
-            const cacheKey = formationCache.generateKey(teamPlayers.value, `team-depth-${selectedFormationKey.value}`);
-            const cachedResult = formationCache.get(cacheKey);
-            if (cachedResult) {
-                console.log('Using cached squad composition for team:', selectedTeamName.value);
-                squadComposition.value = cachedResult.squadComposition;
-                bestTeamAverageOverall.value = cachedResult.bestTeamAverageOverall;
-                calculationMessage.value = `Best XI & Depth calculated (cached). Average Overall: ${cachedResult.bestTeamAverageOverall}.`;
-                calculationMessageClass.value = quasarInstance.dark.isActive
-                    ? "bg-positive text-white"
-                    : "bg-green-2 text-positive";
-                return;
-            }
-
-            calculationMessage.value = "Calculating best team and depth...";
-            calculationMessageClass.value = quasarInstance.dark.isActive
-                ? "bg-info text-white"
-                : "bg-blue-2 text-primary";
-
-            const tempSquadComposition = {};
-            const formationLayoutForCalc = getFormationLayout(
-                selectedFormationKey.value,
-            );
-            if (!formationLayoutForCalc) {
-                calculationMessage.value = "Invalid formation selected.";
-                calculationMessageClass.value = "bg-negative text-white";
-                return;
-            }
-
-            const formationSlots = formationLayoutForCalc.flatMap(
-                (row) => row.positions,
-            );
-
-            formationSlots.forEach((slot) => {
-                tempSquadComposition[slot.id] = [];
-            });
-
-            // ENHANCEMENT: First, compute all player scores for all positions
-            // and check which players can play in which positions
-            const playerPositionMap = new Map(); // Maps player name to positions they can play
-            
-            teamPlayers.value.forEach(player => {
-                const playablePositions = [];
-                if (player.shortPositions && player.shortPositions.length > 0) {
-                    playablePositions.push(...player.shortPositions);
-                }
-                playerPositionMap.set(player.name, playablePositions);
-                
-                // Debug: Log player positions
-                //console.log(`${player.name} positions: ${playablePositions.join(', ')}`);
-            });
-
-            // Calculate player scores for each position
-            const allPotentialPlayerAssignments = [];
-            formationSlots.forEach((slot) => {
-                teamPlayers.value.forEach((player) => {
-                    const overallInRole = getPlayerOverallForRole(
-                        player,
-                        slot.role, // Use the general role from formation (e.g., "ST (C)")
-                    );
-                    
-                    // Only include players who meet the threshold and are properly positioned
-                    if (overallInRole >= MIN_SUITABILITY_THRESHOLD) {
-                        // Get the compatible positions for this slot
-                        const slotPositions = positionSideMap[slot.role.toUpperCase()] || [];
-                        const fallbackPositions = fallbackPositionMap[slot.role.toUpperCase()] || [];
-                        
-                        // STRICT POSITION CHECKING: Check if player can play in this position
-                        // For this to be true, the player MUST have one of the required positions 
-                        // in their shortPositions array
-                        
-                        const playerPositions = playerPositionMap.get(player.name) || [];
-                        
-                        // For first XI and depth chart, we ONLY want players who can ACTUALLY play the position
-                        // isExactMatch means player has the EXACT position for this slot
-                        const isExactMatch = playerPositions.some(pos => 
-                            slotPositions.includes(pos)
-                        );
-                        
-                        // We won't use fallback positions at all for squad depth chart
-                        // This ensures only properly positioned players are shown
-                        const canPlayInPosition = isExactMatch;
-                        
-                        // Only add if player can actually play this position and meets minimum quality
-                        if (canPlayInPosition && overallInRole >= MIN_SUITABILITY_THRESHOLD) {
-                            // Strict position filtering: 
-                            // 1. For first team selection, we want EXACT position matches only unless
-                            //    there are no players for a position
-                            // 2. For depth, we can be more flexible
-                            
-                            // Store the original role score and position match info
-                            const assignment = {
-                                player,
-                                slotId: slot.id,
-                                slotRole: slot.role,
-                                overallInRole: overallInRole,  // Store original score for display
-                                sortScore: overallInRole,      // Will be used for sorting
-                                exactMatch: isExactMatch       // Flag for UI display
-                            };
-                            
-                            // Adjust sort score (but not display score) based on position match
-                            if (isExactMatch) {
-                                // Huge boost to ensure exact matches are picked first
-                                assignment.sortScore += 10000; 
-                            } else {
-                                // Penalty for out-of-position players
-                                // They'll only be selected if no exact matches are available
-                                assignment.sortScore -= 5000; 
-                            }
-                            
-                            allPotentialPlayerAssignments.push(assignment);
-                        }
-                    }
-                });
-            });
-
-            // Sort assignments by the sort score, which already includes position match bonus
-            allPotentialPlayerAssignments.sort((a, b) => {
-                return b.sortScore - a.sortScore;
-            });
-
-            const assignedPlayersToSlots = new Set();
-
-            for (let depthIndex = 0; depthIndex < 3; depthIndex++) {
-                // First pass: fill positions with exact matches
-                formationSlots.forEach((slot) => {
-                    if (tempSquadComposition[slot.id].length === depthIndex) {
-                        // If this slot needs a player at current depth
-                        for (const assignment of allPotentialPlayerAssignments) {
-                            if (
-                                assignment.slotId === slot.id &&
-                                assignment.exactMatch && // Only use exact matches in first pass
-                                !assignedPlayersToSlots.has(
-                                    assignment.player.name,
-                                )
-                            ) {
-                                // Check if this player is already a starter in *another* slot if we are filling backups
-                                let alreadyStarterElsewhere = false;
-                                if (depthIndex > 0) {
-                                    // Only check for backups
-                                    for (const sId in tempSquadComposition) {
-                                        if (
-                                            tempSquadComposition[sId].length >
-                                                0 &&
-                                            tempSquadComposition[sId][0].player
-                                                .name === assignment.player.name
-                                        ) {
-                                            alreadyStarterElsewhere = true;
-                                            break;
-                                        }
-                                    }
-                                }
-
-                                if (!alreadyStarterElsewhere) {
-                                    tempSquadComposition[slot.id].push({
-                                        player: assignment.player,
-                                        overallInRole: assignment.overallInRole,
-                                        exactMatch: assignment.exactMatch
-                                    });
-                                    assignedPlayersToSlots.add(
-                                        assignment.player.name,
-                                    );
-                                    break; // Move to next slot for this depth level
-                                }
-                            }
-                        }
-                    }
-                });
-                
-                // Second pass: fill remaining positions with fallback matches
-                formationSlots.forEach((slot) => {
-                    if (tempSquadComposition[slot.id].length === depthIndex) {
-                        // If this slot still needs a player after the first pass
-                        for (const assignment of allPotentialPlayerAssignments) {
-                            if (
-                                assignment.slotId === slot.id &&
-                                !assignedPlayersToSlots.has(
-                                    assignment.player.name,
-                                )
-                            ) {
-                                // Check if this player is already a starter in *another* slot if we are filling backups
-                                let alreadyStarterElsewhere = false;
-                                if (depthIndex > 0) {
-                                    // Only check for backups
-                                    for (const sId in tempSquadComposition) {
-                                        if (
-                                            tempSquadComposition[sId].length >
-                                                0 &&
-                                            tempSquadComposition[sId][0].player
-                                                .name === assignment.player.name
-                                        ) {
-                                            alreadyStarterElsewhere = true;
-                                            break;
-                                        }
-                                    }
-                                }
-
-                                if (!alreadyStarterElsewhere) {
-                                    tempSquadComposition[slot.id].push({
-                                        player: assignment.player,
-                                        overallInRole: assignment.overallInRole,
-                                        exactMatch: assignment.exactMatch
-                                    });
-                                    assignedPlayersToSlots.add(
-                                        assignment.player.name,
-                                    );
-                                    break; // Move to next slot for this depth level
-                                }
-                            }
-                        }
-                    }
-                });
-            }
-
-            // Ensure each slot in tempSquadComposition is sorted by overallInRole descending
-            for (const slotId in tempSquadComposition) {
-                tempSquadComposition[slotId].sort(
-                    (a, b) => b.overallInRole - a.overallInRole,
-                );
-            }
-            
-            // Check if any positions have no players assigned at all
-            // In that case, try to find any player who can play there as a fallback
-            for (const slot of formationSlots) {
-                if (tempSquadComposition[slot.id].length === 0) {
-                    console.log(`No exact position matches found for ${slot.role}, trying fallbacks`);
-                    
-                    // Get fallback positions for this slot
-                    const fallbackPositions = fallbackPositionMap[slot.role.toUpperCase()] || [];
-                    
-                    // Find any players who can play in fallback positions
-                    const fallbackAssignments = [];
-                    
-                    teamPlayers.value.forEach(player => {
-                        if (!assignedPlayersToSlots.has(player.name)) {
-                            const playerPositions = player.shortPositions || [];
-                            
-                            // Check if player can play any fallback position
-                            const canPlayFallback = playerPositions.some(pos => 
-                                fallbackPositions.includes(pos)
-                            );
-                            
-                            if (canPlayFallback) {
-                                const overallInRole = getPlayerOverallForRole(player, slot.role);
-                                if (overallInRole >= MIN_SUITABILITY_THRESHOLD - 10) {
-                                    fallbackAssignments.push({
-                                        player,
-                                        overallInRole,
-                                        exactMatch: false
-                                    });
-                                }
-                            }
-                        }
-                    });
-                    
-                    // Sort fallbacks by score
-                    fallbackAssignments.sort((a, b) => b.overallInRole - a.overallInRole);
-                    
-                    // Add best fallback if available
-                    if (fallbackAssignments.length > 0) {
-                        const bestFallback = fallbackAssignments[0];
-                        tempSquadComposition[slot.id].push(bestFallback);
-                        assignedPlayersToSlots.add(bestFallback.player.name);
-                    }
-                }
-            }
-
-            squadComposition.value = tempSquadComposition;
-
-            let sumOfStartersOverall = 0;
-            let startersCount = 0;
-            Object.values(squadComposition.value).forEach((slotPlayers) => {
-                if (slotPlayers && slotPlayers.length > 0) {
-                    sumOfStartersOverall += slotPlayers[0].overallInRole;
-                    startersCount++;
-                }
-            });
-
-            if (startersCount > 0) {
-                bestTeamAverageOverall.value = Math.round(
-                    sumOfStartersOverall / startersCount,
-                );
-                calculationMessage.value = `Best XI & Depth calculated. Average Overall: ${bestTeamAverageOverall.value}.`;
-                calculationMessageClass.value = quasarInstance.dark.isActive
-                    ? "bg-positive text-white"
-                    : "bg-green-2 text-positive";
-            } else {
-                bestTeamAverageOverall.value = 0;
-                calculationMessage.value =
-                    "Could not assign any suitable players to form a Best XI.";
-                calculationMessageClass.value = quasarInstance.dark.isActive
-                    ? "bg-negative text-white"
-                    : "bg-red-2 text-negative";
-            }
-
-            // Cache the result
-            if (bestTeamAverageOverall.value > 0) {
-                formationCache.set(cacheKey, {
-                    squadComposition: squadComposition.value,
-                    bestTeamAverageOverall: bestTeamAverageOverall.value,
-                    teamName: selectedTeamName.value,
-                    formation: selectedFormationKey.value
-                });
-            }
-        };
-
-        watch(selectedFormationKey, (newKey) => {
-            if (newKey && selectedTeamName.value) {
-                calculateBestTeamAndDepth();
-            } else {
-                squadComposition.value = {};
-                bestTeamAverageOverall.value = null;
-                calculationMessage.value = "Select a team and formation.";
-                calculationMessageClass.value = quasarInstance.dark.isActive
-                    ? "text-grey-5"
-                    : "text-grey-7";
-            }
-        });
-
-        const handlePlayerMovedOnPitch = (moveData) => {
-            const { player, fromSlotId, toSlotId, toSlotRole } = moveData;
-
-            const currentStarters = JSON.parse(
-                JSON.stringify(bestTeamPlayersForPitch.value),
-            );
-            const playerToMoveFullData = allPlayersData.value.find(
-                (p) => p.name === player.name,
-            );
-
-            if (!playerToMoveFullData) return;
-
-            // Calculate the role-specific rating for this player in the new position
-            const overallInNewRole = getPlayerOverallForRole(
-                playerToMoveFullData,
-                toSlotRole,
-            );
-            
-            // Check if player is in their natural position in the new slot
-            const playerPositions = playerToMoveFullData.shortPositions || [];
-            const slotPositions = positionSideMap[toSlotRole.toUpperCase()] || [];
-            const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos));
-            
-            const playerCurrentlyInTargetSlotFullData = currentStarters[
-                toSlotId
-            ]
-                ? allPlayersData.value.find(
-                      (p) => p.name === currentStarters[toSlotId].name,
-                  )
-                : null;
-
-            // Update target slot with role-specific rating and position match info
-            currentStarters[toSlotId] = {
-                ...playerToMoveFullData,
-                Overall: overallInNewRole,           // Role-specific rating for the position
-                exactPositionMatch: isExactMatch     // Position match flag for UI
-            };
-
-            // Update original slot
-            if (playerCurrentlyInTargetSlotFullData && fromSlotId) {
-                const originalRoleOfFromSlot = currentFormationLayout.value
-                    .flatMap((r) => r.positions)
-                    .find((p) => p.id === fromSlotId)?.role;
-                    
-                if (originalRoleOfFromSlot) {
-                    // Calculate role-specific rating for the player in the original slot
-                    const overallInOldRole = getPlayerOverallForRole(
-                        playerCurrentlyInTargetSlotFullData,
-                        originalRoleOfFromSlot,
-                    );
-                    
-                    // Check if player is in their natural position in the original slot
-                    const playerPositions = playerCurrentlyInTargetSlotFullData.shortPositions || [];
-                    const slotPositions = positionSideMap[originalRoleOfFromSlot.toUpperCase()] || [];
-                    const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos));
-                    
-                    currentStarters[fromSlotId] = {
-                        ...playerCurrentlyInTargetSlotFullData,
-                        Overall: overallInOldRole,        // Role-specific rating
-                        exactPositionMatch: isExactMatch  // Position match flag
-                    };
-                } else {
-                    currentStarters[fromSlotId] = null;
-                }
-            } else if (fromSlotId) {
-                currentStarters[fromSlotId] = null;
-            }
-
-            // To make PitchDisplay update, we need to change the object reference
-            // or ensure its internal properties are reactive.
-            // This is a simplified visual swap; it doesn't formally update squadComposition.
-            // For a temporary visual update of the pitch:
-            const newPitchState = { ...currentStarters };
-            // This assignment might not be enough if PitchDisplay relies on squadComposition.
-            // A better way would be to have a local ref for pitch display players.
-            // For now, we'll log and message that depth isn't updated.
-            console.log("Visual swap on pitch:", newPitchState);
-
-            let sumOfDisplayedOveralls = 0;
-            let countOfDisplayedOveralls = 0;
-            Object.values(newPitchState).forEach((p) => {
-                if (p && typeof p.Overall === "number") {
-                    // p.Overall is now the position-specific rating
-                    sumOfDisplayedOveralls += p.Overall;
-                    countOfDisplayedOveralls++;
-                }
-            });
-            bestTeamAverageOverall.value =
-                countOfDisplayedOveralls > 0
-                    ? Math.round(
-                          sumOfDisplayedOveralls / countOfDisplayedOveralls,
-                      )
-                    : 0;
-
-            calculationMessage.value = `Team visually adjusted. New Avg Overall: ${bestTeamAverageOverall.value}. (Depth chart not updated by drag & drop).`;
-            calculationMessageClass.value = quasarInstance.dark.isActive
-                ? "bg-info text-white"
-                : "bg-blue-2 text-primary";
-
-            // To actually make PitchDisplay update from this drag-drop,
-            // bestTeamPlayersForPitch would need to be made writable or a separate ref used.
-            // For now, this is a visual indication of the swap's effect on average overall.
-            // The actual `bestTeamPlayersForPitch` computed will still be based on `squadComposition`.
-            // To truly reflect the drag-drop, `squadComposition` itself would need to be modified.
-        };
-
-        watch(
-            () => allPlayersData.value,
-            (newVal) => {
-                if (pageLoading.value) return; // Don't run if initial load is happening
-                if (newVal && newVal.length > 0) {
-                    populateTeamFilterOptions();
-                    if (selectedTeamName.value) loadTeamPlayers(); // Reload team if already selected
-                } else if (!pageLoadingError.value) {
-                    // Only clear if no error
-                    clearTeamSelection();
-                    allTeamNamesCache.value = [];
-                    teamOptions.value = [];
-                }
-            },
-            { deep: true }, // deep might be intensive if allPlayersData is huge
-        );
-
-        watch(
-            () => route.query.datasetId,
-            async (newId, oldId) => {
-                if (newId && newId !== oldId) {
-                    sessionStorage.setItem("currentDatasetId", newId);
-                    await fetchPlayersAndCurrency(newId); // Use combined fetch
-                    clearTeamSelection(); // Reset team selection as data has changed
+      for (let depthIndex = 0; depthIndex < 3; depthIndex++) {
+        // First pass: fill positions with exact matches
+        formationSlots.forEach(slot => {
+          if (tempSquadComposition[slot.id].length === depthIndex) {
+            // If this slot needs a player at current depth
+            for (const assignment of allPotentialPlayerAssignments) {
+              if (
+                assignment.slotId === slot.id &&
+                assignment.exactMatch && // Only use exact matches in first pass
+                !assignedPlayersToSlots.has(assignment.player.name)
+              ) {
+                // Check if this player is already a starter in *another* slot if we are filling backups
+                let alreadyStarterElsewhere = false
+                if (depthIndex > 0) {
+                  // Only check for backups
+                  for (const sId in tempSquadComposition) {
                     if (
-                        !pageLoadingError.value &&
-                        allPlayersData.value.length > 0
+                      tempSquadComposition[sId].length > 0 &&
+                      tempSquadComposition[sId][0].player.name === assignment.player.name
                     ) {
-                        populateTeamFilterOptions();
+                      alreadyStarterElsewhere = true
+                      break
                     }
+                  }
                 }
-            },
-        );
 
-        watch(
-            () => route.query.team,
-            (newTeam) => {
-                if (newTeam && newTeam.trim() !== '' && newTeam !== selectedTeamName.value) {
-                    selectedTeamName.value = newTeam;
-                    loadTeamPlayers();
+                if (!alreadyStarterElsewhere) {
+                  tempSquadComposition[slot.id].push({
+                    player: assignment.player,
+                    overallInRole: assignment.overallInRole,
+                    exactMatch: assignment.exactMatch
+                  })
+                  assignedPlayersToSlots.add(assignment.player.name)
+                  break // Move to next slot for this depth level
                 }
-            },
-        );
-
-        const shareDataset = async () => {
-            if (!currentDatasetId.value) return;
-            
-            const shareUrl = `${window.location.origin}/team-view/${currentDatasetId.value}`;
-            
-            try {
-                await navigator.clipboard.writeText(shareUrl);
-                quasarInstance.notify({
-                    message: 'Link copied to clipboard!',
-                    color: 'positive',
-                    icon: 'check_circle',
-                    position: 'top',
-                    timeout: 2000
-                });
-            } catch (err) {
-                // Fallback for older browsers
-                const textArea = document.createElement('textarea');
-                textArea.value = shareUrl;
-                document.body.appendChild(textArea);
-                textArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textArea);
-                
-                quasarInstance.notify({
-                    message: 'Link copied to clipboard!',
-                    color: 'positive',
-                    icon: 'check_circle',
-                    position: 'top',
-                    timeout: 2000
-                });
+              }
             }
-        };
+          }
+        })
 
-        return {
-            allPlayersData,
-            selectedTeamName,
-            teamOptions,
-            filterTeamOptions,
-            loadTeamPlayers,
-            clearTeamSelection,
-            teamPlayers,
-            loadingTeam,
-            pageLoading,
-            pageLoadingError,
-            selectedFormationKey,
-            formationOptions,
-            currentFormationLayout,
-            squadComposition,
-            bestTeamPlayersForPitch,
-            bestTeamAverageOverall,
-            currentTeamSectionRatings,
-            calculateSectionRatings,
-            calculationMessage,
-            calculationMessageClass,
-            playerForDetailView,
-            showPlayerDetailDialog,
-            handlePlayerSelectedFromTeam,
-            teamIsGoalkeeperView,
-            teamDivision,
-            getStarRating,
-            getStarClass,
-            getOverallClass,
-            getSlotDisplayName,
-            handlePlayerMovedOnPitch,
-            quasarInstance,
-            router,
-            detectedCurrencySymbol, // Expose currency symbol
-            currentDatasetId,
-            shareDataset,
-        };
-    },
-};
+        // Second pass: fill remaining positions with fallback matches
+        formationSlots.forEach(slot => {
+          if (tempSquadComposition[slot.id].length === depthIndex) {
+            // If this slot still needs a player after the first pass
+            for (const assignment of allPotentialPlayerAssignments) {
+              if (
+                assignment.slotId === slot.id &&
+                !assignedPlayersToSlots.has(assignment.player.name)
+              ) {
+                // Check if this player is already a starter in *another* slot if we are filling backups
+                let alreadyStarterElsewhere = false
+                if (depthIndex > 0) {
+                  // Only check for backups
+                  for (const sId in tempSquadComposition) {
+                    if (
+                      tempSquadComposition[sId].length > 0 &&
+                      tempSquadComposition[sId][0].player.name === assignment.player.name
+                    ) {
+                      alreadyStarterElsewhere = true
+                      break
+                    }
+                  }
+                }
+
+                if (!alreadyStarterElsewhere) {
+                  tempSquadComposition[slot.id].push({
+                    player: assignment.player,
+                    overallInRole: assignment.overallInRole,
+                    exactMatch: assignment.exactMatch
+                  })
+                  assignedPlayersToSlots.add(assignment.player.name)
+                  break // Move to next slot for this depth level
+                }
+              }
+            }
+          }
+        })
+      }
+
+      // Ensure each slot in tempSquadComposition is sorted by overallInRole descending
+      for (const slotId in tempSquadComposition) {
+        tempSquadComposition[slotId].sort((a, b) => b.overallInRole - a.overallInRole)
+      }
+
+      // Check if any positions have no players assigned at all
+      // In that case, try to find any player who can play there as a fallback
+      for (const slot of formationSlots) {
+        if (tempSquadComposition[slot.id].length === 0) {
+          console.log(`No exact position matches found for ${slot.role}, trying fallbacks`)
+
+          // Get fallback positions for this slot
+          const fallbackPositions = fallbackPositionMap[slot.role.toUpperCase()] || []
+
+          // Find any players who can play in fallback positions
+          const fallbackAssignments = []
+
+          teamPlayers.value.forEach(player => {
+            if (!assignedPlayersToSlots.has(player.name)) {
+              const playerPositions = player.shortPositions || []
+
+              // Check if player can play any fallback position
+              const canPlayFallback = playerPositions.some(pos => fallbackPositions.includes(pos))
+
+              if (canPlayFallback) {
+                const overallInRole = getPlayerOverallForRole(player, slot.role)
+                if (overallInRole >= MIN_SUITABILITY_THRESHOLD - 10) {
+                  fallbackAssignments.push({
+                    player,
+                    overallInRole,
+                    exactMatch: false
+                  })
+                }
+              }
+            }
+          })
+
+          // Sort fallbacks by score
+          fallbackAssignments.sort((a, b) => b.overallInRole - a.overallInRole)
+
+          // Add best fallback if available
+          if (fallbackAssignments.length > 0) {
+            const bestFallback = fallbackAssignments[0]
+            tempSquadComposition[slot.id].push(bestFallback)
+            assignedPlayersToSlots.add(bestFallback.player.name)
+          }
+        }
+      }
+
+      squadComposition.value = tempSquadComposition
+
+      let sumOfStartersOverall = 0
+      let startersCount = 0
+      Object.values(squadComposition.value).forEach(slotPlayers => {
+        if (slotPlayers && slotPlayers.length > 0) {
+          sumOfStartersOverall += slotPlayers[0].overallInRole
+          startersCount++
+        }
+      })
+
+      if (startersCount > 0) {
+        bestTeamAverageOverall.value = Math.round(sumOfStartersOverall / startersCount)
+        calculationMessage.value = `Best XI & Depth calculated. Average Overall: ${bestTeamAverageOverall.value}.`
+        calculationMessageClass.value = quasarInstance.dark.isActive
+          ? 'bg-positive text-white'
+          : 'bg-green-2 text-positive'
+      } else {
+        bestTeamAverageOverall.value = 0
+        calculationMessage.value = 'Could not assign any suitable players to form a Best XI.'
+        calculationMessageClass.value = quasarInstance.dark.isActive
+          ? 'bg-negative text-white'
+          : 'bg-red-2 text-negative'
+      }
+
+      // Cache the result
+      if (bestTeamAverageOverall.value > 0) {
+        formationCache.set(cacheKey, {
+          squadComposition: squadComposition.value,
+          bestTeamAverageOverall: bestTeamAverageOverall.value,
+          teamName: selectedTeamName.value,
+          formation: selectedFormationKey.value
+        })
+      }
+    }
+
+    watch(selectedFormationKey, newKey => {
+      if (newKey && selectedTeamName.value) {
+        calculateBestTeamAndDepth()
+      } else {
+        squadComposition.value = {}
+        bestTeamAverageOverall.value = null
+        calculationMessage.value = 'Select a team and formation.'
+        calculationMessageClass.value = quasarInstance.dark.isActive ? 'text-grey-5' : 'text-grey-7'
+      }
+    })
+
+    const handlePlayerMovedOnPitch = moveData => {
+      const { player, fromSlotId, toSlotId, toSlotRole } = moveData
+
+      const currentStarters = JSON.parse(JSON.stringify(bestTeamPlayersForPitch.value))
+      const playerToMoveFullData = allPlayersData.value.find(p => p.name === player.name)
+
+      if (!playerToMoveFullData) return
+
+      // Calculate the role-specific rating for this player in the new position
+      const overallInNewRole = getPlayerOverallForRole(playerToMoveFullData, toSlotRole)
+
+      // Check if player is in their natural position in the new slot
+      const playerPositions = playerToMoveFullData.shortPositions || []
+      const slotPositions = positionSideMap[toSlotRole.toUpperCase()] || []
+      const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos))
+
+      const playerCurrentlyInTargetSlotFullData = currentStarters[toSlotId]
+        ? allPlayersData.value.find(p => p.name === currentStarters[toSlotId].name)
+        : null
+
+      // Update target slot with role-specific rating and position match info
+      currentStarters[toSlotId] = {
+        ...playerToMoveFullData,
+        Overall: overallInNewRole, // Role-specific rating for the position
+        exactPositionMatch: isExactMatch // Position match flag for UI
+      }
+
+      // Update original slot
+      if (playerCurrentlyInTargetSlotFullData && fromSlotId) {
+        const originalRoleOfFromSlot = currentFormationLayout.value
+          .flatMap(r => r.positions)
+          .find(p => p.id === fromSlotId)?.role
+
+        if (originalRoleOfFromSlot) {
+          // Calculate role-specific rating for the player in the original slot
+          const overallInOldRole = getPlayerOverallForRole(
+            playerCurrentlyInTargetSlotFullData,
+            originalRoleOfFromSlot
+          )
+
+          // Check if player is in their natural position in the original slot
+          const playerPositions = playerCurrentlyInTargetSlotFullData.shortPositions || []
+          const slotPositions = positionSideMap[originalRoleOfFromSlot.toUpperCase()] || []
+          const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos))
+
+          currentStarters[fromSlotId] = {
+            ...playerCurrentlyInTargetSlotFullData,
+            Overall: overallInOldRole, // Role-specific rating
+            exactPositionMatch: isExactMatch // Position match flag
+          }
+        } else {
+          currentStarters[fromSlotId] = null
+        }
+      } else if (fromSlotId) {
+        currentStarters[fromSlotId] = null
+      }
+
+      // To make PitchDisplay update, we need to change the object reference
+      // or ensure its internal properties are reactive.
+      // This is a simplified visual swap; it doesn't formally update squadComposition.
+      // For a temporary visual update of the pitch:
+      const newPitchState = { ...currentStarters }
+      // This assignment might not be enough if PitchDisplay relies on squadComposition.
+      // A better way would be to have a local ref for pitch display players.
+      // For now, we'll log and message that depth isn't updated.
+      console.log('Visual swap on pitch:', newPitchState)
+
+      let sumOfDisplayedOveralls = 0
+      let countOfDisplayedOveralls = 0
+      Object.values(newPitchState).forEach(p => {
+        if (p && typeof p.Overall === 'number') {
+          // p.Overall is now the position-specific rating
+          sumOfDisplayedOveralls += p.Overall
+          countOfDisplayedOveralls++
+        }
+      })
+      bestTeamAverageOverall.value =
+        countOfDisplayedOveralls > 0
+          ? Math.round(sumOfDisplayedOveralls / countOfDisplayedOveralls)
+          : 0
+
+      calculationMessage.value = `Team visually adjusted. New Avg Overall: ${bestTeamAverageOverall.value}. (Depth chart not updated by drag & drop).`
+      calculationMessageClass.value = quasarInstance.dark.isActive
+        ? 'bg-info text-white'
+        : 'bg-blue-2 text-primary'
+
+      // To actually make PitchDisplay update from this drag-drop,
+      // bestTeamPlayersForPitch would need to be made writable or a separate ref used.
+      // For now, this is a visual indication of the swap's effect on average overall.
+      // The actual `bestTeamPlayersForPitch` computed will still be based on `squadComposition`.
+      // To truly reflect the drag-drop, `squadComposition` itself would need to be modified.
+    }
+
+    watch(
+      () => allPlayersData.value,
+      newVal => {
+        if (pageLoading.value) return // Don't run if initial load is happening
+        if (newVal && newVal.length > 0) {
+          populateTeamFilterOptions()
+          if (selectedTeamName.value) loadTeamPlayers() // Reload team if already selected
+        } else if (!pageLoadingError.value) {
+          // Only clear if no error
+          clearTeamSelection()
+          allTeamNamesCache.value = []
+          teamOptions.value = []
+        }
+      },
+      { deep: true } // deep might be intensive if allPlayersData is huge
+    )
+
+    watch(
+      () => route.query.datasetId,
+      async (newId, oldId) => {
+        if (newId && newId !== oldId) {
+          sessionStorage.setItem('currentDatasetId', newId)
+          await fetchPlayersAndCurrency(newId) // Use combined fetch
+          clearTeamSelection() // Reset team selection as data has changed
+          if (!pageLoadingError.value && allPlayersData.value.length > 0) {
+            populateTeamFilterOptions()
+          }
+        }
+      }
+    )
+
+    watch(
+      () => route.query.team,
+      newTeam => {
+        if (newTeam && newTeam.trim() !== '' && newTeam !== selectedTeamName.value) {
+          selectedTeamName.value = newTeam
+          loadTeamPlayers()
+        }
+      }
+    )
+
+    const shareDataset = async () => {
+      if (!currentDatasetId.value) return
+
+      const shareUrl = `${window.location.origin}/team-view/${currentDatasetId.value}`
+
+      try {
+        await navigator.clipboard.writeText(shareUrl)
+        quasarInstance.notify({
+          message: 'Link copied to clipboard!',
+          color: 'positive',
+          icon: 'check_circle',
+          position: 'top',
+          timeout: 2000
+        })
+      } catch (err) {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea')
+        textArea.value = shareUrl
+        document.body.appendChild(textArea)
+        textArea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textArea)
+
+        quasarInstance.notify({
+          message: 'Link copied to clipboard!',
+          color: 'positive',
+          icon: 'check_circle',
+          position: 'top',
+          timeout: 2000
+        })
+      }
+    }
+
+    return {
+      allPlayersData,
+      selectedTeamName,
+      teamOptions,
+      filterTeamOptions,
+      loadTeamPlayers,
+      clearTeamSelection,
+      teamPlayers,
+      loadingTeam,
+      pageLoading,
+      pageLoadingError,
+      selectedFormationKey,
+      formationOptions,
+      currentFormationLayout,
+      squadComposition,
+      bestTeamPlayersForPitch,
+      bestTeamAverageOverall,
+      currentTeamSectionRatings,
+      calculateSectionRatings,
+      calculationMessage,
+      calculationMessageClass,
+      playerForDetailView,
+      showPlayerDetailDialog,
+      handlePlayerSelectedFromTeam,
+      teamIsGoalkeeperView,
+      teamDivision,
+      getStarRating,
+      getStarClass,
+      getOverallClass,
+      getSlotDisplayName,
+      handlePlayerMovedOnPitch,
+      quasarInstance,
+      router,
+      detectedCurrencySymbol, // Expose currency symbol
+      currentDatasetId,
+      shareDataset
+    }
+  }
+}
 </script>
 
 <style lang="scss" scoped>

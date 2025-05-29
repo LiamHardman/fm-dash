@@ -506,1352 +506,1274 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, watch } from "vue";
-import { useQuasar } from "quasar";
-import { useRouter, useRoute } from "vue-router";
-import { usePlayerStore } from "../stores/playerStore";
-import PlayerDataTable from "../components/PlayerDataTable.vue";
-import PlayerDetailDialog from "../components/PlayerDetailDialog.vue";
-import PitchDisplay from "../components/PitchDisplay.vue";
-import { formations, getFormationLayout } from "../utils/formations";
-import { debounce } from "../utils/debounce";
-import { formationCache } from "../utils/formationCache";
+import { useQuasar } from 'quasar'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import PitchDisplay from '../components/PitchDisplay.vue'
+import PlayerDataTable from '../components/PlayerDataTable.vue'
+import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
+import { usePlayerStore } from '../stores/playerStore'
+import { debounce } from '../utils/debounce'
+import { formationCache } from '../utils/formationCache'
+import { formations, getFormationLayout } from '../utils/formations'
 
 const fmSlotRoleMatcher = {
-    GK: ["Goalkeeper"],
-    "D (R)": ["Defender (Right)", "Right Back"],
-    "D (L)": ["Defender (Left)", "Left Back"],
-    "D (C)": ["Defender (Centre)", "Centre Back"],
-    "WB (R)": ["Wing-Back (Right)", "Right Wing-Back"],
-    "WB (L)": ["Wing-Back (Left)", "Left Wing-Back"],
-    "DM (C)": ["Defensive Midfielder (Centre)", "Centre Defensive Midfielder"],
-    "M (R)": ["Midfielder (Right)", "Right Midfielder"],
-    "M (L)": ["Midfielder (Left)", "Left Midfielder"],
-    "M (C)": ["Midfielder (Centre)", "Centre Midfielder"],
-    "AM (R)": [
-        "Attacking Midfielder (Right)",
-        "Right Attacking Midfielder",
-        "Winger (Right)",
-    ],
-    "AM (L)": [
-        "Attacking Midfielder (Left)",
-        "Left Attacking Midfielder",
-        "Winger (Left)",
-    ],
-    "AM (C)": ["Attacking Midfielder (Centre)", "Centre Attacking Midfielder"],
-    "ST (C)": ["Striker (Centre)", "Striker"],
-};
+  GK: ['Goalkeeper'],
+  'D (R)': ['Defender (Right)', 'Right Back'],
+  'D (L)': ['Defender (Left)', 'Left Back'],
+  'D (C)': ['Defender (Centre)', 'Centre Back'],
+  'WB (R)': ['Wing-Back (Right)', 'Right Wing-Back'],
+  'WB (L)': ['Wing-Back (Left)', 'Left Wing-Back'],
+  'DM (C)': ['Defensive Midfielder (Centre)', 'Centre Defensive Midfielder'],
+  'M (R)': ['Midfielder (Right)', 'Right Midfielder'],
+  'M (L)': ['Midfielder (Left)', 'Left Midfielder'],
+  'M (C)': ['Midfielder (Centre)', 'Centre Midfielder'],
+  'AM (R)': ['Attacking Midfielder (Right)', 'Right Attacking Midfielder', 'Winger (Right)'],
+  'AM (L)': ['Attacking Midfielder (Left)', 'Left Attacking Midfielder', 'Winger (Left)'],
+  'AM (C)': ['Attacking Midfielder (Centre)', 'Centre Attacking Midfielder'],
+  'ST (C)': ['Striker (Centre)', 'Striker']
+}
 
 export default {
-    name: "NationsPage",
-    components: { PlayerDataTable, PlayerDetailDialog, PitchDisplay },
-    setup() {
-        const quasarInstance = useQuasar();
-        const router = useRouter();
-        const route = useRoute();
-        const playerStore = usePlayerStore();
+  name: 'NationsPage',
+  components: { PlayerDataTable, PlayerDetailDialog, PitchDisplay },
+  setup() {
+    const quasarInstance = useQuasar()
+    const router = useRouter()
+    const route = useRoute()
+    const playerStore = usePlayerStore()
 
-        const selectedNationName = ref(null);
-        const nationOptions = ref([]);
-        const allNationNamesCache = ref([]);
-        const nationPlayers = ref([]);
-        const loadingNation = ref(false);
-        const pageLoading = ref(true);
-        const pageLoadingError = ref("");
-        
-        // Computed properties from store
-        const allPlayersData = computed(() => playerStore.allPlayers);
-        const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol);
-        const currentDatasetId = computed(() => playerStore.currentDatasetId);
+    const selectedNationName = ref(null)
+    const nationOptions = ref([])
+    const allNationNamesCache = ref([])
+    const nationPlayers = ref([])
+    const loadingNation = ref(false)
+    const pageLoading = ref(true)
+    const pageLoadingError = ref('')
 
-        const selectedFormationKey = ref(null);
+    // Computed properties from store
+    const allPlayersData = computed(() => playerStore.allPlayers)
+    const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol)
+    const currentDatasetId = computed(() => playerStore.currentDatasetId)
 
-        const squadComposition = ref({});
+    const selectedFormationKey = ref(null)
 
-        const bestNationAverageOverall = ref(null);
-        const calculationMessage = ref("");
-        const calculationMessageClass = ref("");
+    const squadComposition = ref({})
 
-        const playerForDetailView = ref(null);
-        const showPlayerDetailDialog = ref(false);
+    const bestNationAverageOverall = ref(null)
+    const calculationMessage = ref('')
+    const calculationMessageClass = ref('')
 
-        // Map position names to their short codes, more specific for each side
-        const fmMatcherToRoleKeyPrefix = {
-            GOALKEEPER: "GK",
-            SWEEPER: "DC",
-            "DEFENDER (RIGHT)": "DR",
-            "RIGHT BACK": "DR",
-            "DEFENDER (LEFT)": "DL",
-            "LEFT BACK": "DL",
-            "DEFENDER (CENTRE)": "DC",
-            "CENTRE BACK": "DC",
-            "WING-BACK (RIGHT)": "WBR",
-            "RIGHT WING-BACK": "WBR",
-            "WING-BACK (LEFT)": "WBL",
-            "LEFT WING-BACK": "WBL",
-            "DEFENSIVE MIDFIELDER (CENTRE)": "DM",
-            "CENTRE DEFENSIVE MIDFIELDER": "DM",
-            "MIDFIELDER (RIGHT)": "MR",
-            "RIGHT MIDFIELDER": "MR",
-            "MIDFIELDER (LEFT)": "ML",
-            "LEFT MIDFIELDER": "ML",
-            "MIDFIELDER (CENTRE)": "MC",
-            "CENTRE MIDFIELDER": "MC",
-            "ATTACKING MIDFIELDER (RIGHT)": "AMR",
-            "RIGHT ATTACKING MIDFIELDER": "AMR",
-            "WINGER (RIGHT)": "AMR",
-            "ATTACKING MIDFIELDER (LEFT)": "AML",
-            "LEFT ATTACKING MIDFIELDER": "AML",
-            "WINGER (LEFT)": "AML",
-            "ATTACKING MIDFIELDER (CENTRE)": "AMC",
-            "CENTRE ATTACKING MIDFIELDER": "AMC",
-            "STRIKER (CENTRE)": "ST",
-            STRIKER: "ST",
-        };
-        
-        const positionSideMap = {
-            "D (R)": ["DR"],
-            "D (L)": ["DL"],
-            "D (C)": ["DC"],
-            "WB (R)": ["WBR"],
-            "WB (L)": ["WBL"],
-            "DM (C)": ["DM"],
-            "M (R)": ["MR"],
-            "M (L)": ["ML"],
-            "M (C)": ["MC"],
-            "AM (R)": ["AMR"],
-            "AM (L)": ["AML"],
-            "AM (C)": ["AMC"],
-            "ST (C)": ["ST"],
-            "GK": ["GK"]
-        };
-        
-        const fallbackPositionMap = {
-            "D (R)": ["DR", "WBR", "MR"],
-            "D (L)": ["DL", "WBL", "ML"],
-            "D (C)": ["DC", "DM"],
-            "WB (R)": ["WBR", "DR", "MR"],
-            "WB (L)": ["WBL", "DL", "ML"],
-            "DM (C)": ["DM", "DC", "MC"],
-            "M (R)": ["MR", "WBR", "AMR"],
-            "M (L)": ["ML", "WBL", "AML"],
-            "M (C)": ["MC", "DM"],
-            "AM (R)": ["AMR", "MR"],
-            "AM (L)": ["AML", "ML"],
-            "AM (C)": ["AMC", "MC"],
-            "ST (C)": ["ST", "AMC"],
-            "GK": ["GK"]
-        };
+    const playerForDetailView = ref(null)
+    const showPlayerDetailDialog = ref(false)
 
-        // Reactive refs for pagination
-        const showAllNations = ref(false);
-        const INITIAL_NATIONS_LIMIT = 50;
+    // Map position names to their short codes, more specific for each side
+    const fmMatcherToRoleKeyPrefix = {
+      GOALKEEPER: 'GK',
+      SWEEPER: 'DC',
+      'DEFENDER (RIGHT)': 'DR',
+      'RIGHT BACK': 'DR',
+      'DEFENDER (LEFT)': 'DL',
+      'LEFT BACK': 'DL',
+      'DEFENDER (CENTRE)': 'DC',
+      'CENTRE BACK': 'DC',
+      'WING-BACK (RIGHT)': 'WBR',
+      'RIGHT WING-BACK': 'WBR',
+      'WING-BACK (LEFT)': 'WBL',
+      'LEFT WING-BACK': 'WBL',
+      'DEFENSIVE MIDFIELDER (CENTRE)': 'DM',
+      'CENTRE DEFENSIVE MIDFIELDER': 'DM',
+      'MIDFIELDER (RIGHT)': 'MR',
+      'RIGHT MIDFIELDER': 'MR',
+      'MIDFIELDER (LEFT)': 'ML',
+      'LEFT MIDFIELDER': 'ML',
+      'MIDFIELDER (CENTRE)': 'MC',
+      'CENTRE MIDFIELDER': 'MC',
+      'ATTACKING MIDFIELDER (RIGHT)': 'AMR',
+      'RIGHT ATTACKING MIDFIELDER': 'AMR',
+      'WINGER (RIGHT)': 'AMR',
+      'ATTACKING MIDFIELDER (LEFT)': 'AML',
+      'LEFT ATTACKING MIDFIELDER': 'AML',
+      'WINGER (LEFT)': 'AML',
+      'ATTACKING MIDFIELDER (CENTRE)': 'AMC',
+      'CENTRE ATTACKING MIDFIELDER': 'AMC',
+      'STRIKER (CENTRE)': 'ST',
+      STRIKER: 'ST'
+    }
 
-        const nationsWithRatings = computed(() => {
-            if (!allPlayersData.value || allPlayersData.value.length === 0) return [];
-            
-            const nationsMap = new Map();
-            
-            // First pass: collect all players by nationality
-            allPlayersData.value.forEach(player => {
-                if (player.nationality && player.nationality.trim() !== "") {
-                    const nationality = player.nationality;
-                    
-                    if (!nationsMap.has(nationality)) {
-                        nationsMap.set(nationality, {
-                            name: nationality,
-                            nationality_iso: player.nationality_iso || null,
-                            playerCount: 0,
-                            bestFormationOverall: 0,
-                            players: []
-                        });
-                    }
-                    
-                    const nation = nationsMap.get(nationality);
-                    nation.playerCount++;
-                    nation.players.push(player);
-                    
-                    // Set nationality_iso if we don't have it yet
-                    if (!nation.nationality_iso && player.nationality_iso) {
-                        nation.nationality_iso = player.nationality_iso;
-                    }
+    const positionSideMap = {
+      'D (R)': ['DR'],
+      'D (L)': ['DL'],
+      'D (C)': ['DC'],
+      'WB (R)': ['WBR'],
+      'WB (L)': ['WBL'],
+      'DM (C)': ['DM'],
+      'M (R)': ['MR'],
+      'M (L)': ['ML'],
+      'M (C)': ['MC'],
+      'AM (R)': ['AMR'],
+      'AM (L)': ['AML'],
+      'AM (C)': ['AMC'],
+      'ST (C)': ['ST'],
+      GK: ['GK']
+    }
+
+    const fallbackPositionMap = {
+      'D (R)': ['DR', 'WBR', 'MR'],
+      'D (L)': ['DL', 'WBL', 'ML'],
+      'D (C)': ['DC', 'DM'],
+      'WB (R)': ['WBR', 'DR', 'MR'],
+      'WB (L)': ['WBL', 'DL', 'ML'],
+      'DM (C)': ['DM', 'DC', 'MC'],
+      'M (R)': ['MR', 'WBR', 'AMR'],
+      'M (L)': ['ML', 'WBL', 'AML'],
+      'M (C)': ['MC', 'DM'],
+      'AM (R)': ['AMR', 'MR'],
+      'AM (L)': ['AML', 'ML'],
+      'AM (C)': ['AMC', 'MC'],
+      'ST (C)': ['ST', 'AMC'],
+      GK: ['GK']
+    }
+
+    // Reactive refs for pagination
+    const showAllNations = ref(false)
+    const INITIAL_NATIONS_LIMIT = 50
+
+    const nationsWithRatings = computed(() => {
+      if (!allPlayersData.value || allPlayersData.value.length === 0) return []
+
+      const nationsMap = new Map()
+
+      // First pass: collect all players by nationality
+      allPlayersData.value.forEach(player => {
+        if (player.nationality && player.nationality.trim() !== '') {
+          const nationality = player.nationality
+
+          if (!nationsMap.has(nationality)) {
+            nationsMap.set(nationality, {
+              name: nationality,
+              nationality_iso: player.nationality_iso || null,
+              playerCount: 0,
+              bestFormationOverall: 0,
+              players: []
+            })
+          }
+
+          const nation = nationsMap.get(nationality)
+          nation.playerCount++
+          nation.players.push(player)
+
+          // Set nationality_iso if we don't have it yet
+          if (!nation.nationality_iso && player.nationality_iso) {
+            nation.nationality_iso = player.nationality_iso
+          }
+        }
+      })
+
+      // Second pass: get top players per position for each nation and calculate best formation overall
+      const nationsArray = Array.from(nationsMap.values())
+      nationsArray.forEach(nation => {
+        // Get top 10 players per position to optimize performance
+        const topPlayersByPosition = {}
+        const allPositions = [
+          'GK',
+          'DR',
+          'DL',
+          'DC',
+          'WBR',
+          'WBL',
+          'DM',
+          'MR',
+          'ML',
+          'MC',
+          'AMR',
+          'AML',
+          'AMC',
+          'ST'
+        ]
+
+        allPositions.forEach(position => {
+          const playersForPosition = nation.players.filter(player => {
+            const playerPositions = player.shortPositions || []
+            return playerPositions.includes(position)
+          })
+
+          // Sort by Overall and take top 10
+          playersForPosition.sort((a, b) => (b.Overall || 0) - (a.Overall || 0))
+          topPlayersByPosition[position] = playersForPosition.slice(0, 10)
+        })
+
+        let bestOverall = 0
+        let hasFullSquad = false
+        let bestSectionRatings = { attRating: 0, midRating: 0, defRating: 0 }
+
+        // Test each formation to find the best average overall for this nation
+        Object.keys(formations).forEach(formationKey => {
+          const formationLayoutForCalc = getFormationLayout(formationKey)
+          if (!formationLayoutForCalc) return
+
+          const formationSlots = formationLayoutForCalc.flatMap(row => row.positions)
+          const tempSquadComposition = {}
+
+          formationSlots.forEach(slot => {
+            tempSquadComposition[slot.id] = []
+          })
+
+          // Calculate player assignments for this formation using only top players
+          const allPotentialPlayerAssignments = []
+          formationSlots.forEach(slot => {
+            const slotPositions = positionSideMap[slot.role.toUpperCase()] || []
+            const fallbackPositions = fallbackPositionMap[slot.role.toUpperCase()] || []
+
+            // Get relevant players for this slot (exact matches first, then fallbacks)
+            let relevantPlayers = []
+
+            // Add exact position matches first
+            slotPositions.forEach(position => {
+              if (topPlayersByPosition[position]) {
+                relevantPlayers = [...relevantPlayers, ...topPlayersByPosition[position]]
+              }
+            })
+
+            // Add fallback positions if needed
+            fallbackPositions.forEach(position => {
+              if (topPlayersByPosition[position]) {
+                topPlayersByPosition[position].forEach(player => {
+                  // Only add if not already included from exact matches
+                  if (!relevantPlayers.some(p => p.name === player.name)) {
+                    relevantPlayers.push(player)
+                  }
+                })
+              }
+            })
+
+            relevantPlayers.forEach(player => {
+              const overallInRole = getPlayerOverallForRole(player, slot.role)
+
+              if (overallInRole >= MIN_SUITABILITY_THRESHOLD) {
+                const playerPositions = player.shortPositions || []
+                const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos))
+
+                const assignment = {
+                  player,
+                  slotId: slot.id,
+                  slotRole: slot.role,
+                  overallInRole: overallInRole,
+                  sortScore: overallInRole,
+                  exactMatch: isExactMatch
                 }
-            });
-            
-            // Second pass: get top players per position for each nation and calculate best formation overall
-            const nationsArray = Array.from(nationsMap.values());
-            nationsArray.forEach(nation => {
-                // Get top 10 players per position to optimize performance
-                const topPlayersByPosition = {};
-                const allPositions = ['GK', 'DR', 'DL', 'DC', 'WBR', 'WBL', 'DM', 'MR', 'ML', 'MC', 'AMR', 'AML', 'AMC', 'ST'];
-                
-                allPositions.forEach(position => {
-                    const playersForPosition = nation.players.filter(player => {
-                        const playerPositions = player.shortPositions || [];
-                        return playerPositions.includes(position);
-                    });
-                    
-                    // Sort by Overall and take top 10
-                    playersForPosition.sort((a, b) => (b.Overall || 0) - (a.Overall || 0));
-                    topPlayersByPosition[position] = playersForPosition.slice(0, 10);
-                });
-                
-                let bestOverall = 0;
-                let hasFullSquad = false;
-                let bestSectionRatings = { attRating: 0, midRating: 0, defRating: 0 };
-                
-                // Test each formation to find the best average overall for this nation
-                Object.keys(formations).forEach(formationKey => {
-                    const formationLayoutForCalc = getFormationLayout(formationKey);
-                    if (!formationLayoutForCalc) return;
 
-                    const formationSlots = formationLayoutForCalc.flatMap(row => row.positions);
-                    const tempSquadComposition = {};
-                    
-                    formationSlots.forEach(slot => {
-                        tempSquadComposition[slot.id] = [];
-                    });
-
-                    // Calculate player assignments for this formation using only top players
-                    const allPotentialPlayerAssignments = [];
-                    formationSlots.forEach(slot => {
-                        const slotPositions = positionSideMap[slot.role.toUpperCase()] || [];
-                        const fallbackPositions = fallbackPositionMap[slot.role.toUpperCase()] || [];
-                        
-                        // Get relevant players for this slot (exact matches first, then fallbacks)
-                        let relevantPlayers = [];
-                        
-                        // Add exact position matches first
-                        slotPositions.forEach(position => {
-                            if (topPlayersByPosition[position]) {
-                                relevantPlayers = [...relevantPlayers, ...topPlayersByPosition[position]];
-                            }
-                        });
-                        
-                        // Add fallback positions if needed
-                        fallbackPositions.forEach(position => {
-                            if (topPlayersByPosition[position]) {
-                                topPlayersByPosition[position].forEach(player => {
-                                    // Only add if not already included from exact matches
-                                    if (!relevantPlayers.some(p => p.name === player.name)) {
-                                        relevantPlayers.push(player);
-                                    }
-                                });
-                            }
-                        });
-                        
-                        relevantPlayers.forEach(player => {
-                            const overallInRole = getPlayerOverallForRole(player, slot.role);
-                            
-                            if (overallInRole >= MIN_SUITABILITY_THRESHOLD) {
-                                const playerPositions = player.shortPositions || [];
-                                const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos));
-                                
-                                const assignment = {
-                                    player,
-                                    slotId: slot.id,
-                                    slotRole: slot.role,
-                                    overallInRole: overallInRole,
-                                    sortScore: overallInRole,
-                                    exactMatch: isExactMatch
-                                };
-                                
-                                if (isExactMatch) {
-                                    assignment.sortScore += 10000;
-                                } else {
-                                    assignment.sortScore -= 5000;
-                                }
-                                
-                                allPotentialPlayerAssignments.push(assignment);
-                            }
-                        });
-                    });
-
-                    allPotentialPlayerAssignments.sort((a, b) => b.sortScore - a.sortScore);
-                    const assignedPlayersToSlots = new Set();
-
-                    // Fill starting XI for this formation
-                    formationSlots.forEach(slot => {
-                        for (const assignment of allPotentialPlayerAssignments) {
-                            if (
-                                assignment.slotId === slot.id &&
-                                !assignedPlayersToSlots.has(assignment.player.name)
-                            ) {
-                                tempSquadComposition[slot.id].push({
-                                    player: assignment.player,
-                                    overallInRole: assignment.overallInRole,
-                                    exactMatch: assignment.exactMatch
-                                });
-                                assignedPlayersToSlots.add(assignment.player.name);
-                                break;
-                            }
-                        }
-                    });
-
-                    // Check if we have a full squad (player in every position)
-                    const filledPositions = Object.values(tempSquadComposition).filter(slotPlayers => slotPlayers.length > 0).length;
-                    const isFullSquad = filledPositions === formationSlots.length;
-                    
-                    if (isFullSquad) {
-                        hasFullSquad = true;
-                        
-                        // Calculate average overall for this formation
-                        let sumOfStartersOverall = 0;
-                        let startersCount = 0;
-                        Object.values(tempSquadComposition).forEach(slotPlayers => {
-                            if (slotPlayers && slotPlayers.length > 0) {
-                                sumOfStartersOverall += slotPlayers[0].overallInRole;
-                                startersCount++;
-                            }
-                        });
-
-                        if (startersCount > 0) {
-                            const averageOverall = Math.round(sumOfStartersOverall / startersCount);
-                            if (averageOverall > bestOverall) {
-                                bestOverall = averageOverall;
-                                // Calculate section ratings for this formation
-                                bestSectionRatings = calculateSectionRatings(tempSquadComposition, formationLayoutForCalc);
-                            }
-                        }
-                    }
-                });
-                
-                // Only set overall if nation has at least one full squad possible
-                nation.bestFormationOverall = hasFullSquad ? bestOverall : 0;
-                nation.attRating = hasFullSquad ? bestSectionRatings.attRating : 0;
-                nation.midRating = hasFullSquad ? bestSectionRatings.midRating : 0;
-                nation.defRating = hasFullSquad ? bestSectionRatings.defRating : 0;
-            });
-            
-            const sortedNations = nationsArray.sort((a, b) => b.bestFormationOverall - a.bestFormationOverall);
-            
-            // Limit initial rendering for performance
-            if (!showAllNations.value && sortedNations.length > INITIAL_NATIONS_LIMIT) {
-                return sortedNations.slice(0, INITIAL_NATIONS_LIMIT);
-            }
-            
-            return sortedNations;
-        });
-
-        const fetchPlayersAndCurrency = async (datasetId) => {
-            pageLoading.value = true;
-            pageLoadingError.value = "";
-            try {
-                await playerStore.fetchPlayersByDatasetId(datasetId);
-            } catch (err) {
-                pageLoadingError.value = `Failed to load player data: ${err.message || "Unknown server error"}. Please try uploading again.`;
-            } finally {
-                pageLoading.value = false;
-            }
-        };
-
-        onMounted(async () => {
-            const datasetIdFromQuery = route.query.datasetId;
-            const datasetIdFromRoute = route.params.datasetId;
-            const nationFromQuery = route.query.nation;
-            let finalDatasetId =
-                datasetIdFromRoute ||
-                datasetIdFromQuery ||
-                sessionStorage.getItem("currentDatasetId");
-
-            if (finalDatasetId) {
-                if (
-                    datasetIdFromQuery &&
-                    datasetIdFromQuery !==
-                        sessionStorage.getItem("currentDatasetId")
-                ) {
-                    sessionStorage.setItem(
-                        "currentDatasetId",
-                        datasetIdFromQuery,
-                    );
-                } else if (
-                    !datasetIdFromQuery &&
-                    sessionStorage.getItem("currentDatasetId")
-                ) {
-                    router.replace({ query: { datasetId: finalDatasetId } });
-                }
-                await fetchPlayersAndCurrency(finalDatasetId);
-            } else {
-                pageLoadingError.value =
-                    "No player dataset ID found. Please upload a file on the main page.";
-                pageLoading.value = false;
-            }
-
-            if (!pageLoadingError.value && allPlayersData.value.length > 0) {
-                populateNationFilterOptions();
-                
-                if (nationFromQuery && nationFromQuery.trim() !== '') {
-                    selectedNationName.value = nationFromQuery;
-                    loadNationPlayers();
-                } else if (selectedNationName.value) {
-                    loadNationPlayers();
-                }
-            }
-        });
-
-        const populateNationFilterOptions = () => {
-            if (!allPlayersData.value || allPlayersData.value.length === 0) {
-                allNationNamesCache.value = [];
-                nationOptions.value = [];
-                return;
-            }
-            const uniqueNations = new Set();
-            allPlayersData.value.forEach((player) => {
-                if (player.nationality && player.nationality.trim() !== "") {
-                    uniqueNations.add(player.nationality);
-                }
-            });
-            allNationNamesCache.value = Array.from(uniqueNations).sort();
-            nationOptions.value = allNationNamesCache.value;
-        };
-
-        const filterNationOptions = (val, update) => {
-            if (val === "") {
-                update(() => {
-                    nationOptions.value = allNationNamesCache.value;
-                });
-                return;
-            }
-            update(() => {
-                const needle = val.toLowerCase();
-                nationOptions.value = allNationNamesCache.value.filter(
-                    (nation) => nation.toLowerCase().indexOf(needle) > -1,
-                );
-            });
-        };
-
-        const selectNation = (nationName) => {
-            selectedNationName.value = nationName;
-            loadNationPlayers();
-        };
-
-        const loadNationPlayers = () => {
-            if (!selectedNationName.value) {
-                nationPlayers.value = [];
-                squadComposition.value = {};
-                bestNationAverageOverall.value = null;
-                calculationMessage.value = "";
-                selectedFormationKey.value = null;
-                return;
-            }
-            loadingNation.value = true;
-            setTimeout(() => {
-                if (Array.isArray(allPlayersData.value)) {
-                    nationPlayers.value = allPlayersData.value.filter(
-                        (p) => p.nationality === selectedNationName.value,
-                    );
+                if (isExactMatch) {
+                  assignment.sortScore += 10000
                 } else {
-                    nationPlayers.value = [];
+                  assignment.sortScore -= 5000
                 }
-                
-                if (nationPlayers.value.length > 0) {
-                    const bestFormation = calculateBestFormationForNation();
-                    if (bestFormation) {
-                        selectedFormationKey.value = bestFormation;
-                        calculationMessage.value = `Auto-selected best formation: ${formations[bestFormation].name}. Calculating Best XI...`;
-                        calculationMessageClass.value = quasarInstance.dark.isActive
-                            ? "bg-info text-white"
-                            : "bg-blue-2 text-primary";
-                    } else {
-                        selectedFormationKey.value = null;
-                        squadComposition.value = {};
-                        bestNationAverageOverall.value = null;
-                        calculationMessage.value = "No suitable formation found for this nation.";
-                        calculationMessageClass.value = quasarInstance.dark.isActive
-                            ? "text-grey-5"
-                            : "text-grey-7";
-                    }
-                } else {
-                    selectedFormationKey.value = null;
-                    squadComposition.value = {};
-                    bestNationAverageOverall.value = null;
-                    calculationMessage.value = "No players found for this nation.";
-                    calculationMessageClass.value = quasarInstance.dark.isActive
-                        ? "text-grey-5"
-                        : "text-grey-7";
-                }
-                
-                loadingNation.value = false;
-            }, 200);
-        };
 
-        const clearNationSelection = () => {
-            selectedNationName.value = null;
-            nationPlayers.value = [];
-            selectedFormationKey.value = null;
-            squadComposition.value = {};
-            bestNationAverageOverall.value = null;
-            calculationMessage.value = "";
-        };
+                allPotentialPlayerAssignments.push(assignment)
+              }
+            })
+          })
 
-        const formationOptions = computed(() => {
-            return Object.keys(formations).map((key) => ({
-                label: formations[key].name,
-                value: key,
-            }));
-        });
+          allPotentialPlayerAssignments.sort((a, b) => b.sortScore - a.sortScore)
+          const assignedPlayersToSlots = new Set()
 
-        const currentFormationLayout = computed(() => {
-            if (!selectedFormationKey.value) {
-                return [];
+          // Fill starting XI for this formation
+          formationSlots.forEach(slot => {
+            for (const assignment of allPotentialPlayerAssignments) {
+              if (
+                assignment.slotId === slot.id &&
+                !assignedPlayersToSlots.has(assignment.player.name)
+              ) {
+                tempSquadComposition[slot.id].push({
+                  player: assignment.player,
+                  overallInRole: assignment.overallInRole,
+                  exactMatch: assignment.exactMatch
+                })
+                assignedPlayersToSlots.add(assignment.player.name)
+                break
+              }
             }
-            return getFormationLayout(selectedFormationKey.value) || [];
-        });
+          })
 
-        const bestNationPlayersForPitch = computed(() => {
-            const starters = {};
-            if (
-                !squadComposition.value ||
-                Object.keys(squadComposition.value).length === 0
-            ) {
-                return starters;
-            }
-            for (const slotId in squadComposition.value) {
-                if (
-                    squadComposition.value[slotId] &&
-                    squadComposition.value[slotId].length > 0
-                ) {
-                    const starterEntry = squadComposition.value[slotId][0];
-                    starters[slotId] = {
-                        ...starterEntry.player,
-                        Overall: starterEntry.overallInRole,
-                        exactPositionMatch: starterEntry.exactMatch
-                    };
-                } else {
-                    starters[slotId] = null;
-                }
-            }
-            return starters;
-        });
+          // Check if we have a full squad (player in every position)
+          const filledPositions = Object.values(tempSquadComposition).filter(
+            slotPlayers => slotPlayers.length > 0
+          ).length
+          const isFullSquad = filledPositions === formationSlots.length
 
-        const currentNationSectionRatings = computed(() => {
-            if (!squadComposition.value || !currentFormationLayout.value) {
-                return { attRating: 0, midRating: 0, defRating: 0 };
-            }
-            return calculateSectionRatings(squadComposition.value, currentFormationLayout.value);
-        });
+          if (isFullSquad) {
+            hasFullSquad = true
 
-        const nationIsGoalkeeperView = computed(() => {
-            return nationPlayers.value.some((p) =>
-                p.positionGroups?.includes("Goalkeepers"),
-            );
-        });
-
-        const handlePlayerSelectedFromNation = (player) => {
-            playerForDetailView.value = player;
-            showPlayerDetailDialog.value = true;
-        };
-
-        const getOverallClass = (overall) => {
-            if (overall === null || overall === undefined || overall === 0) return "rating-na";
-            const numericOverall = Number(overall);
-            if (isNaN(numericOverall)) return "rating-na";
-
-            if (numericOverall >= 90) return "rating-tier-6";
-            if (numericOverall >= 80) return "rating-tier-5";
-            if (numericOverall >= 70) return "rating-tier-4";
-            if (numericOverall >= 55) return "rating-tier-3";
-            if (numericOverall >= 40) return "rating-tier-2";
-            return "rating-tier-1";
-        };
-
-        const getStarClass = (overall, starPosition) => {
-            if (!overall || overall === 0) return "star-empty";
-            
-            const starRating = getStarRating(overall);
-            
-            if (starPosition <= Math.floor(starRating)) {
-                return "star-full";
-            } else if (starPosition === Math.floor(starRating) + 1 && starRating % 1 === 0.5) {
-                return "star-half";
-            } else {
-                return "star-empty";
-            }
-        };
-
-        const getStarRating = (overall) => {
-            if (!overall || overall === 0) return 0;
-            
-            if (overall >= 85) return 5;
-            if (overall >= 82) return 4.5;
-            if (overall >= 78) return 4;
-            if (overall >= 74) return 3.5;
-            if (overall >= 70) return 3;
-            if (overall >= 67) return 2.5;
-            if (overall >= 64) return 2;
-            if (overall >= 60) return 1.5;
-            if (overall >= 55) return 1;
-            if (overall >= 50) return 0.5;
-            return 0;
-        };
-
-        const calculateSectionRatings = (squadComposition, formationLayout) => {
-            if (!squadComposition || !formationLayout) {
-                return { attRating: 0, midRating: 0, defRating: 0 };
-            }
-
-            const formationSlots = formationLayout.flatMap(row => row.positions);
-            
-            // Define position categories
-            const defensivePositions = ['GK', 'D (R)', 'D (L)', 'D (C)', 'WB (R)', 'WB (L)'];
-            const midfielderPositions = ['DM (C)', 'M (R)', 'M (L)', 'M (C)', 'AM (C)'];
-            const attackingPositions = ['AM (R)', 'AM (L)', 'ST (C)'];
-            
-            let attSum = 0, attCount = 0;
-            let midSum = 0, midCount = 0;
-            let defSum = 0, defCount = 0;
-            
-            formationSlots.forEach(slot => {
-                const slotPlayers = squadComposition[slot.id];
-                if (slotPlayers && slotPlayers.length > 0) {
-                    const starter = slotPlayers[0];
-                    const rating = starter.overallInRole;
-                    
-                    if (attackingPositions.includes(slot.role)) {
-                        attSum += rating;
-                        attCount++;
-                    } else if (midfielderPositions.includes(slot.role)) {
-                        midSum += rating;
-                        midCount++;
-                    } else if (defensivePositions.includes(slot.role)) {
-                        defSum += rating;
-                        defCount++;
-                    }
-                }
-            });
-            
-            return {
-                attRating: attCount > 0 ? Math.round(attSum / attCount) : 0,
-                midRating: midCount > 0 ? Math.round(midSum / midCount) : 0,
-                defRating: defCount > 0 ? Math.round(defSum / defCount) : 0
-            };
-        };
-
-        const getPlayerOverallForRole = (player, slotFormationRole) => {
-            if (!player || !slotFormationRole) return 0;
-
-            let bestScoreForRole = 0;
-            
-            if (!player.roleSpecificOveralls) {
-                return 0;
-            }
-            
-            const hasRoleOveralls = Array.isArray(player.roleSpecificOveralls) 
-                ? player.roleSpecificOveralls.length > 0
-                : Object.keys(player.roleSpecificOveralls).length > 0;
-            
-            if (!hasRoleOveralls) {
-                return 0;
-            }
-            
-            const upperSlotRoleOriginal = slotFormationRole.toUpperCase();
-            const requiredPositions = positionSideMap[upperSlotRoleOriginal] || [];
-            
-            if (player.shortPositions && player.shortPositions.length > 0) {
-                const exactPositionMatches = player.shortPositions.filter(pos => 
-                    requiredPositions.includes(pos)
-                );
-                
-                if (exactPositionMatches.length > 0) {
-                    if (Array.isArray(player.roleSpecificOveralls)) {
-                        player.roleSpecificOveralls.forEach(rso => {
-                            const rsoBasePosition = rso.roleName
-                                .split(" - ")[0]
-                                .trim();
-                            
-                            if (exactPositionMatches.includes(rsoBasePosition)) {
-                                bestScoreForRole = Math.max(
-                                    bestScoreForRole,
-                                    rso.score,
-                                );
-                            }
-                        });
-                    } else {
-                        Object.entries(player.roleSpecificOveralls).forEach(([roleName, score]) => {
-                            const rsoBasePosition = roleName
-                                .split(" - ")[0]
-                                .trim();
-                            
-                            if (exactPositionMatches.includes(rsoBasePosition)) {
-                                bestScoreForRole = Math.max(
-                                    bestScoreForRole,
-                                    score,
-                                );
-                            }
-                        });
-                    }
-                    
-                    if (bestScoreForRole === 0) {
-                        bestScoreForRole = MIN_SUITABILITY_THRESHOLD;
-                    }
-                }
-            }
-            
-            if (bestScoreForRole > 0) {
-                return bestScoreForRole;
-            }
-            
-            const fallbackPositions = fallbackPositionMap[upperSlotRoleOriginal] || [];
-            
-            if (player.shortPositions && player.shortPositions.length > 0) {
-                const fallbackMatches = player.shortPositions.filter(pos => 
-                    fallbackPositions.includes(pos)
-                );
-                
-                if (fallbackMatches.length > 0) {
-                    if (Array.isArray(player.roleSpecificOveralls)) {
-                        player.roleSpecificOveralls.forEach(rso => {
-                            const rsoBasePosition = rso.roleName
-                                .split(" - ")[0]
-                                .trim();
-                            
-                            if (fallbackMatches.includes(rsoBasePosition)) {
-                                bestScoreForRole = Math.max(
-                                    bestScoreForRole,
-                                    rso.score,
-                                );
-                            }
-                        });
-                    } else {
-                        Object.entries(player.roleSpecificOveralls).forEach(([roleName, score]) => {
-                            const rsoBasePosition = roleName
-                                .split(" - ")[0]
-                                .trim();
-                            
-                            if (fallbackMatches.includes(rsoBasePosition)) {
-                                bestScoreForRole = Math.max(
-                                    bestScoreForRole,
-                                    score,
-                                );
-                            }
-                        });
-                    }
-                    
-                    if (bestScoreForRole === 0) {
-                        bestScoreForRole = MIN_SUITABILITY_THRESHOLD - 10;
-                    }
-                }
-            }
-            
-            if (bestScoreForRole === 0) {
-                const upperSlotRole = slotFormationRole.toUpperCase();
-                const fmPositionMatchers = fmSlotRoleMatcher[upperSlotRole] || [upperSlotRole];
-                
-                const targetRoleKeyPrefixes = fmPositionMatchers
-                    .map(matcher => fmMatcherToRoleKeyPrefix[matcher.toUpperCase()])
-                    .filter(prefix => !!prefix)
-                    .reduce((acc, val) => (acc.includes(val) ? acc : [...acc, val]), []);
-                
-                if (Array.isArray(player.roleSpecificOveralls)) {
-                    player.roleSpecificOveralls.forEach(rso => {
-                        const rsoBasePosition = rso.roleName
-                            .split(" - ")[0]
-                            .trim();
-                        
-                        if (targetRoleKeyPrefixes.includes(rsoBasePosition)) {
-                            bestScoreForRole = Math.max(
-                                bestScoreForRole,
-                                rso.score,
-                            );
-                        }
-                    });
-                } else if (player.roleSpecificOveralls) {
-                    Object.entries(player.roleSpecificOveralls).forEach(([roleName, score]) => {
-                        const rsoBasePosition = roleName
-                            .split(" - ")[0]
-                            .trim();
-                        
-                        if (targetRoleKeyPrefixes.includes(rsoBasePosition)) {
-                            bestScoreForRole = Math.max(
-                                bestScoreForRole,
-                                score,
-                            );
-                        }
-                    });
-                }
-            }
-            
-            return bestScoreForRole;
-        };
-
-        const MIN_SUITABILITY_THRESHOLD = 40;
-
-        const getSlotDisplayName = (slot, allSlots) => {
-            const roleCounts = allSlots.reduce((acc, s) => {
-                acc[s.role] = (acc[s.role] || 0) + 1;
-                return acc;
-            }, {});
-
-            if (roleCounts[slot.role] > 1) {
-                return slot.id.split("_")[0];
-            }
-            return slot.role;
-        };
-
-        const calculateBestFormationForNation = () => {
-            if (nationPlayers.value.length === 0) {
-                return null;
-            }
-
-            // Check cache first
-            const cacheKey = formationCache.generateKey(nationPlayers.value, 'nation-best');
-            const cachedResult = formationCache.get(cacheKey);
-            if (cachedResult) {
-                console.log('Using cached formation result for nation:', selectedNationName.value);
-                return cachedResult.bestFormationKey;
-            }
-
-            let bestFormationKey = null;
-            let bestAverageOverall = 0;
-
-            Object.keys(formations).forEach(formationKey => {
-                const formationLayoutForCalc = getFormationLayout(formationKey);
-                if (!formationLayoutForCalc) return;
-
-                const formationSlots = formationLayoutForCalc.flatMap(row => row.positions);
-                const tempSquadComposition = {};
-                
-                formationSlots.forEach(slot => {
-                    tempSquadComposition[slot.id] = [];
-                });
-
-                const allPotentialPlayerAssignments = [];
-                formationSlots.forEach(slot => {
-                    nationPlayers.value.forEach(player => {
-                        const overallInRole = getPlayerOverallForRole(player, slot.role);
-                        
-                        if (overallInRole >= MIN_SUITABILITY_THRESHOLD) {
-                            const slotPositions = positionSideMap[slot.role.toUpperCase()] || [];
-                            const playerPositions = player.shortPositions || [];
-                            const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos));
-                            
-                            if (isExactMatch || overallInRole >= MIN_SUITABILITY_THRESHOLD) {
-                                const assignment = {
-                                    player,
-                                    slotId: slot.id,
-                                    slotRole: slot.role,
-                                    overallInRole: overallInRole,
-                                    sortScore: overallInRole,
-                                    exactMatch: isExactMatch
-                                };
-                                
-                                if (isExactMatch) {
-                                    assignment.sortScore += 10000;
-                                } else {
-                                    assignment.sortScore -= 5000;
-                                }
-                                
-                                allPotentialPlayerAssignments.push(assignment);
-                            }
-                        }
-                    });
-                });
-
-                allPotentialPlayerAssignments.sort((a, b) => b.sortScore - a.sortScore);
-
-                const assignedPlayersToSlots = new Set();
-
-                formationSlots.forEach(slot => {
-                    for (const assignment of allPotentialPlayerAssignments) {
-                        if (
-                            assignment.slotId === slot.id &&
-                            !assignedPlayersToSlots.has(assignment.player.name)
-                        ) {
-                            tempSquadComposition[slot.id].push({
-                                player: assignment.player,
-                                overallInRole: assignment.overallInRole,
-                                exactMatch: assignment.exactMatch
-                            });
-                            assignedPlayersToSlots.add(assignment.player.name);
-                            break;
-                        }
-                    }
-                });
-
-                let sumOfStartersOverall = 0;
-                let startersCount = 0;
-                Object.values(tempSquadComposition).forEach(slotPlayers => {
-                    if (slotPlayers && slotPlayers.length > 0) {
-                        sumOfStartersOverall += slotPlayers[0].overallInRole;
-                        startersCount++;
-                    }
-                });
-
-                if (startersCount > 0) {
-                    const averageOverall = sumOfStartersOverall / startersCount;
-                    if (averageOverall > bestAverageOverall) {
-                        bestAverageOverall = averageOverall;
-                        bestFormationKey = formationKey;
-                    }
-                }
-            });
-
-            // Cache the result
-            if (bestFormationKey) {
-                formationCache.set(cacheKey, {
-                    bestFormationKey,
-                    bestAverageOverall,
-                    nationName: selectedNationName.value
-                });
-            }
-
-            return bestFormationKey;
-        };
-
-        const calculateBestNationAndDepth = () => {
-            if (!selectedFormationKey.value || nationPlayers.value.length === 0) {
-                squadComposition.value = {};
-                bestNationAverageOverall.value = null;
-                calculationMessage.value = selectedFormationKey.value
-                    ? "No players in the selected nation."
-                    : "Select a formation.";
-                calculationMessageClass.value = "bg-warning text-dark";
-                return;
-            }
-
-            calculationMessage.value = "Calculating best nation team and depth...";
-            calculationMessageClass.value = quasarInstance.dark.isActive
-                ? "bg-info text-white"
-                : "bg-blue-2 text-primary";
-
-            const tempSquadComposition = {};
-            const formationLayoutForCalc = getFormationLayout(
-                selectedFormationKey.value,
-            );
-            if (!formationLayoutForCalc) {
-                calculationMessage.value = "Invalid formation selected.";
-                calculationMessageClass.value = "bg-negative text-white";
-                return;
-            }
-
-            const formationSlots = formationLayoutForCalc.flatMap(
-                (row) => row.positions,
-            );
-
-            formationSlots.forEach((slot) => {
-                tempSquadComposition[slot.id] = [];
-            });
-
-            const allPotentialPlayerAssignments = [];
-            formationSlots.forEach((slot) => {
-                nationPlayers.value.forEach((player) => {
-                    const overallInRole = getPlayerOverallForRole(
-                        player,
-                        slot.role,
-                    );
-                    
-                    if (overallInRole >= MIN_SUITABILITY_THRESHOLD) {
-                        const slotPositions = positionSideMap[slot.role.toUpperCase()] || [];
-                        const playerPositions = player.shortPositions || [];
-                        const isExactMatch = playerPositions.some(pos => 
-                            slotPositions.includes(pos)
-                        );
-                        
-                        const canPlayInPosition = isExactMatch;
-                        
-                        if (canPlayInPosition && overallInRole >= MIN_SUITABILITY_THRESHOLD) {
-                            const assignment = {
-                                player,
-                                slotId: slot.id,
-                                slotRole: slot.role,
-                                overallInRole: overallInRole,
-                                sortScore: overallInRole,
-                                exactMatch: isExactMatch
-                            };
-                            
-                            if (isExactMatch) {
-                                assignment.sortScore += 10000; 
-                            } else {
-                                assignment.sortScore -= 5000; 
-                            }
-                            
-                            allPotentialPlayerAssignments.push(assignment);
-                        }
-                    }
-                });
-            });
-
-            allPotentialPlayerAssignments.sort((a, b) => {
-                return b.sortScore - a.sortScore;
-            });
-
-            const assignedPlayersToSlots = new Set();
-
-            for (let depthIndex = 0; depthIndex < 3; depthIndex++) {
-                formationSlots.forEach((slot) => {
-                    if (tempSquadComposition[slot.id].length === depthIndex) {
-                        for (const assignment of allPotentialPlayerAssignments) {
-                            if (
-                                assignment.slotId === slot.id &&
-                                assignment.exactMatch &&
-                                !assignedPlayersToSlots.has(
-                                    assignment.player.name,
-                                )
-                            ) {
-                                let alreadyStarterElsewhere = false;
-                                if (depthIndex > 0) {
-                                    for (const sId in tempSquadComposition) {
-                                        if (
-                                            tempSquadComposition[sId].length >
-                                                0 &&
-                                            tempSquadComposition[sId][0].player
-                                                .name === assignment.player.name
-                                        ) {
-                                            alreadyStarterElsewhere = true;
-                                            break;
-                                        }
-                                    }
-                                }
-
-                                if (!alreadyStarterElsewhere) {
-                                    tempSquadComposition[slot.id].push({
-                                        player: assignment.player,
-                                        overallInRole: assignment.overallInRole,
-                                        exactMatch: assignment.exactMatch
-                                    });
-                                    assignedPlayersToSlots.add(
-                                        assignment.player.name,
-                                    );
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                });
-                
-                formationSlots.forEach((slot) => {
-                    if (tempSquadComposition[slot.id].length === depthIndex) {
-                        for (const assignment of allPotentialPlayerAssignments) {
-                            if (
-                                assignment.slotId === slot.id &&
-                                !assignedPlayersToSlots.has(
-                                    assignment.player.name,
-                                )
-                            ) {
-                                let alreadyStarterElsewhere = false;
-                                if (depthIndex > 0) {
-                                    for (const sId in tempSquadComposition) {
-                                        if (
-                                            tempSquadComposition[sId].length >
-                                                0 &&
-                                            tempSquadComposition[sId][0].player
-                                                .name === assignment.player.name
-                                        ) {
-                                            alreadyStarterElsewhere = true;
-                                            break;
-                                        }
-                                    }
-                                }
-
-                                if (!alreadyStarterElsewhere) {
-                                    tempSquadComposition[slot.id].push({
-                                        player: assignment.player,
-                                        overallInRole: assignment.overallInRole,
-                                        exactMatch: assignment.exactMatch
-                                    });
-                                    assignedPlayersToSlots.add(
-                                        assignment.player.name,
-                                    );
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                });
-            }
-
-            for (const slotId in tempSquadComposition) {
-                tempSquadComposition[slotId].sort(
-                    (a, b) => b.overallInRole - a.overallInRole,
-                );
-            }
-            
-            for (const slot of formationSlots) {
-                if (tempSquadComposition[slot.id].length === 0) {
-                    const fallbackPositions = fallbackPositionMap[slot.role.toUpperCase()] || [];
-                    
-                    const fallbackAssignments = [];
-                    
-                    nationPlayers.value.forEach(player => {
-                        if (!assignedPlayersToSlots.has(player.name)) {
-                            const playerPositions = player.shortPositions || [];
-                            
-                            const canPlayFallback = playerPositions.some(pos => 
-                                fallbackPositions.includes(pos)
-                            );
-                            
-                            if (canPlayFallback) {
-                                const overallInRole = getPlayerOverallForRole(player, slot.role);
-                                if (overallInRole >= MIN_SUITABILITY_THRESHOLD - 10) {
-                                    fallbackAssignments.push({
-                                        player,
-                                        overallInRole,
-                                        exactMatch: false
-                                    });
-                                }
-                            }
-                        }
-                    });
-                    
-                    fallbackAssignments.sort((a, b) => b.overallInRole - a.overallInRole);
-                    
-                    if (fallbackAssignments.length > 0) {
-                        const bestFallback = fallbackAssignments[0];
-                        tempSquadComposition[slot.id].push(bestFallback);
-                        assignedPlayersToSlots.add(bestFallback.player.name);
-                    }
-                }
-            }
-
-            squadComposition.value = tempSquadComposition;
-
-            let sumOfStartersOverall = 0;
-            let startersCount = 0;
-            Object.values(squadComposition.value).forEach((slotPlayers) => {
-                if (slotPlayers && slotPlayers.length > 0) {
-                    sumOfStartersOverall += slotPlayers[0].overallInRole;
-                    startersCount++;
-                }
-            });
+            // Calculate average overall for this formation
+            let sumOfStartersOverall = 0
+            let startersCount = 0
+            Object.values(tempSquadComposition).forEach(slotPlayers => {
+              if (slotPlayers && slotPlayers.length > 0) {
+                sumOfStartersOverall += slotPlayers[0].overallInRole
+                startersCount++
+              }
+            })
 
             if (startersCount > 0) {
-                bestNationAverageOverall.value = Math.round(
-                    sumOfStartersOverall / startersCount,
-                );
-                calculationMessage.value = `Best XI & Depth calculated. Average Overall: ${bestNationAverageOverall.value}.`;
-                calculationMessageClass.value = quasarInstance.dark.isActive
-                    ? "bg-positive text-white"
-                    : "bg-green-2 text-positive";
-            } else {
-                bestNationAverageOverall.value = 0;
-                calculationMessage.value =
-                    "Could not assign any suitable players to form a Best XI.";
-                calculationMessageClass.value = quasarInstance.dark.isActive
-                    ? "bg-negative text-white"
-                    : "bg-red-2 text-negative";
+              const averageOverall = Math.round(sumOfStartersOverall / startersCount)
+              if (averageOverall > bestOverall) {
+                bestOverall = averageOverall
+                // Calculate section ratings for this formation
+                bestSectionRatings = calculateSectionRatings(
+                  tempSquadComposition,
+                  formationLayoutForCalc
+                )
+              }
             }
-        };
+          }
+        })
 
-        watch(selectedFormationKey, (newKey) => {
-            if (newKey && selectedNationName.value) {
-                calculateBestNationAndDepth();
-            } else {
-                squadComposition.value = {};
-                bestNationAverageOverall.value = null;
-                calculationMessage.value = "Select a nation and formation.";
-                calculationMessageClass.value = quasarInstance.dark.isActive
-                    ? "text-grey-5"
-                    : "text-grey-7";
-            }
-        });
+        // Only set overall if nation has at least one full squad possible
+        nation.bestFormationOverall = hasFullSquad ? bestOverall : 0
+        nation.attRating = hasFullSquad ? bestSectionRatings.attRating : 0
+        nation.midRating = hasFullSquad ? bestSectionRatings.midRating : 0
+        nation.defRating = hasFullSquad ? bestSectionRatings.defRating : 0
+      })
 
-        const handlePlayerMovedOnPitch = (moveData) => {
-            const { player, fromSlotId, toSlotId, toSlotRole } = moveData;
+      const sortedNations = nationsArray.sort(
+        (a, b) => b.bestFormationOverall - a.bestFormationOverall
+      )
 
-            const currentStarters = JSON.parse(
-                JSON.stringify(bestNationPlayersForPitch.value),
-            );
-            const playerToMoveFullData = allPlayersData.value.find(
-                (p) => p.name === player.name,
-            );
+      // Limit initial rendering for performance
+      if (!showAllNations.value && sortedNations.length > INITIAL_NATIONS_LIMIT) {
+        return sortedNations.slice(0, INITIAL_NATIONS_LIMIT)
+      }
 
-            if (!playerToMoveFullData) return;
+      return sortedNations
+    })
 
-            const overallInNewRole = getPlayerOverallForRole(
-                playerToMoveFullData,
-                toSlotRole,
-            );
-            
-            const playerPositions = playerToMoveFullData.shortPositions || [];
-            const slotPositions = positionSideMap[toSlotRole.toUpperCase()] || [];
-            const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos));
-            
-            const playerCurrentlyInTargetSlotFullData = currentStarters[
-                toSlotId
-            ]
-                ? allPlayersData.value.find(
-                      (p) => p.name === currentStarters[toSlotId].name,
-                  )
-                : null;
+    const fetchPlayersAndCurrency = async datasetId => {
+      pageLoading.value = true
+      pageLoadingError.value = ''
+      try {
+        await playerStore.fetchPlayersByDatasetId(datasetId)
+      } catch (err) {
+        pageLoadingError.value = `Failed to load player data: ${err.message || 'Unknown server error'}. Please try uploading again.`
+      } finally {
+        pageLoading.value = false
+      }
+    }
 
-            currentStarters[toSlotId] = {
-                ...playerToMoveFullData,
-                Overall: overallInNewRole,
-                exactPositionMatch: isExactMatch
-            };
+    onMounted(async () => {
+      const datasetIdFromQuery = route.query.datasetId
+      const datasetIdFromRoute = route.params.datasetId
+      const nationFromQuery = route.query.nation
+      const finalDatasetId =
+        datasetIdFromRoute || datasetIdFromQuery || sessionStorage.getItem('currentDatasetId')
 
-            if (playerCurrentlyInTargetSlotFullData && fromSlotId) {
-                const originalRoleOfFromSlot = currentFormationLayout.value
-                    .flatMap((r) => r.positions)
-                    .find((p) => p.id === fromSlotId)?.role;
-                    
-                if (originalRoleOfFromSlot) {
-                    const overallInOldRole = getPlayerOverallForRole(
-                        playerCurrentlyInTargetSlotFullData,
-                        originalRoleOfFromSlot,
-                    );
-                    
-                    const playerPositions = playerCurrentlyInTargetSlotFullData.shortPositions || [];
-                    const slotPositions = positionSideMap[originalRoleOfFromSlot.toUpperCase()] || [];
-                    const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos));
-                    
-                    currentStarters[fromSlotId] = {
-                        ...playerCurrentlyInTargetSlotFullData,
-                        Overall: overallInOldRole,
-                        exactPositionMatch: isExactMatch
-                    };
-                } else {
-                    currentStarters[fromSlotId] = null;
-                }
-            } else if (fromSlotId) {
-                currentStarters[fromSlotId] = null;
-            }
+      if (finalDatasetId) {
+        if (
+          datasetIdFromQuery &&
+          datasetIdFromQuery !== sessionStorage.getItem('currentDatasetId')
+        ) {
+          sessionStorage.setItem('currentDatasetId', datasetIdFromQuery)
+        } else if (!datasetIdFromQuery && sessionStorage.getItem('currentDatasetId')) {
+          router.replace({ query: { datasetId: finalDatasetId } })
+        }
+        await fetchPlayersAndCurrency(finalDatasetId)
+      } else {
+        pageLoadingError.value =
+          'No player dataset ID found. Please upload a file on the main page.'
+        pageLoading.value = false
+      }
 
-            const newPitchState = { ...currentStarters };
+      if (!pageLoadingError.value && allPlayersData.value.length > 0) {
+        populateNationFilterOptions()
 
-            let sumOfDisplayedOveralls = 0;
-            let countOfDisplayedOveralls = 0;
-            Object.values(newPitchState).forEach((p) => {
-                if (p && typeof p.Overall === "number") {
-                    sumOfDisplayedOveralls += p.Overall;
-                    countOfDisplayedOveralls++;
-                }
-            });
-            bestNationAverageOverall.value =
-                countOfDisplayedOveralls > 0
-                    ? Math.round(
-                          sumOfDisplayedOveralls / countOfDisplayedOveralls,
-                      )
-                    : 0;
+        if (nationFromQuery && nationFromQuery.trim() !== '') {
+          selectedNationName.value = nationFromQuery
+          loadNationPlayers()
+        } else if (selectedNationName.value) {
+          loadNationPlayers()
+        }
+      }
+    })
 
-            calculationMessage.value = `Nation team visually adjusted. New Avg Overall: ${bestNationAverageOverall.value}. (Depth chart not updated by drag & drop).`;
+    const populateNationFilterOptions = () => {
+      if (!allPlayersData.value || allPlayersData.value.length === 0) {
+        allNationNamesCache.value = []
+        nationOptions.value = []
+        return
+      }
+      const uniqueNations = new Set()
+      allPlayersData.value.forEach(player => {
+        if (player.nationality && player.nationality.trim() !== '') {
+          uniqueNations.add(player.nationality)
+        }
+      })
+      allNationNamesCache.value = Array.from(uniqueNations).sort()
+      nationOptions.value = allNationNamesCache.value
+    }
+
+    const filterNationOptions = (val, update) => {
+      if (val === '') {
+        update(() => {
+          nationOptions.value = allNationNamesCache.value
+        })
+        return
+      }
+      update(() => {
+        const needle = val.toLowerCase()
+        nationOptions.value = allNationNamesCache.value.filter(
+          nation => nation.toLowerCase().indexOf(needle) > -1
+        )
+      })
+    }
+
+    const selectNation = nationName => {
+      selectedNationName.value = nationName
+      loadNationPlayers()
+    }
+
+    const loadNationPlayers = () => {
+      if (!selectedNationName.value) {
+        nationPlayers.value = []
+        squadComposition.value = {}
+        bestNationAverageOverall.value = null
+        calculationMessage.value = ''
+        selectedFormationKey.value = null
+        return
+      }
+      loadingNation.value = true
+      setTimeout(() => {
+        if (Array.isArray(allPlayersData.value)) {
+          nationPlayers.value = allPlayersData.value.filter(
+            p => p.nationality === selectedNationName.value
+          )
+        } else {
+          nationPlayers.value = []
+        }
+
+        if (nationPlayers.value.length > 0) {
+          const bestFormation = calculateBestFormationForNation()
+          if (bestFormation) {
+            selectedFormationKey.value = bestFormation
+            calculationMessage.value = `Auto-selected best formation: ${formations[bestFormation].name}. Calculating Best XI...`
             calculationMessageClass.value = quasarInstance.dark.isActive
-                ? "bg-info text-white"
-                : "bg-blue-2 text-primary";
-        };
+              ? 'bg-info text-white'
+              : 'bg-blue-2 text-primary'
+          } else {
+            selectedFormationKey.value = null
+            squadComposition.value = {}
+            bestNationAverageOverall.value = null
+            calculationMessage.value = 'No suitable formation found for this nation.'
+            calculationMessageClass.value = quasarInstance.dark.isActive
+              ? 'text-grey-5'
+              : 'text-grey-7'
+          }
+        } else {
+          selectedFormationKey.value = null
+          squadComposition.value = {}
+          bestNationAverageOverall.value = null
+          calculationMessage.value = 'No players found for this nation.'
+          calculationMessageClass.value = quasarInstance.dark.isActive
+            ? 'text-grey-5'
+            : 'text-grey-7'
+        }
 
-        watch(
-            () => allPlayersData.value,
-            (newVal) => {
-                if (pageLoading.value) return;
-                if (newVal && newVal.length > 0) {
-                    populateNationFilterOptions();
-                    if (selectedNationName.value) loadNationPlayers();
-                } else if (!pageLoadingError.value) {
-                    clearNationSelection();
-                    allNationNamesCache.value = [];
-                    nationOptions.value = [];
-                }
-            },
-            { deep: true },
-        );
+        loadingNation.value = false
+      }, 200)
+    }
 
-        watch(
-            () => route.query.datasetId,
-            async (newId, oldId) => {
-                if (newId && newId !== oldId) {
-                    sessionStorage.setItem("currentDatasetId", newId);
-                    await fetchPlayersAndCurrency(newId);
-                    clearNationSelection();
-                    if (
-                        !pageLoadingError.value &&
-                        allPlayersData.value.length > 0
-                    ) {
-                        populateNationFilterOptions();
-                    }
-                }
-            },
-        );
+    const clearNationSelection = () => {
+      selectedNationName.value = null
+      nationPlayers.value = []
+      selectedFormationKey.value = null
+      squadComposition.value = {}
+      bestNationAverageOverall.value = null
+      calculationMessage.value = ''
+    }
 
-        watch(
-            () => route.query.nation,
-            (newNation) => {
-                if (newNation && newNation.trim() !== '' && newNation !== selectedNationName.value) {
-                    selectedNationName.value = newNation;
-                    loadNationPlayers();
-                }
-            },
-        );
+    const formationOptions = computed(() => {
+      return Object.keys(formations).map(key => ({
+        label: formations[key].name,
+        value: key
+      }))
+    })
 
-        const onFlagError = (event, nation) => {
-            // Hide the broken image and fallback will show the icon
-            event.target.style.display = 'none';
-        };
+    const currentFormationLayout = computed(() => {
+      if (!selectedFormationKey.value) {
+        return []
+      }
+      return getFormationLayout(selectedFormationKey.value) || []
+    })
 
-        const shareDataset = async () => {
-            if (!currentDatasetId.value) return;
-            
-            const shareUrl = `${window.location.origin}/nations/${currentDatasetId.value}`;
-            
-            try {
-                await navigator.clipboard.writeText(shareUrl);
-                quasarInstance.notify({
-                    message: 'Link copied to clipboard!',
-                    color: 'positive',
-                    icon: 'check_circle',
-                    position: 'top',
-                    timeout: 2000
-                });
-            } catch (err) {
-                const textArea = document.createElement('textarea');
-                textArea.value = shareUrl;
-                document.body.appendChild(textArea);
-                textArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textArea);
-                
-                quasarInstance.notify({
-                    message: 'Link copied to clipboard!',
-                    color: 'positive',
-                    icon: 'check_circle',
-                    position: 'top',
-                    timeout: 2000
-                });
+    const bestNationPlayersForPitch = computed(() => {
+      const starters = {}
+      if (!squadComposition.value || Object.keys(squadComposition.value).length === 0) {
+        return starters
+      }
+      for (const slotId in squadComposition.value) {
+        if (squadComposition.value[slotId] && squadComposition.value[slotId].length > 0) {
+          const starterEntry = squadComposition.value[slotId][0]
+          starters[slotId] = {
+            ...starterEntry.player,
+            Overall: starterEntry.overallInRole,
+            exactPositionMatch: starterEntry.exactMatch
+          }
+        } else {
+          starters[slotId] = null
+        }
+      }
+      return starters
+    })
+
+    const currentNationSectionRatings = computed(() => {
+      if (!squadComposition.value || !currentFormationLayout.value) {
+        return { attRating: 0, midRating: 0, defRating: 0 }
+      }
+      return calculateSectionRatings(squadComposition.value, currentFormationLayout.value)
+    })
+
+    const nationIsGoalkeeperView = computed(() => {
+      return nationPlayers.value.some(p => p.positionGroups?.includes('Goalkeepers'))
+    })
+
+    const handlePlayerSelectedFromNation = player => {
+      playerForDetailView.value = player
+      showPlayerDetailDialog.value = true
+    }
+
+    const getOverallClass = overall => {
+      if (overall === null || overall === undefined || overall === 0) return 'rating-na'
+      const numericOverall = Number(overall)
+      if (isNaN(numericOverall)) return 'rating-na'
+
+      if (numericOverall >= 90) return 'rating-tier-6'
+      if (numericOverall >= 80) return 'rating-tier-5'
+      if (numericOverall >= 70) return 'rating-tier-4'
+      if (numericOverall >= 55) return 'rating-tier-3'
+      if (numericOverall >= 40) return 'rating-tier-2'
+      return 'rating-tier-1'
+    }
+
+    const getStarClass = (overall, starPosition) => {
+      if (!overall || overall === 0) return 'star-empty'
+
+      const starRating = getStarRating(overall)
+
+      if (starPosition <= Math.floor(starRating)) {
+        return 'star-full'
+      } else if (starPosition === Math.floor(starRating) + 1 && starRating % 1 === 0.5) {
+        return 'star-half'
+      } else {
+        return 'star-empty'
+      }
+    }
+
+    const getStarRating = overall => {
+      if (!overall || overall === 0) return 0
+
+      if (overall >= 85) return 5
+      if (overall >= 82) return 4.5
+      if (overall >= 78) return 4
+      if (overall >= 74) return 3.5
+      if (overall >= 70) return 3
+      if (overall >= 67) return 2.5
+      if (overall >= 64) return 2
+      if (overall >= 60) return 1.5
+      if (overall >= 55) return 1
+      if (overall >= 50) return 0.5
+      return 0
+    }
+
+    const calculateSectionRatings = (squadComposition, formationLayout) => {
+      if (!squadComposition || !formationLayout) {
+        return { attRating: 0, midRating: 0, defRating: 0 }
+      }
+
+      const formationSlots = formationLayout.flatMap(row => row.positions)
+
+      // Define position categories
+      const defensivePositions = ['GK', 'D (R)', 'D (L)', 'D (C)', 'WB (R)', 'WB (L)']
+      const midfielderPositions = ['DM (C)', 'M (R)', 'M (L)', 'M (C)', 'AM (C)']
+      const attackingPositions = ['AM (R)', 'AM (L)', 'ST (C)']
+
+      let attSum = 0,
+        attCount = 0
+      let midSum = 0,
+        midCount = 0
+      let defSum = 0,
+        defCount = 0
+
+      formationSlots.forEach(slot => {
+        const slotPlayers = squadComposition[slot.id]
+        if (slotPlayers && slotPlayers.length > 0) {
+          const starter = slotPlayers[0]
+          const rating = starter.overallInRole
+
+          if (attackingPositions.includes(slot.role)) {
+            attSum += rating
+            attCount++
+          } else if (midfielderPositions.includes(slot.role)) {
+            midSum += rating
+            midCount++
+          } else if (defensivePositions.includes(slot.role)) {
+            defSum += rating
+            defCount++
+          }
+        }
+      })
+
+      return {
+        attRating: attCount > 0 ? Math.round(attSum / attCount) : 0,
+        midRating: midCount > 0 ? Math.round(midSum / midCount) : 0,
+        defRating: defCount > 0 ? Math.round(defSum / defCount) : 0
+      }
+    }
+
+    const getPlayerOverallForRole = (player, slotFormationRole) => {
+      if (!player || !slotFormationRole) return 0
+
+      let bestScoreForRole = 0
+
+      if (!player.roleSpecificOveralls) {
+        return 0
+      }
+
+      const hasRoleOveralls = Array.isArray(player.roleSpecificOveralls)
+        ? player.roleSpecificOveralls.length > 0
+        : Object.keys(player.roleSpecificOveralls).length > 0
+
+      if (!hasRoleOveralls) {
+        return 0
+      }
+
+      const upperSlotRoleOriginal = slotFormationRole.toUpperCase()
+      const requiredPositions = positionSideMap[upperSlotRoleOriginal] || []
+
+      if (player.shortPositions && player.shortPositions.length > 0) {
+        const exactPositionMatches = player.shortPositions.filter(pos =>
+          requiredPositions.includes(pos)
+        )
+
+        if (exactPositionMatches.length > 0) {
+          if (Array.isArray(player.roleSpecificOveralls)) {
+            player.roleSpecificOveralls.forEach(rso => {
+              const rsoBasePosition = rso.roleName.split(' - ')[0].trim()
+
+              if (exactPositionMatches.includes(rsoBasePosition)) {
+                bestScoreForRole = Math.max(bestScoreForRole, rso.score)
+              }
+            })
+          } else {
+            Object.entries(player.roleSpecificOveralls).forEach(([roleName, score]) => {
+              const rsoBasePosition = roleName.split(' - ')[0].trim()
+
+              if (exactPositionMatches.includes(rsoBasePosition)) {
+                bestScoreForRole = Math.max(bestScoreForRole, score)
+              }
+            })
+          }
+
+          if (bestScoreForRole === 0) {
+            bestScoreForRole = MIN_SUITABILITY_THRESHOLD
+          }
+        }
+      }
+
+      if (bestScoreForRole > 0) {
+        return bestScoreForRole
+      }
+
+      const fallbackPositions = fallbackPositionMap[upperSlotRoleOriginal] || []
+
+      if (player.shortPositions && player.shortPositions.length > 0) {
+        const fallbackMatches = player.shortPositions.filter(pos => fallbackPositions.includes(pos))
+
+        if (fallbackMatches.length > 0) {
+          if (Array.isArray(player.roleSpecificOveralls)) {
+            player.roleSpecificOveralls.forEach(rso => {
+              const rsoBasePosition = rso.roleName.split(' - ')[0].trim()
+
+              if (fallbackMatches.includes(rsoBasePosition)) {
+                bestScoreForRole = Math.max(bestScoreForRole, rso.score)
+              }
+            })
+          } else {
+            Object.entries(player.roleSpecificOveralls).forEach(([roleName, score]) => {
+              const rsoBasePosition = roleName.split(' - ')[0].trim()
+
+              if (fallbackMatches.includes(rsoBasePosition)) {
+                bestScoreForRole = Math.max(bestScoreForRole, score)
+              }
+            })
+          }
+
+          if (bestScoreForRole === 0) {
+            bestScoreForRole = MIN_SUITABILITY_THRESHOLD - 10
+          }
+        }
+      }
+
+      if (bestScoreForRole === 0) {
+        const upperSlotRole = slotFormationRole.toUpperCase()
+        const fmPositionMatchers = fmSlotRoleMatcher[upperSlotRole] || [upperSlotRole]
+
+        const targetRoleKeyPrefixes = fmPositionMatchers
+          .map(matcher => fmMatcherToRoleKeyPrefix[matcher.toUpperCase()])
+          .filter(prefix => !!prefix)
+          .reduce((acc, val) => (acc.includes(val) ? acc : [...acc, val]), [])
+
+        if (Array.isArray(player.roleSpecificOveralls)) {
+          player.roleSpecificOveralls.forEach(rso => {
+            const rsoBasePosition = rso.roleName.split(' - ')[0].trim()
+
+            if (targetRoleKeyPrefixes.includes(rsoBasePosition)) {
+              bestScoreForRole = Math.max(bestScoreForRole, rso.score)
             }
-        };
+          })
+        } else if (player.roleSpecificOveralls) {
+          Object.entries(player.roleSpecificOveralls).forEach(([roleName, score]) => {
+            const rsoBasePosition = roleName.split(' - ')[0].trim()
 
-        return {
-            allPlayersData,
-            selectedNationName,
-            nationOptions,
-            filterNationOptions,
-            loadNationPlayers,
-            clearNationSelection,
-            selectNation,
-            nationPlayers,
-            loadingNation,
-            pageLoading,
-            pageLoadingError,
-            selectedFormationKey,
-            formationOptions,
-            currentFormationLayout,
-            squadComposition,
-            bestNationPlayersForPitch,
-            bestNationAverageOverall,
-            currentNationSectionRatings,
-            calculationMessage,
-            calculationMessageClass,
-            playerForDetailView,
-            showPlayerDetailDialog,
-            handlePlayerSelectedFromNation,
-            nationIsGoalkeeperView,
-            getOverallClass,
-            getStarClass,
-            getStarRating,
-            calculateSectionRatings,
-            getSlotDisplayName,
-            handlePlayerMovedOnPitch,
-            quasarInstance,
-            router,
-            detectedCurrencySymbol,
-            currentDatasetId,
-            shareDataset,
-            onFlagError,
-            nationsWithRatings,
-            showAllNations,
-        };
-    },
-};
+            if (targetRoleKeyPrefixes.includes(rsoBasePosition)) {
+              bestScoreForRole = Math.max(bestScoreForRole, score)
+            }
+          })
+        }
+      }
+
+      return bestScoreForRole
+    }
+
+    const MIN_SUITABILITY_THRESHOLD = 40
+
+    const getSlotDisplayName = (slot, allSlots) => {
+      const roleCounts = allSlots.reduce((acc, s) => {
+        acc[s.role] = (acc[s.role] || 0) + 1
+        return acc
+      }, {})
+
+      if (roleCounts[slot.role] > 1) {
+        return slot.id.split('_')[0]
+      }
+      return slot.role
+    }
+
+    const calculateBestFormationForNation = () => {
+      if (nationPlayers.value.length === 0) {
+        return null
+      }
+
+      // Check cache first
+      const cacheKey = formationCache.generateKey(nationPlayers.value, 'nation-best')
+      const cachedResult = formationCache.get(cacheKey)
+      if (cachedResult) {
+        console.log('Using cached formation result for nation:', selectedNationName.value)
+        return cachedResult.bestFormationKey
+      }
+
+      let bestFormationKey = null
+      let bestAverageOverall = 0
+
+      Object.keys(formations).forEach(formationKey => {
+        const formationLayoutForCalc = getFormationLayout(formationKey)
+        if (!formationLayoutForCalc) return
+
+        const formationSlots = formationLayoutForCalc.flatMap(row => row.positions)
+        const tempSquadComposition = {}
+
+        formationSlots.forEach(slot => {
+          tempSquadComposition[slot.id] = []
+        })
+
+        const allPotentialPlayerAssignments = []
+        formationSlots.forEach(slot => {
+          nationPlayers.value.forEach(player => {
+            const overallInRole = getPlayerOverallForRole(player, slot.role)
+
+            if (overallInRole >= MIN_SUITABILITY_THRESHOLD) {
+              const slotPositions = positionSideMap[slot.role.toUpperCase()] || []
+              const playerPositions = player.shortPositions || []
+              const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos))
+
+              if (isExactMatch || overallInRole >= MIN_SUITABILITY_THRESHOLD) {
+                const assignment = {
+                  player,
+                  slotId: slot.id,
+                  slotRole: slot.role,
+                  overallInRole: overallInRole,
+                  sortScore: overallInRole,
+                  exactMatch: isExactMatch
+                }
+
+                if (isExactMatch) {
+                  assignment.sortScore += 10000
+                } else {
+                  assignment.sortScore -= 5000
+                }
+
+                allPotentialPlayerAssignments.push(assignment)
+              }
+            }
+          })
+        })
+
+        allPotentialPlayerAssignments.sort((a, b) => b.sortScore - a.sortScore)
+
+        const assignedPlayersToSlots = new Set()
+
+        formationSlots.forEach(slot => {
+          for (const assignment of allPotentialPlayerAssignments) {
+            if (
+              assignment.slotId === slot.id &&
+              !assignedPlayersToSlots.has(assignment.player.name)
+            ) {
+              tempSquadComposition[slot.id].push({
+                player: assignment.player,
+                overallInRole: assignment.overallInRole,
+                exactMatch: assignment.exactMatch
+              })
+              assignedPlayersToSlots.add(assignment.player.name)
+              break
+            }
+          }
+        })
+
+        let sumOfStartersOverall = 0
+        let startersCount = 0
+        Object.values(tempSquadComposition).forEach(slotPlayers => {
+          if (slotPlayers && slotPlayers.length > 0) {
+            sumOfStartersOverall += slotPlayers[0].overallInRole
+            startersCount++
+          }
+        })
+
+        if (startersCount > 0) {
+          const averageOverall = sumOfStartersOverall / startersCount
+          if (averageOverall > bestAverageOverall) {
+            bestAverageOverall = averageOverall
+            bestFormationKey = formationKey
+          }
+        }
+      })
+
+      // Cache the result
+      if (bestFormationKey) {
+        formationCache.set(cacheKey, {
+          bestFormationKey,
+          bestAverageOverall,
+          nationName: selectedNationName.value
+        })
+      }
+
+      return bestFormationKey
+    }
+
+    const calculateBestNationAndDepth = () => {
+      if (!selectedFormationKey.value || nationPlayers.value.length === 0) {
+        squadComposition.value = {}
+        bestNationAverageOverall.value = null
+        calculationMessage.value = selectedFormationKey.value
+          ? 'No players in the selected nation.'
+          : 'Select a formation.'
+        calculationMessageClass.value = 'bg-warning text-dark'
+        return
+      }
+
+      calculationMessage.value = 'Calculating best nation team and depth...'
+      calculationMessageClass.value = quasarInstance.dark.isActive
+        ? 'bg-info text-white'
+        : 'bg-blue-2 text-primary'
+
+      const tempSquadComposition = {}
+      const formationLayoutForCalc = getFormationLayout(selectedFormationKey.value)
+      if (!formationLayoutForCalc) {
+        calculationMessage.value = 'Invalid formation selected.'
+        calculationMessageClass.value = 'bg-negative text-white'
+        return
+      }
+
+      const formationSlots = formationLayoutForCalc.flatMap(row => row.positions)
+
+      formationSlots.forEach(slot => {
+        tempSquadComposition[slot.id] = []
+      })
+
+      const allPotentialPlayerAssignments = []
+      formationSlots.forEach(slot => {
+        nationPlayers.value.forEach(player => {
+          const overallInRole = getPlayerOverallForRole(player, slot.role)
+
+          if (overallInRole >= MIN_SUITABILITY_THRESHOLD) {
+            const slotPositions = positionSideMap[slot.role.toUpperCase()] || []
+            const playerPositions = player.shortPositions || []
+            const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos))
+
+            const canPlayInPosition = isExactMatch
+
+            if (canPlayInPosition && overallInRole >= MIN_SUITABILITY_THRESHOLD) {
+              const assignment = {
+                player,
+                slotId: slot.id,
+                slotRole: slot.role,
+                overallInRole: overallInRole,
+                sortScore: overallInRole,
+                exactMatch: isExactMatch
+              }
+
+              if (isExactMatch) {
+                assignment.sortScore += 10000
+              } else {
+                assignment.sortScore -= 5000
+              }
+
+              allPotentialPlayerAssignments.push(assignment)
+            }
+          }
+        })
+      })
+
+      allPotentialPlayerAssignments.sort((a, b) => {
+        return b.sortScore - a.sortScore
+      })
+
+      const assignedPlayersToSlots = new Set()
+
+      for (let depthIndex = 0; depthIndex < 3; depthIndex++) {
+        formationSlots.forEach(slot => {
+          if (tempSquadComposition[slot.id].length === depthIndex) {
+            for (const assignment of allPotentialPlayerAssignments) {
+              if (
+                assignment.slotId === slot.id &&
+                assignment.exactMatch &&
+                !assignedPlayersToSlots.has(assignment.player.name)
+              ) {
+                let alreadyStarterElsewhere = false
+                if (depthIndex > 0) {
+                  for (const sId in tempSquadComposition) {
+                    if (
+                      tempSquadComposition[sId].length > 0 &&
+                      tempSquadComposition[sId][0].player.name === assignment.player.name
+                    ) {
+                      alreadyStarterElsewhere = true
+                      break
+                    }
+                  }
+                }
+
+                if (!alreadyStarterElsewhere) {
+                  tempSquadComposition[slot.id].push({
+                    player: assignment.player,
+                    overallInRole: assignment.overallInRole,
+                    exactMatch: assignment.exactMatch
+                  })
+                  assignedPlayersToSlots.add(assignment.player.name)
+                  break
+                }
+              }
+            }
+          }
+        })
+
+        formationSlots.forEach(slot => {
+          if (tempSquadComposition[slot.id].length === depthIndex) {
+            for (const assignment of allPotentialPlayerAssignments) {
+              if (
+                assignment.slotId === slot.id &&
+                !assignedPlayersToSlots.has(assignment.player.name)
+              ) {
+                let alreadyStarterElsewhere = false
+                if (depthIndex > 0) {
+                  for (const sId in tempSquadComposition) {
+                    if (
+                      tempSquadComposition[sId].length > 0 &&
+                      tempSquadComposition[sId][0].player.name === assignment.player.name
+                    ) {
+                      alreadyStarterElsewhere = true
+                      break
+                    }
+                  }
+                }
+
+                if (!alreadyStarterElsewhere) {
+                  tempSquadComposition[slot.id].push({
+                    player: assignment.player,
+                    overallInRole: assignment.overallInRole,
+                    exactMatch: assignment.exactMatch
+                  })
+                  assignedPlayersToSlots.add(assignment.player.name)
+                  break
+                }
+              }
+            }
+          }
+        })
+      }
+
+      for (const slotId in tempSquadComposition) {
+        tempSquadComposition[slotId].sort((a, b) => b.overallInRole - a.overallInRole)
+      }
+
+      for (const slot of formationSlots) {
+        if (tempSquadComposition[slot.id].length === 0) {
+          const fallbackPositions = fallbackPositionMap[slot.role.toUpperCase()] || []
+
+          const fallbackAssignments = []
+
+          nationPlayers.value.forEach(player => {
+            if (!assignedPlayersToSlots.has(player.name)) {
+              const playerPositions = player.shortPositions || []
+
+              const canPlayFallback = playerPositions.some(pos => fallbackPositions.includes(pos))
+
+              if (canPlayFallback) {
+                const overallInRole = getPlayerOverallForRole(player, slot.role)
+                if (overallInRole >= MIN_SUITABILITY_THRESHOLD - 10) {
+                  fallbackAssignments.push({
+                    player,
+                    overallInRole,
+                    exactMatch: false
+                  })
+                }
+              }
+            }
+          })
+
+          fallbackAssignments.sort((a, b) => b.overallInRole - a.overallInRole)
+
+          if (fallbackAssignments.length > 0) {
+            const bestFallback = fallbackAssignments[0]
+            tempSquadComposition[slot.id].push(bestFallback)
+            assignedPlayersToSlots.add(bestFallback.player.name)
+          }
+        }
+      }
+
+      squadComposition.value = tempSquadComposition
+
+      let sumOfStartersOverall = 0
+      let startersCount = 0
+      Object.values(squadComposition.value).forEach(slotPlayers => {
+        if (slotPlayers && slotPlayers.length > 0) {
+          sumOfStartersOverall += slotPlayers[0].overallInRole
+          startersCount++
+        }
+      })
+
+      if (startersCount > 0) {
+        bestNationAverageOverall.value = Math.round(sumOfStartersOverall / startersCount)
+        calculationMessage.value = `Best XI & Depth calculated. Average Overall: ${bestNationAverageOverall.value}.`
+        calculationMessageClass.value = quasarInstance.dark.isActive
+          ? 'bg-positive text-white'
+          : 'bg-green-2 text-positive'
+      } else {
+        bestNationAverageOverall.value = 0
+        calculationMessage.value = 'Could not assign any suitable players to form a Best XI.'
+        calculationMessageClass.value = quasarInstance.dark.isActive
+          ? 'bg-negative text-white'
+          : 'bg-red-2 text-negative'
+      }
+    }
+
+    watch(selectedFormationKey, newKey => {
+      if (newKey && selectedNationName.value) {
+        calculateBestNationAndDepth()
+      } else {
+        squadComposition.value = {}
+        bestNationAverageOverall.value = null
+        calculationMessage.value = 'Select a nation and formation.'
+        calculationMessageClass.value = quasarInstance.dark.isActive ? 'text-grey-5' : 'text-grey-7'
+      }
+    })
+
+    const handlePlayerMovedOnPitch = moveData => {
+      const { player, fromSlotId, toSlotId, toSlotRole } = moveData
+
+      const currentStarters = JSON.parse(JSON.stringify(bestNationPlayersForPitch.value))
+      const playerToMoveFullData = allPlayersData.value.find(p => p.name === player.name)
+
+      if (!playerToMoveFullData) return
+
+      const overallInNewRole = getPlayerOverallForRole(playerToMoveFullData, toSlotRole)
+
+      const playerPositions = playerToMoveFullData.shortPositions || []
+      const slotPositions = positionSideMap[toSlotRole.toUpperCase()] || []
+      const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos))
+
+      const playerCurrentlyInTargetSlotFullData = currentStarters[toSlotId]
+        ? allPlayersData.value.find(p => p.name === currentStarters[toSlotId].name)
+        : null
+
+      currentStarters[toSlotId] = {
+        ...playerToMoveFullData,
+        Overall: overallInNewRole,
+        exactPositionMatch: isExactMatch
+      }
+
+      if (playerCurrentlyInTargetSlotFullData && fromSlotId) {
+        const originalRoleOfFromSlot = currentFormationLayout.value
+          .flatMap(r => r.positions)
+          .find(p => p.id === fromSlotId)?.role
+
+        if (originalRoleOfFromSlot) {
+          const overallInOldRole = getPlayerOverallForRole(
+            playerCurrentlyInTargetSlotFullData,
+            originalRoleOfFromSlot
+          )
+
+          const playerPositions = playerCurrentlyInTargetSlotFullData.shortPositions || []
+          const slotPositions = positionSideMap[originalRoleOfFromSlot.toUpperCase()] || []
+          const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos))
+
+          currentStarters[fromSlotId] = {
+            ...playerCurrentlyInTargetSlotFullData,
+            Overall: overallInOldRole,
+            exactPositionMatch: isExactMatch
+          }
+        } else {
+          currentStarters[fromSlotId] = null
+        }
+      } else if (fromSlotId) {
+        currentStarters[fromSlotId] = null
+      }
+
+      const newPitchState = { ...currentStarters }
+
+      let sumOfDisplayedOveralls = 0
+      let countOfDisplayedOveralls = 0
+      Object.values(newPitchState).forEach(p => {
+        if (p && typeof p.Overall === 'number') {
+          sumOfDisplayedOveralls += p.Overall
+          countOfDisplayedOveralls++
+        }
+      })
+      bestNationAverageOverall.value =
+        countOfDisplayedOveralls > 0
+          ? Math.round(sumOfDisplayedOveralls / countOfDisplayedOveralls)
+          : 0
+
+      calculationMessage.value = `Nation team visually adjusted. New Avg Overall: ${bestNationAverageOverall.value}. (Depth chart not updated by drag & drop).`
+      calculationMessageClass.value = quasarInstance.dark.isActive
+        ? 'bg-info text-white'
+        : 'bg-blue-2 text-primary'
+    }
+
+    watch(
+      () => allPlayersData.value,
+      newVal => {
+        if (pageLoading.value) return
+        if (newVal && newVal.length > 0) {
+          populateNationFilterOptions()
+          if (selectedNationName.value) loadNationPlayers()
+        } else if (!pageLoadingError.value) {
+          clearNationSelection()
+          allNationNamesCache.value = []
+          nationOptions.value = []
+        }
+      },
+      { deep: true }
+    )
+
+    watch(
+      () => route.query.datasetId,
+      async (newId, oldId) => {
+        if (newId && newId !== oldId) {
+          sessionStorage.setItem('currentDatasetId', newId)
+          await fetchPlayersAndCurrency(newId)
+          clearNationSelection()
+          if (!pageLoadingError.value && allPlayersData.value.length > 0) {
+            populateNationFilterOptions()
+          }
+        }
+      }
+    )
+
+    watch(
+      () => route.query.nation,
+      newNation => {
+        if (newNation && newNation.trim() !== '' && newNation !== selectedNationName.value) {
+          selectedNationName.value = newNation
+          loadNationPlayers()
+        }
+      }
+    )
+
+    const onFlagError = (event, nation) => {
+      // Hide the broken image and fallback will show the icon
+      event.target.style.display = 'none'
+    }
+
+    const shareDataset = async () => {
+      if (!currentDatasetId.value) return
+
+      const shareUrl = `${window.location.origin}/nations/${currentDatasetId.value}`
+
+      try {
+        await navigator.clipboard.writeText(shareUrl)
+        quasarInstance.notify({
+          message: 'Link copied to clipboard!',
+          color: 'positive',
+          icon: 'check_circle',
+          position: 'top',
+          timeout: 2000
+        })
+      } catch (err) {
+        const textArea = document.createElement('textarea')
+        textArea.value = shareUrl
+        document.body.appendChild(textArea)
+        textArea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textArea)
+
+        quasarInstance.notify({
+          message: 'Link copied to clipboard!',
+          color: 'positive',
+          icon: 'check_circle',
+          position: 'top',
+          timeout: 2000
+        })
+      }
+    }
+
+    return {
+      allPlayersData,
+      selectedNationName,
+      nationOptions,
+      filterNationOptions,
+      loadNationPlayers,
+      clearNationSelection,
+      selectNation,
+      nationPlayers,
+      loadingNation,
+      pageLoading,
+      pageLoadingError,
+      selectedFormationKey,
+      formationOptions,
+      currentFormationLayout,
+      squadComposition,
+      bestNationPlayersForPitch,
+      bestNationAverageOverall,
+      currentNationSectionRatings,
+      calculationMessage,
+      calculationMessageClass,
+      playerForDetailView,
+      showPlayerDetailDialog,
+      handlePlayerSelectedFromNation,
+      nationIsGoalkeeperView,
+      getOverallClass,
+      getStarClass,
+      getStarRating,
+      calculateSectionRatings,
+      getSlotDisplayName,
+      handlePlayerMovedOnPitch,
+      quasarInstance,
+      router,
+      detectedCurrencySymbol,
+      currentDatasetId,
+      shareDataset,
+      onFlagError,
+      nationsWithRatings,
+      showAllNations
+    }
+  }
+}
 </script>
 
 <style lang="scss" scoped>

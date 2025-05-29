@@ -143,174 +143,189 @@
 </template>
 
 <script>
-import { defineComponent, ref, computed, watch, onMounted, nextTick } from "vue";
-import { useQuasar } from "quasar";
-import { usePlayerStore } from "../stores/playerStore";
-import PlayerDataTable from "./PlayerDataTable.vue";
-import PlayerDetailDialog from "./PlayerDetailDialog.vue";
+import { useQuasar } from 'quasar'
+import { computed, defineComponent, nextTick, onMounted, ref, watch } from 'vue'
+import { usePlayerStore } from '../stores/playerStore'
+import PlayerDataTable from './PlayerDataTable.vue'
+import PlayerDetailDialog from './PlayerDetailDialog.vue'
 
 export default defineComponent({
-    name: "WonderkidsDialog",
-    components: {
-        PlayerDataTable,
-        PlayerDetailDialog,
+  name: 'WonderkidsDialog',
+  components: {
+    PlayerDataTable,
+    PlayerDetailDialog
+  },
+  props: {
+    show: {
+      type: Boolean,
+      default: false
     },
-    props: {
-        show: {
-            type: Boolean,
-            default: false,
-        },
-        players: {
-            type: Array,
-            default: () => [],
-        },
-        currencySymbol: {
-            type: String,
-            default: "$",
-        },
-        datasetId: {
-            type: String,
-            default: null,
-        },
+    players: {
+      type: Array,
+      default: () => []
     },
-    emits: ["close"],
-    setup(props, { emit }) {
-        const qInstance = useQuasar();
-        const playerStore = usePlayerStore();
-
-        // State
-        const selectedAge = ref(21);
-        const maxTransferValue = ref(null);
-        const maxSalary = ref(null);
-        const loading = ref(false);
-        const selectedPlayer = ref(null);
-        const showPlayerDetail = ref(false);
-        const wonderkidsByAge = ref({});
-
-        // Constants
-        const ages = [15, 16, 17, 18, 19, 20, 21];
-
-        // Computed
-        const currentWonderkids = computed(() => {
-            console.log(`Computing wonderkids for age ${selectedAge.value}, available data:`, Object.keys(wonderkidsByAge.value));
-            const result = wonderkidsByAge.value[selectedAge.value] || [];
-            console.log(`Returning ${result.length} players for age ${selectedAge.value}`);
-            return result;
-        });
-
-        // Methods
-        const getWonderkidsForAge = (age, allPlayers) => {
-            console.log(`Filtering for age ${age}, total players: ${allPlayers.length}`);
-            const playersOfAge = allPlayers
-                .filter(player => {
-                    const playerAge = Number(player.age);
-                    const matches = playerAge === age;
-                    if (matches && age === 20) { // Only log for age 20 to reduce spam
-                        console.log(`Found player ${player.name} with age ${playerAge}`);
-                    }
-                    return matches;
-                })
-                .filter(player => {
-                    // Apply transfer value filter
-                    if (maxTransferValue.value && player.transferValueAmount > maxTransferValue.value) {
-                        return false;
-                    }
-                    // Apply salary filter
-                    if (maxSalary.value && player.wageAmount > maxSalary.value) {
-                        return false;
-                    }
-                    return true;
-                })
-                .sort((a, b) => (b.Overall || 0) - (a.Overall || 0))
-                .slice(0, 25);
-
-            console.log(`Found ${playersOfAge.length} players for age ${age}`);
-            return playersOfAge;
-        };
-
-        const loadWonderkids = async () => {
-            loading.value = true;
-            try {
-                const allPlayers = props.players;
-                const newWonderkidsByAge = {};
-
-                ages.forEach(age => {
-                    newWonderkidsByAge[age] = getWonderkidsForAge(age, allPlayers);
-                });
-
-                wonderkidsByAge.value = newWonderkidsByAge;
-                console.log('Loaded wonderkids by age:', Object.keys(wonderkidsByAge.value).map(age => `${age}: ${wonderkidsByAge.value[age].length}`));
-            } catch (error) {
-                console.error("Error loading wonderkids:", error);
-                qInstance.notify({
-                    color: "negative",
-                    message: "Failed to load wonderkids",
-                    icon: "error",
-                });
-            } finally {
-                loading.value = false;
-            }
-        };
-
-        const onFiltersChanged = () => {
-            // Debounce the filter changes
-            clearTimeout(onFiltersChanged.timeout);
-            onFiltersChanged.timeout = setTimeout(() => {
-                loadWonderkids();
-            }, 300);
-        };
-
-        const handlePlayerSelected = (player) => {
-            selectedPlayer.value = player;
-            showPlayerDetail.value = true;
-        };
-
-        const handleTeamSelected = (teamName) => {
-            // Handle team selection if needed
-            console.log("Team selected:", teamName);
-        };
-
-        // Watchers
-        watch(() => props.show, (newShow) => {
-            if (newShow && props.players.length > 0) {
-                loadWonderkids();
-            }
-        });
-
-        watch(() => props.players, (newPlayers) => {
-            if (props.show && newPlayers.length > 0) {
-                loadWonderkids();
-            }
-        });
-
-        // Simplified age watcher - just log when it changes
-        watch(selectedAge, (newAge, oldAge) => {
-            console.log(`Age changed from ${oldAge} to ${newAge}`);
-        });
-
-        // Initialize when component mounts
-        onMounted(() => {
-            if (props.show && props.players.length > 0) {
-                loadWonderkids();
-            }
-        });
-
-        return {
-            qInstance,
-            selectedAge,
-            maxTransferValue,
-            maxSalary,
-            loading,
-            selectedPlayer,
-            showPlayerDetail,
-            ages,
-            currentWonderkids,
-            onFiltersChanged,
-            handlePlayerSelected,
-            handleTeamSelected,
-        };
+    currencySymbol: {
+      type: String,
+      default: '$'
     },
-});
+    datasetId: {
+      type: String,
+      default: null
+    }
+  },
+  emits: ['close'],
+  setup(props, { emit }) {
+    const qInstance = useQuasar()
+    const playerStore = usePlayerStore()
+
+    // State
+    const selectedAge = ref(21)
+    const maxTransferValue = ref(null)
+    const maxSalary = ref(null)
+    const loading = ref(false)
+    const selectedPlayer = ref(null)
+    const showPlayerDetail = ref(false)
+    const wonderkidsByAge = ref({})
+
+    // Constants
+    const ages = [15, 16, 17, 18, 19, 20, 21]
+
+    // Computed
+    const currentWonderkids = computed(() => {
+      console.log(
+        `Computing wonderkids for age ${selectedAge.value}, available data:`,
+        Object.keys(wonderkidsByAge.value)
+      )
+      const result = wonderkidsByAge.value[selectedAge.value] || []
+      console.log(`Returning ${result.length} players for age ${selectedAge.value}`)
+      return result
+    })
+
+    // Methods
+    const getWonderkidsForAge = (age, allPlayers) => {
+      console.log(`Filtering for age ${age}, total players: ${allPlayers.length}`)
+      const playersOfAge = allPlayers
+        .filter(player => {
+          const playerAge = Number(player.age)
+          const matches = playerAge === age
+          if (matches && age === 20) {
+            // Only log for age 20 to reduce spam
+            console.log(`Found player ${player.name} with age ${playerAge}`)
+          }
+          return matches
+        })
+        .filter(player => {
+          // Apply transfer value filter
+          if (maxTransferValue.value && player.transferValueAmount > maxTransferValue.value) {
+            return false
+          }
+          // Apply salary filter
+          if (maxSalary.value && player.wageAmount > maxSalary.value) {
+            return false
+          }
+          return true
+        })
+        .sort((a, b) => (b.Overall || 0) - (a.Overall || 0))
+        .slice(0, 25)
+
+      console.log(`Found ${playersOfAge.length} players for age ${age}`)
+      return playersOfAge
+    }
+
+    const loadWonderkids = async () => {
+      loading.value = true
+      try {
+        const allPlayers = props.players
+        const newWonderkidsByAge = {}
+
+        ages.forEach(age => {
+          newWonderkidsByAge[age] = getWonderkidsForAge(age, allPlayers)
+        })
+
+        wonderkidsByAge.value = newWonderkidsByAge
+        console.log(
+          'Loaded wonderkids by age:',
+          Object.keys(wonderkidsByAge.value).map(
+            age => `${age}: ${wonderkidsByAge.value[age].length}`
+          )
+        )
+      } catch (error) {
+        console.error('Error loading wonderkids:', error)
+        qInstance.notify({
+          color: 'negative',
+          message: 'Failed to load wonderkids',
+          icon: 'error'
+        })
+      } finally {
+        loading.value = false
+      }
+    }
+
+    const onFiltersChanged = () => {
+      // Debounce the filter changes
+      clearTimeout(onFiltersChanged.timeout)
+      onFiltersChanged.timeout = setTimeout(() => {
+        loadWonderkids()
+      }, 300)
+    }
+
+    const handlePlayerSelected = player => {
+      selectedPlayer.value = player
+      showPlayerDetail.value = true
+    }
+
+    const handleTeamSelected = teamName => {
+      // Handle team selection if needed
+      console.log('Team selected:', teamName)
+    }
+
+    // Watchers
+    watch(
+      () => props.show,
+      newShow => {
+        if (newShow && props.players.length > 0) {
+          loadWonderkids()
+        }
+      }
+    )
+
+    watch(
+      () => props.players,
+      newPlayers => {
+        if (props.show && newPlayers.length > 0) {
+          loadWonderkids()
+        }
+      }
+    )
+
+    // Simplified age watcher - just log when it changes
+    watch(selectedAge, (newAge, oldAge) => {
+      console.log(`Age changed from ${oldAge} to ${newAge}`)
+    })
+
+    // Initialize when component mounts
+    onMounted(() => {
+      if (props.show && props.players.length > 0) {
+        loadWonderkids()
+      }
+    })
+
+    return {
+      qInstance,
+      selectedAge,
+      maxTransferValue,
+      maxSalary,
+      loading,
+      selectedPlayer,
+      showPlayerDetail,
+      ages,
+      currentWonderkids,
+      onFiltersChanged,
+      handlePlayerSelected,
+      handleTeamSelected
+    }
+  }
+})
 </script>
 
 <style lang="scss" scoped>

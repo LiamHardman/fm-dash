@@ -13,8 +13,7 @@ Run the setup script to check dependencies and install packages:
 ## Tools Overview
 
 ### Frontend (JavaScript/Vue.js)
-- **ESLint** - JavaScript/Vue linting with Vue 3 best practices
-- **Prettier** - Code formatting for consistent style
+- **Biome** - Fast, unified linting and formatting tool (replaces ESLint + Prettier)
 - **Vitest** - Fast unit testing framework
 
 ### Backend (Go)
@@ -23,12 +22,14 @@ Run the setup script to check dependencies and install packages:
 
 ## Development Commands
 
-### Linting
+### Linting & Formatting
 
 ```bash
-# Frontend linting
-npm run lint:check      # Check for ESLint issues
-npm run lint            # Fix auto-fixable ESLint issues
+# Frontend linting and formatting (Biome)
+npm run lint:check      # Check for linting and formatting issues
+npm run lint            # Fix auto-fixable linting issues
+npm run format:check    # Check formatting only
+npm run format          # Fix formatting issues
 
 # Go linting  
 npm run lint:go         # Check for Go linting issues
@@ -36,13 +37,6 @@ npm run lint:go:fix     # Fix auto-fixable Go issues
 
 # Check both
 npm run lint:all        # Run all linting checks
-```
-
-### Code Formatting
-
-```bash
-npm run format:check    # Check if code is properly formatted
-npm run format          # Format all code with Prettier
 ```
 
 ### Testing
@@ -84,34 +78,26 @@ npm run preview         # Preview production build
 
 Install these extensions for the best development experience:
 
-- **ESLint** (dbaeumer.vscode-eslint)
-- **Prettier** (esbenp.prettier-vscode)
+- **Biome** (biomejs.biome) - Unified linting and formatting
 - **Vue Language Features (Volar)** (Vue.volar)
 - **Go** (golang.go)
 
 ### Configuration Files
 
-- `.eslintrc.js` → `eslint.config.js` - ESLint configuration (flat config format)
-- `.prettierrc` - Prettier formatting rules
-- `.prettierignore` - Files to exclude from formatting
+- `biome.json` - Biome configuration for linting and formatting
 - `.golangci.yml` - Go linting configuration
 - `vitest.config.js` - Testing configuration
 
 ## Tool Configuration Details
 
-### ESLint Rules
-- Vue 3 recommended rules
-- Strict about unused variables
+### Biome Rules
+- Vue 3 support with modern JavaScript
+- Strict about unused variables and console statements
 - Consistent quote style (single quotes)
-- No semicolons
-- 2-space indentation
-
-### Prettier Rules
-- Single quotes
-- No semicolons
+- No semicolons (as needed)
 - 2-space indentation
 - 100 character line width
-- No trailing commas
+- Import organization enabled
 
 ### Go Linting
 - Multiple linters enabled (errcheck, gosimple, govet, etc.)
@@ -135,7 +121,7 @@ npx husky add .husky/pre-commit "npm run check"
 
 ### Common Issues
 
-1. **ESLint errors after updating dependencies**
+1. **Biome errors after updating dependencies**
    ```bash
    npm run lint:check
    npm run lint  # Fix auto-fixable issues
@@ -158,7 +144,7 @@ npx husky add .husky/pre-commit "npm run check"
 
 - Use `npm run lint` (with auto-fix) instead of manually fixing issues
 - Run `npm run check` before committing
-- Use the VS Code extensions for real-time feedback
+- Use the VS Code Biome extension for real-time feedback
 - Run tests in watch mode during development (`npm run test`)
 
 ## Contributing
@@ -168,4 +154,14 @@ Before submitting a pull request:
 1. Run `npm run check` to ensure all checks pass
 2. Run `npm run fix` to auto-fix any issues
 3. Make sure all tests pass
-4. Follow the existing code style and patterns 
+4. Follow the existing code style and patterns
+
+## Why Biome?
+
+Biome offers several advantages over ESLint + Prettier:
+
+- **Faster**: Single tool, written in Rust
+- **Unified**: Linting and formatting in one configuration
+- **Better Vue support**: Native Vue.js support
+- **Simpler setup**: Less configuration complexity
+- **Import organization**: Built-in import sorting 

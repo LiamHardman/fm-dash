@@ -79,7 +79,7 @@
 </template>
 
 <script>
-import { defineComponent, ref, computed, watch, nextTick, onMounted } from 'vue'
+import { computed, defineComponent, nextTick, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePlayerStore } from '../stores/playerStore'
 import { debounce } from '../utils/debounce'
@@ -88,7 +88,7 @@ import PlayerDetailDialog from './PlayerDetailDialog.vue'
 export default defineComponent({
   name: 'UniversalSearch',
   components: {
-    PlayerDetailDialog,
+    PlayerDetailDialog
   },
   setup() {
     const router = useRouter()
@@ -99,22 +99,22 @@ export default defineComponent({
     const searchInput = ref(null)
     const playerForDetailView = ref(null)
     const showPlayerDetailDialog = ref(false)
-    
+
     const showResults = computed(() => searchQuery.value.length > 0)
     const hasDatasetId = computed(() => !!playerStore.currentDatasetId)
     const currentDatasetId = computed(() => playerStore.currentDatasetId)
     const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol || '$')
-    
+
     // Request cancellation support
     let currentSearchController = null
-    
+
     const searchAPI = async (query, signal) => {
       if (!query.trim() || !playerStore.currentDatasetId) {
         return []
       }
-      
+
       const url = `/api/search/${playerStore.currentDatasetId}?q=${encodeURIComponent(query)}`
-      
+
       try {
         const response = await fetch(url, { signal })
         if (response.ok) {
@@ -132,25 +132,25 @@ export default defineComponent({
       }
       return []
     }
-    
+
     // Create stable debounced function with cancellation support
-    const debouncedSearchFn = debounce(async (query) => {
+    const debouncedSearchFn = debounce(async query => {
       // Cancel previous request if it exists
       if (currentSearchController) {
         currentSearchController.abort()
       }
-      
+
       if (!query.trim()) {
         results.value = []
         isLoading.value = false
         currentSearchController = null
         return
       }
-      
+
       // Create new AbortController for this request
       currentSearchController = new AbortController()
       const signal = currentSearchController.signal
-      
+
       isLoading.value = true
       try {
         results.value = await searchAPI(query, signal)
@@ -166,45 +166,55 @@ export default defineComponent({
         currentSearchController = null
       }
     }, 300)
-    
+
     // Watch searchQuery and trigger debounced search
-    watch(searchQuery, (newQuery) => {
+    watch(searchQuery, newQuery => {
       debouncedSearchFn(newQuery)
     })
-    
+
     const clearSearch = () => {
       searchQuery.value = ''
       results.value = []
       isLoading.value = false
     }
-    
-    const getResultIcon = (type) => {
+
+    const getResultIcon = type => {
       switch (type) {
-        case 'player': return 'person'
-        case 'team': return 'groups'
-        case 'league': return 'emoji_events'
-        case 'nation': return 'flag'
-        default: return 'search'
+        case 'player':
+          return 'person'
+        case 'team':
+          return 'groups'
+        case 'league':
+          return 'emoji_events'
+        case 'nation':
+          return 'flag'
+        default:
+          return 'search'
       }
     }
-    
-    const getResultColor = (type) => {
+
+    const getResultColor = type => {
       switch (type) {
-        case 'player': return 'blue'
-        case 'team': return 'green'
-        case 'league': return 'orange'
-        case 'nation': return 'red'
-        default: return 'grey'
+        case 'player':
+          return 'blue'
+        case 'team':
+          return 'green'
+        case 'league':
+          return 'orange'
+        case 'nation':
+          return 'red'
+        default:
+          return 'grey'
       }
     }
-    
-    const findPlayerByName = (playerName) => {
-      return playerStore.allPlayers?.find(player => 
-        player.name?.toLowerCase() === playerName.toLowerCase()
+
+    const findPlayerByName = playerName => {
+      return playerStore.allPlayers?.find(
+        player => player.name?.toLowerCase() === playerName.toLowerCase()
       )
     }
-    
-    const handleResultClick = (result) => {
+
+    const handleResultClick = result => {
       if (result.type === 'player') {
         // Find the full player object and open detail dialog
         const player = findPlayerByName(result.name)
@@ -221,13 +231,13 @@ export default defineComponent({
       } else if (result.type === 'team') {
         // Navigate to team view page
         const url = router.resolve({
-          path: "/team-view",
+          path: '/team-view',
           query: {
             datasetId: playerStore.currentDatasetId,
-            team: result.name,
-          },
+            team: result.name
+          }
         }).href
-        window.open(url, "_blank")
+        window.open(url, '_blank')
       } else if (result.type === 'league') {
         // Navigate to leagues page with league filter
         router.push({
@@ -241,21 +251,24 @@ export default defineComponent({
           query: { nation: result.name }
         })
       }
-      
+
       clearSearch()
     }
-    
+
     // Focus search input when dataset changes
-    watch(() => playerStore.currentDatasetId, (newId) => {
-      if (newId) {
-        nextTick(() => {
-          if (searchInput.value) {
-            searchInput.value.focus()
-          }
-        })
+    watch(
+      () => playerStore.currentDatasetId,
+      newId => {
+        if (newId) {
+          nextTick(() => {
+            if (searchInput.value) {
+              searchInput.value.focus()
+            }
+          })
+        }
       }
-    })
-    
+    )
+
     return {
       searchQuery,
       results,
@@ -270,7 +283,7 @@ export default defineComponent({
       playerForDetailView,
       showPlayerDetailDialog,
       currentDatasetId,
-      detectedCurrencySymbol,
+      detectedCurrencySymbol
     }
   }
 })

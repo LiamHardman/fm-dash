@@ -129,28 +129,28 @@
 </template>
 
 <script>
-import { defineComponent } from "vue";
-import { useRouter } from "vue-router";
+import { defineComponent } from 'vue'
+import { useRouter } from 'vue-router'
 
 export default defineComponent({
-    name: "LandingPage",
-    setup() {
-        const router = useRouter();
+  name: 'LandingPage',
+  setup() {
+    const router = useRouter()
 
-        const navigateToUpload = () => {
-            router.push("/upload");
-        };
+    const navigateToUpload = () => {
+      router.push('/upload')
+    }
 
-        const navigateToDemo = () => {
-            router.push("/dataset/demo");
-        };
+    const navigateToDemo = () => {
+      router.push('/dataset/demo')
+    }
 
-        return {
-            navigateToUpload,
-            navigateToDemo,
-        };
-    },
-});
+    return {
+      navigateToUpload,
+      navigateToDemo
+    }
+  }
+})
 </script>
 
 <style lang="scss" scoped>

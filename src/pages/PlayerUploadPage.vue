@@ -250,193 +250,182 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from "vue";
-import { useRouter } from "vue-router";
-import { useQuasar, Notify } from "quasar";
-import { usePlayerStore } from "../stores/playerStore";
-import { useUiStore } from "../stores/uiStore";
-import { useWebNotification } from "@vueuse/core";
-import playerService from "../services/playerService";
+import { useWebNotification } from '@vueuse/core'
+import { Notify, useQuasar } from 'quasar'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import playerService from '../services/playerService'
+import { usePlayerStore } from '../stores/playerStore'
+import { useUiStore } from '../stores/uiStore'
 
 export default {
-    name: "PlayerUploadPage",
-    setup() {
-        const router = useRouter();
-        const playerStore = usePlayerStore();
-        const uiStore = useUiStore();
-        const $q = useQuasar();
-        const playerFile = ref(null);
-        const showFileSizeLimitModal = ref(false);
-        
-        // Dynamic config values
-        const maxFileSizeBytes = ref(15 * 1024 * 1024); // Default 15MB
-        const maxFileSizeMB = ref(15); // Default 15MB
-        const largeFileSizeBytes = ref(20 * 1024 * 1024); // 20MB threshold for notifications
+  name: 'PlayerUploadPage',
+  setup() {
+    const router = useRouter()
+    const playerStore = usePlayerStore()
+    const uiStore = useUiStore()
+    const $q = useQuasar()
+    const playerFile = ref(null)
+    const showFileSizeLimitModal = ref(false)
 
-        // Web notification setup
-        const {
-            isSupported: notificationSupported,
-            permissionGranted,
-            show: showNotification,
-        } = useWebNotification({
-            title: "FM24 Data Processing Complete",
-            body: "Your large file has been processed and is ready to view!",
-            icon: "/favicon.ico",
-            tag: "upload-complete",
-        });
+    // Dynamic config values
+    const maxFileSizeBytes = ref(15 * 1024 * 1024) // Default 15MB
+    const maxFileSizeMB = ref(15) // Default 15MB
+    const largeFileSizeBytes = ref(20 * 1024 * 1024) // 20MB threshold for notifications
 
-        const loading = computed(() => playerStore.loading);
-        const error = computed({
-            get: () => playerStore.error,
-            set: (value) => {
-                playerStore.error = value;
-            },
-        });
+    // Web notification setup
+    const {
+      isSupported: notificationSupported,
+      permissionGranted,
+      show: showNotification
+    } = useWebNotification({
+      title: 'FM24 Data Processing Complete',
+      body: 'Your large file has been processed and is ready to view!',
+      icon: '/favicon.ico',
+      tag: 'upload-complete'
+    })
 
-        const attributeWeightsLoadedForFeedback = ref(false);
-        const roleSpecificOverallWeightsLoadedForFeedback = ref(false);
+    const loading = computed(() => playerStore.loading)
+    const error = computed({
+      get: () => playerStore.error,
+      set: value => {
+        playerStore.error = value
+      }
+    })
 
-        const loadJsonForFeedback = async (filePath, loadedFlagRef) => {
-            try {
-                const response = await fetch(filePath);
-                if (!response.ok)
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                await response.json();
-                loadedFlagRef.value = true;
-            } catch (e) {
-                console.warn(
-                    `Client-side check: Failed to load ${filePath}:`,
-                    e,
-                );
-                loadedFlagRef.value = true;
+    const attributeWeightsLoadedForFeedback = ref(false)
+    const roleSpecificOverallWeightsLoadedForFeedback = ref(false)
+
+    const loadJsonForFeedback = async (filePath, loadedFlagRef) => {
+      try {
+        const response = await fetch(filePath)
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
+        await response.json()
+        loadedFlagRef.value = true
+      } catch (e) {
+        console.warn(`Client-side check: Failed to load ${filePath}:`, e)
+        loadedFlagRef.value = true
+      }
+    }
+
+    onMounted(async () => {
+      // Fetch config first
+      try {
+        const config = await playerService.getConfig()
+        maxFileSizeBytes.value = config.maxUploadSizeBytes
+        maxFileSizeMB.value = config.maxUploadSizeMB
+      } catch (error) {
+        console.warn('Failed to fetch config, using defaults:', error)
+      }
+
+      await loadJsonForFeedback('/public/attribute_weights.json', attributeWeightsLoadedForFeedback)
+      await loadJsonForFeedback(
+        '/public/role_specific_overall_weights.json',
+        roleSpecificOverallWeightsLoadedForFeedback
+      )
+
+      // Initialize UI preferences
+      uiStore.initNotifications()
+    })
+
+    const formatFileSize = bytes => {
+      if (bytes === 0) return '0 Bytes'
+      const k = 1024
+      const sizes = ['Bytes', 'KB', 'MB', 'GB']
+      const i = Math.floor(Math.log(bytes) / Math.log(k))
+      return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+    }
+
+    const onFileSelected = file => {
+      if (file && file.size > maxFileSizeBytes.value) {
+        showFileSizeLimitModal.value = true
+        playerFile.value = null
+      }
+    }
+
+    const uploadAndParse = async () => {
+      if (!playerFile.value) {
+        playerStore.error = 'Please select an HTML file first.'
+        return
+      }
+      if (playerFile.value.size > maxFileSizeBytes.value) {
+        showFileSizeLimitModal.value = true
+        return
+      }
+
+      const isLargeFile = playerFile.value.size > largeFileSizeBytes.value
+
+      try {
+        const formData = new FormData()
+        formData.append('playerFile', playerFile.value)
+        await playerStore.uploadPlayerFile(formData, maxFileSizeBytes.value)
+        if (!playerStore.error) {
+          const successMessage =
+            'File uploaded and parsed successfully! Redirecting to dataset view...'
+
+          Notify.create({
+            type: 'positive',
+            message: successMessage,
+            position: 'top',
+            timeout: 2000
+          })
+
+          // Show web notification for large files if enabled and supported
+          if (
+            isLargeFile &&
+            uiStore.notificationsEnabled &&
+            notificationSupported.value &&
+            permissionGranted.value
+          ) {
+            showNotification()
+          }
+
+          // Redirect to the dataset page
+          setTimeout(() => {
+            if (playerStore.currentDatasetId) {
+              router.push(`/dataset/${playerStore.currentDatasetId}`)
             }
-        };
+          }, 1000)
+        }
+      } catch (e) {
+        console.error('Upload and Parse error in page:', e)
+        if (playerStore.error) {
+          Notify.create({
+            type: 'negative',
+            message: playerStore.error,
+            position: 'top',
+            timeout: 5000,
+            actions: [{ label: 'Dismiss', color: 'white' }]
+          })
+        } else {
+          Notify.create({
+            type: 'negative',
+            message: `Upload failed: ${e.message}`,
+            position: 'top',
+            timeout: 5000,
+            actions: [{ label: 'Dismiss', color: 'white' }]
+          })
+        }
+      }
+    }
 
-        onMounted(async () => {
-            // Fetch config first
-            try {
-                const config = await playerService.getConfig();
-                maxFileSizeBytes.value = config.maxUploadSizeBytes;
-                maxFileSizeMB.value = config.maxUploadSizeMB;
-            } catch (error) {
-                console.warn("Failed to fetch config, using defaults:", error);
-            }
-            
-            await loadJsonForFeedback(
-                "/public/attribute_weights.json",
-                attributeWeightsLoadedForFeedback,
-            );
-            await loadJsonForFeedback(
-                "/public/role_specific_overall_weights.json",
-                roleSpecificOverallWeightsLoadedForFeedback,
-            );
-
-            // Initialize UI preferences
-            uiStore.initNotifications();
-        });
-
-        const formatFileSize = (bytes) => {
-            if (bytes === 0) return "0 Bytes";
-            const k = 1024;
-            const sizes = ["Bytes", "KB", "MB", "GB"];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return (
-                parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
-            );
-        };
-
-        const onFileSelected = (file) => {
-            if (file && file.size > maxFileSizeBytes.value) {
-                showFileSizeLimitModal.value = true;
-                playerFile.value = null;
-            }
-        };
-
-        const uploadAndParse = async () => {
-            if (!playerFile.value) {
-                playerStore.error = "Please select an HTML file first.";
-                return;
-            }
-            if (playerFile.value.size > maxFileSizeBytes.value) {
-                showFileSizeLimitModal.value = true;
-                return;
-            }
-
-            const isLargeFile = playerFile.value.size > largeFileSizeBytes.value;
-
-            try {
-                const formData = new FormData();
-                formData.append("playerFile", playerFile.value);
-                await playerStore.uploadPlayerFile(formData, maxFileSizeBytes.value);
-                if (!playerStore.error) {
-                    const successMessage =
-                        "File uploaded and parsed successfully! Redirecting to dataset view...";
-
-                    Notify.create({
-                        type: "positive",
-                        message: successMessage,
-                        position: "top",
-                        timeout: 2000,
-                    });
-
-                    // Show web notification for large files if enabled and supported
-                    if (
-                        isLargeFile &&
-                        uiStore.notificationsEnabled &&
-                        notificationSupported.value &&
-                        permissionGranted.value
-                    ) {
-                        showNotification();
-                    }
-
-                    // Redirect to the dataset page
-                    setTimeout(() => {
-                        if (playerStore.currentDatasetId) {
-                            router.push(
-                                `/dataset/${playerStore.currentDatasetId}`,
-                            );
-                        }
-                    }, 1000);
-                }
-            } catch (e) {
-                console.error("Upload and Parse error in page:", e);
-                if (playerStore.error) {
-                    Notify.create({
-                        type: "negative",
-                        message: playerStore.error,
-                        position: "top",
-                        timeout: 5000,
-                        actions: [{ label: "Dismiss", color: "white" }],
-                    });
-                } else {
-                    Notify.create({
-                        type: "negative",
-                        message: `Upload failed: ${e.message}`,
-                        position: "top",
-                        timeout: 5000,
-                        actions: [{ label: "Dismiss", color: "white" }],
-                    });
-                }
-            }
-        };
-
-        return {
-            playerFile,
-            showFileSizeLimitModal,
-            loading,
-            error,
-            attributeWeightsLoadedForFeedback,
-            roleSpecificOverallWeightsLoadedForFeedback,
-            uploadAndParse,
-            formatFileSize,
-            onFileSelected,
-            playerStore,
-            uiStore,
-            notificationSupported,
-            maxFileSizeMB,
-        };
-    },
-};
+    return {
+      playerFile,
+      showFileSizeLimitModal,
+      loading,
+      error,
+      attributeWeightsLoadedForFeedback,
+      roleSpecificOverallWeightsLoadedForFeedback,
+      uploadAndParse,
+      formatFileSize,
+      onFileSelected,
+      playerStore,
+      uiStore,
+      notificationSupported,
+      maxFileSizeMB
+    }
+  }
+}
 </script>
 
 <style lang="scss" scoped>

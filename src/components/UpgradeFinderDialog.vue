@@ -612,634 +612,546 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, watch } from "vue";
-import { useQuasar } from "quasar";
-import { usePlayerStore } from "@/stores/playerStore"; // Corrected Import Path
-import PlayerDataTable from "./PlayerDataTable.vue";
-import PlayerDetailDialog from "./PlayerDetailDialog.vue";
-import { formatCurrency } from "@/utils/currencyUtils";
+import { usePlayerStore } from '@/stores/playerStore' // Corrected Import Path
+import { formatCurrency } from '@/utils/currencyUtils'
+import { useQuasar } from 'quasar'
+import { computed, onMounted, ref, watch } from 'vue'
+import PlayerDataTable from './PlayerDataTable.vue'
+import PlayerDetailDialog from './PlayerDetailDialog.vue'
 
 // From PlayerFilters.vue for consistency
-const AGE_SLIDER_MIN = 15;
-const AGE_SLIDER_MAX = 50;
+const AGE_SLIDER_MIN = 15
+const AGE_SLIDER_MAX = 50
 const orderedShortPositions = [
-    "GK",
-    "DR",
-    "DC",
-    "DL",
-    "WBR",
-    "WBL",
-    "DM",
-    "MR",
-    "MC",
-    "ML",
-    "AMR",
-    "AMC",
-    "AML",
-    "ST",
-];
+  'GK',
+  'DR',
+  'DC',
+  'DL',
+  'WBR',
+  'WBL',
+  'DM',
+  'MR',
+  'MC',
+  'ML',
+  'AMR',
+  'AMC',
+  'AML',
+  'ST'
+]
 
 export default {
-    name: "UpgradeFinderDialog",
-    components: { PlayerDataTable, PlayerDetailDialog },
-    props: {
-        show: { type: Boolean, default: false },
-        players: { type: Array, required: true },
-        currencySymbol: { type: String, default: "$" },
-    },
-    emits: ["close"],
-    setup(props, { emit }) {
-        const $q = useQuasar();
-        const playerStore = usePlayerStore();
-        const teamName = ref(null);
-        const teamOptions = ref([]);
-        const allTeamNamesCache = ref([]);
+  name: 'UpgradeFinderDialog',
+  components: { PlayerDataTable, PlayerDetailDialog },
+  props: {
+    show: { type: Boolean, default: false },
+    players: { type: Array, required: true },
+    currencySymbol: { type: String, default: '$' }
+  },
+  emits: ['close'],
+  setup(props, { emit }) {
+    const $q = useQuasar()
+    const playerStore = usePlayerStore()
+    const teamName = ref(null)
+    const teamOptions = ref([])
+    const allTeamNamesCache = ref([])
 
-        const selectedPosition = ref(null);
-        const selectedRole = ref(null);
-        const selectedTeamPlayer = ref(null);
-        const teamPlayersForSelection = ref([]);
+    const selectedPosition = ref(null)
+    const selectedRole = ref(null)
+    const selectedTeamPlayer = ref(null)
+    const teamPlayersForSelection = ref([])
 
-        const upgradeByValue = ref(1);
+    const upgradeByValue = ref(1)
 
-        const ageSliderMin = AGE_SLIDER_MIN;
-        const ageSliderMax = AGE_SLIDER_MAX;
-        const maxAgeFilter = ref(ageSliderMax);
+    const ageSliderMin = AGE_SLIDER_MIN
+    const ageSliderMax = AGE_SLIDER_MAX
+    const maxAgeFilter = ref(ageSliderMax)
 
-        const maxTransferValueFilter = ref(null);
-        const dynamicMinTransferValue = ref(0);
-        const dynamicMaxTransferValue = ref(100000000);
-        
-        const maxSalaryFilter = ref(null);
-        const dynamicMinSalary = ref(0);
-        const dynamicMaxSalary = ref(1000000);
+    const maxTransferValueFilter = ref(null)
+    const dynamicMinTransferValue = ref(0)
+    const dynamicMaxTransferValue = ref(100000000)
 
-        const loading = ref(false);
-        const showResults = ref(false);
-        const initialLoad = ref(true);
+    const maxSalaryFilter = ref(null)
+    const dynamicMinSalary = ref(0)
+    const dynamicMaxSalary = ref(1000000)
 
-        const upgradePlayers = ref([]);
-        const playerForDetailView = ref(null);
-        const showPlayerDetailDialog = ref(false);
+    const loading = ref(false)
+    const showResults = ref(false)
+    const initialLoad = ref(true)
 
-        const populateAllTeamNames = () => {
-            if (!props.players) {
-                allTeamNamesCache.value = [];
-                teamOptions.value = [];
-                return;
-            }
-            const uniqueTeams = new Set();
-            props.players.forEach((player) => {
-                if (player.club && player.club.trim() !== "") {
-                    uniqueTeams.add(player.club);
-                }
-            });
-            allTeamNamesCache.value = Array.from(uniqueTeams).sort();
-            teamOptions.value = allTeamNamesCache.value;
-        };
+    const upgradePlayers = ref([])
+    const playerForDetailView = ref(null)
+    const showPlayerDetailDialog = ref(false)
 
-        const updateTransferValueSliderBounds = () => {
-            if (!props.players || props.players.length === 0) {
-                dynamicMinTransferValue.value = 0;
-                dynamicMaxTransferValue.value = 100000000;
-                maxTransferValueFilter.value = dynamicMaxTransferValue.value;
-                return;
-            }
-            let minVal = Infinity;
-            let maxVal = 0;
-            props.players.forEach((p) => {
-                if (typeof p.transferValueAmount === "number") {
-                    minVal = Math.min(minVal, p.transferValueAmount);
-                    maxVal = Math.max(maxVal, p.transferValueAmount);
-                }
-            });
-            dynamicMinTransferValue.value =
-                minVal === Infinity ? 0 : Math.max(0, minVal);
-            dynamicMaxTransferValue.value =
-                maxVal === 0 && minVal === Infinity ? 100000000 : maxVal;
-            if (
-                maxTransferValueFilter.value === null ||
-                maxTransferValueFilter.value > dynamicMaxTransferValue.value ||
-                maxTransferValueFilter.value < dynamicMinTransferValue.value
-            ) {
-                maxTransferValueFilter.value = dynamicMaxTransferValue.value;
-            }
-        };
+    const populateAllTeamNames = () => {
+      if (!props.players) {
+        allTeamNamesCache.value = []
+        teamOptions.value = []
+        return
+      }
+      const uniqueTeams = new Set()
+      props.players.forEach(player => {
+        if (player.club && player.club.trim() !== '') {
+          uniqueTeams.add(player.club)
+        }
+      })
+      allTeamNamesCache.value = Array.from(uniqueTeams).sort()
+      teamOptions.value = allTeamNamesCache.value
+    }
 
-        const updateSalarySliderBounds = () => {
-            if (!props.players || props.players.length === 0) {
-                dynamicMinSalary.value = 0;
-                dynamicMaxSalary.value = 1000000;
-                maxSalaryFilter.value = dynamicMaxSalary.value;
-                return;
-            }
-            let minVal = Infinity;
-            let maxVal = 0;
-            props.players.forEach((p) => {
-                if (typeof p.wageAmount === "number") {
-                    minVal = Math.min(minVal, p.wageAmount);
-                    maxVal = Math.max(maxVal, p.wageAmount);
-                }
-            });
-            dynamicMinSalary.value =
-                minVal === Infinity ? 0 : Math.max(0, minVal);
-            dynamicMaxSalary.value =
-                maxVal === 0 && minVal === Infinity ? 1000000 : maxVal;
-            if (
-                maxSalaryFilter.value === null ||
-                maxSalaryFilter.value > dynamicMaxSalary.value ||
-                maxSalaryFilter.value < dynamicMinSalary.value
-            ) {
-                maxSalaryFilter.value = dynamicMaxSalary.value;
-            }
-        };
+    const updateTransferValueSliderBounds = () => {
+      if (!props.players || props.players.length === 0) {
+        dynamicMinTransferValue.value = 0
+        dynamicMaxTransferValue.value = 100000000
+        maxTransferValueFilter.value = dynamicMaxTransferValue.value
+        return
+      }
+      let minVal = Number.POSITIVE_INFINITY
+      let maxVal = 0
+      props.players.forEach(p => {
+        if (typeof p.transferValueAmount === 'number') {
+          minVal = Math.min(minVal, p.transferValueAmount)
+          maxVal = Math.max(maxVal, p.transferValueAmount)
+        }
+      })
+      dynamicMinTransferValue.value = minVal === Number.POSITIVE_INFINITY ? 0 : Math.max(0, minVal)
+      dynamicMaxTransferValue.value =
+        maxVal === 0 && minVal === Number.POSITIVE_INFINITY ? 100000000 : maxVal
+      if (
+        maxTransferValueFilter.value === null ||
+        maxTransferValueFilter.value > dynamicMaxTransferValue.value ||
+        maxTransferValueFilter.value < dynamicMinTransferValue.value
+      ) {
+        maxTransferValueFilter.value = dynamicMaxTransferValue.value
+      }
+    }
 
-        onMounted(async () => {
-            if (
-                playerStore.allAvailableRoles.length === 0 &&
-                playerStore.currentDatasetId
-            ) {
-                await playerStore.fetchAllAvailableRoles();
-            }
-            populateAllTeamNames();
-            updateTransferValueSliderBounds();
-            updateSalarySliderBounds();
-            maxAgeFilter.value = ageSliderMax;
-        });
+    const updateSalarySliderBounds = () => {
+      if (!props.players || props.players.length === 0) {
+        dynamicMinSalary.value = 0
+        dynamicMaxSalary.value = 1000000
+        maxSalaryFilter.value = dynamicMaxSalary.value
+        return
+      }
+      let minVal = Number.POSITIVE_INFINITY
+      let maxVal = 0
+      props.players.forEach(p => {
+        if (typeof p.wageAmount === 'number') {
+          minVal = Math.min(minVal, p.wageAmount)
+          maxVal = Math.max(maxVal, p.wageAmount)
+        }
+      })
+      dynamicMinSalary.value = minVal === Number.POSITIVE_INFINITY ? 0 : Math.max(0, minVal)
+      dynamicMaxSalary.value =
+        maxVal === 0 && minVal === Number.POSITIVE_INFINITY ? 1000000 : maxVal
+      if (
+        maxSalaryFilter.value === null ||
+        maxSalaryFilter.value > dynamicMaxSalary.value ||
+        maxSalaryFilter.value < dynamicMinSalary.value
+      ) {
+        maxSalaryFilter.value = dynamicMaxSalary.value
+      }
+    }
 
-        watch(
-            () => props.players,
-            (newPlayers) => {
-                populateAllTeamNames();
-                updateTransferValueSliderBounds();
-                updateSalarySliderBounds();
-                if (newPlayers && newPlayers.length > 0) {
-                    if (
-                        maxTransferValueFilter.value >
-                            dynamicMaxTransferValue.value ||
-                        maxTransferValueFilter.value <
-                            dynamicMinTransferValue.value
-                    ) {
-                        maxTransferValueFilter.value =
-                            dynamicMaxTransferValue.value;
-                    }
-                } else {
-                    allTeamNamesCache.value = [];
-                    teamOptions.value = [];
-                    dynamicMinTransferValue.value = 0;
-                    dynamicMaxTransferValue.value = 100000000;
-                    maxTransferValueFilter.value =
-                        dynamicMaxTransferValue.value;
-                }
-            },
-            { immediate: true, deep: true },
-        );
+    onMounted(async () => {
+      if (playerStore.allAvailableRoles.length === 0 && playerStore.currentDatasetId) {
+        await playerStore.fetchAllAvailableRoles()
+      }
+      populateAllTeamNames()
+      updateTransferValueSliderBounds()
+      updateSalarySliderBounds()
+      maxAgeFilter.value = ageSliderMax
+    })
 
-        const positionFilterOptions = computed(() => {
-            const options = [{ label: "Any Position Group", value: null }];
-            orderedShortPositions.forEach((pos) => {
-                options.push({ label: pos, value: pos });
-            });
-            return options;
-        });
+    watch(
+      () => props.players,
+      newPlayers => {
+        populateAllTeamNames()
+        updateTransferValueSliderBounds()
+        updateSalarySliderBounds()
+        if (newPlayers && newPlayers.length > 0) {
+          if (
+            maxTransferValueFilter.value > dynamicMaxTransferValue.value ||
+            maxTransferValueFilter.value < dynamicMinTransferValue.value
+          ) {
+            maxTransferValueFilter.value = dynamicMaxTransferValue.value
+          }
+        } else {
+          allTeamNamesCache.value = []
+          teamOptions.value = []
+          dynamicMinTransferValue.value = 0
+          dynamicMaxTransferValue.value = 100000000
+          maxTransferValueFilter.value = dynamicMaxTransferValue.value
+        }
+      },
+      { immediate: true, deep: true }
+    )
 
-        const roleOptionsForSelectedPosition = computed(() => {
-            if (
-                !selectedPosition.value ||
-                !playerStore.allAvailableRoles ||
-                playerStore.allAvailableRoles.length === 0
-            ) {
-                return [{ label: "Any Role", value: null }];
-            }
-            const roles = playerStore.allAvailableRoles
-                .filter((roleFullName) =>
-                    roleFullName.startsWith(selectedPosition.value + " - "),
-                )
-                .map((roleFullName) => ({
-                    label: roleFullName,
-                    value: roleFullName,
-                }))
-                .sort((a, b) => a.label.localeCompare(b.label));
-            return [{ label: "Any Role", value: null }, ...roles];
-        });
+    const positionFilterOptions = computed(() => {
+      const options = [{ label: 'Any Position Group', value: null }]
+      orderedShortPositions.forEach(pos => {
+        options.push({ label: pos, value: pos })
+      })
+      return options
+    })
 
-        const getRoleShortName = (fullRoleName) => {
-            if (!fullRoleName) return "";
-            const parts = fullRoleName.split(" - ");
-            return parts.length > 1 ? parts[1] : fullRoleName;
-        };
-        const getPositionShortName = (shortPos) => {
-            return shortPos || "";
-        };
+    const roleOptionsForSelectedPosition = computed(() => {
+      if (
+        !selectedPosition.value ||
+        !playerStore.allAvailableRoles ||
+        playerStore.allAvailableRoles.length === 0
+      ) {
+        return [{ label: 'Any Role', value: null }]
+      }
+      const roles = playerStore.allAvailableRoles
+        .filter(roleFullName => roleFullName.startsWith(selectedPosition.value + ' - '))
+        .map(roleFullName => ({
+          label: roleFullName,
+          value: roleFullName
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label))
+      return [{ label: 'Any Role', value: null }, ...roles]
+    })
 
-        const filterTeams = (val, update) => {
-            if (val === "") {
-                update(() => {
-                    teamOptions.value = allTeamNamesCache.value;
-                });
-                return;
-            }
-            update(() => {
-                const needle = val.toLowerCase();
-                teamOptions.value = allTeamNamesCache.value.filter(
-                    (team) => team.toLowerCase().indexOf(needle) > -1,
-                );
-            });
-        };
+    const getRoleShortName = fullRoleName => {
+      if (!fullRoleName) return ''
+      const parts = fullRoleName.split(' - ')
+      return parts.length > 1 ? parts[1] : fullRoleName
+    }
+    const getPositionShortName = shortPos => {
+      return shortPos || ''
+    }
 
-        const onPositionOrTeamChange = () => {
-            selectedTeamPlayer.value = null;
-            selectedRole.value = null;
-            updateTeamPlayersForSelection();
-        };
+    const filterTeams = (val, update) => {
+      if (val === '') {
+        update(() => {
+          teamOptions.value = allTeamNamesCache.value
+        })
+        return
+      }
+      update(() => {
+        const needle = val.toLowerCase()
+        teamOptions.value = allTeamNamesCache.value.filter(
+          team => team.toLowerCase().indexOf(needle) > -1
+        )
+      })
+    }
 
-        const updateTeamPlayersForSelection = () => {
-            if (teamName.value && selectedPosition.value && props.players) {
-                teamPlayersForSelection.value = props.players
-                    .filter((player) => {
-                        if (player.club !== teamName.value) return false;
-                        return (
-                            player.shortPositions &&
-                            player.shortPositions.includes(
-                                selectedPosition.value,
-                            )
-                        );
-                    })
-                    .sort((a, b) => {
-                        const overallA = getPlayerOverallForRoleOrPosition(
-                            a,
-                            selectedRole.value,
-                            selectedPosition.value,
-                        );
-                        const overallB = getPlayerOverallForRoleOrPosition(
-                            b,
-                            selectedRole.value,
-                            selectedPosition.value,
-                        );
-                        return (overallB || 0) - (overallA || 0);
-                    });
-            } else {
-                teamPlayersForSelection.value = [];
-            }
-        };
+    const onPositionOrTeamChange = () => {
+      selectedTeamPlayer.value = null
+      selectedRole.value = null
+      updateTeamPlayersForSelection()
+    }
 
-        watch(
-            [teamName, selectedPosition, selectedRole],
-            updateTeamPlayersForSelection,
-        );
-
-        const getPlayerOverallForRoleOrPosition = (player, role, position) => {
-            if (!player) return 0;
-            if (role) {
-                const roleData = player.roleSpecificOveralls?.find(
-                    (r) => r.roleName === role,
-                );
-                return roleData ? roleData.score : 0;
-            }
-            if (position) {
-                let maxOverallForPosition = 0;
-                if (player.roleSpecificOveralls) {
-                    player.roleSpecificOveralls.forEach((rso) => {
-                        if (rso.roleName.startsWith(position + " - ")) {
-                            if (rso.score > maxOverallForPosition) {
-                                maxOverallForPosition = rso.score;
-                            }
-                        }
-                    });
-                }
-                return maxOverallForPosition > 0
-                    ? maxOverallForPosition
-                    : player.Overall || 0;
-            }
-            return player.Overall || 0;
-        };
-
-        const getBaseOverallFromSelectedPlayer = () => {
-            if (!selectedTeamPlayer.value) return null;
-            const player = teamPlayersForSelection.value.find(
-                (p) => p.name === selectedTeamPlayer.value,
-            );
-            if (!player) return null;
-            return getPlayerOverallForRoleOrPosition(
-                player,
-                selectedRole.value,
-                selectedPosition.value,
-            );
-        };
-
-        const selectedTeamPlayerObject = computed(() => {
-            if (!selectedTeamPlayer.value) return null;
-            return (
-                teamPlayersForSelection.value.find(
-                    (p) => p.name === selectedTeamPlayer.value,
-                ) || null
-            );
-        });
-
-        const targetOverallForSearch = computed(() => {
-            const base = getBaseOverallFromSelectedPlayer();
-            if (base === null) return null;
-            return base + upgradeByValue.value;
-        });
-
-        const computedMinSliderTransferValue = computed(
-            () => dynamicMinTransferValue.value,
-        );
-        const computedMaxSliderTransferValue = computed(
-            () => dynamicMaxTransferValue.value,
-        );
-
-        const computedStepSliderTransferValue = computed(() => {
-            const range =
-                computedMaxSliderTransferValue.value -
-                computedMinSliderTransferValue.value;
-            if (range <= 0) return 10000;
-            if (range < 100000) return 5000;
-            if (range < 1000000) return 25000;
-            if (range < 10000000) return 100000;
-            if (range < 50000000) return 250000;
-            return 500000;
-        });
-
-        const formattedMaxTransferValueLabel = computed(() => {
-            if (
-                maxTransferValueFilter.value ===
-                computedMaxSliderTransferValue.value
+    const updateTeamPlayersForSelection = () => {
+      if (teamName.value && selectedPosition.value && props.players) {
+        teamPlayersForSelection.value = props.players
+          .filter(player => {
+            if (player.club !== teamName.value) return false
+            return player.shortPositions && player.shortPositions.includes(selectedPosition.value)
+          })
+          .sort((a, b) => {
+            const overallA = getPlayerOverallForRoleOrPosition(
+              a,
+              selectedRole.value,
+              selectedPosition.value
             )
-                return "Any";
-            return formatCurrency(
-                maxTransferValueFilter.value,
-                props.currencySymbol,
-            );
-        });
-
-        const computedMinSliderSalary = computed(
-            () => dynamicMinSalary.value,
-        );
-        const computedMaxSliderSalary = computed(
-            () => dynamicMaxSalary.value,
-        );
-
-        const computedStepSliderSalary = computed(() => {
-            const range =
-                computedMaxSliderSalary.value -
-                computedMinSliderSalary.value;
-            if (range <= 0) return 1000;
-            if (range < 50000) return 500;
-            if (range < 250000) return 2500;
-            if (range < 1000000) return 5000;
-            if (range < 10000000) return 25000;
-            return 50000;
-        });
-
-        const formattedMaxSalaryLabel = computed(() => {
-            if (
-                maxSalaryFilter.value ===
-                computedMaxSliderSalary.value
+            const overallB = getPlayerOverallForRoleOrPosition(
+              b,
+              selectedRole.value,
+              selectedPosition.value
             )
-                return "Any";
-            return formatCurrency(
-                maxSalaryFilter.value,
-                props.currencySymbol,
-            );
-        });
+            return (overallB || 0) - (overallA || 0)
+          })
+      } else {
+        teamPlayersForSelection.value = []
+      }
+    }
 
-        const findUpgrades = async () => {
-            if (!selectedTeamPlayer.value) {
-                upgradePlayers.value = [];
-                showResults.value = true;
-                initialLoad.value = false;
-                return;
+    watch([teamName, selectedPosition, selectedRole], updateTeamPlayersForSelection)
+
+    const getPlayerOverallForRoleOrPosition = (player, role, position) => {
+      if (!player) return 0
+      if (role) {
+        const roleData = player.roleSpecificOveralls?.find(r => r.roleName === role)
+        return roleData ? roleData.score : 0
+      }
+      if (position) {
+        let maxOverallForPosition = 0
+        if (player.roleSpecificOveralls) {
+          player.roleSpecificOveralls.forEach(rso => {
+            if (rso.roleName.startsWith(position + ' - ')) {
+              if (rso.score > maxOverallForPosition) {
+                maxOverallForPosition = rso.score
+              }
             }
-            if (!props.players) {
-                loading.value = false;
-                return;
-            }
+          })
+        }
+        return maxOverallForPosition > 0 ? maxOverallForPosition : player.Overall || 0
+      }
+      return player.Overall || 0
+    }
 
-            loading.value = true;
-            showResults.value = true;
-            initialLoad.value = false;
-            const baseOverall = getBaseOverallFromSelectedPlayer();
-            if (baseOverall === null) {
-                loading.value = false;
-                upgradePlayers.value = [];
-                return;
-            }
+    const getBaseOverallFromSelectedPlayer = () => {
+      if (!selectedTeamPlayer.value) return null
+      const player = teamPlayersForSelection.value.find(p => p.name === selectedTeamPlayer.value)
+      if (!player) return null
+      return getPlayerOverallForRoleOrPosition(player, selectedRole.value, selectedPosition.value)
+    }
 
-            const targetOverall = baseOverall + upgradeByValue.value;
-            const currentMaxTransferValue = maxTransferValueFilter.value;
-            const currentMaxAge = maxAgeFilter.value;
-            const currentMaxSalary = maxSalaryFilter.value;
+    const selectedTeamPlayerObject = computed(() => {
+      if (!selectedTeamPlayer.value) return null
+      return teamPlayersForSelection.value.find(p => p.name === selectedTeamPlayer.value) || null
+    })
 
-            await new Promise((resolve) => setTimeout(resolve, 300));
+    const targetOverallForSearch = computed(() => {
+      const base = getBaseOverallFromSelectedPlayer()
+      if (base === null) return null
+      return base + upgradeByValue.value
+    })
 
-            try {
-                upgradePlayers.value = props.players
-                    .filter((player) => {
-                        if (player.club === teamName.value) return false;
-                        if (
-                            player.transfer_value &&
-                            player.transfer_value.toLowerCase() ===
-                                "not for sale"
-                        )
-                            return false;
-                        if (
-                            !player.shortPositions ||
-                            !player.shortPositions.includes(
-                                selectedPosition.value,
-                            )
-                        )
-                            return false;
+    const computedMinSliderTransferValue = computed(() => dynamicMinTransferValue.value)
+    const computedMaxSliderTransferValue = computed(() => dynamicMaxTransferValue.value)
 
-                        const playerOverallForContext =
-                            getPlayerOverallForRoleOrPosition(
-                                player,
-                                selectedRole.value,
-                                selectedPosition.value,
-                            );
-                        if ((playerOverallForContext || 0) < targetOverall)
-                            return false;
+    const computedStepSliderTransferValue = computed(() => {
+      const range = computedMaxSliderTransferValue.value - computedMinSliderTransferValue.value
+      if (range <= 0) return 10000
+      if (range < 100000) return 5000
+      if (range < 1000000) return 25000
+      if (range < 10000000) return 100000
+      if (range < 50000000) return 250000
+      return 500000
+    })
 
-                        if (
-                            currentMaxAge < ageSliderMax &&
-                            (parseInt(player.age, 10) || 0) > currentMaxAge
-                        )
-                            return false;
-                        if (
-                            currentMaxTransferValue <
-                                computedMaxSliderTransferValue.value &&
-                            (player.transferValueAmount || 0) >
-                                currentMaxTransferValue
-                        )
-                            return false;
-                        if (
-                            currentMaxSalary <
-                                computedMaxSliderSalary.value &&
-                            (player.wageAmount || 0) >
-                                currentMaxSalary
-                        )
-                            return false;
+    const formattedMaxTransferValueLabel = computed(() => {
+      if (maxTransferValueFilter.value === computedMaxSliderTransferValue.value) return 'Any'
+      return formatCurrency(maxTransferValueFilter.value, props.currencySymbol)
+    })
 
-                        return true;
-                    })
-                    .sort((a, b) => {
-                        const overallA = getPlayerOverallForRoleOrPosition(
-                            a,
-                            selectedRole.value,
-                            selectedPosition.value,
-                        );
-                        const overallB = getPlayerOverallForRoleOrPosition(
-                            b,
-                            selectedRole.value,
-                            selectedPosition.value,
-                        );
-                        return (overallB || 0) - (overallA || 0);
-                    });
-            } catch (error) {
-                console.error("Error finding upgrades:", error);
-            } finally {
-                loading.value = false;
-            }
-        };
+    const computedMinSliderSalary = computed(() => dynamicMinSalary.value)
+    const computedMaxSliderSalary = computed(() => dynamicMaxSalary.value)
 
-        const processedUpgradePlayers = computed(() => {
-            return upgradePlayers.value.map((player) => {
-                const displayOverall = getPlayerOverallForRoleOrPosition(
-                    player,
-                    selectedRole.value,
-                    selectedPosition.value,
-                );
-                return {
-                    ...player,
-                    Overall: displayOverall, // This 'Overall' will be used by PlayerDataTable
-                };
-            });
-        });
+    const computedStepSliderSalary = computed(() => {
+      const range = computedMaxSliderSalary.value - computedMinSliderSalary.value
+      if (range <= 0) return 1000
+      if (range < 50000) return 500
+      if (range < 250000) return 2500
+      if (range < 1000000) return 5000
+      if (range < 10000000) return 25000
+      return 50000
+    })
 
-        const handlePlayerSelectedForDetailView = (player) => {
-            // Ensure we pass the original player object, not the one with potentially modified 'Overall'
-            const originalPlayer = props.players.find(
-                (p) => p.name === player.name && p.club === player.club,
-            );
-            playerForDetailView.value = originalPlayer || player;
-            showPlayerDetailDialog.value = true;
-        };
+    const formattedMaxSalaryLabel = computed(() => {
+      if (maxSalaryFilter.value === computedMaxSliderSalary.value) return 'Any'
+      return formatCurrency(maxSalaryFilter.value, props.currencySymbol)
+    })
 
-        const getUnifiedRatingClass = (value, maxScale) => {
-            const numValue = parseInt(value, 10);
-            if (
-                isNaN(numValue) ||
-                value === null ||
-                value === undefined ||
-                value === "-"
+    const findUpgrades = async () => {
+      if (!selectedTeamPlayer.value) {
+        upgradePlayers.value = []
+        showResults.value = true
+        initialLoad.value = false
+        return
+      }
+      if (!props.players) {
+        loading.value = false
+        return
+      }
+
+      loading.value = true
+      showResults.value = true
+      initialLoad.value = false
+      const baseOverall = getBaseOverallFromSelectedPlayer()
+      if (baseOverall === null) {
+        loading.value = false
+        upgradePlayers.value = []
+        return
+      }
+
+      const targetOverall = baseOverall + upgradeByValue.value
+      const currentMaxTransferValue = maxTransferValueFilter.value
+      const currentMaxAge = maxAgeFilter.value
+      const currentMaxSalary = maxSalaryFilter.value
+
+      await new Promise(resolve => setTimeout(resolve, 300))
+
+      try {
+        upgradePlayers.value = props.players
+          .filter(player => {
+            if (player.club === teamName.value) return false
+            if (player.transfer_value && player.transfer_value.toLowerCase() === 'not for sale')
+              return false
+            if (!player.shortPositions || !player.shortPositions.includes(selectedPosition.value))
+              return false
+
+            const playerOverallForContext = getPlayerOverallForRoleOrPosition(
+              player,
+              selectedRole.value,
+              selectedPosition.value
             )
-                return "rating-na";
-            const percentage = (numValue / maxScale) * 100;
-            if (percentage >= 90) return "rating-tier-6";
-            if (percentage >= 80) return "rating-tier-5";
-            if (percentage >= 70) return "rating-tier-4";
-            if (percentage >= 55) return "rating-tier-3";
-            if (percentage >= 40) return "rating-tier-2";
-            return "rating-tier-1";
-        };
+            if ((playerOverallForContext || 0) < targetOverall) return false
 
-        const upgradeFinderIsGoalkeeperView = computed(
-            () => selectedPosition.value === "GK",
-        );
+            if (
+              currentMaxAge < ageSliderMax &&
+              (Number.parseInt(player.age, 10) || 0) > currentMaxAge
+            )
+              return false
+            if (
+              currentMaxTransferValue < computedMaxSliderTransferValue.value &&
+              (player.transferValueAmount || 0) > currentMaxTransferValue
+            )
+              return false
+            if (
+              currentMaxSalary < computedMaxSliderSalary.value &&
+              (player.wageAmount || 0) > currentMaxSalary
+            )
+              return false
 
-        watch(
-            () => props.show,
-            (newValue) => {
-                if (!newValue) {
-                    teamName.value = null;
-                    selectedPosition.value = null;
-                    selectedRole.value = null;
-                    selectedTeamPlayer.value = null;
-                    teamPlayersForSelection.value = [];
-                    upgradeByValue.value = 1;
-                    maxAgeFilter.value = ageSliderMax;
-                    if (props.players && props.players.length > 0) {
-                        maxTransferValueFilter.value =
-                            computedMaxSliderTransferValue.value;
-                    } else {
-                        maxTransferValueFilter.value = 100000000;
-                    }
-                    if (props.players && props.players.length > 0) {
-                        maxSalaryFilter.value =
-                            computedMaxSliderSalary.value;
-                    } else {
-                        maxSalaryFilter.value = 1000000;
-                    }
-                    showResults.value = false;
-                    upgradePlayers.value = [];
-                    loading.value = false;
-                    initialLoad.value = true;
-                } else {
-                    if (
-                        playerStore.allAvailableRoles.length === 0 &&
-                        playerStore.currentDatasetId
-                    ) {
-                        playerStore.fetchAllAvailableRoles();
-                    }
-                    populateAllTeamNames();
-                    updateTransferValueSliderBounds();
-                    updateSalarySliderBounds();
-                    maxAgeFilter.value = ageSliderMax;
-                    maxTransferValueFilter.value =
-                        computedMaxSliderTransferValue.value;
-                    maxSalaryFilter.value =
-                        computedMaxSliderSalary.value;
-                }
-            },
-        );
+            return true
+          })
+          .sort((a, b) => {
+            const overallA = getPlayerOverallForRoleOrPosition(
+              a,
+              selectedRole.value,
+              selectedPosition.value
+            )
+            const overallB = getPlayerOverallForRoleOrPosition(
+              b,
+              selectedRole.value,
+              selectedPosition.value
+            )
+            return (overallB || 0) - (overallA || 0)
+          })
+      } catch (error) {
+        console.error('Error finding upgrades:', error)
+      } finally {
+        loading.value = false
+      }
+    }
 
+    const processedUpgradePlayers = computed(() => {
+      return upgradePlayers.value.map(player => {
+        const displayOverall = getPlayerOverallForRoleOrPosition(
+          player,
+          selectedRole.value,
+          selectedPosition.value
+        )
         return {
-            qInstance: $q,
-            teamName,
-            teamOptions,
-            filterTeams,
-            selectedPosition,
-            positionFilterOptions,
-            selectedRole,
-            roleOptionsForSelectedPosition,
-            getRoleShortName,
-            getPositionShortName,
-            selectedTeamPlayer,
-            teamPlayersForSelection,
-            getBaseOverallFromSelectedPlayer,
-            selectedTeamPlayerObject,
-            targetOverallForSearch,
-            upgradeByValue,
-            maxAgeFilter,
-            ageSliderMin,
-            ageSliderMax,
-            maxTransferValueFilter,
-            computedMinSliderTransferValue,
-            computedMaxSliderTransferValue,
-            computedStepSliderTransferValue,
-            formattedMaxTransferValueLabel,
-            maxSalaryFilter,
-            computedMinSliderSalary,
-            computedMaxSliderSalary,
-            computedStepSliderSalary,
-            formattedMaxSalaryLabel,
-            loading,
-            showResults,
-            initialLoad,
-            upgradePlayers,
-            processedUpgradePlayers, // Use processed list for table
-            findUpgrades,
-            getUnifiedRatingClass,
-            playerForDetailView,
-            showPlayerDetailDialog,
-            handlePlayerSelectedForDetailView,
-            props,
-            upgradeFinderIsGoalkeeperView,
-            onPositionOrTeamChange,
-            getPlayerOverallForRoleOrPosition,
-        };
-    },
-};
+          ...player,
+          Overall: displayOverall // This 'Overall' will be used by PlayerDataTable
+        }
+      })
+    })
+
+    const handlePlayerSelectedForDetailView = player => {
+      // Ensure we pass the original player object, not the one with potentially modified 'Overall'
+      const originalPlayer = props.players.find(
+        p => p.name === player.name && p.club === player.club
+      )
+      playerForDetailView.value = originalPlayer || player
+      showPlayerDetailDialog.value = true
+    }
+
+    const getUnifiedRatingClass = (value, maxScale) => {
+      const numValue = Number.parseInt(value, 10)
+      if (isNaN(numValue) || value === null || value === undefined || value === '-')
+        return 'rating-na'
+      const percentage = (numValue / maxScale) * 100
+      if (percentage >= 90) return 'rating-tier-6'
+      if (percentage >= 80) return 'rating-tier-5'
+      if (percentage >= 70) return 'rating-tier-4'
+      if (percentage >= 55) return 'rating-tier-3'
+      if (percentage >= 40) return 'rating-tier-2'
+      return 'rating-tier-1'
+    }
+
+    const upgradeFinderIsGoalkeeperView = computed(() => selectedPosition.value === 'GK')
+
+    watch(
+      () => props.show,
+      newValue => {
+        if (!newValue) {
+          teamName.value = null
+          selectedPosition.value = null
+          selectedRole.value = null
+          selectedTeamPlayer.value = null
+          teamPlayersForSelection.value = []
+          upgradeByValue.value = 1
+          maxAgeFilter.value = ageSliderMax
+          if (props.players && props.players.length > 0) {
+            maxTransferValueFilter.value = computedMaxSliderTransferValue.value
+          } else {
+            maxTransferValueFilter.value = 100000000
+          }
+          if (props.players && props.players.length > 0) {
+            maxSalaryFilter.value = computedMaxSliderSalary.value
+          } else {
+            maxSalaryFilter.value = 1000000
+          }
+          showResults.value = false
+          upgradePlayers.value = []
+          loading.value = false
+          initialLoad.value = true
+        } else {
+          if (playerStore.allAvailableRoles.length === 0 && playerStore.currentDatasetId) {
+            playerStore.fetchAllAvailableRoles()
+          }
+          populateAllTeamNames()
+          updateTransferValueSliderBounds()
+          updateSalarySliderBounds()
+          maxAgeFilter.value = ageSliderMax
+          maxTransferValueFilter.value = computedMaxSliderTransferValue.value
+          maxSalaryFilter.value = computedMaxSliderSalary.value
+        }
+      }
+    )
+
+    return {
+      qInstance: $q,
+      teamName,
+      teamOptions,
+      filterTeams,
+      selectedPosition,
+      positionFilterOptions,
+      selectedRole,
+      roleOptionsForSelectedPosition,
+      getRoleShortName,
+      getPositionShortName,
+      selectedTeamPlayer,
+      teamPlayersForSelection,
+      getBaseOverallFromSelectedPlayer,
+      selectedTeamPlayerObject,
+      targetOverallForSearch,
+      upgradeByValue,
+      maxAgeFilter,
+      ageSliderMin,
+      ageSliderMax,
+      maxTransferValueFilter,
+      computedMinSliderTransferValue,
+      computedMaxSliderTransferValue,
+      computedStepSliderTransferValue,
+      formattedMaxTransferValueLabel,
+      maxSalaryFilter,
+      computedMinSliderSalary,
+      computedMaxSliderSalary,
+      computedStepSliderSalary,
+      formattedMaxSalaryLabel,
+      loading,
+      showResults,
+      initialLoad,
+      upgradePlayers,
+      processedUpgradePlayers, // Use processed list for table
+      findUpgrades,
+      getUnifiedRatingClass,
+      playerForDetailView,
+      showPlayerDetailDialog,
+      handlePlayerSelectedForDetailView,
+      props,
+      upgradeFinderIsGoalkeeperView,
+      onPositionOrTeamChange,
+      getPlayerOverallForRoleOrPosition
+    }
+  }
+}
 </script>
 
 <style lang="scss" scoped>

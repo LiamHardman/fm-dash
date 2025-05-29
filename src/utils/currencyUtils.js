@@ -14,63 +14,56 @@
  * @returns {string} The formatted currency string or the original display value if formatting fails.
  */
 export function formatCurrency(amount, symbol, originalDisplayValue) {
-  const defaultSymbol = symbol || "$"; // Default to '$' if no symbol is provided
+  const defaultSymbol = symbol || '$' // Default to '$' if no symbol is provided
 
   // If the originalDisplayValue already seems well-formatted (e.g., "€1.5M", "Not for Sale"), return it.
   // This is a simple heuristic. More complex logic might be needed for edge cases.
   if (
-    typeof originalDisplayValue === "string" &&
-    originalDisplayValue.trim() !== "-" &&
-    originalDisplayValue.trim() !== ""
+    typeof originalDisplayValue === 'string' &&
+    originalDisplayValue.trim() !== '-' &&
+    originalDisplayValue.trim() !== ''
   ) {
     if (
       originalDisplayValue.includes(defaultSymbol) &&
-      (originalDisplayValue.toUpperCase().includes("M") ||
-        originalDisplayValue.toUpperCase().includes("K"))
+      (originalDisplayValue.toUpperCase().includes('M') ||
+        originalDisplayValue.toUpperCase().includes('K'))
     ) {
-      return originalDisplayValue;
+      return originalDisplayValue
     }
     // Handle cases like "Not for Sale" or other non-numeric strings
-    if (isNaN(parseFloat(originalDisplayValue.replace(/[^0-9.-]+/g, "")))) {
-      return originalDisplayValue;
+    if (isNaN(Number.parseFloat(originalDisplayValue.replace(/[^0-9.-]+/g, '')))) {
+      return originalDisplayValue
     }
   }
 
-  const numAmount = Number(amount);
+  const numAmount = Number(amount)
 
   if (isNaN(numAmount)) {
     // If the amount is not a number, return the original display value or the symbol if no original value
-    return originalDisplayValue || defaultSymbol;
+    return originalDisplayValue || defaultSymbol
   }
 
-  if (
-    numAmount === 0 &&
-    (originalDisplayValue === "-" || !originalDisplayValue)
-  ) {
-    return `${defaultSymbol}0`;
+  if (numAmount === 0 && (originalDisplayValue === '-' || !originalDisplayValue)) {
+    return `${defaultSymbol}0`
   }
-  if (
-    numAmount === 0 &&
-    originalDisplayValue &&
-    originalDisplayValue.includes(defaultSymbol)
-  ) {
-    return originalDisplayValue; // e.g. €0, $0
+  if (numAmount === 0 && originalDisplayValue && originalDisplayValue.includes(defaultSymbol)) {
+    return originalDisplayValue // e.g. €0, $0
   }
   if (numAmount === 0 && originalDisplayValue) {
     // e.g. if original was just "0" or something non-standard
-    return `${defaultSymbol}0`;
+    return `${defaultSymbol}0`
   }
 
-  let valueString;
+  let valueString
   if (Math.abs(numAmount) >= 1000000) {
-    valueString = `${(numAmount / 1000000).toFixed(1).replace(/\.0$/, "")}M`;
+    valueString = `${(numAmount / 1000000).toFixed(1).replace(/\.0$/, '')}M`
   } else if (Math.abs(numAmount) >= 1000) {
-    valueString = `${(numAmount / 1000).toFixed(1).replace(/\.0$/, "")}K`;
+    valueString = `${(numAmount / 1000).toFixed(1).replace(/\.0$/, '')}K`
   } else {
-    valueString = numAmount.toString();
+    valueString = numAmount.toString()
   }
 
-  return `${defaultSymbol}${valueString}`;
+  return `${defaultSymbol}${valueString}`
 }
 
 /**
@@ -82,34 +75,34 @@ export function formatCurrency(amount, symbol, originalDisplayValue) {
  * @returns {number|null} The numeric value, or null if parsing fails.
  */
 export function parseCurrencyString(valueString) {
-  if (typeof valueString !== "string" || !valueString.trim()) {
-    return null;
+  if (typeof valueString !== 'string' || !valueString.trim()) {
+    return null
   }
 
   const cleanedStr = valueString
     .toUpperCase()
-    .replace(/[€$£]/g, "") // Remove common currency symbols
-    .replace(/P\/W|\/W/g, "") // Remove per week indicators
-    .trim();
+    .replace(/[€$£]/g, '') // Remove common currency symbols
+    .replace(/P\/W|\/W/g, '') // Remove per week indicators
+    .trim()
 
-  let multiplier = 1;
-  let numericPart = cleanedStr;
+  let multiplier = 1
+  let numericPart = cleanedStr
 
-  if (cleanedStr.endsWith("M")) {
-    multiplier = 1000000;
-    numericPart = cleanedStr.substring(0, cleanedStr.length - 1);
-  } else if (cleanedStr.endsWith("K")) {
-    multiplier = 1000;
-    numericPart = cleanedStr.substring(0, cleanedStr.length - 1);
+  if (cleanedStr.endsWith('M')) {
+    multiplier = 1000000
+    numericPart = cleanedStr.substring(0, cleanedStr.length - 1)
+  } else if (cleanedStr.endsWith('K')) {
+    multiplier = 1000
+    numericPart = cleanedStr.substring(0, cleanedStr.length - 1)
   }
 
-  numericPart = numericPart.replace(/,/g, ""); // Remove commas
+  numericPart = numericPart.replace(/,/g, '') // Remove commas
 
-  const value = parseFloat(numericPart);
+  const value = Number.parseFloat(numericPart)
 
   if (isNaN(value)) {
-    return null;
+    return null
   }
 
-  return Math.round(value * multiplier);
+  return Math.round(value * multiplier)
 }

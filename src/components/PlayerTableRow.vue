@@ -34,60 +34,60 @@
 </template>
 
 <script>
-import { computed } from 'vue'
 import { useQuasar } from 'quasar'
+import { computed } from 'vue'
 
 export default {
-    name: 'PlayerTableRow',
-    props: {
-        player: { type: Object, required: true },
-        columns: { type: Array, required: true },
-        currencySymbol: { type: String, default: '$' },
-        isGoalkeeperView: { type: Boolean, default: false },
-        getDisplayValue: { type: Function, required: true },
-        formatCurrency: { type: Function, required: true },
-        getRatingClass: { type: Function, required: true }
-    },
-    emits: ['player-selected', 'context-menu', 'team-selected'],
-    setup(props) {
-        const quasarInstance = useQuasar()
+  name: 'PlayerTableRow',
+  props: {
+    player: { type: Object, required: true },
+    columns: { type: Array, required: true },
+    currencySymbol: { type: String, default: '$' },
+    isGoalkeeperView: { type: Boolean, default: false },
+    getDisplayValue: { type: Function, required: true },
+    formatCurrency: { type: Function, required: true },
+    getRatingClass: { type: Function, required: true }
+  },
+  emits: ['player-selected', 'context-menu', 'team-selected'],
+  setup(props) {
+    const quasarInstance = useQuasar()
 
-        const rowClass = computed(() => {
-            const classes = []
-            
-            if (quasarInstance.dark.isActive) {
-                classes.push('dark-row')
-            }
-            
-            // Add any player-specific classes here
-            if (props.player.position?.includes('GK')) {
-                classes.push('goalkeeper-row')
-            }
-            
-            return classes.join(' ')
-        })
+    const rowClass = computed(() => {
+      const classes = []
 
-        const getCellClass = (col) => {
-            const classes = ['player-cell']
-            
-            if (col.type === 'number' || col.type === 'rating') {
-                classes.push('text-right')
-            }
-            
-            return classes.join(' ')
-        }
+      if (quasarInstance.dark.isActive) {
+        classes.push('dark-row')
+      }
 
-        const displayValue = computed(() => {
-            return (col) => props.getDisplayValue(props.player, col)
-        })
+      // Add any player-specific classes here
+      if (props.player.position?.includes('GK')) {
+        classes.push('goalkeeper-row')
+      }
 
-        return {
-            quasarInstance,
-            rowClass,
-            getCellClass,
-            displayValue
-        }
+      return classes.join(' ')
+    })
+
+    const getCellClass = col => {
+      const classes = ['player-cell']
+
+      if (col.type === 'number' || col.type === 'rating') {
+        classes.push('text-right')
+      }
+
+      return classes.join(' ')
     }
+
+    const displayValue = computed(() => {
+      return col => props.getDisplayValue(props.player, col)
+    })
+
+    return {
+      quasarInstance,
+      rowClass,
+      getCellClass,
+      displayValue
+    }
+  }
 }
 </script>
 

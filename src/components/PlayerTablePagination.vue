@@ -65,65 +65,65 @@
 import { computed } from 'vue'
 
 export default {
-    name: 'PlayerTablePagination',
-    props: {
-        currentPage: { type: Number, required: true },
-        totalItems: { type: Number, required: true },
-        itemsPerPage: { type: Number, required: true },
-        maxDisplayItems: { type: Number, default: 1000 },
-        isSliced: { type: Boolean, default: false },
-        maxPagesToShow: { type: Number, default: 7 }
-    },
-    emits: ['page-change'],
-    setup(props) {
-        const totalPages = computed(() => {
-            return Math.ceil(props.totalItems / props.itemsPerPage)
-        })
+  name: 'PlayerTablePagination',
+  props: {
+    currentPage: { type: Number, required: true },
+    totalItems: { type: Number, required: true },
+    itemsPerPage: { type: Number, required: true },
+    maxDisplayItems: { type: Number, default: 1000 },
+    isSliced: { type: Boolean, default: false },
+    maxPagesToShow: { type: Number, default: 7 }
+  },
+  emits: ['page-change'],
+  setup(props) {
+    const totalPages = computed(() => {
+      return Math.ceil(props.totalItems / props.itemsPerPage)
+    })
 
-        const startItem = computed(() => {
-            return props.totalItems === 0 ? 0 : (props.currentPage - 1) * props.itemsPerPage + 1
-        })
+    const startItem = computed(() => {
+      return props.totalItems === 0 ? 0 : (props.currentPage - 1) * props.itemsPerPage + 1
+    })
 
-        const endItem = computed(() => {
-            return Math.min(props.currentPage * props.itemsPerPage, props.totalItems)
-        })
+    const endItem = computed(() => {
+      return Math.min(props.currentPage * props.itemsPerPage, props.totalItems)
+    })
 
-        const visiblePages = computed(() => {
-            const pages = []
-            const total = totalPages.value
-            const current = props.currentPage
-            const maxShow = props.maxPagesToShow
+    const visiblePages = computed(() => {
+      const pages = []
+      const total = totalPages.value
+      const current = props.currentPage
+      const maxShow = props.maxPagesToShow
 
-            if (total <= maxShow) {
-                // Show all pages if total is less than max
-                for (let i = 1; i <= total; i++) {
-                    pages.push(i)
-                }
-            } else {
-                // Calculate start and end of visible range
-                let start = Math.max(1, current - Math.floor(maxShow / 2))
-                let end = Math.min(total, start + maxShow - 1)
-                
-                // Adjust start if end is at the boundary
-                if (end === total) {
-                    start = Math.max(1, end - maxShow + 1)
-                }
-                
-                for (let i = start; i <= end; i++) {
-                    pages.push(i)
-                }
-            }
-
-            return pages
-        })
-
-        return {
-            totalPages,
-            startItem,
-            endItem,
-            visiblePages
+      if (total <= maxShow) {
+        // Show all pages if total is less than max
+        for (let i = 1; i <= total; i++) {
+          pages.push(i)
         }
+      } else {
+        // Calculate start and end of visible range
+        let start = Math.max(1, current - Math.floor(maxShow / 2))
+        const end = Math.min(total, start + maxShow - 1)
+
+        // Adjust start if end is at the boundary
+        if (end === total) {
+          start = Math.max(1, end - maxShow + 1)
+        }
+
+        for (let i = start; i <= end; i++) {
+          pages.push(i)
+        }
+      }
+
+      return pages
+    })
+
+    return {
+      totalPages,
+      startItem,
+      endItem,
+      visiblePages
     }
+  }
 }
 </script>
 

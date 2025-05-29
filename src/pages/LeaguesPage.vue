@@ -276,325 +276,313 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, watch } from "vue";
-import { useQuasar } from "quasar";
-import { useRouter, useRoute } from "vue-router";
-import { usePlayerStore } from "../stores/playerStore";
-import PlayerDetailDialog from "../components/PlayerDetailDialog.vue";
-import { debounce } from "../utils/debounce";
+import { useQuasar } from 'quasar'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
+import { usePlayerStore } from '../stores/playerStore'
+import { debounce } from '../utils/debounce'
 
 export default {
-    name: "LeaguesPage",
-    components: { PlayerDetailDialog },
-    setup() {
-        const quasarInstance = useQuasar();
-        const router = useRouter();
-        const route = useRoute();
-        const playerStore = usePlayerStore();
+  name: 'LeaguesPage',
+  components: { PlayerDetailDialog },
+  setup() {
+    const quasarInstance = useQuasar()
+    const router = useRouter()
+    const route = useRoute()
+    const playerStore = usePlayerStore()
 
-        const selectedLeagueName = ref(null);
-        const leagueOptions = ref([]);
-        const allLeagueNamesCache = ref([]);
-        const allLeaguesData = ref([]);
-        const leagueTeams = ref([]);
-        const loadingLeague = ref(false);
-        const pageLoading = ref(true);
-        const pageLoadingError = ref("");
-        
-        // Pagination for leagues
-        const showAllLeagues = ref(false);
-        const INITIAL_LEAGUES_LIMIT = 30;
-        
-        // Computed properties from store
-        const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol);
-        const currentDatasetId = computed(() => playerStore.currentDatasetId);
+    const selectedLeagueName = ref(null)
+    const leagueOptions = ref([])
+    const allLeagueNamesCache = ref([])
+    const allLeaguesData = ref([])
+    const leagueTeams = ref([])
+    const loadingLeague = ref(false)
+    const pageLoading = ref(true)
+    const pageLoadingError = ref('')
 
-        // Limited leagues for initial rendering
-        const displayedLeagues = computed(() => {
-            if (!allLeaguesData.value || allLeaguesData.value.length === 0) return [];
-            
-            if (!showAllLeagues.value && allLeaguesData.value.length > INITIAL_LEAGUES_LIMIT) {
-                return allLeaguesData.value.slice(0, INITIAL_LEAGUES_LIMIT);
-            }
-            
-            return allLeaguesData.value;
-        });
+    // Pagination for leagues
+    const showAllLeagues = ref(false)
+    const INITIAL_LEAGUES_LIMIT = 30
 
-        const playerForDetailView = ref(null);
-        const showPlayerDetailDialog = ref(false);
+    // Computed properties from store
+    const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol)
+    const currentDatasetId = computed(() => playerStore.currentDatasetId)
 
-        const fetchLeaguesAndCurrency = async (datasetId) => {
-            pageLoading.value = true;
-            pageLoadingError.value = "";
-            try {
-                const response = await fetch(`/api/leagues/${datasetId}`);
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                const leaguesData = await response.json();
-                allLeaguesData.value = leaguesData || [];
-                
-                // Also fetch currency symbol from player store
-                await playerStore.fetchPlayersByDatasetId(datasetId);
-            } catch (err) {
-                pageLoadingError.value = `Failed to load leagues data: ${err.message || "Unknown server error"}. Please try uploading again.`;
-            } finally {
-                pageLoading.value = false;
-            }
-        };
+    // Limited leagues for initial rendering
+    const displayedLeagues = computed(() => {
+      if (!allLeaguesData.value || allLeaguesData.value.length === 0) return []
 
-        const fetchTeamsForLeague = async (datasetId, leagueName) => {
-            loadingLeague.value = true;
-            try {
-                const response = await fetch(`/api/teams/${datasetId}/${encodeURIComponent(leagueName)}`);
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                const teamsData = await response.json();
-                leagueTeams.value = teamsData || [];
-            } catch (err) {
-                console.error("Error fetching teams data:", err);
-                leagueTeams.value = [];
-            } finally {
-                loadingLeague.value = false;
-            }
-        };
+      if (!showAllLeagues.value && allLeaguesData.value.length > INITIAL_LEAGUES_LIMIT) {
+        return allLeaguesData.value.slice(0, INITIAL_LEAGUES_LIMIT)
+      }
 
-        onMounted(async () => {
-            const datasetIdFromQuery = route.query.datasetId;
-            const datasetIdFromRoute = route.params.datasetId;
-            const leagueFromQuery = route.query.league;
-            let finalDatasetId =
-                datasetIdFromRoute ||
-                datasetIdFromQuery ||
-                sessionStorage.getItem("currentDatasetId");
+      return allLeaguesData.value
+    })
 
-            if (finalDatasetId) {
-                if (
-                    datasetIdFromQuery &&
-                    datasetIdFromQuery !==
-                        sessionStorage.getItem("currentDatasetId")
-                ) {
-                    sessionStorage.setItem(
-                        "currentDatasetId",
-                        datasetIdFromQuery,
-                    );
-                } else if (
-                    !datasetIdFromQuery &&
-                    sessionStorage.getItem("currentDatasetId")
-                ) {
-                    router.replace({ query: { datasetId: finalDatasetId } });
-                }
-                await fetchLeaguesAndCurrency(finalDatasetId);
-            } else {
-                pageLoadingError.value =
-                    "No player dataset ID found. Please upload a file on the main page.";
-                pageLoading.value = false;
-            }
+    const playerForDetailView = ref(null)
+    const showPlayerDetailDialog = ref(false)
 
-            if (!pageLoadingError.value && allLeaguesData.value.length > 0) {
-                populateLeagueFilterOptions();
-                
-                if (leagueFromQuery && leagueFromQuery.trim() !== '') {
-                    selectedLeagueName.value = leagueFromQuery;
-                    loadLeagueTeams();
-                }
-            }
-        });
+    const fetchLeaguesAndCurrency = async datasetId => {
+      pageLoading.value = true
+      pageLoadingError.value = ''
+      try {
+        const response = await fetch(`/api/leagues/${datasetId}`)
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        }
+        const leaguesData = await response.json()
+        allLeaguesData.value = leaguesData || []
 
-        const populateLeagueFilterOptions = () => {
-            if (!allLeaguesData.value || allLeaguesData.value.length === 0) {
-                allLeagueNamesCache.value = [];
-                leagueOptions.value = [];
-                return;
-            }
-            const leagueNames = allLeaguesData.value.map(league => league.name).sort();
-            allLeagueNamesCache.value = leagueNames;
-            leagueOptions.value = leagueNames;
-        };
+        // Also fetch currency symbol from player store
+        await playerStore.fetchPlayersByDatasetId(datasetId)
+      } catch (err) {
+        pageLoadingError.value = `Failed to load leagues data: ${err.message || 'Unknown server error'}. Please try uploading again.`
+      } finally {
+        pageLoading.value = false
+      }
+    }
 
-        const filterLeagueOptions = (val, update) => {
-            if (val === "") {
-                update(() => {
-                    leagueOptions.value = allLeagueNamesCache.value;
-                });
-                return;
-            }
-            update(() => {
-                const needle = val.toLowerCase();
-                leagueOptions.value = allLeagueNamesCache.value.filter(
-                    (league) => league.toLowerCase().indexOf(needle) > -1,
-                );
-            });
-        };
+    const fetchTeamsForLeague = async (datasetId, leagueName) => {
+      loadingLeague.value = true
+      try {
+        const response = await fetch(`/api/teams/${datasetId}/${encodeURIComponent(leagueName)}`)
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        }
+        const teamsData = await response.json()
+        leagueTeams.value = teamsData || []
+      } catch (err) {
+        console.error('Error fetching teams data:', err)
+        leagueTeams.value = []
+      } finally {
+        loadingLeague.value = false
+      }
+    }
 
-        const selectLeague = (leagueName) => {
-            selectedLeagueName.value = leagueName;
-            loadLeagueTeams();
-        };
+    onMounted(async () => {
+      const datasetIdFromQuery = route.query.datasetId
+      const datasetIdFromRoute = route.params.datasetId
+      const leagueFromQuery = route.query.league
+      const finalDatasetId =
+        datasetIdFromRoute || datasetIdFromQuery || sessionStorage.getItem('currentDatasetId')
 
-        const loadLeagueTeams = async () => {
-            if (!selectedLeagueName.value) {
-                leagueTeams.value = [];
-                return;
-            }
-            
-            const datasetId = currentDatasetId.value || sessionStorage.getItem("currentDatasetId");
-            if (datasetId) {
-                await fetchTeamsForLeague(datasetId, selectedLeagueName.value);
-            }
-        };
+      if (finalDatasetId) {
+        if (
+          datasetIdFromQuery &&
+          datasetIdFromQuery !== sessionStorage.getItem('currentDatasetId')
+        ) {
+          sessionStorage.setItem('currentDatasetId', datasetIdFromQuery)
+        } else if (!datasetIdFromQuery && sessionStorage.getItem('currentDatasetId')) {
+          router.replace({ query: { datasetId: finalDatasetId } })
+        }
+        await fetchLeaguesAndCurrency(finalDatasetId)
+      } else {
+        pageLoadingError.value =
+          'No player dataset ID found. Please upload a file on the main page.'
+        pageLoading.value = false
+      }
 
-        const clearLeagueSelection = () => {
-            selectedLeagueName.value = null;
-            leagueTeams.value = [];
-        };
+      if (!pageLoadingError.value && allLeaguesData.value.length > 0) {
+        populateLeagueFilterOptions()
 
-        const handleTeamSelected = (team) => {
-            // Navigate to the team-view page with team filtering
-            const datasetId = currentDatasetId.value || sessionStorage.getItem("currentDatasetId");
-            if (datasetId) {
-                router.push({
-                    path: '/team-view',
-                    query: { 
-                        datasetId: datasetId,
-                        team: team.name 
-                    }
-                });
-            }
-        };
+        if (leagueFromQuery && leagueFromQuery.trim() !== '') {
+          selectedLeagueName.value = leagueFromQuery
+          loadLeagueTeams()
+        }
+      }
+    })
 
-        const getOverallClass = (overall) => {
-            if (overall === null || overall === undefined || overall === 0) return "rating-na";
-            const numericOverall = Number(overall);
-            if (isNaN(numericOverall)) return "rating-na";
+    const populateLeagueFilterOptions = () => {
+      if (!allLeaguesData.value || allLeaguesData.value.length === 0) {
+        allLeagueNamesCache.value = []
+        leagueOptions.value = []
+        return
+      }
+      const leagueNames = allLeaguesData.value.map(league => league.name).sort()
+      allLeagueNamesCache.value = leagueNames
+      leagueOptions.value = leagueNames
+    }
 
-            if (numericOverall >= 90) return "rating-tier-6";
-            if (numericOverall >= 80) return "rating-tier-5";
-            if (numericOverall >= 70) return "rating-tier-4";
-            if (numericOverall >= 55) return "rating-tier-3";
-            if (numericOverall >= 40) return "rating-tier-2";
-            return "rating-tier-1";
-        };
+    const filterLeagueOptions = (val, update) => {
+      if (val === '') {
+        update(() => {
+          leagueOptions.value = allLeagueNamesCache.value
+        })
+        return
+      }
+      update(() => {
+        const needle = val.toLowerCase()
+        leagueOptions.value = allLeagueNamesCache.value.filter(
+          league => league.toLowerCase().indexOf(needle) > -1
+        )
+      })
+    }
 
-        const getStarClass = (overall, starPosition) => {
-            if (!overall || overall === 0) return "star-empty";
-            
-            const starRating = getStarRating(overall);
-            
-            if (starPosition <= Math.floor(starRating)) {
-                return "star-full";
-            } else if (starPosition === Math.floor(starRating) + 1 && starRating % 1 === 0.5) {
-                return "star-half";
-            } else {
-                return "star-empty";
-            }
-        };
+    const selectLeague = leagueName => {
+      selectedLeagueName.value = leagueName
+      loadLeagueTeams()
+    }
 
-        const getStarRating = (overall) => {
-            if (!overall || overall === 0) return 0;
-            
-            if (overall >= 85) return 5;
-            if (overall >= 82) return 4.5;
-            if (overall >= 78) return 4;
-            if (overall >= 74) return 3.5;
-            if (overall >= 70) return 3;
-            if (overall >= 67) return 2.5;
-            if (overall >= 64) return 2;
-            if (overall >= 60) return 1.5;
-            if (overall >= 55) return 1;
-            if (overall >= 50) return 0.5;
-            return 0;
-        };
+    const loadLeagueTeams = async () => {
+      if (!selectedLeagueName.value) {
+        leagueTeams.value = []
+        return
+      }
 
-        const shareDataset = async () => {
-            if (!currentDatasetId.value) return;
-            
-            const shareUrl = `${window.location.origin}/leagues/${currentDatasetId.value}`;
-            
-            try {
-                await navigator.clipboard.writeText(shareUrl);
-                quasarInstance.notify({
-                    message: 'Link copied to clipboard!',
-                    color: 'positive',
-                    icon: 'check_circle',
-                    position: 'top',
-                    timeout: 2000
-                });
-            } catch (err) {
-                const textArea = document.createElement('textarea');
-                textArea.value = shareUrl;
-                document.body.appendChild(textArea);
-                textArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textArea);
-                
-                quasarInstance.notify({
-                    message: 'Link copied to clipboard!',
-                    color: 'positive',
-                    icon: 'check_circle',
-                    position: 'top',
-                    timeout: 2000
-                });
-            }
-        };
+      const datasetId = currentDatasetId.value || sessionStorage.getItem('currentDatasetId')
+      if (datasetId) {
+        await fetchTeamsForLeague(datasetId, selectedLeagueName.value)
+      }
+    }
 
-        watch(
-            () => route.query.datasetId,
-            async (newId, oldId) => {
-                if (newId && newId !== oldId) {
-                    sessionStorage.setItem("currentDatasetId", newId);
-                    await fetchLeaguesAndCurrency(newId);
-                    clearLeagueSelection();
-                    if (
-                        !pageLoadingError.value &&
-                        allLeaguesData.value.length > 0
-                    ) {
-                        populateLeagueFilterOptions();
-                    }
-                }
-            },
-        );
+    const clearLeagueSelection = () => {
+      selectedLeagueName.value = null
+      leagueTeams.value = []
+    }
 
-        watch(
-            () => route.query.league,
-            (newLeague) => {
-                if (newLeague && newLeague.trim() !== '' && newLeague !== selectedLeagueName.value) {
-                    selectedLeagueName.value = newLeague;
-                    loadLeagueTeams();
-                }
-            },
-        );
+    const handleTeamSelected = team => {
+      // Navigate to the team-view page with team filtering
+      const datasetId = currentDatasetId.value || sessionStorage.getItem('currentDatasetId')
+      if (datasetId) {
+        router.push({
+          path: '/team-view',
+          query: {
+            datasetId: datasetId,
+            team: team.name
+          }
+        })
+      }
+    }
 
-        return {
-            allLeaguesData,
-            selectedLeagueName,
-            leagueOptions,
-            filterLeagueOptions,
-            loadLeagueTeams,
-            clearLeagueSelection,
-            selectLeague,
-            leagueTeams,
-            loadingLeague,
-            pageLoading,
-            pageLoadingError,
-            playerForDetailView,
-            showPlayerDetailDialog,
-            handleTeamSelected,
-            getOverallClass,
-            getStarClass,
-            getStarRating,
-            quasarInstance,
-            router,
-            detectedCurrencySymbol,
-            currentDatasetId,
-            shareDataset,
-            displayedLeagues,
-            showAllLeagues,
-            INITIAL_LEAGUES_LIMIT,
-        };
-    },
-};
+    const getOverallClass = overall => {
+      if (overall === null || overall === undefined || overall === 0) return 'rating-na'
+      const numericOverall = Number(overall)
+      if (isNaN(numericOverall)) return 'rating-na'
+
+      if (numericOverall >= 90) return 'rating-tier-6'
+      if (numericOverall >= 80) return 'rating-tier-5'
+      if (numericOverall >= 70) return 'rating-tier-4'
+      if (numericOverall >= 55) return 'rating-tier-3'
+      if (numericOverall >= 40) return 'rating-tier-2'
+      return 'rating-tier-1'
+    }
+
+    const getStarClass = (overall, starPosition) => {
+      if (!overall || overall === 0) return 'star-empty'
+
+      const starRating = getStarRating(overall)
+
+      if (starPosition <= Math.floor(starRating)) {
+        return 'star-full'
+      } else if (starPosition === Math.floor(starRating) + 1 && starRating % 1 === 0.5) {
+        return 'star-half'
+      } else {
+        return 'star-empty'
+      }
+    }
+
+    const getStarRating = overall => {
+      if (!overall || overall === 0) return 0
+
+      if (overall >= 85) return 5
+      if (overall >= 82) return 4.5
+      if (overall >= 78) return 4
+      if (overall >= 74) return 3.5
+      if (overall >= 70) return 3
+      if (overall >= 67) return 2.5
+      if (overall >= 64) return 2
+      if (overall >= 60) return 1.5
+      if (overall >= 55) return 1
+      if (overall >= 50) return 0.5
+      return 0
+    }
+
+    const shareDataset = async () => {
+      if (!currentDatasetId.value) return
+
+      const shareUrl = `${window.location.origin}/leagues/${currentDatasetId.value}`
+
+      try {
+        await navigator.clipboard.writeText(shareUrl)
+        quasarInstance.notify({
+          message: 'Link copied to clipboard!',
+          color: 'positive',
+          icon: 'check_circle',
+          position: 'top',
+          timeout: 2000
+        })
+      } catch (err) {
+        const textArea = document.createElement('textarea')
+        textArea.value = shareUrl
+        document.body.appendChild(textArea)
+        textArea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textArea)
+
+        quasarInstance.notify({
+          message: 'Link copied to clipboard!',
+          color: 'positive',
+          icon: 'check_circle',
+          position: 'top',
+          timeout: 2000
+        })
+      }
+    }
+
+    watch(
+      () => route.query.datasetId,
+      async (newId, oldId) => {
+        if (newId && newId !== oldId) {
+          sessionStorage.setItem('currentDatasetId', newId)
+          await fetchLeaguesAndCurrency(newId)
+          clearLeagueSelection()
+          if (!pageLoadingError.value && allLeaguesData.value.length > 0) {
+            populateLeagueFilterOptions()
+          }
+        }
+      }
+    )
+
+    watch(
+      () => route.query.league,
+      newLeague => {
+        if (newLeague && newLeague.trim() !== '' && newLeague !== selectedLeagueName.value) {
+          selectedLeagueName.value = newLeague
+          loadLeagueTeams()
+        }
+      }
+    )
+
+    return {
+      allLeaguesData,
+      selectedLeagueName,
+      leagueOptions,
+      filterLeagueOptions,
+      loadLeagueTeams,
+      clearLeagueSelection,
+      selectLeague,
+      leagueTeams,
+      loadingLeague,
+      pageLoading,
+      pageLoadingError,
+      playerForDetailView,
+      showPlayerDetailDialog,
+      handleTeamSelected,
+      getOverallClass,
+      getStarClass,
+      getStarRating,
+      quasarInstance,
+      router,
+      detectedCurrencySymbol,
+      currentDatasetId,
+      shareDataset,
+      displayedLeagues,
+      showAllLeagues,
+      INITIAL_LEAGUES_LIMIT
+    }
+  }
+}
 </script>
 
 <style lang="scss" scoped>

@@ -1,185 +1,163 @@
 // src/stores/playerStore.js
-import { defineStore } from "pinia";
-import { ref, computed, shallowRef } from "vue";
-import playerService from "../services/playerService";
+import { defineStore } from 'pinia'
+import { computed, ref, shallowRef } from 'vue'
+import playerService from '../services/playerService'
 
-export const usePlayerStore = defineStore("player", () => {
-  const allPlayers = shallowRef([]);
-  const currentDatasetId = ref(
-    sessionStorage.getItem("currentDatasetId") || null,
-  );
-  const detectedCurrencySymbol = ref(
-    sessionStorage.getItem("detectedCurrencySymbol") || "$",
-  );
-  const loading = ref(false);
-  const error = ref("");
-  const allAvailableRoles = ref([]);
+export const usePlayerStore = defineStore('player', () => {
+  const allPlayers = shallowRef([])
+  const currentDatasetId = ref(sessionStorage.getItem('currentDatasetId') || null)
+  const detectedCurrencySymbol = ref(sessionStorage.getItem('detectedCurrencySymbol') || '$')
+  const loading = ref(false)
+  const error = ref('')
+  const allAvailableRoles = ref([])
 
-  const AGE_SLIDER_MIN_DEFAULT = 15;
-  const AGE_SLIDER_MAX_DEFAULT = 50;
+  const AGE_SLIDER_MIN_DEFAULT = 15
+  const AGE_SLIDER_MAX_DEFAULT = 50
 
   const uniqueClubs = computed(() => {
-    if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0)
-      return [];
-    const clubs = new Set();
-    allPlayers.value.forEach((p) => {
-      if (p.club) clubs.add(p.club);
-    });
-    return Array.from(clubs).sort();
-  });
+    if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) return []
+    const clubs = new Set()
+    allPlayers.value.forEach(p => {
+      if (p.club) clubs.add(p.club)
+    })
+    return Array.from(clubs).sort()
+  })
 
   const uniqueNationalities = computed(() => {
-    if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0)
-      return [];
-    const nationalities = new Set();
-    allPlayers.value.forEach((p) => {
-      if (p.nationality) nationalities.add(p.nationality);
-    });
-    return Array.from(nationalities).sort();
-  });
+    if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) return []
+    const nationalities = new Set()
+    allPlayers.value.forEach(p => {
+      if (p.nationality) nationalities.add(p.nationality)
+    })
+    return Array.from(nationalities).sort()
+  })
 
   const uniqueMediaHandlings = computed(() => {
-    if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0)
-      return [];
-    const mediaHandlingsIndividual = new Set();
-    allPlayers.value.forEach((p) => {
+    if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) return []
+    const mediaHandlingsIndividual = new Set()
+    allPlayers.value.forEach(p => {
       if (p.media_handling) {
-        p.media_handling.split(",").forEach((style) => {
-          const trimmedStyle = style.trim();
-          if (trimmedStyle) mediaHandlingsIndividual.add(trimmedStyle);
-        });
+        p.media_handling.split(',').forEach(style => {
+          const trimmedStyle = style.trim()
+          if (trimmedStyle) mediaHandlingsIndividual.add(trimmedStyle)
+        })
       }
-    });
-    return Array.from(mediaHandlingsIndividual).sort();
-  });
+    })
+    return Array.from(mediaHandlingsIndividual).sort()
+  })
 
   const uniquePersonalities = computed(() => {
-    if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0)
-      return [];
-    const personalities = new Set();
-    allPlayers.value.forEach((p) => {
-      if (p.personality) personalities.add(p.personality);
-    });
-    return Array.from(personalities).sort();
-  });
+    if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) return []
+    const personalities = new Set()
+    allPlayers.value.forEach(p => {
+      if (p.personality) personalities.add(p.personality)
+    })
+    return Array.from(personalities).sort()
+  })
 
   const uniquePositionsCount = computed(() => {
-    if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0)
-      return 0;
-    const s = new Set();
-    allPlayers.value.forEach((player) =>
-      player.parsedPositions?.forEach((pos) => s.add(pos)),
-    );
-    return s.size;
-  });
+    if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) return 0
+    const s = new Set()
+    allPlayers.value.forEach(player => player.parsedPositions?.forEach(pos => s.add(pos)))
+    return s.size
+  })
 
   // Renamed for clarity: this reflects the range of the currently loaded dataset in the store
   const currentDatasetTransferValueRange = computed(() => {
     if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) {
-      return { min: 0, max: 100000000 }; // Default
+      return { min: 0, max: 100000000 } // Default
     }
     const transferValuesNumeric = allPlayers.value
-      .filter((p) => typeof p.transferValueAmount === "number")
-      .map((p) => p.transferValueAmount);
+      .filter(p => typeof p.transferValueAmount === 'number')
+      .map(p => p.transferValueAmount)
 
     if (transferValuesNumeric.length === 0) {
-      return { min: 0, max: 100000000 };
+      return { min: 0, max: 100000000 }
     }
 
-    let min = Math.min(...transferValuesNumeric);
-    let max = Math.max(...transferValuesNumeric);
+    let min = Math.min(...transferValuesNumeric)
+    let max = Math.max(...transferValuesNumeric)
 
-    min = Math.max(0, min); // Ensure min is not negative
+    min = Math.max(0, min) // Ensure min is not negative
 
     if (min >= max) {
       // Handles cases where all values are same, or only one value
-      max = min + 50000; // Ensure max is greater for range slider
+      max = min + 50000 // Ensure max is greater for range slider
     }
-    if (
-      min === 0 &&
-      max === 50000 &&
-      transferValuesNumeric.every((v) => v === 0)
-    ) {
+    if (min === 0 && max === 50000 && transferValuesNumeric.every(v => v === 0)) {
       // If all values were 0, max was set to 50000. This is fine.
     }
     if (transferValuesNumeric.length === 1 && min === max) {
       // If only one player, ensure range
-      max = min + 50000;
+      max = min + 50000
     }
 
-    const result = { min, max };
-    return result;
-  });
+    const result = { min, max }
+    return result
+  })
 
   // This can be used by PlayerFilters as the true initial range of the whole dataset
   const initialDatasetTransferValueRange = computed(() => {
     // For now, this will be the same as currentDatasetTransferValueRange,
     // as allPlayers.value represents the full dataset fetched.
     // If server-side pagination/filtering were implemented, this might differ.
-    return currentDatasetTransferValueRange.value;
-  });
+    return currentDatasetTransferValueRange.value
+  })
 
   const salaryRange = computed(() => {
     if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) {
-      return { min: 0, max: 1000000 }; // Default
+      return { min: 0, max: 1000000 } // Default
     }
     const salaryAmountsNumeric = allPlayers.value
-      .filter((p) => typeof p.wageAmount === "number")
-      .map((p) => p.wageAmount);
+      .filter(p => typeof p.wageAmount === 'number')
+      .map(p => p.wageAmount)
 
     if (salaryAmountsNumeric.length === 0) {
-      return { min: 0, max: 1000000 };
+      return { min: 0, max: 1000000 }
     }
 
-    let min = Math.min(...salaryAmountsNumeric);
-    let max = Math.max(...salaryAmountsNumeric);
+    let min = Math.min(...salaryAmountsNumeric)
+    let max = Math.max(...salaryAmountsNumeric)
 
-    min = Math.max(0, min); // Ensure min is not negative
+    min = Math.max(0, min) // Ensure min is not negative
 
     if (min >= max) {
       // Handles cases where all values are same, or only one value
-      max = min + 10000; // Ensure max is greater for range slider
+      max = min + 10000 // Ensure max is greater for range slider
     }
     if (salaryAmountsNumeric.length === 1 && min === max) {
       // If only one player, ensure range
-      max = min + 10000;
+      max = min + 10000
     }
-    if (
-      min === 0 &&
-      max === 10000 &&
-      salaryAmountsNumeric.every((v) => v === 0)
-    ) {
+    if (min === 0 && max === 10000 && salaryAmountsNumeric.every(v => v === 0)) {
       // If all values were 0, max was set to 10000. This is fine.
     }
-    const result = { min, max };
-    return result;
-  });
+    const result = { min, max }
+    return result
+  })
 
   async function uploadPlayerFile(formData, maxSizeBytes = 15 * 1024 * 1024) {
-    loading.value = true;
-    error.value = "";
+    loading.value = true
+    error.value = ''
     try {
-      const response = await playerService.uploadPlayerFile(formData, maxSizeBytes);
-      currentDatasetId.value = response.datasetId;
-      detectedCurrencySymbol.value = response.detectedCurrencySymbol || "$";
-      sessionStorage.setItem("currentDatasetId", currentDatasetId.value);
-      sessionStorage.setItem(
-        "detectedCurrencySymbol",
-        detectedCurrencySymbol.value,
-      );
-      await fetchPlayersByDatasetId(currentDatasetId.value);
-      await fetchAllAvailableRoles();
-      return response;
+      const response = await playerService.uploadPlayerFile(formData, maxSizeBytes)
+      currentDatasetId.value = response.datasetId
+      detectedCurrencySymbol.value = response.detectedCurrencySymbol || '$'
+      sessionStorage.setItem('currentDatasetId', currentDatasetId.value)
+      sessionStorage.setItem('detectedCurrencySymbol', detectedCurrencySymbol.value)
+      await fetchPlayersByDatasetId(currentDatasetId.value)
+      await fetchAllAvailableRoles()
+      return response
     } catch (e) {
       if (e.status === 413 && e.message) {
-        error.value = e.message;
+        error.value = e.message
       } else {
-        error.value = `Failed to process file: ${e.message || "Unknown error"}`;
+        error.value = `Failed to process file: ${e.message || 'Unknown error'}`
       }
-      resetState();
-      throw e;
+      resetState()
+      throw e
     } finally {
-      loading.value = false;
+      loading.value = false
     }
   }
 
@@ -190,16 +168,16 @@ export const usePlayerStore = defineStore("player", () => {
     ageRangeFilter = null,
     transferValueRangeFilter = null,
     maxSalaryFilter = null,
-    divisionFilter = "all",
+    divisionFilter = 'all',
     targetDivision = null,
-    positionCompare = "all",
+    positionCompare = 'all'
   ) {
     if (!datasetId) {
-      resetState();
-      return;
+      resetState()
+      return
     }
-    loading.value = true;
-    error.value = "";
+    loading.value = true
+    error.value = ''
     try {
       const response = await playerService.getPlayersByDatasetId(
         datasetId,
@@ -210,70 +188,65 @@ export const usePlayerStore = defineStore("player", () => {
         maxSalaryFilter,
         divisionFilter,
         targetDivision,
-        positionCompare,
-      );
-      allPlayers.value = processPlayersFromAPI(response.players);
-      detectedCurrencySymbol.value = response.currencySymbol || "$";
-      sessionStorage.setItem(
-        "detectedCurrencySymbol",
-        detectedCurrencySymbol.value,
-      );
-      return response;
+        positionCompare
+      )
+      allPlayers.value = processPlayersFromAPI(response.players)
+      detectedCurrencySymbol.value = response.currencySymbol || '$'
+      sessionStorage.setItem('detectedCurrencySymbol', detectedCurrencySymbol.value)
+      return response
     } catch (e) {
-      error.value = `Failed to fetch player data: ${e.message || "Unknown error"}`;
-      resetState();
-      throw e;
+      error.value = `Failed to fetch player data: ${e.message || 'Unknown error'}`
+      resetState()
+      throw e
     } finally {
-      loading.value = false;
+      loading.value = false
     }
   }
 
   async function fetchAllAvailableRoles(force = false) {
-    if (allAvailableRoles.value.length > 0 && !force) return;
+    if (allAvailableRoles.value.length > 0 && !force) return
     try {
-      const roles = await playerService.getAvailableRoles();
-      allAvailableRoles.value = roles.sort();
+      const roles = await playerService.getAvailableRoles()
+      allAvailableRoles.value = roles.sort()
     } catch (e) {
-      console.error("playerStore: Error fetching available roles:", e);
-      allAvailableRoles.value = [];
+      console.error('playerStore: Error fetching available roles:', e)
+      allAvailableRoles.value = []
     }
   }
 
   function processPlayersFromAPI(playersData) {
-    if (!Array.isArray(playersData)) return [];
-    return playersData.map((p) => ({
+    if (!Array.isArray(playersData)) return []
+    return playersData.map(p => ({
       ...p,
-      age: parseInt(p.age, 10) || 0,
-    }));
+      age: Number.parseInt(p.age, 10) || 0
+    }))
   }
 
   function resetState() {
-    allPlayers.value = [];
-    currentDatasetId.value = null;
-    detectedCurrencySymbol.value = "$";
-    allAvailableRoles.value = [];
-    sessionStorage.removeItem("currentDatasetId");
-    sessionStorage.removeItem("detectedCurrencySymbol");
+    allPlayers.value = []
+    currentDatasetId.value = null
+    detectedCurrencySymbol.value = '$'
+    allAvailableRoles.value = []
+    sessionStorage.removeItem('currentDatasetId')
+    sessionStorage.removeItem('detectedCurrencySymbol')
   }
 
   async function loadFromSessionStorage() {
-    const storedDatasetId = sessionStorage.getItem("currentDatasetId");
-    const storedCurrencySymbol = sessionStorage.getItem(
-      "detectedCurrencySymbol",
-    );
+    const storedDatasetId = sessionStorage.getItem('currentDatasetId')
+    const storedCurrencySymbol = sessionStorage.getItem('detectedCurrencySymbol')
     if (storedDatasetId) {
-      currentDatasetId.value = storedDatasetId;
+      currentDatasetId.value = storedDatasetId
       if (storedCurrencySymbol) {
-        detectedCurrencySymbol.value = storedCurrencySymbol;
+        detectedCurrencySymbol.value = storedCurrencySymbol
       }
       try {
-        await fetchPlayersByDatasetId(storedDatasetId);
-        await fetchAllAvailableRoles();
+        await fetchPlayersByDatasetId(storedDatasetId)
+        await fetchAllAvailableRoles()
       } catch (e) {
         // Error handled in fetch functions
       }
     } else {
-      resetState();
+      resetState()
     }
   }
 
@@ -298,6 +271,6 @@ export const usePlayerStore = defineStore("player", () => {
     resetState,
     loadFromSessionStorage,
     AGE_SLIDER_MIN_DEFAULT,
-    AGE_SLIDER_MAX_DEFAULT,
-  };
-});
+    AGE_SLIDER_MAX_DEFAULT
+  }
+})

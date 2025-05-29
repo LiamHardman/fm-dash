@@ -176,141 +176,141 @@
 </template>
 
 <script>
-import { defineComponent, computed, ref, onMounted } from "vue";
-import { useRouter } from "vue-router";
-import { useQuasar } from "quasar";
-import { usePlayerStore } from "../stores/playerStore";
-import { useWishlistStore } from "../stores/wishlistStore";
-import PlayerDataTable from "../components/PlayerDataTable.vue";
-import PlayerDetailDialog from "../components/PlayerDetailDialog.vue";
+import { useQuasar } from 'quasar'
+import { computed, defineComponent, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import PlayerDataTable from '../components/PlayerDataTable.vue'
+import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
+import { usePlayerStore } from '../stores/playerStore'
+import { useWishlistStore } from '../stores/wishlistStore'
 
 export default defineComponent({
-    name: "WishlistPage",
-    components: {
-        PlayerDataTable,
-        PlayerDetailDialog,
-    },
-    setup() {
-        const router = useRouter();
-        const quasarInstance = useQuasar();
-        const playerStore = usePlayerStore();
-        const wishlistStore = useWishlistStore();
-        const showClearDialog = ref(false);
-        const showPlayerDetailDialog = ref(false);
-        const playerForDetailView = ref(null);
+  name: 'WishlistPage',
+  components: {
+    PlayerDataTable,
+    PlayerDetailDialog
+  },
+  setup() {
+    const router = useRouter()
+    const quasarInstance = useQuasar()
+    const playerStore = usePlayerStore()
+    const wishlistStore = useWishlistStore()
+    const showClearDialog = ref(false)
+    const showPlayerDetailDialog = ref(false)
+    const playerForDetailView = ref(null)
 
-        const currentDatasetId = computed(() => playerStore.currentDatasetId);
-        const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol);
+    const currentDatasetId = computed(() => playerStore.currentDatasetId)
+    const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol)
 
-        const wishlistPlayers = computed(() => {
-            return wishlistStore.getWishlistForDataset(currentDatasetId.value);
-        });
+    const wishlistPlayers = computed(() => {
+      return wishlistStore.getWishlistForDataset(currentDatasetId.value)
+    })
 
-        const uniqueClubsCount = computed(() => {
-            const clubs = new Set();
-            wishlistPlayers.value.forEach(player => {
-                if (player.club) clubs.add(player.club);
-            });
-            return clubs.size;
-        });
+    const uniqueClubsCount = computed(() => {
+      const clubs = new Set()
+      wishlistPlayers.value.forEach(player => {
+        if (player.club) clubs.add(player.club)
+      })
+      return clubs.size
+    })
 
-        const uniqueNationalitiesCount = computed(() => {
-            const nationalities = new Set();
-            wishlistPlayers.value.forEach(player => {
-                if (player.nationality) nationalities.add(player.nationality);
-            });
-            return nationalities.size;
-        });
+    const uniqueNationalitiesCount = computed(() => {
+      const nationalities = new Set()
+      wishlistPlayers.value.forEach(player => {
+        if (player.nationality) nationalities.add(player.nationality)
+      })
+      return nationalities.size
+    })
 
-        // Initialize wishlist when component is mounted
-        onMounted(async () => {
-            if (currentDatasetId.value) {
-                await wishlistStore.initializeWishlistForDataset(currentDatasetId.value);
-            }
-        });
+    // Initialize wishlist when component is mounted
+    onMounted(async () => {
+      if (currentDatasetId.value) {
+        await wishlistStore.initializeWishlistForDataset(currentDatasetId.value)
+      }
+    })
 
-        const goToDataset = () => {
-            if (currentDatasetId.value) {
-                router.push(`/dataset/${currentDatasetId.value}`);
-            } else {
-                router.push('/upload');
-            }
-        };
+    const goToDataset = () => {
+      if (currentDatasetId.value) {
+        router.push(`/dataset/${currentDatasetId.value}`)
+      } else {
+        router.push('/upload')
+      }
+    }
 
-        const confirmClearWishlist = () => {
-            showClearDialog.value = true;
-        };
+    const confirmClearWishlist = () => {
+      showClearDialog.value = true
+    }
 
-        const clearWishlist = async () => {
-            await wishlistStore.clearWishlistForDataset(currentDatasetId.value);
-            quasarInstance.notify({
-                type: 'positive',
-                message: 'Wishlist cleared successfully',
-                position: 'top',
-            });
-        };
+    const clearWishlist = async () => {
+      await wishlistStore.clearWishlistForDataset(currentDatasetId.value)
+      quasarInstance.notify({
+        type: 'positive',
+        message: 'Wishlist cleared successfully',
+        position: 'top'
+      })
+    }
 
-        const handlePlayerSelected = (player) => {
-            playerForDetailView.value = player;
-            showPlayerDetailDialog.value = true;
-        };
+    const handlePlayerSelected = player => {
+      playerForDetailView.value = player
+      showPlayerDetailDialog.value = true
+    }
 
-        const handleTeamSelected = (team) => {
-            console.log('handleTeamSelected called with team:', team);
-            console.log('currentDatasetId:', currentDatasetId.value);
-            if (currentDatasetId.value) {
-                const url = router.resolve({
-                    path: "/team-view",
-                    query: {
-                        datasetId: currentDatasetId.value,
-                        team: team,
-                    },
-                }).href;
-                console.log('Generated URL:', url);
-                console.log('Attempting to open in new tab...');
-                const newWindow = window.open(url, "_blank");
-                if (!newWindow) {
-                    console.error('Failed to open new window - likely blocked by popup blocker');
-                } else {
-                    console.log('Successfully opened new window');
-                }
-            } else {
-                console.log('No currentDatasetId available');
-            }
-        };
+    const handleTeamSelected = team => {
+      console.log('handleTeamSelected called with team:', team)
+      console.log('currentDatasetId:', currentDatasetId.value)
+      if (currentDatasetId.value) {
+        const url = router.resolve({
+          path: '/team-view',
+          query: {
+            datasetId: currentDatasetId.value,
+            team: team
+          }
+        }).href
+        console.log('Generated URL:', url)
+        console.log('Attempting to open in new tab...')
+        const newWindow = window.open(url, '_blank')
+        if (!newWindow) {
+          console.error('Failed to open new window - likely blocked by popup blocker')
+        } else {
+          console.log('Successfully opened new window')
+        }
+      } else {
+        console.log('No currentDatasetId available')
+      }
+    }
 
-        const handleRemoveFromWishlist = async (player) => {
-            const success = await wishlistStore.removeFromWishlist(currentDatasetId.value, player);
-            if (success) {
-                quasarInstance.notify({
-                    type: 'positive',
-                    message: `${player.name} removed from wishlist`,
-                    position: 'top',
-                });
-            }
-        };
+    const handleRemoveFromWishlist = async player => {
+      const success = await wishlistStore.removeFromWishlist(currentDatasetId.value, player)
+      if (success) {
+        quasarInstance.notify({
+          type: 'positive',
+          message: `${player.name} removed from wishlist`,
+          position: 'top'
+        })
+      }
+    }
 
-        return {
-            router,
-            quasarInstance,
-            wishlistStore,
-            currentDatasetId,
-            detectedCurrencySymbol,
-            wishlistPlayers,
-            uniqueClubsCount,
-            uniqueNationalitiesCount,
-            showClearDialog,
-            showPlayerDetailDialog,
-            playerForDetailView,
-            goToDataset,
-            confirmClearWishlist,
-            clearWishlist,
-            handlePlayerSelected,
-            handleTeamSelected,
-            handleRemoveFromWishlist,
-        };
-    },
-});
+    return {
+      router,
+      quasarInstance,
+      wishlistStore,
+      currentDatasetId,
+      detectedCurrencySymbol,
+      wishlistPlayers,
+      uniqueClubsCount,
+      uniqueNationalitiesCount,
+      showClearDialog,
+      showPlayerDetailDialog,
+      playerForDetailView,
+      goToDataset,
+      confirmClearWishlist,
+      clearWishlist,
+      handlePlayerSelected,
+      handleTeamSelected,
+      handleRemoveFromWishlist
+    }
+  }
+})
 </script>
 
 <style lang="scss" scoped>

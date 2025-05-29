@@ -86,8 +86,8 @@
 </template>
 
 <script>
-import { defineComponent, computed } from 'vue';
-import { useQuasar } from 'quasar';
+import { useQuasar } from 'quasar'
+import { computed, defineComponent } from 'vue'
 
 export default defineComponent({
   name: 'PlayerAttributesSection',
@@ -98,112 +98,149 @@ export default defineComponent({
     }
   },
   setup(props) {
-    const qInstance = useQuasar();
-    
+    const qInstance = useQuasar()
+
     // Grouped attributes by category
     const technicalAttributes = computed(() => {
-      const attributes = {};
+      const attributes = {}
       const technicalKeys = [
-        'crossing', 'dribbling', 'finishing', 'first_touch', 'free_kick_taking',
-        'heading', 'long_shots', 'long_throws', 'marking', 'passing', 'penalty_taking',
-        'tackling', 'technique', 'corners'
-      ];
-      
+        'crossing',
+        'dribbling',
+        'finishing',
+        'first_touch',
+        'free_kick_taking',
+        'heading',
+        'long_shots',
+        'long_throws',
+        'marking',
+        'passing',
+        'penalty_taking',
+        'tackling',
+        'technique',
+        'corners'
+      ]
+
       for (const key of technicalKeys) {
         if (props.player[key] !== undefined) {
-          attributes[key] = props.player[key];
+          attributes[key] = props.player[key]
         }
       }
-      
-      return attributes;
-    });
-    
+
+      return attributes
+    })
+
     const mentalAttributes = computed(() => {
-      const attributes = {};
+      const attributes = {}
       const mentalKeys = [
-        'aggression', 'anticipation', 'bravery', 'composure', 'concentration',
-        'decisions', 'determination', 'flair', 'leadership', 'off_the_ball',
-        'positioning', 'teamwork', 'vision', 'work_rate'
-      ];
-      
+        'aggression',
+        'anticipation',
+        'bravery',
+        'composure',
+        'concentration',
+        'decisions',
+        'determination',
+        'flair',
+        'leadership',
+        'off_the_ball',
+        'positioning',
+        'teamwork',
+        'vision',
+        'work_rate'
+      ]
+
       for (const key of mentalKeys) {
         if (props.player[key] !== undefined) {
-          attributes[key] = props.player[key];
+          attributes[key] = props.player[key]
         }
       }
-      
-      return attributes;
-    });
-    
+
+      return attributes
+    })
+
     const physicalAttributes = computed(() => {
-      const attributes = {};
+      const attributes = {}
       const physicalKeys = [
-        'acceleration', 'agility', 'balance', 'jumping_reach', 'natural_fitness',
-        'pace', 'stamina', 'strength'
-      ];
-      
+        'acceleration',
+        'agility',
+        'balance',
+        'jumping_reach',
+        'natural_fitness',
+        'pace',
+        'stamina',
+        'strength'
+      ]
+
       for (const key of physicalKeys) {
         if (props.player[key] !== undefined) {
-          attributes[key] = props.player[key];
+          attributes[key] = props.player[key]
         }
       }
-      
-      return attributes;
-    });
-    
+
+      return attributes
+    })
+
     const goalkeeperAttributes = computed(() => {
-      const attributes = {};
+      const attributes = {}
       const gkKeys = [
-        'aerial_reach', 'command_of_area', 'communication', 'eccentricity',
-        'handling', 'kicking', 'one_on_ones', 'punching', 'reflexes',
-        'rushing_out', 'tendency_to_punch', 'throwing'
-      ];
-      
+        'aerial_reach',
+        'command_of_area',
+        'communication',
+        'eccentricity',
+        'handling',
+        'kicking',
+        'one_on_ones',
+        'punching',
+        'reflexes',
+        'rushing_out',
+        'tendency_to_punch',
+        'throwing'
+      ]
+
       for (const key of gkKeys) {
         if (props.player[key] !== undefined && props.player[key] !== null) {
-          attributes[key] = props.player[key];
+          attributes[key] = props.player[key]
         }
       }
-      
-      return attributes;
-    });
-    
+
+      return attributes
+    })
+
     const isGoalkeeper = computed(() => {
-      if (!props.player) return false;
+      if (!props.player) return false
       return (
-        props.player.shortPositions?.includes("GK") ||
-        props.player.positionGroups?.includes("Goalkeepers") ||
-        props.player.parsedPositions?.includes("Goalkeeper")
-      );
-    });
+        props.player.shortPositions?.includes('GK') ||
+        props.player.positionGroups?.includes('Goalkeepers') ||
+        props.player.parsedPositions?.includes('Goalkeeper')
+      )
+    })
 
     const hasGoalkeeperAttributes = computed(() => {
       // First check if player is a goalkeeper based on position data
-      if (isGoalkeeper.value) return true;
+      if (isGoalkeeper.value) return true
       // Then fall back to checking if we have any goalkeeper attributes
-      return Object.keys(goalkeeperAttributes.value).length > 0;
-    });
-    
+      return Object.keys(goalkeeperAttributes.value).length > 0
+    })
+
     // Helper functions
-    const formatAttrName = (attr) => {
+    const formatAttrName = attr => {
       return attr
         .replace(/_/g, ' ')
         .split(' ')
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
-    };
-    
-    const getColorClass = (value) => {
-      const numValue = parseInt(value, 10);
-      if (isNaN(numValue)) return '';
-      
-      if (numValue >= 15) return 'text-green-10';
-      if (numValue >= 13) return 'text-green-8';
-      if (numValue >= 10) return 'text-amber-8';
-      if (numValue >= 7) return 'text-orange';
-      return 'text-red';
-    };
-    
+        .join(' ')
+    }
+
+    const getColorClass = value => {
+      const numValue = Number.parseInt(value, 10)
+      if (isNaN(numValue)) return ''
+
+      if (numValue >= 15) return 'text-green-10'
+      if (numValue >= 13) return 'text-green-8'
+      if (numValue >= 10) return 'text-amber-8'
+      if (numValue >= 7) return 'text-orange'
+      return 'text-red'
+    }
+
     return {
       qInstance,
       technicalAttributes,
@@ -213,9 +250,9 @@ export default defineComponent({
       hasGoalkeeperAttributes,
       formatAttrName,
       getColorClass
-    };
+    }
   }
-});
+})
 </script>
 
 <style lang="scss" scoped>

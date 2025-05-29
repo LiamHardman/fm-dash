@@ -25,39 +25,39 @@
 </template>
 
 <script>
-import { computed } from 'vue'
 import { useQuasar } from 'quasar'
+import { computed } from 'vue'
 
 export default {
-    name: 'PlayerTableHeader',
-    props: {
-        columns: { type: Array, required: true },
-        sortField: { type: String, required: true },
-        sortDirection: { type: String, required: true }
-    },
-    emits: ['sort'],
-    setup(props) {
-        const quasarInstance = useQuasar()
+  name: 'PlayerTableHeader',
+  props: {
+    columns: { type: Array, required: true },
+    sortField: { type: String, required: true },
+    sortDirection: { type: String, required: true }
+  },
+  emits: ['sort'],
+  setup(props) {
+    const quasarInstance = useQuasar()
 
-        const getHeaderClass = (col) => {
-            const classes = ['sortable-header']
-            
-            if (props.sortField === col.name) {
-                classes.push('active-sort')
-            }
-            
-            if (col.type === 'number' || col.type === 'rating') {
-                classes.push('text-right')
-            }
-            
-            return classes.join(' ')
-        }
+    const getHeaderClass = col => {
+      const classes = ['sortable-header']
 
-        return {
-            quasarInstance,
-            getHeaderClass
-        }
+      if (props.sortField === col.name) {
+        classes.push('active-sort')
+      }
+
+      if (col.type === 'number' || col.type === 'rating') {
+        classes.push('text-right')
+      }
+
+      return classes.join(' ')
     }
+
+    return {
+      quasarInstance,
+      getHeaderClass
+    }
+  }
 }
 </script>
 

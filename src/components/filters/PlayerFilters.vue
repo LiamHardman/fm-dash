@@ -1057,711 +1057,670 @@
 </template>
 
 <script>
-import {
-    ref,
-    computed,
-    watch,
-    defineComponent,
-    onMounted,
-    nextTick,
-} from "vue";
-import { useQuasar } from "quasar";
-import { usePlayerStore } from "@/stores/playerStore";
-import { memoizedComputed } from "@/composables/useMemoization";
-import { formatCurrency } from "@/utils/currencyUtils";
+import { memoizedComputed } from '@/composables/useMemoization'
+import { usePlayerStore } from '@/stores/playerStore'
+import { formatCurrency } from '@/utils/currencyUtils'
+import { useQuasar } from 'quasar'
+import { computed, defineComponent, nextTick, onMounted, ref, watch } from 'vue'
 
 // Define attribute keys (ensure these match keys in player.attributes)
 // These are the raw keys from the data.
 const rawTechnicalAttributeKeys = [
-    "Cor",
-    "Cro",
-    "Dri",
-    "Fin",
-    "Fir",
-    "Fre",
-    "Hea",
-    "Lon",
-    "L Th",
-    "Mar",
-    "Pas",
-    "Pen",
-    "Tck",
-    "Tec",
-];
+  'Cor',
+  'Cro',
+  'Dri',
+  'Fin',
+  'Fir',
+  'Fre',
+  'Hea',
+  'Lon',
+  'L Th',
+  'Mar',
+  'Pas',
+  'Pen',
+  'Tck',
+  'Tec'
+]
 const rawMentalAttributeKeys = [
-    "Agg",
-    "Ant",
-    "Bra",
-    "Cmp",
-    "Cnt",
-    "Dec",
-    "Det",
-    "Fla",
-    "Ldr",
-    "OtB",
-    "Pos",
-    "Tea",
-    "Vis",
-    "Wor",
-];
-const rawPhysicalAttributeKeys = [
-    "Acc",
-    "Agi",
-    "Bal",
-    "Jum",
-    "Nat",
-    "Pac",
-    "Sta",
-    "Str",
-];
+  'Agg',
+  'Ant',
+  'Bra',
+  'Cmp',
+  'Cnt',
+  'Dec',
+  'Det',
+  'Fla',
+  'Ldr',
+  'OtB',
+  'Pos',
+  'Tea',
+  'Vis',
+  'Wor'
+]
+const rawPhysicalAttributeKeys = ['Acc', 'Agi', 'Bal', 'Jum', 'Nat', 'Pac', 'Sta', 'Str']
 const rawGoalkeeperAttributeKeys = [
-    "Aer",
-    "Cmd",
-    "Com",
-    "Ecc",
-    "Han",
-    "Kic",
-    "1v1",
-    "Pun",
-    "Ref",
-    "TRO",
-    "Thr",
-];
+  'Aer',
+  'Cmd',
+  'Com',
+  'Ecc',
+  'Han',
+  'Kic',
+  '1v1',
+  'Pun',
+  'Ref',
+  'TRO',
+  'Thr'
+]
 
 // Full names for display
 const attributeFullNameMap = {
-    Cor: "Corners",
-    Cro: "Crossing",
-    Dri: "Dribbling",
-    Fin: "Finishing",
-    Fir: "First Touch",
-    Fre: "Free Kick Taking",
-    Hea: "Heading",
-    Lon: "Long Shots",
-    "L Th": "Long Throws",
-    Mar: "Marking",
-    Pas: "Passing",
-    Pen: "Penalty Taking",
-    Tck: "Tackling",
-    Tec: "Technique",
-    Agg: "Aggression",
-    Ant: "Anticipation",
-    Bra: "Bravery",
-    Cmp: "Composure",
-    Cnt: "Concentration",
-    Dec: "Decisions",
-    Det: "Determination",
-    Fla: "Flair",
-    Ldr: "Leadership",
-    OtB: "Off the Ball",
-    Pos: "Positioning",
-    Tea: "Teamwork",
-    Vis: "Vision",
-    Wor: "Work Rate",
-    Acc: "Acceleration",
-    Agi: "Agility",
-    Bal: "Balance",
-    Jum: "Jumping Reach",
-    Nat: "Natural Fitness",
-    Pac: "Pace",
-    Sta: "Stamina",
-    Str: "Strength",
-    Aer: "Aerial Reach",
-    Cmd: "Command of Area",
-    Com: "Communication",
-    Ecc: "Eccentricity",
-    Han: "Handling",
-    Kic: "Kicking",
-    "1v1": "One on Ones",
-    Pun: "Punching (Tendency)",
-    Ref: "Reflexes",
-    TRO: "Rushing Out (Tendency)",
-    Thr: "Throwing",
-};
+  Cor: 'Corners',
+  Cro: 'Crossing',
+  Dri: 'Dribbling',
+  Fin: 'Finishing',
+  Fir: 'First Touch',
+  Fre: 'Free Kick Taking',
+  Hea: 'Heading',
+  Lon: 'Long Shots',
+  'L Th': 'Long Throws',
+  Mar: 'Marking',
+  Pas: 'Passing',
+  Pen: 'Penalty Taking',
+  Tck: 'Tackling',
+  Tec: 'Technique',
+  Agg: 'Aggression',
+  Ant: 'Anticipation',
+  Bra: 'Bravery',
+  Cmp: 'Composure',
+  Cnt: 'Concentration',
+  Dec: 'Decisions',
+  Det: 'Determination',
+  Fla: 'Flair',
+  Ldr: 'Leadership',
+  OtB: 'Off the Ball',
+  Pos: 'Positioning',
+  Tea: 'Teamwork',
+  Vis: 'Vision',
+  Wor: 'Work Rate',
+  Acc: 'Acceleration',
+  Agi: 'Agility',
+  Bal: 'Balance',
+  Jum: 'Jumping Reach',
+  Nat: 'Natural Fitness',
+  Pac: 'Pace',
+  Sta: 'Stamina',
+  Str: 'Strength',
+  Aer: 'Aerial Reach',
+  Cmd: 'Command of Area',
+  Com: 'Communication',
+  Ecc: 'Eccentricity',
+  Han: 'Handling',
+  Kic: 'Kicking',
+  '1v1': 'One on Ones',
+  Pun: 'Punching (Tendency)',
+  Ref: 'Reflexes',
+  TRO: 'Rushing Out (Tendency)',
+  Thr: 'Throwing'
+}
 
 const orderedShortPositions = [
-    "GK",
-    "DR",
-    "DC",
-    "DL",
-    "WBR",
-    "WBL",
-    "DM",
-    "MR",
-    "MC",
-    "ML",
-    "AMR",
-    "AMC",
-    "AML",
-    "ST",
-];
+  'GK',
+  'DR',
+  'DC',
+  'DL',
+  'WBR',
+  'WBL',
+  'DM',
+  'MR',
+  'MC',
+  'ML',
+  'AMR',
+  'AMC',
+  'AML',
+  'ST'
+]
 
-const AGE_SLIDER_MIN = 15;
-const AGE_SLIDER_MAX = 50;
-const SALARY_SLIDER_MIN = 0;
-const SALARY_SLIDER_MAX = 1000000;
+const AGE_SLIDER_MIN = 15
+const AGE_SLIDER_MAX = 50
+const SALARY_SLIDER_MIN = 0
+const SALARY_SLIDER_MAX = 1000000
 
 function debounce(fn, delay) {
-    let timeoutID = null;
-    return function (...args) {
-        clearTimeout(timeoutID);
-        timeoutID = setTimeout(() => {
-            fn.apply(this, args);
-        }, delay);
-    };
+  let timeoutID = null
+  return function (...args) {
+    clearTimeout(timeoutID)
+    timeoutID = setTimeout(() => {
+      fn.apply(this, args)
+    }, delay)
+  }
 }
 
 export default defineComponent({
-    name: "PlayerFilters",
-    props: {
-        currencySymbol: { type: String, default: "$" },
-        transferValueRange: {
-            type: Object,
-            default: () => ({ min: 0, max: 100000000 }),
-        },
-        initialDatasetRange: {
-            type: Object,
-            default: () => ({ min: 0, max: 100000000 }),
-        },
-        salaryRange: {
-            type: Object,
-            default: () => ({ min: 0, max: 1000000 }),
-        },
-        uniqueClubs: { type: Array, default: () => [] },
-        uniqueNationalities: { type: Array, default: () => [] },
-        uniqueMediaHandlings: { type: Array, default: () => [] },
-        uniquePersonalities: { type: Array, default: () => [] },
-        isLoading: { type: Boolean, default: false },
+  name: 'PlayerFilters',
+  props: {
+    currencySymbol: { type: String, default: '$' },
+    transferValueRange: {
+      type: Object,
+      default: () => ({ min: 0, max: 100000000 })
     },
-    emits: ["filter-changed"],
-    setup(props, { emit }) {
-        const quasarInstance = useQuasar();
-        const playerStore = usePlayerStore();
-        const filters = ref({
-            name: "",
-            club: null,
-            position: null,
-            role: null,
-            nationality: null,
-            mediaHandling: [],
-            personality: [],
-            ageRange: { min: AGE_SLIDER_MIN, max: AGE_SLIDER_MAX },
-            transferValueRangeLocal: {
-                min: 0,
-                max: 100000000,
-            },
-            maxSalary: SALARY_SLIDER_MAX,
-            minOverall: 0,
-            minPHY: 0,
-            minSHO: 0,
-            minPAS: 0,
-            minDRI: 0,
-            minDEF: 0,
-            minMEN: 0,
-            minGK: 0,
-        });
-
-        const showMinimumStatsModal = ref(false);
-
-        // State for inline editing
-        const inlineEditingAttributeKey = ref(null); // e.g., "Cor", "Agg"
-        const inlineEditingValue = ref(0);
-        const attributeInputRefs = ref({}); // To store refs to q-input components
-
-        const formatAttrName = (attrKey) =>
-            attributeFullNameMap[attrKey] || attrKey;
-
-        const formatAttrKey = (attrKey) => {
-            return attrKey.replace(/\s+/g, "").replace(/\(|\)/g, "");
-        };
-
-        const getUnifiedRatingClass = (value, maxScale = 20) => {
-            const numValue = parseInt(value, 10);
-            if (
-                isNaN(numValue) ||
-                value === null ||
-                value === undefined ||
-                value === "-"
-            )
-                return "rating-na";
-
-            const percentage = (numValue / maxScale) * 100;
-
-            if (maxScale === 20) {
-                if (numValue >= 18) return "rating-tier-6";
-                if (numValue >= 15) return "rating-tier-5";
-                if (numValue >= 13) return "rating-tier-4";
-                if (numValue >= 10) return "rating-tier-3";
-                if (numValue >= 7) return "rating-tier-2";
-                if (numValue >= 1) return "rating-tier-1";
-            } else {
-                if (percentage >= 90) return "rating-tier-6";
-                if (percentage >= 80) return "rating-tier-5";
-                if (percentage >= 70) return "rating-tier-4";
-                if (percentage >= 55) return "rating-tier-3";
-                if (percentage >= 40) return "rating-tier-2";
-                if (percentage > 0) return "rating-tier-1";
-            }
-            return "rating-na";
-        };
-
-        const technicalAttributeKeys = rawTechnicalAttributeKeys;
-        const mentalAttributeKeys = rawMentalAttributeKeys;
-        const physicalAttributeKeys = rawPhysicalAttributeKeys;
-        const goalkeeperAttributeKeys = rawGoalkeeperAttributeKeys;
-
-        const allAttributeKeys = [
-            ...technicalAttributeKeys,
-            ...mentalAttributeKeys,
-            ...physicalAttributeKeys,
-            ...goalkeeperAttributeKeys,
-        ];
-
-        allAttributeKeys.forEach((attr) => {
-            const filterKey = `min${formatAttrKey(attr)}`;
-            if (!filters.value[filterKey]) {
-                filters.value[filterKey] = 0;
-            }
-        });
-
-        const clubOptions = ref([]);
-        const nationalityOptions = ref([]);
-        const currentSliderMin = computed(() => props.transferValueRange.min);
-        const currentSliderMax = computed(() => props.transferValueRange.max);
-        const isDataAvailable = computed(
-            () => playerStore.allPlayers && playerStore.allPlayers.length > 0,
-        );
-        const salarySliderMin = computed(() => props.salaryRange?.min || 0);
-        const salarySliderMax = computed(
-            () => props.salaryRange?.max || SALARY_SLIDER_MAX,
-        );
-
-        const salarySliderStep = computed(() => {
-            const range = salarySliderMax.value - salarySliderMin.value;
-            if (range <= 0) return 1000;
-            if (range < 50000) return 500;
-            if (range < 250000) return 2500;
-            if (range < 1000000) return 5000;
-            if (range < 10000000) return 25000;
-            return 50000;
-        });
-
-        const hasActiveStatFilters = computed(() => {
-            const hasActiveFifaStats =
-                filters.value.minOverall > 0 ||
-                filters.value.minPHY > 0 ||
-                filters.value.minSHO > 0 ||
-                filters.value.minPAS > 0 ||
-                filters.value.minDRI > 0 ||
-                filters.value.minDEF > 0 ||
-                filters.value.minMEN > 0 ||
-                filters.value.minGK > 0;
-            const hasActiveAttributeFilters = allAttributeKeys.some((attr) => {
-                const filterKey = `min${formatAttrKey(attr)}`;
-                return filters.value[filterKey] > 0;
-            });
-            return hasActiveFifaStats || hasActiveAttributeFilters;
-        });
-
-        const hasActiveFilters = computed(() => {
-            const defValMin = props.initialDatasetRange.min;
-            const defValMax = props.initialDatasetRange.max;
-            return (
-                filters.value.name !== "" ||
-                filters.value.club !== null ||
-                filters.value.position !== null ||
-                filters.value.role !== null ||
-                filters.value.nationality !== null ||
-                (Array.isArray(filters.value.mediaHandling) &&
-                    filters.value.mediaHandling.length > 0) ||
-                (Array.isArray(filters.value.personality) &&
-                    filters.value.personality.length > 0) ||
-                filters.value.ageRange.min !== AGE_SLIDER_MIN ||
-                filters.value.ageRange.max !== AGE_SLIDER_MAX ||
-                filters.value.transferValueRangeLocal.min !== defValMin ||
-                filters.value.transferValueRangeLocal.max !== defValMax ||
-                filters.value.maxSalary !== salarySliderMax.value ||
-                hasActiveStatFilters.value
-            );
-        });
-
-        const positionOptions = computed(() => {
-            const options = [{ label: "Any Position", value: null }];
-            orderedShortPositions.forEach((shortPos) => {
-                options.push({ label: shortPos, value: shortPos });
-            });
-            return options;
-        });
-
-        const roleFilterOptions = computed(() => {
-            if (
-                !filters.value.position ||
-                !playerStore.allAvailableRoles ||
-                playerStore.allAvailableRoles.length === 0
-            ) {
-                return [{ label: "Any Role", value: null }];
-            }
-            const selectedPosShortCode = filters.value.position;
-            const filtered = playerStore.allAvailableRoles
-                .filter((roleFullName) =>
-                    roleFullName.startsWith(selectedPosShortCode + " - "),
-                )
-                .map((roleFullName) => ({
-                    label: roleFullName,
-                    value: roleFullName,
-                }))
-                .sort((a, b) => a.label.localeCompare(b.label));
-            return [{ label: "Any Role", value: null }, ...filtered];
-        });
-
-        const mediaHandlingOptions = computed(() =>
-            props.uniqueMediaHandlings.map((mh) => ({ label: mh, value: mh })),
-        );
-        const personalityOptions = computed(() =>
-            props.uniquePersonalities.map((p) => ({ label: p, value: p })),
-        );
-
-
-        const transferValueSliderStep = computed(() => {
-            const range = currentSliderMax.value - currentSliderMin.value;
-            if (range <= 0) return 10000;
-            if (range < 50000) return 1000;
-            if (range < 250000) return 5000;
-            if (range < 1000000) return 10000;
-            if (range < 10000000) return 50000;
-            if (range < 50000000) return 100000;
-            return 250000;
-        });
-
-        const formatRangeLabel = (value, isMaxBoundary = false) => {
-            if (value === null || value === undefined) return "N/A";
-            if (isMaxBoundary) {
-                if (
-                    props.initialDatasetRange &&
-                    typeof props.initialDatasetRange.max === "number" &&
-                    value === props.initialDatasetRange.max
-                ) {
-                    return "Any";
-                }
-            } else {
-                if (
-                    props.initialDatasetRange &&
-                    typeof props.initialDatasetRange.min === "number" &&
-                    value === props.initialDatasetRange.min
-                ) {
-                    return formatCurrency(value, props.currencySymbol) || "0";
-                }
-            }
-            return formatCurrency(value, props.currencySymbol);
-        };
-
-        watch(
-            () => props.uniqueClubs,
-            (newClubs) => {
-                clubOptions.value = newClubs;
-            },
-            { immediate: true },
-        );
-        watch(
-            () => props.uniqueNationalities,
-            (newNats) => {
-                nationalityOptions.value = newNats;
-            },
-            { immediate: true },
-        );
-        watch(
-            () => props.transferValueRange,
-            (newDynamicRange) => {
-                if (
-                    newDynamicRange &&
-                    typeof newDynamicRange.min === "number" &&
-                    typeof newDynamicRange.max === "number"
-                ) {
-                    // Only update if we don't have valid values yet or if the new range is different
-                    const currentMin = filters.value.transferValueRangeLocal.min;
-                    const currentMax = filters.value.transferValueRangeLocal.max;
-                    
-                    if (currentMin === 0 && currentMax === 100000000) {
-                        // We still have default values, so update with real data
-                        filters.value.transferValueRangeLocal = {
-                            min: newDynamicRange.min,
-                            max: newDynamicRange.max,
-                        };
-                    } else {
-                        // Clamp existing values to new valid range
-                        let changed = false;
-                        if (currentMin < newDynamicRange.min) {
-                            filters.value.transferValueRangeLocal.min = newDynamicRange.min;
-                            changed = true;
-                        }
-                        if (currentMax > newDynamicRange.max) {
-                            filters.value.transferValueRangeLocal.max = newDynamicRange.max;
-                            changed = true;
-                        }
-                    }
-                }
-            },
-            { deep: true, immediate: true },
-        );
-        watch(
-            () => props.initialDatasetRange,
-            (newInitialRange) => {
-                if (
-                    newInitialRange &&
-                    typeof newInitialRange.min === "number" &&
-                    typeof newInitialRange.max === "number"
-                ) {
-                    // Only update if we still have default values
-                    const currentMin = filters.value.transferValueRangeLocal.min;
-                    const currentMax = filters.value.transferValueRangeLocal.max;
-                    
-                    if (currentMin === 0 && currentMax === 100000000) {
-                        filters.value.transferValueRangeLocal = {
-                            min: newInitialRange.min,
-                            max: newInitialRange.max,
-                        };
-                    }
-                }
-            },
-            { deep: true, immediate: true },
-        );
-        watch(
-            () => props.salaryRange,
-            (newSalaryRange) => {
-                if (newSalaryRange?.max && typeof newSalaryRange.max === 'number') {
-                    // Only update if we still have the default value
-                    if (filters.value.maxSalary === SALARY_SLIDER_MAX) {
-                        filters.value.maxSalary = newSalaryRange.max;
-                    }
-                }
-            },
-            { deep: true, immediate: true },
-        );
-
-        const applyFilters = () => {
-            if (props.isLoading) return;
-            const clampedMin = Math.max(
-                filters.value.transferValueRangeLocal.min,
-                currentSliderMin.value,
-            );
-            const clampedMax = Math.min(
-                filters.value.transferValueRangeLocal.max,
-                currentSliderMax.value,
-            );
-            emit("filter-changed", {
-                ...filters.value,
-                transferValueRangeLocal: { min: clampedMin, max: clampedMax },
-            });
-        };
-        const debouncedApplyFilters = debounce(applyFilters, 400);
-
-        const onPositionChange = () => {
-            filters.value.role = null;
-            applyFilters();
-        };
-
-
-        const clearAllFilters = () => {
-            filters.value = {
-                name: "",
-                club: null,
-                position: null,
-                role: null,
-                nationality: null,
-                mediaHandling: [],
-                personality: [],
-                ageRange: { min: AGE_SLIDER_MIN, max: AGE_SLIDER_MAX },
-                transferValueRangeLocal: {
-                    min: props.initialDatasetRange
-                        ? props.initialDatasetRange.min
-                        : 0,
-                    max: props.initialDatasetRange
-                        ? props.initialDatasetRange.max
-                        : 100000000,
-                },
-                maxSalary: salarySliderMax.value,
-                minOverall: 0,
-                minPHY: 0,
-                minSHO: 0,
-                minPAS: 0,
-                minDRI: 0,
-                minDEF: 0,
-                minMEN: 0,
-                minGK: 0,
-            };
-            allAttributeKeys.forEach((attr) => {
-                filters.value[`min${formatAttrKey(attr)}`] = 0;
-            });
-            applyFilters();
-        };
-
-        const filterClubOptions = (val, update, abort) => {
-            if (val.length < 1 && val !== "") {
-                abort();
-                return;
-            }
-            update(() => {
-                const needle = val.toLowerCase();
-                clubOptions.value = props.uniqueClubs.filter(
-                    (v) => v.toLowerCase().indexOf(needle) > -1,
-                );
-            });
-        };
-        const filterNationalityOptions = (val, update, abort) => {
-            if (val.length < 1 && val !== "") {
-                abort();
-                return;
-            }
-            update(() => {
-                const needle = val.toLowerCase();
-                nationalityOptions.value = props.uniqueNationalities.filter(
-                    (v) => v.toLowerCase().indexOf(needle) > -1,
-                );
-            });
-        };
-
-        onMounted(async () => {
-            if (
-                playerStore.allAvailableRoles.length === 0 &&
-                playerStore.currentDatasetId
-            ) {
-                await playerStore.fetchAllAvailableRoles();
-            }
-            
-            // Initialize transfer value range from the correct prop
-            if (props.initialDatasetRange && 
-                typeof props.initialDatasetRange.min === 'number' && 
-                typeof props.initialDatasetRange.max === 'number') {
-                filters.value.transferValueRangeLocal = {
-                    min: props.initialDatasetRange.min,
-                    max: props.initialDatasetRange.max,
-                };
-            } else if (props.transferValueRange &&
-                typeof props.transferValueRange.min === 'number' && 
-                typeof props.transferValueRange.max === 'number') {
-                filters.value.transferValueRangeLocal = {
-                    min: props.transferValueRange.min,
-                    max: props.transferValueRange.max,
-                };
-            }
-            
-            // Initialize max salary from salary range prop
-            if (props.salaryRange?.max && typeof props.salaryRange.max === 'number') {
-                filters.value.maxSalary = props.salaryRange.max;
-            }
-            
-            filters.value.ageRange = {
-                min: AGE_SLIDER_MIN,
-                max: AGE_SLIDER_MAX,
-            };
-        });
-
-        watch(
-            () => playerStore.currentDatasetId,
-            async (newId) => {
-                if (newId && playerStore.allAvailableRoles.length === 0) {
-                    await playerStore.fetchAllAvailableRoles();
-                }
-                if (newId && props.initialDatasetRange) {
-                    filters.value.transferValueRangeLocal = {
-                        min: props.initialDatasetRange.min,
-                        max: props.initialDatasetRange.max,
-                    };
-                }
-            },
-        );
-
-        const resetMinimumStats = () => {
-            filters.value.minOverall = 0;
-            filters.value.minPHY = 0;
-            filters.value.minSHO = 0;
-            filters.value.minPAS = 0;
-            filters.value.minDRI = 0;
-            filters.value.minDEF = 0;
-            filters.value.minMEN = 0;
-            filters.value.minGK = 0;
-            allAttributeKeys.forEach((attr) => {
-                filters.value[`min${formatAttrKey(attr)}`] = 0;
-            });
-        };
-
-        const applyMinimumStats = () => {
-            finishInlineEdit(); // Ensure any pending inline edit is saved
-            showMinimumStatsModal.value = false;
-            applyFilters();
-        };
-
-        const startInlineEdit = (attrKey) => {
-            finishInlineEdit(); // Save any previous edit first
-            inlineEditingAttributeKey.value = attrKey;
-            const filterKey = `min${formatAttrKey(attrKey)}`;
-            inlineEditingValue.value = filters.value[filterKey] || 0;
-            nextTick(() => {
-                const inputEl = attributeInputRefs.value[attrKey];
-                if (inputEl && inputEl.focus) {
-                    setTimeout(() => inputEl.focus(), 0); // Timeout to ensure focus works after render
-                }
-            });
-        };
-
-        const finishInlineEdit = () => {
-            if (inlineEditingAttributeKey.value) {
-                const attrKey = inlineEditingAttributeKey.value;
-                const filterKey = `min${formatAttrKey(attrKey)}`;
-                let val = parseInt(inlineEditingValue.value, 10);
-                if (isNaN(val) || val < 0) val = 0;
-                if (val > 20) val = 20;
-                filters.value[filterKey] = val;
-                inlineEditingAttributeKey.value = null;
-            }
-        };
-
-        return {
-            quasarInstance,
-            filters,
-            hasActiveFilters,
-            hasActiveStatFilters,
-            showMinimumStatsModal,
-            inlineEditingAttributeKey,
-            inlineEditingValue,
-            attributeInputRefs, // For inline editing
-            getUnifiedRatingClass,
-            formatAttrName,
-            formatAttrKey,
-            technicalAttributeKeys,
-            mentalAttributeKeys,
-            physicalAttributeKeys,
-            goalkeeperAttributeKeys,
-            resetMinimumStats,
-            applyMinimumStats,
-            startInlineEdit,
-            finishInlineEdit, // Inline editing methods
-            clubOptions,
-            nationalityOptions,
-            positionOptions,
-            roleFilterOptions,
-            mediaHandlingOptions,
-            personalityOptions,
-            transferValueSliderStep,
-            isDataAvailable,
-            applyFilters,
-            debouncedApplyFilters,
-            clearAllFilters,
-            formatRangeLabel,
-            filterClubOptions,
-            filterNationalityOptions,
-            onPositionChange,
-            ageSliderMin: AGE_SLIDER_MIN,
-            ageSliderMax: AGE_SLIDER_MAX,
-            currentSliderMin,
-            currentSliderMax,
-            salarySliderMin,
-            salarySliderMax,
-            salarySliderStep,
-            formatCurrency,
-        };
+    initialDatasetRange: {
+      type: Object,
+      default: () => ({ min: 0, max: 100000000 })
     },
-});
+    salaryRange: {
+      type: Object,
+      default: () => ({ min: 0, max: 1000000 })
+    },
+    uniqueClubs: { type: Array, default: () => [] },
+    uniqueNationalities: { type: Array, default: () => [] },
+    uniqueMediaHandlings: { type: Array, default: () => [] },
+    uniquePersonalities: { type: Array, default: () => [] },
+    isLoading: { type: Boolean, default: false }
+  },
+  emits: ['filter-changed'],
+  setup(props, { emit }) {
+    const quasarInstance = useQuasar()
+    const playerStore = usePlayerStore()
+    const filters = ref({
+      name: '',
+      club: null,
+      position: null,
+      role: null,
+      nationality: null,
+      mediaHandling: [],
+      personality: [],
+      ageRange: { min: AGE_SLIDER_MIN, max: AGE_SLIDER_MAX },
+      transferValueRangeLocal: {
+        min: 0,
+        max: 100000000
+      },
+      maxSalary: SALARY_SLIDER_MAX,
+      minOverall: 0,
+      minPHY: 0,
+      minSHO: 0,
+      minPAS: 0,
+      minDRI: 0,
+      minDEF: 0,
+      minMEN: 0,
+      minGK: 0
+    })
+
+    const showMinimumStatsModal = ref(false)
+
+    // State for inline editing
+    const inlineEditingAttributeKey = ref(null) // e.g., "Cor", "Agg"
+    const inlineEditingValue = ref(0)
+    const attributeInputRefs = ref({}) // To store refs to q-input components
+
+    const formatAttrName = attrKey => attributeFullNameMap[attrKey] || attrKey
+
+    const formatAttrKey = attrKey => {
+      return attrKey.replace(/\s+/g, '').replace(/\(|\)/g, '')
+    }
+
+    const getUnifiedRatingClass = (value, maxScale = 20) => {
+      const numValue = Number.parseInt(value, 10)
+      if (isNaN(numValue) || value === null || value === undefined || value === '-')
+        return 'rating-na'
+
+      const percentage = (numValue / maxScale) * 100
+
+      if (maxScale === 20) {
+        if (numValue >= 18) return 'rating-tier-6'
+        if (numValue >= 15) return 'rating-tier-5'
+        if (numValue >= 13) return 'rating-tier-4'
+        if (numValue >= 10) return 'rating-tier-3'
+        if (numValue >= 7) return 'rating-tier-2'
+        if (numValue >= 1) return 'rating-tier-1'
+      } else {
+        if (percentage >= 90) return 'rating-tier-6'
+        if (percentage >= 80) return 'rating-tier-5'
+        if (percentage >= 70) return 'rating-tier-4'
+        if (percentage >= 55) return 'rating-tier-3'
+        if (percentage >= 40) return 'rating-tier-2'
+        if (percentage > 0) return 'rating-tier-1'
+      }
+      return 'rating-na'
+    }
+
+    const technicalAttributeKeys = rawTechnicalAttributeKeys
+    const mentalAttributeKeys = rawMentalAttributeKeys
+    const physicalAttributeKeys = rawPhysicalAttributeKeys
+    const goalkeeperAttributeKeys = rawGoalkeeperAttributeKeys
+
+    const allAttributeKeys = [
+      ...technicalAttributeKeys,
+      ...mentalAttributeKeys,
+      ...physicalAttributeKeys,
+      ...goalkeeperAttributeKeys
+    ]
+
+    allAttributeKeys.forEach(attr => {
+      const filterKey = `min${formatAttrKey(attr)}`
+      if (!filters.value[filterKey]) {
+        filters.value[filterKey] = 0
+      }
+    })
+
+    const clubOptions = ref([])
+    const nationalityOptions = ref([])
+    const currentSliderMin = computed(() => props.transferValueRange.min)
+    const currentSliderMax = computed(() => props.transferValueRange.max)
+    const isDataAvailable = computed(
+      () => playerStore.allPlayers && playerStore.allPlayers.length > 0
+    )
+    const salarySliderMin = computed(() => props.salaryRange?.min || 0)
+    const salarySliderMax = computed(() => props.salaryRange?.max || SALARY_SLIDER_MAX)
+
+    const salarySliderStep = computed(() => {
+      const range = salarySliderMax.value - salarySliderMin.value
+      if (range <= 0) return 1000
+      if (range < 50000) return 500
+      if (range < 250000) return 2500
+      if (range < 1000000) return 5000
+      if (range < 10000000) return 25000
+      return 50000
+    })
+
+    const hasActiveStatFilters = computed(() => {
+      const hasActiveFifaStats =
+        filters.value.minOverall > 0 ||
+        filters.value.minPHY > 0 ||
+        filters.value.minSHO > 0 ||
+        filters.value.minPAS > 0 ||
+        filters.value.minDRI > 0 ||
+        filters.value.minDEF > 0 ||
+        filters.value.minMEN > 0 ||
+        filters.value.minGK > 0
+      const hasActiveAttributeFilters = allAttributeKeys.some(attr => {
+        const filterKey = `min${formatAttrKey(attr)}`
+        return filters.value[filterKey] > 0
+      })
+      return hasActiveFifaStats || hasActiveAttributeFilters
+    })
+
+    const hasActiveFilters = computed(() => {
+      const defValMin = props.initialDatasetRange.min
+      const defValMax = props.initialDatasetRange.max
+      return (
+        filters.value.name !== '' ||
+        filters.value.club !== null ||
+        filters.value.position !== null ||
+        filters.value.role !== null ||
+        filters.value.nationality !== null ||
+        (Array.isArray(filters.value.mediaHandling) && filters.value.mediaHandling.length > 0) ||
+        (Array.isArray(filters.value.personality) && filters.value.personality.length > 0) ||
+        filters.value.ageRange.min !== AGE_SLIDER_MIN ||
+        filters.value.ageRange.max !== AGE_SLIDER_MAX ||
+        filters.value.transferValueRangeLocal.min !== defValMin ||
+        filters.value.transferValueRangeLocal.max !== defValMax ||
+        filters.value.maxSalary !== salarySliderMax.value ||
+        hasActiveStatFilters.value
+      )
+    })
+
+    const positionOptions = computed(() => {
+      const options = [{ label: 'Any Position', value: null }]
+      orderedShortPositions.forEach(shortPos => {
+        options.push({ label: shortPos, value: shortPos })
+      })
+      return options
+    })
+
+    const roleFilterOptions = computed(() => {
+      if (
+        !filters.value.position ||
+        !playerStore.allAvailableRoles ||
+        playerStore.allAvailableRoles.length === 0
+      ) {
+        return [{ label: 'Any Role', value: null }]
+      }
+      const selectedPosShortCode = filters.value.position
+      const filtered = playerStore.allAvailableRoles
+        .filter(roleFullName => roleFullName.startsWith(selectedPosShortCode + ' - '))
+        .map(roleFullName => ({
+          label: roleFullName,
+          value: roleFullName
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label))
+      return [{ label: 'Any Role', value: null }, ...filtered]
+    })
+
+    const mediaHandlingOptions = computed(() =>
+      props.uniqueMediaHandlings.map(mh => ({ label: mh, value: mh }))
+    )
+    const personalityOptions = computed(() =>
+      props.uniquePersonalities.map(p => ({ label: p, value: p }))
+    )
+
+    const transferValueSliderStep = computed(() => {
+      const range = currentSliderMax.value - currentSliderMin.value
+      if (range <= 0) return 10000
+      if (range < 50000) return 1000
+      if (range < 250000) return 5000
+      if (range < 1000000) return 10000
+      if (range < 10000000) return 50000
+      if (range < 50000000) return 100000
+      return 250000
+    })
+
+    const formatRangeLabel = (value, isMaxBoundary = false) => {
+      if (value === null || value === undefined) return 'N/A'
+      if (isMaxBoundary) {
+        if (
+          props.initialDatasetRange &&
+          typeof props.initialDatasetRange.max === 'number' &&
+          value === props.initialDatasetRange.max
+        ) {
+          return 'Any'
+        }
+      } else {
+        if (
+          props.initialDatasetRange &&
+          typeof props.initialDatasetRange.min === 'number' &&
+          value === props.initialDatasetRange.min
+        ) {
+          return formatCurrency(value, props.currencySymbol) || '0'
+        }
+      }
+      return formatCurrency(value, props.currencySymbol)
+    }
+
+    watch(
+      () => props.uniqueClubs,
+      newClubs => {
+        clubOptions.value = newClubs
+      },
+      { immediate: true }
+    )
+    watch(
+      () => props.uniqueNationalities,
+      newNats => {
+        nationalityOptions.value = newNats
+      },
+      { immediate: true }
+    )
+    watch(
+      () => props.transferValueRange,
+      newDynamicRange => {
+        if (
+          newDynamicRange &&
+          typeof newDynamicRange.min === 'number' &&
+          typeof newDynamicRange.max === 'number'
+        ) {
+          // Only update if we don't have valid values yet or if the new range is different
+          const currentMin = filters.value.transferValueRangeLocal.min
+          const currentMax = filters.value.transferValueRangeLocal.max
+
+          if (currentMin === 0 && currentMax === 100000000) {
+            // We still have default values, so update with real data
+            filters.value.transferValueRangeLocal = {
+              min: newDynamicRange.min,
+              max: newDynamicRange.max
+            }
+          } else {
+            // Clamp existing values to new valid range
+            let changed = false
+            if (currentMin < newDynamicRange.min) {
+              filters.value.transferValueRangeLocal.min = newDynamicRange.min
+              changed = true
+            }
+            if (currentMax > newDynamicRange.max) {
+              filters.value.transferValueRangeLocal.max = newDynamicRange.max
+              changed = true
+            }
+          }
+        }
+      },
+      { deep: true, immediate: true }
+    )
+    watch(
+      () => props.initialDatasetRange,
+      newInitialRange => {
+        if (
+          newInitialRange &&
+          typeof newInitialRange.min === 'number' &&
+          typeof newInitialRange.max === 'number'
+        ) {
+          // Only update if we still have default values
+          const currentMin = filters.value.transferValueRangeLocal.min
+          const currentMax = filters.value.transferValueRangeLocal.max
+
+          if (currentMin === 0 && currentMax === 100000000) {
+            filters.value.transferValueRangeLocal = {
+              min: newInitialRange.min,
+              max: newInitialRange.max
+            }
+          }
+        }
+      },
+      { deep: true, immediate: true }
+    )
+    watch(
+      () => props.salaryRange,
+      newSalaryRange => {
+        if (newSalaryRange?.max && typeof newSalaryRange.max === 'number') {
+          // Only update if we still have the default value
+          if (filters.value.maxSalary === SALARY_SLIDER_MAX) {
+            filters.value.maxSalary = newSalaryRange.max
+          }
+        }
+      },
+      { deep: true, immediate: true }
+    )
+
+    const applyFilters = () => {
+      if (props.isLoading) return
+      const clampedMin = Math.max(filters.value.transferValueRangeLocal.min, currentSliderMin.value)
+      const clampedMax = Math.min(filters.value.transferValueRangeLocal.max, currentSliderMax.value)
+      emit('filter-changed', {
+        ...filters.value,
+        transferValueRangeLocal: { min: clampedMin, max: clampedMax }
+      })
+    }
+    const debouncedApplyFilters = debounce(applyFilters, 400)
+
+    const onPositionChange = () => {
+      filters.value.role = null
+      applyFilters()
+    }
+
+    const clearAllFilters = () => {
+      filters.value = {
+        name: '',
+        club: null,
+        position: null,
+        role: null,
+        nationality: null,
+        mediaHandling: [],
+        personality: [],
+        ageRange: { min: AGE_SLIDER_MIN, max: AGE_SLIDER_MAX },
+        transferValueRangeLocal: {
+          min: props.initialDatasetRange ? props.initialDatasetRange.min : 0,
+          max: props.initialDatasetRange ? props.initialDatasetRange.max : 100000000
+        },
+        maxSalary: salarySliderMax.value,
+        minOverall: 0,
+        minPHY: 0,
+        minSHO: 0,
+        minPAS: 0,
+        minDRI: 0,
+        minDEF: 0,
+        minMEN: 0,
+        minGK: 0
+      }
+      allAttributeKeys.forEach(attr => {
+        filters.value[`min${formatAttrKey(attr)}`] = 0
+      })
+      applyFilters()
+    }
+
+    const filterClubOptions = (val, update, abort) => {
+      if (val.length < 1 && val !== '') {
+        abort()
+        return
+      }
+      update(() => {
+        const needle = val.toLowerCase()
+        clubOptions.value = props.uniqueClubs.filter(v => v.toLowerCase().indexOf(needle) > -1)
+      })
+    }
+    const filterNationalityOptions = (val, update, abort) => {
+      if (val.length < 1 && val !== '') {
+        abort()
+        return
+      }
+      update(() => {
+        const needle = val.toLowerCase()
+        nationalityOptions.value = props.uniqueNationalities.filter(
+          v => v.toLowerCase().indexOf(needle) > -1
+        )
+      })
+    }
+
+    onMounted(async () => {
+      if (playerStore.allAvailableRoles.length === 0 && playerStore.currentDatasetId) {
+        await playerStore.fetchAllAvailableRoles()
+      }
+
+      // Initialize transfer value range from the correct prop
+      if (
+        props.initialDatasetRange &&
+        typeof props.initialDatasetRange.min === 'number' &&
+        typeof props.initialDatasetRange.max === 'number'
+      ) {
+        filters.value.transferValueRangeLocal = {
+          min: props.initialDatasetRange.min,
+          max: props.initialDatasetRange.max
+        }
+      } else if (
+        props.transferValueRange &&
+        typeof props.transferValueRange.min === 'number' &&
+        typeof props.transferValueRange.max === 'number'
+      ) {
+        filters.value.transferValueRangeLocal = {
+          min: props.transferValueRange.min,
+          max: props.transferValueRange.max
+        }
+      }
+
+      // Initialize max salary from salary range prop
+      if (props.salaryRange?.max && typeof props.salaryRange.max === 'number') {
+        filters.value.maxSalary = props.salaryRange.max
+      }
+
+      filters.value.ageRange = {
+        min: AGE_SLIDER_MIN,
+        max: AGE_SLIDER_MAX
+      }
+    })
+
+    watch(
+      () => playerStore.currentDatasetId,
+      async newId => {
+        if (newId && playerStore.allAvailableRoles.length === 0) {
+          await playerStore.fetchAllAvailableRoles()
+        }
+        if (newId && props.initialDatasetRange) {
+          filters.value.transferValueRangeLocal = {
+            min: props.initialDatasetRange.min,
+            max: props.initialDatasetRange.max
+          }
+        }
+      }
+    )
+
+    const resetMinimumStats = () => {
+      filters.value.minOverall = 0
+      filters.value.minPHY = 0
+      filters.value.minSHO = 0
+      filters.value.minPAS = 0
+      filters.value.minDRI = 0
+      filters.value.minDEF = 0
+      filters.value.minMEN = 0
+      filters.value.minGK = 0
+      allAttributeKeys.forEach(attr => {
+        filters.value[`min${formatAttrKey(attr)}`] = 0
+      })
+    }
+
+    const applyMinimumStats = () => {
+      finishInlineEdit() // Ensure any pending inline edit is saved
+      showMinimumStatsModal.value = false
+      applyFilters()
+    }
+
+    const startInlineEdit = attrKey => {
+      finishInlineEdit() // Save any previous edit first
+      inlineEditingAttributeKey.value = attrKey
+      const filterKey = `min${formatAttrKey(attrKey)}`
+      inlineEditingValue.value = filters.value[filterKey] || 0
+      nextTick(() => {
+        const inputEl = attributeInputRefs.value[attrKey]
+        if (inputEl && inputEl.focus) {
+          setTimeout(() => inputEl.focus(), 0) // Timeout to ensure focus works after render
+        }
+      })
+    }
+
+    const finishInlineEdit = () => {
+      if (inlineEditingAttributeKey.value) {
+        const attrKey = inlineEditingAttributeKey.value
+        const filterKey = `min${formatAttrKey(attrKey)}`
+        let val = Number.parseInt(inlineEditingValue.value, 10)
+        if (isNaN(val) || val < 0) val = 0
+        if (val > 20) val = 20
+        filters.value[filterKey] = val
+        inlineEditingAttributeKey.value = null
+      }
+    }
+
+    return {
+      quasarInstance,
+      filters,
+      hasActiveFilters,
+      hasActiveStatFilters,
+      showMinimumStatsModal,
+      inlineEditingAttributeKey,
+      inlineEditingValue,
+      attributeInputRefs, // For inline editing
+      getUnifiedRatingClass,
+      formatAttrName,
+      formatAttrKey,
+      technicalAttributeKeys,
+      mentalAttributeKeys,
+      physicalAttributeKeys,
+      goalkeeperAttributeKeys,
+      resetMinimumStats,
+      applyMinimumStats,
+      startInlineEdit,
+      finishInlineEdit, // Inline editing methods
+      clubOptions,
+      nationalityOptions,
+      positionOptions,
+      roleFilterOptions,
+      mediaHandlingOptions,
+      personalityOptions,
+      transferValueSliderStep,
+      isDataAvailable,
+      applyFilters,
+      debouncedApplyFilters,
+      clearAllFilters,
+      formatRangeLabel,
+      filterClubOptions,
+      filterNationalityOptions,
+      onPositionChange,
+      ageSliderMin: AGE_SLIDER_MIN,
+      ageSliderMax: AGE_SLIDER_MAX,
+      currentSliderMin,
+      currentSliderMax,
+      salarySliderMin,
+      salarySliderMax,
+      salarySliderStep,
+      formatCurrency
+    }
+  }
+})
 </script>
 
 <style lang="scss" scoped>

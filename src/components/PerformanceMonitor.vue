@@ -129,203 +129,203 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useQuasar } from 'quasar'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 export default {
-    name: 'PerformanceMonitor',
-    setup() {
-        const qInstance = useQuasar()
-        
-        // State
-        const showMonitor = ref(false)
-        const debugMode = ref(false)
-        const fps = ref(0)
-        const memoryUsage = ref({ used: 0, limit: 0 })
-        const workerStatus = ref({ active: 0, total: 0, pendingTasks: 0 })
-        const cacheStats = ref({ hits: 0, total: 0, hitRate: 0 })
-        const renderStats = ref({ averageTime: 0, operations: 0 })
-        const virtualScrollStats = ref({ visibleItems: 0, scrollTop: 0 })
-        const memoizationSavings = ref(0)
+  name: 'PerformanceMonitor',
+  setup() {
+    const qInstance = useQuasar()
 
-        // Performance monitoring
-        let frameCount = 0
-        let lastTime = performance.now()
-        let animationFrameId = null
-        let performanceObserver = null
+    // State
+    const showMonitor = ref(false)
+    const debugMode = ref(false)
+    const fps = ref(0)
+    const memoryUsage = ref({ used: 0, limit: 0 })
+    const workerStatus = ref({ active: 0, total: 0, pendingTasks: 0 })
+    const cacheStats = ref({ hits: 0, total: 0, hitRate: 0 })
+    const renderStats = ref({ averageTime: 0, operations: 0 })
+    const virtualScrollStats = ref({ visibleItems: 0, scrollTop: 0 })
+    const memoizationSavings = ref(0)
 
-        // FPS calculation
-        const calculateFPS = () => {
-            frameCount++
-            const currentTime = performance.now()
-            
-            if (currentTime >= lastTime + 1000) {
-                fps.value = frameCount * 1000 / (currentTime - lastTime)
-                frameCount = 0
-                lastTime = currentTime
-            }
-            
-            if (showMonitor.value) {
-                animationFrameId = requestAnimationFrame(calculateFPS)
-            }
-        }
+    // Performance monitoring
+    let frameCount = 0
+    let lastTime = performance.now()
+    let animationFrameId = null
+    let performanceObserver = null
 
-        // Memory monitoring
-        const updateMemoryUsage = () => {
-            if (performance.memory) {
-                memoryUsage.value = {
-                    used: performance.memory.usedJSHeapSize,
-                    limit: performance.memory.jsHeapSizeLimit
-                }
-            }
-        }
+    // FPS calculation
+    const calculateFPS = () => {
+      frameCount++
+      const currentTime = performance.now()
 
-        // Worker status monitoring
-        const updateWorkerStatus = () => {
-            // This would be connected to your worker management system
-            // For now, we'll simulate some data
-            workerStatus.value = {
-                active: 1, // Number of active workers
-                total: 1,  // Total workers created
-                pendingTasks: 0 // Tasks waiting to be processed
-            }
-        }
+      if (currentTime >= lastTime + 1000) {
+        fps.value = (frameCount * 1000) / (currentTime - lastTime)
+        frameCount = 0
+        lastTime = currentTime
+      }
 
-        // Cache statistics
-        const updateCacheStats = () => {
-            // This would be connected to your memoization cache system
-            // For demonstration, we'll use simulated data
-            const totalOperations = 1000
-            const cacheHits = 850
-            
-            cacheStats.value = {
-                hits: cacheHits,
-                total: totalOperations,
-                hitRate: cacheHits / totalOperations
-            }
-        }
-
-        // Render performance monitoring
-        const updateRenderStats = () => {
-            // Monitor render performance using Performance Observer
-            if (window.PerformanceObserver) {
-                if (performanceObserver) {
-                    performanceObserver.disconnect()
-                }
-                
-                performanceObserver = new PerformanceObserver((list) => {
-                    const entries = list.getEntries()
-                    const renderTimes = entries
-                        .filter(entry => entry.entryType === 'measure')
-                        .map(entry => entry.duration)
-                    
-                    if (renderTimes.length > 0) {
-                        const avgTime = renderTimes.reduce((a, b) => a + b, 0) / renderTimes.length
-                        renderStats.value = {
-                            averageTime: avgTime,
-                            operations: renderTimes.length
-                        }
-                    }
-                })
-                
-                performanceObserver.observe({ entryTypes: ['measure', 'navigation', 'paint'] })
-            }
-        }
-
-        // Virtual scroll monitoring
-        const updateVirtualScrollStats = () => {
-            // This would be connected to your virtual scroll implementation
-            virtualScrollStats.value = {
-                visibleItems: 20, // Number of visible items
-                scrollTop: 0      // Current scroll position
-            }
-        }
-
-        // Memoization savings calculation
-        const updateMemoizationSavings = () => {
-            // Calculate the percentage of operations saved by memoization
-            const totalOperations = 1000
-            const memoizedOperations = 750
-            memoizationSavings.value = (memoizedOperations / totalOperations) * 100
-        }
-
-        // Periodic updates
-        let updateInterval = null
-
-        const startMonitoring = () => {
-            if (animationFrameId) return
-            
-            calculateFPS()
-            updateInterval = setInterval(() => {
-                updateMemoryUsage()
-                updateWorkerStatus()
-                updateCacheStats()
-                updateRenderStats()
-                updateVirtualScrollStats()
-                updateMemoizationSavings()
-            }, 1000)
-        }
-
-        const stopMonitoring = () => {
-            if (animationFrameId) {
-                cancelAnimationFrame(animationFrameId)
-                animationFrameId = null
-            }
-            
-            if (updateInterval) {
-                clearInterval(updateInterval)
-                updateInterval = null
-            }
-            
-            if (performanceObserver) {
-                performanceObserver.disconnect()
-                performanceObserver = null
-            }
-        }
-
-        // Watch for monitor visibility
-        const startMonitoringWatcher = computed(() => showMonitor.value)
-        const unwatchMonitor = () => {
-            if (startMonitoringWatcher.value) {
-                startMonitoring()
-            } else {
-                stopMonitoring()
-            }
-        }
-
-        onMounted(() => {
-            // Enable performance monitoring in development
-            if (process.env.NODE_ENV === 'development') {
-                showMonitor.value = false // Start hidden
-            }
-        })
-
-        onUnmounted(() => {
-            stopMonitoring()
-        })
-
-        // Watch for show/hide changes
-        const unwatchShowMonitor = computed(() => {
-            if (showMonitor.value) {
-                startMonitoring()
-            } else {
-                stopMonitoring()
-            }
-        })
-
-        return {
-            qInstance,
-            showMonitor,
-            debugMode,
-            fps,
-            memoryUsage,
-            workerStatus,
-            cacheStats,
-            renderStats,
-            virtualScrollStats,
-            memoizationSavings
-        }
+      if (showMonitor.value) {
+        animationFrameId = requestAnimationFrame(calculateFPS)
+      }
     }
+
+    // Memory monitoring
+    const updateMemoryUsage = () => {
+      if (performance.memory) {
+        memoryUsage.value = {
+          used: performance.memory.usedJSHeapSize,
+          limit: performance.memory.jsHeapSizeLimit
+        }
+      }
+    }
+
+    // Worker status monitoring
+    const updateWorkerStatus = () => {
+      // This would be connected to your worker management system
+      // For now, we'll simulate some data
+      workerStatus.value = {
+        active: 1, // Number of active workers
+        total: 1, // Total workers created
+        pendingTasks: 0 // Tasks waiting to be processed
+      }
+    }
+
+    // Cache statistics
+    const updateCacheStats = () => {
+      // This would be connected to your memoization cache system
+      // For demonstration, we'll use simulated data
+      const totalOperations = 1000
+      const cacheHits = 850
+
+      cacheStats.value = {
+        hits: cacheHits,
+        total: totalOperations,
+        hitRate: cacheHits / totalOperations
+      }
+    }
+
+    // Render performance monitoring
+    const updateRenderStats = () => {
+      // Monitor render performance using Performance Observer
+      if (window.PerformanceObserver) {
+        if (performanceObserver) {
+          performanceObserver.disconnect()
+        }
+
+        performanceObserver = new PerformanceObserver(list => {
+          const entries = list.getEntries()
+          const renderTimes = entries
+            .filter(entry => entry.entryType === 'measure')
+            .map(entry => entry.duration)
+
+          if (renderTimes.length > 0) {
+            const avgTime = renderTimes.reduce((a, b) => a + b, 0) / renderTimes.length
+            renderStats.value = {
+              averageTime: avgTime,
+              operations: renderTimes.length
+            }
+          }
+        })
+
+        performanceObserver.observe({ entryTypes: ['measure', 'navigation', 'paint'] })
+      }
+    }
+
+    // Virtual scroll monitoring
+    const updateVirtualScrollStats = () => {
+      // This would be connected to your virtual scroll implementation
+      virtualScrollStats.value = {
+        visibleItems: 20, // Number of visible items
+        scrollTop: 0 // Current scroll position
+      }
+    }
+
+    // Memoization savings calculation
+    const updateMemoizationSavings = () => {
+      // Calculate the percentage of operations saved by memoization
+      const totalOperations = 1000
+      const memoizedOperations = 750
+      memoizationSavings.value = (memoizedOperations / totalOperations) * 100
+    }
+
+    // Periodic updates
+    let updateInterval = null
+
+    const startMonitoring = () => {
+      if (animationFrameId) return
+
+      calculateFPS()
+      updateInterval = setInterval(() => {
+        updateMemoryUsage()
+        updateWorkerStatus()
+        updateCacheStats()
+        updateRenderStats()
+        updateVirtualScrollStats()
+        updateMemoizationSavings()
+      }, 1000)
+    }
+
+    const stopMonitoring = () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId)
+        animationFrameId = null
+      }
+
+      if (updateInterval) {
+        clearInterval(updateInterval)
+        updateInterval = null
+      }
+
+      if (performanceObserver) {
+        performanceObserver.disconnect()
+        performanceObserver = null
+      }
+    }
+
+    // Watch for monitor visibility
+    const startMonitoringWatcher = computed(() => showMonitor.value)
+    const unwatchMonitor = () => {
+      if (startMonitoringWatcher.value) {
+        startMonitoring()
+      } else {
+        stopMonitoring()
+      }
+    }
+
+    onMounted(() => {
+      // Enable performance monitoring in development
+      if (process.env.NODE_ENV === 'development') {
+        showMonitor.value = false // Start hidden
+      }
+    })
+
+    onUnmounted(() => {
+      stopMonitoring()
+    })
+
+    // Watch for show/hide changes
+    const unwatchShowMonitor = computed(() => {
+      if (showMonitor.value) {
+        startMonitoring()
+      } else {
+        stopMonitoring()
+      }
+    })
+
+    return {
+      qInstance,
+      showMonitor,
+      debugMode,
+      fps,
+      memoryUsage,
+      workerStatus,
+      cacheStats,
+      renderStats,
+      virtualScrollStats,
+      memoizationSavings
+    }
+  }
 }
 </script>
 

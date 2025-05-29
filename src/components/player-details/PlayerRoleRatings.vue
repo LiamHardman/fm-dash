@@ -38,8 +38,8 @@
 </template>
 
 <script>
-import { defineComponent, computed } from 'vue';
-import { useQuasar } from 'quasar';
+import { useQuasar } from 'quasar'
+import { computed, defineComponent } from 'vue'
 
 export default defineComponent({
   name: 'PlayerRoleRatings',
@@ -50,54 +50,52 @@ export default defineComponent({
     }
   },
   setup(props) {
-    const qInstance = useQuasar();
-    
+    const qInstance = useQuasar()
+
     const roleRatings = computed(() => {
       if (!props.player || !props.player.roleSpecificOveralls) {
-        return {};
+        return {}
       }
-      
+
       // Handle both array format and object format for compatibility
       if (Array.isArray(props.player.roleSpecificOveralls)) {
         // Convert from array of {roleName, score} to object format
         return props.player.roleSpecificOveralls.reduce((acc, rso) => {
-          acc[rso.roleName] = rso.score;
-          return acc;
-        }, {});
+          acc[rso.roleName] = rso.score
+          return acc
+        }, {})
       } else {
         // Already in object format
-        return props.player.roleSpecificOveralls;
+        return props.player.roleSpecificOveralls
       }
-    });
-    
+    })
+
     const sortedRoleRatings = computed(() => {
-      const entries = Object.entries(roleRatings.value);
-      return Object.fromEntries(
-        entries.sort((a, b) => b[1] - a[1])
-      );
-    });
-    
-    const isBestRole = (role) => {
-      if (!props.player || !props.player.bestRoleOverall) return false;
-      return props.player.bestRoleOverall === role;
-    };
-    
-    const getRatingColorClass = (rating) => {
-      if (rating >= 16) return 'text-green-10';
-      if (rating >= 14) return 'text-green-8';
-      if (rating >= 12) return 'text-amber-8';
-      if (rating >= 10) return 'text-orange';
-      return 'text-red';
-    };
-    
+      const entries = Object.entries(roleRatings.value)
+      return Object.fromEntries(entries.sort((a, b) => b[1] - a[1]))
+    })
+
+    const isBestRole = role => {
+      if (!props.player || !props.player.bestRoleOverall) return false
+      return props.player.bestRoleOverall === role
+    }
+
+    const getRatingColorClass = rating => {
+      if (rating >= 16) return 'text-green-10'
+      if (rating >= 14) return 'text-green-8'
+      if (rating >= 12) return 'text-amber-8'
+      if (rating >= 10) return 'text-orange'
+      return 'text-red'
+    }
+
     return {
       qInstance,
       sortedRoleRatings,
       isBestRole,
       getRatingColorClass
-    };
+    }
   }
-});
+})
 </script>
 
 <style lang="scss" scoped>

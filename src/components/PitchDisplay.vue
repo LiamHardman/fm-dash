@@ -138,230 +138,220 @@
 </template>
 
 <script>
-import { ref } from "vue";
-import { useQuasar } from "quasar";
+import { useQuasar } from 'quasar'
+import { ref } from 'vue'
 
 // Helper map to convert general formation slot roles to base position key prefixes
 // used in player.roleSpecificOveralls (e.g., "ST (C)" -> "ST").
 const fmSlotRoleToKeyPrefixMap = {
-    GK: "GK",
-    "D (R)": "DR", // Right defender maps to DR prefix
-    "D (L)": "DL", // Left defender maps to DL prefix
-    "D (C)": "DC", // Center defender maps to DC prefix
-    "WB (R)": "WBR", // Right wingback maps to WBR prefix
-    "WB (L)": "WBL", // Left wingback maps to WBL prefix
-    "DM (C)": "DM", // Defensive midfielder maps to DM prefix
-    "M (R)": "MR", // Right midfielder maps to MR prefix
-    "M (L)": "ML", // Left midfielder maps to ML prefix
-    "M (C)": "MC", // Center midfielder maps to MC prefix
-    "AM (R)": "AMR", // Right attacking midfielder maps to AMR prefix
-    "AM (L)": "AML", // Left attacking midfielder maps to AML prefix
-    "AM (C)": "AMC", // Center attacking midfielder maps to AMC prefix
-    "ST (C)": "ST", // Striker maps to ST prefix
-};
+  GK: 'GK',
+  'D (R)': 'DR', // Right defender maps to DR prefix
+  'D (L)': 'DL', // Left defender maps to DL prefix
+  'D (C)': 'DC', // Center defender maps to DC prefix
+  'WB (R)': 'WBR', // Right wingback maps to WBR prefix
+  'WB (L)': 'WBL', // Left wingback maps to WBL prefix
+  'DM (C)': 'DM', // Defensive midfielder maps to DM prefix
+  'M (R)': 'MR', // Right midfielder maps to MR prefix
+  'M (L)': 'ML', // Left midfielder maps to ML prefix
+  'M (C)': 'MC', // Center midfielder maps to MC prefix
+  'AM (R)': 'AMR', // Right attacking midfielder maps to AMR prefix
+  'AM (L)': 'AML', // Left attacking midfielder maps to AML prefix
+  'AM (C)': 'AMC', // Center attacking midfielder maps to AMC prefix
+  'ST (C)': 'ST' // Striker maps to ST prefix
+}
 
 export default {
-    name: "PitchDisplay",
-    props: {
-        formation: {
-            type: Array,
-            default: () => [],
-        },
-        players: {
-            // This is the bestTeamPlayers object from TeamViewPage
-            // OR bestTeamPlayersForPitch from TeamViewPage (if using squad depth)
-            type: Object,
-            default: () => ({}),
-        },
+  name: 'PitchDisplay',
+  props: {
+    formation: {
+      type: Array,
+      default: () => []
     },
-    emits: ["player-click", "player-moved"],
-    setup(props, { emit }) {
-        const quasar = useQuasar();
-        const isDragging = ref(false);
-        const draggedPlayerInfo = ref(null);
+    players: {
+      // This is the bestTeamPlayers object from TeamViewPage
+      // OR bestTeamPlayersForPitch from TeamViewPage (if using squad depth)
+      type: Object,
+      default: () => ({})
+    }
+  },
+  emits: ['player-click', 'player-moved'],
+  setup(props, { emit }) {
+    const quasar = useQuasar()
+    const isDragging = ref(false)
+    const draggedPlayerInfo = ref(null)
 
-        const getPlayerSlotStyle = (numPlayersInRow) => {
-            const percentageWidth = 100 / Math.max(1, numPlayersInRow);
-            return {
-                flex: `1 1 ${percentageWidth}%`,
-                maxWidth: `${percentageWidth}%`,
-            };
-        };
+    const getPlayerSlotStyle = numPlayersInRow => {
+      const percentageWidth = 100 / Math.max(1, numPlayersInRow)
+      return {
+        flex: `1 1 ${percentageWidth}%`,
+        maxWidth: `${percentageWidth}%`
+      }
+    }
 
-        const getPlayerOverallClass = (overall, maxScale = 100) => {
-            const numValue = parseInt(overall, 10);
-            if (isNaN(numValue) || overall === null || overall === undefined)
-                return "rating-na";
-            const percentage = (numValue / maxScale) * 100;
-            if (percentage >= 90) return "rating-tier-6";
-            if (percentage >= 80) return "rating-tier-5";
-            if (percentage >= 70) return "rating-tier-4";
-            if (percentage >= 55) return "rating-tier-3";
-            if (percentage >= 40) return "rating-tier-2";
-            return "rating-tier-1";
-        };
+    const getPlayerOverallClass = (overall, maxScale = 100) => {
+      const numValue = Number.parseInt(overall, 10)
+      if (isNaN(numValue) || overall === null || overall === undefined) return 'rating-na'
+      const percentage = (numValue / maxScale) * 100
+      if (percentage >= 90) return 'rating-tier-6'
+      if (percentage >= 80) return 'rating-tier-5'
+      if (percentage >= 70) return 'rating-tier-4'
+      if (percentage >= 55) return 'rating-tier-3'
+      if (percentage >= 40) return 'rating-tier-2'
+      return 'rating-tier-1'
+    }
 
-        // Function to get the best role name for a player in a specific slot
-        const getBestRoleForPlayerInSlot = (player, slotRole) => {
-            if (
-                !player ||
-                !player.roleSpecificOveralls ||
-                !slotRole
-            ) {
-                return slotRole;
-            }
-            
-            // Make sure we have role data in an array format
-            const roleData = Array.isArray(player.roleSpecificOveralls) 
-                ? player.roleSpecificOveralls 
-                : Object.entries(player.roleSpecificOveralls).map(([roleName, score]) => ({
-                    roleName,
-                    score
-                }));
-                
-            if (roleData.length === 0) {
-                return slotRole;
-            }
+    // Function to get the best role name for a player in a specific slot
+    const getBestRoleForPlayerInSlot = (player, slotRole) => {
+      if (!player || !player.roleSpecificOveralls || !slotRole) {
+        return slotRole
+      }
 
-            // Get the position prefix for this slot (e.g., "DR" for "D (R)")
-            const positionPrefix = fmSlotRoleToKeyPrefixMap[slotRole] || slotRole.split(" ")[0];
-            
-            // Filter for roles that match this position and sort by score
-            const matchingRoles = roleData
-                .filter(rso => {
-                    const rsoBasePosition = rso.roleName.split(" - ")[0].trim();
-                    return rsoBasePosition === positionPrefix;
-                })
-                .sort((a, b) => b.score - a.score); // Sort by score descending
+      // Make sure we have role data in an array format
+      const roleData = Array.isArray(player.roleSpecificOveralls)
+        ? player.roleSpecificOveralls
+        : Object.entries(player.roleSpecificOveralls).map(([roleName, score]) => ({
+            roleName,
+            score
+          }))
 
-            if (matchingRoles.length === 0) {
-                // No roles found for this exact position, try using the player's best overall role
-                // as a fallback (this is just for display purposes)
-                const bestOverallRole = roleData.sort((a, b) => b.score - a.score)[0];
-                if (bestOverallRole) {
-                    return `${slotRole} (${bestOverallRole.roleName.split(" - ")[1] || ''})`;
-                }
-                return slotRole;
-            }
+      if (roleData.length === 0) {
+        return slotRole
+      }
 
-            // Find the best non-Generic role for this position
-            const bestNonGenericRole = matchingRoles.find(
-                rso => !rso.roleName.includes("Generic")
-            );
+      // Get the position prefix for this slot (e.g., "DR" for "D (R)")
+      const positionPrefix = fmSlotRoleToKeyPrefixMap[slotRole] || slotRole.split(' ')[0]
 
-            if (bestNonGenericRole) {
-                // Return the full role name or just the role part after the position
-                const roleParts = bestNonGenericRole.roleName.split(" - ");
-                if (roleParts.length > 1) {
-                    return roleParts[1]; // Just return the role type (e.g., "Ball Playing Defender")
-                }
-                return bestNonGenericRole.roleName;
-            }
+      // Filter for roles that match this position and sort by score
+      const matchingRoles = roleData
+        .filter(rso => {
+          const rsoBasePosition = rso.roleName.split(' - ')[0].trim()
+          return rsoBasePosition === positionPrefix
+        })
+        .sort((a, b) => b.score - a.score) // Sort by score descending
 
-            // If we only have a generic role for this position, use it
-            if (matchingRoles.length > 0) {
-                const roleParts = matchingRoles[0].roleName.split(" - ");
-                if (roleParts.length > 1) {
-                    return roleParts[1] || slotRole;
-                }
-            }
+      if (matchingRoles.length === 0) {
+        // No roles found for this exact position, try using the player's best overall role
+        // as a fallback (this is just for display purposes)
+        const bestOverallRole = roleData.sort((a, b) => b.score - a.score)[0]
+        if (bestOverallRole) {
+          return `${slotRole} (${bestOverallRole.roleName.split(' - ')[1] || ''})`
+        }
+        return slotRole
+      }
 
-            return slotRole; // Fallback to the slot role name
-        };
+      // Find the best non-Generic role for this position
+      const bestNonGenericRole = matchingRoles.find(rso => !rso.roleName.includes('Generic'))
 
-        const getPlayerSlotTitle = (player, slotRole) => {
-            if (player) {
-                const bestRoleName = getBestRoleForPlayerInSlot(
-                    player,
-                    slotRole,
-                );
-                return `${player.name} (${player.Overall || "N/A"}) - ${bestRoleName}`;
-            }
-            return `Empty - ${slotRole}`;
-        };
+      if (bestNonGenericRole) {
+        // Return the full role name or just the role part after the position
+        const roleParts = bestNonGenericRole.roleName.split(' - ')
+        if (roleParts.length > 1) {
+          return roleParts[1] // Just return the role type (e.g., "Ball Playing Defender")
+        }
+        return bestNonGenericRole.roleName
+      }
 
-        const handleDragStart = (event, player, fromSlotId) => {
-            isDragging.value = true;
-            draggedPlayerInfo.value = {
-                player: props.players[fromSlotId],
-                fromSlotId,
-            };
-            event.dataTransfer.effectAllowed = "move";
-            if (player && player.name) {
-                event.dataTransfer.setData("text/plain", player.name);
-            } else {
-                event.dataTransfer.setData("text/plain", "unknown_player");
-            }
-            document.body.classList.add("grabbing-cursor");
-        };
+      // If we only have a generic role for this position, use it
+      if (matchingRoles.length > 0) {
+        const roleParts = matchingRoles[0].roleName.split(' - ')
+        if (roleParts.length > 1) {
+          return roleParts[1] || slotRole
+        }
+      }
 
-        const handleDragEnd = () => {
-            isDragging.value = false;
-            draggedPlayerInfo.value = null;
-            document.body.classList.remove("grabbing-cursor");
-        };
+      return slotRole // Fallback to the slot role name
+    }
 
-        const handleDragOver = (event) => {
-            event.preventDefault();
-        };
+    const getPlayerSlotTitle = (player, slotRole) => {
+      if (player) {
+        const bestRoleName = getBestRoleForPlayerInSlot(player, slotRole)
+        return `${player.name} (${player.Overall || 'N/A'}) - ${bestRoleName}`
+      }
+      return `Empty - ${slotRole}`
+    }
 
-        const handleDragEnterSlot = (event) => {
-            if (event.target.classList.contains("drop-zone")) {
-                event.target.classList.add("drop-zone-hover");
-            }
-        };
+    const handleDragStart = (event, player, fromSlotId) => {
+      isDragging.value = true
+      draggedPlayerInfo.value = {
+        player: props.players[fromSlotId],
+        fromSlotId
+      }
+      event.dataTransfer.effectAllowed = 'move'
+      if (player && player.name) {
+        event.dataTransfer.setData('text/plain', player.name)
+      } else {
+        event.dataTransfer.setData('text/plain', 'unknown_player')
+      }
+      document.body.classList.add('grabbing-cursor')
+    }
 
-        const handleDragLeaveSlot = (event) => {
-            if (event.target.classList.contains("drop-zone")) {
-                event.target.classList.remove("drop-zone-hover");
-            }
-        };
+    const handleDragEnd = () => {
+      isDragging.value = false
+      draggedPlayerInfo.value = null
+      document.body.classList.remove('grabbing-cursor')
+    }
 
-        const handleDropOnSlot = (event, toSlotId, toSlotRole) => {
-            event.preventDefault();
-            let targetElement = event.target;
-            if (!targetElement.classList.contains("drop-zone")) {
-                targetElement = targetElement.closest(".drop-zone");
-            }
-            if (targetElement) {
-                targetElement.classList.remove("drop-zone-hover");
-            }
+    const handleDragOver = event => {
+      event.preventDefault()
+    }
 
-            if (draggedPlayerInfo.value && draggedPlayerInfo.value.player) {
-                const { player, fromSlotId } = draggedPlayerInfo.value;
-                if (fromSlotId !== toSlotId) {
-                    emit("player-moved", {
-                        player,
-                        fromSlotId,
-                        toSlotId,
-                        toSlotRole,
-                    });
-                }
-            }
-            handleDragEnd();
-        };
+    const handleDragEnterSlot = event => {
+      if (event.target.classList.contains('drop-zone')) {
+        event.target.classList.add('drop-zone-hover')
+      }
+    }
 
-        const handleDropOnPitch = (event) => {
-            handleDragEnd();
-        };
+    const handleDragLeaveSlot = event => {
+      if (event.target.classList.contains('drop-zone')) {
+        event.target.classList.remove('drop-zone-hover')
+      }
+    }
 
-        return {
-            quasar,
-            isDragging,
-            getPlayerSlotStyle,
-            getPlayerOverallClass,
-            getBestRoleForPlayerInSlot,
-            getPlayerSlotTitle,
-            handleDragStart,
-            handleDragEnd,
-            handleDragOver,
-            handleDropOnSlot,
-            handleDropOnPitch,
-            handleDragEnterSlot,
-            handleDragLeaveSlot,
-        };
-    },
-};
+    const handleDropOnSlot = (event, toSlotId, toSlotRole) => {
+      event.preventDefault()
+      let targetElement = event.target
+      if (!targetElement.classList.contains('drop-zone')) {
+        targetElement = targetElement.closest('.drop-zone')
+      }
+      if (targetElement) {
+        targetElement.classList.remove('drop-zone-hover')
+      }
+
+      if (draggedPlayerInfo.value && draggedPlayerInfo.value.player) {
+        const { player, fromSlotId } = draggedPlayerInfo.value
+        if (fromSlotId !== toSlotId) {
+          emit('player-moved', {
+            player,
+            fromSlotId,
+            toSlotId,
+            toSlotRole
+          })
+        }
+      }
+      handleDragEnd()
+    }
+
+    const handleDropOnPitch = event => {
+      handleDragEnd()
+    }
+
+    return {
+      quasar,
+      isDragging,
+      getPlayerSlotStyle,
+      getPlayerOverallClass,
+      getBestRoleForPlayerInSlot,
+      getPlayerSlotTitle,
+      handleDragStart,
+      handleDragEnd,
+      handleDragOver,
+      handleDropOnSlot,
+      handleDropOnPitch,
+      handleDragEnterSlot,
+      handleDragLeaveSlot
+    }
+  }
+}
 </script>
 
 <style lang="scss" scoped>

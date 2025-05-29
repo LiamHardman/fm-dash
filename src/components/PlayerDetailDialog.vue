@@ -1046,821 +1046,738 @@
 </template>
 
 <script>
-import { defineComponent, computed, ref, watch, onMounted } from "vue";
-import { useQuasar } from "quasar";
-import { formatCurrency } from "../utils/currencyUtils";
-import { usePlayerStore } from "../stores/playerStore";
+import { useQuasar } from 'quasar'
+import { computed, defineComponent, onMounted, ref, watch } from 'vue'
+import { usePlayerStore } from '../stores/playerStore'
+import { formatCurrency } from '../utils/currencyUtils'
 
 const attributeFullNameMap = {
-    Cor: "Corners",
-    Cro: "Crossing",
-    Dri: "Dribbling",
-    Fin: "Finishing",
-    Fir: "First Touch",
-    Fre: "Free Kick Taking",
-    Hea: "Heading",
-    Lon: "Long Shots",
-    "L Th": "Long Throws",
-    Mar: "Marking",
-    Pas: "Passing",
-    Pen: "Penalty Taking",
-    Tck: "Tackling",
-    Tec: "Technique",
-    Agg: "Aggression",
-    Ant: "Anticipation",
-    Bra: "Bravery",
-    Cmp: "Composure",
-    Cnt: "Concentration",
-    Dec: "Decisions",
-    Det: "Determination",
-    Fla: "Flair",
-    Ldr: "Leadership",
-    OtB: "Off the Ball",
-    Pos: "Positioning",
-    Tea: "Teamwork",
-    Vis: "Vision",
-    Wor: "Work Rate",
-    Acc: "Acceleration",
-    Agi: "Agility",
-    Bal: "Balance",
-    Jum: "Jumping Reach",
-    Nat: "Natural Fitness",
-    Pac: "Pace",
-    Sta: "Stamina",
-    Str: "Strength",
-    Aer: "Aerial Reach",
-    Cmd: "Command of Area",
-    Com: "Communication",
-    Ecc: "Eccentricity",
-    Han: "Handling",
-    Kic: "Kicking",
-    "1v1": "One on Ones",
-    Pun: "Punching (Tendency)",
-    Ref: "Reflexes",
-    TRO: "Rushing Out (Tendency)",
-    Thr: "Throwing",
-};
+  Cor: 'Corners',
+  Cro: 'Crossing',
+  Dri: 'Dribbling',
+  Fin: 'Finishing',
+  Fir: 'First Touch',
+  Fre: 'Free Kick Taking',
+  Hea: 'Heading',
+  Lon: 'Long Shots',
+  'L Th': 'Long Throws',
+  Mar: 'Marking',
+  Pas: 'Passing',
+  Pen: 'Penalty Taking',
+  Tck: 'Tackling',
+  Tec: 'Technique',
+  Agg: 'Aggression',
+  Ant: 'Anticipation',
+  Bra: 'Bravery',
+  Cmp: 'Composure',
+  Cnt: 'Concentration',
+  Dec: 'Decisions',
+  Det: 'Determination',
+  Fla: 'Flair',
+  Ldr: 'Leadership',
+  OtB: 'Off the Ball',
+  Pos: 'Positioning',
+  Tea: 'Teamwork',
+  Vis: 'Vision',
+  Wor: 'Work Rate',
+  Acc: 'Acceleration',
+  Agi: 'Agility',
+  Bal: 'Balance',
+  Jum: 'Jumping Reach',
+  Nat: 'Natural Fitness',
+  Pac: 'Pace',
+  Sta: 'Stamina',
+  Str: 'Strength',
+  Aer: 'Aerial Reach',
+  Cmd: 'Command of Area',
+  Com: 'Communication',
+  Ecc: 'Eccentricity',
+  Han: 'Handling',
+  Kic: 'Kicking',
+  '1v1': 'One on Ones',
+  Pun: 'Punching (Tendency)',
+  Ref: 'Reflexes',
+  TRO: 'Rushing Out (Tendency)',
+  Thr: 'Throwing'
+}
 
 const attributeDescriptions = {
-    // Technical Attributes
-    Cor: "Ability to deliver effective corner kicks with accuracy and technique",
-    Cro: "Quality of crosses from wide positions, affecting accuracy and delivery timing",
-    Dri: "Skill in close ball control while running, beating opponents in 1v1 situations",
-    Fin: "Composure and ability to score when presented with goal-scoring opportunities",
-    Fir: "Quality of the first touch when receiving the ball under pressure",
-    Fre: "Ability to score or create chances from free kick situations",
-    Hea: "Effectiveness when using the head to win aerial duels and score goals",
-    Lon: "Ability to score or create chances from shots taken outside the penalty area",
-    "L Th": "Capability to throw the ball long distances accurately from throw-in situations",
-    Mar: "Defensive positioning and ability to track and stay close to opposing players",
-    Pas: "Accuracy and effectiveness of short and medium-range passing",
-    Pen: "Composure and technique when taking penalty kicks",
-    Tck: "Timing and success rate of defensive challenges and tackles",
-    Tec: "Overall technical ability with the ball, including touch and ball manipulation",
-    
-    // Mental Attributes
-    Agg: "Willingness to compete physically and commit to challenges",
-    Ant: "Ability to read the game and anticipate what will happen next",
-    Bra: "Courage when facing physical challenges or difficult situations",
-    Cmp: "Ability to remain calm under pressure and in high-stakes situations",
-    Cnt: "Mental focus and ability to maintain concentration throughout the match",
-    Dec: "Quality of decision-making in various game situations",
-    Det: "Drive and willingness to work hard and overcome obstacles",
-    Fla: "Creativity and unpredictability in play, ability to produce unexpected moments",
-    Ldr: "Ability to motivate teammates and take responsibility in crucial moments",
-    OtB: "Intelligence in finding space and making runs without the ball",
-    Pos: "Understanding of where to be positioned tactically and defensively",
-    Tea: "Willingness to work for the team and follow tactical instructions",
-    Vis: "Ability to spot and execute passes that others might not see",
-    Wor: "Stamina and willingness to maintain effort levels throughout the match",
-    
-    // Physical Attributes
-    Acc: "Speed of reaching maximum velocity from a standing start",
-    Agi: "Ability to change direction quickly and maintain balance during movement",
-    Bal: "Ability to maintain equilibrium and stay on feet when challenged",
-    Jum: "Height and timing achieved when jumping for aerial challenges",
-    Nat: "Inherent fitness level and resistance to fatigue and injury",
-    Pac: "Maximum running speed when in full sprint",
-    Sta: "Ability to maintain physical performance throughout the entire match",
-    Str: "Physical power for winning challenges and holding off opponents",
-    
-    // Goalkeeping Attributes
-    Aer: "Ability to deal with high balls and crosses in the penalty area",
-    Cmd: "Presence and ability to organize the defense and claim crosses",
-    Com: "Effectiveness in communicating with defenders and organizing the backline",
-    Ecc: "Unpredictability in decision-making and unconventional actions",
-    Han: "Security when catching and holding onto the ball",
-    Kic: "Power and accuracy when distributing the ball with kicks",
-    "1v1": "Ability to save in one-on-one situations with attackers",
-    Pun: "Tendency to punch the ball away rather than catch it",
-    Ref: "Speed of reaction when making saves",
-    TRO: "Tendency to rush out of goal to close down attackers",
-    Thr: "Accuracy and effectiveness when throwing the ball to teammates"
-};
+  // Technical Attributes
+  Cor: 'Ability to deliver effective corner kicks with accuracy and technique',
+  Cro: 'Quality of crosses from wide positions, affecting accuracy and delivery timing',
+  Dri: 'Skill in close ball control while running, beating opponents in 1v1 situations',
+  Fin: 'Composure and ability to score when presented with goal-scoring opportunities',
+  Fir: 'Quality of the first touch when receiving the ball under pressure',
+  Fre: 'Ability to score or create chances from free kick situations',
+  Hea: 'Effectiveness when using the head to win aerial duels and score goals',
+  Lon: 'Ability to score or create chances from shots taken outside the penalty area',
+  'L Th': 'Capability to throw the ball long distances accurately from throw-in situations',
+  Mar: 'Defensive positioning and ability to track and stay close to opposing players',
+  Pas: 'Accuracy and effectiveness of short and medium-range passing',
+  Pen: 'Composure and technique when taking penalty kicks',
+  Tck: 'Timing and success rate of defensive challenges and tackles',
+  Tec: 'Overall technical ability with the ball, including touch and ball manipulation',
+
+  // Mental Attributes
+  Agg: 'Willingness to compete physically and commit to challenges',
+  Ant: 'Ability to read the game and anticipate what will happen next',
+  Bra: 'Courage when facing physical challenges or difficult situations',
+  Cmp: 'Ability to remain calm under pressure and in high-stakes situations',
+  Cnt: 'Mental focus and ability to maintain concentration throughout the match',
+  Dec: 'Quality of decision-making in various game situations',
+  Det: 'Drive and willingness to work hard and overcome obstacles',
+  Fla: 'Creativity and unpredictability in play, ability to produce unexpected moments',
+  Ldr: 'Ability to motivate teammates and take responsibility in crucial moments',
+  OtB: 'Intelligence in finding space and making runs without the ball',
+  Pos: 'Understanding of where to be positioned tactically and defensively',
+  Tea: 'Willingness to work for the team and follow tactical instructions',
+  Vis: 'Ability to spot and execute passes that others might not see',
+  Wor: 'Stamina and willingness to maintain effort levels throughout the match',
+
+  // Physical Attributes
+  Acc: 'Speed of reaching maximum velocity from a standing start',
+  Agi: 'Ability to change direction quickly and maintain balance during movement',
+  Bal: 'Ability to maintain equilibrium and stay on feet when challenged',
+  Jum: 'Height and timing achieved when jumping for aerial challenges',
+  Nat: 'Inherent fitness level and resistance to fatigue and injury',
+  Pac: 'Maximum running speed when in full sprint',
+  Sta: 'Ability to maintain physical performance throughout the entire match',
+  Str: 'Physical power for winning challenges and holding off opponents',
+
+  // Goalkeeping Attributes
+  Aer: 'Ability to deal with high balls and crosses in the penalty area',
+  Cmd: 'Presence and ability to organize the defense and claim crosses',
+  Com: 'Effectiveness in communicating with defenders and organizing the backline',
+  Ecc: 'Unpredictability in decision-making and unconventional actions',
+  Han: 'Security when catching and holding onto the ball',
+  Kic: 'Power and accuracy when distributing the ball with kicks',
+  '1v1': 'Ability to save in one-on-one situations with attackers',
+  Pun: 'Tendency to punch the ball away rather than catch it',
+  Ref: 'Speed of reaction when making saves',
+  TRO: 'Tendency to rush out of goal to close down attackers',
+  Thr: 'Accuracy and effectiveness when throwing the ball to teammates'
+}
 
 const fifaAttributeDescriptions = {
-    // Outfield Player FIFA Stats
-    PAC: "Pace combines Acceleration and Sprint Speed to determine how fast a player can move",
-    SHO: "Shooting represents finishing ability, shot power, long shots, volleys, and penalties",
-    PAS: "Passing includes short passing, long passing, vision, crossing, and free kick accuracy",
-    DRI: "Dribbling covers ball control, dribbling skill, agility, balance, and reactions",
-    DEF: "Defending encompasses marking, standing tackle, sliding tackle, and heading accuracy",
-    PHY: "Physical attributes include strength, stamina, aggression, jumping, and balance",
-    
-    // Goalkeeper FIFA Stats
-    DIV: "Diving ability to reach shots in different areas of the goal",
-    HAN: "Handling security when catching or parrying shots and crosses",
-    KIC: "Kicking power and accuracy for goal kicks and distribution",
-    REF: "Reflexes and reaction speed when making saves",
-    SPD: "Speed when rushing out or moving around the penalty area",
-    POS: "Positioning and decision-making when coming off the goal line"
-};
+  // Outfield Player FIFA Stats
+  PAC: 'Pace combines Acceleration and Sprint Speed to determine how fast a player can move',
+  SHO: 'Shooting represents finishing ability, shot power, long shots, volleys, and penalties',
+  PAS: 'Passing includes short passing, long passing, vision, crossing, and free kick accuracy',
+  DRI: 'Dribbling covers ball control, dribbling skill, agility, balance, and reactions',
+  DEF: 'Defending encompasses marking, standing tackle, sliding tackle, and heading accuracy',
+  PHY: 'Physical attributes include strength, stamina, aggression, jumping, and balance',
+
+  // Goalkeeper FIFA Stats
+  DIV: 'Diving ability to reach shots in different areas of the goal',
+  HAN: 'Handling security when catching or parrying shots and crosses',
+  KIC: 'Kicking power and accuracy for goal kicks and distribution',
+  REF: 'Reflexes and reaction speed when making saves',
+  SPD: 'Speed when rushing out or moving around the penalty area',
+  POS: 'Positioning and decision-making when coming off the goal line'
+}
 
 const technicalAttrsOrdered = [
-    "Cor",
-    "Cro",
-    "Dri",
-    "Fin",
-    "Fir",
-    "Fre",
-    "Hea",
-    "Lon",
-    "L Th",
-    "Mar",
-    "Pas",
-    "Pen",
-    "Tck",
-    "Tec",
-];
+  'Cor',
+  'Cro',
+  'Dri',
+  'Fin',
+  'Fir',
+  'Fre',
+  'Hea',
+  'Lon',
+  'L Th',
+  'Mar',
+  'Pas',
+  'Pen',
+  'Tck',
+  'Tec'
+]
 const mentalAttrsOrdered = [
-    "Agg",
-    "Ant",
-    "Bra",
-    "Cmp",
-    "Cnt",
-    "Dec",
-    "Det",
-    "Fla",
-    "Ldr",
-    "OtB",
-    "Pos",
-    "Tea",
-    "Vis",
-    "Wor",
-];
-const physicalAttrsOrdered = [
-    "Acc",
-    "Agi",
-    "Bal",
-    "Jum",
-    "Nat",
-    "Pac",
-    "Sta",
-    "Str",
-];
+  'Agg',
+  'Ant',
+  'Bra',
+  'Cmp',
+  'Cnt',
+  'Dec',
+  'Det',
+  'Fla',
+  'Ldr',
+  'OtB',
+  'Pos',
+  'Tea',
+  'Vis',
+  'Wor'
+]
+const physicalAttrsOrdered = ['Acc', 'Agi', 'Bal', 'Jum', 'Nat', 'Pac', 'Sta', 'Str']
 const goalkeepingAttrsOrdered = [
-    "Aer",
-    "Cmd",
-    "Com",
-    "Ecc",
-    "Fir",
-    "Han",
-    "Kic",
-    "1v1",
-    "Pas",
-    "Pun",
-    "Ref",
-    "TRO",
-    "Thr",
-];
+  'Aer',
+  'Cmd',
+  'Com',
+  'Ecc',
+  'Fir',
+  'Han',
+  'Kic',
+  '1v1',
+  'Pas',
+  'Pun',
+  'Ref',
+  'TRO',
+  'Thr'
+]
 
 const performanceStatMap = {
-    "Asts/90": "Assists per 90",
-    "Av Rat": "Average Rating",
-    "Blk/90": "Blocks per 90",
-    "Ch C/90": "Chances Created per 90",
-    "Clr/90": "Clearances per 90",
-    "Cr C/90": "Crosses Completed per 90",
-    "Drb/90": "Dribbles per 90",
-    "xA/90": "Expected Assists per 90",
-    "xG/90": "Expected Goals per 90",
-    "Gls/90": "Goals per 90",
-    "Hdrs W/90": "Headers Won per 90",
-    "Int/90": "Interceptions per 90",
-    "K Ps/90": "Key Passes per 90",
-    "Ps C/90": "Passes Completed per 90",
-    "Shot/90": "Shots per 90",
-    "Tck/90": "Tackles per 90",
-    "Poss Won/90": "Possession Won per 90",
-    "ShT/90": "Shots on Target per 90",
-    "Pres C/90": "Pressures Completed per 90",
-    "Poss Lost/90": "Possession Lost per 90",
-    "Pr passes/90": "Progressive Passes per 90",
-    "Conv %": "Conversion %",
-    "Tck R": "Tackle Ratio %",
-    "Pas %": "Pass Completion %",
-    "Cr C/A": "Cross Completion %",
-};
+  'Asts/90': 'Assists per 90',
+  'Av Rat': 'Average Rating',
+  'Blk/90': 'Blocks per 90',
+  'Ch C/90': 'Chances Created per 90',
+  'Clr/90': 'Clearances per 90',
+  'Cr C/90': 'Crosses Completed per 90',
+  'Drb/90': 'Dribbles per 90',
+  'xA/90': 'Expected Assists per 90',
+  'xG/90': 'Expected Goals per 90',
+  'Gls/90': 'Goals per 90',
+  'Hdrs W/90': 'Headers Won per 90',
+  'Int/90': 'Interceptions per 90',
+  'K Ps/90': 'Key Passes per 90',
+  'Ps C/90': 'Passes Completed per 90',
+  'Shot/90': 'Shots per 90',
+  'Tck/90': 'Tackles per 90',
+  'Poss Won/90': 'Possession Won per 90',
+  'ShT/90': 'Shots on Target per 90',
+  'Pres C/90': 'Pressures Completed per 90',
+  'Poss Lost/90': 'Possession Lost per 90',
+  'Pr passes/90': 'Progressive Passes per 90',
+  'Conv %': 'Conversion %',
+  'Tck R': 'Tackle Ratio %',
+  'Pas %': 'Pass Completion %',
+  'Cr C/A': 'Cross Completion %'
+}
 
 const performanceStatCategories = {
-    Offensive: ["Gls/90", "xG/90", "Shot/90", "ShT/90", "Conv %", "Drb/90"],
-    Passing: [
-        "Asts/90",
-        "xA/90",
-        "Ch C/90",
-        "K Ps/90",
-        "Ps C/90",
-        "Pas %",
-        "Pr passes/90",
-        "Cr C/90",
-        "Cr C/A",
-        "Poss Lost/90",
-    ],
-    Defensive: [
-        "Tck/90",
-        "Tck R",
-        "Int/90",
-        "Clr/90",
-        "Blk/90",
-        "Hdrs W/90",
-        "Pres C/90",
-        "Poss Won/90",
-    ],
-};
+  Offensive: ['Gls/90', 'xG/90', 'Shot/90', 'ShT/90', 'Conv %', 'Drb/90'],
+  Passing: [
+    'Asts/90',
+    'xA/90',
+    'Ch C/90',
+    'K Ps/90',
+    'Ps C/90',
+    'Pas %',
+    'Pr passes/90',
+    'Cr C/90',
+    'Cr C/A',
+    'Poss Lost/90'
+  ],
+  Defensive: [
+    'Tck/90',
+    'Tck R',
+    'Int/90',
+    'Clr/90',
+    'Blk/90',
+    'Hdrs W/90',
+    'Pres C/90',
+    'Poss Won/90'
+  ]
+}
 
 // Mapping from detailed group name (key in performancePercentiles) to the ShortPositions that define them
 const detailedGroupToShortPositionsMap = {
-    "Full-backs": ["DR", "DL"],
-    "Centre-backs": ["DC"],
-    "Wing-backs": ["WBR", "WBL"],
-    "Defensive Midfielders": ["DM"],
-    "Central Midfielders": ["MC"],
-    "Wide Midfielders": ["MR", "ML"],
-    "Attacking Midfielders (Central)": ["AMC"],
-    Wingers: ["AMR", "AML"],
-    Strikers: ["ST"],
-};
+  'Full-backs': ['DR', 'DL'],
+  'Centre-backs': ['DC'],
+  'Wing-backs': ['WBR', 'WBL'],
+  'Defensive Midfielders': ['DM'],
+  'Central Midfielders': ['MC'],
+  'Wide Midfielders': ['MR', 'ML'],
+  'Attacking Midfielders (Central)': ['AMC'],
+  Wingers: ['AMR', 'AML'],
+  Strikers: ['ST']
+}
 
 export default defineComponent({
-    name: "PlayerDetailDialog",
-    props: {
-        player: { type: Object, default: () => null },
-        show: { type: Boolean, default: false },
-        currencySymbol: { type: String, default: "$" },
-        datasetId: { type: String, default: null },
-    },
-    emits: ["close"],
-    setup(props) {
-        const qInstance = useQuasar();
-        const playerStore = usePlayerStore();
-        const selectedComparisonGroup = ref("Global");
-        const flagLoadError = ref(false);
-        const divisionFilter = ref("all");
+  name: 'PlayerDetailDialog',
+  props: {
+    player: { type: Object, default: () => null },
+    show: { type: Boolean, default: false },
+    currencySymbol: { type: String, default: '$' },
+    datasetId: { type: String, default: null }
+  },
+  emits: ['close'],
+  setup(props) {
+    const qInstance = useQuasar()
+    const playerStore = usePlayerStore()
+    const selectedComparisonGroup = ref('Global')
+    const flagLoadError = ref(false)
+    const divisionFilter = ref('all')
 
-        const handleFlagError = () => {
-            flagLoadError.value = true;
-        };
+    const handleFlagError = () => {
+      flagLoadError.value = true
+    }
 
-        onMounted(() => {
-            /* Initialization logic if needed */
-        });
+    onMounted(() => {
+      /* Initialization logic if needed */
+    })
 
-        const performanceComparisonOptions = computed(() => {
-            const options = [];
-            if (
-                !props.player ||
-                !props.player.performancePercentiles ||
-                !props.player.shortPositions ||
-                !props.player.positionGroups
-            ) {
-                // If essential player data is missing, return empty or just Global if it exists
-                if (props.player?.performancePercentiles?.Global) {
-                    return [{ label: "Overall Dataset", value: "Global" }];
-                }
-                return options;
+    const performanceComparisonOptions = computed(() => {
+      const options = []
+      if (
+        !props.player ||
+        !props.player.performancePercentiles ||
+        !props.player.shortPositions ||
+        !props.player.positionGroups
+      ) {
+        // If essential player data is missing, return empty or just Global if it exists
+        if (props.player?.performancePercentiles?.Global) {
+          return [{ label: 'Overall Dataset', value: 'Global' }]
+        }
+        return options
+      }
+
+      const playerPercentiles = props.player.performancePercentiles
+      const playerShortPositions = props.player.shortPositions // e.g., ["DC", "DM"]
+      const playerBroadGroups = props.player.positionGroups // e.g., ["Defenders", "Midfielders"]
+
+      const preferredOrder = [
+        'Global',
+        'Goalkeepers',
+        'Defenders',
+        'Midfielders',
+        'Attackers',
+        'Full-backs',
+        'Centre-backs',
+        'Wing-backs',
+        'Defensive Midfielders',
+        'Central Midfielders',
+        'Wide Midfielders',
+        'Attacking Midfielders (Central)',
+        'Wingers',
+        'Strikers'
+      ]
+
+      preferredOrder.forEach(groupKey => {
+        if (Object.prototype.hasOwnProperty.call(playerPercentiles, groupKey)) {
+          let includeGroup = false
+          if (groupKey === 'Global') {
+            includeGroup = true
+          } else if (['Goalkeepers', 'Defenders', 'Midfielders', 'Attackers'].includes(groupKey)) {
+            // Broad groups: check if player belongs to this broad group
+            if (playerBroadGroups.includes(groupKey)) {
+              includeGroup = true
             }
-
-            const playerPercentiles = props.player.performancePercentiles;
-            const playerShortPositions = props.player.shortPositions; // e.g., ["DC", "DM"]
-            const playerBroadGroups = props.player.positionGroups; // e.g., ["Defenders", "Midfielders"]
-
-            const preferredOrder = [
-                "Global",
-                "Goalkeepers",
-                "Defenders",
-                "Midfielders",
-                "Attackers",
-                "Full-backs",
-                "Centre-backs",
-                "Wing-backs",
-                "Defensive Midfielders",
-                "Central Midfielders",
-                "Wide Midfielders",
-                "Attacking Midfielders (Central)",
-                "Wingers",
-                "Strikers",
-            ];
-
-            preferredOrder.forEach((groupKey) => {
-                if (
-                    Object.prototype.hasOwnProperty.call(
-                        playerPercentiles,
-                        groupKey,
-                    )
-                ) {
-                    let includeGroup = false;
-                    if (groupKey === "Global") {
-                        includeGroup = true;
-                    } else if (
-                        [
-                            "Goalkeepers",
-                            "Defenders",
-                            "Midfielders",
-                            "Attackers",
-                        ].includes(groupKey)
-                    ) {
-                        // Broad groups: check if player belongs to this broad group
-                        if (playerBroadGroups.includes(groupKey)) {
-                            includeGroup = true;
-                        }
-                    } else if (detailedGroupToShortPositionsMap[groupKey]) {
-                        // Detailed groups: check if player's short positions match any in the detailed group
-                        const requiredShortPos =
-                            detailedGroupToShortPositionsMap[groupKey];
-                        if (
-                            playerShortPositions.some((psp) =>
-                                requiredShortPos.includes(psp),
-                            )
-                        ) {
-                            includeGroup = true;
-                        }
-                    }
-
-                    if (
-                        includeGroup &&
-                        !options.some((opt) => opt.value === groupKey)
-                    ) {
-                        options.push({
-                            label:
-                                groupKey === "Global"
-                                    ? "Overall Dataset"
-                                    : `vs. ${groupKey}`,
-                            value: groupKey,
-                        });
-                    }
-                }
-            });
-
-            // Add any other percentile groups the player might have that are not in preferredOrder
-            // (This ensures if backend adds new groups not yet in preferredOrder, they still show up if relevant)
-            Object.keys(playerPercentiles).forEach((groupKey) => {
-                if (!options.some((opt) => opt.value === groupKey)) {
-                    let includeGroup = false;
-                    if (
-                        [
-                            "Goalkeepers",
-                            "Defenders",
-                            "Midfielders",
-                            "Attackers",
-                        ].includes(groupKey)
-                    ) {
-                        if (playerBroadGroups.includes(groupKey))
-                            includeGroup = true;
-                    } else if (detailedGroupToShortPositionsMap[groupKey]) {
-                        const requiredShortPos =
-                            detailedGroupToShortPositionsMap[groupKey];
-                        if (
-                            playerShortPositions.some((psp) =>
-                                requiredShortPos.includes(psp),
-                            )
-                        )
-                            includeGroup = true;
-                    } else if (groupKey === "Global") {
-                        // Should be caught by preferredOrder but good fallback
-                        includeGroup = true;
-                    }
-                    // For any other arbitrary group key not covered, we might include it if it exists,
-                    // or decide to only show explicitly defined/matched ones.
-                    // For now, let's assume if it's in playerPercentiles and not yet added, and it's not a known type we already checked,
-                    // it might be a custom group or a new one we should display.
-                    // However, to be safer and more aligned with the request, only add if it's a known type.
-                    // The current logic with preferredOrder and specific checks should cover all defined groups.
-                    // This secondary loop might not be strictly necessary if preferredOrder is exhaustive for relevant groups.
-                    // Let's refine to ensure it doesn't add groups the player doesn't belong to.
-                    if (includeGroup) {
-                        // Re-check belonging for keys not in preferredOrder
-                        options.push({
-                            label: `vs. ${groupKey}`,
-                            value: groupKey,
-                        });
-                    }
-                }
-            });
-
-            return options;
-        });
-
-        const getPositionGroupForHighestRole = () => {
-            if (!props.player?.roleSpecificOveralls?.length) {
-                return null;
+          } else if (detailedGroupToShortPositionsMap[groupKey]) {
+            // Detailed groups: check if player's short positions match any in the detailed group
+            const requiredShortPos = detailedGroupToShortPositionsMap[groupKey]
+            if (playerShortPositions.some(psp => requiredShortPos.includes(psp))) {
+              includeGroup = true
             }
+          }
 
-            // Find the role with the highest overall rating
-            const highestRole = props.player.roleSpecificOveralls.reduce((max, role) => 
-                role.score > max.score ? role : max
-            );
+          if (includeGroup && !options.some(opt => opt.value === groupKey)) {
+            options.push({
+              label: groupKey === 'Global' ? 'Overall Dataset' : `vs. ${groupKey}`,
+              value: groupKey
+            })
+          }
+        }
+      })
 
-            // Extract the short position from the role name (e.g., "DM" from "DM - Defensive Midfielder - Support")
-            const shortPosition = highestRole.roleName.split(' - ')[0];
+      // Add any other percentile groups the player might have that are not in preferredOrder
+      // (This ensures if backend adds new groups not yet in preferredOrder, they still show up if relevant)
+      Object.keys(playerPercentiles).forEach(groupKey => {
+        if (!options.some(opt => opt.value === groupKey)) {
+          let includeGroup = false
+          if (['Goalkeepers', 'Defenders', 'Midfielders', 'Attackers'].includes(groupKey)) {
+            if (playerBroadGroups.includes(groupKey)) includeGroup = true
+          } else if (detailedGroupToShortPositionsMap[groupKey]) {
+            const requiredShortPos = detailedGroupToShortPositionsMap[groupKey]
+            if (playerShortPositions.some(psp => requiredShortPos.includes(psp)))
+              includeGroup = true
+          } else if (groupKey === 'Global') {
+            // Should be caught by preferredOrder but good fallback
+            includeGroup = true
+          }
+          // For any other arbitrary group key not covered, we might include it if it exists,
+          // or decide to only show explicitly defined/matched ones.
+          // For now, let's assume if it's in playerPercentiles and not yet added, and it's not a known type we already checked,
+          // it might be a custom group or a new one we should display.
+          // However, to be safer and more aligned with the request, only add if it's a known type.
+          // The current logic with preferredOrder and specific checks should cover all defined groups.
+          // This secondary loop might not be strictly necessary if preferredOrder is exhaustive for relevant groups.
+          // Let's refine to ensure it doesn't add groups the player doesn't belong to.
+          if (includeGroup) {
+            // Re-check belonging for keys not in preferredOrder
+            options.push({
+              label: `vs. ${groupKey}`,
+              value: groupKey
+            })
+          }
+        }
+      })
 
-            // Map short position to detailed group first
-            const detailedGroup = Object.entries(detailedGroupToShortPositionsMap).find(([groupName, positions]) =>
-                positions.includes(shortPosition)
-            );
+      return options
+    })
 
-            if (detailedGroup) {
-                return detailedGroup[0]; // Return the detailed group name
-            }
+    const getPositionGroupForHighestRole = () => {
+      if (!props.player?.roleSpecificOveralls?.length) {
+        return null
+      }
 
-            // Fallback to broad position group
-            const positionToGroupMap = {
-                'GK': 'Goalkeepers',
-                'SW': 'Defenders', 'DR': 'Defenders', 'DL': 'Defenders', 'DC': 'Defenders',
-                'WBR': 'Defenders', 'WBL': 'Defenders', // Wing-backs are in defenders for broad groups
-                'DM': 'Midfielders', 'MC': 'Midfielders', 'MR': 'Midfielders', 'ML': 'Midfielders',
-                'AMC': 'Midfielders', 'AMR': 'Midfielders', 'AML': 'Midfielders',
-                'ST': 'Attackers'
-            };
+      // Find the role with the highest overall rating
+      const highestRole = props.player.roleSpecificOveralls.reduce((max, role) =>
+        role.score > max.score ? role : max
+      )
 
-            return positionToGroupMap[shortPosition] || null;
-        };
+      // Extract the short position from the role name (e.g., "DM" from "DM - Defensive Midfielder - Support")
+      const shortPosition = highestRole.roleName.split(' - ')[0]
 
-        watch(
-            () => props.player,
-            (newPlayer) => {
-                flagLoadError.value = false;
-                const newOptions = performanceComparisonOptions.value;
+      // Map short position to detailed group first
+      const detailedGroup = Object.entries(detailedGroupToShortPositionsMap).find(
+        ([groupName, positions]) => positions.includes(shortPosition)
+      )
 
-                if (newPlayer && newPlayer.performancePercentiles) {
-                    // Always try to set to the position group for the highest role first
-                    const highestRoleGroup = getPositionGroupForHighestRole();
-                    
-                    if (highestRoleGroup && newOptions.some((opt) => opt.value === highestRoleGroup)) {
-                        selectedComparisonGroup.value = highestRoleGroup;
-                    } else if (
-                        !newOptions.some(
-                            (opt) =>
-                                opt.value === selectedComparisonGroup.value,
-                        )
-                    ) {
-                        // If highest role group not available and current selection is invalid, fallback
-                        if (newOptions.some((opt) => opt.value === "Global")) {
-                            selectedComparisonGroup.value = "Global";
-                        } else if (newOptions.length > 0) {
-                            selectedComparisonGroup.value = newOptions[0].value;
-                        } else {
-                            selectedComparisonGroup.value = "Global";
-                        }
-                    }
-                } else {
-                    selectedComparisonGroup.value = "Global";
-                }
-            },
-            { immediate: true, deep: true },
-        );
+      if (detailedGroup) {
+        return detailedGroup[0] // Return the detailed group name
+      }
 
-        const divisionFilterOptions = computed(() => [
-            { label: "All", value: "all" },
-            { label: "Same", value: "same" },
-            { label: "Top 5", value: "top5" },
-        ]);
+      // Fallback to broad position group
+      const positionToGroupMap = {
+        GK: 'Goalkeepers',
+        SW: 'Defenders',
+        DR: 'Defenders',
+        DL: 'Defenders',
+        DC: 'Defenders',
+        WBR: 'Defenders',
+        WBL: 'Defenders', // Wing-backs are in defenders for broad groups
+        DM: 'Midfielders',
+        MC: 'Midfielders',
+        MR: 'Midfielders',
+        ML: 'Midfielders',
+        AMC: 'Midfielders',
+        AMR: 'Midfielders',
+        AML: 'Midfielders',
+        ST: 'Attackers'
+      }
 
-        const getTargetDivision = () => {
-            if (!props.player?.division) return null;
-            return props.player.division;
-        };
+      return positionToGroupMap[shortPosition] || null
+    }
 
-        const onDivisionFilterChange = async () => {
-            if (!props.datasetId || !props.player) return;
-            
-            try {
-                const targetDivision = getTargetDivision();
-                // Instead of refetching all data, we need to fetch just updated percentiles for this player
-                // For now, let's create a dedicated API call for this
-                const response = await fetch(`/api/percentiles/${props.datasetId}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        playerName: props.player.name,
-                        divisionFilter: divisionFilter.value,
-                        targetDivision: targetDivision
-                    })
-                });
-                
-                if (response.ok) {
-                    const updatedPercentiles = await response.json();
-                    // Update the player's percentiles without affecting the main dataset
-                    if (props.player.performancePercentiles) {
-                        Object.assign(props.player.performancePercentiles, updatedPercentiles);
-                    }
-                }
-            } catch (error) {
-                console.error("Error updating percentiles with division filter:", error);
-            }
-        };
+    watch(
+      () => props.player,
+      newPlayer => {
+        flagLoadError.value = false
+        const newOptions = performanceComparisonOptions.value
 
-        const isGoalkeeper = computed(() => {
-            if (!props.player) return false;
-            return (
-                props.player.shortPositions?.includes("GK") ||
-                props.player.positionGroups?.includes("Goalkeepers") ||
-                props.player.parsedPositions?.includes("Goalkeeper")
-            );
-        });
+        if (newPlayer && newPlayer.performancePercentiles) {
+          // Always try to set to the position group for the highest role first
+          const highestRoleGroup = getPositionGroupForHighestRole()
 
-        const getPlayerAttributesInOrder = (categoryOrderedKeys) => {
-            if (!props.player || !props.player.attributes) return [];
-            return categoryOrderedKeys.filter((key) =>
-                Object.prototype.hasOwnProperty.call(
-                    props.player.attributes,
-                    key,
-                ),
-            );
-        };
-
-        const attributeCategories = computed(() => ({
-            technical: getPlayerAttributesInOrder(technicalAttrsOrdered),
-            mental: getPlayerAttributesInOrder(mentalAttrsOrdered),
-            physical: getPlayerAttributesInOrder(physicalAttrsOrdered),
-            goalkeeping: isGoalkeeper.value
-                ? getPlayerAttributesInOrder(goalkeepingAttrsOrdered)
-                : [],
-        }));
-
-        const fifaStatsToDisplay = computed(() => {
-            let orderedStats = [];
-            if (isGoalkeeper.value) {
-                orderedStats = [
-                    { name: "DIV", label: "DIV" },
-                    { name: "HAN", label: "HAN" },
-                    { name: "REF", label: "REF" },
-                    { name: "KIC", label: "KIC" },
-                    { name: "SPD", label: "SPD" },
-                    { name: "POS", label: "POS" },
-                ];
+          if (highestRoleGroup && newOptions.some(opt => opt.value === highestRoleGroup)) {
+            selectedComparisonGroup.value = highestRoleGroup
+          } else if (!newOptions.some(opt => opt.value === selectedComparisonGroup.value)) {
+            // If highest role group not available and current selection is invalid, fallback
+            if (newOptions.some(opt => opt.value === 'Global')) {
+              selectedComparisonGroup.value = 'Global'
+            } else if (newOptions.length > 0) {
+              selectedComparisonGroup.value = newOptions[0].value
             } else {
-                orderedStats = [
-                    { name: "PAC", label: "PAC" },
-                    { name: "SHO", label: "SHO" },
-                    { name: "PAS", label: "PAS" },
-                    { name: "DRI", label: "DRI" },
-                    { name: "DEF", label: "DEF" },
-                    { name: "PHY", label: "PHY" },
-                ];
+              selectedComparisonGroup.value = 'Global'
             }
-            return orderedStats.filter(
-                (stat) => props.player && props.player[stat.name] !== undefined,
-            );
-        });
+          }
+        } else {
+          selectedComparisonGroup.value = 'Global'
+        }
+      },
+      { immediate: true, deep: true }
+    )
 
-        const averageRatingData = computed(() => {
+    const divisionFilterOptions = computed(() => [
+      { label: 'All', value: 'all' },
+      { label: 'Same', value: 'same' },
+      { label: 'Top 5', value: 'top5' }
+    ])
+
+    const getTargetDivision = () => {
+      if (!props.player?.division) return null
+      return props.player.division
+    }
+
+    const onDivisionFilterChange = async () => {
+      if (!props.datasetId || !props.player) return
+
+      try {
+        const targetDivision = getTargetDivision()
+        // Instead of refetching all data, we need to fetch just updated percentiles for this player
+        // For now, let's create a dedicated API call for this
+        const response = await fetch(`/api/percentiles/${props.datasetId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            playerName: props.player.name,
+            divisionFilter: divisionFilter.value,
+            targetDivision: targetDivision
+          })
+        })
+
+        if (response.ok) {
+          const updatedPercentiles = await response.json()
+          // Update the player's percentiles without affecting the main dataset
+          if (props.player.performancePercentiles) {
+            Object.assign(props.player.performancePercentiles, updatedPercentiles)
+          }
+        }
+      } catch (error) {
+        console.error('Error updating percentiles with division filter:', error)
+      }
+    }
+
+    const isGoalkeeper = computed(() => {
+      if (!props.player) return false
+      return (
+        props.player.shortPositions?.includes('GK') ||
+        props.player.positionGroups?.includes('Goalkeepers') ||
+        props.player.parsedPositions?.includes('Goalkeeper')
+      )
+    })
+
+    const getPlayerAttributesInOrder = categoryOrderedKeys => {
+      if (!props.player || !props.player.attributes) return []
+      return categoryOrderedKeys.filter(key =>
+        Object.prototype.hasOwnProperty.call(props.player.attributes, key)
+      )
+    }
+
+    const attributeCategories = computed(() => ({
+      technical: getPlayerAttributesInOrder(technicalAttrsOrdered),
+      mental: getPlayerAttributesInOrder(mentalAttrsOrdered),
+      physical: getPlayerAttributesInOrder(physicalAttrsOrdered),
+      goalkeeping: isGoalkeeper.value ? getPlayerAttributesInOrder(goalkeepingAttrsOrdered) : []
+    }))
+
+    const fifaStatsToDisplay = computed(() => {
+      let orderedStats = []
+      if (isGoalkeeper.value) {
+        orderedStats = [
+          { name: 'DIV', label: 'DIV' },
+          { name: 'HAN', label: 'HAN' },
+          { name: 'REF', label: 'REF' },
+          { name: 'KIC', label: 'KIC' },
+          { name: 'SPD', label: 'SPD' },
+          { name: 'POS', label: 'POS' }
+        ]
+      } else {
+        orderedStats = [
+          { name: 'PAC', label: 'PAC' },
+          { name: 'SHO', label: 'SHO' },
+          { name: 'PAS', label: 'PAS' },
+          { name: 'DRI', label: 'DRI' },
+          { name: 'DEF', label: 'DEF' },
+          { name: 'PHY', label: 'PHY' }
+        ]
+      }
+      return orderedStats.filter(stat => props.player && props.player[stat.name] !== undefined)
+    })
+
+    const averageRatingData = computed(() => {
+      if (!props.player || !props.player.attributes || !props.player.performancePercentiles)
+        return null
+      const groupKey = selectedComparisonGroup.value
+      const percentilesForGroup = props.player.performancePercentiles[groupKey]
+      if (
+        !percentilesForGroup ||
+        !Object.prototype.hasOwnProperty.call(props.player.attributes, 'Av Rat') ||
+        props.player.attributes['Av Rat'] === '-' ||
+        props.player.attributes['Av Rat'] === '' ||
+        !Object.prototype.hasOwnProperty.call(percentilesForGroup, 'Av Rat')
+      ) {
+        return null
+      }
+      return {
+        key: 'Av Rat',
+        name: performanceStatMap['Av Rat'] || 'Average Rating',
+        value: props.player.attributes['Av Rat'],
+        percentile: percentilesForGroup['Av Rat'] >= 0 ? percentilesForGroup['Av Rat'] : null
+      }
+    })
+
+    // Cache for performance stats to avoid rebuilding on every change
+    const performanceStatsCache = new Map()
+
+    const categorizedPerformanceStats = computed(() => {
+      if (!props.player || !props.player.attributes || !props.player.performancePercentiles)
+        return {}
+
+      const groupKey = selectedComparisonGroup.value
+      const percentilesForGroup = props.player.performancePercentiles[groupKey]
+      if (!percentilesForGroup) return {}
+
+      // Create cache key based on player UID and group
+      let playerUID = props.player.UID || props.player.uid
+
+      // If no UID available or UID is empty, create a composite unique key
+      if (!playerUID || playerUID === '') {
+        playerUID = `${props.player.name || 'unknown'}-${props.player.club || 'unknown'}-${props.player.age || 'unknown'}-${props.player.position || 'unknown'}`
+      }
+
+      const cacheKey = `${playerUID}-${groupKey}`
+
+      // Return cached result if available
+      if (performanceStatsCache.has(cacheKey)) {
+        return performanceStatsCache.get(cacheKey)
+      }
+
+      const result = {}
+      const categoryOrder = ['Offensive', 'Passing', 'Defensive']
+
+      categoryOrder.forEach(categoryName => {
+        if (performanceStatCategories[categoryName]) {
+          const statsInCategory = []
+          performanceStatCategories[categoryName].forEach(statKey => {
+            const rawAttributeValue = props.player.attributes[statKey]
+            const percentileValue = percentilesForGroup[statKey]
+
             if (
-                !props.player ||
-                !props.player.attributes ||
-                !props.player.performancePercentiles
-            )
-                return null;
-            const groupKey = selectedComparisonGroup.value;
-            const percentilesForGroup =
-                props.player.performancePercentiles[groupKey];
-            if (
-                !percentilesForGroup ||
-                !Object.prototype.hasOwnProperty.call(
-                    props.player.attributes,
-                    "Av Rat",
-                ) ||
-                props.player.attributes["Av Rat"] === "-" ||
-                props.player.attributes["Av Rat"] === "" ||
-                !Object.prototype.hasOwnProperty.call(
-                    percentilesForGroup,
-                    "Av Rat",
-                )
+              performanceStatMap[statKey] &&
+              rawAttributeValue !== undefined &&
+              rawAttributeValue !== '-' &&
+              rawAttributeValue !== '' &&
+              percentileValue !== undefined
             ) {
-                return null;
+              statsInCategory.push({
+                key: statKey,
+                name: performanceStatMap[statKey],
+                value: rawAttributeValue,
+                percentile: percentileValue >= 0 ? percentileValue : null
+              })
             }
-            return {
-                key: "Av Rat",
-                name: performanceStatMap["Av Rat"] || "Average Rating",
-                value: props.player.attributes["Av Rat"],
-                percentile:
-                    percentilesForGroup["Av Rat"] >= 0
-                        ? percentilesForGroup["Av Rat"]
-                        : null,
-            };
-        });
+          })
 
-        // Cache for performance stats to avoid rebuilding on every change
-        const performanceStatsCache = new Map();
-        
-        const categorizedPerformanceStats = computed(() => {
-            if (
-                !props.player ||
-                !props.player.attributes ||
-                !props.player.performancePercentiles
-            )
-                return {};
-                
-            const groupKey = selectedComparisonGroup.value;
-            const percentilesForGroup = props.player.performancePercentiles[groupKey];
-            if (!percentilesForGroup) return {};
+          if (statsInCategory.length > 0) {
+            result[categoryName] = statsInCategory.sort((a, b) => a.name.localeCompare(b.name))
+          }
+        }
+      })
 
-            // Create cache key based on player UID and group
-            let playerUID = props.player.UID || props.player.uid;
-            
-            // If no UID available or UID is empty, create a composite unique key
-            if (!playerUID || playerUID === '') {
-                playerUID = `${props.player.name || 'unknown'}-${props.player.club || 'unknown'}-${props.player.age || 'unknown'}-${props.player.position || 'unknown'}`;
-            }
-            
-            const cacheKey = `${playerUID}-${groupKey}`;
-            
-            // Return cached result if available
-            if (performanceStatsCache.has(cacheKey)) {
-                return performanceStatsCache.get(cacheKey);
-            }
+      // Cache result (limit cache size)
+      if (performanceStatsCache.size > 20) {
+        performanceStatsCache.clear()
+      }
+      performanceStatsCache.set(cacheKey, result)
 
-            const result = {};
-            const categoryOrder = ["Offensive", "Passing", "Defensive"];
-            
-            categoryOrder.forEach((categoryName) => {
-                if (performanceStatCategories[categoryName]) {
-                    const statsInCategory = [];
-                    performanceStatCategories[categoryName].forEach((statKey) => {
-                        const rawAttributeValue = props.player.attributes[statKey];
-                        const percentileValue = percentilesForGroup[statKey];
+      return result
+    })
 
-                        if (
-                            performanceStatMap[statKey] &&
-                            rawAttributeValue !== undefined &&
-                            rawAttributeValue !== "-" &&
-                            rawAttributeValue !== "" &&
-                            percentileValue !== undefined
-                        ) {
-                            statsInCategory.push({
-                                key: statKey,
-                                name: performanceStatMap[statKey],
-                                value: rawAttributeValue,
-                                percentile: percentileValue >= 0 ? percentileValue : null,
-                            });
-                        }
-                    });
-                    
-                    if (statsInCategory.length > 0) {
-                        result[categoryName] = statsInCategory.sort((a, b) =>
-                            a.name.localeCompare(b.name)
-                        );
-                    }
-                }
-            });
+    const hasAnyPerformanceData = computed(
+      () => averageRatingData.value || Object.keys(categorizedPerformanceStats.value).length > 0
+    )
 
-            // Cache result (limit cache size)
-            if (performanceStatsCache.size > 20) {
-                performanceStatsCache.clear();
-            }
-            performanceStatsCache.set(cacheKey, result);
-            
-            return result;
-        });
+    const getUnifiedRatingClass = (value, maxScale) => {
+      const numValue = Number.parseInt(value, 10)
+      if (isNaN(numValue) || value === null || value === undefined || value === '-')
+        return 'rating-na'
+      const percentage = (numValue / maxScale) * 100
+      if (percentage >= 90) return 'rating-tier-6'
+      if (percentage >= 80) return 'rating-tier-5'
+      if (percentage >= 70) return 'rating-tier-4'
+      if (percentage >= 55) return 'rating-tier-3'
+      if (percentage >= 40) return 'rating-tier-2'
+      return 'rating-tier-1'
+    }
 
-        const hasAnyPerformanceData = computed(
-            () =>
-                averageRatingData.value ||
-                Object.keys(categorizedPerformanceStats.value).length > 0,
-        );
-
-        const getUnifiedRatingClass = (value, maxScale) => {
-            const numValue = parseInt(value, 10);
-            if (
-                isNaN(numValue) ||
-                value === null ||
-                value === undefined ||
-                value === "-"
-            )
-                return "rating-na";
-            const percentage = (numValue / maxScale) * 100;
-            if (percentage >= 90) return "rating-tier-6";
-            if (percentage >= 80) return "rating-tier-5";
-            if (percentage >= 70) return "rating-tier-4";
-            if (percentage >= 55) return "rating-tier-3";
-            if (percentage >= 40) return "rating-tier-2";
-            return "rating-tier-1";
-        };
-
-        const getBarFillStyle = (percentile) => {
-            if (
-                percentile === null ||
-                percentile === undefined ||
-                percentile < 0
-            ) {
-                return {
-                    width: "0%",
-                    backgroundColor: "#9e9e9e",
-                    height: "12px",
-                    borderRadius: "3px",
-                };
-            }
-            const p = Math.max(0, Math.min(100, percentile));
-            let backgroundColor;
-            if (p <= 10) backgroundColor = "#d32f2f";
-            else if (p <= 30) backgroundColor = "#ef6c00";
-            else if (p <= 45) backgroundColor = "#fdd835";
-            else if (p <= 55) backgroundColor = "#bdbdbd";
-            else if (p <= 70) backgroundColor = "#aed581";
-            else if (p <= 90) backgroundColor = "#66bb6a";
-            else backgroundColor = "#388e3c";
-            return {
-                width: `${p}%`,
-                backgroundColor: backgroundColor,
-                height: "12px",
-                borderRadius: "3px",
-                transition: "width 0.3s ease, background-color 0.3s ease",
-            };
-        };
-
-        const sortedRoleSpecificOveralls = computed(() => {
-            if (!props.player?.roleSpecificOveralls) {
-                return [];
-            }
-            
-            // Only sort if the array has changed, avoiding unnecessary operations
-            const roleOveralls = props.player.roleSpecificOveralls;
-            if (roleOveralls.length <= 1) {
-                return roleOveralls;
-            }
-            
-            return [...roleOveralls].sort((a, b) => b.score - a.score);
-        });
-
-        const formattedTransferValue = computed(() => {
-            if (!props.player) return "-";
-            return formatCurrency(
-                props.player.transferValueAmount,
-                props.currencySymbol,
-                props.player.transfer_value,
-            );
-        });
-
-        const formattedWage = computed(() => {
-            if (!props.player) return "-";
-            return formatCurrency(
-                props.player.wageAmount,
-                props.currencySymbol,
-                props.player.wage,
-            );
-        });
-
-        const currencyIcon = computed(() => {
-            switch (props.currencySymbol) {
-                case "€":
-                    return "euro_symbol";
-                case "£":
-                    return "currency_pound";
-                case "$":
-                    return "attach_money";
-                default:
-                    return "payments";
-            }
-        });
-
+    const getBarFillStyle = percentile => {
+      if (percentile === null || percentile === undefined || percentile < 0) {
         return {
-            qInstance,
-            attributeCategories,
-            attributeFullNameMap,
-            attributeDescriptions,
-            fifaAttributeDescriptions,
-            getUnifiedRatingClass,
-            getBarFillStyle,
-            fifaStatsToDisplay,
-            sortedRoleSpecificOveralls,
-            isGoalkeeper,
-            formattedTransferValue,
-            formattedWage,
-            currencyIcon,
-            selectedComparisonGroup,
-            performanceComparisonOptions,
-            categorizedPerformanceStats,
-            averageRatingData,
-            hasAnyPerformanceData,
-            flagLoadError,
-            handleFlagError,
-            divisionFilter,
-            divisionFilterOptions,
-            onDivisionFilterChange,
-        };
-    },
-});
+          width: '0%',
+          backgroundColor: '#9e9e9e',
+          height: '12px',
+          borderRadius: '3px'
+        }
+      }
+      const p = Math.max(0, Math.min(100, percentile))
+      let backgroundColor
+      if (p <= 10) backgroundColor = '#d32f2f'
+      else if (p <= 30) backgroundColor = '#ef6c00'
+      else if (p <= 45) backgroundColor = '#fdd835'
+      else if (p <= 55) backgroundColor = '#bdbdbd'
+      else if (p <= 70) backgroundColor = '#aed581'
+      else if (p <= 90) backgroundColor = '#66bb6a'
+      else backgroundColor = '#388e3c'
+      return {
+        width: `${p}%`,
+        backgroundColor: backgroundColor,
+        height: '12px',
+        borderRadius: '3px',
+        transition: 'width 0.3s ease, background-color 0.3s ease'
+      }
+    }
+
+    const sortedRoleSpecificOveralls = computed(() => {
+      if (!props.player?.roleSpecificOveralls) {
+        return []
+      }
+
+      // Only sort if the array has changed, avoiding unnecessary operations
+      const roleOveralls = props.player.roleSpecificOveralls
+      if (roleOveralls.length <= 1) {
+        return roleOveralls
+      }
+
+      return [...roleOveralls].sort((a, b) => b.score - a.score)
+    })
+
+    const formattedTransferValue = computed(() => {
+      if (!props.player) return '-'
+      return formatCurrency(
+        props.player.transferValueAmount,
+        props.currencySymbol,
+        props.player.transfer_value
+      )
+    })
+
+    const formattedWage = computed(() => {
+      if (!props.player) return '-'
+      return formatCurrency(props.player.wageAmount, props.currencySymbol, props.player.wage)
+    })
+
+    const currencyIcon = computed(() => {
+      switch (props.currencySymbol) {
+        case '€':
+          return 'euro_symbol'
+        case '£':
+          return 'currency_pound'
+        case '$':
+          return 'attach_money'
+        default:
+          return 'payments'
+      }
+    })
+
+    return {
+      qInstance,
+      attributeCategories,
+      attributeFullNameMap,
+      attributeDescriptions,
+      fifaAttributeDescriptions,
+      getUnifiedRatingClass,
+      getBarFillStyle,
+      fifaStatsToDisplay,
+      sortedRoleSpecificOveralls,
+      isGoalkeeper,
+      formattedTransferValue,
+      formattedWage,
+      currencyIcon,
+      selectedComparisonGroup,
+      performanceComparisonOptions,
+      categorizedPerformanceStats,
+      averageRatingData,
+      hasAnyPerformanceData,
+      flagLoadError,
+      handleFlagError,
+      divisionFilter,
+      divisionFilterOptions,
+      onDivisionFilterChange
+    }
+  }
+})
 </script>
 
 <style lang="scss" scoped>

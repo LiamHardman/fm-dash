@@ -67,39 +67,37 @@
 </template>
 
 <script>
-import { defineComponent, onMounted, computed } from "vue";
-import { useUiStore } from "./stores/uiStore";
-import { usePlayerStore } from "./stores/playerStore";
-import { useWishlistStore } from "./stores/wishlistStore";
-import UniversalSearch from "./components/UniversalSearch.vue";
+import { computed, defineComponent, onMounted } from 'vue'
+import UniversalSearch from './components/UniversalSearch.vue'
+import { usePlayerStore } from './stores/playerStore'
+import { useUiStore } from './stores/uiStore'
+import { useWishlistStore } from './stores/wishlistStore'
 
 export default defineComponent({
-    name: "App",
-    components: {
-        UniversalSearch,
-    },
-    setup() {
-        const uiStore = useUiStore();
-        const playerStore = usePlayerStore();
-        const wishlistStore = useWishlistStore();
-        
-        onMounted(() => {
-            uiStore.initDarkMode();
-        });
+  name: 'App',
+  components: {
+    UniversalSearch
+  },
+  setup() {
+    const uiStore = useUiStore()
+    const playerStore = usePlayerStore()
+    const wishlistStore = useWishlistStore()
 
-        const currentDatasetId = computed(() => playerStore.currentDatasetId);
-        const wishlistCount = computed(() => 
-            wishlistStore.getWishlistCount(currentDatasetId.value)
-        );
+    onMounted(() => {
+      uiStore.initDarkMode()
+    })
 
-        return {
-            isDarkModeActive: uiStore.isDarkModeActive,
-            toggleDarkMode: uiStore.toggleDarkMode,
-            currentDatasetId,
-            wishlistCount,
-        };
-    },
-});
+    const currentDatasetId = computed(() => playerStore.currentDatasetId)
+    const wishlistCount = computed(() => wishlistStore.getWishlistCount(currentDatasetId.value))
+
+    return {
+      isDarkModeActive: uiStore.isDarkModeActive,
+      toggleDarkMode: uiStore.toggleDarkMode,
+      currentDatasetId,
+      wishlistCount
+    }
+  }
+})
 </script>
 
 <style lang="scss" scoped>
