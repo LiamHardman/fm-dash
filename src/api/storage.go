@@ -138,7 +138,7 @@ func (s *InMemoryStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatase
 	return nil
 }
 
-type MinIOStorage struct {
+type S3Storage struct {
 	client     *minio.Client
 	bucketName string
 	fallback   StorageInterface
@@ -160,7 +160,7 @@ type storageResult struct {
 	err  error
 }
 
-func NewMinIOStorage(endpoint, accessKey, secretKey, bucketName string, useSSL bool, fallback StorageInterface) (*MinIOStorage, error) {
+func NewS3Storage(endpoint, accessKey, secretKey, bucketName string, useSSL bool, fallback StorageInterface) (*S3Storage, error) {
 	const workerPoolSize = 5
 	const operationsBuffer = 100
 	client, err := minio.New(endpoint, &minio.Options{
@@ -170,35 +170,35 @@ func NewMinIOStorage(endpoint, accessKey, secretKey, bucketName string, useSSL b
 		Region: "us-east-1", // Set a default region
 	})
 	if err != nil {
-		log.Printf("Warning: Failed to create MinIO client: %v. Using fallback storage.", err)
-		return &MinIOStorage{fallback: fallback}, nil
+		log.Printf("Warning: Failed to create S3 client: %v. Using fallback storage.", err)
+		return &S3Storage{fallback: fallback}, nil
 	}
 
 	ctx := context.Background()
 	
 	// Check if bucket exists (this tests authentication)
-	log.Printf("Testing MinIO connection by checking bucket existence: %s", bucketName)
+	log.Printf("Testing S3 connection by checking bucket existence: %s", bucketName)
 	exists, err := client.BucketExists(ctx, bucketName)
 	if err != nil {
-		log.Printf("Warning: MinIO bucket check failed - %v. Using fallback storage.", err)
-		return &MinIOStorage{fallback: fallback}, nil
+		log.Printf("Warning: S3 bucket check failed - %v. Using fallback storage.", err)
+		return &S3Storage{fallback: fallback}, nil
 	}
 	
 	if !exists {
 		err = client.MakeBucket(ctx, bucketName, minio.MakeBucketOptions{})
 		if err != nil {
 			log.Printf("Warning: Failed to create bucket %s: %v. Using fallback storage.", bucketName, err)
-			return &MinIOStorage{fallback: fallback}, nil
+			return &S3Storage{fallback: fallback}, nil
 		}
-		log.Printf("Created MinIO bucket: %s", bucketName)
+		log.Printf("Created S3 bucket: %s", bucketName)
 	} else {
-		log.Printf("MinIO bucket %s already exists", bucketName)
+		log.Printf("S3 bucket %s already exists", bucketName)
 	}
 
-	log.Printf("Successfully connected to MinIO at %s with bucket %s", endpoint, bucketName)
+	log.Printf("Successfully connected to S3 at %s with bucket %s", endpoint, bucketName)
 	
 	// Initialize async storage with worker pool
-	storage := &MinIOStorage{
+	storage := &S3Storage{
 		client:         client,
 		bucketName:     bucketName,
 		fallback:       fallback,
@@ -216,7 +216,7 @@ func NewMinIOStorage(endpoint, accessKey, secretKey, bucketName string, useSSL b
 }
 
 // asyncWorker processes storage operations asynchronously
-func (s *MinIOStorage) asyncWorker() {
+func (s *S3Storage) asyncWorker() {
 	defer s.workerPool.Done()
 	
 	for {
@@ -240,14 +240,14 @@ func (s *MinIOStorage) asyncWorker() {
 }
 
 // Shutdown gracefully stops the async workers
-func (s *MinIOStorage) Shutdown() {
+func (s *S3Storage) Shutdown() {
 	close(s.shutdown)
 	s.workerPool.Wait()
 	close(s.operationsChan)
 }
 
 // StoreAsync performs asynchronous storage operation
-func (s *MinIOStorage) StoreAsync(datasetID string, data DatasetData) <-chan error {
+func (s *S3Storage) StoreAsync(datasetID string, data DatasetData) <-chan error {
 	resultChan := make(chan storageResult, 1)
 	errorChan := make(chan error, 1)
 	
@@ -275,20 +275,20 @@ func (s *MinIOStorage) StoreAsync(datasetID string, data DatasetData) <-chan err
 }
 
 // Store is the public synchronous interface
-func (s *MinIOStorage) Store(datasetID string, data DatasetData) error {
+func (s *S3Storage) Store(datasetID string, data DatasetData) error {
 	return s.storeSync(datasetID, data)
 }
 
 // storeSync performs synchronous storage operation
-func (s *MinIOStorage) storeSync(datasetID string, data DatasetData) error {
+func (s *S3Storage) storeSync(datasetID string, data DatasetData) error {
 	ctx := context.Background()
-	ctx, span := StartSpan(ctx, "storage.minio.store")
+	ctx, span := StartSpan(ctx, "storage.s3.store")
 	defer span.End()
 	
 	SetSpanAttributes(ctx,
 		attribute.String("dataset.id", datasetID),
 		attribute.Int("dataset.player_count", len(data.Players)),
-		attribute.String("storage.type", "minio"),
+		attribute.String("storage.type", "s3"),
 	)
 	
 	if s.client == nil {
@@ -314,8 +314,8 @@ func (s *MinIOStorage) storeSync(datasetID string, data DatasetData) error {
 	reader := bytes.NewReader(compressedData)
 	
 	SetSpanAttributes(ctx,
-		attribute.String("minio.bucket", s.bucketName),
-		attribute.String("minio.object", objectName),
+		attribute.String("s3.bucket", s.bucketName),
+		attribute.String("s3.object", objectName),
 		attribute.Int("data.size_bytes", len(jsonData)),
 		attribute.Int("compressed.size_bytes", len(compressedData)),
 		attribute.Float64("compression.ratio", float64(len(jsonData))/float64(len(compressedData))),
@@ -329,31 +329,31 @@ func (s *MinIOStorage) storeSync(datasetID string, data DatasetData) error {
 		},
 	})
 	if err != nil {
-		RecordError(ctx, err, "Failed to store to MinIO")
-		log.Printf("Warning: Failed to store to MinIO: %v. Using fallback storage.", err)
-		AddSpanEvent(ctx, "storage.fallback_to_memory", attribute.String("reason", "minio_store_failed"))
+		RecordError(ctx, err, "Failed to store to S3")
+		log.Printf("Warning: Failed to store to S3: %v. Using fallback storage.", err)
+		AddSpanEvent(ctx, "storage.fallback_to_memory", attribute.String("reason", "s3_store_failed"))
 		return s.fallback.Store(datasetID, data)
 	}
 
-	RecordDBOperation(ctx, "store", "minio_datasets", time.Since(start), 1)
-	log.Printf("Stored dataset %s to MinIO", datasetID)
+	RecordDBOperation(ctx, "store", "s3_datasets", time.Since(start), 1)
+	log.Printf("Stored dataset %s to S3", datasetID)
 	return nil
 }
 
 // Retrieve is the public synchronous interface  
-func (s *MinIOStorage) Retrieve(datasetID string) (DatasetData, error) {
+func (s *S3Storage) Retrieve(datasetID string) (DatasetData, error) {
 	return s.retrieveSync(datasetID)
 }
 
 // retrieveSync performs synchronous retrieval operation
-func (s *MinIOStorage) retrieveSync(datasetID string) (DatasetData, error) {
+func (s *S3Storage) retrieveSync(datasetID string) (DatasetData, error) {
 	ctx := context.Background()
-	ctx, span := StartSpan(ctx, "storage.minio.retrieve")
+	ctx, span := StartSpan(ctx, "storage.s3.retrieve")
 	defer span.End()
 	
 	SetSpanAttributes(ctx,
 		attribute.String("dataset.id", datasetID),
-		attribute.String("storage.type", "minio"),
+		attribute.String("storage.type", "s3"),
 	)
 	
 	if s.client == nil {
@@ -366,8 +366,8 @@ func (s *MinIOStorage) retrieveSync(datasetID string) (DatasetData, error) {
 	isCompressed := true
 	
 	SetSpanAttributes(ctx,
-		attribute.String("minio.bucket", s.bucketName),
-		attribute.String("minio.object", objectName),
+		attribute.String("s3.bucket", s.bucketName),
+		attribute.String("s3.object", objectName),
 	)
 	
 	start := time.Now()
@@ -376,12 +376,12 @@ func (s *MinIOStorage) retrieveSync(datasetID string) (DatasetData, error) {
 		// Try uncompressed file
 		objectName = fmt.Sprintf("datasets/%s.json", datasetID)
 		isCompressed = false
-		SetSpanAttributes(ctx, attribute.String("minio.object", objectName))
+		SetSpanAttributes(ctx, attribute.String("s3.object", objectName))
 		object, err = s.client.GetObject(ctx, s.bucketName, objectName, minio.GetObjectOptions{})
 		if err != nil {
-			RecordError(ctx, err, "Failed to retrieve from MinIO")
-			log.Printf("Warning: Failed to retrieve from MinIO: %v. Trying fallback storage.", err)
-			AddSpanEvent(ctx, "storage.fallback_to_memory", attribute.String("reason", "minio_get_failed"))
+			RecordError(ctx, err, "Failed to retrieve from S3")
+			log.Printf("Warning: Failed to retrieve from S3: %v. Trying fallback storage.", err)
+			AddSpanEvent(ctx, "storage.fallback_to_memory", attribute.String("reason", "s3_get_failed"))
 			return s.fallback.Retrieve(datasetID)
 		}
 	}
@@ -389,9 +389,9 @@ func (s *MinIOStorage) retrieveSync(datasetID string) (DatasetData, error) {
 
 	data, err := io.ReadAll(object)
 	if err != nil {
-		RecordError(ctx, err, "Failed to read MinIO object data")
-		log.Printf("Warning: Failed to read from MinIO object: %v. Trying fallback storage.", err)
-		AddSpanEvent(ctx, "storage.fallback_to_memory", attribute.String("reason", "minio_read_failed"))
+		RecordError(ctx, err, "Failed to read S3 object data")
+		log.Printf("Warning: Failed to read from S3 object: %v. Trying fallback storage.", err)
+		AddSpanEvent(ctx, "storage.fallback_to_memory", attribute.String("reason", "s3_read_failed"))
 		return s.fallback.Retrieve(datasetID)
 	}
 
@@ -405,8 +405,8 @@ func (s *MinIOStorage) retrieveSync(datasetID string) (DatasetData, error) {
 	if isCompressed {
 		jsonData, err = decompressData(data)
 		if err != nil {
-			RecordError(ctx, err, "Failed to decompress MinIO data")
-			log.Printf("Warning: Failed to decompress MinIO data: %v. Trying fallback storage.", err)
+			RecordError(ctx, err, "Failed to decompress S3 data")
+			log.Printf("Warning: Failed to decompress S3 data: %v. Trying fallback storage.", err)
 			AddSpanEvent(ctx, "storage.fallback_to_memory", attribute.String("reason", "decompress_failed"))
 			return s.fallback.Retrieve(datasetID)
 		}
@@ -417,25 +417,25 @@ func (s *MinIOStorage) retrieveSync(datasetID string) (DatasetData, error) {
 
 	var dataset DatasetData
 	if err := json.Unmarshal(jsonData, &dataset); err != nil {
-		RecordError(ctx, err, "Failed to unmarshal MinIO data")
-		log.Printf("Warning: Failed to unmarshal MinIO data: %v. Trying fallback storage.", err)
+		RecordError(ctx, err, "Failed to unmarshal S3 data")
+		log.Printf("Warning: Failed to unmarshal S3 data: %v. Trying fallback storage.", err)
 		AddSpanEvent(ctx, "storage.fallback_to_memory", attribute.String("reason", "unmarshal_failed"))
 		return s.fallback.Retrieve(datasetID)
 	}
 
 	SetSpanAttributes(ctx, attribute.Int("dataset.player_count", len(dataset.Players)))
-	RecordDBOperation(ctx, "retrieve", "minio_datasets", time.Since(start), 1)
-	log.Printf("Retrieved dataset %s from MinIO", datasetID)
+	RecordDBOperation(ctx, "retrieve", "s3_datasets", time.Since(start), 1)
+	log.Printf("Retrieved dataset %s from S3", datasetID)
 	return dataset, nil
 }
 
 // Delete is the public synchronous interface
-func (s *MinIOStorage) Delete(datasetID string) error {
+func (s *S3Storage) Delete(datasetID string) error {
 	return s.deleteSync(datasetID)
 }
 
 // deleteSync performs synchronous deletion operation
-func (s *MinIOStorage) deleteSync(datasetID string) error {
+func (s *S3Storage) deleteSync(datasetID string) error {
 	if s.client == nil {
 		return s.fallback.Delete(datasetID)
 	}
@@ -445,16 +445,16 @@ func (s *MinIOStorage) deleteSync(datasetID string) error {
 	
 	err := s.client.RemoveObject(ctx, s.bucketName, objectName, minio.RemoveObjectOptions{})
 	if err != nil {
-		log.Printf("Warning: Failed to delete from MinIO: %v. Using fallback storage.", err)
+		log.Printf("Warning: Failed to delete from S3: %v. Using fallback storage.", err)
 		return s.fallback.Delete(datasetID)
 	}
 
 	s.fallback.Delete(datasetID)
-	log.Printf("Deleted dataset %s from MinIO", datasetID)
+	log.Printf("Deleted dataset %s from S3", datasetID)
 	return nil
 }
 
-func (s *MinIOStorage) List() ([]string, error) {
+func (s *S3Storage) List() ([]string, error) {
 	if s.client == nil {
 		return s.fallback.List()
 	}
@@ -468,7 +468,7 @@ func (s *MinIOStorage) List() ([]string, error) {
 	var ids []string
 	for object := range objectCh {
 		if object.Err != nil {
-			log.Printf("Warning: Error listing MinIO objects: %v. Using fallback storage.", object.Err)
+			log.Printf("Warning: Error listing S3 objects: %v. Using fallback storage.", object.Err)
 			return s.fallback.List()
 		}
 		
@@ -479,11 +479,11 @@ func (s *MinIOStorage) List() ([]string, error) {
 		}
 	}
 
-	log.Printf("Listed %d datasets from MinIO", len(ids))
+	log.Printf("Listed %d datasets from S3", len(ids))
 	return ids, nil
 }
 
-func (s *MinIOStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets []string) error {
+func (s *S3Storage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets []string) error {
 	if s.client == nil {
 		return s.fallback.CleanupOldDatasets(maxAge, excludeDatasets)
 	}
@@ -503,7 +503,7 @@ func (s *MinIOStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets 
 	var deletedCount int
 	for object := range objectCh {
 		if object.Err != nil {
-			log.Printf("Warning: Error listing MinIO objects during cleanup: %v", object.Err)
+			log.Printf("Warning: Error listing S3 objects during cleanup: %v", object.Err)
 			continue
 		}
 		
@@ -527,7 +527,7 @@ func (s *MinIOStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets 
 			
 			err := s.client.RemoveObject(ctx, s.bucketName, object.Key, minio.RemoveObjectOptions{})
 			if err != nil {
-				log.Printf("Warning: Failed to delete old dataset %s from MinIO: %v", datasetID, err)
+				log.Printf("Warning: Failed to delete old dataset %s from S3: %v", datasetID, err)
 				continue
 			}
 			
@@ -535,7 +535,7 @@ func (s *MinIOStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets 
 		}
 	}
 
-	log.Printf("Cleanup completed: deleted %d old datasets from MinIO", deletedCount)
+	log.Printf("Cleanup completed: deleted %d old datasets from S3", deletedCount)
 	return nil
 }
 
@@ -878,9 +878,9 @@ func (s *HybridStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets
 func InitializeStorage() StorageInterface {
 	inMemory := NewInMemoryStorage()
 
-	minioEndpoint := os.Getenv("MINIO_ENDPOINT")
-	if minioEndpoint == "" {
-		log.Println("No MinIO endpoint configured. Using hybrid storage (in-memory + local file fallback).")
+	s3Endpoint := os.Getenv("S3_ENDPOINT")
+	if s3Endpoint == "" {
+		log.Println("No S3 endpoint configured. Using hybrid storage (in-memory + local file fallback).")
 		
 		// Use configurable datasets directory, default to "./datasets"
 		datasetDir := os.Getenv("DATASETS_DIR")
@@ -897,12 +897,12 @@ func InitializeStorage() StorageInterface {
 		return hybrid
 	}
 
-	accessKey := os.Getenv("MINIO_ACCESS_KEY")
-	secretKey := os.Getenv("MINIO_SECRET_KEY")
-	useSSL := strings.ToLower(os.Getenv("MINIO_USE_SSL")) == "true"
+	accessKey := os.Getenv("S3_ACCESS_KEY")
+	secretKey := os.Getenv("S3_SECRET_KEY")
+	useSSL := strings.ToLower(os.Getenv("S3_USE_SSL")) == "true"
 
 	if accessKey == "" || secretKey == "" {
-		log.Println("MinIO credentials not provided. Using hybrid storage (in-memory + local file fallback).")
+		log.Println("S3 credentials not provided. Using hybrid storage (in-memory + local file fallback).")
 		
 		// Use configurable datasets directory, default to "./datasets"
 		datasetDir := os.Getenv("DATASETS_DIR")
@@ -921,16 +921,20 @@ func InitializeStorage() StorageInterface {
 
 	// Debug logging (only show first few chars for security)
 	// Log configuration without sensitive credentials
-	log.Printf("MinIO Config: endpoint=%s, useSSL=%v, credentials_provided=%t", 
-		minioEndpoint, 
+	log.Printf("S3 Config: endpoint=%s, useSSL=%v, credentials_provided=%t", 
+		s3Endpoint, 
 		useSSL,
 		accessKey != "" && secretKey != "")
 
-	minioStorage, err := NewMinIOStorage(minioEndpoint, accessKey, secretKey, "v2fmdash", useSSL, inMemory)
+	bucketName := os.Getenv("S3_BUCKET_NAME")
+	if bucketName == "" {
+		bucketName = "v2fmdash"
+	}
+	s3Storage, err := NewS3Storage(s3Endpoint, accessKey, secretKey, bucketName, useSSL, inMemory)
 	if err != nil {
-		log.Printf("Failed to initialize MinIO storage: %v. Using hybrid storage (in-memory + local file fallback).", err)
+		log.Printf("Failed to initialize S3 storage: %v. Using hybrid storage (in-memory + local file fallback).", err)
 		
-		// Fallback to hybrid storage if MinIO fails
+		// Fallback to hybrid storage if S3 fails
 		datasetDir := os.Getenv("DATASETS_DIR")
 		if datasetDir == "" {
 			datasetDir = "./datasets"
@@ -945,6 +949,6 @@ func InitializeStorage() StorageInterface {
 		return hybrid
 	}
 
-	log.Println("Initialized MinIO storage with in-memory fallback")
-	return minioStorage
+	log.Println("Initialized S3 storage with in-memory fallback")
+	return s3Storage
 }

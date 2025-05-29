@@ -71,34 +71,42 @@ or ./CodeWeaver --ignore "node_modules,testdata.html,.git,CodeWeaver"
 
 ### Environment Variables
 
+#### Server Configuration
+- `SERVER_PORT=8091` - Port for the API server (default: 8091)
+- `CORS_ALLOWED_ORIGINS` - Comma-separated list of allowed CORS origins (default: localhost:3000,localhost:8080)
+
+#### Storage Configuration  
+- `S3_ENDPOINT` - S3-compatible server endpoint (e.g., localhost:9000)
+- `S3_ACCESS_KEY` - S3 access key
+- `S3_SECRET_KEY` - S3 secret key
+- `S3_BUCKET_NAME=v2fmdash` - S3 bucket name (default: v2fmdash)
+- `S3_USE_SSL=false` - Whether to use SSL for S3 connection (default: false)
+- `DATASETS_DIR=./datasets` - Directory for local dataset storage when S3 is disabled (default: ./datasets)
+
+#### Observability Configuration
 - `OTEL_ENABLED=true` - Enable OpenTelemetry tracing and metrics collection (default: false)
 - `ENABLE_METRICS=true` - Enable detailed metrics collection (requires OTEL_ENABLED=true)
 - `SERVICE_NAME=v2fmdash-api` - Service name for OpenTelemetry
 - `OTEL_EXPORTER_OTLP_ENDPOINT=signoz.signoz:4317` - OTLP exporter endpoint
 - `INSECURE_MODE=true` - Whether to use insecure gRPC connection for OTLP
-- `MINIO_ENDPOINT` - MinIO server endpoint (e.g., localhost:9000)
-- `MINIO_ACCESS_KEY` - MinIO access key
-- `MINIO_SECRET_KEY` - MinIO secret key  
-- `MINIO_USE_SSL=false` - Whether to use SSL for MinIO connection (default: false)
-- `DATASETS_DIR` - Directory for local dataset storage when MinIO is disabled (default: ./datasets)
 
 ### Storage Backend
 
 The application supports three storage backends with automatic fallback:
 
-1. **MinIO Storage** (preferred): Data is persisted to MinIO object storage with in-memory fallback
-2. **Hybrid Storage** (fallback when MinIO is disabled): Combines in-memory storage with local file persistence  
+1. **S3 Storage** (preferred): Data is persisted to S3-compatible object storage with in-memory fallback
+2. **Hybrid Storage** (fallback when S3 is disabled): Combines in-memory storage with local file persistence  
 3. **In-Memory Storage** (last resort): Data is stored in memory only and lost when the server restarts
 
 #### Storage Selection Logic
 
-- **MinIO Available**: Uses MinIO storage with in-memory fallback if MinIO operations fail
-- **MinIO Disabled**: Uses hybrid storage (in-memory + local files) for persistence without MinIO
+- **S3 Available**: Uses S3 storage with in-memory fallback if S3 operations fail
+- **S3 Disabled**: Uses hybrid storage (in-memory + local files) for persistence without S3
 - **Fallback**: Uses in-memory only if local file storage fails to initialize
 
-#### Hybrid Storage Behavior (when MinIO is disabled)
+#### Hybrid Storage Behavior (when S3 is disabled)
 
-When MinIO is not configured or credentials are missing, the application uses hybrid storage:
+When S3 is not configured or credentials are missing, the application uses hybrid storage:
 
 - **Write Operations**: Data is stored in both memory (for fast access) and local files (for persistence)
 - **Read Operations**: Checks memory first, then falls back to local files if not found in memory
@@ -112,12 +120,12 @@ To configure local dataset storage:
 # Set custom datasets directory (optional)
 export DATASETS_DIR=/path/to/your/datasets
 
-# MinIO disabled - will use hybrid storage
-# (no MINIO_ENDPOINT configured)
+# S3 disabled - will use hybrid storage
+# (no S3_ENDPOINT configured)
 go run main.go
 ```
 
-The MinIO bucket name is hardcoded to `v2fmdash`.
+The S3 bucket name defaults to `v2fmdash` but can be configured via `S3_BUCKET_NAME`.
 
 ### Observability
 

@@ -49,23 +49,23 @@ spec:
             # Upload Configuration
             - name: MAX_UPLOAD_SIZE
               value: "50"
-            # MinIO Configuration
-            - name: MINIO_ENDPOINT
+            # S3-Compatible Storage Configuration
+            - name: S3_ENDPOINT
               valueFrom:
                 secretKeyRef:
                   name: v2fmdash-minio-secret
                   key: endpoint
-            - name: MINIO_ACCESS_KEY
+            - name: S3_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
                   name: v2fmdash-minio-secret
                   key: access-key
-            - name: MINIO_SECRET_KEY
+            - name: S3_SECRET_KEY
               valueFrom:
                 secretKeyRef:
                   name: v2fmdash-minio-secret
                   key: secret-key
-            - name: MINIO_USE_SSL
+            - name: S3_USE_SSL
               valueFrom:
                 secretKeyRef:
                   name: v2fmdash-minio-secret

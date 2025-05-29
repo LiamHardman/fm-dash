@@ -6,7 +6,11 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "serve": "go run main.go"
+    "serve": "go run main.go",
+    "lint": "eslint . --ext .vue,.js,.jsx,.ts,.tsx --fix",
+    "lint:check": "eslint . --ext .vue,.js,.jsx,.ts,.tsx",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@quasar/extras": "^1.16.9",

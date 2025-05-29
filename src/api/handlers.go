@@ -26,10 +26,19 @@ func setCORSHeaders(w http.ResponseWriter, r *http.Request) {
 	origin := r.Header.Get("Origin")
 	
 	// Define allowed origins for production
-	allowedOrigins := []string{
-		"http://localhost:3000",   // Development frontend
-		"http://localhost:8080",   // Production nginx
-		"https://localhost:8080",  // Production nginx with SSL
+	corsOrigins := os.Getenv("CORS_ALLOWED_ORIGINS")
+	var allowedOrigins []string
+	if corsOrigins != "" {
+		allowedOrigins = strings.Split(corsOrigins, ",")
+		for i, origin := range allowedOrigins {
+			allowedOrigins[i] = strings.TrimSpace(origin)
+		}
+	} else {
+		allowedOrigins = []string{
+			"http://localhost:3000",   // Development frontend
+			"http://localhost:8080",   // Production nginx
+			"https://localhost:8080",  // Production nginx with SSL
+		}
 	}
 	
 	// Check if the origin is in our allowed list
@@ -355,7 +364,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	parseDuration := time.Since(parseStartTime)
 	datasetID := uuid.New().String()
 
-	// Store using the new storage interface (with MinIO support and fallback)
+	// Store using the new storage interface (with S3 support and fallback)
 	ctx, storageSpan := StartSpan(ctx, "storage.save_dataset")
 	SetSpanAttributes(ctx, 
 		attribute.String("dataset.id", datasetID),

@@ -16,7 +16,7 @@ func DemoStructuredLogging() {
 	
 	slog.WarnContext(ctx, "Configuration warning", 
 		"component", "storage", 
-		"message", "MinIO not configured, using memory storage",
+		"message", "S3 not configured, using memory storage",
 		"impact", "data_loss_on_restart")
 	
 	slog.ErrorContext(ctx, "Operation failed", 

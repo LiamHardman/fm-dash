@@ -35,10 +35,10 @@ func validateEnvironmentVariables() error {
 		}
 	}
 	
-	// Validate MINIO_ENDPOINT format if set
-	if endpoint := os.Getenv("MINIO_ENDPOINT"); endpoint != "" {
+	// Validate S3_ENDPOINT format if set
+	if endpoint := os.Getenv("S3_ENDPOINT"); endpoint != "" {
 		if !strings.Contains(endpoint, ":") && !strings.HasPrefix(endpoint, "http") {
-			return fmt.Errorf("invalid MINIO_ENDPOINT format: %s (should include port or be full URL)", endpoint)
+			return fmt.Errorf("invalid S3_ENDPOINT format: %s (should include port or be full URL)", endpoint)
 		}
 	}
 	
