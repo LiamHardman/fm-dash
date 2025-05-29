@@ -118,6 +118,7 @@
                     >
                         <q-card-section>
                             <PlayerDataTable
+                                :key="`wonderkids-${selectedAge}`"
                                 :players="currentWonderkids"
                                 :loading="loading"
                                 @player-selected="handlePlayerSelected"
@@ -142,7 +143,7 @@
 </template>
 
 <script>
-import { defineComponent, ref, computed, watch, onMounted } from "vue";
+import { defineComponent, ref, computed, watch, onMounted, nextTick } from "vue";
 import { useQuasar } from "quasar";
 import { usePlayerStore } from "../stores/playerStore";
 import PlayerDataTable from "./PlayerDataTable.vue";
@@ -191,15 +192,23 @@ export default defineComponent({
 
         // Computed
         const currentWonderkids = computed(() => {
-            return wonderkidsByAge.value[selectedAge.value] || [];
+            console.log(`Computing wonderkids for age ${selectedAge.value}, available data:`, Object.keys(wonderkidsByAge.value));
+            const result = wonderkidsByAge.value[selectedAge.value] || [];
+            console.log(`Returning ${result.length} players for age ${selectedAge.value}`);
+            return result;
         });
 
         // Methods
         const getWonderkidsForAge = (age, allPlayers) => {
+            console.log(`Filtering for age ${age}, total players: ${allPlayers.length}`);
             const playersOfAge = allPlayers
                 .filter(player => {
-                    const playerAge = parseInt(player.age, 10);
-                    return playerAge === age;
+                    const playerAge = Number(player.age);
+                    const matches = playerAge === age;
+                    if (matches && age === 20) { // Only log for age 20 to reduce spam
+                        console.log(`Found player ${player.name} with age ${playerAge}`);
+                    }
+                    return matches;
                 })
                 .filter(player => {
                     // Apply transfer value filter
@@ -215,6 +224,7 @@ export default defineComponent({
                 .sort((a, b) => (b.Overall || 0) - (a.Overall || 0))
                 .slice(0, 25);
 
+            console.log(`Found ${playersOfAge.length} players for age ${age}`);
             return playersOfAge;
         };
 
@@ -229,6 +239,7 @@ export default defineComponent({
                 });
 
                 wonderkidsByAge.value = newWonderkidsByAge;
+                console.log('Loaded wonderkids by age:', Object.keys(wonderkidsByAge.value).map(age => `${age}: ${wonderkidsByAge.value[age].length}`));
             } catch (error) {
                 console.error("Error loading wonderkids:", error);
                 qInstance.notify({
@@ -270,6 +281,11 @@ export default defineComponent({
             if (props.show && newPlayers.length > 0) {
                 loadWonderkids();
             }
+        });
+
+        // Simplified age watcher - just log when it changes
+        watch(selectedAge, (newAge, oldAge) => {
+            console.log(`Age changed from ${oldAge} to ${newAge}`);
         });
 
         // Initialize when component mounts
