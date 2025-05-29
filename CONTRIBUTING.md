@@ -1,4 +1,4 @@
-# Contributing to Football Manager Player Parser
+# Contributing to FMDB
 
 Thank you for your interest in contributing to this project! We welcome contributions from the community.
 
@@ -8,14 +8,13 @@ Thank you for your interest in contributing to this project! We welcome contribu
 
 - **Go 1.21+** for the backend API
 - **Node.js 18+** for the frontend development
-- **Git** for version control
 
 ### Development Setup
 
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd fm24-golang
+   cd fmdb
    ```
 
 2. **Install dependencies**
@@ -54,18 +53,17 @@ Thank you for your interest in contributing to this project! We welcome contribu
 
 ### Submitting Changes
 
-1. **Fork the repository**
-2. **Create a feature branch**
+1. **Create a feature branch**
    ```bash
    git checkout -b feature/your-feature-name
    ```
 
-3. **Make your changes**
+2. **Make your changes**
    - Follow the existing code style
    - Add tests for new functionality
    - Update documentation as needed
 
-4. **Test your changes**
+3. **Test your changes**
    ```bash
    # Run Go tests
    go test ./...
@@ -77,11 +75,12 @@ Thank you for your interest in contributing to this project! We welcome contribu
    npm run build
    ```
 
-5. **Commit your changes**
+4. **Commit your changes**
    ```bash
    git add .
    git commit -m "feat: add your feature description"
    ```
+   NOTE: [Conventional commits](https://www.conventionalcommits.org/en/v1.0.0-beta.2/) should be used. If you're unsure, put `feat:` and indicate in your pull request that you're unsure and we can help.
 
 6. **Push and create a pull request**
    ```bash
@@ -165,4 +164,4 @@ Please be respectful and constructive in all interactions. We aim to create a we
 
 ---
 
-Thank you for contributing to Football Manager Player Parser!
+Thank you for thinking about contributing to the project!
