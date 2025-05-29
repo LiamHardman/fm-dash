@@ -370,6 +370,9 @@ export default {
         const isAsyncSorting = ref(false);
         const isSliced = ref(false);
         const currentSortController = ref(null); // For cancelling sort operations
+        
+        // Cache generation key that changes when players data changes
+        const cacheGeneration = ref(0);
 
         const pagination = ref({
             sortBy: "Overall",
@@ -795,7 +798,7 @@ export default {
 
             const fieldKey = getSortFieldKey(sortField.value || "Overall");
             const direction = sortDirection.value;
-            const currentSortKey = `${fieldKey}-${direction}-${props.players.length}`;
+            const currentSortKey = `${fieldKey}-${direction}-${props.players.length}-${cacheGeneration.value}`;
 
             // Return cached result if sort parameters haven't changed
             if (sortedPlayersCache.value && lastSortKey.value === currentSortKey) {
@@ -1244,7 +1247,7 @@ export default {
         };
 
         // Memoized player value getter (called frequently during sorting and rendering)
-        const getPlayerValue = memoize((player, fieldKey, columnName = null) => {
+        const getPlayerValue = (player, fieldKey, columnName = null) => {
             // For non-goalkeeper view, map GK stats to standard FIFA stats if the player is a goalkeeper
             if (!props.isGoalkeeperView && player.position && player.position.includes('GK')) {
                 const mappedStat = gkStatMapping[columnName || fieldKey];
@@ -1254,20 +1257,30 @@ export default {
             }
             
             // Default behavior - use the field key
-            return player[fieldKey];
+            const value = player[fieldKey];
+            
+            return value;
+        };
+
+        // Memoized version for non-Overall fields only
+        const getPlayerValueMemoized = memoize((player, fieldKey, columnName = null) => {
+            return getPlayerValue(player, fieldKey, columnName);
         }, {
-            maxSize: 1000, // Cache player value lookups
-            keyGenerator: (player, fieldKey, columnName) => `${player.name}-${fieldKey}-${columnName || ''}`,
+            maxSize: 1000,
+            keyGenerator: (player, fieldKey, columnName) => {
+                return `gen${cacheGeneration.value}-${player.name}-${fieldKey}-${columnName || ''}`;
+            },
             cacheKey: 'playerValue'
         });
 
-        const getDisplayValue = memoize((player, col) => {
-            return getPlayerValue(player, col.field, col.name);
-        }, {
-            maxSize: 500,
-            keyGenerator: (player, col) => `${player.name}-${col.field}-${col.name}`,
-            cacheKey: 'displayValue'
-        });
+        const getDisplayValue = (player, col) => {
+            // For Overall field, always use non-memoized version to ensure reactivity
+            if (col.field === 'Overall' || col.name === 'Overall') {
+                return getPlayerValue(player, col.field, col.name);
+            }
+            // For other fields, use memoized version for performance
+            return getPlayerValueMemoized(player, col.field, col.name);
+        };
 
         const contextMenuPlayer = ref(null);
         
@@ -1325,26 +1338,32 @@ export default {
             contextMenuPlayer.value = player;
         };
 
+        // Watch for changes in players prop and increment cache generation to force cache invalidation
+        watch(() => props.players, () => {
+            cacheGeneration.value++;
+            // Clear sorted players cache to force recalculation
+            sortedPlayersCache.value = null;
+            lastSortKey.value = '';
+        }, { deep: false }); // shallow watch to detect reference changes
+
         // Clear memoization caches when component unmounts or when players prop changes significantly
         watch(() => props.players?.length, () => {
             // Clear all memoization caches when dataset changes
             getUnifiedRatingClass.clearCache();
-            getPlayerValue.clearCache();
-            getDisplayValue.clearCache();
+            getPlayerValueMemoized.clearCache();
             getPositionIndex.clearCache();
         });
 
         watch(() => props.isGoalkeeperView, () => {
-            // Clear player value cache when view mode changes
-            getPlayerValue.clearCache();
-            getDisplayValue.clearCache();
+            // Clear player value cache when view mode changes and increment generation
+            cacheGeneration.value++;
+            getPlayerValueMemoized.clearCache();
         });
 
         onUnmounted(() => {
             // Clear all caches on component cleanup
             getUnifiedRatingClass.clearCache();
-            getPlayerValue.clearCache();
-            getDisplayValue.clearCache();
+            getPlayerValueMemoized.clearCache();
             getPositionIndex.clearCache();
             
             // Clear async sort timeout
@@ -1356,6 +1375,7 @@ export default {
         console.log(`PlayerDataTable: Setup function end.`);
         return {
             qInstance: $q,
+            cacheGeneration,
             sortField,
             sortDirection,
             pagination,
