@@ -745,11 +745,16 @@ export default {
 
         const teamIsGoalkeeperView = computed(() => {
             // This computed property is for the PlayerDataTable on this page.
-            // It should reflect if the *selected team* has goalkeepers,
-            // rather than a global filter.
-            return teamPlayers.value.some((p) =>
+            // It should only show goalkeeper view if the majority of players are goalkeepers,
+            // otherwise default to outfield player view which is what users typically want to see.
+            if (teamPlayers.value.length === 0) return false;
+            
+            const goalkeeperCount = teamPlayers.value.filter((p) =>
                 p.positionGroups?.includes("Goalkeepers"),
-            );
+            ).length;
+            
+            // Only show goalkeeper view if more than half the players are goalkeepers
+            return goalkeeperCount > (teamPlayers.value.length / 2);
         });
 
         const teamDivision = computed(() => {
