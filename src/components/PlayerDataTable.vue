@@ -46,9 +46,10 @@
 
         <div v-else class="relative-position">
             <q-table
+                :key="`table-${currentDatasetId}-${sortField}-${sortDirection}`"
                 :rows="sortedPlayers"
                 :columns="currentColumns"
-                :loading="loading || isAsyncSorting"
+                :loading="loading"
                 row-key="name"
                 :pagination="pagination"
                 @update:pagination="onPaginationUpdate"
@@ -66,10 +67,12 @@
                 table-header-class="player-table-header"
                 dense
                 virtual-scroll
-                :virtual-scroll-item-size="30"
-                :virtual-scroll-sticky-size-start="32"
+                :virtual-scroll-item-size="32"
+                :virtual-scroll-sticky-size-start="40"
                 :virtual-scroll-sticky-size-end="55"
-                style="height: 70vh"
+                style="height: 70vh; min-height: 400px; max-height: 800px;"
+                separator="horizontal"
+                no-data-label="No players to display"
             >
             <template v-slot:header="props">
                 <q-tr
@@ -132,7 +135,6 @@
                     @click="onRowClick(props.row)"
                     @contextmenu="onRightClick($event, props.row)"
                     class="cursor-pointer table-row-hover modern-table-row"
-                    :class="{ 'row-shimmer': isAsyncSorting }"
                 >
                     <q-td
                         v-for="col in props.cols"
@@ -189,14 +191,14 @@
                         <template
                             v-else-if="col.name === 'nationality_display'"
                         >
-                            <div class="flex items-center no-wrap">
+                            <div class="flex items-center no-wrap nationality-cell">
                                 <img
                                     v-if="props.row.nationality_iso"
                                     :src="`https://flagcdn.com/w20/${props.row.nationality_iso.toLowerCase()}.png`"
                                     :alt="props.row.nationality || 'Flag'"
                                     width="20"
                                     height="13"
-                                    class="q-mr-xs nationality-flag"
+                                    class="nationality-flag flex-shrink-0"
                                     @error="onFlagError($event, props.row)"
                                 />
                                 <q-icon
@@ -208,9 +210,9 @@
                                             ? 'grey-6'
                                             : 'grey-7'
                                     "
-                                    class="q-mr-xs"
+                                    class="nationality-flag-placeholder flex-shrink-0"
                                 />
-                                <span>{{ props.row.nationality || "-" }}</span>
+                                <span class="nationality-text">{{ props.row.nationality || "-" }}</span>
                             </div>
                         </template>
                         <template v-else-if="col.name === 'club'">
@@ -483,25 +485,25 @@ export default {
             pagination.value = newPagination;
         };
 
-        // Column definitions
+        // Column definitions with fixed widths to prevent layout shifts
         const nameColumnStyle =
-            "max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
+            "width: 200px; min-width: 200px; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
         const ageColumnStyle =
-            "max-width: 60px; text-align: center; white-space: nowrap;";
+            "width: 60px; min-width: 60px; max-width: 60px; text-align: center; white-space: nowrap;";
         const positionColumnStyle =
-            "max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
+            "width: 150px; min-width: 150px; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
         const clubColumnStyle =
-            "max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
+            "width: 180px; min-width: 180px; max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
         const moneyColumnStyle =
-            "max-width: 110px; text-align: right; white-space: nowrap;";
+            "width: 110px; min-width: 110px; max-width: 110px; text-align: right; white-space: nowrap;";
         const overallColumnStyle =
-            "max-width: 70px; text-align: center; white-space: nowrap;";
+            "width: 70px; min-width: 70px; max-width: 70px; text-align: center; white-space: nowrap;";
         const fifaStatColumnStyle =
-            "max-width: 60px; text-align: center; white-space: nowrap;";
+            "width: 60px; min-width: 60px; max-width: 60px; text-align: center; white-space: nowrap;";
         const textColumnStyle =
-            "max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
+            "width: 120px; min-width: 120px; max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
         const nationalityColumnStyle =
-            "max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
+            "width: 150px; min-width: 150px; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
 
         const baseColumnDefinitions = {
             name: {
@@ -878,14 +880,24 @@ export default {
                 }, 100); // 100ms debounce
             }
 
-            // Return previous cache or maintain visible data while sorting to prevent layout shift
+            // CRITICAL: Always return the current cache during sorting to prevent layout shifts
+            // This ensures the table maintains exactly the same data structure and length
             if (sortedPlayersCache.value && sortedPlayersCache.value.length > 0) {
                 return sortedPlayersCache.value;
             } else {
-                // If no cache yet, return a slice of original data to maintain table height
-                // This prevents the jarring empty table during initial sort
-                const fallbackResult = [...props.players].slice(0, Math.min(MAX_DISPLAY_PLAYERS, props.players.length));
-                return fallbackResult;
+                // If no cache yet, create a stable fallback that matches the expected display size
+                // This prevents any change in table height or structure during initial sort
+                const targetLength = Math.min(MAX_DISPLAY_PLAYERS, props.players.length);
+                const stableFallback = [...props.players].slice(0, targetLength);
+                
+                // Set initial cache to prevent further changes during sorting
+                if (!sortedPlayersCache.value) {
+                    sortedPlayersCache.value = stableFallback;
+                    totalSortedCount.value = props.players.length;
+                    isSliced.value = props.players.length > MAX_DISPLAY_PLAYERS;
+                }
+                
+                return stableFallback;
             }
         });
 
@@ -906,6 +918,7 @@ export default {
             const sortController = { cancelled: false };
             currentSortController.value = sortController;
             
+            // Set async sorting flag AFTER ensuring cache stability
             isAsyncSorting.value = true;
             
             try {
@@ -965,8 +978,12 @@ export default {
                 }
                 
                 isSliced.value = sliced;
-                sortedPlayersCache.value = result;
-                lastSortKey.value = sortKey;
+                
+                // Update cache in a way that doesn't trigger layout recalculation
+                nextTick(() => {
+                    sortedPlayersCache.value = result;
+                    lastSortKey.value = sortKey;
+                });
                 
                 console.log(`Async sort completed successfully for ${fullSortedList.length} players`);
             } catch (error) {
@@ -987,16 +1004,16 @@ export default {
                 
                 // Fallback to direct assignment if async sorting fails
                 const fallbackResult = [...props.players].slice(0, MAX_DISPLAY_PLAYERS);
-                sortedPlayersCache.value = fallbackResult;
-                totalSortedCount.value = props.players.length;
-                isSliced.value = props.players.length > MAX_DISPLAY_PLAYERS;
-                lastSortKey.value = sortKey;
+                nextTick(() => {
+                    sortedPlayersCache.value = fallbackResult;
+                    totalSortedCount.value = props.players.length;
+                    isSliced.value = props.players.length > MAX_DISPLAY_PLAYERS;
+                    lastSortKey.value = sortKey;
+                });
             } finally {
-                // Only clear the flag if this controller wasn't cancelled
-                if (!sortController.cancelled) {
-                    isAsyncSorting.value = false;
-                    currentSortController.value = null;
-                }
+                // Always clear the sorting flag and controller, regardless of outcome
+                isAsyncSorting.value = false;
+                currentSortController.value = null;
             }
         };
 
@@ -1164,6 +1181,12 @@ export default {
 
         const sortTable = (fieldName) => {
             console.time("PlayerDataTable: sortTable_execution");
+            
+            // Prevent rapid clicking during sort operations
+            if (isAsyncSorting.value) {
+                console.log('Sort already in progress, ignoring click');
+                return;
+            }
             
             // Clear any pending async sorting
             if (asyncSortTimeout.value) {
@@ -1460,7 +1483,19 @@ export default {
 
 <style lang="scss" scoped>
 .player-data-table-container {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+    /* Ensure absolutely stable dimensions */
     width: 100%;
+    min-width: 100%;
+    max-width: 100%;
+    
+    .body--dark & {
+        background: rgba(255, 255, 255, 0.02);
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+    }
 }
 
 .table-controls-header {
@@ -1478,22 +1513,73 @@ export default {
 .player-q-table {
     width: 100%;
     table-layout: fixed; /* CHANGED: from auto to fixed */
-    transition: all 0.3s ease;
-
+    
+    /* Disable layout-affecting transitions to prevent shifts during sorting */
+    th, td, tr {
+        transition: none !important;
+    }
+    
+    /* Preserve necessary loading animations */
+    .q-spinner, .sorting-spinner, .q-linear-progress {
+        transition: unset !important;
+        animation-duration: unset !important;
+    }
+    
+    /* Enforce strict column width control */
+    th, td {
+        white-space: nowrap !important;
+        word-break: keep-all !important;
+        /* Prevent any width changes */
+        flex-shrink: 0 !important;
+        flex-grow: 0 !important;
+    }
+    
+    /* Apply ellipsis only to specific long-text columns by targeting their style attribute */
+    th[style*="text-overflow: ellipsis"], 
+    td[style*="text-overflow: ellipsis"] {
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+    
+    /* Override any Quasar default behaviors that might affect width */
+    .q-table__container .q-table {
+        table-layout: fixed !important;
+    }
+    
     &.table-sorting {
-        .q-table__top,
-        .q-table__bottom {
-            opacity: 0.7;
+        /* Prevent any layout shifts during sorting */
+        overflow: visible; /* Changed from hidden to prevent layout changes */
+        
+        /* Minimal visual feedback without affecting layout */
+        .modern-header-cell.sorting-in-progress {
+            position: relative;
+            /* Remove opacity changes that can affect layout */
+        }
+        
+        /* Keep the body stable during sorting */
+        .q-table__middle {
+            overflow: visible;
         }
     }
 
     th .sort-icon {
         vertical-align: middle;
         margin-left: 4px;
+        /* Ensure icon doesn't affect layout */
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
     }
 
     .sorting-spinner {
         animation: gentlePulse 1.5s infinite ease-in-out;
+        /* Position spinner absolutely to prevent layout shifts */
+        position: absolute !important;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        margin: 0 !important;
     }
 
     // Dark mode specific styles
@@ -1542,12 +1628,17 @@ export default {
     th {
         font-weight: 600;
         font-size: 0.8rem;
-        padding: 8px 10px;
+        padding: 8px 32px 8px 10px; /* Add right padding for sort icon */
         border-right: 0;
-        transition: all 0.2s ease;
+        /* Remove transition to prevent layout shifts during sorting */
         /* white-space: nowrap; // This is now handled by inline styles for specific columns */
         /* overflow: hidden; // This is now handled by inline styles for specific columns */
         /* text-overflow: ellipsis; // This is now handled by inline styles for specific columns */
+        
+        /* Ensure consistent height and width during sorting */
+        min-height: 40px;
+        box-sizing: border-box;
+        position: relative; /* For absolutely positioned sort icons */
         
         &.sorting-in-progress {
             position: relative;
@@ -1581,6 +1672,10 @@ export default {
         /* white-space: nowrap; // This is now handled by inline styles for specific columns */
         /* overflow: hidden; // This is now handled by inline styles for specific columns */
         /* text-overflow: ellipsis; // This is now handled by inline styles for specific columns */
+        
+        /* Ensure consistent height during sorting */
+        min-height: 32px;
+        box-sizing: border-box;
     }
 
     .table-cell-enhanced {
@@ -1698,10 +1793,34 @@ export default {
 .nationality-flag {
     border: 1px solid rgba(0, 0, 0, 0.15);
     object-fit: cover;
+    margin-right: 8px;
+    width: 20px !important;
+    height: 13px !important;
+    flex-shrink: 0;
 
     .body--dark & {
         // Ensure .body--dark is a class on your body/html tag
         border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+}
+
+.nationality-flag-placeholder {
+    margin-right: 8px;
+    width: 20px;
+    height: 13px;
+    flex-shrink: 0;
+}
+
+.nationality-cell {
+    width: 100%;
+    overflow: hidden;
+    
+    .nationality-text {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        flex: 1;
+        min-width: 0; /* Allow text to shrink */
     }
 }
 
@@ -1759,10 +1878,10 @@ export default {
 }
 
 .modern-table-row {
-    transition: all 0.2s ease;
+    /* Remove transition to prevent layout shifts */
     
     &:hover {
-        transform: scale(1.001);
+        /* Remove transform to prevent layout shifts */
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         
         .body--dark & {
@@ -1779,10 +1898,10 @@ export default {
     text-align: center;
     min-width: 32px;
     display: inline-block;
-    transition: transform 0.2s ease;
+    /* Remove transition to prevent layout shifts */
     
     &:hover {
-        transform: scale(1.05);
+        /* Remove transform to prevent layout shifts */
     }
 }
 
@@ -1796,19 +1915,6 @@ export default {
         background: linear-gradient(135deg, rgba(144, 202, 249, 0.1) 0%, rgba(144, 202, 249, 0.05) 100%);
         border: 1px solid rgba(144, 202, 249, 0.2);
         color: #90caf9;
-    }
-}
-
-// Enhanced table container
-.player-data-table-container {
-    background: white;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
-    
-    .body--dark & {
-        background: rgba(255, 255, 255, 0.02);
-        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
     }
 }
 
