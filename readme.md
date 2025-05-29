@@ -80,15 +80,42 @@ or ./CodeWeaver --ignore "node_modules,testdata.html,.git,CodeWeaver"
 - `MINIO_ACCESS_KEY` - MinIO access key
 - `MINIO_SECRET_KEY` - MinIO secret key  
 - `MINIO_USE_SSL=false` - Whether to use SSL for MinIO connection (default: false)
+- `DATASETS_DIR` - Directory for local dataset storage when MinIO is disabled (default: ./datasets)
 
 ### Storage Backend
 
-The application supports two storage backends:
+The application supports three storage backends with automatic fallback:
 
-1. **In-Memory Storage** (default): Data is stored in memory and lost when the server restarts
-2. **MinIO Storage** (optional): Data is persisted to MinIO object storage with in-memory fallback
+1. **MinIO Storage** (preferred): Data is persisted to MinIO object storage with in-memory fallback
+2. **Hybrid Storage** (fallback when MinIO is disabled): Combines in-memory storage with local file persistence  
+3. **In-Memory Storage** (last resort): Data is stored in memory only and lost when the server restarts
 
-To enable MinIO storage, set the MinIO environment variables. If MinIO is not available or not configured, the application automatically falls back to in-memory storage.
+#### Storage Selection Logic
+
+- **MinIO Available**: Uses MinIO storage with in-memory fallback if MinIO operations fail
+- **MinIO Disabled**: Uses hybrid storage (in-memory + local files) for persistence without MinIO
+- **Fallback**: Uses in-memory only if local file storage fails to initialize
+
+#### Hybrid Storage Behavior (when MinIO is disabled)
+
+When MinIO is not configured or credentials are missing, the application uses hybrid storage:
+
+- **Write Operations**: Data is stored in both memory (for fast access) and local files (for persistence)
+- **Read Operations**: Checks memory first, then falls back to local files if not found in memory
+- **Persistence**: Datasets are saved as compressed JSON files in the `DATASETS_DIR` directory
+- **Performance**: Memory access for frequently used datasets, disk fallback for others
+- **Caching**: Datasets loaded from disk are automatically cached in memory for faster subsequent access
+
+To configure local dataset storage:
+
+```bash
+# Set custom datasets directory (optional)
+export DATASETS_DIR=/path/to/your/datasets
+
+# MinIO disabled - will use hybrid storage
+# (no MINIO_ENDPOINT configured)
+go run main.go
+```
 
 The MinIO bucket name is hardcoded to `v2fmdash`.
 

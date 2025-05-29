@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -538,13 +539,362 @@ func (s *MinIOStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets 
 	return nil
 }
 
+// LocalFileStorage stores datasets as JSON files in a local directory
+type LocalFileStorage struct {
+	datasetDir string
+	mutex      sync.RWMutex
+}
+
+func NewLocalFileStorage(datasetDir string) (*LocalFileStorage, error) {
+	// Create datasets directory if it doesn't exist
+	if err := os.MkdirAll(datasetDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create datasets directory %s: %w", datasetDir, err)
+	}
+	
+	log.Printf("Initialized local file storage at: %s", datasetDir)
+	return &LocalFileStorage{
+		datasetDir: datasetDir,
+	}, nil
+}
+
+func (s *LocalFileStorage) Store(datasetID string, data DatasetData) error {
+	ctx := context.Background()
+	ctx, span := StartSpan(ctx, "storage.local_file.store")
+	defer span.End()
+	
+	SetSpanAttributes(ctx,
+		attribute.String("dataset.id", datasetID),
+		attribute.Int("dataset.player_count", len(data.Players)),
+		attribute.String("storage.type", "local_file"),
+	)
+	
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	
+	filename := filepath.Join(s.datasetDir, fmt.Sprintf("%s.json.gz", datasetID))
+	
+	// Marshal to JSON
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		RecordError(ctx, err, "Failed to marshal dataset data")
+		return fmt.Errorf("failed to marshal data: %w", err)
+	}
+	
+	// Compress the data
+	compressedData, err := compressData(jsonData)
+	if err != nil {
+		RecordError(ctx, err, "Failed to compress dataset data")
+		return fmt.Errorf("failed to compress data: %w", err)
+	}
+	
+	// Write to file
+	if err := os.WriteFile(filename, compressedData, 0644); err != nil {
+		RecordError(ctx, err, "Failed to write dataset file")
+		return fmt.Errorf("failed to write dataset file: %w", err)
+	}
+	
+	SetSpanAttributes(ctx,
+		attribute.String("file.path", filename),
+		attribute.Int("data.size_bytes", len(jsonData)),
+		attribute.Int("compressed.size_bytes", len(compressedData)),
+	)
+	
+	log.Printf("Stored dataset %s to local file: %s", datasetID, filename)
+	return nil
+}
+
+func (s *LocalFileStorage) Retrieve(datasetID string) (DatasetData, error) {
+	ctx := context.Background()
+	ctx, span := StartSpan(ctx, "storage.local_file.retrieve")
+	defer span.End()
+	
+	SetSpanAttributes(ctx,
+		attribute.String("dataset.id", datasetID),
+		attribute.String("storage.type", "local_file"),
+	)
+	
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	
+	// Try compressed file first
+	filename := filepath.Join(s.datasetDir, fmt.Sprintf("%s.json.gz", datasetID))
+	isCompressed := true
+	
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		// Try uncompressed file
+		filename = filepath.Join(s.datasetDir, fmt.Sprintf("%s.json", datasetID))
+		isCompressed = false
+		data, err = os.ReadFile(filename)
+		if err != nil {
+			if os.IsNotExist(err) {
+				RecordError(ctx, fmt.Errorf("dataset %s not found", datasetID), "Dataset not found in local storage")
+				return DatasetData{}, fmt.Errorf("dataset %s not found", datasetID)
+			}
+			RecordError(ctx, err, "Failed to read dataset file")
+			return DatasetData{}, fmt.Errorf("failed to read dataset file: %w", err)
+		}
+	}
+	
+	SetSpanAttributes(ctx,
+		attribute.String("file.path", filename),
+		attribute.Int("data.size_bytes", len(data)),
+		attribute.Bool("data.compressed", isCompressed),
+	)
+	
+	// Decompress if necessary
+	var jsonData []byte
+	if isCompressed {
+		jsonData, err = decompressData(data)
+		if err != nil {
+			RecordError(ctx, err, "Failed to decompress dataset data")
+			return DatasetData{}, fmt.Errorf("failed to decompress data: %w", err)
+		}
+		SetSpanAttributes(ctx, attribute.Int("data.decompressed_size_bytes", len(jsonData)))
+	} else {
+		jsonData = data
+	}
+	
+	var dataset DatasetData
+	if err := json.Unmarshal(jsonData, &dataset); err != nil {
+		RecordError(ctx, err, "Failed to unmarshal dataset data")
+		return DatasetData{}, fmt.Errorf("failed to unmarshal data: %w", err)
+	}
+	
+	SetSpanAttributes(ctx, attribute.Int("dataset.player_count", len(dataset.Players)))
+	log.Printf("Retrieved dataset %s from local file: %s", datasetID, filename)
+	return dataset, nil
+}
+
+func (s *LocalFileStorage) Delete(datasetID string) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	
+	// Try to delete both compressed and uncompressed versions
+	compressedFile := filepath.Join(s.datasetDir, fmt.Sprintf("%s.json.gz", datasetID))
+	uncompressedFile := filepath.Join(s.datasetDir, fmt.Sprintf("%s.json", datasetID))
+	
+	// Don't treat "file not found" as an error
+	os.Remove(compressedFile)
+	os.Remove(uncompressedFile)
+	
+	log.Printf("Deleted dataset %s from local storage", datasetID)
+	return nil
+}
+
+func (s *LocalFileStorage) List() ([]string, error) {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	
+	entries, err := os.ReadDir(s.datasetDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read datasets directory: %w", err)
+	}
+	
+	var ids []string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		
+		name := entry.Name()
+		if strings.HasSuffix(name, ".json.gz") {
+			id := strings.TrimSuffix(name, ".json.gz")
+			ids = append(ids, id)
+		} else if strings.HasSuffix(name, ".json") {
+			id := strings.TrimSuffix(name, ".json")
+			// Only add if we don't already have the compressed version
+			found := false
+			for _, existingID := range ids {
+				if existingID == id {
+					found = true
+					break
+				}
+			}
+			if !found {
+				ids = append(ids, id)
+			}
+		}
+	}
+	
+	log.Printf("Listed %d datasets from local storage", len(ids))
+	return ids, nil
+}
+
+func (s *LocalFileStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets []string) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	
+	entries, err := os.ReadDir(s.datasetDir)
+	if err != nil {
+		return fmt.Errorf("failed to read datasets directory: %w", err)
+	}
+	
+	cutoffTime := time.Now().Add(-maxAge)
+	excludeSet := make(map[string]bool)
+	for _, dataset := range excludeDatasets {
+		excludeSet[dataset] = true
+	}
+	
+	var deletedCount int
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		
+		name := entry.Name()
+		if !strings.HasSuffix(name, ".json") && !strings.HasSuffix(name, ".json.gz") {
+			continue
+		}
+		
+		// Extract dataset ID
+		var datasetID string
+		if strings.HasSuffix(name, ".json.gz") {
+			datasetID = strings.TrimSuffix(name, ".json.gz")
+		} else {
+			datasetID = strings.TrimSuffix(name, ".json")
+		}
+		
+		// Skip excluded datasets
+		if excludeSet[datasetID] {
+			log.Printf("Skipping cleanup for excluded dataset: %s", datasetID)
+			continue
+		}
+		
+		// Get file info to check modification time
+		filePath := filepath.Join(s.datasetDir, name)
+		info, err := os.Stat(filePath)
+		if err != nil {
+			log.Printf("Warning: Failed to get file info for %s: %v", filePath, err)
+			continue
+		}
+		
+		// Check if file is older than cutoff time
+		if info.ModTime().Before(cutoffTime) {
+			log.Printf("Deleting old dataset file: %s (last modified: %s)", name, info.ModTime().Format(time.RFC3339))
+			
+			if err := os.Remove(filePath); err != nil {
+				log.Printf("Warning: Failed to delete old dataset file %s: %v", filePath, err)
+				continue
+			}
+			
+			deletedCount++
+		}
+	}
+	
+	log.Printf("Cleanup completed: deleted %d old dataset files from local storage", deletedCount)
+	return nil
+}
+
+// HybridStorage combines in-memory storage with local file fallback
+type HybridStorage struct {
+	memory StorageInterface
+	local  StorageInterface
+}
+
+func NewHybridStorage(datasetDir string) (*HybridStorage, error) {
+	memory := NewInMemoryStorage()
+	local, err := NewLocalFileStorage(datasetDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create local file storage: %w", err)
+	}
+	
+	log.Println("Initialized hybrid storage (in-memory + local file fallback)")
+	return &HybridStorage{
+		memory: memory,
+		local:  local,
+	}, nil
+}
+
+func (s *HybridStorage) Store(datasetID string, data DatasetData) error {
+	// Store in both memory and local file
+	if err := s.memory.Store(datasetID, data); err != nil {
+		log.Printf("Warning: Failed to store dataset %s in memory: %v", datasetID, err)
+	}
+	
+	return s.local.Store(datasetID, data)
+}
+
+func (s *HybridStorage) Retrieve(datasetID string) (DatasetData, error) {
+	// Try memory first
+	data, err := s.memory.Retrieve(datasetID)
+	if err == nil {
+		log.Printf("Retrieved dataset %s from memory", datasetID)
+		return data, nil
+	}
+	
+	// Fallback to local file
+	log.Printf("Dataset %s not found in memory, checking local storage", datasetID)
+	data, err = s.local.Retrieve(datasetID)
+	if err != nil {
+		return DatasetData{}, err
+	}
+	
+	// Store in memory for future access
+	if storeErr := s.memory.Store(datasetID, data); storeErr != nil {
+		log.Printf("Warning: Failed to cache dataset %s in memory: %v", datasetID, storeErr)
+	}
+	
+	return data, nil
+}
+
+func (s *HybridStorage) Delete(datasetID string) error {
+	// Delete from both memory and local file
+	s.memory.Delete(datasetID) // Don't check error since it might not exist
+	return s.local.Delete(datasetID)
+}
+
+func (s *HybridStorage) List() ([]string, error) {
+	// Get datasets from both memory and local storage, then merge
+	memoryIDs, _ := s.memory.List() // Ignore error since memory might be empty
+	localIDs, err := s.local.List()
+	if err != nil {
+		return memoryIDs, err
+	}
+	
+	// Merge and deduplicate
+	idSet := make(map[string]bool)
+	for _, id := range memoryIDs {
+		idSet[id] = true
+	}
+	for _, id := range localIDs {
+		idSet[id] = true
+	}
+	
+	var allIDs []string
+	for id := range idSet {
+		allIDs = append(allIDs, id)
+	}
+	
+	return allIDs, nil
+}
+
+func (s *HybridStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets []string) error {
+	// Cleanup both memory and local storage
+	s.memory.CleanupOldDatasets(maxAge, excludeDatasets) // Memory cleanup is a no-op
+	return s.local.CleanupOldDatasets(maxAge, excludeDatasets)
+}
+
 func InitializeStorage() StorageInterface {
 	inMemory := NewInMemoryStorage()
 
 	minioEndpoint := os.Getenv("MINIO_ENDPOINT")
 	if minioEndpoint == "" {
-		log.Println("No MinIO endpoint configured. Using in-memory storage only.")
-		return inMemory
+		log.Println("No MinIO endpoint configured. Using hybrid storage (in-memory + local file fallback).")
+		
+		// Use configurable datasets directory, default to "./datasets"
+		datasetDir := os.Getenv("DATASETS_DIR")
+		if datasetDir == "" {
+			datasetDir = "./datasets"
+		}
+		
+		hybrid, err := NewHybridStorage(datasetDir)
+		if err != nil {
+			log.Printf("Failed to initialize hybrid storage: %v. Falling back to in-memory only.", err)
+			return inMemory
+		}
+		
+		return hybrid
 	}
 
 	accessKey := os.Getenv("MINIO_ACCESS_KEY")
@@ -552,8 +902,21 @@ func InitializeStorage() StorageInterface {
 	useSSL := strings.ToLower(os.Getenv("MINIO_USE_SSL")) == "true"
 
 	if accessKey == "" || secretKey == "" {
-		log.Println("MinIO credentials not provided. Using in-memory storage only.")
-		return inMemory
+		log.Println("MinIO credentials not provided. Using hybrid storage (in-memory + local file fallback).")
+		
+		// Use configurable datasets directory, default to "./datasets"
+		datasetDir := os.Getenv("DATASETS_DIR")
+		if datasetDir == "" {
+			datasetDir = "./datasets"
+		}
+		
+		hybrid, err := NewHybridStorage(datasetDir)
+		if err != nil {
+			log.Printf("Failed to initialize hybrid storage: %v. Falling back to in-memory only.", err)
+			return inMemory
+		}
+		
+		return hybrid
 	}
 
 	// Debug logging (only show first few chars for security)
@@ -565,8 +928,21 @@ func InitializeStorage() StorageInterface {
 
 	minioStorage, err := NewMinIOStorage(minioEndpoint, accessKey, secretKey, "v2fmdash", useSSL, inMemory)
 	if err != nil {
-		log.Printf("Failed to initialize MinIO storage: %v. Using in-memory storage only.", err)
-		return inMemory
+		log.Printf("Failed to initialize MinIO storage: %v. Using hybrid storage (in-memory + local file fallback).", err)
+		
+		// Fallback to hybrid storage if MinIO fails
+		datasetDir := os.Getenv("DATASETS_DIR")
+		if datasetDir == "" {
+			datasetDir = "./datasets"
+		}
+		
+		hybrid, hybridErr := NewHybridStorage(datasetDir)
+		if hybridErr != nil {
+			log.Printf("Failed to initialize hybrid storage: %v. Falling back to in-memory only.", hybridErr)
+			return inMemory
+		}
+		
+		return hybrid
 	}
 
 	log.Println("Initialized MinIO storage with in-memory fallback")
