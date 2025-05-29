@@ -6,8 +6,41 @@ on:
       - main # Target branch for deployment
 
 jobs:
-  deploy:
+  # Quick code quality check (informational only)
+  code-quality-check:
+    name: Quick Code Quality Check
     runs-on: ubuntu-latest
+    continue-on-error: true # Don't block deployment if this fails
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Quick Biome check
+        run: |
+          echo "🔍 Quick code quality check with Biome..."
+          npm run lint:check || echo "⚠️ Code quality issues found (not blocking deployment)"
+
+      - name: Code quality notice
+        if: always()
+        run: |
+          echo "📝 Code quality check completed (informational only)"
+          echo "🚀 Deployment will proceed regardless of code quality results"
+          echo "💡 For detailed checks, see the 'Code Quality Checks' workflow"
+
+  deploy:
+    needs: [code-quality-check] # Run after code quality check but don't depend on its success
+    runs-on: ubuntu-latest
+    if: always() # Always run deployment regardless of code quality results
     env:
       REGISTRY: git.liamhardman.com # Your Gitea container registry
       IMAGE_NAMESPACE: liam # Your preferred namespace on the registry

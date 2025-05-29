@@ -156,6 +156,38 @@ Before submitting a pull request:
 3. Make sure all tests pass
 4. Follow the existing code style and patterns
 
+## CI/CD Integration
+
+### Gitea Actions Pipelines
+
+This project includes automated code quality checks in the CI/CD pipeline:
+
+#### 🚀 Deployment Pipeline (`deploy.yaml`)
+- **Triggers:** Push to `main` branch
+- **Quick code quality check** (informational only)
+- **Never blocks deployments** - provides visibility without disrupting releases
+- Matches: `npm run lint:check`
+
+#### 🔍 Code Quality Pipeline (`code-quality.yaml`)  
+- **Triggers:** Push to `main`/`develop` or pull requests
+- **Comprehensive checks:** Both frontend (Biome) and backend (Go) linting
+- **Always succeeds** - provides detailed feedback without failing the pipeline
+- Matches: `npm run check`
+
+#### Key Features:
+- 🔒 **Non-blocking**: Code quality issues never prevent deployments
+- 📊 **Informational**: Clear feedback on code quality status
+- 💡 **Actionable**: Includes commands to fix issues locally
+- 🔄 **Comprehensive**: Covers both frontend and backend code
+
+#### Local vs CI Commands:
+```bash
+# Local development (matches CI exactly)
+npm run lint:check      # Quick check (deployment pipeline)
+npm run check           # Full check (code quality pipeline)  
+npm run fix             # Fix issues before committing
+```
+
 ## Why Biome?
 
 Biome offers several advantages over ESLint + Prettier:

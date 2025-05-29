@@ -1,0 +1,108 @@
+name: Code Quality Checks
+run-name: ${{ gitea.actor }} is running code quality checks 🔍
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  frontend-linting:
+    name: Frontend Code Quality (Biome)
+    runs-on: ubuntu-latest
+    continue-on-error: true # Don't fail the pipeline if linting fails
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Biome linting check
+        run: |
+          echo "🔍 Running Biome linting and formatting checks..."
+          npm run lint:check || echo "⚠️ Biome found linting/formatting issues"
+
+      - name: Run Biome formatting check
+        run: |
+          echo "🎨 Checking code formatting with Biome..."
+          npm run format:check || echo "⚠️ Biome found formatting issues"
+
+      - name: Frontend linting summary
+        if: always()
+        run: |
+          echo "📋 Frontend Code Quality Summary:"
+          echo "================================="
+          echo "✅ Biome linting and formatting checks completed"
+          echo "💡 To fix issues locally, run: npm run fix"
+
+  backend-linting:
+    name: Backend Code Quality (Go)
+    runs-on: ubuntu-latest
+    continue-on-error: true # Don't fail the pipeline if linting fails
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache-dependency-path: go.sum
+
+      - name: Install golangci-lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.54.2
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+      - name: Run Go linting
+        working-directory: ./src/api
+        run: |
+          echo "🔍 Running golangci-lint checks..."
+          golangci-lint run || echo "⚠️ golangci-lint found issues"
+
+      - name: Run Go tests
+        working-directory: ./src/api
+        run: |
+          echo "🧪 Running Go tests..."
+          go test -v ./... || echo "⚠️ Some Go tests failed"
+
+      - name: Backend linting summary
+        if: always()
+        run: |
+          echo "📋 Backend Code Quality Summary:"
+          echo "==============================="
+          echo "✅ Go linting and testing checks completed"
+          echo "💡 To fix issues locally, run: npm run lint:go:fix"
+
+  code-quality-summary:
+    name: Code Quality Summary
+    runs-on: ubuntu-latest
+    needs: [frontend-linting, backend-linting]
+    if: always()
+    
+    steps:
+      - name: Overall summary
+        run: |
+          echo "🎯 Code Quality Pipeline Summary"
+          echo "==============================="
+          echo ""
+          echo "Frontend (Biome): ${{ needs.frontend-linting.result }}"
+          echo "Backend (Go): ${{ needs.backend-linting.result }}"
+          echo ""
+          echo "📝 Note: Code quality checks are informational only"
+          echo "🚀 Deployment pipeline runs independently"
+          echo ""
+          echo "🛠️  Local development commands:"
+          echo "   npm run check     - Run all checks"
+          echo "   npm run fix       - Fix auto-fixable issues"
+          echo "   npm run lint:go   - Check Go code" 
