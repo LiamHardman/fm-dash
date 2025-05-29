@@ -72,20 +72,23 @@ func CalculateOverallForRoleGo(playerNumericAttributes, roleSpecificAttrWeights 
 
 	// Optimized loop: reduce math operations and casting
 	for attrKey, weightForAttribute := range roleSpecificAttrWeights {
-		if attributeValue, exists := playerNumericAttributes[attrKey]; exists && attributeValue > 0 {
-			// Fast path: assume attributes are already in valid 1-20 range
-			// Only clamp if outside expected range (rare case)
-			var validValue float64
-			if attributeValue >= 1 && attributeValue <= 20 {
-				validValue = float64(attributeValue) // Fast path - no math.Max/Min needed
-			} else {
-				validValue = math.Max(1, math.Min(20, float64(attributeValue))) // Slow path - clamp
-			}
-
-			weightFloat := float64(weightForAttribute)
-			weightedAttributeSum += validValue * weightFloat
-			totalApplicableWeightsSum += weightFloat
+		attributeValue, exists := playerNumericAttributes[attrKey]
+		if !exists || attributeValue <= 0 {
+			continue
 		}
+
+		// Fast path: assume attributes are already in valid 1-20 range
+		// Only clamp if outside expected range (rare case)
+		var validValue float64
+		if attributeValue >= 1 && attributeValue <= 20 {
+			validValue = float64(attributeValue) // Fast path - no math.Max/Min needed
+		} else {
+			validValue = math.Max(1, math.Min(20, float64(attributeValue))) // Slow path - clamp
+		}
+
+		weightFloat := float64(weightForAttribute)
+		weightedAttributeSum += validValue * weightFloat
+		totalApplicableWeightsSum += weightFloat
 	}
 
 	if totalApplicableWeightsSum == 0 {

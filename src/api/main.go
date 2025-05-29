@@ -7,7 +7,6 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
-	_ "net/http/pprof" // For profiling, if needed
 	"os"
 	"path/filepath"
 	"strconv"
@@ -56,6 +55,17 @@ func main() {
 	// Validate environment variables first
 	if err := validateEnvironmentVariables(); err != nil {
 		log.Fatalf("Environment validation failed: %v", err)
+	}
+
+	// Determine port for HTTP server with validation
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8091" // Default port for the Go API
+	} else {
+		// Validate port is a valid number and in reasonable range
+		if portNum, err := strconv.Atoi(port); err != nil || portNum <= 0 || portNum > 65535 {
+			log.Fatalf("Invalid PORT environment variable: %s. Must be a number between 1-65535", port)
+		}
 	}
 
 	// Initialize OpenTelemetry (tracing and metrics) if enabled
@@ -138,17 +148,6 @@ func main() {
 	// API endpoint for configuration values
 	http.Handle("/api/config", wrapHandler(http.HandlerFunc(configHandler), "config"))
 
-	// Determine port for HTTP server with validation
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8091" // Default port for the Go API
-	} else {
-		// Validate port is a valid number and in reasonable range
-		if portNum, err := strconv.Atoi(port); err != nil || portNum <= 0 || portNum > 65535 {
-			log.Fatalf("Invalid PORT environment variable: %s. Must be a number between 1-65535", port)
-		}
-	}
-
 	// Create HTTP server with timeouts and middleware
 	mux := http.NewServeMux()
 
@@ -187,6 +186,8 @@ func main() {
 		"idle_timeout", "60s")
 
 	if err := server.ListenAndServe(); err != nil {
-		log.Fatal("ListenAndServe Error: ", err)
+		slog.Error("Server failed to start", "error", err)
+		//nolint:gocritic // exitAfterDefer: this is at the end of main, defers have already run
+		os.Exit(1)
 	}
 }

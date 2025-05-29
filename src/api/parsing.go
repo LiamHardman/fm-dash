@@ -16,16 +16,15 @@ import (
 )
 
 // sendRowWithBackpressure attempts to send row data to channel with timeout handling
-func sendRowWithBackpressure(rowCellsChan chan []string, cells []string, timeout time.Duration) bool {
+func sendRowWithBackpressure(rowCellsChan chan []string, cells []string, timeout time.Duration) {
 	cellsCopy := make([]string, len(cells))
 	copy(cellsCopy, cells)
 
 	select {
 	case rowCellsChan <- cellsCopy:
-		return true
+		// Successfully sent
 	case <-time.After(timeout):
 		log.Printf("Warning: Channel send timeout after %v, dropping row with %d cells", timeout, len(cells))
-		return false
 	}
 }
 
@@ -67,11 +66,12 @@ func ParseMonetaryValueGo(rawValue string) (originalDisplay string, numericValue
 	if detectedSymbol == "" {
 		// Fallback if no specific symbol from the regex is found, but common ones might exist without being in the regex groups
 		// This part might be redundant if the regex is comprehensive.
-		if strings.Contains(cleanedValue, "€") {
+		switch {
+		case strings.Contains(cleanedValue, "€"):
 			detectedSymbol = "€"
-		} else if strings.Contains(cleanedValue, "£") {
+		case strings.Contains(cleanedValue, "£"):
 			detectedSymbol = "£"
-		} else if strings.Contains(cleanedValue, "$") { // This could be USD, CAD, AUD etc.
+		case strings.Contains(cleanedValue, "$"): // This could be USD, CAD, AUD etc.
 			detectedSymbol = "$" // Default to $ if only $ is found
 		}
 	}
@@ -209,15 +209,16 @@ tokenLoop:
 			case "tr":
 				currentCells = make([]string, 0, defaultCellCapacity) // defaultCellCapacity from config.go
 				// Determine if this TR is a header row or data row
-				if inTHead {
+				switch {
+				case inTHead:
 					inHeaderRow = true
 					inDataRow = false
-				} else if inTable && !workersStarted && len(currentHeaders) == 0 && !inTBody {
+				case inTable && !workersStarted && len(currentHeaders) == 0 && !inTBody:
 					// If in a table, workers haven't started, no headers collected yet, AND not in <tbody>:
 					// Treat this as a potential header row.
 					inHeaderRow = true
 					inDataRow = false
-				} else {
+				default:
 					// Otherwise (e.g., in tbody, or workers started, or headers already found), it's a data row.
 					inHeaderRow = false
 					inDataRow = true

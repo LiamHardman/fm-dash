@@ -64,10 +64,7 @@ func (s *ProcessingService) ProcessPlayerFile(ctx context.Context, fileContent [
 	datasetID := s.generateDatasetID()
 
 	// Process the file content
-	players, currencySymbol, err := s.parsePlayerData(ctx, fileContent, options)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse player data: %w", err)
-	}
+	players, currencySymbol := s.parsePlayerData(ctx, fileContent, options)
 
 	// Validate processed data
 	if err := s.playerService.ValidatePlayerData(ctx, players); err != nil {
@@ -118,7 +115,7 @@ func (s *ProcessingService) validateFileFormat(filename string, content []byte) 
 }
 
 // parsePlayerData parses the HTML content and extracts player data
-func (s *ProcessingService) parsePlayerData(ctx context.Context, content []byte, options ProcessingOptions) ([]Player, string, error) {
+func (s *ProcessingService) parsePlayerData(_ctx context.Context, _content []byte, _options ProcessingOptions) (players []Player, currencySymbol string) {
 	// This would integrate with the existing parsing logic
 	// For now, this is a placeholder that would call the actual parsing functions
 
@@ -130,11 +127,11 @@ func (s *ProcessingService) parsePlayerData(ctx context.Context, content []byte,
 
 	// For now, return empty data to avoid compilation errors
 	// In a real implementation, this would process the actual HTML content
-	players := []Player{}
-	currencySymbol := "$"
+	players = []Player{}
+	currencySymbol = "$"
 
 	log.Printf("Parsed %d players from HTML content", len(players))
-	return players, currencySymbol, nil
+	return players, currencySymbol
 }
 
 // PlayerParseResult represents the result of parsing a single player

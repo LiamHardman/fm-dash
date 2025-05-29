@@ -173,17 +173,18 @@ func ParsePlayerPositionsGo(positionStr string) []string {
 				} else {
 					// Construct keys like D R, D L, D C, M R, M L, M C, AM R, AM L, AM C
 					// Or DM C, WB R, WB L, ST C, SW C
-					if (roleKey == "D" || roleKey == "M" || roleKey == "AM") && (sideKey == "R" || sideKey == "L" || sideKey == "C") {
+					switch {
+					case (roleKey == "D" || roleKey == "M" || roleKey == "AM") && (sideKey == "R" || sideKey == "L" || sideKey == "C"):
 						mapLookupKey = roleKey + sideKey
-					} else if roleKey == "DM" && sideKey == "C" {
+					case roleKey == "DM" && sideKey == "C":
 						mapLookupKey = "DM" // DM is implicitly DM C in positionRoleMapGo
-					} else if roleKey == "WB" && (sideKey == "R" || sideKey == "L") {
+					case roleKey == "WB" && (sideKey == "R" || sideKey == "L"):
 						mapLookupKey = "WB" + sideKey
-					} else if roleKey == "ST" && sideKey == "C" {
+					case roleKey == "ST" && sideKey == "C":
 						mapLookupKey = "ST" // ST is implicitly ST C
-					} else if roleKey == "SW" && sideKey == "C" {
+					case roleKey == "SW" && sideKey == "C":
 						mapLookupKey = "SW" // SW is implicitly SW C
-					} else {
+					default:
 						// Fallback for simple roleKey + sideKey if it's a direct match in positionRoleMapGo
 						// e.g. if positionRoleMapGo had "DR", "DL" etc.
 						mapLookupKey = roleKey + sideKey
@@ -191,16 +192,16 @@ func ParsePlayerPositionsGo(positionStr string) []string {
 				}
 				// Ensure we use the correct keys for positionRoleMapGo
 				// e.g. D C -> DC, M R -> MR
-				if len(mapLookupKey) == 2 && (strings.HasPrefix(mapLookupKey, "D") || strings.HasPrefix(mapLookupKey, "M") || strings.HasPrefix(mapLookupKey, "A")) {
-					if mapLookupKey[1] == 'R' || mapLookupKey[1] == 'L' || mapLookupKey[1] == 'C' {
-						// This is fine, e.g. DR, DL, DC, MR, ML, MC, AR, AL, AC (though AR/AL/AC not in map)
-					}
-				} else if mapLookupKey == "AMC" || mapLookupKey == "AMR" || mapLookupKey == "AML" {
+				switch {
+				case mapLookupKey == "AMC" || mapLookupKey == "AMR" || mapLookupKey == "AML":
 					// Fine
-				} else if mapLookupKey == "STC" { // ST (C) becomes ST
+				case mapLookupKey == "STC": // ST (C) becomes ST
 					mapLookupKey = "ST"
-				} else if mapLookupKey == "DMC" { // DM (C) becomes DM
+				case mapLookupKey == "DMC": // DM (C) becomes DM
 					mapLookupKey = "DM"
+				default:
+					// Valid keys like DR, DL, DC, MR, ML, MC, AR, AL, AC (though AR/AL/AC not in map)
+					// mapLookupKey is already properly set above
 				}
 
 				roleFullName, roleExists := positionRoleMapGo[mapLookupKey]

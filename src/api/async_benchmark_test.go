@@ -49,6 +49,8 @@ func BenchmarkPlayerFiltering(b *testing.B) {
 					result = append(result, player)
 				}
 			}
+			// Prevent compiler optimization
+			_ = result
 		}
 	})
 

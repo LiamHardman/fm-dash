@@ -29,8 +29,6 @@ func PlayerParserWorker(workerID int, rowCellsChan <-chan []string, resultsChan 
 		return
 	}
 
-	// log.Printf("Worker %d started with headers: %v", workerID, headers) // Debug: confirm headers
-
 	for cells := range rowCellsChan { // Process rows until the channel is closed
 		player, err := parseCellsToPlayer(cells, headers) // From player_processing.go
 		if err == nil {
@@ -42,5 +40,4 @@ func PlayerParserWorker(workerID int, rowCellsChan <-chan []string, resultsChan 
 		// but doesn't typically return one that would overwrite the parsing error here.
 		resultsChan <- PlayerParseResult{Player: player, Err: err}
 	}
-	// log.Printf("Worker %d finished processing rows and is exiting.", workerID)
 }

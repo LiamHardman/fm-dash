@@ -39,10 +39,14 @@ func (h *OTLPHandler) Enabled(_ context.Context, level slog.Level) bool {
 }
 
 // Handle processes a log record
+//
+//nolint:gocritic // hugeParam: required by slog.Handler interface
 func (h *OTLPHandler) Handle(ctx context.Context, record slog.Record) error {
 	// Send to fallback handler for local logging
 	if err := h.fallbackHandler.Handle(ctx, record); err != nil {
-		// Don't fail if local logging fails
+		// Don't fail if local logging fails, but log the issue
+		// Using stderr directly to avoid recursion
+		_, _ = os.Stderr.WriteString("OTLP: fallback logging failed: " + err.Error() + "\n")
 	}
 
 	// Convert slog level to OTEL severity

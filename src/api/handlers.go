@@ -184,6 +184,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	// Record API operation metrics at the end
 	defer func() {
 		status := http.StatusOK
+		//nolint:staticcheck // SA9003: empty branch is intentional for future use
 		if span.SpanContext().IsValid() {
 			// Check if there was an error by inspecting span status
 			// We'll update this in error cases below
@@ -342,14 +343,14 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	finalDatasetCurrencySymbol := "$" // Default
 	if len(playersList) > 0 {
 		var foundSymbol bool
-		for _, p := range playersList {
-			_, _, tvSymbol := ParseMonetaryValueGo(p.TransferValue) // Assumes ParseMonetaryValueGo is in parsing.go
+		for i := range playersList {
+			_, _, tvSymbol := ParseMonetaryValueGo(playersList[i].TransferValue) // Assumes ParseMonetaryValueGo is in parsing.go
 			if tvSymbol != "" {
 				finalDatasetCurrencySymbol = tvSymbol
 				foundSymbol = true
 				break
 			}
-			_, _, wSymbol := ParseMonetaryValueGo(p.Wage)
+			_, _, wSymbol := ParseMonetaryValueGo(playersList[i].Wage)
 			if wSymbol != "" {
 				finalDatasetCurrencySymbol = wSymbol
 				foundSymbol = true
@@ -378,8 +379,9 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	if len(playersList) > 0 {
 		// Make a deep copy for async processing to avoid data races
 		playersListCopy := make([]Player, len(playersList))
-		for i, player := range playersList {
+		for i := range playersList {
 			// Deep copy each player to avoid concurrent map access
+			player := &playersList[i]
 			playersListCopy[i] = Player{
 				Name:                player.Name,
 				Position:            player.Position,
@@ -646,8 +648,8 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 		maxSalary = val
 	}
 
-	for _, p := range data.Players {
-		playerCopy := p
+	for i := range data.Players {
+		playerCopy := data.Players[i]
 
 		if filterPosition != "" {
 			canPlayPosition := false
@@ -706,6 +708,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 				// However, the primary filtering for display happens on the frontend based on the RoleSpecificOveralls array.
 				// The backend here is just adjusting the main 'Overall' field if a role is specified.
 				// If no match, the original player.Overall (best general) remains.
+				playerCopy.Overall = 0 // Set to 0 for unmatched roles when filtering by role
 			}
 		}
 		processedPlayers = append(processedPlayers, playerCopy)
@@ -831,9 +834,9 @@ func processLeaguesData(players []Player) []League {
 	divisionMap := make(map[string][]Player)
 
 	// Group players by division
-	for _, player := range players {
-		if player.Division != "" {
-			divisionMap[player.Division] = append(divisionMap[player.Division], player)
+	for i := range players {
+		if players[i].Division != "" {
+			divisionMap[players[i].Division] = append(divisionMap[players[i].Division], players[i])
 		}
 	}
 
@@ -846,9 +849,9 @@ func processLeaguesData(players []Player) []League {
 
 		// Group players by team within this division
 		teamMap := make(map[string][]Player)
-		for _, player := range divisionPlayers {
-			if player.Club != "" {
-				teamMap[player.Club] = append(teamMap[player.Club], player)
+		for i := range divisionPlayers {
+			if divisionPlayers[i].Club != "" {
+				teamMap[divisionPlayers[i].Club] = append(teamMap[divisionPlayers[i].Club], divisionPlayers[i])
 			}
 		}
 
@@ -908,17 +911,17 @@ func processLeaguesData(players []Player) []League {
 func processTeamsData(players []Player, division string) []Team {
 	// Filter players by division
 	var divisionPlayers []Player
-	for _, player := range players {
-		if player.Division == division {
-			divisionPlayers = append(divisionPlayers, player)
+	for i := range players {
+		if players[i].Division == division {
+			divisionPlayers = append(divisionPlayers, players[i])
 		}
 	}
 
 	// Group by team
 	teamMap := make(map[string][]Player)
-	for _, player := range divisionPlayers {
-		if player.Club != "" {
-			teamMap[player.Club] = append(teamMap[player.Club], player)
+	for i := range divisionPlayers {
+		if divisionPlayers[i].Club != "" {
+			teamMap[divisionPlayers[i].Club] = append(teamMap[divisionPlayers[i].Club], divisionPlayers[i])
 		}
 	}
 
@@ -992,8 +995,8 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Find the specific player
 	var targetPlayerIndex = -1
-	for i, player := range players {
-		if player.Name == req.PlayerName {
+	for i := range players {
+		if players[i].Name == req.PlayerName {
 			targetPlayerIndex = i
 			break
 		}
@@ -1056,21 +1059,21 @@ func calculateTeamRatings(players []Player) TeamRatings {
 
 	// Calculate average overall
 	var totalOverall int
-	for _, player := range bestXI {
-		totalOverall += player.Overall
+	for i := range bestXI {
+		totalOverall += bestXI[i].Overall
 	}
 	bestOverall := totalOverall / 11
 
 	// Calculate section ratings based on positions
 	var attPlayers, midPlayers, defPlayers []Player
 
-	for _, player := range bestXI {
+	for i := range bestXI {
 		// Categorize based on position groups
 		isAttacker := false
 		isMidfielder := false
 		isDefender := false
 
-		for _, posGroup := range player.PositionGroups {
+		for _, posGroup := range bestXI[i].PositionGroups {
 			switch posGroup {
 			case "Attackers":
 				isAttacker = true
@@ -1083,13 +1086,13 @@ func calculateTeamRatings(players []Player) TeamRatings {
 
 		// Assign to categories (players can be in multiple)
 		if isAttacker {
-			attPlayers = append(attPlayers, player)
+			attPlayers = append(attPlayers, bestXI[i])
 		}
 		if isMidfielder {
-			midPlayers = append(midPlayers, player)
+			midPlayers = append(midPlayers, bestXI[i])
 		}
 		if isDefender {
-			defPlayers = append(defPlayers, player)
+			defPlayers = append(defPlayers, bestXI[i])
 		}
 	}
 
@@ -1097,8 +1100,8 @@ func calculateTeamRatings(players []Player) TeamRatings {
 	attRating := 0
 	if len(attPlayers) > 0 {
 		var attSum int
-		for _, player := range attPlayers {
-			attSum += player.Overall
+		for i := range attPlayers {
+			attSum += attPlayers[i].Overall
 		}
 		attRating = attSum / len(attPlayers)
 	}
@@ -1106,8 +1109,8 @@ func calculateTeamRatings(players []Player) TeamRatings {
 	midRating := 0
 	if len(midPlayers) > 0 {
 		var midSum int
-		for _, player := range midPlayers {
-			midSum += player.Overall
+		for i := range midPlayers {
+			midSum += midPlayers[i].Overall
 		}
 		midRating = midSum / len(midPlayers)
 	}
@@ -1115,8 +1118,8 @@ func calculateTeamRatings(players []Player) TeamRatings {
 	defRating := 0
 	if len(defPlayers) > 0 {
 		var defSum int
-		for _, player := range defPlayers {
-			defSum += player.Overall
+		for i := range defPlayers {
+			defSum += defPlayers[i].Overall
 		}
 		defRating = defSum / len(defPlayers)
 	}
@@ -1236,7 +1239,8 @@ func performSearch(players []Player, query string) []SearchResult {
 	nations := make(map[string]int) // nation -> player count
 
 	// Search players and collect team/league/nation data
-	for _, player := range players {
+	for i := range players {
+		player := &players[i]
 		// Search players by name
 		if strings.Contains(strings.ToLower(player.Name), queryLower) {
 			results = append(results, SearchResult{

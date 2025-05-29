@@ -301,12 +301,12 @@ func EnsureConfigInitialized(timeout time.Duration) error {
 		return configInitError
 	}
 
-	// Wait for initialization with timeout using a ticker for better performance
 	ticker := time.NewTicker(10 * time.Millisecond)
 	defer ticker.Stop()
 
 	deadline := time.Now().Add(timeout)
 
+	//nolint:gosimple // for-select pattern is appropriate for timeout handling
 	for {
 		select {
 		case <-ticker.C:

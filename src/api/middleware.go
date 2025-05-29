@@ -61,7 +61,11 @@ var DefaultRetryConfig = RetryConfig{
 
 // ExponentialBackoff calculates the delay for a given attempt
 func (c RetryConfig) ExponentialBackoff(attempt int) time.Duration {
-	delay := c.BaseDelay * time.Duration(1<<uint(attempt)) // 2^attempt
+	// Prevent integer overflow by limiting the attempt value
+	if attempt > 30 { // 2^30 is already very large
+		attempt = 30
+	}
+	delay := c.BaseDelay * time.Duration(1<<attempt) // 2^attempt
 	if delay > c.MaxDelay {
 		delay = c.MaxDelay
 	}

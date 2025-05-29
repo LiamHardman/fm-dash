@@ -84,8 +84,8 @@ func (s *PlayerService) StorePlayerData(ctx context.Context, datasetID string, p
 	}
 
 	// Validate players before storing
-	for i, player := range players {
-		if player.Name == "" {
+	for i := range players {
+		if players[i].Name == "" {
 			return fmt.Errorf("player at index %d has no name", i)
 		}
 	}
@@ -145,26 +145,26 @@ func (s *PlayerService) ValidatePlayerData(ctx context.Context, players []Player
 
 	var errors []string
 
-	for i, player := range players {
+	for i := range players {
 		// Basic validation
-		if player.Name == "" {
+		if players[i].Name == "" {
 			errors = append(errors, fmt.Sprintf("player %d: missing name", i))
 		}
 
-		if player.Age < 15 || player.Age > 50 {
-			errors = append(errors, fmt.Sprintf("player %d (%s): invalid age %d", i, player.Name, player.Age))
+		if players[i].Age < 15 || players[i].Age > 50 {
+			errors = append(errors, fmt.Sprintf("player %d (%s): invalid age %d", i, players[i].Name, players[i].Age))
 		}
 
-		if player.Overall < 1 || player.Overall > 100 {
-			errors = append(errors, fmt.Sprintf("player %d (%s): invalid overall rating %d", i, player.Name, player.Overall))
+		if players[i].Overall < 1 || players[i].Overall > 100 {
+			errors = append(errors, fmt.Sprintf("player %d (%s): invalid overall rating %d", i, players[i].Name, players[i].Overall))
 		}
 
-		if player.Club == "" {
-			errors = append(errors, fmt.Sprintf("player %d (%s): missing club", i, player.Name))
+		if players[i].Club == "" {
+			errors = append(errors, fmt.Sprintf("player %d (%s): missing club", i, players[i].Name))
 		}
 
-		if player.Position == "" {
-			errors = append(errors, fmt.Sprintf("player %d (%s): missing position", i, player.Name))
+		if players[i].Position == "" {
+			errors = append(errors, fmt.Sprintf("player %d (%s): missing position", i, players[i].Name))
 		}
 	}
 
@@ -196,19 +196,19 @@ func (s *PlayerService) GetPlayerStatistics(ctx context.Context, players []Playe
 	positions := make(map[string]int)
 	clubs := make(map[string]int)
 
-	for _, player := range players {
-		totalOverall += player.Overall
+	for i := range players {
+		totalOverall += players[i].Overall
 
-		if player.Overall > maxOverall {
-			maxOverall = player.Overall
+		if players[i].Overall > maxOverall {
+			maxOverall = players[i].Overall
 		}
 
-		if player.Overall < minOverall {
-			minOverall = player.Overall
+		if players[i].Overall < minOverall {
+			minOverall = players[i].Overall
 		}
 
-		positions[player.Position]++
-		clubs[player.Club]++
+		positions[players[i].Position]++
+		clubs[players[i].Club]++
 	}
 
 	stats["average_overall"] = totalOverall / len(players)

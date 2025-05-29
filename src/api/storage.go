@@ -160,7 +160,8 @@ type storageResult struct {
 	err  error
 }
 
-func NewS3Storage(endpoint, accessKey, secretKey, bucketName string, useSSL bool, fallback StorageInterface) (*S3Storage, error) {
+// NewS3Storage creates a new S3 storage instance with fallback
+func NewS3Storage(endpoint, accessKey, secretKey, bucketName string, useSSL bool, fallback StorageInterface) *S3Storage {
 	const workerPoolSize = 5
 	const operationsBuffer = 100
 	client, err := minio.New(endpoint, &minio.Options{
@@ -171,7 +172,7 @@ func NewS3Storage(endpoint, accessKey, secretKey, bucketName string, useSSL bool
 	})
 	if err != nil {
 		log.Printf("Warning: Failed to create S3 client: %v. Using fallback storage.", err)
-		return &S3Storage{fallback: fallback}, nil
+		return &S3Storage{fallback: fallback}
 	}
 
 	ctx := context.Background()
@@ -181,14 +182,14 @@ func NewS3Storage(endpoint, accessKey, secretKey, bucketName string, useSSL bool
 	exists, err := client.BucketExists(ctx, bucketName)
 	if err != nil {
 		log.Printf("Warning: S3 bucket check failed - %v. Using fallback storage.", err)
-		return &S3Storage{fallback: fallback}, nil
+		return &S3Storage{fallback: fallback}
 	}
 
 	if !exists {
 		err = client.MakeBucket(ctx, bucketName, minio.MakeBucketOptions{})
 		if err != nil {
 			log.Printf("Warning: Failed to create bucket %s: %v. Using fallback storage.", bucketName, err)
-			return &S3Storage{fallback: fallback}, nil
+			return &S3Storage{fallback: fallback}
 		}
 		log.Printf("Created S3 bucket: %s", bucketName)
 	} else {
@@ -212,7 +213,7 @@ func NewS3Storage(endpoint, accessKey, secretKey, bucketName string, useSSL bool
 		go storage.asyncWorker()
 	}
 
-	return storage, nil
+	return storage
 }
 
 // asyncWorker processes storage operations asynchronously
@@ -591,7 +592,7 @@ func (s *LocalFileStorage) Store(datasetID string, data DatasetData) error {
 	}
 
 	// Write to file
-	if err := os.WriteFile(filename, compressedData, 0600); err != nil {
+	if err := os.WriteFile(filename, compressedData, 0o600); err != nil {
 		RecordError(ctx, err, "Failed to write dataset file")
 		return fmt.Errorf("failed to write dataset file: %w", err)
 	}
@@ -939,24 +940,7 @@ func InitializeStorage() StorageInterface {
 	if bucketName == "" {
 		bucketName = "v2fmdash"
 	}
-	s3Storage, err := NewS3Storage(s3Endpoint, accessKey, secretKey, bucketName, useSSL, inMemory)
-	if err != nil {
-		log.Printf("Failed to initialize S3 storage: %v. Using hybrid storage (in-memory + local file fallback).", err)
-
-		// Fallback to hybrid storage if S3 fails
-		datasetDir := os.Getenv("DATASETS_DIR")
-		if datasetDir == "" {
-			datasetDir = "./datasets"
-		}
-
-		hybrid, hybridErr := NewHybridStorage(datasetDir)
-		if hybridErr != nil {
-			log.Printf("Failed to initialize hybrid storage: %v. Falling back to in-memory only.", hybridErr)
-			return inMemory
-		}
-
-		return hybrid
-	}
+	s3Storage := NewS3Storage(s3Endpoint, accessKey, secretKey, bucketName, useSSL, inMemory)
 
 	log.Println("Initialized S3 storage with in-memory fallback")
 	return s3Storage

@@ -32,7 +32,7 @@ var (
 func initOTel() func(context.Context) error {
 	var secureOption otlptracegrpc.Option
 
-	if strings.ToLower(insecure) == "false" || insecure == "0" || strings.ToLower(insecure) == "f" {
+	if strings.EqualFold(insecure, "false") || insecure == "0" || strings.EqualFold(insecure, "f") {
 		secureOption = otlptracegrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
 	} else {
 		secureOption = otlptracegrpc.WithInsecure()
@@ -75,7 +75,7 @@ func initOTel() func(context.Context) error {
 
 	// Initialize metrics
 	var metricSecureOption otlpmetricgrpc.Option
-	if strings.ToLower(insecure) == "false" || insecure == "0" || strings.ToLower(insecure) == "f" {
+	if strings.EqualFold(insecure, "false") || insecure == "0" || strings.EqualFold(insecure, "f") {
 		metricSecureOption = otlpmetricgrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
 	} else {
 		metricSecureOption = otlpmetricgrpc.WithInsecure()
@@ -99,7 +99,7 @@ func initOTel() func(context.Context) error {
 
 	// Initialize logs
 	var logSecureOption otlploggrpc.Option
-	if strings.ToLower(insecure) == "false" || insecure == "0" || strings.ToLower(insecure) == "f" {
+	if strings.EqualFold(insecure, "false") || insecure == "0" || strings.EqualFold(insecure, "f") {
 		logSecureOption = otlploggrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
 	} else {
 		logSecureOption = otlploggrpc.WithInsecure()

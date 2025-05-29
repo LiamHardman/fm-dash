@@ -377,7 +377,8 @@ func EnhancePlayerWithCalculations(player *Player) {
 		muRoleSpecificOverallWeights.RUnlock()
 	}
 
-	if shouldUseFallback {
+	switch {
+	case shouldUseFallback:
 		muRoleSpecificOverallWeights.RLock()
 		fallbackWeights := roleSpecificOverallWeights
 		muRoleSpecificOverallWeights.RUnlock()
@@ -388,6 +389,7 @@ func EnhancePlayerWithCalculations(player *Player) {
 			weights map[string]int
 		})
 		matchingRoles = matchingRoles[:0] // Reset length but keep capacity
+		//nolint:staticcheck // SA6002: slice type is appropriate for sync.Pool
 		defer roleSlicePool.Put(matchingRoles)
 
 		// Collect all matching roles first (avoid redundant string operations)
@@ -423,7 +425,7 @@ func EnhancePlayerWithCalculations(player *Player) {
 			log.Printf("Fallback Warning: Player '%s' with ShortPositions %v found no matching roles in fallback roleSpecificOverallWeights. MaxRoleBasedOverall will be 0.", player.Name, player.ShortPositions)
 		}
 
-	} else if len(player.ShortPositions) > 0 {
+	case len(player.ShortPositions) > 0:
 		foundAnyRoleMatch := false
 
 		// Get allApplicableRoles slice from pool
@@ -432,6 +434,7 @@ func EnhancePlayerWithCalculations(player *Player) {
 			weights map[string]int
 		})
 		allApplicableRoles = allApplicableRoles[:0] // Reset length but keep capacity
+		//nolint:staticcheck // SA6002: slice type is appropriate for sync.Pool
 		defer roleSlicePool.Put(allApplicableRoles)
 
 		// Collect all applicable roles from all positions in one pass
@@ -462,7 +465,7 @@ func EnhancePlayerWithCalculations(player *Player) {
 		if !foundAnyRoleMatch && len(player.ShortPositions) > 0 {
 			log.Printf("Warning: Player '%s' with ShortPositions %v found no matching roles in precomputedRoleWeights. MaxRoleBasedOverall will be 0.", player.Name, player.ShortPositions)
 		}
-	} else {
+	default:
 		// This case means player has no short positions, so maxRoleBasedOverall will naturally be 0.
 		// Log only if it's unexpected or for debugging.
 		// log.Printf("Player '%s' has no ShortPositions. MaxRoleBasedOverall will be 0.", player.Name)
@@ -493,13 +496,14 @@ func EnhancePlayerWithCalculations(player *Player) {
 			}
 		}
 
-		if playerIsAttacker {
+		switch {
+		case playerIsAttacker:
 			selectedCategoryWeights = attackerFifaCategoryWeights // from config.go
-		} else if playerIsMidfielder {
+		case playerIsMidfielder:
 			selectedCategoryWeights = midfielderFifaCategoryWeights // from config.go
-		} else if playerIsDefender {
+		case playerIsDefender:
 			selectedCategoryWeights = defenderFifaCategoryWeights // from config.go
-		} else {
+		default:
 			selectedCategoryWeights = fifaCategoryOverallWeights // from config.go
 			if len(player.PositionGroups) > 0 {                  // Log only if player has positions but doesn't fit main groups
 				log.Printf("Player %s (%v) using GENERIC category weights for blended overall.", player.Name, player.PositionGroups)

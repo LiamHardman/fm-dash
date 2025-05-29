@@ -85,27 +85,27 @@ func (s *SearchService) searchPlayers(players []Player, query string) []SearchRe
 	var results []SearchResult
 	lowerQuery := strings.ToLower(query)
 
-	for _, player := range players {
-		relevance := s.calculatePlayerRelevance(player, lowerQuery)
+	for i := range players {
+		relevance := s.calculatePlayerRelevance(&players[i], lowerQuery)
 		if relevance > 0 {
 			// Use the player's UID as the ID since it's the unique identifier
-			playerID := player.UID
+			playerID := players[i].UID
 			if playerID == "" {
 				// Fallback to composite ID if UID is somehow missing
-				playerID = fmt.Sprintf("player_%s_%s_%s_%s",
-					strings.ReplaceAll(player.Name, " ", "_"),
-					strings.ReplaceAll(player.Club, " ", "_"),
-					player.Age,
-					strings.ReplaceAll(player.Position, " ", "_"))
+				playerID = fmt.Sprintf("player_%s_%s_%d_%s",
+					strings.ReplaceAll(players[i].Name, " ", "_"),
+					strings.ReplaceAll(players[i].Club, " ", "_"),
+					players[i].Age,
+					strings.ReplaceAll(players[i].Position, " ", "_"))
 			}
 
 			result := SearchResult{
 				Type:      "player",
 				ID:        playerID,
-				Name:      player.Name,
-				SubText:   fmt.Sprintf("%s - %s (%d OVR)", player.Position, player.Club, player.Overall),
-				Overall:   player.Overall,
-				Data:      player,
+				Name:      players[i].Name,
+				SubText:   fmt.Sprintf("%s - %s (%d OVR)", players[i].Position, players[i].Club, players[i].Overall),
+				Overall:   players[i].Overall,
+				Data:      players[i],
 				Relevance: relevance,
 			}
 			results = append(results, result)
@@ -121,9 +121,9 @@ func (s *SearchService) searchTeams(players []Player, query string) []SearchResu
 	teamMap := make(map[string][]Player)
 
 	// Group players by club
-	for _, player := range players {
-		if player.Club != "" {
-			teamMap[player.Club] = append(teamMap[player.Club], player)
+	for i := range players {
+		if players[i].Club != "" {
+			teamMap[players[i].Club] = append(teamMap[players[i].Club], players[i])
 		}
 	}
 
@@ -136,11 +136,11 @@ func (s *SearchService) searchTeams(players []Player, query string) []SearchResu
 			bestPlayer := ""
 			maxOverall := 0
 
-			for _, player := range teamPlayers {
-				totalOverall += player.Overall
-				if player.Overall > maxOverall {
-					maxOverall = player.Overall
-					bestPlayer = player.Name
+			for i := range teamPlayers {
+				totalOverall += teamPlayers[i].Overall
+				if teamPlayers[i].Overall > maxOverall {
+					maxOverall = teamPlayers[i].Overall
+					bestPlayer = teamPlayers[i].Name
 				}
 			}
 
@@ -175,9 +175,9 @@ func (s *SearchService) searchNationalities(players []Player, query string) []Se
 	nationalityMap := make(map[string][]Player)
 
 	// Group players by nationality
-	for _, player := range players {
-		if player.Nationality != "" {
-			nationalityMap[player.Nationality] = append(nationalityMap[player.Nationality], player)
+	for i := range players {
+		if players[i].Nationality != "" {
+			nationalityMap[players[i].Nationality] = append(nationalityMap[players[i].Nationality], players[i])
 		}
 	}
 
@@ -190,11 +190,11 @@ func (s *SearchService) searchNationalities(players []Player, query string) []Se
 			bestPlayer := ""
 			maxOverall := 0
 
-			for _, player := range nationalPlayers {
-				totalOverall += player.Overall
-				if player.Overall > maxOverall {
-					maxOverall = player.Overall
-					bestPlayer = player.Name
+			for i := range nationalPlayers {
+				totalOverall += nationalPlayers[i].Overall
+				if nationalPlayers[i].Overall > maxOverall {
+					maxOverall = nationalPlayers[i].Overall
+					bestPlayer = nationalPlayers[i].Name
 				}
 			}
 
@@ -217,7 +217,7 @@ func (s *SearchService) searchNationalities(players []Player, query string) []Se
 }
 
 // calculatePlayerRelevance calculates how relevant a player is to the search query
-func (s *SearchService) calculatePlayerRelevance(player Player, lowerQuery string) float64 {
+func (s *SearchService) calculatePlayerRelevance(player *Player, lowerQuery string) float64 {
 	lowerName := strings.ToLower(player.Name)
 	lowerClub := strings.ToLower(player.Club)
 	lowerPosition := strings.ToLower(player.Position)
@@ -225,12 +225,13 @@ func (s *SearchService) calculatePlayerRelevance(player Player, lowerQuery strin
 
 	var relevance float64
 
-	// Exact name match gets highest score
-	if lowerName == lowerQuery {
+	// Use switch statement instead of if-else chain
+	switch {
+	case lowerName == lowerQuery:
 		relevance += 100.0
-	} else if strings.HasPrefix(lowerName, lowerQuery) {
+	case strings.HasPrefix(lowerName, lowerQuery):
 		relevance += 80.0
-	} else if strings.Contains(lowerName, lowerQuery) {
+	case strings.Contains(lowerName, lowerQuery):
 		relevance += 60.0
 	}
 
@@ -261,13 +262,14 @@ func (s *SearchService) calculatePlayerRelevance(player Player, lowerQuery strin
 func (s *SearchService) calculateStringRelevance(text, query string) float64 {
 	lowerText := strings.ToLower(text)
 
-	if lowerText == query {
+	switch {
+	case lowerText == query:
 		return 100.0
-	} else if strings.HasPrefix(lowerText, query) {
+	case strings.HasPrefix(lowerText, query):
 		return 80.0
-	} else if strings.Contains(lowerText, query) {
+	case strings.Contains(lowerText, query):
 		return 60.0
+	default:
+		return 0.0
 	}
-
-	return 0.0
 }

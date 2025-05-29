@@ -101,40 +101,34 @@ func (p *PlayerProcessor) worker(workerID int) {
 
 // ProcessPlayersAsync processes a slice of players concurrently
 func (p *PlayerProcessor) ProcessPlayersAsync(players []Player) <-chan Player {
-	resultCh := make(chan Player, len(players))
+	p.inputCh = make(chan Player, p.config.BufferSize)
+	p.outputCh = make(chan Player, p.config.BufferSize)
 
+	// Start workers
+	for i := 0; i < p.config.WorkerCount; i++ {
+		p.wg.Add(1)
+		go p.worker(i)
+	}
+
+	// Send players to input channel in a separate goroutine
 	go func() {
-		defer close(resultCh)
-
-		// Send all players to workers
-		go func() {
-			defer close(p.inputCh)
-			for _, player := range players {
-				select {
-				case p.inputCh <- player:
-				case <-p.ctx.Done():
-					return
-				}
-			}
-		}()
-
-		// Collect results
-		processedCount := 0
-		for processedCount < len(players) {
+		defer close(p.inputCh)
+		for i := range players {
 			select {
-			case player := <-p.outputCh:
-				resultCh <- player
-				processedCount++
-			case err := <-p.errorCh:
-				// Log error but continue processing
-				RecordError(p.ctx, err, "Player processing error")
+			case p.inputCh <- players[i]:
 			case <-p.ctx.Done():
 				return
 			}
 		}
 	}()
 
-	return resultCh
+	// Close output channel when all workers are done
+	go func() {
+		p.wg.Wait()
+		close(p.outputCh)
+	}()
+
+	return p.outputCh
 }
 
 // ProcessPlayersBatch processes players in batches for memory efficiency
@@ -268,10 +262,12 @@ func (p *ConcurrentLeagueProcessor) ProcessLeaguesAsync(ctx context.Context, pla
 
 	// Group players by division
 	divisionMap := make(map[string][]Player)
-	for _, player := range players {
-		if player.Division != "" {
-			divisionMap[player.Division] = append(divisionMap[player.Division], player)
+	for i := range players {
+		division := players[i].Division
+		if division == "" {
+			division = "Unknown"
 		}
+		divisionMap[division] = append(divisionMap[division], players[i])
 	}
 
 	SetSpanAttributes(ctx, attribute.Int("divisions.count", len(divisionMap)))
@@ -334,9 +330,9 @@ func (p *ConcurrentLeagueProcessor) processLeagueSync(divisionName string, divis
 
 	// Group players by team within this division
 	teamMap := make(map[string][]Player)
-	for _, player := range divisionPlayers {
-		if player.Club != "" {
-			teamMap[player.Club] = append(teamMap[player.Club], player)
+	for i := range divisionPlayers {
+		if divisionPlayers[i].Club != "" {
+			teamMap[divisionPlayers[i].Club] = append(teamMap[divisionPlayers[i].Club], divisionPlayers[i])
 		}
 	}
 
@@ -510,10 +506,10 @@ func (f *AsyncPlayerFilter) FilterPlayersAsync(ctx context.Context, players []Pl
 func (f *AsyncPlayerFilter) filterPlayersSync(players []Player, filter PlayerFilter) []Player {
 	var result []Player
 
-	for _, player := range players {
-		if f.matchesFilter(player, filter) {
+	for i := range players {
+		if f.matchesFilter(&players[i], filter) {
 			// Apply role-specific overall if role filter is active
-			playerCopy := player
+			playerCopy := players[i]
 			if filter.Role != "" {
 				for _, roleOverall := range playerCopy.RoleSpecificOveralls {
 					if roleOverall.RoleName == filter.Role {
@@ -530,7 +526,7 @@ func (f *AsyncPlayerFilter) filterPlayersSync(players []Player, filter PlayerFil
 }
 
 // matchesFilter checks if a player matches the filter criteria
-func (f *AsyncPlayerFilter) matchesFilter(player Player, filter PlayerFilter) bool {
+func (f *AsyncPlayerFilter) matchesFilter(player *Player, filter PlayerFilter) bool {
 	// Position filter
 	if filter.Position != "" {
 		canPlayPosition := false
