@@ -1268,7 +1268,48 @@ export default {
         }, {
             maxSize: 1000,
             keyGenerator: (player, fieldKey, columnName) => {
-                return `gen${cacheGeneration.value}-${player.name}-${fieldKey}-${columnName || ''}`;
+                // Try to use the player's UID for cache key
+                let playerUID = player.UID || player.uid;
+                
+                // Enhanced debugging to understand UID field issues
+                if (!playerUID) {
+                    // Check if this is one of the first few players to avoid spam
+                    const isFirstFewPlayers = props.players.indexOf(player) < 3;
+                    if (isFirstFewPlayers) {
+                        console.log('Player missing UID:', player.name);
+                        console.log('Available fields:', Object.keys(player));
+                        console.log('UID field check:', {
+                            'player.UID': player.UID,
+                            'player.uid': player.uid,
+                            'player.Uid': player.Uid,
+                            'player.id': player.id,
+                            'player.ID': player.ID,
+                            'player.playerId': player.playerId,
+                            'player.player_id': player.player_id
+                        });
+                        
+                        // Check if there's any field that looks like an ID
+                        const possibleIdFields = Object.keys(player).filter(key => 
+                            key.toLowerCase().includes('id') || 
+                            key.toLowerCase().includes('uid') ||
+                            key.toLowerCase() === 'unique'
+                        );
+                        console.log('Possible ID fields found:', possibleIdFields);
+                        
+                        if (possibleIdFields.length > 0) {
+                            possibleIdFields.forEach(field => {
+                                console.log(`${field}:`, player[field]);
+                            });
+                        }
+                    }
+                }
+                
+                // If no UID available or UID is empty, create a composite unique key
+                if (!playerUID || playerUID === '') {
+                    playerUID = `${player.name || 'unknown'}-${player.club || 'unknown'}-${player.age || 'unknown'}-${player.position || 'unknown'}`;
+                }
+                
+                return `gen${cacheGeneration.value}-${playerUID}-${fieldKey}-${columnName || ''}`;
             },
             cacheKey: 'playerValue'
         });

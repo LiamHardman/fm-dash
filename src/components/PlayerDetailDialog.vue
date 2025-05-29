@@ -1676,8 +1676,15 @@ export default defineComponent({
             const percentilesForGroup = props.player.performancePercentiles[groupKey];
             if (!percentilesForGroup) return {};
 
-            // Create cache key based on player ID and group
-            const cacheKey = `${props.player.id || 'unknown'}-${groupKey}`;
+            // Create cache key based on player UID and group
+            let playerUID = props.player.UID || props.player.uid;
+            
+            // If no UID available or UID is empty, create a composite unique key
+            if (!playerUID || playerUID === '') {
+                playerUID = `${props.player.name || 'unknown'}-${props.player.club || 'unknown'}-${props.player.age || 'unknown'}-${props.player.position || 'unknown'}`;
+            }
+            
+            const cacheKey = `${playerUID}-${groupKey}`;
             
             // Return cached result if available
             if (performanceStatsCache.has(cacheKey)) {

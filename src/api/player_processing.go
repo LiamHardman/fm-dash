@@ -10,6 +10,14 @@ import (
 	"sync"
 )
 
+// min returns the smaller of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 // Memory pools for reducing allocations during role calculations
 var (
 	roleSlicePool = sync.Pool{
@@ -55,6 +63,13 @@ func parseCellsToPlayer(cells []string, headers []string) (Player, error) {
 	}
 	foundName := false
 
+	// Debug logging to see what headers we're processing
+	isFirstPlayer := cells[0] != "" && len(cells) > 0 // Simple check for first meaningful row
+	if isFirstPlayer {
+		log.Printf("DEBUG: Processing headers: %v", headers)
+		log.Printf("DEBUG: Processing first player cells (first 10): %v", cells[:min(len(cells), 10)])
+	}
+
 	for i, headerNameClean := range headers {
 		cellValue := ""
 		if i < len(cells) { // Should always be true due to padding
@@ -64,6 +79,12 @@ func parseCellsToPlayer(cells []string, headers []string) (Player, error) {
 		isAnAttributeField := true // Assume it's an attribute unless handled otherwise
 
 		switch headerNameClean {
+		case "UID", "uid", "Uid", "ID", "id", "Id", "Player ID", "PlayerId", "player_id", "unique_id", "UniqueId":
+			player.UID = cellValue
+			isAnAttributeField = false
+			if isFirstPlayer {
+				log.Printf("DEBUG: Found UID field '%s' with value: %s", headerNameClean, cellValue)
+			}
 		case "Name":
 			player.Name = cellValue
 			if cellValue != "" {
@@ -157,6 +178,11 @@ func parseCellsToPlayer(cells []string, headers []string) (Player, error) {
 			return Player{}, errors.New("skipped row: 'Name' field is missing or empty, but other data present. First few cells: " + strings.Join(GetFirstNCells(cells, 5), ", "))
 		}
 		return Player{}, errors.New("skipped row: 'Name' field missing and row appears empty or is likely a non-player row (e.g., header repetition, spacer)")
+	}
+
+	// Debug logging for first few players to see UID assignment
+	if isFirstPlayer {
+		log.Printf("DEBUG: Finished parsing player '%s' with UID: '%s'", player.Name, player.UID)
 	}
 
 	return player, nil

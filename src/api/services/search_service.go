@@ -5,8 +5,8 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 	"sort"
+	"strings"
 )
 
 // SearchResult represents a search result item
@@ -88,9 +88,20 @@ func (s *SearchService) searchPlayers(players []Player, query string) []SearchRe
 	for _, player := range players {
 		relevance := s.calculatePlayerRelevance(player, lowerQuery)
 		if relevance > 0 {
+			// Use the player's UID as the ID since it's the unique identifier
+			playerID := player.UID
+			if playerID == "" {
+				// Fallback to composite ID if UID is somehow missing
+				playerID = fmt.Sprintf("player_%s_%s_%s_%s", 
+					strings.ReplaceAll(player.Name, " ", "_"),
+					strings.ReplaceAll(player.Club, " ", "_"),
+					player.Age,
+					strings.ReplaceAll(player.Position, " ", "_"))
+			}
+			
 			result := SearchResult{
 				Type:      "player",
-				ID:        player.ID,
+				ID:        playerID,
 				Name:      player.Name,
 				SubText:   fmt.Sprintf("%s - %s (%d OVR)", player.Position, player.Club, player.Overall),
 				Overall:   player.Overall,

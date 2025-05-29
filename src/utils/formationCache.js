@@ -9,10 +9,26 @@ class FormationCache {
     generateKey(players, formationType = 'team') {
         if (!players || !Array.isArray(players)) return null;
         
-        // Create a hash based on player names and their key attributes
+        // Create a hash based on player UIDs and their key attributes
         const playerHash = players
-            .sort((a, b) => a.name.localeCompare(b.name)) // Ensure consistent ordering
-            .map(p => `${p.name}-${p.Overall || 0}-${(p.shortPositions || []).join(',')}`)
+            .sort((a, b) => {
+                // Create unique identifiers for sorting
+                const getUniqueId = (p) => {
+                    let id = p.UID || p.uid;
+                    if (!id || id === '') {
+                        id = `${p.name || 'unknown'}-${p.club || 'unknown'}-${p.age || 'unknown'}-${p.position || 'unknown'}`;
+                    }
+                    return id;
+                };
+                return getUniqueId(a).localeCompare(getUniqueId(b));
+            })
+            .map(p => {
+                let playerUID = p.UID || p.uid;
+                if (!playerUID || playerUID === '') {
+                    playerUID = `${p.name || 'unknown'}-${p.club || 'unknown'}-${p.age || 'unknown'}-${p.position || 'unknown'}`;
+                }
+                return `${playerUID}-${p.Overall || 0}-${(p.shortPositions || []).join(',')}`;
+            })
             .join('|');
         
         return `${formationType}-${this.simpleHash(playerHash)}`;
