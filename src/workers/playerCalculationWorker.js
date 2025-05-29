@@ -96,6 +96,43 @@ function getPositionIndex(positionString) {
 }
 
 /**
+ * Optimized fast sorting for large datasets
+ * Uses native Array.sort() for maximum performance in Web Worker
+ */
+function fastSortPlayers(players, fieldKey, direction, sortField, isGoalkeeperView) {
+    console.log(`Web Worker: Fast sorting ${players.length} players by ${fieldKey}`);
+    
+    // Use native sort for maximum speed - no chunking needed in Web Worker
+    return players.sort((a, b) => {
+        let vA = getPlayerValue(a, fieldKey, sortField, isGoalkeeperView);
+        let vB = getPlayerValue(b, fieldKey, sortField, isGoalkeeperView);
+        const aIsNull = vA === null || vA === undefined;
+        const bIsNull = vB === null || vB === undefined;
+
+        if (aIsNull && bIsNull) return 0;
+        if (aIsNull) return direction === "asc" ? 1 : -1;
+        if (bIsNull) return direction === "asc" ? -1 : 1;
+
+        if (fieldKey === "position") {
+            const indexA = getPositionIndex(vA);
+            const indexB = getPositionIndex(vB);
+            return direction === "asc" ? indexA - indexB : indexB - indexA;
+        }
+        if (typeof vA === "number" && typeof vB === "number") {
+            return direction === "asc" ? vA - vB : vB - vA;
+        }
+        if (typeof vA === "string" && typeof vB === "string") {
+            vA = vA.toLowerCase();
+            vB = vB.toLowerCase();
+            if (vA < vB) return direction === "asc" ? -1 : 1;
+            if (vA > vB) return direction === "asc" ? 1 : -1;
+            return 0;
+        }
+        return 0;
+    });
+}
+
+/**
  * Custom sort function for players
  */
 function customSortPlayers(players, fieldKey, direction, sortField, isGoalkeeperView) {
@@ -244,6 +281,16 @@ self.onmessage = function(e) {
         switch (type) {
             case 'SORT_PLAYERS':
                 result = customSortPlayers(
+                    data.players,
+                    data.fieldKey,
+                    data.direction,
+                    data.sortField,
+                    data.isGoalkeeperView
+                );
+                break;
+                
+            case 'FAST_SORT_PLAYERS':
+                result = fastSortPlayers(
                     data.players,
                     data.fieldKey,
                     data.direction,

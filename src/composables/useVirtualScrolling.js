@@ -131,24 +131,84 @@ export function useOptimizedSorting() {
     }
 
     // Chunked sorting for large datasets
-    const sortLargeArray = async (array, field, direction, customSortFn = null, chunkSize = 1000) => {
-        if (array.length <= chunkSize) {
+    const sortLargeArray = async (array, field, direction, customSortFn = null, chunkSize = 2000) => {
+        if (array.length <= 500) { // Quick sync sort for smaller arrays
             return array.sort(createSortFunction(field, direction, customSortFn))
         }
 
-        // For very large arrays, use a more sophisticated approach
+        // For large arrays, use optimized chunked sorting with larger chunks
         const sortFn = createSortFunction(field, direction, customSortFn)
         
-        // Use native sort but yield control periodically for responsiveness
-        return new Promise((resolve) => {
-            const sorted = [...array]
+        // Use larger chunks with less frequent yielding for speed
+        return await fastChunkedSort([...array], sortFn, Math.min(chunkSize, 2000))
+    }
+
+    // Fast chunked sorting with optimized yielding
+    const fastChunkedSort = async (array, sortFn, chunkSize = 2000) => {
+        if (array.length <= chunkSize) {
+            return array.sort(sortFn)
+        }
+
+        // Split into larger chunks for efficiency
+        const chunks = []
+        for (let i = 0; i < array.length; i += chunkSize) {
+            const chunk = array.slice(i, i + chunkSize)
+            chunks.push(chunk.sort(sortFn))
             
-            // Use setTimeout to yield control to the browser
-            setTimeout(() => {
-                sorted.sort(sortFn)
-                resolve(sorted)
-            }, 0)
-        })
+            // Only yield every few chunks to maintain speed
+            if (chunks.length % 3 === 0) {
+                await new Promise(resolve => setTimeout(resolve, 0))
+            }
+        }
+
+        // Fast merge with minimal yielding
+        return await fastMergeChunks(chunks, sortFn)
+    }
+
+    // Optimized merging with reduced yielding
+    const fastMergeChunks = async (chunks, sortFn) => {
+        while (chunks.length > 1) {
+            const mergedChunks = []
+            
+            for (let i = 0; i < chunks.length; i += 2) {
+                if (i + 1 < chunks.length) {
+                    const merged = fastMergeTwoArrays(chunks[i], chunks[i + 1], sortFn)
+                    mergedChunks.push(merged)
+                } else {
+                    mergedChunks.push(chunks[i])
+                }
+            }
+            
+            chunks = mergedChunks
+            
+            // Only yield between major merge iterations
+            if (chunks.length > 1) {
+                await new Promise(resolve => setTimeout(resolve, 0))
+            }
+        }
+
+        return chunks[0]
+    }
+
+    // Fast synchronous merge without yielding (for speed)
+    const fastMergeTwoArrays = (arr1, arr2, sortFn) => {
+        const result = []
+        let i = 0, j = 0
+
+        // Fast merge without yielding - this is the critical path
+        while (i < arr1.length && j < arr2.length) {
+            if (sortFn(arr1[i], arr2[j]) <= 0) {
+                result.push(arr1[i])
+                i++
+            } else {
+                result.push(arr2[j])
+                j++
+            }
+        }
+
+        // Add remaining elements
+        result.push(...arr1.slice(i), ...arr2.slice(j))
+        return result
     }
 
     // Clear sort cache when needed

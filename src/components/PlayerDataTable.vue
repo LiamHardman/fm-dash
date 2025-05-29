@@ -48,7 +48,7 @@
             <q-table
                 :rows="sortedPlayers"
                 :columns="currentColumns"
-                :loading="loading"
+                :loading="loading || isAsyncSorting"
                 row-key="name"
                 :pagination="pagination"
                 @update:pagination="onPaginationUpdate"
@@ -59,7 +59,10 @@
                 flat
                 bordered
                 class="player-q-table"
-                :class="qInstance.dark.isActive ? 'q-table--dark' : ''"
+                :class="[
+                    qInstance.dark.isActive ? 'q-table--dark' : '',
+                    { 'table-sorting': isAsyncSorting }
+                ]"
                 table-header-class="player-table-header"
                 dense
                 virtual-scroll
@@ -85,11 +88,11 @@
                                 : 'text-grey-8',
                             col.headerClasses,
                             { 'active-sort': sortField === col.name },
-                            { 'cursor-pointer': !isAsyncSorting },
-                            { 'cursor-not-allowed opacity-60': isAsyncSorting }
+                            { 'cursor-pointer': true },
+                            { 'sorting-in-progress': isAsyncSorting && sortField === col.name }
                         ]"
                         :style="col.headerStyle"
-                        @click="!isAsyncSorting && sortTable(col.name)"
+                        @click="sortTable(col.name)"
                     >
                         <span
                             v-if="
@@ -103,7 +106,7 @@
                             {{ col.label }}
                         </span>
                         <q-icon
-                            v-if="sortField === col.name"
+                            v-if="sortField === col.name && !isAsyncSorting"
                             :name="
                                 sortDirection === 'asc'
                                     ? 'arrow_upward'
@@ -111,6 +114,13 @@
                             "
                             size="xs"
                             class="q-ml-xs sort-icon"
+                        />
+                        <!-- Subtle sorting indicator -->
+                        <q-spinner-dots
+                            v-if="sortField === col.name && isAsyncSorting"
+                            size="xs"
+                            color="primary"
+                            class="q-ml-xs sorting-spinner"
                         />
                     </q-th>
                 </q-tr>
@@ -122,6 +132,7 @@
                     @click="onRowClick(props.row)"
                     @contextmenu="onRightClick($event, props.row)"
                     class="cursor-pointer table-row-hover modern-table-row"
+                    :class="{ 'row-shimmer': isAsyncSorting }"
                 >
                     <q-td
                         v-for="col in props.cols"
@@ -264,25 +275,6 @@
                 </span>
             </template>
         </q-table>
-
-        <!-- Async Sorting Overlay -->
-        <div
-            v-if="isAsyncSorting"
-            class="absolute-full flex flex-center bg-black bg-opacity-30"
-            style="z-index: 1000; backdrop-filter: blur(2px);"
-        >
-            <q-card class="q-pa-md">
-                <div class="row items-center q-gutter-md">
-                    <q-spinner-dots size="2em" color="primary" />
-                    <div>
-                        <div class="text-subtitle2">Sorting large dataset...</div>
-                        <div class="text-caption text-grey-6">
-                            Processing {{ totalSortedCount }} players
-                        </div>
-                    </div>
-                </div>
-            </q-card>
-        </div>
     </div>
 
         <!-- Context Menu -->
@@ -377,6 +369,7 @@ export default {
         const totalSortedCount = ref(0);
         const isAsyncSorting = ref(false);
         const isSliced = ref(false);
+        const currentSortController = ref(null); // For cancelling sort operations
 
         const pagination = ref({
             sortBy: "Overall",
@@ -840,7 +833,7 @@ export default {
             };
 
             // For small arrays, use synchronous sorting
-            if (props.players.length <= 1000) {
+            if (props.players.length <= 500) {
                 const playersToSort = [...props.players];
                 const fullSortedList = playersToSort.sort((a, b) => customSortFn(a, b, fieldKey, direction));
                 
@@ -901,21 +894,61 @@ export default {
                 return;
             }
             
+            // Cancel any previous sort operation
+            if (currentSortController.value) {
+                currentSortController.value.cancelled = true;
+            }
+            
+            // Create new controller for this sort operation
+            const sortController = { cancelled: false };
+            currentSortController.value = sortController;
+            
             isAsyncSorting.value = true;
             
             try {
                 let fullSortedList;
+                const playerCount = props.players.length;
                 
-                // For now, always use optimized main thread sorting
-                // TODO: Re-enable web workers once they're fully tested
-                console.log('Using optimized main thread sorting for large dataset');
-                fullSortedList = await sortLargeArray(
-                    [...props.players], 
-                    fieldKey, 
-                    direction, 
-                    customSortFn,
-                    1000 // chunk size
-                );
+                // Tiered sorting strategy based on dataset size
+                if (playerCount >= 2000) {
+                    // Use Web Workers for large datasets (2000+)
+                    console.log(`Using Web Worker for large dataset: ${playerCount} players`);
+                    try {
+                        fullSortedList = await sortPlayersWorker(
+                            [...props.players],
+                            fieldKey,
+                            direction,
+                            sortField.value,
+                            props.isGoalkeeperView
+                        );
+                    } catch (workerError) {
+                        console.warn('Web Worker failed, falling back to main thread:', workerError);
+                        // Fallback to main thread if Web Worker fails
+                        fullSortedList = await sortLargeArray(
+                            [...props.players], 
+                            fieldKey, 
+                            direction, 
+                            customSortFn,
+                            2000
+                        );
+                    }
+                } else {
+                    // Use optimized main thread sorting for medium datasets (500-2000)
+                    console.log(`Using optimized main thread sorting for medium dataset: ${playerCount} players`);
+                    fullSortedList = await sortLargeArray(
+                        [...props.players], 
+                        fieldKey, 
+                        direction, 
+                        customSortFn,
+                        2000
+                    );
+                }
+
+                // Check if this sort was cancelled
+                if (sortController.cancelled) {
+                    console.log('Async sort was cancelled');
+                    return;
+                }
 
                 totalSortedCount.value = fullSortedList.length;
                 let result;
@@ -931,8 +964,24 @@ export default {
                 isSliced.value = sliced;
                 sortedPlayersCache.value = result;
                 lastSortKey.value = sortKey;
+                
+                console.log(`Async sort completed successfully for ${fullSortedList.length} players`);
             } catch (error) {
+                if (sortController.cancelled) {
+                    console.log('Async sort was cancelled during execution');
+                    return;
+                }
+                
                 console.error('Error during async sorting:', error.message || error);
+                
+                // Show user-friendly error notification
+                $q.notify({
+                    type: 'warning',
+                    message: 'Sorting was interrupted. Showing unsorted data.',
+                    position: 'top',
+                    timeout: 3000,
+                });
+                
                 // Fallback to direct assignment if async sorting fails
                 const fallbackResult = [...props.players].slice(0, MAX_DISPLAY_PLAYERS);
                 sortedPlayersCache.value = fallbackResult;
@@ -940,8 +989,29 @@ export default {
                 isSliced.value = props.players.length > MAX_DISPLAY_PLAYERS;
                 lastSortKey.value = sortKey;
             } finally {
-                isAsyncSorting.value = false;
+                // Only clear the flag if this controller wasn't cancelled
+                if (!sortController.cancelled) {
+                    isAsyncSorting.value = false;
+                    currentSortController.value = null;
+                }
             }
+        };
+
+        // Cancel current async sort operation
+        const cancelAsyncSort = () => {
+            if (currentSortController.value) {
+                currentSortController.value.cancelled = true;
+                console.log('User cancelled async sort operation');
+            }
+            isAsyncSorting.value = false;
+            currentSortController.value = null;
+            
+            $q.notify({
+                type: 'info',
+                message: 'Sorting cancelled',
+                position: 'top',
+                timeout: 2000,
+            });
         };
 
         const pagesNumber = computed(() => {
@@ -1347,10 +1417,22 @@ export default {
 .player-q-table {
     width: 100%;
     table-layout: fixed; /* CHANGED: from auto to fixed */
+    transition: all 0.3s ease;
+
+    &.table-sorting {
+        .q-table__top,
+        .q-table__bottom {
+            opacity: 0.7;
+        }
+    }
 
     th .sort-icon {
         vertical-align: middle;
         margin-left: 4px;
+    }
+
+    .sorting-spinner {
+        animation: gentlePulse 1.5s infinite ease-in-out;
     }
 
     // Dark mode specific styles
@@ -1405,6 +1487,30 @@ export default {
         /* white-space: nowrap; // This is now handled by inline styles for specific columns */
         /* overflow: hidden; // This is now handled by inline styles for specific columns */
         /* text-overflow: ellipsis; // This is now handled by inline styles for specific columns */
+        
+        &.sorting-in-progress {
+            position: relative;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(25, 118, 210, 0.03) 50%, 
+                transparent 100%);
+            animation: subtleGlow 2s infinite ease-in-out;
+            
+            .body--dark & {
+                background: linear-gradient(90deg, 
+                    transparent 0%, 
+                    rgba(255, 255, 255, 0.02) 50%, 
+                    transparent 100%);
+            }
+        }
+        
+        &.active-sort {
+            background-color: rgba(25, 118, 210, 0.05);
+            
+            .body--dark & {
+                background-color: rgba(255, 255, 255, 0.05);
+            }
+        }
     }
 
     td {
@@ -1418,6 +1524,33 @@ export default {
 
     .table-cell-enhanced {
         font-size: 0.85rem;
+    }
+
+    // Subtle row shimmer during sorting
+    .row-shimmer {
+        position: relative;
+        
+        &::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(25, 118, 210, 0.02) 50%, 
+                transparent 100%);
+            animation: shimmer 3s infinite ease-in-out;
+            pointer-events: none;
+            
+            .body--dark & {
+                background: linear-gradient(90deg, 
+                    transparent 0%, 
+                    rgba(255, 255, 255, 0.015) 50%, 
+                    transparent 100%);
+            }
+        }
     }
 }
 
@@ -1615,6 +1748,44 @@ export default {
     .body--dark & {
         background: rgba(255, 255, 255, 0.02);
         box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+    }
+}
+
+@keyframes sortProgress {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+@keyframes gentlePulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 0.8;
+    }
+}
+
+@keyframes subtleGlow {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+@keyframes shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
     }
 }
 </style>

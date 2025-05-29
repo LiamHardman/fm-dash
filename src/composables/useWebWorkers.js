@@ -195,12 +195,13 @@ export function usePlayerCalculationWorker() {
     const sortPlayers = async (players, fieldKey, direction, sortField, isGoalkeeperView) => {
         ensureWorker()
         
-        // Fallback to main thread if no worker support or small dataset
-        if (workerInitializationFailed || !hasWorker('playerCalculation') || players.length < 100) {
+        // Use Web Worker for larger datasets (2000+) for better performance
+        if (workerInitializationFailed || !hasWorker('playerCalculation') || players.length < 2000) {
             return sortPlayersMainThread(players, fieldKey, direction, sortField, isGoalkeeperView)
         }
 
-        return executeTask('playerCalculation', 'SORT_PLAYERS', {
+        // Use the fast sort operation for large datasets
+        return executeTask('playerCalculation', 'FAST_SORT_PLAYERS', {
             players,
             fieldKey,
             direction,
