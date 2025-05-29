@@ -6,31 +6,30 @@ import (
 	"fmt"
 	"log"
 	"time"
-
-	"go.opentelemetry.io/otel/attribute"
 )
 
 // Player represents a football player with all their attributes
 type Player struct {
-	ID                     string                            `json:"id"`
-	Name                   string                            `json:"name"`
-	Age                    int                               `json:"age"`
-	Club                   string                            `json:"club"`
-	Position               string                            `json:"position"`
-	Overall                int                               `json:"overall"`
-	Potential              int                               `json:"potential"`
-	TransferValue          string                            `json:"transferValue"`
-	Salary                 string                            `json:"salary"`
-	Nationality            string                            `json:"nationality"`
-	Attributes             map[string]interface{}            `json:"attributes"`
-	NumericAttributes      map[string]int                    `json:"numericAttributes"`
-	PerformanceStats       map[string]string                 `json:"performanceStats"`
-	PerformanceStatsNumeric map[string]float64               `json:"performanceStatsNumeric"`
-	PerformancePercentiles map[string]map[string]float64     `json:"performancePercentiles"`
-	RoleSpecificOveralls   []RoleSpecificOverall             `json:"roleSpecificOveralls"`
-	ParsedPositions        []string                          `json:"parsedPositions"`
-	ShortPositions         []string                          `json:"shortPositions"`
-	PositionGroups         []string                          `json:"positionGroups"`
+	ID                      string                        `json:"id"`
+	UID                     string                        `json:"uid"` // Unique identifier for the player
+	Name                    string                        `json:"name"`
+	Age                     int                           `json:"age"`
+	Club                    string                        `json:"club"`
+	Position                string                        `json:"position"`
+	Overall                 int                           `json:"overall"`
+	Potential               int                           `json:"potential"`
+	TransferValue           string                        `json:"transferValue"`
+	Salary                  string                        `json:"salary"`
+	Nationality             string                        `json:"nationality"`
+	Attributes              map[string]interface{}        `json:"attributes"`
+	NumericAttributes       map[string]int                `json:"numericAttributes"`
+	PerformanceStats        map[string]string             `json:"performanceStats"`
+	PerformanceStatsNumeric map[string]float64            `json:"performanceStatsNumeric"`
+	PerformancePercentiles  map[string]map[string]float64 `json:"performancePercentiles"`
+	RoleSpecificOveralls    []RoleSpecificOverall         `json:"roleSpecificOveralls"`
+	ParsedPositions         []string                      `json:"parsedPositions"`
+	ShortPositions          []string                      `json:"shortPositions"`
+	PositionGroups          []string                      `json:"positionGroups"`
 }
 
 // RoleSpecificOverall represents a player's rating for a specific role
@@ -131,10 +130,10 @@ func (s *PlayerService) ProcessPlayerPercentiles(ctx context.Context, players []
 	// This would call the existing percentile calculation logic
 	// For now, this is a placeholder for the business logic
 	log.Printf("Processing percentiles for %d players", len(players))
-	
+
 	// TODO: Move the actual percentile calculation logic here
 	// CalculatePlayerPerformancePercentiles(players)
-	
+
 	return nil
 }
 
@@ -186,8 +185,8 @@ func (s *PlayerService) GetPlayerStatistics(ctx context.Context, players []Playe
 	}
 
 	stats := map[string]interface{}{
-		"total":           len(players),
-		"timestamp":       time.Now().Unix(),
+		"total":     len(players),
+		"timestamp": time.Now().Unix(),
 	}
 
 	// Calculate basic stats
@@ -199,11 +198,11 @@ func (s *PlayerService) GetPlayerStatistics(ctx context.Context, players []Playe
 
 	for _, player := range players {
 		totalOverall += player.Overall
-		
+
 		if player.Overall > maxOverall {
 			maxOverall = player.Overall
 		}
-		
+
 		if player.Overall < minOverall {
 			minOverall = player.Overall
 		}

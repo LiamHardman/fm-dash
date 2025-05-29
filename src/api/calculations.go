@@ -62,7 +62,7 @@ func CalculateFifaStatGo(playerNumericAttributes map[string]int, categoryName st
 // CalculateOverallForRoleGo calculates a player's suitability for a specific role.
 // playerNumericAttributes are 1-20. roleSpecificAttrWeights define importance.
 // The result is scaled by overallScalingFactor (e.g., 5.85 from config.go) and clamped to 0-99.
-func CalculateOverallForRoleGo(playerNumericAttributes map[string]int, roleSpecificAttrWeights map[string]int) int {
+func CalculateOverallForRoleGo(playerNumericAttributes, roleSpecificAttrWeights map[string]int) int {
 	if len(roleSpecificAttrWeights) == 0 {
 		return 0
 	}
@@ -81,7 +81,7 @@ func CalculateOverallForRoleGo(playerNumericAttributes map[string]int, roleSpeci
 			} else {
 				validValue = math.Max(1, math.Min(20, float64(attributeValue))) // Slow path - clamp
 			}
-			
+
 			weightFloat := float64(weightForAttribute)
 			weightedAttributeSum += validValue * weightFloat
 			totalApplicableWeightsSum += weightFloat

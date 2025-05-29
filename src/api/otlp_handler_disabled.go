@@ -17,7 +17,7 @@ func NewOTLPHandler(_ interface{}) *OTLPHandler {
 	handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
 	})
-	
+
 	return &OTLPHandler{
 		TextHandler: handler,
 	}

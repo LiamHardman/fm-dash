@@ -11,13 +11,13 @@ import (
 
 // SearchResult represents a search result item
 type SearchResult struct {
-	Type        string      `json:"type"`        // "player", "team", "league", "nation"
-	ID          string      `json:"id"`
-	Name        string      `json:"name"`
-	SubText     string      `json:"subText"`     // Additional context (position, league, etc.)
-	Overall     int         `json:"overall,omitempty"`
-	Data        interface{} `json:"data"`        // Full object data
-	Relevance   float64     `json:"relevance"`   // Search relevance score
+	Type      string      `json:"type"` // "player", "team", "league", "nation"
+	ID        string      `json:"id"`
+	Name      string      `json:"name"`
+	SubText   string      `json:"subText"` // Additional context (position, league, etc.)
+	Overall   int         `json:"overall,omitempty"`
+	Data      interface{} `json:"data"`      // Full object data
+	Relevance float64     `json:"relevance"` // Search relevance score
 }
 
 // SearchService handles search functionality
@@ -92,13 +92,13 @@ func (s *SearchService) searchPlayers(players []Player, query string) []SearchRe
 			playerID := player.UID
 			if playerID == "" {
 				// Fallback to composite ID if UID is somehow missing
-				playerID = fmt.Sprintf("player_%s_%s_%s_%s", 
+				playerID = fmt.Sprintf("player_%s_%s_%s_%s",
 					strings.ReplaceAll(player.Name, " ", "_"),
 					strings.ReplaceAll(player.Club, " ", "_"),
 					player.Age,
 					strings.ReplaceAll(player.Position, " ", "_"))
 			}
-			
+
 			result := SearchResult{
 				Type:      "player",
 				ID:        playerID,
@@ -260,7 +260,7 @@ func (s *SearchService) calculatePlayerRelevance(player Player, lowerQuery strin
 // calculateStringRelevance calculates relevance for simple string matching
 func (s *SearchService) calculateStringRelevance(text, query string) float64 {
 	lowerText := strings.ToLower(text)
-	
+
 	if lowerText == query {
 		return 100.0
 	} else if strings.HasPrefix(lowerText, query) {
@@ -268,6 +268,6 @@ func (s *SearchService) calculateStringRelevance(text, query string) float64 {
 	} else if strings.Contains(lowerText, query) {
 		return 60.0
 	}
-	
+
 	return 0.0
 }

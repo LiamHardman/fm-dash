@@ -4,14 +4,10 @@ package services
 import (
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"runtime"
 	"strings"
-	"sync"
 	"time"
-
-	"go.opentelemetry.io/otel/attribute"
 )
 
 // ProcessingService handles file processing and data transformation
@@ -21,19 +17,19 @@ type ProcessingService struct {
 
 // ProcessingResult contains the results of file processing
 type ProcessingResult struct {
-	DatasetID      string    `json:"datasetId"`
-	PlayersCount   int       `json:"playersCount"`
-	CurrencySymbol string    `json:"currencySymbol"`
+	DatasetID      string        `json:"datasetId"`
+	PlayersCount   int           `json:"playersCount"`
+	CurrencySymbol string        `json:"currencySymbol"`
 	ProcessingTime time.Duration `json:"processingTime"`
-	Errors         []string  `json:"errors,omitempty"`
+	Errors         []string      `json:"errors,omitempty"`
 }
 
 // ProcessingOptions configures how file processing should be performed
 type ProcessingOptions struct {
-	MaxWorkers     int
-	BufferSize     int
-	EnableMetrics  bool
-	EnableTracing  bool
+	MaxWorkers    int
+	BufferSize    int
+	EnableMetrics bool
+	EnableTracing bool
 }
 
 // NewProcessingService creates a new processing service
@@ -46,7 +42,7 @@ func NewProcessingService(playerService *PlayerService) *ProcessingService {
 // ProcessPlayerFile processes an uploaded player file
 func (s *ProcessingService) ProcessPlayerFile(ctx context.Context, fileContent []byte, filename string, options ProcessingOptions) (*ProcessingResult, error) {
 	startTime := time.Now()
-	
+
 	if len(fileContent) == 0 {
 		return nil, fmt.Errorf("file content is empty")
 	}
@@ -92,7 +88,7 @@ func (s *ProcessingService) ProcessPlayerFile(ctx context.Context, fileContent [
 	}()
 
 	processingTime := time.Since(startTime)
-	
+
 	result := &ProcessingResult{
 		DatasetID:      datasetID,
 		PlayersCount:   len(players),
@@ -112,9 +108,9 @@ func (s *ProcessingService) validateFileFormat(filename string, content []byte) 
 	}
 
 	// Check content starts with HTML
-	contentStr := string(content[:min(100, len(content))])
-	if !strings.Contains(strings.ToLower(contentStr), "<html") && 
-	   !strings.Contains(strings.ToLower(contentStr), "<!doctype") {
+	contentStr := string(content[:minInt(100, len(content))])
+	if !strings.Contains(strings.ToLower(contentStr), "<html") &&
+		!strings.Contains(strings.ToLower(contentStr), "<!doctype") {
 		return fmt.Errorf("file does not appear to be valid HTML")
 	}
 
@@ -125,22 +121,18 @@ func (s *ProcessingService) validateFileFormat(filename string, content []byte) 
 func (s *ProcessingService) parsePlayerData(ctx context.Context, content []byte, options ProcessingOptions) ([]Player, string, error) {
 	// This would integrate with the existing parsing logic
 	// For now, this is a placeholder that would call the actual parsing functions
-	
-	contentReader := strings.NewReader(string(content))
-	
-	// Setup channels for concurrent processing
-	rowCellsChan := make(chan []string, options.BufferSize)
-	resultsChan := make(chan PlayerParseResult, options.BufferSize)
-	var wg sync.WaitGroup
-	
+
+	// Setup for concurrent processing (placeholder for future implementation)
+	// When implementing, these would be used by the actual parsing functions
+
 	// This would call the existing ParseHTMLPlayerTable function
 	// ParseHTMLPlayerTable(contentReader, &headersSnapshot, rowCellsChan, options.MaxWorkers, resultsChan, &wg)
-	
+
 	// For now, return empty data to avoid compilation errors
 	// In a real implementation, this would process the actual HTML content
 	players := []Player{}
 	currencySymbol := "$"
-	
+
 	log.Printf("Parsed %d players from HTML content", len(players))
 	return players, currencySymbol, nil
 }
@@ -154,17 +146,17 @@ type PlayerParseResult struct {
 // processPercentilesAsync calculates percentiles in the background
 func (s *ProcessingService) processPercentilesAsync(datasetID string, players []Player, currencySymbol string) error {
 	log.Printf("Starting async percentile calculation for dataset %s", datasetID)
-	
+
 	// Calculate percentiles
 	if err := s.playerService.ProcessPlayerPercentiles(context.Background(), players); err != nil {
 		return fmt.Errorf("failed to process percentiles: %w", err)
 	}
-	
+
 	// Update stored dataset with percentiles
 	if err := s.playerService.StorePlayerData(context.Background(), datasetID, players, currencySymbol); err != nil {
 		return fmt.Errorf("failed to update dataset with percentiles: %w", err)
 	}
-	
+
 	log.Printf("Completed async percentile calculation for dataset %s", datasetID)
 	return nil
 }
@@ -174,14 +166,14 @@ func (s *ProcessingService) calculateOptimalBufferSize(numWorkers int, fileSize 
 	const baseBufferMultiplier = 10
 	const maxBufferSize = 1000
 	const minBufferSize = 20
-	
+
 	// Base calculation on number of workers
 	baseBuffer := numWorkers * baseBufferMultiplier
-	
+
 	// Adjust based on file size (larger files need bigger buffers)
 	sizeAdjustment := int(fileSize / (1024 * 1024)) // MB
 	adjustedBuffer := baseBuffer + sizeAdjustment
-	
+
 	// Ensure within reasonable bounds
 	if adjustedBuffer > maxBufferSize {
 		return maxBufferSize
@@ -189,7 +181,7 @@ func (s *ProcessingService) calculateOptimalBufferSize(numWorkers int, fileSize 
 	if adjustedBuffer < minBufferSize {
 		return minBufferSize
 	}
-	
+
 	return adjustedBuffer
 }
 
@@ -208,12 +200,12 @@ func (s *ProcessingService) GetProcessingStats(ctx context.Context) map[string]i
 		"supported_formats": []string{"html"},
 		"timestamp":         time.Now().Unix(),
 	}
-	
+
 	return stats
 }
 
 // Helper function for min calculation
-func min(a, b int) int {
+func minInt(a, b int) int {
 	if a < b {
 		return a
 	}

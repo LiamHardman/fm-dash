@@ -43,9 +43,9 @@ func GetMapKeysStringFloat(m map[string]float64) []string {
 }
 
 // Clamp ensures a value is within a min and max range.
-func Clamp(value, min, max int) int {
-	if value < min {
-		return min
+func Clamp(value, minVal, max int) int {
+	if value < minVal {
+		return minVal
 	}
 	if value > max {
 		return max

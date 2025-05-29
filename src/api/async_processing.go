@@ -43,7 +43,7 @@ type PlayerProcessor struct {
 // NewPlayerProcessor creates a new concurrent player processor
 func NewPlayerProcessor(config ProcessingConfig) *PlayerProcessor {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	processor := &PlayerProcessor{
 		config:   config,
 		inputCh:  make(chan Player, config.BufferSize),
@@ -52,47 +52,47 @@ func NewPlayerProcessor(config ProcessingConfig) *PlayerProcessor {
 		ctx:      ctx,
 		cancel:   cancel,
 	}
-	
+
 	// Start worker pool
 	for i := 0; i < config.WorkerCount; i++ {
 		processor.wg.Add(1)
 		go processor.worker(i)
 	}
-	
+
 	return processor
 }
 
 // worker processes players concurrently
 func (p *PlayerProcessor) worker(workerID int) {
 	defer p.wg.Done()
-	
+
 	for {
 		select {
 		case player := <-p.inputCh:
 			start := time.Now()
-			
+
 			// Create a copy to avoid data races
 			playerCopy := player
-			
+
 			// Enhance player with calculations
 			EnhancePlayerWithCalculations(&playerCopy)
-			
+
 			// Track processing metrics
 			RecordBusinessOperation(p.ctx, "player_processing", true, map[string]interface{}{
-				"worker_id":        workerID,
-				"processing_time":  time.Since(start).Milliseconds(),
-				"player_name":      playerCopy.Name,
-				"positions_count":  len(playerCopy.ParsedPositions),
-				"roles_count":      len(playerCopy.RoleSpecificOveralls),
+				"worker_id":       workerID,
+				"processing_time": time.Since(start).Milliseconds(),
+				"player_name":     playerCopy.Name,
+				"positions_count": len(playerCopy.ParsedPositions),
+				"roles_count":     len(playerCopy.RoleSpecificOveralls),
 			})
-			
+
 			select {
 			case p.outputCh <- playerCopy:
 				// Successfully sent
 			case <-p.ctx.Done():
 				return
 			}
-			
+
 		case <-p.ctx.Done():
 			return
 		}
@@ -102,10 +102,10 @@ func (p *PlayerProcessor) worker(workerID int) {
 // ProcessPlayersAsync processes a slice of players concurrently
 func (p *PlayerProcessor) ProcessPlayersAsync(players []Player) <-chan Player {
 	resultCh := make(chan Player, len(players))
-	
+
 	go func() {
 		defer close(resultCh)
-		
+
 		// Send all players to workers
 		go func() {
 			defer close(p.inputCh)
@@ -117,7 +117,7 @@ func (p *PlayerProcessor) ProcessPlayersAsync(players []Player) <-chan Player {
 				}
 			}
 		}()
-		
+
 		// Collect results
 		processedCount := 0
 		for processedCount < len(players) {
@@ -133,7 +133,7 @@ func (p *PlayerProcessor) ProcessPlayersAsync(players []Player) <-chan Player {
 			}
 		}
 	}()
-	
+
 	return resultCh
 }
 
@@ -141,90 +141,90 @@ func (p *PlayerProcessor) ProcessPlayersAsync(players []Player) <-chan Player {
 func ProcessPlayersBatch(ctx context.Context, players []Player, batchSize int) ([]Player, error) {
 	ctx, span := StartSpan(ctx, "async.process_players_batch")
 	defer span.End()
-	
+
 	SetSpanAttributes(ctx,
 		attribute.Int("players.total", len(players)),
 		attribute.Int("batch.size", batchSize),
 	)
-	
+
 	if len(players) == 0 {
 		return players, nil
 	}
-	
+
 	config := DefaultProcessingConfig()
 	config.BatchSize = batchSize
-	
+
 	result := make([]Player, 0, len(players))
-	
+
 	// Process in batches to control memory usage
 	for i := 0; i < len(players); i += batchSize {
 		end := i + batchSize
 		if end > len(players) {
 			end = len(players)
 		}
-		
+
 		batch := players[i:end]
 		processor := NewPlayerProcessor(config)
-		
+
 		// Process batch
 		resultCh := processor.ProcessPlayersAsync(batch)
-		
+
 		// Collect batch results
 		batchResults := make([]Player, 0, len(batch))
 		for player := range resultCh {
 			batchResults = append(batchResults, player)
 		}
-		
+
 		// Clean shutdown
 		processor.Shutdown()
-		
+
 		result = append(result, batchResults...)
-		
+
 		// Track batch progress
 		SetSpanAttributes(ctx, attribute.Int("players.processed", len(result)))
 	}
-	
+
 	return result, nil
 }
 
 // ProcessPercentilesAsync calculates percentiles for multiple datasets concurrently
 func ProcessPercentilesAsync(datasets map[string][]Player) <-chan PercentileResult {
 	resultCh := make(chan PercentileResult, len(datasets))
-	
+
 	var wg sync.WaitGroup
 	semaphore := make(chan struct{}, runtime.NumCPU()) // Limit concurrent percentile calculations
-	
+
 	for datasetID, players := range datasets {
 		wg.Add(1)
 		go func(id string, playerList []Player) {
 			defer wg.Done()
-			
+
 			// Acquire semaphore
 			semaphore <- struct{}{}
 			defer func() { <-semaphore }()
-			
+
 			start := time.Now()
-			
+
 			// Make a copy to avoid data races
 			playersCopy := make([]Player, len(playerList))
 			copy(playersCopy, playerList)
-			
+
 			// Calculate percentiles
 			CalculatePlayerPerformancePercentiles(playersCopy)
-			
+
 			resultCh <- PercentileResult{
-				DatasetID:       id,
-				Players:         playersCopy,
-				ProcessingTime:  time.Since(start),
+				DatasetID:      id,
+				Players:        playersCopy,
+				ProcessingTime: time.Since(start),
 			}
 		}(datasetID, players)
 	}
-	
+
 	go func() {
 		wg.Wait()
 		close(resultCh)
 	}()
-	
+
 	return resultCh
 }
 
@@ -254,7 +254,7 @@ func NewConcurrentLeagueProcessor(workerCount int) *ConcurrentLeagueProcessor {
 	if workerCount <= 0 {
 		workerCount = runtime.NumCPU()
 	}
-	
+
 	return &ConcurrentLeagueProcessor{
 		workerCount: workerCount,
 		semaphore:   make(chan struct{}, workerCount),
@@ -265,7 +265,7 @@ func NewConcurrentLeagueProcessor(workerCount int) *ConcurrentLeagueProcessor {
 func (p *ConcurrentLeagueProcessor) ProcessLeaguesAsync(ctx context.Context, players []Player) []League {
 	ctx, span := StartSpan(ctx, "async.process_leagues")
 	defer span.End()
-	
+
 	// Group players by division
 	divisionMap := make(map[string][]Player)
 	for _, player := range players {
@@ -273,37 +273,37 @@ func (p *ConcurrentLeagueProcessor) ProcessLeaguesAsync(ctx context.Context, pla
 			divisionMap[player.Division] = append(divisionMap[player.Division], player)
 		}
 	}
-	
+
 	SetSpanAttributes(ctx, attribute.Int("divisions.count", len(divisionMap)))
-	
+
 	// Process divisions concurrently
 	type leagueResult struct {
 		league League
 		err    error
 	}
-	
+
 	resultCh := make(chan leagueResult, len(divisionMap))
 	var wg sync.WaitGroup
-	
+
 	for divisionName, divisionPlayers := range divisionMap {
 		wg.Add(1)
 		go func(name string, playerList []Player) {
 			defer wg.Done()
-			
+
 			// Acquire semaphore
 			p.semaphore <- struct{}{}
 			defer func() { <-p.semaphore }()
-			
+
 			league := p.processLeagueSync(name, playerList)
 			resultCh <- leagueResult{league: league}
 		}(divisionName, divisionPlayers)
 	}
-	
+
 	go func() {
 		wg.Wait()
 		close(resultCh)
 	}()
-	
+
 	// Collect results
 	var leagues []League
 	for result := range resultCh {
@@ -311,7 +311,7 @@ func (p *ConcurrentLeagueProcessor) ProcessLeaguesAsync(ctx context.Context, pla
 			leagues = append(leagues, result.league)
 		}
 	}
-	
+
 	// Sort leagues by overall rating
 	// (sorting logic same as original)
 	for i := 0; i < len(leagues)-1; i++ {
@@ -321,7 +321,7 @@ func (p *ConcurrentLeagueProcessor) ProcessLeaguesAsync(ctx context.Context, pla
 			}
 		}
 	}
-	
+
 	return leagues
 }
 
@@ -331,7 +331,7 @@ func (p *ConcurrentLeagueProcessor) processLeagueSync(divisionName string, divis
 		Name:        divisionName,
 		PlayerCount: len(divisionPlayers),
 	}
-	
+
 	// Group players by team within this division
 	teamMap := make(map[string][]Player)
 	for _, player := range divisionPlayers {
@@ -339,13 +339,13 @@ func (p *ConcurrentLeagueProcessor) processLeagueSync(divisionName string, divis
 			teamMap[player.Club] = append(teamMap[player.Club], player)
 		}
 	}
-	
+
 	league.TeamCount = len(teamMap)
-	
+
 	// Calculate league ratings based on best teams (concurrent team processing)
 	teamRatingsCh := make(chan TeamRatings, len(teamMap))
 	var teamWg sync.WaitGroup
-	
+
 	for _, teamPlayers := range teamMap {
 		if len(teamPlayers) >= 11 { // Only consider teams with enough players
 			teamWg.Add(1)
@@ -358,25 +358,25 @@ func (p *ConcurrentLeagueProcessor) processLeagueSync(divisionName string, divis
 			}(teamPlayers)
 		}
 	}
-	
+
 	go func() {
 		teamWg.Wait()
 		close(teamRatingsCh)
 	}()
-	
+
 	// Collect team ratings
 	var teamOveralls []int
 	var allAttRatings []int
 	var allMidRatings []int
 	var allDefRatings []int
-	
+
 	for ratings := range teamRatingsCh {
 		teamOveralls = append(teamOveralls, ratings.BestOverall)
 		allAttRatings = append(allAttRatings, ratings.AttRating)
 		allMidRatings = append(allMidRatings, ratings.MidRating)
 		allDefRatings = append(allDefRatings, ratings.DefRating)
 	}
-	
+
 	// Calculate league averages (same logic as original)
 	if len(teamOveralls) > 0 {
 		// Sort ratings
@@ -387,7 +387,7 @@ func (p *ConcurrentLeagueProcessor) processLeagueSync(divisionName string, divis
 				}
 			}
 		}
-		
+
 		// Take top 50% of teams or at least 3 teams
 		topTeamsCount := len(teamOveralls) / 2
 		if topTeamsCount < 3 && len(teamOveralls) >= 3 {
@@ -395,25 +395,25 @@ func (p *ConcurrentLeagueProcessor) processLeagueSync(divisionName string, divis
 		} else if topTeamsCount < 1 {
 			topTeamsCount = len(teamOveralls)
 		}
-		
+
 		league.BestOverall = calculateAverage(teamOveralls[:topTeamsCount])
 		league.AttRating = calculateAverage(allAttRatings[:topTeamsCount])
 		league.MidRating = calculateAverage(allMidRatings[:topTeamsCount])
 		league.DefRating = calculateAverage(allDefRatings[:topTeamsCount])
 	}
-	
+
 	return league
 }
 
 // PlayerFilter holds filtering criteria
 type PlayerFilter struct {
-	Position           string
-	Role              string
-	MinAge            int
-	MaxAge            int
-	MinTransferValue  int64
-	MaxTransferValue  int64
-	MaxSalary         int64
+	Position         string
+	Role             string
+	MinAge           int
+	MaxAge           int
+	MinTransferValue int64
+	MaxTransferValue int64
+	MaxSalary        int64
 }
 
 // FilterResult holds filtered player and whether it matched
@@ -436,7 +436,7 @@ func NewAsyncPlayerFilter(workerCount, chunkSize int) *AsyncPlayerFilter {
 	if chunkSize <= 0 {
 		chunkSize = 100
 	}
-	
+
 	return &AsyncPlayerFilter{
 		workerCount: workerCount,
 		chunkSize:   chunkSize,
@@ -447,61 +447,61 @@ func NewAsyncPlayerFilter(workerCount, chunkSize int) *AsyncPlayerFilter {
 func (f *AsyncPlayerFilter) FilterPlayersAsync(ctx context.Context, players []Player, filter PlayerFilter) []Player {
 	ctx, span := StartSpan(ctx, "async.filter_players")
 	defer span.End()
-	
+
 	SetSpanAttributes(ctx,
 		attribute.Int("players.total", len(players)),
 		attribute.Int("filter.chunk_size", f.chunkSize),
 		attribute.Int("filter.workers", f.workerCount),
 	)
-	
+
 	if len(players) == 0 {
 		return players
 	}
-	
+
 	// If dataset is small, use synchronous filtering
 	if len(players) < f.chunkSize {
 		return f.filterPlayersSync(players, filter)
 	}
-	
+
 	// Process in chunks
 	resultCh := make(chan []Player, (len(players)/f.chunkSize)+1)
 	var wg sync.WaitGroup
 	semaphore := make(chan struct{}, f.workerCount)
-	
+
 	// Split players into chunks and process each chunk concurrently
 	for i := 0; i < len(players); i += f.chunkSize {
 		end := i + f.chunkSize
 		if end > len(players) {
 			end = len(players)
 		}
-		
+
 		chunk := players[i:end]
-		
+
 		wg.Add(1)
 		go func(playerChunk []Player) {
 			defer wg.Done()
-			
+
 			// Acquire semaphore
 			semaphore <- struct{}{}
 			defer func() { <-semaphore }()
-			
+
 			// Filter this chunk
 			filtered := f.filterPlayersSync(playerChunk, filter)
 			resultCh <- filtered
 		}(chunk)
 	}
-	
+
 	go func() {
 		wg.Wait()
 		close(resultCh)
 	}()
-	
+
 	// Collect results
 	var result []Player
 	for chunk := range resultCh {
 		result = append(result, chunk...)
 	}
-	
+
 	SetSpanAttributes(ctx, attribute.Int("players.filtered", len(result)))
 	return result
 }
@@ -509,7 +509,7 @@ func (f *AsyncPlayerFilter) FilterPlayersAsync(ctx context.Context, players []Pl
 // filterPlayersSync filters players synchronously (used for chunks)
 func (f *AsyncPlayerFilter) filterPlayersSync(players []Player, filter PlayerFilter) []Player {
 	var result []Player
-	
+
 	for _, player := range players {
 		if f.matchesFilter(player, filter) {
 			// Apply role-specific overall if role filter is active
@@ -525,7 +525,7 @@ func (f *AsyncPlayerFilter) filterPlayersSync(players []Player, filter PlayerFil
 			result = append(result, playerCopy)
 		}
 	}
-	
+
 	return result
 }
 
@@ -544,7 +544,7 @@ func (f *AsyncPlayerFilter) matchesFilter(player Player, filter PlayerFilter) bo
 			return false
 		}
 	}
-	
+
 	// Age filter
 	if filter.MinAge > 0 || filter.MaxAge > 0 {
 		playerAge, err := strconv.Atoi(player.Age)
@@ -558,7 +558,7 @@ func (f *AsyncPlayerFilter) matchesFilter(player Player, filter PlayerFilter) bo
 			return false
 		}
 	}
-	
+
 	// Transfer value filter
 	if filter.MinTransferValue > 0 && player.TransferValueAmount < filter.MinTransferValue {
 		return false
@@ -566,12 +566,12 @@ func (f *AsyncPlayerFilter) matchesFilter(player Player, filter PlayerFilter) bo
 	if filter.MaxTransferValue > 0 && player.TransferValueAmount > filter.MaxTransferValue {
 		return false
 	}
-	
+
 	// Salary filter
 	if filter.MaxSalary > 0 && player.WageAmount > filter.MaxSalary {
 		return false
 	}
-	
+
 	// Role filter (check if player has this role)
 	if filter.Role != "" {
 		hasRole := false
@@ -585,7 +585,7 @@ func (f *AsyncPlayerFilter) matchesFilter(player Player, filter PlayerFilter) bo
 			return false
 		}
 	}
-	
+
 	return true
 }
 
@@ -599,7 +599,7 @@ func NewConcurrentPercentileProcessor(workerCount int) *ConcurrentPercentileProc
 	if workerCount <= 0 {
 		workerCount = runtime.NumCPU()
 	}
-	
+
 	return &ConcurrentPercentileProcessor{
 		workerCount: workerCount,
 	}
@@ -607,34 +607,34 @@ func NewConcurrentPercentileProcessor(workerCount int) *ConcurrentPercentileProc
 
 // ProcessPercentilesWithDivisionFilterAsync processes percentiles with division filtering concurrently
 func (p *ConcurrentPercentileProcessor) ProcessPercentilesWithDivisionFilterAsync(
-	ctx context.Context, 
-	players []Player, 
-	divisionFilter DivisionFilter, 
+	ctx context.Context,
+	players []Player,
+	divisionFilter DivisionFilter,
 	targetDivision string,
 ) []Player {
 	ctx, span := StartSpan(ctx, "async.process_percentiles_division_filter")
 	defer span.End()
-	
+
 	SetSpanAttributes(ctx,
 		attribute.Int("players.count", len(players)),
 		attribute.Int("division.filter", int(divisionFilter)),
 		attribute.String("division.target", targetDivision),
 	)
-	
+
 	// Make a copy to avoid modifying original data
 	playersCopy := make([]Player, len(players))
 	copy(playersCopy, players)
-	
+
 	// Process in a goroutine to make it non-blocking
 	resultCh := make(chan []Player, 1)
 	go func() {
 		defer close(resultCh)
-		
+
 		// Calculate percentiles with division filter
 		CalculatePlayerPerformancePercentilesWithDivisionFilter(playersCopy, divisionFilter, targetDivision)
 		resultCh <- playersCopy
 	}()
-	
+
 	// Return processed players
 	return <-resultCh
 }

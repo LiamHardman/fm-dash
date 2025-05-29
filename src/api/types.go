@@ -10,7 +10,7 @@ type RoleOverallScore struct {
 
 // Player holds all the information and calculated statistics for a football player.
 type Player struct {
-	UID                     string                        `json:"uid"`                    // Unique identifier for the player
+	UID                     string                        `json:"uid"` // Unique identifier for the player
 	Name                    string                        `json:"name"`
 	Position                string                        `json:"position"` // Raw position string from HTML
 	Age                     string                        `json:"age"`

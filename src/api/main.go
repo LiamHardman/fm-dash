@@ -34,31 +34,30 @@ func validateEnvironmentVariables() error {
 			return fmt.Errorf("invalid OTEL_EXPORTER_OTLP_ENDPOINT: %s (must include port)", endpoint)
 		}
 	}
-	
+
 	// Validate S3_ENDPOINT format if set
 	if endpoint := os.Getenv("S3_ENDPOINT"); endpoint != "" {
 		if !strings.Contains(endpoint, ":") && !strings.HasPrefix(endpoint, "http") {
 			return fmt.Errorf("invalid S3_ENDPOINT format: %s (should include port or be full URL)", endpoint)
 		}
 	}
-	
+
 	// Validate SERVICE_NAME doesn't contain dangerous characters
 	if serviceName := os.Getenv("SERVICE_NAME"); serviceName != "" {
 		if strings.ContainsAny(serviceName, " \t\n\r;|&$`") {
 			return fmt.Errorf("invalid SERVICE_NAME: contains unsafe characters")
 		}
 	}
-	
+
 	return nil
 }
-
 
 func main() {
 	// Validate environment variables first
 	if err := validateEnvironmentVariables(); err != nil {
 		log.Fatalf("Environment validation failed: %v", err)
 	}
-	
+
 	// Initialize OpenTelemetry (tracing and metrics) if enabled
 	var cleanup func(context.Context) error
 	if otelEnabled {
@@ -72,7 +71,7 @@ func main() {
 			}
 		}()
 		slog.Info("OpenTelemetry initialized", "logs_streaming", true)
-		
+
 		// Demo structured logging that will be streamed to OTLP
 		DemoStructuredLogging()
 	} else {
@@ -81,7 +80,7 @@ func main() {
 
 	// Initialize storage system
 	InitStore()
-	
+
 	// Start automatic cleanup scheduler for old datasets
 	StartCleanupScheduler()
 	// Serve the main index.html page (assuming it's built into a 'public' or 'dist' folder by Vue)
@@ -152,12 +151,12 @@ func main() {
 
 	// Create HTTP server with timeouts and middleware
 	mux := http.NewServeMux()
-	
+
 	// Apply middleware chain to all routes
 	var handler http.Handler = mux
 	handler = RequestTimeoutMiddleware(30 * time.Second)(handler) // 30 second request timeout
 	handler = LoggingMiddleware(handler)
-	
+
 	// Re-register all routes with the new mux
 	mux.Handle("/", wrapHandler(indexHandler, "index"))
 	mux.Handle("/public/", http.StripPrefix("/public/", fsPublic))
@@ -169,24 +168,24 @@ func main() {
 	mux.Handle("/api/percentiles/", wrapHandler(http.HandlerFunc(percentilesHandler), "percentiles"))
 	mux.Handle("/api/search/", wrapHandler(http.HandlerFunc(searchHandler), "search"))
 	mux.Handle("/api/config", wrapHandler(http.HandlerFunc(configHandler), "config"))
-	
+
 	// Create server with proper timeouts
 	server := &http.Server{
-		Addr:         ":" + port,
-		Handler:      handler,
-		ReadTimeout:  15 * time.Second,  // Time to read request
-		WriteTimeout: 30 * time.Second,  // Time to write response  
-		IdleTimeout:  60 * time.Second,  // Time to keep connection open
-		ReadHeaderTimeout: 5 * time.Second, // Time to read request headers
+		Addr:              ":" + port,
+		Handler:           handler,
+		ReadTimeout:       15 * time.Second, // Time to read request
+		WriteTimeout:      30 * time.Second, // Time to write response
+		IdleTimeout:       60 * time.Second, // Time to keep connection open
+		ReadHeaderTimeout: 5 * time.Second,  // Time to read request headers
 	}
 
-	slog.Info("Server starting", 
-		"port", port, 
+	slog.Info("Server starting",
+		"port", port,
 		"url", "http://localhost:"+port,
 		"read_timeout", "15s",
 		"write_timeout", "30s",
 		"idle_timeout", "60s")
-		
+
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatal("ListenAndServe Error: ", err)
 	}

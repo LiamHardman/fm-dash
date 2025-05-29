@@ -209,10 +209,10 @@ func initializeConfigAsync() {
 	go func() {
 		defer wg.Done()
 		loadedAttrWeights, err := loadJSONWeights(filepath.Join("public", "attribute_weights.json"), defaultAttributeWeightsGo)
-		
+
 		muAttributeWeights.Lock()
 		defer muAttributeWeights.Unlock()
-		
+
 		if err != nil {
 			log.Printf("Using default attribute_weights due to error: %v. Default attribute_weights has %d entries.", err, len(defaultAttributeWeightsGo))
 			attributeWeights = deepCopyWeights(defaultAttributeWeightsGo)
@@ -227,10 +227,10 @@ func initializeConfigAsync() {
 	go func() {
 		defer wg.Done()
 		loadedRoleWeights, err := loadJSONWeights(filepath.Join("public", "role_specific_overall_weights.json"), defaultRoleSpecificOverallWeightsGo)
-		
+
 		muRoleSpecificOverallWeights.Lock()
 		defer muRoleSpecificOverallWeights.Unlock()
-		
+
 		if err != nil {
 			log.Printf("Using default role_specific_overall_weights due to error: %v. Default role_specific_overall_weights has %d entries.", err, len(defaultRoleSpecificOverallWeightsGo))
 			roleSpecificOverallWeights = deepCopyWeights(defaultRoleSpecificOverallWeightsGo)
@@ -269,7 +269,7 @@ func deepCopyWeights(source map[string]map[string]int) map[string]map[string]int
 func precomputeRoleWeights() {
 	muPrecomputedRoleWeights.Lock()
 	defer muPrecomputedRoleWeights.Unlock()
-	
+
 	precomputedRoleWeights = make(map[string][]struct {
 		RoleName string
 		Weights  map[string]int
@@ -304,9 +304,9 @@ func EnsureConfigInitialized(timeout time.Duration) error {
 	// Wait for initialization with timeout using a ticker for better performance
 	ticker := time.NewTicker(10 * time.Millisecond)
 	defer ticker.Stop()
-	
+
 	deadline := time.Now().Add(timeout)
-	
+
 	for {
 		select {
 		case <-ticker.C:
@@ -319,5 +319,3 @@ func EnsureConfigInitialized(timeout time.Duration) error {
 		}
 	}
 }
-
-

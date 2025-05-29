@@ -65,10 +65,10 @@ func (sm *ServiceManager) HealthCheck(ctx context.Context) map[string]string {
 // Shutdown gracefully shuts down all services
 func (sm *ServiceManager) Shutdown(ctx context.Context) error {
 	log.Println("Shutting down service manager...")
-	
+
 	// Services don't currently need explicit shutdown,
 	// but this provides a hook for future cleanup
-	
+
 	log.Println("Service manager shutdown complete")
 	return nil
 }

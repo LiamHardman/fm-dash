@@ -25,22 +25,22 @@ func (e *AppError) Error() string {
 
 // Common error codes
 const (
-	CodeValidationFailed    = "VALIDATION_FAILED"
-	CodeNotFound           = "NOT_FOUND"
-	CodeUnauthorized       = "UNAUTHORIZED"
-	CodeForbidden          = "FORBIDDEN"
-	CodeConflict           = "CONFLICT"
-	CodeInternalError      = "INTERNAL_ERROR"
-	CodeBadRequest         = "BAD_REQUEST"
-	CodeFileTooLarge       = "FILE_TOO_LARGE"
-	CodeUnsupportedFormat  = "UNSUPPORTED_FORMAT"
-	CodeProcessingFailed   = "PROCESSING_FAILED"
-	CodeStorageError       = "STORAGE_ERROR"
-	CodeRateLimited        = "RATE_LIMITED"
+	CodeValidationFailed  = "VALIDATION_FAILED"
+	CodeNotFound          = "NOT_FOUND"
+	CodeUnauthorized      = "UNAUTHORIZED"
+	CodeForbidden         = "FORBIDDEN"
+	CodeConflict          = "CONFLICT"
+	CodeInternalError     = "INTERNAL_ERROR"
+	CodeBadRequest        = "BAD_REQUEST"
+	CodeFileTooLarge      = "FILE_TOO_LARGE"
+	CodeUnsupportedFormat = "UNSUPPORTED_FORMAT"
+	CodeProcessingFailed  = "PROCESSING_FAILED"
+	CodeStorageError      = "STORAGE_ERROR"
+	CodeRateLimited       = "RATE_LIMITED"
 )
 
 // Validation errors
-func NewValidationError(message string, details string) *AppError {
+func NewValidationError(message, details string) *AppError {
 	return &AppError{
 		Code:       CodeValidationFailed,
 		Message:    message,
@@ -50,7 +50,7 @@ func NewValidationError(message string, details string) *AppError {
 }
 
 // Not found errors
-func NewNotFoundError(resource string, id string) *AppError {
+func NewNotFoundError(resource, id string) *AppError {
 	return &AppError{
 		Code:       CodeNotFound,
 		Message:    fmt.Sprintf("%s not found", resource),
@@ -60,7 +60,7 @@ func NewNotFoundError(resource string, id string) *AppError {
 }
 
 // File upload errors
-func NewFileTooLargeError(size int64, maxSize int64) *AppError {
+func NewFileTooLargeError(size, maxSize int64) *AppError {
 	return &AppError{
 		Code:       CodeFileTooLarge,
 		Message:    "File size exceeds maximum allowed",
@@ -112,7 +112,7 @@ func NewInternalError(message string, err error) *AppError {
 }
 
 // Bad request errors
-func NewBadRequestError(message string, details string) *AppError {
+func NewBadRequestError(message, details string) *AppError {
 	return &AppError{
 		Code:       CodeBadRequest,
 		Message:    message,

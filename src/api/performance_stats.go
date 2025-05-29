@@ -52,7 +52,7 @@ const (
 // TopDivisions lists the top 5 divisions for filtering
 var TopDivisions = []string{
 	"Premier League",
-	"Championship", 
+	"Championship",
 	"Serie A",
 	"Bundesliga",
 	"La Liga",
@@ -157,7 +157,7 @@ func CalculatePlayerPerformancePercentilesWithDivisionFilter(players []Player, d
 
 	// Populate the stat lists for each group (with division filtering)
 	for i := range players {
-		player := &players[i]                      // Work with a pointer to the player
+		player := &players[i] // Work with a pointer to the player
 		if !isPlayerInTargetDivision(player, divisionFilter, targetDivision) {
 			continue // Skip players not in target division filter
 		}

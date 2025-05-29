@@ -14,14 +14,14 @@ import (
 
 var (
 	// OpenTelemetry metrics
-	meter               metric.Meter
-	uploadDuration      metric.Float64Histogram
-	uploadRowsPerSecond metric.Float64Gauge
-	uploadFileSize      metric.Float64Gauge
+	meter                  metric.Meter
+	uploadDuration         metric.Float64Histogram
+	uploadRowsPerSecond    metric.Float64Gauge
+	uploadFileSize         metric.Float64Gauge
 	uploadPlayersProcessed metric.Float64Gauge
-	uploadMemoryUsage   metric.Float64Gauge
-	uploadsTotal        metric.Int64Counter
-	uploadWorkers       metric.Float64Gauge
+	uploadMemoryUsage      metric.Float64Gauge
+	uploadsTotal           metric.Int64Counter
+	uploadWorkers          metric.Float64Gauge
 )
 
 // initMetrics initializes OpenTelemetry metrics instruments
@@ -92,7 +92,7 @@ func initMetrics() {
 }
 
 // recordUploadMetrics stores metrics for a completed upload if metrics are enabled.
-func recordUploadMetrics(filename string, fileSizeBytes int64, totalDuration, parseDuration time.Duration, 
+func recordUploadMetrics(filename string, fileSizeBytes int64, totalDuration, parseDuration time.Duration,
 	playersProcessed int, memoryAllocMB float64, numWorkers, numGoroutines int) {
 	if !metricsEnabled {
 		return
@@ -113,27 +113,27 @@ func recordUploadMetrics(filename string, fileSizeBytes int64, totalDuration, pa
 			attribute.String("type", "parse"),
 		))
 	}
-	
+
 	if uploadRowsPerSecond != nil {
 		uploadRowsPerSecond.Record(ctx, rowsPerSecond)
 	}
-	
+
 	if uploadFileSize != nil {
 		uploadFileSize.Record(ctx, float64(fileSizeBytes))
 	}
-	
+
 	if uploadPlayersProcessed != nil {
 		uploadPlayersProcessed.Record(ctx, float64(playersProcessed))
 	}
-	
+
 	if uploadMemoryUsage != nil {
 		uploadMemoryUsage.Record(ctx, memoryAllocMB)
 	}
-	
+
 	if uploadWorkers != nil {
 		uploadWorkers.Record(ctx, float64(numWorkers))
 	}
-	
+
 	if uploadsTotal != nil {
 		uploadsTotal.Add(ctx, 1)
 	}

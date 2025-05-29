@@ -5,7 +5,7 @@ import (
 	"log"
 	"sync"
 	"time"
-	
+
 	"go.opentelemetry.io/otel/attribute"
 )
 
@@ -33,30 +33,30 @@ func StoreDataset(datasetID string, players []Player, currencySymbol string) err
 	ctx := context.Background()
 	ctx, span := StartSpan(ctx, "store.dataset")
 	defer span.End()
-	
+
 	SetSpanAttributes(ctx,
 		attribute.String("dataset.id", datasetID),
 		attribute.Int("dataset.player_count", len(players)),
 		attribute.String("dataset.currency", currencySymbol),
 	)
-	
+
 	data := DatasetData{
 		Players:        players,
 		CurrencySymbol: currencySymbol,
 	}
-	
+
 	err := storage.Store(datasetID, data)
 	if err != nil {
 		RecordError(ctx, err, "Failed to store dataset")
 		return err
 	}
-	
+
 	RecordBusinessOperation(ctx, "dataset_store", true, map[string]interface{}{
-		"dataset_id": datasetID,
+		"dataset_id":   datasetID,
 		"player_count": len(players),
-		"currency": currencySymbol,
+		"currency":     currencySymbol,
 	})
-	
+
 	return nil
 }
 
@@ -65,25 +65,25 @@ func RetrieveDataset(datasetID string) ([]Player, string, error) {
 	ctx := context.Background()
 	ctx, span := StartSpan(ctx, "store.retrieve_dataset")
 	defer span.End()
-	
+
 	SetSpanAttributes(ctx, attribute.String("dataset.id", datasetID))
-	
+
 	data, err := storage.Retrieve(datasetID)
 	if err != nil {
 		RecordError(ctx, err, "Failed to retrieve dataset")
 		return nil, "", err
 	}
-	
+
 	SetSpanAttributes(ctx,
 		attribute.Int("dataset.player_count", len(data.Players)),
 		attribute.String("dataset.currency", data.CurrencySymbol),
 	)
-	
+
 	RecordBusinessOperation(ctx, "dataset_retrieve", true, map[string]interface{}{
-		"dataset_id": datasetID,
+		"dataset_id":   datasetID,
 		"player_count": len(data.Players),
 	})
-	
+
 	return data.Players, data.CurrencySymbol, nil
 }
 
@@ -122,13 +122,13 @@ func StartCleanupScheduler() {
 
 func runCleanup() {
 	log.Println("Starting automatic cleanup of old datasets...")
-	
+
 	// Define datasets to exclude from cleanup
 	excludeDatasets := []string{"demo"}
-	
+
 	// Clean up datasets older than 30 days
 	maxAge := 30 * 24 * time.Hour
-	
+
 	err := CleanupOldDatasets(maxAge, excludeDatasets)
 	if err != nil {
 		log.Printf("Error during automatic cleanup: %v", err)
@@ -144,28 +144,28 @@ func GetPlayerData(datasetID string) ([]Player, string, bool) {
 	ctx := context.Background()
 	ctx, span := StartSpan(ctx, "store.get_player_data_legacy")
 	defer span.End()
-	
-	SetSpanAttributes(ctx, 
+
+	SetSpanAttributes(ctx,
 		attribute.String("dataset.id", datasetID),
 		attribute.String("store.type", "legacy_compatible"),
 	)
-	
+
 	storeMutex.RLock()
 	defer storeMutex.RUnlock()
-	
+
 	if data, exists := playerDataStore[datasetID]; exists {
 		AddSpanEvent(ctx, "store.legacy_cache_hit")
 		SetSpanAttributes(ctx, attribute.Int("dataset.player_count", len(data.Players)))
 		return data.Players, data.CurrencySymbol, true
 	}
-	
+
 	// Try to get from new storage system
 	AddSpanEvent(ctx, "store.trying_new_storage")
 	players, currency, err := RetrieveDataset(datasetID)
 	if err == nil {
 		return players, currency, true
 	}
-	
+
 	SetSpanAttributes(ctx, attribute.String("result", "not_found"))
 	return nil, "", false
 }
@@ -175,14 +175,14 @@ func SetPlayerData(datasetID string, players []Player, currencySymbol string) {
 	ctx := context.Background()
 	ctx, span := StartSpan(ctx, "store.set_player_data_legacy")
 	defer span.End()
-	
+
 	SetSpanAttributes(ctx,
 		attribute.String("dataset.id", datasetID),
 		attribute.Int("dataset.player_count", len(players)),
 		attribute.String("dataset.currency", currencySymbol),
 		attribute.String("store.type", "legacy_compatible"),
 	)
-	
+
 	// Store in legacy format
 	AddSpanEvent(ctx, "store.legacy_store")
 	storeMutex.Lock()
@@ -194,7 +194,7 @@ func SetPlayerData(datasetID string, players []Player, currencySymbol string) {
 		CurrencySymbol: currencySymbol,
 	}
 	storeMutex.Unlock()
-	
+
 	// Store in new storage system
 	AddSpanEvent(ctx, "store.new_storage_store")
 	if err := StoreDataset(datasetID, players, currencySymbol); err != nil {

@@ -16,9 +16,9 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
-	"go.opentelemetry.io/otel/sdk/resource"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/grpc/credentials"
 )
@@ -50,7 +50,7 @@ func initOTel() func(context.Context) error {
 		log.Printf("Warning: Failed to create trace exporter: %v. OTEL tracing disabled.", err)
 		return func(ctx context.Context) error { return nil }
 	}
-	
+
 	// Create shared resources
 	resources, err := resource.New(
 		context.Background(),

@@ -10,8 +10,8 @@ import (
 	"sync"
 )
 
-// min returns the smaller of two integers
-func min(a, b int) int {
+// minInt returns the smaller of two integers
+func minInt(a, b int) int {
 	if a < b {
 		return a
 	}
@@ -28,7 +28,7 @@ var (
 			}, 0, 24)
 		},
 	}
-	
+
 	processedRoleNamesPool = sync.Pool{
 		New: func() interface{} {
 			return make(map[string]struct{}, 16)
@@ -38,7 +38,7 @@ var (
 
 // parseCellsToPlayer converts a slice of string cells (a row from the HTML table)
 // into a Player struct, based on the provided headers.
-func parseCellsToPlayer(cells []string, headers []string) (Player, error) {
+func parseCellsToPlayer(cells, headers []string) (Player, error) {
 	if len(headers) == 0 {
 		return Player{}, errors.New("cannot process row: headers are empty")
 	}
@@ -67,7 +67,7 @@ func parseCellsToPlayer(cells []string, headers []string) (Player, error) {
 	isFirstPlayer := cells[0] != "" && len(cells) > 0 // Simple check for first meaningful row
 	if isFirstPlayer {
 		log.Printf("DEBUG: Processing headers: %v", headers)
-		log.Printf("DEBUG: Processing first player cells (first 10): %v", cells[:min(len(cells), 10)])
+		log.Printf("DEBUG: Processing first player cells (first 10): %v", cells[:minInt(len(cells), 10)])
 	}
 
 	for i, headerNameClean := range headers {
@@ -394,14 +394,14 @@ func EnhancePlayerWithCalculations(player *Player) {
 		for _, shortPosKey := range player.ShortPositions {
 			posPrefix := shortPosKey + " - "
 			isGK := shortPosKey == "GK"
-			
+
 			for roleFullName, specificWeights := range fallbackWeights {
 				if _, alreadyProcessed := processedRoleNames[roleFullName]; alreadyProcessed {
 					continue
 				}
-				
+
 				if strings.HasPrefix(roleFullName, posPrefix) || (isGK && roleFullName == "GK - Goalkeeper - Defend") {
-					matchingRoles = append(matchingRoles, struct{
+					matchingRoles = append(matchingRoles, struct {
 						name    string
 						weights map[string]int
 					}{name: roleFullName, weights: specificWeights})
@@ -418,7 +418,7 @@ func EnhancePlayerWithCalculations(player *Player) {
 				maxRoleBasedOverall = overallForThisRole
 			}
 		}
-		
+
 		if len(calculatedRoleOveralls) == 0 && len(player.ShortPositions) > 0 {
 			log.Printf("Fallback Warning: Player '%s' with ShortPositions %v found no matching roles in fallback roleSpecificOverallWeights. MaxRoleBasedOverall will be 0.", player.Name, player.ShortPositions)
 		}
@@ -440,8 +440,8 @@ func EnhancePlayerWithCalculations(player *Player) {
 				foundAnyRoleMatch = true
 				for _, roleData := range applicableRoles {
 					if _, alreadyProcessed := processedRoleNames[roleData.RoleName]; !alreadyProcessed {
-						allApplicableRoles = append(allApplicableRoles, struct{
-							name string
+						allApplicableRoles = append(allApplicableRoles, struct {
+							name    string
 							weights map[string]int
 						}{name: roleData.RoleName, weights: roleData.Weights})
 						processedRoleNames[roleData.RoleName] = struct{}{}
@@ -458,7 +458,7 @@ func EnhancePlayerWithCalculations(player *Player) {
 				maxRoleBasedOverall = overallForThisRole
 			}
 		}
-		
+
 		if !foundAnyRoleMatch && len(player.ShortPositions) > 0 {
 			log.Printf("Warning: Player '%s' with ShortPositions %v found no matching roles in precomputedRoleWeights. MaxRoleBasedOverall will be 0.", player.Name, player.ShortPositions)
 		}

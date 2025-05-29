@@ -19,7 +19,7 @@ import (
 func sendRowWithBackpressure(rowCellsChan chan []string, cells []string, timeout time.Duration) bool {
 	cellsCopy := make([]string, len(cells))
 	copy(cellsCopy, cells)
-	
+
 	select {
 	case rowCellsChan <- cellsCopy:
 		return true

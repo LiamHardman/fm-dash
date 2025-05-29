@@ -19,7 +19,7 @@ func RequestTimeoutMiddleware(timeout time.Duration) func(http.Handler) http.Han
 
 			// Create a channel to signal when handler is done
 			done := make(chan struct{})
-			
+
 			// Run handler in goroutine
 			go func() {
 				defer close(done)
@@ -71,10 +71,10 @@ func (c RetryConfig) ExponentialBackoff(attempt int) time.Duration {
 // ShouldRetry determines if an HTTP status code warrants a retry
 func ShouldRetry(statusCode int) bool {
 	switch statusCode {
-	case http.StatusInternalServerError,     // 500
-		 http.StatusBadGateway,              // 502
-		 http.StatusServiceUnavailable,      // 503
-		 http.StatusGatewayTimeout:          // 504
+	case http.StatusInternalServerError, // 500
+		http.StatusBadGateway,         // 502
+		http.StatusServiceUnavailable, // 503
+		http.StatusGatewayTimeout:     // 504
 		return true
 	default:
 		return false
@@ -85,13 +85,13 @@ func ShouldRetry(statusCode int) bool {
 func LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		
+
 		// Wrap the response writer to capture status code
 		wrapped := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
-		
+
 		// Process request
 		next.ServeHTTP(wrapped, r)
-		
+
 		// Log request details
 		duration := time.Since(start)
 		log.Printf("%s %s %d %v", r.Method, r.URL.Path, wrapped.statusCode, duration)

@@ -11,9 +11,9 @@ import (
 
 // ErrorResponse represents the JSON error response structure
 type ErrorResponse struct {
-	Error      ErrorDetail `json:"error"`
-	Timestamp  string     `json:"timestamp"`
-	RequestID  string     `json:"requestId,omitempty"`
+	Error     ErrorDetail `json:"error"`
+	Timestamp string      `json:"timestamp"`
+	RequestID string      `json:"requestId,omitempty"`
 }
 
 // ErrorDetail contains the error information
@@ -56,7 +56,7 @@ func ErrorHandlerMiddleware(next http.Handler) http.Handler {
 		defer func() {
 			if err := recover(); err != nil {
 				log.Printf("Panic recovered: %v\n%s", err, debug.Stack())
-				
+
 				// Send internal server error
 				SendErrorResponse(wrapped, r, NewInternalError(
 					"An unexpected error occurred",
@@ -69,10 +69,10 @@ func ErrorHandlerMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(wrapped, r)
 
 		// Log the request
-		log.Printf("%s %s %d %d bytes", 
-			r.Method, 
-			r.URL.Path, 
-			wrapped.StatusCode, 
+		log.Printf("%s %s %d %d bytes",
+			r.Method,
+			r.URL.Path,
+			wrapped.StatusCode,
 			wrapped.Size,
 		)
 	})
@@ -88,7 +88,7 @@ func SendErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
 
 	// Get request ID from context if available
 	requestID := r.Header.Get("X-Request-ID")
-	
+
 	response := ErrorResponse{
 		Error: ErrorDetail{
 			Code:    appErr.Code,
@@ -128,11 +128,11 @@ func ValidateRequest(r *http.Request, allowedMethods []string) error {
 			break
 		}
 	}
-	
+
 	if !methodAllowed {
 		return NewBadRequestError(
 			"Method not allowed",
-			"Allowed methods: " + joinStrings(allowedMethods, ", "),
+			"Allowed methods: "+joinStrings(allowedMethods, ", "),
 		)
 	}
 
@@ -158,7 +158,7 @@ func joinStrings(strs []string, sep string) string {
 	if len(strs) == 1 {
 		return strs[0]
 	}
-	
+
 	result := strs[0]
 	for i := 1; i < len(strs); i++ {
 		result += sep + strs[i]

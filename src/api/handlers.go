@@ -24,7 +24,7 @@ import (
 // setCORSHeaders sets secure CORS headers based on the request origin
 func setCORSHeaders(w http.ResponseWriter, r *http.Request) {
 	origin := r.Header.Get("Origin")
-	
+
 	// Define allowed origins for production
 	corsOrigins := os.Getenv("CORS_ALLOWED_ORIGINS")
 	var allowedOrigins []string
@@ -35,12 +35,12 @@ func setCORSHeaders(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		allowedOrigins = []string{
-			"http://localhost:3000",   // Development frontend
-			"http://localhost:8080",   // Production nginx
-			"https://localhost:8080",  // Production nginx with SSL
+			"http://localhost:3000",  // Development frontend
+			"http://localhost:8080",  // Production nginx
+			"https://localhost:8080", // Production nginx with SSL
 		}
 	}
-	
+
 	// Check if the origin is in our allowed list
 	for _, allowedOrigin := range allowedOrigins {
 		if origin == allowedOrigin {
@@ -49,7 +49,7 @@ func setCORSHeaders(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	
+
 	// If no allowed origin matches, don't set CORS headers (more secure default)
 	// For completely public APIs, you might set a restrictive default here
 }
@@ -58,17 +58,17 @@ func setCORSHeaders(w http.ResponseWriter, r *http.Request) {
 func processPercentilesAsync(datasetID string, players []Player) {
 	go func() {
 		log.Printf("Starting async percentile calculation for dataset %s with %d players", datasetID, len(players))
-		
+
 		// Calculate percentiles
 		CalculatePlayerPerformancePercentiles(players)
-		
+
 		// Get currency from stored data to preserve it
 		_, currencySymbol, found := GetPlayerData(datasetID)
 		if !found {
 			log.Printf("Warning: Dataset %s not found when updating percentiles", datasetID)
 			return
 		}
-		
+
 		// Update stored dataset with percentiles
 		SetPlayerData(datasetID, players, currencySymbol)
 		log.Printf("Completed async percentile calculation and storage update for dataset %s", datasetID)
@@ -80,18 +80,18 @@ func calculateOptimalBufferSize(numWorkers int, fileSize int64) int {
 	const baseBufferMultiplier = 10
 	const maxBufferSize = 1000
 	const minBufferSize = 20
-	
+
 	// Base calculation
 	baseSize := numWorkers * baseBufferMultiplier
-	
+
 	// Adjust based on file size - larger files get bigger buffers
 	sizeAdjustment := int(fileSize / (1024 * 1024)) // MB
 	if sizeAdjustment > 50 {
 		sizeAdjustment = 50 // Cap the adjustment
 	}
-	
+
 	adjustedSize := baseSize + sizeAdjustment
-	
+
 	// Ensure within bounds
 	if adjustedSize > maxBufferSize {
 		return maxBufferSize
@@ -99,7 +99,7 @@ func calculateOptimalBufferSize(numWorkers int, fileSize int64) int {
 	if adjustedSize < minBufferSize {
 		return minBufferSize
 	}
-	
+
 	return adjustedSize
 }
 
@@ -118,25 +118,25 @@ func logError(ctx context.Context, msg string, args ...any) {
 
 // League represents a division/league with its teams
 type League struct {
-	Name            string `json:"name"`
-	TeamCount       int    `json:"teamCount"`
-	PlayerCount     int    `json:"playerCount"`
-	BestOverall     int    `json:"bestOverall"`
-	AttRating       int    `json:"attRating"`
-	MidRating       int    `json:"midRating"`
-	DefRating       int    `json:"defRating"`
+	Name        string `json:"name"`
+	TeamCount   int    `json:"teamCount"`
+	PlayerCount int    `json:"playerCount"`
+	BestOverall int    `json:"bestOverall"`
+	AttRating   int    `json:"attRating"`
+	MidRating   int    `json:"midRating"`
+	DefRating   int    `json:"defRating"`
 }
 
 // Team represents a team with its ratings and stats
 type Team struct {
-	Name            string   `json:"name"`
-	Division        string   `json:"division"`
-	PlayerCount     int      `json:"playerCount"`
-	BestOverall     int      `json:"bestOverall"`
-	AttRating       int      `json:"attRating"`
-	MidRating       int      `json:"midRating"`
-	DefRating       int      `json:"defRating"`
-	Players         []Player `json:"players,omitempty"`
+	Name        string   `json:"name"`
+	Division    string   `json:"division"`
+	PlayerCount int      `json:"playerCount"`
+	BestOverall int      `json:"bestOverall"`
+	AttRating   int      `json:"attRating"`
+	MidRating   int      `json:"midRating"`
+	DefRating   int      `json:"defRating"`
+	Players     []Player `json:"players,omitempty"`
 }
 
 // getMaxUploadSize reads the MAX_UPLOAD_SIZE environment variable and returns the size in bytes.
@@ -146,14 +146,14 @@ func getMaxUploadSize() int64 {
 	if envValue == "" {
 		return 15 * 1024 * 1024 // Default 15MB
 	}
-	
+
 	// Parse as integer (expecting value in MB)
 	sizeInMB, err := strconv.Atoi(envValue)
 	if err != nil || sizeInMB <= 0 {
 		log.Printf("Invalid MAX_UPLOAD_SIZE environment variable '%s', defaulting to 15MB", envValue)
 		return 15 * 1024 * 1024 // Default 15MB
 	}
-	
+
 	return int64(sizeInMB) * 1024 * 1024
 }
 
@@ -172,15 +172,15 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	startTime := time.Now()
-	
+
 	// Start comprehensive tracing
 	ctx, span := StartSpan(ctx, "upload.handler")
 	defer span.End()
-	
+
 	// Track active requests
 	IncrementActiveRequests(ctx, "/upload")
 	defer DecrementActiveRequests(ctx, "/upload")
-	
+
 	// Record API operation metrics at the end
 	defer func() {
 		status := http.StatusOK
@@ -193,15 +193,15 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Check Content-Length header first for a quick check, though it can be spoofed.
 	// r.ContentLength is an int64
-	SetSpanAttributes(ctx, 
+	SetSpanAttributes(ctx,
 		attribute.String("http.method", r.Method),
 		attribute.String("http.route", "/upload"),
 		attribute.Int64("http.request.content_length", r.ContentLength),
 	)
-	
+
 	if r.ContentLength > getMaxUploadSize() {
-		logWarn(ctx, "Upload rejected: Content-Length exceeds limit", 
-			"content_length_bytes", r.ContentLength, 
+		logWarn(ctx, "Upload rejected: Content-Length exceeds limit",
+			"content_length_bytes", r.ContentLength,
 			"max_size_bytes", getMaxUploadSize())
 		SetSpanAttributes(ctx, attribute.String("upload.rejection_reason", "content_length_exceeded"))
 		http.Error(w, getFileSizeLimitErrorMessage(), http.StatusRequestEntityTooLarge)
@@ -217,7 +217,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	AddSpanEvent(ctx, "multipart.form.parsed")
-	
+
 	file, handler, err := r.FormFile("playerFile")
 	if err != nil {
 		RecordError(ctx, err, "Failed to retrieve uploaded file")
@@ -231,7 +231,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	fileContent, err := io.ReadAll(limitedReader)
 	if err != nil {
 		RecordError(ctx, err, "File size validation failed - file too large or read error")
-		logWarn(ctx, "Upload rejected: File content exceeds size limit or read error", 
+		logWarn(ctx, "Upload rejected: File content exceeds size limit or read error",
 			"max_size_bytes", getMaxUploadSize(),
 			"filename", handler.Filename)
 		http.Error(w, getFileSizeLimitErrorMessage(), http.StatusRequestEntityTooLarge)
@@ -245,16 +245,16 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		attribute.String("file.content_type", handler.Header.Get("Content-Type")),
 		attribute.Int64("file.size_from_header", handler.Size),
 	)
-	
-	logInfo(ctx, "File uploaded", 
-		"filename", handler.Filename, 
+
+	logInfo(ctx, "File uploaded",
+		"filename", handler.Filename,
 		"size_bytes", actualFileSize)
 
 	// Enforce the 50MB limit on the actual file size
 	if actualFileSize > getMaxUploadSize() {
-		logWarn(ctx, "Upload rejected: File size exceeds limit", 
+		logWarn(ctx, "Upload rejected: File size exceeds limit",
 			"filename", handler.Filename,
-			"file_size_bytes", actualFileSize, 
+			"file_size_bytes", actualFileSize,
 			"max_size_bytes", getMaxUploadSize())
 		SetSpanAttributes(ctx, attribute.String("upload.rejection_reason", "file_size_exceeded"))
 		http.Error(w, getFileSizeLimitErrorMessage(), http.StatusRequestEntityTooLarge)
@@ -269,11 +269,11 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	if numWorkers == 0 {
 		numWorkers = 1
 	}
-	SetSpanAttributes(ctx, 
+	SetSpanAttributes(ctx,
 		attribute.Int("workers.count", numWorkers),
 		attribute.String("processing.phase", "setup"),
 	)
-	
+
 	// Dynamic buffer sizing based on available memory and system resources
 	bufferSize := calculateOptimalBufferSize(numWorkers, actualFileSize)
 	rowCellsChan := make(chan []string, bufferSize)
@@ -366,7 +366,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Store using the new storage interface (with S3 support and fallback)
 	ctx, storageSpan := StartSpan(ctx, "storage.save_dataset")
-	SetSpanAttributes(ctx, 
+	SetSpanAttributes(ctx,
 		attribute.String("dataset.id", datasetID),
 		attribute.Int("dataset.player_count", len(playersList)),
 		attribute.String("dataset.currency", finalDatasetCurrencySymbol),
@@ -381,34 +381,34 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		for i, player := range playersList {
 			// Deep copy each player to avoid concurrent map access
 			playersListCopy[i] = Player{
-				Name:                    player.Name,
-				Position:                player.Position,
-				Age:                     player.Age,
-				Club:                    player.Club,
-				Division:                player.Division,
-				TransferValue:           player.TransferValue,
-				Wage:                    player.Wage,
-				Personality:             player.Personality,
-				MediaHandling:           player.MediaHandling,
-				Nationality:             player.Nationality,
-				NationalityISO:          player.NationalityISO,
-				NationalityFIFACode:     player.NationalityFIFACode,
-				TransferValueAmount:     player.TransferValueAmount,
-				WageAmount:              player.WageAmount,
-				PAC:                     player.PAC,
-				SHO:                     player.SHO,
-				PAS:                     player.PAS,
-				DRI:                     player.DRI,
-				DEF:                     player.DEF,
-				PHY:                     player.PHY,
-				GK:                      player.GK,
-				DIV:                     player.DIV,
-				HAN:                     player.HAN,
-				REF:                     player.REF,
-				KIC:                     player.KIC,
-				SPD:                     player.SPD,
-				POS:                     player.POS,
-				Overall:                 player.Overall,
+				Name:                player.Name,
+				Position:            player.Position,
+				Age:                 player.Age,
+				Club:                player.Club,
+				Division:            player.Division,
+				TransferValue:       player.TransferValue,
+				Wage:                player.Wage,
+				Personality:         player.Personality,
+				MediaHandling:       player.MediaHandling,
+				Nationality:         player.Nationality,
+				NationalityISO:      player.NationalityISO,
+				NationalityFIFACode: player.NationalityFIFACode,
+				TransferValueAmount: player.TransferValueAmount,
+				WageAmount:          player.WageAmount,
+				PAC:                 player.PAC,
+				SHO:                 player.SHO,
+				PAS:                 player.PAS,
+				DRI:                 player.DRI,
+				DEF:                 player.DEF,
+				PHY:                 player.PHY,
+				GK:                  player.GK,
+				DIV:                 player.DIV,
+				HAN:                 player.HAN,
+				REF:                 player.REF,
+				KIC:                 player.KIC,
+				SPD:                 player.SPD,
+				POS:                 player.POS,
+				Overall:             player.Overall,
 				// Deep copy maps
 				Attributes:              make(map[string]string),
 				NumericAttributes:       make(map[string]int),
@@ -420,7 +420,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 				PositionGroups:       append([]string(nil), player.PositionGroups...),
 				RoleSpecificOveralls: append([]RoleOverallScore(nil), player.RoleSpecificOveralls...),
 			}
-			
+
 			// Copy map contents
 			for k, v := range player.Attributes {
 				playersListCopy[i].Attributes[k] = v
@@ -441,7 +441,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		processPercentilesAsync(datasetID, playersListCopy)
 	}
 
-	logInfo(ctx, "Player data stored successfully", 
+	logInfo(ctx, "Player data stored successfully",
 		"dataset_id", datasetID,
 		"player_count", len(playersList),
 		"detected_currency", finalDatasetCurrencySymbol)
@@ -454,7 +454,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	response := UploadResponse{DatasetID: datasetID, Message: "File uploaded and parsed successfully.", DetectedCurrencySymbol: finalDatasetCurrencySymbol}
 	w.Header().Set("Content-Type", "application/json")
 	setCORSHeaders(w, r)
-	
+
 	ctx, responseSpan := StartSpan(ctx, "response.encode")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		RecordError(ctx, err, "Failed to encode JSON response")
@@ -472,22 +472,22 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	totalDuration := time.Since(startTime)
 	memAllocMB := BToMb(memStats.Alloc) // Assumes BToMb is defined in utils.go
-	
+
 	// Record comprehensive business operation metrics
 	RecordBusinessOperation(ctx, "file_upload", true, map[string]interface{}{
-		"filename": handler.Filename,
-		"file_size_bytes": actualFileSize,
+		"filename":          handler.Filename,
+		"file_size_bytes":   actualFileSize,
 		"players_processed": len(playersList),
-		"workers_used": numWorkers,
+		"workers_used":      numWorkers,
 		"currency_detected": finalDatasetCurrencySymbol,
-		"rows_per_second": rowsPerSecond,
-		"memory_mb": memAllocMB,
+		"rows_per_second":   rowsPerSecond,
+		"memory_mb":         memAllocMB,
 	})
-	
+
 	// Record metrics if enabled
-	recordUploadMetrics(handler.Filename, actualFileSize, totalDuration, parseDuration, 
+	recordUploadMetrics(handler.Filename, actualFileSize, totalDuration, parseDuration,
 		len(playersList), memAllocMB, numWorkers, runtime.NumGoroutine())
-	
+
 	// Add final span attributes with performance metrics
 	SetSpanAttributes(ctx,
 		attribute.String("upload.status", "success"),
@@ -498,9 +498,9 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		attribute.Int64("performance.total_duration_ms", totalDuration.Milliseconds()),
 		attribute.Int64("performance.parse_duration_ms", parseDuration.Milliseconds()),
 	)
-	
+
 	// Log performance metrics with trace context
-	logInfo(ctx, "Upload processing completed", 
+	logInfo(ctx, "Upload processing completed",
 		"filename", handler.Filename,
 		"file_size_kb", actualFileSize/1024,
 		"total_duration_ms", totalDuration.Milliseconds(),
@@ -518,28 +518,28 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	startTime := time.Now()
-	
+
 	// Start comprehensive tracing
 	ctx, span := StartSpan(ctx, "api.players.get")
 	defer span.End()
-	
+
 	// Track active requests
 	IncrementActiveRequests(ctx, "/api/players")
 	defer DecrementActiveRequests(ctx, "/api/players")
-	
+
 	// Record API operation metrics at the end
 	defer func() {
 		status := http.StatusOK
 		// We'll update this in error cases below
 		RecordAPIOperation(ctx, r.Method, "/api/players", status, time.Since(startTime))
 	}()
-	
+
 	if r.Method != http.MethodGet {
 		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	
-	SetSpanAttributes(ctx, 
+
+	SetSpanAttributes(ctx,
 		attribute.String("http.method", r.Method),
 		attribute.String("http.route", "/api/players"),
 	)
@@ -592,7 +592,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	SetSpanAttributes(ctx, 
+	SetSpanAttributes(ctx,
 		attribute.Int("dataset.initial_player_count", len(players)),
 		attribute.String("dataset.currency", currencySymbol),
 	)
@@ -613,12 +613,12 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 		// Make a copy of players to avoid modifying the stored data
 		playersCopy := make([]Player, len(players))
 		copy(playersCopy, players)
-		
+
 		// Recalculate percentiles with division filter
 		CalculatePlayerPerformancePercentilesWithDivisionFilter(playersCopy, divisionFilter, targetDivision)
 		players = playersCopy
 	}
-	
+
 	data := struct {
 		Players        []Player
 		CurrencySymbol string
@@ -829,21 +829,21 @@ func teamsHandler(w http.ResponseWriter, r *http.Request) {
 // processLeaguesData groups players by division and calculates league statistics
 func processLeaguesData(players []Player) []League {
 	divisionMap := make(map[string][]Player)
-	
+
 	// Group players by division
 	for _, player := range players {
 		if player.Division != "" {
 			divisionMap[player.Division] = append(divisionMap[player.Division], player)
 		}
 	}
-	
+
 	var leagues []League
 	for divisionName, divisionPlayers := range divisionMap {
 		league := League{
 			Name:        divisionName,
 			PlayerCount: len(divisionPlayers),
 		}
-		
+
 		// Group players by team within this division
 		teamMap := make(map[string][]Player)
 		for _, player := range divisionPlayers {
@@ -851,15 +851,15 @@ func processLeaguesData(players []Player) []League {
 				teamMap[player.Club] = append(teamMap[player.Club], player)
 			}
 		}
-		
+
 		league.TeamCount = len(teamMap)
-		
+
 		// Calculate league ratings based on best teams
 		var teamOveralls []int
 		var allAttRatings []int
 		var allMidRatings []int
 		var allDefRatings []int
-		
+
 		for _, teamPlayers := range teamMap {
 			if len(teamPlayers) >= 11 { // Only consider teams with enough players
 				teamRatings := calculateTeamRatings(teamPlayers)
@@ -871,14 +871,14 @@ func processLeaguesData(players []Player) []League {
 				}
 			}
 		}
-		
+
 		// League overall is the average of the top teams
 		if len(teamOveralls) > 0 {
 			sort.Ints(teamOveralls)
 			sort.Ints(allAttRatings)
 			sort.Ints(allMidRatings)
 			sort.Ints(allDefRatings)
-			
+
 			// Take top 50% of teams or at least 3 teams
 			topTeamsCount := len(teamOveralls) / 2
 			if topTeamsCount < 3 && len(teamOveralls) >= 3 {
@@ -886,21 +886,21 @@ func processLeaguesData(players []Player) []League {
 			} else if topTeamsCount < 1 {
 				topTeamsCount = len(teamOveralls)
 			}
-			
+
 			league.BestOverall = calculateAverage(teamOveralls[len(teamOveralls)-topTeamsCount:])
 			league.AttRating = calculateAverage(allAttRatings[len(allAttRatings)-topTeamsCount:])
 			league.MidRating = calculateAverage(allMidRatings[len(allMidRatings)-topTeamsCount:])
 			league.DefRating = calculateAverage(allDefRatings[len(allDefRatings)-topTeamsCount:])
 		}
-		
+
 		leagues = append(leagues, league)
 	}
-	
+
 	// Sort leagues by overall rating
 	sort.Slice(leagues, func(i, j int) bool {
 		return leagues[i].BestOverall > leagues[j].BestOverall
 	})
-	
+
 	return leagues
 }
 
@@ -913,7 +913,7 @@ func processTeamsData(players []Player, division string) []Team {
 			divisionPlayers = append(divisionPlayers, player)
 		}
 	}
-	
+
 	// Group by team
 	teamMap := make(map[string][]Player)
 	for _, player := range divisionPlayers {
@@ -921,7 +921,7 @@ func processTeamsData(players []Player, division string) []Team {
 			teamMap[player.Club] = append(teamMap[player.Club], player)
 		}
 	}
-	
+
 	var teams []Team
 	for teamName, teamPlayers := range teamMap {
 		team := Team{
@@ -930,29 +930,29 @@ func processTeamsData(players []Player, division string) []Team {
 			PlayerCount: len(teamPlayers),
 			Players:     teamPlayers,
 		}
-		
+
 		ratings := calculateTeamRatings(teamPlayers)
 		team.BestOverall = ratings.BestOverall
 		team.AttRating = ratings.AttRating
 		team.MidRating = ratings.MidRating
 		team.DefRating = ratings.DefRating
-		
+
 		teams = append(teams, team)
 	}
-	
+
 	// Sort teams by overall rating
 	sort.Slice(teams, func(i, j int) bool {
 		return teams[i].BestOverall > teams[j].BestOverall
 	})
-	
+
 	return teams
 }
 
 // PercentileRequest represents the request body for percentile recalculation
 type PercentileRequest struct {
-	PlayerName      string `json:"playerName"`
-	DivisionFilter  string `json:"divisionFilter"`
-	TargetDivision  string `json:"targetDivision"`
+	PlayerName     string `json:"playerName"`
+	DivisionFilter string `json:"divisionFilter"`
+	TargetDivision string `json:"targetDivision"`
 }
 
 // percentilesHandler handles POST requests to recalculate percentiles for a specific player with division filtering
@@ -976,10 +976,10 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logInfo(ctx, "Processing percentiles request", 
+	logInfo(ctx, "Processing percentiles request",
 		"dataset_id", datasetID,
-		"player_name", req.PlayerName, 
-		"division_filter", req.DivisionFilter, 
+		"player_name", req.PlayerName,
+		"division_filter", req.DivisionFilter,
 		"target_division", req.TargetDivision)
 
 	// Get the full dataset
@@ -1018,7 +1018,7 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 	// Create a copy of the dataset and recalculate percentiles with division filtering
 	playersCopy := make([]Player, len(players))
 	copy(playersCopy, players)
-	
+
 	CalculatePlayerPerformancePercentilesWithDivisionFilter(playersCopy, divisionFilter, req.TargetDivision)
 
 	// Return only the updated percentiles for the target player
@@ -1045,31 +1045,31 @@ func calculateTeamRatings(players []Player) TeamRatings {
 	if len(players) < 11 {
 		return TeamRatings{}
 	}
-	
+
 	// Sort players by overall rating
 	sort.Slice(players, func(i, j int) bool {
 		return players[i].Overall > players[j].Overall
 	})
-	
+
 	// Take the top 11 players as the best XI
 	bestXI := players[:11]
-	
+
 	// Calculate average overall
 	var totalOverall int
 	for _, player := range bestXI {
 		totalOverall += player.Overall
 	}
 	bestOverall := totalOverall / 11
-	
+
 	// Calculate section ratings based on positions
 	var attPlayers, midPlayers, defPlayers []Player
-	
+
 	for _, player := range bestXI {
 		// Categorize based on position groups
 		isAttacker := false
 		isMidfielder := false
 		isDefender := false
-		
+
 		for _, posGroup := range player.PositionGroups {
 			switch posGroup {
 			case "Attackers":
@@ -1080,7 +1080,7 @@ func calculateTeamRatings(players []Player) TeamRatings {
 				isDefender = true
 			}
 		}
-		
+
 		// Assign to categories (players can be in multiple)
 		if isAttacker {
 			attPlayers = append(attPlayers, player)
@@ -1092,7 +1092,7 @@ func calculateTeamRatings(players []Player) TeamRatings {
 			defPlayers = append(defPlayers, player)
 		}
 	}
-	
+
 	// Calculate section averages
 	attRating := 0
 	if len(attPlayers) > 0 {
@@ -1102,7 +1102,7 @@ func calculateTeamRatings(players []Player) TeamRatings {
 		}
 		attRating = attSum / len(attPlayers)
 	}
-	
+
 	midRating := 0
 	if len(midPlayers) > 0 {
 		var midSum int
@@ -1111,7 +1111,7 @@ func calculateTeamRatings(players []Player) TeamRatings {
 		}
 		midRating = midSum / len(midPlayers)
 	}
-	
+
 	defRating := 0
 	if len(defPlayers) > 0 {
 		var defSum int
@@ -1120,7 +1120,7 @@ func calculateTeamRatings(players []Player) TeamRatings {
 		}
 		defRating = defSum / len(defPlayers)
 	}
-	
+
 	return TeamRatings{
 		BestOverall: bestOverall,
 		AttRating:   attRating,
@@ -1134,12 +1134,12 @@ func calculateAverage(numbers []int) int {
 	if len(numbers) == 0 {
 		return 0
 	}
-	
+
 	sum := 0
 	for _, num := range numbers {
 		sum += num
 	}
-	
+
 	return sum / len(numbers)
 }
 
@@ -1186,7 +1186,10 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	if query == "" {
 		// Return empty results for empty query
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode([]SearchResult{})
+		if err := json.NewEncoder(w).Encode([]SearchResult{}); err != nil {
+			log.Printf("Error encoding empty search results: %v", err)
+			http.Error(w, "Error encoding response", http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -1223,14 +1226,14 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 func performSearch(players []Player, query string) []SearchResult {
 	var results []SearchResult
 	queryLower := strings.ToLower(query)
-	
+
 	// Collect unique teams, leagues, and nations
 	teams := make(map[string]struct {
 		division string
 		players  int
 	})
-	leagues := make(map[string]int)  // league -> player count
-	nations := make(map[string]int)  // nation -> player count
+	leagues := make(map[string]int) // league -> player count
+	nations := make(map[string]int) // nation -> player count
 
 	// Search players and collect team/league/nation data
 	for _, player := range players {
@@ -1334,10 +1337,10 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	config := struct {
-		MaxUploadSizeMB int64 `json:"maxUploadSizeMB"`
+		MaxUploadSizeMB    int64 `json:"maxUploadSizeMB"`
 		MaxUploadSizeBytes int64 `json:"maxUploadSizeBytes"`
 	}{
-		MaxUploadSizeMB: getMaxUploadSize() / (1024 * 1024),
+		MaxUploadSizeMB:    getMaxUploadSize() / (1024 * 1024),
 		MaxUploadSizeBytes: getMaxUploadSize(),
 	}
 
@@ -1348,4 +1351,3 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
 	}
 }
-

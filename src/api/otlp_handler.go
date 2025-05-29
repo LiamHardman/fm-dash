@@ -14,19 +14,19 @@ import (
 
 // OTLPHandler implements slog.Handler to stream logs to OTLP
 type OTLPHandler struct {
-	logger       log.Logger
+	logger          log.Logger
 	fallbackHandler slog.Handler
 }
 
 // NewOTLPHandler creates a new OTLP handler
 func NewOTLPHandler(loggerProvider *sdklog.LoggerProvider) *OTLPHandler {
 	logger := loggerProvider.Logger("v2fmdash-api")
-	
+
 	// Create a fallback handler for local console output
 	fallbackHandler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
 	})
-	
+
 	return &OTLPHandler{
 		logger:          logger,
 		fallbackHandler: fallbackHandler,
@@ -44,16 +44,16 @@ func (h *OTLPHandler) Handle(ctx context.Context, record slog.Record) error {
 	if err := h.fallbackHandler.Handle(ctx, record); err != nil {
 		// Don't fail if local logging fails
 	}
-	
+
 	// Convert slog level to OTEL severity
 	severity := convertLevel(record.Level)
-	
+
 	// Create OTEL log record
 	var logRecord log.Record
 	logRecord.SetTimestamp(record.Time)
 	logRecord.SetSeverity(severity)
 	logRecord.SetBody(log.StringValue(record.Message))
-	
+
 	// Add trace context if available
 	if span := trace.SpanFromContext(ctx); span.SpanContext().IsValid() {
 		spanCtx := span.SpanContext()
@@ -67,16 +67,16 @@ func (h *OTLPHandler) Handle(ctx context.Context, record slog.Record) error {
 			log.String("debug_context", "no_valid_span_context"),
 		)
 	}
-	
+
 	// Add attributes from slog record
 	record.Attrs(func(attr slog.Attr) bool {
 		logRecord.AddAttributes(log.String(attr.Key, attr.Value.String()))
 		return true
 	})
-	
+
 	// Emit the log record
 	h.logger.Emit(ctx, logRecord)
-	
+
 	return nil
 }
 
