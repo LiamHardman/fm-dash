@@ -56,7 +56,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: '1.24.3'
           cache-dependency-path: go.sum
 
       - name: Install golangci-lint
@@ -70,11 +70,21 @@ jobs:
           echo "🔍 Running golangci-lint checks..."
           golangci-lint run || echo "⚠️ golangci-lint found issues"
 
-      - name: Run Go tests
+      - name: Run Go unit tests
         working-directory: ./src/api
         run: |
-          echo "🧪 Running Go tests..."
+          echo "🧪 Running Go unit tests..."
           go test -v ./... || echo "⚠️ Some Go tests failed"
+
+      - name: Generate test coverage report
+        working-directory: ./src/api
+        run: |
+          echo "📊 Generating test coverage report..."
+          go test -coverprofile=coverage.out ./... || echo "⚠️ Coverage generation failed"
+          if [ -f coverage.out ]; then
+            go tool cover -html=coverage.out -o coverage.html || echo "⚠️ HTML coverage report generation failed"
+            go tool cover -func=coverage.out || echo "⚠️ Coverage summary failed"
+          fi
 
       - name: Backend linting summary
         if: always()
@@ -82,7 +92,10 @@ jobs:
           echo "📋 Backend Code Quality Summary:"
           echo "==============================="
           echo "✅ Go linting and testing checks completed"
+          echo "🧪 Unit tests help ensure code reliability"
+          echo "📊 Coverage reports help identify untested code"
           echo "💡 To fix issues locally, run: npm run lint:go:fix"
+          echo "🔧 To run tests locally, run: cd src/api && go test -v ./..."
 
   code-quality-summary:
     name: Code Quality Summary
