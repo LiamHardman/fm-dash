@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { Quasar } from 'quasar'
+import { describe, expect, it, vi } from 'vitest'
 import PlayerTableRow from './PlayerTableRow.vue'
 
 // Mock Quasar
@@ -43,11 +43,11 @@ describe('PlayerTableRow', () => {
     return player[col.name]
   })
 
-  const mockFormatCurrency = vi.fn((value) => {
+  const mockFormatCurrency = vi.fn(value => {
     return `$${value?.toLocaleString() || '0'}`
   })
 
-  const mockGetRatingClass = vi.fn((rating) => {
+  const mockGetRatingClass = vi.fn(rating => {
     if (rating >= 80) return 'rating-excellent'
     if (rating >= 70) return 'rating-good'
     return 'rating-average'
@@ -84,7 +84,7 @@ describe('PlayerTableRow', () => {
     })
 
     const cells = wrapper.findAll('td')
-    
+
     // The displayValue function should be called when rendering
     expect(cells[0].text()).toContain('John Doe') // Name
     expect(cells[1].text()).toContain('25') // Age
@@ -99,7 +99,7 @@ describe('PlayerTableRow', () => {
 
     const clubCell = wrapper.findAll('td')[2] // Club column
     const clubLink = clubCell.find('.club-link a')
-    
+
     expect(clubLink.exists()).toBe(true)
     expect(clubLink.text()).toBe('Test FC')
   })
@@ -157,8 +157,7 @@ describe('PlayerTableRow', () => {
     })
 
     const row = wrapper.find('tr')
-    const mockEvent = new MouseEvent('contextmenu')
-    await row.trigger('contextmenu', mockEvent)
+    await row.trigger('contextmenu')
 
     expect(wrapper.emitted('context-menu')).toBeTruthy()
     expect(wrapper.emitted('context-menu')[0][0]).toEqual(mockPlayer)
@@ -189,13 +188,13 @@ describe('PlayerTableRow', () => {
     })
 
     const cells = wrapper.findAll('td')
-    
+
     // Name column (text type) should not have text-right
     expect(cells[0].classes()).not.toContain('text-right')
-    
+
     // Age column (number type) should have text-right
     expect(cells[1].classes()).toContain('text-right')
-    
+
     // Rating column (rating type) should have text-right
     expect(cells[3].classes()).toContain('text-right')
   })
@@ -227,7 +226,7 @@ describe('PlayerTableRow', () => {
 
   it('handles missing player data gracefully', () => {
     const emptyPlayer = {}
-    
+
     const wrapper = mount(PlayerTableRow, {
       props: {
         ...defaultProps,
@@ -263,4 +262,4 @@ describe('PlayerTableRow', () => {
 
     expect(wrapper.props('isGoalkeeperView')).toBe(true)
   })
-}) 
+})
