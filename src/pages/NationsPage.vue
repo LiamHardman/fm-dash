@@ -645,7 +645,7 @@ export default {
       const nationsMap = new Map()
 
       // First pass: collect all players by nationality
-      allPlayersData.value.forEach(player => {
+      for (const player of allPlayersData.value) {
         if (player.nationality && player.nationality.trim() !== '') {
           const nationality = player.nationality
 
@@ -668,11 +668,11 @@ export default {
             nation.nationality_iso = player.nationality_iso
           }
         }
-      })
+      }
 
       // Second pass: get top players per position for each nation and calculate best formation overall
       const nationsArray = Array.from(nationsMap.values())
-      nationsArray.forEach(nation => {
+      for (const nation of nationsArray) {
         // Get top 10 players per position to optimize performance
         const topPlayersByPosition = {}
         const allPositions = [
@@ -692,7 +692,7 @@ export default {
           'ST'
         ]
 
-        allPositions.forEach(position => {
+        for (const position of allPositions) {
           const playersForPosition = nation.players.filter(player => {
             const playerPositions = player.shortPositions || []
             return playerPositions.includes(position)
@@ -701,27 +701,27 @@ export default {
           // Sort by Overall and take top 10
           playersForPosition.sort((a, b) => (b.Overall || 0) - (a.Overall || 0))
           topPlayersByPosition[position] = playersForPosition.slice(0, 10)
-        })
+        }
 
         let bestOverall = 0
         let hasFullSquad = false
         let bestSectionRatings = { attRating: 0, midRating: 0, defRating: 0 }
 
         // Test each formation to find the best average overall for this nation
-        Object.keys(formations).forEach(formationKey => {
+        for (const formationKey of Object.keys(formations)) {
           const formationLayoutForCalc = getFormationLayout(formationKey)
-          if (!formationLayoutForCalc) return
+          if (!formationLayoutForCalc) continue
 
           const formationSlots = formationLayoutForCalc.flatMap(row => row.positions)
           const tempSquadComposition = {}
 
-          formationSlots.forEach(slot => {
+          for (const slot of formationSlots) {
             tempSquadComposition[slot.id] = []
-          })
+          }
 
           // Calculate player assignments for this formation using only top players
           const allPotentialPlayerAssignments = []
-          formationSlots.forEach(slot => {
+          for (const slot of formationSlots) {
             const slotPositions = positionSideMap[slot.role.toUpperCase()] || []
             const fallbackPositions = fallbackPositionMap[slot.role.toUpperCase()] || []
 
@@ -729,25 +729,25 @@ export default {
             let relevantPlayers = []
 
             // Add exact position matches first
-            slotPositions.forEach(position => {
+            for (const position of slotPositions) {
               if (topPlayersByPosition[position]) {
                 relevantPlayers = [...relevantPlayers, ...topPlayersByPosition[position]]
               }
-            })
+            }
 
             // Add fallback positions if needed
-            fallbackPositions.forEach(position => {
+            for (const position of fallbackPositions) {
               if (topPlayersByPosition[position]) {
-                topPlayersByPosition[position].forEach(player => {
+                for (const player of topPlayersByPosition[position]) {
                   // Only add if not already included from exact matches
                   if (!relevantPlayers.some(p => p.name === player.name)) {
                     relevantPlayers.push(player)
                   }
-                })
+                }
               }
-            })
+            }
 
-            relevantPlayers.forEach(player => {
+            for (const player of relevantPlayers) {
               const overallInRole = getPlayerOverallForRole(player, slot.role)
 
               if (overallInRole >= MIN_SUITABILITY_THRESHOLD) {
@@ -771,14 +771,14 @@ export default {
 
                 allPotentialPlayerAssignments.push(assignment)
               }
-            })
-          })
+            }
+          }
 
           allPotentialPlayerAssignments.sort((a, b) => b.sortScore - a.sortScore)
           const assignedPlayersToSlots = new Set()
 
           // Fill starting XI for this formation
-          formationSlots.forEach(slot => {
+          for (const slot of formationSlots) {
             for (const assignment of allPotentialPlayerAssignments) {
               if (
                 assignment.slotId === slot.id &&
@@ -793,7 +793,7 @@ export default {
                 break
               }
             }
-          })
+          }
 
           // Check if we have a full squad (player in every position)
           const filledPositions = Object.values(tempSquadComposition).filter(
@@ -807,12 +807,12 @@ export default {
             // Calculate average overall for this formation
             let sumOfStartersOverall = 0
             let startersCount = 0
-            Object.values(tempSquadComposition).forEach(slotPlayers => {
+            for (const slotPlayers of Object.values(tempSquadComposition)) {
               if (slotPlayers && slotPlayers.length > 0) {
                 sumOfStartersOverall += slotPlayers[0].overallInRole
                 startersCount++
               }
-            })
+            }
 
             if (startersCount > 0) {
               const averageOverall = Math.round(sumOfStartersOverall / startersCount)
@@ -826,14 +826,14 @@ export default {
               }
             }
           }
-        })
+        }
 
         // Only set overall if nation has at least one full squad possible
         nation.bestFormationOverall = hasFullSquad ? bestOverall : 0
         nation.attRating = hasFullSquad ? bestSectionRatings.attRating : 0
         nation.midRating = hasFullSquad ? bestSectionRatings.midRating : 0
         nation.defRating = hasFullSquad ? bestSectionRatings.defRating : 0
-      })
+      }
 
       const sortedNations = nationsArray.sort(
         (a, b) => b.bestFormationOverall - a.bestFormationOverall
@@ -901,11 +901,11 @@ export default {
         return
       }
       const uniqueNations = new Set()
-      allPlayersData.value.forEach(player => {
+      for (const player of allPlayersData.value) {
         if (player.nationality && player.nationality.trim() !== '') {
           uniqueNations.add(player.nationality)
         }
-      })
+      }
       allNationNamesCache.value = Array.from(uniqueNations).sort()
       nationOptions.value = allNationNamesCache.value
     }
@@ -1101,7 +1101,7 @@ export default {
       let defSum = 0
       let defCount = 0
 
-      formationSlots.forEach(slot => {
+      for (const slot of formationSlots) {
         const slotPlayers = squadComposition[slot.id]
         if (slotPlayers && slotPlayers.length > 0) {
           const starter = slotPlayers[0]
@@ -1118,7 +1118,7 @@ export default {
             defCount++
           }
         }
-      })
+      }
 
       return {
         attRating: attCount > 0 ? Math.round(attSum / attCount) : 0,
@@ -1154,21 +1154,21 @@ export default {
 
         if (exactPositionMatches.length > 0) {
           if (Array.isArray(player.roleSpecificOveralls)) {
-            player.roleSpecificOveralls.forEach(rso => {
+            for (const rso of player.roleSpecificOveralls) {
               const rsoBasePosition = rso.roleName.split(' - ')[0].trim()
 
               if (exactPositionMatches.includes(rsoBasePosition)) {
                 bestScoreForRole = Math.max(bestScoreForRole, rso.score)
               }
-            })
+            }
           } else {
-            Object.entries(player.roleSpecificOveralls).forEach(([roleName, score]) => {
+            for (const [roleName, score] of Object.entries(player.roleSpecificOveralls)) {
               const rsoBasePosition = roleName.split(' - ')[0].trim()
 
               if (exactPositionMatches.includes(rsoBasePosition)) {
                 bestScoreForRole = Math.max(bestScoreForRole, score)
               }
-            })
+            }
           }
 
           if (bestScoreForRole === 0) {
@@ -1188,21 +1188,21 @@ export default {
 
         if (fallbackMatches.length > 0) {
           if (Array.isArray(player.roleSpecificOveralls)) {
-            player.roleSpecificOveralls.forEach(rso => {
+            for (const rso of player.roleSpecificOveralls) {
               const rsoBasePosition = rso.roleName.split(' - ')[0].trim()
 
               if (fallbackMatches.includes(rsoBasePosition)) {
                 bestScoreForRole = Math.max(bestScoreForRole, rso.score)
               }
-            })
+            }
           } else {
-            Object.entries(player.roleSpecificOveralls).forEach(([roleName, score]) => {
+            for (const [roleName, score] of Object.entries(player.roleSpecificOveralls)) {
               const rsoBasePosition = roleName.split(' - ')[0].trim()
 
               if (fallbackMatches.includes(rsoBasePosition)) {
                 bestScoreForRole = Math.max(bestScoreForRole, score)
               }
-            })
+            }
           }
 
           if (bestScoreForRole === 0) {
@@ -1218,24 +1218,29 @@ export default {
         const targetRoleKeyPrefixes = fmPositionMatchers
           .map(matcher => fmMatcherToRoleKeyPrefix[matcher.toUpperCase()])
           .filter(prefix => !!prefix)
-          .reduce((acc, val) => (acc.includes(val) ? acc : [...acc, val]), [])
+          .reduce((acc, val) => {
+            if (!acc.includes(val)) {
+              acc.push(val)
+            }
+            return acc
+          }, [])
 
         if (Array.isArray(player.roleSpecificOveralls)) {
-          player.roleSpecificOveralls.forEach(rso => {
+          for (const rso of player.roleSpecificOveralls) {
             const rsoBasePosition = rso.roleName.split(' - ')[0].trim()
 
             if (targetRoleKeyPrefixes.includes(rsoBasePosition)) {
               bestScoreForRole = Math.max(bestScoreForRole, rso.score)
             }
-          })
+          }
         } else if (player.roleSpecificOveralls) {
-          Object.entries(player.roleSpecificOveralls).forEach(([roleName, score]) => {
+          for (const [roleName, score] of Object.entries(player.roleSpecificOveralls)) {
             const rsoBasePosition = roleName.split(' - ')[0].trim()
 
             if (targetRoleKeyPrefixes.includes(rsoBasePosition)) {
               bestScoreForRole = Math.max(bestScoreForRole, score)
             }
-          })
+          }
         }
       }
 
@@ -1271,20 +1276,20 @@ export default {
       let bestFormationKey = null
       let bestAverageOverall = 0
 
-      Object.keys(formations).forEach(formationKey => {
+      for (const formationKey of Object.keys(formations)) {
         const formationLayoutForCalc = getFormationLayout(formationKey)
-        if (!formationLayoutForCalc) return
+        if (!formationLayoutForCalc) continue
 
         const formationSlots = formationLayoutForCalc.flatMap(row => row.positions)
         const tempSquadComposition = {}
 
-        formationSlots.forEach(slot => {
+        for (const slot of formationSlots) {
           tempSquadComposition[slot.id] = []
-        })
+        }
 
         const allPotentialPlayerAssignments = []
-        formationSlots.forEach(slot => {
-          nationPlayers.value.forEach(player => {
+        for (const slot of formationSlots) {
+          for (const player of nationPlayers.value) {
             const overallInRole = getPlayerOverallForRole(player, slot.role)
 
             if (overallInRole >= MIN_SUITABILITY_THRESHOLD) {
@@ -1292,7 +1297,9 @@ export default {
               const playerPositions = player.shortPositions || []
               const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos))
 
-              if (isExactMatch || overallInRole >= MIN_SUITABILITY_THRESHOLD) {
+              const canPlayInPosition = isExactMatch
+
+              if (canPlayInPosition && overallInRole >= MIN_SUITABILITY_THRESHOLD) {
                 const assignment = {
                   player,
                   slotId: slot.id,
@@ -1311,14 +1318,14 @@ export default {
                 allPotentialPlayerAssignments.push(assignment)
               }
             }
-          })
-        })
+          }
+        }
 
         allPotentialPlayerAssignments.sort((a, b) => b.sortScore - a.sortScore)
 
         const assignedPlayersToSlots = new Set()
 
-        formationSlots.forEach(slot => {
+        for (const slot of formationSlots) {
           for (const assignment of allPotentialPlayerAssignments) {
             if (
               assignment.slotId === slot.id &&
@@ -1333,16 +1340,16 @@ export default {
               break
             }
           }
-        })
+        }
 
         let sumOfStartersOverall = 0
         let startersCount = 0
-        Object.values(tempSquadComposition).forEach(slotPlayers => {
+        for (const slotPlayers of Object.values(tempSquadComposition)) {
           if (slotPlayers && slotPlayers.length > 0) {
             sumOfStartersOverall += slotPlayers[0].overallInRole
             startersCount++
           }
-        })
+        }
 
         if (startersCount > 0) {
           const averageOverall = sumOfStartersOverall / startersCount
@@ -1351,7 +1358,7 @@ export default {
             bestFormationKey = formationKey
           }
         }
-      })
+      }
 
       // Cache the result
       if (bestFormationKey) {
@@ -1391,13 +1398,13 @@ export default {
 
       const formationSlots = formationLayoutForCalc.flatMap(row => row.positions)
 
-      formationSlots.forEach(slot => {
+      for (const slot of formationSlots) {
         tempSquadComposition[slot.id] = []
-      })
+      }
 
       const allPotentialPlayerAssignments = []
-      formationSlots.forEach(slot => {
-        nationPlayers.value.forEach(player => {
+      for (const slot of formationSlots) {
+        for (const player of nationPlayers.value) {
           const overallInRole = getPlayerOverallForRole(player, slot.role)
 
           if (overallInRole >= MIN_SUITABILITY_THRESHOLD) {
@@ -1426,8 +1433,8 @@ export default {
               allPotentialPlayerAssignments.push(assignment)
             }
           }
-        })
-      })
+        }
+      }
 
       allPotentialPlayerAssignments.sort((a, b) => {
         return b.sortScore - a.sortScore
@@ -1436,7 +1443,7 @@ export default {
       const assignedPlayersToSlots = new Set()
 
       for (let depthIndex = 0; depthIndex < 3; depthIndex++) {
-        formationSlots.forEach(slot => {
+        for (const slot of formationSlots) {
           if (tempSquadComposition[slot.id].length === depthIndex) {
             for (const assignment of allPotentialPlayerAssignments) {
               if (
@@ -1469,9 +1476,9 @@ export default {
               }
             }
           }
-        })
+        }
 
-        formationSlots.forEach(slot => {
+        for (const slot of formationSlots) {
           if (tempSquadComposition[slot.id].length === depthIndex) {
             for (const assignment of allPotentialPlayerAssignments) {
               if (
@@ -1503,7 +1510,7 @@ export default {
               }
             }
           }
-        })
+        }
       }
 
       for (const slotId in tempSquadComposition) {
@@ -1516,7 +1523,7 @@ export default {
 
           const fallbackAssignments = []
 
-          nationPlayers.value.forEach(player => {
+          for (const player of nationPlayers.value) {
             if (!assignedPlayersToSlots.has(player.name)) {
               const playerPositions = player.shortPositions || []
 
@@ -1533,7 +1540,7 @@ export default {
                 }
               }
             }
-          })
+          }
 
           fallbackAssignments.sort((a, b) => b.overallInRole - a.overallInRole)
 
@@ -1549,12 +1556,12 @@ export default {
 
       let sumOfStartersOverall = 0
       let startersCount = 0
-      Object.values(squadComposition.value).forEach(slotPlayers => {
+      for (const slotPlayers of Object.values(squadComposition.value)) {
         if (slotPlayers && slotPlayers.length > 0) {
           sumOfStartersOverall += slotPlayers[0].overallInRole
           startersCount++
         }
-      })
+      }
 
       if (startersCount > 0) {
         bestNationAverageOverall.value = Math.round(sumOfStartersOverall / startersCount)
@@ -1637,12 +1644,12 @@ export default {
 
       let sumOfDisplayedOveralls = 0
       let countOfDisplayedOveralls = 0
-      Object.values(newPitchState).forEach(p => {
+      for (const p of Object.values(newPitchState)) {
         if (p && typeof p.Overall === 'number') {
           sumOfDisplayedOveralls += p.Overall
           countOfDisplayedOveralls++
         }
-      })
+      }
       bestNationAverageOverall.value =
         countOfDisplayedOveralls > 0
           ? Math.round(sumOfDisplayedOveralls / countOfDisplayedOveralls)
