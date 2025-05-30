@@ -44,6 +44,19 @@
                 </div>
                 
                 <q-space />
+                
+                <!-- Buy me a coffee button -->
+                <div class="bmc-button-wrapper">
+                    <a 
+                        href="https://www.buymeacoffee.com/LiamHardman" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        class="bmc-button"
+                    >
+                        <span class="bmc-text">☕ Buy me a coffee</span>
+                    </a>
+                </div>
+                
                 <q-btn
                     flat
                     round
@@ -221,6 +234,41 @@ export default defineComponent({
     }
 }
 
+.bmc-button-wrapper {
+    margin-right: 1rem;
+    display: flex;
+    align-items: center;
+    
+    .bmc-button {
+        background: #FFDD00;
+        border: 1px solid #000000;
+        border-radius: 8px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 1rem;
+        text-decoration: none;
+        color: #000000;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+        
+        &:hover {
+            background: #FFE55C;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .bmc-text {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+    }
+}
+
 .app-footer {
     background: transparent;
     border-top: 1px solid rgba(26, 35, 126, 0.1);
@@ -264,6 +312,15 @@ export default defineComponent({
     .search-container {
         margin-left: 1rem;
         margin-right: 0.5rem;
+    }
+    
+    .bmc-button-wrapper {
+        margin-right: 0.5rem;
+        
+        .bmc-button {
+            height: 32px !important;
+            font-size: 12px !important;
+        }
     }
     
     .footer-content {
