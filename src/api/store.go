@@ -75,7 +75,7 @@ func StoreDatasetAsync(datasetID string, players []Player, currencySymbol string
 		)
 
 		startTime := time.Now()
-		
+
 		data := DatasetData{
 			Players:        players,
 			CurrencySymbol: currencySymbol,
@@ -83,24 +83,24 @@ func StoreDatasetAsync(datasetID string, players []Player, currencySymbol string
 
 		err := storage.Store(datasetID, data)
 		duration := time.Since(startTime)
-		
+
 		if err != nil {
 			RecordError(ctx, err, "Failed to store dataset asynchronously")
 			log.Printf("Error storing dataset %s asynchronously: %v", datasetID, err)
 			return
 		}
 
-		SetSpanAttributes(ctx, 
+		SetSpanAttributes(ctx,
 			attribute.Int64("operation.duration_ms", duration.Milliseconds()),
 			attribute.String("operation.status", "success"),
 		)
 
 		RecordBusinessOperation(ctx, "dataset_store_async", true, map[string]interface{}{
-			"dataset_id":      datasetID,
-			"player_count":    len(players),
-			"currency":        currencySymbol,
-			"duration_ms":     duration.Milliseconds(),
-			"operation_type":  "async",
+			"dataset_id":     datasetID,
+			"player_count":   len(players),
+			"currency":       currencySymbol,
+			"duration_ms":    duration.Milliseconds(),
+			"operation_type": "async",
 		})
 
 		log.Printf("Successfully stored dataset %s asynchronously in %v", datasetID, duration)
@@ -290,7 +290,7 @@ func SetPlayerDataAsync(datasetID string, players []Player, currencySymbol strin
 		)
 
 		startTime := time.Now()
-		
+
 		if err := StoreDataset(datasetID, players, currencySymbol); err != nil {
 			RecordError(asyncCtx, err, "Failed to store in new storage system asynchronously")
 			log.Printf("Error storing dataset %s to persistent storage asynchronously: %v", datasetID, err)
@@ -298,7 +298,7 @@ func SetPlayerDataAsync(datasetID string, players []Player, currencySymbol strin
 		}
 
 		duration := time.Since(startTime)
-		SetSpanAttributes(asyncCtx, 
+		SetSpanAttributes(asyncCtx,
 			attribute.Int64("async_storage.duration_ms", duration.Milliseconds()),
 			attribute.String("async_storage.status", "success"),
 		)

@@ -10,14 +10,6 @@ import (
 	"sync"
 )
 
-// minInt returns the smaller of two integers
-func minInt(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 // Memory pools for reducing allocations during role calculations
 var (
 	roleSlicePool = sync.Pool{

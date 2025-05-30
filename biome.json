@@ -7,6 +7,7 @@
   },
   "files": {
     "ignoreUnknown": false,
+    "maxSize": 3145728,
     "ignore": [
       "dist/**",
       "node_modules/**",
@@ -16,7 +17,8 @@
       "*.min.js",
       "*.min.css",
       "testdata.html",
-      "src/api/**"
+      "src/api/**",
+      "src/utils/teams_data.json"
     ],
     "include": [
       "src/**/*.js",

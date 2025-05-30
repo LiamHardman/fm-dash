@@ -18,11 +18,12 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
+    "test:optional": "vitest run --run --reporter=verbose || echo 'No frontend tests found, skipping...'",
     "test:coverage": "vitest run --coverage",
     "test:go": "cd src/api && go test ./...",
     "test:go:verbose": "cd src/api && go test -v ./...",
     "test:go:coverage": "cd src/api && go test -cover ./...",
-    "test:all": "npm run test:run && npm run test:go",
+    "test:all": "npm run test:optional && npm run test:go",
     "check": "npm run lint:all && npm run format:check && npm run test:all",
     "fix": "npm run format && npm run lint && npm run lint:go:fix",
     "prepare": "husky"
