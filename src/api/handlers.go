@@ -266,6 +266,11 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	playersList := make([]Player, 0, defaultPlayerCapacity) // Assumes defaultPlayerCapacity is defined in config.go
 	var processingError error
 
+	// Ensure configuration is initialized before processing players to avoid slow fallback path
+	if err := EnsureConfigInitialized(5 * time.Second); err != nil {
+		logWarn(ctx, "Configuration initialization timeout, proceeding with defaults", "error", err)
+	}
+
 	numWorkers := runtime.NumCPU()
 	if numWorkers == 0 {
 		numWorkers = 1
@@ -447,11 +452,6 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		"dataset_id", datasetID,
 		"player_count", len(playersList),
 		"detected_currency", finalDatasetCurrencySymbol)
-	if len(playersList) > 0 {
-		log.Printf("DEBUG: Sample Player 1 after all processing: Name='%s', Overall=%d, ParsedPositions=%v, ShortPositions=%v, PositionGroups=%v", playersList[0].Name, playersList[0].Overall, playersList[0].ParsedPositions, playersList[0].ShortPositions, playersList[0].PositionGroups)
-	} else {
-		log.Println("No players were successfully parsed or list is empty after processing.")
-	}
 
 	response := UploadResponse{DatasetID: datasetID, Message: "File uploaded and parsed successfully.", DetectedCurrencySymbol: finalDatasetCurrencySymbol}
 	w.Header().Set("Content-Type", "application/json")

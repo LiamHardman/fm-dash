@@ -63,13 +63,6 @@ func parseCellsToPlayer(cells, headers []string) (Player, error) {
 	}
 	foundName := false
 
-	// Debug logging to see what headers we're processing
-	isFirstPlayer := cells[0] != "" && len(cells) > 0 // Simple check for first meaningful row
-	if isFirstPlayer {
-		log.Printf("DEBUG: Processing headers: %v", headers)
-		log.Printf("DEBUG: Processing first player cells (first 10): %v", cells[:minInt(len(cells), 10)])
-	}
-
 	for i, headerNameClean := range headers {
 		cellValue := ""
 		if i < len(cells) { // Should always be true due to padding
@@ -82,9 +75,6 @@ func parseCellsToPlayer(cells, headers []string) (Player, error) {
 		case "UID", "uid", "Uid", "ID", "id", "Id", "Player ID", "PlayerId", "player_id", "unique_id", "UniqueId":
 			player.UID = cellValue
 			isAnAttributeField = false
-			if isFirstPlayer {
-				log.Printf("DEBUG: Found UID field '%s' with value: %s", headerNameClean, cellValue)
-			}
 		case "Name":
 			player.Name = cellValue
 			if cellValue != "" {
@@ -180,11 +170,6 @@ func parseCellsToPlayer(cells, headers []string) (Player, error) {
 		return Player{}, errors.New("skipped row: 'Name' field missing and row appears empty or is likely a non-player row (e.g., header repetition, spacer)")
 	}
 
-	// Debug logging for first few players to see UID assignment
-	if isFirstPlayer {
-		log.Printf("DEBUG: Finished parsing player '%s' with UID: '%s'", player.Name, player.UID)
-	}
-
 	return player, nil
 }
 
@@ -192,15 +177,6 @@ func parseCellsToPlayer(cells, headers []string) (Player, error) {
 // such as numeric attributes, FIFA stats, overall scores, parsed positions, etc.
 // It modifies the player struct pointed to.
 func EnhancePlayerWithCalculations(player *Player) {
-	// --- START DEBUG LOGGING ---
-	// Log raw attributes for a specific player to see what's coming in
-	// You can change "Xavi Pachón" to a name you expect or use a counter for the first few players
-	isSamplePlayer := player.Name == "Xavi Pachón" // Example, adjust if needed
-	if isSamplePlayer {
-		log.Printf("DEBUG EnhancePlayer START for %s. Raw Attributes: %v", player.Name, player.Attributes)
-	}
-	// --- END DEBUG LOGGING ---
-
 	// Ensure maps are initialized (though parseCellsToPlayer should do this)
 	if player.NumericAttributes == nil {
 		player.NumericAttributes = make(map[string]int, len(player.Attributes))
@@ -235,9 +211,6 @@ func EnhancePlayerWithCalculations(player *Player) {
 				player.NumericAttributes[key] = valInt
 			} else {
 				player.NumericAttributes[key] = 0 // Default to 0 if not a valid number
-				if isSamplePlayer {
-					log.Printf("DEBUG EnhancePlayer: Atoi FAILED for attribute key '%s', valStr '%s'. Error: %v. Defaulted to 0.", key, valStr, err)
-				}
 			}
 		} else {
 			// If not a technical/mental/physical/GK attribute, check if it's a performance stat
@@ -255,9 +228,6 @@ func EnhancePlayerWithCalculations(player *Player) {
 						player.PerformanceStatsNumeric[key] = val
 					} else {
 						player.PerformanceStatsNumeric[key] = math.NaN() // Use NaN for unparseable stats
-						if isSamplePlayer {
-							log.Printf("DEBUG EnhancePlayer: ParseFloat FAILED for performance stat key '%s', valStr '%s'. Error: %v. Defaulted to NaN.", key, valStr, err)
-						}
 					}
 				} else {
 					player.PerformanceStatsNumeric[key] = math.NaN() // Use NaN for missing stats ("-")
@@ -266,13 +236,6 @@ func EnhancePlayerWithCalculations(player *Player) {
 			// If it's neither a known numeric attribute nor a performance stat, it remains in player.Attributes as a string.
 		}
 	}
-
-	// --- START DEBUG LOGGING ---
-	if isSamplePlayer {
-		log.Printf("DEBUG EnhancePlayer MID for %s. NumericAttributes: %v", player.Name, player.NumericAttributes)
-		log.Printf("DEBUG EnhancePlayer MID for %s. PerformanceStatsNumeric: %v", player.Name, player.PerformanceStatsNumeric)
-	}
-	// --- END DEBUG LOGGING ---
 
 	// Parse positions
 	player.ParsedPositions = ParsePlayerPositionsGo(player.Position)          // from positions.go
@@ -370,7 +333,8 @@ func EnhancePlayerWithCalculations(player *Player) {
 	if shouldUseFallback {
 		muRoleSpecificOverallWeights.RLock()
 		if len(roleSpecificOverallWeights) > 0 { // roleSpecificOverallWeights from config.go
-			log.Printf("Warning: precomputedRoleWeights is empty for player '%s'. Falling back to iterating roleSpecificOverallWeights (SLOW PATH). Check init logs.", player.Name)
+			// Only log this warning once to avoid spam
+			log.Printf("Warning: precomputedRoleWeights is empty. Falling back to iterating roleSpecificOverallWeights (SLOW PATH). Check init logs.")
 		} else {
 			shouldUseFallback = false
 		}
@@ -515,12 +479,4 @@ func EnhancePlayerWithCalculations(player *Player) {
 		player.Overall = Clamp(finalOverall, 0, 99)                                                                                                        // Clamp from utils.go
 	}
 	// --- END: Overall Calculation ---
-
-	// --- START DEBUG LOGGING ---
-	if isSamplePlayer {
-		log.Printf("DEBUG EnhancePlayer END for %s. Final Overall: %d, PAC: %d, SHO: %d, PAS: %d, DRI: %d, DEF: %d, PHY: %d, GK: %d, DIV: %d, HAN: %d, REF: %d, KIC: %d, SPD: %d, POS: %d",
-			player.Name, player.Overall, player.PAC, player.SHO, player.PAS, player.DRI, player.DEF, player.PHY, player.GK, player.DIV, player.HAN, player.REF, player.KIC, player.SPD, player.POS)
-		log.Printf("DEBUG EnhancePlayer END for %s. RoleSpecificOveralls: %v", player.Name, player.RoleSpecificOveralls)
-	}
-	// --- END DEBUG LOGGING ---
 }
