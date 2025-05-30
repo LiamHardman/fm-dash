@@ -818,11 +818,42 @@ export default {
               const averageOverall = Math.round(sumOfStartersOverall / startersCount)
               if (averageOverall > bestOverall) {
                 bestOverall = averageOverall
-                // Calculate section ratings for this formation
-                bestSectionRatings = calculateSectionRatings(
-                  tempSquadComposition,
-                  formationLayoutForCalc
-                )
+                // Calculate section ratings directly for this formation
+                const defensivePositions = ['GK', 'D (R)', 'D (L)', 'D (C)', 'WB (R)', 'WB (L)']
+                const midfielderPositions = ['DM (C)', 'M (R)', 'M (L)', 'M (C)', 'AM (C)']
+                const attackingPositions = ['AM (R)', 'AM (L)', 'ST (C)']
+
+                let attSum = 0
+                let attCount = 0
+                let midSum = 0
+                let midCount = 0
+                let defSum = 0
+                let defCount = 0
+
+                for (const slot of formationSlots) {
+                  const slotPlayers = tempSquadComposition[slot.id]
+                  if (slotPlayers && slotPlayers.length > 0) {
+                    const starter = slotPlayers[0]
+                    const rating = starter.overallInRole
+
+                    if (attackingPositions.includes(slot.role)) {
+                      attSum += rating
+                      attCount++
+                    } else if (midfielderPositions.includes(slot.role)) {
+                      midSum += rating
+                      midCount++
+                    } else if (defensivePositions.includes(slot.role)) {
+                      defSum += rating
+                      defCount++
+                    }
+                  }
+                }
+
+                bestSectionRatings = {
+                  attRating: attCount > 0 ? Math.round(attSum / attCount) : 0,
+                  midRating: midCount > 0 ? Math.round(midSum / midCount) : 0,
+                  defRating: defCount > 0 ? Math.round(defSum / defCount) : 0
+                }
               }
             }
           }
