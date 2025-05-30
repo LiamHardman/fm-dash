@@ -12,7 +12,7 @@ export default defineConfig({
   test: {
     environment: 'happy-dom',
     globals: true,
-    setupFiles: [],
+    setupFiles: ['src/test-setup.js'],
     include: ['src/**/*.{test,spec}.{js,ts,vue}'],
     exclude: ['node_modules', 'dist', 'src/api/**']
   },

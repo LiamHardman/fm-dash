@@ -39,6 +39,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
+    "@pinia/testing": "^1.0.1",
     "@quasar/vite-plugin": "^1.6.0",
     "@vitejs/plugin-vue": "^5.0.4",
     "@vue/test-utils": "^2.4.6",
