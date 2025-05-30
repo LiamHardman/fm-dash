@@ -17,48 +17,54 @@ export const usePlayerStore = defineStore('player', () => {
   const uniqueClubs = computed(() => {
     if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) return []
     const clubs = new Set()
-    allPlayers.value.forEach(p => {
+    for (const p of allPlayers.value) {
       if (p.club) clubs.add(p.club)
-    })
+    }
     return Array.from(clubs).sort()
   })
 
   const uniqueNationalities = computed(() => {
     if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) return []
     const nationalities = new Set()
-    allPlayers.value.forEach(p => {
+    for (const p of allPlayers.value) {
       if (p.nationality) nationalities.add(p.nationality)
-    })
+    }
     return Array.from(nationalities).sort()
   })
 
   const uniqueMediaHandlings = computed(() => {
     if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) return []
     const mediaHandlingsIndividual = new Set()
-    allPlayers.value.forEach(p => {
+    for (const p of allPlayers.value) {
       if (p.media_handling) {
-        p.media_handling.split(',').forEach(style => {
+        for (const style of p.media_handling.split(',')) {
           const trimmedStyle = style.trim()
           if (trimmedStyle) mediaHandlingsIndividual.add(trimmedStyle)
-        })
+        }
       }
-    })
+    }
     return Array.from(mediaHandlingsIndividual).sort()
   })
 
   const uniquePersonalities = computed(() => {
     if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) return []
     const personalities = new Set()
-    allPlayers.value.forEach(p => {
+    for (const p of allPlayers.value) {
       if (p.personality) personalities.add(p.personality)
-    })
+    }
     return Array.from(personalities).sort()
   })
 
   const uniquePositionsCount = computed(() => {
     if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) return 0
     const s = new Set()
-    allPlayers.value.forEach(player => player.parsedPositions?.forEach(pos => s.add(pos)))
+    for (const player of allPlayers.value) {
+      if (player.parsedPositions) {
+        for (const pos of player.parsedPositions) {
+          s.add(pos)
+        }
+      }
+    }
     return s.size
   })
 
@@ -242,7 +248,7 @@ export const usePlayerStore = defineStore('player', () => {
       try {
         await fetchPlayersByDatasetId(storedDatasetId)
         await fetchAllAvailableRoles()
-      } catch (e) {
+      } catch (_e) {
         // Error handled in fetch functions
       }
     } else {

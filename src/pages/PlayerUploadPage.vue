@@ -264,7 +264,7 @@ export default {
     const router = useRouter()
     const playerStore = usePlayerStore()
     const uiStore = useUiStore()
-    const $q = useQuasar()
+    const _$q = useQuasar()
     const playerFile = ref(null)
     const showFileSizeLimitModal = ref(false)
 
@@ -333,7 +333,7 @@ export default {
       const k = 1024
       const sizes = ['Bytes', 'KB', 'MB', 'GB']
       const i = Math.floor(Math.log(bytes) / Math.log(k))
-      return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+      return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`
     }
 
     const onFileSelected = file => {

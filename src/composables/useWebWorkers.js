@@ -260,9 +260,7 @@ export function usePlayerCalculationWorker() {
   }
 
   // Main thread fallback functions
-  const sortPlayersMainThread = (players, fieldKey, direction, sortField, isGoalkeeperView) => {
-    // Import and use the main thread sorting logic
-    console.log('Sorting on main thread')
+  const sortPlayersMainThread = (players, fieldKey, direction, _sortField, _isGoalkeeperView) => {
     return [...players].sort((a, b) => {
       // Simplified sorting logic for fallback
       const aVal = a[fieldKey]
@@ -286,7 +284,6 @@ export function usePlayerCalculationWorker() {
   }
 
   const filterPlayersMainThread = (players, filters) => {
-    console.log('Filtering on main thread')
     return players.filter(player => {
       if (filters.name && !player.name.toLowerCase().includes(filters.name.toLowerCase())) {
         return false
@@ -296,10 +293,9 @@ export function usePlayerCalculationWorker() {
   }
 
   const calculateStatsMainThread = (players, statKey) => {
-    console.log('Calculating stats on main thread')
     const values = players
       .map(p => p[statKey])
-      .filter(v => v != null && !isNaN(v))
+      .filter(v => v != null && !Number.isNaN(v))
       .sort((a, b) => a - b)
 
     if (values.length === 0) {
@@ -319,7 +315,6 @@ export function usePlayerCalculationWorker() {
   }
 
   const batchProcessMainThread = (players, operations) => {
-    console.log('Batch processing on main thread')
     const results = {}
 
     for (const operation of operations) {

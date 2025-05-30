@@ -64,10 +64,9 @@ export default defineComponent({
           acc[rso.roleName] = rso.score
           return acc
         }, {})
-      } else {
-        // Already in object format
-        return props.player.roleSpecificOveralls
       }
+      // Already in object format
+      return props.player.roleSpecificOveralls
     })
 
     const sortedRoleRatings = computed(() => {

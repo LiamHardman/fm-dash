@@ -803,7 +803,7 @@ export default {
         return [{ label: 'Any Role', value: null }]
       }
       const roles = playerStore.allAvailableRoles
-        .filter(roleFullName => roleFullName.startsWith(selectedPosition.value + ' - '))
+        .filter(roleFullName => roleFullName.startsWith(`${selectedPosition.value} - `))
         .map(roleFullName => ({
           label: roleFullName,
           value: roleFullName
@@ -847,7 +847,7 @@ export default {
         teamPlayersForSelection.value = props.players
           .filter(player => {
             if (player.club !== teamName.value) return false
-            return player.shortPositions && player.shortPositions.includes(selectedPosition.value)
+            return player.shortPositions?.includes(selectedPosition.value)
           })
           .sort((a, b) => {
             const overallA = getPlayerOverallForRoleOrPosition(
@@ -879,7 +879,7 @@ export default {
         let maxOverallForPosition = 0
         if (player.roleSpecificOveralls) {
           player.roleSpecificOveralls.forEach(rso => {
-            if (rso.roleName.startsWith(position + ' - ')) {
+            if (rso.roleName.startsWith(`${position} - `)) {
               if (rso.score > maxOverallForPosition) {
                 maxOverallForPosition = rso.score
               }
@@ -1053,7 +1053,7 @@ export default {
 
     const getUnifiedRatingClass = (value, maxScale) => {
       const numValue = Number.parseInt(value, 10)
-      if (isNaN(numValue) || value === null || value === undefined || value === '-')
+      if (Number.isNaN(numValue) || value === null || value === undefined || value === '-')
         return 'rating-na'
       const percentage = (numValue / maxScale) * 100
       if (percentage >= 90) return 'rating-tier-6'

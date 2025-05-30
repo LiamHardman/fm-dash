@@ -1,4 +1,4 @@
-import path from 'path'
+import path from 'node:path'
 import { quasar, transformAssetUrls } from '@quasar/vite-plugin'
 import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vite'

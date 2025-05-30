@@ -3,8 +3,6 @@ const API_BASE_URL = '' // Use relative paths if proxy is set up for all API rou
 export default {
   async saveWishlist(datasetId, wishlistData) {
     try {
-      console.log(`Attempting to save wishlist for dataset ${datasetId} to MinIO`)
-
       const response = await fetch(`${API_BASE_URL}/api/wishlists/${datasetId}`, {
         method: 'PUT',
         headers: {
@@ -16,8 +14,6 @@ export default {
       if (!response.ok) {
         throw new Error(`API Error: ${response.status} - ${response.statusText}`)
       }
-
-      console.log(`Successfully saved wishlist for dataset ${datasetId} to MinIO`)
       return await response.json()
     } catch (error) {
       console.warn('Failed to save wishlist to MinIO, falling back to localStorage:', error)
@@ -29,13 +25,9 @@ export default {
 
   async loadWishlist(datasetId) {
     try {
-      console.log(`Attempting to load wishlist for dataset ${datasetId} from MinIO`)
-
       const response = await fetch(`${API_BASE_URL}/api/wishlists/${datasetId}`)
 
       if (response.status === 404) {
-        // Wishlist doesn't exist in MinIO, try localStorage
-        console.log(`No wishlist found in MinIO for dataset ${datasetId}, checking localStorage`)
         return this.loadFromLocalStorage(datasetId)
       }
 
@@ -44,7 +36,6 @@ export default {
       }
 
       const data = await response.json()
-      console.log(`Successfully loaded wishlist for dataset ${datasetId} from MinIO`)
 
       // Sync to localStorage as backup
       this.saveToLocalStorage(datasetId, data)
@@ -59,8 +50,6 @@ export default {
 
   async deleteWishlist(datasetId) {
     try {
-      console.log(`Attempting to delete wishlist for dataset ${datasetId} from MinIO`)
-
       const response = await fetch(`${API_BASE_URL}/api/wishlists/${datasetId}`, {
         method: 'DELETE'
       })
@@ -68,8 +57,6 @@ export default {
       if (!response.ok && response.status !== 404) {
         throw new Error(`API Error: ${response.status} - ${response.statusText}`)
       }
-
-      console.log(`Successfully deleted wishlist for dataset ${datasetId} from MinIO`)
     } catch (error) {
       console.warn('Failed to delete wishlist from MinIO:', error)
     } finally {
@@ -83,7 +70,6 @@ export default {
     try {
       const key = `fmdb_wishlist_${datasetId}`
       localStorage.setItem(key, JSON.stringify(wishlistData))
-      console.log(`Saved wishlist for dataset ${datasetId} to localStorage`)
     } catch (error) {
       console.error('Failed to save to localStorage:', error)
     }
@@ -94,7 +80,6 @@ export default {
       const key = `fmdb_wishlist_${datasetId}`
       const stored = localStorage.getItem(key)
       if (stored) {
-        console.log(`Loaded wishlist for dataset ${datasetId} from localStorage`)
         return JSON.parse(stored)
       }
       return []
@@ -108,7 +93,6 @@ export default {
     try {
       const key = `fmdb_wishlist_${datasetId}`
       localStorage.removeItem(key)
-      console.log(`Deleted wishlist for dataset ${datasetId} from localStorage`)
     } catch (error) {
       console.error('Failed to delete from localStorage:', error)
     }
@@ -127,7 +111,6 @@ export default {
         if (wishlistData && wishlistData.length > 0) {
           try {
             await this.saveWishlist(datasetId, wishlistData)
-            console.log(`Migrated wishlist for dataset ${datasetId} to MinIO`)
           } catch (error) {
             console.warn(`Failed to migrate wishlist for dataset ${datasetId}:`, error)
           }

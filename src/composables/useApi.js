@@ -48,14 +48,12 @@ export function useApi(baseURL = '/api') {
 
       // Handle different content types
       const contentType = response.headers.get('content-type')
-      if (contentType && contentType.includes('application/json')) {
+      if (contentType?.includes('application/json')) {
         return await response.json()
-      } else {
-        return await response.text()
       }
+      return await response.text()
     } catch (error) {
       if (error.name === 'AbortError') {
-        console.log('Request aborted')
         return null
       }
       throw error
@@ -85,7 +83,7 @@ export function useApi(baseURL = '/api') {
     // Handle different data types
     if (data instanceof FormData) {
       // Remove Content-Type header for FormData (let browser set it)
-      delete config.headers
+      config.headers = undefined
     } else if (data) {
       config.body = JSON.stringify(data)
     }
@@ -119,7 +117,7 @@ export function useApi(baseURL = '/api') {
     })
 
     // Remove Content-Type header for FormData
-    delete config.headers['Content-Type']
+    config.headers['Content-Type'] = undefined
 
     try {
       isLoading.value = true
@@ -141,7 +139,7 @@ export function useApi(baseURL = '/api') {
               try {
                 const response = JSON.parse(xhr.responseText)
                 resolve(response)
-              } catch (error) {
+              } catch (_error) {
                 resolve(xhr.responseText)
               }
             } else {
@@ -156,17 +154,16 @@ export function useApi(baseURL = '/api') {
           xhr.open('POST', fullUrl)
           xhr.send(formData)
         })
-      } else {
-        // Use fetch for simple upload
-        const response = await fetch(fullUrl, config)
-
-        if (!response.ok) {
-          await handleFetchError(response, { url: fullUrl, method: 'POST' })
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-        }
-
-        return await response.json()
       }
+      // Use fetch for simple upload
+      const response = await fetch(fullUrl, config)
+
+      if (!response.ok) {
+        await handleFetchError(response, { url: fullUrl, method: 'POST' })
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      return await response.json()
     } finally {
       isLoading.value = false
       abortController.value = null

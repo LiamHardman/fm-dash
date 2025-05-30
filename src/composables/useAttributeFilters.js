@@ -12,22 +12,22 @@ export function useAttributeFilters() {
   // Available attributes for filtering
   const allAttributes = computed(() => {
     const attrs = []
-    Object.values(attributeGroups.value).forEach(group => {
-      group.attrs.forEach(attr => {
+    for (const group of Object.values(attributeGroups.value)) {
+      for (const attr of group.attrs) {
         attrs.push({
           value: attr,
           label: attributeFullNameMap[attr] || attr,
           group: group.name
         })
-      })
-    })
+      }
+    }
     return attrs.sort((a, b) => a.label.localeCompare(b.label))
   })
 
   // Grouped attributes for better UI organization
   const groupedAttributes = computed(() => {
     const grouped = {}
-    Object.entries(attributeGroups.value).forEach(([key, group]) => {
+    for (const [key, group] of Object.entries(attributeGroups.value)) {
       grouped[key] = {
         name: group.name,
         attributes: group.attrs.map(attr => ({
@@ -35,7 +35,7 @@ export function useAttributeFilters() {
           label: attributeFullNameMap[attr] || attr
         }))
       }
-    })
+    }
     return grouped
   })
 
@@ -61,9 +61,9 @@ export function useAttributeFilters() {
   // Clear all attribute filters
   const clearAttributeFilters = () => {
     selectedAttributes.value = []
-    Object.keys(attributeThresholds).forEach(key => {
+    for (const key of Object.keys(attributeThresholds)) {
       delete attributeThresholds[key]
-    })
+    }
   }
 
   // Get attribute threshold

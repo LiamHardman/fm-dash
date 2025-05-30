@@ -174,9 +174,9 @@ export default defineComponent({
     }
   },
   emits: ['close'],
-  setup(props, { emit }) {
+  setup(props) {
     const qInstance = useQuasar()
-    const playerStore = usePlayerStore()
+    const _playerStore = usePlayerStore()
 
     // State
     const selectedAge = ref(21)
@@ -192,25 +192,17 @@ export default defineComponent({
 
     // Computed
     const currentWonderkids = computed(() => {
-      console.log(
-        `Computing wonderkids for age ${selectedAge.value}, available data:`,
-        Object.keys(wonderkidsByAge.value)
-      )
       const result = wonderkidsByAge.value[selectedAge.value] || []
-      console.log(`Returning ${result.length} players for age ${selectedAge.value}`)
       return result
     })
 
     // Methods
     const getWonderkidsForAge = (age, allPlayers) => {
-      console.log(`Filtering for age ${age}, total players: ${allPlayers.length}`)
       const playersOfAge = allPlayers
         .filter(player => {
           const playerAge = Number(player.age)
           const matches = playerAge === age
           if (matches && age === 20) {
-            // Only log for age 20 to reduce spam
-            console.log(`Found player ${player.name} with age ${playerAge}`)
           }
           return matches
         })
@@ -227,8 +219,6 @@ export default defineComponent({
         })
         .sort((a, b) => (b.Overall || 0) - (a.Overall || 0))
         .slice(0, 25)
-
-      console.log(`Found ${playersOfAge.length} players for age ${age}`)
       return playersOfAge
     }
 
@@ -238,17 +228,11 @@ export default defineComponent({
         const allPlayers = props.players
         const newWonderkidsByAge = {}
 
-        ages.forEach(age => {
+        for (const age of ages) {
           newWonderkidsByAge[age] = getWonderkidsForAge(age, allPlayers)
-        })
+        }
 
         wonderkidsByAge.value = newWonderkidsByAge
-        console.log(
-          'Loaded wonderkids by age:',
-          Object.keys(wonderkidsByAge.value).map(
-            age => `${age}: ${wonderkidsByAge.value[age].length}`
-          )
-        )
       } catch (error) {
         console.error('Error loading wonderkids:', error)
         qInstance.notify({
@@ -274,10 +258,7 @@ export default defineComponent({
       showPlayerDetail.value = true
     }
 
-    const handleTeamSelected = teamName => {
-      // Handle team selection if needed
-      console.log('Team selected:', teamName)
-    }
+    const handleTeamSelected = _teamName => {}
 
     // Watchers
     watch(
@@ -299,9 +280,7 @@ export default defineComponent({
     )
 
     // Simplified age watcher - just log when it changes
-    watch(selectedAge, (newAge, oldAge) => {
-      console.log(`Age changed from ${oldAge} to ${newAge}`)
-    })
+    watch(selectedAge, (_newAge, _oldAge) => {})
 
     // Initialize when component mounts
     onMounted(() => {

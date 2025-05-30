@@ -208,17 +208,17 @@ export default defineComponent({
 
     const uniqueClubsCount = computed(() => {
       const clubs = new Set()
-      wishlistPlayers.value.forEach(player => {
+      for (const player of wishlistPlayers.value) {
         if (player.club) clubs.add(player.club)
-      })
+      }
       return clubs.size
     })
 
     const uniqueNationalitiesCount = computed(() => {
       const nationalities = new Set()
-      wishlistPlayers.value.forEach(player => {
+      for (const player of wishlistPlayers.value) {
         if (player.nationality) nationalities.add(player.nationality)
-      })
+      }
       return nationalities.size
     })
 
@@ -256,8 +256,6 @@ export default defineComponent({
     }
 
     const handleTeamSelected = team => {
-      console.log('handleTeamSelected called with team:', team)
-      console.log('currentDatasetId:', currentDatasetId.value)
       if (currentDatasetId.value) {
         const url = router.resolve({
           path: '/team-view',
@@ -266,16 +264,12 @@ export default defineComponent({
             team: team
           }
         }).href
-        console.log('Generated URL:', url)
-        console.log('Attempting to open in new tab...')
         const newWindow = window.open(url, '_blank')
         if (!newWindow) {
           console.error('Failed to open new window - likely blocked by popup blocker')
         } else {
-          console.log('Successfully opened new window')
         }
       } else {
-        console.log('No currentDatasetId available')
       }
     }
 

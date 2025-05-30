@@ -84,8 +84,6 @@ export default {
         url += `?${queryString}`
       }
 
-      console.log(`playerService: Fetching players from URL: ${url}`)
-
       const response = await fetch(url)
       if (!response.ok) {
         if (response.status === 404) {

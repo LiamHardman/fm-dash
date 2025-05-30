@@ -1303,7 +1303,7 @@ export default defineComponent({
   emits: ['close'],
   setup(props) {
     const qInstance = useQuasar()
-    const playerStore = usePlayerStore()
+    const _playerStore = usePlayerStore()
     const selectedComparisonGroup = ref('Global')
     const flagLoadError = ref(false)
     const divisionFilter = ref('all')
@@ -1430,7 +1430,7 @@ export default defineComponent({
 
       // Map short position to detailed group first
       const detailedGroup = Object.entries(detailedGroupToShortPositionsMap).find(
-        ([groupName, positions]) => positions.includes(shortPosition)
+        ([_groupName, positions]) => positions.includes(shortPosition)
       )
 
       if (detailedGroup) {
@@ -1465,7 +1465,7 @@ export default defineComponent({
         flagLoadError.value = false
         const newOptions = performanceComparisonOptions.value
 
-        if (newPlayer && newPlayer.performancePercentiles) {
+        if (newPlayer?.performancePercentiles) {
           // Always try to set to the position group for the highest role first
           const highestRoleGroup = getPositionGroupForHighestRole()
 
@@ -1672,7 +1672,7 @@ export default defineComponent({
 
     const getUnifiedRatingClass = (value, maxScale) => {
       const numValue = Number.parseInt(value, 10)
-      if (isNaN(numValue) || value === null || value === undefined || value === '-')
+      if (Number.isNaN(numValue) || value === null || value === undefined || value === '-')
         return 'rating-na'
       const percentage = (numValue / maxScale) * 100
       if (percentage >= 90) return 'rating-tier-6'

@@ -190,7 +190,7 @@ export default {
 
     const getPlayerOverallClass = (overall, maxScale = 100) => {
       const numValue = Number.parseInt(overall, 10)
-      if (isNaN(numValue) || overall === null || overall === undefined) return 'rating-na'
+      if (Number.isNaN(numValue) || overall === null || overall === undefined) return 'rating-na'
       const percentage = (numValue / maxScale) * 100
       if (percentage >= 90) return 'rating-tier-6'
       if (percentage >= 80) return 'rating-tier-5'
@@ -277,7 +277,7 @@ export default {
         fromSlotId
       }
       event.dataTransfer.effectAllowed = 'move'
-      if (player && player.name) {
+      if (player?.name) {
         event.dataTransfer.setData('text/plain', player.name)
       } else {
         event.dataTransfer.setData('text/plain', 'unknown_player')
@@ -317,7 +317,7 @@ export default {
         targetElement.classList.remove('drop-zone-hover')
       }
 
-      if (draggedPlayerInfo.value && draggedPlayerInfo.value.player) {
+      if (draggedPlayerInfo.value?.player) {
         const { player, fromSlotId } = draggedPlayerInfo.value
         if (fromSlotId !== toSlotId) {
           emit('player-moved', {
@@ -331,7 +331,7 @@ export default {
       handleDragEnd()
     }
 
-    const handleDropOnPitch = event => {
+    const handleDropOnPitch = _event => {
       handleDragEnd()
     }
 

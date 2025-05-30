@@ -1,12 +1,7 @@
 import { computed, ref } from 'vue'
 
 export function useTableUtils(items, options = {}) {
-  const {
-    defaultSortField = 'id',
-    defaultSortDirection = 'asc',
-    defaultPageSize = 50,
-    maxDisplayItems = 1000
-  } = options
+  const { defaultSortField = 'id', defaultSortDirection = 'asc', defaultPageSize = 50 } = options
 
   // Table state
   const sortField = ref(defaultSortField)
@@ -66,13 +61,13 @@ export function useTableUtils(items, options = {}) {
       if (searchFields.length > 0) {
         return searchFields.some(field => {
           const value = item[field]
-          return value && value.toString().toLowerCase().includes(lowercaseQuery)
+          return value?.toString().toLowerCase().includes(lowercaseQuery)
         })
       }
 
       // Otherwise search all string fields
       return Object.values(item).some(value => {
-        return value && value.toString().toLowerCase().includes(lowercaseQuery)
+        return value?.toString().toLowerCase().includes(lowercaseQuery)
       })
     })
   }

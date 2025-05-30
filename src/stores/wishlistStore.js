@@ -141,7 +141,6 @@ export const useWishlistStore = defineStore('wishlist', () => {
 
         // Remove old localStorage entry after successful migration
         localStorage.removeItem('fmdb_wishlists')
-        console.log('Successfully migrated wishlists from old localStorage format')
       }
     } catch (error) {
       console.error('Failed to migrate wishlists from old localStorage format:', error)

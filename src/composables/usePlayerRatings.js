@@ -6,7 +6,7 @@ export function usePlayerRatings() {
     if (!rating && rating !== 0) return 'rating-na'
 
     const numValue = Number.parseInt(rating, 10)
-    if (isNaN(numValue)) return 'rating-na'
+    if (Number.isNaN(numValue)) return 'rating-na'
 
     // Convert to percentage if different scale
     const percentage = maxScale === 100 ? numValue : (numValue / maxScale) * 100
@@ -28,7 +28,7 @@ export function usePlayerRatings() {
     if (!rating && rating !== 0) return 'rating-na'
 
     const numValue = Number.parseInt(rating, 10)
-    if (isNaN(numValue)) return 'rating-na'
+    if (Number.isNaN(numValue)) return 'rating-na'
 
     if (numValue >= 18) return 'rating-tier-6'
     if (numValue >= 15) return 'rating-tier-5'
@@ -179,7 +179,7 @@ export function usePlayerRatings() {
     if (!rating && rating !== 0) return '-'
 
     const numValue = Number.parseInt(rating, 10)
-    if (isNaN(numValue)) return '-'
+    if (Number.isNaN(numValue)) return '-'
 
     if (showScale) {
       return `${numValue}/${maxScale}`

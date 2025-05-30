@@ -1042,7 +1042,7 @@ export default {
     const getOverallClass = overall => {
       if (overall === null || overall === undefined || overall === 0) return 'rating-na'
       const numericOverall = Number(overall)
-      if (isNaN(numericOverall)) return 'rating-na'
+      if (Number.isNaN(numericOverall)) return 'rating-na'
 
       if (numericOverall >= 90) return 'rating-tier-6'
       if (numericOverall >= 80) return 'rating-tier-5'
@@ -1059,11 +1059,11 @@ export default {
 
       if (starPosition <= Math.floor(starRating)) {
         return 'star-full'
-      } else if (starPosition === Math.floor(starRating) + 1 && starRating % 1 === 0.5) {
-        return 'star-half'
-      } else {
-        return 'star-empty'
       }
+      if (starPosition === Math.floor(starRating) + 1 && starRating % 1 === 0.5) {
+        return 'star-half'
+      }
+      return 'star-empty'
     }
 
     const getStarRating = overall => {
@@ -1094,12 +1094,12 @@ export default {
       const midfielderPositions = ['DM (C)', 'M (R)', 'M (L)', 'M (C)', 'AM (C)']
       const attackingPositions = ['AM (R)', 'AM (L)', 'ST (C)']
 
-      let attSum = 0,
-        attCount = 0
-      let midSum = 0,
-        midCount = 0
-      let defSum = 0,
-        defCount = 0
+      let attSum = 0
+      let attCount = 0
+      let midSum = 0
+      let midCount = 0
+      let defSum = 0
+      let defCount = 0
 
       formationSlots.forEach(slot => {
         const slotPlayers = squadComposition[slot.id]
@@ -1265,7 +1265,6 @@ export default {
       const cacheKey = formationCache.generateKey(nationPlayers.value, 'nation-best')
       const cachedResult = formationCache.get(cacheKey)
       if (cachedResult) {
-        console.log('Using cached formation result for nation:', selectedNationName.value)
         return cachedResult.bestFormationKey
       }
 
@@ -1695,7 +1694,7 @@ export default {
       }
     )
 
-    const onFlagError = (event, nation) => {
+    const onFlagError = (event, _nation) => {
       // Hide the broken image and fallback will show the icon
       event.target.style.display = 'none'
     }
@@ -1714,7 +1713,7 @@ export default {
           position: 'top',
           timeout: 2000
         })
-      } catch (err) {
+      } catch (_err) {
         const textArea = document.createElement('textarea')
         textArea.value = shareUrl
         document.body.appendChild(textArea)

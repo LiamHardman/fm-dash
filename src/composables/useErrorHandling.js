@@ -157,7 +157,7 @@ export function useErrorHandling() {
         errorType = ErrorTypes.SERVER
         errorMessage = 'Server error. Please try again later.'
       }
-    } catch (parseError) {
+    } catch (_parseError) {
       errorMessage = `Request failed (${response.status})`
     }
 

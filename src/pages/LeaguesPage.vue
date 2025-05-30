@@ -458,7 +458,7 @@ export default {
     const getOverallClass = overall => {
       if (overall === null || overall === undefined || overall === 0) return 'rating-na'
       const numericOverall = Number(overall)
-      if (isNaN(numericOverall)) return 'rating-na'
+      if (Number.isNaN(numericOverall)) return 'rating-na'
 
       if (numericOverall >= 90) return 'rating-tier-6'
       if (numericOverall >= 80) return 'rating-tier-5'
@@ -475,11 +475,11 @@ export default {
 
       if (starPosition <= Math.floor(starRating)) {
         return 'star-full'
-      } else if (starPosition === Math.floor(starRating) + 1 && starRating % 1 === 0.5) {
-        return 'star-half'
-      } else {
-        return 'star-empty'
       }
+      if (starPosition === Math.floor(starRating) + 1 && starRating % 1 === 0.5) {
+        return 'star-half'
+      }
+      return 'star-empty'
     }
 
     const getStarRating = overall => {
@@ -512,7 +512,7 @@ export default {
           position: 'top',
           timeout: 2000
         })
-      } catch (err) {
+      } catch (_err) {
         const textArea = document.createElement('textarea')
         textArea.value = shareUrl
         document.body.appendChild(textArea)

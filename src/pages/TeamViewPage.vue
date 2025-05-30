@@ -761,11 +761,11 @@ export default {
 
       if (starPosition <= Math.floor(starRating)) {
         return 'star-full'
-      } else if (starPosition === Math.floor(starRating) + 1 && starRating % 1 === 0.5) {
-        return 'star-half'
-      } else {
-        return 'star-empty'
       }
+      if (starPosition === Math.floor(starRating) + 1 && starRating % 1 === 0.5) {
+        return 'star-half'
+      }
+      return 'star-empty'
     }
 
     const handlePlayerSelectedFromTeam = player => {
@@ -776,7 +776,7 @@ export default {
     const getOverallClass = overall => {
       if (overall === null || overall === undefined) return 'rating-na'
       const numericOverall = Number(overall)
-      if (isNaN(numericOverall)) return 'rating-na'
+      if (Number.isNaN(numericOverall)) return 'rating-na'
 
       if (numericOverall >= 90) return 'rating-tier-6'
       if (numericOverall >= 80) return 'rating-tier-5'
@@ -798,12 +798,12 @@ export default {
       const midfielderPositions = ['DM (C)', 'M (R)', 'M (L)', 'M (C)', 'AM (C)']
       const attackingPositions = ['AM (R)', 'AM (L)', 'ST (C)']
 
-      let attSum = 0,
-        attCount = 0
-      let midSum = 0,
-        midCount = 0
-      let defSum = 0,
-        defCount = 0
+      let attSum = 0
+      let attCount = 0
+      let midSum = 0
+      let midCount = 0
+      let defSum = 0
+      let defCount = 0
 
       formationSlots.forEach(slot => {
         const slotPlayers = squadComposition[slot.id]
@@ -835,7 +835,7 @@ export default {
       if (!player || !slotFormationRole) return 0
 
       let bestScoreForRole = 0
-      let matchType = 'none' // For debugging: tracks how the match was found
+      let _matchType = 'none' // For debugging: tracks how the match was found
 
       if (!player.roleSpecificOveralls) {
         return 0 // No role overalls available
@@ -863,7 +863,7 @@ export default {
 
         if (exactPositionMatches.length > 0) {
           // Perfect position match! Find the best role score
-          matchType = 'exact'
+          _matchType = 'exact'
 
           // Find best score from roleSpecificOveralls - handle both array and object formats
           if (Array.isArray(player.roleSpecificOveralls)) {
@@ -918,7 +918,7 @@ export default {
 
         if (fallbackMatches.length > 0) {
           // Fallback position match - these will be scored lower
-          matchType = 'fallback'
+          _matchType = 'fallback'
 
           // Find best score from roleSpecificOveralls with fallback positions
           if (Array.isArray(player.roleSpecificOveralls)) {
@@ -973,7 +973,7 @@ export default {
               .trim()
 
             if (targetRoleKeyPrefixes.includes(rsoBasePosition)) {
-              matchType = 'legacy'
+              _matchType = 'legacy'
               bestScoreForRole = Math.max(bestScoreForRole, rso.score)
             }
           })
@@ -982,7 +982,7 @@ export default {
             const rsoBasePosition = roleName.split(' - ')[0].trim()
 
             if (targetRoleKeyPrefixes.includes(rsoBasePosition)) {
-              matchType = 'legacy'
+              _matchType = 'legacy'
               bestScoreForRole = Math.max(bestScoreForRole, score)
             }
           })
@@ -1025,7 +1025,6 @@ export default {
       const cacheKey = formationCache.generateKey(teamPlayers.value, 'team-best')
       const cachedResult = formationCache.get(cacheKey)
       if (cachedResult) {
-        console.log('Using cached formation result for team:', selectedTeamName.value)
         return cachedResult.bestFormationKey
       }
 
@@ -1150,7 +1149,6 @@ export default {
       )
       const cachedResult = formationCache.get(cacheKey)
       if (cachedResult) {
-        console.log('Using cached squad composition for team:', selectedTeamName.value)
         squadComposition.value = cachedResult.squadComposition
         bestTeamAverageOverall.value = cachedResult.bestTeamAverageOverall
         calculationMessage.value = `Best XI & Depth calculated (cached). Average Overall: ${cachedResult.bestTeamAverageOverall}.`
@@ -1207,7 +1205,7 @@ export default {
           if (overallInRole >= MIN_SUITABILITY_THRESHOLD) {
             // Get the compatible positions for this slot
             const slotPositions = positionSideMap[slot.role.toUpperCase()] || []
-            const fallbackPositions = fallbackPositionMap[slot.role.toUpperCase()] || []
+            const _fallbackPositions = fallbackPositionMap[slot.role.toUpperCase()] || []
 
             // STRICT POSITION CHECKING: Check if player can play in this position
             // For this to be true, the player MUST have one of the required positions
@@ -1351,8 +1349,6 @@ export default {
       // In that case, try to find any player who can play there as a fallback
       for (const slot of formationSlots) {
         if (tempSquadComposition[slot.id].length === 0) {
-          console.log(`No exact position matches found for ${slot.role}, trying fallbacks`)
-
           // Get fallback positions for this slot
           const fallbackPositions = fallbackPositionMap[slot.role.toUpperCase()] || []
 
@@ -1500,10 +1496,6 @@ export default {
       // This is a simplified visual swap; it doesn't formally update squadComposition.
       // For a temporary visual update of the pitch:
       const newPitchState = { ...currentStarters }
-      // This assignment might not be enough if PitchDisplay relies on squadComposition.
-      // A better way would be to have a local ref for pitch display players.
-      // For now, we'll log and message that depth isn't updated.
-      console.log('Visual swap on pitch:', newPitchState)
 
       let sumOfDisplayedOveralls = 0
       let countOfDisplayedOveralls = 0
@@ -1586,7 +1578,7 @@ export default {
           position: 'top',
           timeout: 2000
         })
-      } catch (err) {
+      } catch (_err) {
         // Fallback for older browsers
         const textArea = document.createElement('textarea')
         textArea.value = shareUrl

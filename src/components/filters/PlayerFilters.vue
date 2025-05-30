@@ -1182,7 +1182,7 @@ const orderedShortPositions = [
 
 const AGE_SLIDER_MIN = 15
 const AGE_SLIDER_MAX = 50
-const SALARY_SLIDER_MIN = 0
+const _SALARY_SLIDER_MIN = 0
 const SALARY_SLIDER_MAX = 1000000
 
 function debounce(fn, delay) {
@@ -1260,7 +1260,7 @@ export default defineComponent({
 
     const getUnifiedRatingClass = (value, maxScale = 20) => {
       const numValue = Number.parseInt(value, 10)
-      if (isNaN(numValue) || value === null || value === undefined || value === '-')
+      if (Number.isNaN(numValue) || value === null || value === undefined || value === '-')
         return 'rating-na'
 
       const percentage = (numValue / maxScale) * 100
@@ -1377,7 +1377,7 @@ export default defineComponent({
       }
       const selectedPosShortCode = filters.value.position
       const filtered = playerStore.allAvailableRoles
-        .filter(roleFullName => roleFullName.startsWith(selectedPosShortCode + ' - '))
+        .filter(roleFullName => roleFullName.startsWith(`${selectedPosShortCode} - `))
         .map(roleFullName => ({
           label: roleFullName,
           value: roleFullName
@@ -1460,14 +1460,14 @@ export default defineComponent({
             }
           } else {
             // Clamp existing values to new valid range
-            let changed = false
+            let _changed = false
             if (currentMin < newDynamicRange.min) {
               filters.value.transferValueRangeLocal.min = newDynamicRange.min
-              changed = true
+              _changed = true
             }
             if (currentMax > newDynamicRange.max) {
               filters.value.transferValueRangeLocal.max = newDynamicRange.max
-              changed = true
+              _changed = true
             }
           }
         }
@@ -1657,7 +1657,7 @@ export default defineComponent({
       inlineEditingValue.value = filters.value[filterKey] || 0
       nextTick(() => {
         const inputEl = attributeInputRefs.value[attrKey]
-        if (inputEl && inputEl.focus) {
+        if (inputEl?.focus) {
           setTimeout(() => inputEl.focus(), 0) // Timeout to ensure focus works after render
         }
       })
@@ -1668,7 +1668,7 @@ export default defineComponent({
         const attrKey = inlineEditingAttributeKey.value
         const filterKey = `min${formatAttrKey(attrKey)}`
         let val = Number.parseInt(inlineEditingValue.value, 10)
-        if (isNaN(val) || val < 0) val = 0
+        if (Number.isNaN(val) || val < 0) val = 0
         if (val > 20) val = 20
         filters.value[filterKey] = val
         inlineEditingAttributeKey.value = null

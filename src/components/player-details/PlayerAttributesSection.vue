@@ -232,7 +232,7 @@ export default defineComponent({
 
     const getColorClass = value => {
       const numValue = Number.parseInt(value, 10)
-      if (isNaN(numValue)) return ''
+      if (Number.isNaN(numValue)) return ''
 
       if (numValue >= 15) return 'text-green-10'
       if (numValue >= 13) return 'text-green-8'

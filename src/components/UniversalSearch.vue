@@ -120,12 +120,10 @@ export default defineComponent({
         if (response.ok) {
           const data = await response.json()
           return data
-        } else {
-          console.error('Search API error:', response.status)
         }
+        console.error('Search API error:', response.status)
       } catch (error) {
         if (error.name === 'AbortError') {
-          console.log('Search request cancelled')
           return []
         }
         console.error('Search network error:', error)

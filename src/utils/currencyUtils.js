@@ -31,14 +31,14 @@ export function formatCurrency(amount, symbol, originalDisplayValue) {
       return originalDisplayValue
     }
     // Handle cases like "Not for Sale" or other non-numeric strings
-    if (isNaN(Number.parseFloat(originalDisplayValue.replace(/[^0-9.-]+/g, '')))) {
+    if (Number.isNaN(Number.parseFloat(originalDisplayValue.replace(/[^0-9.-]+/g, '')))) {
       return originalDisplayValue
     }
   }
 
   const numAmount = Number(amount)
 
-  if (isNaN(numAmount)) {
+  if (Number.isNaN(numAmount)) {
     // If the amount is not a number, return the original display value or the symbol if no original value
     return originalDisplayValue || defaultSymbol
   }
@@ -100,7 +100,7 @@ export function parseCurrencyString(valueString) {
 
   const value = Number.parseFloat(numericPart)
 
-  if (isNaN(value)) {
+  if (Number.isNaN(value)) {
     return null
   }
 

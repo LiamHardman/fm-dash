@@ -15,11 +15,11 @@ export function useCurrency(currencySymbol = '$') {
 
     if (absAmount >= 1000000) {
       return `${symbol}${(amount / 1000000).toFixed(1)}M`
-    } else if (absAmount >= 1000) {
-      return `${symbol}${(amount / 1000).toFixed(1)}K`
-    } else {
-      return `${symbol}${amount.toLocaleString()}`
     }
+    if (absAmount >= 1000) {
+      return `${symbol}${(amount / 1000).toFixed(1)}K`
+    }
+    return `${symbol}${amount.toLocaleString()}`
   }
 
   // Parse currency string back to number
@@ -29,7 +29,7 @@ export function useCurrency(currencySymbol = '$') {
     // Remove currency symbols and commas, parse as float
     const cleaned = currencyString.replace(/[^\d.-]/g, '')
     const parsed = Number.parseFloat(cleaned)
-    return isNaN(parsed) ? 0 : parsed
+    return Number.isNaN(parsed) ? 0 : parsed
   }
 
   // Check if a value represents currency

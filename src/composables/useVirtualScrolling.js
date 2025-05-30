@@ -162,7 +162,8 @@ export function useOptimizedSorting() {
   }
 
   // Optimized merging with reduced yielding
-  const fastMergeChunks = async (chunks, sortFn) => {
+  const fastMergeChunks = async (initialChunks, sortFn) => {
+    let chunks = initialChunks
     while (chunks.length > 1) {
       const mergedChunks = []
 
@@ -189,8 +190,8 @@ export function useOptimizedSorting() {
   // Fast synchronous merge without yielding (for speed)
   const fastMergeTwoArrays = (arr1, arr2, sortFn) => {
     const result = []
-    let i = 0,
-      j = 0
+    let i = 0
+    let j = 0
 
     // Fast merge without yielding - this is the critical path
     while (i < arr1.length && j < arr2.length) {
@@ -234,13 +235,13 @@ export function useIntersectionObserver(options = {}) {
 
     observer.value = new IntersectionObserver(
       entries => {
-        entries.forEach(entry => {
+        for (const entry of entries) {
           if (entry.isIntersecting) {
             visibleElements.value.add(entry.target)
           } else {
             visibleElements.value.delete(entry.target)
           }
-        })
+        }
 
         if (callback) callback(entries)
       },

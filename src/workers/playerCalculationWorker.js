@@ -66,7 +66,7 @@ function getPositionIndex(positionString) {
   let mainPart = processedString
   const sidesSpecified = []
 
-  if (sideMatch && sideMatch[1]) {
+  if (sideMatch?.[1]) {
     mainPart = processedString.substring(0, sideMatch.index).trim()
     const sideSpec = sideMatch[1]
     if (sideSpec.includes('R')) sidesSpecified.push('R')
@@ -108,8 +108,6 @@ function getPositionIndex(positionString) {
  * Uses native Array.sort() for maximum performance in Web Worker
  */
 function fastSortPlayers(players, fieldKey, direction, sortField, isGoalkeeperView) {
-  console.log(`Web Worker: Fast sorting ${players.length} players by ${fieldKey}`)
-
   // Use native sort for maximum speed - no chunking needed in Web Worker
   return players.sort((a, b) => {
     let vA = getPlayerValue(a, fieldKey, sortField, isGoalkeeperView)
@@ -233,7 +231,7 @@ function filterPlayers(players, filters) {
 function calculateRatingStats(players, statKey) {
   const values = players
     .map(p => p[statKey])
-    .filter(v => v !== null && v !== undefined && !isNaN(v))
+    .filter(v => v !== null && v !== undefined && !Number.isNaN(v))
     .sort((a, b) => a - b)
 
   if (values.length === 0) {

@@ -285,7 +285,7 @@ export default {
 
     // Watch for monitor visibility
     const startMonitoringWatcher = computed(() => showMonitor.value)
-    const unwatchMonitor = () => {
+    const _unwatchMonitor = () => {
       if (startMonitoringWatcher.value) {
         startMonitoring()
       } else {
@@ -305,7 +305,7 @@ export default {
     })
 
     // Watch for show/hide changes
-    const unwatchShowMonitor = computed(() => {
+    const _unwatchShowMonitor = computed(() => {
       if (showMonitor.value) {
         startMonitoring()
       } else {

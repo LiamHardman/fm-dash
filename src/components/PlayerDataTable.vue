@@ -360,7 +360,6 @@ export default {
   ],
 
   setup(props, { emit }) {
-    console.log(`PlayerDataTable: Setup function start.`) // Static label
     const $q = useQuasar()
     const playerStore = usePlayerStore()
     const wishlistStore = useWishlistStore()
@@ -398,10 +397,7 @@ export default {
 
     watch(
       () => props.players,
-      (newPlayers, oldPlayers) => {
-        console.log(
-          `PlayerDataTable: props.players changed. New length: ${newPlayers?.length}, Old length: ${oldPlayers?.length}`
-        )
+      (_newPlayers, _oldPlayers) => {
         pagination.value.page = 1 // Reset to first page when player list changes
       },
       { deep: true }
@@ -443,7 +439,7 @@ export default {
         let mainPart = processedString
         const sidesSpecified = []
 
-        if (sideMatch && sideMatch[1]) {
+        if (sideMatch?.[1]) {
           mainPart = processedString.substring(0, sideMatch.index).trim()
           const sideSpec = sideMatch[1]
           if (sideSpec.includes('R')) sidesSpecified.push('R')
@@ -489,10 +485,6 @@ export default {
     )
 
     const onPaginationUpdate = newPagination => {
-      console.log(
-        `PlayerDataTable: onPaginationUpdate triggered. New pagination:`,
-        JSON.parse(JSON.stringify(newPagination))
-      )
       pagination.value = newPagination
     }
 
@@ -898,28 +890,26 @@ export default {
       // This ensures the table maintains exactly the same data structure and length
       if (sortedPlayersCache.value && sortedPlayersCache.value.length > 0) {
         return sortedPlayersCache.value
-      } else {
-        // If no cache yet, create a stable fallback that matches the expected display size
-        // This prevents any change in table height or structure during initial sort
-        const targetLength = Math.min(MAX_DISPLAY_PLAYERS, props.players.length)
-        const stableFallback = [...props.players].slice(0, targetLength)
-
-        // Set initial cache to prevent further changes during sorting
-        if (!sortedPlayersCache.value) {
-          sortedPlayersCache.value = stableFallback
-          totalSortedCount.value = props.players.length
-          isSliced.value = props.players.length > MAX_DISPLAY_PLAYERS
-        }
-
-        return stableFallback
       }
+      // If no cache yet, create a stable fallback that matches the expected display size
+      // This prevents any change in table height or structure during initial sort
+      const targetLength = Math.min(MAX_DISPLAY_PLAYERS, props.players.length)
+      const stableFallback = [...props.players].slice(0, targetLength)
+
+      // Set initial cache to prevent further changes during sorting
+      if (!sortedPlayersCache.value) {
+        sortedPlayersCache.value = stableFallback
+        totalSortedCount.value = props.players.length
+        isSliced.value = props.players.length > MAX_DISPLAY_PLAYERS
+      }
+
+      return stableFallback
     })
 
     // Async sorting for large datasets using web workers
     const triggerAsyncSort = async (fieldKey, direction, customSortFn, sortKey) => {
       // Prevent concurrent async sorting operations
       if (isAsyncSorting.value) {
-        console.log('Async sorting already in progress, skipping')
         return
       }
 
@@ -941,8 +931,6 @@ export default {
 
         // Tiered sorting strategy based on dataset size
         if (playerCount >= 2000) {
-          // Use Web Workers for large datasets (2000+)
-          console.log(`Using Web Worker for large dataset: ${playerCount} players`)
           try {
             fullSortedList = await sortPlayersWorker(
               [...props.players],
@@ -963,10 +951,6 @@ export default {
             )
           }
         } else {
-          // Use optimized main thread sorting for medium datasets (500-2000)
-          console.log(
-            `Using optimized main thread sorting for medium dataset: ${playerCount} players`
-          )
           fullSortedList = await sortLargeArray(
             [...props.players],
             fieldKey,
@@ -978,7 +962,6 @@ export default {
 
         // Check if this sort was cancelled
         if (sortController.cancelled) {
-          console.log('Async sort was cancelled')
           return
         }
 
@@ -1000,11 +983,8 @@ export default {
           sortedPlayersCache.value = result
           lastSortKey.value = sortKey
         })
-
-        console.log(`Async sort completed successfully for ${fullSortedList.length} players`)
       } catch (error) {
         if (sortController.cancelled) {
-          console.log('Async sort was cancelled during execution')
           return
         }
 
@@ -1034,10 +1014,9 @@ export default {
     }
 
     // Cancel current async sort operation
-    const cancelAsyncSort = () => {
+    const _cancelAsyncSort = () => {
       if (currentSortController.value) {
         currentSortController.value.cancelled = true
-        console.log('User cancelled async sort operation')
       }
       isAsyncSorting.value = false
       currentSortController.value = null
@@ -1076,7 +1055,6 @@ export default {
     })
 
     onMounted(() => {
-      console.log(`PlayerDataTable: Component mounted.`)
       if (sortField.value) {
         emit('update:sort', {
           key: getSortFieldKey(sortField.value),
@@ -1092,7 +1070,7 @@ export default {
     const getUnifiedRatingClass = memoize(
       (value, maxScale) => {
         const numValue = Number.parseInt(value, 10)
-        if (isNaN(numValue) || value === null || value === undefined || value === '-')
+        if (Number.isNaN(numValue) || value === null || value === undefined || value === '-')
           return 'rating-na'
         const percentage = (numValue / maxScale) * 100
         if (percentage >= 90) return 'rating-tier-6'
@@ -1122,16 +1100,12 @@ export default {
     const onFlagError = event => {
       if (event.target) event.target.style.display = 'none'
       const placeholderIcon = event.target.nextElementSibling
-      if (placeholderIcon && placeholderIcon.classList.contains('q-icon')) {
+      if (placeholderIcon?.classList.contains('q-icon')) {
         placeholderIcon.style.display = 'inline-flex'
       }
     }
 
     const onRequest = requestProp => {
-      console.log(
-        `PlayerDataTable: onRequest triggered. Props:`,
-        JSON.parse(JSON.stringify(requestProp))
-      )
       const { page, sortBy, descending } = requestProp.pagination
       pagination.value.page = page
 
@@ -1156,12 +1130,10 @@ export default {
     }
 
     const onPageChange = newPage => {
-      console.log(`PlayerDataTable: onPageChange. New page: ${newPage}`)
       pagination.value.page = newPage
     }
 
     const onRowsPerPageChange = newRowsPerPage => {
-      console.log(`PlayerDataTable: onRowsPerPageChange. New rowsPerPage: ${newRowsPerPage}`)
       pagination.value.rowsPerPage = newRowsPerPage
       pagination.value.page = 1
     }
@@ -1178,7 +1150,6 @@ export default {
 
       // Prevent rapid clicking during sort operations
       if (isAsyncSorting.value) {
-        console.log('Sort already in progress, ignoring click')
         return
       }
 
@@ -1229,13 +1200,9 @@ export default {
     }
 
     const onClubClick = player => {
-      console.log('onClubClick called with player:', player)
-      console.log('Club name:', player.club)
       if (player.club && player.club.trim() !== '') {
-        console.log('Emitting team-selected event with club:', player.club)
         emit('team-selected', player.club)
       } else {
-        console.log('Club name is empty or invalid')
       }
     }
 
@@ -1285,18 +1252,6 @@ export default {
             // Check if this is one of the first few players to avoid spam
             const isFirstFewPlayers = props.players.indexOf(player) < 3
             if (isFirstFewPlayers) {
-              console.log('Player missing UID:', player.name)
-              console.log('Available fields:', Object.keys(player))
-              console.log('UID field check:', {
-                'player.UID': player.UID,
-                'player.uid': player.uid,
-                'player.Uid': player.Uid,
-                'player.id': player.id,
-                'player.ID': player.ID,
-                'player.playerId': player.playerId,
-                'player.player_id': player.player_id
-              })
-
               // Check if there's any field that looks like an ID
               const possibleIdFields = Object.keys(player).filter(
                 key =>
@@ -1304,12 +1259,9 @@ export default {
                   key.toLowerCase().includes('uid') ||
                   key.toLowerCase() === 'unique'
               )
-              console.log('Possible ID fields found:', possibleIdFields)
 
               if (possibleIdFields.length > 0) {
-                possibleIdFields.forEach(field => {
-                  console.log(`${field}:`, player[field])
-                })
+                possibleIdFields.forEach(_field => {})
               }
             }
           }
@@ -1439,8 +1391,6 @@ export default {
         clearTimeout(asyncSortTimeout.value)
       }
     })
-
-    console.log(`PlayerDataTable: Setup function end.`)
     return {
       qInstance: $q,
       cacheGeneration,

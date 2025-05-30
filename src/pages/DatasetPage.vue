@@ -626,7 +626,7 @@ export default {
           position: 'top',
           timeout: 2000
         })
-      } catch (err) {
+      } catch (_err) {
         const textArea = document.createElement('textarea')
         textArea.value = shareUrl
         document.body.appendChild(textArea)
@@ -665,8 +665,6 @@ export default {
     }
 
     const handleTeamSelected = teamName => {
-      console.log('DatasetPage handleTeamSelected called with team:', teamName)
-      console.log('currentDatasetId:', currentDatasetId.value)
       if (currentDatasetId.value) {
         const url = router.resolve({
           path: '/team-view',
@@ -675,16 +673,12 @@ export default {
             team: teamName
           }
         }).href
-        console.log('Generated URL:', url)
-        console.log('Attempting to open in new tab...')
         const newWindow = window.open(url, '_blank')
         if (!newWindow) {
           console.error('Failed to open new window - likely blocked by popup blocker')
         } else {
-          console.log('Successfully opened new window')
         }
       } else {
-        console.log('No currentDatasetId available')
       }
     }
 
@@ -757,10 +751,10 @@ export default {
     // Utility function to format large numbers
     const formatNumber = num => {
       if (num >= 1000000) {
-        return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M'
+        return `${(num / 1000000).toFixed(1).replace(/\.0$/, '')}M`
       }
       if (num >= 1000) {
-        return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K'
+        return `${(num / 1000).toFixed(1).replace(/\.0$/, '')}K`
       }
       return num?.toString() || '0'
     }

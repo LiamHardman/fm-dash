@@ -90,7 +90,6 @@ export function memoizedComputed(getter, options = {}) {
 
     if (depsChanged || !hasCachedValue.value) {
       if (debug) {
-        console.log('Recomputing memoized value due to dependency change')
       }
 
       cache.value = getter()
@@ -109,7 +108,7 @@ export function memoizedComputed(getter, options = {}) {
  * @returns {Function} Reactive memoized function
  */
 export function reactiveMemoize(fn, options = {}) {
-  const { keyGenerator = (...args) => JSON.stringify(args), equality = (a, b) => a === b } = options
+  const { keyGenerator = (...args) => JSON.stringify(args) } = options
 
   const cache = shallowRef(new Map())
 
@@ -217,14 +216,14 @@ export const globalProfiler = new MemoizationProfiler()
 export function useMemoizedComputeds(computedDefinitions) {
   const memoizedRefs = {}
 
-  Object.entries(computedDefinitions).forEach(([key, definition]) => {
+  for (const [key, definition] of Object.entries(computedDefinitions)) {
     const { getter, dependencies = [], options = {} } = definition
 
     memoizedRefs[key] = memoizedComputed(getter, {
       dependencies,
       ...options
     })
-  })
+  }
 
   return memoizedRefs
 }
