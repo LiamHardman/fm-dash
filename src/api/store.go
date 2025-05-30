@@ -60,6 +60,53 @@ func StoreDataset(datasetID string, players []Player, currencySymbol string) err
 	return nil
 }
 
+// StoreDatasetAsync stores player data using the storage interface asynchronously
+func StoreDatasetAsync(datasetID string, players []Player, currencySymbol string) {
+	go func() {
+		ctx := context.Background()
+		ctx, span := StartSpan(ctx, "store.dataset_async")
+		defer span.End()
+
+		SetSpanAttributes(ctx,
+			attribute.String("dataset.id", datasetID),
+			attribute.Int("dataset.player_count", len(players)),
+			attribute.String("dataset.currency", currencySymbol),
+			attribute.String("operation.type", "async"),
+		)
+
+		startTime := time.Now()
+		
+		data := DatasetData{
+			Players:        players,
+			CurrencySymbol: currencySymbol,
+		}
+
+		err := storage.Store(datasetID, data)
+		duration := time.Since(startTime)
+		
+		if err != nil {
+			RecordError(ctx, err, "Failed to store dataset asynchronously")
+			log.Printf("Error storing dataset %s asynchronously: %v", datasetID, err)
+			return
+		}
+
+		SetSpanAttributes(ctx, 
+			attribute.Int64("operation.duration_ms", duration.Milliseconds()),
+			attribute.String("operation.status", "success"),
+		)
+
+		RecordBusinessOperation(ctx, "dataset_store_async", true, map[string]interface{}{
+			"dataset_id":      datasetID,
+			"player_count":    len(players),
+			"currency":        currencySymbol,
+			"duration_ms":     duration.Milliseconds(),
+			"operation_type":  "async",
+		})
+
+		log.Printf("Successfully stored dataset %s asynchronously in %v", datasetID, duration)
+	}()
+}
+
 // RetrieveDataset retrieves player data using the storage interface
 func RetrieveDataset(datasetID string) ([]Player, string, error) {
 	ctx := context.Background()
@@ -202,4 +249,60 @@ func SetPlayerData(datasetID string, players []Player, currencySymbol string) {
 		// Log error but don't fail - legacy store still works
 		// (error logging is handled in storage implementation)
 	}
+}
+
+// SetPlayerDataAsync stores player data in both legacy store (immediately) and new storage (asynchronously)
+func SetPlayerDataAsync(datasetID string, players []Player, currencySymbol string) {
+	ctx := context.Background()
+	ctx, span := StartSpan(ctx, "store.set_player_data_async")
+	defer span.End()
+
+	SetSpanAttributes(ctx,
+		attribute.String("dataset.id", datasetID),
+		attribute.Int("dataset.player_count", len(players)),
+		attribute.String("dataset.currency", currencySymbol),
+		attribute.String("store.type", "legacy_compatible_async"),
+	)
+
+	// Store in legacy format immediately (fast, in-memory operation)
+	AddSpanEvent(ctx, "store.legacy_store_immediate")
+	storeMutex.Lock()
+	playerDataStore[datasetID] = struct {
+		Players        []Player
+		CurrencySymbol string
+	}{
+		Players:        players,
+		CurrencySymbol: currencySymbol,
+	}
+	storeMutex.Unlock()
+
+	// Store in new storage system asynchronously (potentially slow S3/disk operation)
+	AddSpanEvent(ctx, "store.new_storage_async_queued")
+	go func() {
+		asyncCtx := context.Background()
+		asyncCtx, asyncSpan := StartSpan(asyncCtx, "store.new_storage_async_operation")
+		defer asyncSpan.End()
+
+		SetSpanAttributes(asyncCtx,
+			attribute.String("dataset.id", datasetID),
+			attribute.Int("dataset.player_count", len(players)),
+			attribute.String("operation.type", "async_persistent_storage"),
+		)
+
+		startTime := time.Now()
+		
+		if err := StoreDataset(datasetID, players, currencySymbol); err != nil {
+			RecordError(asyncCtx, err, "Failed to store in new storage system asynchronously")
+			log.Printf("Error storing dataset %s to persistent storage asynchronously: %v", datasetID, err)
+			return
+		}
+
+		duration := time.Since(startTime)
+		SetSpanAttributes(asyncCtx, 
+			attribute.Int64("async_storage.duration_ms", duration.Milliseconds()),
+			attribute.String("async_storage.status", "success"),
+		)
+
+		log.Printf("Successfully stored dataset %s to persistent storage asynchronously in %v", datasetID, duration)
+	}()
 }

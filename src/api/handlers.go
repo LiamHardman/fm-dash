@@ -69,8 +69,8 @@ func processPercentilesAsync(datasetID string, players []Player) {
 			return
 		}
 
-		// Update stored dataset with percentiles
-		SetPlayerData(datasetID, players, currencySymbol)
+		// Update stored dataset with percentiles using async storage
+		SetPlayerDataAsync(datasetID, players, currencySymbol)
 		log.Printf("Completed async percentile calculation and storage update for dataset %s", datasetID)
 	}()
 }
@@ -370,14 +370,15 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	parseDuration := time.Since(parseStartTime)
 	datasetID := uuid.New().String()
 
-	// Store using the new storage interface (with S3 support and fallback)
-	ctx, storageSpan := StartSpan(ctx, "storage.save_dataset")
+	// Store using the new async storage interface (data is available immediately in memory, persistent storage happens in background)
+	ctx, storageSpan := StartSpan(ctx, "storage.save_dataset_async")
 	SetSpanAttributes(ctx,
 		attribute.String("dataset.id", datasetID),
 		attribute.Int("dataset.player_count", len(playersList)),
 		attribute.String("dataset.currency", finalDatasetCurrencySymbol),
+		attribute.String("storage.method", "async"),
 	)
-	SetPlayerData(datasetID, playersList, finalDatasetCurrencySymbol)
+	SetPlayerDataAsync(datasetID, playersList, finalDatasetCurrencySymbol)
 	storageSpan.End()
 
 	// Process percentiles asynchronously to avoid blocking the upload response

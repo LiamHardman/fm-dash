@@ -82,6 +82,75 @@ func BenchmarkLeagueProcessing(b *testing.B) {
 	})
 }
 
+// BenchmarkDatasetStorage compares sync vs async storage performance
+func BenchmarkDatasetStorage(b *testing.B) {
+	// Initialize storage for testing
+	InitStore()
+	
+	// Create test dataset
+	players := createTestPlayers(1000)
+	currencySymbol := "$"
+
+	b.Run("SyncStorage", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			datasetID := fmt.Sprintf("sync-test-%d", i)
+			// This includes both in-memory and persistent storage operations
+			SetPlayerData(datasetID, players, currencySymbol)
+		}
+	})
+
+	b.Run("AsyncStorage", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			datasetID := fmt.Sprintf("async-test-%d", i)
+			// This returns immediately after in-memory storage, persistent storage happens in background
+			SetPlayerDataAsync(datasetID, players, currencySymbol)
+		}
+	})
+
+	// Test response time simulation (more realistic scenario)
+	b.Run("ResponseTimeSync", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			datasetID := fmt.Sprintf("response-sync-test-%d", i)
+			
+			// Simulate the upload handler flow with sync storage
+			start := time.Now()
+			SetPlayerData(datasetID, players, currencySymbol)
+			
+			// Simulate JSON response encoding
+			response := map[string]interface{}{
+				"datasetID": datasetID,
+				"message":   "File uploaded and parsed successfully.",
+				"currency":  currencySymbol,
+			}
+			_ = response // Prevent optimization
+			
+			// This represents the total time user waits for response
+			b.ReportMetric(float64(time.Since(start).Milliseconds()), "response_time_ms")
+		}
+	})
+
+	b.Run("ResponseTimeAsync", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			datasetID := fmt.Sprintf("response-async-test-%d", i)
+			
+			// Simulate the upload handler flow with async storage
+			start := time.Now()
+			SetPlayerDataAsync(datasetID, players, currencySymbol)
+			
+			// Simulate JSON response encoding
+			response := map[string]interface{}{
+				"datasetID": datasetID,
+				"message":   "File uploaded and parsed successfully.",
+				"currency":  currencySymbol,
+			}
+			_ = response // Prevent optimization
+			
+			// This represents the total time user waits for response (should be much faster)
+			b.ReportMetric(float64(time.Since(start).Milliseconds()), "response_time_ms")
+		}
+	})
+}
+
 // createTestPlayers generates test player data for benchmarking
 func createTestPlayers(count int) []Player {
 	players := make([]Player, count)
@@ -284,4 +353,78 @@ func TestConcurrencyLimits(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestAsyncStorageCorrectness verifies async storage works correctly
+func TestAsyncStorageCorrectness(t *testing.T) {
+	// Initialize storage for testing
+	InitStore()
+	
+	// Create test data
+	players := createTestPlayers(50)
+	datasetID := "test-async-storage"
+	currencySymbol := "$"
+
+	t.Run("ImmediateAvailability", func(t *testing.T) {
+		// Store data asynchronously
+		SetPlayerDataAsync(datasetID, players, currencySymbol)
+		
+		// Data should be immediately available from in-memory cache
+		retrievedPlayers, retrievedCurrency, found := GetPlayerData(datasetID)
+		
+		if !found {
+			t.Fatal("Data not found immediately after async storage")
+		}
+		
+		if len(retrievedPlayers) != len(players) {
+			t.Errorf("Player count mismatch: expected %d, got %d", len(players), len(retrievedPlayers))
+		}
+		
+		if retrievedCurrency != currencySymbol {
+			t.Errorf("Currency mismatch: expected %s, got %s", currencySymbol, retrievedCurrency)
+		}
+		
+		// Verify specific player data
+		if len(retrievedPlayers) > 0 && retrievedPlayers[0].Name != players[0].Name {
+			t.Errorf("Player data mismatch: expected %s, got %s", players[0].Name, retrievedPlayers[0].Name)
+		}
+		
+		t.Logf("Successfully verified immediate availability of %d players", len(retrievedPlayers))
+	})
+
+	t.Run("ResponseTimeComparison", func(t *testing.T) {
+		testPlayers := createTestPlayers(100)
+		
+		// Test sync storage response time
+		syncDatasetID := "test-sync-response"
+		syncStart := time.Now()
+		SetPlayerData(syncDatasetID, testPlayers, currencySymbol)
+		syncDuration := time.Since(syncStart)
+		
+		// Test async storage response time  
+		asyncDatasetID := "test-async-response"
+		asyncStart := time.Now()
+		SetPlayerDataAsync(asyncDatasetID, testPlayers, currencySymbol)
+		asyncDuration := time.Since(asyncStart)
+		
+		t.Logf("Sync storage time: %v", syncDuration)
+		t.Logf("Async storage time: %v", asyncDuration)
+		t.Logf("Improvement ratio: %.2fx faster", float64(syncDuration)/float64(asyncDuration))
+		
+		// Async should be significantly faster (at least 2x for persistent storage)
+		if asyncDuration >= syncDuration {
+			t.Logf("Warning: Async storage was not faster. This may occur if persistent storage is very fast or disabled.")
+		}
+		
+		// Verify both datasets are available
+		_, _, syncFound := GetPlayerData(syncDatasetID)
+		_, _, asyncFound := GetPlayerData(asyncDatasetID)
+		
+		if !syncFound {
+			t.Error("Sync dataset not found")
+		}
+		if !asyncFound {
+			t.Error("Async dataset not found")
+		}
+	})
 }
