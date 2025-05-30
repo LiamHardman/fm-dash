@@ -1331,8 +1331,8 @@ func performSearch(players []Player, query string) []SearchResult {
 		return strings.ToLower(results[i].Name) < strings.ToLower(results[j].Name)
 	})
 
-	// Limit results to avoid overwhelming the UI
-	maxResults := 50
+	// Limit to top 500 results for better performance and visualization
+	maxResults := 500
 	if len(results) > maxResults {
 		results = results[:maxResults]
 	}
@@ -1365,8 +1365,11 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 
 // BargainHunterRequest represents the request body for bargain hunter analysis
 type BargainHunterRequest struct {
-	MaxBudget int64 `json:"maxBudget"`
-	MaxSalary int64 `json:"maxSalary"`
+	MaxBudget  int64 `json:"maxBudget"`
+	MaxSalary  int64 `json:"maxSalary"`
+	MinAge     int   `json:"minAge"`
+	MaxAge     int   `json:"maxAge"`
+	MinOverall int   `json:"minOverall"`
 }
 
 // BargainHunterResponse represents a player with calculated value score
@@ -1399,7 +1402,10 @@ func bargainHunterHandler(w http.ResponseWriter, r *http.Request) {
 	logInfo(ctx, "Processing bargain hunter request",
 		"dataset_id", datasetID,
 		"max_budget", req.MaxBudget,
-		"max_salary", req.MaxSalary)
+		"max_salary", req.MaxSalary,
+		"min_age", req.MinAge,
+		"max_age", req.MaxAge,
+		"min_overall", req.MinOverall)
 
 	// Get player data from storage
 	players, _, found := GetPlayerData(datasetID)
@@ -1410,7 +1416,7 @@ func bargainHunterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Process bargain hunter analysis
-	bargainPlayers := processBargainHunter(players, req.MaxBudget, req.MaxSalary)
+	bargainPlayers := processBargainHunter(players, req.MaxBudget, req.MaxSalary, int64(req.MinAge), int64(req.MaxAge), int64(req.MinOverall))
 
 	w.Header().Set("Content-Type", "application/json")
 	setCORSHeaders(w, r)
@@ -1421,11 +1427,16 @@ func bargainHunterHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // processBargainHunter calculates value scores and filters players by budget constraints
-func processBargainHunter(players []Player, maxBudget, maxSalary int64) []BargainHunterResponse {
+func processBargainHunter(players []Player, maxBudget, maxSalary, minAge, maxAge, minOverall int64) []BargainHunterResponse {
 	var results []BargainHunterResponse
 
 	for i := range players {
 		player := players[i]
+
+		// Skip free transfers entirely
+		if player.TransferValueAmount == 0 {
+			continue
+		}
 
 		// Skip players outside budget constraints
 		if maxBudget > 0 && player.TransferValueAmount > maxBudget {
@@ -1435,20 +1446,57 @@ func processBargainHunter(players []Player, maxBudget, maxSalary int64) []Bargai
 			continue
 		}
 
-		// Calculate value score: Overall rating / Transfer value (in units for easier comparison)
-		// Use upper value of transfer value range if it's a range
-		transferValue := float64(player.TransferValueAmount)
-		if transferValue <= 0 {
-			transferValue = 1 // Avoid division by zero, treat free transfers as very valuable
+		// Skip players outside age constraints
+		if minAge > 0 || maxAge > 0 {
+			playerAge, ageErr := strconv.Atoi(player.Age)
+			if ageErr != nil {
+				continue // Skip players with unparseable age
+			}
+			if minAge > 0 && int64(playerAge) < minAge {
+				continue
+			}
+			if maxAge > 0 && int64(playerAge) > maxAge {
+				continue
+			}
 		}
 
-		valueScore := float64(player.Overall) / (transferValue / 1000000) // Divide by millions for readability
+		// Skip players below minimum overall
+		if minOverall > 0 && int64(player.Overall) < minOverall {
+			continue
+		}
+
+		// Calculate value score using tiered approach
+		var valueScore float64
+		overall := float64(player.Overall)
+		transferValueMillions := float64(player.TransferValueAmount) / 1000000.0
+
+		if overall >= 60 {
+			// Tier 1: Premium players (60+) - Weighted formula
+			valueScore = (overall - 50) * (overall / transferValueMillions)
+		} else if overall >= 55 {
+			// Tier 2: Decent players (55-59) - Simple formula
+			valueScore = overall / transferValueMillions
+		} else {
+			// Tier 3: Budget/youth players (<55) - Penalized formula
+			valueScore = (overall / transferValueMillions) * 0.5
+		}
 
 		logInfo(context.Background(), "Calculating value score",
 			"player_name", player.Name,
-			"overall", player.Overall,
+			"overall", overall,
 			"transfer_value", player.TransferValueAmount,
-			"value_score", valueScore)
+			"value_score", valueScore,
+			"tier", func() string {
+				if player.TransferValueAmount == 0 {
+					return "free_transfer"
+				} else if overall >= 60 {
+					return "premium"
+				} else if overall >= 55 {
+					return "decent"
+				} else {
+					return "budget"
+				}
+			}())
 
 		results = append(results, BargainHunterResponse{
 			Player:     player,
@@ -1460,6 +1508,35 @@ func processBargainHunter(players []Player, maxBudget, maxSalary int64) []Bargai
 	sort.Slice(results, func(i, j int) bool {
 		return results[i].ValueScore > results[j].ValueScore
 	})
+
+	// Normalize value scores so highest = 100, lowest = 0
+	if len(results) > 1 {
+		// Find min and max scores
+		maxScore := results[0].ValueScore              // Already sorted, so first is highest
+		minScore := results[len(results)-1].ValueScore // Last is lowest
+
+		// Apply normalization formula: ((score - min) / (max - min)) * 100
+		if maxScore != minScore { // Avoid division by zero
+			for i := range results {
+				normalized := ((results[i].ValueScore - minScore) / (maxScore - minScore)) * 100
+				results[i].ValueScore = normalized
+			}
+		} else {
+			// If all scores are the same, set them all to 100
+			for i := range results {
+				results[i].ValueScore = 100
+			}
+		}
+	} else if len(results) == 1 {
+		// Single result gets score of 100
+		results[0].ValueScore = 100
+	}
+
+	// Limit to top 500 results for better performance and visualization
+	maxResults := 500
+	if len(results) > maxResults {
+		results = results[:maxResults]
+	}
 
 	return results
 }

@@ -37,32 +37,114 @@
             <q-card-section class="q-pt-md">
                 <!-- Filters Section -->
                 <div class="row q-col-gutter-md q-mb-md">
-                    <div class="col-12 col-md-6">
-                        <q-input
-                            v-model.number="maxBudget"
-                            type="number"
-                            label="Max Transfer Budget"
-                            outlined
-                            dense
-                            :prefix="currencySymbol"
+                    <div class="col-12 col-md-2">
+                        <div
+                            class="text-caption q-mb-xs slider-label"
+                            :class="
+                                qInstance.dark.isActive
+                                    ? 'text-grey-4'
+                                    : 'text-grey-7'
+                            "
+                        >
+                            Max Transfer Budget:
+                            {{ maxBudget ? `${currencySymbol}${(maxBudget / 1000000).toFixed(1)}M` : 'No limit' }}
+                        </div>
+                        <q-slider
+                            v-model="maxBudget"
                             :min="0"
+                            :max="100000000"
+                            :step="1000000"
+                            color="primary"
+                            class="q-px-sm"
                             @update:model-value="onFiltersChanged"
-                            :label-color="qInstance.dark.isActive ? 'grey-4' : ''"
-                            :input-class="qInstance.dark.isActive ? 'text-grey-3' : ''"
                         />
                     </div>
-                    <div class="col-12 col-md-6">
-                        <q-input
-                            v-model.number="maxSalary"
-                            type="number"
-                            label="Max Salary"
-                            outlined
-                            dense
-                            :prefix="currencySymbol"
+                    <div class="col-12 col-md-2">
+                        <div
+                            class="text-caption q-mb-xs slider-label"
+                            :class="
+                                qInstance.dark.isActive
+                                    ? 'text-grey-4'
+                                    : 'text-grey-7'
+                            "
+                        >
+                            Max Salary:
+                            {{ maxSalary ? `${currencySymbol}${(maxSalary / 1000).toFixed(0)}k` : 'No limit' }}
+                        </div>
+                        <q-slider
+                            v-model="maxSalary"
                             :min="0"
+                            :max="500000"
+                            :step="5000"
+                            color="primary"
+                            class="q-px-sm"
                             @update:model-value="onFiltersChanged"
-                            :label-color="qInstance.dark.isActive ? 'grey-4' : ''"
-                            :input-class="qInstance.dark.isActive ? 'text-grey-3' : ''"
+                        />
+                    </div>
+                    <div class="col-12 col-md-2">
+                        <div
+                            class="text-caption q-mb-xs slider-label"
+                            :class="
+                                qInstance.dark.isActive
+                                    ? 'text-grey-4'
+                                    : 'text-grey-7'
+                            "
+                        >
+                            Min Age:
+                            {{ minAge ? `${minAge} years` : 'Any age' }}
+                        </div>
+                        <q-slider
+                            v-model="minAge"
+                            :min="14"
+                            :max="50"
+                            :step="1"
+                            color="primary"
+                            class="q-px-sm"
+                            @update:model-value="onFiltersChanged"
+                        />
+                    </div>
+                    <div class="col-12 col-md-2">
+                        <div
+                            class="text-caption q-mb-xs slider-label"
+                            :class="
+                                qInstance.dark.isActive
+                                    ? 'text-grey-4'
+                                    : 'text-grey-7'
+                            "
+                        >
+                            Max Age:
+                            {{ maxAge ? `${maxAge} years` : 'Any age' }}
+                        </div>
+                        <q-slider
+                            v-model="maxAge"
+                            :min="14"
+                            :max="50"
+                            :step="1"
+                            color="primary"
+                            class="q-px-sm"
+                            @update:model-value="onFiltersChanged"
+                        />
+                    </div>
+                    <div class="col-12 col-md-2">
+                        <div
+                            class="text-caption q-mb-xs slider-label"
+                            :class="
+                                qInstance.dark.isActive
+                                    ? 'text-grey-4'
+                                    : 'text-grey-7'
+                            "
+                        >
+                            Min Overall:
+                            {{ minOverall ? `${minOverall} OVR` : 'Any rating' }}
+                        </div>
+                        <q-slider
+                            v-model="minOverall"
+                            :min="1"
+                            :max="99"
+                            :step="1"
+                            color="primary"
+                            class="q-px-sm"
+                            @update:model-value="onFiltersChanged"
                         />
                     </div>
                 </div>
@@ -77,11 +159,49 @@
                         <div class="row items-center">
                             <q-icon name="info" color="primary" size="md" class="q-mr-sm" />
                             <div class="text-subtitle1">
-                                <strong>Value Score Formula:</strong> Overall Rating ÷ Transfer Value (in millions)
+                                <strong>Tiered Value Score Formula:</strong>
                             </div>
                         </div>
                         <div class="text-caption q-mt-sm text-grey-6">
-                            Higher value scores indicate better value for money. Free transfers get a very high value score.
+                            <div><strong>Premium (60+ rating):</strong> (Rating - 50) × (Rating ÷ Value in millions)</div>
+                            <div><strong>Decent (55-59 rating):</strong> Rating ÷ Value in millions</div>
+                            <div><strong>Budget (<55 rating):</strong> (Rating ÷ Value in millions) × 0.5</div>
+                            <div class="q-mt-xs"><em>Free transfers are excluded from results</em></div>
+                            <div class="q-mt-xs"><em>Age and overall filters are optional</em></div>
+                            <div class="q-mt-xs"><em>Scores are normalized (highest = 100, lowest = 0) and limited to top 500 players</em></div>
+                        </div>
+                    </q-card-section>
+                </q-card>
+
+                <!-- Chart Section -->
+                <q-card
+                    v-if="bargainResults.length > 0 && !loading"
+                    class="q-mb-md chart-card"
+                    :class="qInstance.dark.isActive ? 'bg-grey-8' : 'bg-white'"
+                >
+                    <q-card-section>
+                        <div class="text-subtitle1 q-mb-md">
+                            <q-icon name="scatter_plot" class="q-mr-sm" />
+                            Value Score vs Overall Rating
+                            <q-btn 
+                                v-if="bargainResults.length > 0"
+                                size="sm" 
+                                flat 
+                                icon="refresh" 
+                                @click="createChart"
+                                class="q-ml-sm"
+                                title="Refresh Chart"
+                            />
+                        </div>
+                        <div class="chart-container">
+                            <canvas ref="chartCanvas" width="400" height="200"></canvas>
+                            <div v-if="!chartInstance" class="chart-loading text-center q-pa-md">
+                                <q-spinner color="primary" size="2em" />
+                                <div class="text-caption q-mt-sm">Loading chart...</div>
+                            </div>
+                        </div>
+                        <div class="text-caption q-mt-sm text-grey-6">
+                            Top 500 players shown. Value scores are normalized (0-100). Ideal bargains appear in the top-right (high value score, high overall).
                         </div>
                     </q-card-section>
                 </q-card>
@@ -187,9 +307,30 @@
 
 <script>
 import { useQuasar } from 'quasar'
-import { computed, defineComponent, onMounted, ref, watch } from 'vue'
+import { computed, defineComponent, onMounted, ref, watch, nextTick } from 'vue'
 import { formatCurrency } from '../utils/currencyUtils'
 import PlayerDetailDialog from './PlayerDetailDialog.vue'
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  Title,
+  Tooltip,
+  Legend,
+  ScatterController
+} from 'chart.js'
+
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  Title,
+  Tooltip,
+  Legend,
+  ScatterController
+)
 
 export default defineComponent({
   name: 'BargainHunterDialog',
@@ -221,10 +362,15 @@ export default defineComponent({
     // State
     const maxBudget = ref(null)
     const maxSalary = ref(null)
+    const minAge = ref(null)
+    const maxAge = ref(null)
+    const minOverall = ref(null)
     const loading = ref(false)
     const selectedPlayer = ref(null)
     const showPlayerDetail = ref(false)
     const bargainResults = ref([])
+    const chartCanvas = ref(null)
+    const chartInstance = ref(null)
 
     // Table configuration
     const tableColumns = [
@@ -314,7 +460,10 @@ export default defineComponent({
           },
           body: JSON.stringify({
             maxBudget: maxBudget.value || 0,
-            maxSalary: maxSalary.value || 0
+            maxSalary: maxSalary.value || 0,
+            minAge: minAge.value || 0,
+            maxAge: maxAge.value || 0,
+            minOverall: minOverall.value || 0
           })
         })
 
@@ -326,7 +475,6 @@ export default defineComponent({
         bargainResults.value = data || []
 
         console.log(`Found ${bargainResults.value.length} bargain players:`, bargainResults.value)
-
       } catch (error) {
         console.error('Error finding bargains:', error)
         qInstance.notify({
@@ -355,14 +503,14 @@ export default defineComponent({
       showPlayerDetail.value = true
     }
 
-    const formatValueScore = (score) => {
+    const formatValueScore = score => {
       if (score >= 1000) {
         return (score / 1000).toFixed(1) + 'k'
       }
       return score.toFixed(1)
     }
 
-    const getValueScoreColor = (score) => {
+    const getValueScoreColor = score => {
       if (score >= 100) return 'green'
       if (score >= 50) return 'positive'
       if (score >= 25) return 'orange'
@@ -370,7 +518,7 @@ export default defineComponent({
       return 'grey'
     }
 
-    const getOverallClass = (overall) => {
+    const getOverallClass = overall => {
       if (overall >= 85) return 'text-green text-weight-bold'
       if (overall >= 75) return 'text-positive text-weight-bold'
       if (overall >= 65) return 'text-orange text-weight-bold'
@@ -378,15 +526,184 @@ export default defineComponent({
       return 'text-grey'
     }
 
+    const createChart = () => {
+      console.log('createChart called', { 
+        hasCanvas: !!chartCanvas.value,
+        hasResults: bargainResults.value.length,
+        canvasElement: chartCanvas.value
+      })
+
+      if (!chartCanvas.value) {
+        console.warn('Canvas element not available for chart creation')
+        return
+      }
+
+      if (!bargainResults.value.length) {
+        console.warn('No bargain results available for chart')
+        return
+      }
+
+      // Destroy existing chart
+      if (chartInstance.value) {
+        chartInstance.value.destroy()
+        chartInstance.value = null
+      }
+
+      try {
+        const ctx = chartCanvas.value.getContext('2d')
+        
+        if (!ctx) {
+          console.error('Could not get 2D context from canvas')
+          return
+        }
+
+        // Set canvas size explicitly
+        chartCanvas.value.width = 400
+        chartCanvas.value.height = 200
+        
+        // Prepare data for scatter plot
+        const scatterData = bargainResults.value
+          .slice(0, 500) // Take top 500 players for chart (increased from 100)
+          .map(result => ({
+            x: result.player.Overall, // Overall rating (0-100)
+            y: result.valueScore, // Normalized value score (0-100)
+            player: result.player,
+            originalValueScore: result.valueScore
+          }))
+
+        console.log('Chart data prepared:', {
+          dataPoints: scatterData.length,
+          samplePoint: scatterData[0],
+          allData: scatterData.slice(0, 5) // Show first 5 points for debugging
+        })
+
+        const config = {
+          type: 'scatter',
+          data: {
+            datasets: [{
+              label: 'Players',
+              data: scatterData,
+              backgroundColor: 'rgba(26, 35, 126, 0.6)',
+              borderColor: 'rgba(26, 35, 126, 0.8)',
+              pointRadius: 6,
+              pointHoverRadius: 8,
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                display: false
+              },
+              tooltip: {
+                callbacks: {
+                  title: function(context) {
+                    const point = context[0]
+                    return point.raw.player.name
+                  },
+                  label: function(context) {
+                    const point = context.raw
+                    return [
+                      `Overall: ${point.x}`,
+                      `Value Score: ${formatValueScore(point.originalValueScore)}`,
+                      `Club: ${point.player.club}`,
+                      `Age: ${point.player.age}`,
+                      `Transfer Value: ${formatCurrency(point.player.transferValueAmount, props.currencySymbol)}`
+                    ]
+                  }
+                }
+              }
+            },
+            scales: {
+              x: {
+                type: 'linear',
+                position: 'bottom',
+                title: {
+                  display: true,
+                  text: 'Overall Rating'
+                },
+                min: 0,
+                max: 100,
+                grid: {
+                  color: qInstance.dark.isActive ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+                },
+                ticks: {
+                  color: qInstance.dark.isActive ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)'
+                }
+              },
+              y: {
+                title: {
+                  display: true,
+                  text: 'Value Score (0-100)'
+                },
+                min: 0,
+                max: 100,
+                grid: {
+                  color: qInstance.dark.isActive ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+                },
+                ticks: {
+                  color: qInstance.dark.isActive ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)'
+                }
+              }
+            },
+            onClick: (event, elements) => {
+              if (elements.length > 0) {
+                const element = elements[0]
+                const dataIndex = element.index
+                const player = scatterData[dataIndex].player
+                handlePlayerSelected(null, { player })
+              }
+            }
+          }
+        }
+
+        console.log('Creating chart with config:', config)
+        chartInstance.value = new ChartJS(ctx, config)
+
+        console.log('Chart created successfully:', chartInstance.value)
+      } catch (error) {
+        console.error('Error creating chart:', error)
+      }
+    }
+
+    const updateChart = async () => {
+      console.log('updateChart called')
+      await nextTick()
+      // Wait a bit more to ensure DOM is fully rendered
+      setTimeout(() => {
+        console.log('About to create chart, canvas element:', chartCanvas.value)
+        createChart()
+      }, 200) // Increased timeout to ensure DOM is ready
+    }
+
     // Watchers
     watch(
       () => props.show,
-      (newShow) => {
+      async (newShow) => {
         if (newShow && props.datasetId) {
           // Auto-search when dialog opens
-          findBargains()
+          await findBargains()
+        } else if (!newShow) {
+          // Cleanup chart when dialog closes
+          if (chartInstance.value) {
+            chartInstance.value.destroy()
+            chartInstance.value = null
+          }
         }
       }
+    )
+
+    // Watch for results changes to update chart
+    watch(
+      () => bargainResults.value,
+      async (newResults) => {
+        if (newResults.length > 0 && props.show) {
+          console.log('Results changed, updating chart...', newResults.length)
+          await updateChart()
+        }
+      },
+      { deep: true }
     )
 
     // Initialize when component mounts
@@ -400,10 +717,15 @@ export default defineComponent({
       qInstance,
       maxBudget,
       maxSalary,
+      minAge,
+      maxAge,
+      minOverall,
       loading,
       selectedPlayer,
       showPlayerDetail,
       bargainResults,
+      chartCanvas,
+      chartInstance,
       tableColumns,
       tablePagination,
       onFiltersChanged,
@@ -411,7 +733,9 @@ export default defineComponent({
       formatValueScore,
       getValueScoreColor,
       getOverallClass,
-      formatCurrency
+      formatCurrency,
+      createChart,
+      updateChart
     }
   }
 })
@@ -435,6 +759,29 @@ export default defineComponent({
     
     .info-card {
         border-left: 4px solid var(--q-primary);
+    }
+    
+    .chart-card {
+        border-left: 4px solid var(--q-positive);
+        
+        .chart-container {
+            height: 300px;
+            position: relative;
+            
+            canvas {
+                max-height: 100%;
+                width: 100% !important;
+                height: 100% !important;
+            }
+            
+            .chart-loading {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                z-index: 10;
+            }
+        }
     }
 }
 
