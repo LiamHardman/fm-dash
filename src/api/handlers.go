@@ -211,7 +211,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	// ParseMultipartForm will also respect the maxMemory argument for in-memory parts,
 	// but the total request size is what we're primarily concerned with for the file part.
-	// We'll check the actual file handler size after getting the file.
+	// We'll check the actual file size after getting the file.
 	if err := r.ParseMultipartForm(32 << 20); err != nil { // 32MB for other form data, not the file itself immediately
 		http.Error(w, "Error parsing multipart form: "+err.Error(), http.StatusBadRequest)
 		return
@@ -1154,6 +1154,7 @@ type SearchResult struct {
 	Type        string `json:"type"`        // "player", "team", "league", "nation"
 	Description string `json:"description"` // Additional context (e.g., team/division for player)
 	URL         string `json:"url"`         // URL to navigate to
+	Overall     int    `json:"overall"`     // Include overall rating for sorting
 }
 
 // searchHandler handles GET requests for searching players, teams, leagues, and nations
@@ -1214,6 +1215,40 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	// Perform search
 	results := performSearch(players, query)
 
+	// Enhanced debugging for any search
+	if len(query) >= 3 {
+		// Log all unique nationalities in dataset
+		nationalitiesSet := make(map[string]int)
+		for i := range players {
+			if players[i].Nationality != "" {
+				nationalitiesSet[players[i].Nationality]++
+			}
+		}
+
+		// Convert to slice for easier reading
+		var nationalitiesList []string
+		for nationality := range nationalitiesSet {
+			nationalitiesList = append(nationalitiesList, nationality)
+		}
+
+		logInfo(ctx, "Debug: All nationalities in dataset",
+			"query", query,
+			"total_nationalities", len(nationalitiesList),
+			"nationalities", nationalitiesList,
+			"nationality_counts", nationalitiesSet)
+
+		// Log detailed search results by type
+		resultsByType := make(map[string][]string)
+		for _, result := range results {
+			resultsByType[result.Type] = append(resultsByType[result.Type], result.Name)
+		}
+
+		logInfo(ctx, "Debug: Search results by type",
+			"query", query,
+			"total_results", len(results),
+			"results_by_type", resultsByType)
+	}
+
 	SetSpanAttributes(ctx, attribute.Int("search.results_count", len(results)))
 
 	w.Header().Set("Content-Type", "application/json")
@@ -1242,14 +1277,15 @@ func performSearch(players []Player, query string) []SearchResult {
 	// Search players and collect team/league/nation data
 	for i := range players {
 		player := &players[i]
-		// Search players by name
+		// Search players by name only
 		if strings.Contains(strings.ToLower(player.Name), queryLower) {
 			results = append(results, SearchResult{
 				ID:          player.Name, // Using name as ID for players
 				Name:        player.Name,
 				Type:        "player",
-				Description: fmt.Sprintf("%s • %s", player.Club, player.Division),
+				Description: fmt.Sprintf("%s • %s (%d OVR)", player.Club, player.Division, player.Overall),
 				URL:         fmt.Sprintf("/dataset/%s?search=%s", "", player.Name), // Frontend will fill dataset ID
+				Overall:     player.Overall,                                        // Include overall rating for sorting
 			})
 		}
 
@@ -1303,9 +1339,45 @@ func performSearch(players []Player, query string) []SearchResult {
 		}
 	}
 
-	// Search nations
+	// Search nations - more flexible matching
 	for nationName, playerCount := range nations {
-		if strings.Contains(strings.ToLower(nationName), queryLower) {
+		nationLower := strings.ToLower(nationName)
+		// Direct substring match
+		directMatch := strings.Contains(nationLower, queryLower)
+
+		// Also check common nationality variations
+		var variationMatch bool
+		switch queryLower {
+		case "fra", "france":
+			variationMatch = strings.Contains(nationLower, "fran") || strings.Contains(nationLower, "french")
+		case "eng", "england":
+			variationMatch = strings.Contains(nationLower, "eng") || strings.Contains(nationLower, "british")
+		case "ger", "germany":
+			variationMatch = strings.Contains(nationLower, "ger") || strings.Contains(nationLower, "deutsch")
+		case "spa", "spain":
+			variationMatch = strings.Contains(nationLower, "spa") || strings.Contains(nationLower, "spanish")
+		case "ita", "italy":
+			variationMatch = strings.Contains(nationLower, "ita") || strings.Contains(nationLower, "italian")
+		case "por", "portugal":
+			variationMatch = strings.Contains(nationLower, "por") || strings.Contains(nationLower, "portuguese")
+		case "bra", "brazil":
+			variationMatch = strings.Contains(nationLower, "bra") || strings.Contains(nationLower, "brazilian")
+		case "arg", "argentina":
+			variationMatch = strings.Contains(nationLower, "arg") || strings.Contains(nationLower, "argentine")
+		case "net", "netherlands":
+			variationMatch = strings.Contains(nationLower, "net") || strings.Contains(nationLower, "dutch")
+		case "bel", "belgium":
+			variationMatch = strings.Contains(nationLower, "bel") || strings.Contains(nationLower, "belgian")
+		default:
+			// For any 3-letter query, also try matching the first 3 letters of nation names
+			if len(queryLower) == 3 {
+				if len(nationLower) >= 3 {
+					variationMatch = strings.HasPrefix(nationLower, queryLower)
+				}
+			}
+		}
+
+		if directMatch || variationMatch {
 			results = append(results, SearchResult{
 				ID:          nationName,
 				Name:        nationName,
@@ -1316,12 +1388,24 @@ func performSearch(players []Player, query string) []SearchResult {
 		}
 	}
 
-	// Sort results by type priority (players first, then teams, leagues, nations) and then by name
+	// Sort results by the new priority order: nations, leagues, teams, then players by highest overall
 	sort.Slice(results, func(i, j int) bool {
-		typePriority := map[string]int{"player": 1, "team": 2, "league": 3, "nation": 4}
+		// Define new type priority: nations (1), leagues (2), teams (3), players (4)
+		typePriority := map[string]int{"nation": 1, "league": 2, "team": 3, "player": 4}
+
+		// First sort by type priority
 		if typePriority[results[i].Type] != typePriority[results[j].Type] {
 			return typePriority[results[i].Type] < typePriority[results[j].Type]
 		}
+
+		// For players, sort by highest overall rating first
+		if results[i].Type == "player" && results[j].Type == "player" {
+			if results[i].Overall != results[j].Overall {
+				return results[i].Overall > results[j].Overall // Highest overall first
+			}
+		}
+
+		// For non-players or same overall rating, sort alphabetically by name
 		return strings.ToLower(results[i].Name) < strings.ToLower(results[j].Name)
 	})
 
