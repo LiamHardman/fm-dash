@@ -46,12 +46,12 @@ export function formatCurrency(amount, symbol, originalDisplayValue) {
   if (numAmount === 0 && (originalDisplayValue === '-' || !originalDisplayValue)) {
     return `${defaultSymbol}0`
   }
-  if (numAmount === 0 && originalDisplayValue && originalDisplayValue.includes(defaultSymbol)) {
-    return originalDisplayValue // e.g. €0, $0
+  if (numAmount === 0 && originalDisplayValue && (originalDisplayValue.includes(defaultSymbol) || /[€$£]/.test(originalDisplayValue))) {
+    return originalDisplayValue // e.g. €0, $0 - return original if it has any currency symbol
   }
   if (numAmount === 0 && originalDisplayValue) {
     // e.g. if original was just "0" or something non-standard
-    return `${defaultSymbol}0`
+    return originalDisplayValue // Return the original value instead of forcing defaultSymbol
   }
 
   let valueString

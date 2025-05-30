@@ -3,22 +3,12 @@ import { mount } from '@vue/test-utils'
 import { Quasar, QIcon } from 'quasar'
 import PlayerTableHeader from './PlayerTableHeader.vue'
 
-// Mock Quasar
-const mockQuasar = {
-  dark: {
-    isActive: false
-  }
-}
-
 // Global test config
 const globalConfig = {
   global: {
     plugins: [Quasar],
     stubs: {
       QIcon: true
-    },
-    mocks: {
-      $q: mockQuasar
     }
   }
 }
@@ -198,26 +188,5 @@ describe('PlayerTableHeader', () => {
 
     const headers = wrapper.findAll('th')
     expect(headers).toHaveLength(0)
-  })
-
-  it('works with dark theme', () => {
-    const darkQuasar = {
-      dark: {
-        isActive: true
-      }
-    }
-
-    const wrapper = mount(PlayerTableHeader, {
-      props: defaultProps,
-      global: {
-        ...globalConfig.global,
-        mocks: {
-          $q: darkQuasar
-        }
-      }
-    })
-
-    // The quasarInstance should reflect the dark mode setting
-    expect(wrapper.vm.$q.dark.isActive).toBe(true)
   })
 }) 

@@ -192,22 +192,22 @@ describe('playerStore', () => {
   })
 
   it('uses sessionStorage for currentDatasetId', () => {
-    // Mock sessionStorage before creating store
-    vi.spyOn(Storage.prototype, 'getItem').mockReturnValue('test-dataset-123')
+    // Reset the global sessionStorage mock and set up return values
+    global.sessionStorage.getItem.mockReturnValue('test-dataset-123')
     
     // Create a new store instance to test initialization
     setActivePinia(createPinia())
     const newStore = usePlayerStore()
     
-    expect(Storage.prototype.getItem).toHaveBeenCalledWith('currentDatasetId')
+    expect(global.sessionStorage.getItem).toHaveBeenCalledWith('currentDatasetId')
     
     // Cleanup
-    vi.restoreAllMocks()
+    vi.clearAllMocks()
   })
 
   it('uses sessionStorage for detectedCurrencySymbol', () => {
-    // Mock sessionStorage before creating store
-    vi.spyOn(Storage.prototype, 'getItem')
+    // Reset the global sessionStorage mock and set up return values
+    global.sessionStorage.getItem
       .mockReturnValueOnce(null) // currentDatasetId
       .mockReturnValueOnce('€') // detectedCurrencySymbol
     
@@ -215,10 +215,10 @@ describe('playerStore', () => {
     setActivePinia(createPinia())
     const newStore = usePlayerStore()
     
-    expect(Storage.prototype.getItem).toHaveBeenCalledWith('detectedCurrencySymbol')
+    expect(global.sessionStorage.getItem).toHaveBeenCalledWith('detectedCurrencySymbol')
     
     // Cleanup
-    vi.restoreAllMocks()
+    vi.clearAllMocks()
   })
 
   it('handles null values in computed properties gracefully', () => {

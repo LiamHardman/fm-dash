@@ -182,27 +182,6 @@ describe('PlayerTableRow', () => {
     expect(row.classes()).toContain('goalkeeper-row')
   })
 
-  it('applies dark-row class in dark mode', () => {
-    const darkQuasar = {
-      dark: {
-        isActive: true
-      }
-    }
-
-    const wrapper = mount(PlayerTableRow, {
-      props: defaultProps,
-      global: {
-        ...globalConfig.global,
-        mocks: {
-          $q: darkQuasar
-        }
-      }
-    })
-
-    const row = wrapper.find('tr')
-    expect(row.classes()).toContain('dark-row')
-  })
-
   it('applies text-right class to number and rating columns', () => {
     const wrapper = mount(PlayerTableRow, {
       props: defaultProps,

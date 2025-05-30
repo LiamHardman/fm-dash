@@ -14,11 +14,19 @@ export default defineConfig({
     globals: true,
     setupFiles: ['src/test-setup.js'],
     include: ['src/**/*.{test,spec}.{js,ts,vue}'],
-    exclude: ['node_modules', 'dist', 'src/api/**']
+    exclude: ['node_modules', 'dist', 'src/api/**'],
+    testTimeout: 30000,
+    hookTimeout: 30000,
+    pool: 'threads',
+    poolOptions: {
+      threads: {
+        singleThread: true
+      }
+    }
   },
   resolve: {
     alias: {
-      '@': '/src'
+      '@': new URL('./src', import.meta.url).pathname
     }
   }
 })

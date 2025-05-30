@@ -11,23 +11,23 @@
             :class="getCellClass(col)"
             class="text-center player-cell"
         >
-            <span v-if="col.name === 'club' && displayValue" class="club-link">
+            <span v-if="col.name === 'club' && displayValue(col)" class="club-link">
                 <a
                     href="#"
-                    @click.stop="$emit('team-selected', displayValue)"
+                    @click.stop="$emit('team-selected', displayValue(col))"
                     :style="{ color: quasarInstance.dark.isActive ? '#81C784' : '#2E7D32' }"
                 >
-                    {{ displayValue }}
+                    {{ displayValue(col) }}
                 </a>
             </span>
             <span v-else-if="col.type === 'currency'">
-                {{ formatCurrency(displayValue) }}
+                {{ formatCurrency(displayValue(col)) }}
             </span>
-            <span v-else-if="col.type === 'rating'" :class="getRatingClass(displayValue)">
-                {{ displayValue }}
+            <span v-else-if="col.type === 'rating'" :class="getRatingClass(displayValue(col))">
+                {{ displayValue(col) }}
             </span>
             <span v-else>
-                {{ displayValue }}
+                {{ displayValue(col) }}
             </span>
         </td>
     </tr>
@@ -77,9 +77,7 @@ export default {
       return classes.join(' ')
     }
 
-    const displayValue = computed(() => {
-      return col => props.getDisplayValue(props.player, col)
-    })
+    const displayValue = col => props.getDisplayValue(props.player, col)
 
     return {
       quasarInstance,
