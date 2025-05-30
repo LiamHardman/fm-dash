@@ -197,7 +197,9 @@ export const usePlayerStore = defineStore('player', () => {
         positionCompare
       )
       allPlayers.value = processPlayersFromAPI(response.players)
+      currentDatasetId.value = datasetId
       detectedCurrencySymbol.value = response.currencySymbol || '$'
+      sessionStorage.setItem('currentDatasetId', currentDatasetId.value)
       sessionStorage.setItem('detectedCurrencySymbol', detectedCurrencySymbol.value)
       return response
     } catch (e) {
