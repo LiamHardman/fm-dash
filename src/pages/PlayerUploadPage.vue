@@ -137,8 +137,6 @@
                                 :loading="loading"
                                 :disable="
                                     !playerFile ||
-                                    !attributeWeightsLoadedForFeedback ||
-                                    !roleSpecificOverallWeightsLoadedForFeedback ||
                                     loading
                                 "
                                 @click="uploadAndParse"
@@ -293,21 +291,6 @@ export default {
       }
     })
 
-    const attributeWeightsLoadedForFeedback = ref(false)
-    const roleSpecificOverallWeightsLoadedForFeedback = ref(false)
-
-    const loadJsonForFeedback = async (filePath, loadedFlagRef) => {
-      try {
-        const response = await fetch(filePath)
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
-        await response.json()
-        loadedFlagRef.value = true
-      } catch (e) {
-        console.warn(`Client-side check: Failed to load ${filePath}:`, e)
-        loadedFlagRef.value = true
-      }
-    }
-
     onMounted(async () => {
       // Fetch config first
       try {
@@ -317,13 +300,6 @@ export default {
       } catch (error) {
         console.warn('Failed to fetch config, using defaults:', error)
       }
-
-      await loadJsonForFeedback('/public/attribute_weights.json', attributeWeightsLoadedForFeedback)
-      await loadJsonForFeedback(
-        '/public/role_specific_overall_weights.json',
-        roleSpecificOverallWeightsLoadedForFeedback
-      )
-
       // Initialize UI preferences
       uiStore.initNotifications()
     })
@@ -414,8 +390,6 @@ export default {
       showFileSizeLimitModal,
       loading,
       error,
-      attributeWeightsLoadedForFeedback,
-      roleSpecificOverallWeightsLoadedForFeedback,
       uploadAndParse,
       formatFileSize,
       onFileSelected,
