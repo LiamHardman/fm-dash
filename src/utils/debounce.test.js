@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { debounce, throttle } from './debounce.js'
 
 describe('debounce', () => {
@@ -52,7 +52,7 @@ describe('debounce', () => {
   it('should maintain correct this context', () => {
     const obj = {
       value: 'test',
-      method: function(arg) {
+      method: function (arg) {
         return this.value + arg
       }
     }
@@ -121,4 +121,4 @@ describe('throttle', () => {
     vi.advanceTimersByTime(100)
     expect(mockFn).toHaveBeenLastCalledWith('arg3', 'arg4')
   })
-}) 
+})

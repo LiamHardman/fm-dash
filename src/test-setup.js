@@ -1,18 +1,18 @@
-import { vi } from 'vitest'
 import { config } from '@vue/test-utils'
+import { vi } from 'vitest'
 
 // Mock IntersectionObserver
 global.IntersectionObserver = vi.fn(() => ({
   disconnect: vi.fn(),
   observe: vi.fn(),
-  unobserve: vi.fn(),
+  unobserve: vi.fn()
 }))
 
 // Mock ResizeObserver
 global.ResizeObserver = vi.fn(() => ({
   disconnect: vi.fn(),
   observe: vi.fn(),
-  unobserve: vi.fn(),
+  unobserve: vi.fn()
 }))
 
 // Mock matchMedia
@@ -26,8 +26,8 @@ Object.defineProperty(window, 'matchMedia', {
     removeListener: vi.fn(), // deprecated
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  })),
+    dispatchEvent: vi.fn()
+  }))
 })
 
 // Mock window.scrollTo
@@ -37,7 +37,7 @@ global.scrollTo = vi.fn()
 global.console = {
   ...console,
   warn: vi.fn(),
-  error: vi.fn(),
+  error: vi.fn()
 }
 
 // Set up global Vue Test Utils config
@@ -67,7 +67,7 @@ config.global.stubs = {
   QTab: true,
   QTabs: true,
   QTabPanel: true,
-  QTabPanels: true,
+  QTabPanels: true
 }
 
 // Mock sessionStorage
@@ -75,7 +75,7 @@ const sessionStorageMock = {
   getItem: vi.fn(),
   setItem: vi.fn(),
   removeItem: vi.fn(),
-  clear: vi.fn(),
+  clear: vi.fn()
 }
 global.sessionStorage = sessionStorageMock
 
@@ -84,6 +84,6 @@ const localStorageMock = {
   getItem: vi.fn(),
   setItem: vi.fn(),
   removeItem: vi.fn(),
-  clear: vi.fn(),
+  clear: vi.fn()
 }
-global.localStorage = localStorageMock 
+global.localStorage = localStorageMock

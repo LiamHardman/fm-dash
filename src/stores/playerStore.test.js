@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { setActivePinia, createPinia } from 'pinia'
+import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { usePlayerStore } from './playerStore'
 
 // Mock the player service
@@ -16,7 +16,7 @@ describe('playerStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     store = usePlayerStore()
-    
+
     // Mock sessionStorage
     global.sessionStorage = {
       getItem: vi.fn(),
@@ -124,9 +124,7 @@ describe('playerStore', () => {
   })
 
   it('handles single value in transfer value range', () => {
-    store.allPlayers = [
-      { transferValueAmount: 1000000 }
-    ]
+    store.allPlayers = [{ transferValueAmount: 1000000 }]
 
     const range = store.currentDatasetTransferValueRange
     expect(range.min).toBe(1000000)
@@ -194,13 +192,13 @@ describe('playerStore', () => {
   it('uses sessionStorage for currentDatasetId', () => {
     // Reset the global sessionStorage mock and set up return values
     global.sessionStorage.getItem.mockReturnValue('test-dataset-123')
-    
+
     // Create a new store instance to test initialization
     setActivePinia(createPinia())
-    const newStore = usePlayerStore()
-    
+    const _newStore = usePlayerStore()
+
     expect(global.sessionStorage.getItem).toHaveBeenCalledWith('currentDatasetId')
-    
+
     // Cleanup
     vi.clearAllMocks()
   })
@@ -210,20 +208,20 @@ describe('playerStore', () => {
     global.sessionStorage.getItem
       .mockReturnValueOnce(null) // currentDatasetId
       .mockReturnValueOnce('€') // detectedCurrencySymbol
-    
+
     // Create a new store instance to test initialization
     setActivePinia(createPinia())
-    const newStore = usePlayerStore()
-    
+    const _newStore = usePlayerStore()
+
     expect(global.sessionStorage.getItem).toHaveBeenCalledWith('detectedCurrencySymbol')
-    
+
     // Cleanup
     vi.clearAllMocks()
   })
 
   it('handles null values in computed properties gracefully', () => {
     store.allPlayers = null
-    
+
     expect(store.uniqueClubs).toEqual([])
     expect(store.uniqueNationalities).toEqual([])
     expect(store.uniqueMediaHandlings).toEqual([])
@@ -232,11 +230,7 @@ describe('playerStore', () => {
   })
 
   it('sorts computed arrays alphabetically', () => {
-    store.allPlayers = [
-      { club: 'Zebra FC' },
-      { club: 'Alpha FC' },
-      { club: 'Beta FC' }
-    ]
+    store.allPlayers = [{ club: 'Zebra FC' }, { club: 'Alpha FC' }, { club: 'Beta FC' }]
 
     expect(store.uniqueClubs).toEqual(['Alpha FC', 'Beta FC', 'Zebra FC'])
   })
@@ -249,16 +243,14 @@ describe('playerStore', () => {
 
     const uniqueMediaHandlings = store.uniqueMediaHandlings
     expect(uniqueMediaHandlings).toContain('Confident')
-    expect(uniqueMediaHandlings).toContain('Outspoken') 
+    expect(uniqueMediaHandlings).toContain('Outspoken')
     expect(uniqueMediaHandlings).toContain('Reserved')
     expect(uniqueMediaHandlings).toContain('Professional')
     expect(uniqueMediaHandlings).toContain('Ambitious')
   })
 
   it('trims whitespace from media handling values', () => {
-    store.allPlayers = [
-      { media_handling: ' Confident , Outspoken ' }
-    ]
+    store.allPlayers = [{ media_handling: ' Confident , Outspoken ' }]
 
     const uniqueMediaHandlings = store.uniqueMediaHandlings
     expect(uniqueMediaHandlings).toEqual(['Confident', 'Outspoken'])
@@ -277,13 +269,10 @@ describe('playerStore', () => {
   })
 
   it('ensures non-negative minimum values', () => {
-    store.allPlayers = [
-      { transferValueAmount: -500000 },
-      { transferValueAmount: 1000000 }
-    ]
+    store.allPlayers = [{ transferValueAmount: -500000 }, { transferValueAmount: 1000000 }]
 
     const range = store.currentDatasetTransferValueRange
     expect(range.min).toBe(0) // Negative values set to 0
     expect(range.max).toBe(1000000)
   })
-}) 
+})

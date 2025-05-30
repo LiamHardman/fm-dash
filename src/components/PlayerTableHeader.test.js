@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { Quasar, QIcon } from 'quasar'
+import { QIcon, Quasar } from 'quasar'
+import { describe, expect, it, vi } from 'vitest'
 import PlayerTableHeader from './PlayerTableHeader.vue'
 
 // Global test config
@@ -44,15 +44,15 @@ describe('PlayerTableHeader', () => {
     })
 
     const headers = wrapper.findAll('th')
-    
+
     // First header (name, text type, active sort)
     expect(headers[0].classes()).toContain('sortable-header')
     expect(headers[0].classes()).toContain('active-sort')
-    
+
     // Second header (age, number type)
     expect(headers[1].classes()).toContain('sortable-header')
     expect(headers[1].classes()).toContain('text-right')
-    
+
     // Third header (rating, rating type)
     expect(headers[2].classes()).toContain('sortable-header')
     expect(headers[2].classes()).toContain('text-right')
@@ -77,7 +77,7 @@ describe('PlayerTableHeader', () => {
 
     const sortIndicator = wrapper.find('.sort-indicator')
     expect(sortIndicator.exists()).toBe(true)
-    
+
     // Check that QIcon is rendered with correct props (mocked)
     const qIcon = sortIndicator.findComponent({ name: 'QIcon' })
     expect(qIcon.exists()).toBe(true)
@@ -94,7 +94,7 @@ describe('PlayerTableHeader', () => {
 
     const sortIndicator = wrapper.find('.sort-indicator')
     expect(sortIndicator.exists()).toBe(true)
-    
+
     const qIcon = sortIndicator.findComponent({ name: 'QIcon' })
     expect(qIcon.exists()).toBe(true)
   })
@@ -119,13 +119,13 @@ describe('PlayerTableHeader', () => {
     })
 
     const headers = wrapper.findAll('th')
-    
+
     // Name column (text type) should not have text-right
     expect(headers[0].classes()).not.toContain('text-right')
-    
+
     // Age column (number type) should have text-right
     expect(headers[1].classes()).toContain('text-right')
-    
+
     // Rating column (rating type) should have text-right
     expect(headers[2].classes()).toContain('text-right')
   })
@@ -140,10 +140,10 @@ describe('PlayerTableHeader', () => {
     })
 
     const headers = wrapper.findAll('th')
-    
+
     // Name header should not be active
     expect(headers[0].classes()).not.toContain('active-sort')
-    
+
     // Age header should be active
     expect(headers[1].classes()).toContain('active-sort')
     expect(headers[1].find('.sort-indicator').exists()).toBe(true)
@@ -156,10 +156,10 @@ describe('PlayerTableHeader', () => {
     })
 
     const headers = wrapper.findAll('th')
-    headers.forEach(header => {
+    for (const header of headers) {
       expect(header.attributes('style')).toContain('cursor: pointer')
       expect(header.attributes('style')).toContain('user-select: none')
-    })
+    }
   })
 
   it('renders proper header content structure', () => {
@@ -171,7 +171,7 @@ describe('PlayerTableHeader', () => {
     const firstHeader = wrapper.find('th')
     const headerContent = firstHeader.find('.header-content')
     expect(headerContent.exists()).toBe(true)
-    
+
     const headerLabel = headerContent.find('.header-label')
     expect(headerLabel.exists()).toBe(true)
     expect(headerLabel.text()).toBe('Name')
@@ -189,4 +189,4 @@ describe('PlayerTableHeader', () => {
     const headers = wrapper.findAll('th')
     expect(headers).toHaveLength(0)
   })
-}) 
+})

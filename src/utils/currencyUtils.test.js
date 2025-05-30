@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { formatCurrency, parseCurrencyString } from './currencyUtils.js'
 
 describe('formatCurrency', () => {
@@ -60,7 +60,7 @@ describe('formatCurrency', () => {
   it('handles invalid amounts gracefully', () => {
     expect(formatCurrency('invalid', '$')).toBe('$')
     expect(formatCurrency('invalid', '$', 'Original Value')).toBe('Original Value')
-    expect(formatCurrency(NaN, '€')).toBe('€')
+    expect(formatCurrency(Number.NaN, '€')).toBe('€')
     expect(formatCurrency(null, '£', 'Fallback')).toBe('Fallback')
   })
 
@@ -172,4 +172,4 @@ describe('parseCurrencyString', () => {
     // For complex strings with extra text, it may not parse correctly
     expect(parseCurrencyString('$2.75M')).toBe(2750000)
   })
-}) 
+})
