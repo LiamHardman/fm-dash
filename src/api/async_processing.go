@@ -53,12 +53,6 @@ func NewPlayerProcessor(config ProcessingConfig) *PlayerProcessor {
 		cancel:   cancel,
 	}
 
-	// Start worker pool
-	for i := 0; i < config.WorkerCount; i++ {
-		processor.wg.Add(1)
-		go processor.worker(i)
-	}
-
 	return processor
 }
 
@@ -68,7 +62,12 @@ func (p *PlayerProcessor) worker(workerID int) {
 
 	for {
 		select {
-		case player := <-p.inputCh:
+		case player, ok := <-p.inputCh:
+			if !ok {
+				// Input channel is closed, exit worker
+				return
+			}
+
 			start := time.Now()
 
 			// Create a copy to avoid data races
@@ -101,10 +100,7 @@ func (p *PlayerProcessor) worker(workerID int) {
 
 // ProcessPlayersAsync processes a slice of players concurrently
 func (p *PlayerProcessor) ProcessPlayersAsync(players []Player) <-chan Player {
-	p.inputCh = make(chan Player, p.config.BufferSize)
-	p.outputCh = make(chan Player, p.config.BufferSize)
-
-	// Start workers
+	// Start workers only once
 	for i := 0; i < p.config.WorkerCount; i++ {
 		p.wg.Add(1)
 		go p.worker(i)
@@ -233,8 +229,7 @@ type PercentileResult struct {
 func (p *PlayerProcessor) Shutdown() {
 	p.cancel()
 	p.wg.Wait()
-	close(p.outputCh)
-	close(p.errorCh)
+	// Don't close channels here as they're managed by ProcessPlayersAsync
 }
 
 // ConcurrentLeagueProcessor processes league data with parallel team calculations

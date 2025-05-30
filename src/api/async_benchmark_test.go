@@ -199,6 +199,10 @@ func createTestPlayersWithDivisions(count int) []Player {
 
 // TestAsyncProcessingCorrectness verifies async processing produces correct results
 func TestAsyncProcessingCorrectness(t *testing.T) {
+	// Add timeout to prevent hanging
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
 	players := createTestPlayers(100)
 
 	// Test player processing
@@ -210,8 +214,7 @@ func TestAsyncProcessingCorrectness(t *testing.T) {
 			EnhancePlayerWithCalculations(&syncPlayers[i])
 		}
 
-		// Process asynchronously
-		ctx := context.Background()
+		// Process asynchronously with timeout context
 		asyncPlayers, err := ProcessPlayersBatch(ctx, players, 20)
 		if err != nil {
 			t.Fatalf("Async processing failed: %v", err)
@@ -244,7 +247,6 @@ func TestAsyncProcessingCorrectness(t *testing.T) {
 			MaxAge: 25,
 		}
 
-		ctx := context.Background()
 		asyncFilter := NewAsyncPlayerFilter(2, 30)
 		filteredPlayers := asyncFilter.FilterPlayersAsync(ctx, players, filter)
 
@@ -263,7 +265,6 @@ func TestAsyncProcessingCorrectness(t *testing.T) {
 	t.Run("LeagueProcessing", func(t *testing.T) {
 		playersWithDivisions := createTestPlayersWithDivisions(200)
 
-		ctx := context.Background()
 		processor := NewConcurrentLeagueProcessor(2)
 		leagues := processor.ProcessLeaguesAsync(ctx, playersWithDivisions)
 

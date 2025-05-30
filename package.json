@@ -24,7 +24,7 @@
     "test:go:timeout": "cd src/api && (gtimeout 30s go test ./... 2>/dev/null || timeout 30s go test ./... 2>/dev/null || go test -timeout=30s ./... || echo 'Go tests completed or timed out, continuing...')",
     "test:go:verbose": "cd src/api && go test -v ./...",
     "test:go:coverage": "cd src/api && go test -cover ./...",
-    "test:all": "npm run test:optional && npm run test:go:timeout",
+    "test:all": "npm run test:optional && npm run test:go",
     "check": "npm run lint:all && npm run format:check && npm run test:all",
     "fix": "npm run format && npm run lint && npm run lint:go:fix",
     "prepare": "husky"
