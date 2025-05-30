@@ -1,0 +1,16 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🚀 Running pre-push checks..."
+
+# Run comprehensive checks (linting, formatting, and tests)
+npm run check
+
+# If checks passed, show success message
+if [ $? -eq 0 ]; then
+  echo "✅ Pre-push checks passed! Safe to push."
+else
+  echo "❌ Pre-push checks failed. Please fix the issues before pushing."
+  echo "💡 Run 'npm run fix' to auto-fix issues, then 'npm run check' to verify."
+  exit 1
+fi 

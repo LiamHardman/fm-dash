@@ -24,7 +24,8 @@
     "test:go:coverage": "cd src/api && go test -cover ./...",
     "test:all": "npm run test:run && npm run test:go",
     "check": "npm run lint:all && npm run format:check && npm run test:all",
-    "fix": "npm run format && npm run lint && npm run lint:go:fix"
+    "fix": "npm run format && npm run lint && npm run lint:go:fix",
+    "prepare": "husky"
   },
   "dependencies": {
     "@quasar/extras": "^1.16.9",
@@ -40,8 +41,19 @@
     "@vitejs/plugin-vue": "^5.0.4",
     "@vue/test-utils": "^2.4.6",
     "happy-dom": "^17.5.6",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.0",
     "sass": "^1.71.1",
     "vite": "^5.1.4",
     "vitest": "^3.1.4"
+  },
+  "lint-staged": {
+    "*.{js,ts,vue,json,html,css,scss,md}": [
+      "biome check --write --files-ignore-unknown=true",
+      "biome format --write --files-ignore-unknown=true"
+    ],
+    "src/api/**/*.go": [
+      "sh -c 'cd src/api && (golangci-lint run --fix 2>/dev/null || ~/go/bin/golangci-lint run --fix || echo \"golangci-lint not found. Install with: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest\")'"
+    ]
   }
 }

@@ -4,6 +4,13 @@ A tool for parsing and displaying Football Manager HTML player data with a Vue.j
 
 ## Project Setup
 
+### Prerequisites
+
+This project includes automated pre-commit hooks for code quality:
+- **Husky** manages Git hooks
+- **lint-staged** runs checks only on changed files
+- Hooks automatically format, lint, and test your code
+
 ### Backend (Go)
 
 ```bash

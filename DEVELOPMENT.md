@@ -105,17 +105,45 @@ Install these extensions for the best development experience:
 - Code quality checks (gocritic, revive)
 - Import organization (goimports)
 
-## Pre-commit Hooks (Optional)
+## Pre-commit Hooks
 
-You can set up pre-commit hooks to automatically run checks:
+This project uses **Husky** and **lint-staged** for automated code quality checks:
+
+### Hooks Configured
+
+- **pre-commit**: Runs lint-staged for fast, staged-file-only checks
+  - Formats and lints JavaScript/Vue files with Biome
+  - Lints and fixes Go files with golangci-lint
+  - Only processes staged files for optimal performance
+
+- **pre-push**: Runs comprehensive checks before pushing
+  - Full linting (frontend and backend)
+  - Format checking
+  - All tests (frontend and backend)
+
+### Manual Hook Management
 
 ```bash
-# Install husky for Git hooks
-npm install --save-dev husky
+# Hooks are automatically installed via the "prepare" script
+# But you can manually manage them:
 
-# Add pre-commit hook
-npx husky add .husky/pre-commit "npm run check"
+# Reinstall hooks
+npx husky install
+
+# Skip hooks temporarily (not recommended)
+git commit --no-verify
+git push --no-verify
+
+# Test hooks manually
+npx lint-staged              # Test pre-commit
+npm run check               # Test pre-push
 ```
+
+### Performance Benefits
+
+- **lint-staged**: Only checks files you've changed
+- **Biome**: Faster than ESLint + Prettier
+- **Selective testing**: Only runs relevant tests
 
 ## Troubleshooting
 
