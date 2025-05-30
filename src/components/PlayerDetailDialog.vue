@@ -1352,7 +1352,7 @@ export default defineComponent({
         'Strikers'
       ]
 
-      preferredOrder.forEach(groupKey => {
+      for (const groupKey of preferredOrder) {
         if (Object.prototype.hasOwnProperty.call(playerPercentiles, groupKey)) {
           let includeGroup = false
           if (groupKey === 'Global') {
@@ -1377,11 +1377,11 @@ export default defineComponent({
             })
           }
         }
-      })
+      }
 
       // Add any other percentile groups the player might have that are not in preferredOrder
       // (This ensures if backend adds new groups not yet in preferredOrder, they still show up if relevant)
-      Object.keys(playerPercentiles).forEach(groupKey => {
+      for (const groupKey of Object.keys(playerPercentiles)) {
         if (!options.some(opt => opt.value === groupKey)) {
           let includeGroup = false
           if (['Goalkeepers', 'Defenders', 'Midfielders', 'Attackers'].includes(groupKey)) {
@@ -1410,7 +1410,7 @@ export default defineComponent({
             })
           }
         }
-      })
+      }
 
       return options
     })
@@ -1628,10 +1628,10 @@ export default defineComponent({
       const result = {}
       const categoryOrder = ['Offensive', 'Passing', 'Defensive']
 
-      categoryOrder.forEach(categoryName => {
+      for (const categoryName of categoryOrder) {
         if (performanceStatCategories[categoryName]) {
           const statsInCategory = []
-          performanceStatCategories[categoryName].forEach(statKey => {
+          for (const statKey of performanceStatCategories[categoryName]) {
             const rawAttributeValue = props.player.attributes[statKey]
             const percentileValue = percentilesForGroup[statKey]
 
@@ -1649,13 +1649,13 @@ export default defineComponent({
                 percentile: percentileValue >= 0 ? percentileValue : null
               })
             }
-          })
+          }
 
           if (statsInCategory.length > 0) {
             result[categoryName] = statsInCategory.sort((a, b) => a.name.localeCompare(b.name))
           }
         }
-      })
+      }
 
       // Cache result (limit cache size)
       if (performanceStatsCache.size > 20) {

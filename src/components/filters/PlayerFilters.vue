@@ -1295,12 +1295,12 @@ export default defineComponent({
       ...goalkeeperAttributeKeys
     ]
 
-    allAttributeKeys.forEach(attr => {
+    for (const attr of allAttributeKeys) {
       const filterKey = `min${formatAttrKey(attr)}`
       if (!filters.value[filterKey]) {
         filters.value[filterKey] = 0
       }
-    })
+    }
 
     const clubOptions = ref([])
     const nationalityOptions = ref([])
@@ -1361,9 +1361,9 @@ export default defineComponent({
 
     const positionOptions = computed(() => {
       const options = [{ label: 'Any Position', value: null }]
-      orderedShortPositions.forEach(shortPos => {
+      for (const shortPos of orderedShortPositions) {
         options.push({ label: shortPos, value: shortPos })
-      })
+      }
       return options
     })
 
@@ -1549,9 +1549,9 @@ export default defineComponent({
         minMEN: 0,
         minGK: 0
       }
-      allAttributeKeys.forEach(attr => {
+      for (const attr of allAttributeKeys) {
         filters.value[`min${formatAttrKey(attr)}`] = 0
-      })
+      }
       applyFilters()
     }
 
@@ -1639,9 +1639,9 @@ export default defineComponent({
       filters.value.minDEF = 0
       filters.value.minMEN = 0
       filters.value.minGK = 0
-      allAttributeKeys.forEach(attr => {
+      for (const attr of allAttributeKeys) {
         filters.value[`min${formatAttrKey(attr)}`] = 0
-      })
+      }
     }
 
     const applyMinimumStats = () => {

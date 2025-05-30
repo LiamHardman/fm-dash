@@ -380,9 +380,9 @@ export default {
     })
 
     // Initialize FM attribute filters in currentFilters
-    allRawFmAttributeKeys.forEach(attrKey => {
+    for (const attrKey of allRawFmAttributeKeys) {
       currentFilters.value[`min${formatFilterKeyPrefix(attrKey)}`] = 0
-    })
+    }
 
     // Computed properties from store
     const allPlayersData = computed(() => playerStore.allPlayers)

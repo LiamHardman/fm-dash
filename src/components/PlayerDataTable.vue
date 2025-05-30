@@ -366,11 +366,7 @@ export default {
 
     // Initialize optimized sorting and web workers
     const { sortLargeArray, clearSortCache } = useOptimizedSorting()
-    const {
-      sortPlayers: sortPlayersWorker,
-      getPendingTaskCount,
-      terminateWorker
-    } = usePlayerCalculationWorker()
+    const { sortPlayers: sortPlayersWorker } = usePlayerCalculationWorker()
 
     const contextMenu = ref(null)
     const sortField = ref('Overall')
@@ -1261,7 +1257,7 @@ export default {
               )
 
               if (possibleIdFields.length > 0) {
-                possibleIdFields.forEach(_field => {})
+                // Empty loop removed - was not doing anything useful
               }
             }
           }

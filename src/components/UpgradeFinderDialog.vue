@@ -648,7 +648,7 @@ export default {
     currencySymbol: { type: String, default: '$' }
   },
   emits: ['close'],
-  setup(props, { emit }) {
+  setup(props) {
     const $q = useQuasar()
     const playerStore = usePlayerStore()
     const teamName = ref(null)
@@ -689,11 +689,11 @@ export default {
         return
       }
       const uniqueTeams = new Set()
-      props.players.forEach(player => {
+      for (const player of props.players) {
         if (player.club && player.club.trim() !== '') {
           uniqueTeams.add(player.club)
         }
-      })
+      }
       allTeamNamesCache.value = Array.from(uniqueTeams).sort()
       teamOptions.value = allTeamNamesCache.value
     }
@@ -707,12 +707,12 @@ export default {
       }
       let minVal = Number.POSITIVE_INFINITY
       let maxVal = 0
-      props.players.forEach(p => {
+      for (const p of props.players) {
         if (typeof p.transferValueAmount === 'number') {
           minVal = Math.min(minVal, p.transferValueAmount)
           maxVal = Math.max(maxVal, p.transferValueAmount)
         }
-      })
+      }
       dynamicMinTransferValue.value = minVal === Number.POSITIVE_INFINITY ? 0 : Math.max(0, minVal)
       dynamicMaxTransferValue.value =
         maxVal === 0 && minVal === Number.POSITIVE_INFINITY ? 100000000 : maxVal
@@ -734,12 +734,12 @@ export default {
       }
       let minVal = Number.POSITIVE_INFINITY
       let maxVal = 0
-      props.players.forEach(p => {
+      for (const p of props.players) {
         if (typeof p.wageAmount === 'number') {
           minVal = Math.min(minVal, p.wageAmount)
           maxVal = Math.max(maxVal, p.wageAmount)
         }
-      })
+      }
       dynamicMinSalary.value = minVal === Number.POSITIVE_INFINITY ? 0 : Math.max(0, minVal)
       dynamicMaxSalary.value =
         maxVal === 0 && minVal === Number.POSITIVE_INFINITY ? 1000000 : maxVal
@@ -788,9 +788,9 @@ export default {
 
     const positionFilterOptions = computed(() => {
       const options = [{ label: 'Any Position Group', value: null }]
-      orderedShortPositions.forEach(pos => {
+      for (const pos of orderedShortPositions) {
         options.push({ label: pos, value: pos })
-      })
+      }
       return options
     })
 
@@ -878,13 +878,13 @@ export default {
       if (position) {
         let maxOverallForPosition = 0
         if (player.roleSpecificOveralls) {
-          player.roleSpecificOveralls.forEach(rso => {
+          for (const rso of player.roleSpecificOveralls) {
             if (rso.roleName.startsWith(`${position} - `)) {
               if (rso.score > maxOverallForPosition) {
                 maxOverallForPosition = rso.score
               }
             }
-          })
+          }
         }
         return maxOverallForPosition > 0 ? maxOverallForPosition : player.Overall || 0
       }
