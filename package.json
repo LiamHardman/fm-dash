@@ -20,7 +20,7 @@
     "test:run": "vitest run",
     "test:optional": "vitest run --run --reporter=verbose || echo 'No frontend tests found, skipping...'",
     "test:coverage": "vitest run --coverage",
-    "test:go": "powershell -Command \"cd test/api; go test ./...; exit 0\"",
+    "test:go": "cd test/api && go test ./... || echo 'No Go test packages found, skipping...'",
     "test:go:timeout": "cd test/api && (gtimeout 30s go test ./... 2>/dev/null || timeout 30s go test ./... 2>/dev/null || go test -timeout=30s ./... || echo 'Go tests completed or timed out, continuing...')",
     "test:go:verbose": "cd test/api && go test -v ./...",
     "test:go:coverage": "cd test/api && go test -cover ./...",

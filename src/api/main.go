@@ -153,7 +153,7 @@ func main() {
 
 	// Apply middleware chain to all routes in optimal order:
 	// 1. Panic Recovery (outermost - catches all panics)
-	// 2. CORS (early for preflight requests) 
+	// 2. CORS (early for preflight requests)
 	// 3. Logging (captures all request/response data)
 	// 4. Timeout (inner control)
 	var handler http.Handler = mux

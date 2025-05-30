@@ -69,7 +69,7 @@ func NewPlayerService(storage StorageInterface) *PlayerService {
 
 // GetPlayersByDatasetID retrieves players for a specific dataset
 func (s *PlayerService) GetPlayersByDatasetID(ctx context.Context, datasetID string) ([]Player, string, error) {
-	ctx, span := tracer.Start(ctx, "player_service.get_players_by_dataset_id",
+	_, span := tracer.Start(ctx, "player_service.get_players_by_dataset_id",
 		trace.WithAttributes(
 			attribute.String("dataset.id", datasetID),
 		))
@@ -102,7 +102,7 @@ func (s *PlayerService) GetPlayersByDatasetID(ctx context.Context, datasetID str
 
 // StorePlayerData stores player data with the given dataset ID
 func (s *PlayerService) StorePlayerData(ctx context.Context, datasetID string, players []Player, currencySymbol string) error {
-	ctx, span := tracer.Start(ctx, "player_service.store_player_data",
+	_, span := tracer.Start(ctx, "player_service.store_player_data",
 		trace.WithAttributes(
 			attribute.String("dataset.id", datasetID),
 			attribute.Int("players.count", len(players)),
@@ -152,7 +152,7 @@ func (s *PlayerService) StorePlayerData(ctx context.Context, datasetID string, p
 
 // DeleteDataset removes a dataset and all its data
 func (s *PlayerService) DeleteDataset(ctx context.Context, datasetID string) error {
-	ctx, span := tracer.Start(ctx, "player_service.delete_dataset",
+	_, span := tracer.Start(ctx, "player_service.delete_dataset",
 		trace.WithAttributes(
 			attribute.String("dataset.id", datasetID),
 		))
@@ -179,23 +179,23 @@ func (s *PlayerService) DeleteDataset(ctx context.Context, datasetID string) err
 
 // GetAllDatasets returns all available dataset IDs
 func (s *PlayerService) GetAllDatasets(ctx context.Context) []string {
-	ctx, span := tracer.Start(ctx, "player_service.get_all_datasets")
+	_, span := tracer.Start(ctx, "player_service.get_all_datasets")
 	defer span.End()
 
 	datasets := s.storage.GetAllDatasetIDs()
-	
+
 	span.SetAttributes(
 		attribute.Int("datasets.count", len(datasets)),
 	)
 	span.SetStatus(codes.Ok, "datasets retrieved successfully")
-	
+
 	log.Printf("Retrieved %d datasets", len(datasets))
 	return datasets
 }
 
 // ProcessPlayerPercentiles calculates performance percentiles for players
 func (s *PlayerService) ProcessPlayerPercentiles(ctx context.Context, players []Player) error {
-	ctx, span := tracer.Start(ctx, "player_service.process_player_percentiles",
+	_, span := tracer.Start(ctx, "player_service.process_player_percentiles",
 		trace.WithAttributes(
 			attribute.Int("players.count", len(players)),
 		))
@@ -221,7 +221,7 @@ func (s *PlayerService) ProcessPlayerPercentiles(ctx context.Context, players []
 
 // ValidatePlayerData performs validation on player data
 func (s *PlayerService) ValidatePlayerData(ctx context.Context, players []Player) error {
-	ctx, span := tracer.Start(ctx, "player_service.validate_player_data",
+	_, span := tracer.Start(ctx, "player_service.validate_player_data",
 		trace.WithAttributes(
 			attribute.Int("players.count", len(players)),
 		))
@@ -276,7 +276,7 @@ func (s *PlayerService) ValidatePlayerData(ctx context.Context, players []Player
 
 // GetPlayerStatistics calculates basic statistics for a set of players
 func (s *PlayerService) GetPlayerStatistics(ctx context.Context, players []Player) map[string]interface{} {
-	ctx, span := tracer.Start(ctx, "player_service.get_player_statistics",
+	_, span := tracer.Start(ctx, "player_service.get_player_statistics",
 		trace.WithAttributes(
 			attribute.Int("players.count", len(players)),
 		))

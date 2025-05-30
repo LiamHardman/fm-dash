@@ -35,11 +35,12 @@ var (
 func getSampler() sdktrace.Sampler {
 	if rate := sampleRate; rate != "" {
 		if floatRate, err := strconv.ParseFloat(rate, 64); err == nil {
-			if floatRate <= 0.0 {
+			switch {
+			case floatRate <= 0.0:
 				return sdktrace.NeverSample()
-			} else if floatRate >= 1.0 {
+			case floatRate >= 1.0:
 				return sdktrace.AlwaysSample()
-			} else {
+			default:
 				return sdktrace.TraceIDRatioBased(floatRate)
 			}
 		}

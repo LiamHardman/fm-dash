@@ -62,14 +62,14 @@ func RequestTimeoutMiddleware(timeout time.Duration) func(http.Handler) http.Han
 					span.AddEvent("request.timeout", trace.WithAttributes(
 						attribute.Float64("timeout_seconds", timeout.Seconds()),
 					))
-					
+
 					slog.WarnContext(ctx, "Request timeout",
 						"timeout_seconds", timeout.Seconds(),
 						"method", r.Method,
 						"path", r.URL.Path,
 						"trace_id", GetTraceID(ctx),
 					)
-					
+
 					http.Error(w, fmt.Sprintf("Request timeout after %v", timeout), http.StatusRequestTimeout)
 				} else {
 					// Context was cancelled for other reasons
@@ -148,7 +148,7 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 
 		// Wrap the response writer to capture status code and response size
 		wrapped := &responseWriter{
-			ResponseWriter: w, 
+			ResponseWriter: w,
 			statusCode:     http.StatusOK,
 			responseSize:   0,
 		}
@@ -248,7 +248,7 @@ func PanicRecoveryMiddleware(next http.Handler) http.Handler {
 				panicErr := fmt.Errorf("panic recovered: %v", err)
 				span.RecordError(panicErr)
 				span.SetStatus(codes.Error, "Handler panicked")
-				
+
 				// Add detailed panic information
 				span.SetAttributes(
 					attribute.String("panic.value", fmt.Sprintf("%v", err)),
@@ -273,19 +273,19 @@ func PanicRecoveryMiddleware(next http.Handler) http.Handler {
 					w.Header().Set("Content-Type", "application/json")
 				}
 				w.WriteHeader(http.StatusInternalServerError)
-				
+
 				response := map[string]interface{}{
 					"error":    "Internal server error",
 					"trace_id": GetTraceID(ctx),
 				}
-				
+
 				// Only include panic details in development mode
 				if getEnvWithDefault("ENVIRONMENT", "production") != "production" {
 					response["details"] = fmt.Sprintf("%v", err)
 				}
-				
+
 				// Write JSON response (simplified - in production you might want proper JSON encoding)
-				fmt.Fprintf(w, `{"error": "%s", "trace_id": "%s"}`, 
+				fmt.Fprintf(w, `{"error": "%s", "trace_id": "%s"}`,
 					response["error"], response["trace_id"])
 			}
 		}()

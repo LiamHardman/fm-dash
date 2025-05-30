@@ -28,15 +28,15 @@ var (
 	fileProcessingDuration  metric.Float64Histogram
 	errorEventsTotal        metric.Int64Counter
 	businessOperationsTotal metric.Int64Counter
-	
+
 	// Business-specific metrics
-	playersProcessedTotal   metric.Int64Counter
-	datasetsActiveGauge     metric.Int64UpDownCounter
-	uploadSizeHistogram     metric.Float64Histogram
-	parsingErrorsTotal      metric.Int64Counter
-	searchRequestsTotal     metric.Int64Counter
-	cacheHitsTotal          metric.Int64Counter
-	cacheMissesTotal        metric.Int64Counter
+	playersProcessedTotal metric.Int64Counter
+	datasetsActiveGauge   metric.Int64UpDownCounter
+	uploadSizeHistogram   metric.Float64Histogram
+	parsingErrorsTotal    metric.Int64Counter
+	searchRequestsTotal   metric.Int64Counter
+	cacheHitsTotal        metric.Int64Counter
+	cacheMissesTotal      metric.Int64Counter
 )
 
 // StartSpan creates a new span with standard attributes
@@ -283,7 +283,7 @@ func RecordPlayersProcessed(ctx context.Context, count int, operation string) {
 }
 
 // RecordDatasetChange tracks dataset creation/deletion
-func RecordDatasetChange(ctx context.Context, operation string, datasetID string, delta int64) {
+func RecordDatasetChange(ctx context.Context, operation, datasetID string, delta int64) {
 	if !otelEnabled || datasetsActiveGauge == nil {
 		return
 	}
