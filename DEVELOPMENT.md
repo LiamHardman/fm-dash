@@ -48,7 +48,7 @@ npm run test:run        # Run tests once
 npm run test:ui         # Run tests with UI
 npm run test:coverage   # Run tests with coverage report
 
-# Go tests
+# Go tests (now run from test/api directory)
 npm run test:go         # Run Go tests
 npm run test:go:verbose # Run Go tests with verbose output
 npm run test:go:coverage # Run Go tests with coverage

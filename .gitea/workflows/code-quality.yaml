@@ -71,13 +71,13 @@ jobs:
           golangci-lint run || echo "⚠️ golangci-lint found issues"
 
       - name: Run Go unit tests
-        working-directory: ./src/api
+        working-directory: ./test/api
         run: |
           echo "🧪 Running Go unit tests..."
           go test -v ./... || echo "⚠️ Some Go tests failed"
 
       - name: Generate test coverage report
-        working-directory: ./src/api
+        working-directory: ./test/api
         run: |
           echo "📊 Generating test coverage report..."
           go test -coverprofile=coverage.out ./... || echo "⚠️ Coverage generation failed"
@@ -95,7 +95,7 @@ jobs:
           echo "🧪 Unit tests help ensure code reliability"
           echo "📊 Coverage reports help identify untested code"
           echo "💡 To fix issues locally, run: npm run lint:go:fix"
-          echo "🔧 To run tests locally, run: cd src/api && go test -v ./..."
+          echo "🔧 To run tests locally, run: cd test/api && go test -v ./..."
 
   code-quality-summary:
     name: Code Quality Summary

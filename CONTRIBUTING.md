@@ -66,7 +66,7 @@ Thank you for your interest in contributing to this project! We welcome contribu
 3. **Test your changes**
    ```bash
    # Run Go tests
-   go test ./...
+   cd test/api && go test ./...
    
    # Run frontend tests (if available)
    npm test
