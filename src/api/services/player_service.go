@@ -6,6 +6,11 @@ import (
 	"fmt"
 	"log"
 	"time"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Player represents a football player with all their attributes
@@ -51,6 +56,10 @@ type StorageInterface interface {
 	GetAllDatasetIDs() []string
 }
 
+var (
+	tracer = otel.Tracer("v2fmdash-player-service")
+)
+
 // NewPlayerService creates a new player service
 func NewPlayerService(storage StorageInterface) *PlayerService {
 	return &PlayerService{
@@ -60,14 +69,32 @@ func NewPlayerService(storage StorageInterface) *PlayerService {
 
 // GetPlayersByDatasetID retrieves players for a specific dataset
 func (s *PlayerService) GetPlayersByDatasetID(ctx context.Context, datasetID string) ([]Player, string, error) {
+	ctx, span := tracer.Start(ctx, "player_service.get_players_by_dataset_id",
+		trace.WithAttributes(
+			attribute.String("dataset.id", datasetID),
+		))
+	defer span.End()
+
 	if datasetID == "" {
-		return nil, "", fmt.Errorf("dataset ID cannot be empty")
+		err := fmt.Errorf("dataset ID cannot be empty")
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "invalid dataset ID")
+		return nil, "", err
 	}
 
 	players, currencySymbol, found := s.storage.GetPlayerData(datasetID)
 	if !found {
-		return nil, "", fmt.Errorf("dataset not found: %s", datasetID)
+		err := fmt.Errorf("dataset not found: %s", datasetID)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "dataset not found")
+		return nil, "", err
 	}
+
+	span.SetAttributes(
+		attribute.Int("players.count", len(players)),
+		attribute.String("currency.symbol", currencySymbol),
+	)
+	span.SetStatus(codes.Ok, "players retrieved successfully")
 
 	log.Printf("Retrieved %d players for dataset %s", len(players), datasetID)
 	return players, currencySymbol, nil
@@ -75,56 +102,110 @@ func (s *PlayerService) GetPlayersByDatasetID(ctx context.Context, datasetID str
 
 // StorePlayerData stores player data with the given dataset ID
 func (s *PlayerService) StorePlayerData(ctx context.Context, datasetID string, players []Player, currencySymbol string) error {
+	ctx, span := tracer.Start(ctx, "player_service.store_player_data",
+		trace.WithAttributes(
+			attribute.String("dataset.id", datasetID),
+			attribute.Int("players.count", len(players)),
+			attribute.String("currency.symbol", currencySymbol),
+		))
+	defer span.End()
+
 	if datasetID == "" {
-		return fmt.Errorf("dataset ID cannot be empty")
+		err := fmt.Errorf("dataset ID cannot be empty")
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "invalid dataset ID")
+		return err
 	}
 
 	if len(players) == 0 {
-		return fmt.Errorf("no players to store")
+		err := fmt.Errorf("no players to store")
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "no players provided")
+		return err
 	}
 
 	// Validate players before storing
+	span.AddEvent("validation.start")
 	for i := range players {
 		if players[i].Name == "" {
-			return fmt.Errorf("player at index %d has no name", i)
+			err := fmt.Errorf("player at index %d has no name", i)
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "player validation failed")
+			return err
 		}
 	}
+	span.AddEvent("validation.complete")
 
+	span.AddEvent("storage.start")
 	err := s.storage.SetPlayerData(datasetID, players, currencySymbol)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "storage operation failed")
 		return fmt.Errorf("failed to store player data: %w", err)
 	}
+	span.AddEvent("storage.complete")
 
+	span.SetStatus(codes.Ok, "player data stored successfully")
 	log.Printf("Stored %d players for dataset %s with currency %s", len(players), datasetID, currencySymbol)
 	return nil
 }
 
 // DeleteDataset removes a dataset and all its data
 func (s *PlayerService) DeleteDataset(ctx context.Context, datasetID string) error {
+	ctx, span := tracer.Start(ctx, "player_service.delete_dataset",
+		trace.WithAttributes(
+			attribute.String("dataset.id", datasetID),
+		))
+	defer span.End()
+
 	if datasetID == "" {
-		return fmt.Errorf("dataset ID cannot be empty")
+		err := fmt.Errorf("dataset ID cannot be empty")
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "invalid dataset ID")
+		return err
 	}
 
 	err := s.storage.DeleteDataset(datasetID)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "delete operation failed")
 		return fmt.Errorf("failed to delete dataset %s: %w", datasetID, err)
 	}
 
+	span.SetStatus(codes.Ok, "dataset deleted successfully")
 	log.Printf("Deleted dataset %s", datasetID)
 	return nil
 }
 
 // GetAllDatasets returns all available dataset IDs
 func (s *PlayerService) GetAllDatasets(ctx context.Context) []string {
+	ctx, span := tracer.Start(ctx, "player_service.get_all_datasets")
+	defer span.End()
+
 	datasets := s.storage.GetAllDatasetIDs()
+	
+	span.SetAttributes(
+		attribute.Int("datasets.count", len(datasets)),
+	)
+	span.SetStatus(codes.Ok, "datasets retrieved successfully")
+	
 	log.Printf("Retrieved %d datasets", len(datasets))
 	return datasets
 }
 
 // ProcessPlayerPercentiles calculates performance percentiles for players
 func (s *PlayerService) ProcessPlayerPercentiles(ctx context.Context, players []Player) error {
+	ctx, span := tracer.Start(ctx, "player_service.process_player_percentiles",
+		trace.WithAttributes(
+			attribute.Int("players.count", len(players)),
+		))
+	defer span.End()
+
 	if len(players) == 0 {
-		return fmt.Errorf("no players to process")
+		err := fmt.Errorf("no players to process")
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "no players provided")
+		return err
 	}
 
 	// This would call the existing percentile calculation logic
@@ -134,13 +215,23 @@ func (s *PlayerService) ProcessPlayerPercentiles(ctx context.Context, players []
 	// TODO: Move the actual percentile calculation logic here
 	// CalculatePlayerPerformancePercentiles(players)
 
+	span.SetStatus(codes.Ok, "percentiles processed successfully")
 	return nil
 }
 
 // ValidatePlayerData performs validation on player data
 func (s *PlayerService) ValidatePlayerData(ctx context.Context, players []Player) error {
+	ctx, span := tracer.Start(ctx, "player_service.validate_player_data",
+		trace.WithAttributes(
+			attribute.Int("players.count", len(players)),
+		))
+	defer span.End()
+
 	if len(players) == 0 {
-		return fmt.Errorf("no players provided for validation")
+		err := fmt.Errorf("no players provided for validation")
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "no players provided")
+		return err
 	}
 
 	var errors []string
@@ -169,16 +260,30 @@ func (s *PlayerService) ValidatePlayerData(ctx context.Context, players []Player
 	}
 
 	if len(errors) > 0 {
-		return fmt.Errorf("validation failed: %v", errors)
+		err := fmt.Errorf("validation failed: %v", errors)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "validation failed")
+		span.SetAttributes(
+			attribute.Int("validation.errors.count", len(errors)),
+		)
+		return err
 	}
 
+	span.SetStatus(codes.Ok, "validation successful")
 	log.Printf("Validated %d players successfully", len(players))
 	return nil
 }
 
 // GetPlayerStatistics calculates basic statistics for a set of players
 func (s *PlayerService) GetPlayerStatistics(ctx context.Context, players []Player) map[string]interface{} {
+	ctx, span := tracer.Start(ctx, "player_service.get_player_statistics",
+		trace.WithAttributes(
+			attribute.Int("players.count", len(players)),
+		))
+	defer span.End()
+
 	if len(players) == 0 {
+		span.SetStatus(codes.Ok, "no players provided")
 		return map[string]interface{}{
 			"total": 0,
 		}

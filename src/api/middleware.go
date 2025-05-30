@@ -5,38 +5,76 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"time"
+
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // RequestTimeoutMiddleware wraps handlers with configurable timeout
 func RequestTimeoutMiddleware(timeout time.Duration) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Create a span for timeout middleware
+			ctx, span := StartSpan(r.Context(), "http.middleware.timeout",
+				trace.WithAttributes(
+					attribute.Float64("timeout_seconds", timeout.Seconds()),
+				))
+			defer span.End()
+
 			// Create context with timeout
-			ctx, cancel := context.WithTimeout(r.Context(), timeout)
+			timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
 			defer cancel()
 
 			// Create a channel to signal when handler is done
 			done := make(chan struct{})
+			var handlerPanic interface{}
 
 			// Run handler in goroutine
 			go func() {
-				defer close(done)
-				next.ServeHTTP(w, r.WithContext(ctx))
+				defer func() {
+					if p := recover(); p != nil {
+						handlerPanic = p
+					}
+					close(done)
+				}()
+				next.ServeHTTP(w, r.WithContext(timeoutCtx))
 			}()
 
 			// Wait for handler completion or timeout
 			select {
 			case <-done:
-				// Handler completed successfully
+				// Check if handler panicked
+				if handlerPanic != nil {
+					span.RecordError(fmt.Errorf("handler panic: %v", handlerPanic))
+					span.SetStatus(codes.Error, "Handler panicked")
+					panic(handlerPanic) // Re-panic to let other middleware handle it
+				}
+				span.SetStatus(codes.Ok, "Request completed within timeout")
 				return
-			case <-ctx.Done():
+			case <-timeoutCtx.Done():
 				// Request timed out
-				if ctx.Err() == context.DeadlineExceeded {
+				if timeoutCtx.Err() == context.DeadlineExceeded {
+					span.SetStatus(codes.Error, "Request timeout")
+					span.AddEvent("request.timeout", trace.WithAttributes(
+						attribute.Float64("timeout_seconds", timeout.Seconds()),
+					))
+					
+					slog.WarnContext(ctx, "Request timeout",
+						"timeout_seconds", timeout.Seconds(),
+						"method", r.Method,
+						"path", r.URL.Path,
+						"trace_id", GetTraceID(ctx),
+					)
+					
 					http.Error(w, fmt.Sprintf("Request timeout after %v", timeout), http.StatusRequestTimeout)
 				} else {
 					// Context was cancelled for other reasons
+					span.SetStatus(codes.Error, "Request cancelled")
+					span.AddEvent("request.cancelled")
 					http.Error(w, "Request cancelled", http.StatusInternalServerError)
 				}
 				return
@@ -85,30 +123,209 @@ func ShouldRetry(statusCode int) bool {
 	}
 }
 
-// LoggingMiddleware logs requests with timing information
+// LoggingMiddleware logs requests with timing information and OpenTelemetry integration
 func LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
-		// Wrap the response writer to capture status code
-		wrapped := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+		// Create a span for this middleware
+		ctx, span := StartSpan(r.Context(), "http.middleware.logging",
+			trace.WithAttributes(
+				attribute.String("http.method", r.Method),
+				attribute.String("http.url", r.URL.String()),
+				attribute.String("http.scheme", r.URL.Scheme),
+				attribute.String("http.host", r.Host),
+				attribute.String("http.user_agent", r.UserAgent()),
+				attribute.String("http.remote_addr", r.RemoteAddr),
+				attribute.Int64("http.request.content_length", r.ContentLength),
+			))
+		defer span.End()
+
+		// Add request size if available
+		if r.ContentLength > 0 {
+			span.SetAttributes(attribute.Int64("http.request.size", r.ContentLength))
+		}
+
+		// Wrap the response writer to capture status code and response size
+		wrapped := &responseWriter{
+			ResponseWriter: w, 
+			statusCode:     http.StatusOK,
+			responseSize:   0,
+		}
+
+		// Update request context with the span context
+		r = r.WithContext(ctx)
+
+		// Track active requests
+		IncrementActiveRequests(ctx, r.URL.Path)
+		defer DecrementActiveRequests(ctx, r.URL.Path)
 
 		// Process request
 		next.ServeHTTP(wrapped, r)
 
-		// Log request details
+		// Calculate duration
 		duration := time.Since(start)
+
+		// Set span attributes with response details
+		span.SetAttributes(
+			attribute.Int("http.status_code", wrapped.statusCode),
+			attribute.Float64("http.duration_ms", float64(duration.Nanoseconds())/1e6),
+			attribute.Int64("http.response.size", int64(wrapped.responseSize)),
+		)
+
+		// Set span status based on HTTP status code
+		if wrapped.statusCode >= 400 {
+			span.SetStatus(codes.Error, fmt.Sprintf("HTTP %d", wrapped.statusCode))
+		} else {
+			span.SetStatus(codes.Ok, "Request completed successfully")
+		}
+
+		// Add span event for request completion
+		span.AddEvent("request.completed", trace.WithAttributes(
+			attribute.Int("http.status_code", wrapped.statusCode),
+			attribute.Float64("duration_ms", float64(duration.Nanoseconds())/1e6),
+		))
+
+		// Enhanced structured logging with trace correlation
+		slog.InfoContext(ctx, "HTTP request completed",
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", wrapped.statusCode,
+			"duration_ms", float64(duration.Nanoseconds())/1e6,
+			"user_agent", r.UserAgent(),
+			"remote_addr", r.RemoteAddr,
+			"request_size", r.ContentLength,
+			"response_size", wrapped.responseSize,
+			"trace_id", GetTraceID(ctx),
+			"span_id", GetSpanID(ctx),
+		)
+
+		// Record API operation metrics
+		RecordAPIOperation(ctx, r.Method, r.URL.Path, wrapped.statusCode, duration)
+
+		// Legacy log for backward compatibility
 		log.Printf("%s %s %d %v", r.Method, r.URL.Path, wrapped.statusCode, duration)
 	})
 }
 
-// responseWriter wraps http.ResponseWriter to capture status code
+// responseWriter wraps http.ResponseWriter to capture status code and response size
 type responseWriter struct {
 	http.ResponseWriter
-	statusCode int
+	statusCode   int
+	responseSize int
 }
 
 func (rw *responseWriter) WriteHeader(code int) {
 	rw.statusCode = code
 	rw.ResponseWriter.WriteHeader(code)
+}
+
+func (rw *responseWriter) Write(data []byte) (int, error) {
+	size, err := rw.ResponseWriter.Write(data)
+	rw.responseSize += size
+	return size, err
+}
+
+// Size returns the current response size
+func (rw *responseWriter) Size() int {
+	return rw.responseSize
+}
+
+// Status returns the status code
+func (rw *responseWriter) Status() int {
+	return rw.statusCode
+}
+
+// PanicRecoveryMiddleware recovers from panics and records them in OpenTelemetry
+func PanicRecoveryMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx, span := StartSpan(r.Context(), "http.middleware.panic_recovery")
+		defer span.End()
+
+		defer func() {
+			if err := recover(); err != nil {
+				// Record the panic in OpenTelemetry
+				panicErr := fmt.Errorf("panic recovered: %v", err)
+				span.RecordError(panicErr)
+				span.SetStatus(codes.Error, "Handler panicked")
+				
+				// Add detailed panic information
+				span.SetAttributes(
+					attribute.String("panic.value", fmt.Sprintf("%v", err)),
+					attribute.String("http.method", r.Method),
+					attribute.String("http.path", r.URL.Path),
+				)
+
+				// Log the panic with trace correlation
+				slog.ErrorContext(ctx, "Handler panic recovered",
+					"panic", err,
+					"method", r.Method,
+					"path", r.URL.Path,
+					"trace_id", GetTraceID(ctx),
+					"span_id", GetSpanID(ctx),
+				)
+
+				// Record error metric
+				RecordError(ctx, panicErr, "Handler panic")
+
+				// Respond with internal server error
+				if w.Header().Get("Content-Type") == "" {
+					w.Header().Set("Content-Type", "application/json")
+				}
+				w.WriteHeader(http.StatusInternalServerError)
+				
+				response := map[string]interface{}{
+					"error":    "Internal server error",
+					"trace_id": GetTraceID(ctx),
+				}
+				
+				// Only include panic details in development mode
+				if getEnvWithDefault("ENVIRONMENT", "production") != "production" {
+					response["details"] = fmt.Sprintf("%v", err)
+				}
+				
+				// Write JSON response (simplified - in production you might want proper JSON encoding)
+				fmt.Fprintf(w, `{"error": "%s", "trace_id": "%s"}`, 
+					response["error"], response["trace_id"])
+			}
+		}()
+
+		// Update request context
+		r = r.WithContext(ctx)
+		span.SetStatus(codes.Ok, "Handler executed without panic")
+		next.ServeHTTP(w, r)
+	})
+}
+
+// CORSMiddleware adds CORS headers with tracing
+func CORSMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx, span := StartSpan(r.Context(), "http.middleware.cors")
+		defer span.End()
+
+		origin := r.Header.Get("Origin")
+		span.SetAttributes(
+			attribute.String("cors.origin", origin),
+			attribute.String("cors.method", r.Method),
+		)
+
+		// Set CORS headers
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+		w.Header().Set("Access-Control-Max-Age", "86400")
+
+		// Handle preflight requests
+		if r.Method == "OPTIONS" {
+			span.AddEvent("preflight.request")
+			span.SetAttributes(attribute.Bool("cors.preflight", true))
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		span.SetAttributes(attribute.Bool("cors.preflight", false))
+		span.SetStatus(codes.Ok, "CORS headers set")
+		r = r.WithContext(ctx)
+		next.ServeHTTP(w, r)
+	})
 }

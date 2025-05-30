@@ -49,6 +49,16 @@ spec:
             # Upload Configuration
             - name: MAX_UPLOAD_SIZE
               value: "50"
+
+            - name: OTEL_TRACE_SAMPLE_RATE
+              value: "0.05"
+            - name: SERVICE_VERSION
+              value: "v0.1.0"
+            - name: ENVIRONMENT
+              value: "production"
+            - name: SERVICE_NAMESPACE 
+              value: "fmdash"
+
             # S3-Compatible Storage Configuration
             - name: S3_ENDPOINT
               valueFrom:

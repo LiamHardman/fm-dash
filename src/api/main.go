@@ -151,10 +151,16 @@ func main() {
 	// Create HTTP server with timeouts and middleware
 	mux := http.NewServeMux()
 
-	// Apply middleware chain to all routes
+	// Apply middleware chain to all routes in optimal order:
+	// 1. Panic Recovery (outermost - catches all panics)
+	// 2. CORS (early for preflight requests) 
+	// 3. Logging (captures all request/response data)
+	// 4. Timeout (inner control)
 	var handler http.Handler = mux
 	handler = RequestTimeoutMiddleware(30 * time.Second)(handler) // 30 second request timeout
 	handler = LoggingMiddleware(handler)
+	handler = CORSMiddleware(handler)
+	handler = PanicRecoveryMiddleware(handler)
 
 	// Re-register all routes with the new mux
 	mux.Handle("/", wrapHandler(indexHandler, "index"))

@@ -7,6 +7,7 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -27,7 +28,24 @@ var (
 	serviceName  = getEnvWithDefault("SERVICE_NAME", "v2fmdash-api")
 	collectorURL = getEnvWithDefault("OTEL_EXPORTER_OTLP_ENDPOINT", "signoz.signoz:4317")
 	insecure     = getEnvWithDefault("INSECURE_MODE", "true")
+	sampleRate   = getEnvWithDefault("OTEL_TRACE_SAMPLE_RATE", "1.0") // Default to 100% sampling
 )
+
+// getSampler returns the appropriate sampler based on configuration
+func getSampler() sdktrace.Sampler {
+	if rate := sampleRate; rate != "" {
+		if floatRate, err := strconv.ParseFloat(rate, 64); err == nil {
+			if floatRate <= 0.0 {
+				return sdktrace.NeverSample()
+			} else if floatRate >= 1.0 {
+				return sdktrace.AlwaysSample()
+			} else {
+				return sdktrace.TraceIDRatioBased(floatRate)
+			}
+		}
+	}
+	return sdktrace.AlwaysSample() // Default fallback
+}
 
 func initOTel() func(context.Context) error {
 	var secureOption otlptracegrpc.Option
@@ -56,7 +74,17 @@ func initOTel() func(context.Context) error {
 		context.Background(),
 		resource.WithAttributes(
 			attribute.String("service.name", serviceName),
+			attribute.String("service.version", getEnvWithDefault("SERVICE_VERSION", "v1.0.0")),
+			attribute.String("service.environment", getEnvWithDefault("ENVIRONMENT", "development")),
+			attribute.String("service.namespace", getEnvWithDefault("SERVICE_NAMESPACE", "fmdash")),
 			attribute.String("library.language", "go"),
+			attribute.String("library.name", "v2fmdash-api"),
+			attribute.String("deployment.environment", getEnvWithDefault("DEPLOYMENT_ENV", "local")),
+			// Add instance information
+			attribute.String("service.instance.id", getEnvWithDefault("HOSTNAME", "unknown")),
+			// Add application-specific attributes
+			attribute.String("application.type", "football-manager-dashboard"),
+			attribute.String("application.component", "api-server"),
 		),
 	)
 	if err != nil {
@@ -67,7 +95,7 @@ func initOTel() func(context.Context) error {
 	// Initialize tracing
 	otel.SetTracerProvider(
 		sdktrace.NewTracerProvider(
-			sdktrace.WithSampler(sdktrace.AlwaysSample()),
+			sdktrace.WithSampler(getSampler()),
 			sdktrace.WithBatcher(exporter),
 			sdktrace.WithResource(resources),
 		),
