@@ -1362,3 +1362,104 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
 	}
 }
+
+// BargainHunterRequest represents the request body for bargain hunter analysis
+type BargainHunterRequest struct {
+	MaxBudget int64 `json:"maxBudget"`
+	MaxSalary int64 `json:"maxSalary"`
+}
+
+// BargainHunterResponse represents a player with calculated value score
+type BargainHunterResponse struct {
+	Player     Player  `json:"player"`
+	ValueScore float64 `json:"valueScore"`
+}
+
+// bargainHunterHandler handles POST requests to find the best value players within budget constraints
+func bargainHunterHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if r.Method != http.MethodPost {
+		http.Error(w, "Only POST method is allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/bargain-hunter/"), "/")
+	if len(pathParts) == 0 || pathParts[0] == "" {
+		http.Error(w, "Dataset ID is missing in the request path", http.StatusBadRequest)
+		return
+	}
+	datasetID := pathParts[0]
+
+	var req BargainHunterRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Error parsing request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	logInfo(ctx, "Processing bargain hunter request",
+		"dataset_id", datasetID,
+		"max_budget", req.MaxBudget,
+		"max_salary", req.MaxSalary)
+
+	// Get player data from storage
+	players, _, found := GetPlayerData(datasetID)
+	if !found {
+		logWarn(ctx, "Player data not found", "dataset_id", datasetID)
+		http.Error(w, "Player data not found for the given ID.", http.StatusNotFound)
+		return
+	}
+
+	// Process bargain hunter analysis
+	bargainPlayers := processBargainHunter(players, req.MaxBudget, req.MaxSalary)
+
+	w.Header().Set("Content-Type", "application/json")
+	setCORSHeaders(w, r)
+	if err := json.NewEncoder(w).Encode(bargainPlayers); err != nil {
+		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
+		log.Printf("Error encoding JSON response for bargain hunter (DatasetID: %s): %v", datasetID, err)
+	}
+}
+
+// processBargainHunter calculates value scores and filters players by budget constraints
+func processBargainHunter(players []Player, maxBudget, maxSalary int64) []BargainHunterResponse {
+	var results []BargainHunterResponse
+
+	for i := range players {
+		player := players[i]
+
+		// Skip players outside budget constraints
+		if maxBudget > 0 && player.TransferValueAmount > maxBudget {
+			continue
+		}
+		if maxSalary > 0 && player.WageAmount > maxSalary {
+			continue
+		}
+
+		// Calculate value score: Overall rating / Transfer value (in units for easier comparison)
+		// Use upper value of transfer value range if it's a range
+		transferValue := float64(player.TransferValueAmount)
+		if transferValue <= 0 {
+			transferValue = 1 // Avoid division by zero, treat free transfers as very valuable
+		}
+
+		valueScore := float64(player.Overall) / (transferValue / 1000000) // Divide by millions for readability
+
+		logInfo(context.Background(), "Calculating value score",
+			"player_name", player.Name,
+			"overall", player.Overall,
+			"transfer_value", player.TransferValueAmount,
+			"value_score", valueScore)
+
+		results = append(results, BargainHunterResponse{
+			Player:     player,
+			ValueScore: valueScore,
+		})
+	}
+
+	// Sort by value score (highest first)
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].ValueScore > results[j].ValueScore
+	})
+
+	return results
+}

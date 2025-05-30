@@ -150,6 +150,18 @@
                                 </p>
                             </div>
                         </div>
+
+                        <div class="action-feature-card" @click="showBargainHunter = true" :class="{ 'disabled': allPlayersData.length === 0 }">
+                            <div class="feature-icon-container bargain-gradient">
+                                <q-icon name="local_offer" size="2.5rem" />
+                            </div>
+                            <div class="feature-content">
+                                <h3 class="feature-title">Bargain Hunter</h3>
+                                <p class="feature-description">
+                                    Find the best value players within your budget. Ranked by value score: overall rating divided by transfer value.
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -246,6 +258,13 @@
             :currency-symbol="detectedCurrencySymbol"
             :dataset-id="currentDatasetId"
         />
+        <BargainHunterDialog
+            :show="showBargainHunter"
+            :players="allPlayersData"
+            @close="showBargainHunter = false"
+            :currency-symbol="detectedCurrencySymbol"
+            :dataset-id="currentDatasetId"
+        />
     </q-page>
 </template>
 
@@ -257,6 +276,7 @@ import PlayerDataTable from '../components/PlayerDataTable.vue'
 import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
 import UpgradeFinderDialog from '../components/UpgradeFinderDialog.vue'
 import WonderkidsDialog from '../components/WonderkidsDialog.vue'
+import BargainHunterDialog from '../components/BargainHunterDialog.vue'
 import PlayerFilters from '../components/filters/PlayerFilters.vue'
 import { usePlayerStore } from '../stores/playerStore'
 import { useWishlistStore } from '../stores/wishlistStore'
@@ -328,7 +348,8 @@ export default {
     PlayerDetailDialog,
     PlayerFilters,
     UpgradeFinderDialog,
-    WonderkidsDialog
+    WonderkidsDialog,
+    BargainHunterDialog
   },
   setup() {
     const quasarInstance = useQuasar()
@@ -343,6 +364,7 @@ export default {
     const showPlayerDetailDialog = ref(false)
     const showUpgradeFinder = ref(false)
     const showWonderkids = ref(false)
+    const showBargainHunter = ref(false)
 
     // Centralized filter state for this page
     const currentFilters = ref({
@@ -782,6 +804,7 @@ export default {
       showPlayerDetailDialog,
       showUpgradeFinder,
       showWonderkids,
+      showBargainHunter,
       shareDataset,
       viewLeagues,
       viewTeamAnalysis,
@@ -1160,6 +1183,10 @@ export default {
             
             &.wonderkids-gradient {
                 background: linear-gradient(135deg, #ffd700 0%, #ffa500 100%);
+            }
+            
+            &.bargain-gradient {
+                background: linear-gradient(135deg, #4caf50 0%, #8bc34a 100%);
             }
         }
         
