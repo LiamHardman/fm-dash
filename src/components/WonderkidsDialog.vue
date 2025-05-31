@@ -67,25 +67,6 @@
                     </div>
                 </div>
 
-                <!-- Age Tabs -->
-                <q-tabs
-                    v-model="selectedAge"
-                    dense
-                    class="text-grey"
-                    active-color="primary"
-                    indicator-color="primary"
-                    align="left"
-                    :class="qInstance.dark.isActive ? 'text-grey-4' : 'text-grey-7'"
-                >
-                    <q-tab
-                        v-for="age in ages"
-                        :key="age"
-                        :name="age"
-                        :label="`Age ${age}`"
-                        class="q-px-md"
-                    />
-                </q-tabs>
-
                 <q-separator class="q-my-md" />
 
                 <!-- Loading State -->
@@ -106,9 +87,9 @@
                 <!-- Player Data Table -->
                 <div v-else>
                     <div class="text-subtitle1 q-mb-md">
-                        Top {{ currentWonderkids.length }} players aged {{ selectedAge }}
+                        Top {{ allWonderkids.length }} wonderkids aged 15-21
                         <span v-if="maxTransferValue || maxSalary" class="text-caption text-grey-6">
-                            (filtered)
+                            (filtered by transfer value and/or salary)
                         </span>
                     </div>
                     
@@ -118,8 +99,8 @@
                     >
                         <q-card-section>
                             <PlayerDataTable
-                                :key="`wonderkids-${selectedAge}`"
-                                :players="currentWonderkids"
+                                :key="'wonderkids-all-ages'"
+                                :players="allWonderkids"
                                 :loading="loading"
                                 @player-selected="handlePlayerSelected"
                                 @team-selected="handleTeamSelected"
@@ -179,60 +160,63 @@ export default defineComponent({
     const _playerStore = usePlayerStore()
 
     // State
-    const selectedAge = ref(21)
     const maxTransferValue = ref(null)
     const maxSalary = ref(null)
     const loading = ref(false)
     const selectedPlayer = ref(null)
     const showPlayerDetail = ref(false)
-    const wonderkidsByAge = ref({})
+    const wonderkidsData = ref([])
 
     // Constants
     const ages = [15, 16, 17, 18, 19, 20, 21]
 
-    // Computed
-    const currentWonderkids = computed(() => {
-      const result = wonderkidsByAge.value[selectedAge.value] || []
-      return result
+    // Computed - top 10 across all ages
+    const allWonderkids = computed(() => {
+      return wonderkidsData.value
     })
 
     // Methods
-    const getWonderkidsForAge = (age, allPlayers) => {
-      const playersOfAge = allPlayers
-        .filter(player => {
-          const playerAge = Number(player.age)
-          const matches = playerAge === age
-          if (matches && age === 20) {
-          }
-          return matches
-        })
-        .filter(player => {
-          // Apply transfer value filter
-          if (maxTransferValue.value && player.transferValueAmount > maxTransferValue.value) {
-            return false
-          }
-          // Apply salary filter
-          if (maxSalary.value && player.wageAmount > maxSalary.value) {
-            return false
-          }
-          return true
-        })
-        .sort((a, b) => (b.Overall || 0) - (a.Overall || 0))
-        .slice(0, 25)
-      return playersOfAge
+    const getAllWonderkids = (allPlayers) => {
+      // Get top 10 players from each age (15-21) that meet the filter criteria
+      const allWonderkidsFromAllAges = []
+      
+      for (const age of ages) {
+        const playersOfAge = allPlayers
+          .filter(player => {
+            const playerAge = Number(player.age)
+            // Must match this specific age
+            if (playerAge !== age) {
+              return false
+            }
+            
+            // Apply transfer value filter
+            if (maxTransferValue.value && player.transferValueAmount > maxTransferValue.value) {
+              return false
+            }
+            
+            // Apply salary filter
+            if (maxSalary.value && player.wageAmount > maxSalary.value) {
+              return false
+            }
+            
+            return true
+          })
+          .sort((a, b) => (b.Overall || 0) - (a.Overall || 0))
+          .slice(0, 10) // Take top 10 for this age
+          
+        // Add all top 10 players from this age to the combined array
+        allWonderkidsFromAllAges.push(...playersOfAge)
+      }
+      
+      // Sort the final combined array by overall rating (best first)
+      return allWonderkidsFromAllAges.sort((a, b) => (b.Overall || 0) - (a.Overall || 0))
     }
 
     const loadWonderkids = async () => {
       loading.value = true
       try {
         const allPlayers = props.players
-        const newWonderkidsByAge = {}
-
-        for (const age of ages) {
-          newWonderkidsByAge[age] = getWonderkidsForAge(age, allPlayers)
-        }
-
-        wonderkidsByAge.value = newWonderkidsByAge
+        wonderkidsData.value = getAllWonderkids(allPlayers)
       } catch (error) {
         console.error('Error loading wonderkids:', error)
         qInstance.notify({
@@ -279,9 +263,6 @@ export default defineComponent({
       }
     )
 
-    // Simplified age watcher - just log when it changes
-    watch(selectedAge, (_newAge, _oldAge) => {})
-
     // Initialize when component mounts
     onMounted(() => {
       if (props.show && props.players.length > 0) {
@@ -291,14 +272,12 @@ export default defineComponent({
 
     return {
       qInstance,
-      selectedAge,
       maxTransferValue,
       maxSalary,
       loading,
       selectedPlayer,
       showPlayerDetail,
-      ages,
-      currentWonderkids,
+      allWonderkids,
       onFiltersChanged,
       handlePlayerSelected,
       handleTeamSelected
@@ -316,18 +295,14 @@ export default defineComponent({
         :deep(.q-table) {
             // Override the hardcoded height in PlayerDataTable to allow full height
             height: auto !important;
-            max-height: calc(100vh - 400px); // Allow for dialog header, filters, and tabs
+            max-height: calc(100vh - 350px); // Adjusted for removed tabs
             
             // Ensure virtual scroll works properly with dynamic height
             .q-table__middle {
-                max-height: calc(100vh - 400px);
+                max-height: calc(100vh - 350px);
             }
         }
     }
-}
-
-.q-tab {
-    min-width: 80px;
 }
 
 .text-subtitle1 {
