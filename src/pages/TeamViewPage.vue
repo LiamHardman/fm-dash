@@ -832,10 +832,9 @@ export default {
     }
 
     const getPlayerOverallForRole = (player, slotFormationRole) => {
-      if (!player || !slotFormationRole) return 0
-
       let bestScoreForRole = 0
-      let _matchType = 'none' // For debugging: tracks how the match was found
+
+      if (!player || !slotFormationRole) return 0
 
       if (!player.roleSpecificOveralls) {
         return 0 // No role overalls available
@@ -863,7 +862,6 @@ export default {
 
         if (exactPositionMatches.length > 0) {
           // Perfect position match! Find the best role score
-          _matchType = 'exact'
 
           // Find best score from roleSpecificOveralls - handle both array and object formats
           if (Array.isArray(player.roleSpecificOveralls)) {
@@ -904,8 +902,6 @@ export default {
 
       // Skip fallbacks if we found an exact match
       if (bestScoreForRole > 0) {
-        // For debugging
-        //console.log(`Exact match for ${player.name} in ${slotFormationRole}: score=${bestScoreForRole}`);
         return bestScoreForRole
       }
 
@@ -918,7 +914,6 @@ export default {
 
         if (fallbackMatches.length > 0) {
           // Fallback position match - these will be scored lower
-          _matchType = 'fallback'
 
           // Find best score from roleSpecificOveralls with fallback positions
           if (Array.isArray(player.roleSpecificOveralls)) {
@@ -978,7 +973,6 @@ export default {
               .trim()
 
             if (targetRoleKeyPrefixes.includes(rsoBasePosition)) {
-              _matchType = 'legacy'
               bestScoreForRole = Math.max(bestScoreForRole, rso.score)
             }
           }
@@ -987,7 +981,6 @@ export default {
             const rsoBasePosition = roleName.split(' - ')[0].trim()
 
             if (targetRoleKeyPrefixes.includes(rsoBasePosition)) {
-              _matchType = 'legacy'
               bestScoreForRole = Math.max(bestScoreForRole, score)
             }
           }
@@ -995,11 +988,6 @@ export default {
 
         // Legacy matches will be sorted last by using the exactMatch flag
       }
-
-      // For debugging
-      //if (bestScoreForRole > 0) {
-      //    console.log(`${matchType} match for ${player.name} in ${slotFormationRole}: score=${bestScoreForRole}`);
-      //}
 
       return bestScoreForRole
     }
@@ -1196,9 +1184,6 @@ export default {
           playablePositions.push(...player.shortPositions)
         }
         playerPositionMap.set(player.name, playablePositions)
-
-        // Debug: Log player positions
-        //console.log(`${player.name} positions: ${playablePositions.join(', ')}`);
       }
 
       // Calculate player scores for each position

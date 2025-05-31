@@ -423,8 +423,6 @@ func EnhancePlayerWithCalculations(player *Player) {
 		}
 	default:
 		// This case means player has no short positions, so maxRoleBasedOverall will naturally be 0.
-		// Log only if it's unexpected or for debugging.
-		// log.Printf("Player '%s' has no ShortPositions. MaxRoleBasedOverall will be 0.", player.Name)
 	}
 
 	player.RoleSpecificOveralls = calculatedRoleOveralls

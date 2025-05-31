@@ -143,25 +143,3 @@ func EnrichSpanWithBaggage(ctx context.Context) {
 		span.SetAttributes(attribute.String("baggage."+member.Key(), member.Value()))
 	}
 }
-
-// LogBaggageValues logs all baggage values for debugging
-func LogBaggageValues(ctx context.Context, message string) {
-	if !otelEnabled {
-		return
-	}
-
-	bag := baggage.FromContext(ctx)
-	members := bag.Members()
-
-	if len(members) == 0 {
-		slog.DebugContext(ctx, message, "baggage", "empty")
-		return
-	}
-
-	baggageMap := make(map[string]string, len(members))
-	for _, member := range members {
-		baggageMap[member.Key()] = member.Value()
-	}
-
-	slog.DebugContext(ctx, message, "baggage", baggageMap)
-}

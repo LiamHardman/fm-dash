@@ -1140,40 +1140,6 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	// Perform search
 	results := performSearch(players, query)
 
-	// Enhanced debugging for any search
-	if len(query) >= 3 {
-		// Log all unique nationalities in dataset
-		nationalitiesSet := make(map[string]int)
-		for i := range players {
-			if players[i].Nationality != "" {
-				nationalitiesSet[players[i].Nationality]++
-			}
-		}
-
-		// Convert to slice for easier reading
-		var nationalitiesList []string
-		for nationality := range nationalitiesSet {
-			nationalitiesList = append(nationalitiesList, nationality)
-		}
-
-		logInfo(ctx, "Debug: All nationalities in dataset",
-			"query", query,
-			"total_nationalities", len(nationalitiesList),
-			"nationalities", nationalitiesList,
-			"nationality_counts", nationalitiesSet)
-
-		// Log detailed search results by type
-		resultsByType := make(map[string][]string)
-		for _, result := range results {
-			resultsByType[result.Type] = append(resultsByType[result.Type], result.Name)
-		}
-
-		logInfo(ctx, "Debug: Search results by type",
-			"query", query,
-			"total_results", len(results),
-			"results_by_type", resultsByType)
-	}
-
 	SetSpanAttributes(ctx, attribute.Int("search.results_count", len(results)))
 
 	w.Header().Set("Content-Type", "application/json")

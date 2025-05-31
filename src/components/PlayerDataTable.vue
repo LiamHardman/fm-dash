@@ -1243,25 +1243,6 @@ export default {
           // Try to use the player's UID for cache key
           let playerUID = player.UID || player.uid
 
-          // Enhanced debugging to understand UID field issues
-          if (!playerUID) {
-            // Check if this is one of the first few players to avoid spam
-            const isFirstFewPlayers = props.players.indexOf(player) < 3
-            if (isFirstFewPlayers) {
-              // Check if there's any field that looks like an ID
-              const possibleIdFields = Object.keys(player).filter(
-                key =>
-                  key.toLowerCase().includes('id') ||
-                  key.toLowerCase().includes('uid') ||
-                  key.toLowerCase() === 'unique'
-              )
-
-              if (possibleIdFields.length > 0) {
-                // Empty loop removed - was not doing anything useful
-              }
-            }
-          }
-
           // If no UID available or UID is empty, create a composite unique key
           if (!playerUID || playerUID === '') {
             playerUID = `${player.name || 'unknown'}-${player.club || 'unknown'}-${player.age || 'unknown'}-${player.position || 'unknown'}`
