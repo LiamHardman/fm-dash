@@ -116,8 +116,10 @@ export function useApi(baseURL = '/api') {
       body: formData
     })
 
-    // Remove Content-Type header for FormData
-    config.headers['Content-Type'] = undefined
+    // Remove Content-Type header for FormData (let browser set it)
+    if (config.headers) {
+      delete config.headers['Content-Type']
+    }
 
     try {
       isLoading.value = true
@@ -152,6 +154,16 @@ export function useApi(baseURL = '/api') {
           })
 
           xhr.open('POST', fullUrl)
+          
+          // Add any custom headers except Content-Type
+          if (config.headers) {
+            Object.entries(config.headers).forEach(([key, value]) => {
+              if (key.toLowerCase() !== 'content-type' && value !== undefined) {
+                xhr.setRequestHeader(key, value)
+              }
+            })
+          }
+          
           xhr.send(formData)
         })
       }

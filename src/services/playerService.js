@@ -1,28 +1,32 @@
 // src/services/playerService.js
+import { useApi } from '../composables/useApi'
+
 const API_BASE_URL = '' // Use relative paths if proxy is set up for all API routes
 
 export default {
-  async uploadPlayerFile(formData, maxSizeBytes = 15 * 1024 * 1024) {
+  async uploadPlayerFile(formData, maxSizeBytes = 15 * 1024 * 1024, onProgress = null) {
     try {
-      const response = await fetch(`${API_BASE_URL}/upload`, {
-        method: 'POST',
-        body: formData
-      })
-      if (!response.ok) {
-        // Check for specific status codes to throw more informative errors
-        if (response.status === 413) {
-          // Create a custom error object or throw an error with a specific message/property
-          const maxSizeMB = Math.round(maxSizeBytes / (1024 * 1024))
-          const error = new Error(`File too large. Maximum size allowed is ${maxSizeMB}MB.`)
-          error.status = 413 // Add status to the error object
-          throw error
-        }
-        const errorText = await response.text()
-        throw new Error(`API Error: ${response.status} - ${errorText || response.statusText}`)
+      // Get the file from FormData to pass directly to uploadFile
+      const file = formData.get('playerFile')
+      if (!file) {
+        throw new Error('No file found in form data')
       }
-      return await response.json()
+      
+      // Use the uploadFile function from useApi.js with empty base URL since upload is at /upload
+      const { uploadFile } = useApi('')
+      const response = await uploadFile('/upload', file, onProgress)
+      return response
     } catch (error) {
       console.error('Upload error in playerService:', error)
+      
+      // Handle specific error cases
+      if (error.message?.includes('413') || error.message?.includes('too large')) {
+        const maxSizeMB = Math.round(maxSizeBytes / (1024 * 1024))
+        const newError = new Error(`File too large. Maximum size allowed is ${maxSizeMB}MB.`)
+        newError.status = 413
+        throw newError
+      }
+      
       throw error // Re-throw the error to be caught by the store
     }
   },

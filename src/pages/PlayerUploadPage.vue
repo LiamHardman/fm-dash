@@ -350,23 +350,8 @@ export default {
       })
     }
 
-    const simulateProgress = () => {
-      // Simulate upload progress for better UX
-      uploadProgress.value = 0
-      const progressInterval = setInterval(() => {
-        if (uploadProgress.value < 90 && loading.value) {
-          uploadProgress.value += Math.random() * 15
-        } else if (!loading.value) {
-          uploadProgress.value = 100
-          clearInterval(progressInterval)
-          setTimeout(() => {
-            uploadProgress.value = 0
-          }, 1000)
-        }
-      }, 500)
-
-      // Clean up interval when component unmounts or loading stops
-      return progressInterval
+    const updateProgress = (progress) => {
+      uploadProgress.value = Math.min(progress, 100)
     }
 
     const uploadAndParse = async () => {
@@ -381,13 +366,13 @@ export default {
 
       const isLargeFile = playerFile.value.size > largeFileSizeBytes.value
 
-      // Start progress simulation
-      const progressInterval = simulateProgress()
+      // Reset progress
+      uploadProgress.value = 0
 
       try {
         const formData = new FormData()
         formData.append('playerFile', playerFile.value)
-        const response = await playerStore.uploadPlayerFile(formData, maxFileSizeBytes.value)
+        const response = await playerStore.uploadPlayerFile(formData, maxFileSizeBytes.value, updateProgress)
         
         if (!playerStore.error) {
           // Complete the progress
@@ -447,6 +432,11 @@ export default {
             actions: [{ label: 'Dismiss', color: 'white' }]
           })
         }
+      } finally {
+        // Reset progress after a delay to show completion
+        setTimeout(() => {
+          uploadProgress.value = 0
+        }, 2000)
       }
     }
 
