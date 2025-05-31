@@ -17,6 +17,7 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/propagation"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -48,6 +49,56 @@ func getSampler() sdktrace.Sampler {
 	return sdktrace.AlwaysSample() // Default fallback
 }
 
+// createEnhancedResource creates a resource with automatic detection
+func createEnhancedResource() (*resource.Resource, error) {
+	// Start with environment variables and SDK defaults
+	res, err := resource.New(
+		context.Background(),
+		resource.WithFromEnv(),      // Discover and provide attributes from OTEL_RESOURCE_ATTRIBUTES and OTEL_SERVICE_NAME environment variables
+		resource.WithTelemetrySDK(), // Discover and provide information about the OpenTelemetry SDK used
+		resource.WithProcess(),      // Discover and provide process information
+		resource.WithOS(),           // Discover and provide OS information
+		resource.WithContainer(),    // Discover and provide container information (Docker, containerd, etc.)
+		resource.WithHost(),         // Discover and provide host information
+	)
+	if err != nil {
+		log.Printf("Warning: Some resource detection failed: %v", err)
+		// Continue with partial resource - better than failing completely
+	}
+
+	// Merge with manual attributes
+	manualRes := resource.NewWithAttributes(
+		resource.Default().SchemaURL(),
+		attribute.String("service.name", serviceName),
+		attribute.String("service.version", getEnvWithDefault("SERVICE_VERSION", "v1.0.0")),
+		attribute.String("service.environment", getEnvWithDefault("ENVIRONMENT", "development")),
+		attribute.String("service.namespace", getEnvWithDefault("SERVICE_NAMESPACE", "fmdash")),
+		attribute.String("library.language", "go"),
+		attribute.String("library.name", "v2fmdash-api"),
+		attribute.String("deployment.environment", getEnvWithDefault("DEPLOYMENT_ENV", "local")),
+		// Add instance information
+		attribute.String("service.instance.id", getEnvWithDefault("HOSTNAME", "unknown")),
+		// Add application-specific attributes
+		attribute.String("application.type", "football-manager-dashboard"),
+		attribute.String("application.component", "api-server"),
+		// Add git information if available
+		attribute.String("vcs.repository.url", getEnvWithDefault("GIT_REPOSITORY_URL", "")),
+		attribute.String("vcs.revision", getEnvWithDefault("GIT_COMMIT_SHA", "")),
+		attribute.String("vcs.branch", getEnvWithDefault("GIT_BRANCH", "")),
+		// Add build information
+		attribute.String("build.id", getEnvWithDefault("BUILD_ID", "")),
+		attribute.String("build.timestamp", getEnvWithDefault("BUILD_TIMESTAMP", "")),
+	)
+
+	// Merge detected and manual resources
+	finalRes, err := resource.Merge(res, manualRes)
+	if err != nil {
+		return nil, err
+	}
+
+	return finalRes, nil
+}
+
 func initOTel() func(context.Context) error {
 	var secureOption otlptracegrpc.Option
 
@@ -70,28 +121,18 @@ func initOTel() func(context.Context) error {
 		return func(ctx context.Context) error { return nil }
 	}
 
-	// Create shared resources
-	resources, err := resource.New(
-		context.Background(),
-		resource.WithAttributes(
-			attribute.String("service.name", serviceName),
-			attribute.String("service.version", getEnvWithDefault("SERVICE_VERSION", "v1.0.0")),
-			attribute.String("service.environment", getEnvWithDefault("ENVIRONMENT", "development")),
-			attribute.String("service.namespace", getEnvWithDefault("SERVICE_NAMESPACE", "fmdash")),
-			attribute.String("library.language", "go"),
-			attribute.String("library.name", "v2fmdash-api"),
-			attribute.String("deployment.environment", getEnvWithDefault("DEPLOYMENT_ENV", "local")),
-			// Add instance information
-			attribute.String("service.instance.id", getEnvWithDefault("HOSTNAME", "unknown")),
-			// Add application-specific attributes
-			attribute.String("application.type", "football-manager-dashboard"),
-			attribute.String("application.component", "api-server"),
-		),
-	)
+	// Create enhanced resources with automatic detection
+	resources, err := createEnhancedResource()
 	if err != nil {
 		log.Printf("Warning: Could not set resources: %v. OTEL disabled.", err)
 		return func(ctx context.Context) error { return nil }
 	}
+
+	// Set up composite propagator with baggage support
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+		propagation.TraceContext{},
+		propagation.Baggage{},
+	))
 
 	// Initialize tracing
 	otel.SetTracerProvider(
@@ -161,6 +202,12 @@ func initOTel() func(context.Context) error {
 	// Set up structured logging with OTLP
 	handler := NewOTLPHandler(loggerProvider)
 	slog.SetDefault(slog.New(handler))
+
+	// Initialize enhanced metrics after everything is set up
+	initEnhancedMetrics()
+	
+	// Initialize runtime metrics for Go performance monitoring
+	initRuntimeMetrics()
 
 	return func(ctx context.Context) error {
 		if err := exporter.Shutdown(ctx); err != nil {

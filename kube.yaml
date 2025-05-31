@@ -58,6 +58,20 @@ spec:
               value: "production"
             - name: SERVICE_NAMESPACE 
               value: "fmdash"
+            
+            # Build and Git information for enhanced resource detection
+            - name: GIT_REPOSITORY_URL
+              value: "git.liamhardman.com/liam/v2fmdash"
+            - name: GIT_COMMIT_SHA
+              value: "main"  # Replace with actual commit SHA in CI/CD
+            - name: GIT_BRANCH
+              value: "main"
+            - name: BUILD_ID
+              value: ""  # Set by CI/CD pipeline
+            - name: BUILD_TIMESTAMP
+              value: ""  # Set by CI/CD pipeline
+            - name: DEPLOYMENT_ENV
+              value: "kubernetes"
 
             # S3-Compatible Storage Configuration
             - name: S3_ENDPOINT
