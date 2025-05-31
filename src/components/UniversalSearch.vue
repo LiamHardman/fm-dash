@@ -27,7 +27,7 @@
     </q-input>
     
     <q-card
-      v-if="showResults && (results.length > 0 || isLoading)"
+      v-if="showResults"
       class="search-results"
       flat
       bordered
@@ -37,7 +37,7 @@
         <div class="text-caption q-mt-xs">Searching...</div>
       </q-card-section>
       
-      <q-list v-else-if="results.length > 0" separator>
+      <q-list v-else-if="results && results.length > 0" separator>
         <q-item
           v-for="result in results"
           :key="`${result.type}-${result.id}`"
@@ -116,6 +116,7 @@ export default defineComponent({
 
     // Request cancellation support
     let currentSearchController = null
+    let currentSearchId = 0
 
     const searchAPI = async (query, signal) => {
       if (!query.trim() || !playerStore.currentDatasetId) {
@@ -128,20 +129,25 @@ export default defineComponent({
         const response = await fetch(url, { signal })
         if (response.ok) {
           const data = await response.json()
-          return data
+          // Ensure we always return an array
+          return Array.isArray(data) ? data : []
         }
         console.error('Search API error:', response.status)
+        return []
       } catch (error) {
         if (error.name === 'AbortError') {
           return []
         }
         console.error('Search network error:', error)
+        return []
       }
-      return []
     }
 
     // Create stable debounced function with cancellation support
     const debouncedSearchFn = debounce(async query => {
+      // Generate unique ID for this search
+      const searchId = ++currentSearchId
+      
       // Cancel previous request if it exists
       if (currentSearchController) {
         currentSearchController.abort()
@@ -158,19 +164,32 @@ export default defineComponent({
       currentSearchController = new AbortController()
       const signal = currentSearchController.signal
 
-      isLoading.value = true
+      // Only set loading if this is still the latest search
+      if (searchId === currentSearchId) {
+        isLoading.value = true
+      }
+
       try {
-        results.value = await searchAPI(query, signal)
+        const searchResults = await searchAPI(query, signal)
+        
+        // Only update results if this is still the latest search and wasn't aborted
+        if (searchId === currentSearchId && !signal.aborted) {
+          results.value = Array.isArray(searchResults) ? searchResults : []
+        }
       } catch (error) {
         if (error.name !== 'AbortError') {
           console.error('Search failed:', error)
-          results.value = []
+          // Only update results if this is still the latest search
+          if (searchId === currentSearchId) {
+            results.value = []
+          }
         }
       } finally {
-        if (!signal.aborted) {
+        // Only clear loading state if this is still the latest search
+        if (searchId === currentSearchId) {
           isLoading.value = false
+          currentSearchController = null
         }
-        currentSearchController = null
       }
     }, 300)
 
