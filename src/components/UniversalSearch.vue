@@ -51,11 +51,20 @@
           
           <q-item-section>
             <q-item-label>{{ result.name }}</q-item-label>
-            <q-item-label caption>{{ result.description }}</q-item-label>
+            <q-item-label caption>{{ result.description || result.subText }}</q-item-label>
           </q-item-section>
           
-          <q-item-section side>
-            <q-chip :color="getResultColor(result.type)" text-color="white" size="sm">
+          <q-item-section side class="search-result-side">
+            <!-- Show overall rating for players with the same styling as PlayerDataTable -->
+            <div v-if="result.type === 'player' && result.overall" class="player-rating-container">
+              <span 
+                :class="getUnifiedRatingClass(result.overall, 100)"
+                class="attribute-value fifa-stat-value search-result-rating"
+              >
+                {{ result.overall }}
+              </span>
+            </div>
+            <q-chip v-else :color="getResultColor(result.type)" text-color="white" size="sm">
               {{ result.type }}
             </q-chip>
           </q-item-section>
@@ -206,6 +215,20 @@ export default defineComponent({
       }
     }
 
+    // Unified rating class function (same as used in PlayerDataTable)
+    const getUnifiedRatingClass = (value, maxScale) => {
+      const numValue = parseInt(value, 10)
+      if (isNaN(numValue) || value === null || value === undefined || value === '-')
+        return 'rating-na'
+      const percentage = (numValue / maxScale) * 100
+      if (percentage >= 90) return 'rating-tier-6'
+      if (percentage >= 80) return 'rating-tier-5'
+      if (percentage >= 70) return 'rating-tier-4'
+      if (percentage >= 55) return 'rating-tier-3'
+      if (percentage >= 40) return 'rating-tier-2'
+      return 'rating-tier-1'
+    }
+
     const findPlayerByName = playerName => {
       return playerStore.allPlayers?.find(
         player => player.name?.toLowerCase() === playerName.toLowerCase()
@@ -276,6 +299,7 @@ export default defineComponent({
       clearSearch,
       getResultIcon,
       getResultColor,
+      getUnifiedRatingClass,
       handleResultClick,
       hasDatasetId,
       playerForDetailView,
@@ -315,6 +339,29 @@ export default defineComponent({
       .body--dark & {
         background-color: rgba(255, 255, 255, 0.05);
       }
+    }
+  }
+
+  .search-result-side {
+    flex: 0 0 auto;
+    align-items: center;
+  }
+
+  .player-rating-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .search-result-rating {
+    font-size: 0.9rem !important;
+    padding: 2px 6px !important;
+    min-width: 28px !important;
+    border-radius: 4px !important;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    
+    .body--dark & {
+      border-color: rgba(255, 255, 255, 0.1);
     }
   }
 }
