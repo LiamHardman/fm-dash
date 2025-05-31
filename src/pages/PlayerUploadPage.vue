@@ -244,6 +244,11 @@
                 </q-card-actions>
             </q-card>
         </q-dialog>
+
+        <InteractiveUploadLoader 
+          v-bind="loaderProps" 
+          @cancel="handleUploadCancel" 
+        />
     </q-page>
 </template>
 
@@ -255,9 +260,13 @@ import { useRouter } from 'vue-router'
 import playerService from '../services/playerService'
 import { usePlayerStore } from '../stores/playerStore'
 import { useUiStore } from '../stores/uiStore'
+import InteractiveUploadLoader from '../components/InteractiveUploadLoader.vue'
 
 export default {
   name: 'PlayerUploadPage',
+  components: {
+    InteractiveUploadLoader
+  },
   setup() {
     const router = useRouter()
     const playerStore = usePlayerStore()
@@ -265,6 +274,7 @@ export default {
     const _$q = useQuasar()
     const playerFile = ref(null)
     const showFileSizeLimitModal = ref(false)
+    const uploadProgress = ref(0)
 
     // Dynamic config values
     const maxFileSizeBytes = ref(15 * 1024 * 1024) // Default 15MB
@@ -290,6 +300,15 @@ export default {
         playerStore.error = value
       }
     })
+
+    // Computed values for the interactive loader
+    const loaderProps = computed(() => ({
+      visible: loading.value,
+      filename: playerFile.value?.name || '',
+      fileSize: playerFile.value ? formatFileSize(playerFile.value.size) : '',
+      playersFound: 0, // Could be enhanced to show real-time player count
+      progress: uploadProgress.value
+    }))
 
     onMounted(async () => {
       // Fetch config first
@@ -319,6 +338,37 @@ export default {
       }
     }
 
+    const handleUploadCancel = () => {
+      // Reset the upload state
+      playerStore.loading = false
+      uploadProgress.value = 0
+      Notify.create({
+        type: 'info',
+        message: 'Upload cancelled',
+        position: 'top',
+        timeout: 2000
+      })
+    }
+
+    const simulateProgress = () => {
+      // Simulate upload progress for better UX
+      uploadProgress.value = 0
+      const progressInterval = setInterval(() => {
+        if (uploadProgress.value < 90 && loading.value) {
+          uploadProgress.value += Math.random() * 15
+        } else if (!loading.value) {
+          uploadProgress.value = 100
+          clearInterval(progressInterval)
+          setTimeout(() => {
+            uploadProgress.value = 0
+          }, 1000)
+        }
+      }, 500)
+
+      // Clean up interval when component unmounts or loading stops
+      return progressInterval
+    }
+
     const uploadAndParse = async () => {
       if (!playerFile.value) {
         playerStore.error = 'Please select an HTML file first.'
@@ -331,11 +381,18 @@ export default {
 
       const isLargeFile = playerFile.value.size > largeFileSizeBytes.value
 
+      // Start progress simulation
+      const progressInterval = simulateProgress()
+
       try {
         const formData = new FormData()
         formData.append('playerFile', playerFile.value)
         const response = await playerStore.uploadPlayerFile(formData, maxFileSizeBytes.value)
+        
         if (!playerStore.error) {
+          // Complete the progress
+          uploadProgress.value = 100
+          
           // Check if this was a duplicate upload by looking at the response message
           const isDuplicate = response.message && response.message.includes('Duplicate file detected')
           
@@ -369,6 +426,9 @@ export default {
           }, 1000)
         }
       } catch (e) {
+        // Reset progress on error
+        uploadProgress.value = 0
+        
         console.error('Upload and Parse error in page:', e)
         if (playerStore.error) {
           Notify.create({
@@ -401,7 +461,9 @@ export default {
       playerStore,
       uiStore,
       notificationSupported,
-      maxFileSizeMB
+      maxFileSizeMB,
+      loaderProps,
+      handleUploadCancel
     }
   }
 }
