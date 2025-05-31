@@ -205,7 +205,7 @@ func initOTel() func(context.Context) error {
 
 	// Initialize enhanced metrics after everything is set up
 	initEnhancedMetrics()
-	
+
 	// Initialize runtime metrics for Go performance monitoring
 	initRuntimeMetrics()
 

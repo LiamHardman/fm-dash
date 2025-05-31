@@ -391,6 +391,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			// Deep copy each player to avoid concurrent map access
 			player := &playersList[i]
 			playersListCopy[i] = Player{
+				UID:                 player.UID,
 				Name:                player.Name,
 				Position:            player.Position,
 				Age:                 player.Age,

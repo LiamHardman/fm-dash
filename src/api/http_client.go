@@ -61,7 +61,7 @@ func (c *HTTPClient) Do(req *http.Request) (*http.Response, error) {
 			attribute.String("http.host", req.Host),
 		})
 		defer span.End()
-		
+
 		// Update request with traced context
 		req = req.WithContext(ctx)
 	}
@@ -115,16 +115,16 @@ func (c *HTTPClient) Do(req *http.Request) (*http.Response, error) {
 		// Don't sleep after last attempt
 		if attempt < c.retryConfig.MaxRetries {
 			delay := c.retryConfig.ExponentialBackoff(attempt)
-			
+
 			// Log retry attempt with trace context
 			if otelEnabled {
-				AddSpanEvent(ctx, "http.retry", 
+				AddSpanEvent(ctx, "http.retry",
 					attribute.Int("attempt", attempt+1),
 					attribute.String("reason", lastErr.Error()),
 					attribute.String("delay", delay.String()),
 				)
 			}
-			
+
 			log.Printf("HTTP request failed (attempt %d/%d), retrying in %v: %v",
 				attempt+1, c.retryConfig.MaxRetries+1, delay, lastErr)
 

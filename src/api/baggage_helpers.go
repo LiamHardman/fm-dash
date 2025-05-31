@@ -13,15 +13,15 @@ import (
 
 // BaggageKeys defines common baggage keys used across the application
 var BaggageKeys = struct {
-	UserID       string
-	TenantID     string
-	RequestID    string
-	FeatureFlag  string
-	Environment  string
-	DatasetID    string
+	UserID      string
+	TenantID    string
+	RequestID   string
+	FeatureFlag string
+	Environment string
+	DatasetID   string
 }{
 	UserID:      "user.id",
-	TenantID:    "tenant.id", 
+	TenantID:    "tenant.id",
 	RequestID:   "request.id",
 	FeatureFlag: "feature.flag",
 	Environment: "environment",
@@ -37,14 +37,14 @@ func SetBaggageValue(ctx context.Context, key, value string) context.Context {
 	bag := baggage.FromContext(ctx)
 	member, err := baggage.NewMember(key, value)
 	if err != nil {
-		slog.WarnContext(ctx, "Failed to create baggage member", 
+		slog.WarnContext(ctx, "Failed to create baggage member",
 			"key", key, "value", value, "error", err)
 		return ctx
 	}
 
 	bag, err = bag.SetMember(member)
 	if err != nil {
-		slog.WarnContext(ctx, "Failed to set baggage member", 
+		slog.WarnContext(ctx, "Failed to set baggage member",
 			"key", key, "value", value, "error", err)
 		return ctx
 	}
@@ -71,7 +71,7 @@ func SetUserContext(ctx context.Context, userID, tenantID string) context.Contex
 
 	ctx = SetBaggageValue(ctx, BaggageKeys.UserID, userID)
 	ctx = SetBaggageValue(ctx, BaggageKeys.TenantID, tenantID)
-	
+
 	// Also add as span attributes for immediate visibility
 	span := trace.SpanFromContext(ctx)
 	if span.IsRecording() {
@@ -80,7 +80,7 @@ func SetUserContext(ctx context.Context, userID, tenantID string) context.Contex
 			attribute.String("tenant.id", tenantID),
 		)
 	}
-	
+
 	return ctx
 }
 
@@ -91,13 +91,13 @@ func SetDatasetContext(ctx context.Context, datasetID string) context.Context {
 	}
 
 	ctx = SetBaggageValue(ctx, BaggageKeys.DatasetID, datasetID)
-	
+
 	// Also add as span attribute
 	span := trace.SpanFromContext(ctx)
 	if span.IsRecording() {
 		span.SetAttributes(attribute.String("dataset.id", datasetID))
 	}
-	
+
 	return ctx
 }
 
@@ -111,7 +111,7 @@ func SetFeatureFlag(ctx context.Context, flagName string, enabled bool) context.
 	if enabled {
 		value = "true"
 	}
-	
+
 	key := "feature_flag." + flagName
 	return SetBaggageValue(ctx, key, value)
 }
@@ -152,7 +152,7 @@ func LogBaggageValues(ctx context.Context, message string) {
 
 	bag := baggage.FromContext(ctx)
 	members := bag.Members()
-	
+
 	if len(members) == 0 {
 		slog.DebugContext(ctx, message, "baggage", "empty")
 		return
@@ -162,6 +162,6 @@ func LogBaggageValues(ctx context.Context, message string) {
 	for _, member := range members {
 		baggageMap[member.Key()] = member.Value()
 	}
-	
+
 	slog.DebugContext(ctx, message, "baggage", baggageMap)
-} 
+}

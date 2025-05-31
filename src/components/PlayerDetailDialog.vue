@@ -306,6 +306,28 @@
                                 <div class="profile-header-section">
                                     <div class="player-identity-extended">
                                         <div class="row items-center q-mb-xs">
+                                            <!-- Player Face Image -->
+                                            <div class="col-auto q-mr-sm player-face-container">
+                                                <img
+                                                    v-if="playerFaceImageUrl && !faceImageLoadError"
+                                                    :src="playerFaceImageUrl"
+                                                    :alt="`${player.name || 'Player'} face`"
+                                                    width="60"
+                                                    height="60"
+                                                    class="player-face-image"
+                                                    @error="handleFaceImageError"
+                                                    @load="handleFaceImageLoad"
+                                                />
+                                                <q-avatar
+                                                    v-else
+                                                    size="60px"
+                                                    :color="qInstance.dark.isActive ? 'grey-7' : 'grey-4'"
+                                                    :text-color="qInstance.dark.isActive ? 'grey-4' : 'grey-7'"
+                                                    class="player-face-placeholder"
+                                                >
+                                                    <q-icon name="person" size="24px" />
+                                                </q-avatar>
+                                            </div>
                                             <div
                                                 class="col-auto q-mr-sm player-flag-container-redesigned"
                                             >
@@ -1308,9 +1330,42 @@ export default defineComponent({
     const flagLoadError = ref(false)
     const divisionFilter = ref('all')
 
+    // Face image handling
+    const faceImageLoadError = ref(false)
+
     const handleFlagError = () => {
       flagLoadError.value = true
     }
+
+    const handleFaceImageError = () => {
+      faceImageLoadError.value = true
+    }
+
+    const handleFaceImageLoad = () => {
+      faceImageLoadError.value = false
+    }
+
+    // Computed property for player face image URL
+    const playerFaceImageUrl = computed(() => {
+      if (!props.player) return ''
+      
+      const playerUID = props.player.UID || props.player.uid
+      if (!playerUID) {
+        return ''
+      }
+      
+      // Construct the face API URL
+      return `/api/faces?uid=${encodeURIComponent(playerUID)}`
+    })
+
+    // Reset face image error when player changes
+    watch(
+      () => props.player,
+      () => {
+        faceImageLoadError.value = false
+      },
+      { immediate: true }
+    )
 
     onMounted(() => {
       /* Initialization logic if needed */
@@ -1774,7 +1829,11 @@ export default defineComponent({
       handleFlagError,
       divisionFilter,
       divisionFilterOptions,
-      onDivisionFilterChange
+      onDivisionFilterChange,
+      faceImageLoadError,
+      handleFaceImageError,
+      handleFaceImageLoad,
+      playerFaceImageUrl
     }
   }
 })
@@ -2502,6 +2561,55 @@ hr.q-my-sm {
     
     &:hover {
         transform: scale(1.05);
+    }
+}
+
+// Player face image styles
+.player-face-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.player-face-image {
+    border-radius: 50%;
+    border: 2px solid rgba(25, 118, 210, 0.2);
+    object-fit: cover;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    
+    &:hover {
+        transform: scale(1.05);
+        border-color: rgba(25, 118, 210, 0.4);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .body--dark & {
+        border-color: rgba(144, 202, 249, 0.2);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        
+        &:hover {
+            border-color: rgba(144, 202, 249, 0.4);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+    }
+}
+
+.player-face-placeholder {
+    border: 2px solid rgba(25, 118, 210, 0.2);
+    transition: all 0.3s ease;
+    
+    &:hover {
+        transform: scale(1.05);
+        border-color: rgba(25, 118, 210, 0.4);
+    }
+    
+    .body--dark & {
+        border-color: rgba(144, 202, 249, 0.2);
+        
+        &:hover {
+            border-color: rgba(144, 202, 249, 0.4);
+        }
     }
 }
 </style>

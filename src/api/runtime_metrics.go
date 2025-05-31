@@ -15,15 +15,15 @@ import (
 
 var (
 	// Go runtime metrics
-	goMemoryUsage         metric.Int64ObservableGauge
-	goMemoryHeap          metric.Int64ObservableGauge
-	goMemoryStack         metric.Int64ObservableGauge
-	goGCDuration          metric.Float64ObservableCounter
-	goGCCount             metric.Int64ObservableCounter
-	goGoroutines          metric.Int64ObservableGauge
-	goNextGC              metric.Int64ObservableGauge
-	goLastGC              metric.Int64ObservableGauge
-	goCgoCalls            metric.Int64ObservableCounter
+	goMemoryUsage metric.Int64ObservableGauge
+	goMemoryHeap  metric.Int64ObservableGauge
+	goMemoryStack metric.Int64ObservableGauge
+	goGCDuration  metric.Float64ObservableCounter
+	goGCCount     metric.Int64ObservableCounter
+	goGoroutines  metric.Int64ObservableGauge
+	goNextGC      metric.Int64ObservableGauge
+	goLastGC      metric.Int64ObservableGauge
+	goCgoCalls    metric.Int64ObservableCounter
 )
 
 // initRuntimeMetrics initializes Go runtime metrics
@@ -64,7 +64,7 @@ func initRuntimeMetrics() {
 		slog.Error("Failed to create Go stack memory gauge", "error", err)
 	}
 
-	// GC metrics  
+	// GC metrics
 	goGCDuration, err = meter.Float64ObservableCounter(
 		"go.gc.duration",
 		metric.WithDescription("Time spent in garbage collection"),
@@ -262,4 +262,4 @@ func StartMemoryMonitoring(ctx context.Context, interval time.Duration) {
 	}()
 
 	slog.InfoContext(ctx, "Memory monitoring started", "interval", interval)
-} 
+}
