@@ -306,20 +306,20 @@
 </template>
 
 <script>
-import { useQuasar } from 'quasar'
-import { computed, defineComponent, onMounted, ref, watch, nextTick } from 'vue'
-import { formatCurrency } from '../utils/currencyUtils'
-import PlayerDetailDialog from './PlayerDetailDialog.vue'
 import {
-  Chart as ChartJS,
   CategoryScale,
+  Chart as ChartJS,
+  Legend,
   LinearScale,
   PointElement,
+  ScatterController,
   Title,
-  Tooltip,
-  Legend,
-  ScatterController
+  Tooltip
 } from 'chart.js'
+import { useQuasar } from 'quasar'
+import { computed, defineComponent, nextTick, onMounted, ref, watch } from 'vue'
+import { formatCurrency } from '../utils/currencyUtils'
+import PlayerDetailDialog from './PlayerDetailDialog.vue'
 
 // Register Chart.js components
 ChartJS.register(
@@ -473,8 +473,6 @@ export default defineComponent({
 
         const data = await response.json()
         bargainResults.value = data || []
-
-        console.log(`Found ${bargainResults.value.length} bargain players:`, bargainResults.value)
       } catch (error) {
         console.error('Error finding bargains:', error)
         qInstance.notify({
@@ -498,14 +496,14 @@ export default defineComponent({
       }, 300)
     }
 
-    const handlePlayerSelected = (evt, row) => {
+    const handlePlayerSelected = (_evt, row) => {
       selectedPlayer.value = row.player
       showPlayerDetail.value = true
     }
 
     const formatValueScore = score => {
       if (score >= 1000) {
-        return (score / 1000).toFixed(1) + 'k'
+        return `${(score / 1000).toFixed(1)}k`
       }
       return score.toFixed(1)
     }
@@ -527,12 +525,6 @@ export default defineComponent({
     }
 
     const createChart = () => {
-      console.log('createChart called', { 
-        hasCanvas: !!chartCanvas.value,
-        hasResults: bargainResults.value.length,
-        canvasElement: chartCanvas.value
-      })
-
       if (!chartCanvas.value) {
         console.warn('Canvas element not available for chart creation')
         return
@@ -551,7 +543,7 @@ export default defineComponent({
 
       try {
         const ctx = chartCanvas.value.getContext('2d')
-        
+
         if (!ctx) {
           console.error('Could not get 2D context from canvas')
           return
@@ -560,7 +552,7 @@ export default defineComponent({
         // Set canvas size explicitly
         chartCanvas.value.width = 400
         chartCanvas.value.height = 200
-        
+
         // Prepare data for scatter plot
         const scatterData = bargainResults.value
           .slice(0, 500) // Take top 500 players for chart (increased from 100)
@@ -571,23 +563,19 @@ export default defineComponent({
             originalValueScore: result.valueScore
           }))
 
-        console.log('Chart data prepared:', {
-          dataPoints: scatterData.length,
-          samplePoint: scatterData[0],
-          allData: scatterData.slice(0, 5) // Show first 5 points for debugging
-        })
-
         const config = {
           type: 'scatter',
           data: {
-            datasets: [{
-              label: 'Players',
-              data: scatterData,
-              backgroundColor: 'rgba(26, 35, 126, 0.6)',
-              borderColor: 'rgba(26, 35, 126, 0.8)',
-              pointRadius: 6,
-              pointHoverRadius: 8,
-            }]
+            datasets: [
+              {
+                label: 'Players',
+                data: scatterData,
+                backgroundColor: 'rgba(26, 35, 126, 0.6)',
+                borderColor: 'rgba(26, 35, 126, 0.8)',
+                pointRadius: 6,
+                pointHoverRadius: 8
+              }
+            ]
           },
           options: {
             responsive: true,
@@ -598,11 +586,11 @@ export default defineComponent({
               },
               tooltip: {
                 callbacks: {
-                  title: function(context) {
+                  title: context => {
                     const point = context[0]
                     return point.raw.player.name
                   },
-                  label: function(context) {
+                  label: context => {
                     const point = context.raw
                     return [
                       `Overall: ${point.x}`,
@@ -647,7 +635,7 @@ export default defineComponent({
                 }
               }
             },
-            onClick: (event, elements) => {
+            onClick: (_event, elements) => {
               if (elements.length > 0) {
                 const element = elements[0]
                 const dataIndex = element.index
@@ -657,22 +645,16 @@ export default defineComponent({
             }
           }
         }
-
-        console.log('Creating chart with config:', config)
         chartInstance.value = new ChartJS(ctx, config)
-
-        console.log('Chart created successfully:', chartInstance.value)
       } catch (error) {
         console.error('Error creating chart:', error)
       }
     }
 
     const updateChart = async () => {
-      console.log('updateChart called')
       await nextTick()
       // Wait a bit more to ensure DOM is fully rendered
       setTimeout(() => {
-        console.log('About to create chart, canvas element:', chartCanvas.value)
         createChart()
       }, 200) // Increased timeout to ensure DOM is ready
     }
@@ -680,7 +662,7 @@ export default defineComponent({
     // Watchers
     watch(
       () => props.show,
-      async (newShow) => {
+      async newShow => {
         if (newShow && props.datasetId) {
           // Auto-search when dialog opens
           await findBargains()
@@ -697,9 +679,8 @@ export default defineComponent({
     // Watch for results changes to update chart
     watch(
       () => bargainResults.value,
-      async (newResults) => {
+      async newResults => {
         if (newResults.length > 0 && props.show) {
-          console.log('Results changed, updating chart...', newResults.length)
           await updateChart()
         }
       },
