@@ -45,11 +45,17 @@
                             outlined
                             dense
                             :prefix="currencySymbol"
+                            suffix="M"
                             :min="0"
+                            step="0.1"
                             @update:model-value="onFiltersChanged"
                             :label-color="qInstance.dark.isActive ? 'grey-4' : ''"
                             :input-class="qInstance.dark.isActive ? 'text-grey-3' : ''"
-                        />
+                        >
+                            <template v-slot:hint>
+                                Value in millions (e.g., 5 = £5M)
+                            </template>
+                        </q-input>
                     </div>
                     
                     <div class="col-12 col-md-3">
@@ -60,11 +66,17 @@
                             outlined
                             dense
                             :prefix="currencySymbol"
+                            suffix="K"
                             :min="0"
+                            step="0.1"
                             @update:model-value="onFiltersChanged"
                             :label-color="qInstance.dark.isActive ? 'grey-4' : ''"
                             :input-class="qInstance.dark.isActive ? 'text-grey-3' : ''"
-                        />
+                        >
+                            <template v-slot:hint>
+                                Weekly wage in thousands (e.g., 10 = £10K/week)
+                            </template>
+                        </q-input>
                     </div>
                     
                     <div class="col-12 col-md-2">
@@ -685,16 +697,6 @@ export default defineComponent({
       }, 300)
     }
 
-    const onValueTierChanged = async () => {
-      // Debounce the search to avoid too many calls
-      clearTimeout(onValueTierChanged.timeoutId)
-      onValueTierChanged.timeoutId = setTimeout(() => {
-        if (props.show && props.datasetId) {
-          findBargains()
-        }
-      }, 300)
-    }
-
     const handlePlayerSelected = (evt, rowData) => {
       const player = rowData.player || rowData
       selectedPlayer.value = player
@@ -741,8 +743,8 @@ export default defineComponent({
         showPoorValue.value = !showPoorValue.value
       }
       
-      // Trigger filtering after tier change
-      onValueTierChanged()
+      // No need to trigger a new backend search for value tier changes
+      // The filteredBargainResults computed property will handle the filtering
     }
 
     // Watchers
@@ -800,7 +802,6 @@ export default defineComponent({
       chartRef,
       chartOption,
       onFiltersChanged,
-      onValueTierChanged,
       handlePlayerSelected,
       handleTeamSelected,
       formatCurrency,

@@ -82,8 +82,6 @@ func main() {
 		}()
 		slog.Info("OpenTelemetry initialized", "logs_streaming", true)
 
-		// Demo structured logging that will be streamed to OTLP
-		DemoStructuredLogging()
 	} else {
 		slog.Info("OpenTelemetry disabled", "logs_streaming", false)
 	}

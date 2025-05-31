@@ -1503,23 +1503,6 @@ func processBargainHunter(players []Player, maxBudget, maxSalary, minAge, maxAge
 			valueScore *= 1.15 // 15% bonus for good value
 		}
 
-		logInfo(context.Background(), "Calculating value score",
-			"player_name", player.Name,
-			"overall", overall,
-			"transfer_value", player.TransferValueAmount,
-			"value_score", valueScore,
-			"tier", func() string {
-				if player.TransferValueAmount == 0 {
-					return "free_transfer"
-				} else if overall >= 60 {
-					return "premium"
-				} else if overall >= 55 {
-					return "decent"
-				} else {
-					return "budget"
-				}
-			}())
-
 		results = append(results, BargainHunterResponse{
 			Player:     player,
 			ValueScore: valueScore,
