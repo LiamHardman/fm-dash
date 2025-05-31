@@ -166,6 +166,33 @@
                 </div>
                 <div class="col-12 col-sm-6 col-md-3">
                     <q-select
+                        v-model="selectedPreset"
+                        :options="presetOptions"
+                        label="Preset Filters"
+                        dense
+                        filled
+                        clearable
+                        emit-value
+                        map-options
+                        @update:model-value="applyPresetFilter"
+                        :label-color="
+                            quasarInstance.dark.isActive ? 'grey-4' : ''
+                        "
+                        :popup-content-class="
+                            quasarInstance.dark.isActive
+                                ? 'bg-grey-8 text-white'
+                                : ''
+                        "
+                        behavior="menu"
+                        :disable="isLoading"
+                    >
+                        <template v-slot:prepend>
+                            <q-icon name="filter_list" />
+                        </template>
+                    </q-select>
+                </div>
+                <div class="col-12 col-sm-6 col-md-3">
+                    <q-select
                         v-model="filters.mediaHandling"
                         :options="mediaHandlingOptions"
                         label="Media Handling"
@@ -212,21 +239,6 @@
                         "
                         behavior="menu"
                         :disable="isLoading"
-                    />
-                </div>
-                <div class="col-12 col-sm-6 col-md-3">
-                    <q-btn
-                        color="primary"
-                        :label="
-                            'Set Minimum Stats' +
-                            (hasActiveStatFilters ? ' (Active)' : '')
-                        "
-                        class="full-width"
-                        @click="showMinimumStatsModal = true"
-                        :disable="isLoading"
-                        outline
-                        icon="tune"
-                        style="height: 40px;"
                     />
                 </div>
             </div>
@@ -359,6 +371,25 @@
                         @click="clearAllFilters"
                         :disable="isLoading || !hasActiveFilters"
                         outline
+                        style="height: 40px;"
+                    />
+                </div>
+            </div>
+
+            <!-- Fourth Row: Set Minimum Stats Button -->
+            <div class="row q-col-gutter-md q-mt-sm">
+                <div class="col-12 col-sm-6 col-md-3">
+                    <q-btn
+                        color="primary"
+                        :label="
+                            'Set Minimum Stats' +
+                            (hasActiveStatFilters ? ' (Active)' : '')
+                        "
+                        class="full-width"
+                        @click="showMinimumStatsModal = true"
+                        :disable="isLoading"
+                        outline
+                        icon="tune"
                         style="height: 40px;"
                     />
                 </div>
@@ -1302,6 +1333,91 @@ export default defineComponent({
       }
     }
 
+    // Preset Filters
+    const selectedPreset = ref(null)
+
+    const presetFilters = {
+      'free-transfers': {
+        label: 'Free Transfers',
+        description: 'Players available on free transfers',
+        filters: {
+          transferValueRangeLocal: { min: 0, max: 0 }
+        }
+      },
+      'wonderkids': {
+        label: 'Wonderkids',
+        description: 'Young talented players (15-21 years)',
+        filters: {
+          ageRange: { min: 15, max: 21 },
+          minOverall: 75
+        }
+      },
+      'prime-players': {
+        label: 'Prime Players',
+        description: 'Players in their prime (26-30 years)',
+        filters: {
+          ageRange: { min: 26, max: 30 },
+          minOverall: 82
+        }
+      },
+      'ballon-dor': {
+        label: 'Ballon D\'Or Contenders',
+        description: 'Elite players worthy of individual awards',
+        filters: {
+          ageRange: { min: 23, max: 32 },
+          minOverall: 88,
+          minPas: 15,
+          minTec: 16,
+          minDri: 15,
+          minFin: 15
+        }
+      }
+    }
+
+    const presetOptions = computed(() => [
+      { label: 'Select Preset...', value: null },
+      { label: '🆓 Free Transfers', value: 'free-transfers' },
+      { label: '⭐ Wonderkids', value: 'wonderkids' },
+      { label: '👑 Prime Players', value: 'prime-players' },
+      { label: '🏆 Ballon D\'Or Contenders', value: 'ballon-dor' }
+    ])
+
+    const applyPresetFilter = (presetKey) => {
+      if (!presetKey || !presetFilters[presetKey]) {
+        selectedPreset.value = null
+        return
+      }
+
+      const preset = presetFilters[presetKey]
+      
+      // Clear existing filters first
+      clearAllFilters()
+      
+      // Set the selected preset (since clearAllFilters resets it to null)
+      selectedPreset.value = presetKey
+      
+      // Apply preset filters
+      Object.keys(preset.filters).forEach(filterKey => {
+        if (filterKey === 'transferValueRangeLocal') {
+          filters.value.transferValueRangeLocal = { ...preset.filters[filterKey] }
+        } else if (filterKey === 'ageRange') {
+          filters.value.ageRange = { ...preset.filters[filterKey] }
+        } else {
+          filters.value[filterKey] = preset.filters[filterKey]
+        }
+      })
+
+      // Apply the filters
+      applyFilters()
+      
+      // Show notification
+      quasarInstance.notify({
+        type: 'positive',
+        message: `Applied ${preset.label} filter preset`,
+        position: 'top'
+      })
+    }
+
     const clubOptions = ref([])
     const nationalityOptions = ref([])
     const currentSliderMin = computed(() => props.transferValueRange.min)
@@ -1552,6 +1668,7 @@ export default defineComponent({
       for (const attr of allAttributeKeys) {
         filters.value[`min${formatAttrKey(attr)}`] = 0
       }
+      selectedPreset.value = null
       applyFilters()
     }
 
@@ -1717,7 +1834,11 @@ export default defineComponent({
       salarySliderMin,
       salarySliderMax,
       salarySliderStep,
-      formatCurrency
+      formatCurrency,
+      selectedPreset,
+      presetFilters,
+      presetOptions,
+      applyPresetFilter
     }
   }
 })
