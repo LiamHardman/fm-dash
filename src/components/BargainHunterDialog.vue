@@ -211,11 +211,14 @@
                             </div>
                         </div>
                         <div class="text-caption q-mt-sm text-grey-6">
-                            <div><strong>Premium (60+ rating):</strong> (Rating - 50) × (Rating ÷ Value in millions)</div>
-                            <div><strong>Decent (55-59 rating):</strong> Rating ÷ Value in millions</div>
-                            <div><strong>Budget (<55 rating):</strong> (Rating ÷ Value in millions) × 0.5</div>
+                            <div><strong>Elite (80+ rating):</strong> High efficiency with premium pricing tolerance</div>
+                            <div><strong>Quality (70-79 rating):</strong> Balanced efficiency and value expectation</div>
+                            <div><strong>Decent (60-69 rating):</strong> Good value for money expected</div>
+                            <div><strong>Budget (55-59 rating):</strong> Lower cost expected</div>
+                            <div><strong>Youth (<55 rating):</strong> Development potential focus</div>
+                            <div class="q-mt-xs"><em>Uses logarithmic scaling to fairly compare expensive vs cheap players</em></div>
+                            <div class="q-mt-xs"><em>Bonuses applied for exceptional value (30%+ below expected pricing)</em></div>
                             <div class="q-mt-xs"><em>Free transfers are excluded from results</em></div>
-                            <div class="q-mt-xs"><em>Age and overall filters are optional</em></div>
                             <div class="q-mt-xs"><em>Scores are normalized (highest = 100, lowest = 0) and limited to top 500 players</em></div>
                         </div>
                     </q-card-section>
@@ -691,92 +694,38 @@ export default defineComponent({
 
     // Methods
     const findBargains = async () => {
-      if (!props.players || props.players.length === 0) {
-        console.warn('No players data available')
+      if (!props.datasetId) {
+        console.warn('No dataset ID available')
         return
       }
 
       loading.value = true
 
       try {
-        await nextTick()
-
-        // Filter players based on criteria
-        let filtered = props.players.filter(player => {
-          // Skip players with no transfer value or free transfers
-          if (!player.transferValueAmount || player.transferValueAmount <= 0) {
-            return false
-          }
-
-          // Budget constraints
-          if (maxBudget.value && player.transferValueAmount > maxBudget.value * 1000000) {
-            return false
-          }
-
-          if (maxSalary.value && player.wageAmount > maxSalary.value * 1000) {
-            return false
-          }
-
-          // Age constraints
-          if (minAge.value && player.age < minAge.value) {
-            return false
-          }
-
-          if (maxAge.value && player.age > maxAge.value) {
-            return false
-          }
-
-          // Overall rating constraint
-          if (minOverall.value && player.Overall < minOverall.value) {
-            return false
-          }
-
-          return true
-        })
-
-        // Calculate value scores for filtered players
-        const playersWithScores = filtered.map(player => {
-          const overall = player.Overall || 0
-          const transferValue = player.transferValueAmount || 1
-
-          let rawScore = 0
-
-          // Tiered value calculation
-          if (overall >= 60) {
-            // Premium tier: (Rating - 50) × (Rating ÷ Value in millions)
-            rawScore = (overall - 50) * (overall / (transferValue / 1000000))
-          } else if (overall >= 55) {
-            // Decent tier: Rating ÷ Value in millions
-            rawScore = overall / (transferValue / 1000000)
-          } else {
-            // Budget tier: (Rating ÷ Value in millions) × 0.5
-            rawScore = (overall / (transferValue / 1000000)) * 0.5
-          }
-
-          return {
-            player,
-            rawScore
-          }
-        })
-
-        // Sort by raw score and take top 500
-        const topPlayers = playersWithScores
-          .sort((a, b) => b.rawScore - a.rawScore)
-          .slice(0, 500)
-
-        // Normalize scores (0-100 scale)
-        if (topPlayers.length > 0) {
-          const maxScore = topPlayers[0].rawScore
-          const minScore = topPlayers[topPlayers.length - 1].rawScore
-          const scoreRange = maxScore - minScore
-
-          bargainResults.value = topPlayers.map(item => ({
-            player: item.player,
-            valueScore: scoreRange > 0 ? ((item.rawScore - minScore) / scoreRange) * 100 : 100
-          }))
-        } else {
-          bargainResults.value = []
+        // Prepare request payload
+        const requestBody = {
+          maxBudget: maxBudget.value ? maxBudget.value * 1000000 : 0, // Convert to actual amount
+          maxSalary: maxSalary.value ? maxSalary.value * 1000 : 0, // Convert to actual amount
+          minAge: minAge.value || 0,
+          maxAge: maxAge.value || 0,
+          minOverall: minOverall.value || 0
         }
+
+        // Call backend API
+        const response = await fetch(`/api/bargain-hunter/${props.datasetId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestBody)
+        })
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+
+        const bargainData = await response.json()
+        bargainResults.value = bargainData || []
 
         // Update chart after a short delay
         await nextTick()

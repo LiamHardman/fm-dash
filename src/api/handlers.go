@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"log/slog"
+	"math"
 	"net/http"
 	"os"
 	"runtime"
@@ -1426,6 +1427,28 @@ func bargainHunterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// getExpectedValuePerRating returns the expected value-per-rating ratio (millions per overall point)
+// for players of different overall ratings, based on typical market pricing
+func getExpectedValuePerRating(overall float64) float64 {
+	// These values are based on typical FM market pricing patterns
+	// Higher rated players typically cost more per rating point due to scarcity
+	if overall >= 85 {
+		return 1.2 // Elite players: ~£1.2m per overall point
+	} else if overall >= 80 {
+		return 0.8 // World class players: ~£0.8m per overall point
+	} else if overall >= 75 {
+		return 0.5 // Quality players: ~£0.5m per overall point
+	} else if overall >= 70 {
+		return 0.3 // Good players: ~£0.3m per overall point
+	} else if overall >= 65 {
+		return 0.2 // Decent players: ~£0.2m per overall point
+	} else if overall >= 60 {
+		return 0.15 // Average players: ~£0.15m per overall point
+	} else {
+		return 0.1 // Below average players: ~£0.1m per overall point
+	}
+}
+
 // processBargainHunter calculates value scores and filters players by budget constraints
 func processBargainHunter(players []Player, maxBudget, maxSalary, minAge, maxAge, minOverall int64) []BargainHunterResponse {
 	var results []BargainHunterResponse
@@ -1465,20 +1488,51 @@ func processBargainHunter(players []Player, maxBudget, maxSalary, minAge, maxAge
 			continue
 		}
 
-		// Calculate value score using tiered approach
+		// Calculate value score using improved algorithm
 		var valueScore float64
 		overall := float64(player.Overall)
 		transferValueMillions := float64(player.TransferValueAmount) / 1000000.0
 
-		if overall >= 60 {
-			// Tier 1: Premium players (60+) - Weighted formula
-			valueScore = (overall - 50) * (overall / transferValueMillions)
+		// Prevent division by zero
+		if transferValueMillions == 0 {
+			continue
+		}
+
+		// Calculate value-per-rating ratio (millions per overall point)
+		valuePerRating := transferValueMillions / overall
+
+		// Use logarithmic scaling to reduce the penalty for expensive but valuable players
+		// This helps ensure that an 85-rated £50m player can compete with a 75-rated £5m player
+		logValuePerRating := math.Log10(valuePerRating + 1) // +1 to avoid log(0)
+
+		// Base efficiency score: higher overall rating and lower value-per-rating is better
+		baseEfficiency := overall / (logValuePerRating + 1)
+
+		// Apply tier-based multipliers to maintain some differentiation
+		if overall >= 80 {
+			// Elite players (80+) - Expect premium pricing, moderate penalty for cost
+			valueScore = baseEfficiency * 1.2
+		} else if overall >= 70 {
+			// Quality players (70-79) - Good balance of quality and value
+			valueScore = baseEfficiency * 1.0
+		} else if overall >= 60 {
+			// Decent players (60-69) - Should be better value for money
+			valueScore = baseEfficiency * 0.9
 		} else if overall >= 55 {
-			// Tier 2: Decent players (55-59) - Simple formula
-			valueScore = overall / transferValueMillions
+			// Budget players (55-59) - Expected to be cheap
+			valueScore = baseEfficiency * 0.8
 		} else {
-			// Tier 3: Budget/youth players (<55) - Penalized formula
-			valueScore = (overall / transferValueMillions) * 0.5
+			// Youth/development players (<55) - Penalized for poor current ability
+			valueScore = baseEfficiency * 0.6
+		}
+
+		// Apply bonus for exceptional value scenarios
+		// If a player's value-per-rating is significantly below their tier average
+		expectedValuePerRating := getExpectedValuePerRating(overall)
+		if valuePerRating < expectedValuePerRating*0.7 { // 30% below expected
+			valueScore *= 1.3 // 30% bonus for exceptional value
+		} else if valuePerRating < expectedValuePerRating*0.85 { // 15% below expected
+			valueScore *= 1.15 // 15% bonus for good value
 		}
 
 		logInfo(context.Background(), "Calculating value score",
