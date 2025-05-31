@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -540,6 +541,42 @@ func (s *S3Storage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets []s
 	}
 
 	log.Printf("Cleanup completed: deleted %d old datasets from S3", deletedCount)
+	return nil
+}
+
+// getFaceImage retrieves a face image from S3 and writes it to the response writer
+func (s *S3Storage) getFaceImage(ctx context.Context, filename string, w http.ResponseWriter) error {
+	if s.client == nil {
+		return fmt.Errorf("S3 client not available")
+	}
+
+	// Get the faces bucket name from environment, default to the main bucket + "/faces" prefix
+	facesBucketName := os.Getenv("S3_FACES_BUCKET")
+	if facesBucketName == "" {
+		facesBucketName = s.bucketName // Use same bucket as datasets
+	}
+
+	// Construct the object key for faces
+	objectKey := "faces/" + filename
+
+	// If we're using a separate faces bucket, don't add the prefix
+	if facesBucketName != s.bucketName {
+		objectKey = filename
+	}
+
+	// Get object from S3
+	reader, err := s.client.GetObject(ctx, facesBucketName, objectKey, minio.GetObjectOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get face image from S3: %w", err)
+	}
+	defer reader.Close()
+
+	// Copy the image data to the response writer
+	_, err = io.Copy(w, reader)
+	if err != nil {
+		return fmt.Errorf("failed to write face image to response: %w", err)
+	}
+
 	return nil
 }
 

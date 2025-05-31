@@ -11,6 +11,7 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"strconv"
@@ -1593,4 +1594,82 @@ func processBargainHunter(players []Player, maxBudget, maxSalary, minAge, maxAge
 	}
 
 	return results
+}
+
+// facesHandler serves player face images from S3 or local storage
+func facesHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	ctx, span := StartSpan(ctx, "handlers.faces")
+	defer span.End()
+
+	// Only allow GET requests
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract UID from query parameters
+	uid := r.URL.Query().Get("uid")
+	if uid == "" {
+		logWarn(ctx, "Missing uid parameter in faces request")
+		http.Error(w, "Missing 'uid' parameter", http.StatusBadRequest)
+		return
+	}
+
+	// Validate UID format (basic sanitation)
+	if len(uid) == 0 || len(uid) > 100 {
+		logWarn(ctx, "Invalid uid parameter length", "uid", uid)
+		http.Error(w, "Invalid UID format", http.StatusBadRequest)
+		return
+	}
+
+	logInfo(ctx, "Processing face image request", "uid", uid)
+
+	// Set appropriate headers for image response
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Cache-Control", "public, max-age=86400") // Cache for 24 hours
+	setCORSHeaders(w, r)
+
+	// Construct the face image filename
+	faceFileName := uid + ".png"
+
+	// Try S3 first if configured
+	if s3Storage, ok := storage.(*S3Storage); ok && s3Storage.client != nil {
+		logInfo(ctx, "Attempting to retrieve face from S3", "filename", faceFileName)
+
+		// Get face image from S3
+		if err := s3Storage.getFaceImage(ctx, faceFileName, w); err != nil {
+			logWarn(ctx, "Failed to retrieve face from S3", "filename", faceFileName, "error", err)
+			// Fall through to local storage
+		} else {
+			logInfo(ctx, "Successfully served face from S3", "filename", faceFileName)
+			return
+		}
+	}
+
+	// Try local storage as fallback
+	facesDir := getFacesDirectory()
+	faceFilePath := filepath.Join(facesDir, faceFileName)
+
+	logInfo(ctx, "Attempting to retrieve face from local storage", "path", faceFilePath)
+
+	// Check if file exists
+	if _, err := os.Stat(faceFilePath); os.IsNotExist(err) {
+		logWarn(ctx, "Face image not found", "path", faceFilePath)
+		http.Error(w, "Face image not found", http.StatusNotFound)
+		return
+	}
+
+	// Serve the file
+	http.ServeFile(w, r, faceFilePath)
+	logInfo(ctx, "Successfully served face from local storage", "path", faceFilePath)
+}
+
+// getFacesDirectory returns the directory path for local face storage
+func getFacesDirectory() string {
+	facesDir := os.Getenv("FACES_DIR")
+	if facesDir == "" {
+		facesDir = "./faces" // Default to "./faces" directory
+	}
+	return facesDir
 }

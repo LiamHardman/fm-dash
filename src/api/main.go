@@ -151,6 +151,9 @@ func main() {
 	// API endpoint for bargain hunter analysis
 	http.Handle("/api/bargain-hunter/", wrapHandler(http.HandlerFunc(bargainHunterHandler), "bargain-hunter"))
 
+	// API endpoint for serving player face images
+	http.Handle("/api/faces", wrapHandler(http.HandlerFunc(facesHandler), "faces"))
+
 	// Create HTTP server with timeouts and middleware
 	mux := http.NewServeMux()
 
@@ -177,6 +180,9 @@ func main() {
 	mux.Handle("/api/search/", wrapHandler(http.HandlerFunc(searchHandler), "search"))
 	mux.Handle("/api/config", wrapHandler(http.HandlerFunc(configHandler), "config"))
 	mux.Handle("/api/bargain-hunter/", wrapHandler(http.HandlerFunc(bargainHunterHandler), "bargain-hunter"))
+
+	// API endpoint for serving player face images
+	mux.Handle("/api/faces", wrapHandler(http.HandlerFunc(facesHandler), "faces"))
 
 	// Create server with proper timeouts
 	server := &http.Server{
