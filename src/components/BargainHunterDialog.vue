@@ -1,15 +1,13 @@
 <template>
     <q-dialog
         :model-value="show"
-        @update:model-value="$emit('close')"
+        @hide="$emit('close')"
         persistent
         maximized
-        transition-show="slide-up"
-        transition-hide="slide-down"
     >
         <q-card
             class="bargain-hunter-dialog"
-            :class="qInstance.dark.isActive ? 'bg-dark' : 'bg-grey-1'"
+            :class="qInstance.dark.isActive ? 'bg-grey-9' : 'bg-grey-1'"
         >
             <q-card-section
                 class="row items-center q-pb-none"
@@ -19,9 +17,9 @@
                         : 'bg-primary text-white'
                 "
             >
-                <q-icon name="local_offer" size="md" class="q-mr-sm" />
+                <q-icon name="search" class="q-mr-sm" />
                 <div class="text-h6">
-                    Bargain Hunter (Values in {{ currencySymbol }})
+                    Bargain Hunter
                 </div>
                 <q-space />
                 <q-btn
@@ -29,127 +27,177 @@
                     flat
                     round
                     dense
-                    v-close-popup
                     @click="$emit('close')"
                 />
             </q-card-section>
 
-            <q-card-section class="q-pt-md">
+            <q-card-section>
                 <!-- Filters Section -->
-                <div class="row q-col-gutter-md q-mb-md">
-                    <div class="col-12 col-md-2">
-                        <div
-                            class="text-caption q-mb-xs slider-label"
-                            :class="
-                                qInstance.dark.isActive
-                                    ? 'text-grey-4'
-                                    : 'text-grey-7'
-                            "
-                        >
-                            Max Transfer Budget:
-                            {{ maxBudget ? `${currencySymbol}${(maxBudget / 1000000).toFixed(1)}M` : 'No limit' }}
+                <q-card 
+                    class="q-mb-md filters-card" 
+                    :class="qInstance.dark.isActive ? 'bg-grey-8' : 'bg-white'"
+                    flat
+                >
+                    <q-card-section>
+                        <div class="text-subtitle1 q-mb-md">
+                            <q-icon name="tune" class="q-mr-sm" />
+                            Search Filters
                         </div>
-                        <q-slider
-                            v-model="maxBudget"
-                            :min="0"
-                            :max="100000000"
-                            :step="1000000"
-                            color="primary"
-                            class="q-px-sm"
-                            @update:model-value="onFiltersChanged"
-                        />
-                    </div>
-                    <div class="col-12 col-md-2">
-                        <div
-                            class="text-caption q-mb-xs slider-label"
-                            :class="
-                                qInstance.dark.isActive
-                                    ? 'text-grey-4'
-                                    : 'text-grey-7'
-                            "
-                        >
-                            Max Salary:
-                            {{ maxSalary ? `${currencySymbol}${(maxSalary / 1000).toFixed(0)}k` : 'No limit' }}
+                        
+                        <div class="row q-gutter-md">
+                            <div class="col-12 col-md-2">
+                                <q-input
+                                    v-model.number="maxBudget"
+                                    type="number"
+                                    label="Max Transfer Value (M)"
+                                    outlined
+                                    dense
+                                    @update:model-value="onFiltersChanged"
+                                />
+                            </div>
+                            
+                            <div class="col-12 col-md-2">
+                                <q-input
+                                    v-model.number="maxSalary"
+                                    type="number"
+                                    label="Max Wage (K/week)"
+                                    outlined
+                                    dense
+                                    @update:model-value="onFiltersChanged"
+                                />
+                            </div>
+                            
+                            <div class="col-12 col-md-2">
+                                <q-input
+                                    v-model.number="minAge"
+                                    type="number"
+                                    label="Min Age"
+                                    outlined
+                                    dense
+                                    @update:model-value="onFiltersChanged"
+                                />
+                            </div>
+                            
+                            <div class="col-12 col-md-2">
+                                <q-input
+                                    v-model.number="maxAge"
+                                    type="number"
+                                    label="Max Age"
+                                    outlined
+                                    dense
+                                    @update:model-value="onFiltersChanged"
+                                />
+                            </div>
+                            
+                            <div class="col-12 col-md-2">
+                                <q-input
+                                    v-model.number="minOverall"
+                                    type="number"
+                                    label="Min Overall"
+                                    outlined
+                                    dense
+                                    @update:model-value="onFiltersChanged"
+                                />
+                            </div>
+                            
+                            <div class="col-12 col-md-1">
+                                <q-btn 
+                                    color="primary" 
+                                    icon="search" 
+                                    label="Search" 
+                                    @click="findBargains"
+                                    :loading="loading"
+                                    class="full-width"
+                                />
+                            </div>
                         </div>
-                        <q-slider
-                            v-model="maxSalary"
-                            :min="0"
-                            :max="500000"
-                            :step="5000"
-                            color="primary"
-                            class="q-px-sm"
-                            @update:model-value="onFiltersChanged"
-                        />
-                    </div>
-                    <div class="col-12 col-md-2">
-                        <div
-                            class="text-caption q-mb-xs slider-label"
-                            :class="
-                                qInstance.dark.isActive
-                                    ? 'text-grey-4'
-                                    : 'text-grey-7'
-                            "
-                        >
-                            Min Age:
-                            {{ minAge ? `${minAge} years` : 'Any age' }}
-                        </div>
-                        <q-slider
-                            v-model="minAge"
-                            :min="14"
-                            :max="50"
-                            :step="1"
-                            color="primary"
-                            class="q-px-sm"
-                            @update:model-value="onFiltersChanged"
-                        />
-                    </div>
-                    <div class="col-12 col-md-2">
-                        <div
-                            class="text-caption q-mb-xs slider-label"
-                            :class="
-                                qInstance.dark.isActive
-                                    ? 'text-grey-4'
-                                    : 'text-grey-7'
-                            "
-                        >
-                            Max Age:
-                            {{ maxAge ? `${maxAge} years` : 'Any age' }}
-                        </div>
-                        <q-slider
-                            v-model="maxAge"
-                            :min="14"
-                            :max="50"
-                            :step="1"
-                            color="primary"
-                            class="q-px-sm"
-                            @update:model-value="onFiltersChanged"
-                        />
-                    </div>
-                    <div class="col-12 col-md-2">
-                        <div
-                            class="text-caption q-mb-xs slider-label"
-                            :class="
-                                qInstance.dark.isActive
-                                    ? 'text-grey-4'
-                                    : 'text-grey-7'
-                            "
-                        >
-                            Min Overall:
-                            {{ minOverall ? `${minOverall} OVR` : 'Any rating' }}
-                        </div>
-                        <q-slider
-                            v-model="minOverall"
-                            :min="1"
-                            :max="99"
-                            :step="1"
-                            color="primary"
-                            class="q-px-sm"
-                            @update:model-value="onFiltersChanged"
-                        />
-                    </div>
-                </div>
 
-                <!-- Info Section -->
+                        <!-- Value Score Tier Filters -->
+                        <q-separator class="q-my-md" />
+                        <div class="text-subtitle2 q-mb-sm">
+                            <q-icon name="filter_list" class="q-mr-sm" />
+                            Show Value Score Tiers
+                        </div>
+                        <div class="row q-gutter-md">
+                            <div class="col-auto">
+                                <q-checkbox
+                                    v-model="showExcellentValue"
+                                    label="Excellent (80-100)"
+                                    color="positive"
+                                    @update:model-value="onValueTierChanged"
+                                />
+                                <q-icon 
+                                    name="circle" 
+                                    color="positive" 
+                                    size="xs" 
+                                    class="q-ml-xs"
+                                    style="color: #00C851 !important;"
+                                />
+                            </div>
+                            <div class="col-auto">
+                                <q-checkbox
+                                    v-model="showGreatValue"
+                                    label="Great (60-79)"
+                                    color="positive"
+                                    @update:model-value="onValueTierChanged"
+                                />
+                                <q-icon 
+                                    name="circle" 
+                                    color="positive" 
+                                    size="xs" 
+                                    class="q-ml-xs"
+                                    style="color: #2E7D32 !important;"
+                                />
+                            </div>
+                            <div class="col-auto">
+                                <q-checkbox
+                                    v-model="showGoodValue"
+                                    label="Good (40-59)"
+                                    color="orange"
+                                    @update:model-value="onValueTierChanged"
+                                />
+                                <q-icon 
+                                    name="circle" 
+                                    color="orange" 
+                                    size="xs" 
+                                    class="q-ml-xs"
+                                    style="color: #FF6F00 !important;"
+                                />
+                            </div>
+                            <div class="col-auto">
+                                <q-checkbox
+                                    v-model="showMediocreValue"
+                                    label="Mediocre (20-39)"
+                                    color="negative"
+                                    @update:model-value="onValueTierChanged"
+                                />
+                                <q-icon 
+                                    name="circle" 
+                                    color="negative" 
+                                    size="xs" 
+                                    class="q-ml-xs"
+                                    style="color: #FF5722 !important;"
+                                />
+                            </div>
+                            <div class="col-auto">
+                                <q-checkbox
+                                    v-model="showPoorValue"
+                                    label="Poor (0-19)"
+                                    color="grey"
+                                    @update:model-value="onValueTierChanged"
+                                />
+                                <q-icon 
+                                    name="circle" 
+                                    color="grey" 
+                                    size="xs" 
+                                    class="q-ml-xs"
+                                    style="color: #757575 !important;"
+                                />
+                            </div>
+                        </div>
+                    </q-card-section>
+                </q-card>
+
                 <q-card
                     class="q-mb-md info-card"
                     :class="qInstance.dark.isActive ? 'bg-grey-8' : 'bg-blue-1'"
@@ -173,87 +221,89 @@
                     </q-card-section>
                 </q-card>
 
-                <!-- Chart Section -->
+                <!-- Enhanced Chart Section with ECharts -->
                 <q-card
-                    v-if="bargainResults.length > 0 && !loading"
+                    v-if="filteredBargainResults.length > 0 && !loading"
                     class="q-mb-md chart-card"
                     :class="qInstance.dark.isActive ? 'bg-grey-8' : 'bg-white'"
+                    flat
                 >
                     <q-card-section>
                         <div class="text-subtitle1 q-mb-md">
                             <q-icon name="scatter_plot" class="q-mr-sm" />
                             Value Score vs Overall Rating
                             <q-btn 
-                                v-if="bargainResults.length > 0"
+                                v-if="filteredBargainResults.length > 0"
                                 size="sm" 
                                 flat 
                                 icon="refresh" 
-                                @click="createChart"
+                                @click="refreshChart"
                                 class="q-ml-sm"
                                 title="Refresh Chart"
                             />
                         </div>
                         <div class="chart-container">
-                            <canvas ref="chartCanvas" width="400" height="200"></canvas>
-                            <div v-if="!chartInstance" class="chart-loading text-center q-pa-md">
-                                <q-spinner color="primary" size="2em" />
-                                <div class="text-caption q-mt-sm">Loading chart...</div>
-                            </div>
+                            <v-chart
+                                ref="chartRef"
+                                :option="chartOption"
+                                :theme="qInstance.dark.isActive ? 'dark' : 'light'"
+                                autoresize
+                                @click="handleChartClick"
+                                class="chart"
+                            />
                         </div>
                         <div class="text-caption q-mt-sm text-grey-6">
-                            Top 500 players shown. Value scores are normalized (0-100). Ideal bargains appear in the top-right (high value score, high overall).
+                            {{ filteredBargainResults.length }} players shown (filtered from {{ bargainResults.length }} total results). 
+                            Value scores are normalized (0-100). Ideal bargains appear in the top-right (high value score, high overall).
+                            <strong>Tip:</strong> Click points to view player details, use mouse wheel to zoom, drag to pan.
                         </div>
                     </q-card-section>
                 </q-card>
 
                 <!-- Loading State -->
                 <div v-if="loading" class="text-center q-my-xl">
-                    <q-spinner-dots color="primary" size="3em" />
-                    <div
-                        class="q-mt-md text-caption"
-                        :class="
-                            qInstance.dark.isActive
-                                ? 'text-grey-5'
-                                : 'text-grey-7'
-                        "
-                    >
-                        Finding bargains...
+                    <q-spinner color="primary" size="3em" />
+                    <div class="text-h6 q-mt-md">
+                        Finding the best bargains...
                     </div>
                 </div>
 
-                <!-- Results -->
-                <div v-else-if="bargainResults.length > 0">
-                    <div class="text-subtitle1 q-mb-md">
-                        {{ bargainResults.length }} players found within budget
-                        <span v-if="maxBudget || maxSalary" class="text-caption text-grey-6">
-                            (filtered by budget constraints)
-                        </span>
-                    </div>
-                    
-                    <q-card
-                        class="bargain-table-container"
-                        :class="qInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'"
-                    >
+                <!-- Results Table -->
+                <div v-if="filteredBargainResults.length > 0 && !loading">
+                    <q-card class="bargain-table-container" flat>
                         <q-card-section>
+                            <div class="text-subtitle1 q-mb-md">
+                                <q-icon name="list" class="q-mr-sm" />
+                                Best Value Players ({{ filteredBargainResults.length }} shown{{ bargainResults.length !== filteredBargainResults.length ? ` of ${bargainResults.length} total` : '' }})
+                            </div>
+                            
                             <q-table
-                                :rows="bargainResults"
+                                :rows="filteredBargainResults"
                                 :columns="tableColumns"
-                                row-key="player.name"
                                 :pagination="tablePagination"
-                                :loading="loading"
-                                dense
-                                :dark="qInstance.dark.isActive"
-                                @row-click="handlePlayerSelected"
+                                row-key="player.name"
+                                flat
+                                class="bargain-table"
+                                :class="qInstance.dark.isActive ? 'bg-grey-8' : 'bg-white'"
                             >
+                                <template v-slot:body-cell-player="props">
+                                    <q-td :props="props">
+                                        <div 
+                                            class="player-cell cursor-pointer" 
+                                            @click="handlePlayerSelected(null, props.row)"
+                                        >
+                                            <div class="text-weight-bold text-primary">{{ props.value.name }}</div>
+                                            <div class="text-caption text-grey-6">{{ props.value.club }}</div>
+                                        </div>
+                                    </q-td>
+                                </template>
+                                
                                 <template v-slot:body-cell-valueScore="props">
                                     <q-td :props="props">
-                                        <q-chip 
-                                            :color="getValueScoreColor(props.value)"
-                                            text-color="white"
-                                            size="sm"
-                                        >
-                                            {{ formatValueScore(props.value) }}
-                                        </q-chip>
+                                        <q-badge 
+                                            :color="getValueScoreColor(props.value)" 
+                                            :label="formatValueScore(props.value)"
+                                        />
                                     </q-td>
                                 </template>
                                 
@@ -282,13 +332,15 @@
                 </div>
 
                 <!-- Empty State -->
-                <div v-else class="text-center q-my-xl">
+                <div v-else-if="!loading" class="text-center q-my-xl">
                     <q-icon name="search_off" size="4em" color="grey-5" />
                     <div class="text-h6 q-mt-md text-grey-6">
-                        No players found
+                        <span v-if="bargainResults.length === 0">No players found</span>
+                        <span v-else>No players match current value score filters</span>
                     </div>
                     <div class="text-body2 text-grey-5">
-                        Try adjusting your budget constraints or check if data is loaded
+                        <span v-if="bargainResults.length === 0">Try adjusting your budget constraints or check if data is loaded</span>
+                        <span v-else>Try enabling more value score tiers above or adjusting your search filters</span>
                     </div>
                 </div>
             </q-card-section>
@@ -306,36 +358,40 @@
 </template>
 
 <script>
+import { use } from 'echarts/core'
+import { CanvasRenderer } from 'echarts/renderers'
+import { ScatterChart } from 'echarts/charts'
 import {
-  CategoryScale,
-  Chart as ChartJS,
-  Legend,
-  LinearScale,
-  PointElement,
-  ScatterController,
-  Title,
-  Tooltip
-} from 'chart.js'
+  TitleComponent,
+  TooltipComponent,
+  GridComponent,
+  DataZoomComponent,
+  BrushComponent,
+  ToolboxComponent
+} from 'echarts/components'
+import VChart from 'vue-echarts'
 import { useQuasar } from 'quasar'
 import { computed, defineComponent, nextTick, onMounted, ref, watch } from 'vue'
 import { formatCurrency } from '../utils/currencyUtils'
 import PlayerDetailDialog from './PlayerDetailDialog.vue'
 
-// Register Chart.js components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  Title,
-  Tooltip,
-  Legend,
-  ScatterController
-)
+// Register ECharts components
+use([
+  CanvasRenderer,
+  ScatterChart,
+  TitleComponent,
+  TooltipComponent,
+  GridComponent,
+  DataZoomComponent,
+  BrushComponent,
+  ToolboxComponent
+])
 
 export default defineComponent({
   name: 'BargainHunterDialog',
   components: {
-    PlayerDetailDialog
+    PlayerDetailDialog,
+    VChart
   },
   props: {
     show: {
@@ -369,147 +425,411 @@ export default defineComponent({
     const selectedPlayer = ref(null)
     const showPlayerDetail = ref(false)
     const bargainResults = ref([])
-    const chartCanvas = ref(null)
-    const chartInstance = ref(null)
+    const chartRef = ref(null)
+    const showExcellentValue = ref(true)
+    const showGreatValue = ref(true)
+    const showGoodValue = ref(true)
+    const showMediocreValue = ref(false)
+    const showPoorValue = ref(false)
 
     // Table configuration
     const tableColumns = [
       {
+        name: 'player',
+        required: true,
+        label: 'Player',
+        align: 'left',
+        field: row => row.player,
+        format: val => val.name,
+        sortable: true
+      },
+      {
         name: 'valueScore',
+        align: 'center',
         label: 'Value Score',
         field: 'valueScore',
         sortable: true,
-        sort: (a, b) => b - a, // Highest first
-        align: 'center'
-      },
-      {
-        name: 'name',
-        label: 'Name',
-        field: row => row.player.name,
-        sortable: true,
-        align: 'left'
+        sort: (a, b) => parseFloat(a) - parseFloat(b)
       },
       {
         name: 'overall',
+        align: 'center',
         label: 'Overall',
         field: row => row.player.Overall,
-        sortable: true,
-        align: 'center'
+        sortable: true
       },
       {
         name: 'age',
+        align: 'center',
         label: 'Age',
         field: row => row.player.age,
-        sortable: true,
-        align: 'center'
-      },
-      {
-        name: 'position',
-        label: 'Position',
-        field: row => row.player.shortPositions?.join('/') || '-',
-        sortable: true,
-        align: 'center'
+        sortable: true
       },
       {
         name: 'transferValue',
+        align: 'right',
         label: 'Transfer Value',
         field: row => row.player.transferValueAmount,
-        sortable: true,
-        align: 'right'
+        sortable: true
       },
       {
         name: 'wage',
+        align: 'right',
         label: 'Wage',
         field: row => row.player.wageAmount,
-        sortable: true,
-        align: 'right'
-      },
-      {
-        name: 'club',
-        label: 'Club',
-        field: row => row.player.club,
-        sortable: true,
-        align: 'left'
+        sortable: true
       }
     ]
 
     const tablePagination = ref({
-      page: 1,
-      rowsPerPage: 25,
-      sortBy: 'valueScore',
-      descending: true
+      rowsPerPage: 25
+    })
+
+    // Enhanced ECharts configuration
+    const chartOption = computed(() => {
+      if (!bargainResults.value.length) return {}
+
+      // Filter data based on selected value score tiers
+      const filteredResults = bargainResults.value.filter(result => {
+        const score = result.valueScore
+        if (score >= 80 && showExcellentValue.value) return true
+        if (score >= 60 && score < 80 && showGreatValue.value) return true
+        if (score >= 40 && score < 60 && showGoodValue.value) return true
+        if (score >= 20 && score < 40 && showMediocreValue.value) return true
+        if (score < 20 && showPoorValue.value) return true
+        return false
+      })
+
+      const scatterData = filteredResults
+        .slice(0, 500)
+        .map((result, index) => [
+          result.player.Overall, // x: Overall rating
+          result.valueScore,     // y: Value score
+          result.player.name,    // name for tooltip
+          result.player.club,    // club for tooltip
+          result.player.age,     // age for tooltip
+          result.player.transferValueAmount, // transfer value for tooltip
+          bargainResults.value.indexOf(result) // original index for click handling
+        ])
+
+      return {
+        animation: true,
+        animationDuration: 1000,
+        animationEasing: 'elasticOut',
+        grid: {
+          left: '8%',
+          right: '8%',
+          top: '15%',
+          bottom: '20%',
+          containLabel: true
+        },
+        toolbox: {
+          feature: {
+            dataZoom: {
+              yAxisIndex: false
+            },
+            brush: {
+              type: ['rect', 'polygon', 'clear']
+            },
+            saveAsImage: {
+              title: 'Save Chart'
+            }
+          },
+          right: '2%',
+          top: '2%'
+        },
+        brush: {
+          toolbox: ['rect', 'polygon', 'clear'],
+          xAxisIndex: 0,
+          yAxisIndex: 0
+        },
+        tooltip: {
+          trigger: 'item',
+          backgroundColor: qInstance.dark.isActive ? 'rgba(50, 50, 50, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+          borderColor: qInstance.dark.isActive ? '#555' : '#ddd',
+          textStyle: {
+            color: qInstance.dark.isActive ? '#fff' : '#333'
+          },
+          formatter: (params) => {
+            const [overall, valueScore, name, club, age, transferValue] = params.data
+            return `
+              <div style="font-weight: bold; margin-bottom: 8px; font-size: 14px;">${name}</div>
+              <div style="margin-bottom: 4px;"><strong>Club:</strong> ${club}</div>
+              <div style="margin-bottom: 4px;"><strong>Overall:</strong> ${overall}</div>
+              <div style="margin-bottom: 4px;"><strong>Value Score:</strong> ${formatValueScore(valueScore)}</div>
+              <div style="margin-bottom: 4px;"><strong>Age:</strong> ${age}</div>
+              <div><strong>Transfer Value:</strong> ${formatCurrency(transferValue, props.currencySymbol)}</div>
+            `
+          }
+        },
+        xAxis: {
+          type: 'value',
+          name: 'Overall Rating',
+          nameLocation: 'middle',
+          nameTextStyle: {
+            padding: [20, 0, 0, 0],
+            fontSize: 14,
+            fontWeight: 'bold'
+          },
+          min: 45,
+          max: 100,
+          splitLine: {
+            show: true,
+            lineStyle: {
+              opacity: 0.3
+            }
+          },
+          axisLine: {
+            lineStyle: {
+              color: qInstance.dark.isActive ? '#555' : '#999'
+            }
+          }
+        },
+        yAxis: {
+          type: 'value',
+          name: 'Value Score',
+          nameLocation: 'middle',
+          nameTextStyle: {
+            padding: [0, 0, 40, 0],
+            fontSize: 14,
+            fontWeight: 'bold'
+          },
+          min: 0,
+          max: 100,
+          splitLine: {
+            show: true,
+            lineStyle: {
+              opacity: 0.3
+            }
+          },
+          axisLine: {
+            lineStyle: {
+              color: qInstance.dark.isActive ? '#555' : '#999'
+            }
+          }
+        },
+        dataZoom: [
+          {
+            type: 'inside',
+            xAxisIndex: 0,
+            filterMode: 'none'
+          },
+          {
+            type: 'inside',
+            yAxisIndex: 0,
+            filterMode: 'none'
+          },
+          {
+            type: 'slider',
+            xAxisIndex: 0,
+            height: 20,
+            bottom: 40
+          }
+        ],
+        series: [
+          {
+            type: 'scatter',
+            data: scatterData,
+            symbolSize: (data) => {
+              // Make high-value players slightly larger
+              const valueScore = data[1]
+              return Math.max(6, Math.min(12, valueScore / 8))
+            },
+            itemStyle: {
+              color: (params) => {
+                const valueScore = params.data[1]
+                const overall = params.data[0]
+                
+                // Color based on value score with overall rating influence
+                if (valueScore >= 80) return '#00C851' // Green for excellent value
+                if (valueScore >= 60) return '#2E7D32' // Dark green for great value
+                if (valueScore >= 40) return '#FF6F00' // Orange for good value
+                if (valueScore >= 20) return '#FF5722' // Red-orange for fair value
+                return '#757575' // Grey for poor value
+              },
+              borderColor: '#fff',
+              borderWidth: 1,
+              opacity: 0.8
+            },
+            emphasis: {
+              itemStyle: {
+                opacity: 1,
+                borderWidth: 2,
+                shadowBlur: 10,
+                shadowColor: 'rgba(0, 0, 0, 0.3)'
+              }
+            },
+            markLine: {
+              silent: true,
+              lineStyle: {
+                color: qInstance.dark.isActive ? '#666' : '#ccc',
+                type: 'dashed',
+                opacity: 0.6
+              },
+              data: [
+                { xAxis: 75, label: { formatter: 'Good Overall (75)', position: 'end' } },
+                { yAxis: 50, label: { formatter: 'Decent Value (50)', position: 'end' } }
+              ]
+            }
+          }
+        ]
+      }
+    })
+
+    // Filtered results for table display
+    const filteredBargainResults = computed(() => {
+      return bargainResults.value.filter(result => {
+        const score = result.valueScore
+        if (score >= 80 && showExcellentValue.value) return true
+        if (score >= 60 && score < 80 && showGreatValue.value) return true
+        if (score >= 40 && score < 60 && showGoodValue.value) return true
+        if (score >= 20 && score < 40 && showMediocreValue.value) return true
+        if (score < 20 && showPoorValue.value) return true
+        return false
+      })
     })
 
     // Methods
     const findBargains = async () => {
-      if (!props.datasetId) {
-        qInstance.notify({
-          color: 'negative',
-          message: 'Dataset ID is required',
-          icon: 'error'
-        })
+      if (!props.players || props.players.length === 0) {
+        console.warn('No players data available')
         return
       }
 
       loading.value = true
+
       try {
-        const response = await fetch(`/api/bargain-hunter/${props.datasetId}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            maxBudget: maxBudget.value || 0,
-            maxSalary: maxSalary.value || 0,
-            minAge: minAge.value || 0,
-            maxAge: maxAge.value || 0,
-            minOverall: minOverall.value || 0
-          })
+        await nextTick()
+
+        // Filter players based on criteria
+        let filtered = props.players.filter(player => {
+          // Skip players with no transfer value or free transfers
+          if (!player.transferValueAmount || player.transferValueAmount <= 0) {
+            return false
+          }
+
+          // Budget constraints
+          if (maxBudget.value && player.transferValueAmount > maxBudget.value * 1000000) {
+            return false
+          }
+
+          if (maxSalary.value && player.wageAmount > maxSalary.value * 1000) {
+            return false
+          }
+
+          // Age constraints
+          if (minAge.value && player.age < minAge.value) {
+            return false
+          }
+
+          if (maxAge.value && player.age > maxAge.value) {
+            return false
+          }
+
+          // Overall rating constraint
+          if (minOverall.value && player.Overall < minOverall.value) {
+            return false
+          }
+
+          return true
         })
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
+        // Calculate value scores for filtered players
+        const playersWithScores = filtered.map(player => {
+          const overall = player.Overall || 0
+          const transferValue = player.transferValueAmount || 1
+
+          let rawScore = 0
+
+          // Tiered value calculation
+          if (overall >= 60) {
+            // Premium tier: (Rating - 50) × (Rating ÷ Value in millions)
+            rawScore = (overall - 50) * (overall / (transferValue / 1000000))
+          } else if (overall >= 55) {
+            // Decent tier: Rating ÷ Value in millions
+            rawScore = overall / (transferValue / 1000000)
+          } else {
+            // Budget tier: (Rating ÷ Value in millions) × 0.5
+            rawScore = (overall / (transferValue / 1000000)) * 0.5
+          }
+
+          return {
+            player,
+            rawScore
+          }
+        })
+
+        // Sort by raw score and take top 500
+        const topPlayers = playersWithScores
+          .sort((a, b) => b.rawScore - a.rawScore)
+          .slice(0, 500)
+
+        // Normalize scores (0-100 scale)
+        if (topPlayers.length > 0) {
+          const maxScore = topPlayers[0].rawScore
+          const minScore = topPlayers[topPlayers.length - 1].rawScore
+          const scoreRange = maxScore - minScore
+
+          bargainResults.value = topPlayers.map(item => ({
+            player: item.player,
+            valueScore: scoreRange > 0 ? ((item.rawScore - minScore) / scoreRange) * 100 : 100
+          }))
+        } else {
+          bargainResults.value = []
         }
 
-        const data = await response.json()
-        bargainResults.value = data || []
+        // Update chart after a short delay
+        await nextTick()
+        setTimeout(() => {
+          if (chartRef.value && bargainResults.value.length > 0) {
+            refreshChart()
+          }
+        }, 100)
+
       } catch (error) {
         console.error('Error finding bargains:', error)
         qInstance.notify({
+          message: 'Error finding bargains. Please try again.',
           color: 'negative',
-          message: 'Failed to find bargains',
           icon: 'error'
         })
-        bargainResults.value = []
       } finally {
         loading.value = false
       }
     }
 
-    const onFiltersChanged = () => {
-      // Debounce the filter changes
-      clearTimeout(onFiltersChanged.timeout)
-      onFiltersChanged.timeout = setTimeout(() => {
-        if (props.show) {
+    const onFiltersChanged = async () => {
+      // Debounce the search to avoid too many calls
+      clearTimeout(onFiltersChanged.timeoutId)
+      onFiltersChanged.timeoutId = setTimeout(() => {
+        if (props.show && props.datasetId) {
           findBargains()
         }
       }, 300)
     }
 
-    const handlePlayerSelected = (_evt, row) => {
-      selectedPlayer.value = row.player
+    const onValueTierChanged = async () => {
+      // Debounce the search to avoid too many calls
+      clearTimeout(onValueTierChanged.timeoutId)
+      onValueTierChanged.timeoutId = setTimeout(() => {
+        if (props.show && props.datasetId) {
+          findBargains()
+        }
+      }, 300)
+    }
+
+    const handlePlayerSelected = (evt, rowData) => {
+      const player = rowData.player || rowData
+      selectedPlayer.value = player
       showPlayerDetail.value = true
     }
 
-    const formatValueScore = score => {
-      if (score >= 1000) {
-        return `${(score / 1000).toFixed(1)}k`
-      }
-      return score.toFixed(1)
+    const formatValueScore = (score) => {
+      if (typeof score !== 'number') return '0'
+      return Math.round(score).toString()
     }
 
-    const getValueScoreColor = score => {
-      if (score >= 100) return 'green'
+    const getValueScoreColor = (score) => {
       if (score >= 50) return 'positive'
       if (score >= 25) return 'orange'
       if (score >= 10) return 'warning'
@@ -524,139 +844,21 @@ export default defineComponent({
       return 'text-grey'
     }
 
-    const createChart = () => {
-      if (!chartCanvas.value) {
-        console.warn('Canvas element not available for chart creation')
-        return
-      }
-
-      if (!bargainResults.value.length) {
-        console.warn('No bargain results available for chart')
-        return
-      }
-
-      // Destroy existing chart
-      if (chartInstance.value) {
-        chartInstance.value.destroy()
-        chartInstance.value = null
-      }
-
-      try {
-        const ctx = chartCanvas.value.getContext('2d')
-
-        if (!ctx) {
-          console.error('Could not get 2D context from canvas')
-          return
-        }
-
-        // Set canvas size explicitly
-        chartCanvas.value.width = 400
-        chartCanvas.value.height = 200
-
-        // Prepare data for scatter plot
-        const scatterData = bargainResults.value
-          .slice(0, 500) // Take top 500 players for chart (increased from 100)
-          .map(result => ({
-            x: result.player.Overall, // Overall rating (0-100)
-            y: result.valueScore, // Normalized value score (0-100)
-            player: result.player,
-            originalValueScore: result.valueScore
-          }))
-
-        const config = {
-          type: 'scatter',
-          data: {
-            datasets: [
-              {
-                label: 'Players',
-                data: scatterData,
-                backgroundColor: 'rgba(26, 35, 126, 0.6)',
-                borderColor: 'rgba(26, 35, 126, 0.8)',
-                pointRadius: 6,
-                pointHoverRadius: 8
-              }
-            ]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: {
-                display: false
-              },
-              tooltip: {
-                callbacks: {
-                  title: context => {
-                    const point = context[0]
-                    return point.raw.player.name
-                  },
-                  label: context => {
-                    const point = context.raw
-                    return [
-                      `Overall: ${point.x}`,
-                      `Value Score: ${formatValueScore(point.originalValueScore)}`,
-                      `Club: ${point.player.club}`,
-                      `Age: ${point.player.age}`,
-                      `Transfer Value: ${formatCurrency(point.player.transferValueAmount, props.currencySymbol)}`
-                    ]
-                  }
-                }
-              }
-            },
-            scales: {
-              x: {
-                type: 'linear',
-                position: 'bottom',
-                title: {
-                  display: true,
-                  text: 'Overall Rating'
-                },
-                min: 0,
-                max: 100,
-                grid: {
-                  color: qInstance.dark.isActive ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
-                },
-                ticks: {
-                  color: qInstance.dark.isActive ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)'
-                }
-              },
-              y: {
-                title: {
-                  display: true,
-                  text: 'Value Score (0-100)'
-                },
-                min: 0,
-                max: 100,
-                grid: {
-                  color: qInstance.dark.isActive ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
-                },
-                ticks: {
-                  color: qInstance.dark.isActive ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)'
-                }
-              }
-            },
-            onClick: (_event, elements) => {
-              if (elements.length > 0) {
-                const element = elements[0]
-                const dataIndex = element.index
-                const player = scatterData[dataIndex].player
-                handlePlayerSelected(null, { player })
-              }
-            }
-          }
-        }
-        chartInstance.value = new ChartJS(ctx, config)
-      } catch (error) {
-        console.error('Error creating chart:', error)
+    const refreshChart = () => {
+      if (chartRef.value) {
+        // Force chart to refresh with current data
+        chartRef.value.setOption(chartOption.value, true)
       }
     }
 
-    const updateChart = async () => {
-      await nextTick()
-      // Wait a bit more to ensure DOM is fully rendered
-      setTimeout(() => {
-        createChart()
-      }, 200) // Increased timeout to ensure DOM is ready
+    const handleChartClick = (event) => {
+      if (event.data && event.data.length > 6) {
+        const originalIndex = event.data[6] // Get the original index we stored
+        if (bargainResults.value[originalIndex]) {
+          const player = bargainResults.value[originalIndex].player
+          handlePlayerSelected(null, { player: player })
+        }
+      }
     }
 
     // Watchers
@@ -668,9 +870,9 @@ export default defineComponent({
           await findBargains()
         } else if (!newShow) {
           // Cleanup chart when dialog closes
-          if (chartInstance.value) {
-            chartInstance.value.destroy()
-            chartInstance.value = null
+          if (chartRef.value) {
+            chartRef.value.dispose()
+            chartRef.value = null
           }
         }
       }
@@ -681,7 +883,13 @@ export default defineComponent({
       () => bargainResults.value,
       async newResults => {
         if (newResults.length > 0 && props.show) {
-          await updateChart()
+          await nextTick()
+          // Wait a bit more to ensure DOM is fully rendered
+          setTimeout(() => {
+            if (chartRef.value) {
+              refreshChart()
+            }
+          }, 200)
         }
       },
       { deep: true }
@@ -705,18 +913,26 @@ export default defineComponent({
       selectedPlayer,
       showPlayerDetail,
       bargainResults,
-      chartCanvas,
-      chartInstance,
+      chartRef,
+      chartOption,
       tableColumns,
       tablePagination,
       onFiltersChanged,
+      onValueTierChanged,
       handlePlayerSelected,
       formatValueScore,
       getValueScoreColor,
       getOverallClass,
       formatCurrency,
-      createChart,
-      updateChart
+      findBargains,
+      refreshChart,
+      handleChartClick,
+      showExcellentValue,
+      showGreatValue,
+      showGoodValue,
+      showMediocreValue,
+      showPoorValue,
+      filteredBargainResults
     }
   }
 })
@@ -738,6 +954,10 @@ export default defineComponent({
         }
     }
     
+    .filters-card {
+        border-left: 4px solid var(--q-primary);
+    }
+    
     .info-card {
         border-left: 4px solid var(--q-primary);
     }
@@ -746,21 +966,25 @@ export default defineComponent({
         border-left: 4px solid var(--q-positive);
         
         .chart-container {
-            height: 300px;
+            height: 500px;
             position: relative;
             
-            canvas {
-                max-height: 100%;
+            .chart {
                 width: 100% !important;
                 height: 100% !important;
             }
-            
-            .chart-loading {
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                z-index: 10;
+        }
+    }
+    
+    .player-cell {
+        &:hover {
+            background-color: rgba(25, 118, 210, 0.04);
+            border-radius: 4px;
+        }
+        
+        .text-primary {
+            &:hover {
+                text-decoration: underline;
             }
         }
     }
@@ -770,6 +994,23 @@ export default defineComponent({
 .q-card-section {
     &:last-child {
         padding-bottom: 24px;
+    }
+}
+
+// Enhanced responsive design
+@media (max-width: 768px) {
+    .bargain-hunter-dialog {
+        .chart-card .chart-container {
+            height: 400px;
+        }
+    }
+}
+
+@media (max-width: 480px) {
+    .bargain-hunter-dialog {
+        .chart-card .chart-container {
+            height: 300px;
+        }
     }
 }
 </style> 
