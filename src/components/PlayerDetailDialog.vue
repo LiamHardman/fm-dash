@@ -634,13 +634,13 @@
                                                             : 'bg-white text-dark'
                                                     "
                                                     :delay="500"
-                                                    max-width="300px"
+                                                    max-width="350px"
                                                 >
                                                     <div class="text-weight-medium q-mb-xs">
                                                         {{ stat.label }}
                                                     </div>
                                                     <div class="text-caption">
-                                                        {{ fifaAttributeDescriptions[stat.name] || 'No description available' }}
+                                                        {{ fifaToFmAttributeMapping[stat.name]?.description || 'No FM attribute mapping available' }}
                                                     </div>
                                                 </q-tooltip>
                                             </q-card>
@@ -1196,6 +1196,72 @@ const fifaAttributeDescriptions = {
   REF: 'Reflexes and reaction speed when making saves',
   SPD: 'Speed when rushing out or moving around the penalty area',
   POS: 'Positioning and decision-making when coming off the goal line'
+}
+
+const fifaToFmAttributeMapping = {
+  // Outfield Player FIFA Stats mapped to FM attributes (based on weights)
+  PAC: {
+    primary: ['Acc', 'Pac'],
+    secondary: ['Agi'],
+    description: 'Based on Acceleration, Pace, and Agility'
+  },
+  SHO: {
+    primary: ['Fin', 'Lon'],
+    secondary: ['Pen', 'Hea', 'Cmp', 'Tec', 'Ant', 'Dec', 'Fla'],
+    description: 'Based on Finishing, Long Shots, Penalties, Heading, Composure, Technique, Anticipation, Decisions, and Flair'
+  },
+  PAS: {
+    primary: ['Pas', 'Vis'],
+    secondary: ['Cro', 'Tec', 'Fre', 'Tea', 'Dec', 'Fir', 'Cor', 'OtB'],
+    description: 'Based on Passing, Vision, Crossing, Technique, Free Kicks, Teamwork, Decisions, First Touch, Corners, and Off the Ball'
+  },
+  DRI: {
+    primary: ['Dri', 'Fir', 'Tec'],
+    secondary: ['Fla', 'Cmp', 'OtB'],
+    description: 'Based on Dribbling, First Touch, Technique, Flair, Composure, and Off the Ball'
+  },
+  DEF: {
+    primary: ['Mar', 'Tck', 'Ant', 'Pos'],
+    secondary: ['Hea', 'Cnt', 'Dec', 'Cmp', 'Bra', 'Agg', 'Wor'],
+    description: 'Based on Marking, Tackling, Anticipation, Positioning, Heading, Concentration, Decisions, Composure, Bravery, Aggression, and Work Rate'
+  },
+  PHY: {
+    primary: ['Str', 'Sta', 'Nat'],
+    secondary: ['Jum', 'Agg', 'Bra', 'Wor', 'Bal'],
+    description: 'Based on Strength, Stamina, Natural Fitness, Jumping Reach, Aggression, Bravery, Work Rate, and Balance'
+  },
+  
+  // Goalkeeper FIFA Stats mapped to FM attributes
+  DIV: {
+    primary: ['Aer', 'Ref', '1v1'],
+    secondary: ['Agi', 'Han'],
+    description: 'Based on Aerial Reach, Reflexes, One on Ones, Agility, and Handling'
+  },
+  HAN: {
+    primary: ['Han', 'Cmd'],
+    secondary: ['Cmp', 'Cnt'],
+    description: 'Based on Handling, Command of Area, Composure, and Concentration'
+  },
+  REF: {
+    primary: ['Ref', 'Ant', '1v1'],
+    secondary: ['Cnt'],
+    description: 'Based on Reflexes, Anticipation, One on Ones, and Concentration'
+  },
+  KIC: {
+    primary: ['Kic', 'Thr'],
+    secondary: ['Tec', 'Vis', 'Pas'],
+    description: 'Based on Kicking, Throwing, Technique, Vision, and Passing'
+  },
+  SPD: {
+    primary: ['Acc', 'Pac', 'TRO'],
+    secondary: [],
+    description: 'Based on Acceleration, Pace, and Rushing Out Tendency'
+  },
+  POS: {
+    primary: ['Pos', 'Cmd', 'Ant', 'Dec'],
+    secondary: ['TRO', 'Cnt', 'Com'],
+    description: 'Based on Positioning, Command of Area, Anticipation, Decisions, Rushing Out Tendency, Concentration, and Communication'
+  }
 }
 
 const technicalAttrsOrdered = [
@@ -1812,6 +1878,7 @@ export default defineComponent({
       attributeFullNameMap,
       attributeDescriptions,
       fifaAttributeDescriptions,
+      fifaToFmAttributeMapping,
       getUnifiedRatingClass,
       getBarFillStyle,
       fifaStatsToDisplay,
