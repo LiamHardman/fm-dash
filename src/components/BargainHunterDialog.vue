@@ -35,92 +35,149 @@
             </q-card-section>
 
             <q-card-section class="q-pt-md">
-                <!-- Quick Search Section -->
+                <!-- Filter Section with Sliders -->
                 <div class="row q-col-gutter-md q-mb-md">
                     <div class="col-12 col-md-3">
-                        <q-input
-                            v-model.number="maxBudget"
-                            type="number"
-                            label="Max Transfer Value"
-                            outlined
-                            dense
-                            :prefix="currencySymbol"
-                            suffix="M"
-                            :min="0"
-                            step="0.1"
-                            @update:model-value="onFiltersChanged"
-                            :label-color="qInstance.dark.isActive ? 'grey-4' : ''"
-                            :input-class="qInstance.dark.isActive ? 'text-grey-3' : ''"
+                        <div
+                            class="text-caption q-mb-xs slider-label"
+                            :class="
+                                qInstance.dark.isActive
+                                    ? 'text-grey-4'
+                                    : 'text-grey-7'
+                            "
                         >
-                            <template v-slot:hint>
-                                Value in millions (e.g., 5 = £5M)
-                            </template>
-                        </q-input>
+                            Max Transfer Value:
+                            {{
+                                maxBudget === maxBudgetSliderMax
+                                    ? "Any"
+                                    : formatCurrency(
+                                          maxBudget * 1000000,
+                                          currencySymbol,
+                                      )
+                            }}
+                        </div>
+                        <q-slider
+                            v-model="maxBudget"
+                            :min="maxBudgetSliderMin"
+                            :max="maxBudgetSliderMax"
+                            :step="maxBudgetSliderStep"
+                            label-always
+                            :label-value="
+                                maxBudget === maxBudgetSliderMax
+                                    ? 'Any'
+                                    : formatCurrency(
+                                          maxBudget * 1000000,
+                                          currencySymbol,
+                                      )
+                            "
+                            @update:model-value="onFiltersChanged"
+                            color="primary"
+                            class="q-px-sm"
+                            :disable="loading"
+                        />
                     </div>
-                    
+
                     <div class="col-12 col-md-3">
-                        <q-input
-                            v-model.number="maxSalary"
-                            type="number"
-                            label="Max Wage per Week"
-                            outlined
-                            dense
-                            :prefix="currencySymbol"
-                            suffix="K"
-                            :min="0"
-                            step="0.1"
-                            @update:model-value="onFiltersChanged"
-                            :label-color="qInstance.dark.isActive ? 'grey-4' : ''"
-                            :input-class="qInstance.dark.isActive ? 'text-grey-3' : ''"
+                        <div
+                            class="text-caption q-mb-xs slider-label"
+                            :class="
+                                qInstance.dark.isActive
+                                    ? 'text-grey-4'
+                                    : 'text-grey-7'
+                            "
                         >
-                            <template v-slot:hint>
-                                Weekly wage in thousands (e.g., 10 = £10K/week)
-                            </template>
-                        </q-input>
-                    </div>
-                    
-                    <div class="col-12 col-md-2">
-                        <q-input
-                            v-model.number="minAge"
-                            type="number"
-                            label="Min Age"
-                            outlined
-                            dense
-                            :min="15"
-                            :max="45"
+                            Max Weekly Wage:
+                            {{
+                                maxSalary === maxSalarySliderMax
+                                    ? "Any"
+                                    : formatCurrency(
+                                          maxSalary * 1000,
+                                          currencySymbol,
+                                      )
+                            }}
+                        </div>
+                        <q-slider
+                            v-model="maxSalary"
+                            :min="maxSalarySliderMin"
+                            :max="maxSalarySliderMax"
+                            :step="maxSalarySliderStep"
+                            label-always
+                            :label-value="
+                                maxSalary === maxSalarySliderMax
+                                    ? 'Any'
+                                    : formatCurrency(
+                                          maxSalary * 1000,
+                                          currencySymbol,
+                                      )
+                            "
                             @update:model-value="onFiltersChanged"
-                            :label-color="qInstance.dark.isActive ? 'grey-4' : ''"
-                            :input-class="qInstance.dark.isActive ? 'text-grey-3' : ''"
+                            color="primary"
+                            class="q-px-sm"
+                            :disable="loading"
                         />
                     </div>
-                    
-                    <div class="col-12 col-md-2">
-                        <q-input
-                            v-model.number="maxAge"
-                            type="number"
-                            label="Max Age"
-                            outlined
-                            dense
-                            :min="15"
-                            :max="45"
+
+                    <div class="col-12 col-md-3">
+                        <div
+                            class="text-caption q-mb-xs slider-label"
+                            :class="
+                                qInstance.dark.isActive
+                                    ? 'text-grey-4'
+                                    : 'text-grey-7'
+                            "
+                        >
+                            Age Range: {{ ageRange.min }} - 
+                            {{
+                                ageRange.max === ageSliderMax
+                                    ? ageSliderMax + "+"
+                                    : ageRange.max
+                            }}
+                        </div>
+                        <q-range
+                            v-model="ageRange"
+                            :min="ageSliderMin"
+                            :max="ageSliderMax"
+                            :step="1"
+                            label-always
+                            :left-label-value="ageRange.min + ' yrs'"
+                            :right-label-value="
+                                ageRange.max +
+                                (ageRange.max === ageSliderMax ? '+' : '') +
+                                ' yrs'
+                            "
                             @update:model-value="onFiltersChanged"
-                            :label-color="qInstance.dark.isActive ? 'grey-4' : ''"
-                            :input-class="qInstance.dark.isActive ? 'text-grey-3' : ''"
+                            color="primary"
+                            class="q-px-sm"
+                            :disable="loading"
                         />
                     </div>
-                    
-                    <div class="col-12 col-md-2">
-                        <q-input
-                            v-model.number="minOverall"
-                            type="number"
-                            label="Min Overall"
-                            outlined
-                            dense
-                            :min="40"
-                            :max="99"
+
+                    <div class="col-12 col-md-3">
+                        <div
+                            class="text-caption q-mb-xs slider-label"
+                            :class="
+                                qInstance.dark.isActive
+                                    ? 'text-grey-4'
+                                    : 'text-grey-7'
+                            "
+                        >
+                            Min Overall:
+                            <span
+                                class="stat-value-badge q-ml-xs"
+                                :class="getUnifiedRatingClass(minOverall, 100)"
+                            >
+                                {{ minOverall || 0 }}
+                            </span>
+                        </div>
+                        <q-slider
+                            v-model="minOverall"
+                            :min="minOverallSliderMin"
+                            :max="minOverallSliderMax"
+                            :step="1"
+                            color="primary"
+                            class="q-px-sm"
                             @update:model-value="onFiltersChanged"
-                            :label-color="qInstance.dark.isActive ? 'grey-4' : ''"
-                            :input-class="qInstance.dark.isActive ? 'text-grey-3' : ''"
+                            :disable="loading"
                         />
                     </div>
                 </div>
@@ -403,11 +460,20 @@ export default defineComponent({
   setup(props) {
     const qInstance = useQuasar()
 
-    // State
-    const maxBudget = ref(null)
-    const maxSalary = ref(null)
-    const minAge = ref(null)
-    const maxAge = ref(27)
+    // Constants matching PlayerFilters
+    const AGE_SLIDER_MIN = 15
+    const AGE_SLIDER_MAX = 50
+    const MAX_BUDGET_SLIDER_MIN = 0
+    const MAX_BUDGET_SLIDER_MAX = 500  // 500M
+    const MAX_SALARY_SLIDER_MIN = 0
+    const MAX_SALARY_SLIDER_MAX = 1000 // 1000K per week
+    const MIN_OVERALL_SLIDER_MIN = 40
+    const MIN_OVERALL_SLIDER_MAX = 99
+
+    // State - converted to match slider values
+    const maxBudget = ref(MAX_BUDGET_SLIDER_MAX) // In millions
+    const maxSalary = ref(MAX_SALARY_SLIDER_MAX) // In thousands per week
+    const ageRange = ref({ min: AGE_SLIDER_MIN, max: 27 }) // Age range object
     const minOverall = ref(75)
     const loading = ref(false)
     const selectedPlayer = ref(null)
@@ -419,6 +485,60 @@ export default defineComponent({
     const showGoodValue = ref(true)
     const showMediocreValue = ref(false)
     const showPoorValue = ref(false)
+
+    // Slider configuration computed properties
+    const ageSliderMin = AGE_SLIDER_MIN
+    const ageSliderMax = AGE_SLIDER_MAX
+    const maxBudgetSliderMin = MAX_BUDGET_SLIDER_MIN
+    const maxBudgetSliderMax = MAX_BUDGET_SLIDER_MAX
+    const maxSalarySliderMin = MAX_SALARY_SLIDER_MIN
+    const maxSalarySliderMax = MAX_SALARY_SLIDER_MAX
+    const minOverallSliderMin = MIN_OVERALL_SLIDER_MIN
+    const minOverallSliderMax = MIN_OVERALL_SLIDER_MAX
+
+    // Step calculations for sliders
+    const maxBudgetSliderStep = computed(() => {
+      const range = maxBudgetSliderMax - maxBudgetSliderMin
+      if (range <= 0) return 1
+      if (range < 50) return 0.5
+      if (range < 250) return 1
+      return 5
+    })
+
+    const maxSalarySliderStep = computed(() => {
+      const range = maxSalarySliderMax - maxSalarySliderMin
+      if (range <= 0) return 1
+      if (range < 50) return 0.5
+      if (range < 250) return 1
+      if (range < 1000) return 5
+      return 10
+    })
+
+    // Utility function to get unified rating class (matching PlayerFilters)
+    const getUnifiedRatingClass = (value, maxScale = 100) => {
+      const numValue = Number.parseInt(value, 10)
+      if (Number.isNaN(numValue) || value === null || value === undefined || value === '-')
+        return 'rating-na'
+
+      const percentage = (numValue / maxScale) * 100
+
+      if (maxScale === 20) {
+        if (numValue >= 18) return 'rating-tier-6'
+        if (numValue >= 15) return 'rating-tier-5'
+        if (numValue >= 13) return 'rating-tier-4'
+        if (numValue >= 10) return 'rating-tier-3'
+        if (numValue >= 7) return 'rating-tier-2'
+        if (numValue >= 1) return 'rating-tier-1'
+      } else {
+        if (percentage >= 90) return 'rating-tier-6'
+        if (percentage >= 80) return 'rating-tier-5'
+        if (percentage >= 70) return 'rating-tier-4'
+        if (percentage >= 55) return 'rating-tier-3'
+        if (percentage >= 40) return 'rating-tier-2'
+        if (percentage > 0) return 'rating-tier-1'
+      }
+      return 'rating-na'
+    }
 
     // Computed property to transform bargain results for PlayerDataTable
     const playersForTable = computed(() => {
@@ -646,8 +766,8 @@ export default defineComponent({
         const requestBody = {
           maxBudget: maxBudget.value ? maxBudget.value * 1000000 : 0, // Convert to actual amount
           maxSalary: maxSalary.value ? maxSalary.value * 1000 : 0, // Convert to actual amount
-          minAge: minAge.value || 0,
-          maxAge: maxAge.value || 0,
+          minAge: ageRange.value.min || 0,
+          maxAge: ageRange.value.max || 0,
           minOverall: minOverall.value || 0
         }
 
@@ -755,6 +875,18 @@ export default defineComponent({
           // Auto-search when dialog opens
           await findBargains()
         } else if (!newShow) {
+          // Reset values when dialog closes
+          maxBudget.value = maxBudgetSliderMax
+          maxSalary.value = maxSalarySliderMax
+          ageRange.value = { min: ageSliderMin, max: 27 }
+          minOverall.value = 75
+          bargainResults.value = []
+          showExcellentValue.value = true
+          showGreatValue.value = true
+          showGoodValue.value = true
+          showMediocreValue.value = false
+          showPoorValue.value = false
+          
           // Cleanup chart when dialog closes
           if (chartRef.value) {
             chartRef.value.dispose()
@@ -792,8 +924,7 @@ export default defineComponent({
       qInstance,
       maxBudget,
       maxSalary,
-      minAge,
-      maxAge,
+      ageRange,
       minOverall,
       loading,
       selectedPlayer,
@@ -815,7 +946,18 @@ export default defineComponent({
       showPoorValue,
       filteredBargainResults,
       toggleValueTier,
-      playersForTable
+      playersForTable,
+      ageSliderMin,
+      ageSliderMax,
+      maxBudgetSliderMin,
+      maxBudgetSliderMax,
+      maxSalarySliderMin,
+      maxSalarySliderMax,
+      minOverallSliderMin,
+      minOverallSliderMax,
+      maxBudgetSliderStep,
+      maxSalarySliderStep,
+      getUnifiedRatingClass
     }
   }
 })
@@ -831,6 +973,71 @@ export default defineComponent({
             width: 100% !important;
             height: 100% !important;
         }
+    }
+    
+    // Slider styling matching PlayerFilters
+    .slider-label {
+        font-weight: 500;
+        font-size: 0.75rem;
+        line-height: 1.2;
+        margin-bottom: 4px;
+    }
+    
+    .stat-value-badge {
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        display: inline-block;
+        min-width: 24px;
+        text-align: center;
+    }
+    
+    // Rating tier classes matching PlayerFilters
+    .rating-tier-6 {
+        background-color: #4caf50;
+        color: white;
+    }
+    
+    .rating-tier-5 {
+        background-color: #8bc34a;
+        color: white;
+    }
+    
+    .rating-tier-4 {
+        background-color: #cddc39;
+        color: #333;
+    }
+    
+    .rating-tier-3 {
+        background-color: #ffeb3b;
+        color: #333;
+    }
+    
+    .rating-tier-2 {
+        background-color: #ff9800;
+        color: white;
+    }
+    
+    .rating-tier-1 {
+        background-color: #f44336;
+        color: white;
+    }
+    
+    .rating-na {
+        background-color: #9e9e9e;
+        color: white;
+    }
+    
+    // Slider component styling
+    .q-slider.q-px-sm {
+        padding: 0 12px;
+        margin-top: 8px;
+    }
+    
+    .q-range.q-px-sm {
+        padding: 0 12px;
+        margin-top: 8px;
     }
     
     // Value tier button styling
