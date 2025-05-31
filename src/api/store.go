@@ -136,7 +136,15 @@ func RetrieveDataset(datasetID string) ([]Player, string, error) {
 
 // DeleteDataset deletes player data using the storage interface
 func DeleteDataset(datasetID string) error {
-	return storage.Delete(datasetID)
+	err := storage.Delete(datasetID)
+	if err != nil {
+		return err
+	}
+
+	// Remove the duplicate mapping after successful deletion
+	removeDuplicateMapping(datasetID)
+
+	return nil
 }
 
 // ListDatasets lists all available dataset IDs
@@ -182,6 +190,9 @@ func runCleanup() {
 	} else {
 		log.Println("Automatic cleanup completed successfully")
 	}
+
+	// Clean up stale duplicate mappings
+	cleanupStaleDuplicateMappings()
 }
 
 // Legacy functions for backward compatibility

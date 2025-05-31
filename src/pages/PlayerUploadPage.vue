@@ -334,20 +334,25 @@ export default {
       try {
         const formData = new FormData()
         formData.append('playerFile', playerFile.value)
-        await playerStore.uploadPlayerFile(formData, maxFileSizeBytes.value)
+        const response = await playerStore.uploadPlayerFile(formData, maxFileSizeBytes.value)
         if (!playerStore.error) {
-          const successMessage =
-            'File uploaded and parsed successfully! Redirecting to dataset view...'
+          // Check if this was a duplicate upload by looking at the response message
+          const isDuplicate = response.message && response.message.includes('Duplicate file detected')
+          
+          const successMessage = isDuplicate 
+            ? 'Duplicate file detected! Redirecting to existing dataset...'
+            : 'File uploaded and parsed successfully! Redirecting to dataset view...'
 
           Notify.create({
             type: 'positive',
             message: successMessage,
             position: 'top',
-            timeout: 2000
+            timeout: isDuplicate ? 3000 : 2000
           })
 
-          // Show web notification for large files if enabled and supported
+          // Show web notification for large files if enabled and supported (but not for duplicates)
           if (
+            !isDuplicate &&
             isLargeFile &&
             uiStore.notificationsEnabled &&
             notificationSupported.value &&

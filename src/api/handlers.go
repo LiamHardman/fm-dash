@@ -3,6 +3,8 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -22,6 +24,67 @@ import (
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
 )
+
+// FileHashToDatasetMap stores the mapping of file content hashes to dataset IDs
+var fileHashToDatasetMap = make(map[string]string)
+var hashMapMutex sync.RWMutex
+
+// calculateFileHash creates a SHA256 hash of the file content for duplicate detection
+func calculateFileHash(content []byte) string {
+	hash := sha256.Sum256(content)
+	return hex.EncodeToString(hash[:])
+}
+
+// checkForDuplicateUpload checks if a file with the same content hash has already been uploaded
+func checkForDuplicateUpload(fileHash string) (string, bool) {
+	hashMapMutex.RLock()
+	defer hashMapMutex.RUnlock()
+	datasetID, exists := fileHashToDatasetMap[fileHash]
+	return datasetID, exists
+}
+
+// storeDuplicateMapping stores the file hash to dataset ID mapping
+func storeDuplicateMapping(fileHash, datasetID string) {
+	hashMapMutex.Lock()
+	defer hashMapMutex.Unlock()
+	fileHashToDatasetMap[fileHash] = datasetID
+}
+
+// removeDuplicateMapping removes a file hash mapping (used during cleanup)
+func removeDuplicateMapping(datasetID string) {
+	hashMapMutex.Lock()
+	defer hashMapMutex.Unlock()
+	// Find and remove the mapping by dataset ID
+	for hash, id := range fileHashToDatasetMap {
+		if id == datasetID {
+			delete(fileHashToDatasetMap, hash)
+			break
+		}
+	}
+}
+
+// cleanupStaleDuplicateMappings removes mappings for datasets that no longer exist
+func cleanupStaleDuplicateMappings() {
+	hashMapMutex.Lock()
+	defer hashMapMutex.Unlock()
+
+	var staleMappings []string
+	for hash, datasetID := range fileHashToDatasetMap {
+		// Check if the dataset still exists
+		if _, _, found := GetPlayerData(datasetID); !found {
+			staleMappings = append(staleMappings, hash)
+		}
+	}
+
+	// Remove stale mappings
+	for _, hash := range staleMappings {
+		delete(fileHashToDatasetMap, hash)
+	}
+
+	if len(staleMappings) > 0 {
+		log.Printf("Cleaned up %d stale duplicate mappings", len(staleMappings))
+	}
+}
 
 // setCORSHeaders sets secure CORS headers based on the request origin
 func setCORSHeaders(w http.ResponseWriter, r *http.Request) {
@@ -264,6 +327,71 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check for duplicate upload before processing
+	ctx, duplicateSpan := StartSpan(ctx, "duplicate.check")
+	fileHash := calculateFileHash(fileContent)
+	existingDatasetID, isDuplicate := checkForDuplicateUpload(fileHash)
+
+	SetSpanAttributes(ctx,
+		attribute.String("file.hash", fileHash[:16]+"..."), // Only log first 16 chars for security
+		attribute.Bool("duplicate.found", isDuplicate),
+	)
+
+	if isDuplicate {
+		// Verify the existing dataset still exists in storage
+		if _, _, found := GetPlayerData(existingDatasetID); found {
+			logInfo(ctx, "Duplicate upload detected, redirecting to existing dataset",
+				"filename", handler.Filename,
+				"existing_dataset_id", existingDatasetID,
+				"file_hash", fileHash[:16]+"...")
+
+			SetSpanAttributes(ctx,
+				attribute.String("duplicate.existing_dataset_id", existingDatasetID),
+				attribute.String("duplicate.action", "redirect_to_existing"),
+			)
+			duplicateSpan.End()
+
+			// Return the existing dataset info without reprocessing
+			response := UploadResponse{
+				DatasetID:              existingDatasetID,
+				Message:                "Duplicate file detected. Redirected to existing dataset.",
+				DetectedCurrencySymbol: "$", // Will be updated with actual value from existing dataset
+			}
+
+			// Get the actual currency symbol from the existing dataset
+			if _, currencySymbol, found := GetPlayerData(existingDatasetID); found {
+				response.DetectedCurrencySymbol = currencySymbol
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			setCORSHeaders(w, r)
+
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				RecordError(ctx, err, "Failed to encode duplicate response")
+				http.Error(w, "Error encoding response: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			RecordBusinessOperation(ctx, "duplicate_upload_detected", true, map[string]interface{}{
+				"filename":            handler.Filename,
+				"file_size_bytes":     actualFileSize,
+				"existing_dataset_id": existingDatasetID,
+				"file_hash":           fileHash[:16] + "...",
+			})
+
+			return
+		} else {
+			// Dataset no longer exists, remove the stale mapping and continue processing
+			logWarn(ctx, "Stale duplicate mapping found, dataset no longer exists",
+				"filename", handler.Filename,
+				"stale_dataset_id", existingDatasetID)
+			removeDuplicateMapping(existingDatasetID)
+		}
+	}
+
+	AddSpanEvent(ctx, "duplicate.check.completed", attribute.Bool("is_duplicate", isDuplicate))
+	duplicateSpan.End()
+
 	parseStartTime := time.Now()
 	playersList := make([]Player, 0, defaultPlayerCapacity) // Assumes defaultPlayerCapacity is defined in config.go
 	var processingError error
@@ -382,6 +510,13 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	)
 	SetPlayerDataAsync(datasetID, playersList, finalDatasetCurrencySymbol)
 	storageSpan.End()
+
+	// Store the file hash mapping for duplicate detection
+	storeDuplicateMapping(fileHash, datasetID)
+
+	logInfo(ctx, "Duplicate detection mapping stored",
+		"dataset_id", datasetID,
+		"file_hash", fileHash[:16]+"...")
 
 	// Process percentiles asynchronously to avoid blocking the upload response
 	if len(playersList) > 0 {
