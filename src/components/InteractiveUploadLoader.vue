@@ -115,65 +115,69 @@ export default {
 
     // Fun loading messages inspired by games
     const loadingMessages = [
+      // Upload stage messages (0-70%)
       {
-        title: "Reticulating Splines",
-        subtitle: "The classic... organizing tactical formations"
+        title: "Uploading Player Data",
+        subtitle: "Transferring your save file to our servers",
+        stage: "upload"
+      },
+      {
+        title: "Reticulating Splines", 
+        subtitle: "The classic... organizing tactical formations",
+        stage: "upload"
       },
       {
         title: "Calculating Player DNA",
-        subtitle: "Analyzing genetic predisposition for late winners"
+        subtitle: "Analyzing genetic predisposition for late winners", 
+        stage: "upload"
+      },
+      // Processing stage messages (70-80%)
+      {
+        title: "Processing Player Database",
+        subtitle: "Parsing player attributes and statistics",
+        stage: "processing"
       },
       {
         title: "Consulting Team Talks Database",
-        subtitle: "Loading passionate speeches and motivational clichés"
+        subtitle: "Loading passionate speeches and motivational clichés",
+        stage: "processing"
       },
       {
         title: "Simulating Transfer Negotiations",
-        subtitle: "Adding unrealistic agent demands"
+        subtitle: "Adding unrealistic agent demands",
+        stage: "processing"
+      },
+      // Data fetching stage messages (80-95%)
+      {
+        title: "Organizing Squad Data",
+        subtitle: "Sorting players by potential and current ability",
+        stage: "fetching"
       },
       {
         title: "Calibrating Wonderkid Sensors",
-        subtitle: "Detecting future Ballon d'Or winners"
+        subtitle: "Detecting future Ballon d'Or winners",
+        stage: "fetching"
       },
       {
         title: "Loading Match Engine Physics",
-        subtitle: "Implementing impossible last-minute goals"
+        subtitle: "Implementing impossible last-minute goals",
+        stage: "fetching"
+      },
+      // Finalizing stage messages (95-100%)
+      {
+        title: "Finalizing Dataset",
+        subtitle: "Preparing your player database for analysis",
+        stage: "finalizing"
       },
       {
         title: "Generating Media Questions",
-        subtitle: "Preparing repetitive press conference topics"
+        subtitle: "Preparing repetitive press conference topics",
+        stage: "finalizing"
       },
       {
         title: "Optimizing Squad Harmony",
-        subtitle: "Balancing egos and personality clashes"
-      },
-      {
-        title: "Indexing Injury Probability Matrix",
-        subtitle: "Your best player will definitely get injured"
-      },
-      {
-        title: "Compiling Scout Reports",
-        subtitle: "Discovering gems in the Faroe Islands"
-      },
-      {
-        title: "Processing Contract Demands",
-        subtitle: "Adding unreasonable wage expectations"
-      },
-      {
-        title: "Synchronizing Board Expectations",
-        subtitle: "Setting impossible targets with zero budget"
-      },
-      {
-        title: "Initializing Referee AI",
-        subtitle: "Programming controversial VAR decisions"
-      },
-      {
-        title: "Caching Weather Patterns",
-        subtitle: "Ensuring rain during important matches"
-      },
-      {
-        title: "Loading Stadium Atmospherics",
-        subtitle: "Preparing crowd reactions to substitute decisions"
+        subtitle: "Balancing egos and personality clashes",
+        stage: "finalizing"
       }
     ]
 
@@ -190,7 +194,25 @@ export default {
     // Icon colors that cycle
     const iconColors = ['primary', 'secondary', 'accent', 'positive', 'info']
 
-    const currentMessage = computed(() => loadingMessages[currentMessageIndex.value])
+    // Get current stage based on progress
+    const getCurrentStage = () => {
+      const progress = props.progress
+      if (progress < 70) return "upload"
+      if (progress < 80) return "processing" 
+      if (progress < 95) return "fetching"
+      return "finalizing"
+    }
+
+    // Get messages for current stage
+    const getStageMessages = () => {
+      const currentStage = getCurrentStage()
+      return loadingMessages.filter(msg => msg.stage === currentStage)
+    }
+
+    const currentMessage = computed(() => {
+      const stageMessages = getStageMessages()
+      return stageMessages[currentMessageIndex.value % stageMessages.length]
+    })
     const currentIcon = computed(() => loadingIcons[currentIconIndex.value])
     const iconColor = computed(() => iconColors[currentIconIndex.value % iconColors.length])
     const progressValue = computed(() => Math.min(props.progress / 100, 1))
@@ -210,10 +232,12 @@ export default {
     const startLoader = () => {
       startTime.value = Date.now()
       showCancelButton.value = true
+      currentMessageIndex.value = 0
       
       // Change message every 3 seconds
       messageInterval = setInterval(() => {
-        currentMessageIndex.value = (currentMessageIndex.value + 1) % loadingMessages.length
+        const stageMessages = getStageMessages()
+        currentMessageIndex.value = (currentMessageIndex.value + 1) % stageMessages.length
       }, 3000)
 
       // Animate dots every 500ms
@@ -266,6 +290,16 @@ export default {
         stopLoader()
       }
     }, { immediate: true })
+
+    // Watch for stage changes and reset message index
+    let previousStage = ref(getCurrentStage())
+    watch(() => props.progress, () => {
+      const currentStage = getCurrentStage()
+      if (currentStage !== previousStage.value) {
+        currentMessageIndex.value = 0
+        previousStage.value = currentStage
+      }
+    })
 
     // Cleanup on unmount
     onUnmounted(() => {

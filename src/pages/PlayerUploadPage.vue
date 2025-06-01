@@ -349,7 +349,15 @@ export default {
     }
 
     const updateProgress = (progress) => {
-      uploadProgress.value = Math.min(progress, 100)
+      // If progress is from file upload (0-100 range), scale to 70%
+      // If progress is explicit stage progress (80, 95, 100), use directly
+      if (progress <= 100 && uploadProgress.value < 70) {
+        // This is file upload progress
+        uploadProgress.value = Math.min(progress * 0.7, 70)
+      } else {
+        // This is explicit stage progress from the store
+        uploadProgress.value = Math.min(progress, 100)
+      }
     }
 
     const uploadAndParse = async () => {
@@ -370,12 +378,11 @@ export default {
       try {
         const formData = new FormData()
         formData.append('playerFile', playerFile.value)
+        
+        // The player store will now handle all progress stages
         const response = await playerStore.uploadPlayerFile(formData, maxFileSizeBytes.value, updateProgress)
         
         if (!playerStore.error) {
-          // Complete the progress
-          uploadProgress.value = 100
-          
           // Check if this was a duplicate upload by looking at the response message
           const isDuplicate = response.message && response.message.includes('Duplicate file detected')
           

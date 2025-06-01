@@ -145,13 +145,24 @@ export const usePlayerStore = defineStore('player', () => {
     loading.value = true
     error.value = ''
     try {
+      // Stage 1: Upload file (onProgress handles this)
       const response = await playerService.uploadPlayerFile(formData, maxSizeBytes, onProgress)
       currentDatasetId.value = response.datasetId
       detectedCurrencySymbol.value = response.detectedCurrencySymbol || '$'
       sessionStorage.setItem('currentDatasetId', currentDatasetId.value)
       sessionStorage.setItem('detectedCurrencySymbol', detectedCurrencySymbol.value)
+      
+      // Stage 2: Fetch processed data
+      if (onProgress) onProgress(80)
       await fetchPlayersByDatasetId(currentDatasetId.value)
+      
+      // Stage 3: Fetch available roles
+      if (onProgress) onProgress(95)
       await fetchAllAvailableRoles()
+      
+      // Stage 4: Complete
+      if (onProgress) onProgress(100)
+      
       return response
     } catch (e) {
       if (e.status === 413 && e.message) {
