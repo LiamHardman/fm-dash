@@ -107,7 +107,6 @@ export default {
   },
   setup(props, { emit }) {
     const showDialog = ref(false)
-    const currentMessageIndex = ref(0)
     const dotIndex = ref(0)
     const showCancelButton = ref(true)
     const currentIconIndex = ref(0)
@@ -131,6 +130,31 @@ export default {
         subtitle: "Analyzing genetic predisposition for late winners", 
         stage: "upload"
       },
+      {
+        title: "Quantifying Bottle Jobs",
+        subtitle: "Measuring tendency to lose when it matters most",
+        stage: "upload"
+      },
+      {
+        title: "Digitizing Championship Dreams",
+        subtitle: "Converting hopes into 1s and 0s",
+        stage: "upload"
+      },
+      {
+        title: "Extracting Tactical Genius",
+        subtitle: "Locating your 4-4-2 diamond formation data",
+        stage: "upload"
+      },
+      {
+        title: "Uploading Transfer Budget Fantasies",
+        subtitle: "Processing unrealistic spending expectations",
+        stage: "upload"
+      },
+      {
+        title: "Compressing Squad Rotation Strategies",
+        subtitle: "Squeezing 25 players into 11 positions",
+        stage: "upload"
+      },
       // Processing stage messages (70-80%)
       {
         title: "Processing Player Database",
@@ -145,6 +169,36 @@ export default {
       {
         title: "Simulating Transfer Negotiations",
         subtitle: "Adding unrealistic agent demands",
+        stage: "processing"
+      },
+      {
+        title: "Calculating Injury Probability Matrix",
+        subtitle: "Programming your best player to get injured in January",
+        stage: "processing"
+      },
+      {
+        title: "Installing Referee Bias Algorithms",
+        subtitle: "Ensuring controversial decisions at crucial moments",
+        stage: "processing"
+      },
+      {
+        title: "Generating Press Conference Scripts",
+        subtitle: "Preparing 47 variations of 'I'm happy with the performance'",
+        stage: "processing"
+      },
+      {
+        title: "Optimizing Formation Confusion",
+        subtitle: "Making sure 3-5-2 looks exactly like 5-3-2",
+        stage: "processing"
+      },
+      {
+        title: "Compiling Excuses Database",
+        subtitle: "Loading reasons why it's never your fault",
+        stage: "processing"
+      },
+      {
+        title: "Processing Board Expectations",
+        subtitle: "Multiplying unrealistic demands by coefficient of impossibility",
         stage: "processing"
       },
       // Data fetching stage messages (80-95%)
@@ -163,6 +217,41 @@ export default {
         subtitle: "Implementing impossible last-minute goals",
         stage: "fetching"
       },
+      {
+        title: "Synchronizing Striker Finishing",
+        subtitle: "Ensuring they miss from 2 yards when you need a goal",
+        stage: "fetching"
+      },
+      {
+        title: "Randomizing Set Piece Accuracy",
+        subtitle: "Making corners as effective as throwing paper planes",
+        stage: "fetching"
+      },
+      {
+        title: "Indexing Youth Intake Quality",
+        subtitle: "Preparing to disappoint you with 2-star potential players",
+        stage: "fetching"
+      },
+      {
+        title: "Configuring VAR Incompetence",
+        subtitle: "Training virtual assistants to make questionable calls",
+        stage: "fetching"
+      },
+      {
+        title: "Loading Weather Impact Systems",
+        subtitle: "Ensuring rain ruins your tiki-taka masterpiece",
+        stage: "fetching"
+      },
+      {
+        title: "Assembling Loan Army Statistics",
+        subtitle: "Cataloging players you'll never see again",
+        stage: "fetching"
+      },
+      {
+        title: "Buffering Transfer Market Chaos",
+        subtitle: "Preparing unrealistic valuations for average players",
+        stage: "fetching"
+      },
       // Finalizing stage messages (95-100%)
       {
         title: "Finalizing Dataset",
@@ -177,6 +266,36 @@ export default {
       {
         title: "Optimizing Squad Harmony",
         subtitle: "Balancing egos and personality clashes",
+        stage: "finalizing"
+      },
+      {
+        title: "Calibrating Last-Minute Drama",
+        subtitle: "Ensuring maximum stress during crucial matches",
+        stage: "finalizing"
+      },
+      {
+        title: "Finalizing Tactical Flexibility",
+        subtitle: "Making every formation feel slightly wrong",
+        stage: "finalizing"
+      },
+      {
+        title: "Polishing Championship Bottling",
+        subtitle: "Perfecting the art of losing when you're ahead",
+        stage: "finalizing"
+      },
+      {
+        title: "Completing Scouting Network",
+        subtitle: "Ensuring recommended players are always overpriced",
+        stage: "finalizing"
+      },
+      {
+        title: "Finalizing Goalkeeper AI",
+        subtitle: "Programming them to parry into dangerous areas",
+        stage: "finalizing"
+      },
+      {
+        title: "Wrapping Up Wage Structure",
+        subtitle: "Making sure backup players earn more than starters",
         stage: "finalizing"
       }
     ]
@@ -203,16 +322,32 @@ export default {
       return "finalizing"
     }
 
-    // Get messages for current stage
-    const getStageMessages = () => {
-      const currentStage = getCurrentStage()
-      return loadingMessages.filter(msg => msg.stage === currentStage)
+    const previousStage = ref(getCurrentStage())
+
+    // Randomize array function
+    const shuffleArray = (array) => {
+      const shuffled = [...array]
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+      }
+      return shuffled
     }
 
-    const currentMessage = computed(() => {
+    // Get messages for current stage (randomized)
+    const getStageMessages = () => {
+      const currentStage = getCurrentStage()
+      const stageMessages = loadingMessages.filter(msg => msg.stage === currentStage)
+      return shuffleArray(stageMessages)
+    }
+
+    // Get a random message from current stage
+    const getRandomMessage = () => {
       const stageMessages = getStageMessages()
-      return stageMessages[currentMessageIndex.value % stageMessages.length]
-    })
+      return stageMessages[Math.floor(Math.random() * stageMessages.length)]
+    }
+
+    const currentMessage = ref(getRandomMessage())
     const currentIcon = computed(() => loadingIcons[currentIconIndex.value])
     const iconColor = computed(() => iconColors[currentIconIndex.value % iconColors.length])
     const progressValue = computed(() => Math.min(props.progress / 100, 1))
@@ -232,12 +367,11 @@ export default {
     const startLoader = () => {
       startTime.value = Date.now()
       showCancelButton.value = true
-      currentMessageIndex.value = 0
+      currentMessage.value = getRandomMessage()
       
       // Change message every 3 seconds
       messageInterval = setInterval(() => {
-        const stageMessages = getStageMessages()
-        currentMessageIndex.value = (currentMessageIndex.value + 1) % stageMessages.length
+        currentMessage.value = getRandomMessage()
       }, 3000)
 
       // Animate dots every 500ms
@@ -292,11 +426,10 @@ export default {
     }, { immediate: true })
 
     // Watch for stage changes and reset message index
-    let previousStage = ref(getCurrentStage())
     watch(() => props.progress, () => {
       const currentStage = getCurrentStage()
       if (currentStage !== previousStage.value) {
-        currentMessageIndex.value = 0
+        currentMessage.value = getRandomMessage()
         previousStage.value = currentStage
       }
     })
