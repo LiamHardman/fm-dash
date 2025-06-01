@@ -1,29 +1,10 @@
 <template>
     <q-page class="team-view-page">
-        <!-- Hero Section -->
-        <div class="hero-section">
-            <div class="hero-container">
-                <div class="hero-content">
-                    <div class="hero-badge">
-                        <q-icon name="sports_soccer" size="1.2rem" />
-                        <span>Team Performance</span>
-                    </div>
-                    <h1 class="hero-title">
-                        Squad
-                        <span class="gradient-text">Analytics</span>
-                    </h1>
-                    <p class="hero-subtitle">
-                        Analyze team compositions, tactical formations, and squad chemistry. Identify strengths and optimize performance.
-                    </p>
-                </div>
-            </div>
-        </div>
-        
-        <div class="q-pa-md">
-
+        <div class="main-content">
+            <!-- Error Banner -->
             <q-banner
                 v-if="pageLoadingError"
-                class="text-white bg-negative q-mb-md"
+                class="error-banner"
                 rounded
             >
                 <template v-slot:avatar>
@@ -39,254 +20,253 @@
                 />
             </q-banner>
 
-            <!-- Share Button -->
-            <div v-if="!pageLoadingError && currentDatasetId" class="share-button-container">
+            <!-- Share Button - Modern Design -->
+            <div v-if="!pageLoadingError && currentDatasetId" class="share-section">
                 <q-btn
                     unelevated
-                    icon="share"
+                    icon-right="share"
                     label="Share Dataset"
-                    color="positive"
+                    color="primary"
                     @click="shareDataset"
-                    class="share-btn-enhanced"
+                    class="share-btn-modern"
                     size="md"
                 >
-                    <q-tooltip>Copy shareable link to clipboard</q-tooltip>
+                    <q-tooltip>Share this dataset with others</q-tooltip>
                 </q-btn>
             </div>
 
-            <!-- Show message if no team is selected -->
-            <div v-if="!pageLoadingError && !selectedTeamName && !pageLoading" class="no-team-selected">
-                <q-card 
-                    :class="quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'"
-                    class="q-mb-md"
-                >
-                    <q-card-section class="text-center q-py-xl">
-                        <q-icon name="groups" size="4rem" color="grey-6" class="q-mb-md" />
-                        <h3 class="text-h5 q-mb-sm">No Team Selected</h3>
-                        <p class="text-grey-6 q-mb-lg">
-                            Use the search bar above to find and select a team, or click on a team name in the player data tables.
+            <!-- No Team Selected State -->
+            <div v-if="!pageLoadingError && !selectedTeamName && !pageLoading" class="empty-state">
+                <q-card class="empty-state-card">
+                    <q-card-section class="empty-state-content">
+                        <div class="empty-state-icon">
+                            <q-icon name="groups" size="4rem" />
+                        </div>
+                        <h3 class="empty-state-title">Select a Team to Begin</h3>
+                        <p class="empty-state-description">
+                            Choose a team from the search above to unlock detailed tactical analysis, formation optimization, and squad insights.
                         </p>
                         <q-btn
                             color="primary"
                             unelevated
-                            label="Go to Dataset View"
+                            label="Browse Dataset"
                             @click="router.push(`/dataset/${currentDatasetId}`)"
                             v-if="currentDatasetId"
+                            class="empty-state-btn"
                         />
                     </q-card-section>
                 </q-card>
             </div>
 
-            <div v-if="pageLoading" class="text-center q-my-xl">
-                <q-spinner-dots color="primary" size="3em" />
-                <div
-                    class="q-mt-md text-caption"
-                    :class="
-                        quasarInstance.dark.isActive
-                            ? 'text-grey-5'
-                            : 'text-grey-7'
-                    "
-                >
-                    Loading player data from server...
-                </div>
+            <!-- Loading States -->
+            <div v-if="pageLoading" class="loading-state">
+                <q-spinner-orbit color="primary" size="4em" />
+                <div class="loading-text">Loading player database...</div>
             </div>
-            <div v-else-if="loadingTeam" class="text-center q-my-xl">
-                <q-spinner-dots color="primary" size="2em" />
-                <div
-                    class="q-mt-sm text-caption"
-                    :class="
-                        quasarInstance.dark.isActive
-                            ? 'text-grey-5'
-                            : 'text-grey-7'
-                    "
-                >
-                    Loading team data...
-                </div>
+            
+            <div v-else-if="loadingTeam" class="loading-state">
+                <q-spinner-dots color="primary" size="3em" />
+                <div class="loading-text">Analyzing team composition...</div>
             </div>
 
-            <div v-if="!pageLoading && !pageLoadingError">
-                <div v-if="selectedTeamName && !loadingTeam">
-                    <!-- Team Performance Dashboard -->
-                    <div class="performance-dashboard">
-                        <div class="dashboard-header">
-                            <div class="team-info-container">
-                                <div class="team-basic-info">
-                                    <h2 class="team-name">{{ selectedTeamName }}</h2>
-                                    <div v-if="teamDivision" class="team-division">
-                                        <q-icon name="sports" size="1rem" class="division-icon" />
-                                        <span>{{ teamDivision }}</span>
-                                    </div>
+            <!-- Main Team Content -->
+            <div v-if="!pageLoading && !pageLoadingError && selectedTeamName && !loadingTeam" class="team-dashboard">
+                
+                <!-- Team Header Section (replaces hero) -->
+                <div class="team-hero-section">
+                    <div class="team-hero-content">
+                        <div class="team-primary-info">
+                            <div class="team-name-section">
+                                <h1 class="team-name-hero">{{ selectedTeamName }}</h1>
+                                <div v-if="teamDivision" class="team-division-hero">
+                                    <q-icon name="military_tech" size="1.2rem" />
+                                    <span>{{ teamDivision }}</span>
                                 </div>
-                                <div class="team-ratings-row">
-                                    <div v-if="currentTeamSectionRatings.attRating > 0 || currentTeamSectionRatings.midRating > 0 || currentTeamSectionRatings.defRating > 0" class="section-ratings-centered">
-                                        <div v-if="currentTeamSectionRatings.attRating > 0" class="section-rating-large att">
-                                            <div class="section-label-large">ATT</div>
-                                            <div class="section-value-large" :class="getOverallClass(currentTeamSectionRatings.attRating)">
-                                                {{ currentTeamSectionRatings.attRating }}
-                                            </div>
-                                        </div>
-                                        <div v-if="currentTeamSectionRatings.midRating > 0" class="section-rating-large mid">
-                                            <div class="section-label-large">MID</div>
-                                            <div class="section-value-large" :class="getOverallClass(currentTeamSectionRatings.midRating)">
-                                                {{ currentTeamSectionRatings.midRating }}
-                                            </div>
-                                        </div>
-                                        <div v-if="currentTeamSectionRatings.defRating > 0" class="section-rating-large def">
-                                            <div class="section-label-large">DEF</div>
-                                            <div class="section-value-large" :class="getOverallClass(currentTeamSectionRatings.defRating)">
-                                                {{ currentTeamSectionRatings.defRating }}
-                                            </div>
-                                        </div>
-                                    </div>
+                            </div>
+                            
+                            <!-- Star Rating Display -->
+                            <div v-if="bestTeamAverageOverall !== null" class="star-rating-display">
+                                <div class="overall-score">{{ bestTeamAverageOverall }}</div>
+                                <div class="star-container">
+                                    <span
+                                        v-for="star in 5"
+                                        :key="star"
+                                        class="star-modern"
+                                        :class="getStarClass(bestTeamAverageOverall, star)"
+                                    >
+                                        ★
+                                    </span>
                                 </div>
-                                <div v-if="bestTeamAverageOverall !== null" class="team-star-rating">
-                                    <div class="star-rating-container">
-                                        <div class="star-rating-extra-large">
-                                            <span
-                                                v-for="star in 5"
-                                                :key="star"
-                                                class="star-extra-large"
-                                                :class="getStarClass(bestTeamAverageOverall, star)"
-                                            >
-                                                ★
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
+                                <div class="rating-label">Overall Rating</div>
                             </div>
                         </div>
                         
-                        <!-- Performance cards removed - now using minimalist ratings in header -->
-                        <!-- <div v-if="bestTeamAverageOverall !== null" class="performance-cards">
-                            ... performance cards content removed ...
-                        </div> -->
-                    </div>
-
-                    <q-card
-                        :class="
-                            quasarInstance.dark.isActive
-                                ? 'bg-grey-9'
-                                : 'bg-white'
-                        "
-                        class="q-mb-md modern-formation-card"
-                    >
-                        <q-card-section>
-                            <div class="formation-header">
-                                <h3 class="formation-title">Tactical Formation</h3>
-                                <p class="formation-subtitle">Optimize your squad with the best formation</p>
+                        <!-- Performance Metrics -->
+                        <div v-if="currentTeamSectionRatings.attRating > 0 || currentTeamSectionRatings.midRating > 0 || currentTeamSectionRatings.defRating > 0" class="performance-metrics">
+                            <div class="metrics-grid">
+                                <div v-if="currentTeamSectionRatings.attRating > 0" class="metric-card attack">
+                                    <div class="metric-icon">⚔️</div>
+                                    <div class="metric-value" :class="getOverallClass(currentTeamSectionRatings.attRating)">
+                                        {{ currentTeamSectionRatings.attRating }}
+                                    </div>
+                                    <div class="metric-label">Attack</div>
+                                </div>
+                                <div v-if="currentTeamSectionRatings.midRating > 0" class="metric-card midfield">
+                                    <div class="metric-icon">⚽</div>
+                                    <div class="metric-value" :class="getOverallClass(currentTeamSectionRatings.midRating)">
+                                        {{ currentTeamSectionRatings.midRating }}
+                                    </div>
+                                    <div class="metric-label">Midfield</div>
+                                </div>
+                                <div v-if="currentTeamSectionRatings.defRating > 0" class="metric-card defense">
+                                    <div class="metric-icon">🛡️</div>
+                                    <div class="metric-value" :class="getOverallClass(currentTeamSectionRatings.defRating)">
+                                        {{ currentTeamSectionRatings.defRating }}
+                                    </div>
+                                    <div class="metric-label">Defense</div>
+                                </div>
                             </div>
-                            <div class="row q-col-gutter-md items-start">
-                                <div class="col-12 col-md-4">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Formation & Tactics Section - New Layout -->
+                <div class="formation-tactics-layout">
+                    <!-- Left Side - Formation Controls and Squad Depth -->
+                    <div class="formation-controls-panel">
+                        <!-- Formation Selection -->
+                        <q-card class="formation-card">
+                            <q-card-section>
+                                <div class="card-header">
+                                    <h3 class="card-title">
+                                        <q-icon name="diagram" class="card-icon" />
+                                        Tactical Setup
+                                    </h3>
+                                    <p class="card-subtitle">Optimize your formation and lineup</p>
+                                </div>
+                                
+                                <div class="formation-controls">
                                     <q-select
                                         v-model="selectedFormationKey"
                                         :options="formationOptions"
                                         label="Select Formation"
                                         outlined
-                                        dense
                                         emit-value
                                         map-options
-                                        :label-color="
-                                            quasarInstance.dark.isActive
-                                                ? 'grey-4'
-                                                : ''
-                                        "
-                                        :popup-content-class="
-                                            quasarInstance.dark.isActive
-                                                ? 'bg-grey-8 text-white'
-                                                : 'bg-white text-dark'
-                                        "
+                                        class="formation-select"
+                                        :label-color="quasarInstance.dark.isActive ? 'grey-4' : ''"
                                     />
+                                    
                                     <q-banner
                                         v-if="calculationMessage"
-                                        class="q-mt-sm"
+                                        class="calculation-banner"
                                         :class="calculationMessageClass"
                                     >
                                         {{ calculationMessage }}
                                     </q-banner>
-                                    
-                                    <!-- Compact Squad Depth -->
-                                    <div 
-                                        v-if="selectedFormationKey && Object.keys(squadComposition).length > 0"
-                                        class="q-mt-md"
+                                </div>
+                            </q-card-section>
+                        </q-card>
+
+                        <!-- Squad Depth Card -->
+                        <q-card 
+                            v-if="selectedFormationKey && Object.keys(squadComposition).length > 0"
+                            class="squad-depth-card"
+                        >
+                            <q-card-section>
+                                <div class="card-header">
+                                    <h3 class="card-title">
+                                        <q-icon name="groups_3" class="card-icon" />
+                                        Squad Depth
+                                    </h3>
+                                    <p class="card-subtitle">Player availability by position</p>
+                                </div>
+                                
+                                <div class="squad-depth-grid">
+                                    <div
+                                        v-for="slot in currentFormationLayout.flatMap(row => row.positions)"
+                                        :key="slot.id"
+                                        class="depth-position-modern"
                                     >
-                                        <div class="text-subtitle2 text-weight-bold q-mb-sm">Squad Depth</div>
-                                        <div class="compact-squad-depth">
+                                        <div class="position-header">
+                                            <span class="position-name">
+                                                {{ getSlotDisplayName(slot, currentFormationLayout.flatMap(r => r.positions)) }}
+                                            </span>
+                                            <span class="player-count">
+                                                {{ squadComposition[slot.id]?.length || 0 }} players
+                                            </span>
+                                        </div>
+                                        
+                                        <div v-if="squadComposition[slot.id] && squadComposition[slot.id].length > 0" class="depth-players-modern">
                                             <div
-                                                v-for="slot in currentFormationLayout.flatMap(
-                                                    (row) => row.positions,
-                                                )"
-                                                :key="slot.id"
-                                                class="depth-position-compact"
+                                                v-for="(playerEntry, index) in squadComposition[slot.id].slice(0, 3)"
+                                                :key="playerEntry.player.name + '-' + slot.id + '-' + index"
+                                                class="player-card-mini"
+                                                :class="{ 'is-starter': index === 0 }"
+                                                @click="handlePlayerSelectedFromTeam(playerEntry.player)"
                                             >
-                                                <div class="position-label">
-                                                    {{
-                                                        getSlotDisplayName(
-                                                            slot,
-                                                            currentFormationLayout.flatMap(
-                                                                (r) => r.positions,
-                                                            ),
-                                                        )
-                                                    }}
-                                                </div>
-                                                <div 
-                                                    v-if="squadComposition[slot.id] && squadComposition[slot.id].length > 0"
-                                                    class="depth-players-compact"
-                                                >
-                                                    <div
-                                                        v-for="(playerEntry, index) in squadComposition[slot.id].slice(0, 3)"
-                                                        :key="playerEntry.player.name + '-' + slot.id + '-' + index"
-                                                        class="depth-player-compact"
-                                                        :class="{ 'starter': index === 0, 'backup': index > 0 }"
-                                                        @click="handlePlayerSelectedFromTeam(playerEntry.player)"
-                                                    >
-                                                        <span class="player-rank-compact">{{ index + 1 }}.</span>
-                                                        <span class="player-name-compact">{{ playerEntry.player.name }}</span>
-                                                        <span 
-                                                            class="overall-compact"
-                                                            :class="getOverallClass(playerEntry.overallInRole)"
-                                                        >
-                                                            {{ playerEntry.overallInRole }}
-                                                        </span>
+                                                <div class="player-rank">{{ index + 1 }}</div>
+                                                <div class="player-info">
+                                                    <div class="player-name">{{ playerEntry.player.name }}</div>
+                                                    <div class="player-positions">
+                                                        {{ playerEntry.player.shortPositions?.slice(0, 2).join(', ') || 'N/A' }}
                                                     </div>
                                                 </div>
-                                                <div 
-                                                    v-else
-                                                    class="no-players-compact"
-                                                >
-                                                    No players
+                                                <div class="player-rating" :class="getOverallClass(playerEntry.overallInRole)">
+                                                    {{ playerEntry.overallInRole }}
                                                 </div>
                                             </div>
                                         </div>
+                                        
+                                        <div v-else class="no-players-state">
+                                            <q-icon name="person_off" size="1.5rem" />
+                                            <span>No suitable players</span>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="col-12 col-md-8">
+                            </q-card-section>
+                        </q-card>
+                    </div>
+
+                    <!-- Right Side - Pitch Visualization -->
+                    <div class="formation-display-panel">
+                        <q-card class="pitch-card" v-if="selectedFormationKey">
+                            <q-card-section>
+                                <div class="card-header">
+                                    <h3 class="card-title">
+                                        <q-icon name="stadium" class="card-icon" />
+                                        Formation View
+                                    </h3>
+                                    <p class="card-subtitle">Interactive pitch with your starting XI</p>
+                                </div>
+                                
+                                <div class="pitch-container">
                                     <PitchDisplay
                                         :formation="currentFormationLayout"
                                         :players="bestTeamPlayersForPitch"
-                                        @player-click="
-                                            handlePlayerSelectedFromTeam
-                                        "
+                                        @player-click="handlePlayerSelectedFromTeam"
                                         @player-moved="handlePlayerMovedOnPitch"
                                     />
                                 </div>
-                            </div>
-                        </q-card-section>
-                    </q-card>
+                            </q-card-section>
+                        </q-card>
+                    </div>
+                </div>
 
-                    <q-card
-                        class="q-mb-md"
-                        :class="
-                            quasarInstance.dark.isActive
-                                ? 'bg-grey-9'
-                                : 'bg-white'
-                        "
-                    >
-                        <q-card-section>
-                            <div class="text-h6 q-mb-sm">
-                                Players in {{ selectedTeamName }} ({{
-                                    teamPlayers.length
-                                }})
-                            </div>
+                <!-- Players Table -->
+                <q-card class="players-table-card">
+                    <q-card-section>
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <q-icon name="group" class="card-icon" />
+                                Squad Overview
+                            </h3>
+                            <p class="card-subtitle">
+                                All {{ teamPlayers.length }} players in {{ selectedTeamName }}
+                            </p>
+                        </div>
+                        
+                        <div class="table-container">
                             <PlayerDataTable
                                 v-if="teamPlayers.length > 0"
                                 :players="teamPlayers"
@@ -296,72 +276,45 @@
                                 :is-goalkeeper-view="teamIsGoalkeeperView"
                                 :currency-symbol="detectedCurrencySymbol"
                                 :dataset-id="currentDatasetId"
-                                class="team-player-table"
+                                class="modern-table"
                             />
-                            <q-banner
-                                v-else
-                                class="text-center"
-                                :class="
-                                    quasarInstance.dark.isActive
-                                        ? 'bg-grey-8 text-grey-4'
-                                        : 'bg-grey-2 text-grey-7'
-                                "
-                            >
-                                No players found for this team with the current
-                                data.
-                            </q-banner>
-                        </q-card-section>
-                    </q-card>
-
-                </div>
-                <q-banner
-                    v-else-if="
-                        !pageLoading &&
-                        !loadingTeam &&
-                        allPlayersData.length > 0 &&
-                        !selectedTeamName
-                    "
-                    class="text-center q-mt-lg"
-                    :class="
-                        quasarInstance.dark.isActive
-                            ? 'bg-blue-grey-8 text-blue-grey-2'
-                            : 'bg-blue-1 text-primary'
-                    "
-                >
-                    <template v-slot:avatar>
-                        <q-icon name="info" />
-                    </template>
-                    Please select a team to view its players and analyze
-                    formations.
-                </q-banner>
-                <q-banner
-                    v-else-if="
-                        !pageLoading &&
-                        !loadingTeam &&
-                        allPlayersData.length === 0 &&
-                        !pageLoadingError
-                    "
-                    class="text-center q-mt-lg"
-                    :class="
-                        quasarInstance.dark.isActive
-                            ? 'bg-red-9 text-red-2'
-                            : 'bg-red-1 text-negative'
-                    "
-                >
-                    <template v-slot:avatar>
-                        <q-icon name="warning" />
-                    </template>
-                    No player data available. Please upload a player file on the
-                    main page first.
-                    <q-btn
-                        flat
-                        color="primary"
-                        label="Go to Upload Page"
-                        @click="router.push('/')"
-                        class="q-ml-md"
-                    />
-                </q-banner>
+                            <div v-else class="no-players-banner">
+                                <q-icon name="person_off" size="3rem" />
+                                <h4>No Players Found</h4>
+                                <p>No players found for this team with the current data filters.</p>
+                            </div>
+                        </div>
+                    </q-card-section>
+                </q-card>
             </div>
+
+            <!-- Additional Banners -->
+            <q-banner
+                v-else-if="!pageLoading && !loadingTeam && allPlayersData.length > 0 && !selectedTeamName"
+                class="info-banner"
+            >
+                <template v-slot:avatar>
+                    <q-icon name="info" />
+                </template>
+                Please select a team to view its players and analyze formations.
+            </q-banner>
+            
+            <q-banner
+                v-else-if="!pageLoading && !loadingTeam && allPlayersData.length === 0 && !pageLoadingError"
+                class="warning-banner"
+            >
+                <template v-slot:avatar>
+                    <q-icon name="warning" />
+                </template>
+                No player data available. Please upload a player file on the main page first.
+                <q-btn
+                    flat
+                    color="primary"
+                    label="Go to Upload Page"
+                    @click="router.push('/')"
+                    class="q-ml-md"
+                />
+            </q-banner>
         </div>
 
         <!-- Player Detail Dialog -->
@@ -1604,395 +1557,419 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.team-view-page {
-    max-width: 1600px;
+// Modern Design System Variables
+$primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+$success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+$warning-gradient: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 100%);
+$danger-gradient: linear-gradient(135deg, #fd79a8 0%, #fdcb6e 100%);
+$card-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+$card-shadow-hover: 0 12px 40px rgba(0, 0, 0, 0.15);
+$border-radius: 16px;
+$border-radius-small: 8px;
+
+// Main Content Layout
+.main-content {
+    max-width: 1400px;
     margin: 0 auto;
+    padding: 2rem;
+    
+    @media (max-width: 768px) {
+        padding: 1rem;
+    }
 }
 
-// Hero Section
-.hero-section {
-    padding: 4rem 0;
-    background: linear-gradient(135deg, #1a237e 0%, #283593 50%, #3949ab 100%);
+// Modern Banners
+.error-banner {
+    background: $danger-gradient;
     color: white;
-    position: relative;
-    overflow: hidden;
-    margin: -1.5rem -1.5rem 2rem -1.5rem;
-    
-    &::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: radial-gradient(
-            circle at 30% 20%,
-            rgba(255, 255, 255, 0.05) 0%,
-            transparent 50%
-        );
-        pointer-events: none;
-    }
-    
-    .hero-container {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 0 2rem;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        position: relative;
-        z-index: 1;
-    }
-    
-    .hero-content {
-        text-align: center;
-        
-        .hero-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            background: rgba(255, 255, 255, 0.1);
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 500;
-            margin-bottom: 2rem;
-            backdrop-filter: blur(10px);
-        }
-        
-        .hero-title {
-            font-size: 3.5rem;
-            font-weight: 700;
-            line-height: 1.1;
-            margin: 0 0 1.5rem 0;
-            
-            @media (max-width: 768px) {
-                font-size: 2.5rem;
-            }
-            
-            .gradient-text {
-                background: linear-gradient(135deg, #64b5f6 0%, #42a5f5 100%);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                background-clip: text;
-            }
-        }
-        
-        .hero-subtitle {
-            font-size: 1.2rem;
-            line-height: 1.6;
-            margin: 0;
-            opacity: 0.9;
-            font-weight: 300;
-            max-width: 600px;
-            margin: 0 auto;
-            
-            @media (max-width: 768px) {
-                font-size: 1.1rem;
-            }
-        }
-    }
+    margin-bottom: 2rem;
+    border-radius: $border-radius;
+    box-shadow: $card-shadow;
 }
 
-.share-button-container {
+.info-banner {
+    background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+    color: white;
+    margin: 2rem 0;
+    border-radius: $border-radius;
+    box-shadow: $card-shadow;
+}
+
+.warning-banner {
+    background: $warning-gradient;
+    color: #2d3436;
+    margin: 2rem 0;
+    border-radius: $border-radius;
+    box-shadow: $card-shadow;
+}
+
+// Share Section
+.share-section {
     display: flex;
     justify-content: flex-end;
     margin: 2rem 0;
-    padding: 0 2rem;
-}
-
-// No Team Selected Section
-.no-team-selected {
-    margin: 3rem 0;
     
-    .q-card {
-        border-radius: 16px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-        border: 1px solid rgba(0, 0, 0, 0.05);
-        
-        .body--dark & {
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-    }
-}
-
-// Performance Dashboard
-.performance-dashboard {
-    margin: 3rem 0;
-    
-    .dashboard-header {
-        text-align: center;
-        margin-bottom: 2rem;
-        
-        .team-info-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-            
-            .team-basic-info {
-                display: flex;
-                flex-direction: column;
-                
-                .team-name {
-                    font-size: 2.5rem;
-                    font-weight: 700;
-                    margin: 0 0 0.5rem 0;
-                    color: #1a237e;
-                    
-                    .body--dark & {
-                        color: rgba(255, 255, 255, 0.9);
-                    }
-                }
-                
-                .team-division {
-                    display: flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                    font-size: 1rem;
-                    color: #666;
-                    
-                    .body--dark & {
-                        color: rgba(255, 255, 255, 0.7);
-                    }
-                    
-                    .division-icon {
-                        font-size: 1rem;
-                        color: #8bc34a;
-                    }
-                }
-            }
-            
-            .team-ratings-row {
-                display: flex;
-                flex: 1;
-                justify-content: center;
-                align-items: center;
-                
-                .section-ratings-centered {
-                    display: flex;
-                    gap: 2rem;
-                    
-                    .section-rating-large {
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
-                        gap: 0.5rem;
-                        
-                        .section-label-large {
-                            font-size: 1rem;
-                            font-weight: 700;
-                            text-transform: uppercase;
-                            letter-spacing: 1px;
-                        }
-                        
-                        .section-value-large {
-                            font-size: 2.5rem;
-                            font-weight: 800;
-                            padding: 0.5rem 1rem;
-                            border-radius: 12px;
-                            min-width: 80px;
-                            text-align: center;
-                            border: 2px solid rgba(0, 0, 0, 0.1);
-                            
-                            .body--dark & {
-                                border-color: rgba(255, 255, 255, 0.2);
-                            }
-                        }
-                        
-                        &.att .section-label-large {
-                            color: #F44336;
-                            
-                            .body--dark & {
-                                color: #FF5722;
-                            }
-                        }
-                        
-                        &.mid .section-label-large {
-                            color: #2196F3;
-                            
-                            .body--dark & {
-                                color: #03A9F4;
-                            }
-                        }
-                        
-                        &.def .section-label-large {
-                            color: #4CAF50;
-                            
-                            .body--dark & {
-                                color: #8BC34A;
-                            }
-                        }
-                    }
-                }
-            }
-            
-            .team-star-rating {
-                display: flex;
-                align-items: center;
-                
-                .star-rating-container {
-                    display: flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                    
-                    .star-rating-extra-large {
-                        display: flex;
-                        gap: 6px;
-                        
-                        .star-extra-large {
-                            font-size: 2.5rem;
-                            transition: all 0.2s ease;
-                            
-                            &.star-full {
-                                color: #ffd700;
-                                text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
-                            }
-                            
-                            &.star-half {
-                                color: #ffd700;
-                                opacity: 0.6;
-                                text-shadow: 0 0 6px rgba(255, 215, 0, 0.4);
-                            }
-                            
-                            &.star-empty {
-                                color: #e0e0e0;
-                                
-                                .body--dark & {
-                                    color: #424242;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
-        .dashboard-subtitle {
-            font-size: 1.1rem;
-            color: #666;
-            margin: 0;
-            
-            .body--dark & {
-                color: rgba(255, 255, 255, 0.7);
-            }
-        }
-    }
-    
-    .performance-cards {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1.5rem;
-        max-width: 1000px;
-        margin: 0 auto;
-        
-        @media (max-width: 768px) {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
-        }
-        
-        @media (max-width: 480px) {
-            grid-template-columns: 1fr;
-        }
-    }
-    
-    .performance-card {
-        background: white;
-        border-radius: 16px;
-        padding: 1.5rem;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-        border: 1px solid rgba(0, 0, 0, 0.05);
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        transition: transform 0.3s ease;
+    .share-btn-modern {
+        font-weight: 600;
+        border-radius: $border-radius-small;
+        box-shadow: $card-shadow;
+        transition: all 0.3s ease;
+        padding: 0.75rem 1.5rem;
         
         &:hover {
-            transform: translateY(-4px);
+            transform: translateY(-2px);
+            box-shadow: $card-shadow-hover;
         }
+    }
+}
+
+// Empty State
+.empty-state {
+    margin: 4rem 0;
+    
+    .empty-state-card {
+        border-radius: $border-radius;
+        box-shadow: $card-shadow;
+        border: 1px solid rgba(0, 0, 0, 0.05);
         
         .body--dark & {
-            background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.02);
         }
         
-        .card-icon {
-            width: 60px;
-            height: 60px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            flex-shrink: 0;
+        .empty-state-content {
+            text-align: center;
+            padding: 4rem 2rem;
             
-            &.attack-icon {
-                background: linear-gradient(135deg, #f44336 0%, #ff5722 100%);
+            .empty-state-icon {
+                margin-bottom: 2rem;
+                opacity: 0.6;
             }
             
-            &.midfield-icon {
-                background: linear-gradient(135deg, #2196f3 0%, #03a9f4 100%);
+            .empty-state-title {
+                font-size: 2rem;
+                font-weight: 700;
+                margin: 0 0 1rem 0;
+                color: #2d3436;
+                
+                .body--dark & {
+                    color: rgba(255, 255, 255, 0.9);
+                }
             }
             
-            &.defense-icon {
-                background: linear-gradient(135deg, #4caf50 0%, #8bc34a 100%);
-            }
-        }
-        
-        .card-content {
-            flex: 1;
-            
-            .card-label {
-                font-size: 0.9rem;
-                color: #666;
-                margin-bottom: 0.25rem;
-                font-weight: 500;
+            .empty-state-description {
+                font-size: 1.1rem;
+                line-height: 1.6;
+                color: #636e72;
+                margin: 0 0 2rem 0;
+                max-width: 500px;
+                margin-left: auto;
+                margin-right: auto;
                 
                 .body--dark & {
                     color: rgba(255, 255, 255, 0.7);
                 }
             }
             
-            .card-value {
-                font-size: 2rem;
-                font-weight: 700;
-                line-height: 1;
+            .empty-state-btn {
+                font-weight: 600;
+                padding: 0.75rem 2rem;
+                border-radius: $border-radius-small;
             }
-        }
-        
-        &.overall-card .card-icon {
-            background: linear-gradient(135deg, #1a237e 0%, #3949ab 100%);
         }
     }
 }
 
-// Formation Card
-.modern-formation-card {
-    border-radius: 20px !important;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+// Loading States
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 2rem;
+    
+    .loading-text {
+        margin-top: 1.5rem;
+        font-size: 1.1rem;
+        color: #636e72;
+        
+        .body--dark & {
+            color: rgba(255, 255, 255, 0.7);
+        }
+    }
+}
+
+// Team Dashboard
+.team-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+// Team Hero Section (replaces the hero section)
+.team-hero-section {
+    background: $primary-gradient;
+    color: white;
+    border-radius: $border-radius;
+    padding: 3rem;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+    
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: 
+            radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+        animation: float 20s ease-in-out infinite;
+    }
+    
+    .team-hero-content {
+        position: relative;
+        z-index: 2;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 3rem;
+        align-items: center;
+        
+        @media (max-width: 968px) {
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            text-align: center;
+        }
+        
+        .team-primary-info {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            
+            .team-name-section {
+                .team-name-hero {
+                    font-size: 3.5rem;
+                    font-weight: 800;
+                    margin: 0 0 0.5rem 0;
+                    color: white;
+                    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+                    
+                    @media (max-width: 768px) {
+                        font-size: 2.5rem;
+                    }
+                }
+                
+                .team-division-hero {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.75rem;
+                    font-size: 1.2rem;
+                    font-weight: 500;
+                    color: rgba(255, 255, 255, 0.9);
+                    
+                    .q-icon {
+                        color: #ffd700;
+                    }
+                    
+                    @media (max-width: 968px) {
+                        justify-content: center;
+                    }
+                }
+            }
+            
+            .star-rating-display {
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+                
+                @media (max-width: 968px) {
+                    justify-content: center;
+                }
+                
+                .overall-score {
+                    font-size: 3rem;
+                    font-weight: 800;
+                    color: #ffd700;
+                    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+                }
+                
+                .star-container {
+                    display: flex;
+                    gap: 4px;
+                    
+                    .star-modern {
+                        font-size: 2rem;
+                        transition: all 0.2s ease;
+                        
+                        &.star-full {
+                            color: #ffd700;
+                            text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+                        }
+                        
+                        &.star-half {
+                            color: #ffd700;
+                            opacity: 0.6;
+                        }
+                        
+                        &.star-empty {
+                            color: rgba(255, 255, 255, 0.3);
+                        }
+                    }
+                }
+                
+                .rating-label {
+                    font-size: 0.9rem;
+                    color: rgba(255, 255, 255, 0.8);
+                    font-weight: 500;
+                }
+            }
+        }
+        
+        .performance-metrics {
+            .metrics-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 1rem;
+                
+                @media (max-width: 768px) {
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 0.75rem;
+                }
+                
+                .metric-card {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    gap: 0.5rem;
+                    padding: 1.5rem 1rem;
+                    border-radius: $border-radius-small;
+                    background: rgba(255, 255, 255, 0.15);
+                    border: 2px solid rgba(255, 255, 255, 0.2);
+                    transition: all 0.3s ease;
+                    backdrop-filter: blur(10px);
+                    
+                    &:hover {
+                        transform: translateY(-2px);
+                        background: rgba(255, 255, 255, 0.2);
+                    }
+                    
+                    .metric-icon {
+                        font-size: 2rem;
+                        margin-bottom: 0.25rem;
+                    }
+                    
+                    .metric-value {
+                        font-size: 2rem;
+                        font-weight: 800;
+                        margin: 0.25rem 0;
+                        color: white;
+                        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+                    }
+                    
+                    .metric-label {
+                        font-size: 0.85rem;
+                        font-weight: 600;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                        color: rgba(255, 255, 255, 0.9);
+                    }
+                    
+                    @media (max-width: 768px) {
+                        padding: 1rem 0.75rem;
+                        
+                        .metric-icon {
+                            font-size: 1.5rem;
+                        }
+                        
+                        .metric-value {
+                            font-size: 1.5rem;
+                        }
+                        
+                        .metric-label {
+                            font-size: 0.75rem;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    33% { transform: translateY(-20px) rotate(1deg); }
+    66% { transform: translateY(-10px) rotate(-1deg); }
+}
+
+// Formation and Tactics Layout - New Structure
+.formation-tactics-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 2rem;
+    
+    @media (max-width: 1200px) {
+        grid-template-columns: 1fr;
+    }
+}
+
+.formation-controls-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.formation-display-panel {
+    display: flex;
+    flex-direction: column;
+}
+
+// Modern Card Styles
+.formation-card,
+.squad-depth-card,
+.pitch-card,
+.players-table-card {
+    border-radius: $border-radius;
+    box-shadow: $card-shadow;
     border: 1px solid rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
     
     .body--dark & {
         border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.02);
     }
     
-    .formation-header {
+    &:hover {
+        box-shadow: $card-shadow-hover;
+        transform: translateY(-2px);
+    }
+    
+    .card-header {
         margin-bottom: 2rem;
         
-        .formation-title {
-            font-size: 1.8rem;
+        .card-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.4rem;
             font-weight: 700;
             margin: 0 0 0.5rem 0;
-            color: #1a237e;
+            color: #2d3436;
             
             .body--dark & {
                 color: rgba(255, 255, 255, 0.9);
             }
+            
+            .card-icon {
+                color: #667eea;
+            }
         }
         
-        .formation-subtitle {
+        .card-subtitle {
             font-size: 1rem;
-            color: #666;
+            color: #636e72;
             margin: 0;
             
             .body--dark & {
@@ -2002,466 +1979,295 @@ export default {
     }
 }
 
-.page-title {
-    // Standard title styling
-}
-
-.filter-card,
-.q-card {
-    // General card styling for this page
-    border-radius: $generic-border-radius;
-}
-
-.team-player-table {
-    :deep(.q-table__container) {
-        max-height: 450px; // Or your desired height
-        overflow-y: auto;
+// Formation Controls
+.formation-controls {
+    .formation-select {
+        margin-bottom: 1rem;
     }
-    // Sticky header for the team player table
-    :deep(th) {
-        position: sticky;
-        top: 0;
-        z-index: 1; // Ensure header is above scrolling content
-    }
-    .body--dark & :deep(th) {
-        background-color: $grey-9 !important; // Dark mode header background
-    }
-    .body--light & :deep(th) {
-        background-color: $grey-2 !important; // Light mode header background
-    }
-}
-
-.attribute-value {
-    display: inline-block;
-    min-width: 28px; // Ensure some width for small numbers
-    text-align: center;
-    font-weight: 600;
-    padding: 2px 5px;
-    border-radius: 4px;
-    line-height: 1.3;
-    font-size: 0.8em; // Slightly smaller for badges
-}
-
-.overall-badge {
-    font-size: 0.85em;
-    padding: 2px 4px;
-}
-
-.depth-player-item {
-    padding-top: 4px;
-    padding-bottom: 4px;
-    min-height: auto;
-    transition: background-color 0.2s ease;
-
-    .player-rank {
-        font-size: 0.8em;
-        color: $grey-6;
-        .body--dark & {
-            color: $grey-5;
-        }
-        font-weight: bold;
-        min-width: 18px; // Space for "1.", "2.", "3."
-        text-align: right;
-        margin-right: 4px;
-    }
-    .player-name {
-        font-size: 0.85em;
+    
+    .calculation-banner {
+        border-radius: $border-radius-small;
         font-weight: 500;
     }
-    .backup-label {
-        font-size: 0.7em;
-        font-style: italic;
-    }
-
-    &.starter-highlight {
-        background-color: rgba($positive, 0.1); // Light green for starters
-        .body--dark & {
-            background-color: rgba($positive, 0.2);
-        }
-        .player-name {
-            font-weight: 700; // Bolder name for starters
-        }
-    }
-    &:hover {
-        background-color: rgba($primary, 0.05);
-        .body--dark & {
-            background-color: rgba($primary, 0.15);
-        }
-    }
 }
 
-.q-list--separator > .q-item:not(:first-child):before {
-    background: rgba(128, 128, 128, 0.15); // Lighter separator
-    .body--dark & {
-        background: rgba(255, 255, 255, 0.1);
-    }
-}
-
-// Position match indicators
-.position-match-indicator {
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    margin-right: 4px;
-    flex-shrink: 0;
-    
-    &.exact-match {
-        background-color: #4caf50; // Green for natural position
-        box-shadow: 0 0 2px rgba(76, 175, 80, 0.7);
-    }
-    
-    &.off-position {
-        background-color: #ff9800; // Orange for off position
-        box-shadow: 0 0 2px rgba(255, 152, 0, 0.7);
-    }
-}
-
-.d-flex {
-    display: flex !important;
-}
-
-.align-items-center {
-    align-items: center !important;
-}
-
-.q-mr-xs {
-    margin-right: 4px !important;
-}
-
-// Compact Squad Depth Styles
-.compact-squad-depth {
-    max-height: 500px;
-    overflow-y: auto;
+// Squad Depth Grid - Adjusted for left panel
+.squad-depth-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 8px;
-    width: 100%;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
     
-    .depth-position-compact {
-        padding: 8px;
-        border-radius: 6px;
-        border: 1px solid rgba(0, 0, 0, 0.1);
-        min-height: 100px;
+    @media (max-width: 768px) {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+    
+    .depth-position-modern {
+        background: rgba(255, 255, 255, 0.6);
+        border-radius: $border-radius-small;
+        padding: 1rem;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
         
         .body--dark & {
-            background-color: rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.05);
             border-color: rgba(255, 255, 255, 0.1);
         }
         
-        .body--light & {
-            background-color: rgba(0, 0, 0, 0.05);
-            border-color: rgba(0, 0, 0, 0.1);
+        &:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
         }
-    }
-    
-    .position-label {
-        font-size: 0.75rem;
-        font-weight: 700;
-        margin-bottom: 6px;
-        text-align: center;
-        color: $grey-7;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
         
-        .body--dark & {
-            color: $grey-3;
+        .position-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+            
+            .position-name {
+                font-weight: 700;
+                font-size: 0.9rem;
+                color: #2d3436;
+                
+                .body--dark & {
+                    color: rgba(255, 255, 255, 0.9);
+                }
+            }
+            
+            .player-count {
+                font-size: 0.75rem;
+                color: #636e72;
+                background: rgba(0, 0, 0, 0.05);
+                padding: 0.2rem 0.5rem;
+                border-radius: 12px;
+                
+                .body--dark & {
+                    color: rgba(255, 255, 255, 0.7);
+                    background: rgba(255, 255, 255, 0.1);
+                }
+            }
+        }
+        
+        .depth-players-modern {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            
+            .player-card-mini {
+                display: grid;
+                grid-template-columns: auto 1fr auto;
+                gap: 0.5rem;
+                align-items: center;
+                padding: 0.5rem;
+                background: rgba(255, 255, 255, 0.8);
+                border-radius: $border-radius-small;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                border: 1px solid rgba(0, 0, 0, 0.05);
+                
+                .body--dark & {
+                    background: rgba(255, 255, 255, 0.08);
+                    border-color: rgba(255, 255, 255, 0.1);
+                }
+                
+                &.is-starter {
+                    background: linear-gradient(135deg, rgba(0, 184, 148, 0.1) 0%, rgba(0, 206, 201, 0.05) 100%);
+                    border-color: rgba(0, 184, 148, 0.2);
+                    font-weight: 600;
+                }
+                
+                &:hover {
+                    transform: translateX(4px);
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                    background: rgba(103, 126, 234, 0.1);
+                    
+                    .body--dark & {
+                        background: rgba(103, 126, 234, 0.15);
+                    }
+                }
+                
+                .player-rank {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 20px;
+                    height: 20px;
+                    background: rgba(103, 126, 234, 0.1);
+                    color: #667eea;
+                    border-radius: 50%;
+                    font-size: 0.7rem;
+                    font-weight: 700;
+                }
+                
+                .player-info {
+                    min-width: 0;
+                    
+                    .player-name {
+                        font-size: 0.8rem;
+                        font-weight: 600;
+                        white-space: nowrap;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        color: #2d3436;
+                        
+                        .body--dark & {
+                            color: rgba(255, 255, 255, 0.9);
+                        }
+                    }
+                    
+                    .player-positions {
+                        font-size: 0.65rem;
+                        color: #636e72;
+                        margin-top: 0.2rem;
+                        
+                        .body--dark & {
+                            color: rgba(255, 255, 255, 0.6);
+                        }
+                    }
+                }
+                
+                .player-rating {
+                    font-size: 0.75rem;
+                    font-weight: 700;
+                    padding: 0.2rem 0.4rem;
+                    border-radius: 4px;
+                    min-width: 28px;
+                    text-align: center;
+                    border: 1px solid rgba(0, 0, 0, 0.1);
+                    
+                    .body--dark & {
+                        border-color: rgba(255, 255, 255, 0.2);
+                    }
+                }
+            }
+        }
+        
+        .no-players-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 1rem;
+            color: #636e72;
+            font-style: italic;
+            font-size: 0.8rem;
+            
+            .body--dark & {
+                color: rgba(255, 255, 255, 0.5);
+            }
+            
+            .q-icon {
+                font-size: 1.2rem;
+            }
         }
     }
+}
+
+// Pitch Container
+.pitch-container {
+    background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+    border-radius: $border-radius;
+    padding: 2rem;
+    margin-top: 1rem;
+    position: relative;
+    overflow: hidden;
     
-    .depth-players-compact {
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: 
+            linear-gradient(90deg, rgba(255, 255, 255, 0.1) 50%, transparent 50%),
+            linear-gradient(0deg, rgba(255, 255, 255, 0.1) 50%, transparent 50%);
+        background-size: 20px 20px;
+        opacity: 0.3;
+    }
+}
+
+// Table Container
+.table-container {
+    .modern-table {
+        border-radius: $border-radius-small;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .no-players-banner {
         display: flex;
         flex-direction: column;
-        gap: 3px;
-    }
-    
-    .depth-player-compact {
-        display: flex;
         align-items: center;
-        gap: 4px;
-        padding: 3px 6px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 0.75rem;
-        min-height: 22px;
-        
-        &.starter {
-            font-weight: 700;
-            background-color: rgba($positive, 0.15);
-            border: 1px solid rgba($positive, 0.3);
-            
-            .body--dark & {
-                background-color: rgba($positive, 0.25);
-                border-color: rgba($positive, 0.4);
-            }
-        }
-        
-        &.backup {
-            font-weight: 500;
-            background-color: rgba($grey-5, 0.1);
-            
-            .body--dark & {
-                background-color: rgba($grey-5, 0.15);
-            }
-        }
-        
-        &:hover {
-            background-color: rgba($primary, 0.15);
-            transform: translateY(-1px);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            
-            .body--dark & {
-                background-color: rgba($primary, 0.25);
-            }
-        }
-    }
-    
-    .player-rank-compact {
-        font-size: 0.65rem;
-        font-weight: bold;
-        min-width: 14px;
-        color: $grey-6;
-        
-        .body--dark & {
-            color: $grey-4;
-        }
-    }
-    
-    .player-name-compact {
-        flex: 1;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        font-size: 0.72rem;
-    }
-    
-    .overall-compact {
-        font-size: 0.7rem;
-        font-weight: bold;
-        padding: 2px 4px;
-        border-radius: 3px;
-        min-width: 24px;
+        gap: 1rem;
+        padding: 3rem 2rem;
         text-align: center;
-        border: 1px solid rgba(0, 0, 0, 0.1);
+        color: #636e72;
         
         .body--dark & {
-            border-color: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.7);
         }
-    }
-    
-    .no-players-compact {
-        font-size: 0.7rem;
-        color: $grey-6;
-        font-style: italic;
-        text-align: center;
-        padding: 8px;
         
-        .body--dark & {
-            color: $grey-5;
+        h4 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        p {
+            margin: 0;
+            font-size: 1rem;
         }
     }
 }
 
-// Enhanced share button styling
-.share-btn-enhanced {
-    font-weight: 600;
-    border-radius: 6px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    transition: all 0.2s ease;
-    
-    &:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+// Responsive Design
+@media (max-width: 1200px) {
+    .formation-tactics-layout {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
     }
     
-    .body--dark & {
-        box-shadow: 0 2px 4px rgba(255, 255, 255, 0.1);
-        
-        &:hover {
-            box-shadow: 0 4px 8px rgba(255, 255, 255, 0.15);
-        }
-    }
-}
-
-.section-ratings-detail {
-    display: flex;
-    gap: 12px;
-    margin-top: 8px;
-}
-
-.section-rating-detail {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    
-    .section-label-detail {
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        min-width: 28px;
-    }
-    
-    .section-value-detail {
-        font-size: 0.8rem;
-        font-weight: bold;
-        padding: 2px 6px;
-        border-radius: 4px;
-        min-width: 28px;
-        text-align: center;
-    }
-    
-    &.att .section-label-detail {
-        color: #F44336; // Red for attack
-        
-        .body--dark & {
-            color: #FF5722;
-        }
-    }
-    
-    &.mid .section-label-detail {
-        color: #2196F3; // Blue for midfield
-        
-        .body--dark & {
-            color: #03A9F4;
-        }
-    }
-    
-    &.def .section-label-detail {
-        color: #4CAF50; // Green for defense
-        
-        .body--dark & {
-            color: #8BC34A;
-        }
-    }
-}
-
-// Ensure global rating tier colors are applied if not already via app.scss
-.rating-tier-6 {
-    /* styles from app.scss */
-}
-.rating-tier-5 {
-    /* styles from app.scss */
-}
-// ... etc. for all tiers
-
-// Star rating styles
-.star-rating-large {
-    display: flex;
-    gap: 2px;
-    
-    .star-large {
-        font-size: 1.5rem;
-        transition: all 0.2s ease;
-        
-        &.star-full {
-            color: #ffd700;
-            text-shadow: 0 0 4px rgba(255, 215, 0, 0.5);
-        }
-        
-        &.star-half {
-            color: #ffd700;
-            opacity: 0.6;
-            text-shadow: 0 0 4px rgba(255, 215, 0, 0.3);
-        }
-        
-        &.star-empty {
-            color: #e0e0e0;
-            
-            .body--dark & {
-                color: #424242;
-            }
-        }
-    }
-}
-
-.star-rating-label {
-    font-size: 1rem;
-    color: #666;
-    font-weight: 500;
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.7);
+    .formation-controls-panel {
+        gap: 1.5rem;
     }
 }
 
 @media (max-width: 768px) {
-    .team-info-container {
-        flex-direction: column;
-        align-items: center;
-        gap: 2rem;
-        
-        .team-basic-info {
-            text-align: center;
-        }
-        
-        .team-ratings-row {
-            width: 100%;
-            
-            .section-ratings-centered {
-                gap: 1.5rem;
-                
-                .section-rating-large {
-                    .section-label-large {
-                        font-size: 0.9rem;
-                    }
-                    
-                    .section-value-large {
-                        font-size: 2rem;
-                        min-width: 60px;
-                        padding: 0.4rem 0.8rem;
-                    }
-                }
-            }
-        }
-        
-        .team-star-rating {
-            .star-rating-container {
-                .star-rating-extra-large {
-                    gap: 4px;
-                    
-                    .star-extra-large {
-                        font-size: 2rem;
-                    }
-                }
-            }
-        }
+    .main-content {
+        padding: 1rem;
+    }
+    
+    .team-dashboard {
+        gap: 1.5rem;
+    }
+    
+    .team-hero-section {
+        padding: 2rem;
+    }
+    
+    .formation-tactics-layout {
+        gap: 1rem;
+    }
+    
+    .formation-controls-panel {
+        gap: 1rem;
     }
 }
 
-@media (max-width: 480px) {
-    .team-info-container {
-        gap: 1.5rem;
-        
-        .team-ratings-row {
-            .section-ratings-centered {
-                gap: 1rem;
-                
-                .section-rating-large {
-                    .section-label-large {
-                        font-size: 0.8rem;
-                    }
-                    
-                    .section-value-large {
-                        font-size: 1.8rem;
-                        min-width: 50px;
-                        padding: 0.3rem 0.6rem;
-                    }
-                }
-            }
-        }
-        
-        .team-star-rating {
-            .star-rating-container {
-                .star-rating-extra-large {
-                    gap: 3px;
-                    
-                    .star-extra-large {
-                        font-size: 1.8rem;
-                    }
-                }
-            }
-        }
+// Dark mode enhancements
+.body--dark {
+    .team-hero-section {
+        background: linear-gradient(135deg, #2d3436 0%, #636e72 100%);
     }
 }
+
+// Utility classes for rating colors (ensure these exist)
+.rating-tier-6 { color: #8e24aa; background-color: rgba(142, 36, 170, 0.1); }
+.rating-tier-5 { color: #1976d2; background-color: rgba(25, 118, 210, 0.1); }
+.rating-tier-4 { color: #388e3c; background-color: rgba(56, 142, 60, 0.1); }
+.rating-tier-3 { color: #f57c00; background-color: rgba(245, 124, 0, 0.1); }
+.rating-tier-2 { color: #d32f2f; background-color: rgba(211, 47, 47, 0.1); }
+.rating-tier-1 { color: #616161; background-color: rgba(97, 97, 97, 0.1); }
 </style>
