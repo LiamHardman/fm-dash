@@ -16,12 +16,10 @@ export function useApi(baseURL = '/api') {
 
   // Create request with abort capability
   const createRequest = (url, options = {}) => {
-    // Cancel previous request if still pending
     if (abortController.value) {
       abortController.value.abort()
     }
 
-    // Create new abort controller
     abortController.value = new AbortController()
 
     const config = {
@@ -80,7 +78,6 @@ export function useApi(baseURL = '/api') {
       ...options
     }
 
-    // Handle different data types
     if (data instanceof FormData) {
       // Remove Content-Type header for FormData (let browser set it)
       config.headers = undefined
@@ -116,7 +113,6 @@ export function useApi(baseURL = '/api') {
       body: formData
     })
 
-    // Remove Content-Type header for FormData (let browser set it)
     if (config.headers) {
       delete config.headers['Content-Type']
     }
@@ -219,10 +215,8 @@ export function useApi(baseURL = '/api') {
   }
 
   return {
-    // State
     isLoading,
 
-    // Generic methods
     request,
     get,
     post,
@@ -233,7 +227,6 @@ export function useApi(baseURL = '/api') {
     batch,
     healthCheck,
 
-    // Utilities
     safeAsync,
     withRetry
   }

@@ -1,4 +1,3 @@
-// src/stores/playerStore.js
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef } from 'vue'
 import playerService from '../services/playerService'

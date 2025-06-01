@@ -1,4 +1,3 @@
-// src/utils/formations.js
 // Formation layouts using more Football Manager-centric role descriptors.
 // Layouts are defined with attackers first (top of pitch) and GK last (bottom of pitch).
 

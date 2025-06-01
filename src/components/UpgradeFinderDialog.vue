@@ -1,4 +1,3 @@
-// src/components/UpgradeFinderDialog.vue
 <template>
     <q-dialog
         :model-value="show"

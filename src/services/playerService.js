@@ -1,25 +1,21 @@
-// src/services/playerService.js
 import { useApi } from '../composables/useApi'
 
-const API_BASE_URL = '' // Use relative paths if proxy is set up for all API routes
+const API_BASE_URL = ''
 
 export default {
   async uploadPlayerFile(formData, maxSizeBytes = 15 * 1024 * 1024, onProgress = null) {
     try {
-      // Get the file from FormData to pass directly to uploadFile
       const file = formData.get('playerFile')
       if (!file) {
         throw new Error('No file found in form data')
       }
       
-      // Use the uploadFile function from useApi.js with empty base URL since upload is at /upload
       const { uploadFile } = useApi('')
       const response = await uploadFile('/upload', file, onProgress)
       return response
     } catch (error) {
       console.error('Upload error in playerService:', error)
       
-      // Handle specific error cases
       if (error.message?.includes('413') || error.message?.includes('too large')) {
         const maxSizeMB = Math.round(maxSizeBytes / (1024 * 1024))
         const newError = new Error(`File too large. Maximum size allowed is ${maxSizeMB}MB.`)
@@ -27,7 +23,6 @@ export default {
         throw newError
       }
       
-      throw error // Re-throw the error to be caught by the store
     }
   },
 
@@ -131,7 +126,6 @@ export default {
       return await response.json()
     } catch (error) {
       console.error('Error fetching config in playerService:', error)
-      // Return default values if config fetch fails
       return {
         maxUploadSizeMB: 15,
         maxUploadSizeBytes: 15 * 1024 * 1024

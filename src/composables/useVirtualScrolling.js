@@ -44,12 +44,10 @@ export function useVirtualScrolling(options = {}) {
     scrollTop.value = scrollInfo.verticalPosition
     isScrolling.value = true
 
-    // Clear existing timeout
     if (scrollTimeout.value) {
       clearTimeout(scrollTimeout.value)
     }
 
-    // Set new timeout to mark scrolling as finished
     scrollTimeout.value = setTimeout(() => {
       isScrolling.value = false
     }, 150)
@@ -62,14 +60,12 @@ export function useVirtualScrolling(options = {}) {
   const getOffset = () => startIndex.value * itemHeight
 
   return {
-    // State
     scrollTop,
     isScrolling,
     startIndex,
     endIndex,
     visibleItemCount,
 
-    // Methods
     getVisibleItems,
     handleScroll,
     getTotalHeight,
@@ -204,7 +200,6 @@ export function useOptimizedSorting() {
       }
     }
 
-    // Add remaining elements
     result.push(...arr1.slice(i), ...arr2.slice(j))
     return result
   }

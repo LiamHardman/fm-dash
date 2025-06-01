@@ -26,7 +26,6 @@ export function useCurrency(currencySymbol = '$') {
   const parseCurrency = currencyString => {
     if (!currencyString || typeof currencyString !== 'string') return 0
 
-    // Remove currency symbols and commas, parse as float
     const cleaned = currencyString.replace(/[^\d.-]/g, '')
     const parsed = Number.parseFloat(cleaned)
     return Number.isNaN(parsed) ? 0 : parsed

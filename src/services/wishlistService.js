@@ -1,4 +1,3 @@
-const API_BASE_URL = '' // Use relative paths if proxy is set up for all API routes
 
 export default {
   async saveWishlist(datasetId, wishlistData) {

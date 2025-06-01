@@ -247,7 +247,6 @@ import PlayerFilters from '../components/filters/PlayerFilters.vue'
 import { usePlayerStore } from '../stores/playerStore'
 import { useWishlistStore } from '../stores/wishlistStore'
 
-// Define FM attribute keys for filtering (raw keys as used in player.attributes)
 const rawTechnicalAttributeKeysConst = [
   'Cor',
   'Cro',
@@ -302,7 +301,6 @@ const allRawFmAttributeKeys = [
   ...rawGoalkeeperAttributeKeysConst
 ]
 
-// Helper to create filter keys like 'minCor', 'minLTh' (matching PlayerFilters.vue's formatAttrKey for consistency)
 const formatFilterKeyPrefix = attrKey => {
   return attrKey.replace(/\s+/g, '').replace(/\(|\)/g, '')
 }
@@ -332,7 +330,6 @@ export default {
     const showWonderkids = ref(false)
     const showBargainHunter = ref(false)
 
-    // Centralized filter state for this page
     const currentFilters = ref({
       name: '',
       position: '',
@@ -380,7 +377,6 @@ export default {
     const uniqueMediaHandlings = computed(() => playerStore.uniqueMediaHandlings)
     const uniquePersonalities = computed(() => playerStore.uniquePersonalities)
 
-    // For PlayerFilters component props - ensure safe access with fallbacks
     const transferValueRangeForFilters = computed(() => {
       const range = playerStore.currentDatasetTransferValueRange || {
         min: 0,
@@ -415,7 +411,6 @@ export default {
 
       return allPlayersData.value
         .filter(player => {
-          // Name filter
           if (
             currentFilters.value.name &&
             !player.name.toLowerCase().includes(currentFilters.value.name.toLowerCase())
@@ -423,18 +418,15 @@ export default {
             return false
           }
 
-          // Club filter
           if (currentFilters.value.club && player.club !== currentFilters.value.club) {
             return false
           }
 
-          // Position filter
           if (currentFilters.value.position) {
             const hasPosition = player.shortPositions?.includes(currentFilters.value.position)
             if (!hasPosition) return false
           }
 
-          // Role filter
           if (currentFilters.value.role) {
             const hasRole = player.roleSpecificOveralls?.some(
               role => role.roleName === currentFilters.value.role
@@ -442,7 +434,6 @@ export default {
             if (!hasRole) return false
           }
 
-          // Nationality filter
           if (
             currentFilters.value.nationality &&
             player.nationality !== currentFilters.value.nationality
@@ -460,7 +451,6 @@ export default {
             if (!hasMediaHandling) return false
           }
 
-          // Personality filter
           if (currentFilters.value.personality && currentFilters.value.personality.length > 0) {
             if (!player.personality) return false
             const hasPersonality = currentFilters.value.personality.includes(player.personality)
@@ -568,10 +558,8 @@ export default {
         await playerStore.fetchPlayersByDatasetId(datasetId)
         await playerStore.fetchAllAvailableRoles()
 
-        // Initialize wishlist for this dataset
         await wishlistStore.initializeWishlistForDataset(datasetId)
 
-        // Safely access store values and provide defaults
         const initTvRange = playerStore.initialDatasetTransferValueRange
         const initSalaryRange = playerStore.salaryRange
 
@@ -727,7 +715,6 @@ export default {
       { immediate: true, deep: true }
     )
 
-    // Utility function to format large numbers
     const formatNumber = num => {
       if (num >= 1000000) {
         return `${(num / 1000000).toFixed(1).replace(/\.0$/, '')}M`

@@ -1,7 +1,5 @@
-// src/router/index.js
 import { createRouter, createWebHistory } from 'vue-router'
 
-// Lazy load components
 const LandingPage = () => import('../pages/LandingPage.vue')
 const PlayerUploadPage = () => import('../pages/PlayerUploadPage.vue')
 const TeamViewPage = () => import('../pages/TeamViewPage.vue')

@@ -1,4 +1,3 @@
-// src/stores/uiStore.js
 import { defineStore } from 'pinia'
 import { useQuasar } from 'quasar'
 import { ref, watch } from 'vue'

@@ -1,4 +1,3 @@
-// src/components/PitchDisplay.vue
 <template>
     <div
         class="pitch-container"

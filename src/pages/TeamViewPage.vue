@@ -1,4 +1,3 @@
-// src/pages/TeamViewPage.vue
 <template>
     <q-page class="team-view-page">
         <!-- Hero Section -->
@@ -441,7 +440,6 @@ export default {
     const pageLoading = ref(true)
     const pageLoadingError = ref('')
 
-    // Computed properties from store
     const allPlayersData = computed(() => playerStore.allPlayers)
     const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol)
     const currentDatasetId = computed(() => playerStore.currentDatasetId)
@@ -457,7 +455,6 @@ export default {
     const playerForDetailView = ref(null)
     const showPlayerDetailDialog = ref(false)
 
-    // Map position names to their short codes, more specific for each side
     const fmMatcherToRoleKeyPrefix = {
       GOALKEEPER: 'GK',
       SWEEPER: 'DC',
@@ -494,24 +491,22 @@ export default {
     // For handling combined positions like D/WB(R)
     // The first position is the PREFERRED position, others are fallbacks
     const positionSideMap = {
-      // Map FM formation slots to possible shortPositions (in strict priority order)
-      'D (R)': ['DR'], // Right defender should ONLY be DR
-      'D (L)': ['DL'], // Left defender should ONLY be DL
-      'D (C)': ['DC'], // Center defender should ONLY be DC
-      'WB (R)': ['WBR'], // Right wing back should ONLY be WBR
-      'WB (L)': ['WBL'], // Left wing back should ONLY be WBL
-      'DM (C)': ['DM'], // Defensive mid should ONLY be DM
-      'M (R)': ['MR'], // Right mid should ONLY be MR
-      'M (L)': ['ML'], // Left mid should ONLY be ML
-      'M (C)': ['MC'], // Center mid should ONLY be MC
-      'AM (R)': ['AMR'], // Right attacking mid should ONLY be AMR
-      'AM (L)': ['AML'], // Left attacking mid should ONLY be AML
-      'AM (C)': ['AMC'], // Center attacking mid should ONLY be AMC
-      'ST (C)': ['ST'], // Striker should ONLY be ST
-      GK: ['GK'] // Goalkeeper is always GK
+      'D (R)': ['DR'],
+      'D (L)': ['DL'],
+      'D (C)': ['DC'],
+      'WB (R)': ['WBR'],
+      'WB (L)': ['WBL'],
+      'DM (C)': ['DM'],
+      'M (R)': ['MR'],
+      'M (L)': ['ML'],
+      'M (C)': ['MC'],
+      'AM (R)': ['AMR'],
+      'AM (L)': ['AML'],
+      'AM (C)': ['AMC'],
+      'ST (C)': ['ST'],
+      GK: ['GK']
     }
 
-    // Secondary fallback map - only used if no players are found for a position
     const fallbackPositionMap = {
       'D (R)': ['DR', 'WBR', 'MR'],
       'D (L)': ['DL', 'WBL', 'ML'],
@@ -1590,6 +1585,25 @@ export default {
         })
       }
     }
+
+    const startersWithRoleRatings = computed(() => {
+      if (!squadComposition.value || Object.keys(squadComposition.value).length === 0) {
+        return {}
+      }
+      const starters = {}
+      for (const [slotId, starterEntry] of Object.entries(squadComposition.value)) {
+        if (starterEntry && starterEntry.player) {
+          starters[slotId] = {
+            ...starterEntry.player,
+            Overall: starterEntry.overallInRole,
+            exactPositionMatch: starterEntry.exactMatch
+          }
+        } else {
+          starters[slotId] = null
+        }
+      }
+      return starters
+    })
 
     return {
       allPlayersData,
