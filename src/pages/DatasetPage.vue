@@ -91,42 +91,6 @@
                     </div>
                     
                     <div class="actions-grid">
-                        <div class="action-feature-card" @click="viewLeagues">
-                            <div class="feature-icon-container primary-gradient">
-                                <q-icon name="sports" size="2.5rem" />
-                            </div>
-                            <div class="feature-content">
-                                <h3 class="feature-title">League Explorer</h3>
-                                <p class="feature-description">
-                                    Dive deep into leagues and competitions. Compare performance across different tournaments and discover emerging talents.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div class="action-feature-card" @click="viewTeamAnalysis">
-                            <div class="feature-icon-container secondary-gradient">
-                                <q-icon name="sports_soccer" size="2.5rem" />
-                            </div>
-                            <div class="feature-content">
-                                <h3 class="feature-title">Team Analytics</h3>
-                                <p class="feature-description">
-                                    Analyze squad compositions, tactical formations, and team chemistry. Identify strengths and weaknesses.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div class="action-feature-card" @click="viewNationsAnalysis">
-                            <div class="feature-icon-container info-gradient">
-                                <q-icon name="flag" size="2.5rem" />
-                            </div>
-                            <div class="feature-content">
-                                <h3 class="feature-title">Nations Insights</h3>
-                                <p class="feature-description">
-                                    Explore player distributions by nationality. Discover hidden gems and understand global talent pools.
-                                </p>
-                            </div>
-                        </div>
-
                         <div class="action-feature-card" @click="showUpgradeFinder = true" :class="{ 'disabled': allPlayersData.length === 0 }">
                             <div class="feature-icon-container accent-gradient">
                                 <q-icon name="find_replace" size="2.5rem" />
@@ -146,7 +110,7 @@
                             <div class="feature-content">
                                 <h3 class="feature-title">Find Wonderkids</h3>
                                 <p class="feature-description">
-                                    Discover the 25 best young talents aged 15-21. Filter by transfer value and salary to find your next star.
+                                    Discover the best young talents aged 15-21. Filter by transfer value and salary to find your next star.
                                 </p>
                             </div>
                         </div>
@@ -663,21 +627,14 @@ export default {
           timeout: 2000
         })
       }
-    }
-
-    const viewLeagues = () => {
-      if (currentDatasetId.value) {
-        router.push(`/leagues?datasetId=${currentDatasetId.value}`)
-      }
-    }
-    const viewTeamAnalysis = () => {
-      if (currentDatasetId.value) {
-        router.push(`/team-view?datasetId=${currentDatasetId.value}`)
-      }
-    }
-    const viewNationsAnalysis = () => {
-      if (currentDatasetId.value) {
-        router.push(`/nations?datasetId=${currentDatasetId.value}`)
+      try {
+        if (window.gtag) {
+          window.gtag('event', 'share_dataset', {
+            dataset_id: currentDatasetId.value
+          })
+        }
+      } catch (e) {
+        console.error('GA Event failed', e)
       }
     }
 
@@ -806,9 +763,6 @@ export default {
       showWonderkids,
       showBargainHunter,
       shareDataset,
-      viewLeagues,
-      viewTeamAnalysis,
-      viewNationsAnalysis,
       handlePlayerSelected,
       handleTeamSelected,
       handleFiltersChanged,
@@ -1074,9 +1028,9 @@ export default {
     
     .actions-grid {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(3, 1fr);
         gap: 2rem;
-        max-width: 1400px;
+        max-width: 1200px;
         margin: 0 auto;
         
         @media (max-width: 1200px) {
