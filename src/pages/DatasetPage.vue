@@ -400,12 +400,6 @@ export default {
     const AGE_SLIDER_MIN_DEFAULT = computed(() => playerStore.AGE_SLIDER_MIN_DEFAULT)
     const AGE_SLIDER_MAX_DEFAULT = computed(() => playerStore.AGE_SLIDER_MAX_DEFAULT)
 
-    const isGoalkeeperView = computed(() => {
-      return (
-        currentFilters.value.position === 'GK' || currentFilters.value.role?.includes('Goalkeeper')
-      )
-    })
-
     const filteredPlayers = computed(() => {
       if (!Array.isArray(allPlayersData.value)) return []
 
@@ -549,6 +543,31 @@ export default {
           }
           return player
         })
+    })
+
+    const isGoalkeeperView = computed(() => {
+      // First check explicit position or role filters
+      if (currentFilters.value.position === 'GK' || currentFilters.value.role?.includes('Goalkeeper')) {
+        return true
+      }
+      
+      // If we have filtered players, check if majority are goalkeepers
+      if (filteredPlayers.value && filteredPlayers.value.length > 0) {
+        const goalkeeperCount = filteredPlayers.value.filter(player => {
+          const isGK = (
+            player.position?.includes('GK') ||
+            player.shortPositions?.includes('GK') ||
+            player.positionGroups?.includes('Goalkeepers')
+          )
+          return isGK
+        }).length
+        
+        // Show goalkeeper view if more than 50% of filtered players are goalkeepers
+        // and we have at least one goalkeeper
+        return goalkeeperCount > 0 && goalkeeperCount > filteredPlayers.value.length / 2
+      }
+      
+      return false
     })
 
     const fetchDataset = async datasetId => {

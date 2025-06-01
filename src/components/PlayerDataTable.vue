@@ -734,46 +734,42 @@ export default {
       }
     }
 
-    // Memoized computed for columns (recalculated when isGoalkeeperView changes)
-    const currentColumns = memoizedComputed(
-      () => {
-        const newOrderBase = [
-          baseColumnDefinitions.name,
-          baseColumnDefinitions.nationality_display,
-          baseColumnDefinitions.age,
-          baseColumnDefinitions.position,
-          baseColumnDefinitions.club,
-          baseColumnDefinitions.transfer_value,
-          baseColumnDefinitions.wage,
-          baseColumnDefinitions.Overall
-        ]
-        const fifaColumnsInOrder = props.isGoalkeeperView
-          ? [
-              allFifaStatDefinitions.DIV,
-              allFifaStatDefinitions.HAN,
-              allFifaStatDefinitions.REF,
-              allFifaStatDefinitions.KIC,
-              allFifaStatDefinitions.SPD,
-              allFifaStatDefinitions.POS
-            ]
-          : [
-              allFifaStatDefinitions.PAC,
-              allFifaStatDefinitions.SHO,
-              allFifaStatDefinitions.PAS,
-              allFifaStatDefinitions.DRI,
-              allFifaStatDefinitions.DEF,
-              allFifaStatDefinitions.PHY
-            ]
-        const trailingColumns = [
-          baseColumnDefinitions.personality,
-          baseColumnDefinitions.media_handling
-        ]
-        return [...newOrderBase, ...fifaColumnsInOrder, ...trailingColumns]
-      },
-      {
-        dependencies: [() => props.isGoalkeeperView]
-      }
-    )
+    // Regular computed for columns (removed memoization to fix reactivity issues)
+    const currentColumns = computed(() => {
+      const newOrderBase = [
+        baseColumnDefinitions.name,
+        baseColumnDefinitions.nationality_display,
+        baseColumnDefinitions.age,
+        baseColumnDefinitions.position,
+        baseColumnDefinitions.club,
+        baseColumnDefinitions.transfer_value,
+        baseColumnDefinitions.wage,
+        baseColumnDefinitions.Overall
+      ]
+      const fifaColumnsInOrder = props.isGoalkeeperView
+        ? [
+            allFifaStatDefinitions.DIV,
+            allFifaStatDefinitions.HAN,
+            allFifaStatDefinitions.REF,
+            allFifaStatDefinitions.KIC,
+            allFifaStatDefinitions.SPD,
+            allFifaStatDefinitions.POS
+          ]
+        : [
+            allFifaStatDefinitions.PAC,
+            allFifaStatDefinitions.SHO,
+            allFifaStatDefinitions.PAS,
+            allFifaStatDefinitions.DRI,
+            allFifaStatDefinitions.DEF,
+            allFifaStatDefinitions.PHY
+          ]
+      
+      const trailingColumns = [
+        baseColumnDefinitions.personality,
+        baseColumnDefinitions.media_handling
+      ]
+      return [...newOrderBase, ...fifaColumnsInOrder, ...trailingColumns]
+    })
 
     const getColumnLabel = fieldName => {
       const col = currentColumns.value.find(c => c.name === fieldName)
