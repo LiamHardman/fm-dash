@@ -1,4 +1,3 @@
-// src/components/filters/PlayerFilters.vue
 <template>
     <q-card
         class="q-mb-md filter-card"

@@ -1,4 +1,3 @@
-// src/utils/currencyUtils.js
 
 /**
  * Formats a numeric monetary value into a string with a currency symbol and K/M suffix.

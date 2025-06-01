@@ -26,7 +26,6 @@ export function memoize(fn, options = {}) {
   const memoizedFn = (...args) => {
     const key = keyGenerator(...args)
 
-    // Check if we have a cached result
     if (cache.has(key)) {
       const cached = cache.get(key)
 

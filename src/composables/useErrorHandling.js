@@ -51,7 +51,6 @@ export function useErrorHandling() {
     errors.value.push(errorObj)
     lastError.value = errorObj
 
-    // Auto-handle based on severity
     if (errorObj.severity === ErrorSeverity.HIGH || errorObj.severity === ErrorSeverity.CRITICAL) {
       showErrorNotification(errorObj)
     }
@@ -217,7 +216,6 @@ export function useErrorHandling() {
       ]
     }
 
-    // Customize based on severity
     if (errorObj.severity === ErrorSeverity.CRITICAL) {
       config.timeout = 0 // Don't auto-dismiss critical errors
       config.color = 'red-10'
@@ -268,18 +266,15 @@ export function useErrorHandling() {
   }
 
   return {
-    // State
     errors,
     isLoading,
     lastError,
     hasErrors,
     criticalErrors,
 
-    // Constants
     ErrorTypes,
     ErrorSeverity,
 
-    // Methods
     addError,
     removeError,
     clearErrors,

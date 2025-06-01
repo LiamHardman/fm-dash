@@ -1,4 +1,3 @@
-// src/utils/formationCache.js
 class FormationCache {
   constructor(maxSize = 100) {
     this.cache = new Map()

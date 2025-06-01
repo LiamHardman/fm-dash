@@ -21,7 +21,6 @@ export function usePlayerUtils() {
 
   // Get player value with GK mapping applied
   const getPlayerValue = (player, fieldKey, columnName = null, isGoalkeeperView = false) => {
-    // For non-goalkeeper view, map GK stats to standard FIFA stats if the player is a goalkeeper
     if (!isGoalkeeperView && player.position && player.position.includes('GK')) {
       const mappedStat = gkStatMapping[columnName || fieldKey]
       if (mappedStat && player[mappedStat] !== undefined) {
@@ -29,7 +28,6 @@ export function usePlayerUtils() {
       }
     }
 
-    // Default behavior - use the field key
     return player[fieldKey]
   }
 
@@ -103,7 +101,6 @@ export function usePlayerUtils() {
   const calculatePotentialRating = (current, potential, age) => {
     if (!potential || !current || !age) return current || 0
 
-    // Simple potential calculation based on age
     const ageFactor = Math.max(0, (35 - age) / 17) // Peak at 18, decline after 35
     return Math.min(potential, current + (potential - current) * ageFactor)
   }

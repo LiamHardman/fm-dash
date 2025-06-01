@@ -276,12 +276,10 @@ export default {
     const showFileSizeLimitModal = ref(false)
     const uploadProgress = ref(0)
 
-    // Dynamic config values
-    const maxFileSizeBytes = ref(15 * 1024 * 1024) // Default 15MB
-    const maxFileSizeMB = ref(15) // Default 15MB
-    const largeFileSizeBytes = ref(20 * 1024 * 1024) // 20MB threshold for notifications
+    const maxFileSizeBytes = ref(15 * 1024 * 1024)
+    const maxFileSizeMB = ref(15)
+    const largeFileSizeBytes = ref(20 * 1024 * 1024)
 
-    // Web notification setup
     const {
       isSupported: notificationSupported,
       permissionGranted,
@@ -411,7 +409,6 @@ export default {
           }, 1000)
         }
       } catch (e) {
-        // Reset progress on error
         uploadProgress.value = 0
         
         console.error('Upload and Parse error in page:', e)
@@ -433,7 +430,6 @@ export default {
           })
         }
       } finally {
-        // Reset progress after a delay to show completion
         setTimeout(() => {
           uploadProgress.value = 0
         }, 2000)

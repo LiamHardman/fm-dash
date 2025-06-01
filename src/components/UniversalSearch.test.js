@@ -20,10 +20,8 @@ vi.mock('vue-router', () => ({
 // Mock window.open
 global.window.open = vi.fn()
 
-// Import the mocked functions
 import { useRouter } from 'vue-router'
 
-// Mock PlayerDetailDialog component
 const MockPlayerDetailDialog = {
   name: 'PlayerDetailDialog',
   template: '<div class="mock-player-detail-dialog"></div>',
@@ -116,14 +114,12 @@ describe('UniversalSearch', () => {
     vi.clearAllMocks()
     vi.useFakeTimers()
 
-    // Reset router mock
     mockRouter = {
       push: vi.fn(),
       resolve: vi.fn(() => ({ href: '/mocked-url' }))
     }
     useRouter.mockReturnValue(mockRouter)
 
-    // Setup mock fetch responses
     global.fetch.mockResolvedValue({
       ok: true,
       json: () =>
@@ -178,7 +174,6 @@ describe('UniversalSearch', () => {
     const input = wrapper.findComponent({ name: 'QInput' })
     await input.vm.$emit('update:modelValue', 'test')
 
-    // Fast-forward timers to trigger debounced search
     vi.advanceTimersByTime(300)
     await nextTick()
 
@@ -194,7 +189,6 @@ describe('UniversalSearch', () => {
     const input = wrapper.findComponent({ name: 'QInput' })
     await input.vm.$emit('update:modelValue', 'John')
 
-    // Fast-forward timers to trigger debounced search
     vi.advanceTimersByTime(300)
     await nextTick()
 
@@ -211,7 +205,6 @@ describe('UniversalSearch', () => {
     const input = wrapper.findComponent({ name: 'QInput' })
     await input.vm.$emit('update:modelValue', 'test')
 
-    // Fast-forward timers and wait for fetch to complete
     vi.advanceTimersByTime(300)
     await nextTick()
     await vi.waitFor(async () => {
@@ -226,15 +219,12 @@ describe('UniversalSearch', () => {
     const wrapper = createWrapper()
     await nextTick()
 
-    // Set search query first
     const input = wrapper.findComponent({ name: 'QInput' })
     await input.vm.$emit('update:modelValue', 'test query')
     await nextTick()
 
-    // Check that there is content and clear button exists
     expect(wrapper.vm.searchQuery).toBe('test query')
 
-    // Trigger clear through the clearSearch method directly since the button interaction is complex
     await wrapper.vm.clearSearch()
 
     expect(wrapper.vm.searchQuery).toBe('')
@@ -245,7 +235,6 @@ describe('UniversalSearch', () => {
     const wrapper = createWrapper()
     await nextTick()
 
-    // Set search query first
     const input = wrapper.findComponent({ name: 'QInput' })
     await input.vm.$emit('update:modelValue', 'test query')
     await nextTick()
@@ -349,7 +338,6 @@ describe('UniversalSearch', () => {
     playerStore.currentDatasetId = 'test-dataset-123'
     await nextTick()
 
-    // Set initial state
     const input = wrapper.findComponent({ name: 'QInput' })
     await input.vm.$emit('update:modelValue', 'test')
     await nextTick()
@@ -367,15 +355,12 @@ describe('UniversalSearch', () => {
 
     const input = wrapper.findComponent({ name: 'QInput' })
 
-    // Start first search
     await input.vm.$emit('update:modelValue', 'first')
     vi.advanceTimersByTime(150) // Partial delay
 
-    // Start second search before first completes
     await input.vm.$emit('update:modelValue', 'second')
     vi.advanceTimersByTime(300)
 
-    // Should only call API for the latest search
     await nextTick()
     expect(global.fetch).toHaveBeenLastCalledWith('/api/search/test-dataset-123?q=second', {
       signal: expect.any(AbortSignal)
@@ -387,7 +372,6 @@ describe('UniversalSearch', () => {
     playerStore.currentDatasetId = 'test-dataset-123'
     await nextTick()
 
-    // Mock fetch to reject
     global.fetch.mockRejectedValueOnce(new Error('Network error'))
 
     const input = wrapper.findComponent({ name: 'QInput' })
@@ -395,7 +379,6 @@ describe('UniversalSearch', () => {
     vi.advanceTimersByTime(300)
     await nextTick()
 
-    // Wait a bit more for the async error handling to complete
     await vi.waitFor(() => {
       expect(wrapper.vm.isLoading).toBe(false)
     })

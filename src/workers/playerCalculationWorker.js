@@ -1,14 +1,13 @@
 // Worker for expensive player calculations
 // This runs in a separate thread to avoid blocking the main UI thread
 
-// GK stat mapping for non-goalkeeper view
 const gkStatMapping = {
-  PAC: 'SPD', // Speed -> Pace
-  SHO: 'KIC', // Kicking -> Shooting
-  PAS: 'KIC', // Kicking -> Passing (same as shooting for GK)
-  DRI: 'HAN', // Handling -> Dribbling
-  DEF: 'SPD', // Speed -> Defending
-  PHY: 'POS' // Positioning -> Physical
+  PAC: 'SPD',
+  SHO: 'KIC',
+  PAS: 'KIC',
+  DRI: 'HAN',
+  DEF: 'SPD',
+  PHY: 'POS'
 }
 
 // Position sort order for position-based sorting
@@ -33,7 +32,6 @@ const positionSortOrder = [
  * Get player value with GK mapping applied
  */
 function getPlayerValue(player, fieldKey, columnName = null, isGoalkeeperView = false) {
-  // For non-goalkeeper view, map GK stats to standard FIFA stats if the player is a goalkeeper
   if (!isGoalkeeperView && player.position && player.position.includes('GK')) {
     const mappedStat = gkStatMapping[columnName || fieldKey]
     if (mappedStat && player[mappedStat] !== undefined) {
@@ -41,7 +39,6 @@ function getPlayerValue(player, fieldKey, columnName = null, isGoalkeeperView = 
     }
   }
 
-  // Default behavior - use the field key
   return player[fieldKey]
 }
 
@@ -50,7 +47,7 @@ function getPlayerValue(player, fieldKey, columnName = null, isGoalkeeperView = 
  */
 function getPositionIndex(positionString) {
   if (!positionString || typeof positionString !== 'string') {
-    return positionSortOrder.length + 2 // Place invalid/empty last
+    return positionSortOrder.length + 2
   }
 
   let processedString = positionString.toUpperCase()
@@ -108,7 +105,6 @@ function getPositionIndex(positionString) {
  * Uses native Array.sort() for maximum performance in Web Worker
  */
 function fastSortPlayers(players, fieldKey, direction, sortField, isGoalkeeperView) {
-  // Use native sort for maximum speed - no chunking needed in Web Worker
   return players.sort((a, b) => {
     let vA = getPlayerValue(a, fieldKey, sortField, isGoalkeeperView)
     let vB = getPlayerValue(b, fieldKey, sortField, isGoalkeeperView)
@@ -176,22 +172,18 @@ function customSortPlayers(players, fieldKey, direction, sortField, isGoalkeeper
  */
 function filterPlayers(players, filters) {
   return players.filter(player => {
-    // Name filter
     if (filters.name && !player.name.toLowerCase().includes(filters.name.toLowerCase())) {
       return false
     }
 
-    // Club filter
     if (filters.club && player.club !== filters.club) {
       return false
     }
 
-    // Position filter
     if (filters.position && !player.position.includes(filters.position)) {
       return false
     }
 
-    // Age range filter
     if (filters.ageMin !== null && player.age < filters.ageMin) {
       return false
     }
@@ -199,7 +191,6 @@ function filterPlayers(players, filters) {
       return false
     }
 
-    // Transfer value range filter
     if (
       filters.transferValueMin !== null &&
       player.transferValueAmount < filters.transferValueMin
@@ -213,7 +204,6 @@ function filterPlayers(players, filters) {
       return false
     }
 
-    // Overall rating filter
     if (filters.overallMin !== null && player.Overall < filters.overallMin) {
       return false
     }
@@ -336,14 +326,12 @@ self.onmessage = e => {
         throw new Error(`Unknown message type: ${type}`)
     }
 
-    // Send successful result back to main thread
     self.postMessage({
       type: 'SUCCESS',
       id,
       result
     })
   } catch (error) {
-    // Send error back to main thread
     self.postMessage({
       type: 'ERROR',
       id,

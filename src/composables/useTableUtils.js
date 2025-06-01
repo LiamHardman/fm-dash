@@ -111,17 +111,14 @@ export function useTableUtils(items, options = {}) {
   }
 
   return {
-    // State
     sortField,
     sortDirection,
     currentPage,
     pageSize,
     searchQuery,
 
-    // Computed
     paginationInfo,
 
-    // Methods
     setSortField,
     sortItems,
     filterItems,
