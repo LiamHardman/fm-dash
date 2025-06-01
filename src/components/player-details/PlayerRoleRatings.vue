@@ -98,6 +98,8 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
+@use "sass:color";
+
 .role-card {
   transition: all 0.2s ease;
   
@@ -107,8 +109,8 @@ export default defineComponent({
   }
   
   &.best-role-dark {
-    border-color: lighten($positive, 15%) !important;
-    box-shadow: 0 0 4px 0 rgba(lighten($positive, 20%), 0.7);
+    border-color: color.adjust($positive, $lightness: 15%) !important;
+    box-shadow: 0 0 4px 0 rgba(color.adjust($positive, $lightness: 20%), 0.7);
   }
 }
 

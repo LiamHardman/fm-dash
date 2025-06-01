@@ -1907,6 +1907,8 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
+@use "sass:color";
+
 // Import Quasar SCSS variables
 $grey-1: #f5f5f5 !default;
 $grey-2: #eeeeee !default;
@@ -2222,8 +2224,8 @@ $breakpoint-xs-max: 599px !default;
 .best-role-highlight {
     border-left: 4px solid $positive;
     .body--dark & {
-        border-left: 4px solid lighten($positive, 20%);
-        background-color: rgba(lighten($positive, 25%), 0.15) !important;
+        border-left: 4px solid color.adjust($positive, $lightness: 20%);
+        background-color: rgba(color.adjust($positive, $lightness: 25%), 0.15) !important;
     }
     .body--light & {
         background-color: rgba($positive, 0.08) !important;

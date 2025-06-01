@@ -256,6 +256,8 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
+@use "sass:color";
+
 .attributes-section {
   padding: 12px;
 }
@@ -271,8 +273,8 @@ export default defineComponent({
   margin-bottom: 8px;
   
   .body--dark & {
-    color: lighten($primary, 20%);
-    border-bottom-color: lighten($primary, 20%);
+    color: color.adjust($primary, $lightness: 20%);
+    border-bottom-color: color.adjust($primary, $lightness: 20%);
   }
 }
 

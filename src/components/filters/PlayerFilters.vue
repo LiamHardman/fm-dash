@@ -1845,8 +1845,7 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
-// SCSS variables from quasar-variables.scss are available here
-// e.g. $primary, $grey-1, etc.
+@use "sass:color";
 
 .filter-card {
     border-radius: 8px;
@@ -1923,8 +1922,8 @@ export default defineComponent({
     font-weight: 500;
 
     .body--dark & {
-        color: lighten($primary, 25%);
-        border-bottom-color: lighten($primary, 25%);
+        color: color.adjust($primary, $lightness: 25%);
+        border-bottom-color: color.adjust($primary, $lightness: 25%);
     }
 }
 
