@@ -174,6 +174,7 @@
                             @team-selected="handleTeamSelected"
                             :is-goalkeeper-view="isGoalkeeperView"
                             :currency-symbol="detectedCurrencySymbol"
+                            :dataset-id="currentDatasetId"
                         />
                     </q-card-section>
                 </q-card>
@@ -214,6 +215,7 @@
             :players="allPlayersData"
             @close="showUpgradeFinder = false"
             :currency-symbol="detectedCurrencySymbol"
+            :dataset-id="currentDatasetId"
         />
         <WonderkidsDialog
             :show="showWonderkids"

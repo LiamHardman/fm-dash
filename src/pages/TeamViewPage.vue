@@ -316,7 +316,7 @@
                                 @player-selected="handlePlayerSelectedFromTeam"
                                 :is-goalkeeper-view="teamIsGoalkeeperView"
                                 :currency-symbol="detectedCurrencySymbol"
-                                table-style="max-height: 400px;"
+                                :dataset-id="currentDatasetId"
                                 class="team-player-table"
                             />
                             <q-banner

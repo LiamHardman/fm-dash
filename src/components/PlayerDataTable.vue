@@ -46,7 +46,7 @@
 
         <div v-else class="relative-position">
             <q-table
-                :key="`table-${currentDatasetId}-${sortField}-${sortDirection}`"
+                :key="tableKey"
                 :rows="sortedPlayers"
                 :columns="currentColumns"
                 :loading="loading"
@@ -349,7 +349,8 @@ export default {
     isGoalkeeperView: { type: Boolean, default: false },
     currencySymbol: { type: String, default: '$' },
     filteredPlayerCount: { type: Number, default: 0 },
-    showWishlistActions: { type: Boolean, default: false }
+    showWishlistActions: { type: Boolean, default: false },
+    datasetId: { type: String, default: null }
   },
   emits: [
     'update:sort',
@@ -388,8 +389,8 @@ export default {
       rowsPerPage: 50 // Default rows per page, even if selector is hidden
     })
 
-    // Get current dataset ID
-    const currentDatasetId = computed(() => playerStore.currentDatasetId)
+    // Get current dataset ID - use prop first, then fallback to store
+    const currentDatasetId = computed(() => props.datasetId || playerStore.currentDatasetId)
 
     watch(
       () => props.players,
@@ -1368,6 +1369,12 @@ export default {
         clearTimeout(asyncSortTimeout.value)
       }
     })
+
+    // Create a computed property for the table key
+    const tableKey = computed(() => {
+      return `table-${currentDatasetId.value || 'no-dataset'}-${sortField.value || 'Overall'}-${sortDirection.value || 'desc'}-${cacheGeneration.value || 0}`
+    })
+
     return {
       qInstance: $q,
       cacheGeneration,
@@ -1406,7 +1413,8 @@ export default {
       handleAddToWishlist,
       handleRemoveFromWishlist,
       handlePlayerDetails,
-      onRightClick
+      onRightClick,
+      tableKey
     }
   }
 }

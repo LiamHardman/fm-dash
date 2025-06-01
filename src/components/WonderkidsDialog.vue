@@ -105,6 +105,7 @@
                                 @player-selected="handlePlayerSelected"
                                 @team-selected="handleTeamSelected"
                                 :currency-symbol="currencySymbol"
+                                :dataset-id="datasetId"
                             />
                         </q-card-section>
                     </q-card>

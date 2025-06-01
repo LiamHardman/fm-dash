@@ -429,7 +429,7 @@
                                 @player-selected="handlePlayerSelectedFromNation"
                                 :is-goalkeeper-view="nationIsGoalkeeperView"
                                 :currency-symbol="detectedCurrencySymbol"
-                                table-style="max-height: 400px;"
+                                :dataset-id="currentDatasetId"
                                 class="nation-player-table"
                             />
                             <q-banner

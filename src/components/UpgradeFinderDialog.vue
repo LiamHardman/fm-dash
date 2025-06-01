@@ -559,6 +559,7 @@
                     @player-selected="handlePlayerSelectedForDetailView"
                     :is-goalkeeper-view="upgradeFinderIsGoalkeeperView"
                     :currency-symbol="currencySymbol"
+                    :dataset-id="datasetId"
                 />
 
                 <q-banner
@@ -645,7 +646,8 @@ export default {
   props: {
     show: { type: Boolean, default: false },
     players: { type: Array, required: true },
-    currencySymbol: { type: String, default: '$' }
+    currencySymbol: { type: String, default: '$' },
+    datasetId: { type: String, default: null }
   },
   emits: ['close'],
   setup(props) {

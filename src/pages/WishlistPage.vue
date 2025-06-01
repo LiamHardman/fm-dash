@@ -96,6 +96,7 @@
                             @team-selected="handleTeamSelected"
                             :is-goalkeeper-view="false"
                             :currency-symbol="detectedCurrencySymbol"
+                            :dataset-id="currentDatasetId"
                             :show-wishlist-actions="true"
                             @remove-from-wishlist="handleRemoveFromWishlist"
                         />
