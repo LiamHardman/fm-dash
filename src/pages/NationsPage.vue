@@ -2147,7 +2147,7 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
 // Formation & Tactics Layout
 .formation-tactics-layout {
     display: grid;
-    grid-template-columns: 400px 1fr;
+    grid-template-columns: 1fr 1fr;
     gap: 2rem;
     
     @media (max-width: 1200px) {
@@ -2238,8 +2238,8 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
 .squad-depth-card {
     .squad-depth-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 1rem;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
         
         @media (max-width: 768px) {
             grid-template-columns: 1fr;
@@ -2249,7 +2249,7 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
         .depth-position-modern {
             background: rgba(255, 255, 255, 0.6);
             border-radius: $border-radius-small;
-            padding: 1rem;
+            padding: 0.75rem;
             border: 1px solid rgba(0, 0, 0, 0.08);
             transition: all 0.3s ease;
             
@@ -2267,11 +2267,11 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                margin-bottom: 0.75rem;
+                margin-bottom: 0.5rem;
                 
                 .position-name {
                     font-weight: 700;
-                    font-size: 0.9rem;
+                    font-size: 0.8rem;
                     color: #2d3436;
                     
                     .body--dark & {
@@ -2280,11 +2280,11 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
                 }
                 
                 .player-count {
-                    font-size: 0.75rem;
+                    font-size: 0.7rem;
                     color: #636e72;
                     background: rgba(0, 0, 0, 0.05);
-                    padding: 0.2rem 0.5rem;
-                    border-radius: 12px;
+                    padding: 0.15rem 0.4rem;
+                    border-radius: 10px;
                     
                     .body--dark & {
                         color: rgba(255, 255, 255, 0.7);
@@ -2296,14 +2296,14 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
             .depth-players-modern {
                 display: flex;
                 flex-direction: column;
-                gap: 0.5rem;
+                gap: 0.4rem;
                 
                 .player-card-mini {
                     display: grid;
                     grid-template-columns: auto 1fr auto;
-                    gap: 0.5rem;
+                    gap: 0.4rem;
                     align-items: center;
-                    padding: 0.5rem;
+                    padding: 0.4rem;
                     background: rgba(255, 255, 255, 0.8);
                     border-radius: $border-radius-small;
                     cursor: pointer;
@@ -2322,7 +2322,7 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
                     }
                     
                     &:hover {
-                        transform: translateX(4px);
+                        transform: translateX(2px);
                         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
                         background: rgba(103, 126, 234, 0.1);
                         
@@ -2335,12 +2335,12 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
                         display: flex;
                         align-items: center;
                         justify-content: center;
-                        width: 20px;
-                        height: 20px;
+                        width: 16px;
+                        height: 16px;
                         background: rgba(103, 126, 234, 0.1);
                         color: #667eea;
                         border-radius: 50%;
-                        font-size: 0.7rem;
+                        font-size: 0.65rem;
                         font-weight: 700;
                     }
                     
@@ -2348,7 +2348,7 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
                         min-width: 0;
                         
                         .player-name {
-                            font-size: 0.8rem;
+                            font-size: 0.75rem;
                             font-weight: 600;
                             white-space: nowrap;
                             overflow: hidden;
@@ -2361,9 +2361,9 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
                         }
                         
                         .player-positions {
-                            font-size: 0.65rem;
+                            font-size: 0.6rem;
                             color: #636e72;
-                            margin-top: 0.2rem;
+                            margin-top: 0.1rem;
                             
                             .body--dark & {
                                 color: rgba(255, 255, 255, 0.6);
@@ -2372,11 +2372,11 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
                     }
                     
                     .player-rating {
-                        font-size: 0.75rem;
+                        font-size: 0.7rem;
                         font-weight: 700;
-                        padding: 0.2rem 0.4rem;
-                        border-radius: 4px;
-                        min-width: 28px;
+                        padding: 0.15rem 0.3rem;
+                        border-radius: 3px;
+                        min-width: 24px;
                         text-align: center;
                         border: 1px solid rgba(0, 0, 0, 0.1);
                         
@@ -2391,18 +2391,18 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
                 display: flex;
                 flex-direction: column;
                 align-items: center;
-                gap: 0.3rem;
-                padding: 1rem;
+                gap: 0.2rem;
+                padding: 0.75rem;
                 color: #636e72;
                 font-style: italic;
-                font-size: 0.8rem;
+                font-size: 0.75rem;
                 
                 .body--dark & {
                     color: rgba(255, 255, 255, 0.5);
                 }
                 
                 .q-icon {
-                    font-size: 1.2rem;
+                    font-size: 1rem;
                 }
             }
         }
