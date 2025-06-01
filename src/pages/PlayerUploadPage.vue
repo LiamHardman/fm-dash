@@ -63,7 +63,7 @@
                                         browse
                                     </div>
                                     <div class="dropzone-secondary">
-                                        Supports .html files up to {{ maxFileSizeMB }}MB
+                                        Supports .html files up to {{ maxFileSizeMB }}MB (≈{{ formatNumber(maxPlayersSupported) }} players)
                                     </div>
                                 </div>
                             </div>
@@ -124,7 +124,7 @@
                                     size="1.2rem"
                                     color="positive"
                                 />
-                                <span>Up to 10,000 players supported</span>
+                                <span>Up to {{ formatNumber(maxPlayersSupported) }} players supported</span>
                             </div>
                         </div>
 
@@ -229,7 +229,7 @@
                 </q-card-section>
 
                 <q-card-section class="q-pt-none">
-                    Please ensure your HTML export contains 10,000 players or
+                    Please ensure your HTML export contains {{ formatNumber(maxPlayersSupported) }} players or
                     less. (Max file size: {{ maxFileSizeMB }}MB)
                 </q-card-section>
 
@@ -440,6 +440,20 @@ export default {
       }
     }
 
+    const formatNumber = value => {
+      return Number(value).toLocaleString()
+    }
+
+    const maxPlayersSupported = computed(() => {
+      // Rule: 15MB = 10,000 players
+      // So players = (current max file size in MB / 15MB) * 10,000
+      const exactPlayers = Math.floor((maxFileSizeMB.value / 15) * 10000)
+      
+      // Round to nearest 5000 for cleaner display
+      // For example: 66,666 becomes 65,000
+      return Math.floor(exactPlayers / 5000) * 5000
+    })
+
     return {
       playerFile,
       showFileSizeLimitModal,
@@ -453,7 +467,9 @@ export default {
       notificationSupported,
       maxFileSizeMB,
       loaderProps,
-      handleUploadCancel
+      handleUploadCancel,
+      formatNumber,
+      maxPlayersSupported
     }
   }
 }
