@@ -54,48 +54,27 @@
                 </q-btn>
             </div>
 
-            <div v-if="!pageLoadingError" class="modern-filter-section">
-                <div class="filter-header">
-                    <h2 class="filter-title">Team Selection</h2>
-                    <p class="filter-subtitle">Choose a team to analyze tactical formation and squad performance</p>
-                </div>
-                <div class="filter-card"
-                     :class="quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'">
-                    <div class="filter-content">
-                    <q-select
-                        v-model="selectedTeamName"
-                        :options="teamOptions"
-                        label="Search and Select Team"
-                        outlined
-                        dense
-                        use-input
-                        hide-selected
-                        fill-input
-                        input-debounce="300"
-                        @filter="filterTeamOptions"
-                        @update:model-value="loadTeamPlayers"
-                        :label-color="
-                            quasarInstance.dark.isActive ? 'grey-4' : ''
-                        "
-                        :popup-content-class="
-                            quasarInstance.dark.isActive
-                                ? 'bg-grey-8 text-white'
-                                : 'bg-white text-dark'
-                        "
-                        clearable
-                        @clear="clearTeamSelection"
-                        :disable="pageLoading || allPlayersData.length === 0"
-                    >
-                        <template v-slot:no-option>
-                            <q-item>
-                                <q-item-section class="text-grey">
-                                    No teams found.
-                                </q-item-section>
-                            </q-item>
-                        </template>
-                    </q-select>
-                    </div>
-                </div>
+            <!-- Show message if no team is selected -->
+            <div v-if="!pageLoadingError && !selectedTeamName && !pageLoading" class="no-team-selected">
+                <q-card 
+                    :class="quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'"
+                    class="q-mb-md"
+                >
+                    <q-card-section class="text-center q-py-xl">
+                        <q-icon name="groups" size="4rem" color="grey-6" class="q-mb-md" />
+                        <h3 class="text-h5 q-mb-sm">No Team Selected</h3>
+                        <p class="text-grey-6 q-mb-lg">
+                            Use the search bar above to find and select a team, or click on a team name in the player data tables.
+                        </p>
+                        <q-btn
+                            color="primary"
+                            unelevated
+                            label="Go to Dataset View"
+                            @click="router.push(`/dataset/${currentDatasetId}`)"
+                            v-if="currentDatasetId"
+                        />
+                    </q-card-section>
+                </q-card>
             </div>
 
             <div v-if="pageLoading" class="text-center q-my-xl">
@@ -313,6 +292,7 @@
                                 :players="teamPlayers"
                                 :loading="false"
                                 @player-selected="handlePlayerSelectedFromTeam"
+                                @team-selected="handleTeamSelected"
                                 :is-goalkeeper-view="teamIsGoalkeeperView"
                                 :currency-symbol="detectedCurrencySymbol"
                                 :dataset-id="currentDatasetId"
@@ -383,6 +363,8 @@
                 </q-banner>
             </div>
         </div>
+
+        <!-- Player Detail Dialog -->
         <PlayerDetailDialog
             :player="playerForDetailView"
             :show="showPlayerDetailDialog"
@@ -433,8 +415,6 @@ export default {
     const playerStore = usePlayerStore()
 
     const selectedTeamName = ref(null)
-    const teamOptions = ref([])
-    const allTeamNamesCache = ref([])
     const teamPlayers = ref([])
     const loadingTeam = ref(false)
     const pageLoading = ref(true)
@@ -562,51 +542,13 @@ export default {
       }
 
       if (!pageLoadingError.value && allPlayersData.value.length > 0) {
-        populateTeamFilterOptions()
-
         // If a team was specified in the query params, select it
         if (teamFromQuery && teamFromQuery.trim() !== '') {
           selectedTeamName.value = teamFromQuery
           loadTeamPlayers()
-        } else if (selectedTeamName.value) {
-          // If a team was previously selected (e.g. from state restoration)
-          loadTeamPlayers()
         }
       }
     })
-
-    const populateTeamFilterOptions = () => {
-      if (!allPlayersData.value || allPlayersData.value.length === 0) {
-        allTeamNamesCache.value = []
-        teamOptions.value = []
-        return
-      }
-      const uniqueTeams = new Set()
-      for (const player of allPlayersData.value) {
-        if (player.club && player.club.trim() !== '') {
-          uniqueTeams.add(player.club)
-        }
-      }
-      allTeamNamesCache.value = Array.from(uniqueTeams).sort()
-      teamOptions.value = allTeamNamesCache.value
-    }
-
-    const filterTeamOptionsImmediate = (val, update) => {
-      if (val === '') {
-        update(() => {
-          teamOptions.value = allTeamNamesCache.value
-        })
-        return
-      }
-      update(() => {
-        const needle = val.toLowerCase()
-        teamOptions.value = allTeamNamesCache.value.filter(
-          team => team.toLowerCase().indexOf(needle) > -1
-        )
-      })
-    }
-
-    const filterTeamOptions = debounce(filterTeamOptionsImmediate, 200)
 
     const loadTeamPlayersImmediate = () => {
       if (!selectedTeamName.value) {
@@ -659,6 +601,7 @@ export default {
     // Debounced version for better performance
     const loadTeamPlayers = debounce(loadTeamPlayersImmediate, 300)
 
+    // Simplified team clearing - now just resets the team name since navigation is handled by URL
     const clearTeamSelection = () => {
       selectedTeamName.value = null
       teamPlayers.value = []
@@ -766,6 +709,21 @@ export default {
     const handlePlayerSelectedFromTeam = player => {
       playerForDetailView.value = player
       showPlayerDetailDialog.value = true
+    }
+
+    const handleTeamSelected = teamName => {
+      // Navigate to team view page with the selected team
+      const datasetId = currentDatasetId.value || sessionStorage.getItem('currentDatasetId')
+      if (datasetId && teamName && teamName !== selectedTeamName.value) {
+        // Update the URL to reflect the new team selection
+        router.push({
+          path: '/team-view',
+          query: {
+            datasetId: datasetId,
+            team: teamName
+          }
+        })
+      }
     }
 
     const getOverallClass = overall => {
@@ -1517,13 +1475,10 @@ export default {
       newVal => {
         if (pageLoading.value) return // Don't run if initial load is happening
         if (newVal && newVal.length > 0) {
-          populateTeamFilterOptions()
+          // If a team was specified in the query params, select it
           if (selectedTeamName.value) loadTeamPlayers() // Reload team if already selected
         } else if (!pageLoadingError.value) {
-          // Only clear if no error
-          clearTeamSelection()
-          allTeamNamesCache.value = []
-          teamOptions.value = []
+          clearTeamSelection() // Reset team selection as data has changed
         }
       },
       { deep: true } // deep might be intensive if allPlayersData is huge
@@ -1537,7 +1492,8 @@ export default {
           await fetchPlayersAndCurrency(newId) // Use combined fetch
           clearTeamSelection() // Reset team selection as data has changed
           if (!pageLoadingError.value && allPlayersData.value.length > 0) {
-            populateTeamFilterOptions()
+            // If a team was specified in the query params, select it
+            if (selectedTeamName.value) loadTeamPlayers() // Reload team if already selected
           }
         }
       }
@@ -1545,10 +1501,12 @@ export default {
 
     watch(
       () => route.query.team,
-      newTeam => {
-        if (newTeam && newTeam.trim() !== '' && newTeam !== selectedTeamName.value) {
+      (newTeam) => {
+        if (newTeam && newTeam !== selectedTeamName.value) {
           selectedTeamName.value = newTeam
           loadTeamPlayers()
+        } else if (!newTeam && selectedTeamName.value) {
+          clearTeamSelection()
         }
       }
     )
@@ -1608,8 +1566,6 @@ export default {
     return {
       allPlayersData,
       selectedTeamName,
-      teamOptions,
-      filterTeamOptions,
       loadTeamPlayers,
       clearTeamSelection,
       teamPlayers,
@@ -1629,6 +1585,7 @@ export default {
       playerForDetailView,
       showPlayerDetailDialog,
       handlePlayerSelectedFromTeam,
+      handleTeamSelected,
       teamIsGoalkeeperView,
       teamDivision,
       getStarRating,
@@ -1744,56 +1701,17 @@ export default {
     padding: 0 2rem;
 }
 
-// Modern Filter Section
-.modern-filter-section {
+// No Team Selected Section
+.no-team-selected {
     margin: 3rem 0;
     
-    .filter-header {
-        text-align: center;
-        margin-bottom: 2rem;
-        
-        .filter-title {
-            font-size: 2rem;
-            font-weight: 700;
-            margin: 0 0 0.5rem 0;
-            color: #1a237e;
-            
-            .body--dark & {
-                color: rgba(255, 255, 255, 0.9);
-            }
-        }
-        
-        .filter-subtitle {
-            font-size: 1rem;
-            color: #666;
-            margin: 0;
-            
-            .body--dark & {
-                color: rgba(255, 255, 255, 0.7);
-            }
-        }
-    }
-    
-    .filter-card {
-        background: white;
+    .q-card {
         border-radius: 16px;
-        padding: 2rem;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
         border: 1px solid rgba(0, 0, 0, 0.05);
-        max-width: 600px;
-        margin: 0 auto;
         
         .body--dark & {
-            background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .filter-content {
-            .q-field {
-                .q-field__control {
-                    border-radius: 12px;
-                }
-            }
         }
     }
 }
