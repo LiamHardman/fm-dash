@@ -31,21 +31,22 @@
             color="primary"
             rounded
             class="progress-bar"
+            animation-speed="200"
           />
           <div class="progress-text">
             {{ Math.round(progressValue * 100) }}%
           </div>
         </div>
 
-        <!-- Fun loading message -->
+        <!-- Fun loading message with fixed height -->
         <div class="loading-message">
           <h4 class="message-title">{{ currentMessage.title }}</h4>
           <p class="message-subtitle">{{ currentMessage.subtitle }}</p>
         </div>
 
-        <!-- Stats display -->
-        <div class="upload-stats" v-if="uploadStats.filename">
-          <div class="stat-item">
+        <!-- Stats display with fixed height -->
+        <div class="upload-stats" :class="{ 'has-content': uploadStats.filename }">
+          <div class="stat-item" v-if="uploadStats.filename">
             <q-icon name="description" size="1.2rem" />
             <span>{{ uploadStats.filename }}</span>
           </div>
@@ -60,8 +61,9 @@
         </div>
 
         <!-- Cancel button (only shown for the first few seconds) -->
-        <div class="actions" v-if="showCancelButton">
+        <div class="actions">
           <q-btn
+            v-if="showCancelButton"
             flat
             color="negative"
             icon="close"
@@ -288,7 +290,8 @@ export default {
 <style lang="scss" scoped>
 .upload-loader-dialog {
   .upload-loader-card {
-    min-width: 400px;
+    width: 500px;
+    min-width: 500px;
     max-width: 500px;
     border-radius: 16px;
     background: linear-gradient(135deg, #f8f9fc 0%, #ffffff 100%);
@@ -304,11 +307,21 @@ export default {
 
   .loader-content {
     padding: 2rem;
+    height: auto;
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
   }
 
   .loader-icon-container {
     position: relative;
     margin-bottom: 2rem;
+    height: 100px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 
     .loader-icon {
       animation: bounce 2s infinite ease-in-out;
@@ -345,15 +358,21 @@ export default {
 
   .progress-container {
     margin-bottom: 2rem;
+    height: 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 
     .progress-bar {
       margin-bottom: 0.5rem;
+      transition: all 0.2s ease;
     }
 
     .progress-text {
       font-size: 0.9rem;
       color: #666;
       font-weight: 500;
+      text-align: center;
 
       .body--dark & {
         color: rgba(255, 255, 255, 0.7);
@@ -363,6 +382,11 @@ export default {
 
   .loading-message {
     margin-bottom: 2rem;
+    height: 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
 
     .message-title {
       font-size: 1.4rem;
@@ -370,6 +394,11 @@ export default {
       color: #1a237e;
       margin: 0 0 0.5rem 0;
       animation: fadeInOut 3s ease-in-out;
+      line-height: 1.2;
+      height: 1.8rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
 
       .body--dark & {
         color: rgba(255, 255, 255, 0.9);
@@ -381,6 +410,12 @@ export default {
       color: #666;
       margin: 0;
       animation: fadeInOut 3s ease-in-out;
+      line-height: 1.3;
+      height: 2.6rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
 
       .body--dark & {
         color: rgba(255, 255, 255, 0.7);
@@ -397,6 +432,15 @@ export default {
     background: rgba(26, 35, 126, 0.05);
     border-radius: 8px;
     border: 1px solid rgba(26, 35, 126, 0.1);
+    min-height: 100px;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.3s ease;
+
+    &.has-content {
+      opacity: 1;
+      transform: translateY(0);
+    }
 
     .body--dark & {
       background: rgba(255, 255, 255, 0.05);
@@ -409,6 +453,7 @@ export default {
       gap: 0.5rem;
       font-size: 0.9rem;
       color: #333;
+      min-height: 24px;
 
       .body--dark & {
         color: rgba(255, 255, 255, 0.8);
@@ -418,7 +463,14 @@ export default {
 
   .actions {
     margin-top: 1rem;
-    animation: fadeIn 0.3s ease-in;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    .q-btn {
+      animation: fadeIn 0.3s ease-in;
+    }
   }
 }
 
