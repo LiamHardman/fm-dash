@@ -36,24 +36,14 @@ export const useUiStore = defineStore('ui', () => {
 
   // Initialize dark mode from localStorage or system preference
   function initDarkMode() {
-    let darkModePreference = true // Default to dark mode as intended by the user
+    let darkModePreference = true
     try {
       const storedPreference = localStorage.getItem('darkMode')
       if (storedPreference !== null) {
         darkModePreference = storedPreference === 'true'
-      } else {
-        // If no preference in localStorage, check system preference
-        // but still prioritize the app's default if system preference isn't explicitly dark.
-        // The user wants the app to default to dark, so we only switch if system prefers light AND no local storage.
-        // However, the initial ref(true) and this function's default to true handles the "default dark" requirement.
-        // If localStorage has a value, that takes precedence.
-        // If no localStorage, it defaults to true (dark).
-        // We can still check system preference for the very first load if desired,
-        // but the user's explicit "defaults to dark mode all the time (intended)" means we should honor that.
       }
     } catch (e) {
       console.warn('Could not read dark mode preference from localStorage:', e)
-      // Fallback to true (dark mode) if localStorage fails
       darkModePreference = true
     }
     // Set the ref and Quasar's dark mode

@@ -100,13 +100,11 @@ func (p *PlayerProcessor) worker(workerID int) {
 
 // ProcessPlayersAsync processes a slice of players concurrently
 func (p *PlayerProcessor) ProcessPlayersAsync(players []Player) <-chan Player {
-	// Start workers only once
 	for i := 0; i < p.config.WorkerCount; i++ {
 		p.wg.Add(1)
 		go p.worker(i)
 	}
 
-	// Send players to input channel in a separate goroutine
 	go func() {
 		defer close(p.inputCh)
 		for i := range players {
@@ -118,7 +116,6 @@ func (p *PlayerProcessor) ProcessPlayersAsync(players []Player) <-chan Player {
 		}
 	}()
 
-	// Close output channel when all workers are done
 	go func() {
 		p.wg.Wait()
 		close(p.outputCh)
@@ -146,7 +143,6 @@ func ProcessPlayersBatch(ctx context.Context, players []Player, batchSize int) (
 
 	result := make([]Player, 0, len(players))
 
-	// Process in batches to control memory usage
 	for i := 0; i < len(players); i += batchSize {
 		end := i + batchSize
 		if end > len(players) {
@@ -156,21 +152,17 @@ func ProcessPlayersBatch(ctx context.Context, players []Player, batchSize int) (
 		batch := players[i:end]
 		processor := NewPlayerProcessor(config)
 
-		// Process batch
 		resultCh := processor.ProcessPlayersAsync(batch)
 
-		// Collect batch results
 		batchResults := make([]Player, 0, len(batch))
 		for player := range resultCh {
 			batchResults = append(batchResults, player)
 		}
 
-		// Clean shutdown
 		processor.Shutdown()
 
 		result = append(result, batchResults...)
 
-		// Track batch progress
 		SetSpanAttributes(ctx, attribute.Int("players.processed", len(result)))
 	}
 
@@ -182,24 +174,21 @@ func ProcessPercentilesAsync(datasets map[string][]Player) <-chan PercentileResu
 	resultCh := make(chan PercentileResult, len(datasets))
 
 	var wg sync.WaitGroup
-	semaphore := make(chan struct{}, runtime.NumCPU()) // Limit concurrent percentile calculations
+	semaphore := make(chan struct{}, runtime.NumCPU())
 
 	for datasetID, players := range datasets {
 		wg.Add(1)
 		go func(id string, playerList []Player) {
 			defer wg.Done()
 
-			// Acquire semaphore
 			semaphore <- struct{}{}
 			defer func() { <-semaphore }()
 
 			start := time.Now()
 
-			// Make a copy to avoid data races
 			playersCopy := make([]Player, len(playerList))
 			copy(playersCopy, playerList)
 
-			// Calculate percentiles
 			CalculatePlayerPerformancePercentiles(playersCopy)
 
 			resultCh <- PercentileResult{
@@ -229,7 +218,6 @@ type PercentileResult struct {
 func (p *PlayerProcessor) Shutdown() {
 	p.cancel()
 	p.wg.Wait()
-	// Don't close channels here as they're managed by ProcessPlayersAsync
 }
 
 // ConcurrentLeagueProcessor processes league data with parallel team calculations
@@ -255,7 +243,6 @@ func (p *ConcurrentLeagueProcessor) ProcessLeaguesAsync(ctx context.Context, pla
 	ctx, span := StartSpan(ctx, "async.process_leagues")
 	defer span.End()
 
-	// Group players by division
 	divisionMap := make(map[string][]Player)
 	for i := range players {
 		division := players[i].Division
@@ -267,7 +254,6 @@ func (p *ConcurrentLeagueProcessor) ProcessLeaguesAsync(ctx context.Context, pla
 
 	SetSpanAttributes(ctx, attribute.Int("divisions.count", len(divisionMap)))
 
-	// Process divisions concurrently
 	type leagueResult struct {
 		league League
 		err    error
@@ -281,7 +267,6 @@ func (p *ConcurrentLeagueProcessor) ProcessLeaguesAsync(ctx context.Context, pla
 		go func(name string, playerList []Player) {
 			defer wg.Done()
 
-			// Acquire semaphore
 			p.semaphore <- struct{}{}
 			defer func() { <-p.semaphore }()
 
@@ -295,7 +280,6 @@ func (p *ConcurrentLeagueProcessor) ProcessLeaguesAsync(ctx context.Context, pla
 		close(resultCh)
 	}()
 
-	// Collect results
 	var leagues []League
 	for result := range resultCh {
 		if result.err == nil {

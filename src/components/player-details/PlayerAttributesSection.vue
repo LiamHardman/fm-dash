@@ -221,7 +221,6 @@ export default defineComponent({
       return Object.keys(goalkeeperAttributes.value).length > 0
     })
 
-    // Helper functions
     const formatAttrName = attr => {
       return attr
         .replace(/_/g, ' ')

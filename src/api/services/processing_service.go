@@ -116,17 +116,8 @@ func (s *ProcessingService) validateFileFormat(filename string, content []byte) 
 
 // parsePlayerData parses the HTML content and extracts player data
 func (s *ProcessingService) parsePlayerData(_ctx context.Context, _content []byte, _options ProcessingOptions) (players []Player, currencySymbol string) {
-	// This would integrate with the existing parsing logic
-	// For now, this is a placeholder that would call the actual parsing functions
-
-	// Setup for concurrent processing (placeholder for future implementation)
-	// When implementing, these would be used by the actual parsing functions
-
+	// TODO: Integrate with existing parsing logic
 	// This would call the existing ParseHTMLPlayerTable function
-	// ParseHTMLPlayerTable(contentReader, &headersSnapshot, rowCellsChan, options.MaxWorkers, resultsChan, &wg)
-
-	// For now, return empty data to avoid compilation errors
-	// In a real implementation, this would process the actual HTML content
 	players = []Player{}
 	currencySymbol = "$"
 
@@ -184,8 +175,6 @@ func (s *ProcessingService) calculateOptimalBufferSize(numWorkers int, fileSize 
 
 // generateDatasetID creates a unique identifier for the dataset
 func (s *ProcessingService) generateDatasetID() string {
-	// This would use the same UUID generation as the existing code
-	// For now, return a placeholder
 	return fmt.Sprintf("dataset_%d", time.Now().UnixNano())
 }
 

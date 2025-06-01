@@ -335,22 +335,21 @@ export default {
     // Centralized filter state for this page
     const currentFilters = ref({
       name: '',
-      club: null,
-      position: null,
-      role: null,
-      nationality: null,
+      position: '',
+      role: '',
+      club: '',
+      nationality: '',
       mediaHandling: [],
       personality: [],
       ageRange: {
-        min: playerStore.AGE_SLIDER_MIN_DEFAULT,
-        max: playerStore.AGE_SLIDER_MAX_DEFAULT
+        min: computed(() => AGE_SLIDER_MIN_DEFAULT.value),
+        max: computed(() => AGE_SLIDER_MAX_DEFAULT.value)
       },
       transferValueRangeLocal: {
         min: 0,
-        max: 100000000,
-        userSet: false
+        max: 100000000
       },
-      maxSalary: 1000000,
+      maxSalary: null,
       minOverall: 0,
       minPAC: 0,
       minSHO: 0,
@@ -367,7 +366,6 @@ export default {
       minPOS: 0
     })
 
-    // Initialize FM attribute filters in currentFilters
     for (const attrKey of allRawFmAttributeKeys) {
       currentFilters.value[`min${formatFilterKeyPrefix(attrKey)}`] = 0
     }
