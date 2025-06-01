@@ -1,29 +1,10 @@
 <template>
-    <q-page class="nations-page">
-        <!-- Hero Section -->
-        <div class="hero-section">
-            <div class="hero-container">
-                <div class="hero-content">
-                    <div class="hero-badge">
-                        <q-icon name="flag" size="1.2rem" />
-                        <span>Global Insights</span>
-                    </div>
-                    <h1 class="hero-title">
-                        Nations
-                        <span class="gradient-text">Analysis</span>
-                    </h1>
-                    <p class="hero-subtitle">
-                        Explore player distributions by nationality. Discover hidden gems and understand global talent pools across different countries.
-                    </p>
-                </div>
-            </div>
-        </div>
-        
-        <div class="q-pa-md">
-
+    <q-page class="nation-view-page">
+        <div class="main-content">
+            <!-- Error Banner -->
             <q-banner
                 v-if="pageLoadingError"
-                class="text-white bg-negative q-mb-md"
+                class="error-banner"
                 rounded
             >
                 <template v-slot:avatar>
@@ -39,463 +20,462 @@
                 />
             </q-banner>
 
-            <!-- Share Button -->
-            <div v-if="!pageLoadingError && currentDatasetId" class="share-button-container">
+            <!-- Share Button - Modern Design -->
+            <div v-if="!pageLoadingError && currentDatasetId" class="share-section">
                 <q-btn
                     unelevated
-                    icon="share"
+                    icon-right="share"
                     label="Share Dataset"
-                    color="positive"
+                    color="primary"
                     @click="shareDataset"
-                    class="share-btn-enhanced"
+                    class="share-btn-modern"
                     size="md"
                 >
-                    <q-tooltip>Copy shareable link to clipboard</q-tooltip>
+                    <q-tooltip>Share this dataset with others</q-tooltip>
                 </q-btn>
             </div>
 
-            <div v-if="!pageLoadingError" class="modern-filter-section">
-                <div class="filter-header">
-                    <h2 class="filter-title">Nation Selection</h2>
-                    <p class="filter-subtitle">Choose a nation to analyze player talents and distributions</p>
-                </div>
-                <div class="filter-card"
-                     :class="quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'">
-                    <div class="filter-content">
-                    <q-select
-                        v-model="selectedNationName"
-                        :options="nationOptions"
-                        label="Search and Select Nation"
-                        outlined
-                        dense
-                        use-input
-                        hide-selected
-                        fill-input
-                        input-debounce="300"
-                        @filter="filterNationOptions"
-                        @update:model-value="loadNationPlayers"
-                        :label-color="
-                            quasarInstance.dark.isActive ? 'grey-4' : ''
-                        "
-                        :popup-content-class="
-                            quasarInstance.dark.isActive
-                                ? 'bg-grey-8 text-white'
-                                : 'bg-white text-dark'
-                        "
-                        clearable
-                        @clear="clearNationSelection"
-                        :disable="pageLoading || allPlayersData.length === 0"
-                    >
-                        <template v-slot:no-option>
-                            <q-item>
-                                <q-item-section class="text-grey">
-                                    No nations found.
-                                </q-item-section>
-                            </q-item>
-                        </template>
-                    </q-select>
-                    </div>
-                </div>
+            <!-- No Nation Selected State -->
+            <div v-if="!pageLoadingError && !selectedNationName && !pageLoading" class="empty-state">
+                <q-card class="empty-state-card">
+                    <q-card-section class="empty-state-content">
+                        <div class="empty-state-icon">
+                            <q-icon name="flag" size="4rem" />
+                        </div>
+                        <h3 class="empty-state-title">Select a Nation to Begin</h3>
+                        <p class="empty-state-description">
+                            Choose a nation from the search above to unlock detailed tactical analysis, formation optimization, and squad insights.
+                        </p>
+                        <q-btn
+                            color="primary"
+                            unelevated
+                            label="Browse Dataset"
+                            @click="router.push(`/dataset/${currentDatasetId}`)"
+                            v-if="currentDatasetId"
+                            class="empty-state-btn"
+                        />
+                    </q-card-section>
+                </q-card>
             </div>
 
-            <div v-if="pageLoading" class="text-center q-my-xl">
+            <!-- Loading States -->
+            <div v-if="pageLoading" class="loading-state">
+                <q-spinner-orbit color="primary" size="4em" />
+                <div class="loading-text">Loading player database...</div>
+            </div>
+            
+            <div v-else-if="loadingNation" class="loading-state">
                 <q-spinner-dots color="primary" size="3em" />
-                <div
-                    class="q-mt-md text-caption"
-                    :class="
-                        quasarInstance.dark.isActive
-                            ? 'text-grey-5'
-                            : 'text-grey-7'
-                    "
-                >
-                    Loading player data from server...
-                </div>
-            </div>
-            <div v-else-if="loadingNation" class="text-center q-my-xl">
-                <q-spinner-dots color="primary" size="2em" />
-                <div
-                    class="q-mt-sm text-caption"
-                    :class="
-                        quasarInstance.dark.isActive
-                            ? 'text-grey-5'
-                            : 'text-grey-7'
-                    "
-                >
-                    Loading nation data...
-                </div>
+                <div class="loading-text">Analyzing nation composition...</div>
             </div>
 
-            <div v-if="!pageLoading && !pageLoadingError">
-                <!-- Nations Overview Card -->
-                <q-card
-                    v-if="!selectedNationName && !loadingNation && allPlayersData.length > 0"
-                    class="q-mb-md"
-                    :class="quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'"
-                >
-                    <q-card-section>
-                        <div class="text-h6 q-mb-md">Nations Overview</div>
-                        <div class="nations-list">
-                            <div
-                                v-for="nation in nationsWithRatings"
-                                :key="nation.name"
-                                class="nation-row"
-                                @click="selectNation(nation.name)"
-                            >
-                                <div class="nation-flag-container">
+            <!-- Main Nation Content -->
+            <div v-if="!pageLoading && !pageLoadingError && selectedNationName && !loadingNation" class="nation-dashboard">
+                
+                <!-- Nation Header Section (replaces hero) -->
+                <div class="nation-hero-section">
+                    <div class="nation-hero-content">
+                        <div class="nation-primary-info">
+                            <div class="nation-name-section">
+                                <h1 class="nation-name-hero">{{ selectedNationName }}</h1>
+                                <div class="nation-flag-hero">
                                     <img
-                                        v-if="nation.nationality_iso"
-                                        :src="`https://flagcdn.com/w20/${nation.nationality_iso.toLowerCase()}.png`"
-                                        :alt="nation.name"
+                                        v-if="currentNationFlagISO"
+                                        :src="`https://flagcdn.com/w20/${currentNationFlagISO.toLowerCase()}.png`"
+                                        :alt="selectedNationName"
                                         width="24"
                                         height="16"
                                         class="nationality-flag"
-                                        @error="onFlagError($event, nation)"
                                     />
-                                    <q-icon
-                                        v-else
-                                        name="flag"
-                                        size="sm"
-                                        :color="quasarInstance.dark.isActive ? 'grey-6' : 'grey-7'"
-                                    />
+                                    <q-icon v-else name="flag" size="1.2rem" />
+                                    <span>{{ nationPlayers.length }} Players</span>
                                 </div>
-                                <div class="nation-info">
-                                    <div class="nation-name">{{ nation.name }}</div>
-                                    <div class="player-count">{{ nation.playerCount }} players</div>
-                                </div>
-                                <div class="nation-section-ratings">
-                                    <div 
-                                        v-if="nation.bestFormationOverall > 0"
-                                        class="section-ratings-large"
+                            </div>
+                            
+                            <!-- Star Rating Display -->
+                            <div v-if="bestNationAverageOverall !== null" class="star-rating-display">
+                                <div class="overall-score">{{ bestNationAverageOverall }}</div>
+                                <div class="star-container">
+                                    <span
+                                        v-for="star in 5"
+                                        :key="star"
+                                        class="star-modern"
+                                        :class="getStarClass(bestNationAverageOverall, star)"
                                     >
-                                        <div class="section-rating-large att">
-                                            <span class="section-label-large">ATT</span>
-                                            <span 
-                                                class="section-value-large"
-                                                :class="getOverallClass(nation.attRating)"
-                                            >
-                                                {{ nation.attRating }}
-                                            </span>
-                                        </div>
-                                        <div class="section-rating-large mid">
-                                            <span class="section-label-large">MID</span>
-                                            <span 
-                                                class="section-value-large"
-                                                :class="getOverallClass(nation.midRating)"
-                                            >
-                                                {{ nation.midRating }}
-                                            </span>
-                                        </div>
-                                        <div class="section-rating-large def">
-                                            <span class="section-label-large">DEF</span>
-                                            <span 
-                                                class="section-value-large"
-                                                :class="getOverallClass(nation.defRating)"
-                                            >
-                                                {{ nation.defRating }}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div 
-                                        v-else
-                                        class="no-rating-message"
-                                    >
-                                        Incomplete Squad
-                                    </div>
+                                        ★
+                                    </span>
                                 </div>
-                                <div class="nation-overall">
-                                    <div class="nation-rating">
-                                        <div 
-                                            class="highest-overall-large"
-                                            :class="getOverallClass(nation.bestFormationOverall)"
-                                        >
-                                            {{ nation.bestFormationOverall > 0 ? nation.bestFormationOverall + ' AVG' : 'N/A' }}
-                                        </div>
-                                        <div class="star-rating-large">
-                                            <span
-                                                v-for="star in 5"
-                                                :key="star"
-                                                class="star-large"
-                                                :class="getStarClass(nation.bestFormationOverall, star)"
-                                            >
-                                                ★
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
+                                <div class="rating-label">Overall Rating</div>
                             </div>
                         </div>
                         
-                        <!-- Show More Button -->
-                        <div v-if="!showAllNations && allPlayersData.length > 0" class="text-center q-mt-md">
-                            <q-btn
-                                flat
-                                color="primary"
-                                @click="showAllNations = true"
-                                class="show-more-btn"
-                            >
-                                Show All Nations
-                                <q-icon name="expand_more" class="q-ml-sm" />
-                            </q-btn>
-                        </div>
-                    </q-card-section>
-                </q-card>
-
-                <!-- Selected Nation Details -->
-                <div v-if="selectedNationName && !loadingNation">
-                    <q-card
-                        :class="
-                            quasarInstance.dark.isActive
-                                ? 'bg-grey-9'
-                                : 'bg-white'
-                        "
-                        class="q-mb-md"
-                    >
-                        <q-card-section>
-                            <div class="text-h6 q-mb-md">
-                                {{ selectedNationName }} - Best Formation & XI
+                        <!-- Performance Metrics -->
+                        <div v-if="currentNationSectionRatings.attRating > 0 || currentNationSectionRatings.midRating > 0 || currentNationSectionRatings.defRating > 0" class="performance-metrics">
+                            <div class="metrics-grid">
+                                <div v-if="currentNationSectionRatings.attRating > 0" class="metric-card attack">
+                                    <div class="metric-icon">⚔️</div>
+                                    <div class="metric-value" :class="getOverallClass(currentNationSectionRatings.attRating)">
+                                        {{ currentNationSectionRatings.attRating }}
+                                    </div>
+                                    <div class="metric-label">Attack</div>
+                                </div>
+                                <div v-if="currentNationSectionRatings.midRating > 0" class="metric-card midfield">
+                                    <div class="metric-icon">⚽</div>
+                                    <div class="metric-value" :class="getOverallClass(currentNationSectionRatings.midRating)">
+                                        {{ currentNationSectionRatings.midRating }}
+                                    </div>
+                                    <div class="metric-label">Midfield</div>
+                                </div>
+                                <div v-if="currentNationSectionRatings.defRating > 0" class="metric-card defense">
+                                    <div class="metric-icon">🛡️</div>
+                                    <div class="metric-value" :class="getOverallClass(currentNationSectionRatings.defRating)">
+                                        {{ currentNationSectionRatings.defRating }}
+                                    </div>
+                                    <div class="metric-label">Defense</div>
+                                </div>
                             </div>
-                            <div class="row q-col-gutter-md items-start">
-                                <div class="col-12 col-md-4">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Formation & Tactics Section - New Layout -->
+                <div class="formation-tactics-layout">
+                    <!-- Left Side - Formation Controls and Squad Depth -->
+                    <div class="formation-controls-panel">
+                        <!-- Formation Selection -->
+                        <q-card class="formation-card">
+                            <q-card-section>
+                                <div class="card-header">
+                                    <h3 class="card-title">
+                                        <q-icon name="diagram" class="card-icon" />
+                                        Tactical Setup
+                                    </h3>
+                                    <p class="card-subtitle">Optimize your formation and lineup</p>
+                                </div>
+                                
+                                <div class="formation-controls">
                                     <q-select
                                         v-model="selectedFormationKey"
                                         :options="formationOptions"
                                         label="Select Formation"
                                         outlined
-                                        dense
                                         emit-value
                                         map-options
-                                        :label-color="
-                                            quasarInstance.dark.isActive
-                                                ? 'grey-4'
-                                                : ''
-                                        "
-                                        :popup-content-class="
-                                            quasarInstance.dark.isActive
-                                                ? 'bg-grey-8 text-white'
-                                                : 'bg-white text-dark'
-                                        "
+                                        class="formation-select"
+                                        :label-color="quasarInstance.dark.isActive ? 'grey-4' : ''"
                                     />
-                                    <div
-                                        v-if="bestNationAverageOverall !== null"
-                                        class="q-mt-md"
-                                    >
-                                        <div class="text-subtitle1 q-mb-sm"
-                                            :class="
-                                                quasarInstance.dark.isActive
-                                                    ? 'text-grey-3'
-                                                    : 'text-grey-8'
-                                            "
-                                        >
-                                            Best XI Average Overall:
-                                            <span
-                                                class="text-weight-bold attribute-value"
-                                                :class="
-                                                    getOverallClass(
-                                                        bestNationAverageOverall,
-                                                    )
-                                                "
-                                            >
-                                                {{ bestNationAverageOverall }}
-                                            </span>
-                                        </div>
-                                        <div 
-                                            v-if="currentNationSectionRatings.attRating > 0"
-                                            class="section-ratings-detail"
-                                        >
-                                            <div class="section-rating-detail att">
-                                                <span class="section-label-detail">ATT</span>
-                                                <span 
-                                                    class="section-value-detail"
-                                                    :class="getOverallClass(currentNationSectionRatings.attRating)"
-                                                >
-                                                    {{ currentNationSectionRatings.attRating }}
-                                                </span>
-                                            </div>
-                                            <div class="section-rating-detail mid">
-                                                <span class="section-label-detail">MID</span>
-                                                <span 
-                                                    class="section-value-detail"
-                                                    :class="getOverallClass(currentNationSectionRatings.midRating)"
-                                                >
-                                                    {{ currentNationSectionRatings.midRating }}
-                                                </span>
-                                            </div>
-                                            <div class="section-rating-detail def">
-                                                <span class="section-label-detail">DEF</span>
-                                                <span 
-                                                    class="section-value-detail"
-                                                    :class="getOverallClass(currentNationSectionRatings.defRating)"
-                                                >
-                                                    {{ currentNationSectionRatings.defRating }}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    
                                     <q-banner
                                         v-if="calculationMessage"
-                                        class="q-mt-sm"
+                                        class="calculation-banner"
                                         :class="calculationMessageClass"
                                     >
                                         {{ calculationMessage }}
                                     </q-banner>
-                                    
-                                    <!-- Compact Squad Depth -->
-                                    <div 
-                                        v-if="selectedFormationKey && Object.keys(squadComposition).length > 0"
-                                        class="q-mt-md"
+                                </div>
+                            </q-card-section>
+                        </q-card>
+
+                        <!-- Squad Depth Card -->
+                        <q-card 
+                            v-if="selectedFormationKey && Object.keys(squadComposition).length > 0"
+                            class="squad-depth-card"
+                        >
+                            <q-card-section>
+                                <div class="card-header">
+                                    <h3 class="card-title">
+                                        <q-icon name="groups_3" class="card-icon" />
+                                        Squad Depth
+                                    </h3>
+                                    <p class="card-subtitle">Player availability by position</p>
+                                </div>
+                                
+                                <div class="squad-depth-grid">
+                                    <div
+                                        v-for="slot in currentFormationLayout.flatMap(row => row.positions)"
+                                        :key="slot.id"
+                                        class="depth-position-modern"
                                     >
-                                        <div class="text-subtitle2 text-weight-bold q-mb-sm">Squad Depth</div>
-                                        <div class="compact-squad-depth">
+                                        <div class="position-header">
+                                            <span class="position-name">
+                                                {{ getSlotDisplayName(slot, currentFormationLayout.flatMap(r => r.positions)) }}
+                                            </span>
+                                            <span class="player-count">
+                                                {{ squadComposition[slot.id]?.length || 0 }} players
+                                            </span>
+                                        </div>
+                                        
+                                        <div v-if="squadComposition[slot.id] && squadComposition[slot.id].length > 0" class="depth-players-modern">
                                             <div
-                                                v-for="slot in currentFormationLayout.flatMap(
-                                                    (row) => row.positions,
-                                                )"
-                                                :key="slot.id"
-                                                class="depth-position-compact"
+                                                v-for="(playerEntry, index) in squadComposition[slot.id].slice(0, 3)"
+                                                :key="playerEntry.player.name + '-' + slot.id + '-' + index"
+                                                class="player-card-mini"
+                                                :class="{ 'is-starter': index === 0 }"
+                                                @click="handlePlayerSelectedFromNation(playerEntry.player)"
                                             >
-                                                <div class="position-label">
-                                                    {{
-                                                        getSlotDisplayName(
-                                                            slot,
-                                                            currentFormationLayout.flatMap(
-                                                                (r) => r.positions,
-                                                            ),
-                                                        )
-                                                    }}
-                                                </div>
-                                                <div 
-                                                    v-if="squadComposition[slot.id] && squadComposition[slot.id].length > 0"
-                                                    class="depth-players-compact"
-                                                >
-                                                    <div
-                                                        v-for="(playerEntry, index) in squadComposition[slot.id].slice(0, 3)"
-                                                        :key="playerEntry.player.name + '-' + slot.id + '-' + index"
-                                                        class="depth-player-compact"
-                                                        :class="{ 'starter': index === 0, 'backup': index > 0 }"
-                                                        @click="handlePlayerSelectedFromNation(playerEntry.player)"
-                                                    >
-                                                        <span class="player-rank-compact">{{ index + 1 }}.</span>
-                                                        <span class="player-name-compact">{{ playerEntry.player.name }}</span>
-                                                        <span 
-                                                            class="overall-compact"
-                                                            :class="getOverallClass(playerEntry.overallInRole)"
-                                                        >
-                                                            {{ playerEntry.overallInRole }}
-                                                        </span>
+                                                <div class="player-rank">{{ index + 1 }}</div>
+                                                <div class="player-info">
+                                                    <div class="player-name">{{ playerEntry.player.name }}</div>
+                                                    <div class="player-positions">
+                                                        {{ playerEntry.player.shortPositions?.slice(0, 2).join(', ') || 'N/A' }}
                                                     </div>
                                                 </div>
-                                                <div 
-                                                    v-else
-                                                    class="no-players-compact"
-                                                >
-                                                    No players
+                                                <div class="player-rating" :class="getOverallClass(playerEntry.overallInRole)">
+                                                    {{ playerEntry.overallInRole }}
                                                 </div>
                                             </div>
                                         </div>
+                                        
+                                        <div v-else class="no-players-state">
+                                            <q-icon name="person_off" size="1.5rem" />
+                                            <span>No suitable players</span>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="col-12 col-md-8">
+                            </q-card-section>
+                        </q-card>
+                    </div>
+
+                    <!-- Right Side - Pitch Visualization -->
+                    <div class="formation-display-panel">
+                        <q-card class="pitch-card" v-if="selectedFormationKey">
+                            <q-card-section>
+                                <div class="card-header">
+                                    <h3 class="card-title">
+                                        <q-icon name="stadium" class="card-icon" />
+                                        Formation View
+                                    </h3>
+                                    <p class="card-subtitle">Interactive pitch with your starting XI</p>
+                                </div>
+                                
+                                <div class="pitch-container">
                                     <PitchDisplay
                                         :formation="currentFormationLayout"
                                         :players="bestNationPlayersForPitch"
-                                        @player-click="
-                                            handlePlayerSelectedFromNation
-                                        "
+                                        @player-click="handlePlayerSelectedFromNation"
                                         @player-moved="handlePlayerMovedOnPitch"
                                     />
                                 </div>
-                            </div>
-                        </q-card-section>
-                    </q-card>
+                            </q-card-section>
+                        </q-card>
+                    </div>
+                </div>
 
-                    <q-card
-                        class="q-mb-md"
-                        :class="
-                            quasarInstance.dark.isActive
-                                ? 'bg-grey-9'
-                                : 'bg-white'
-                        "
-                    >
-                        <q-card-section>
-                            <div class="text-h6 q-mb-sm">
-                                Players from {{ selectedNationName }} ({{
-                                    nationPlayers.length
-                                }})
-                            </div>
+                <!-- Players Table -->
+                <q-card class="players-table-card">
+                    <q-card-section>
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <q-icon name="group" class="card-icon" />
+                                Squad Overview
+                            </h3>
+                            <p class="card-subtitle">
+                                All {{ nationPlayers.length }} players from {{ selectedNationName }}
+                            </p>
+                        </div>
+                        
+                        <div class="table-container">
                             <PlayerDataTable
                                 v-if="nationPlayers.length > 0"
                                 :players="nationPlayers"
                                 :loading="false"
                                 @player-selected="handlePlayerSelectedFromNation"
+                                @team-selected="handleTeamSelected"
                                 :is-goalkeeper-view="nationIsGoalkeeperView"
                                 :currency-symbol="detectedCurrencySymbol"
                                 :dataset-id="currentDatasetId"
-                                class="nation-player-table"
+                                class="modern-table"
                             />
-                            <q-banner
-                                v-else
-                                class="text-center"
-                                :class="
-                                    quasarInstance.dark.isActive
-                                        ? 'bg-grey-8 text-grey-4'
-                                        : 'bg-grey-2 text-grey-7'
-                                "
-                            >
-                                No players found for this nation with the current
-                                data.
-                            </q-banner>
-                        </q-card-section>
-                    </q-card>
-
-                </div>
-                <q-banner
-                    v-else-if="
-                        !pageLoading &&
-                        !loadingNation &&
-                        allPlayersData.length > 0 &&
-                        !selectedNationName
-                    "
-                    class="text-center q-mt-lg"
-                    :class="
-                        quasarInstance.dark.isActive
-                            ? 'bg-blue-grey-8 text-blue-grey-2'
-                            : 'bg-blue-1 text-primary'
-                    "
-                >
-                    <template v-slot:avatar>
-                        <q-icon name="info" />
-                    </template>
-                    Select a nation to view its best formation and players.
-                </q-banner>
-                <q-banner
-                    v-else-if="
-                        !pageLoading &&
-                        !loadingNation &&
-                        allPlayersData.length === 0 &&
-                        !pageLoadingError
-                    "
-                    class="text-center q-mt-lg"
-                    :class="
-                        quasarInstance.dark.isActive
-                            ? 'bg-red-9 text-red-2'
-                            : 'bg-red-1 text-negative'
-                    "
-                >
-                    <template v-slot:avatar>
-                        <q-icon name="warning" />
-                    </template>
-                    No player data available. Please upload a player file on the
-                    main page first.
-                    <q-btn
-                        flat
-                        color="primary"
-                        label="Go to Upload Page"
-                        @click="router.push('/')"
-                        class="q-ml-md"
-                    />
-                </q-banner>
+                            <div v-else class="no-players-banner">
+                                <q-icon name="person_off" size="3rem" />
+                                <h4>No Players Found</h4>
+                                <p>No players found for this nation with the current data filters.</p>
+                            </div>
+                        </div>
+                    </q-card-section>
+                </q-card>
             </div>
+
+            <!-- Nations Overview Card - When no nation is selected -->
+            <q-card
+                v-if="!pageLoading && !pageLoadingError && !selectedNationName && !loadingNation && allPlayersData.length > 0"
+                class="nations-overview-card"
+            >
+                <q-card-section>
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <q-icon name="public" class="card-icon" />
+                            Nations Overview
+                        </h3>
+                        <p class="card-subtitle">Select a nation to analyze player talents and distributions</p>
+                    </div>
+                    
+                    <div class="modern-filter-section">
+                        <q-select
+                            v-model="selectedNationName"
+                            :options="nationOptions"
+                            label="Search and Select Nation"
+                            outlined
+                            dense
+                            use-input
+                            hide-selected
+                            fill-input
+                            input-debounce="300"
+                            @filter="filterNationOptions"
+                            @update:model-value="loadNationPlayers"
+                            :label-color="quasarInstance.dark.isActive ? 'grey-4' : ''"
+                            :popup-content-class="quasarInstance.dark.isActive ? 'bg-grey-8 text-white' : 'bg-white text-dark'"
+                            clearable
+                            @clear="clearNationSelection"
+                            :disable="pageLoading || allPlayersData.length === 0"
+                            class="nation-select"
+                        >
+                            <template v-slot:no-option>
+                                <q-item>
+                                    <q-item-section class="text-grey">
+                                        No nations found.
+                                    </q-item-section>
+                                </q-item>
+                            </template>
+                        </q-select>
+                    </div>
+                    
+                    <div class="nations-list">
+                        <div
+                            v-for="nation in (showAllNations ? nationsWithRatings : nationsWithRatings.slice(0, 10))"
+                            :key="nation.name"
+                            class="nation-row"
+                            @click="selectNation(nation.name)"
+                        >
+                            <div class="nation-flag-container">
+                                <img
+                                    v-if="nation.nationality_iso"
+                                    :src="`https://flagcdn.com/w20/${nation.nationality_iso.toLowerCase()}.png`"
+                                    :alt="nation.name"
+                                    width="24"
+                                    height="16"
+                                    class="nationality-flag"
+                                    @error="onFlagError($event, nation)"
+                                />
+                                <q-icon
+                                    v-else
+                                    name="flag"
+                                    size="sm"
+                                    :color="quasarInstance.dark.isActive ? 'grey-6' : 'grey-7'"
+                                />
+                            </div>
+                            <div class="nation-info">
+                                <div class="nation-name">{{ nation.name }}</div>
+                                <div class="player-count">{{ nation.playerCount }} players</div>
+                            </div>
+                            <div class="nation-section-ratings">
+                                <div 
+                                    v-if="nation.bestFormationOverall > 0"
+                                    class="section-ratings-large"
+                                >
+                                    <div class="section-rating-large att">
+                                        <span class="section-label-large">ATT</span>
+                                        <span 
+                                            class="section-value-large"
+                                            :class="getOverallClass(nation.attRating)"
+                                        >
+                                            {{ nation.attRating }}
+                                        </span>
+                                    </div>
+                                    <div class="section-rating-large mid">
+                                        <span class="section-label-large">MID</span>
+                                        <span 
+                                            class="section-value-large"
+                                            :class="getOverallClass(nation.midRating)"
+                                        >
+                                            {{ nation.midRating }}
+                                        </span>
+                                    </div>
+                                    <div class="section-rating-large def">
+                                        <span class="section-label-large">DEF</span>
+                                        <span 
+                                            class="section-value-large"
+                                            :class="getOverallClass(nation.defRating)"
+                                        >
+                                            {{ nation.defRating }}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div 
+                                    v-else
+                                    class="no-rating-message"
+                                >
+                                    Incomplete Squad
+                                </div>
+                            </div>
+                            <div class="nation-overall">
+                                <div class="nation-rating">
+                                    <div 
+                                        class="highest-overall-large"
+                                        :class="getOverallClass(nation.bestFormationOverall)"
+                                    >
+                                        {{ nation.bestFormationOverall > 0 ? nation.bestFormationOverall + ' AVG' : 'N/A' }}
+                                    </div>
+                                    <div class="star-rating-large">
+                                        <span
+                                            v-for="star in 5"
+                                            :key="star"
+                                            class="star-large"
+                                            :class="getStarClass(nation.bestFormationOverall, star)"
+                                        >
+                                            ★
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Show More Button -->
+                    <div v-if="!showAllNations && allPlayersData.length > 0" class="text-center q-mt-md">
+                        <q-btn
+                            flat
+                            color="primary"
+                            @click="showAllNations = true"
+                            class="show-more-btn"
+                        >
+                            Show All Nations
+                            <q-icon name="expand_more" class="q-ml-sm" />
+                        </q-btn>
+                    </div>
+                </q-card-section>
+            </q-card>
+
+            <!-- Additional Banners -->
+            <q-banner
+                v-else-if="!pageLoading && !loadingNation && allPlayersData.length > 0 && !selectedNationName"
+                class="info-banner"
+            >
+                <template v-slot:avatar>
+                    <q-icon name="info" />
+                </template>
+                Please select a nation to view its players and analyze formations.
+            </q-banner>
+            
+            <q-banner
+                v-else-if="!pageLoading && !loadingNation && allPlayersData.length === 0 && !pageLoadingError"
+                class="warning-banner"
+            >
+                <template v-slot:avatar>
+                    <q-icon name="warning" />
+                </template>
+                No player data available. Please upload a player file on the main page first.
+                <q-btn
+                    flat
+                    color="primary"
+                    label="Go to Upload Page"
+                    @click="router.push('/')"
+                    class="q-ml-md"
+                />
+            </q-banner>
         </div>
+
+        <!-- Player Detail Dialog -->
         <PlayerDetailDialog
             :player="playerForDetailView"
             :show="showPlayerDetailDialog"
@@ -1769,6 +1749,19 @@ export default {
       }
     }
 
+    // Add computed property for current nation flag ISO
+    const currentNationFlagISO = computed(() => {
+      if (!selectedNationName.value) return null
+      const nation = nationsWithRatings.value.find(n => n.name === selectedNationName.value)
+      return nation?.nationality_iso || null
+    })
+
+    // Add handleTeamSelected function (for compatibility with PlayerDataTable)
+    const handleTeamSelected = (teamName) => {
+      // Redirect to team view page when a team is selected from the player table
+      router.push(`/team-view/${currentDatasetId.value}?team=${encodeURIComponent(teamName)}`)
+    }
+
     return {
       allPlayersData,
       selectedNationName,
@@ -1807,743 +1800,913 @@ export default {
       shareDataset,
       onFlagError,
       nationsWithRatings,
-      showAllNations
+      showAllNations,
+      currentNationFlagISO,
+      handleTeamSelected
     }
   }
 }
 </script>
 
 <style lang="scss" scoped>
-.nations-page {
-    max-width: 1600px;
-    margin: 0 auto;
+// Variables
+$border-radius: 12px;
+$border-radius-small: 8px;
+$card-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+$card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
+
+// Base Page Layout
+.nation-view-page {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    
+    .body--dark & {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    }
 }
 
-// Hero Section
-.hero-section {
-    padding: 4rem 0;
-    background: linear-gradient(135deg, #1a237e 0%, #283593 50%, #3949ab 100%);
+.main-content {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+    
+    @media (max-width: 768px) {
+        padding: 1rem;
+    }
+}
+
+// Banners
+.error-banner {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    margin-bottom: 2rem;
+    border: none;
+    box-shadow: $card-shadow;
+}
+
+.info-banner {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    margin-bottom: 2rem;
+    border: none;
+    box-shadow: $card-shadow;
+}
+
+.warning-banner {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+    margin-bottom: 2rem;
+    border: none;
+    box-shadow: $card-shadow;
+}
+
+// Share Section
+.share-section {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 2rem;
+    
+    .share-btn-modern {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        transition: all 0.3s ease;
+        
+        &:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+    }
+}
+
+// Empty State
+.empty-state {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 60vh;
+    
+    .empty-state-card {
+        background: white;
+        border-radius: $border-radius;
+        box-shadow: $card-shadow;
+        border: 1px solid rgba(0, 0, 0, 0.06);
+        max-width: 500px;
+        width: 100%;
+        
+        .body--dark & {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .empty-state-content {
+            text-align: center;
+            padding: 3rem;
+            
+            .empty-state-icon {
+                margin-bottom: 2rem;
+                color: #667eea;
+                opacity: 0.7;
+            }
+            
+            .empty-state-title {
+                font-size: 1.75rem;
+                font-weight: 700;
+                margin: 0 0 1rem 0;
+                color: #1e293b;
+                
+                .body--dark & {
+                    color: rgba(255, 255, 255, 0.9);
+                }
+            }
+            
+            .empty-state-description {
+                font-size: 1rem;
+                color: #64748b;
+                line-height: 1.6;
+                margin: 0 0 2rem 0;
+                
+                .body--dark & {
+                    color: rgba(255, 255, 255, 0.7);
+                }
+            }
+            
+            .empty-state-btn {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                border: none;
+                padding: 0.75rem 2rem;
+                font-weight: 600;
+            }
+        }
+    }
+}
+
+// Loading States
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 40vh;
+    gap: 1.5rem;
+    
+    .loading-text {
+        font-size: 1.1rem;
+        color: #64748b;
+        font-weight: 500;
+        
+        .body--dark & {
+            color: rgba(255, 255, 255, 0.7);
+        }
+    }
+}
+
+// Nation Dashboard
+.nation-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+// Nation Hero Section
+.nation-hero-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: $border-radius;
+    padding: 3rem;
     color: white;
     position: relative;
     overflow: hidden;
-    margin: -1.5rem -1.5rem 2rem -1.5rem;
+    box-shadow: $card-shadow;
     
     &::before {
-        content: "";
+        content: '';
         position: absolute;
         top: 0;
         left: 0;
         right: 0;
         bottom: 0;
-        background: radial-gradient(
-            circle at 30% 20%,
-            rgba(255, 255, 255, 0.05) 0%,
-            transparent 50%
-        );
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
         pointer-events: none;
     }
     
-    .hero-container {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 0 2rem;
-        display: flex;
-        justify-content: center;
-        align-items: center;
+    .nation-hero-content {
         position: relative;
         z-index: 1;
-    }
-    
-    .hero-content {
-        text-align: center;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 2rem;
         
-        .hero-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            background: rgba(255, 255, 255, 0.1);
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 500;
-            margin-bottom: 2rem;
-            backdrop-filter: blur(10px);
-        }
-        
-        .hero-title {
-            font-size: 3.5rem;
-            font-weight: 700;
-            line-height: 1.1;
-            margin: 0 0 1.5rem 0;
-            
-            @media (max-width: 768px) {
-                font-size: 2.5rem;
-            }
-            
-            .gradient-text {
-                background: linear-gradient(135deg, #64b5f6 0%, #42a5f5 100%);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                background-clip: text;
-            }
-        }
-        
-        .hero-subtitle {
-            font-size: 1.2rem;
-            line-height: 1.6;
-            margin: 0;
-            opacity: 0.9;
-            font-weight: 300;
-            max-width: 600px;
-            margin: 0 auto;
-            
-            @media (max-width: 768px) {
-                font-size: 1.1rem;
-            }
+        @media (max-width: 1200px) {
+            flex-direction: column;
+            gap: 2rem;
         }
     }
-}
-
-.share-button-container {
-    display: flex;
-    justify-content: flex-end;
-    margin: 2rem 0;
-    padding: 0 2rem;
-}
-
-// Modern Filter Section
-.modern-filter-section {
-    margin: 3rem 0;
     
-    .filter-header {
-        text-align: center;
-        margin-bottom: 2rem;
+    .nation-primary-info {
+        display: flex;
+        align-items: center;
+        gap: 2rem;
+        flex: 1;
         
-        .filter-title {
-            font-size: 2rem;
-            font-weight: 700;
+        @media (max-width: 768px) {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+    }
+    
+    .nation-name-section {
+        .nation-name-hero {
+            font-size: 3rem;
+            font-weight: 800;
             margin: 0 0 0.5rem 0;
-            color: #1a237e;
+            line-height: 1.1;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             
-            .body--dark & {
-                color: rgba(255, 255, 255, 0.9);
+            @media (max-width: 768px) {
+                font-size: 2.2rem;
             }
         }
         
-        .filter-subtitle {
-            font-size: 1rem;
-            color: #666;
-            margin: 0;
+        .nation-flag-hero {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            opacity: 0.9;
             
-            .body--dark & {
-                color: rgba(255, 255, 255, 0.7);
+            .nationality-flag {
+                border-radius: 4px;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
             }
         }
     }
     
-    .filter-card {
-        background: white;
-        border-radius: 16px;
-        padding: 2rem;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-        border: 1px solid rgba(0, 0, 0, 0.05);
-        max-width: 600px;
-        margin: 0 auto;
+    .star-rating-display {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: $border-radius-small;
+        padding: 1.5rem;
+        backdrop-filter: blur(10px);
         
-        .body--dark & {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+        .overall-score {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         
-        .filter-content {
-            .q-field {
-                .q-field__control {
-                    border-radius: 12px;
+        .star-container {
+            margin-bottom: 0.5rem;
+            
+            .star-modern {
+                font-size: 1.5rem;
+                margin: 0 0.1rem;
+                transition: all 0.2s ease;
+                
+                &.filled {
+                    color: #fbbf24;
+                    text-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+                }
+                
+                &.half {
+                    background: linear-gradient(90deg, #fbbf24 50%, rgba(255, 255, 255, 0.3) 50%);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    background-clip: text;
+                }
+                
+                &.empty {
+                    color: rgba(255, 255, 255, 0.3);
+                }
+            }
+        }
+        
+        .rating-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            opacity: 0.8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+    }
+    
+    .performance-metrics {
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            
+            @media (max-width: 768px) {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+            
+            .metric-card {
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: $border-radius-small;
+                padding: 1.5rem;
+                text-align: center;
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                transition: transform 0.2s ease;
+                
+                &:hover {
+                    transform: translateY(-2px);
+                }
+                
+                .metric-icon {
+                    font-size: 2rem;
+                    margin-bottom: 0.5rem;
+                }
+                
+                .metric-value {
+                    font-size: 1.8rem;
+                    font-weight: 800;
+                    margin-bottom: 0.25rem;
+                    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+                }
+                
+                .metric-label {
+                    font-size: 0.9rem;
+                    font-weight: 600;
+                    opacity: 0.9;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
                 }
             }
         }
     }
 }
 
-.page-title {
-    // Standard title styling
-}
-
-.filter-card,
-.q-card {
-    border-radius: $generic-border-radius;
-}
-
-.nation-player-table {
-    :deep(.q-table__container) {
-        max-height: 450px;
-        overflow-y: auto;
-    }
-    :deep(th) {
-        position: sticky;
-        top: 0;
-        z-index: 1;
-    }
-    .body--dark & :deep(th) {
-        background-color: $grey-9 !important;
-    }
-    .body--light & :deep(th) {
-        background-color: $grey-2 !important;
+// Formation & Tactics Layout
+.formation-tactics-layout {
+    display: grid;
+    grid-template-columns: 400px 1fr;
+    gap: 2rem;
+    
+    @media (max-width: 1200px) {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
     }
 }
 
-.nations-list {
-    max-height: 600px;
-    overflow-y: auto;
-}
-
-.nation-row {
+.formation-controls-panel {
     display: flex;
-    align-items: center;
-    padding: 12px 16px;
-    border-radius: 6px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    margin-bottom: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+// Card Styles
+.formation-card,
+.squad-depth-card,
+.pitch-card,
+.players-table-card,
+.nations-overview-card {
+    background: white;
+    border-radius: $border-radius;
+    box-shadow: $card-shadow;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    transition: box-shadow 0.3s ease;
+    
+    .body--dark & {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
     
     &:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-    
-    .body--dark & {
-        background-color: rgba(255, 255, 255, 0.05);
-        border-color: rgba(255, 255, 255, 0.1);
-        
-        &:hover {
-            background-color: rgba(255, 255, 255, 0.08);
-            box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
-        }
-    }
-    
-    .body--light & {
-        background-color: rgba(0, 0, 0, 0.02);
-        border-color: rgba(0, 0, 0, 0.1);
-        
-        &:hover {
-            background-color: rgba(0, 0, 0, 0.05);
-        }
+        box-shadow: $card-shadow-hover;
     }
 }
 
-.nation-flag-container {
-    width: 32px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 16px;
-    flex-shrink: 0;
-}
-
-.nationality-flag {
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    border-radius: 2px;
+.card-header {
+    margin-bottom: 1.5rem;
     
-    .body--dark & {
-        border-color: rgba(255, 255, 255, 0.2);
-    }
-}
-
-.nation-info {
-    flex-shrink: 0;
-    min-width: 120px;
-}
-
-.nation-name {
-    font-size: 1rem;
-    font-weight: 600;
-    margin-bottom: 2px;
-    
-    .body--dark & {
-        color: $grey-2;
-    }
-    
-    .body--light & {
-        color: $grey-8;
-    }
-}
-
-.player-count {
-    font-size: 0.85rem;
-    color: $grey-6;
-    
-    .body--dark & {
-        color: $grey-4;
-    }
-}
-
-.nation-section-ratings {
-    flex: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin: 0 16px;
-}
-
-.section-ratings-large {
-    display: flex;
-    gap: 20px;
-    align-items: center;
-}
-
-.section-rating-large {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    
-    .section-label-large {
-        font-size: 0.8rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-    }
-    
-    .section-value-large {
-        font-size: 1.1rem;
-        font-weight: bold;
-        padding: 4px 8px;
-        border-radius: 6px;
-        min-width: 32px;
-        text-align: center;
-        border: 1px solid rgba(0, 0, 0, 0.1);
-        
-        .body--dark & {
-            border-color: rgba(255, 255, 255, 0.1);
-        }
-    }
-    
-    &.att .section-label-large {
-        color: #F44336; // Red for attack
-        
-        .body--dark & {
-            color: #FF5722;
-        }
-    }
-    
-    &.mid .section-label-large {
-        color: #2196F3; // Blue for midfield
-        
-        .body--dark & {
-            color: #03A9F4;
-        }
-    }
-    
-    &.def .section-label-large {
-        color: #4CAF50; // Green for defense
-        
-        .body--dark & {
-            color: #8BC34A;
-        }
-    }
-}
-
-.no-rating-message {
-    font-size: 0.9rem;
-    color: $grey-6;
-    font-style: italic;
-    text-align: center;
-    
-    .body--dark & {
-        color: $grey-5;
-    }
-}
-
-.nation-overall {
-    flex-shrink: 0;
-    margin-left: 16px;
-}
-
-.nation-rating {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    min-width: 120px;
-}
-
-.highest-overall-large {
-    font-weight: bold;
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 1rem;
-    text-align: center;
-    min-width: 60px;
-}
-
-.star-rating-large {
-    display: flex;
-    gap: 2px;
-    font-size: 1.2rem;
-    line-height: 1;
-}
-
-.star-large {
-    transition: color 0.2s ease;
-    
-    &.star-full {
-        color: #FFD700; // Gold
-    }
-    
-    &.star-half {
-        background: linear-gradient(90deg, #FFD700 50%, transparent 50%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        
-        // Fallback for browsers that don't support background-clip: text
-        @supports not (-webkit-background-clip: text) {
-            color: #FFD700;
-        }
-    }
-    
-    &.star-empty {
-        color: #E0E0E0;
-        
-        .body--dark & {
-            color: #424242;
-        }
-    }
-}
-
-// Keep the original smaller versions for compatibility
-.highest-overall {
-    font-weight: bold;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    text-align: center;
-    min-width: 50px;
-}
-
-.star-rating {
-    display: flex;
-    gap: 1px;
-    font-size: 0.9rem;
-    line-height: 1;
-}
-
-.star {
-    transition: color 0.2s ease;
-    
-    &.star-full {
-        color: #FFD700; // Gold
-    }
-    
-    &.star-half {
-        background: linear-gradient(90deg, #FFD700 50%, transparent 50%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        
-        // Fallback for browsers that don't support background-clip: text
-        @supports not (-webkit-background-clip: text) {
-            color: #FFD700;
-        }
-    }
-    
-    &.star-empty {
-        color: #E0E0E0;
-        
-        .body--dark & {
-            color: #424242;
-        }
-    }
-}
-
-.section-ratings {
-    display: flex;
-    gap: 8px;
-    margin-top: 4px;
-}
-
-.section-rating {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    
-    .section-label {
-        font-size: 0.65rem;
-        font-weight: 600;
-        color: $grey-6;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        
-        .body--dark & {
-            color: $grey-4;
-        }
-    }
-    
-    .section-value {
-        font-size: 0.7rem;
-        font-weight: bold;
-        padding: 1px 4px;
-        border-radius: 3px;
-        min-width: 20px;
-        text-align: center;
-    }
-    
-    &.att .section-label {
-        color: #F44336; // Red for attack
-        
-        .body--dark & {
-            color: #FF5722;
-        }
-    }
-    
-    &.mid .section-label {
-        color: #2196F3; // Blue for midfield
-        
-        .body--dark & {
-            color: #03A9F4;
-        }
-    }
-    
-    &.def .section-label {
-        color: #4CAF50; // Green for defense
-        
-        .body--dark & {
-            color: #8BC34A;
-        }
-    }
-}
-
-.section-ratings-detail {
-    display: flex;
-    gap: 12px;
-    margin-top: 8px;
-}
-
-.section-rating-detail {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    
-    .section-label-detail {
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        min-width: 28px;
-    }
-    
-    .section-value-detail {
-        font-size: 0.8rem;
-        font-weight: bold;
-        padding: 2px 6px;
-        border-radius: 4px;
-        min-width: 28px;
-        text-align: center;
-    }
-    
-    &.att .section-label-detail {
-        color: #F44336; // Red for attack
-        
-        .body--dark & {
-            color: #FF5722;
-        }
-    }
-    
-    &.mid .section-label-detail {
-        color: #2196F3; // Blue for midfield
-        
-        .body--dark & {
-            color: #03A9F4;
-        }
-    }
-    
-    &.def .section-label-detail {
-        color: #4CAF50; // Green for defense
-        
-        .body--dark & {
-            color: #8BC34A;
-        }
-    }
-}
-
-.attribute-value {
-    display: inline-block;
-    min-width: 28px;
-    text-align: center;
-    font-weight: 600;
-    padding: 2px 5px;
-    border-radius: 4px;
-    line-height: 1.3;
-    font-size: 0.8em;
-}
-
-.compact-squad-depth {
-    max-height: 500px;
-    overflow-y: auto;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 8px;
-    width: 100%;
-    
-    .depth-position-compact {
-        padding: 8px;
-        border-radius: 6px;
-        border: 1px solid rgba(0, 0, 0, 0.1);
-        min-height: 100px;
-        
-        .body--dark & {
-            background-color: rgba(255, 255, 255, 0.08);
-            border-color: rgba(255, 255, 255, 0.1);
-        }
-        
-        .body--light & {
-            background-color: rgba(0, 0, 0, 0.05);
-            border-color: rgba(0, 0, 0, 0.1);
-        }
-    }
-    
-    .position-label {
-        font-size: 0.75rem;
-        font-weight: 700;
-        margin-bottom: 6px;
-        text-align: center;
-        color: $grey-7;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        
-        .body--dark & {
-            color: $grey-3;
-        }
-    }
-    
-    .depth-players-compact {
-        display: flex;
-        flex-direction: column;
-        gap: 3px;
-    }
-    
-    .depth-player-compact {
+    .card-title {
         display: flex;
         align-items: center;
-        gap: 4px;
-        padding: 3px 6px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 0.75rem;
-        min-height: 22px;
-        
-        &.starter {
-            font-weight: 700;
-            background-color: rgba($positive, 0.15);
-            border: 1px solid rgba($positive, 0.3);
-            
-            .body--dark & {
-                background-color: rgba($positive, 0.25);
-                border-color: rgba($positive, 0.4);
-            }
-        }
-        
-        &.backup {
-            font-weight: 500;
-            background-color: rgba($grey-5, 0.1);
-            
-            .body--dark & {
-                background-color: rgba($grey-5, 0.15);
-            }
-        }
-        
-        &:hover {
-            background-color: rgba($primary, 0.15);
-            transform: translateY(-1px);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            
-            .body--dark & {
-                background-color: rgba($primary, 0.25);
-            }
-        }
-    }
-    
-    .player-rank-compact {
-        font-size: 0.65rem;
-        font-weight: bold;
-        min-width: 14px;
-        color: $grey-6;
+        gap: 0.75rem;
+        font-size: 1.3rem;
+        font-weight: 700;
+        margin: 0 0 0.5rem 0;
+        color: #1e293b;
         
         .body--dark & {
-            color: $grey-4;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .card-icon {
+            color: #667eea;
+            font-size: 1.5rem;
         }
     }
     
-    .player-name-compact {
-        flex: 1;
-        white-space: nowrap;
+    .card-subtitle {
+        font-size: 0.95rem;
+        color: #64748b;
+        margin: 0;
+        
+        .body--dark & {
+            color: rgba(255, 255, 255, 0.7);
+        }
+    }
+}
+
+// Formation Controls
+.formation-controls {
+    .formation-select {
+        margin-bottom: 1rem;
+        
+        .q-field__control {
+            border-radius: $border-radius-small;
+        }
+    }
+    
+    .calculation-banner {
+        border-radius: $border-radius-small;
+        border: none;
+        font-weight: 500;
+    }
+}
+
+// Squad Depth Grid
+.squad-depth-card {
+    .squad-depth-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1rem;
+        
+        @media (max-width: 768px) {
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+        }
+        
+        .depth-position-modern {
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: $border-radius-small;
+            padding: 1rem;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            
+            .body--dark & {
+                background: rgba(255, 255, 255, 0.05);
+                border-color: rgba(255, 255, 255, 0.1);
+            }
+            
+            &:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            }
+            
+            .position-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 0.75rem;
+                
+                .position-name {
+                    font-weight: 700;
+                    font-size: 0.9rem;
+                    color: #2d3436;
+                    
+                    .body--dark & {
+                        color: rgba(255, 255, 255, 0.9);
+                    }
+                }
+                
+                .player-count {
+                    font-size: 0.75rem;
+                    color: #636e72;
+                    background: rgba(0, 0, 0, 0.05);
+                    padding: 0.2rem 0.5rem;
+                    border-radius: 12px;
+                    
+                    .body--dark & {
+                        color: rgba(255, 255, 255, 0.7);
+                        background: rgba(255, 255, 255, 0.1);
+                    }
+                }
+            }
+            
+            .depth-players-modern {
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+                
+                .player-card-mini {
+                    display: grid;
+                    grid-template-columns: auto 1fr auto;
+                    gap: 0.5rem;
+                    align-items: center;
+                    padding: 0.5rem;
+                    background: rgba(255, 255, 255, 0.8);
+                    border-radius: $border-radius-small;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    border: 1px solid rgba(0, 0, 0, 0.05);
+                    
+                    .body--dark & {
+                        background: rgba(255, 255, 255, 0.08);
+                        border-color: rgba(255, 255, 255, 0.1);
+                    }
+                    
+                    &.is-starter {
+                        background: linear-gradient(135deg, rgba(0, 184, 148, 0.1) 0%, rgba(0, 206, 201, 0.05) 100%);
+                        border-color: rgba(0, 184, 148, 0.2);
+                        font-weight: 600;
+                    }
+                    
+                    &:hover {
+                        transform: translateX(4px);
+                        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                        background: rgba(103, 126, 234, 0.1);
+                        
+                        .body--dark & {
+                            background: rgba(103, 126, 234, 0.15);
+                        }
+                    }
+                    
+                    .player-rank {
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        width: 20px;
+                        height: 20px;
+                        background: rgba(103, 126, 234, 0.1);
+                        color: #667eea;
+                        border-radius: 50%;
+                        font-size: 0.7rem;
+                        font-weight: 700;
+                    }
+                    
+                    .player-info {
+                        min-width: 0;
+                        
+                        .player-name {
+                            font-size: 0.8rem;
+                            font-weight: 600;
+                            white-space: nowrap;
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                            color: #2d3436;
+                            
+                            .body--dark & {
+                                color: rgba(255, 255, 255, 0.9);
+                            }
+                        }
+                        
+                        .player-positions {
+                            font-size: 0.65rem;
+                            color: #636e72;
+                            margin-top: 0.2rem;
+                            
+                            .body--dark & {
+                                color: rgba(255, 255, 255, 0.6);
+                            }
+                        }
+                    }
+                    
+                    .player-rating {
+                        font-size: 0.75rem;
+                        font-weight: 700;
+                        padding: 0.2rem 0.4rem;
+                        border-radius: 4px;
+                        min-width: 28px;
+                        text-align: center;
+                        border: 1px solid rgba(0, 0, 0, 0.1);
+                        
+                        .body--dark & {
+                            border-color: rgba(255, 255, 255, 0.2);
+                        }
+                    }
+                }
+            }
+            
+            .no-players-state {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 0.3rem;
+                padding: 1rem;
+                color: #636e72;
+                font-style: italic;
+                font-size: 0.8rem;
+                
+                .body--dark & {
+                    color: rgba(255, 255, 255, 0.5);
+                }
+                
+                .q-icon {
+                    font-size: 1.2rem;
+                }
+            }
+        }
+    }
+}
+
+// Pitch Container
+.pitch-container {
+    background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+    border-radius: $border-radius;
+    padding: 2rem;
+    margin-top: 1rem;
+    position: relative;
+    overflow: hidden;
+    
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: 
+            linear-gradient(90deg, rgba(255, 255, 255, 0.1) 50%, transparent 50%),
+            linear-gradient(0deg, rgba(255, 255, 255, 0.1) 50%, transparent 50%);
+        background-size: 20px 20px;
+        opacity: 0.3;
+    }
+}
+
+// Table Container
+.table-container {
+    .modern-table {
+        border-radius: $border-radius-small;
         overflow: hidden;
-        text-overflow: ellipsis;
-        font-size: 0.72rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
     
-    .overall-compact {
-        font-size: 0.7rem;
-        font-weight: bold;
-        padding: 2px 4px;
-        border-radius: 3px;
-        min-width: 24px;
+    .no-players-banner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        padding: 3rem 2rem;
         text-align: center;
-        border: 1px solid rgba(0, 0, 0, 0.1);
+        color: #636e72;
         
         .body--dark & {
-            border-color: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.7);
         }
-    }
-    
-    .no-players-compact {
-        font-size: 0.7rem;
-        color: $grey-6;
-        font-style: italic;
-        text-align: center;
-        padding: 8px;
         
-        .body--dark & {
-            color: $grey-5;
+        h4 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        p {
+            margin: 0;
+            font-size: 1rem;
         }
     }
 }
 
-.share-btn-enhanced {
-    font-weight: 600;
-    border-radius: 6px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    transition: all 0.2s ease;
-    
-    &:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+// Nations Overview Card specific styles
+.nations-overview-card {
+    .modern-filter-section {
+        margin-bottom: 2rem;
+        
+        .nation-select {
+            .q-field__control {
+                border-radius: $border-radius-small;
+            }
+        }
     }
     
-    .body--dark & {
-        box-shadow: 0 2px 4px rgba(255, 255, 255, 0.1);
+    .nations-list {
+        .nation-row {
+            display: grid;
+            grid-template-columns: auto 1fr auto auto;
+            gap: 1rem;
+            align-items: center;
+            padding: 1rem;
+            border-radius: $border-radius-small;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            margin-bottom: 0.5rem;
+            
+            .body--dark & {
+                border-color: rgba(255, 255, 255, 0.1);
+            }
+            
+            &:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+                background: rgba(103, 126, 234, 0.05);
+                
+                .body--dark & {
+                    background: rgba(103, 126, 234, 0.1);
+                }
+            }
+            
+            .nation-flag-container {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 32px;
+                
+                .nationality-flag {
+                    border-radius: 4px;
+                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+                }
+            }
+            
+            .nation-info {
+                .nation-name {
+                    font-weight: 700;
+                    font-size: 1rem;
+                    color: #1e293b;
+                    
+                    .body--dark & {
+                        color: rgba(255, 255, 255, 0.9);
+                    }
+                }
+                
+                .player-count {
+                    font-size: 0.85rem;
+                    color: #64748b;
+                    margin-top: 0.2rem;
+                    
+                    .body--dark & {
+                        color: rgba(255, 255, 255, 0.6);
+                    }
+                }
+            }
+            
+            .nation-section-ratings {
+                .section-ratings-large {
+                    display: flex;
+                    gap: 0.5rem;
+                    
+                    .section-rating-large {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        
+                        .section-label-large {
+                            font-size: 0.7rem;
+                            font-weight: 600;
+                            text-transform: uppercase;
+                            letter-spacing: 0.5px;
+                            margin-bottom: 0.2rem;
+                        }
+                        
+                        .section-value-large {
+                            font-size: 0.8rem;
+                            font-weight: 700;
+                            padding: 0.2rem 0.4rem;
+                            border-radius: 4px;
+                            min-width: 24px;
+                            text-align: center;
+                        }
+                    }
+                }
+                
+                .no-rating-message {
+                    font-size: 0.8rem;
+                    color: #9ca3af;
+                    font-style: italic;
+                    
+                    .body--dark & {
+                        color: rgba(255, 255, 255, 0.5);
+                    }
+                }
+            }
+            
+            .nation-overall {
+                text-align: center;
+                
+                .nation-rating {
+                    .highest-overall-large {
+                        font-size: 0.9rem;
+                        font-weight: 700;
+                        margin-bottom: 0.3rem;
+                    }
+                    
+                    .star-rating-large {
+                        .star-large {
+                            font-size: 0.8rem;
+                            margin: 0 0.05rem;
+                            
+                            &.filled {
+                                color: #fbbf24;
+                            }
+                            
+                            &.half {
+                                color: #fbbf24;
+                                opacity: 0.5;
+                            }
+                            
+                            &.empty {
+                                color: #d1d5db;
+                                
+                                .body--dark & {
+                                    color: rgba(255, 255, 255, 0.3);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    .show-more-btn {
+        font-weight: 500;
+        border-radius: $border-radius-small;
+        padding: 0.75rem 2rem;
+        transition: all 0.2s ease;
         
         &:hover {
-            box-shadow: 0 4px 8px rgba(255, 255, 255, 0.15);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            
+            .body--dark & {
+                box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
+            }
         }
     }
 }
 
-.show-more-btn {
-    font-weight: 500;
-    border-radius: 8px;
-    padding: 8px 24px;
-    transition: all 0.2s ease;
+// Overall Class Colors
+.excellent {
+    background-color: #10b981 !important;
+    color: white !important;
+}
+
+.very-good {
+    background-color: #34d399 !important;
+    color: white !important;
+}
+
+.good {
+    background-color: #fbbf24 !important;
+    color: white !important;
+}
+
+.average {
+    background-color: #f59e0b !important;
+    color: white !important;
+}
+
+.below-average {
+    background-color: #ef4444 !important;
+    color: white !important;
+}
+
+.poor {
+    background-color: #991b1b !important;
+    color: white !important;
+}
+
+// Responsive Design
+@media (max-width: 1200px) {
+    .formation-tactics-layout {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
     
-    &:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    .formation-controls-panel {
+        gap: 1.5rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .main-content {
+        padding: 1rem;
+    }
+    
+    .nation-dashboard {
+        gap: 1.5rem;
+    }
+    
+    .nation-hero-section {
+        padding: 2rem;
+    }
+    
+    .performance-metrics .metrics-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+    
+    .squad-depth-grid {
+        grid-template-columns: 1fr !important;
+        gap: 0.75rem !important;
+    }
+    
+    .nations-list .nation-row {
+        grid-template-columns: auto 1fr auto;
+        gap: 0.75rem;
         
-        .body--dark & {
-            box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
+        .nation-section-ratings {
+            display: none;
         }
     }
 }
