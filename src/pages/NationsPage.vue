@@ -64,6 +64,11 @@
                 <div class="loading-text">Loading player database...</div>
             </div>
             
+            <div v-else-if="cacheLoading" class="loading-state">
+                <q-spinner-cube color="primary" size="3em" />
+                <div class="loading-text">Loading cached nation ratings...</div>
+            </div>
+            
             <div v-else-if="loadingNation" class="loading-state">
                 <q-spinner-dots color="primary" size="3em" />
                 <div class="loading-text">Analyzing nation composition...</div>
@@ -607,6 +612,157 @@ export default {
     const calculationQueue = ref([])
     const isProcessingQueue = ref(false)
 
+    // NEW: Nation ratings cache system
+    const CACHE_VERSION = '1.0' // Increment when calculation logic changes
+    const cacheLoading = ref(false)
+    const cacheKey = ref(null)
+
+    // NEW: Generate cache key based on dataset and player data
+    const generateCacheKey = () => {
+      if (!currentDatasetId.value || !allPlayersData.value.length) {
+        return null
+      }
+      
+      // Create a simple hash based on dataset ID, player count, and key player data
+      // This ensures cache invalidation when the underlying data changes
+      const playerCount = allPlayersData.value.length
+      const samplePlayerData = allPlayersData.value.slice(0, 10).map(p => `${p.name}:${p.Overall || 0}:${p.nationality}`).join('|')
+      const cacheInput = `${currentDatasetId.value}:${playerCount}:${samplePlayerData}:${CACHE_VERSION}`
+      
+      // Simple hash function (could use crypto.subtle.digest for better hashing in production)
+      let hash = 0
+      for (let i = 0; i < cacheInput.length; i++) {
+        const char = cacheInput.charCodeAt(i)
+        hash = ((hash << 5) - hash) + char
+        hash = hash & hash // Convert to 32-bit integer
+      }
+      
+      return `nation_ratings_${Math.abs(hash).toString(36)}`
+    }
+
+    // NEW: Save nation ratings to cache
+    const saveNationRatingsToCache = async () => {
+      if (!cacheKey.value || nationsData.value.length === 0) {
+        return
+      }
+
+      try {
+        const cacheData = {
+          version: CACHE_VERSION,
+          datasetId: currentDatasetId.value,
+          generatedAt: new Date().toISOString(),
+          playerCount: allPlayersData.value.length,
+          nationsData: nationsData.value.map(nation => ({
+            name: nation.name,
+            nationality_iso: nation.nationality_iso,
+            playerCount: nation.playerCount,
+            bestFormationOverall: nation.bestFormationOverall,
+            attRating: nation.attRating,
+            midRating: nation.midRating,
+            defRating: nation.defRating
+          }))
+        }
+
+        // Save to API endpoint which will handle local/S3 storage based on configuration
+        const response = await fetch(`/api/cache/nation-ratings/${cacheKey.value}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(cacheData)
+        })
+
+        if (response.ok) {
+          console.log(`✅ Nation ratings cached successfully as ${cacheKey.value}`)
+        } else {
+          console.warn(`⚠️ Failed to cache nation ratings: ${response.status}`)
+        }
+      } catch (error) {
+        console.warn('⚠️ Error saving nation ratings to cache:', error)
+      }
+    }
+
+    // NEW: Load nation ratings from cache
+    const loadNationRatingsFromCache = async () => {
+      if (!cacheKey.value) {
+        return false
+      }
+
+      cacheLoading.value = true
+      try {
+        const response = await fetch(`/api/cache/nation-ratings/${cacheKey.value}`)
+        
+        if (!response.ok) {
+          console.log(`📦 No cached nation ratings found for ${cacheKey.value}`)
+          return false
+        }
+
+        const cacheData = await response.json()
+        
+        // Validate cache data
+        if (cacheData.version !== CACHE_VERSION) {
+          console.log(`♻️ Cache version mismatch (${cacheData.version} vs ${CACHE_VERSION}), recalculating...`)
+          return false
+        }
+
+        if (cacheData.datasetId !== currentDatasetId.value) {
+          console.log(`♻️ Cache dataset mismatch, recalculating...`)
+          return false
+        }
+
+        if (cacheData.playerCount !== allPlayersData.value.length) {
+          console.log(`♻️ Player count changed (${cacheData.playerCount} vs ${allPlayersData.value.length}), recalculating...`)
+          return false
+        }
+
+        // Restore cached nation data
+        const restoredNations = cacheData.nationsData.map(cachedNation => ({
+          ...cachedNation,
+          isCalculating: false,
+          players: [], // Will be populated if needed
+          topPlayersByPosition: {} // Will be populated if needed
+        }))
+
+        nationsData.value = restoredNations
+        
+        console.log(`✅ Loaded ${restoredNations.length} nation ratings from cache (generated ${cacheData.generatedAt})`)
+        
+        // Show a brief message about cache usage
+        calculationMessage.value = `Loaded nation ratings from cache (generated ${new Date(cacheData.generatedAt).toLocaleString()})`
+        calculationMessageClass.value = quasarInstance.dark.isActive
+          ? 'bg-positive text-white'
+          : 'bg-green-2 text-positive'
+        
+        setTimeout(() => {
+          calculationMessage.value = ''
+        }, 3000)
+
+        return true
+      } catch (error) {
+        console.warn('⚠️ Error loading nation ratings from cache:', error)
+        return false
+      } finally {
+        cacheLoading.value = false
+      }
+    }
+
+    // NEW: Clear cache (useful for debugging or forcing recalculation)
+    const clearNationRatingsCache = async () => {
+      if (!cacheKey.value) return
+
+      try {
+        const response = await fetch(`/api/cache/nation-ratings/${cacheKey.value}`, {
+          method: 'DELETE'
+        })
+        
+        if (response.ok) {
+          console.log(`🗑️ Cleared nation ratings cache ${cacheKey.value}`)
+        }
+      } catch (error) {
+        console.warn('⚠️ Error clearing cache:', error)
+      }
+    }
+
     // Map position names to their short codes, more specific for each side
     const fmMatcherToRoleKeyPrefix = {
       GOALKEEPER: 'GK',
@@ -720,7 +876,8 @@ export default {
               playerCount: 0,
               bestFormationOverall: null, // Will be calculated async
               isCalculating: false,
-              players: []
+              players: [],
+              topPlayersByPosition: {} // NEW: Pre-filtered top players per position
             })
           }
 
@@ -735,10 +892,48 @@ export default {
         }
       }
 
+      // NEW: Second pass - Pre-filter to top 10 players per position for each nation
+      const allPositions = [
+        'GK', 'DR', 'DL', 'DC', 'WBR', 'WBL', 'DM', 'MR', 'ML', 'MC', 'AMR', 'AML', 'AMC', 'ST'
+      ]
+      
+      for (const [nationalityName, nation] of nationsMap) {
+        console.log(`Pre-filtering ${nationalityName}: ${nation.players.length} total players`)
+        
+        const topPlayersByPosition = {}
+        let totalOptimizedPlayers = 0
+        
+        for (const position of allPositions) {
+          const playersForPosition = nation.players.filter(player => {
+            const playerPositions = player.shortPositions || []
+            return playerPositions.includes(position)
+          })
+
+          // Sort by Overall and take top 10
+          playersForPosition.sort((a, b) => (b.Overall || 0) - (a.Overall || 0))
+          const topPlayers = playersForPosition.slice(0, 10)
+          
+          if (topPlayers.length > 0) {
+            topPlayersByPosition[position] = topPlayers
+            totalOptimizedPlayers += topPlayers.length
+          }
+        }
+        
+        // Replace the full players array with optimized data
+        nation.topPlayersByPosition = topPlayersByPosition
+        
+        // Keep original players array for the player table, but we could optimize this too if needed
+        // For now, keeping it for compatibility with existing player table functionality
+        
+        console.log(`${nationalityName}: Optimized to ${totalOptimizedPlayers} players across ${Object.keys(topPlayersByPosition).length} positions`)
+      }
+
       // Convert to array and sort by player count initially
       nationsData.value = Array.from(nationsMap.values()).sort(
         (a, b) => b.playerCount - a.playerCount
       )
+      
+      console.log(`Initialized ${nationsData.value.length} nations with pre-filtered player data`)
     }
 
     // NEW: Calculate ratings for a single nation
@@ -752,21 +947,23 @@ export default {
       // Simulate small delay to prevent UI blocking
       await new Promise(resolve => setTimeout(resolve, 10))
 
-      // Get top 10 players per position to optimize performance
-      const topPlayersByPosition = {}
-      const allPositions = [
-        'GK', 'DR', 'DL', 'DC', 'WBR', 'WBL', 'DM', 'MR', 'ML', 'MC', 'AMR', 'AML', 'AMC', 'ST'
-      ]
-
-      for (const position of allPositions) {
-        const playersForPosition = nation.players.filter(player => {
-          const playerPositions = player.shortPositions || []
-          return playerPositions.includes(position)
-        })
-
-        // Sort by Overall and take top 10
-        playersForPosition.sort((a, b) => (b.Overall || 0) - (a.Overall || 0))
-        topPlayersByPosition[position] = playersForPosition.slice(0, 10)
+      // NEW: Use pre-filtered top players instead of filtering during calculation
+      const topPlayersByPosition = nation.topPlayersByPosition
+      
+      if (!topPlayersByPosition || Object.keys(topPlayersByPosition).length === 0) {
+        console.warn(`No pre-filtered players found for ${nation.name}`)
+        // Update with zero ratings
+        if (nationIndex !== -1) {
+          nationsData.value[nationIndex] = {
+            ...nationsData.value[nationIndex],
+            bestFormationOverall: 0,
+            attRating: 0,
+            midRating: 0,
+            defRating: 0,
+            isCalculating: false
+          }
+        }
+        return
       }
 
       let bestOverall = 0
@@ -785,7 +982,7 @@ export default {
           tempSquadComposition[slot.id] = []
         }
 
-        // Calculate player assignments for this formation using only top players
+        // Calculate player assignments for this formation using pre-filtered top players
         const allPotentialPlayerAssignments = []
         for (const slot of formationSlots) {
           const slotPositions = positionSideMap[slot.role.toUpperCase()] || []
@@ -925,8 +1122,8 @@ export default {
           }
         }
 
-        // Add small delay every few formations to prevent blocking
-        if (Object.keys(formations).indexOf(formationKey) % 3 === 0) {
+        // Reduced delay frequency since we're working with much smaller datasets now
+        if (Object.keys(formations).indexOf(formationKey) % 5 === 0) {
           await new Promise(resolve => setTimeout(resolve, 1))
         }
       }
@@ -944,7 +1141,7 @@ export default {
       }
     }
 
-    // NEW: Process calculation queue
+    // NEW: Process calculation queue with caching
     const processCalculationQueue = async () => {
       if (isProcessingQueue.value || calculationQueue.value.length === 0) {
         return
@@ -976,6 +1173,10 @@ export default {
       isProcessingQueue.value = false
       isCalculatingRatings.value = false
       calculationProgress.value = { current: 0, total: 0 }
+      
+      // NEW: Save calculated results to cache
+      console.log('💾 All calculations complete, saving to cache...')
+      await saveNationRatingsToCache()
     }
 
     // NEW: Start rating calculations
@@ -1028,13 +1229,26 @@ export default {
       if (!pageLoadingError.value && allPlayersData.value.length > 0) {
         populateNationFilterOptions()
         
-        // NEW: Initialize nations data immediately, then start async rating calculations
-        initializeNationsData()
+        // NEW: Generate cache key and try to load from cache first
+        cacheKey.value = generateCacheKey()
+        console.log(`🔑 Generated cache key: ${cacheKey.value}`)
         
-        // Start calculating ratings in the background
-        setTimeout(() => {
-          startRatingCalculations()
-        }, 100) // Small delay to let UI render first
+        // Try to load cached nation ratings
+        const cacheLoaded = await loadNationRatingsFromCache()
+        
+        if (!cacheLoaded) {
+          // No cache found, initialize and calculate normally
+          console.log('📊 No cached data found, initializing fresh calculations...')
+          initializeNationsData()
+          
+          // Start calculating ratings in the background
+          setTimeout(() => {
+            startRatingCalculations()
+          }, 100) // Small delay to let UI render first
+        } else {
+          // Cache loaded successfully, no need to calculate
+          console.log('⚡ Using cached nation ratings - no calculations needed!')
+        }
 
         if (nationFromQuery && nationFromQuery.trim() !== '') {
           selectedNationName.value = nationFromQuery
@@ -1560,6 +1774,9 @@ export default {
         tempSquadComposition[slot.id] = []
       }
 
+      // NEW: For the detailed squad calculation, we still use all nation players
+      // since we need full depth charts and the user expects to see all their players
+      // This is only for the selected nation, so performance impact is minimal
       const allPotentialPlayerAssignments = []
       for (const slot of formationSlots) {
         for (const player of nationPlayers.value) {
@@ -1821,16 +2038,24 @@ export default {
 
     watch(
       () => allPlayersData.value,
-      newVal => {
+      async newVal => {
         if (pageLoading.value) return
         if (newVal && newVal.length > 0) {
           populateNationFilterOptions()
           
-          // NEW: Initialize nations and start calculations
-          initializeNationsData()
-          setTimeout(() => {
-            startRatingCalculations()
-          }, 100)
+          // NEW: Generate new cache key and try to load from cache
+          cacheKey.value = generateCacheKey()
+          console.log(`🔑 Data changed, new cache key: ${cacheKey.value}`)
+          
+          const cacheLoaded = await loadNationRatingsFromCache()
+          
+          if (!cacheLoaded) {
+            // NEW: Initialize nations and start calculations
+            initializeNationsData()
+            setTimeout(() => {
+              startRatingCalculations()
+            }, 100)
+          }
           
           if (selectedNationName.value) loadNationPlayers()
         } else if (!pageLoadingError.value) {
@@ -1838,9 +2063,10 @@ export default {
           allNationNamesCache.value = []
           nationOptions.value = []
           nationsData.value = [] // NEW: Clear nations data
+          cacheKey.value = null // NEW: Clear cache key
         }
       },
-      { deep: true }
+      { immediate: false }
     )
 
     watch(
@@ -1851,12 +2077,20 @@ export default {
           await fetchPlayersAndCurrency(newId)
           clearNationSelection()
           nationsData.value = [] // NEW: Clear nations data
+          cacheKey.value = null // NEW: Clear cache key
           if (!pageLoadingError.value && allPlayersData.value.length > 0) {
             populateNationFilterOptions()
-            initializeNationsData() // NEW: Initialize nations
-            setTimeout(() => {
-              startRatingCalculations() // NEW: Start calculations
-            }, 100)
+            
+            // NEW: Generate cache key and try to load from cache
+            cacheKey.value = generateCacheKey()
+            const cacheLoaded = await loadNationRatingsFromCache()
+            
+            if (!cacheLoaded) {
+              initializeNationsData() // NEW: Initialize nations
+              setTimeout(() => {
+                startRatingCalculations() // NEW: Start calculations
+              }, 100)
+            }
           }
         }
       }
@@ -1967,7 +2201,9 @@ export default {
       nationsData,
       isCalculatingRatings,
       calculationProgress,
-      isProcessingQueue
+      isProcessingQueue,
+      cacheLoading,
+      cacheKey
     }
   }
 }

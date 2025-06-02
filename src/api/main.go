@@ -89,6 +89,9 @@ func main() {
 	// Initialize storage system
 	InitStore()
 
+	// Initialize cache storage system
+	InitCacheStorage()
+
 	// Start automatic cleanup scheduler for old datasets
 	StartCleanupScheduler()
 	// Serve the main index.html page (assuming it's built into a 'public' or 'dist' folder by Vue)
@@ -152,6 +155,9 @@ func main() {
 	// API endpoint for serving player face images
 	http.Handle("/api/faces", wrapHandler(http.HandlerFunc(facesHandler), "faces"))
 
+	// API endpoint for cache operations (nation ratings, etc.)
+	http.Handle("/api/cache/", wrapHandler(http.HandlerFunc(cacheHandler), "cache"))
+
 	// Create HTTP server with timeouts and middleware
 	mux := http.NewServeMux()
 
@@ -181,6 +187,9 @@ func main() {
 
 	// API endpoint for serving player face images
 	mux.Handle("/api/faces", wrapHandler(http.HandlerFunc(facesHandler), "faces"))
+
+	// API endpoint for cache operations (nation ratings, etc.)
+	mux.Handle("/api/cache/", wrapHandler(http.HandlerFunc(cacheHandler), "cache"))
 
 	// Create server with proper timeouts
 	server := &http.Server{
