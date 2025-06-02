@@ -611,7 +611,7 @@ export default {
 
     .body--dark & {
       background: rgba(255, 255, 255, 0.05);
-      border-color: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     .stat-item {
@@ -623,7 +623,7 @@ export default {
       min-height: 24px;
 
       .body--dark & {
-        color: rgba(255, 255, 255, 0.8);
+        color: rgba(255, 255, 255, 0.9);
       }
     }
   }

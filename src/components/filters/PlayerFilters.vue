@@ -1,11 +1,12 @@
 <template>
-    <q-card
-        class="q-mb-md filter-card"
-        :class="quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'"
-    >
+    <q-card class="filter-card">
         <q-card-section>
-            <div class="text-subtitle1 q-mb-sm">
-                Search Players (Using {{ currencySymbol }} for values)
+            <div class="card-header">
+                <h3 class="card-title">
+                    <q-icon name="filter_list" class="card-icon" />
+                    Search Players
+                </h3>
+                <p class="card-subtitle">Using {{ currencySymbol }} for values</p>
             </div>
 
             <!-- First Row: Basic Filters -->
@@ -18,12 +19,6 @@
                         filled
                         clearable
                         @update:model-value="debouncedApplyFilters"
-                        :label-color="
-                            quasarInstance.dark.isActive ? 'grey-4' : ''
-                        "
-                        :input-class="
-                            quasarInstance.dark.isActive ? 'text-grey-3' : ''
-                        "
                         :disable="isLoading"
                     />
                 </div>
@@ -41,14 +36,6 @@
                         input-debounce="300"
                         @filter="filterClubOptions"
                         @update:model-value="applyFilters"
-                        :label-color="
-                            quasarInstance.dark.isActive ? 'grey-4' : ''
-                        "
-                        :popup-content-class="
-                            quasarInstance.dark.isActive
-                                ? 'bg-grey-8 text-white'
-                                : ''
-                        "
                         behavior="menu"
                         :disable="isLoading"
                     >
@@ -75,14 +62,6 @@
                         input-debounce="300"
                         @filter="filterNationalityOptions"
                         @update:model-value="applyFilters"
-                        :label-color="
-                            quasarInstance.dark.isActive ? 'grey-4' : ''
-                        "
-                        :popup-content-class="
-                            quasarInstance.dark.isActive
-                                ? 'bg-grey-8 text-white'
-                                : ''
-                        "
                         behavior="menu"
                         :disable="isLoading"
                     >
@@ -106,14 +85,6 @@
                         emit-value
                         map-options
                         @update:model-value="onPositionChange"
-                        :label-color="
-                            quasarInstance.dark.isActive ? 'grey-4' : ''
-                        "
-                        :popup-content-class="
-                            quasarInstance.dark.isActive
-                                ? 'bg-grey-8 text-white'
-                                : ''
-                        "
                         behavior="menu"
                         :disable="isLoading"
                     />
@@ -139,14 +110,6 @@
                             roleFilterOptions.length === 0 ||
                             (roleFilterOptions.length === 1 &&
                                 roleFilterOptions[0].value === null)
-                        "
-                        :label-color="
-                            quasarInstance.dark.isActive ? 'grey-4' : ''
-                        "
-                        :popup-content-class="
-                            quasarInstance.dark.isActive
-                                ? 'bg-grey-8 text-white'
-                                : ''
                         "
                         behavior="menu"
                     >
@@ -174,14 +137,6 @@
                         emit-value
                         map-options
                         @update:model-value="applyPresetFilter"
-                        :label-color="
-                            quasarInstance.dark.isActive ? 'grey-4' : ''
-                        "
-                        :popup-content-class="
-                            quasarInstance.dark.isActive
-                                ? 'bg-grey-8 text-white'
-                                : ''
-                        "
                         behavior="menu"
                         :disable="isLoading"
                     >
@@ -203,14 +158,6 @@
                         emit-value
                         map-options
                         @update:model-value="applyFilters"
-                        :label-color="
-                            quasarInstance.dark.isActive ? 'grey-4' : ''
-                        "
-                        :popup-content-class="
-                            quasarInstance.dark.isActive
-                                ? 'bg-grey-8 text-white'
-                                : ''
-                        "
                         behavior="menu"
                         :disable="isLoading"
                     />
@@ -228,14 +175,6 @@
                         emit-value
                         map-options
                         @update:model-value="applyFilters"
-                        :label-color="
-                            quasarInstance.dark.isActive ? 'grey-4' : ''
-                        "
-                        :popup-content-class="
-                            quasarInstance.dark.isActive
-                                ? 'bg-grey-8 text-white'
-                                : ''
-                        "
                         behavior="menu"
                         :disable="isLoading"
                     />
@@ -245,14 +184,7 @@
             <!-- Third Row: Range Sliders -->
             <div class="row q-col-gutter-md">
                 <div class="col-12 col-md-3">
-                    <div
-                        class="text-caption q-mb-xs slider-label"
-                        :class="
-                            quasarInstance.dark.isActive
-                                ? 'text-grey-4'
-                                : 'text-grey-7'
-                        "
-                    >
+                    <div class="text-caption q-mb-xs slider-label">
                         Age Range: {{ filters.ageRange.min }} -
                         {{
                             filters.ageRange.max === ageSliderMax
@@ -280,14 +212,7 @@
                 </div>
 
                 <div class="col-12 col-md-3">
-                    <div
-                        class="text-caption q-mb-xs slider-label"
-                        :class="
-                            quasarInstance.dark.isActive
-                                ? 'text-grey-4'
-                                : 'text-grey-7'
-                        "
-                    >
+                    <div class="text-caption q-mb-xs slider-label">
                         Max Salary:
                         {{
                             filters.maxSalary === salarySliderMax
@@ -320,14 +245,7 @@
                 </div>
 
                 <div class="col-12 col-md-4">
-                    <div
-                        class="text-caption q-mb-xs slider-label"
-                        :class="
-                            quasarInstance.dark.isActive
-                                ? 'text-grey-4'
-                                : 'text-grey-7'
-                        "
-                    >
+                    <div class="text-caption q-mb-xs slider-label">
                         Transfer Value ({{ currencySymbol }})
                     </div>
                     <q-range
@@ -362,9 +280,6 @@
                 <div class="col-12 col-md-2">
                     <q-btn
                         color="grey"
-                        :text-color="
-                            quasarInstance.dark.isActive ? 'white' : 'dark'
-                        "
                         label="Clear All"
                         class="full-width"
                         @click="clearAllFilters"
@@ -395,14 +310,10 @@
             </div>
 
             <q-dialog v-model="showMinimumStatsModal" persistent maximized>
-                <q-card
-                    :class="
-                        quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'
-                    "
-                >
+                <q-card class="minimum-stats-modal">
                     <q-card-section>
                         <div class="text-h6">Set Minimum Stats</div>
-                        <div class="text-subtitle2 text-grey-6 q-mt-xs">
+                        <div class="text-subtitle2 modal-subtitle">
                             Filter players by minimum stat values
                         </div>
                     </q-card-section>
@@ -411,21 +322,12 @@
                         <div class="row q-col-gutter-lg">
                             <div class="col-12 col-md-3">
                                 <div class="attribute-group">
-                                    <div
-                                        class="text-h6 q-mb-sm attribute-group-title"
-                                    >
+                                    <div class="text-h6 q-mb-sm attribute-group-title">
                                         Stat Summaries
                                     </div>
 
                                     <div class="fifa-stat-item q-mb-md">
-                                        <div
-                                            class="text-caption q-mb-xs slider-label"
-                                            :class="
-                                                quasarInstance.dark.isActive
-                                                    ? 'text-grey-4'
-                                                    : 'text-grey-7'
-                                            "
-                                        >
+                                        <div class="text-caption q-mb-xs slider-label">
                                             Min Overall:
                                             <span
                                                 class="stat-value-badge q-ml-xs"
@@ -450,14 +352,7 @@
                                     </div>
 
                                     <div class="fifa-stat-item q-mb-md">
-                                        <div
-                                            class="text-caption q-mb-xs slider-label"
-                                            :class="
-                                                quasarInstance.dark.isActive
-                                                    ? 'text-grey-4'
-                                                    : 'text-grey-7'
-                                            "
-                                        >
+                                        <div class="text-caption q-mb-xs slider-label">
                                             Min PAC:
                                             <span
                                                 class="stat-value-badge q-ml-xs"
@@ -482,14 +377,7 @@
                                     </div>
 
                                     <div class="fifa-stat-item q-mb-md">
-                                        <div
-                                            class="text-caption q-mb-xs slider-label"
-                                            :class="
-                                                quasarInstance.dark.isActive
-                                                    ? 'text-grey-4'
-                                                    : 'text-grey-7'
-                                            "
-                                        >
+                                        <div class="text-caption q-mb-xs slider-label">
                                             Min SHO:
                                             <span
                                                 class="stat-value-badge q-ml-xs"
@@ -514,14 +402,7 @@
                                     </div>
 
                                     <div class="fifa-stat-item q-mb-md">
-                                        <div
-                                            class="text-caption q-mb-xs slider-label"
-                                            :class="
-                                                quasarInstance.dark.isActive
-                                                    ? 'text-grey-4'
-                                                    : 'text-grey-7'
-                                            "
-                                        >
+                                        <div class="text-caption q-mb-xs slider-label">
                                             Min PAS:
                                             <span
                                                 class="stat-value-badge q-ml-xs"
@@ -546,14 +427,7 @@
                                     </div>
 
                                     <div class="fifa-stat-item q-mb-md">
-                                        <div
-                                            class="text-caption q-mb-xs slider-label"
-                                            :class="
-                                                quasarInstance.dark.isActive
-                                                    ? 'text-grey-4'
-                                                    : 'text-grey-7'
-                                            "
-                                        >
+                                        <div class="text-caption q-mb-xs slider-label">
                                             Min DRI:
                                             <span
                                                 class="stat-value-badge q-ml-xs"
@@ -578,14 +452,7 @@
                                     </div>
 
                                     <div class="fifa-stat-item q-mb-md">
-                                        <div
-                                            class="text-caption q-mb-xs slider-label"
-                                            :class="
-                                                quasarInstance.dark.isActive
-                                                    ? 'text-grey-4'
-                                                    : 'text-grey-7'
-                                            "
-                                        >
+                                        <div class="text-caption q-mb-xs slider-label">
                                             Min DEF:
                                             <span
                                                 class="stat-value-badge q-ml-xs"
@@ -610,14 +477,7 @@
                                     </div>
 
                                     <div class="fifa-stat-item q-mb-md">
-                                        <div
-                                            class="text-caption q-mb-xs slider-label"
-                                            :class="
-                                                quasarInstance.dark.isActive
-                                                    ? 'text-grey-4'
-                                                    : 'text-grey-7'
-                                            "
-                                        >
+                                        <div class="text-caption q-mb-xs slider-label">
                                             Min PHY:
                                             <span
                                                 class="stat-value-badge q-ml-xs"
@@ -642,14 +502,7 @@
                                     </div>
 
                                     <div class="fifa-stat-item q-mb-md">
-                                        <div
-                                            class="text-caption q-mb-xs slider-label"
-                                            :class="
-                                                quasarInstance.dark.isActive
-                                                    ? 'text-grey-4'
-                                                    : 'text-grey-7'
-                                            "
-                                        >
+                                        <div class="text-caption q-mb-xs slider-label">
                                             Min GK:
                                             <span
                                                 class="stat-value-badge q-ml-xs"
@@ -676,53 +529,25 @@
                             </div>
 
                             <div class="col-12 col-md-9">
-                                <div
-                                    class="text-subtitle1 q-mb-sm attributes-section-title"
-                                >
+                                <div class="text-subtitle1 q-mb-sm attributes-section-title">
                                     FM Attributes (Min 0-20)
                                 </div>
                                 <div class="row q-col-gutter-md">
                                     <div class="col-12 col-lg-3 col-md-6">
-                                        <q-card
-                                            flat
-                                            bordered
-                                            class="attribute-category-card"
-                                        >
-                                            <q-card-section
-                                                class="attribute-category-header-styled"
-                                            >
-                                                <div
-                                                    class="text-subtitle1 text-weight-medium text-center"
-                                                >
+                                        <q-card flat bordered class="attribute-category-card">
+                                            <q-card-section class="attribute-category-header-styled">
+                                                <div class="text-subtitle1 text-weight-medium text-center">
                                                     Technical
                                                 </div>
                                             </q-card-section>
-                                            <q-list
-                                                separator
-                                                dense
-                                                class="attribute-list-column-styled"
-                                            >
-                                                <q-item
-                                                    v-for="attr in technicalAttributeKeys"
-                                                    :key="attr"
-                                                    class="attribute-item-column-styled"
-                                                >
-                                                    <q-item-section
-                                                        class="attribute-name-column-styled"
-                                                    >
-                                                        {{
-                                                            formatAttrName(attr)
-                                                        }}
+                                            <q-list separator dense class="attribute-list-column-styled">
+                                                <q-item v-for="attr in technicalAttributeKeys" :key="attr" class="attribute-item-column-styled">
+                                                    <q-item-section class="attribute-name-column-styled">
+                                                        {{ formatAttrName(attr) }}
                                                     </q-item-section>
-                                                    <q-item-section
-                                                        side
-                                                        class="attribute-value-column-styled"
-                                                    >
+                                                    <q-item-section side class="attribute-value-column-styled">
                                                         <span
-                                                            v-if="
-                                                                inlineEditingAttributeKey !==
-                                                                attr
-                                                            "
+                                                            v-if="inlineEditingAttributeKey !== attr"
                                                             :class="
                                                                 getUnifiedRatingClass(
                                                                     filters[
@@ -746,15 +571,8 @@
                                                         </span>
                                                         <q-input
                                                             v-else
-                                                            :ref="
-                                                                (el) =>
-                                                                    (attributeInputRefs[
-                                                                        attr
-                                                                    ] = el)
-                                                            "
-                                                            v-model.number="
-                                                                inlineEditingValue
-                                                            "
+                                                            :ref="(el) => (attributeInputRefs[attr] = el)"
+                                                            v-model.number="inlineEditingValue"
                                                             type="number"
                                                             min="0"
                                                             max="20"
@@ -763,12 +581,8 @@
                                                             filled
                                                             autofocus
                                                             class="inline-attribute-input"
-                                                            @keyup.enter="
-                                                                finishInlineEdit
-                                                            "
-                                                            @blur="
-                                                                finishInlineEdit
-                                                            "
+                                                            @keyup.enter="finishInlineEdit"
+                                                            @blur="finishInlineEdit"
                                                         />
                                                     </q-item-section>
                                                 </q-item>
@@ -776,46 +590,20 @@
                                         </q-card>
                                     </div>
                                     <div class="col-12 col-lg-3 col-md-6">
-                                        <q-card
-                                            flat
-                                            bordered
-                                            class="attribute-category-card"
-                                        >
-                                            <q-card-section
-                                                class="attribute-category-header-styled"
-                                            >
-                                                <div
-                                                    class="text-subtitle1 text-weight-medium text-center"
-                                                >
+                                        <q-card flat bordered class="attribute-category-card">
+                                            <q-card-section class="attribute-category-header-styled">
+                                                <div class="text-subtitle1 text-weight-medium text-center">
                                                     Mental
                                                 </div>
                                             </q-card-section>
-                                            <q-list
-                                                separator
-                                                dense
-                                                class="attribute-list-column-styled"
-                                            >
-                                                <q-item
-                                                    v-for="attr in mentalAttributeKeys"
-                                                    :key="attr"
-                                                    class="attribute-item-column-styled"
-                                                >
-                                                    <q-item-section
-                                                        class="attribute-name-column-styled"
-                                                    >
-                                                        {{
-                                                            formatAttrName(attr)
-                                                        }}
+                                            <q-list separator dense class="attribute-list-column-styled">
+                                                <q-item v-for="attr in mentalAttributeKeys" :key="attr" class="attribute-item-column-styled">
+                                                    <q-item-section class="attribute-name-column-styled">
+                                                        {{ formatAttrName(attr) }}
                                                     </q-item-section>
-                                                    <q-item-section
-                                                        side
-                                                        class="attribute-value-column-styled"
-                                                    >
+                                                    <q-item-section side class="attribute-value-column-styled">
                                                         <span
-                                                            v-if="
-                                                                inlineEditingAttributeKey !==
-                                                                attr
-                                                            "
+                                                            v-if="inlineEditingAttributeKey !== attr"
                                                             :class="
                                                                 getUnifiedRatingClass(
                                                                     filters[
@@ -839,15 +627,8 @@
                                                         </span>
                                                         <q-input
                                                             v-else
-                                                            :ref="
-                                                                (el) =>
-                                                                    (attributeInputRefs[
-                                                                        attr
-                                                                    ] = el)
-                                                            "
-                                                            v-model.number="
-                                                                inlineEditingValue
-                                                            "
+                                                            :ref="(el) => (attributeInputRefs[attr] = el)"
+                                                            v-model.number="inlineEditingValue"
                                                             type="number"
                                                             min="0"
                                                             max="20"
@@ -856,12 +637,8 @@
                                                             filled
                                                             autofocus
                                                             class="inline-attribute-input"
-                                                            @keyup.enter="
-                                                                finishInlineEdit
-                                                            "
-                                                            @blur="
-                                                                finishInlineEdit
-                                                            "
+                                                            @keyup.enter="finishInlineEdit"
+                                                            @blur="finishInlineEdit"
                                                         />
                                                     </q-item-section>
                                                 </q-item>
@@ -869,46 +646,20 @@
                                         </q-card>
                                     </div>
                                     <div class="col-12 col-lg-3 col-md-6">
-                                        <q-card
-                                            flat
-                                            bordered
-                                            class="attribute-category-card"
-                                        >
-                                            <q-card-section
-                                                class="attribute-category-header-styled"
-                                            >
-                                                <div
-                                                    class="text-subtitle1 text-weight-medium text-center"
-                                                >
+                                        <q-card flat bordered class="attribute-category-card">
+                                            <q-card-section class="attribute-category-header-styled">
+                                                <div class="text-subtitle1 text-weight-medium text-center">
                                                     Physical
                                                 </div>
                                             </q-card-section>
-                                            <q-list
-                                                separator
-                                                dense
-                                                class="attribute-list-column-styled"
-                                            >
-                                                <q-item
-                                                    v-for="attr in physicalAttributeKeys"
-                                                    :key="attr"
-                                                    class="attribute-item-column-styled"
-                                                >
-                                                    <q-item-section
-                                                        class="attribute-name-column-styled"
-                                                    >
-                                                        {{
-                                                            formatAttrName(attr)
-                                                        }}
+                                            <q-list separator dense class="attribute-list-column-styled">
+                                                <q-item v-for="attr in physicalAttributeKeys" :key="attr" class="attribute-item-column-styled">
+                                                    <q-item-section class="attribute-name-column-styled">
+                                                        {{ formatAttrName(attr) }}
                                                     </q-item-section>
-                                                    <q-item-section
-                                                        side
-                                                        class="attribute-value-column-styled"
-                                                    >
+                                                    <q-item-section side class="attribute-value-column-styled">
                                                         <span
-                                                            v-if="
-                                                                inlineEditingAttributeKey !==
-                                                                attr
-                                                            "
+                                                            v-if="inlineEditingAttributeKey !== attr"
                                                             :class="
                                                                 getUnifiedRatingClass(
                                                                     filters[
@@ -932,15 +683,8 @@
                                                         </span>
                                                         <q-input
                                                             v-else
-                                                            :ref="
-                                                                (el) =>
-                                                                    (attributeInputRefs[
-                                                                        attr
-                                                                    ] = el)
-                                                            "
-                                                            v-model.number="
-                                                                inlineEditingValue
-                                                            "
+                                                            :ref="(el) => (attributeInputRefs[attr] = el)"
+                                                            v-model.number="inlineEditingValue"
                                                             type="number"
                                                             min="0"
                                                             max="20"
@@ -949,12 +693,8 @@
                                                             filled
                                                             autofocus
                                                             class="inline-attribute-input"
-                                                            @keyup.enter="
-                                                                finishInlineEdit
-                                                            "
-                                                            @blur="
-                                                                finishInlineEdit
-                                                            "
+                                                            @keyup.enter="finishInlineEdit"
+                                                            @blur="finishInlineEdit"
                                                         />
                                                     </q-item-section>
                                                 </q-item>
@@ -962,46 +702,20 @@
                                         </q-card>
                                     </div>
                                     <div class="col-12 col-lg-3 col-md-6">
-                                        <q-card
-                                            flat
-                                            bordered
-                                            class="attribute-category-card"
-                                        >
-                                            <q-card-section
-                                                class="attribute-category-header-styled"
-                                            >
-                                                <div
-                                                    class="text-subtitle1 text-weight-medium text-center"
-                                                >
+                                        <q-card flat bordered class="attribute-category-card">
+                                            <q-card-section class="attribute-category-header-styled">
+                                                <div class="text-subtitle1 text-weight-medium text-center">
                                                     Goalkeeping
                                                 </div>
                                             </q-card-section>
-                                            <q-list
-                                                separator
-                                                dense
-                                                class="attribute-list-column-styled"
-                                            >
-                                                <q-item
-                                                    v-for="attr in goalkeeperAttributeKeys"
-                                                    :key="attr"
-                                                    class="attribute-item-column-styled"
-                                                >
-                                                    <q-item-section
-                                                        class="attribute-name-column-styled"
-                                                    >
-                                                        {{
-                                                            formatAttrName(attr)
-                                                        }}
+                                            <q-list separator dense class="attribute-list-column-styled">
+                                                <q-item v-for="attr in goalkeeperAttributeKeys" :key="attr" class="attribute-item-column-styled">
+                                                    <q-item-section class="attribute-name-column-styled">
+                                                        {{ formatAttrName(attr) }}
                                                     </q-item-section>
-                                                    <q-item-section
-                                                        side
-                                                        class="attribute-value-column-styled"
-                                                    >
+                                                    <q-item-section side class="attribute-value-column-styled">
                                                         <span
-                                                            v-if="
-                                                                inlineEditingAttributeKey !==
-                                                                attr
-                                                            "
+                                                            v-if="inlineEditingAttributeKey !== attr"
                                                             :class="
                                                                 getUnifiedRatingClass(
                                                                     filters[
@@ -1025,15 +739,8 @@
                                                         </span>
                                                         <q-input
                                                             v-else
-                                                            :ref="
-                                                                (el) =>
-                                                                    (attributeInputRefs[
-                                                                        attr
-                                                                    ] = el)
-                                                            "
-                                                            v-model.number="
-                                                                inlineEditingValue
-                                                            "
+                                                            :ref="(el) => (attributeInputRefs[attr] = el)"
+                                                            v-model.number="inlineEditingValue"
                                                             type="number"
                                                             min="0"
                                                             max="20"
@@ -1042,12 +749,8 @@
                                                             filled
                                                             autofocus
                                                             class="inline-attribute-input"
-                                                            @keyup.enter="
-                                                                finishInlineEdit
-                                                            "
-                                                            @blur="
-                                                                finishInlineEdit
-                                                            "
+                                                            @keyup.enter="finishInlineEdit"
+                                                            @blur="finishInlineEdit"
                                                         />
                                                     </q-item-section>
                                                 </q-item>
@@ -1847,216 +1550,286 @@ export default defineComponent({
 @use "sass:color";
 
 .filter-card {
-    border-radius: 8px;
-}
-.body--dark .q-field--filled .q-field__control {
-    background-color: rgba(255, 255, 255, 0.07);
-    &:before {
-        border-bottom-color: rgba(255, 255, 255, 0.24);
-    }
-    &:hover:before {
-        border-bottom-color: rgba(255, 255, 255, 0.5);
-    }
-}
-.body--dark .q-field--filled.q-field--focused .q-field__control:after {
-    border-bottom-color: $primary;
-}
-.body--dark .q-field__label {
-    color: rgba(255, 255, 255, 0.6);
-}
-.body--dark .q-select .q-field__input,
-.body--dark .q-input .q-field__input {
-    color: rgba(255, 255, 255, 0.87);
-}
-
-.body--light .q-field--filled .q-field__control {
-    background-color: rgba(0, 0, 0, 0.04);
-    &:before {
-        border-bottom-color: rgba(0, 0, 0, 0.12);
-    }
-    &:hover:before {
-        border-bottom-color: rgba(0, 0, 0, 0.32);
-    }
-}
-.body--light .q-field--filled.q-field--focused .q-field__control:after {
-    border-bottom-color: $primary;
-}
-
-.q-mt-sm {
-    margin-top: 12px;
-}
-.q-px-sm {
-    padding-left: 4px;
-    padding-right: 4px;
-}
-.slider-label {
-    padding-left: 4px;
-    margin-bottom: 0px;
-    line-height: 1.2;
-}
-
-.stat-value-badge {
-    display: inline-block;
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    font-weight: 700;
-    min-width: 30px;
-    text-align: center;
-    color: white;
-    line-height: 1;
-    vertical-align: middle;
-}
-
-.modal-content {
-    max-height: 80vh;
-    overflow-y: auto;
-}
-
-.attribute-group-title {
-    color: $primary;
-    border-bottom: 1px solid $primary;
-    padding-bottom: 4px;
-    margin-bottom: 12px;
-    font-weight: 500;
-
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.06);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    margin-bottom: 1.5rem;
+    transition: box-shadow 0.3s ease, transform 0.2s ease;
+    
     .body--dark & {
-        color: color.adjust($primary, $lightness: 25%);
-        border-bottom-color: color.adjust($primary, $lightness: 25%);
+        background: #1e293b;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
     }
-}
-
-.fifa-stat-item {
-    width: 100%;
-}
-
-.attributes-section {
-    padding: 0;
-}
-.attributes-section-title {
-    font-weight: 600;
-    margin-bottom: 12px;
-}
-
-.attribute-category-card {
-    margin-bottom: 16px;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    background-color: transparent !important;
-    border: 1px solid rgba(0, 0, 0, 0.08);
+    
+    &:hover {
+        box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+        transform: translateY(-1px);
+    }
+    
+    // Ensure card sections have proper backgrounds
     .body--dark & {
-        border: 1px solid rgba(255, 255, 255, 0.12);
-    }
-}
-
-.attribute-category-header-styled {
-    background-color: rgba(0, 0, 0, 0.03);
-    padding: 8px 12px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-    text-align: center;
-
-    .body--dark & {
-        background-color: rgba(255, 255, 255, 0.05);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-    }
-    .text-subtitle1 {
-        font-size: 0.9rem;
-        font-weight: 600;
-    }
-}
-
-.attribute-list-column-styled {
-    padding: 8px 4px;
-    flex-grow: 1;
-    overflow-y: auto;
-}
-
-.attribute-item-column-styled {
-    padding: 4px 8px;
-    min-height: 32px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-
-    &.q-item--dark {
-    }
-    &:not(:last-child):after {
-        background-color: rgba(0, 0, 0, 0.08) !important;
-        .body--dark & {
-            background-color: rgba(255, 255, 255, 0.1) !important;
+        :deep(.q-card-section) {
+            background: transparent !important;
+            color: rgba(255, 255, 255, 0.9) !important;
+        }
+        
+        :deep(.q-card-actions) {
+            background: transparent !important;
+            border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
         }
     }
 }
 
-.attribute-name-column-styled {
-    font-size: 0.75rem;
-    color: $grey-8;
+.q-input,
+.q-select {
+    .q-field__control {
+        border-radius: 8px;
+        background: rgba(46, 116, 181, 0.02);
+        border: 1px solid rgba(46, 116, 181, 0.1);
+        transition: all 0.2s ease;
+        
+        .body--dark & {
+            background: rgba(96, 165, 250, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        &:hover {
+            border-color: rgba(46, 116, 181, 0.2);
+            background: rgba(46, 116, 181, 0.04);
+            
+            .body--dark & {
+                border-color: rgba(255, 255, 255, 0.2);
+                background: rgba(96, 165, 250, 0.08);
+            }
+        }
+    }
+    
+    .q-field__native,
+    .q-field__input {
+        color: #334155;
+        font-weight: 500;
+        
+        .body--dark & {
+            color: rgba(255, 255, 255, 0.9);
+        }
+    }
+    
+    .q-field__label {
+        color: #64748b;
+        font-weight: 600;
+        
+        .body--dark & {
+            color: rgba(255, 255, 255, 0.7);
+        }
+    }
+}
+
+.q-range {
+    .q-slider__track {
+        background: rgba(46, 116, 181, 0.1);
+        
+        .body--dark & {
+            background: rgba(255, 255, 255, 0.1);
+        }
+    }
+    
+    .q-slider__track-active {
+        background: #2e74b5;
+        
+        .body--dark & {
+            background: #60a5fa;
+        }
+    }
+    
+    .q-slider__thumb {
+        background: #2e74b5;
+        border: 2px solid white;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        
+        .body--dark & {
+            background: #60a5fa;
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+    }
+}
+
+.slider-label {
+    color: #334155;
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    
+    .body--dark & {
+        color: rgba(255, 255, 255, 0.9);
+    }
+}
+
+.q-btn {
+    border-radius: 8px;
+    font-weight: 600;
+    text-transform: none;
+    transition: all 0.2s ease;
+    
+    &[color="primary"] {
+        background: #2e74b5;
+        
+        .body--dark & {
+            background: #60a5fa;
+        }
+        
+        &:hover {
+            background: #1e40af;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(46, 116, 181, 0.3);
+            
+            .body--dark & {
+                background: #3b82f6;
+                box-shadow: 0 4px 8px rgba(96, 165, 250, 0.3);
+            }
+        }
+    }
+    
+    &[color="grey"] {
+        background: rgba(46, 116, 181, 0.1);
+        color: #2e74b5;
+        
+        .body--dark & {
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        &:hover {
+            background: rgba(46, 116, 181, 0.15);
+            
+            .body--dark & {
+                background: rgba(255, 255, 255, 0.15);
+            }
+        }
+    }
+}
+
+.minimum-stats-modal {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    
+    .body--dark & {
+        background: #1e293b;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    }
+    
+    .modal-subtitle {
+        color: #64748b;
+        
+        .body--dark & {
+            color: rgba(255, 255, 255, 0.6);
+        }
+    }
+}
+
+.attributes-section-title {
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: #1e293b;
+    font-size: 1.1rem;
+    
+    .body--dark & {
+        color: rgba(255, 255, 255, 0.9);
+    }
+}
+
+.attribute-column {
+    padding: 0.25rem;
+}
+
+.attribute-label-styled {
+    font-size: 0.8rem;
+    color: #64748b;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     padding-right: 6px;
+    font-weight: 500;
 
     .body--dark & {
-        color: $grey-4;
+        color: rgba(255, 255, 255, 0.7);
     }
 }
 
 .attribute-value-column-styled {
-    // Styles for the container of the badge/input
-    min-width: 40px; // Ensure enough space for the input
+    min-width: 40px;
     display: flex;
     justify-content: flex-end;
 }
 
 .attribute-badge-styled {
     cursor: pointer;
-    padding: 3px 7px;
-    border-radius: 4px;
-    transition:
-        background-color 0.2s ease,
-        box-shadow 0.2s ease;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
     display: inline-block;
-    min-width: 28px;
+    min-width: 32px;
     text-align: center;
-    font-weight: 600;
+    font-weight: 700;
     line-height: 1.2;
     font-size: 0.8rem;
     color: white;
+    border: 1px solid transparent;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 
     &:hover {
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+        
         .body--dark & {
-            box-shadow: 0 1px 3px rgba(255, 255, 255, 0.2);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
         }
     }
 }
 
 .inline-attribute-input {
-    width: 55px; // Adjust width as needed
+    width: 60px;
+    
     :deep(.q-field__control) {
-        height: 28px; // Make it compact
-        padding: 0 4px;
-        min-height: 28px !important;
+        height: 32px;
+        padding: 0 6px;
+        min-height: 32px !important;
+        border-radius: 6px;
+        background: rgba(46, 116, 181, 0.05);
+        border: 1px solid rgba(46, 116, 181, 0.1);
+        
+        .body--dark & {
+            background: rgba(96, 165, 250, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
     }
+    
     :deep(.q-field__native) {
         font-size: 0.8rem;
         text-align: center;
         font-weight: 600;
         padding: 0;
+        color: #334155;
+        
+        .body--dark & {
+            color: rgba(255, 255, 255, 0.9);
+        }
     }
-    // Remove spinner buttons for number input for a cleaner look
+    
     :deep(input[type="number"]::-webkit-inner-spin-button),
     :deep(input[type="number"]::-webkit-outer-spin-button) {
         -webkit-appearance: none;
         margin: 0;
     }
+    
     :deep(input[type="number"]) {
-        -moz-appearance: textfield; // Firefox
+        -moz-appearance: textfield;
     }
 }
 
-// Global rating tier classes from app.scss (ensure these are consistent)
 .rating-tier-6 {
     background-color: #7e57c2;
     color: white !important;
@@ -2064,6 +1837,7 @@ export default defineComponent({
         background-color: #9575cd;
     }
 }
+
 .rating-tier-5 {
     background-color: #26a69a;
     color: white !important;
@@ -2071,6 +1845,7 @@ export default defineComponent({
         background-color: #00897b;
     }
 }
+
 .rating-tier-4 {
     background-color: #66bb6a;
     color: white !important;
@@ -2078,6 +1853,7 @@ export default defineComponent({
         background-color: #4caf50;
     }
 }
+
 .rating-tier-3 {
     background-color: #42a5f5;
     color: white !important;
@@ -2085,6 +1861,7 @@ export default defineComponent({
         background-color: #2196f3;
     }
 }
+
 .rating-tier-2 {
     background-color: #ffa726;
     color: #333333 !important;
@@ -2093,6 +1870,7 @@ export default defineComponent({
         color: white !important;
     }
 }
+
 .rating-tier-1 {
     background-color: #ef5350;
     color: white !important;
@@ -2100,6 +1878,7 @@ export default defineComponent({
         background-color: #e53935;
     }
 }
+
 .rating-na {
     background-color: #bdbdbd;
     color: #424242 !important;
@@ -2117,5 +1896,22 @@ export default defineComponent({
 .rating-tier-6,
 .rating-na {
     border: none !important;
+}
+
+.body--dark .q-select .q-field__control,
+.body--dark .q-input .q-field__control {
+    .q-field__native,
+    .q-field__input {
+        color: rgba(255, 255, 255, 0.9) !important;
+    }
+    
+    .q-field__label {
+        color: rgba(255, 255, 255, 0.7) !important;
+    }
+}
+
+.body--dark .q-select .q-field__append,
+.body--dark .q-input .q-field__append {
+    color: rgba(255, 255, 255, 0.7) !important;
 }
 </style>

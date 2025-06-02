@@ -120,8 +120,9 @@ export default defineComponent({
     border-bottom: 1px solid rgba(26, 35, 126, 0.1);
     
     .body--dark & {
-        background: rgba(30, 30, 30, 0.95);
+        background: rgba(255, 255, 255, 0.05);
         border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
     }
 }
 
@@ -229,7 +230,7 @@ export default defineComponent({
         
         &:hover {
             color: rgba(255, 255, 255, 0.9);
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.1);
         }
     }
 }
@@ -274,6 +275,7 @@ export default defineComponent({
     border-top: 1px solid rgba(26, 35, 126, 0.1);
     
     .body--dark & {
+        background: rgba(255, 255, 255, 0.02);
         border-top: 1px solid rgba(255, 255, 255, 0.1);
     }
 }

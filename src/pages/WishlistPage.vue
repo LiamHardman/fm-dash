@@ -332,7 +332,11 @@ export default defineComponent({
     }
 
     .body--dark & {
-        background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        
+        &::before {
+            background: linear-gradient(45deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0) 100%);
+        }
     }
 }
 

@@ -159,7 +159,7 @@ export default defineComponent({
     background: linear-gradient(135deg, #f8f9fc 0%, #ffffff 100%);
     
     .body--dark & {
-        background: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%);
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
     }
 }
 
@@ -310,7 +310,7 @@ export default defineComponent({
     background: #f8f9fc;
     
     .body--dark & {
-        background: #1e1e1e;
+        background: rgba(255, 255, 255, 0.02);
     }
     
     .features-container {
@@ -366,7 +366,8 @@ export default defineComponent({
             }
             
             .body--dark & {
-                background: rgba(255, 255, 255, 0.03);
+                background: rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.1);
                 box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
                 
                 &:hover {

@@ -132,9 +132,6 @@
                 <q-card
                     v-if="allPlayersData.length > 0"
                     class="q-mb-md"
-                    :class="
-                        quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'
-                    "
                 >
                     <q-card-section>
                         <PlayerFilters
@@ -159,9 +156,6 @@
 
                 <q-card
                     v-if="allPlayersData.length > 0"
-                    :class="
-                        quasarInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'
-                    "
                 >
                     <q-card-section>
                         <div class="text-h6 q-mb-sm">

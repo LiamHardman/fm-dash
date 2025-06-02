@@ -5,11 +5,6 @@
                 <div
                     v-if="sortField"
                     class="text-caption q-pa-xs rounded-borders sort-info-chip"
-                    :class="
-                        qInstance.dark.isActive
-                            ? 'bg-grey-8 text-grey-4'
-                            : 'bg-grey-2 text-grey-7'
-                    "
                 >
                     Current Sort: {{ getColumnLabel(sortField) }} ({{
                         sortDirection === "asc" ? "Ascending" : "Descending"
@@ -20,12 +15,11 @@
 
         <q-card
             v-if="players.length === 0 && !loading"
-            class="q-pa-md text-center"
-            :class="qInstance.dark.isActive ? 'bg-grey-9' : 'bg-grey-1'"
+            class="q-pa-md text-center no-players-card"
             flat
             bordered
         >
-            <p :class="qInstance.dark.isActive ? 'text-grey-5' : 'text-grey-7'">
+            <p class="no-players-text">
                 No players match your search criteria.
             </p>
         </q-card>
@@ -33,12 +27,11 @@
             v-else-if="
                 sortedPlayers.length === 0 && players.length > 0 && !loading
             "
-            class="q-pa-md text-center"
-            :class="qInstance.dark.isActive ? 'bg-grey-9' : 'bg-grey-1'"
+            class="q-pa-md text-center no-players-card"
             flat
             bordered
         >
-            <p :class="qInstance.dark.isActive ? 'text-grey-5' : 'text-grey-7'">
+            <p class="no-players-text">
                 No players to display with current sort (possibly all filtered
                 out before slicing).
             </p>
@@ -77,7 +70,6 @@
             <template v-slot:header="props">
                 <q-tr
                     :props="props"
-                    :class="qInstance.dark.isActive ? 'bg-grey-9' : 'bg-grey-2'"
                     class="modern-table-header"
                 >
                     <q-th
@@ -86,9 +78,6 @@
                         :props="props"
                         class="text-weight-bold modern-header-cell"
                         :class="[
-                            qInstance.dark.isActive
-                                ? 'text-grey-3'
-                                : 'text-grey-8',
                             col.headerClasses,
                             { 'active-sort': sortField === col.name },
                             { 'cursor-pointer': true },
@@ -141,9 +130,6 @@
                         :key="col.name"
                         :props="props"
                         :class="[
-                            qInstance.dark.isActive
-                                ? 'text-grey-4'
-                                : 'text-grey-9',
                             col.classes,
                             'table-cell-enhanced',
                         ]"
@@ -253,21 +239,14 @@
                     boundary-links
                     direction-links
                     @update:model-value="onPageChange"
-                    :color="qInstance.dark.isActive ? 'grey-6' : 'primary'"
-                    :active-color="
-                        qInstance.dark.isActive ? 'primary' : 'primary'
-                    "
-                    :text-color="qInstance.dark.isActive ? 'white' : 'primary'"
-                    :active-text-color="
-                        qInstance.dark.isActive ? 'white' : 'white'
-                    "
+                    color="primary"
+                    active-color="primary"
+                    text-color="primary"
+                    active-text-color="white"
                 />
                 <q-space />
                 <span
-                    class="q-ml-md text-caption"
-                    :class="
-                        qInstance.dark.isActive ? 'text-grey-4' : 'text-grey-7'
-                    "
+                    class="q-ml-md text-caption pagination-info"
                 >
                     {{ paginationStartRow }} - {{ paginationEndRow }} of
                     {{ paginationTotalRows }}
@@ -1418,310 +1397,250 @@ export default {
 
 <style lang="scss" scoped>
 .player-data-table-container {
-    background: white;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
-    /* Ensure absolutely stable dimensions */
-    width: 100%;
-    min-width: 100%;
-    max-width: 100%;
+    background: transparent;
     
+    // Ensure card sections have proper backgrounds
     .body--dark & {
-        background: rgba(255, 255, 255, 0.02);
-        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+        :deep(.q-card-section) {
+            background: transparent !important;
+            color: rgba(255, 255, 255, 0.9) !important;
+        }
+        
+        :deep(.q-card-actions) {
+            background: transparent !important;
+            border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+        }
     }
 }
 
 .table-controls-header {
-    padding: 0 4px 8px 4px;
-    align-items: center;
-}
-
-.sort-info-chip {
-    display: inline-block;
-    margin-right: 16px;
-    padding: 6px 10px;
-    font-size: 0.8rem;
+    margin-bottom: 1rem;
+    
+    .sort-info-chip {
+        background: rgba(46, 116, 181, 0.1);
+        color: #2e74b5;
+        font-weight: 600;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        border: 1px solid rgba(46, 116, 181, 0.2);
+        
+        .body--dark & {
+            background: rgba(96, 165, 250, 0.1);
+            color: #60a5fa;
+            border-color: rgba(96, 165, 250, 0.2);
+        }
+    }
 }
 
 .player-q-table {
-    width: 100%;
-    table-layout: fixed; /* CHANGED: from auto to fixed */
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.06);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    overflow: hidden;
     
-    /* Disable layout-affecting transitions to prevent shifts during sorting */
-    th, td, tr {
-        transition: none !important;
-    }
-    
-    /* Preserve necessary loading animations */
-    .q-spinner, .sorting-spinner, .q-linear-progress {
-        transition: unset !important;
-        animation-duration: unset !important;
+    .body--dark & {
+        background: #1e293b;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
     }
     
-    /* Enforce strict column width control */
-    th, td {
-        white-space: nowrap !important;
-        word-break: keep-all !important;
-        /* Prevent any width changes */
-        flex-shrink: 0 !important;
-        flex-grow: 0 !important;
-    }
-    
-    /* Apply ellipsis only to specific long-text columns by targeting their style attribute */
-    th[style*="text-overflow: ellipsis"], 
-    td[style*="text-overflow: ellipsis"] {
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-    }
-    
-    /* Override any Quasar default behaviors that might affect width */
-    .q-table__container .q-table {
-        table-layout: fixed !important;
-    }
-    
-    &.table-sorting {
-        /* Prevent any layout shifts during sorting */
-        overflow: visible; /* Changed from hidden to prevent layout changes */
+    .q-table__top {
+        background: rgba(46, 116, 181, 0.03);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
         
-        /* Minimal visual feedback without affecting layout */
-        .modern-header-cell.sorting-in-progress {
-            position: relative;
-            /* Remove opacity changes that can affect layout */
-        }
-        
-        /* Keep the body stable during sorting */
-        .q-table__middle {
-            overflow: visible;
-        }
-    }
-
-    th .sort-icon {
-        vertical-align: middle;
-        margin-left: 4px;
-        /* Ensure icon doesn't affect layout */
-        position: absolute;
-        right: 8px;
-        top: 50%;
-        transform: translateY(-50%);
-    }
-
-    .sorting-spinner {
-        animation: gentlePulse 1.5s infinite ease-in-out;
-        /* Position spinner absolutely to prevent layout shifts */
-        position: absolute !important;
-        right: 8px;
-        top: 50%;
-        transform: translateY(-50%);
-        margin: 0 !important;
-    }
-
-    // Dark mode specific styles
-    &.q-table--dark {
-        th {
-            color: $grey-3; // Make sure $grey-3 is defined or use a Quasar variable
-            border-bottom-color: rgba(255, 255, 255, 0.15);
-        }
-
-        td {
-            border-bottom-color: rgba(255, 255, 255, 0.1);
-            color: $grey-4; // Make sure $grey-4 is defined or use a Quasar variable
-        }
-
-        tr:last-child td {
-            border-bottom: 0;
-        }
-
-        .q-table__bottom {
-            border-top-color: rgba(255, 255, 255, 0.15);
-        }
-    }
-
-    // Light mode specific styles (default, but explicitly stated for clarity)
-    &:not(.q-table--dark) {
-        th {
-            background-color: #f0f4f8;
-            color: $grey-8; // Make sure $grey-8 is defined or use a Quasar variable
-            border-bottom: 1px solid #dde2e6;
-        }
-
-        td {
-            border-bottom: 1px solid #eef2f5;
-            color: $grey-9; // Make sure $grey-9 is defined or use a Quasar variable
-        }
-
-        tr:last-child td {
-            border-bottom: 0;
-        }
-
-        .q-table__bottom {
-            border-top: 1px solid #dde2e6;
-        }
-    }
-
-    th {
-        font-weight: 600;
-        font-size: 0.8rem;
-        padding: 8px 32px 8px 10px; /* Add right padding for sort icon */
-        border-right: 0;
-        /* Remove transition to prevent layout shifts during sorting */
-        /* white-space: nowrap; // This is now handled by inline styles for specific columns */
-        /* overflow: hidden; // This is now handled by inline styles for specific columns */
-        /* text-overflow: ellipsis; // This is now handled by inline styles for specific columns */
-        
-        /* Ensure consistent height and width during sorting */
-        min-height: 40px;
-        box-sizing: border-box;
-        position: relative; /* For absolutely positioned sort icons */
-        
-        &.sorting-in-progress {
-            position: relative;
-            background: linear-gradient(90deg, 
-                transparent 0%, 
-                rgba(25, 118, 210, 0.03) 50%, 
-                transparent 100%);
-            animation: subtleGlow 2s infinite ease-in-out;
-            
-            .body--dark & {
-                background: linear-gradient(90deg, 
-                    transparent 0%, 
-                    rgba(255, 255, 255, 0.02) 50%, 
-                    transparent 100%);
-            }
-        }
-        
-        &.active-sort {
-            background-color: rgba(25, 118, 210, 0.05);
-            
-            .body--dark & {
-                background-color: rgba(255, 255, 255, 0.05);
-            }
-        }
-    }
-
-    td {
-        vertical-align: middle;
-        padding: 6px 10px;
-        border-right: 0;
-        /* white-space: nowrap; // This is now handled by inline styles for specific columns */
-        /* overflow: hidden; // This is now handled by inline styles for specific columns */
-        /* text-overflow: ellipsis; // This is now handled by inline styles for specific columns */
-        
-        /* Ensure consistent height during sorting */
-        min-height: 32px;
-        box-sizing: border-box;
-    }
-
-    .table-cell-enhanced {
-        font-size: 0.85rem;
-    }
-
-    // Subtle row shimmer during sorting
-    .row-shimmer {
-        position: relative;
-        
-        &::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, 
-                transparent 0%, 
-                rgba(25, 118, 210, 0.02) 50%, 
-                transparent 100%);
-            animation: shimmer 3s infinite ease-in-out;
-            pointer-events: none;
-            
-            .body--dark & {
-                background: linear-gradient(90deg, 
-                    transparent 0%, 
-                    rgba(255, 255, 255, 0.015) 50%, 
-                    transparent 100%);
-            }
-        }
-    }
-}
-
-/*
-  This rule was likely causing the issue with text-overflow: ellipsis.
-  The inline styles for columns like 'name', 'position', and 'club' set 'white-space: nowrap',
-  which is necessary for ellipsis. This global rule would override it.
-  If you need word wrapping for other columns, apply 'white-space: normal' and 'word-break: break-word'
-  more selectively, perhaps through a class on those specific column definitions.
-*/
-.player-q-table td,
-.player-q-table th {
-    /* white-space: normal; */ /* CHANGED: Commented out to allow inline styles to take effect for ellipsis */
-    word-break: break-word; /* Keep this if you want long words without spaces to break */
-}
-
-.table-row-hover {
-    &:hover {
         .body--dark & {
-            // Ensure .body--dark is a class on your body/html tag when dark mode is active
-            background-color: rgba(255, 255, 255, 0.08) !important;
+            background: rgba(96, 165, 250, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
-
-        .body--light & {
-            // Ensure .body--light is a class on your body/html tag when light mode is active
-            background-color: #e3f2fd !important;
+    }
+    
+    .q-table__bottom {
+        background: rgba(46, 116, 181, 0.02);
+        border-top: 1px solid rgba(0, 0, 0, 0.06);
+        
+        .body--dark & {
+            background: rgba(96, 165, 250, 0.03);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
     }
 }
 
-// Money value styling
-.money-value {
-    display: inline-block;
+.no-players-card {
+    background: white !important;
+    border: 1px solid rgba(46, 116, 181, 0.15) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+    
+    .body--dark & {
+        background: #1e293b !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3) !important;
+    }
+    
+    .no-players-text {
+        color: #64748b !important;
+        font-size: 1.1rem;
+        font-weight: 500;
+        margin: 0;
+        
+        .body--dark & {
+            color: rgba(255, 255, 255, 0.7) !important;
+        }
+    }
+}
+
+.modern-table-header {
+    background: linear-gradient(180deg, rgba(46, 116, 181, 0.08) 0%, rgba(46, 116, 181, 0.12) 100%);
+    
+    .body--dark & {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.12) 100%);
+    }
+}
+
+.modern-header-cell {
+    color: #1e293b !important;
+    font-weight: 700 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 0.8rem !important;
+    padding: 1rem 0.75rem !important;
+    
+    .body--dark & {
+        color: rgba(255, 255, 255, 0.9) !important;
+    }
+
+    &:hover {
+        background: rgba(46, 116, 181, 0.15) !important;
+        
+        .body--dark & {
+            background: rgba(255, 255, 255, 0.15) !important;
+        }
+    }
+    
+    &.active-sort {
+        background: rgba(46, 116, 181, 0.2) !important;
+        color: #2e74b5 !important;
+        
+        .body--dark & {
+            background: rgba(255, 255, 255, 0.2) !important;
+            color: #60a5fa !important;
+        }
+        
+        .sort-icon {
+            color: #2e74b5 !important;
+            
+            .body--dark & {
+                color: #60a5fa !important;
+            }
+        }
+    }
+    
+    &.sorting-in-progress {
+        background: rgba(46, 116, 181, 0.15) !important;
+        
+        .body--dark & {
+            background: rgba(255, 255, 255, 0.15) !important;
+        }
+        
+        .sorting-spinner {
+            color: #2e74b5 !important;
+            
+            .body--dark & {
+                color: #60a5fa !important;
+            }
+        }
+    }
+}
+
+.modern-table-row {
+    transition: all 0.2s ease;
+    
+    &:hover {
+        background: rgba(46, 116, 181, 0.04) !important;
+        box-shadow: 0 2px 8px rgba(46, 116, 181, 0.15);
+        transform: translateY(-1px);
+        
+        .body--dark & {
+            background: rgba(255, 255, 255, 0.04) !important;
+            box-shadow: 0 2px 8px rgba(255, 255, 255, 0.15);
+        }
+    }
+    
+    &:nth-child(even) {
+        background: rgba(46, 116, 181, 0.02);
+        
+        .body--dark & {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        
+        &:hover {
+            background: rgba(46, 116, 181, 0.06) !important;
+            
+            .body--dark & {
+                background: rgba(255, 255, 255, 0.06) !important;
+            }
+        }
+    }
+}
+
+.table-cell-enhanced {
+    color: #334155 !important;
     font-weight: 500;
-    padding: 1px 6px;
-    border-radius: 3px;
+    padding: 0.75rem !important;
+    
+    .body--dark & {
+        color: rgba(255, 255, 255, 0.85) !important;
+    }
+}
+
+.modern-stat-badge {
+    padding: 4px 10px;
+    border-radius: 8px;
     font-size: 0.8rem;
-}
-
-// Specific color classes for money values (can be expanded)
-.money-very-high {
-    color: #1b5e20;
     font-weight: 700;
-}
-.money-high {
-    color: #2e7d32;
-}
-.money-medium-high {
-    color: #4caf50;
-}
-.money-medium {
-    color: #757575;
-}
-.money-low {
-    color: #9e9e9e;
-}
-.money-na {
-    color: #bdbdbd;
+    text-align: center;
+    min-width: 36px;
+    display: inline-block;
+    border: 1px solid transparent;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    
+    .body--dark & {
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
 }
 
-.body--dark {
-    // Ensure .body--dark is a class on your body/html tag
-    .money-very-high {
-        color: #a5d6a7;
-        font-weight: 700;
+.money-value {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.money-high {
+    color: #059669;
+    .body--dark & {
+        color: #34d399;
     }
-    .money-high {
-        color: #81c784;
+}
+
+.money-medium {
+    color: #d97706;
+    .body--dark & {
+        color: #fbbf24;
     }
-    .money-medium-high {
-        color: #66bb6a;
+}
+
+.money-low {
+    color: #6b7280;
+    .body--dark & {
+        color: #9ca3af;
     }
-    .money-medium {
-        color: #b0bec5;
-    }
-    .money-low {
-        color: #90a4ae;
-    }
-    .money-na {
-        color: #78909c;
+}
+
+.money-na {
+    color: #9ca3af;
+    .body--dark & {
+        color: #6b7280;
     }
 }
 
@@ -1732,10 +1651,12 @@ export default {
     width: 20px !important;
     height: 13px !important;
     flex-shrink: 0;
+    border-radius: 3px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 
     .body--dark & {
-        // Ensure .body--dark is a class on your body/html tag
         border: 1px solid rgba(255, 255, 255, 0.15);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
     }
 }
 
@@ -1744,6 +1665,11 @@ export default {
     width: 20px;
     height: 13px;
     flex-shrink: 0;
+    color: #9ca3af;
+    
+    .body--dark & {
+        color: #6b7280;
+    }
 }
 
 .nationality-cell {
@@ -1755,101 +1681,38 @@ export default {
         text-overflow: ellipsis;
         white-space: nowrap;
         flex: 1;
-        min-width: 0; /* Allow text to shrink */
-    }
-}
-
-.flex.items-center .q-icon,
-.flex.items-center img {
-    flex-shrink: 0;
-}
-
-// Ensure select in pagination is styled for dark mode (though selector is removed, :deep might affect other selects if not scoped)
-:deep(.q-table__bottom .q-select .q-field__native),
-:deep(.q-table__bottom .q-select .q-field__input) {
-    .body--dark & {
-        // Ensure .body--dark is a class on your body/html tag
-        color: $grey-3; // Make sure $grey-3 is defined or use a Quasar variable
+        min-width: 0;
+        font-weight: 500;
     }
 }
 
 .club-link {
-    color: inherit;
+    color: #2e74b5;
     text-decoration: none;
     cursor: pointer;
-    
-    &:hover {
-        text-decoration: underline;
-    }
-}
-
-// Modern Table Enhancements
-.modern-table-header {
-    background: linear-gradient(180deg, rgba(240, 244, 248, 0.8) 0%, rgba(240, 244, 248, 1) 100%);
-    
-    .body--dark & {
-        background: linear-gradient(180deg, rgba(66, 66, 66, 0.8) 0%, rgba(66, 66, 66, 1) 100%);
-    }
-}
-
-.modern-header-cell {
-    &:hover {
-        background: rgba(25, 118, 210, 0.08);
-        
-        .body--dark & {
-            background: rgba(144, 202, 249, 0.08);
-        }
-    }
-    
-    &.active-sort {
-        background: rgba(25, 118, 210, 0.12);
-        color: #1976d2;
-        
-        .body--dark & {
-            background: rgba(144, 202, 249, 0.12);
-            color: #90caf9;
-        }
-    }
-}
-
-.modern-table-row {
-    /* Remove transition to prevent layout shifts */
-    
-    &:hover {
-        /* Remove transform to prevent layout shifts */
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        
-        .body--dark & {
-            box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
-        }
-    }
-}
-
-.modern-stat-badge {
-    padding: 3px 8px;
-    border-radius: 6px;
-    font-size: 0.8rem;
     font-weight: 600;
-    text-align: center;
-    min-width: 32px;
-    display: inline-block;
-    /* Remove transition to prevent layout shifts */
+    transition: color 0.2s ease;
+    
+    .body--dark & {
+        color: #60a5fa;
+    }
     
     &:hover {
-        /* Remove transform to prevent layout shifts */
+        color: #1e40af;
+        text-decoration: underline;
+        
+        .body--dark & {
+            color: #93c5fd;
+        }
     }
 }
 
-// Enhanced sort info chip
-.sort-info-chip {
-    background: linear-gradient(135deg, rgba(25, 118, 210, 0.1) 0%, rgba(25, 118, 210, 0.05) 100%);
-    border: 1px solid rgba(25, 118, 210, 0.2);
-    color: #1976d2;
+.pagination-info {
+    color: #64748b !important;
+    font-weight: 500;
     
     .body--dark & {
-        background: linear-gradient(135deg, rgba(144, 202, 249, 0.1) 0%, rgba(144, 202, 249, 0.05) 100%);
-        border: 1px solid rgba(144, 202, 249, 0.2);
-        color: #90caf9;
+        color: rgba(255, 255, 255, 0.7) !important;
     }
 }
 
@@ -1868,8 +1731,8 @@ export default {
         opacity: 1;
     }
     50% {
-        transform: scale(1.05);
-        opacity: 0.8;
+        transform: scale(1.02);
+        opacity: 0.9;
     }
 }
 
@@ -1878,7 +1741,7 @@ export default {
         opacity: 1;
     }
     50% {
-        opacity: 0.7;
+        opacity: 0.8;
     }
 }
 
@@ -1888,6 +1751,23 @@ export default {
     }
     100% {
         transform: translateX(100%);
+    }
+}
+
+.table-sorting {
+    .modern-table-header {
+        background: linear-gradient(180deg, rgba(46, 116, 181, 0.1) 0%, rgba(46, 116, 181, 0.15) 100%);
+        
+        .body--dark & {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.15) 100%);
+        }
+    }
+}
+
+:deep(.q-table__bottom .q-select .q-field__native),
+:deep(.q-table__bottom .q-select .q-field__input) {
+    .body--dark & {
+        color: rgba(255, 255, 255, 0.9);
     }
 }
 </style>
