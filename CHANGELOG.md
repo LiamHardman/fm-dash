@@ -1,3 +1,9 @@
+## [1.0.1](https://git.liamhardman.com/liam/fm24-golang/compare/v1.0.0...v1.0.1) (2025-06-02)
+
+### 🐛 Bug Fixes
+
+* removed assets folder from sem release ([8cd20c6](https://git.liamhardman.com/liam/fm24-golang/commit/8cd20c6c67c61873d1b5840d9103ac7a4612bcce))
+
 ## 1.0.0 (2025-06-02)
 
 ### 🚀 Features
