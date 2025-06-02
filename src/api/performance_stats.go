@@ -116,12 +116,13 @@ func CalculatePlayerPerformancePercentilesWithDivisionFilter(players []Player, d
 		}
 	}
 
-	// --- Global Percentiles (with division filtering) ---
+	// --- Global Percentiles (ALWAYS use ALL players, no division filtering) ---
 	for _, statKey := range PerformanceStatKeys { // PerformanceStatKeys from config.go
 		allStatValues := make([]float64, 0, len(players))
 		for i := range players { // Iterate by index to modify original slice elements
 			val, ok := players[i].PerformanceStatsNumeric[statKey]
-			if ok && !math.IsNaN(val) && isPlayerInTargetDivision(&players[i], divisionFilter, targetDivision) {
+			// For Global percentiles, include ALL players regardless of division filter
+			if ok && !math.IsNaN(val) {
 				allStatValues = append(allStatValues, val)
 			}
 		}
@@ -144,7 +145,7 @@ func CalculatePlayerPerformancePercentilesWithDivisionFilter(players []Player, d
 		}
 	}
 
-	// --- Broad Positional Group Percentiles (e.g., "Defenders", "Midfielders") ---
+	// --- Broad Positional Group Percentiles (e.g., "Defenders", "Midfielders") with division filtering ---
 	// Pre-collect stat values for each broad group to avoid repeated filtering
 	groupStatValueLists := make(map[string]map[string][]float64) // groupName -> statKey -> []values
 
@@ -224,7 +225,7 @@ func CalculatePlayerPerformancePercentilesWithDivisionFilter(players []Player, d
 		}
 	}
 
-	// --- Detailed Positional Group Percentiles (e.g., "Full-backs", "Centre-backs") ---
+	// --- Detailed Positional Group Percentiles (e.g., "Full-backs", "Centre-backs") with division filtering ---
 	// DetailedPositionGroupsForPercentiles from config.go
 	for detailedGroupName, shortPositionsInGroup := range DetailedPositionGroupsForPercentiles {
 		// Ensure percentile map for this detailed group is initialized for all players
