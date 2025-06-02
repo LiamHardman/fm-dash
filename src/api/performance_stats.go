@@ -116,18 +116,19 @@ func CalculatePlayerPerformancePercentilesWithDivisionFilter(players []Player, d
 		}
 	}
 
-	// --- Global Percentiles (ALWAYS use ALL players, no division filtering) ---
+	// --- Global Percentiles (apply division filtering when not "all") ---
 	for _, statKey := range PerformanceStatKeys { // PerformanceStatKeys from config.go
 		allStatValues := make([]float64, 0, len(players))
 		for i := range players { // Iterate by index to modify original slice elements
-			val, ok := players[i].PerformanceStatsNumeric[statKey]
-			// For Global percentiles, include ALL players regardless of division filter
-			if ok && !math.IsNaN(val) {
+			player := &players[i]
+			val, ok := player.PerformanceStatsNumeric[statKey]
+			// Apply division filter for Global percentiles too (except when filter is "all")
+			if ok && !math.IsNaN(val) && isPlayerInTargetDivision(player, divisionFilter, targetDivision) {
 				allStatValues = append(allStatValues, val)
 			}
 		}
 
-		if len(allStatValues) == 0 { // No valid data for this stat across all players
+		if len(allStatValues) == 0 { // No valid data for this stat across filtered players
 			for i := range players {
 				players[i].PerformancePercentiles["Global"][statKey] = -1 // Mark as undefined
 			}

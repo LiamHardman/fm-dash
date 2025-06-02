@@ -1225,8 +1225,8 @@ export default defineComponent({
     ])
 
     const getTargetDivision = () => {
-      if (!props.player?.Division) return null
-      return props.player.Division
+      if (!props.player?.division) return null
+      return props.player.division
     }
 
     const onDivisionFilterChange = async () => {
@@ -1237,7 +1237,9 @@ export default defineComponent({
         console.log('Division filter change:', {
           divisionFilter: divisionFilter.value,
           targetDivision: targetDivision,
-          playerName: props.player.name
+          playerName: props.player.name,
+          playerDivision: props.player.division,
+          playerObject: props.player
         })
         
         // Instead of refetching all data, we need to fetch just updated percentiles for this player
@@ -1258,6 +1260,20 @@ export default defineComponent({
           const updatedPercentiles = await response.json()
           console.log('Received updated percentiles:', updatedPercentiles)
           
+          // Count non-empty percentile groups for debugging
+          let nonEmptyGroups = 0
+          let totalStats = 0
+          for (const [groupKey, groupPercentiles] of Object.entries(updatedPercentiles)) {
+            const statsInGroup = Object.keys(groupPercentiles).length
+            const nonNegativeStats = Object.values(groupPercentiles).filter(val => val >= 0).length
+            if (nonNegativeStats > 0) {
+              nonEmptyGroups++
+            }
+            totalStats += statsInGroup
+            console.log(`Group ${groupKey}: ${statsInGroup} total stats, ${nonNegativeStats} with valid values`)
+          }
+          console.log(`Division filter result: ${nonEmptyGroups} groups with data, ${totalStats} total stats`)
+          
           // Update the player's percentiles without affecting the main dataset
           if (props.player.performancePercentiles) {
             Object.assign(props.player.performancePercentiles, updatedPercentiles)
@@ -1268,6 +1284,8 @@ export default defineComponent({
           }
         } else {
           console.error('Failed to fetch updated percentiles:', response.status, response.statusText)
+          const errorText = await response.text()
+          console.error('Error response:', errorText)
         }
       } catch (error) {
         console.error('Error updating percentiles with division filter:', error)

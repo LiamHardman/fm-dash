@@ -613,7 +613,7 @@ export default {
     const isProcessingQueue = ref(false)
 
     // NEW: Nation ratings cache system
-    const CACHE_VERSION = '1.0' // Increment when calculation logic changes
+    const CACHE_VERSION = '1.1' // Increment when calculation logic changes
     const cacheLoading = ref(false)
     const cacheKey = ref(null)
 

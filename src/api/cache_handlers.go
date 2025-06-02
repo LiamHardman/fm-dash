@@ -13,7 +13,7 @@ import (
 )
 
 // Cache version - increment when calculation logic changes
-const CACHE_VERSION = "1.0"
+const CACHE_VERSION = "1.1"
 
 // NationRatingsCache represents cached nation rating data
 type NationRatingsCache struct {
