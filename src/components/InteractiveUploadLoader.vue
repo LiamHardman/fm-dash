@@ -455,6 +455,9 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+// Import Quasar variables to use the color palette
+@import '../quasar-variables.scss';
+
 .upload-loader-dialog {
   .upload-loader-card {
     width: 500px;
@@ -463,7 +466,7 @@ export default {
     border-radius: 16px;
     background: linear-gradient(135deg, #f8f9fc 0%, #ffffff 100%);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-    border: 1px solid rgba(26, 35, 126, 0.1);
+    border: 1px solid rgba(46, 116, 181, 0.1);
 
     .body--dark & {
       background: linear-gradient(135deg, #2a2a2a 0%, #1e1e1e 100%);
@@ -504,19 +507,19 @@ export default {
         width: 8px;
         height: 8px;
         border-radius: 50%;
-        background: rgba(26, 35, 126, 0.3);
+        background: rgba(46, 116, 181, 0.3);
         transition: all 0.3s ease;
 
         &.active {
-          background: #1a237e;
+          background: $primary;
           transform: scale(1.2);
         }
 
         .body--dark & {
-          background: rgba(255, 255, 255, 0.3);
+          background: rgba(46, 116, 181, 0.4);
 
           &.active {
-            background: rgba(255, 255, 255, 0.9);
+            background: $primary;
           }
         }
       }
@@ -537,12 +540,12 @@ export default {
 
     .progress-text {
       font-size: 0.9rem;
-      color: #666;
+      color: $secondary;
       font-weight: 500;
       text-align: center;
 
       .body--dark & {
-        color: rgba(255, 255, 255, 0.7);
+        color: rgba(255, 255, 255, 0.8);
       }
     }
   }
@@ -558,7 +561,7 @@ export default {
     .message-title {
       font-size: 1.4rem;
       font-weight: 600;
-      color: #1a237e;
+      color: $primary;
       margin: 0 0 0.5rem 0;
       animation: fadeInOut 3s ease-in-out;
       line-height: 1.2;
@@ -568,13 +571,13 @@ export default {
       justify-content: center;
 
       .body--dark & {
-        color: rgba(255, 255, 255, 0.9);
+        color: lighten($primary, 15%);
       }
     }
 
     .message-subtitle {
       font-size: 1rem;
-      color: #666;
+      color: $secondary;
       margin: 0;
       animation: fadeInOut 3s ease-in-out;
       line-height: 1.3;
@@ -585,7 +588,7 @@ export default {
       text-align: center;
 
       .body--dark & {
-        color: rgba(255, 255, 255, 0.7);
+        color: rgba(255, 255, 255, 0.8);
       }
     }
   }
@@ -596,9 +599,9 @@ export default {
     gap: 0.75rem;
     margin-bottom: 2rem;
     padding: 1rem;
-    background: rgba(26, 35, 126, 0.05);
+    background: rgba(46, 116, 181, 0.05);
     border-radius: 8px;
-    border: 1px solid rgba(26, 35, 126, 0.1);
+    border: 1px solid rgba(46, 116, 181, 0.1);
     min-height: 100px;
     opacity: 0;
     transform: translateY(10px);
@@ -610,8 +613,8 @@ export default {
     }
 
     .body--dark & {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(46, 116, 181, 0.1);
+      border: 1px solid rgba(46, 116, 181, 0.2);
     }
 
     .stat-item {
@@ -619,7 +622,7 @@ export default {
       align-items: center;
       gap: 0.5rem;
       font-size: 0.9rem;
-      color: #333;
+      color: $dark;
       min-height: 24px;
 
       .body--dark & {
