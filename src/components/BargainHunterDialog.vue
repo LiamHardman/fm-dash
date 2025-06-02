@@ -267,7 +267,6 @@
                 <div v-if="filteredBargainResults.length > 0 && !loading">
                     <q-card 
                         class="bargain-table-container" 
-                        :class="qInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'"
                         flat
                         bordered
                     >
@@ -964,6 +963,16 @@ export default defineComponent({
             background-color: rgba(255, 255, 255, 0.02);
             border-color: rgba(255, 255, 255, 0.08);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+    }
+
+    // Bargain table container specific styling
+    .bargain-table-container {
+        background: white;
+        
+        .body--dark & {
+            background: #1e293b !important;
+            border-color: rgba(255, 255, 255, 0.1) !important;
         }
     }
 
