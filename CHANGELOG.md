@@ -1,3 +1,9 @@
+## [1.1.3](https://git.liamhardman.com/liam/fm24-golang/compare/v1.1.2...v1.1.3) (2025-06-02)
+
+### 🐛 Bug Fixes
+
+* reducing vertical scrolling on detail dialog ([bdac16a](https://git.liamhardman.com/liam/fm24-golang/commit/bdac16a65242fdf5aa5e06032b6b61a6ecc971f2))
+
 ## [1.1.2](https://git.liamhardman.com/liam/fm24-golang/compare/v1.1.1...v1.1.2) (2025-06-02)
 
 ### 🐛 Bug Fixes
