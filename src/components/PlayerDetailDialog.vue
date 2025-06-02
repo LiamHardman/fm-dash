@@ -1234,27 +1234,35 @@ export default defineComponent({
 
       try {
         const targetDivision = getTargetDivision()
+        const requestPayload = {
+          playerName: props.player.name,
+          divisionFilter: divisionFilter.value,
+          targetDivision: targetDivision
+        }
+        
         console.log('Division filter change:', {
           divisionFilter: divisionFilter.value,
           targetDivision: targetDivision,
           playerName: props.player.name,
           playerDivision: props.player.division,
-          playerObject: props.player
+          requestPayload: requestPayload
         })
         
         // Instead of refetching all data, we need to fetch just updated percentiles for this player
         // For now, let's create a dedicated API call for this
-        const response = await fetch(`/api/percentiles/${props.datasetId}`, {
+        const url = `/api/percentiles/${props.datasetId}`
+        console.log('Making request to:', url, 'with payload:', requestPayload)
+        
+        const response = await fetch(url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
-            playerName: props.player.name,
-            divisionFilter: divisionFilter.value,
-            targetDivision: targetDivision
-          })
+          body: JSON.stringify(requestPayload)
         })
+
+        console.log('Response status:', response.status)
+        console.log('Response headers:', Object.fromEntries(response.headers.entries()))
 
         if (response.ok) {
           const updatedPercentiles = await response.json()
@@ -1273,6 +1281,10 @@ export default defineComponent({
             console.log(`Group ${groupKey}: ${statsInGroup} total stats, ${nonNegativeStats} with valid values`)
           }
           console.log(`Division filter result: ${nonEmptyGroups} groups with data, ${totalStats} total stats`)
+          
+          // Log whether this is a cache hit or miss
+          const cacheStatus = response.headers.get('X-Cache-Status')
+          console.log('Cache status:', cacheStatus)
           
           // Update the player's percentiles without affecting the main dataset
           if (props.player.performancePercentiles) {

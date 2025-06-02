@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"math"
 	"sort"
 )
@@ -66,24 +67,10 @@ func isPlayerInTargetDivision(player *Player, divisionFilter DivisionFilter, tar
 	case DivisionFilterSame:
 		return player.Division == targetDivision
 	case DivisionFilterTop5:
-		if targetDivision == "" {
-			return false
-		}
-		// Check if player's current division is in top 5
+		// For top5 filter, include all players from top 5 divisions
 		for _, topDiv := range TopDivisions {
 			if player.Division == topDiv {
 				return true
-			}
-		}
-		// Check if target division is in top 5, and if so, include players from top 5
-		for _, topDiv := range TopDivisions {
-			if targetDivision == topDiv {
-				for _, playerTopDiv := range TopDivisions {
-					if player.Division == playerTopDiv {
-						return true
-					}
-				}
-				return false
 			}
 		}
 		return false
@@ -104,6 +91,17 @@ func CalculatePlayerPerformancePercentilesWithDivisionFilter(players []Player, d
 	if len(players) == 0 {
 		return
 	}
+
+	log.Printf("🔄 Calculating percentiles with division filter: %d, target: %s, player count: %d", divisionFilter, targetDivision, len(players))
+
+	// Count players that will be included in the filter
+	includedCount := 0
+	for i := range players {
+		if isPlayerInTargetDivision(&players[i], divisionFilter, targetDivision) {
+			includedCount++
+		}
+	}
+	log.Printf("📊 Division filter will include %d out of %d players", includedCount, len(players))
 
 	// Initialize PerformancePercentiles maps for all players if not already done
 	for i := range players {

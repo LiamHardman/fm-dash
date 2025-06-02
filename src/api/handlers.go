@@ -1082,11 +1082,21 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 	// NEW: Generate cache key and try to load from cache first
 	cacheKey := generatePercentilesCacheKey(datasetID, req.PlayerName, req.DivisionFilter, req.TargetDivision, players)
 
+	logInfo(ctx, "Generated cache key for percentiles request",
+		"dataset_id", datasetID,
+		"player_name", req.PlayerName,
+		"division_filter", req.DivisionFilter,
+		"target_division", req.TargetDivision,
+		"cache_key", cacheKey,
+		"player_count", len(players))
+
 	// Try to load from cache
 	if cachedPercentiles, found := loadPercentilesFromCache(cacheKey, datasetID, req.PlayerName, req.DivisionFilter, req.TargetDivision, players); found {
-		logInfo(ctx, "Returning cached percentiles",
+		logInfo(ctx, "🎯 CACHE HIT - Returning cached percentiles",
 			"dataset_id", datasetID,
 			"player_name", req.PlayerName,
+			"division_filter", req.DivisionFilter,
+			"target_division", req.TargetDivision,
 			"cache_key", cacheKey)
 
 		w.Header().Set("Content-Type", "application/json")
@@ -1100,9 +1110,11 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Cache miss - perform calculation
-	logInfo(ctx, "Cache miss, calculating percentiles",
+	logInfo(ctx, "💫 CACHE MISS - calculating percentiles",
 		"dataset_id", datasetID,
 		"player_name", req.PlayerName,
+		"division_filter", req.DivisionFilter,
+		"target_division", req.TargetDivision,
 		"cache_key", cacheKey)
 
 	// Create a copy of the dataset and recalculate percentiles with division filtering

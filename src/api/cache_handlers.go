@@ -477,7 +477,9 @@ func generatePercentilesCacheKey(datasetID, playerName, divisionFilter, targetDi
 		hash = hash & hash // Convert to 32-bit integer
 	}
 
-	return fmt.Sprintf("percentiles_%s", fmt.Sprintf("%x", hash)[:12])
+	cacheKey := fmt.Sprintf("percentiles_%s", fmt.Sprintf("%x", hash)[:12])
+	
+	return cacheKey
 }
 
 // savePercentilesToCache saves percentiles calculation to cache
