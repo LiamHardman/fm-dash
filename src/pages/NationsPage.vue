@@ -310,6 +310,29 @@
                         <p class="card-subtitle">Select a nation to analyze player talents and distributions</p>
                     </div>
                     
+                    <!-- NEW: Calculation Progress Bar -->
+                    <div v-if="isCalculatingRatings" class="calculation-progress-section">
+                        <div class="progress-header">
+                            <div class="progress-title">
+                                <q-icon name="calculate" class="q-mr-sm" />
+                                Calculating Nation Ratings...
+                            </div>
+                            <div class="progress-stats">
+                                {{ calculationProgress.current }} / {{ calculationProgress.total }}
+                            </div>
+                        </div>
+                        <q-linear-progress
+                            :value="calculationProgress.total > 0 ? calculationProgress.current / calculationProgress.total : 0"
+                            color="primary"
+                            track-color="grey-3"
+                            class="progress-bar"
+                            :class="{ 'progress-bar-dark': quasarInstance.dark.isActive }"
+                        />
+                        <div class="progress-description">
+                            Nations will update with their tactical ratings as calculations complete
+                        </div>
+                    </div>
+                    
                     <div class="modern-filter-section">
                         <q-select
                             v-model="selectedNationName"
@@ -345,6 +368,7 @@
                             v-for="nation in (showAllNations ? nationsWithRatings : nationsWithRatings.slice(0, 10))"
                             :key="nation.name"
                             class="nation-row"
+                            :class="{ 'calculating': nation.isCalculating }"
                             @click="selectNation(nation.name)"
                         >
                             <div class="nation-flag-container">
@@ -369,8 +393,14 @@
                                 <div class="player-count">{{ nation.playerCount }} players</div>
                             </div>
                             <div class="nation-section-ratings">
+                                <!-- NEW: Show calculating state -->
+                                <div v-if="nation.isCalculating" class="calculating-ratings">
+                                    <q-spinner-dots color="primary" size="1.5em" />
+                                    <span class="calculating-text">Calculating...</span>
+                                </div>
+                                <!-- NEW: Show ratings when available -->
                                 <div 
-                                    v-if="nation.bestFormationOverall > 0"
+                                    v-else-if="nation.bestFormationOverall !== null && nation.bestFormationOverall > 0"
                                     class="section-ratings-large"
                                 >
                                     <div class="section-rating-large att">
@@ -401,6 +431,15 @@
                                         </span>
                                     </div>
                                 </div>
+                                <!-- NEW: Show pending state for nations not yet calculated -->
+                                <div 
+                                    v-else-if="nation.bestFormationOverall === null"
+                                    class="pending-calculation"
+                                >
+                                    <q-icon name="schedule" size="1em" class="q-mr-xs" />
+                                    <span class="pending-text">Pending...</span>
+                                </div>
+                                <!-- Show incomplete squad for nations with calculated 0 rating -->
                                 <div 
                                     v-else
                                     class="no-rating-message"
@@ -409,7 +448,14 @@
                                 </div>
                             </div>
                             <div class="nation-overall">
-                                <div class="nation-rating">
+                                <!-- NEW: Show calculating state -->
+                                <div v-if="nation.isCalculating" class="nation-rating">
+                                    <div class="calculating-overall">
+                                        <q-spinner-dots color="primary" size="1em" />
+                                    </div>
+                                </div>
+                                <!-- NEW: Show ratings when available -->
+                                <div v-else-if="nation.bestFormationOverall !== null" class="nation-rating">
                                     <div 
                                         class="highest-overall-large"
                                         :class="getOverallClass(nation.bestFormationOverall)"
@@ -425,6 +471,13 @@
                                         >
                                             ★
                                         </span>
+                                    </div>
+                                </div>
+                                <!-- NEW: Show pending state -->
+                                <div v-else class="nation-rating">
+                                    <div class="pending-overall">
+                                        <q-icon name="schedule" size="1em" />
+                                        <div class="pending-stars">- - -</div>
                                     </div>
                                 </div>
                             </div>
@@ -547,6 +600,13 @@ export default {
     const playerForDetailView = ref(null)
     const showPlayerDetailDialog = ref(false)
 
+    // NEW: Async nations system
+    const nationsData = ref([])
+    const isCalculatingRatings = ref(false)
+    const calculationProgress = ref({ current: 0, total: 0 })
+    const calculationQueue = ref([])
+    const isProcessingQueue = ref(false)
+
     // Map position names to their short codes, more specific for each side
     const fmMatcherToRoleKeyPrefix = {
       GOALKEEPER: 'GK',
@@ -619,8 +679,32 @@ export default {
     const showAllNations = ref(false)
     const INITIAL_NATIONS_LIMIT = 50
 
+    // NEW: Replace the heavy computed property with reactive data and async calculation
     const nationsWithRatings = computed(() => {
-      if (!allPlayersData.value || allPlayersData.value.length === 0) return []
+      // During initial load, show nations without ratings
+      if (isCalculatingRatings.value && nationsData.value.length === 0) {
+        return []
+      }
+      
+      // Return sorted nations data
+      const sortedNations = [...nationsData.value].sort(
+        (a, b) => (b.bestFormationOverall || 0) - (a.bestFormationOverall || 0)
+      )
+
+      // Limit initial rendering for performance
+      if (!showAllNations.value && sortedNations.length > INITIAL_NATIONS_LIMIT) {
+        return sortedNations.slice(0, INITIAL_NATIONS_LIMIT)
+      }
+
+      return sortedNations
+    })
+
+    // NEW: Initialize nations with basic data (no ratings yet)
+    const initializeNationsData = () => {
+      if (!allPlayersData.value || allPlayersData.value.length === 0) {
+        nationsData.value = []
+        return
+      }
 
       const nationsMap = new Map()
 
@@ -634,7 +718,8 @@ export default {
               name: nationality,
               nationality_iso: player.nationality_iso || null,
               playerCount: 0,
-              bestFormationOverall: 0,
+              bestFormationOverall: null, // Will be calculated async
+              isCalculating: false,
               players: []
             })
           }
@@ -650,215 +735,260 @@ export default {
         }
       }
 
-      // Second pass: get top players per position for each nation and calculate best formation overall
-      const nationsArray = Array.from(nationsMap.values())
-      for (const nation of nationsArray) {
-        // Get top 10 players per position to optimize performance
-        const topPlayersByPosition = {}
-        const allPositions = [
-          'GK',
-          'DR',
-          'DL',
-          'DC',
-          'WBR',
-          'WBL',
-          'DM',
-          'MR',
-          'ML',
-          'MC',
-          'AMR',
-          'AML',
-          'AMC',
-          'ST'
-        ]
-
-        for (const position of allPositions) {
-          const playersForPosition = nation.players.filter(player => {
-            const playerPositions = player.shortPositions || []
-            return playerPositions.includes(position)
-          })
-
-          // Sort by Overall and take top 10
-          playersForPosition.sort((a, b) => (b.Overall || 0) - (a.Overall || 0))
-          topPlayersByPosition[position] = playersForPosition.slice(0, 10)
-        }
-
-        let bestOverall = 0
-        let hasMinimumPlayers = false
-        let bestSectionRatings = { attRating: 0, midRating: 0, defRating: 0 }
-
-        // Test each formation to find the best average overall for this nation
-        for (const formationKey of Object.keys(formations)) {
-          const formationLayoutForCalc = getFormationLayout(formationKey)
-          if (!formationLayoutForCalc) continue
-
-          const formationSlots = formationLayoutForCalc.flatMap(row => row.positions)
-          const tempSquadComposition = {}
-
-          for (const slot of formationSlots) {
-            tempSquadComposition[slot.id] = []
-          }
-
-          // Calculate player assignments for this formation using only top players
-          const allPotentialPlayerAssignments = []
-          for (const slot of formationSlots) {
-            const slotPositions = positionSideMap[slot.role.toUpperCase()] || []
-            const fallbackPositions = fallbackPositionMap[slot.role.toUpperCase()] || []
-
-            // Get relevant players for this slot (exact matches first, then fallbacks)
-            let relevantPlayers = []
-
-            // Add exact position matches first
-            for (const position of slotPositions) {
-              if (topPlayersByPosition[position]) {
-                relevantPlayers = [...relevantPlayers, ...topPlayersByPosition[position]]
-              }
-            }
-
-            // Add fallback positions if needed
-            for (const position of fallbackPositions) {
-              if (topPlayersByPosition[position]) {
-                for (const player of topPlayersByPosition[position]) {
-                  // Only add if not already included from exact matches
-                  if (!relevantPlayers.some(p => p.name === player.name)) {
-                    relevantPlayers.push(player)
-                  }
-                }
-              }
-            }
-
-            for (const player of relevantPlayers) {
-              const overallInRole = getPlayerOverallForRole(player, slot.role)
-
-              // Lowered threshold to be more inclusive
-              if (overallInRole >= 20) {
-                const playerPositions = player.shortPositions || []
-                const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos))
-
-                const assignment = {
-                  player,
-                  slotId: slot.id,
-                  slotRole: slot.role,
-                  overallInRole: overallInRole,
-                  sortScore: overallInRole,
-                  exactMatch: isExactMatch
-                }
-
-                if (isExactMatch) {
-                  assignment.sortScore += 10000
-                } else {
-                  assignment.sortScore -= 5000
-                }
-
-                allPotentialPlayerAssignments.push(assignment)
-              }
-            }
-          }
-
-          allPotentialPlayerAssignments.sort((a, b) => b.sortScore - a.sortScore)
-          const assignedPlayersToSlots = new Set()
-
-          // Fill starting XI for this formation
-          for (const slot of formationSlots) {
-            for (const assignment of allPotentialPlayerAssignments) {
-              if (
-                assignment.slotId === slot.id &&
-                !assignedPlayersToSlots.has(assignment.player.name)
-              ) {
-                tempSquadComposition[slot.id].push({
-                  player: assignment.player,
-                  overallInRole: assignment.overallInRole,
-                  exactMatch: assignment.exactMatch
-                })
-                assignedPlayersToSlots.add(assignment.player.name)
-                break
-              }
-            }
-          }
-
-          // Check if we have enough players to generate meaningful ratings
-          // Instead of requiring a full squad, we require at least 7 players (a more realistic threshold)
-          const filledPositions = Object.values(tempSquadComposition).filter(
-            slotPlayers => slotPlayers.length > 0
-          ).length
-          const hasEnoughPlayers = filledPositions >= 7
-
-          if (hasEnoughPlayers) {
-            hasMinimumPlayers = true
-
-            // Calculate average overall for this formation based on filled positions only
-            let sumOfStartersOverall = 0
-            let startersCount = 0
-            for (const slotPlayers of Object.values(tempSquadComposition)) {
-              if (slotPlayers && slotPlayers.length > 0) {
-                sumOfStartersOverall += slotPlayers[0].overallInRole
-                startersCount++
-              }
-            }
-
-            if (startersCount > 0) {
-              const averageOverall = Math.round(sumOfStartersOverall / startersCount)
-              if (averageOverall > bestOverall) {
-                bestOverall = averageOverall
-                // Calculate section ratings directly for this formation
-                const defensivePositions = ['GK', 'D (R)', 'D (L)', 'D (C)', 'WB (R)', 'WB (L)']
-                const midfielderPositions = ['DM (C)', 'M (R)', 'M (L)', 'M (C)', 'AM (C)']
-                const attackingPositions = ['AM (R)', 'AM (L)', 'ST (C)']
-
-                let attSum = 0
-                let attCount = 0
-                let midSum = 0
-                let midCount = 0
-                let defSum = 0
-                let defCount = 0
-
-                for (const slot of formationSlots) {
-                  const slotPlayers = tempSquadComposition[slot.id]
-                  if (slotPlayers && slotPlayers.length > 0) {
-                    const starter = slotPlayers[0]
-                    const rating = starter.overallInRole
-
-                    if (attackingPositions.includes(slot.role)) {
-                      attSum += rating
-                      attCount++
-                    } else if (midfielderPositions.includes(slot.role)) {
-                      midSum += rating
-                      midCount++
-                    } else if (defensivePositions.includes(slot.role)) {
-                      defSum += rating
-                      defCount++
-                    }
-                  }
-                }
-
-                bestSectionRatings = {
-                  attRating: attCount > 0 ? Math.round(attSum / attCount) : 0,
-                  midRating: midCount > 0 ? Math.round(midSum / midCount) : 0,
-                  defRating: defCount > 0 ? Math.round(defSum / defCount) : 0
-                }
-              }
-            }
-          }
-        }
-
-        // Set overall if nation has at least minimum viable squad (7+ players)
-        nation.bestFormationOverall = hasMinimumPlayers ? bestOverall : 0
-        nation.attRating = hasMinimumPlayers ? bestSectionRatings.attRating : 0
-        nation.midRating = hasMinimumPlayers ? bestSectionRatings.midRating : 0
-        nation.defRating = hasMinimumPlayers ? bestSectionRatings.defRating : 0
-      }
-
-      const sortedNations = nationsArray.sort(
-        (a, b) => b.bestFormationOverall - a.bestFormationOverall
+      // Convert to array and sort by player count initially
+      nationsData.value = Array.from(nationsMap.values()).sort(
+        (a, b) => b.playerCount - a.playerCount
       )
+    }
 
-      // Limit initial rendering for performance
-      if (!showAllNations.value && sortedNations.length > INITIAL_NATIONS_LIMIT) {
-        return sortedNations.slice(0, INITIAL_NATIONS_LIMIT)
+    // NEW: Calculate ratings for a single nation
+    const calculateNationRatings = async (nation) => {
+      // Set calculating state
+      const nationIndex = nationsData.value.findIndex(n => n.name === nation.name)
+      if (nationIndex !== -1) {
+        nationsData.value[nationIndex].isCalculating = true
       }
 
-      return sortedNations
-    })
+      // Simulate small delay to prevent UI blocking
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      // Get top 10 players per position to optimize performance
+      const topPlayersByPosition = {}
+      const allPositions = [
+        'GK', 'DR', 'DL', 'DC', 'WBR', 'WBL', 'DM', 'MR', 'ML', 'MC', 'AMR', 'AML', 'AMC', 'ST'
+      ]
+
+      for (const position of allPositions) {
+        const playersForPosition = nation.players.filter(player => {
+          const playerPositions = player.shortPositions || []
+          return playerPositions.includes(position)
+        })
+
+        // Sort by Overall and take top 10
+        playersForPosition.sort((a, b) => (b.Overall || 0) - (a.Overall || 0))
+        topPlayersByPosition[position] = playersForPosition.slice(0, 10)
+      }
+
+      let bestOverall = 0
+      let hasMinimumPlayers = false
+      let bestSectionRatings = { attRating: 0, midRating: 0, defRating: 0 }
+
+      // Test each formation to find the best average overall for this nation
+      for (const formationKey of Object.keys(formations)) {
+        const formationLayoutForCalc = getFormationLayout(formationKey)
+        if (!formationLayoutForCalc) continue
+
+        const formationSlots = formationLayoutForCalc.flatMap(row => row.positions)
+        const tempSquadComposition = {}
+
+        for (const slot of formationSlots) {
+          tempSquadComposition[slot.id] = []
+        }
+
+        // Calculate player assignments for this formation using only top players
+        const allPotentialPlayerAssignments = []
+        for (const slot of formationSlots) {
+          const slotPositions = positionSideMap[slot.role.toUpperCase()] || []
+          const fallbackPositions = fallbackPositionMap[slot.role.toUpperCase()] || []
+
+          // Get relevant players for this slot (exact matches first, then fallbacks)
+          let relevantPlayers = []
+
+          // Add exact position matches first
+          for (const position of slotPositions) {
+            if (topPlayersByPosition[position]) {
+              relevantPlayers = [...relevantPlayers, ...topPlayersByPosition[position]]
+            }
+          }
+
+          // Add fallback positions if needed
+          for (const position of fallbackPositions) {
+            if (topPlayersByPosition[position]) {
+              for (const player of topPlayersByPosition[position]) {
+                // Only add if not already included from exact matches
+                if (!relevantPlayers.some(p => p.name === player.name)) {
+                  relevantPlayers.push(player)
+                }
+              }
+            }
+          }
+
+          for (const player of relevantPlayers) {
+            const overallInRole = getPlayerOverallForRole(player, slot.role)
+
+            // Lowered threshold to be more inclusive
+            if (overallInRole >= 20) {
+              const playerPositions = player.shortPositions || []
+              const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos))
+
+              const assignment = {
+                player,
+                slotId: slot.id,
+                slotRole: slot.role,
+                overallInRole: overallInRole,
+                sortScore: overallInRole,
+                exactMatch: isExactMatch
+              }
+
+              if (isExactMatch) {
+                assignment.sortScore += 10000
+              } else {
+                assignment.sortScore -= 5000
+              }
+
+              allPotentialPlayerAssignments.push(assignment)
+            }
+          }
+        }
+
+        allPotentialPlayerAssignments.sort((a, b) => b.sortScore - a.sortScore)
+        const assignedPlayersToSlots = new Set()
+
+        // Fill starting XI for this formation
+        for (const slot of formationSlots) {
+          for (const assignment of allPotentialPlayerAssignments) {
+            if (
+              assignment.slotId === slot.id &&
+              !assignedPlayersToSlots.has(assignment.player.name)
+            ) {
+              tempSquadComposition[slot.id].push({
+                player: assignment.player,
+                overallInRole: assignment.overallInRole,
+                exactMatch: assignment.exactMatch
+              })
+              assignedPlayersToSlots.add(assignment.player.name)
+              break
+            }
+          }
+        }
+
+        // Check if we have enough players to generate meaningful ratings
+        const filledPositions = Object.values(tempSquadComposition).filter(
+          slotPlayers => slotPlayers.length > 0
+        ).length
+        const hasEnoughPlayers = filledPositions >= 7
+
+        if (hasEnoughPlayers) {
+          hasMinimumPlayers = true
+
+          // Calculate average overall for this formation based on filled positions only
+          let sumOfStartersOverall = 0
+          let startersCount = 0
+          for (const slotPlayers of Object.values(tempSquadComposition)) {
+            if (slotPlayers && slotPlayers.length > 0) {
+              sumOfStartersOverall += slotPlayers[0].overallInRole
+              startersCount++
+            }
+          }
+
+          if (startersCount > 0) {
+            const averageOverall = Math.round(sumOfStartersOverall / startersCount)
+            if (averageOverall > bestOverall) {
+              bestOverall = averageOverall
+              // Calculate section ratings directly for this formation
+              const defensivePositions = ['GK', 'D (R)', 'D (L)', 'D (C)', 'WB (R)', 'WB (L)']
+              const midfielderPositions = ['DM (C)', 'M (R)', 'M (L)', 'M (C)', 'AM (C)']
+              const attackingPositions = ['AM (R)', 'AM (L)', 'ST (C)']
+
+              let attSum = 0
+              let attCount = 0
+              let midSum = 0
+              let midCount = 0
+              let defSum = 0
+              let defCount = 0
+
+              for (const slot of formationSlots) {
+                const slotPlayers = tempSquadComposition[slot.id]
+                if (slotPlayers && slotPlayers.length > 0) {
+                  const starter = slotPlayers[0]
+                  const rating = starter.overallInRole
+
+                  if (attackingPositions.includes(slot.role)) {
+                    attSum += rating
+                    attCount++
+                  } else if (midfielderPositions.includes(slot.role)) {
+                    midSum += rating
+                    midCount++
+                  } else if (defensivePositions.includes(slot.role)) {
+                    defSum += rating
+                    defCount++
+                  }
+                }
+              }
+
+              bestSectionRatings = {
+                attRating: attCount > 0 ? Math.round(attSum / attCount) : 0,
+                midRating: midCount > 0 ? Math.round(midSum / midCount) : 0,
+                defRating: defCount > 0 ? Math.round(defSum / defCount) : 0
+              }
+            }
+          }
+        }
+
+        // Add small delay every few formations to prevent blocking
+        if (Object.keys(formations).indexOf(formationKey) % 3 === 0) {
+          await new Promise(resolve => setTimeout(resolve, 1))
+        }
+      }
+
+      // Update the nation with calculated ratings
+      if (nationIndex !== -1) {
+        nationsData.value[nationIndex] = {
+          ...nationsData.value[nationIndex],
+          bestFormationOverall: hasMinimumPlayers ? bestOverall : 0,
+          attRating: hasMinimumPlayers ? bestSectionRatings.attRating : 0,
+          midRating: hasMinimumPlayers ? bestSectionRatings.midRating : 0,
+          defRating: hasMinimumPlayers ? bestSectionRatings.defRating : 0,
+          isCalculating: false
+        }
+      }
+    }
+
+    // NEW: Process calculation queue
+    const processCalculationQueue = async () => {
+      if (isProcessingQueue.value || calculationQueue.value.length === 0) {
+        return
+      }
+
+      isProcessingQueue.value = true
+      isCalculatingRatings.value = true
+
+      while (calculationQueue.value.length > 0) {
+        const nation = calculationQueue.value.shift()
+        calculationProgress.value.current = calculationProgress.value.total - calculationQueue.value.length
+
+        try {
+          await calculateNationRatings(nation)
+        } catch (error) {
+          console.error(`Error calculating ratings for ${nation.name}:`, error)
+          // Mark as failed and continue
+          const nationIndex = nationsData.value.findIndex(n => n.name === nation.name)
+          if (nationIndex !== -1) {
+            nationsData.value[nationIndex].isCalculating = false
+            nationsData.value[nationIndex].bestFormationOverall = 0
+          }
+        }
+
+        // Small delay between nations to keep UI responsive
+        await new Promise(resolve => setTimeout(resolve, 5))
+      }
+
+      isProcessingQueue.value = false
+      isCalculatingRatings.value = false
+      calculationProgress.value = { current: 0, total: 0 }
+    }
+
+    // NEW: Start rating calculations
+    const startRatingCalculations = () => {
+      if (nationsData.value.length === 0) return
+
+      // Queue all nations for calculation
+      calculationQueue.value = [...nationsData.value]
+      calculationProgress.value = { current: 0, total: nationsData.value.length }
+
+      // Start processing
+      processCalculationQueue()
+    }
 
     const fetchPlayersAndCurrency = async datasetId => {
       pageLoading.value = true
@@ -897,6 +1027,14 @@ export default {
 
       if (!pageLoadingError.value && allPlayersData.value.length > 0) {
         populateNationFilterOptions()
+        
+        // NEW: Initialize nations data immediately, then start async rating calculations
+        initializeNationsData()
+        
+        // Start calculating ratings in the background
+        setTimeout(() => {
+          startRatingCalculations()
+        }, 100) // Small delay to let UI render first
 
         if (nationFromQuery && nationFromQuery.trim() !== '') {
           selectedNationName.value = nationFromQuery
@@ -1687,11 +1825,19 @@ export default {
         if (pageLoading.value) return
         if (newVal && newVal.length > 0) {
           populateNationFilterOptions()
+          
+          // NEW: Initialize nations and start calculations
+          initializeNationsData()
+          setTimeout(() => {
+            startRatingCalculations()
+          }, 100)
+          
           if (selectedNationName.value) loadNationPlayers()
         } else if (!pageLoadingError.value) {
           clearNationSelection()
           allNationNamesCache.value = []
           nationOptions.value = []
+          nationsData.value = [] // NEW: Clear nations data
         }
       },
       { deep: true }
@@ -1704,8 +1850,13 @@ export default {
           sessionStorage.setItem('currentDatasetId', newId)
           await fetchPlayersAndCurrency(newId)
           clearNationSelection()
+          nationsData.value = [] // NEW: Clear nations data
           if (!pageLoadingError.value && allPlayersData.value.length > 0) {
             populateNationFilterOptions()
+            initializeNationsData() // NEW: Initialize nations
+            setTimeout(() => {
+              startRatingCalculations() // NEW: Start calculations
+            }, 100)
           }
         }
       }
@@ -1811,7 +1962,12 @@ export default {
       nationsWithRatings,
       showAllNations,
       currentNationFlagISO,
-      handleTeamSelected
+      handleTeamSelected,
+      // NEW: Add new reactive properties
+      nationsData,
+      isCalculatingRatings,
+      calculationProgress,
+      isProcessingQueue
     }
   }
 }
@@ -2488,6 +2644,76 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
         }
     }
     
+    // NEW: Calculation Progress Section
+    .calculation-progress-section {
+        margin-bottom: 2rem;
+        padding: 1.5rem;
+        background: linear-gradient(135deg, rgba(103, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.05) 100%);
+        border-radius: $border-radius-small;
+        border: 1px solid rgba(103, 126, 234, 0.2);
+        
+        .body--dark & {
+            background: linear-gradient(135deg, rgba(103, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.1) 100%);
+            border-color: rgba(103, 126, 234, 0.3);
+        }
+        
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            
+            .progress-title {
+                display: flex;
+                align-items: center;
+                font-weight: 600;
+                color: #667eea;
+                font-size: 1rem;
+                
+                .body--dark & {
+                    color: rgba(103, 126, 234, 0.9);
+                }
+            }
+            
+            .progress-stats {
+                font-size: 0.9rem;
+                font-weight: 500;
+                color: #64748b;
+                background: rgba(255, 255, 255, 0.7);
+                padding: 0.25rem 0.75rem;
+                border-radius: 15px;
+                
+                .body--dark & {
+                    color: rgba(255, 255, 255, 0.8);
+                    background: rgba(255, 255, 255, 0.1);
+                }
+            }
+        }
+        
+        .progress-bar {
+            height: 8px;
+            border-radius: 4px;
+            margin-bottom: 0.75rem;
+            
+            &.progress-bar-dark {
+                .q-linear-progress__track {
+                    background: rgba(255, 255, 255, 0.1);
+                }
+            }
+        }
+        
+        .progress-description {
+            font-size: 0.85rem;
+            color: #64748b;
+            text-align: center;
+            font-style: italic;
+            
+            .body--dark & {
+                color: rgba(255, 255, 255, 0.7);
+            }
+        }
+    }
+    
     .nations-list {
         .nation-row {
             display: grid;
@@ -2503,6 +2729,16 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
             
             .body--dark & {
                 border-color: rgba(255, 255, 255, 0.1);
+            }
+            
+            &.calculating {
+                background: linear-gradient(135deg, rgba(103, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.04) 100%);
+                border-color: rgba(103, 126, 234, 0.2);
+                
+                .body--dark & {
+                    background: linear-gradient(135deg, rgba(103, 126, 234, 0.12) 0%, rgba(118, 75, 162, 0.08) 100%);
+                    border-color: rgba(103, 126, 234, 0.3);
+                }
             }
             
             &:hover {
@@ -2550,6 +2786,39 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
             }
             
             .nation-section-ratings {
+                // NEW: Calculating state styles
+                .calculating-ratings {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    
+                    .calculating-text {
+                        font-size: 0.85rem;
+                        color: #667eea;
+                        font-weight: 500;
+                        
+                        .body--dark & {
+                            color: rgba(103, 126, 234, 0.9);
+                        }
+                    }
+                }
+                
+                // NEW: Pending state styles
+                .pending-calculation {
+                    display: flex;
+                    align-items: center;
+                    color: #9ca3af;
+                    font-size: 0.85rem;
+                    
+                    .body--dark & {
+                        color: rgba(255, 255, 255, 0.5);
+                    }
+                    
+                    .pending-text {
+                        font-style: italic;
+                    }
+                }
+                
                 .section-ratings-large {
                     display: flex;
                     gap: 0.5rem;
@@ -2593,6 +2862,32 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
                 text-align: center;
                 
                 .nation-rating {
+                    // NEW: Calculating state styles
+                    .calculating-overall {
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        min-height: 2rem;
+                    }
+                    
+                    // NEW: Pending state styles
+                    .pending-overall {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        gap: 0.25rem;
+                        color: #9ca3af;
+                        
+                        .body--dark & {
+                            color: rgba(255, 255, 255, 0.5);
+                        }
+                        
+                        .pending-stars {
+                            font-size: 0.8rem;
+                            font-style: italic;
+                        }
+                    }
+                    
                     .highest-overall-large {
                         font-size: 0.9rem;
                         font-weight: 700;
