@@ -1,3 +1,9 @@
+## [1.0.2](https://git.liamhardman.com/liam/fm24-golang/compare/v1.0.1...v1.0.2) (2025-06-02)
+
+### 🐛 Bug Fixes
+
+* removing graphql confirm ([a90f055](https://git.liamhardman.com/liam/fm24-golang/commit/a90f05570740a9fdb7f5ea987c0609eb403ff621))
+
 ## [1.0.1](https://git.liamhardman.com/liam/fm24-golang/compare/v1.0.0...v1.0.1) (2025-06-02)
 
 ### 🐛 Bug Fixes
