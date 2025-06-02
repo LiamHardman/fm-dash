@@ -1,3 +1,9 @@
+## [1.2.0](https://git.liamhardman.com/liam/fm24-golang/compare/v1.1.4...v1.2.0) (2025-06-02)
+
+### 🚀 Features
+
+* rebrand to FM-Dash ([beb61e3](https://git.liamhardman.com/liam/fm24-golang/commit/beb61e3f69f800ce204105b236e500483d871b81))
+
 ## [1.1.4](https://git.liamhardman.com/liam/fm24-golang/compare/v1.1.3...v1.1.4) (2025-06-02)
 
 ### 🐛 Bug Fixes
