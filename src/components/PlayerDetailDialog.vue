@@ -1225,8 +1225,8 @@ export default defineComponent({
     ])
 
     const getTargetDivision = () => {
-      if (!props.player?.division) return null
-      return props.player.division
+      if (!props.player?.Division) return null
+      return props.player.Division
     }
 
     const onDivisionFilterChange = async () => {
@@ -1234,6 +1234,12 @@ export default defineComponent({
 
       try {
         const targetDivision = getTargetDivision()
+        console.log('Division filter change:', {
+          divisionFilter: divisionFilter.value,
+          targetDivision: targetDivision,
+          playerName: props.player.name
+        })
+        
         // Instead of refetching all data, we need to fetch just updated percentiles for this player
         // For now, let's create a dedicated API call for this
         const response = await fetch(`/api/percentiles/${props.datasetId}`, {
@@ -1250,10 +1256,18 @@ export default defineComponent({
 
         if (response.ok) {
           const updatedPercentiles = await response.json()
+          console.log('Received updated percentiles:', updatedPercentiles)
+          
           // Update the player's percentiles without affecting the main dataset
           if (props.player.performancePercentiles) {
             Object.assign(props.player.performancePercentiles, updatedPercentiles)
+            console.log('Updated player percentiles:', props.player.performancePercentiles)
+            
+            // Clear the performance stats cache to force recomputation
+            performanceStatsCache.clear()
           }
+        } else {
+          console.error('Failed to fetch updated percentiles:', response.status, response.statusText)
         }
       } catch (error) {
         console.error('Error updating percentiles with division filter:', error)
