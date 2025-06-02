@@ -12,7 +12,7 @@
             class="player-detail-dialog-card modern-dialog-card"
             :class="
                 qInstance.dark.isActive
-                    ? 'bg-dark text-white'
+                    ? 'text-white'
                     : 'bg-white text-dark'
             "
             style="max-width: 1400px; width: 95vw; max-height: 90vh"
@@ -1542,8 +1542,10 @@ $breakpoint-xs-max: 599px !default;
     border-radius: 16px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
     overflow: hidden;
+    background: white;
     
     .body--dark & {
+        background: #1e293b;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
     }
 }
