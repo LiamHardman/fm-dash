@@ -311,7 +311,28 @@
                                                             outline
                                                             color="secondary"
                                                             :label="player.nationality || 'Unknown'"
-                                                            class="player-nationality-badge"
+                                                            class="player-nationality-badge q-mr-sm"
+                                                        />
+                                                        <q-badge
+                                                            v-if="player.club"
+                                                            outline
+                                                            color="teal"
+                                                            :label="player.club"
+                                                            class="player-club-badge q-mr-sm"
+                                                        />
+                                                        <q-badge
+                                                            v-if="player.personality"
+                                                            outline
+                                                            color="purple"
+                                                            :label="player.personality"
+                                                            class="player-personality-badge q-mr-sm"
+                                                        />
+                                                        <q-badge
+                                                            v-if="player.media_handling"
+                                                            outline
+                                                            color="orange"
+                                                            :label="player.media_handling"
+                                                            class="player-media-badge"
                                                         />
                                                     </div>
                                                 </div>
@@ -328,66 +349,33 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        
-                                        <div class="player-details-grid q-mt-md">
-                                            <div class="detail-item">
-                                                <q-icon name="sports_soccer" size="1.2em" class="detail-icon" />
-                                                <div class="detail-content">
-                                                    <div class="detail-label">Club</div>
-                                                    <div class="detail-value" :title="player.club || '-'">
-                                                        {{ player.club || "-" }}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            
-                                            <div class="detail-item">
-                                                <q-icon name="psychology" size="1.2em" class="detail-icon" />
-                                                <div class="detail-content">
-                                                    <div class="detail-label">Personality</div>
-                                                    <div class="detail-value" :title="player.personality || '-'">
-                                                        {{ player.personality || "-" }}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            
-                                            <div class="detail-item">
-                                                <q-icon name="comment" size="1.2em" class="detail-icon" />
-                                                <div class="detail-content">
-                                                    <div class="detail-label">Media Handling</div>
-                                                    <div class="detail-value" :title="player.media_handling || '-'">
-                                                        {{ player.media_handling || "-" }}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
                                     </div>
 
                                     <div class="financial-details-section">
-                                        <div class="financial-item-large" :title="formattedTransferValue">
-                                            <q-icon name="trending_up" class="q-mr-sm financial-icon" />
+                                        <div class="financial-combined-item" :title="`${formattedTransferValue} / ${formattedWage}`">
                                             <div class="financial-content">
-                                                <div class="financial-label">Transfer Value</div>
-                                                <div class="financial-value transfer-value">{{ formattedTransferValue }}</div>
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="financial-item-small q-mt-sm" :title="formattedWage">
-                                            <q-icon name="payments" class="q-mr-sm financial-icon" />
-                                            <div class="financial-content">
-                                                <div class="financial-label">Weekly Salary</div>
-                                                <div class="financial-value wage-value">{{ formattedWage }}</div>
+                                                <div class="financial-row">
+                                                    <q-icon name="trending_up" class="financial-icon q-mr-sm" />
+                                                    <div class="financial-item-content">
+                                                        <div class="financial-label">Transfer Value</div>
+                                                        <div class="financial-value transfer-value">{{ formattedTransferValue }}</div>
+                                                    </div>
+                                                </div>
+                                                <div class="financial-row q-mt-sm">
+                                                    <q-icon name="payments" class="financial-icon q-mr-sm" />
+                                                    <div class="financial-item-content">
+                                                        <div class="financial-label">Weekly Salary</div>
+                                                        <div class="financial-value wage-value">{{ formattedWage }}</div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <q-separator spaced="lg" class="profile-separator" />
+                                <q-separator spaced="md" class="profile-separator" />
 
                                 <div class="fifa-stats-section">
-                                    <div class="section-header q-mb-md">
-                                        <q-icon name="sports_esports" class="q-mr-sm" />
-                                        <span class="section-title">FIFA Stats</span>
-                                    </div>
                                     
                                     <div class="fifa-stats-grid">
                                         <div
@@ -2144,6 +2132,42 @@ $breakpoint-xs-max: 599px !default;
     }
 }
 
+.financial-combined-item {
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.05) 0%, rgba(59, 130, 246, 0.05) 100%);
+    border-radius: 12px;
+    border: 1px solid rgba(34, 197, 94, 0.15);
+    transition: all 0.2s ease;
+    
+    &:hover {
+        background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(59, 130, 246, 0.08) 100%);
+        border-color: rgba(34, 197, 94, 0.25);
+        transform: translateY(-1px);
+    }
+    
+    .body--dark & {
+        background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(59, 130, 246, 0.08) 100%);
+        border-color: rgba(34, 197, 94, 0.2);
+        
+        &:hover {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.12) 0%, rgba(59, 130, 246, 0.12) 100%);
+            border-color: rgba(34, 197, 94, 0.3);
+        }
+    }
+}
+
+.financial-row {
+    display: flex;
+    align-items: center;
+}
+
+.financial-item-content {
+    display: flex;
+    flex-direction: column;
+}
+
 .financial-item-large,
 .financial-item-small {
     display: flex;
@@ -2260,7 +2284,7 @@ $breakpoint-xs-max: 599px !default;
 
 // FIFA Stats Section
 .fifa-stats-section {
-    margin-top: 8px;
+    margin-top: 4px;
 }
 
 .section-header {
@@ -2393,7 +2417,7 @@ $breakpoint-xs-max: 599px !default;
 
 // Attribute Cards
 .attribute-columns-container {
-    margin-top: 8px;
+    margin-top: 4px;
 }
 
 .attribute-card {
