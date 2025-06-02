@@ -1,3 +1,9 @@
+## [1.1.2](https://git.liamhardman.com/liam/fm24-golang/compare/v1.1.1...v1.1.2) (2025-06-02)
+
+### 🐛 Bug Fixes
+
+* salary/value colour fix ([d540757](https://git.liamhardman.com/liam/fm24-golang/commit/d5407579124d4e25e07d24a5553b930d0a9a8e1e))
+
 ## [1.1.1](https://git.liamhardman.com/liam/fm24-golang/compare/v1.1.0...v1.1.1) (2025-06-02)
 
 ### 🐛 Bug Fixes
