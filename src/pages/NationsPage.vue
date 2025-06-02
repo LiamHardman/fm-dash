@@ -684,7 +684,7 @@ export default {
         }
 
         let bestOverall = 0
-        let hasFullSquad = false
+        let hasMinimumPlayers = false
         let bestSectionRatings = { attRating: 0, midRating: 0, defRating: 0 }
 
         // Test each formation to find the best average overall for this nation
@@ -730,7 +730,8 @@ export default {
             for (const player of relevantPlayers) {
               const overallInRole = getPlayerOverallForRole(player, slot.role)
 
-              if (overallInRole >= MIN_SUITABILITY_THRESHOLD) {
+              // Lowered threshold to be more inclusive
+              if (overallInRole >= 20) {
                 const playerPositions = player.shortPositions || []
                 const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos))
 
@@ -775,16 +776,17 @@ export default {
             }
           }
 
-          // Check if we have a full squad (player in every position)
+          // Check if we have enough players to generate meaningful ratings
+          // Instead of requiring a full squad, we require at least 7 players (a more realistic threshold)
           const filledPositions = Object.values(tempSquadComposition).filter(
             slotPlayers => slotPlayers.length > 0
           ).length
-          const isFullSquad = filledPositions === formationSlots.length
+          const hasEnoughPlayers = filledPositions >= 7
 
-          if (isFullSquad) {
-            hasFullSquad = true
+          if (hasEnoughPlayers) {
+            hasMinimumPlayers = true
 
-            // Calculate average overall for this formation
+            // Calculate average overall for this formation based on filled positions only
             let sumOfStartersOverall = 0
             let startersCount = 0
             for (const slotPlayers of Object.values(tempSquadComposition)) {
@@ -839,11 +841,11 @@ export default {
           }
         }
 
-        // Only set overall if nation has at least one full squad possible
-        nation.bestFormationOverall = hasFullSquad ? bestOverall : 0
-        nation.attRating = hasFullSquad ? bestSectionRatings.attRating : 0
-        nation.midRating = hasFullSquad ? bestSectionRatings.midRating : 0
-        nation.defRating = hasFullSquad ? bestSectionRatings.defRating : 0
+        // Set overall if nation has at least minimum viable squad (7+ players)
+        nation.bestFormationOverall = hasMinimumPlayers ? bestOverall : 0
+        nation.attRating = hasMinimumPlayers ? bestSectionRatings.attRating : 0
+        nation.midRating = hasMinimumPlayers ? bestSectionRatings.midRating : 0
+        nation.defRating = hasMinimumPlayers ? bestSectionRatings.defRating : 0
       }
 
       const sortedNations = nationsArray.sort(
@@ -1144,7 +1146,8 @@ export default {
       let bestScoreForRole = 0
 
       if (!player.roleSpecificOveralls) {
-        return 0
+        // If no role-specific overalls, use player's general Overall as fallback
+        return player.Overall || 0
       }
 
       const hasRoleOveralls = Array.isArray(player.roleSpecificOveralls)
@@ -1152,7 +1155,8 @@ export default {
         : Object.keys(player.roleSpecificOveralls).length > 0
 
       if (!hasRoleOveralls) {
-        return 0
+        // If no role-specific overalls, use player's general Overall as fallback
+        return player.Overall || 0
       }
 
       const upperSlotRoleOriginal = slotFormationRole.toUpperCase()
@@ -1183,7 +1187,7 @@ export default {
           }
 
           if (bestScoreForRole === 0) {
-            bestScoreForRole = MIN_SUITABILITY_THRESHOLD
+            bestScoreForRole = Math.max(MIN_SUITABILITY_THRESHOLD, player.Overall || 0)
           }
         }
       }
@@ -1217,7 +1221,7 @@ export default {
           }
 
           if (bestScoreForRole === 0) {
-            bestScoreForRole = MIN_SUITABILITY_THRESHOLD - 10
+            bestScoreForRole = Math.max(MIN_SUITABILITY_THRESHOLD - 10, (player.Overall || 0) - 5)
           }
         }
       }
@@ -1253,12 +1257,17 @@ export default {
             }
           }
         }
+
+        // Final fallback to player's general Overall rating if still nothing found
+        if (bestScoreForRole === 0) {
+          bestScoreForRole = Math.max(0, (player.Overall || 0) - 10)
+        }
       }
 
       return bestScoreForRole
     }
 
-    const MIN_SUITABILITY_THRESHOLD = 40
+    const MIN_SUITABILITY_THRESHOLD = 20
 
     const getSlotDisplayName = (slot, allSlots) => {
       const roleCounts = allSlots.reduce((acc, s) => {
@@ -1757,7 +1766,7 @@ export default {
     })
 
     // Add handleTeamSelected function (for compatibility with PlayerDataTable)
-    const handleTeamSelected = (teamName) => {
+    const handleTeamSelected = teamName => {
       // Redirect to team view page when a team is selected from the player table
       router.push(`/team-view/${currentDatasetId.value}?team=${encodeURIComponent(teamName)}`)
     }
