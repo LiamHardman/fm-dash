@@ -1066,17 +1066,17 @@ export default {
     }
 
     const getStarClass = (overall, starPosition) => {
-      if (!overall || overall === 0) return 'star-empty'
+      if (!overall || overall === 0) return 'empty'
 
       const starRating = getStarRating(overall)
 
       if (starPosition <= Math.floor(starRating)) {
-        return 'star-full'
+        return 'filled'
       }
       if (starPosition === Math.floor(starRating) + 1 && starRating % 1 === 0.5) {
-        return 'star-half'
+        return 'half'
       }
-      return 'star-empty'
+      return 'empty'
     }
 
     const getStarRating = overall => {
