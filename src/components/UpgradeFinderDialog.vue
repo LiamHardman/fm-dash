@@ -9,15 +9,9 @@
     >
         <q-card
             class="upgrade-finder-dialog"
-            :class="qInstance.dark.isActive ? 'bg-dark' : 'bg-grey-1'"
         >
             <q-card-section
-                class="row items-center q-pb-none"
-                :class="
-                    qInstance.dark.isActive
-                        ? 'bg-grey-10 text-white'
-                        : 'bg-primary text-white'
-                "
+                class="row items-center q-pb-none card-header"
             >
                 <q-icon name="manage_search" size="md" class="q-mr-sm" />
                 <div class="text-h6">
@@ -186,9 +180,7 @@
                                         <q-item-label caption
                                             >Overall ({{
                                                 selectedRole
-                                                    ? getRoleShortName(
-                                                          selectedRole,
-                                                      )
+                                                    ? getRoleShortName(selectedRole)
                                                     : getPositionShortName(
                                                           selectedPosition,
                                                       )
@@ -1157,65 +1149,295 @@ export default {
 
 <style lang="scss" scoped>
 .upgrade-finder-dialog {
-    // Main dialog card already gets bg-dark or bg-grey-1 from template
-}
-
-.results-section {
-    // Ensure this section also adapts if needed, though q-card usually handles it
-}
-
-.q-card.bg-blue-grey-1 {
-    // Light mode specific
-}
-.q-card.bg-grey-8 {
-    // Dark mode specific
-}
-
-.nationality-flag-dialog {
-    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: $border-radius;
+    box-shadow: $card-shadow;
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    
     .body--dark & {
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        background-color: #1e293b !important;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, #2e74b5 0%, #3b82c7 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: $border-radius $border-radius 0 0;
+        
+        .q-icon {
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .text-h6 {
+            font-weight: 600;
+            font-size: 1.25rem;
+        }
+        
+        .q-btn {
+            color: rgba(255, 255, 255, 0.8);
+            
+            &:hover {
+                background-color: rgba(255, 255, 255, 0.1);
+                color: white;
+            }
+        }
+    }
+
+    .q-card-section {
+        &:not(.card-header) {
+            background: transparent;
+            
+            .body--dark & {
+                background: transparent;
+            }
+        }
+    }
+
+    // Slider styling
+    .slider-label {
+        font-weight: 500;
+        color: #374151;
+        margin-bottom: 0.5rem;
+        
+        .body--dark & {
+            color: #d1d5db;
+        }
+    }
+
+    :deep(.q-slider) {
+        .q-slider__track-container {
+            .q-slider__track {
+                background: rgba(46, 116, 181, 0.2);
+            }
+            
+            .q-slider__selection {
+                background: #2e74b5;
+            }
+        }
+        
+        .q-slider__thumb {
+            background: #2e74b5;
+            border: 2px solid white;
+            box-shadow: 0 2px 8px rgba(46, 116, 181, 0.4);
+        }
+    }
+
+    // Input field styling
+    :deep(.q-field) {
+        .q-field__control {
+            border-radius: 8px;
+            
+            &:before {
+                border-color: rgba(0, 0, 0, 0.12);
+            }
+            
+            &:hover:before {
+                border-color: #2e74b5;
+            }
+        }
+        
+        &.q-field--outlined {
+            .q-field__control {
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+                transition: all 0.2s ease;
+                
+                &:hover {
+                    box-shadow: 0 2px 6px rgba(46, 116, 181, 0.1);
+                }
+            }
+        }
+        
+        &.q-field--focused {
+            .q-field__control {
+                box-shadow: 0 0 0 2px rgba(46, 116, 181, 0.2);
+            }
+        }
+        
+        .body--dark & {
+            .q-field__control {
+                background-color: rgba(255, 255, 255, 0.05);
+                border-color: rgba(255, 255, 255, 0.12);
+                
+                &:hover {
+                    border-color: #2e74b5;
+                    background-color: rgba(255, 255, 255, 0.08);
+                }
+            }
+        }
+    }
+
+    // Select dropdown styling
+    :deep(.q-menu) {
+        border-radius: 8px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        
+        .body--dark & {
+            background-color: #374151 !important;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+            
+            .q-item {
+                color: #d1d5db;
+                
+                &:hover,
+                &.q-item--active {
+                    background-color: rgba(46, 116, 181, 0.2) !important;
+                    color: white;
+                }
+            }
+        }
+    }
+
+    // Button styling
+    .q-btn {
+        border-radius: 8px;
+        font-weight: 500;
+        text-transform: none;
+        
+        &.q-btn--unelevated {
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            
+            &:hover {
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+                transform: translateY(-1px);
+            }
+            
+            .body--dark & {
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+                
+                &:hover {
+                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+                }
+            }
+        }
+        
+        &.q-btn--outline {
+            border-width: 2px;
+            
+            &:hover {
+                background-color: rgba(46, 116, 181, 0.1);
+            }
+        }
+    }
+
+    // Enhanced table styling
+    :deep(.q-table) {
+        border-radius: 8px;
+        overflow: hidden;
+        
+        .q-table__top {
+            padding: 1rem;
+            background: linear-gradient(135deg, rgba(46, 116, 181, 0.03) 0%, rgba(46, 116, 181, 0.01) 100%);
+            
+            .body--dark & {
+                background: rgba(255, 255, 255, 0.02);
+            }
+        }
+        
+        .q-table__container {
+            border-radius: 0 0 8px 8px;
+        }
+        
+        thead {
+            th {
+                background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+                color: #374151;
+                font-weight: 600;
+                border-bottom: 2px solid #e5e7eb;
+                
+                .body--dark & {
+                    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.05) 100%);
+                    color: #d1d5db;
+                    border-bottom-color: rgba(255, 255, 255, 0.1);
+                }
+            }
+        }
+        
+        tbody {
+            tr {
+                border-bottom: 1px solid #f3f4f6;
+                
+                &:hover {
+                    background-color: rgba(46, 116, 181, 0.04);
+                }
+                
+                .body--dark & {
+                    border-bottom-color: rgba(255, 255, 255, 0.05);
+                    
+                    &:hover {
+                        background-color: rgba(255, 255, 255, 0.03);
+                    }
+                }
+            }
+        }
+    }
+
+    // Card improvements
+    .q-card {
+        border-radius: $border-radius;
+        box-shadow: $card-shadow;
+        border: 1px solid rgba(0, 0, 0, 0.04);
+        
+        .body--dark & {
+            background-color: rgba(255, 255, 255, 0.02);
+            border-color: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+    }
+
+    // Banner styling
+    .q-banner {
+        border-radius: $border-radius;
+        margin-bottom: 1rem;
+    }
+
+    // Responsive design
+    @media (max-width: 768px) {
+        .card-header {
+            padding: 1rem;
+            
+            .text-h6 {
+                font-size: 1.1rem;
+            }
+        }
+        
+        .q-card-section {
+            padding: 1rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .card-header {
+            padding: 0.75rem;
+        }
+        
+        .q-card-section {
+            padding: 0.75rem;
+        }
     }
 }
 
-.attribute-value {
-    // Global styles for attribute values (like overall badges) are in app.scss
-}
-.fifa-stat-value {
-    // Specifics for FIFA stats if needed
-}
-
-.q-banner {
-    border-radius: $generic-border-radius;
-}
-
-.text-subtitle2 {
-    font-size: 0.875rem;
-    font-weight: 400;
-    line-height: 1.25rem;
-    letter-spacing: 0.0178571429em;
-}
-.text-caption.slider-label {
-    padding-left: 4px; // Match PlayerFilters.vue
-    margin-bottom: 0px; // Match PlayerFilters.vue
-    line-height: 1.2; // Match PlayerFilters.vue
-}
-.q-slider.q-px-sm {
-    // Match PlayerFilters.vue
-    padding-left: 4px;
-    padding-right: 4px;
-}
-
-:deep(.q-menu) {
-    .body--dark & {
-        background-color: $grey-8 !important;
-        color: $grey-3 !important;
-        .q-item--active,
-        .q-item.q-router-link--active {
-            background-color: rgba(255, 255, 255, 0.1) !important;
+// Filter item container styling
+.filter-item-container {
+    .slider-label {
+        font-weight: 500;
+        color: #374151;
+        margin-bottom: 0.5rem;
+        
+        .body--dark & {
+            color: #d1d5db;
         }
-        .q-item:hover {
-            background-color: rgba(255, 255, 255, 0.05) !important;
+    }
+}
+
+// Results section styling
+.results-section {
+    .q-card {
+        border-radius: $border-radius;
+        box-shadow: $card-shadow;
+        
+        .body--dark & {
+            background-color: rgba(255, 255, 255, 0.02);
         }
     }
 }

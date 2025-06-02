@@ -9,15 +9,9 @@
     >
         <q-card
             class="wonderkids-dialog"
-            :class="qInstance.dark.isActive ? 'bg-dark' : 'bg-grey-1'"
         >
             <q-card-section
-                class="row items-center q-pb-none"
-                :class="
-                    qInstance.dark.isActive
-                        ? 'bg-grey-10 text-white'
-                        : 'bg-primary text-white'
-                "
+                class="row items-center q-pb-none card-header"
             >
                 <q-icon name="stars" size="md" class="q-mr-sm" />
                 <div class="text-h6">
@@ -95,7 +89,6 @@
                     
                     <q-card
                         class="wonderkids-table-container"
-                        :class="qInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'"
                     >
                         <q-card-section>
                             <PlayerDataTable
@@ -289,31 +282,266 @@ export default defineComponent({
 
 <style lang="scss" scoped>
 .wonderkids-dialog {
+    border-radius: $border-radius;
+    box-shadow: $card-shadow;
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    
+    .body--dark & {
+        background-color: #1e293b !important;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, #2e74b5 0%, #3b82c7 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: $border-radius $border-radius 0 0;
+        
+        .q-icon {
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .text-h6 {
+            font-weight: 600;
+            font-size: 1.25rem;
+        }
+        
+        .q-btn {
+            color: rgba(255, 255, 255, 0.8);
+            
+            &:hover {
+                background-color: rgba(255, 255, 255, 0.1);
+                color: white;
+            }
+        }
+    }
+
+    .q-card-section {
+        &:not(.card-header) {
+            background: transparent;
+            
+            .body--dark & {
+                background: transparent;
+            }
+        }
+    }
+
+    // Input field styling
+    :deep(.q-field) {
+        .q-field__control {
+            border-radius: 8px;
+            
+            &:before {
+                border-color: rgba(0, 0, 0, 0.12);
+            }
+            
+            &:hover:before {
+                border-color: #2e74b5;
+            }
+        }
+        
+        &.q-field--outlined {
+            .q-field__control {
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+                transition: all 0.2s ease;
+                
+                &:hover {
+                    box-shadow: 0 2px 6px rgba(46, 116, 181, 0.1);
+                }
+            }
+        }
+        
+        &.q-field--focused {
+            .q-field__control {
+                box-shadow: 0 0 0 2px rgba(46, 116, 181, 0.2);
+            }
+        }
+        
+        .body--dark & {
+            .q-field__control {
+                background-color: rgba(255, 255, 255, 0.05);
+                border-color: rgba(255, 255, 255, 0.12);
+                
+                &:hover {
+                    border-color: #2e74b5;
+                    background-color: rgba(255, 255, 255, 0.08);
+                }
+            }
+        }
+    }
+
+    // Separator styling
+    .q-separator {
+        background-color: rgba(0, 0, 0, 0.08);
+        
+        .body--dark & {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+    }
+
+    // Loading state styling
+    .loading-state {
+        .q-spinner-dots {
+            color: #2e74b5;
+        }
+        
+        .text-caption {
+            color: #6b7280;
+            
+            .body--dark & {
+                color: #9ca3af;
+            }
+        }
+    }
+
+    // Table container styling
     .wonderkids-table-container {
-        border: none;
-        box-shadow: none;
+        border-radius: $border-radius;
+        box-shadow: $card-shadow;
+        border: 1px solid rgba(0, 0, 0, 0.04);
+        
+        .body--dark & {
+            background-color: rgba(255, 255, 255, 0.02);
+            border-color: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
         
         :deep(.q-table) {
-            // Override the hardcoded height in PlayerDataTable to allow full height
-            height: auto !important;
-            max-height: calc(100vh - 350px); // Adjusted for removed tabs
+            border-radius: $border-radius;
+            overflow: hidden;
             
-            // Ensure virtual scroll works properly with dynamic height
+            .q-table__top {
+                padding: 1rem;
+                background: linear-gradient(135deg, rgba(46, 116, 181, 0.03) 0%, rgba(46, 116, 181, 0.01) 100%);
+                
+                .body--dark & {
+                    background: rgba(255, 255, 255, 0.02);
+                }
+            }
+            
+            .q-table__container {
+                border-radius: 0 0 $border-radius $border-radius;
+            }
+            
+            thead {
+                th {
+                    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+                    color: #374151;
+                    font-weight: 600;
+                    border-bottom: 2px solid #e5e7eb;
+                    
+                    .body--dark & {
+                        background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.05) 100%);
+                        color: #d1d5db;
+                        border-bottom-color: rgba(255, 255, 255, 0.1);
+                    }
+                }
+            }
+            
+            tbody {
+                tr {
+                    border-bottom: 1px solid #f3f4f6;
+                    
+                    &:hover {
+                        background-color: rgba(46, 116, 181, 0.04);
+                    }
+                    
+                    .body--dark & {
+                        border-bottom-color: rgba(255, 255, 255, 0.05);
+                        
+                        &:hover {
+                            background-color: rgba(255, 255, 255, 0.03);
+                        }
+                    }
+                }
+            }
+            
+            // Auto height management
+            height: auto !important;
+            max-height: calc(100vh - 350px);
+            
             .q-table__middle {
                 max-height: calc(100vh - 350px);
             }
         }
     }
-}
 
-.text-subtitle1 {
-    font-weight: 500;
-}
+    // Subtitle styling
+    .text-subtitle1 {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 1rem;
+        
+        .body--dark & {
+            color: #d1d5db;
+        }
+        
+        .text-caption {
+            font-weight: 400;
+            color: #6b7280;
+            
+            .body--dark & {
+                color: #9ca3af;
+            }
+        }
+    }
 
-// Ensure the dialog content area has proper spacing
-.q-card-section {
-    &:last-child {
-        padding-bottom: 24px;
+    // Responsive design
+    @media (max-width: 768px) {
+        .card-header {
+            padding: 1rem;
+            
+            .text-h6 {
+                font-size: 1.1rem;
+            }
+        }
+        
+        .q-card-section {
+            padding: 1rem;
+            
+            &:last-child {
+                padding-bottom: 1rem;
+            }
+        }
+        
+        .wonderkids-table-container {
+            :deep(.q-table) {
+                max-height: calc(100vh - 300px);
+                
+                .q-table__middle {
+                    max-height: calc(100vh - 300px);
+                }
+            }
+        }
+    }
+
+    @media (max-width: 480px) {
+        .card-header {
+            padding: 0.75rem;
+        }
+        
+        .q-card-section {
+            padding: 0.75rem;
+            
+            &:last-child {
+                padding-bottom: 0.75rem;
+            }
+        }
+        
+        .text-subtitle1 {
+            font-size: 1rem;
+        }
+        
+        .wonderkids-table-container {
+            :deep(.q-table) {
+                max-height: calc(100vh - 250px);
+                
+                .q-table__middle {
+                    max-height: calc(100vh - 250px);
+                }
+            }
+        }
     }
 }
 </style> 

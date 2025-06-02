@@ -9,15 +9,9 @@
     >
         <q-card
             class="bargain-hunter-dialog"
-            :class="qInstance.dark.isActive ? 'bg-dark' : 'bg-grey-1'"
         >
             <q-card-section
-                class="row items-center q-pb-none"
-                :class="
-                    qInstance.dark.isActive
-                        ? 'bg-grey-10 text-white'
-                        : 'bg-primary text-white'
-                "
+                class="row items-center q-pb-none card-header"
             >
                 <q-icon name="shopping_cart" size="md" class="q-mr-sm" />
                 <div class="text-h6">
@@ -966,87 +960,223 @@ export default defineComponent({
 
 <style lang="scss" scoped>
 .bargain-hunter-dialog {
-    .chart-container {
-        height: 500px;
-        position: relative;
+    border-radius: $border-radius;
+    box-shadow: $card-shadow;
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    
+    .body--dark & {
+        background-color: #1e293b !important;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, #2e74b5 0%, #3b82c7 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: $border-radius $border-radius 0 0;
         
-        .chart {
-            width: 100% !important;
-            height: 100% !important;
+        .q-icon {
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .text-h6 {
+            font-weight: 600;
+            font-size: 1.25rem;
+        }
+        
+        .q-btn {
+            color: rgba(255, 255, 255, 0.8);
+            
+            &:hover {
+                background-color: rgba(255, 255, 255, 0.1);
+                color: white;
+            }
         }
     }
-    
-    // Slider styling matching PlayerFilters
+
+    .q-card-section {
+        &:not(.card-header) {
+            background: transparent;
+            
+            .body--dark & {
+                background: transparent;
+            }
+        }
+    }
+
+    // Slider styling
     .slider-label {
         font-weight: 500;
-        font-size: 0.75rem;
-        line-height: 1.2;
-        margin-bottom: 4px;
+        color: #374151;
+        margin-bottom: 0.5rem;
+        
+        .body--dark & {
+            color: #d1d5db;
+        }
     }
-    
+
+    :deep(.q-slider) {
+        .q-slider__track-container {
+            .q-slider__track {
+                background: rgba(46, 116, 181, 0.2);
+            }
+            
+            .q-slider__selection {
+                background: #2e74b5;
+            }
+        }
+        
+        .q-slider__thumb {
+            background: #2e74b5;
+            border: 2px solid white;
+            box-shadow: 0 2px 8px rgba(46, 116, 181, 0.4);
+        }
+    }
+
+    :deep(.q-range) {
+        .q-slider__track-container {
+            .q-slider__track {
+                background: rgba(46, 116, 181, 0.2);
+            }
+            
+            .q-slider__selection {
+                background: #2e74b5;
+            }
+        }
+        
+        .q-slider__thumb {
+            background: #2e74b5;
+            border: 2px solid white;
+            box-shadow: 0 2px 8px rgba(46, 116, 181, 0.4);
+        }
+    }
+
+    // Button styling
+    .q-btn {
+        border-radius: 8px;
+        font-weight: 500;
+        text-transform: none;
+        
+        &.q-btn--unelevated {
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            
+            &:hover {
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+                transform: translateY(-1px);
+            }
+            
+            .body--dark & {
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+                
+                &:hover {
+                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+                }
+            }
+        }
+        
+        &.q-btn--outline {
+            border-width: 2px;
+            
+            &:hover {
+                background-color: rgba(46, 116, 181, 0.1);
+            }
+        }
+    }
+
+    // Input field styling
+    :deep(.q-field) {
+        .q-field__control {
+            border-radius: 8px;
+            
+            &:before {
+                border-color: rgba(0, 0, 0, 0.12);
+            }
+            
+            &:hover:before {
+                border-color: #2e74b5;
+            }
+        }
+        
+        &.q-field--outlined {
+            .q-field__control {
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+                transition: all 0.2s ease;
+                
+                &:hover {
+                    box-shadow: 0 2px 6px rgba(46, 116, 181, 0.1);
+                }
+            }
+        }
+        
+        &.q-field--focused {
+            .q-field__control {
+                box-shadow: 0 0 0 2px rgba(46, 116, 181, 0.2);
+            }
+        }
+        
+        .body--dark & {
+            .q-field__control {
+                background-color: rgba(255, 255, 255, 0.05);
+                border-color: rgba(255, 255, 255, 0.12);
+                
+                &:hover {
+                    border-color: #2e74b5;
+                    background-color: rgba(255, 255, 255, 0.08);
+                }
+            }
+        }
+    }
+
+    // Badge styling
     .stat-value-badge {
-        padding: 2px 6px;
+        padding: 2px 8px;
         border-radius: 4px;
-        font-size: 0.7rem;
+        font-size: 0.75rem;
         font-weight: 600;
-        display: inline-block;
-        min-width: 24px;
-        text-align: center;
+        
+        &.rating-tier-6 {
+            background-color: #10b981;
+            color: white;
+        }
+        
+        &.rating-tier-5 {
+            background-color: #059669;
+            color: white;
+        }
+        
+        &.rating-tier-4 {
+            background-color: #f59e0b;
+            color: white;
+        }
+        
+        &.rating-tier-3 {
+            background-color: #ef4444;
+            color: white;
+        }
+        
+        &.rating-tier-2 {
+            background-color: #dc2626;
+            color: white;
+        }
+        
+        &.rating-tier-1 {
+            background-color: #b91c1c;
+            color: white;
+        }
+        
+        &.rating-na {
+            background-color: #6b7280;
+            color: white;
+        }
     }
-    
-    // Rating tier classes matching PlayerFilters
-    .rating-tier-6 {
-        background-color: #4caf50;
-        color: white;
-    }
-    
-    .rating-tier-5 {
-        background-color: #8bc34a;
-        color: white;
-    }
-    
-    .rating-tier-4 {
-        background-color: #cddc39;
-        color: #333;
-    }
-    
-    .rating-tier-3 {
-        background-color: #ffeb3b;
-        color: #333;
-    }
-    
-    .rating-tier-2 {
-        background-color: #ff9800;
-        color: white;
-    }
-    
-    .rating-tier-1 {
-        background-color: #f44336;
-        color: white;
-    }
-    
-    .rating-na {
-        background-color: #9e9e9e;
-        color: white;
-    }
-    
-    // Slider component styling
-    .q-slider.q-px-sm {
-        padding: 0 12px;
-        margin-top: 8px;
-    }
-    
-    .q-range.q-px-sm {
-        padding: 0 12px;
-        margin-top: 8px;
-    }
-    
-    // Value tier button styling
+
+    // Value tier buttons
     .value-tier-buttons {
         .q-btn {
-            transition: all 0.2s ease;
             font-weight: 500;
             text-transform: none;
+            border-radius: 6px;
             
             &:not(.q-btn--outline) {
                 box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -1062,159 +1192,119 @@ export default defineComponent({
             }
         }
     }
-    
-    // Improved input styling
-    :deep(.q-field) {
-        .q-field__control {
-            border-radius: 8px;
-        }
-        
-        &.q-field--outlined .q-field__control {
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-            transition: box-shadow 0.2s ease;
-            
-            &:hover {
-                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-            }
-        }
-        
-        &.q-field--focused .q-field__control {
-            box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
-        }
-    }
-    
-    // Card styling improvements
-    .q-card {
-        border-radius: 12px;
-        transition: box-shadow 0.2s ease;
-        
-        &[flat] {
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-            
-            &:hover {
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            }
-        }
-        
-        &[bordered] {
-            border: 1px solid rgba(0, 0, 0, 0.05);
-        }
-    }
-    
-    // Search button styling
+
+    // Search button
     .search-button {
         .q-btn {
             border-radius: 8px;
             font-weight: 600;
             text-transform: none;
             padding: 12px 24px;
-            box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
+            background: linear-gradient(135deg, #2e74b5 0%, #3b82c7 100%);
             
             &:hover {
-                box-shadow: 0 4px 12px rgba(25, 118, 210, 0.4);
+                background: linear-gradient(135deg, #1e5a9b 0%, #2e74b5 100%);
                 transform: translateY(-1px);
             }
         }
     }
-    
-    // Chip improvements
-    .q-chip {
-        border-radius: 6px;
-        font-weight: 500;
-    }
-    
-    // Expansion item styling
-    :deep(.q-expansion-item) {
+
+    // Enhanced table styling
+    :deep(.q-table) {
         border-radius: 8px;
+        overflow: hidden;
         
-        .q-expansion-item__container {
-            border-radius: 8px;
-        }
-        
-        .q-expansion-item__toggle {
-            padding: 16px;
-        }
-    }
-}
-
-// Loading spinner improvements
-.loading-container {
-    .q-spinner-dots {
-        color: var(--q-primary);
-    }
-    
-    .loading-text {
-        color: var(--q-primary);
-        font-weight: 500;
-    }
-}
-
-// Enhanced responsive design
-@media (max-width: 1024px) {
-    .bargain-hunter-dialog {
-        .chart-container {
-            height: 450px;
-        }
-    }
-}
-
-@media (max-width: 768px) {
-    .bargain-hunter-dialog {
-        .chart-container {
-            height: 400px;
+        .q-table__top {
+            padding: 1rem;
+            background: linear-gradient(135deg, rgba(46, 116, 181, 0.03) 0%, rgba(46, 116, 181, 0.01) 100%);
+            
+            .body--dark & {
+                background: rgba(255, 255, 255, 0.02);
+            }
         }
         
-        // Stack value tier buttons on mobile
-        .value-tier-buttons {
-            .row {
-                flex-direction: column;
-                gap: 8px;
+        .q-table__container {
+            border-radius: 0 0 8px 8px;
+        }
+        
+        thead {
+            th {
+                background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+                color: #374151;
+                font-weight: 600;
+                border-bottom: 2px solid #e5e7eb;
                 
-                .col-auto {
-                    width: 100%;
+                .body--dark & {
+                    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.05) 100%);
+                    color: #d1d5db;
+                    border-bottom-color: rgba(255, 255, 255, 0.1);
+                }
+            }
+        }
+        
+        tbody {
+            tr {
+                border-bottom: 1px solid #f3f4f6;
+                
+                &:hover {
+                    background-color: rgba(46, 116, 181, 0.04);
+                }
+                
+                .body--dark & {
+                    border-bottom-color: rgba(255, 255, 255, 0.05);
                     
-                    .q-btn {
-                        width: 100%;
+                    &:hover {
+                        background-color: rgba(255, 255, 255, 0.03);
                     }
                 }
             }
         }
     }
-}
 
-@media (max-width: 480px) {
-    .bargain-hunter-dialog {
-        .chart-container {
-            height: 300px;
-        }
+    // Card improvements
+    .q-card {
+        border-radius: $border-radius;
+        box-shadow: $card-shadow;
+        border: 1px solid rgba(0, 0, 0, 0.04);
         
-        // Adjust padding for mobile
-        .q-card-section {
-            padding: 16px 12px;
+        .body--dark & {
+            background-color: rgba(255, 255, 255, 0.02);
+            border-color: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
     }
-}
 
-// Dark mode specific adjustments
-.body--dark {
-    .bargain-hunter-dialog {
-        .q-card[flat] {
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    // Responsive design
+    @media (max-width: 768px) {
+        .card-header {
+            padding: 1rem;
             
-            &:hover {
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+            .text-h6 {
+                font-size: 1.1rem;
             }
         }
         
-        .q-card[bordered] {
-            border-color: rgba(255, 255, 255, 0.1);
+        .value-tier-buttons {
+            .q-btn {
+                font-size: 0.75rem;
+                padding: 4px 8px;
+            }
+        }
+    }
+
+    @media (max-width: 480px) {
+        .q-card-section {
+            padding: 12px;
         }
         
-        :deep(.q-field--outlined .q-field__control) {
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-            
-            &:hover {
-                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        .value-tier-buttons {
+            .col-auto {
+                width: 100%;
+                
+                .q-btn {
+                    width: 100%;
+                    margin-bottom: 4px;
+                }
             }
         }
     }

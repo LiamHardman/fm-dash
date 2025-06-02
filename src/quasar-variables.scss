@@ -36,3 +36,9 @@ $warning: #ffc107; // Your custom warning
 // $grey-4: #bdbdbd; // Example if you needed to define it, but Quasar provides these
 
 $typography-font-family: "Inter", sans-serif !default;
+
+// Custom design system variables
+$border-radius: 12px;
+$border-radius-small: 8px;
+$card-shadow: 0 4px 6px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.06);
+$card-shadow-hover: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
