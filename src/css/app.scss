@@ -14,6 +14,22 @@ body.body--dark {
     min-height: 100vh;
 }
 
+/* Additional dark mode body background enforcement for dialogs */
+.body--dark,
+html.body--dark,
+body.body--dark.q-body--dialog,
+.body--dark.q-body--dialog {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+    min-height: 100vh;
+}
+
+/* Ensure all Quasar body classes maintain dark background */
+.q-body--dark,
+body.q-body--dark,
+html.q-body--dark {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+}
+
 // Global page background for both light and dark modes
 .q-page {
     background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);

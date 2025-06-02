@@ -1,5 +1,13 @@
 <template>
-    <q-dialog :model-value="show" @hide="$emit('close')">
+    <q-dialog 
+        :model-value="show" 
+        @hide="$emit('close')"
+        :class="qInstance.dark.isActive ? 'dark-dialog' : 'light-dialog'"
+        backdrop-filter="blur(3px)"
+        :backdrop-color="qInstance.dark.isActive ? 'rgba(0, 0, 0, 0.8)' : 'rgba(0, 0, 0, 0.5)'"
+        transition-show="scale"
+        transition-hide="scale"
+    >
         <q-card
             class="player-detail-dialog-card modern-dialog-card"
             :class="
@@ -7,7 +15,7 @@
                     ? 'bg-dark text-white'
                     : 'bg-white text-dark'
             "
-            style="max-width: 1300px; width: 95vw; max-height: 90vh"
+            style="max-width: 1400px; width: 95vw; max-height: 90vh"
         >
             <q-bar
                 class="modern-dialog-header"
@@ -40,9 +48,9 @@
             </q-bar>
 
             <q-card-section v-if="player" class="scroll main-content-section">
-                <div class="row q-col-gutter-md">
+                <div class="row q-col-gutter-lg">
                     <div class="col-12 col-md-4">
-                        <div class="row q-col-gutter-xs q-mb-md">
+                        <div class="row q-col-gutter-sm q-mb-md">
                             <div class="col-6">
                                 <q-select
                                     v-if="performanceComparisonOptions.length > 0"
@@ -54,6 +62,7 @@
                                     outlined
                                     emit-value
                                     map-options
+                                    class="modern-select"
                                     :label-color="
                                         qInstance.dark.isActive ? 'grey-4' : ''
                                     "
@@ -81,6 +90,7 @@
                                     outlined
                                     emit-value
                                     map-options
+                                    class="modern-select"
                                     :label-color="
                                         qInstance.dark.isActive ? 'grey-4' : ''
                                     "
@@ -97,157 +107,46 @@
                         <q-card
                             flat
                             bordered
-                            :class="[
-                                qInstance.dark.isActive
-                                    ? 'bg-grey-9'
-                                    : 'bg-grey-1',
-                                'rounded-borders performance-percentiles-card-left modern-stats-card',
-                            ]"
+                            class="performance-percentiles-card modern-stats-card"
                         >
-                            <div
-                                v-if="hasAnyPerformanceData"
-                                class="percentile-content-area"
+                            <q-card-section
+                                class="performance-card-header"
                             >
-                                <div v-if="averageRatingData" class="q-mb-sm">
-                                    <q-item
-                                        class="attribute-list-item performance-stat-item"
-                                    >
-                                        <q-item-section
-                                            class="stat-name-section"
-                                        >
-                                            <q-item-label
-                                                lines="1"
-                                                class="attribute-name-label"
-                                                :title="averageRatingData.name"
-                                            >
-                                                {{ averageRatingData.name }}
-                                            </q-item-label>
-                                        </q-item-section>
-                                        <q-item-section
-                                            class="stat-bar-section"
-                                        >
-                                            <div class="stat-bar-container">
-                                                <div class="stat-bar-track">
-                                                    <div
-                                                        class="stat-bar-fill"
-                                                        :style="
-                                                            getBarFillStyle(
-                                                                averageRatingData.percentile,
-                                                            )
-                                                        "
-                                                    ></div>
-                                                </div>
-                                                <span
-                                                    v-if="
-                                                        averageRatingData.percentile !==
-                                                            null &&
-                                                        averageRatingData.percentile >=
-                                                            0
-                                                    "
-                                                    class="stat-percentile-text"
-                                                >
-                                                    {{
-                                                        Math.round(
-                                                            averageRatingData.percentile,
-                                                        )
-                                                    }}
-                                                </span>
-                                                <span
-                                                    v-else
-                                                    class="stat-percentile-text text-caption text-grey-6"
-                                                    >N/A</span
-                                                >
-                                            </div>
-                                        </q-item-section>
-                                        <q-item-section
-                                            side
-                                            class="stat-value-section"
-                                        >
-                                            <span
-                                                class="attribute-value performance-stat-actual-value"
-                                            >
-                                                {{
-                                                    averageRatingData.value !==
-                                                    "-"
-                                                        ? averageRatingData.value
-                                                        : "N/A"
-                                                }}
-                                            </span>
-                                        </q-item-section>
-                                    </q-item>
+                                <div class="performance-header-title">
+                                    <q-icon name="analytics" class="q-mr-sm" />
+                                    Performance Analysis
                                 </div>
-
-                                <hr
-                                    v-if="
-                                        averageRatingData &&
-                                        Object.keys(categorizedPerformanceStats)
-                                            .length > 0
-                                    "
-                                    class="q-my-sm"
-                                />
-
-                                <div
-                                    v-for="(
-                                        stats, category, index
-                                    ) in categorizedPerformanceStats"
-                                    :key="category"
-                                >
-                                    <hr
-                                        v-if="
-                                            index > 0 ||
-                                            (averageRatingData && index === 0)
-                                        "
-                                        class="q-my-sm"
-                                    />
-                                    <q-list
-                                        separator
-                                        dense
-                                        class="attribute-list performance-stats-list q-pt-xs"
-                                    >
-                                        <q-item
-                                            v-for="statItem in stats"
-                                            :key="statItem.key"
-                                            class="attribute-list-item performance-stat-item"
-                                        >
-                                            <q-item-section
-                                                class="stat-name-section"
-                                            >
+                            </q-card-section>
+                            
+                            <q-card-section class="q-pa-md">
+                                <div v-if="hasAnyPerformanceData" class="percentile-content-area">
+                                    <div v-if="averageRatingData" class="q-mb-md">
+                                        <q-item class="performance-stat-item modern-stat-item average-rating-item">
+                                            <q-item-section class="stat-name-section">
                                                 <q-item-label
                                                     lines="1"
-                                                    class="attribute-name-label"
-                                                    :title="statItem.name"
+                                                    class="stat-name-label"
+                                                    :title="averageRatingData.name"
                                                 >
-                                                    {{ statItem.name }}
+                                                    {{ averageRatingData.name }}
                                                 </q-item-label>
                                             </q-item-section>
-                                            <q-item-section
-                                                class="stat-bar-section"
-                                            >
+                                            <q-item-section class="stat-bar-section">
                                                 <div class="stat-bar-container">
                                                     <div class="stat-bar-track">
                                                         <div
                                                             class="stat-bar-fill"
-                                                            :style="
-                                                                getBarFillStyle(
-                                                                    statItem.percentile,
-                                                                )
-                                                            "
+                                                            :style="getBarFillStyle(averageRatingData.percentile)"
                                                         ></div>
                                                     </div>
                                                     <span
                                                         v-if="
-                                                            statItem.percentile !==
-                                                                null &&
-                                                            statItem.percentile >=
-                                                                0
+                                                            averageRatingData.percentile !== null &&
+                                                            averageRatingData.percentile >= 0
                                                         "
                                                         class="stat-percentile-text"
                                                     >
-                                                        {{
-                                                            Math.round(
-                                                                statItem.percentile,
-                                                            )
-                                                        }}
+                                                        {{ Math.round(averageRatingData.percentile) }}
                                                     </span>
                                                     <span
                                                         v-else
@@ -256,36 +155,90 @@
                                                     >
                                                 </div>
                                             </q-item-section>
-                                            <q-item-section
-                                                side
-                                                class="stat-value-section"
-                                            >
-                                                <span
-                                                    class="attribute-value performance-stat-actual-value"
-                                                >
-                                                    {{
-                                                        statItem.value !== "-"
-                                                            ? statItem.value
-                                                            : "N/A"
-                                                    }}
+                                            <q-item-section side class="stat-value-section">
+                                                <span class="performance-stat-value">
+                                                    {{ averageRatingData.value !== "-" ? averageRatingData.value : "N/A" }}
                                                 </span>
                                             </q-item-section>
                                         </q-item>
-                                    </q-list>
+                                    </div>
+
+                                    <q-separator
+                                        v-if="averageRatingData && Object.keys(categorizedPerformanceStats).length > 0"
+                                        class="q-my-md performance-separator"
+                                    />
+
+                                    <div
+                                        v-for="(stats, category, index) in categorizedPerformanceStats"
+                                        :key="category"
+                                        class="performance-category"
+                                    >
+                                        <div class="performance-category-header q-mb-sm">
+                                            <span class="performance-category-title">{{ category }}</span>
+                                        </div>
+                                        
+                                        <q-list separator dense class="performance-stats-list">
+                                            <q-item
+                                                v-for="statItem in stats"
+                                                :key="statItem.key"
+                                                class="performance-stat-item modern-stat-item"
+                                            >
+                                                <q-item-section class="stat-name-section">
+                                                    <q-item-label
+                                                        lines="1"
+                                                        class="stat-name-label"
+                                                        :title="statItem.name"
+                                                    >
+                                                        {{ statItem.name }}
+                                                    </q-item-label>
+                                                </q-item-section>
+                                                <q-item-section class="stat-bar-section">
+                                                    <div class="stat-bar-container">
+                                                        <div class="stat-bar-track">
+                                                            <div
+                                                                class="stat-bar-fill"
+                                                                :style="getBarFillStyle(statItem.percentile)"
+                                                            ></div>
+                                                        </div>
+                                                        <span
+                                                            v-if="
+                                                                statItem.percentile !== null &&
+                                                                statItem.percentile >= 0
+                                                            "
+                                                            class="stat-percentile-text"
+                                                        >
+                                                            {{ Math.round(statItem.percentile) }}
+                                                        </span>
+                                                        <span
+                                                            v-else
+                                                            class="stat-percentile-text text-caption text-grey-6"
+                                                            >N/A</span
+                                                        >
+                                                    </div>
+                                                </q-item-section>
+                                                <q-item-section side class="stat-value-section">
+                                                    <span class="performance-stat-value">
+                                                        {{ statItem.value !== "-" ? statItem.value : "N/A" }}
+                                                    </span>
+                                                </q-item-section>
+                                            </q-item>
+                                        </q-list>
+                                        
+                                        <q-separator
+                                            v-if="index < Object.keys(categorizedPerformanceStats).length - 1"
+                                            class="q-my-md performance-separator"
+                                        />
+                                    </div>
                                 </div>
-                            </div>
-                            <q-banner
-                                v-else
-                                class="q-mt-md text-center"
-                                :class="
-                                    qInstance.dark.isActive
-                                        ? 'bg-grey-8 text-grey-5'
-                                        : 'bg-grey-2 text-grey-7'
-                                "
-                            >
-                                No performance data available for the selected
-                                comparison group or this player.
-                            </q-banner>
+                                
+                                <div
+                                    v-else
+                                    class="no-performance-data"
+                                >
+                                    <q-icon name="info_outline" size="sm" class="q-mr-sm" />
+                                    <span>No performance data available for the selected comparison group or this player.</span>
+                                </div>
+                            </q-card-section>
                         </q-card>
                     </div>
 
@@ -293,339 +246,166 @@
                         <q-card
                             flat
                             bordered
-                            :class="
-                                qInstance.dark.isActive
-                                    ? 'bg-grey-9'
-                                    : 'bg-grey-1'
-                            "
-                            class="q-mb-md player-profile-card-redesigned modern-profile-card"
+                            class="q-mb-lg player-profile-card modern-profile-card"
                         >
-                            <q-card-section
-                                class="q-pa-md player-profile-content"
-                            >
+                            <q-card-section class="player-profile-content">
                                 <div class="profile-header-section">
-                                    <div class="player-identity-extended">
-                                        <div class="row items-center q-mb-xs">
+                                    <div class="player-identity-section">
+                                        <div class="row items-center q-mb-sm">
                                             <!-- Player Face Image -->
-                                            <div class="col-auto q-mr-sm player-face-container">
+                                            <div class="col-auto q-mr-md player-face-container">
                                                 <img
                                                     v-if="playerFaceImageUrl && !faceImageLoadError"
                                                     :src="playerFaceImageUrl"
                                                     :alt="`${player.name || 'Player'} face`"
-                                                    width="60"
-                                                    height="60"
+                                                    width="80"
+                                                    height="80"
                                                     class="player-face-image"
                                                     @error="handleFaceImageError"
                                                     @load="handleFaceImageLoad"
                                                 />
                                                 <q-avatar
                                                     v-else
-                                                    size="60px"
+                                                    size="80px"
                                                     :color="qInstance.dark.isActive ? 'grey-7' : 'grey-4'"
                                                     :text-color="qInstance.dark.isActive ? 'grey-4' : 'grey-7'"
                                                     class="player-face-placeholder"
                                                 >
-                                                    <q-icon name="person" size="24px" />
+                                                    <q-icon name="person" size="32px" />
                                                 </q-avatar>
                                             </div>
-                                            <div
-                                                class="col-auto q-mr-sm player-flag-container-redesigned"
-                                            >
+                                            
+                                            <div class="col-auto q-mr-md player-flag-container">
                                                 <img
-                                                    v-if="
-                                                        player.nationality_iso &&
-                                                        !flagLoadError
-                                                    "
+                                                    v-if="player.nationality_iso && !flagLoadError"
                                                     :src="`https://flagcdn.com/w40/${player.nationality_iso.toLowerCase()}.png`"
-                                                    :alt="
-                                                        player.nationality ||
-                                                        'Flag'
-                                                    "
-                                                    width="36"
-                                                    height="24"
-                                                    class="player-flag-redesigned"
+                                                    :alt="player.nationality || 'Flag'"
+                                                    width="48"
+                                                    height="32"
+                                                    class="player-flag"
                                                     @error="handleFlagError"
                                                     :title="player.nationality"
                                                 />
                                                 <q-icon
-                                                    v-if="
-                                                        !player.nationality_iso ||
-                                                        flagLoadError
-                                                    "
-                                                    :color="
-                                                        qInstance.dark.isActive
-                                                            ? 'grey-5'
-                                                            : 'grey-7'
-                                                    "
+                                                    v-if="!player.nationality_iso || flagLoadError"
+                                                    :color="qInstance.dark.isActive ? 'grey-5' : 'grey-7'"
                                                     name="flag"
-                                                    size="2em"
-                                                    class="player-flag-placeholder-redesigned"
+                                                    size="2.5em"
+                                                    class="player-flag-placeholder"
                                                 />
                                             </div>
-                                            <div
-                                                class="col player-name-age-positions-redesigned"
-                                            >
-                                                <div
-                                                    class="player-name-and-age"
-                                                >
-                                                    <div
-                                                        class="text-h6 player-name-text-redesigned"
-                                                        :title="
-                                                            player.name || '-'
-                                                        "
-                                                    >
+                                            
+                                            <div class="col player-name-section">
+                                                <div class="player-name-container">
+                                                    <div class="player-name-text" :title="player.name || '-'">
                                                         {{ player.name || "-" }}
                                                     </div>
-                                                    <q-badge
-                                                        outline
-                                                        :color="
-                                                            qInstance.dark
-                                                                .isActive
-                                                                ? 'blue-4'
-                                                                : 'primary'
-                                                        "
-                                                        :label="`${player.age || '-'} yrs`"
-                                                        class="player-age-badge-redesigned q-ml-sm"
-                                                    />
+                                                    <div class="player-badges-row q-mt-xs">
+                                                        <q-badge
+                                                            outline
+                                                            color="primary"
+                                                            :label="`${player.age || '-'} years`"
+                                                            class="player-age-badge q-mr-sm"
+                                                        />
+                                                        <q-badge
+                                                            outline
+                                                            color="secondary"
+                                                            :label="player.nationality || 'Unknown'"
+                                                            class="player-nationality-badge"
+                                                        />
+                                                    </div>
                                                 </div>
-                                                <div
-                                                    class="player-positions-inline q-mt-xs"
-                                                    v-if="
-                                                        player.shortPositions
-                                                            ?.length ||
-                                                        player.position
-                                                    "
-                                                >
+                                                
+                                                <div class="player-positions-section q-mt-sm" v-if="player.shortPositions?.length || player.position">
                                                     <q-badge
-                                                        v-for="pos in player.shortPositions || [
-                                                            player.position,
-                                                        ]"
+                                                        v-for="pos in player.shortPositions || [player.position]"
                                                         :key="pos"
                                                         outline
-                                                        :color="
-                                                            qInstance.dark
-                                                                .isActive
-                                                                ? 'blue-3'
-                                                                : 'indigo-5'
-                                                        "
+                                                        color="indigo-6"
                                                         :label="pos"
-                                                        class="q-mr-xs q-mb-xs player-position-badge"
+                                                        class="position-badge q-mr-xs q-mb-xs"
                                                     />
                                                 </div>
                                             </div>
                                         </div>
-                                        <div
-                                            class="player-additional-details q-mt-sm"
-                                        >
-                                            <div
-                                                class="row q-col-gutter-x-sm q-col-gutter-y-xs items-center"
-                                            >
-                                                <div
-                                                    class="col-12 col-sm-auto additional-detail-item"
-                                                >
-                                                    <q-icon
-                                                        name="sports_soccer"
-                                                        size="1.2em"
-                                                        class="q-mr-xs additional-detail-icon"
-                                                        :color="
-                                                            qInstance.dark
-                                                                .isActive
-                                                                ? 'blue-4'
-                                                                : 'primary'
-                                                        "
-                                                    />
-                                                    <div
-                                                        class="additional-detail-text-block"
-                                                    >
-                                                        <q-item-label
-                                                            caption
-                                                            class="additional-detail-caption"
-                                                            >Club</q-item-label
-                                                        >
-                                                        <q-item-label
-                                                            class="additional-detail-label ellipsis"
-                                                            :title="
-                                                                player.club ||
-                                                                '-'
-                                                            "
-                                                            >{{
-                                                                player.club ||
-                                                                "-"
-                                                            }}</q-item-label
-                                                        >
+                                        
+                                        <div class="player-details-grid q-mt-md">
+                                            <div class="detail-item">
+                                                <q-icon name="sports_soccer" size="1.2em" class="detail-icon" />
+                                                <div class="detail-content">
+                                                    <div class="detail-label">Club</div>
+                                                    <div class="detail-value" :title="player.club || '-'">
+                                                        {{ player.club || "-" }}
                                                     </div>
                                                 </div>
-                                                <div
-                                                    class="col-12 col-sm-auto additional-detail-item-separator gt-xs"
-                                                >
-                                                    &bull;
-                                                </div>
-                                                <div
-                                                    class="col-12 col-sm-auto additional-detail-item"
-                                                >
-                                                    <q-icon
-                                                        name="psychology"
-                                                        size="1.2em"
-                                                        class="q-mr-xs additional-detail-icon"
-                                                        :color="
-                                                            qInstance.dark
-                                                                .isActive
-                                                                ? 'blue-4'
-                                                                : 'primary'
-                                                        "
-                                                    />
-                                                    <div
-                                                        class="additional-detail-text-block"
-                                                    >
-                                                        <q-item-label
-                                                            caption
-                                                            class="additional-detail-caption"
-                                                            >Personality</q-item-label
-                                                        >
-                                                        <q-item-label
-                                                            class="additional-detail-label ellipsis"
-                                                            :title="
-                                                                player.personality ||
-                                                                '-'
-                                                            "
-                                                            >{{
-                                                                player.personality ||
-                                                                "-"
-                                                            }}</q-item-label
-                                                        >
+                                            </div>
+                                            
+                                            <div class="detail-item">
+                                                <q-icon name="psychology" size="1.2em" class="detail-icon" />
+                                                <div class="detail-content">
+                                                    <div class="detail-label">Personality</div>
+                                                    <div class="detail-value" :title="player.personality || '-'">
+                                                        {{ player.personality || "-" }}
                                                     </div>
                                                 </div>
-                                                <div
-                                                    class="col-12 col-sm-auto additional-detail-item-separator gt-xs"
-                                                >
-                                                    &bull;
-                                                </div>
-                                                <div
-                                                    class="col-12 col-sm-auto additional-detail-item"
-                                                >
-                                                    <q-icon
-                                                        name="comment"
-                                                        size="1.2em"
-                                                        class="q-mr-xs additional-detail-icon"
-                                                        :color="
-                                                            qInstance.dark
-                                                                .isActive
-                                                                ? 'blue-4'
-                                                                : 'primary'
-                                                        "
-                                                    />
-                                                    <div
-                                                        class="additional-detail-text-block"
-                                                    >
-                                                        <q-item-label
-                                                            caption
-                                                            class="additional-detail-caption"
-                                                            >Media
-                                                            Handling</q-item-label
-                                                        >
-                                                        <q-item-label
-                                                            class="additional-detail-label ellipsis"
-                                                            :title="
-                                                                player.media_handling ||
-                                                                '-'
-                                                            "
-                                                            >{{
-                                                                player.media_handling ||
-                                                                "-"
-                                                            }}</q-item-label
-                                                        >
+                                            </div>
+                                            
+                                            <div class="detail-item">
+                                                <q-icon name="comment" size="1.2em" class="detail-icon" />
+                                                <div class="detail-content">
+                                                    <div class="detail-label">Media Handling</div>
+                                                    <div class="detail-value" :title="player.media_handling || '-'">
+                                                        {{ player.media_handling || "-" }}
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div class="financial-details-top-right">
-                                        <div
-                                            class="financial-item-large"
-                                            :title="formattedTransferValue"
-                                        >
-                                            <q-icon
-                                                name="trending_up"
-                                                class="q-mr-xs"
-                                                :color="
-                                                    qInstance.dark.isActive
-                                                        ? 'green-4'
-                                                        : 'green-7'
-                                                "
-                                            />
-                                            <span
-                                                :class="
-                                                    qInstance.dark.isActive
-                                                        ? 'text-green-4'
-                                                        : 'text-green-7'
-                                                "
-                                                >{{
-                                                    formattedTransferValue
-                                                }}</span
-                                            >
+                                    <div class="financial-details-section">
+                                        <div class="financial-item-large" :title="formattedTransferValue">
+                                            <q-icon name="trending_up" class="q-mr-sm financial-icon" />
+                                            <div class="financial-content">
+                                                <div class="financial-label">Transfer Value</div>
+                                                <div class="financial-value transfer-value">{{ formattedTransferValue }}</div>
+                                            </div>
                                         </div>
-                                        <div
-                                            class="financial-item-small"
-                                            :title="formattedWage"
-                                        >
-                                            <q-icon
-                                                name="payments"
-                                                class="q-mr-xs"
-                                                :color="
-                                                    qInstance.dark.isActive
-                                                        ? 'light-blue-4'
-                                                        : 'light-blue-7'
-                                                "
-                                            />
-                                            <span
-                                                :class="
-                                                    qInstance.dark.isActive
-                                                        ? 'text-light-blue-4'
-                                                        : 'text-light-blue-7'
-                                                "
-                                                >{{ formattedWage }}</span
-                                            >
+                                        
+                                        <div class="financial-item-small q-mt-sm" :title="formattedWage">
+                                            <q-icon name="payments" class="q-mr-sm financial-icon" />
+                                            <div class="financial-content">
+                                                <div class="financial-label">Weekly Salary</div>
+                                                <div class="financial-value wage-value">{{ formattedWage }}</div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <q-separator spaced="sm" class="q-my-md" />
+                                <q-separator spaced="lg" class="profile-separator" />
 
-                                <div class="q-mt-md fifa-stats-section">
-                                    <div
-                                        class="row q-col-gutter-xs justify-center fifa-stats-grid-redesigned"
-                                    >
+                                <div class="fifa-stats-section">
+                                    <div class="section-header q-mb-md">
+                                        <q-icon name="sports_esports" class="q-mr-sm" />
+                                        <span class="section-title">FIFA Stats</span>
+                                    </div>
+                                    
+                                    <div class="fifa-stats-grid">
                                         <div
                                             v-for="stat in fifaStatsToDisplay"
                                             :key="stat.name"
-                                            class="col-fifa-stat"
+                                            class="fifa-stat-card"
                                         >
                                             <q-card
                                                 flat
                                                 bordered
                                                 :class="[
-                                                    'q-pa-xs rounded-borders fifa-stat-item-redesigned text-center',
-                                                    getUnifiedRatingClass(
-                                                        player[stat.name],
-                                                        100,
-                                                    ),
+                                                    'fifa-stat-item text-center',
+                                                    getUnifiedRatingClass(player[stat.name], 100),
                                                 ]"
                                             >
-                                                <div
-                                                    class="text-caption fifa-label-redesigned"
-                                                >
-                                                    {{ stat.label }}
-                                                </div>
-                                                <div
-                                                    class="text-subtitle1 text-weight-medium fifa-value-redesigned"
-                                                >
-                                                    {{
-                                                        player[stat.name] !==
-                                                        undefined
-                                                            ? player[stat.name]
-                                                            : "-"
-                                                    }}
+                                                <div class="fifa-stat-label">{{ stat.label }}</div>
+                                                <div class="fifa-stat-value">
+                                                    {{ player[stat.name] !== undefined ? player[stat.name] : "-" }}
                                                 </div>
                                                 <q-tooltip
                                                     :class="
@@ -635,11 +415,10 @@
                                                     "
                                                     :delay="500"
                                                     max-width="350px"
+                                                    class="modern-tooltip"
                                                 >
-                                                    <div class="text-weight-medium q-mb-xs">
-                                                        {{ stat.label }}
-                                                    </div>
-                                                    <div class="text-caption">
+                                                    <div class="tooltip-header">{{ stat.label }}</div>
+                                                    <div class="tooltip-description">
                                                         {{ fifaToFmAttributeMapping[stat.name]?.description || 'No FM attribute mapping available' }}
                                                     </div>
                                                 </q-tooltip>
@@ -649,419 +428,249 @@
                                 </div>
                             </q-card-section>
                         </q-card>
-                        <div
-                            class="row q-col-gutter-md attribute-columns-container"
-                        >
-                            <div class="col-12 col-md-4 column">
-                                <q-card
-                                    flat
-                                    bordered
-                                    :class="[
-                                        qInstance.dark.isActive
-                                            ? 'bg-grey-9'
-                                            : 'bg-grey-1',
-                                        'full-height-card',
-                                        'rounded-borders',
-                                        'modern-attribute-card',
-                                    ]"
-                                >
-                                    <q-card-section
-                                        :class="
-                                            qInstance.dark.isActive
-                                                ? 'bg-grey-8'
-                                                : 'bg-grey-3'
-                                        "
-                                        class="q-pa-sm attribute-category-header"
-                                    >
-                                        <div
-                                            class="text-subtitle1 text-weight-medium text-center"
-                                        >
-                                            {{
-                                                isGoalkeeper
-                                                    ? "Goalkeeping"
-                                                    : "Technical"
-                                            }}
+                        
+                        <div class="row q-col-gutter-lg attribute-columns-container">
+                            <div class="col-12 col-md-4">
+                                <q-card flat bordered class="attribute-card modern-attribute-card full-height-card">
+                                    <q-card-section class="attribute-card-header">
+                                        <div class="attribute-section-title">
+                                            <q-icon :name="isGoalkeeper ? 'sports_soccer' : 'build'" class="q-mr-sm" />
+                                            {{ isGoalkeeper ? "Goalkeeping" : "Technical" }}
                                         </div>
                                     </q-card-section>
-                                    <q-list
-                                        separator
-                                        dense
-                                        class="attribute-list no-scroll"
-                                    >
-                                        <q-item
-                                            v-for="attrKey in isGoalkeeper
-                                                ? attributeCategories.goalkeeping
-                                                : attributeCategories.technical"
-                                            :key="attrKey"
-                                            class="attribute-list-item"
-                                        >
-                                            <q-item-section>
-                                                <q-item-label
-                                                    lines="1"
-                                                    class="attribute-name-label"
-                                                    >{{
-                                                        attributeFullNameMap[
-                                                            attrKey
-                                                        ] || attrKey
-                                                    }}</q-item-label
-                                                >
-                                                <q-tooltip
-                                                    :class="
-                                                        qInstance.dark.isActive
-                                                            ? 'bg-grey-7 text-white'
-                                                            : 'bg-white text-dark'
-                                                    "
-                                                    :delay="500"
-                                                    max-width="300px"
-                                                >
-                                                    <div class="text-weight-medium q-mb-xs">
-                                                        {{ attributeFullNameMap[attrKey] || attrKey }}
-                                                    </div>
-                                                    <div class="text-caption">
-                                                        {{ attributeDescriptions[attrKey] || 'No description available' }}
-                                                    </div>
-                                                </q-tooltip>
-                                            </q-item-section>
-                                            <q-item-section side>
-                                                <span
-                                                    :class="
-                                                        getUnifiedRatingClass(
-                                                            player.attributes[
-                                                                attrKey
-                                                            ],
-                                                            20,
-                                                        )
-                                                    "
-                                                    class="attribute-value attribute-score-value"
-                                                >
-                                                    {{
-                                                        player.attributes[
-                                                            attrKey
-                                                        ] !== undefined
-                                                            ? player.attributes[
-                                                                  attrKey
-                                                              ]
-                                                            : "-"
-                                                    }}
-                                                </span>
-                                            </q-item-section>
-                                        </q-item>
-                                        <q-item
-                                            v-if="
-                                                !(
-                                                    isGoalkeeper
-                                                        ? attributeCategories.goalkeeping
-                                                        : attributeCategories.technical
-                                                ).length
-                                            "
-                                        >
-                                            <q-item-section
-                                                class="text-grey-6 text-center q-py-md"
-                                                >No
-                                                {{
-                                                    isGoalkeeper
-                                                        ? "goalkeeping"
-                                                        : "technical"
-                                                }}
-                                                attributes.</q-item-section
+                                    
+                                    <q-card-section class="q-pa-md">
+                                        <q-list separator dense class="attribute-list">
+                                            <q-item
+                                                v-for="attrKey in isGoalkeeper
+                                                    ? attributeCategories.goalkeeping
+                                                    : attributeCategories.technical"
+                                                :key="attrKey"
+                                                class="attribute-list-item modern-attribute-item"
                                             >
-                                        </q-item>
-                                    </q-list>
+                                                <q-item-section>
+                                                    <q-item-label lines="1" class="attribute-name">
+                                                        {{ attributeFullNameMap[attrKey] || attrKey }}
+                                                    </q-item-label>
+                                                    <q-tooltip
+                                                        :class="
+                                                            qInstance.dark.isActive
+                                                                ? 'bg-grey-7 text-white'
+                                                                : 'bg-white text-dark'
+                                                        "
+                                                        :delay="500"
+                                                        max-width="300px"
+                                                        class="modern-tooltip"
+                                                    >
+                                                        <div class="tooltip-header">
+                                                            {{ attributeFullNameMap[attrKey] || attrKey }}
+                                                        </div>
+                                                        <div class="tooltip-description">
+                                                            {{ attributeDescriptions[attrKey] || 'No description available' }}
+                                                        </div>
+                                                    </q-tooltip>
+                                                </q-item-section>
+                                                <q-item-section side>
+                                                    <span
+                                                        :class="[
+                                                            'attribute-value modern-attribute-value',
+                                                            getUnifiedRatingClass(player.attributes[attrKey], 20)
+                                                        ]"
+                                                    >
+                                                        {{ player.attributes[attrKey] !== undefined ? player.attributes[attrKey] : "-" }}
+                                                    </span>
+                                                </q-item-section>
+                                            </q-item>
+                                            
+                                            <q-item
+                                                v-if="!(isGoalkeeper ? attributeCategories.goalkeeping : attributeCategories.technical).length"
+                                                class="no-attributes-item"
+                                            >
+                                                <q-item-section class="text-center q-py-md">
+                                                    <q-icon name="info_outline" size="sm" class="q-mr-sm" />
+                                                    No {{ isGoalkeeper ? "goalkeeping" : "technical" }} attributes.
+                                                </q-item-section>
+                                            </q-item>
+                                        </q-list>
+                                    </q-card-section>
                                 </q-card>
                             </div>
-                            <div class="col-12 col-md-4 column">
-                                <q-card
-                                    flat
-                                    bordered
-                                    :class="[
-                                        qInstance.dark.isActive
-                                            ? 'bg-grey-9'
-                                            : 'bg-grey-1',
-                                        'full-height-card',
-                                        'rounded-borders',
-                                        'modern-attribute-card',
-                                    ]"
-                                >
-                                    <q-card-section
-                                        :class="
-                                            qInstance.dark.isActive
-                                                ? 'bg-grey-8'
-                                                : 'bg-grey-3'
-                                        "
-                                        class="q-pa-sm attribute-category-header"
-                                    >
-                                        <div
-                                            class="text-subtitle1 text-weight-medium text-center"
-                                        >
+                            
+                            <div class="col-12 col-md-4">
+                                <q-card flat bordered class="attribute-card modern-attribute-card full-height-card">
+                                    <q-card-section class="attribute-card-header">
+                                        <div class="attribute-section-title">
+                                            <q-icon name="psychology" class="q-mr-sm" />
                                             Mental
                                         </div>
                                     </q-card-section>
-                                    <q-list
-                                        separator
-                                        dense
-                                        class="attribute-list no-scroll"
-                                    >
-                                        <q-item
-                                            v-for="attrKey in attributeCategories.mental"
-                                            :key="attrKey"
-                                            class="attribute-list-item"
-                                        >
-                                            <q-item-section>
-                                                <q-item-label
-                                                    lines="1"
-                                                    class="attribute-name-label"
-                                                    >{{
-                                                        attributeFullNameMap[
-                                                            attrKey
-                                                        ] || attrKey
-                                                    }}</q-item-label
-                                                >
-                                                <q-tooltip
-                                                    :class="
-                                                        qInstance.dark.isActive
-                                                            ? 'bg-grey-7 text-white'
-                                                            : 'bg-white text-dark'
-                                                    "
-                                                    :delay="500"
-                                                    max-width="300px"
-                                                >
-                                                    <div class="text-weight-medium q-mb-xs">
-                                                        {{ attributeFullNameMap[attrKey] || attrKey }}
-                                                    </div>
-                                                    <div class="text-caption">
-                                                        {{ attributeDescriptions[attrKey] || 'No description available' }}
-                                                    </div>
-                                                </q-tooltip>
-                                            </q-item-section>
-                                            <q-item-section side>
-                                                <span
-                                                    :class="
-                                                        getUnifiedRatingClass(
-                                                            player.attributes[
-                                                                attrKey
-                                                            ],
-                                                            20,
-                                                        )
-                                                    "
-                                                    class="attribute-value attribute-score-value"
-                                                >
-                                                    {{
-                                                        player.attributes[
-                                                            attrKey
-                                                        ] !== undefined
-                                                            ? player.attributes[
-                                                                  attrKey
-                                                              ]
-                                                            : "-"
-                                                    }}
-                                                </span>
-                                            </q-item-section>
-                                        </q-item>
-                                        <q-item
-                                            v-if="
-                                                !attributeCategories.mental
-                                                    .length
-                                            "
-                                        >
-                                            <q-item-section
-                                                class="text-grey-6 text-center q-py-md"
-                                                >No mental
-                                                attributes.</q-item-section
+                                    
+                                    <q-card-section class="q-pa-md">
+                                        <q-list separator dense class="attribute-list">
+                                            <q-item
+                                                v-for="attrKey in attributeCategories.mental"
+                                                :key="attrKey"
+                                                class="attribute-list-item modern-attribute-item"
                                             >
-                                        </q-item>
-                                    </q-list>
+                                                <q-item-section>
+                                                    <q-item-label lines="1" class="attribute-name">
+                                                        {{ attributeFullNameMap[attrKey] || attrKey }}
+                                                    </q-item-label>
+                                                    <q-tooltip
+                                                        :class="
+                                                            qInstance.dark.isActive
+                                                                ? 'bg-grey-7 text-white'
+                                                                : 'bg-white text-dark'
+                                                        "
+                                                        :delay="500"
+                                                        max-width="300px"
+                                                        class="modern-tooltip"
+                                                    >
+                                                        <div class="tooltip-header">
+                                                            {{ attributeFullNameMap[attrKey] || attrKey }}
+                                                        </div>
+                                                        <div class="tooltip-description">
+                                                            {{ attributeDescriptions[attrKey] || 'No description available' }}
+                                                        </div>
+                                                    </q-tooltip>
+                                                </q-item-section>
+                                                <q-item-section side>
+                                                    <span
+                                                        :class="[
+                                                            'attribute-value modern-attribute-value',
+                                                            getUnifiedRatingClass(player.attributes[attrKey], 20)
+                                                        ]"
+                                                    >
+                                                        {{ player.attributes[attrKey] !== undefined ? player.attributes[attrKey] : "-" }}
+                                                    </span>
+                                                </q-item-section>
+                                            </q-item>
+                                            
+                                            <q-item v-if="!attributeCategories.mental.length" class="no-attributes-item">
+                                                <q-item-section class="text-center q-py-md">
+                                                    <q-icon name="info_outline" size="sm" class="q-mr-sm" />
+                                                    No mental attributes.
+                                                </q-item-section>
+                                            </q-item>
+                                        </q-list>
+                                    </q-card-section>
                                 </q-card>
                             </div>
-                            <div class="col-12 col-md-4 column q-gutter-y-md">
-                                <q-card
-                                    flat
-                                    bordered
-                                    :class="[
-                                        qInstance.dark.isActive
-                                            ? 'bg-grey-9'
-                                            : 'bg-grey-1',
-                                        'rounded-borders',
-                                        'physical-attributes-card',
-                                    ]"
-                                >
-                                    <q-card-section
-                                        :class="
-                                            qInstance.dark.isActive
-                                                ? 'bg-grey-8'
-                                                : 'bg-grey-3'
-                                        "
-                                        class="q-pa-sm attribute-category-header"
-                                    >
-                                        <div
-                                            class="text-subtitle1 text-weight-medium text-center"
-                                        >
-                                            Physical
-                                        </div>
-                                    </q-card-section>
-                                    <q-list
-                                        separator
-                                        dense
-                                        class="attribute-list physical-list no-scroll"
-                                    >
-                                        <q-item
-                                            v-for="attrKey in attributeCategories.physical"
-                                            :key="attrKey"
-                                            class="attribute-list-item"
-                                        >
-                                            <q-item-section>
-                                                <q-item-label
-                                                    lines="1"
-                                                    class="attribute-name-label"
-                                                    >{{
-                                                        attributeFullNameMap[
-                                                            attrKey
-                                                        ] || attrKey
-                                                    }}</q-item-label
-                                                >
-                                                <q-tooltip
-                                                    :class="
-                                                        qInstance.dark.isActive
-                                                            ? 'bg-grey-7 text-white'
-                                                            : 'bg-white text-dark'
-                                                    "
-                                                    :delay="500"
-                                                    max-width="300px"
-                                                >
-                                                    <div class="text-weight-medium q-mb-xs">
-                                                        {{ attributeFullNameMap[attrKey] || attrKey }}
-                                                    </div>
-                                                    <div class="text-caption">
-                                                        {{ attributeDescriptions[attrKey] || 'No description available' }}
-                                                    </div>
-                                                </q-tooltip>
-                                            </q-item-section>
-                                            <q-item-section side>
-                                                <span
-                                                    :class="
-                                                        getUnifiedRatingClass(
-                                                            player.attributes[
-                                                                attrKey
-                                                            ],
-                                                            20,
-                                                        )
-                                                    "
-                                                    class="attribute-value attribute-score-value"
-                                                >
-                                                    {{
-                                                        player.attributes[
-                                                            attrKey
-                                                        ] !== undefined
-                                                            ? player.attributes[
-                                                                  attrKey
-                                                              ]
-                                                            : "-"
-                                                    }}
-                                                </span>
-                                            </q-item-section>
-                                        </q-item>
-                                        <q-item
-                                            v-if="
-                                                !attributeCategories.physical
-                                                    .length
-                                            "
-                                        >
-                                            <q-item-section
-                                                class="text-grey-6 text-center q-py-md"
-                                                >No physical
-                                                attributes.</q-item-section
-                                            >
-                                        </q-item>
-                                    </q-list>
-                                </q-card>
-                                <q-card
-                                    flat
-                                    bordered
-                                    :class="[
-                                        qInstance.dark.isActive
-                                            ? 'bg-grey-9'
-                                            : 'bg-grey-1',
-                                        'rounded-borders',
-                                        'role-ratings-card',
-                                    ]"
-                                    v-if="
-                                        player.roleSpecificOveralls &&
-                                        player.roleSpecificOveralls.length > 0
-                                    "
-                                >
-                                    <q-card-section
-                                        :class="
-                                            qInstance.dark.isActive
-                                                ? 'bg-grey-8'
-                                                : 'bg-grey-3'
-                                        "
-                                        class="q-pa-sm attribute-category-header"
-                                    >
-                                        <div
-                                            class="text-subtitle1 text-weight-medium text-center"
-                                        >
-                                            Best Roles
-                                        </div>
-                                    </q-card-section>
-                                    <q-list
-                                        separator
-                                        dense
-                                        class="constrained-scroll-list role-specific-ratings-list"
-                                    >
-                                        <q-item
-                                            v-for="roleOverall in sortedRoleSpecificOveralls"
-                                            :key="roleOverall.roleName"
-                                            :class="{
-                                                'best-role-highlight':
-                                                    roleOverall.score ===
-                                                    player.Overall,
-                                            }"
-                                            :style="
-                                                roleOverall.score ===
-                                                player.Overall
-                                                    ? qInstance.dark.isActive
-                                                        ? 'background-color: #2a5270 !important;'
-                                                        : 'background-color: #e3f2fd !important;'
-                                                    : ''
-                                            "
-                                            class="attribute-list-item"
-                                        >
-                                            <q-item-section>
-                                                <q-item-label
-                                                    lines="1"
-                                                    class="attribute-name-label"
-                                                    :title="
-                                                        roleOverall.roleName
-                                                    "
-                                                    >{{
-                                                        roleOverall.roleName
-                                                    }}</q-item-label
-                                                >
-                                            </q-item-section>
-                                            <q-item-section side>
-                                                <span
-                                                    :class="
-                                                        getUnifiedRatingClass(
-                                                            roleOverall.score,
-                                                            100,
-                                                        )
-                                                    "
-                                                    class="attribute-value fifa-stat-value attribute-score-value"
-                                                >
-                                                    {{ roleOverall.score }}
-                                                </span>
-                                            </q-item-section>
-                                        </q-item>
-                                    </q-list>
-                                </q-card>
+                            
+                            <div class="col-12 col-md-4">
+                                <div class="row q-col-gutter-md">
+                                    <div class="col-12">
+                                        <q-card flat bordered class="attribute-card modern-attribute-card">
+                                            <q-card-section class="attribute-card-header">
+                                                <div class="attribute-section-title">
+                                                    <q-icon name="fitness_center" class="q-mr-sm" />
+                                                    Physical
+                                                </div>
+                                            </q-card-section>
+                                            
+                                            <q-card-section class="q-pa-md">
+                                                <q-list separator dense class="attribute-list">
+                                                    <q-item
+                                                        v-for="attrKey in attributeCategories.physical"
+                                                        :key="attrKey"
+                                                        class="attribute-list-item modern-attribute-item"
+                                                    >
+                                                        <q-item-section>
+                                                            <q-item-label lines="1" class="attribute-name">
+                                                                {{ attributeFullNameMap[attrKey] || attrKey }}
+                                                            </q-item-label>
+                                                            <q-tooltip
+                                                                :class="
+                                                                    qInstance.dark.isActive
+                                                                        ? 'bg-grey-7 text-white'
+                                                                        : 'bg-white text-dark'
+                                                                "
+                                                                :delay="500"
+                                                                max-width="300px"
+                                                                class="modern-tooltip"
+                                                            >
+                                                                <div class="tooltip-header">
+                                                                    {{ attributeFullNameMap[attrKey] || attrKey }}
+                                                                </div>
+                                                                <div class="tooltip-description">
+                                                                    {{ attributeDescriptions[attrKey] || 'No description available' }}
+                                                                </div>
+                                                            </q-tooltip>
+                                                        </q-item-section>
+                                                        <q-item-section side>
+                                                            <span
+                                                                :class="[
+                                                                    'attribute-value modern-attribute-value',
+                                                                    getUnifiedRatingClass(player.attributes[attrKey], 20)
+                                                                ]"
+                                                            >
+                                                                {{ player.attributes[attrKey] !== undefined ? player.attributes[attrKey] : "-" }}
+                                                            </span>
+                                                        </q-item-section>
+                                                    </q-item>
+                                                    
+                                                    <q-item v-if="!attributeCategories.physical.length" class="no-attributes-item">
+                                                        <q-item-section class="text-center q-py-md">
+                                                            <q-icon name="info_outline" size="sm" class="q-mr-sm" />
+                                                            No physical attributes.
+                                                        </q-item-section>
+                                                    </q-item>
+                                                </q-list>
+                                            </q-card-section>
+                                        </q-card>
+                                    </div>
+                                    
+                                    <div class="col-12" v-if="player.roleSpecificOveralls && player.roleSpecificOveralls.length > 0">
+                                        <q-card flat bordered class="attribute-card modern-attribute-card role-ratings-card">
+                                            <q-card-section class="attribute-card-header">
+                                                <div class="attribute-section-title">
+                                                    <q-icon name="star" class="q-mr-sm" />
+                                                    Best Roles
+                                                </div>
+                                            </q-card-section>
+                                            
+                                            <q-card-section class="q-pa-md">
+                                                <q-list separator dense class="role-specific-ratings-list">
+                                                    <q-item
+                                                        v-for="roleOverall in sortedRoleSpecificOveralls"
+                                                        :key="roleOverall.roleName"
+                                                        :class="{
+                                                            'best-role-highlight': roleOverall.score === player.Overall,
+                                                        }"
+                                                        class="attribute-list-item modern-attribute-item role-item"
+                                                    >
+                                                        <q-item-section>
+                                                            <q-item-label lines="1" class="attribute-name role-name" :title="roleOverall.roleName">
+                                                                {{ roleOverall.roleName }}
+                                                            </q-item-label>
+                                                        </q-item-section>
+                                                        <q-item-section side>
+                                                            <span
+                                                                :class="[
+                                                                    'attribute-value modern-attribute-value',
+                                                                    getUnifiedRatingClass(roleOverall.score, 100)
+                                                                ]"
+                                                            >
+                                                                {{ roleOverall.score }}
+                                                            </span>
+                                                        </q-item-section>
+                                                    </q-item>
+                                                </q-list>
+                                            </q-card-section>
+                                        </q-card>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </q-card-section>
 
-            <q-card-section v-else class="text-center q-pa-xl">
-                <q-spinner color="primary" size="3em" />
-                <div class="q-mt-md text-grey-7">Loading player data...</div>
+            <q-card-section v-else class="loading-section">
+                <div class="loading-content">
+                    <q-spinner color="primary" size="3em" />
+                    <div class="loading-text">Loading player data...</div>
+                </div>
             </q-card-section>
         </q-card>
     </q-dialog>
@@ -1926,545 +1535,11 @@ $indigo-5: #3f51b5 !default;
 $breakpoint-sm-max: 1023px !default;
 $breakpoint-xs-max: 599px !default;
 
+// Modern Dialog Card
 .player-detail-dialog-card {
     display: flex;
     flex-direction: column;
-    border-radius: 8px;
-}
-.main-content-section {
-    flex-grow: 1;
-    padding: 12px;
-}
-.dialog-title {
-    font-size: clamp(0.9rem, 1.4vw, 1.1rem);
-}
-
-.profile-header-section {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 0;
-}
-.player-identity-extended {
-    flex-grow: 1;
-    padding-right: 16px;
-    display: flex;
-    flex-direction: column;
-}
-
-.player-flag-container-redesigned {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    padding-top: 4px;
-}
-.player-flag-redesigned {
-    border: 1px solid rgba(128, 128, 128, 0.5);
-    border-radius: 3px;
-    object-fit: cover;
-    vertical-align: middle;
-}
-
-.player-name-age-positions-redesigned {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    overflow: hidden;
-    text-align: left;
-}
-.player-name-and-age {
-    display: flex;
-    align-items: baseline;
-    flex-wrap: nowrap;
-}
-.player-name-text-redesigned {
-    font-size: clamp(1.1rem, 2vw, 1.4rem);
-    line-height: 1.2;
-    font-weight: 600;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin-right: 8px;
-}
-.player-age-badge-redesigned {
-    font-size: clamp(0.7rem, 1.1vw, 0.8rem);
-    font-weight: 600;
-    padding: 2px 6px;
-    align-self: baseline;
-    white-space: nowrap;
-}
-.player-positions-inline {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    margin-top: 2px;
-}
-.player-position-badge {
-    font-size: clamp(0.65rem, 0.9vw, 0.75rem);
-    font-weight: 500;
-    padding: 1px 4px;
-    margin-right: 4px;
-    margin-bottom: 2px;
-}
-
-.player-additional-details {
-    margin-top: 6px;
-    .row {
-        align-items: flex-start;
-    }
-}
-.additional-detail-item {
-    display: flex;
-    align-items: center;
-    padding: 2px 0;
-    line-height: 1.2;
-}
-.additional-detail-icon {
-    align-self: center;
-}
-.additional-detail-text-block {
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    text-align: left;
-}
-.additional-detail-caption {
-    font-size: clamp(0.6rem, 0.8vw, 0.65rem);
-    line-height: 1.1;
-    color: $grey-6;
-    .body--dark & {
-        color: $grey-5;
-    }
-    white-space: nowrap;
-    margin-bottom: -2px;
-}
-.additional-detail-label {
-    font-size: clamp(0.75rem, 1vw, 0.85rem);
-    line-height: 1.2;
-    font-weight: 500;
-    white-space: nowrap;
-    &.ellipsis {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-}
-.additional-detail-item-separator {
-    padding: 0 4px;
-    color: $grey-5;
-    align-self: center;
-    font-size: 0.8em;
-    line-height: 1.2;
-}
-
-.financial-details-top-right {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    text-align: right;
-    min-width: 120px;
-}
-.financial-item-large {
-    font-size: clamp(1.1rem, 2.2vw, 1.5rem);
-    font-weight: 700;
-    line-height: 1.2;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: flex;
-    align-items: center;
-}
-.financial-item-small {
-    font-size: clamp(0.8rem, 1.5vw, 0.95rem);
-    font-weight: 500;
-    line-height: 1.3;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin-top: 2px;
-    display: flex;
-    align-items: center;
-    color: $grey-7;
-    .body--dark & {
-        color: $grey-4;
-    }
-}
-
-.q-separator.q-my-md {
-    margin-top: 12px !important;
-    margin-bottom: 12px !important;
-}
-
-.fifa-stats-section {
-}
-.fifa-title-redesigned {
-    font-size: clamp(0.8rem, 1.3vw, 0.95rem);
-    font-weight: 500;
-}
-.fifa-stats-grid-redesigned {
-}
-.col-fifa-stat {
-    padding: 1px;
-    flex-basis: calc(100% / 8);
-    max-width: calc(100% / 8);
-    @media (max-width: $breakpoint-sm-max) {
-        flex-basis: calc(100% / 6);
-        max-width: calc(100% / 6);
-    }
-    @media (max-width: $breakpoint-xs-max) {
-        flex-basis: calc(100% / 4);
-        max-width: calc(100% / 4);
-    }
-}
-.fifa-stat-item-redesigned {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    padding: 4px 6px !important;
-    border-width: 1px;
-    overflow: hidden;
-    line-height: 1.1;
-    min-width: 40px;
-
-    &.rating-na {
-        background-color: #757575;
-        color: white;
-    }
-    &.rating-tier-1 {
-        background-color: #d32f2f;
-        color: white;
-    }
-    &.rating-tier-2 {
-        background-color: #ef6c00;
-        color: white;
-    }
-    &.rating-tier-3 {
-        background-color: #fdd835;
-        color: #333;
-    }
-    &.rating-tier-4 {
-        background-color: #aed581;
-        color: #333;
-    }
-    &.rating-tier-5 {
-        background-color: #66bb6a;
-        color: white;
-    }
-    &.rating-tier-6 {
-        background-color: #388e3c;
-        color: white;
-    }
-}
-.fifa-label-redesigned {
-    font-size: clamp(0.7rem, 1.6vw, 0.85rem);
-    font-weight: 500;
-    margin-bottom: 1px;
-    display: block;
-    line-height: 1.1;
-}
-.fifa-value-redesigned {
-    font-size: clamp(1rem, 2.4vw, 1.5rem);
-    font-weight: 700;
-    display: block;
-    line-height: 1.1;
-}
-
-.attributes-section-title {
-    font-size: clamp(1.05rem, 1.8vw, 1.3rem);
-}
-.attribute-category-header .text-subtitle1 {
-    font-size: clamp(0.85rem, 1.4vw, 1rem);
-}
-.attribute-list-item .attribute-name-label {
-    font-size: clamp(0.7rem, 1vw, 0.8rem);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 150px;
-}
-.attribute-list-item .attribute-score-value {
-    font-size: clamp(0.75rem, 1.1vw, 0.85rem);
-}
-.performance-stat-actual-value {
-    font-size: clamp(0.7rem, 1vw, 0.8rem);
-    min-width: 35px;
-    text-align: right;
-}
-.attribute-columns-container > .column {
-    display: flex;
-    flex-direction: column;
-}
-.full-height-card {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-}
-.percentile-content-area {
-    padding: 8px;
-}
-.attribute-list.no-scroll {
-    flex-grow: 0;
-    flex-shrink: 0;
-    overflow-y: visible;
-}
-.physical-attributes-card .attribute-list.physical-list.no-scroll {
-    flex-grow: 0;
-    flex-shrink: 0;
-    overflow-y: visible;
-}
-.role-ratings-card .role-specific-ratings-list {
-    overflow-y: auto;
-    flex-shrink: 1;
-    max-height: 18vh;
-    min-height: 70px;
-}
-.best-role-highlight {
-    border-left: 4px solid $positive;
-    .body--dark & {
-        border-left: 4px solid color.adjust($positive, $lightness: 20%);
-        background-color: rgba(color.adjust($positive, $lightness: 25%), 0.15) !important;
-    }
-    .body--light & {
-        background-color: rgba($positive, 0.08) !important;
-    }
-}
-.best-role-highlight .q-item__label {
-    font-weight: 600;
-}
-.q-list--dense .q-item,
-.attribute-list-item,
-.constrained-scroll-list .q-item.attribute-list-item {
-    padding: 1px 6px;
-    min-height: auto;
-}
-.min-height-auto {
-    min-height: auto !important;
-}
-.q-list--separator > .q-item:not(:first-child):before {
-    background: rgba(128, 128, 128, 0.2);
-}
-.q-card__section.bg-grey-3 {
-    background-color: $grey-3 !important;
-}
-.q-card__section.bg-grey-8 {
-    background-color: $grey-8 !important;
-}
-.q-card[flat][bordered] {
-    border: 1px solid rgba(128, 128, 128, 0.3);
-    .body--dark & {
-        border: 1px solid rgba(128, 128, 128, 0.4);
-    }
-}
-.performance-stat-item {
-    .stat-name-section {
-        flex-basis: 45%;
-        flex-grow: 0;
-        flex-shrink: 0;
-        padding-right: 6px;
-    }
-    .stat-bar-section {
-        flex-grow: 1;
-        display: flex;
-        align-items: center;
-    }
-    .stat-value-section {
-        flex-basis: 15%;
-        flex-grow: 0;
-        flex-shrink: 0;
-        text-align: right;
-        padding-left: 6px;
-    }
-}
-.stat-bar-container {
-    display: flex;
-    align-items: center;
-    width: 100%;
-}
-.stat-bar-track {
-    flex-grow: 1;
-    height: 12px;
-    background-color: $grey-2;
-    border-radius: 3px;
-    margin-right: 6px;
-    overflow: hidden;
-    .body--dark & {
-        background-color: $grey-7;
-    }
-}
-.stat-bar-fill {
-    height: 100%;
-    border-radius: 3px;
-}
-.stat-percentile-text {
-    font-size: 0.65rem;
-    min-width: 22px;
-    text-align: right;
-    .body--dark & {
-        color: $grey-5;
-    }
-    .body--light & {
-        color: $grey-7;
-    }
-}
-hr.q-my-sm {
-    border: none;
-    height: 1px;
-    background-color: rgba(128, 128, 128, 0.2);
-    margin-top: 8px;
-    margin-bottom: 8px;
-}
-
-@media (max-width: $breakpoint-sm-max) {
-    .main-content-section {
-        padding: 8px;
-    }
-    .role-ratings-card .role-specific-ratings-list {
-        max-height: 18vh;
-    }
-    .player-name-text-redesigned {
-        font-size: clamp(0.9rem, 1.6vw, 1.15rem);
-    }
-    .player-age-badge-redesigned {
-        font-size: clamp(0.6rem, 0.9vw, 0.7rem);
-    }
-    .player-position-badge {
-        font-size: clamp(0.6rem, 0.8vw, 0.7rem);
-    }
-    .additional-detail-caption {
-        font-size: clamp(0.55rem, 0.7vw, 0.6rem);
-    }
-    .additional-detail-label {
-        font-size: clamp(0.7rem, 0.9vw, 0.8rem);
-    }
-    .financial-item-large {
-        font-size: clamp(1rem, 2vw, 1.3rem);
-    }
-    .financial-item-small {
-        font-size: clamp(0.75rem, 1.3vw, 0.9rem);
-    }
-    .fifa-label-redesigned {
-        font-size: clamp(0.65rem, 1.3vw, 0.8rem);
-    }
-    .fifa-value-redesigned {
-        font-size: clamp(0.9rem, 2vw, 1.3rem);
-    }
-}
-
-@media (max-width: $breakpoint-xs-max) {
-    .main-content-section {
-        padding: 4px;
-    }
-    .dialog-title {
-        font-size: 0.85rem;
-    }
-    .profile-header-section {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    .player-identity-extended {
-        padding-right: 0;
-        margin-bottom: 8px;
-        width: 100%;
-    }
-    .player-name-age-positions-redesigned {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    .player-name-and-age {
-        flex-wrap: wrap;
-    }
-    .player-additional-details .row {
-        justify-content: flex-start;
-    }
-    .additional-detail-item {
-        flex-basis: 100% !important;
-        justify-content: flex-start;
-        margin-bottom: 2px;
-    }
-    .additional-detail-item-separator {
-        display: none;
-    }
-    .financial-details-top-right {
-        align-items: flex-start;
-        text-align: left;
-        width: 100%;
-        margin-bottom: 8px;
-    }
-    .player-name-text-redesigned {
-        font-size: clamp(0.9rem, 2.8vw, 1.1rem);
-    }
-    .player-age-badge-redesigned {
-        font-size: clamp(0.65rem, 2vw, 0.75rem);
-        margin-left: 0;
-        margin-top: 2px;
-    }
-    .player-positions-inline {
-        margin-top: 4px;
-    }
-    .player-position-badge {
-        font-size: clamp(0.6rem, 1.8vw, 0.7rem);
-    }
-    .additional-detail-caption {
-        font-size: clamp(0.6rem, 1.5vw, 0.65rem);
-    }
-    .additional-detail-label {
-        font-size: clamp(0.75rem, 2vw, 0.85rem);
-    }
-    .fifa-title-redesigned {
-        font-size: clamp(0.75rem, 2vw, 0.85rem);
-    }
-    .fifa-label-redesigned {
-        font-size: clamp(0.6rem, 1.4vw, 0.7rem);
-    }
-    .fifa-value-redesigned {
-        font-size: clamp(0.8rem, 2.2vw, 1.1rem);
-    }
-    .attributes-section-title {
-        font-size: 1rem;
-    }
-    .attribute-category-header .text-subtitle1 {
-        font-size: 0.8rem;
-    }
-    .attribute-list-item .attribute-name-label {
-        font-size: 0.7rem;
-        max-width: 90px;
-    }
-    .attribute-list-item .attribute-score-value {
-        font-size: 0.75rem;
-    }
-    .performance-stat-actual-value {
-        font-size: 0.7rem;
-        min-width: 30px;
-    }
-    .stat-percentile-text {
-        font-size: 0.6rem;
-        min-width: 20px;
-    }
-    .attribute-list.no-scroll {
-        overflow-y: auto;
-        max-height: 22vh;
-    }
-    .role-ratings-card .role-specific-ratings-list {
-        max-height: 14vh;
-    }
-    .performance-stat-item {
-        .stat-name-section {
-            flex-basis: 40%;
-            font-size: 0.6rem;
-        }
-        .stat-value-section {
-            flex-basis: 20%;
-            font-size: 0.6rem;
-        }
-    }
-}
-
-// Modern Dialog Enhancements
-.modern-dialog-card {
-    border-radius: 16px !important;
+    border-radius: 16px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
     overflow: hidden;
     
@@ -2473,32 +1548,67 @@ hr.q-my-sm {
     }
 }
 
+// Dark mode dialog backdrop fix
+:deep(.dark-dialog .q-dialog__backdrop) {
+    background: rgba(0, 0, 0, 0.6) !important;
+}
+
+:deep(.light-dialog .q-dialog__backdrop) {
+    background: rgba(0, 0, 0, 0.4) !important;
+}
+
+// Additional dark mode dialog fixes
+.body--dark {
+    :deep(.q-dialog__backdrop) {
+        background: rgba(0, 0, 0, 0.6) !important;
+    }
+}
+
+.body--light {
+    :deep(.q-dialog__backdrop) {
+        background: rgba(0, 0, 0, 0.4) !important;
+    }
+}
+
+.main-content-section {
+    flex-grow: 1;
+    padding: 20px;
+    background: transparent;
+    
+    .body--dark & {
+        background: transparent;
+    }
+}
+
+// Modern Dialog Header
 .modern-dialog-header {
     background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
-    padding: 16px 20px;
-    min-height: 60px;
+    padding: 20px 24px;
+    min-height: 70px;
     
     .dialog-header-content {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 16px;
         
         .header-icon {
-            font-size: 1.5rem;
+            font-size: 1.8rem;
             opacity: 0.9;
         }
         
         .header-text {
             .dialog-title {
-                font-weight: 600;
+                font-weight: 700;
                 margin: 0;
-                font-size: 1.2rem;
+                font-size: 1.3rem;
+                line-height: 1.2;
             }
             
             .dialog-subtitle {
-                font-size: 0.85rem;
+                font-size: 0.9rem;
                 opacity: 0.8;
-                margin-top: 2px;
+                margin-top: 4px;
+                font-weight: 500;
             }
         }
     }
@@ -2506,6 +1616,7 @@ hr.q-my-sm {
     .close-btn {
         border-radius: 8px;
         transition: all 0.2s ease;
+        padding: 8px;
         
         &:hover {
             background: rgba(255, 255, 255, 0.1);
@@ -2514,126 +1625,236 @@ hr.q-my-sm {
     }
 }
 
-.modern-stats-card {
-    border-radius: 12px !important;
+// Modern Select Styling
+.modern-select {
+    :deep(.q-field__control) {
+        border-radius: 8px;
+        
+        .body--dark & {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .body--light & {
+            background: rgba(0, 0, 0, 0.02);
+        }
+    }
+}
+
+// Performance Card
+.performance-percentiles-card {
+    border-radius: 12px;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
     border: 1px solid rgba(0, 0, 0, 0.05);
+    background: white;
+    
+    .body--dark & {
+        background: #1e293b;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+}
+
+.performance-card-header {
+    background: linear-gradient(135deg, rgba(25, 118, 210, 0.1) 0%, rgba(25, 118, 210, 0.05) 100%);
+    border-radius: 12px 12px 0 0;
+    padding: 16px 20px;
+    
+    .body--dark & {
+        background: linear-gradient(135deg, rgba(144, 202, 249, 0.1) 0%, rgba(144, 202, 249, 0.05) 100%);
+    }
+}
+
+.performance-header-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1976d2;
+    display: flex;
+    align-items: center;
+    
+    .body--dark & {
+        color: #90caf9;
+    }
+}
+
+.performance-category-header {
+    margin-bottom: 8px;
+}
+
+.performance-category-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    
+    .body--dark & {
+        color: rgba(255, 255, 255, 0.7);
+    }
+}
+
+.performance-separator {
+    background: rgba(25, 118, 210, 0.15);
+    height: 1px;
+    border: none;
+    
+    .body--dark & {
+        background: rgba(144, 202, 249, 0.15);
+    }
+}
+
+.modern-stat-item {
+    transition: background-color 0.2s ease;
+    border-radius: 6px;
+    margin: 2px 0;
+    padding: 8px 12px;
+    
+    &:hover {
+        background: rgba(25, 118, 210, 0.05);
+        
+        .body--dark & {
+            background: rgba(144, 202, 249, 0.05);
+        }
+    }
+    
+    &.average-rating-item {
+        background: rgba(25, 118, 210, 0.08);
+        border-left: 4px solid #1976d2;
+        
+        .body--dark & {
+            background: rgba(144, 202, 249, 0.08);
+            border-left-color: #90caf9;
+        }
+    }
+}
+
+.stat-name-section {
+    flex-basis: 45%;
+    flex-grow: 0;
+    flex-shrink: 0;
+    padding-right: 8px;
+}
+
+.stat-bar-section {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+}
+
+.stat-value-section {
+    flex-basis: 18%;
+    flex-grow: 0;
+    flex-shrink: 0;
+    text-align: right;
+    padding-left: 8px;
+}
+
+.stat-name-label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #334155;
+    
+    .body--dark & {
+        color: rgba(255, 255, 255, 0.85);
+    }
+}
+
+.stat-bar-container {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.stat-bar-track {
+    flex-grow: 1;
+    height: 10px;
+    background-color: #e5e7eb;
+    border-radius: 5px;
+    margin-right: 8px;
     overflow: hidden;
     
     .body--dark & {
-        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-}
-
-.modern-profile-card {
-    border-radius: 12px !important;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-    border: 1px solid rgba(0, 0, 0, 0.05);
-    
-    .body--dark & {
-        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-    
-    .player-profile-content {
-        padding: 20px !important;
-    }
-}
-
-.modern-attribute-card {
-    border-radius: 12px !important;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-    border: 1px solid rgba(0, 0, 0, 0.05);
-    transition: all 0.3s ease;
-    
-    &:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-    }
-    
-    .body--dark & {
-        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        
-        &:hover {
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-        }
-    }
-    
-    .attribute-category-header {
-        background: linear-gradient(135deg, rgba(25, 118, 210, 0.1) 0%, rgba(25, 118, 210, 0.05) 100%);
-        border-radius: 12px 12px 0 0;
-        
-        .body--dark & {
-            background: linear-gradient(135deg, rgba(144, 202, 249, 0.1) 0%, rgba(144, 202, 249, 0.05) 100%);
-        }
-        
-        .text-subtitle1 {
-            color: #1976d2;
-            font-weight: 600;
-            
-            .body--dark & {
-                color: #90caf9;
-            }
-        }
-    }
-}
-
-// Enhanced attribute list items
-.attribute-list-item {
-    transition: background-color 0.2s ease;
-    border-radius: 4px;
-    margin: 2px 4px;
-    
-    &:hover {
-        background: rgba(25, 118, 210, 0.05);
-        
-        .body--dark & {
-            background: rgba(144, 202, 249, 0.05);
-        }
-    }
-}
-
-// Enhanced FIFA stats
-.fifa-stat-item-redesigned {
-    transition: transform 0.2s ease;
-    border-radius: 8px !important;
-    
-    &:hover {
-        transform: scale(1.05);
-    }
-}
-
-// Enhanced performance stats
-.performance-stat-item {
-    transition: background-color 0.2s ease;
-    border-radius: 4px;
-    margin: 2px 0;
-    
-    &:hover {
-        background: rgba(25, 118, 210, 0.05);
-        
-        .body--dark & {
-            background: rgba(144, 202, 249, 0.05);
-        }
+        background-color: #374151;
     }
 }
 
 .stat-bar-fill {
+    height: 100%;
+    border-radius: 5px;
     transition: width 0.5s ease, background-color 0.3s ease;
 }
 
-// Enhanced badges and positions
-.player-position-badge, .player-age-badge-redesigned {
-    transition: all 0.2s ease;
+.stat-percentile-text {
+    font-size: 0.7rem;
+    font-weight: 600;
+    min-width: 24px;
+    text-align: right;
+    color: #64748b;
     
-    &:hover {
-        transform: scale(1.05);
+    .body--dark & {
+        color: rgba(255, 255, 255, 0.6);
     }
 }
 
-// Player face image styles
+.performance-stat-value {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #334155;
+    
+    .body--dark & {
+        color: rgba(255, 255, 255, 0.85);
+    }
+}
+
+.no-performance-data {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    color: #64748b;
+    font-size: 0.9rem;
+    
+    .body--dark & {
+        color: rgba(255, 255, 255, 0.6);
+    }
+}
+
+// Profile Card
+.player-profile-card {
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    background: white;
+    
+    .body--dark & {
+        background: #1e293b;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+}
+
+.player-profile-content {
+    padding: 24px;
+}
+
+.profile-header-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0;
+    gap: 24px;
+    
+    @media (max-width: 768px) {
+        flex-direction: column;
+        gap: 16px;
+    }
+}
+
+.player-identity-section {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
 .player-face-container {
     display: flex;
     align-items: center;
@@ -2642,30 +1863,30 @@ hr.q-my-sm {
 
 .player-face-image {
     border-radius: 50%;
-    border: 2px solid rgba(25, 118, 210, 0.2);
+    border: 3px solid rgba(25, 118, 210, 0.2);
     object-fit: cover;
     transition: all 0.3s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     
     &:hover {
         transform: scale(1.05);
         border-color: rgba(25, 118, 210, 0.4);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
     }
     
     .body--dark & {
         border-color: rgba(144, 202, 249, 0.2);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         
         &:hover {
             border-color: rgba(144, 202, 249, 0.4);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
         }
     }
 }
 
 .player-face-placeholder {
-    border: 2px solid rgba(25, 118, 210, 0.2);
+    border: 3px solid rgba(25, 118, 210, 0.2);
     transition: all 0.3s ease;
     
     &:hover {
@@ -2681,4 +1902,782 @@ hr.q-my-sm {
         }
     }
 }
+
+.player-flag-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.player-flag {
+    border: 2px solid rgba(128, 128, 128, 0.3);
+    border-radius: 4px;
+    object-fit: cover;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+    
+    &:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+    
+    .body--dark & {
+        border-color: rgba(255, 255, 255, 0.2);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    }
+}
+
+.player-flag-placeholder {
+    color: #9ca3af;
+    
+    .body--dark & {
+        color: #6b7280;
+    }
+}
+
+.player-name-section {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.player-name-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.player-name-text {
+    font-size: 1.8rem;
+    line-height: 1.2;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    
+    .body--dark & {
+        color: rgba(255, 255, 255, 0.95);
+    }
+}
+
+.player-badges-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.player-age-badge,
+.player-nationality-badge {
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 4px 8px;
+    transition: all 0.2s ease;
+    
+    &:hover {
+        transform: scale(1.05);
+    }
+}
+
+.player-positions-section {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.position-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 3px 6px;
+    transition: all 0.2s ease;
+    
+    &:hover {
+        transform: scale(1.05);
+    }
+}
+
+.player-details-grid {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+    
+    @media (max-width: 768px) {
+        flex-direction: column;
+        gap: 12px;
+    }
+}
+
+.detail-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: rgba(25, 118, 210, 0.03);
+    border-radius: 8px;
+    border: 1px solid rgba(25, 118, 210, 0.1);
+    transition: all 0.2s ease;
+    flex: 1;
+    min-width: 0;
+    
+    &:hover {
+        background: rgba(25, 118, 210, 0.06);
+        border-color: rgba(25, 118, 210, 0.2);
+        transform: translateY(-1px);
+    }
+    
+    .body--dark & {
+        background: rgba(144, 202, 249, 0.05);
+        border-color: rgba(144, 202, 249, 0.1);
+        
+        &:hover {
+            background: rgba(144, 202, 249, 0.08);
+            border-color: rgba(144, 202, 249, 0.2);
+        }
+    }
+}
+
+.detail-icon {
+    color: #1976d2;
+    
+    .body--dark & {
+        color: #90caf9;
+    }
+}
+
+.detail-content {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+.detail-label {
+    font-size: 0.7rem;
+    color: #64748b;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+    
+    .body--dark & {
+        color: rgba(255, 255, 255, 0.6);
+    }
+}
+
+.detail-value {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #334155;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    
+    .body--dark & {
+        color: rgba(255, 255, 255, 0.85);
+    }
+}
+
+.financial-details-section {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    min-width: 200px;
+    
+    @media (max-width: 768px) {
+        align-items: flex-start;
+        width: 100%;
+    }
+}
+
+.financial-item-large,
+.financial-item-small {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: rgba(34, 197, 94, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(34, 197, 94, 0.15);
+    transition: all 0.2s ease;
+    
+    &:hover {
+        background: rgba(34, 197, 94, 0.08);
+        border-color: rgba(34, 197, 94, 0.25);
+        transform: translateY(-1px);
+    }
+    
+    .body--dark & {
+        background: rgba(34, 197, 94, 0.08);
+        border-color: rgba(34, 197, 94, 0.2);
+        
+        &:hover {
+            background: rgba(34, 197, 94, 0.12);
+            border-color: rgba(34, 197, 94, 0.3);
+        }
+    }
+}
+
+.financial-item-small {
+    background: rgba(59, 130, 246, 0.05);
+    border-color: rgba(59, 130, 246, 0.15);
+    
+    &:hover {
+        background: rgba(59, 130, 246, 0.08);
+        border-color: rgba(59, 130, 246, 0.25);
+    }
+    
+    .body--dark & {
+        background: rgba(59, 130, 246, 0.08);
+        border-color: rgba(59, 130, 246, 0.2);
+        
+        &:hover {
+            background: rgba(59, 130, 246, 0.12);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+    }
+}
+
+.financial-icon {
+    color: #059669;
+    
+    .financial-item-small & {
+        color: #2563eb;
+    }
+    
+    .body--dark & {
+        color: #34d399;
+        
+        .financial-item-small & {
+            color: #60a5fa;
+        }
+    }
+}
+
+.financial-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.financial-label {
+    font-size: 0.7rem;
+    color: #64748b;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+    
+    .body--dark & {
+        color: rgba(255, 255, 255, 0.6);
+    }
+}
+
+.financial-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    white-space: nowrap;
+    
+    &.transfer-value {
+        color: #059669;
+        
+        .body--dark & {
+            color: #34d399;
+        }
+    }
+    
+    &.wage-value {
+        color: #2563eb;
+        
+        .body--dark & {
+            color: #60a5fa;
+        }
+    }
+}
+
+.profile-separator {
+    background: linear-gradient(90deg, transparent 0%, rgba(25, 118, 210, 0.3) 50%, transparent 100%);
+    height: 2px;
+    border: none;
+    
+    .body--dark & {
+        background: linear-gradient(90deg, transparent 0%, rgba(144, 202, 249, 0.3) 50%, transparent 100%);
+    }
+}
+
+// FIFA Stats Section
+.fifa-stats-section {
+    margin-top: 8px;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.section-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #1976d2;
+    
+    .body--dark & {
+        color: #90caf9;
+    }
+}
+
+.fifa-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 8px;
+    
+    @media (max-width: 768px) {
+        grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+        gap: 6px;
+    }
+}
+
+.fifa-stat-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.fifa-stat-item {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 12px 8px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    min-height: 70px;
+    border-width: 1px;
+    
+    &:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    // Rating color classes - matching PlayerDataTable with correct purple for elite
+    &.rating-na {
+        background-color: #9e9e9e;
+        color: white;
+        border-color: #9e9e9e;
+    }
+    &.rating-tier-1 {
+        background-color: #d32f2f;
+        color: white;
+        border-color: #d32f2f;
+    }
+    &.rating-tier-2 {
+        background-color: #ff9800;
+        color: white;
+        border-color: #ff9800;
+    }
+    &.rating-tier-3 {
+        background-color: #fdd835;
+        color: #333;
+        border-color: #fdd835;
+    }
+    &.rating-tier-4 {
+        background-color: #8bc34a;
+        color: white;
+        border-color: #8bc34a;
+    }
+    &.rating-tier-5 {
+        background-color: #4caf50;
+        color: white;
+        border-color: #4caf50;
+    }
+    &.rating-tier-6 {
+        background-color: #9474CB;
+        color: white;
+        border-color: #9474CB;
+    }
+}
+
+.fifa-stat-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.fifa-stat-value {
+    font-size: 1.3rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+// Attribute Cards
+.attribute-columns-container {
+    margin-top: 8px;
+}
+
+.attribute-card {
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    background: white;
+    transition: all 0.3s ease;
+    
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    }
+    
+    .body--dark & {
+        background: #1e293b;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        
+        &:hover {
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+        }
+    }
+}
+
+.full-height-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.attribute-card-header {
+    background: linear-gradient(135deg, rgba(25, 118, 210, 0.1) 0%, rgba(25, 118, 210, 0.05) 100%);
+    border-radius: 12px 12px 0 0;
+    padding: 16px 20px;
+    
+    .body--dark & {
+        background: linear-gradient(135deg, rgba(144, 202, 249, 0.1) 0%, rgba(144, 202, 249, 0.05) 100%);
+    }
+}
+
+.attribute-section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1976d2;
+    display: flex;
+    align-items: center;
+    
+    .body--dark & {
+        color: #90caf9;
+    }
+}
+
+.attribute-list {
+    flex-grow: 1;
+    
+    .q-item {
+        padding: 4px 12px;
+        min-height: 32px;
+    }
+}
+
+.modern-attribute-item {
+    transition: background-color 0.2s ease;
+    border-radius: 6px;
+    margin: 1px 4px;
+    padding: 4px 12px;
+    min-height: 32px;
+    
+    &:hover {
+        background: rgba(25, 118, 210, 0.05);
+        
+        .body--dark & {
+            background: rgba(144, 202, 249, 0.05);
+        }
+    }
+    
+    &.role-item {
+        &.best-role-highlight {
+            background: rgba(34, 197, 94, 0.1);
+            border-left: 4px solid #22c55e;
+            
+            .body--dark & {
+                background: rgba(34, 197, 94, 0.15);
+                border-left-color: #34d399;
+            }
+            
+            .role-name {
+                font-weight: 700;
+            }
+        }
+    }
+}
+
+.attribute-name {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #334155;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    
+    .body--dark & {
+        color: rgba(255, 255, 255, 0.85);
+    }
+    
+    &.role-name {
+        max-width: 180px;
+    }
+}
+
+.modern-attribute-value {
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-align: center;
+    min-width: 32px;
+    display: inline-block;
+    transition: all 0.2s ease;
+    
+    &:hover {
+        transform: scale(1.05);
+    }
+    
+    // Rating color classes - matching PlayerDataTable with correct purple for elite
+    &.rating-na {
+        background-color: #9e9e9e;
+        color: white;
+    }
+    &.rating-tier-1 {
+        background-color: #d32f2f;
+        color: white;
+    }
+    &.rating-tier-2 {
+        background-color: #ff9800;
+        color: white;
+    }
+    &.rating-tier-3 {
+        background-color: #fdd835;
+        color: #333;
+    }
+    &.rating-tier-4 {
+        background-color: #8bc34a;
+        color: white;
+    }
+    &.rating-tier-5 {
+        background-color: #4caf50;
+        color: white;
+    }
+    &.rating-tier-6 {
+        background-color: #9474CB;
+        color: white;
+    }
+}
+
+.no-attributes-item {
+    opacity: 0.7;
+    font-style: italic;
+    color: #64748b;
+    
+    .body--dark & {
+        color: rgba(255, 255, 255, 0.6);
+    }
+}
+
+.role-ratings-card {
+    .role-specific-ratings-list {
+        max-height: 280px;
+        overflow-y: auto;
+        
+        &::-webkit-scrollbar {
+            width: 4px;
+        }
+        
+        &::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        &::-webkit-scrollbar-thumb {
+            background: rgba(25, 118, 210, 0.3);
+            border-radius: 2px;
+            
+            &:hover {
+                background: rgba(25, 118, 210, 0.5);
+            }
+        }
+    }
+}
+
+// Modern Tooltips
+.modern-tooltip {
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    
+    .tooltip-header {
+        font-weight: 600;
+        margin-bottom: 6px;
+        font-size: 0.9rem;
+    }
+    
+    .tooltip-description {
+        font-size: 0.8rem;
+        line-height: 1.4;
+        opacity: 0.9;
+    }
+}
+
+// Loading Section
+.loading-section {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+}
+
+.loading-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+
+.loading-text {
+    color: #64748b;
+    font-size: 1rem;
+    font-weight: 500;
+    
+    .body--dark & {
+        color: rgba(255, 255, 255, 0.7);
+    }
+}
+
+// Responsive Design
+@media (max-width: 768px) {
+    .main-content-section {
+        padding: 16px;
+    }
+    
+    .player-profile-content {
+        padding: 20px;
+    }
+    
+    .player-name-text {
+        font-size: 1.5rem;
+    }
+    
+    .fifa-stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(65px, 1fr));
+        gap: 4px;
+    }
+    
+    .fifa-stat-item {
+        padding: 8px 6px;
+        min-height: 60px;
+    }
+    
+    .fifa-stat-label {
+        font-size: 0.7rem;
+    }
+    
+    .fifa-stat-value {
+        font-size: 1.1rem;
+    }
+    
+    .player-details-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    .financial-details-section {
+        width: 100%;
+    }
+    
+    .financial-item-large,
+    .financial-item-small {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .main-content-section {
+        padding: 12px;
+    }
+    
+    .player-profile-content {
+        padding: 16px;
+    }
+    
+    .player-name-text {
+        font-size: 1.3rem;
+    }
+    
+    .dialog-title {
+        font-size: 1.1rem;
+    }
+    
+    .attribute-name {
+        font-size: 0.8rem;
+    }
+    
+    .modern-attribute-value {
+        font-size: 0.75rem;
+        padding: 3px 6px;
+    }
+}
 </style>
+
+<style lang="scss">
+/* Global styles for dialog backdrop - unscoped to override Quasar defaults */
+
+/* Ensure body background is preserved in dark mode */
+html.body--dark,
+.body--dark,
+body.body--dark {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+}
+
+/* Dialog backdrop styles */
+html.body--dark .q-dialog__backdrop,
+.body--dark .q-dialog__backdrop,
+body.body--dark .q-dialog__backdrop {
+    background-color: rgba(0, 0, 0, 0.8) !important;
+    backdrop-filter: blur(3px) !important;
+}
+
+html.body--light .q-dialog__backdrop,
+.body--light .q-dialog__backdrop,
+body.body--light .q-dialog__backdrop {
+    background-color: rgba(0, 0, 0, 0.5) !important;
+    backdrop-filter: blur(3px) !important;
+}
+
+/* Target the dialog inner container that might be causing white background */
+.body--dark .q-dialog__inner,
+.dark .q-dialog__inner,
+body.body--dark .q-dialog__inner {
+    background: transparent !important;
+}
+
+/* Target potential white background sources */
+.body--dark .q-dialog,
+.dark .q-dialog,
+body.body--dark .q-dialog {
+    background: transparent !important;
+}
+
+/* Additional specificity for the backdrop element */
+.body--dark .q-dialog .q-dialog__backdrop,
+.dark .q-dialog .q-dialog__backdrop,
+body.body--dark .q-dialog .q-dialog__backdrop {
+    background: rgba(0, 0, 0, 0.8) !important;
+    backdrop-filter: blur(3px) !important;
+}
+
+/* Prevent body scroll changes when dialog is open */
+.body--dark.q-body--dialog {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+}
+
+/* Target any potential page container that might be getting a white background */
+.body--dark .q-page-container,
+.body--dark .q-page,
+body.body--dark .q-page-container,
+body.body--dark .q-page {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+}
+</style>
+
