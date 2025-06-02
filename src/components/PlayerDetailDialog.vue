@@ -15,39 +15,28 @@
                     ? 'text-white'
                     : 'bg-white text-dark'
             "
-            style="max-width: 1400px; width: 95vw; max-height: 90vh"
+            style="max-width: 1400px; width: 95vw; max-height: 90vh; position: relative;"
         >
-            <q-bar
-                class="modern-dialog-header"
-                :class="
-                    qInstance.dark.isActive
-                        ? 'bg-grey-10'
-                        : 'bg-primary text-white'
-                "
+            <!-- Floating Close Button -->
+            <q-btn 
+                dense 
+                flat 
+                icon="close" 
+                @click="$emit('close')" 
+                class="floating-close-btn"
+                :class="qInstance.dark.isActive ? 'text-grey-4' : 'text-grey-7'"
             >
-                <div class="dialog-header-content">
-                    <q-icon name="person" class="q-mr-sm header-icon" />
-                    <div class="header-text">
-                        <div class="text-subtitle1 dialog-title">
-                            {{ player?.name || "Player" }}
-                        </div>
-                        <div class="dialog-subtitle">Detailed Analysis</div>
-                    </div>
-                </div>
-                <q-space />
-                <q-btn dense flat icon="close" @click="$emit('close')" class="close-btn">
-                    <q-tooltip
-                        :class="
-                            qInstance.dark.isActive
-                                ? 'bg-grey-7'
-                                : 'bg-white text-primary'
-                        "
-                        >Close</q-tooltip
-                    >
-                </q-btn>
-            </q-bar>
+                <q-tooltip
+                    :class="
+                        qInstance.dark.isActive
+                            ? 'bg-grey-7'
+                            : 'bg-white text-primary'
+                    "
+                    >Close</q-tooltip
+                >
+            </q-btn>
 
-            <q-card-section v-if="player" class="scroll main-content-section">
+            <q-card-section v-if="player" class="scroll main-content-section no-header-section">
                 <div class="row q-col-gutter-lg">
                     <div class="col-12 col-md-4">
                         <div class="row q-col-gutter-sm q-mb-md">
@@ -246,7 +235,7 @@
                         <q-card
                             flat
                             bordered
-                            class="q-mb-lg player-profile-card modern-profile-card"
+                            class="q-mb-sm player-profile-card modern-profile-card"
                         >
                             <q-card-section class="player-profile-content">
                                 <div class="profile-header-section">
@@ -1612,50 +1601,9 @@ $breakpoint-xs-max: 599px !default;
     .body--dark & {
         background: transparent;
     }
-}
-
-// Modern Dialog Header
-.modern-dialog-header {
-    background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
-    padding: 20px 24px;
-    min-height: 70px;
     
-    .dialog-header-content {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        
-        .header-icon {
-            font-size: 1.8rem;
-            opacity: 0.9;
-        }
-        
-        .header-text {
-            .dialog-title {
-                font-weight: 700;
-                margin: 0;
-                font-size: 1.3rem;
-                line-height: 1.2;
-            }
-            
-            .dialog-subtitle {
-                font-size: 0.9rem;
-                opacity: 0.8;
-                margin-top: 4px;
-                font-weight: 500;
-            }
-        }
-    }
-    
-    .close-btn {
-        border-radius: 8px;
-        transition: all 0.2s ease;
-        padding: 8px;
-        
-        &:hover {
-            background: rgba(255, 255, 255, 0.1);
-            transform: scale(1.05);
-        }
+    &.no-header-section {
+        padding-top: 20px; // Minimal room for floating close button
     }
 }
 
@@ -2420,6 +2368,10 @@ $breakpoint-xs-max: 599px !default;
     margin-top: 4px;
 }
 
+.attribute-columns-container {
+    margin-top: 0;
+}
+
 .attribute-card {
     border-radius: 12px;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
@@ -2746,9 +2698,6 @@ $breakpoint-xs-max: 599px !default;
         font-size: 1.3rem;
     }
     
-    .dialog-title {
-        font-size: 1.1rem;
-    }
     
     .attribute-name {
         font-size: 0.8rem;
@@ -2757,6 +2706,36 @@ $breakpoint-xs-max: 599px !default;
     .modern-attribute-value {
         font-size: 0.75rem;
         padding: 3px 6px;
+    }
+}
+
+// Floating Close Button
+.floating-close-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 10;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transition: all 0.2s ease;
+    
+    &:hover {
+        background: rgba(255, 255, 255, 1);
+        transform: scale(1.1);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+    
+    .body--dark & {
+        background: rgba(30, 41, 59, 0.9);
+        color: rgba(255, 255, 255, 0.8);
+        
+        &:hover {
+            background: rgba(30, 41, 59, 1);
+            color: rgba(255, 255, 255, 1);
+        }
     }
 }
 </style>
