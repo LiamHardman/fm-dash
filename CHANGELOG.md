@@ -1,3 +1,9 @@
+## [1.1.4](https://git.liamhardman.com/liam/fm24-golang/compare/v1.1.3...v1.1.4) (2025-06-02)
+
+### 🐛 Bug Fixes
+
+* even less vertical scrolling ([943c291](https://git.liamhardman.com/liam/fm24-golang/commit/943c2918721b67a4148f464f82bb7698c34d68f7))
+
 ## [1.1.3](https://git.liamhardman.com/liam/fm24-golang/compare/v1.1.2...v1.1.3) (2025-06-02)
 
 ### 🐛 Bug Fixes
