@@ -3,8 +3,54 @@
  * Centralized service for tracking events and page views
  */
 
-// Analytics configuration
-const GA_TRACKING_ID = 'G-QYG3QS5C5Y'
+// Analytics configuration - get from environment variable
+const GA_TRACKING_ID = import.meta.env.VITE_GA_TRACKING_ID || __GA_TRACKING_ID__ || 'G-QYG3QS5C5Y'
+
+// Log the tracking ID in development for debugging
+if (import.meta.env.DEV) {
+  console.log('🔍 Google Analytics Tracking ID:', GA_TRACKING_ID)
+}
+
+/**
+ * Initialize Google Analytics by dynamically loading the script
+ */
+const initializeGA = () => {
+  if (typeof window === 'undefined' || !GA_TRACKING_ID) {
+    console.warn('Google Analytics not initialized: missing tracking ID or not in browser environment')
+    return
+  }
+
+  try {
+    // Create and inject the gtag script
+    const script = document.createElement('script')
+    script.async = true
+    script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_TRACKING_ID}`
+    document.head.appendChild(script)
+
+    // Initialize dataLayer and gtag function
+    window.dataLayer = window.dataLayer || []
+    window.gtag = function() {
+      window.dataLayer.push(arguments)
+    }
+
+    // Initialize with current date and config
+    window.gtag('js', new Date())
+    window.gtag('config', GA_TRACKING_ID, {
+      // Enhanced configuration options
+      send_page_view: false, // We'll handle page views manually
+      custom_map: {
+        'custom_parameter_1': 'dataset_id'
+      }
+    })
+
+    console.log('✅ Google Analytics initialized with tracking ID:', GA_TRACKING_ID)
+  } catch (error) {
+    console.error('Failed to initialize Google Analytics:', error)
+  }
+}
+
+// Auto-initialize when the module is loaded
+initializeGA()
 
 /**
  * Check if gtag is available

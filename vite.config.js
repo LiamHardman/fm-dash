@@ -36,5 +36,13 @@ export default defineConfig({
         // However, your Go routes are already /api/players and /api/roles, so no rewrite needed here.
       }
     }
-  }
+  },
+  define: {
+    // Make environment variables available to the frontend
+    __GA_TRACKING_ID__: JSON.stringify(process.env.VITE_GA_TRACKING_ID || 'G-QYG3QS5C5Y'),
+    __APP_VERSION__: JSON.stringify(process.env.npm_package_version || '1.0.0'),
+    __BUILD_DATE__: JSON.stringify(new Date().toISOString()),
+  },
+  // Alternative way to expose env vars (prefixed with VITE_)
+  envPrefix: ['VITE_']
 })

@@ -59,6 +59,10 @@ spec:
             - name: SERVICE_NAMESPACE 
               value: "fmdash"
             
+            # Analytics Configuration
+            - name: VITE_GA_TRACKING_ID
+              value: "G-QYG3QS5C5Y"  # Production Google Analytics tracking ID
+            
             # Build and Git information for enhanced resource detection
             - name: GIT_REPOSITORY_URL
               value: "git.liamhardman.com/liam/v2fmdash"
