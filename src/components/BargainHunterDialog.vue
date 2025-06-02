@@ -252,47 +252,6 @@
 
                 <q-separator class="q-my-md" />
 
-                <!-- Enhanced Chart Section with ECharts -->
-                <q-card
-                    v-if="filteredBargainResults.length > 0 && !loading"
-                    class="q-mb-md"
-                    :class="qInstance.dark.isActive ? 'bg-grey-9' : 'bg-white'"
-                    flat
-                    bordered
-                >
-                    <q-card-section>
-                        <div class="row items-center q-mb-md">
-                            <div class="text-subtitle1">
-                                <q-icon name="scatter_plot" class="q-mr-sm" />
-                                Value Score vs Overall Rating
-                            </div>
-                            <q-space />
-                            <q-btn 
-                                size="sm" 
-                                flat 
-                                icon="refresh" 
-                                @click="refreshChart"
-                                label="Refresh"
-                                class="q-ml-sm"
-                            />
-                        </div>
-                        <div class="chart-container">
-                            <v-chart
-                                ref="chartRef"
-                                :option="chartOption"
-                                :theme="qInstance.dark.isActive ? 'dark' : 'light'"
-                                autoresize
-                                @click="handleChartClick"
-                                class="chart"
-                            />
-                        </div>
-                        <div class="text-caption q-mt-sm text-grey-6">
-                            Showing {{ filteredBargainResults.length }} players{{ bargainResults.length !== filteredBargainResults.length ? ` (filtered from ${bargainResults.length} total)` : '' }}. 
-                            <strong>Tip:</strong> Click points to view details, use mouse wheel to zoom, drag to pan.
-                        </div>
-                    </q-card-section>
-                </q-card>
-
                 <!-- Loading State -->
                 <div v-if="loading" class="text-center q-my-xl">
                     <q-spinner-dots color="primary" size="3em" />
@@ -333,6 +292,9 @@
                                 @team-selected="handleTeamSelected"
                                 :currency-symbol="currencySymbol"
                                 :dataset-id="datasetId"
+                                :show-value-score="true"
+                                :default-sort-field="'valueScore'"
+                                :default-sort-direction="'desc'"
                             />
                         </q-card-section>
                     </q-card>
@@ -396,41 +358,16 @@
 </template>
 
 <script>
-import { use } from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
-import { ScatterChart } from 'echarts/charts'
-import {
-  TitleComponent,
-  TooltipComponent,
-  GridComponent,
-  DataZoomComponent,
-  BrushComponent,
-  ToolboxComponent
-} from 'echarts/components'
-import VChart from 'vue-echarts'
 import { useQuasar } from 'quasar'
 import { computed, defineComponent, nextTick, onMounted, ref, watch } from 'vue'
 import { formatCurrency } from '../utils/currencyUtils'
 import PlayerDetailDialog from './PlayerDetailDialog.vue'
 import PlayerDataTable from './PlayerDataTable.vue'
 
-// Register ECharts components
-use([
-  CanvasRenderer,
-  ScatterChart,
-  TitleComponent,
-  TooltipComponent,
-  GridComponent,
-  DataZoomComponent,
-  BrushComponent,
-  ToolboxComponent
-])
-
 export default defineComponent({
   name: 'BargainHunterDialog',
   components: {
     PlayerDetailDialog,
-    VChart,
     PlayerDataTable
   },
   props: {
@@ -474,7 +411,6 @@ export default defineComponent({
     const selectedPlayer = ref(null)
     const showPlayerDetail = ref(false)
     const bargainResults = ref([])
-    const chartRef = ref(null)
     const showExcellentValue = ref(true)
     const showGreatValue = ref(true)
     const showGoodValue = ref(true)
@@ -543,197 +479,6 @@ export default defineComponent({
       }))
     })
 
-    // Enhanced ECharts configuration
-    const chartOption = computed(() => {
-      if (!bargainResults.value.length) return {}
-
-      // Filter data based on selected value score tiers
-      const filteredResults = bargainResults.value.filter(result => {
-        const score = result.valueScore
-        if (score >= 80 && showExcellentValue.value) return true
-        if (score >= 60 && score < 80 && showGreatValue.value) return true
-        if (score >= 40 && score < 60 && showGoodValue.value) return true
-        if (score >= 20 && score < 40 && showMediocreValue.value) return true
-        if (score < 20 && showPoorValue.value) return true
-        return false
-      })
-
-      const scatterData = filteredResults
-        .slice(0, 500)
-        .map((result, index) => [
-          result.player.Overall, // x: Overall rating
-          result.valueScore,     // y: Value score
-          result.player.name,    // name for tooltip
-          result.player.club,    // club for tooltip
-          result.player.age,     // age for tooltip
-          result.player.transferValueAmount, // transfer value for tooltip
-          bargainResults.value.indexOf(result) // original index for click handling
-        ])
-
-      return {
-        animation: true,
-        animationDuration: 1000,
-        animationEasing: 'elasticOut',
-        grid: {
-          left: '8%',
-          right: '8%',
-          top: '15%',
-          bottom: '20%',
-          containLabel: true
-        },
-        toolbox: {
-          feature: {
-            dataZoom: {
-              yAxisIndex: false
-            },
-            brush: {
-              type: ['rect', 'polygon', 'clear']
-            },
-            saveAsImage: {
-              title: 'Save Chart'
-            }
-          },
-          right: '2%',
-          top: '2%'
-        },
-        brush: {
-          toolbox: ['rect', 'polygon', 'clear'],
-          xAxisIndex: 0,
-          yAxisIndex: 0
-        },
-        tooltip: {
-          trigger: 'item',
-          backgroundColor: qInstance.dark.isActive ? 'rgba(50, 50, 50, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-          borderColor: qInstance.dark.isActive ? '#555' : '#ddd',
-          textStyle: {
-            color: qInstance.dark.isActive ? '#fff' : '#333'
-          },
-          formatter: (params) => {
-            const [overall, valueScore, name, club, age, transferValue] = params.data
-            return `
-              <div style="font-weight: bold; margin-bottom: 8px; font-size: 14px;">${name}</div>
-              <div style="margin-bottom: 4px;"><strong>Club:</strong> ${club}</div>
-              <div style="margin-bottom: 4px;"><strong>Overall:</strong> ${overall}</div>
-              <div style="margin-bottom: 4px;"><strong>Value Score:</strong> ${formatValueScore(valueScore)}</div>
-              <div style="margin-bottom: 4px;"><strong>Age:</strong> ${age}</div>
-              <div><strong>Transfer Value:</strong> ${formatCurrency(transferValue, props.currencySymbol)}</div>
-            `
-          }
-        },
-        xAxis: {
-          type: 'value',
-          name: 'Overall Rating',
-          nameLocation: 'middle',
-          nameTextStyle: {
-            padding: [20, 0, 0, 0],
-            fontSize: 14,
-            fontWeight: 'bold'
-          },
-          min: 45,
-          max: 100,
-          splitLine: {
-            show: true,
-            lineStyle: {
-              opacity: 0.3
-            }
-          },
-          axisLine: {
-            lineStyle: {
-              color: qInstance.dark.isActive ? '#555' : '#999'
-            }
-          }
-        },
-        yAxis: {
-          type: 'value',
-          name: 'Value Score',
-          nameLocation: 'middle',
-          nameTextStyle: {
-            padding: [0, 0, 40, 0],
-            fontSize: 14,
-            fontWeight: 'bold'
-          },
-          min: 0,
-          max: 100,
-          splitLine: {
-            show: true,
-            lineStyle: {
-              opacity: 0.3
-            }
-          },
-          axisLine: {
-            lineStyle: {
-              color: qInstance.dark.isActive ? '#555' : '#999'
-            }
-          }
-        },
-        dataZoom: [
-          {
-            type: 'inside',
-            xAxisIndex: 0,
-            filterMode: 'none'
-          },
-          {
-            type: 'inside',
-            yAxisIndex: 0,
-            filterMode: 'none'
-          },
-          {
-            type: 'slider',
-            xAxisIndex: 0,
-            height: 20,
-            bottom: 40
-          }
-        ],
-        series: [
-          {
-            type: 'scatter',
-            data: scatterData,
-            symbolSize: (data) => {
-              // Make high-value players slightly larger
-              const valueScore = data[1]
-              return Math.max(6, Math.min(12, valueScore / 8))
-            },
-            itemStyle: {
-              color: (params) => {
-                const valueScore = params.data[1]
-                const overall = params.data[0]
-                
-                // Color based on value score with overall rating influence
-                if (valueScore >= 80) return '#00C851' // Green for excellent value
-                if (valueScore >= 60) return '#2E7D32' // Dark green for great value
-                if (valueScore >= 40) return '#FF6F00' // Orange for good value
-                if (valueScore >= 20) return '#FF5722' // Red-orange for fair value
-                return '#757575' // Grey for poor value
-              },
-              borderColor: '#fff',
-              borderWidth: 1,
-              opacity: 0.8
-            },
-            emphasis: {
-              itemStyle: {
-                opacity: 1,
-                borderWidth: 2,
-                shadowBlur: 10,
-                shadowColor: 'rgba(0, 0, 0, 0.3)'
-              }
-            },
-            markLine: {
-              silent: true,
-              lineStyle: {
-                color: qInstance.dark.isActive ? '#666' : '#ccc',
-                type: 'dashed',
-                opacity: 0.6
-              },
-              data: [
-                { xAxis: 75, label: { formatter: 'Good Overall (75)', position: 'end' } },
-                { yAxis: 50, label: { formatter: 'Decent Value (50)', position: 'end' } }
-              ]
-            }
-          }
-        ]
-      }
-    })
-
     // Filtered results for table display
     const filteredBargainResults = computed(() => {
       return bargainResults.value.filter(result => {
@@ -782,14 +527,6 @@ export default defineComponent({
         const bargainData = await response.json()
         bargainResults.value = bargainData || []
 
-        // Update chart after a short delay
-        await nextTick()
-        setTimeout(() => {
-          if (chartRef.value && bargainResults.value.length > 0) {
-            refreshChart()
-          }
-        }, 100)
-
       } catch (error) {
         console.error('Error finding bargains:', error)
         qInstance.notify({
@@ -828,23 +565,6 @@ export default defineComponent({
       return Math.round(score).toString()
     }
 
-    const refreshChart = () => {
-      if (chartRef.value) {
-        // Force chart to refresh with current data
-        chartRef.value.setOption(chartOption.value, true)
-      }
-    }
-
-    const handleChartClick = (event) => {
-      if (event.data && event.data.length > 6) {
-        const originalIndex = event.data[6] // Get the original index we stored
-        if (bargainResults.value[originalIndex]) {
-          const player = bargainResults.value[originalIndex].player
-          handlePlayerSelected(null, { player: player })
-        }
-      }
-    }
-
     const toggleValueTier = (tier) => {
       if (tier === 'excellent') {
         showExcellentValue.value = !showExcellentValue.value
@@ -881,31 +601,8 @@ export default defineComponent({
           showGoodValue.value = true
           showMediocreValue.value = false
           showPoorValue.value = false
-          
-          // Cleanup chart when dialog closes
-          if (chartRef.value) {
-            chartRef.value.dispose()
-            chartRef.value = null
-          }
         }
       }
-    )
-
-    // Watch for results changes to update chart
-    watch(
-      () => bargainResults.value,
-      async newResults => {
-        if (newResults.length > 0 && props.show) {
-          await nextTick()
-          // Wait a bit more to ensure DOM is fully rendered
-          setTimeout(() => {
-            if (chartRef.value) {
-              refreshChart()
-            }
-          }, 200)
-        }
-      },
-      { deep: true }
     )
 
     // Initialize when component mounts
@@ -925,15 +622,11 @@ export default defineComponent({
       selectedPlayer,
       showPlayerDetail,
       bargainResults,
-      chartRef,
-      chartOption,
       onFiltersChanged,
       handlePlayerSelected,
       handleTeamSelected,
       formatCurrency,
       findBargains,
-      refreshChart,
-      handleChartClick,
       showExcellentValue,
       showGreatValue,
       showGoodValue,

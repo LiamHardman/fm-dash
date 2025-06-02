@@ -152,6 +152,18 @@
                                 }}
                             </span>
                         </template>
+                        <template v-else-if="col.isValueScore">
+                            <span
+                                :class="getValueScoreClass(props.row.valueScore)"
+                                class="attribute-value value-score-value modern-stat-badge"
+                            >
+                                {{ 
+                                    props.row.valueScore !== undefined && props.row.valueScore !== null
+                                        ? Math.round(props.row.valueScore)
+                                        : "-"
+                                }}
+                            </span>
+                        </template>
                         <template
                             v-else-if="
                                 col.name === 'transfer_value' ||
@@ -329,7 +341,10 @@ export default {
     currencySymbol: { type: String, default: '$' },
     filteredPlayerCount: { type: Number, default: 0 },
     showWishlistActions: { type: Boolean, default: false },
-    datasetId: { type: String, default: null }
+    datasetId: { type: String, default: null },
+    showValueScore: { type: Boolean, default: false },
+    defaultSortField: { type: String, default: 'Overall' },
+    defaultSortDirection: { type: String, default: 'desc' }
   },
   emits: [
     'update:sort',
@@ -349,8 +364,8 @@ export default {
     const { sortPlayers: sortPlayersWorker } = usePlayerCalculationWorker()
 
     const contextMenu = ref(null)
-    const sortField = ref('Overall')
-    const sortDirection = ref('desc')
+    const sortField = ref(props.defaultSortField)
+    const sortDirection = ref(props.defaultSortDirection)
     const rowsPerPageOptions = ref([10, 15, 20, 50, 0]) // Keep for internal logic, but selector is removed
     const maxPagesToShow = 7
     const totalSortedCount = ref(0)
@@ -362,8 +377,8 @@ export default {
     const cacheGeneration = ref(0)
 
     const pagination = ref({
-      sortBy: 'Overall',
-      descending: true,
+      sortBy: props.defaultSortField,
+      descending: props.defaultSortDirection === 'desc',
       page: 1,
       rowsPerPage: 50 // Default rows per page, even if selector is hidden
     })
@@ -551,6 +566,16 @@ export default {
         style: overallColumnStyle,
         headerStyle: overallColumnStyle
       },
+      valueScore: {
+        name: 'valueScore',
+        label: 'Value Score',
+        field: 'valueScore',
+        sortable: true,
+        align: 'center',
+        isValueScore: true,
+        style: overallColumnStyle,
+        headerStyle: overallColumnStyle
+      },
       personality: {
         name: 'personality',
         label: 'Personality',
@@ -725,6 +750,12 @@ export default {
         baseColumnDefinitions.wage,
         baseColumnDefinitions.Overall
       ]
+      
+      // Add value score column if enabled
+      if (props.showValueScore) {
+        newOrderBase.push(baseColumnDefinitions.valueScore)
+      }
+      
       const fifaColumnsInOrder = props.isGoalkeeperView
         ? [
             allFifaStatDefinitions.DIV,
@@ -1033,6 +1064,7 @@ export default {
           direction: sortDirection.value,
           isFifaStat: currentColumns.value.find(c => c.name === sortField.value)?.isFifaStat,
           isOverallStat: currentColumns.value.find(c => c.name === sortField.value)?.isOverallStat,
+          isValueScore: currentColumns.value.find(c => c.name === sortField.value)?.isValueScore,
           displayField: sortField.value
         })
       }
@@ -1069,6 +1101,19 @@ export default {
       return 'money-na'
     }
 
+    const getValueScoreClass = (valueScore) => {
+      if (valueScore === null || valueScore === undefined) return 'rating-na'
+      const score = Number(valueScore)
+      if (Number.isNaN(score)) return 'rating-na'
+      
+      if (score >= 80) return 'rating-tier-6' // Excellent value - highest tier
+      if (score >= 60) return 'rating-tier-5' // Great value
+      if (score >= 40) return 'rating-tier-4' // Good value
+      if (score >= 20) return 'rating-tier-3' // Fair value
+      if (score >= 0) return 'rating-tier-2'  // Poor value
+      return 'rating-na'
+    }
+
     const onFlagError = event => {
       if (event.target) event.target.style.display = 'none'
       const placeholderIcon = event.target.nextElementSibling
@@ -1095,6 +1140,7 @@ export default {
           direction: sortDirection.value,
           isFifaStat: currentColumns.value.find(c => c.name === sortBy)?.isFifaStat,
           isOverallStat: currentColumns.value.find(c => c.name === sortBy)?.isOverallStat,
+          isValueScore: currentColumns.value.find(c => c.name === sortBy)?.isValueScore,
           displayField: sortBy
         })
       }
@@ -1144,7 +1190,7 @@ export default {
         newDirection = sortDirection.value === 'asc' ? 'desc' : 'asc'
       } else {
         const colDef = currentColumns.value.find(c => c.name === fieldName)
-        if (colDef && (colDef.isOverallStat || colDef.isFifaStat)) {
+        if (colDef && (colDef.isOverallStat || colDef.isFifaStat || colDef.isValueScore)) {
           newDirection = 'desc'
         } else {
           newDirection = 'asc'
@@ -1162,6 +1208,7 @@ export default {
         direction: newDirection,
         isFifaStat: currentColumns.value.find(c => c.name === fieldName)?.isFifaStat,
         isOverallStat: currentColumns.value.find(c => c.name === fieldName)?.isOverallStat,
+        isValueScore: currentColumns.value.find(c => c.name === fieldName)?.isValueScore,
         displayField: fieldName
       })
       console.timeEnd('PlayerDataTable: sortTable_execution')
@@ -1365,6 +1412,7 @@ export default {
       getColumnLabel,
       getUnifiedRatingClass,
       getMoneyClass,
+      getValueScoreClass,
       onFlagError,
       onRequest,
       onPageChange,
