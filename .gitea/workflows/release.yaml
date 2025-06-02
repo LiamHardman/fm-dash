@@ -99,8 +99,7 @@ jobs:
                 "@semantic-release/git",
                 {
                   "assets": ["package.json", "package-lock.json", "CHANGELOG.md"],
-                  "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}",
-                  "gitAdditionalCommitArgs": "--no-verify"
+                  "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
                 }
               ],
               [
@@ -135,6 +134,7 @@ jobs:
           npx semantic-release --dry-run
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HUSKY: 0
 
       - name: Create release
         run: |
@@ -142,6 +142,7 @@ jobs:
           npx semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HUSKY: 0
 
       - name: Release summary
         if: always()
