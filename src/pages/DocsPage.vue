@@ -10,7 +10,7 @@
                     </div>
                     <h1 class="hero-title">
                         Complete Guide to
-                        <span class="gradient-text">FMDB</span>
+                        <span class="gradient-text">FM-Dash</span>
                     </h1>
                     <p class="hero-subtitle">
                         Everything you need to master Football Manager data
@@ -123,7 +123,7 @@
                         </div>
                         <h1 class="section-title">Getting Started</h1>
                         <p class="section-subtitle">
-                            Welcome to FMDB! This guide will help you get
+                            Welcome to FM-Dash! This guide will help you get
                             started with using the Football Manager Database and
                             Player Analysis Tool.
                         </p>
@@ -207,7 +207,7 @@
                         <h1 class="section-title">Player Analysis</h1>
                         <p class="section-subtitle">
                             Learn how to analyze player performance, attributes,
-                            and potential using FMDB's powerful analysis tools.
+                            and potential using FM-Dash's powerful analysis tools.
                         </p>
                     </div>
 
@@ -285,7 +285,7 @@
                         <h1 class="section-title">Team Management</h1>
                         <p class="section-subtitle">
                             Organize and manage your team data effectively with
-                            FMDB's comprehensive team management features.
+                            FM-Dash's comprehensive team management features.
                         </p>
                     </div>
 
@@ -362,7 +362,7 @@
                         <h1 class="section-title">API Reference</h1>
                         <p class="section-subtitle">
                             Technical documentation for developers working with
-                            FMDB's API endpoints and data structures.
+                            FM-Dash's API endpoints and data structures.
                         </p>
                     </div>
 

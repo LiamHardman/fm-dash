@@ -1,6 +1,6 @@
 # Configuration Guide
 
-This document explains how to configure the Football Manager Data Browser (FMDB) for different environments and use cases.
+This document explains how to configure the Football Manager Data Browser (FM-Dash) for different environments and use cases.
 
 ## Environment Variables
 
@@ -44,7 +44,7 @@ TEMP_DIR=/tmp/uploads               # Temporary directory for uploads
 S3_ENDPOINT=localhost:9000          # S3 endpoint URL
 S3_ACCESS_KEY=minioadmin            # S3 access key
 S3_SECRET_KEY=minioadmin            # S3 secret key
-S3_BUCKET=fmdb-data                 # S3 bucket name
+S3_BUCKET=fm-dash-data                 # S3 bucket name
 S3_REGION=us-east-1                 # S3 region
 S3_USE_SSL=false                    # Use SSL for S3 connection (true/false)
 S3_FORCE_PATH_STYLE=true            # Force path-style URLs (for MinIO)
@@ -74,7 +74,7 @@ CACHE_MAX_SIZE=100MB                # Maximum cache size
 ```bash
 # OpenTelemetry Configuration
 OTEL_ENABLED=true                   # Enable OpenTelemetry
-OTEL_SERVICE_NAME=fmdb-backend      # Service name for traces
+OTEL_SERVICE_NAME=fm-dash-backend      # Service name for traces
 OTEL_SERVICE_VERSION=1.0.0          # Service version
 OTEL_JAEGER_ENDPOINT=http://localhost:14268/api/traces
 OTEL_COLLECTOR_ENDPOINT=http://localhost:4317
@@ -101,7 +101,7 @@ SECURITY_HEADERS=true               # Enable security headers
 ```bash
 # Development Configuration
 VITE_API_URL=http://localhost:8091  # Backend API URL
-VITE_APP_TITLE=FMDB                 # Application title
+VITE_APP_TITLE=FM-Dash                 # Application title
 VITE_APP_VERSION=1.0.0              # Application version
 VITE_DEBUG=true                     # Enable debug mode
 ```
@@ -163,7 +163,7 @@ storage:
     endpoint: "localhost:9000"
     access_key: "minioadmin"
     secret_key: "minioadmin"
-    bucket: "fmdb-data"
+    bucket: "fm-dash-data"
     region: "us-east-1"
     use_ssl: false
     force_path_style: true
@@ -182,7 +182,7 @@ cache:
 observability:
   otel:
     enabled: true
-    service_name: "fmdb-backend"
+    service_name: "fm-dash-backend"
     service_version: "1.0.0"
     jaeger_endpoint: "http://localhost:14268/api/traces"
   metrics:
@@ -250,7 +250,7 @@ module.exports = function (ctx) {
       
       env: {
         API_URL: process.env.VITE_API_URL || 'http://localhost:8091',
-        APP_TITLE: process.env.VITE_APP_TITLE || 'FMDB',
+        APP_TITLE: process.env.VITE_APP_TITLE || 'FM-Dash',
         DEBUG: process.env.VITE_DEBUG === 'true',
         VERSION: process.env.VITE_APP_VERSION || '1.0.0'
       },
@@ -297,7 +297,7 @@ PROCESSING_TIMEOUT=600s
 S3_ENDPOINT=minio:9000
 S3_ACCESS_KEY=minioadmin
 S3_SECRET_KEY=minioadmin
-S3_BUCKET=fmdb-data
+S3_BUCKET=fm-dash-data
 S3_USE_SSL=false
 
 # Security
@@ -325,12 +325,12 @@ services:
       - S3_ENDPOINT=minio:9000
       - S3_ACCESS_KEY=${MINIO_ACCESS_KEY}
       - S3_SECRET_KEY=${MINIO_SECRET_KEY}
-      - S3_BUCKET=fmdb-data
+      - S3_BUCKET=fm-dash-data
       - S3_USE_SSL=false
     depends_on:
       - minio
     networks:
-      - fmdb-network
+      - fm-dash-network
 
   minio:
     image: minio/minio:latest
@@ -344,7 +344,7 @@ services:
     volumes:
       - minio_data:/data
     networks:
-      - fmdb-network
+      - fm-dash-network
 
   nginx:
     image: nginx:alpine
@@ -357,13 +357,13 @@ services:
     depends_on:
       - app
     networks:
-      - fmdb-network
+      - fm-dash-network
 
 volumes:
   minio_data:
 
 networks:
-  fmdb-network:
+  fm-dash-network:
     driver: bridge
 ```
 
@@ -375,7 +375,7 @@ networks:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: fmdb-config
+  name: fm-dash-config
 data:
   config.yaml: |
     server:
@@ -384,7 +384,7 @@ data:
     storage:
       type: "s3"
       s3:
-        bucket: "fmdb-data"
+        bucket: "fm-dash-data"
         region: "us-east-1"
         use_ssl: true
     processing:
@@ -396,7 +396,7 @@ data:
     observability:
       otel:
         enabled: true
-        service_name: "fmdb-backend"
+        service_name: "fm-dash-backend"
       metrics:
         enabled: true
         port: 9090
@@ -408,7 +408,7 @@ data:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: fmdb-secrets
+  name: fm-dash-secrets
 type: Opaque
 stringData:
   s3-access-key: "your-access-key"
@@ -422,20 +422,20 @@ stringData:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: fmdb-app
+  name: fm-dash-app
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: fmdb
+      app: fm-dash
   template:
     metadata:
       labels:
-        app: fmdb
+        app: fm-dash
     spec:
       containers:
-      - name: fmdb
-        image: fmdb:latest
+      - name: fm-dash
+        image: fm-dash:latest
         ports:
         - containerPort: 8080
         - containerPort: 9090  # Metrics port
@@ -446,12 +446,12 @@ spec:
         - name: S3_ACCESS_KEY
           valueFrom:
             secretKeyRef:
-              name: fmdb-secrets
+              name: fm-dash-secrets
               key: s3-access-key
         - name: S3_SECRET_KEY
           valueFrom:
             secretKeyRef:
-              name: fmdb-secrets
+              name: fm-dash-secrets
               key: s3-secret-key
         
         volumeMounts:
@@ -483,7 +483,7 @@ spec:
       volumes:
       - name: config-volume
         configMap:
-          name: fmdb-config
+          name: fm-dash-config
 ```
 
 ## Environment-Specific Configurations
@@ -646,13 +646,13 @@ global:
   scrape_interval: 15s
 
 scrape_configs:
-  - job_name: 'fmdb-backend'
+  - job_name: 'fm-dash-backend'
     static_configs:
-      - targets: ['fmdb-app:9090']
+      - targets: ['fm-dash-app:9090']
     metrics_path: '/metrics'
     scrape_interval: 10s
 
-  - job_name: 'fmdb-nginx'
+  - job_name: 'fm-dash-nginx'
     static_configs:
       - targets: ['nginx-exporter:9113']
 ```
@@ -662,7 +662,7 @@ scrape_configs:
 ```json
 {
   "dashboard": {
-    "title": "FMDB Monitoring",
+    "title": "FM-Dash Monitoring",
     "panels": [
       {
         "title": "Request Rate",

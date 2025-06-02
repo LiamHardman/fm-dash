@@ -1,6 +1,6 @@
 # API Documentation
 
-This document provides comprehensive documentation for the Football Manager Data Browser (FMDB) REST API.
+This document provides comprehensive documentation for the Football Manager Data Browser (FM-Dash) REST API.
 
 ## Base URL
 

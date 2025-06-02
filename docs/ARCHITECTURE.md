@@ -1,10 +1,10 @@
-# Architecture Deep Dive
+# Architecture Guide
 
-This document provides a comprehensive overview of the Football Manager Data Browser (FMDB) architecture, design decisions, and technical implementation details.
+This document provides a comprehensive overview of the Football Manager Data Browser (FM-Dash) architecture, design decisions, and technical implementation details.
 
 ## System Overview
 
-FMDB is a modern, cloud-native web application designed for processing and analyzing Football Manager player data. The architecture follows a microservices-inspired design with clear separation of concerns.
+FM-Dash is a modern, cloud-native web application designed for processing and analyzing Football Manager player data. The architecture follows a microservices-inspired design with clear separation of concerns.
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
@@ -73,7 +73,7 @@ src/
 
 ### State Management Pattern
 
-FMDB uses Pinia for centralized state management with a clear data flow:
+FM-Dash uses Pinia for centralized state management with a clear data flow:
 
 ```javascript
 // Example: Player Store Pattern
@@ -144,7 +144,7 @@ src/api/
 
 ### Data Processing Pipeline
 
-The core of FMDB is its sophisticated data processing pipeline:
+The core of FM-Dash is its sophisticated data processing pipeline:
 
 ```
 HTML File Upload
@@ -306,7 +306,7 @@ type PlayerFilters struct {
 
 ### File Storage Strategy
 
-FMDB uses a tiered storage approach:
+FM-Dash uses a tiered storage approach:
 
 ```
 Storage Hierarchy:
@@ -660,4 +660,4 @@ func (h *Handler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 
 ---
 
-This architecture ensures FMDB is scalable, maintainable, and performant while providing an excellent user experience for Football Manager data analysis. 
+This architecture ensures FM-Dash is scalable, maintainable, and performant while providing an excellent user experience for Football Manager data analysis. 

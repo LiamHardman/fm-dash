@@ -1,6 +1,6 @@
 # Troubleshooting Guide
 
-This guide helps you diagnose and resolve common issues with the Football Manager Data Browser (FMDB).
+This guide helps you diagnose and resolve common issues with the Football Manager Data Browser (FM-Dash).
 
 ## Quick Diagnostics
 
@@ -24,16 +24,16 @@ curl http://localhost:8091/api/health
 
 ```bash
 # View application logs
-docker logs fmdb-app -f
+docker logs fm-dash-app -f
 
 # View specific service logs
-kubectl logs -f deployment/fmdb-app
+kubectl logs -f deployment/fm-dash-app
 
 # Check error logs only
-docker logs fmdb-app 2>&1 | grep -i error
+docker logs fm-dash-app 2>&1 | grep -i error
 
 # Monitor real-time logs with filtering
-docker logs fmdb-app -f --since=30m | grep -E "(ERROR|WARN|FATAL)"
+docker logs fm-dash-app -f --since=30m | grep -E "(ERROR|WARN|FATAL)"
 ```
 
 ## Common Issues
@@ -151,7 +151,7 @@ tail -f debug_server.log | grep -i upload
 #### Diagnosis
 ```bash
 # Test S3 connectivity
-aws s3 ls s3://fmdb-data --endpoint-url http://localhost:9000
+aws s3 ls s3://fm-dash-data --endpoint-url http://localhost:9000
 
 # Check S3 configuration
 echo $S3_ENDPOINT
@@ -160,7 +160,7 @@ echo $S3_ACCESS_KEY
 
 # Test MinIO connection
 mc alias set local http://localhost:9000 minioadmin minioadmin
-mc ls local/fmdb-data
+mc ls local/fm-dash-data
 ```
 
 #### Solutions
@@ -191,13 +191,13 @@ aws configure set aws_secret_access_key $S3_SECRET_KEY
 **Bucket Issues**
 ```bash
 # Create bucket if missing
-mc mb local/fmdb-data
+mc mb local/fm-dash-data
 
 # Check bucket policy
-mc policy get local/fmdb-data
+mc policy get local/fm-dash-data
 
 # Set public read policy
-mc policy set public local/fmdb-data
+mc policy set public local/fm-dash-data
 ```
 
 ### 4. Performance Issues
@@ -210,7 +210,7 @@ mc policy set public local/fmdb-data
 #### Diagnosis
 ```bash
 # Monitor system resources
-top -p $(pgrep -f fmdb)
+top -p $(pgrep -f fm-dash)
 htop
 
 # Check memory usage
@@ -469,30 +469,30 @@ try {
 #### Diagnosis
 ```bash
 # Check container status
-docker ps -a | grep fmdb
+docker ps -a | grep fm-dash
 
 # View container logs
-docker logs fmdb-app
+docker logs fm-dash-app
 
 # Check resource usage
-docker stats fmdb-app
+docker stats fm-dash-app
 
 # Inspect container configuration
-docker inspect fmdb-app
+docker inspect fm-dash-app
 ```
 
 #### Solutions
 ```bash
 # Remove and recreate container
-docker rm -f fmdb-app
-docker run -d --name fmdb-app -p 8080:8080 fmdb:latest
+docker rm -f fm-dash-app
+docker run -d --name fm-dash-app -p 8080:8080 fm-dash:latest
 
 # Check available resources
 docker system df
 docker system prune
 
 # Update image
-docker pull fmdb:latest
+docker pull fm-dash:latest
 ```
 
 ### Volume Mount Issues
@@ -508,10 +508,10 @@ docker pull fmdb:latest
 sudo chown -R 1000:1000 /path/to/volume
 
 # Check mount points
-docker inspect fmdb-app | jq '.[0].Mounts'
+docker inspect fm-dash-app | jq '.[0].Mounts'
 
 # Test volume access
-docker exec fmdb-app ls -la /etc/config
+docker exec fm-dash-app ls -la /etc/config
 ```
 
 ## Kubernetes Issues
@@ -521,13 +521,13 @@ docker exec fmdb-app ls -la /etc/config
 #### Diagnosis
 ```bash
 # Check pod status
-kubectl get pods -l app=fmdb
+kubectl get pods -l app=fm-dash
 
 # View pod logs
-kubectl logs -f deployment/fmdb-app
+kubectl logs -f deployment/fm-dash-app
 
 # Describe pod for events
-kubectl describe pod fmdb-app-xxx
+kubectl describe pod fm-dash-app-xxx
 
 # Check resource usage
 kubectl top pods
@@ -536,14 +536,14 @@ kubectl top pods
 #### Solutions
 ```bash
 # Scale deployment
-kubectl scale deployment fmdb-app --replicas=3
+kubectl scale deployment fm-dash-app --replicas=3
 
 # Update deployment
-kubectl set image deployment/fmdb-app fmdb=fmdb:latest
+kubectl set image deployment/fm-dash-app fm-dash=fm-dash:latest
 
 # Check config and secrets
-kubectl get configmap fmdb-config -o yaml
-kubectl get secret fmdb-secrets -o yaml
+kubectl get configmap fm-dash-config -o yaml
+kubectl get secret fm-dash-secrets -o yaml
 ```
 
 ### Service Issues
@@ -551,13 +551,13 @@ kubectl get secret fmdb-secrets -o yaml
 #### Diagnosis
 ```bash
 # Check service
-kubectl get svc fmdb-service
+kubectl get svc fm-dash-service
 
 # Test service connectivity
-kubectl port-forward svc/fmdb-service 8080:80
+kubectl port-forward svc/fm-dash-service 8080:80
 
 # Check endpoints
-kubectl get endpoints fmdb-service
+kubectl get endpoints fm-dash-service
 ```
 
 ## Performance Debugging
@@ -597,7 +597,7 @@ go tool pprof http://localhost:8091/debug/pprof/profile?seconds=30
 
 # Check system load
 uptime
-top -p $(pgrep -f fmdb)
+top -p $(pgrep -f fm-dash)
 ```
 
 #### Solutions
@@ -633,7 +633,7 @@ logging:
   format: json
   outputs:
     - stdout
-    - file: /var/log/fmdb.log
+    - file: /var/log/fm-dash.log
   components:
     api: debug
     processing: info
@@ -686,10 +686,10 @@ When reporting issues, please include:
 3. **Logs**
    ```bash
    # Recent application logs
-   docker logs fmdb-app --tail=100
+   docker logs fm-dash-app --tail=100
    
    # Error logs
-   grep -i error /var/log/fmdb.log | tail -20
+   grep -i error /var/log/fm-dash.log | tail -20
    ```
 
 4. **Steps to Reproduce**

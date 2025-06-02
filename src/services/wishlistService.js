@@ -1,4 +1,3 @@
-
 export default {
   async saveWishlist(datasetId, wishlistData) {
     try {
@@ -67,7 +66,7 @@ export default {
   // localStorage fallback methods
   saveToLocalStorage(datasetId, wishlistData) {
     try {
-      const key = `fmdb_wishlist_${datasetId}`
+      const key = `fm_dash_wishlist_${datasetId}`
       localStorage.setItem(key, JSON.stringify(wishlistData))
     } catch (error) {
       console.error('Failed to save to localStorage:', error)
@@ -76,7 +75,7 @@ export default {
 
   loadFromLocalStorage(datasetId) {
     try {
-      const key = `fmdb_wishlist_${datasetId}`
+      const key = `fm_dash_wishlist_${datasetId}`
       const stored = localStorage.getItem(key)
       if (stored) {
         return JSON.parse(stored)
@@ -90,7 +89,7 @@ export default {
 
   deleteFromLocalStorage(datasetId) {
     try {
-      const key = `fmdb_wishlist_${datasetId}`
+      const key = `fm_dash_wishlist_${datasetId}`
       localStorage.removeItem(key)
     } catch (error) {
       console.error('Failed to delete from localStorage:', error)
@@ -101,10 +100,10 @@ export default {
   async migrateLocalStorageToMinIO() {
     try {
       const allKeys = Object.keys(localStorage)
-      const wishlistKeys = allKeys.filter(key => key.startsWith('fmdb_wishlist_'))
+      const wishlistKeys = allKeys.filter(key => key.startsWith('fm_dash_wishlist_'))
 
       for (const key of wishlistKeys) {
-        const datasetId = key.replace('fmdb_wishlist_', '')
+        const datasetId = key.replace('fm_dash_wishlist_', '')
         const wishlistData = this.loadFromLocalStorage(datasetId)
 
         if (wishlistData && wishlistData.length > 0) {

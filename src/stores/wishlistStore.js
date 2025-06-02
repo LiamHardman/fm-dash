@@ -136,7 +136,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
   // Migrate from old localStorage format to new service-based approach
   const migrateFromOldLocalStorage = async () => {
     try {
-      const oldData = localStorage.getItem('fmdb_wishlists')
+      const oldData = localStorage.getItem('fm_dash_wishlists')
       if (oldData) {
         const parsedData = JSON.parse(oldData)
 
@@ -149,7 +149,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
         }
 
         // Remove old localStorage entry after successful migration
-        localStorage.removeItem('fmdb_wishlists')
+        localStorage.removeItem('fm_dash_wishlists')
       }
     } catch (error) {
       console.error('Failed to migrate wishlists from old localStorage format:', error)

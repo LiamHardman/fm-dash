@@ -6,7 +6,7 @@
         >
             <q-toolbar class="header-toolbar">
                 <q-toolbar-title class="header-title">
-                    <router-link to="/" class="app-title-link">FMDB</router-link>
+                    <router-link to="/" class="app-title-link">FM-Dash</router-link>
                 </q-toolbar-title>
                 
                 <div class="nav-links">

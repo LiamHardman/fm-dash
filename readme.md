@@ -1,8 +1,8 @@
-# Football Manager Data Browser (FMDB)
+# Football Manager Data Browser (FM-Dash)
 
 <div align="center">
 
-![FMDB Logo](https://img.shields.io/badge/FMDB-Football%20Manager%20Data%20Browser-blue?style=for-the-badge)
+![FM-Dash Logo](https://img.shields.io/badge/FM--Dash-Football%20Manager%20Data%20Browser-blue?style=for-the-badge)
 
 A powerful tool for parsing, analyzing, and visualizing Football Manager player data with a modern Vue.js + Quasar UI interface and robust Go backend.
 
@@ -83,8 +83,8 @@ A powerful tool for parsing, analyzing, and visualizing Football Manager player 
    **Option B: Production-like Mode**
    ```bash
    # Build and run with Docker
-   docker build -t fmdb .
-   docker run -p 8080:8080 fmdb
+   docker build -t fm-dash .
+   docker run -p 8080:8080 fm-dash
    ```
 
 4. **Access the application**
@@ -133,8 +133,8 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed development setup and tools.
 
 1. **Build and push image**
    ```bash
-   docker build -t your-registry/fmdb:latest .
-   docker push your-registry/fmdb:latest
+   docker build -t your-registry/fm-dash:latest .
+   docker push your-registry/fm-dash:latest
    ```
 
 2. **Configure secrets**
@@ -227,7 +227,7 @@ Automated quality checks run on every commit:
 
 ## 📊 Performance & Monitoring
 
-FMDB is designed for high performance with large datasets:
+FM-Dash is designed for high performance with large datasets:
 
 - **Efficient Processing**: Handles 50MB+ HTML files with streaming
 - **Memory Optimized**: Processes thousands of players efficiently
@@ -250,7 +250,7 @@ For detailed troubleshooting, see the [Troubleshooting Guide](docs/TROUBLESHOOTI
 
 ## 📈 Metrics & Health
 
-Monitor your FMDB deployment:
+Monitor your FM-Dash deployment:
 
 ```bash
 # Health check

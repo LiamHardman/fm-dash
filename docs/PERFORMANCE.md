@@ -1,10 +1,10 @@
 # Performance Guide
 
-This guide provides comprehensive information about optimizing, monitoring, and maintaining the performance of the Football Manager Data Browser (FMDB).
+This document covers optimization techniques and performance considerations for the Football Manager Data Browser (FM-Dash).
 
 ## Performance Overview
 
-FMDB is designed to handle large Football Manager datasets efficiently while providing responsive user interactions. Performance optimization focuses on several key areas:
+FM-Dash is designed to handle large Football Manager datasets efficiently while providing responsive user interactions. Performance optimization focuses on several key areas:
 
 - **File Processing**: Efficiently parsing large HTML exports (50MB+)
 - **Memory Management**: Handling thousands of players in memory
@@ -934,4 +934,4 @@ func BenchmarkSearchIndex(b *testing.B) {
 
 ---
 
-Regular performance monitoring and optimization ensure FMDB remains fast and responsive as datasets grow and user load increases. 
+Regular performance monitoring and optimization ensure FM-Dash remains fast and responsive as datasets grow and user load increases. 

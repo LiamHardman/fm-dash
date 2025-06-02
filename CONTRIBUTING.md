@@ -1,4 +1,4 @@
-# Contributing to FMDB
+# Contributing to FM-Dash
 
 Thank you for your interest in contributing to this project! We welcome contributions from the community.
 
@@ -14,7 +14,7 @@ Thank you for your interest in contributing to this project! We welcome contribu
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd fmdb
+   cd fm-dash
    ```
 
 2. **Install dependencies**
