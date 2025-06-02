@@ -1093,12 +1093,7 @@ export default {
 
     const getMoneyClass = numericAmount => {
       if (numericAmount === null || numericAmount === undefined) return 'money-na'
-      if (numericAmount >= 10000000) return 'money-very-high'
-      if (numericAmount >= 1000000) return 'money-high'
-      if (numericAmount >= 100000) return 'money-medium-high'
-      if (numericAmount >= 10000) return 'money-medium'
-      if (numericAmount > 0) return 'money-low'
-      return 'money-na'
+      return 'money-uniform'
     }
 
     const getValueScoreClass = (valueScore) => {
@@ -1660,28 +1655,13 @@ export default {
 }
 
 .money-value {
-    font-weight: 600;
-    font-size: 0.9rem;
+    font-weight: 500;
 }
 
-.money-high {
-    color: #059669;
+.money-uniform {
+    color: #334155;
     .body--dark & {
-        color: #34d399;
-    }
-}
-
-.money-medium {
-    color: #d97706;
-    .body--dark & {
-        color: #fbbf24;
-    }
-}
-
-.money-low {
-    color: #6b7280;
-    .body--dark & {
-        color: #9ca3af;
+        color: rgba(255, 255, 255, 0.85);
     }
 }
 
