@@ -1079,16 +1079,48 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 		divisionFilter = DivisionFilterAll
 	}
 
+	// NEW: Generate cache key and try to load from cache first
+	cacheKey := generatePercentilesCacheKey(datasetID, req.PlayerName, req.DivisionFilter, req.TargetDivision, players)
+
+	// Try to load from cache
+	if cachedPercentiles, found := loadPercentilesFromCache(cacheKey, datasetID, req.PlayerName, req.DivisionFilter, req.TargetDivision, players); found {
+		logInfo(ctx, "Returning cached percentiles",
+			"dataset_id", datasetID,
+			"player_name", req.PlayerName,
+			"cache_key", cacheKey)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Cache-Status", "HIT")
+		setCORSHeaders(w, r)
+		if err := json.NewEncoder(w).Encode(cachedPercentiles); err != nil {
+			log.Printf("Error encoding JSON response for cached percentiles (DatasetID: %s): %v", datasetID, err)
+			http.Error(w, "Error encoding response", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Cache miss - perform calculation
+	logInfo(ctx, "Cache miss, calculating percentiles",
+		"dataset_id", datasetID,
+		"player_name", req.PlayerName,
+		"cache_key", cacheKey)
+
 	// Create a copy of the dataset and recalculate percentiles with division filtering
 	playersCopy := make([]Player, len(players))
 	copy(playersCopy, players)
 
 	CalculatePlayerPerformancePercentilesWithDivisionFilter(playersCopy, divisionFilter, req.TargetDivision)
 
-	// Return only the updated percentiles for the target player
+	// Get the updated percentiles for the target player
 	updatedPercentiles := playersCopy[targetPlayerIndex].PerformancePercentiles
 
+	// NEW: Save to cache for future requests
+	go func() {
+		savePercentilesToCache(cacheKey, datasetID, req.PlayerName, req.DivisionFilter, req.TargetDivision, players, updatedPercentiles)
+	}()
+
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Cache-Status", "MISS")
 	setCORSHeaders(w, r)
 	if err := json.NewEncoder(w).Encode(updatedPercentiles); err != nil {
 		log.Printf("Error encoding JSON response for percentiles (DatasetID: %s): %v", datasetID, err)
@@ -1272,12 +1304,53 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 
 	logInfo(ctx, "Performing search", "dataset_id", datasetID, "query", query, "player_count", len(players))
 
+	// NEW: Generate cache key and try to load from cache first
+	cacheKey := generateSearchCacheKey(datasetID, query, players)
+
+	// Try to load from cache
+	if cachedResults, found := loadSearchFromCache(cacheKey, datasetID, query, players); found {
+		logInfo(ctx, "Returning cached search results",
+			"dataset_id", datasetID,
+			"query", query,
+			"cache_key", cacheKey,
+			"result_count", len(cachedResults))
+
+		SetSpanAttributes(ctx,
+			attribute.Int("search.results_count", len(cachedResults)),
+			attribute.String("search.cache_status", "HIT"))
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Cache-Status", "HIT")
+		if err := json.NewEncoder(w).Encode(cachedResults); err != nil {
+			RecordError(ctx, err, "Failed to encode cached search results")
+			http.Error(w, "Error encoding response", http.StatusInternalServerError)
+			return
+		}
+		return
+	}
+
+	// Cache miss - perform search
+	logInfo(ctx, "Cache miss, performing search",
+		"dataset_id", datasetID,
+		"query", query,
+		"cache_key", cacheKey)
+
 	// Perform search
 	results := performSearch(players, query)
 
-	SetSpanAttributes(ctx, attribute.Int("search.results_count", len(results)))
+	// NEW: Save to cache for future requests (only cache if results are not too large)
+	if len(results) <= 1000 { // Reasonable limit to avoid caching huge result sets
+		go func() {
+			saveSearchToCache(cacheKey, datasetID, query, players, results)
+		}()
+	}
+
+	SetSpanAttributes(ctx,
+		attribute.Int("search.results_count", len(results)),
+		attribute.String("search.cache_status", "MISS"))
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Cache-Status", "MISS")
 	if err := json.NewEncoder(w).Encode(results); err != nil {
 		RecordError(ctx, err, "Failed to encode search results")
 		http.Error(w, "Error encoding response", http.StatusInternalServerError)
@@ -1519,10 +1592,41 @@ func bargainHunterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// NEW: Generate cache key and try to load from cache first
+	cacheKey := generateBargainHunterCacheKey(datasetID, req.MaxBudget, req.MaxSalary, req.MinAge, req.MaxAge, req.MinOverall, players)
+
+	// Try to load from cache
+	if cachedResults, found := loadBargainHunterFromCache(cacheKey, datasetID, req.MaxBudget, req.MaxSalary, req.MinAge, req.MaxAge, req.MinOverall, players); found {
+		logInfo(ctx, "Returning cached bargain hunter results",
+			"dataset_id", datasetID,
+			"cache_key", cacheKey,
+			"result_count", len(cachedResults))
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Cache-Status", "HIT")
+		setCORSHeaders(w, r)
+		if err := json.NewEncoder(w).Encode(cachedResults); err != nil {
+			log.Printf("Error encoding JSON response for cached bargain hunter (DatasetID: %s): %v", datasetID, err)
+			http.Error(w, "Error encoding response", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Cache miss - perform calculation
+	logInfo(ctx, "Cache miss, calculating bargain hunter results",
+		"dataset_id", datasetID,
+		"cache_key", cacheKey)
+
 	// Process bargain hunter analysis
 	bargainPlayers := processBargainHunter(players, req.MaxBudget, req.MaxSalary, int64(req.MinAge), int64(req.MaxAge), int64(req.MinOverall))
 
+	// NEW: Save to cache for future requests
+	go func() {
+		saveBargainHunterToCache(cacheKey, datasetID, req.MaxBudget, req.MaxSalary, req.MinAge, req.MaxAge, req.MinOverall, players, bargainPlayers)
+	}()
+
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Cache-Status", "MISS")
 	setCORSHeaders(w, r)
 	if err := json.NewEncoder(w).Encode(bargainPlayers); err != nil {
 		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
