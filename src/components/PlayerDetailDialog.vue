@@ -1888,6 +1888,9 @@ $breakpoint-xs-max: 599px !default;
 .player-face-placeholder {
     border: 3px solid rgba(25, 118, 210, 0.2);
     transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     
     &:hover {
         transform: scale(1.05);
@@ -1900,6 +1903,11 @@ $breakpoint-xs-max: 599px !default;
         &:hover {
             border-color: rgba(144, 202, 249, 0.4);
         }
+    }
+    
+    .q-icon {
+        margin: 0;
+        line-height: 1;
     }
 }
 
@@ -2257,41 +2265,69 @@ $breakpoint-xs-max: 599px !default;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
     
-    // Rating color classes - matching PlayerDataTable with correct purple for elite
+    // Use the same colors as global rating tier classes from app.scss
     &.rating-na {
-        background-color: #9e9e9e;
-        color: white;
-        border-color: #9e9e9e;
+        background-color: #bdbdbd;
+        color: #424242;
+        
+        .body--dark & {
+            background-color: #424242;
+            color: #bdbdbd;
+        }
     }
     &.rating-tier-1 {
-        background-color: #d32f2f;
+        background-color: #ef5350;
         color: white;
-        border-color: #d32f2f;
+        
+        .body--dark & {
+            background-color: #e53935;
+            color: white;
+        }
     }
     &.rating-tier-2 {
-        background-color: #ff9800;
-        color: white;
-        border-color: #ff9800;
+        background-color: #ffa726;
+        color: #333333;
+        
+        .body--dark & {
+            background-color: #fb8c00;
+            color: white;
+        }
     }
     &.rating-tier-3 {
-        background-color: #fdd835;
-        color: #333;
-        border-color: #fdd835;
+        background-color: #42a5f5;
+        color: white;
+        
+        .body--dark & {
+            background-color: #2196f3;
+            color: white;
+        }
     }
     &.rating-tier-4 {
-        background-color: #8bc34a;
+        background-color: #66bb6a;
         color: white;
-        border-color: #8bc34a;
+        
+        .body--dark & {
+            background-color: #4caf50;
+            color: white;
+        }
     }
     &.rating-tier-5 {
-        background-color: #4caf50;
+        background-color: #26a69a;
         color: white;
-        border-color: #4caf50;
+        
+        .body--dark & {
+            background-color: #00897b;
+            color: white;
+        }
     }
     &.rating-tier-6 {
-        background-color: #9474CB;
+        background-color: #7e57c2;
         color: white;
-        border-color: #9474CB;
+        
+        .body--dark & {
+            background-color: #9575cd;
+            color: white;
+        }
     }
 }
 
@@ -2439,32 +2475,67 @@ $breakpoint-xs-max: 599px !default;
     
     // Rating color classes - matching PlayerDataTable with correct purple for elite
     &.rating-na {
-        background-color: #9e9e9e;
-        color: white;
+        background-color: #bdbdbd;
+        color: #424242;
+        
+        .body--dark & {
+            background-color: #424242;
+            color: #bdbdbd;
+        }
     }
     &.rating-tier-1 {
-        background-color: #d32f2f;
+        background-color: #ef5350;
         color: white;
+        
+        .body--dark & {
+            background-color: #e53935;
+            color: white;
+        }
     }
     &.rating-tier-2 {
-        background-color: #ff9800;
-        color: white;
+        background-color: #ffa726;
+        color: #333333;
+        
+        .body--dark & {
+            background-color: #fb8c00;
+            color: white;
+        }
     }
     &.rating-tier-3 {
-        background-color: #fdd835;
-        color: #333;
+        background-color: #42a5f5;
+        color: white;
+        
+        .body--dark & {
+            background-color: #2196f3;
+            color: white;
+        }
     }
     &.rating-tier-4 {
-        background-color: #8bc34a;
+        background-color: #66bb6a;
         color: white;
+        
+        .body--dark & {
+            background-color: #4caf50;
+            color: white;
+        }
     }
     &.rating-tier-5 {
-        background-color: #4caf50;
+        background-color: #26a69a;
         color: white;
+        
+        .body--dark & {
+            background-color: #00897b;
+            color: white;
+        }
     }
     &.rating-tier-6 {
-        background-color: #9474CB;
+        background-color: #7e57c2;
         color: white;
+        
+        .body--dark & {
+            background-color: #9575cd;
+            color: white;
+        }
     }
 }
 
