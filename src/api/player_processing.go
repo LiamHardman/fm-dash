@@ -305,6 +305,7 @@ func EnhancePlayerWithCalculations(player *Player) {
 
 	// --- START: Overall Calculation (Optimized) ---
 	maxRoleBasedOverall := 0
+	bestRoleName := ""
 	calculatedRoleOveralls := make([]RoleOverallScore, 0, 8) // Increased estimate capacity
 
 	// Get processedRoleNames from pool and ensure it's clean
@@ -374,6 +375,7 @@ func EnhancePlayerWithCalculations(player *Player) {
 			calculatedRoleOveralls = append(calculatedRoleOveralls, RoleOverallScore{RoleName: role.name, Score: overallForThisRole})
 			if overallForThisRole > maxRoleBasedOverall {
 				maxRoleBasedOverall = overallForThisRole
+				bestRoleName = role.name
 			}
 		}
 
@@ -415,6 +417,7 @@ func EnhancePlayerWithCalculations(player *Player) {
 			calculatedRoleOveralls = append(calculatedRoleOveralls, RoleOverallScore{RoleName: role.name, Score: overallForThisRole})
 			if overallForThisRole > maxRoleBasedOverall {
 				maxRoleBasedOverall = overallForThisRole
+				bestRoleName = role.name
 			}
 		}
 
@@ -433,40 +436,14 @@ func EnhancePlayerWithCalculations(player *Player) {
 		return player.RoleSpecificOveralls[i].RoleName < player.RoleSpecificOveralls[j].RoleName
 	})
 
-	if isGoalkeeper {
-		player.Overall = maxRoleBasedOverall
-	} else {
-		var selectedCategoryWeights map[string]int
-		playerIsAttacker, playerIsMidfielder, playerIsDefender := false, false, false
+	// Set the best role name
+	player.BestRoleOverall = bestRoleName
 
-		for _, group := range player.PositionGroups {
-			switch group {
-			case "Attackers":
-				playerIsAttacker = true
-			case "Midfielders", "Wing-Backs":
-				playerIsMidfielder = true
-			case "Defenders":
-				playerIsDefender = true
-			}
-		}
+	// Set Overall to the best role-specific score for all players
+	// This ensures the player data table shows the best possible rating by default
+	player.Overall = maxRoleBasedOverall
 
-		switch {
-		case playerIsAttacker:
-			selectedCategoryWeights = attackerFifaCategoryWeights // from config.go
-		case playerIsMidfielder:
-			selectedCategoryWeights = midfielderFifaCategoryWeights // from config.go
-		case playerIsDefender:
-			selectedCategoryWeights = defenderFifaCategoryWeights // from config.go
-		default:
-			selectedCategoryWeights = fifaCategoryOverallWeights // from config.go
-			if len(player.PositionGroups) > 0 {                  // Log only if player has positions but doesn't fit main groups
-				log.Printf("Player %s (%v) using GENERIC category weights for blended overall.", player.Name, player.PositionGroups)
-			}
-		}
-
-		categoryBasedOverall := CalculateCategoryBasedOverall(player, selectedCategoryWeights)                                                             // from calculations.go
-		finalOverall := int(math.Round(float64(maxRoleBasedOverall)*roleSpecificOverallFactor + float64(categoryBasedOverall)*categoryBasedOverallFactor)) // factors from config.go
-		player.Overall = Clamp(finalOverall, 0, 99)                                                                                                        // Clamp from utils.go
-	}
+	// Note: We removed the old blended calculation for outfield players
+	// Now all players show their pure best role-specific overall score
 	// --- END: Overall Calculation ---
 }

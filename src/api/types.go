@@ -44,6 +44,7 @@ type Player struct {
 	SPD                     int                           `json:"SPD,omitempty"`          // Calculated Speed category score (0-99)
 	POS                     int                           `json:"POS,omitempty"`          // Calculated Positioning category score (0-99)
 	Overall                 int                           `json:"Overall"`                // Blended overall score (0-99)
+	BestRoleOverall         string                        `json:"bestRoleOverall"`        // Name of the role that produces the highest overall score
 	RoleSpecificOveralls    []RoleOverallScore            `json:"roleSpecificOveralls"`   // Overall scores for specific roles
 	TransferValueAmount     int64                         `json:"transferValueAmount"`    // Numeric transfer value
 	WageAmount              int64                         `json:"wageAmount"`             // Numeric wage amount
