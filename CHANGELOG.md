@@ -1,3 +1,9 @@
+## [1.1.0](https://git.liamhardman.com/liam/fm24-golang/compare/v1.0.2...v1.1.0) (2025-06-02)
+
+### 🚀 Features
+
+* removed echart and added sort options in the playerdatatable ([6ff243a](https://git.liamhardman.com/liam/fm24-golang/commit/6ff243a7e65ec7350c70da08c9b6d84fae981811))
+
 ## [1.0.2](https://git.liamhardman.com/liam/fm24-golang/compare/v1.0.1...v1.0.2) (2025-06-02)
 
 ### 🐛 Bug Fixes
