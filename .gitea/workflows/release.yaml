@@ -1,0 +1,164 @@
+name: Conventional Commit Release
+run-name: ${{ gitea.actor }} is creating a release 🚀
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip release]')"
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch full history for changelog generation
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Install semantic-release
+        run: |
+          npm install -g semantic-release @semantic-release/changelog @semantic-release/git @semantic-release/github conventional-changelog-conventionalcommits
+
+      - name: Create .releaserc.json
+        run: |
+          cat > .releaserc.json << 'EOF'
+          {
+            "branches": ["main"],
+            "plugins": [
+              [
+                "@semantic-release/commit-analyzer",
+                {
+                  "preset": "conventionalcommits",
+                  "releaseRules": [
+                    {"type": "feat", "release": "minor"},
+                    {"type": "fix", "release": "patch"},
+                    {"type": "perf", "release": "patch"},
+                    {"type": "revert", "release": "patch"},
+                    {"type": "docs", "release": false},
+                    {"type": "style", "release": false},
+                    {"type": "chore", "release": false},
+                    {"type": "refactor", "release": "patch"},
+                    {"type": "test", "release": false},
+                    {"type": "build", "release": false},
+                    {"type": "ci", "release": false},
+                    {"breaking": true, "release": "major"}
+                  ]
+                }
+              ],
+              [
+                "@semantic-release/release-notes-generator",
+                {
+                  "preset": "conventionalcommits",
+                  "presetConfig": {
+                    "types": [
+                      {"type": "feat", "section": "🚀 Features"},
+                      {"type": "fix", "section": "🐛 Bug Fixes"},
+                      {"type": "perf", "section": "⚡ Performance Improvements"},
+                      {"type": "revert", "section": "⏪ Reverts"},
+                      {"type": "docs", "section": "📚 Documentation", "hidden": false},
+                      {"type": "style", "section": "💄 Styles", "hidden": true},
+                      {"type": "chore", "section": "🔧 Chores", "hidden": true},
+                      {"type": "refactor", "section": "♻️ Code Refactoring"},
+                      {"type": "test", "section": "✅ Tests", "hidden": true},
+                      {"type": "build", "section": "👷 Build System", "hidden": true},
+                      {"type": "ci", "section": "🔄 CI", "hidden": true}
+                    ]
+                  }
+                }
+              ],
+              [
+                "@semantic-release/changelog",
+                {
+                  "changelogFile": "CHANGELOG.md"
+                }
+              ],
+              [
+                "@semantic-release/npm",
+                {
+                  "npmPublish": false
+                }
+              ],
+              [
+                "@semantic-release/git",
+                {
+                  "assets": ["package.json", "package-lock.json", "CHANGELOG.md"],
+                  "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+                }
+              ],
+              [
+                "@semantic-release/github",
+                {
+                  "assets": [
+                    {
+                      "path": "dist/**/*",
+                      "label": "Built application"
+                    }
+                  ]
+                }
+              ]
+            ]
+          }
+          EOF
+
+      - name: Build application
+        run: |
+          echo "🏗️ Building application for release..."
+          npm run build
+
+      - name: Run tests
+        run: |
+          echo "🧪 Running tests before release..."
+          npm run test:optional
+          npm run test:go:timeout
+
+      - name: Run semantic-release (dry-run)
+        run: |
+          echo "🔍 Analyzing commits for release..."
+          npx semantic-release --dry-run
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create release
+        run: |
+          echo "🚀 Creating release..."
+          npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release summary
+        if: always()
+        run: |
+          echo "📋 Release Pipeline Summary"
+          echo "=========================="
+          echo ""
+          echo "✅ Conventional commit analysis completed"
+          echo "📦 Package version updated (if applicable)"
+          echo "📝 Changelog generated/updated"
+          echo "🏷️ Git tag created (if new version)"
+          echo "📋 GitHub release created (if new version)"
+          echo ""
+          echo "ℹ️  Commit format guide:"
+          echo "   feat: new feature (minor version bump)"
+          echo "   fix: bug fix (patch version bump)"
+          echo "   feat!: breaking change (major version bump)"
+          echo "   docs: documentation changes (no version bump)"
+          echo "   chore: maintenance tasks (no version bump)"
+          echo ""
+          echo "🚫 To skip release: Add '[skip release]' to commit message" 
