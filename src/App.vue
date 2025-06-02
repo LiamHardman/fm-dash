@@ -85,6 +85,7 @@ import UniversalSearch from './components/UniversalSearch.vue'
 import { usePlayerStore } from './stores/playerStore'
 import { useUiStore } from './stores/uiStore'
 import { useWishlistStore } from './stores/wishlistStore'
+import { useAnalytics } from './composables/useAnalytics'
 
 export default defineComponent({
   name: 'App',
@@ -95,6 +96,9 @@ export default defineComponent({
     const uiStore = useUiStore()
     const playerStore = usePlayerStore()
     const wishlistStore = useWishlistStore()
+    
+    // Initialize analytics with automatic page view tracking
+    const analytics = useAnalytics()
 
     onMounted(() => {
       uiStore.initDarkMode()

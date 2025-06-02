@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import wishlistService from '../services/wishlistService'
+import { analytics } from '../services/analytics'
 
 export const useWishlistStore = defineStore('wishlist', () => {
   // Wishlist data structure: { [datasetId]: [player objects] }
@@ -61,6 +62,10 @@ export const useWishlistStore = defineStore('wishlist', () => {
     if (existingIndex === -1) {
       wishlistsByDataset.value[datasetId].push(player)
       await saveWishlistForDataset(datasetId)
+      
+      // Track the wishlist addition
+      analytics.useWishlist('add', player.id || player.name)
+      
       return true
     }
 
@@ -78,6 +83,10 @@ export const useWishlistStore = defineStore('wishlist', () => {
     if (index !== -1) {
       wishlistsByDataset.value[datasetId].splice(index, 1)
       await saveWishlistForDataset(datasetId)
+      
+      // Track the wishlist removal
+      analytics.useWishlist('remove', player.id || player.name)
+      
       return true
     }
 

@@ -91,7 +91,7 @@
                     </div>
                     
                     <div class="actions-grid">
-                        <div class="action-feature-card" @click="showUpgradeFinder = true" :class="{ 'disabled': allPlayersData.length === 0 }">
+                        <div class="action-feature-card" @click="openUpgradeFinder" :class="{ 'disabled': allPlayersData.length === 0 }">
                             <div class="feature-icon-container accent-gradient">
                                 <q-icon name="find_replace" size="2.5rem" />
                             </div>
@@ -103,7 +103,7 @@
                             </div>
                         </div>
 
-                        <div class="action-feature-card" @click="showWonderkids = true" :class="{ 'disabled': allPlayersData.length === 0 }">
+                        <div class="action-feature-card" @click="openWonderkids" :class="{ 'disabled': allPlayersData.length === 0 }">
                             <div class="feature-icon-container wonderkids-gradient">
                                 <q-icon name="stars" size="2.5rem" />
                             </div>
@@ -115,7 +115,7 @@
                             </div>
                         </div>
 
-                        <div class="action-feature-card" @click="showBargainHunter = true" :class="{ 'disabled': allPlayersData.length === 0 }">
+                        <div class="action-feature-card" @click="openBargainHunter" :class="{ 'disabled': allPlayersData.length === 0 }">
                             <div class="feature-icon-container bargain-gradient">
                                 <q-icon name="local_offer" size="2.5rem" />
                             </div>
@@ -240,6 +240,7 @@ import WonderkidsDialog from '../components/WonderkidsDialog.vue'
 import PlayerFilters from '../components/filters/PlayerFilters.vue'
 import { usePlayerStore } from '../stores/playerStore'
 import { useWishlistStore } from '../stores/wishlistStore'
+import { useAnalytics } from '../composables/useAnalytics'
 
 const rawTechnicalAttributeKeysConst = [
   'Cor',
@@ -315,6 +316,7 @@ export default {
     const route = useRoute()
     const playerStore = usePlayerStore()
     const wishlistStore = useWishlistStore()
+    const analytics = useAnalytics()
 
     const pageLoading = ref(true)
     const pageLoadingError = ref('')
@@ -628,20 +630,17 @@ export default {
           timeout: 2000
         })
       }
-      try {
-        if (window.gtag) {
-          window.gtag('event', 'share_dataset', {
-            dataset_id: currentDatasetId.value
-          })
-        }
-      } catch (e) {
-        console.error('GA Event failed', e)
-      }
+      
+      // Track the share event using our analytics service
+      analytics.shareDataset(currentDatasetId.value)
     }
 
     const handlePlayerSelected = player => {
       playerForDetailView.value = player
       showPlayerDetailDialog.value = true
+      
+      // Track player detail view
+      analytics.viewPlayerDetails(player.id || player.name, player.name)
     }
 
     const handleTeamSelected = teamName => {
@@ -657,6 +656,8 @@ export default {
         if (!newWindow) {
           console.error('Failed to open new window - likely blocked by popup blocker')
         } else {
+          // Track team navigation
+          analytics.navigateToTeamView(teamName, currentDatasetId.value)
         }
       } else {
       }
@@ -665,6 +666,17 @@ export default {
     const handleFiltersChanged = filtersFromChild => {
       const newTransferRange = filtersFromChild.transferValueRangeLocal
       const oldTransferRange = currentFilters.value.transferValueRangeLocal
+
+      // Track filter usage for analytics
+      Object.keys(filtersFromChild).forEach(filterKey => {
+        const newValue = filtersFromChild[filterKey]
+        const oldValue = currentFilters.value[filterKey]
+        
+        // Only track if the value actually changed and is meaningful
+        if (newValue !== oldValue && newValue !== '' && newValue !== null && newValue !== undefined) {
+          analytics.useFilter(filterKey, typeof newValue === 'object' ? JSON.stringify(newValue) : newValue)
+        }
+      })
 
       currentFilters.value = {
         ...currentFilters.value,
@@ -679,6 +691,21 @@ export default {
       ) {
         currentFilters.value.transferValueRangeLocal.userSet = true
       }
+    }
+
+    const openUpgradeFinder = () => {
+      showUpgradeFinder.value = true
+      analytics.trackButtonClick('Upgrade Finder', { feature_type: 'quick_action' })
+    }
+
+    const openWonderkids = () => {
+      showWonderkids.value = true
+      analytics.trackButtonClick('Find Wonderkids', { feature_type: 'quick_action' })
+    }
+
+    const openBargainHunter = () => {
+      showBargainHunter.value = true
+      analytics.trackButtonClick('Bargain Hunter', { feature_type: 'quick_action' })
     }
 
     watch(
@@ -769,7 +796,10 @@ export default {
       quasarInstance,
       router,
       currentFilters,
-      formatNumber
+      formatNumber,
+      openUpgradeFinder,
+      openWonderkids,
+      openBargainHunter
     }
   }
 }
