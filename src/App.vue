@@ -73,7 +73,7 @@
 
         <q-footer class="app-footer">
             <div class="footer-content">
-                <p>&copy; {{ new Date().getFullYear() }} Liam Hardman. All rights reserved.</p>
+                <p>&copy; {{ new Date().getFullYear() }} Liam Hardman.</p>
             </div>
         </q-footer>
     </q-layout>
