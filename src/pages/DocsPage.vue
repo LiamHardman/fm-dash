@@ -194,161 +194,6 @@
                     </div>
                 </div>
 
-                <!-- Player Analysis Section -->
-                <div
-                    v-if="activeSection === 'player-analysis'"
-                    class="content-section"
-                >
-                    <div class="section-header">
-                        <div class="section-badge">
-                            <q-icon name="analytics" />
-                            <span>Analysis Tools</span>
-                        </div>
-                        <h1 class="section-title">Player Analysis</h1>
-                        <p class="section-subtitle">
-                            Learn how to analyze player performance, attributes,
-                            and potential using FM-Dash's powerful analysis tools.
-                        </p>
-                    </div>
-
-                    <div class="content-cards">
-                        <q-card class="info-card">
-                            <q-card-section>
-                                <div class="card-header">
-                                    <q-icon
-                                        name="star"
-                                        size="1.5rem"
-                                        color="amber"
-                                    />
-                                    <h3>Key Features</h3>
-                                </div>
-                                <div class="feature-grid-content">
-                                    <div
-                                        class="feature-item"
-                                        v-for="feature in analysisFeatures"
-                                        :key="feature.id"
-                                    >
-                                        <q-icon
-                                            :name="feature.icon"
-                                            size="1.2rem"
-                                            :color="feature.color"
-                                        />
-                                        <div>
-                                            <h4>{{ feature.title }}</h4>
-                                            <p>{{ feature.description }}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </q-card-section>
-                        </q-card>
-
-                        <q-card class="info-card">
-                            <q-card-section>
-                                <div class="card-header">
-                                    <q-icon
-                                        name="psychology"
-                                        size="1.5rem"
-                                        color="purple"
-                                    />
-                                    <h3>Understanding Player Ratings</h3>
-                                </div>
-                                <p class="card-description">
-                                    Player ratings are calculated based on
-                                    role-specific attribute weights and current
-                                    performance metrics. Our algorithm considers
-                                    position requirements, tactical fit, and
-                                    statistical performance to provide accurate
-                                    assessments.
-                                </p>
-                                <q-btn
-                                    color="purple"
-                                    label="Learn More"
-                                    icon="arrow_forward"
-                                    flat
-                                    class="q-mt-md"
-                                />
-                            </q-card-section>
-                        </q-card>
-                    </div>
-                </div>
-
-                <!-- Team Management Section -->
-                <div
-                    v-if="activeSection === 'team-management'"
-                    class="content-section"
-                >
-                    <div class="section-header">
-                        <div class="section-badge">
-                            <q-icon name="groups" />
-                            <span>Team Tools</span>
-                        </div>
-                        <h1 class="section-title">Team Management</h1>
-                        <p class="section-subtitle">
-                            Organize and manage your team data effectively with
-                            FM-Dash's comprehensive team management features.
-                        </p>
-                    </div>
-
-                    <div class="content-cards">
-                        <q-card class="info-card">
-                            <q-card-section>
-                                <div class="card-header">
-                                    <q-icon
-                                        name="sports_soccer"
-                                        size="1.5rem"
-                                        color="green"
-                                    />
-                                    <h3>Team View Features</h3>
-                                </div>
-                                <div class="feature-grid-content">
-                                    <div
-                                        class="feature-item"
-                                        v-for="feature in teamFeatures"
-                                        :key="feature.id"
-                                    >
-                                        <q-icon
-                                            :name="feature.icon"
-                                            size="1.2rem"
-                                            color="green"
-                                        />
-                                        <div>
-                                            <h4>{{ feature.title }}</h4>
-                                            <p>{{ feature.description }}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </q-card-section>
-                        </q-card>
-
-                        <q-card class="info-card">
-                            <q-card-section>
-                                <div class="card-header">
-                                    <q-icon
-                                        name="strategy"
-                                        size="1.5rem"
-                                        color="orange"
-                                    />
-                                    <h3>Formation Analysis</h3>
-                                </div>
-                                <p class="card-description">
-                                    Analyze different formations and how your
-                                    players fit into various tactical setups.
-                                    Understand positional chemistry, tactical
-                                    balance, and optimize your team's
-                                    performance.
-                                </p>
-                                <q-btn
-                                    color="orange"
-                                    label="View Formations"
-                                    icon="sports"
-                                    flat
-                                    class="q-mt-md"
-                                />
-                            </q-card-section>
-                        </q-card>
-                    </div>
-                </div>
-
                 <!-- API Reference Section -->
                 <div
                     v-if="activeSection === 'api-reference'"
@@ -701,18 +546,6 @@ export default defineComponent({
         icon: 'rocket_launch'
       },
       {
-        id: 'player-analysis',
-        title: 'Player Analysis',
-        subtitle: 'Analyze performance',
-        icon: 'analytics'
-      },
-      {
-        id: 'team-management',
-        title: 'Team Management',
-        subtitle: 'Organize teams',
-        icon: 'groups'
-      },
-      {
         id: 'api-reference',
         title: 'API Reference',
         subtitle: 'Developer docs',
@@ -769,82 +602,78 @@ export default defineComponent({
       }
     ]
 
-    const analysisFeatures = [
-      {
-        id: 1,
-        icon: 'star_rate',
-        color: 'amber',
-        title: 'Attribute Weighting',
-        description: 'Role-specific attribute importance calculation'
-      },
-      {
-        id: 2,
-        icon: 'trending_up',
-        color: 'green',
-        title: 'Performance Tracking',
-        description: 'Monitor player development and statistics'
-      },
-      {
-        id: 3,
-        icon: 'compare_arrows',
-        color: 'blue',
-        title: 'Player Comparison',
-        description: 'Side-by-side analysis of multiple players'
-      },
-      {
-        id: 4,
-        icon: 'location_on',
-        color: 'purple',
-        title: 'Position Analysis',
-        description: 'Suitability ratings for different positions'
-      }
-    ]
-
-    const teamFeatures = [
-      {
-        id: 1,
-        icon: 'visibility',
-        title: 'Visual Formation Display',
-        description: "See your team's tactical setup at a glance"
-      },
-      {
-        id: 2,
-        icon: 'place',
-        title: 'Player Positioning',
-        description: 'Optimal positioning based on attributes'
-      },
-      {
-        id: 3,
-        icon: 'group',
-        title: 'Squad Overview',
-        description: 'Complete squad analysis and depth charts'
-      }
-    ]
-
     const apiEndpoints = [
       {
         id: 1,
         method: 'POST',
-        path: '/api/upload',
-        description: 'Upload and process Football Manager player data files'
+        path: '/upload',
+        description: 'Upload and process Football Manager player data files (HTML format). Returns a dataset ID (file hash) on success.'
       },
       {
         id: 2,
         method: 'GET',
-        path: '/api/players',
-        description: 'Retrieve player information with filtering and pagination'
+        path: '/api/players/{dataset_id}',
+        description: 'Retrieve player information for a specific dataset. Supports query parameters for filtering (e.g., position, age, name) and pagination.'
       },
       {
         id: 3,
         method: 'GET',
-        path: '/api/teams',
-        description: 'Get team data including formations and statistics'
+        path: '/api/roles',
+        description: 'Get a list of available player roles and their associated attribute weights used for calculating player suitability and ratings.'
       },
       {
         id: 4,
         method: 'GET',
-        path: '/api/analysis',
-        description: 'Access advanced analysis results and metrics'
+        path: '/api/leagues/{dataset_id}',
+        description: 'Retrieve all leagues present in a given dataset, along with team counts and aggregate quality metrics for each league.'
+      },
+      {
+        id: 5,
+        method: 'GET',
+        path: '/api/teams/{dataset_id}?league={league_name}',
+        description: 'Get detailed team data for a specific league within a dataset. Includes player rosters, average ratings, and tactical information.'
+      },
+      {
+        id: 6,
+        method: 'POST',
+        path: '/api/percentiles/{dataset_id}',
+        description: 'Calculate and retrieve player performance percentiles. Request body can specify player name for individual analysis, or division filters to compare against specific cohorts.'
+      },
+      {
+        id: 7,
+        method: 'GET',
+        path: '/api/search/{dataset_id}?q={query}',
+        description: 'Perform a global search within a specific dataset for players, teams, leagues, or nations based on the provided query string.'
+      },
+      {
+        id: 8,
+        method: 'GET',
+        path: '/api/config',
+        description: 'Retrieve application-level configuration, such as available player positions, attribute groups, UI settings, and version information.'
+      },
+      {
+        id: 9,
+        method: 'POST',
+        path: '/api/bargain-hunter/{dataset_id}',
+        description: 'Analyze player data to find undervalued players (bargains). Request body includes criteria like max budget, max salary, min/max age, and minimum overall rating.'
+      },
+      {
+        id: 10,
+        method: 'GET',
+        path: '/api/faces?id={face_id}',
+        description: 'Retrieve player face images by their unique face ID. Returns image data if available.'
+      },
+      {
+        id: 11,
+        method: 'GET',
+        path: '/api/cache/nation-ratings/{dataset_id}',
+        description: 'Retrieves cached aggregated ratings (attack, midfield, defense, overall) for all nations represented in the specified dataset.'
+      },
+      {
+        id: 12,
+        method: 'POST',
+        path: '/api/cache/nation-ratings/{dataset_id}',
+        description: 'Generates or updates the cached aggregated ratings for all nations in the specified dataset. (Primarily for internal use or administrative tasks).'
       }
     ]
 
@@ -994,8 +823,6 @@ volumes:
       heroFeatures,
       quickStartSteps,
       systemRequirements,
-      analysisFeatures,
-      teamFeatures,
       apiEndpoints,
       dataFormats,
       localRequirements,
