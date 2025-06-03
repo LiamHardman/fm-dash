@@ -41,57 +41,67 @@
             <!-- Right Features Panel -->
             <div class="features-panel">
                 <div class="features-header">
-                    <h3 class="features-title">Powerful Analysis Tools</h3>
-                    <div class="stats-row">
-                        <div class="stat-item">
-                            <div class="stat-number">10,000+</div>
-                            <div class="stat-label">Players Analyzed</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-number">500+</div>
-                            <div class="stat-label">Teams Optimized</div>
-                        </div>
-                    </div>
+                    <h3 class="features-title">Complete FM24 Analysis Suite</h3>
                 </div>
 
                 <div class="features-grid">
                     <div class="feature-card">
                         <div class="feature-icon">
-                            <q-icon name="search" size="1.5rem" color="primary" />
+                            <q-icon name="upload" size="1.5rem" color="primary" />
+                        </div>
+                        <div class="feature-content">
+                            <h4 class="feature-title">Data Upload</h4>
+                            <p class="feature-description">Upload your FM24 HTML exports for instant analysis</p>
+                        </div>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <q-icon name="search" size="1.5rem" color="secondary" />
                         </div>
                         <div class="feature-content">
                             <h4 class="feature-title">Player Search</h4>
-                            <p class="feature-description">Advanced filtering to find perfect players</p>
+                            <p class="feature-description">Advanced filtering by position, age, stats, and more</p>
                         </div>
                     </div>
                     
                     <div class="feature-card">
                         <div class="feature-icon">
-                            <q-icon name="bar_chart" size="1.5rem" color="secondary" />
+                            <q-icon name="stars" size="1.5rem" color="accent" />
                         </div>
                         <div class="feature-content">
-                            <h4 class="feature-title">Player Stats</h4>
-                            <p class="feature-description">Comprehensive stats with role-specific ratings</p>
+                            <h4 class="feature-title">Scouting Tools</h4>
+                            <p class="feature-description">Find wonderkids, bargains, and player upgrades</p>
                         </div>
                     </div>
                     
                     <div class="feature-card">
                         <div class="feature-icon">
-                            <q-icon name="compare" size="1.5rem" color="accent" />
+                            <q-icon name="flag" size="1.5rem" color="info" />
                         </div>
                         <div class="feature-content">
-                            <h4 class="feature-title">Comparisons</h4>
-                            <p class="feature-description">Side-by-side player and tactical analysis</p>
+                            <h4 class="feature-title">Nation Analysis</h4>
+                            <p class="feature-description">Scout out other national teams.</p>
+                        </div>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <q-icon name="emoji_events" size="1.5rem" color="positive" />
+                        </div>
+                        <div class="feature-content">
+                            <h4 class="feature-title">League Analysis</h4>
+                            <p class="feature-description">Browse teams and players by competition</p>
                         </div>
                     </div>
                     
                     <div class="feature-card">
                         <div class="feature-icon">
-                            <q-icon name="group_work" size="1.5rem" color="info" />
+                            <q-icon name="favorite" size="1.5rem" color="warning" />
                         </div>
                         <div class="feature-content">
-                            <h4 class="feature-title">Team Analysis</h4>
-                            <p class="feature-description">Squad composition and chemistry insights</p>
+                            <h4 class="feature-title">Wishlist System</h4>
+                            <p class="feature-description">Save and track players across datasets</p>
                         </div>
                     </div>
                 </div>
@@ -283,33 +293,14 @@ export default defineComponent({
             color: rgba(255, 255, 255, 0.9);
         }
     }
-    
-    .stats-row {
-        display: flex;
-        justify-content: center;
-        gap: 2rem;
-        
-        .stat-item {
-            .stat-number {
-                font-size: 1.5rem;
-                font-weight: 700;
-                color: #64b5f6;
-                margin-bottom: 0.3rem;
-            }
-            
-            .stat-label {
-                font-size: 0.8rem;
-                opacity: 0.8;
-            }
-        }
-    }
 }
 
 .features-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
+    gap: 1.2rem;
     margin-bottom: 2rem;
+    align-items: stretch;
     
     .feature-card {
         background: rgba(255, 255, 255, 0.1);
@@ -321,6 +312,7 @@ export default defineComponent({
         display: flex;
         align-items: flex-start;
         gap: 1rem;
+        min-height: 100px;
         
         &:hover {
             transform: translateY(-4px);
@@ -353,12 +345,19 @@ export default defineComponent({
         
         .feature-content {
             flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
             
             .feature-title {
                 font-size: 1.1rem;
                 font-weight: 600;
                 color: rgba(255, 255, 255, 0.95);
                 margin: 0 0 0.5rem 0;
+                line-height: 1.2;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
                 
                 .body--dark & {
                     color: rgba(255, 255, 255, 0.9);
@@ -370,6 +369,7 @@ export default defineComponent({
                 line-height: 1.4;
                 margin: 0;
                 font-size: 0.9rem;
+                flex: 1;
                 
                 .body--dark & {
                     color: rgba(255, 255, 255, 0.7);
@@ -438,6 +438,7 @@ export default defineComponent({
     
     .features-grid {
         margin-bottom: 1.5rem;
+        grid-template-columns: repeat(2, 1fr);
     }
 }
 
@@ -480,21 +481,6 @@ export default defineComponent({
         .features-title {
             font-size: 1.5rem;
         }
-        
-        .stats-row {
-            flex-direction: column;
-            gap: 1rem;
-            
-            .stat-item {
-                .stat-number {
-                    font-size: 1.2rem;
-                }
-                
-                .stat-label {
-                    font-size: 0.75rem;
-                }
-            }
-        }
     }
     
     .features-grid {
@@ -507,6 +493,7 @@ export default defineComponent({
             .feature-content {
                 .feature-title {
                     font-size: 1rem;
+                    white-space: normal; /* Allow wrapping on mobile */
                 }
                 
                 .feature-description {
@@ -555,6 +542,12 @@ export default defineComponent({
             
             .feature-icon {
                 margin-top: 0;
+            }
+            
+            .feature-content {
+                .feature-title {
+                    white-space: normal;
+                }
             }
         }
     }
