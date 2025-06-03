@@ -2,6 +2,13 @@
 
 ### 🐛 Bug Fixes
 
+* improved landing page ([56bf115](https://git.liamhardman.com/liam/fm24-golang/commit/56bf115cc36d3d8b32a5b3367e11839e68a3e782))
+* upload component improvement ([fc91ded](https://git.liamhardman.com/liam/fm24-golang/commit/fc91dedc3f462680c75ea60b993f73b8701330d2))
+
+## [1.2.1](https://git.liamhardman.com/liam/fm24-golang/compare/v1.2.0...v1.2.1) (2025-06-03)
+
+### 🐛 Bug Fixes
+
 * upload component improvement ([fc91ded](https://git.liamhardman.com/liam/fm24-golang/commit/fc91dedc3f462680c75ea60b993f73b8701330d2))
 
 ## [1.2.0](https://git.liamhardman.com/liam/fm24-golang/compare/v1.1.4...v1.2.0) (2025-06-02)
