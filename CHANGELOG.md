@@ -3,6 +3,16 @@
 ### 🐛 Bug Fixes
 
 * better landing page ([72c0590](https://git.liamhardman.com/liam/fm24-golang/commit/72c0590fe24b604881951ff02f6a2fd1dd6bb53b))
+* docs page stuff ([d93314a](https://git.liamhardman.com/liam/fm24-golang/commit/d93314a4fcf2cce610c45bdc27c5609bbef8084c))
+* improved landing page ([56bf115](https://git.liamhardman.com/liam/fm24-golang/commit/56bf115cc36d3d8b32a5b3367e11839e68a3e782))
+* local deploy doc ([bb397a2](https://git.liamhardman.com/liam/fm24-golang/commit/bb397a262336f5dc722647f0f9cb12392db3ec82))
+* upload component improvement ([fc91ded](https://git.liamhardman.com/liam/fm24-golang/commit/fc91dedc3f462680c75ea60b993f73b8701330d2))
+
+## [1.2.1](https://git.liamhardman.com/liam/fm24-golang/compare/v1.2.0...v1.2.1) (2025-06-03)
+
+### 🐛 Bug Fixes
+
+* better landing page ([72c0590](https://git.liamhardman.com/liam/fm24-golang/commit/72c0590fe24b604881951ff02f6a2fd1dd6bb53b))
 * improved landing page ([56bf115](https://git.liamhardman.com/liam/fm24-golang/commit/56bf115cc36d3d8b32a5b3367e11839e68a3e782))
 * local deploy doc ([bb397a2](https://git.liamhardman.com/liam/fm24-golang/commit/bb397a262336f5dc722647f0f9cb12392db3ec82))
 * upload component improvement ([fc91ded](https://git.liamhardman.com/liam/fm24-golang/commit/fc91dedc3f462680c75ea60b993f73b8701330d2))
