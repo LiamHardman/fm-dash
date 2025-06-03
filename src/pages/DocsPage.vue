@@ -405,6 +405,232 @@
                         </q-card>
                     </div>
                 </div>
+
+                <!-- Local Deployment Section -->
+                <div
+                    v-if="activeSection === 'local-deployment'"
+                    class="content-section"
+                >
+                    <div class="section-header">
+                        <div class="section-badge">
+                            <q-icon name="cloud_download" />
+                            <span>Self-Hosting</span>
+                        </div>
+                        <h1 class="section-title">Local Deployment</h1>
+                        <p class="section-subtitle">
+                            Run FM-Dash on your own computer for personal use. 
+                            Choose between Docker (easiest) or manual setup.
+                        </p>
+                    </div>
+
+                    <!-- Prerequisites -->
+                    <q-card class="info-card">
+                        <q-card-section>
+                            <div class="card-header">
+                                <q-icon
+                                    name="download"
+                                    size="1.5rem"
+                                    color="orange"
+                                />
+                                <h3>Prerequisites</h3>
+                            </div>
+                            <p class="card-description">
+                                Choose your deployment method and install the required tools:
+                            </p>
+                            <div class="prerequisites-grid">
+                                <div
+                                    class="prerequisite-item"
+                                    v-for="requirement in localRequirements"
+                                    :key="requirement.id"
+                                >
+                                    <q-icon
+                                        :name="requirement.icon"
+                                        size="2rem"
+                                        color="orange"
+                                        class="prereq-icon"
+                                    />
+                                    <h4>{{ requirement.title }}</h4>
+                                    <p>{{ requirement.description }}</p>
+                                    <a v-if="requirement.downloadUrl" :href="requirement.downloadUrl" target="_blank" class="download-link">
+                                        Download {{ requirement.shortName }}
+                                    </a>
+                                </div>
+                            </div>
+                        </q-card-section>
+                    </q-card>
+
+                    <!-- Option 1: Docker -->
+                    <q-card class="info-card method-card docker-method">
+                        <q-card-section>
+                            <div class="method-header">
+                                <div class="method-badge recommended">
+                                    <q-icon name="smart_toy" size="1.5rem" />
+                                    <div>
+                                        <h2>Option 1: Docker (Recommended)</h2>
+                                        <p>The easiest way to run FM-Dash. Everything is pre-configured.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="method-content">
+                                <div class="setup-steps">
+                                    <div
+                                        class="setup-step"
+                                        v-for="(step, index) in dockerSteps"
+                                        :key="index"
+                                    >
+                                        <div class="step-number">
+                                            {{ index + 1 }}
+                                        </div>
+                                        <div class="step-content">
+                                            <h4>{{ step.title }}</h4>
+                                            <p>{{ step.description }}</p>
+                                            <div v-if="step.commands" class="command-list">
+                                                <div v-for="(command, cmdIndex) in step.commands" :key="cmdIndex" class="command-block">
+                                                    <code>{{ command }}</code>
+                                                    <q-btn
+                                                        flat
+                                                        round
+                                                        icon="content_copy"
+                                                        size="sm"
+                                                        @click="copyToClipboard(command)"
+                                                        class="copy-btn"
+                                                        dense
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div v-if="step.fileContent" class="file-content">
+                                                <div class="file-header">
+                                                    <span class="file-name">{{ step.fileName }}</span>
+                                                    <q-btn
+                                                        flat
+                                                        round
+                                                        icon="content_copy"
+                                                        size="sm"
+                                                        @click="copyToClipboard(step.fileContent)"
+                                                        class="copy-btn"
+                                                        dense
+                                                    />
+                                                </div>
+                                                <pre class="file-code">{{ step.fileContent }}</pre>
+                                            </div>
+                                            <div v-if="step.note" class="step-note">
+                                                <q-icon name="info" size="1rem" />
+                                                {{ step.note }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="final-step">
+                                    <h4>✅ Access Your Application</h4>
+                                    <p>Once the container is running, open your web browser and go to:</p>
+                                    <div class="access-url">
+                                        <strong>http://localhost:3000</strong>
+                                    </div>
+                                    <p class="access-note">You should see the FM-Dash interface. You can now upload your Football Manager data and start analyzing!</p>
+                                </div>
+                            </div>
+                        </q-card-section>
+                    </q-card>
+
+                    <!-- Option 2: Manual -->
+                    <q-card class="info-card method-card manual-method">
+                        <q-card-section>
+                            <div class="method-header">
+                                <div class="method-badge">
+                                    <q-icon name="construction" size="1.5rem" />
+                                    <div>
+                                        <h2>Option 2: Manual Installation</h2>
+                                        <p>For users who prefer to build and run the application manually.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="method-content">
+                                <div class="setup-steps">
+                                    <div
+                                        class="setup-step"
+                                        v-for="(step, index) in setupSteps"
+                                        :key="index"
+                                    >
+                                        <div class="step-number">
+                                            {{ index + 1 }}
+                                        </div>
+                                        <div class="step-content">
+                                            <h4>{{ step.title }}</h4>
+                                            <p>{{ step.description }}</p>
+                                            <div v-if="step.commands" class="command-list">
+                                                <div v-for="(command, cmdIndex) in step.commands" :key="cmdIndex" class="command-block">
+                                                    <code>{{ command }}</code>
+                                                    <q-btn
+                                                        flat
+                                                        round
+                                                        icon="content_copy"
+                                                        size="sm"
+                                                        @click="copyToClipboard(command)"
+                                                        class="copy-btn"
+                                                        dense
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div v-if="step.note" class="step-note">
+                                                <q-icon name="info" size="1rem" />
+                                                {{ step.note }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="final-step">
+                                    <h4>✅ Access Your Application</h4>
+                                    <p>Once both servers are running, open your web browser and go to:</p>
+                                    <div class="access-url">
+                                        <strong>http://localhost:3000</strong>
+                                    </div>
+                                    <p class="access-note">You should see the FM-Dash interface. You can now upload your Football Manager data and start analyzing!</p>
+                                </div>
+                            </div>
+                        </q-card-section>
+                    </q-card>
+
+                    <!-- Help Section -->
+                    <q-card class="info-card">
+                        <q-card-section>
+                            <div class="card-header">
+                                <q-icon
+                                    name="help"
+                                    size="1.5rem"
+                                    color="primary"
+                                />
+                                <h3>Need More Help?</h3>
+                            </div>
+                            <div class="resource-links">
+                                <q-btn
+                                    outline
+                                    color="primary"
+                                    label="View Full Source Code"
+                                    icon="code"
+                                    href="https://github.com/LiamHardman/fmdash"
+                                    target="_blank"
+                                    class="resource-btn"
+                                />
+                                <q-btn
+                                    outline
+                                    color="green"
+                                    label="Report Problems"
+                                    icon="bug_report"
+                                    href="https://github.com/LiamHardman/fmdash/issues"
+                                    target="_blank"
+                                    class="resource-btn"
+                                />
+                            </div>
+                            <p class="resource-note">
+                                If you're having issues, check the GitHub repository for detailed documentation and community support.
+                            </p>
+                        </q-card-section>
+                    </q-card>
+                </div>
             </div>
         </div>
 
@@ -491,6 +717,12 @@ export default defineComponent({
         title: 'API Reference',
         subtitle: 'Developer docs',
         icon: 'code'
+      },
+      {
+        id: 'local-deployment',
+        title: 'Local Deployment',
+        subtitle: 'Self-hosting',
+        icon: 'cloud_download'
       }
     ]
 
@@ -618,6 +850,139 @@ export default defineComponent({
 
     const dataFormats = ['HTML']
 
+    const localRequirements = [
+      {
+        id: 1,
+        icon: 'smart_toy',
+        title: 'Docker & Docker Compose',
+        description: 'For the easiest setup. Includes everything needed to run FM-Dash.',
+        downloadUrl: 'https://www.docker.com/get-started',
+        shortName: 'Docker'
+      },
+      {
+        id: 2,
+        icon: 'code',
+        title: 'Node.js (version 18 or higher)',
+        description: 'Required for manual setup. Download and install from the official website.',
+        downloadUrl: 'https://nodejs.org/',
+        shortName: 'Node.js'
+      },
+      {
+        id: 3,
+        icon: 'terminal',
+        title: 'Go (version 1.24 or higher)',
+        description: 'Required for manual setup. Needed to run the backend API server.',
+        downloadUrl: 'https://golang.org/dl/',
+        shortName: 'Go'
+      },
+      {
+        id: 4,
+        icon: 'source',
+        title: 'Git',
+        description: 'Required to download the source code from GitHub.',
+        downloadUrl: 'https://git-scm.com/',
+        shortName: 'Git'
+      }
+    ]
+
+    const dockerSteps = [
+      {
+        title: 'Clone the Repository',
+        description: 'Download the FM-Dash source code which includes the Docker configuration:',
+        commands: [
+          'git clone https://github.com/LiamHardman/fmdash.git',
+          'cd fmdash'
+        ],
+        note: 'This downloads all the necessary files including docker-compose.yml'
+      },
+      {
+        title: 'Create Docker Compose File',
+        description: 'Create a docker-compose.yml file in the project directory with this content:',
+        fileContent: `version: '3.8'
+
+services:
+  fmdash:
+    build: .
+    ports:
+      - "3000:8080"
+    environment:
+      - PORT_GO_API=8091
+      - PORT_NGINX=8080
+      - ENABLE_METRICS=false
+      - OTEL_ENABLED=false
+      - INSECURE_MODE=true
+      - SERVICE_NAME=fmdash-local
+      - MAX_UPLOAD_SIZE=50
+      - SERVICE_VERSION=v1.0.0
+      - ENVIRONMENT=local
+      - DEPLOYMENT_ENV=docker
+    volumes:
+      - fmdash_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  fmdash_data:`,
+        fileName: 'docker-compose.yml',
+        note: 'This configuration runs FM-Dash without external dependencies like S3 storage'
+      },
+      {
+        title: 'Start the Application',
+        description: 'Build and start the FM-Dash containers:',
+        commands: [
+          'docker-compose up -d'
+        ],
+        note: 'This builds the Docker image and starts the container. First run may take several minutes.'
+      },
+      {
+        title: 'Verify Installation',
+        description: 'Check that the application is running properly:',
+        commands: [
+          'docker-compose ps',
+          'docker-compose logs fmdash'
+        ],
+        note: 'The first command shows running containers, the second shows application logs'
+      }
+    ]
+
+    const setupSteps = [
+      {
+        title: 'Download the Source Code',
+        description: 'Open a terminal or command prompt and run these commands to download FM-Dash:',
+        commands: [
+          'git clone https://github.com/LiamHardman/fmdash.git',
+          'cd fmdash'
+        ],
+        note: 'This creates a "fmdash" folder with all the necessary files'
+      },
+      {
+        title: 'Install Frontend Dependencies',
+        description: 'Install all the JavaScript packages needed for the frontend:',
+        commands: ['npm install'],
+        note: 'This step may take several minutes depending on your internet speed'
+      },
+      {
+        title: 'Verify Go Installation',
+        description: 'Make sure Go is properly installed and configured:',
+        commands: ['go version'],
+        note: 'You should see version 1.24 or higher. If not, install Go from the prerequisites above'
+      },
+      {
+        title: 'Start the Application',
+        description: 'Launch both the frontend and backend servers:',
+        commands: ['./launch_dev.sh'],
+        note: 'This script starts both servers automatically. Wait for both to fully start before proceeding.'
+      }
+    ]
+
+    const copyToClipboard = async (text) => {
+      try {
+        await navigator.clipboard.writeText(text)
+        // You could add a toast notification here if desired
+      } catch (err) {
+        console.error('Failed to copy text: ', err)
+      }
+    }
+
     const setActiveSection = sectionId => {
       activeSection.value = sectionId
     }
@@ -633,6 +998,10 @@ export default defineComponent({
       teamFeatures,
       apiEndpoints,
       dataFormats,
+      localRequirements,
+      dockerSteps,
+      setupSteps,
+      copyToClipboard,
       setActiveSection
     }
   }
@@ -1225,6 +1594,552 @@ export default defineComponent({
     .endpoint-item {
         flex-direction: column;
         gap: 0.5rem;
+    }
+}
+
+// Local Deployment Styles
+.benefit-list,
+.requirement-list {
+    display: grid;
+    gap: 1rem;
+
+    @media (min-width: 768px) {
+        grid-template-columns: 1fr;
+    }
+}
+
+.benefit-item,
+.requirement-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(25, 118, 210, 0.05);
+    border-radius: 8px;
+    border-left: 3px solid var(--q-primary);
+
+    h4 {
+        margin: 0 0 0.5rem 0;
+        font-weight: 600;
+        color: #1976d2;
+        font-size: 1rem;
+
+        .body--dark & {
+            color: #64b5f6;
+        }
+    }
+
+    p {
+        margin: 0;
+        line-height: 1.5;
+        color: var(--q-secondary);
+        font-size: 0.875rem;
+    }
+}
+
+.setup-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.setup-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+
+    .step-number {
+        background: linear-gradient(135deg, var(--q-primary), #1976d2);
+        color: white;
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 1rem;
+        flex-shrink: 0;
+        margin-top: 0.25rem;
+    }
+
+    .step-content {
+        flex: 1;
+
+        h4 {
+            margin: 0 0 0.5rem 0;
+            font-weight: 600;
+            color: #1976d2;
+            font-size: 1.1rem;
+
+            .body--dark & {
+                color: #64b5f6;
+            }
+        }
+
+        p {
+            margin: 0 0 1rem 0;
+            line-height: 1.5;
+            color: var(--q-secondary);
+        }
+    }
+}
+
+.command-block {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--q-dark-page);
+    border: 1px solid var(--q-separator-color);
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    margin: 0.5rem 0;
+    font-family: 'Courier New', monospace;
+    position: relative;
+
+    .body--light & {
+        background: #f8f9fa;
+    }
+
+    code {
+        flex: 1;
+        font-size: 0.875rem;
+        color: var(--q-primary);
+        font-weight: 500;
+    }
+
+    .copy-btn {
+        opacity: 0.7;
+        transition: opacity 0.2s ease;
+
+        &:hover {
+            opacity: 1;
+        }
+    }
+}
+
+.step-note {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+    color: #f57c00;
+    margin-top: 0.5rem;
+
+    .body--dark & {
+        color: #ffb74d;
+    }
+}
+
+.launch-options {
+    display: grid;
+    gap: 1.5rem;
+    margin-top: 1rem;
+
+    @media (min-width: 768px) {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.launch-option {
+    padding: 1.5rem;
+    background: rgba(25, 118, 210, 0.05);
+    border-radius: 12px;
+    border: 1px solid rgba(25, 118, 210, 0.2);
+
+    h4 {
+        margin: 0 0 1rem 0;
+        font-weight: 600;
+        color: #1976d2;
+        font-size: 1rem;
+
+        .body--dark & {
+            color: #64b5f6;
+        }
+    }
+
+    p {
+        margin: 0.5rem 0 0 0;
+        line-height: 1.5;
+        color: var(--q-secondary);
+        font-size: 0.875rem;
+    }
+}
+
+.troubleshooting-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.trouble-item {
+    padding: 1.5rem;
+    background: rgba(244, 67, 54, 0.05);
+    border-radius: 8px;
+    border-left: 3px solid #f44336;
+
+    h4 {
+        margin: 0 0 0.5rem 0;
+        font-weight: 600;
+        color: #d32f2f;
+        font-size: 1rem;
+
+        .body--dark & {
+            color: #f48fb1;
+        }
+    }
+
+    p {
+        margin: 0 0 1rem 0;
+        line-height: 1.5;
+        color: var(--q-secondary);
+        font-size: 0.875rem;
+    }
+}
+
+.resource-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1rem;
+
+    .resource-btn {
+        flex: 1;
+        min-width: 150px;
+        text-transform: none;
+        border-radius: 8px;
+        padding: 0.75rem 1.5rem;
+        font-weight: 500;
+    }
+
+    @media (max-width: 768px) {
+        flex-direction: column;
+
+        .resource-btn {
+            width: 100%;
+        }
+    }
+}
+
+.resource-note {
+    margin: 0;
+    line-height: 1.6;
+    color: var(--q-secondary);
+    font-size: 0.875rem;
+    text-align: center;
+    padding: 1rem;
+    background: rgba(25, 118, 210, 0.05);
+    border-radius: 8px;
+}
+
+.download-link {
+    display: inline-flex;
+    align-items: center;
+    color: var(--q-primary);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+    
+    &:hover {
+        text-decoration: underline;
+    }
+}
+
+.command-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 0.5rem 0;
+}
+
+.manual-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.manual-step {
+    .step-label {
+        font-weight: 600;
+        color: var(--q-primary);
+        font-size: 0.875rem;
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+}
+
+.launch-option {
+    &.recommended {
+        border: 2px solid var(--q-primary);
+        position: relative;
+        
+        &::before {
+            content: "RECOMMENDED";
+            position: absolute;
+            top: -8px;
+            right: 1rem;
+            background: var(--q-primary);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+    }
+}
+
+.option-note {
+    background: rgba(25, 118, 210, 0.1);
+    border-radius: 6px;
+    padding: 0.75rem;
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    border-left: 3px solid var(--q-primary);
+}
+
+.prerequisites-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.5rem;
+    margin-top: 1rem;
+
+    @media (max-width: 768px) {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+
+    @media (max-width: 480px) {
+        grid-template-columns: 1fr;
+    }
+}
+
+.prerequisite-item {
+    background: rgba(25, 118, 210, 0.05);
+    border-radius: 12px;
+    padding: 1.5rem 1rem;
+    text-align: center;
+    border: 1px solid rgba(25, 118, 210, 0.2);
+    transition: all 0.3s ease;
+
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(25, 118, 210, 0.15);
+    }
+
+    .prereq-icon {
+        margin-bottom: 1rem;
+        display: block;
+    }
+
+    h4 {
+        margin: 0 0 0.75rem 0;
+        font-weight: 600;
+        color: #1976d2;
+        font-size: 1rem;
+        line-height: 1.3;
+
+        .body--dark & {
+            color: #64b5f6;
+        }
+    }
+
+    p {
+        margin: 0 0 1rem 0;
+        line-height: 1.4;
+        color: var(--q-secondary);
+        font-size: 0.875rem;
+    }
+}
+
+.file-content {
+    margin: 1rem 0;
+    border: 1px solid var(--q-separator-color);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--q-dark-page);
+
+    .body--light & {
+        background: #f8f9fa;
+    }
+}
+
+.file-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: rgba(25, 118, 210, 0.1);
+    border-bottom: 1px solid var(--q-separator-color);
+
+    .file-name {
+        font-weight: 600;
+        color: var(--q-primary);
+        font-size: 0.875rem;
+    }
+
+    .copy-btn {
+        opacity: 0.7;
+        transition: opacity 0.2s ease;
+
+        &:hover {
+            opacity: 1;
+        }
+    }
+}
+
+.file-code {
+    margin: 0;
+    padding: 1rem;
+    font-family: 'Monaco', 'Courier New', monospace;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--q-primary);
+    background: transparent;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.method-card {
+    margin: 2rem 0;
+    border: 2px solid transparent;
+    
+    &.docker-method {
+        border-color: #2196f3;
+        background: linear-gradient(135deg, rgba(33, 150, 243, 0.05), rgba(33, 150, 243, 0.02));
+    }
+    
+    &.manual-method {
+        border-color: #4caf50;
+        background: linear-gradient(135deg, rgba(76, 175, 80, 0.05), rgba(76, 175, 80, 0.02));
+    }
+}
+
+.method-header {
+    margin-bottom: 2rem;
+    
+    .method-badge {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.5rem;
+        border-radius: 12px;
+        position: relative;
+        
+        &.recommended {
+            background: linear-gradient(135deg, rgba(33, 150, 243, 0.1), rgba(33, 150, 243, 0.05));
+            border: 2px solid #2196f3;
+            
+            &::after {
+                content: "RECOMMENDED";
+                position: absolute;
+                top: -8px;
+                right: 1rem;
+                background: #2196f3;
+                color: white;
+                padding: 0.25rem 0.75rem;
+                border-radius: 4px;
+                font-size: 0.7rem;
+                font-weight: 700;
+            }
+        }
+        
+        &:not(.recommended) {
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(76, 175, 80, 0.05));
+            border: 2px solid #4caf50;
+        }
+        
+        .q-icon {
+            color: inherit;
+        }
+        
+        h2 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1976d2;
+            
+            .body--dark & {
+                color: #64b5f6;
+            }
+            
+            .manual-method & {
+                color: #2e7d32;
+                
+                .body--dark & {
+                    color: #81c784;
+                }
+            }
+        }
+        
+        p {
+            margin: 0;
+            color: var(--q-secondary);
+            font-size: 1rem;
+        }
+    }
+}
+
+.method-content {
+    padding: 0 1rem;
+}
+
+.final-step {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(76, 175, 80, 0.05));
+    border-radius: 12px;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    
+    h4 {
+        margin: 0 0 1rem 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #2e7d32;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        
+        .body--dark & {
+            color: #81c784;
+        }
+    }
+    
+    p {
+        margin: 0 0 1rem 0;
+        line-height: 1.6;
+        color: var(--q-secondary);
+        
+        &.access-note {
+            margin: 1rem 0 0 0;
+            font-size: 0.9rem;
+            font-style: italic;
+        }
+    }
+}
+
+.access-url {
+    background: var(--q-dark-page);
+    border: 1px solid var(--q-separator-color);
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+    font-family: 'Monaco', 'Courier New', monospace;
+    font-size: 1.1rem;
+    margin: 1rem 0;
+    
+    .body--light & {
+        background: #f8f9fa;
+    }
+    
+    strong {
+        color: var(--q-primary);
     }
 }
 </style>
