@@ -6,10 +6,10 @@
 // Analytics configuration - get from environment variable
 const GA_TRACKING_ID = import.meta.env.VITE_GA_TRACKING_ID || __GA_TRACKING_ID__ || 'G-QYG3QS5C5Y'
 
-// Log the tracking ID in development for debugging
-if (import.meta.env.DEV) {
-  console.log('🔍 Google Analytics Tracking ID:', GA_TRACKING_ID)
-}
+// // Log the tracking ID in development for debugging
+// if (import.meta.env.DEV) {
+//   console.log('🔍 Google Analytics Tracking ID:', GA_TRACKING_ID)
+// }
 
 /**
  * Initialize Google Analytics by dynamically loading the script
@@ -43,7 +43,7 @@ const initializeGA = () => {
       }
     })
 
-    console.log('✅ Google Analytics initialized with tracking ID:', GA_TRACKING_ID)
+    // console.log('✅ Google Analytics initialized with tracking ID:', GA_TRACKING_ID)
   } catch (error) {
     console.error('Failed to initialize Google Analytics:', error)
   }

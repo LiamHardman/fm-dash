@@ -1546,7 +1546,7 @@ func performSearch(players []Player, query string) []SearchResult {
 // configHandler returns configuration values to the frontend and allows updating certain settings
 func configHandler(w http.ResponseWriter, r *http.Request) {
 	setCORSHeaders(w, r)
-	
+
 	switch r.Method {
 	case http.MethodGet:
 		config := struct {
@@ -1578,7 +1578,7 @@ func configHandler(w http.ResponseWriter, r *http.Request) {
 		// Update the rating calculation method if provided
 		if updateRequest.UseScaledRatings != nil {
 			SetUseScaledRatings(*updateRequest.UseScaledRatings)
-			log.Printf("Rating calculation method updated via API: %s", 
+			log.Printf("Rating calculation method updated via API: %s",
 				map[bool]string{true: "scaled", false: "linear"}[*updateRequest.UseScaledRatings])
 		}
 
@@ -1928,4 +1928,82 @@ func getFacesDirectory() string {
 		facesDir = "./faces" // Default to "./faces" directory
 	}
 	return facesDir
+}
+
+// logosHandler serves team logo images from S3 or local storage
+func logosHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	ctx, span := StartSpan(ctx, "handlers.logos")
+	defer span.End()
+
+	// Only allow GET requests
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract team ID from query parameters
+	teamId := r.URL.Query().Get("teamId")
+	if teamId == "" {
+		logWarn(ctx, "Missing teamId parameter in logos request")
+		http.Error(w, "Missing 'teamId' parameter", http.StatusBadRequest)
+		return
+	}
+
+	// Validate team ID format (basic sanitation)
+	if len(teamId) == 0 || len(teamId) > 100 {
+		logWarn(ctx, "Invalid teamId parameter length", "teamId", teamId)
+		http.Error(w, "Invalid team ID format", http.StatusBadRequest)
+		return
+	}
+
+	logInfo(ctx, "Processing team logo request", "teamId", teamId)
+
+	// Set appropriate headers for image response
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Cache-Control", "public, max-age=86400") // Cache for 24 hours
+	setCORSHeaders(w, r)
+
+	// Construct the logo image filename
+	logoFileName := teamId + ".png"
+
+	// Try S3 first if configured
+	if s3Storage, ok := storage.(*S3Storage); ok && s3Storage.client != nil {
+		logInfo(ctx, "Attempting to retrieve logo from S3", "filename", logoFileName)
+
+		// Get logo image from S3
+		if err := s3Storage.getTeamLogo(ctx, logoFileName, w); err != nil {
+			logWarn(ctx, "Failed to retrieve logo from S3", "filename", logoFileName, "error", err)
+			// Fall through to local storage
+		} else {
+			logInfo(ctx, "Successfully served logo from S3", "filename", logoFileName)
+			return
+		}
+	}
+
+	// Try local storage as fallback
+	logosDir := getLogosDirectory()
+	logoFilePath := filepath.Join(logosDir, "clubs", logoFileName)
+
+	logInfo(ctx, "Attempting to retrieve logo from local storage", "path", logoFilePath)
+
+	// Check if file exists
+	if _, err := os.Stat(logoFilePath); os.IsNotExist(err) {
+		logWarn(ctx, "Team logo not found", "path", logoFilePath)
+		http.Error(w, "Team logo not found", http.StatusNotFound)
+		return
+	}
+
+	// Serve the file
+	http.ServeFile(w, r, logoFilePath)
+	logInfo(ctx, "Successfully served logo from local storage", "path", logoFilePath)
+}
+
+// getLogosDirectory returns the directory path for local logo storage
+func getLogosDirectory() string {
+	logosDir := os.Getenv("LOGOS_DIR")
+	if logosDir == "" {
+		logosDir = "./logos" // Default to "./logos" directory
+	}
+	return logosDir
 }

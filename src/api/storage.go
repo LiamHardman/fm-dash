@@ -580,6 +580,42 @@ func (s *S3Storage) getFaceImage(ctx context.Context, filename string, w http.Re
 	return nil
 }
 
+// getTeamLogo retrieves a team logo image from S3 and writes it to the response writer
+func (s *S3Storage) getTeamLogo(ctx context.Context, filename string, w http.ResponseWriter) error {
+	if s.client == nil {
+		return fmt.Errorf("S3 client not available")
+	}
+
+	// Get the logos bucket name from environment, default to the main bucket + "/logos/clubs" prefix
+	logosBucketName := os.Getenv("S3_LOGOS_BUCKET")
+	if logosBucketName == "" {
+		logosBucketName = s.bucketName // Use same bucket as datasets
+	}
+
+	// Construct the object key for logos
+	objectKey := "logos/Clubs/Normal/Normal" + filename
+
+	// If we're using a separate logos bucket, don't add the prefix
+	if logosBucketName != s.bucketName {
+		objectKey = filename
+	}
+
+	// Get object from S3
+	reader, err := s.client.GetObject(ctx, logosBucketName, objectKey, minio.GetObjectOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get team logo from S3: %w", err)
+	}
+	defer reader.Close()
+
+	// Copy the image data to the response writer
+	_, err = io.Copy(w, reader)
+	if err != nil {
+		return fmt.Errorf("failed to write team logo to response: %w", err)
+	}
+
+	return nil
+}
+
 // LocalFileStorage stores datasets as JSON files in a local directory
 type LocalFileStorage struct {
 	datasetDir string

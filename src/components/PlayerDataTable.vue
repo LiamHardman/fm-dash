@@ -214,16 +214,24 @@
                             </div>
                         </template>
                         <template v-else-if="col.name === 'club'">
-                            <span 
-                                class="club-link"
-                                @click.stop="onClubClick(props.row)"
-                                :title="`View ${props.row[col.field]} team page`"
-                            >{{
-                                props.row[col.field] !== undefined &&
-                                props.row[col.field] !== null
-                                    ? props.row[col.field]
-                                    : "-"
-                            }}</span>
+                            <div class="club-cell">
+                                <TeamLogo 
+                                    :team-name="props.row[col.field]"
+                                    :size="20"
+                                    class="q-mr-xs"
+                                    v-if="props.row[col.field] && props.row[col.field] !== '-'"
+                                />
+                                <span 
+                                    class="club-link"
+                                    @click.stop="onClubClick(props.row)"
+                                    :title="`View ${props.row[col.field]} team page`"
+                                >{{
+                                    props.row[col.field] !== undefined &&
+                                    props.row[col.field] !== null
+                                        ? props.row[col.field]
+                                        : "-"
+                                }}</span>
+                            </div>
                         </template>
                         <template v-else>
                             <span>{{
@@ -329,11 +337,15 @@ import { usePlayerCalculationWorker } from '../composables/useWebWorkers'
 import { usePlayerStore } from '../stores/playerStore'
 import { useWishlistStore } from '../stores/wishlistStore'
 import { formatCurrency } from '../utils/currencyUtils'
+import TeamLogo from '../components/TeamLogo.vue'
 
 const MAX_DISPLAY_PLAYERS = 1000
 
 export default {
   name: 'PlayerDataTable',
+  components: {
+    TeamLogo
+  },
   props: {
     players: { type: Array, required: true },
     loading: { type: Boolean, default: false },
@@ -1714,25 +1726,33 @@ export default {
     }
 }
 
-.club-link {
-    color: #2e74b5;
-    text-decoration: none;
+.club-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.club-cell .club-link {
     cursor: pointer;
-    font-weight: 600;
-    transition: color 0.2s ease;
-    
-    .body--dark & {
-        color: #60a5fa;
-    }
-    
-    &:hover {
-        color: #1e40af;
-        text-decoration: underline;
-        
-        .body--dark & {
-            color: #93c5fd;
-        }
-    }
+    color: inherit;
+    text-decoration: none;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.club-cell .club-link:hover {
+    text-decoration: underline;
+}
+
+.body--dark .club-cell .club-link:hover {
+    color: #81C784;
+}
+
+.body--light .club-cell .club-link:hover {
+    color: #2E7D32;
 }
 
 .pagination-info {
@@ -1797,5 +1817,19 @@ export default {
     .body--dark & {
         color: rgba(255, 255, 255, 0.9);
     }
+}
+
+/* Fixed table layout for consistent column widths */
+.fixed-table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+.fixed-table .q-table__top {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.body--dark .fixed-table .q-table__top {
+    border-color: rgba(255, 255, 255, 0.12);
 }
 </style>

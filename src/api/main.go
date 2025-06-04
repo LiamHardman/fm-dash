@@ -131,7 +131,7 @@ func main() {
 	// API endpoint for retrieving player data
 	http.Handle("/api/players/", wrapHandler(http.HandlerFunc(playerDataHandler), "player-data"))
 
-	// New API endpoint for retrieving available roles
+	// API endpoint for retrieving available roles
 	http.Handle("/api/roles", wrapHandler(http.HandlerFunc(rolesHandler), "roles"))
 
 	// API endpoint for retrieving leagues data
@@ -154,6 +154,9 @@ func main() {
 
 	// API endpoint for serving player face images
 	http.Handle("/api/faces", wrapHandler(http.HandlerFunc(facesHandler), "faces"))
+
+	// API endpoint for serving team logo images
+	http.Handle("/api/logos", wrapHandler(http.HandlerFunc(logosHandler), "logos"))
 
 	// API endpoint for cache operations (nation ratings, etc.)
 	http.Handle("/api/cache/", wrapHandler(http.HandlerFunc(cacheHandler), "cache"))
@@ -187,6 +190,9 @@ func main() {
 
 	// API endpoint for serving player face images
 	mux.Handle("/api/faces", wrapHandler(http.HandlerFunc(facesHandler), "faces"))
+
+	// API endpoint for serving team logo images
+	mux.Handle("/api/logos", wrapHandler(http.HandlerFunc(logosHandler), "logos"))
 
 	// API endpoint for cache operations (nation ratings, etc.)
 	mux.Handle("/api/cache/", wrapHandler(http.HandlerFunc(cacheHandler), "cache"))
