@@ -191,22 +191,78 @@
                         </q-card>
                     </q-expansion-item>
 
-                    <!-- Future Settings Sections - Placeholder Examples -->
+                    <!-- Display Preferences Section -->
                     <q-expansion-item
                         expand-separator
                         icon="view_module"
                         label="Display Preferences"
-                        caption="Customize table columns, themes, and layout options"
+                        caption="Customize player faces, team logos, and layout options"
                         header-class="settings-expansion-header"
                         class="settings-expansion"
-                        disable
                     >
                         <q-card flat class="expansion-content">
                             <q-card-section>
-                                <div class="coming-soon">
-                                    <q-icon name="construction" size="2rem" class="q-mb-md" />
-                                    <p>Display preferences coming soon...</p>
-                                    <p class="text-caption">Configure table columns, themes, and layout options</p>
+                                <div class="section-description">
+                                    Configure what visual elements are displayed throughout the application.
+                                </div>
+
+                                <div class="display-options">
+                                    <!-- Faces Toggle -->
+                                    <q-card flat bordered class="option-card">
+                                        <q-card-section class="option-content">
+                                            <div class="option-header">
+                                                <div class="option-info">
+                                                    <q-icon name="face" size="1.5rem" class="option-icon" />
+                                                    <div class="option-text">
+                                                        <div class="option-title">Player Faces</div>
+                                                        <div class="option-description">Show or hide player face images in player cards and tables</div>
+                                                    </div>
+                                                </div>
+                                                <q-toggle
+                                                    v-model="showFaces"
+                                                    color="primary"
+                                                    size="lg"
+                                                />
+                                            </div>
+                                        </q-card-section>
+                                    </q-card>
+
+                                    <!-- Logos Toggle -->
+                                    <q-card flat bordered class="option-card">
+                                        <q-card-section class="option-content">
+                                            <div class="option-header">
+                                                <div class="option-info">
+                                                    <q-icon name="shield" size="1.5rem" class="option-icon" />
+                                                    <div class="option-text">
+                                                        <div class="option-title">Team Logos</div>
+                                                        <div class="option-description">Show or hide team logo images in team displays and player cards</div>
+                                                    </div>
+                                                </div>
+                                                <q-toggle
+                                                    v-model="showLogos"
+                                                    color="primary"
+                                                    size="lg"
+                                                />
+                                            </div>
+                                        </q-card-section>
+                                    </q-card>
+                                </div>
+
+                                <div class="display-info">
+                                    <q-card flat bordered class="info-card">
+                                        <q-card-section>
+                                            <div class="info-text">
+                                                <p><strong>Note:</strong> These display preferences will take effect immediately and affect:</p>
+                                                <ul>
+                                                    <li>Player tables and search results</li>
+                                                    <li>Individual player detail views</li>
+                                                    <li>Team displays and comparisons</li>
+                                                    <li>Dashboard and overview screens</li>
+                                                </ul>
+                                                <p>Settings are saved automatically and will persist across browser sessions.</p>
+                                            </div>
+                                        </q-card-section>
+                                    </q-card>
                                 </div>
                             </q-card-section>
                         </q-card>
@@ -299,6 +355,16 @@ export default defineComponent({
             set: (value) => uiStore.setRatingCalculation(value)
         })
 
+        const showFaces = computed({
+            get: () => uiStore.showFaces,
+            set: (value) => uiStore.setFacesDisplay(value)
+        })
+
+        const showLogos = computed({
+            get: () => uiStore.showLogos,
+            set: (value) => uiStore.setLogosDisplay(value)
+        })
+
         const isLoading = ref(false)
 
         // Load backend configuration on component mount
@@ -385,7 +451,9 @@ export default defineComponent({
             useScaledRatings,
             setRatingMethod,
             closeModal,
-            isLoading
+            isLoading,
+            showFaces,
+            showLogos
         }
     }
 })
@@ -732,6 +800,89 @@ export default defineComponent({
             color: rgba(255, 255, 255, 0.5);
         }
     }
+}
+
+.display-options {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.option-card {
+    border: 1px solid rgba(26, 35, 126, 0.1);
+    transition: all 0.2s ease;
+    
+    &:hover {
+        border-color: rgba(26, 35, 126, 0.2);
+        box-shadow: 0 2px 8px rgba(26, 35, 126, 0.05);
+    }
+    
+    .body--dark & {
+        background: rgba(255, 255, 255, 0.02);
+        border-color: rgba(255, 255, 255, 0.1);
+        
+        &:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+    }
+}
+
+.option-content {
+    padding: 1.25rem;
+}
+
+.option-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.option-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+}
+
+.option-icon {
+    color: #1a237e;
+    flex-shrink: 0;
+    
+    .body--dark & {
+        color: rgba(255, 255, 255, 0.7);
+    }
+}
+
+.option-text {
+    flex: 1;
+}
+
+.option-title {
+    font-weight: 600;
+    font-size: 1rem;
+    color: #1a237e;
+    margin-bottom: 0.25rem;
+    
+    .body--dark & {
+        color: rgba(255, 255, 255, 0.9);
+    }
+}
+
+.option-description {
+    font-size: 0.875rem;
+    color: #666;
+    line-height: 1.4;
+    
+    .body--dark & {
+        color: rgba(255, 255, 255, 0.7);
+    }
+}
+
+.display-info {
+    margin-top: 1rem;
 }
 
 .settings-actions {

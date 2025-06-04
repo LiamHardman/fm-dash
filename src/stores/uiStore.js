@@ -14,6 +14,10 @@ export const useUiStore = defineStore('ui', () => {
   // Rating calculation method preference
   const useScaledRatings = ref(true) // Default to new scaled ratings
 
+  // Display preferences
+  const showFaces = ref(true) // Default to showing faces
+  const showLogos = ref(true) // Default to showing logos
+
   // Function to toggle dark mode
   function toggleDarkMode() {
     // Directly toggle the current state
@@ -53,6 +57,46 @@ export const useUiStore = defineStore('ui', () => {
       localStorage.setItem('useScaledRatings', useScaled ? 'true' : 'false')
     } catch (e) {
       console.warn('Could not save rating calculation preference to localStorage:', e)
+    }
+  }
+
+  // Function to toggle faces display
+  function toggleFaces() {
+    showFaces.value = !showFaces.value
+    try {
+      localStorage.setItem('showFaces', showFaces.value ? 'true' : 'false')
+    } catch (e) {
+      console.warn('Could not save faces preference to localStorage:', e)
+    }
+  }
+
+  // Function to set faces display directly
+  function setFacesDisplay(showFacesEnabled) {
+    showFaces.value = showFacesEnabled
+    try {
+      localStorage.setItem('showFaces', showFacesEnabled ? 'true' : 'false')
+    } catch (e) {
+      console.warn('Could not save faces preference to localStorage:', e)
+    }
+  }
+
+  // Function to toggle logos display
+  function toggleLogos() {
+    showLogos.value = !showLogos.value
+    try {
+      localStorage.setItem('showLogos', showLogos.value ? 'true' : 'false')
+    } catch (e) {
+      console.warn('Could not save logos preference to localStorage:', e)
+    }
+  }
+
+  // Function to set logos display directly
+  function setLogosDisplay(showLogosEnabled) {
+    showLogos.value = showLogosEnabled
+    try {
+      localStorage.setItem('showLogos', showLogosEnabled ? 'true' : 'false')
+    } catch (e) {
+      console.warn('Could not save logos preference to localStorage:', e)
     }
   }
 
@@ -97,11 +141,37 @@ export const useUiStore = defineStore('ui', () => {
     }
   }
 
+  // Initialize faces display preferences
+  function initFacesDisplay() {
+    try {
+      const storedPreference = localStorage.getItem('showFaces')
+      if (storedPreference !== null) {
+        showFaces.value = storedPreference === 'true'
+      }
+    } catch (e) {
+      console.warn('Could not read faces display preference from localStorage:', e)
+    }
+  }
+
+  // Initialize logos display preferences
+  function initLogosDisplay() {
+    try {
+      const storedPreference = localStorage.getItem('showLogos')
+      if (storedPreference !== null) {
+        showLogos.value = storedPreference === 'true'
+      }
+    } catch (e) {
+      console.warn('Could not read logos display preference from localStorage:', e)
+    }
+  }
+
   // Initialize all settings
   function initSettings() {
     initDarkMode()
     initNotifications()
     initRatingCalculation()
+    initFacesDisplay()
+    initLogosDisplay()
   }
 
   // Watch for changes in Quasar's dark mode state and update the store
@@ -133,6 +203,14 @@ export const useUiStore = defineStore('ui', () => {
     toggleRatingCalculation,
     setRatingCalculation,
     initRatingCalculation,
+    showFaces,
+    toggleFaces,
+    setFacesDisplay,
+    initFacesDisplay,
+    showLogos,
+    toggleLogos,
+    setLogosDisplay,
+    initLogosDisplay,
     initSettings
   }
 })
