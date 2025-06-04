@@ -242,7 +242,7 @@
                                     <div class="player-identity-section">
                                         <div class="row items-center q-mb-sm">
                                             <!-- Player Face Image -->
-                                            <div class="col-auto q-mr-md player-face-container">
+                                            <div v-if="showFaces" class="col-auto q-mr-md player-face-container">
                                                 <img
                                                     v-if="playerFaceImageUrl && !faceImageLoadError"
                                                     :src="playerFaceImageUrl"
@@ -658,6 +658,7 @@ import { useQuasar } from 'quasar'
 import { computed, defineComponent, onMounted, ref, watch } from 'vue'
 import { usePlayerStore } from '../stores/playerStore'
 import { formatCurrency } from '../utils/currencyUtils'
+import { useUiStore } from '../stores/uiStore'
 
 const attributeFullNameMap = {
   Cor: 'Corners',
@@ -977,6 +978,7 @@ export default defineComponent({
   emits: ['close'],
   setup(props) {
     const qInstance = useQuasar()
+    const uiStore = useUiStore()
     const _playerStore = usePlayerStore()
     const selectedComparisonGroup = ref('Global')
     const flagLoadError = ref(false)
@@ -1530,7 +1532,8 @@ export default defineComponent({
       faceImageLoadError,
       handleFaceImageError,
       handleFaceImageLoad,
-      playerFaceImageUrl
+      playerFaceImageUrl,
+      showFaces: computed(() => uiStore.showFaces)
     }
   }
 })

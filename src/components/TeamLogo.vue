@@ -1,5 +1,5 @@
 <template>
-  <div class="team-logo-container" :class="containerClass">
+  <div v-if="showLogos" class="team-logo-container" :class="containerClass">
     <img
       v-if="logoUrl && !logoLoadError"
       :src="logoUrl"
@@ -29,6 +29,7 @@
 <script>
 import { defineComponent, ref, computed, watch } from 'vue'
 import { useQuasar } from 'quasar'
+import { useUiStore } from '../stores/uiStore'
 import { useTeamLogos } from '../composables/useTeamLogos'
 
 export default defineComponent({
@@ -65,6 +66,7 @@ export default defineComponent({
   },
   setup(props) {
     const $q = useQuasar()
+    const uiStore = useUiStore()
     const { getTeamLogoUrl } = useTeamLogos()
     
     const logoLoadError = ref(false)
@@ -115,7 +117,8 @@ export default defineComponent({
       iconColor,
       placeholderStyle,
       handleLogoError,
-      handleLogoLoad
+      handleLogoLoad,
+      showLogos: computed(() => uiStore.showLogos)
     }
   }
 })

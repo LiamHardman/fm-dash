@@ -338,6 +338,8 @@ import { usePlayerStore } from '../stores/playerStore'
 import { useWishlistStore } from '../stores/wishlistStore'
 import { formatCurrency } from '../utils/currencyUtils'
 import TeamLogo from '../components/TeamLogo.vue'
+import { useRouter } from 'vue-router'
+import { useUiStore } from '../stores/uiStore'
 
 const MAX_DISPLAY_PLAYERS = 1000
 
@@ -370,6 +372,8 @@ export default {
     const $q = useQuasar()
     const playerStore = usePlayerStore()
     const wishlistStore = useWishlistStore()
+    const router = useRouter()
+    const uiStore = useUiStore()
 
     // Initialize optimized sorting and web workers
     const { sortLargeArray, clearSortCache } = useOptimizedSorting()
