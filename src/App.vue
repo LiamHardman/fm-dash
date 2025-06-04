@@ -57,13 +57,26 @@
                     </a>
                 </div>
                 
+                <!-- Settings button -->
+                <q-btn
+                    flat
+                    round
+                    icon="settings"
+                    @click="showSettingsModal = true"
+                    class="settings-btn"
+                >
+                    <q-tooltip>Settings</q-tooltip>
+                </q-btn>
+                
                 <q-btn
                     flat
                     round
                     :icon="$q.dark.isActive ? 'light_mode' : 'dark_mode'"
                     @click="toggleDarkMode"
                     class="dark-mode-btn"
-                />
+                >
+                    <q-tooltip>{{ $q.dark.isActive ? 'Light Mode' : 'Dark Mode' }}</q-tooltip>
+                </q-btn>
             </q-toolbar>
         </q-header>
 
@@ -76,12 +89,16 @@
                 <p>&copy; {{ new Date().getFullYear() }} Liam Hardman.</p>
             </div>
         </q-footer>
+
+        <!-- Settings Modal -->
+        <SettingsModal v-model="showSettingsModal" />
     </q-layout>
 </template>
 
 <script>
-import { computed, defineComponent, onMounted } from 'vue'
+import { computed, defineComponent, onMounted, ref } from 'vue'
 import UniversalSearch from './components/UniversalSearch.vue'
+import SettingsModal from './components/SettingsModal.vue'
 import { usePlayerStore } from './stores/playerStore'
 import { useUiStore } from './stores/uiStore'
 import { useWishlistStore } from './stores/wishlistStore'
@@ -90,7 +107,8 @@ import { useAnalytics } from './composables/useAnalytics'
 export default defineComponent({
   name: 'App',
   components: {
-    UniversalSearch
+    UniversalSearch,
+    SettingsModal
   },
   setup() {
     const uiStore = useUiStore()
@@ -100,8 +118,11 @@ export default defineComponent({
     // Initialize analytics with automatic page view tracking
     const analytics = useAnalytics()
 
+    // Settings modal state
+    const showSettingsModal = ref(false)
+
     onMounted(() => {
-      uiStore.initDarkMode()
+      uiStore.initSettings() // Initialize all settings including the new rating calculation setting
     })
 
     const currentDatasetId = computed(() => playerStore.currentDatasetId)
@@ -111,7 +132,8 @@ export default defineComponent({
       isDarkModeActive: uiStore.isDarkModeActive,
       toggleDarkMode: uiStore.toggleDarkMode,
       currentDatasetId,
-      wishlistCount
+      wishlistCount,
+      showSettingsModal
     }
   }
 })
@@ -223,6 +245,25 @@ export default defineComponent({
 
 .dark-mode-btn {
     color: #666;
+    
+    &:hover {
+        color: #1a237e;
+        background: rgba(26, 35, 126, 0.05);
+    }
+    
+    .body--dark & {
+        color: rgba(255, 255, 255, 0.7);
+        
+        &:hover {
+            color: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 0.1);
+        }
+    }
+}
+
+.settings-btn {
+    color: #666;
+    margin-right: 0.5rem;
     
     &:hover {
         color: #1a237e;

@@ -54,6 +54,10 @@ var (
 
 	// Metrics collection toggle
 	metricsEnabled bool
+	
+	// Rating calculation method toggle
+	useScaledRatings   bool = true // Default to new scaled ratings
+	muUseScaledRatings sync.RWMutex
 )
 
 // Default attribute weights if JSON loading fails or file is missing.
@@ -297,25 +301,29 @@ func precomputeRoleWeights() {
 
 // EnsureConfigInitialized waits for configuration to be loaded (with timeout)
 func EnsureConfigInitialized(timeout time.Duration) error {
-	if configInitialized {
-		return configInitError
-	}
-
-	ticker := time.NewTicker(10 * time.Millisecond)
-	defer ticker.Stop()
-
 	deadline := time.Now().Add(timeout)
-
-	//nolint:gosimple // for-select pattern is appropriate for timeout handling
-	for {
-		select {
-		case <-ticker.C:
-			if configInitialized {
-				return configInitError
-			}
-			if time.Now().After(deadline) {
-				return fmt.Errorf("configuration initialization timed out after %v", timeout)
-			}
-		}
+	for !configInitialized && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
 	}
+	
+	if !configInitialized {
+		return fmt.Errorf("configuration initialization timed out after %v", timeout)
+	}
+	
+	return configInitError
+}
+
+// GetUseScaledRatings returns the current rating calculation method preference
+func GetUseScaledRatings() bool {
+	muUseScaledRatings.RLock()
+	defer muUseScaledRatings.RUnlock()
+	return useScaledRatings
+}
+
+// SetUseScaledRatings sets the rating calculation method preference
+func SetUseScaledRatings(useScaled bool) {
+	muUseScaledRatings.Lock()
+	defer muUseScaledRatings.Unlock()
+	useScaledRatings = useScaled
+	log.Printf("Rating calculation method changed to: %s", map[bool]string{true: "scaled", false: "linear"}[useScaled])
 }

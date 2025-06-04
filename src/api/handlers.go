@@ -1529,26 +1529,64 @@ func performSearch(players []Player, query string) []SearchResult {
 	return results
 }
 
-// configHandler returns configuration values to the frontend
+// configHandler returns configuration values to the frontend and allows updating certain settings
 func configHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	config := struct {
-		MaxUploadSizeMB    int64 `json:"maxUploadSizeMB"`
-		MaxUploadSizeBytes int64 `json:"maxUploadSizeBytes"`
-	}{
-		MaxUploadSizeMB:    getMaxUploadSize() / (1024 * 1024),
-		MaxUploadSizeBytes: getMaxUploadSize(),
-	}
-
-	w.Header().Set("Content-Type", "application/json")
 	setCORSHeaders(w, r)
-	if err := json.NewEncoder(w).Encode(config); err != nil {
-		log.Printf("Error encoding JSON response for config: %v", err)
-		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
+	
+	switch r.Method {
+	case http.MethodGet:
+		config := struct {
+			MaxUploadSizeMB    int64 `json:"maxUploadSizeMB"`
+			MaxUploadSizeBytes int64 `json:"maxUploadSizeBytes"`
+			UseScaledRatings   bool  `json:"useScaledRatings"`
+		}{
+			MaxUploadSizeMB:    getMaxUploadSize() / (1024 * 1024),
+			MaxUploadSizeBytes: getMaxUploadSize(),
+			UseScaledRatings:   GetUseScaledRatings(),
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(config); err != nil {
+			log.Printf("Error encoding JSON response for config: %v", err)
+			http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
+		}
+
+	case http.MethodPost:
+		var updateRequest struct {
+			UseScaledRatings *bool `json:"useScaledRatings"`
+		}
+
+		if err := json.NewDecoder(r.Body).Decode(&updateRequest); err != nil {
+			http.Error(w, "Error parsing request body: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		// Update the rating calculation method if provided
+		if updateRequest.UseScaledRatings != nil {
+			SetUseScaledRatings(*updateRequest.UseScaledRatings)
+			log.Printf("Rating calculation method updated via API: %s", 
+				map[bool]string{true: "scaled", false: "linear"}[*updateRequest.UseScaledRatings])
+		}
+
+		// Return updated config
+		config := struct {
+			MaxUploadSizeMB    int64 `json:"maxUploadSizeMB"`
+			MaxUploadSizeBytes int64 `json:"maxUploadSizeBytes"`
+			UseScaledRatings   bool  `json:"useScaledRatings"`
+		}{
+			MaxUploadSizeMB:    getMaxUploadSize() / (1024 * 1024),
+			MaxUploadSizeBytes: getMaxUploadSize(),
+			UseScaledRatings:   GetUseScaledRatings(),
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(config); err != nil {
+			log.Printf("Error encoding JSON response for config update: %v", err)
+			http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
+		}
+
+	default:
+		http.Error(w, "Only GET and POST methods are allowed", http.StatusMethodNotAllowed)
 	}
 }
 

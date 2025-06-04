@@ -128,8 +128,33 @@ export default {
       console.error('Error fetching config in playerService:', error)
       return {
         maxUploadSizeMB: 15,
-        maxUploadSizeBytes: 15 * 1024 * 1024
+        maxUploadSizeBytes: 15 * 1024 * 1024,
+        useScaledRatings: true // Default to scaled ratings
       }
+    }
+  },
+
+  async updateConfig(configUpdate) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/config`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(configUpdate)
+      })
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(
+          `API Error updating config: ${response.status} - ${errorText || response.statusText}`
+        )
+      }
+      
+      return await response.json()
+    } catch (error) {
+      console.error('Error updating config in playerService:', error)
+      throw error
     }
   }
 }

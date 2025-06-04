@@ -11,6 +11,9 @@ export const useUiStore = defineStore('ui', () => {
   // Notification preferences
   const notificationsEnabled = ref(true)
 
+  // Rating calculation method preference
+  const useScaledRatings = ref(true) // Default to new scaled ratings
+
   // Function to toggle dark mode
   function toggleDarkMode() {
     // Directly toggle the current state
@@ -30,6 +33,26 @@ export const useUiStore = defineStore('ui', () => {
       localStorage.setItem('notificationsEnabled', notificationsEnabled.value ? 'true' : 'false')
     } catch (e) {
       console.warn('Could not save notification preference to localStorage:', e)
+    }
+  }
+
+  // Function to toggle rating calculation method
+  function toggleRatingCalculation() {
+    useScaledRatings.value = !useScaledRatings.value
+    try {
+      localStorage.setItem('useScaledRatings', useScaledRatings.value ? 'true' : 'false')
+    } catch (e) {
+      console.warn('Could not save rating calculation preference to localStorage:', e)
+    }
+  }
+
+  // Function to set rating calculation method directly
+  function setRatingCalculation(useScaled) {
+    useScaledRatings.value = useScaled
+    try {
+      localStorage.setItem('useScaledRatings', useScaled ? 'true' : 'false')
+    } catch (e) {
+      console.warn('Could not save rating calculation preference to localStorage:', e)
     }
   }
 
@@ -62,6 +85,25 @@ export const useUiStore = defineStore('ui', () => {
     }
   }
 
+  // Initialize rating calculation preferences
+  function initRatingCalculation() {
+    try {
+      const storedPreference = localStorage.getItem('useScaledRatings')
+      if (storedPreference !== null) {
+        useScaledRatings.value = storedPreference === 'true'
+      }
+    } catch (e) {
+      console.warn('Could not read rating calculation preference from localStorage:', e)
+    }
+  }
+
+  // Initialize all settings
+  function initSettings() {
+    initDarkMode()
+    initNotifications()
+    initRatingCalculation()
+  }
+
   // Watch for changes in Quasar's dark mode state and update the store
   // This is generally not needed if the store is the single source of truth
   // and all changes go through toggleDarkMode.
@@ -86,6 +128,11 @@ export const useUiStore = defineStore('ui', () => {
     initDarkMode,
     notificationsEnabled,
     toggleNotifications,
-    initNotifications
+    initNotifications,
+    useScaledRatings,
+    toggleRatingCalculation,
+    setRatingCalculation,
+    initRatingCalculation,
+    initSettings
   }
 })

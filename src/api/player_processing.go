@@ -271,13 +271,23 @@ func EnhancePlayerWithCalculations(player *Player) {
 	// Calculate FIFA-style category stats based on player type
 	if isGoalkeeper {
 		// Goalkeepers get goalkeeper-specific stats
-		player.GK = CalculateFifaStatGo(player.NumericAttributes, "GK")
-		player.DIV = CalculateFifaStatGo(player.NumericAttributes, "DIV")
-		player.HAN = CalculateFifaStatGo(player.NumericAttributes, "HAN")
-		player.REF = CalculateFifaStatGo(player.NumericAttributes, "REF")
-		player.KIC = CalculateFifaStatGo(player.NumericAttributes, "KIC")
-		player.SPD = CalculateFifaStatGo(player.NumericAttributes, "SPD")
-		player.POS = CalculateFifaStatGo(player.NumericAttributes, "POS")
+		if GetUseScaledRatings() {
+			player.GK = CalculateFifaStatGo(player.NumericAttributes, "GK")
+			player.DIV = CalculateFifaStatGo(player.NumericAttributes, "DIV")
+			player.HAN = CalculateFifaStatGo(player.NumericAttributes, "HAN")
+			player.REF = CalculateFifaStatGo(player.NumericAttributes, "REF")
+			player.KIC = CalculateFifaStatGo(player.NumericAttributes, "KIC")
+			player.SPD = CalculateFifaStatGo(player.NumericAttributes, "SPD")
+			player.POS = CalculateFifaStatGo(player.NumericAttributes, "POS")
+		} else {
+			player.GK = CalculateFifaStatGoLinear(player.NumericAttributes, "GK")
+			player.DIV = CalculateFifaStatGoLinear(player.NumericAttributes, "DIV")
+			player.HAN = CalculateFifaStatGoLinear(player.NumericAttributes, "HAN")
+			player.REF = CalculateFifaStatGoLinear(player.NumericAttributes, "REF")
+			player.KIC = CalculateFifaStatGoLinear(player.NumericAttributes, "KIC")
+			player.SPD = CalculateFifaStatGoLinear(player.NumericAttributes, "SPD")
+			player.POS = CalculateFifaStatGoLinear(player.NumericAttributes, "POS")
+		}
 		// Set outfield stats to 0 for goalkeepers
 		player.PAC = 0
 		player.SHO = 0
@@ -287,12 +297,21 @@ func EnhancePlayerWithCalculations(player *Player) {
 		player.PHY = 0
 	} else {
 		// Outfield players get outfield stats
-		player.PAC = CalculateFifaStatGo(player.NumericAttributes, "PAC") // CalculateFifaStatGo from calculations.go
-		player.SHO = CalculateFifaStatGo(player.NumericAttributes, "SHO")
-		player.PAS = CalculateFifaStatGo(player.NumericAttributes, "PAS")
-		player.DRI = CalculateFifaStatGo(player.NumericAttributes, "DRI")
-		player.DEF = CalculateFifaStatGo(player.NumericAttributes, "DEF")
-		player.PHY = CalculateFifaStatGo(player.NumericAttributes, "PHY")
+		if GetUseScaledRatings() {
+			player.PAC = CalculateFifaStatGo(player.NumericAttributes, "PAC") // CalculateFifaStatGo from calculations.go
+			player.SHO = CalculateFifaStatGo(player.NumericAttributes, "SHO")
+			player.PAS = CalculateFifaStatGo(player.NumericAttributes, "PAS")
+			player.DRI = CalculateFifaStatGo(player.NumericAttributes, "DRI")
+			player.DEF = CalculateFifaStatGo(player.NumericAttributes, "DEF")
+			player.PHY = CalculateFifaStatGo(player.NumericAttributes, "PHY")
+		} else {
+			player.PAC = CalculateFifaStatGoLinear(player.NumericAttributes, "PAC")
+			player.SHO = CalculateFifaStatGoLinear(player.NumericAttributes, "SHO")
+			player.PAS = CalculateFifaStatGoLinear(player.NumericAttributes, "PAS")
+			player.DRI = CalculateFifaStatGoLinear(player.NumericAttributes, "DRI")
+			player.DEF = CalculateFifaStatGoLinear(player.NumericAttributes, "DEF")
+			player.PHY = CalculateFifaStatGoLinear(player.NumericAttributes, "PHY")
+		}
 		// Set goalkeeper stats to 0 for outfield players
 		player.GK = 0
 		player.DIV = 0
@@ -371,7 +390,12 @@ func EnhancePlayerWithCalculations(player *Player) {
 
 		// Batch process all matching roles
 		for _, role := range matchingRoles {
-			overallForThisRole := CalculateOverallForRoleGo(player.NumericAttributes, role.weights)
+			var overallForThisRole int
+			if GetUseScaledRatings() {
+				overallForThisRole = CalculateOverallForRoleGo(player.NumericAttributes, role.weights)
+			} else {
+				overallForThisRole = CalculateOverallForRoleGoLinear(player.NumericAttributes, role.weights)
+			}
 			calculatedRoleOveralls = append(calculatedRoleOveralls, RoleOverallScore{RoleName: role.name, Score: overallForThisRole})
 			if overallForThisRole > maxRoleBasedOverall {
 				maxRoleBasedOverall = overallForThisRole
@@ -413,7 +437,12 @@ func EnhancePlayerWithCalculations(player *Player) {
 
 		// Batch process all applicable roles
 		for _, role := range allApplicableRoles {
-			overallForThisRole := CalculateOverallForRoleGo(player.NumericAttributes, role.weights)
+			var overallForThisRole int
+			if GetUseScaledRatings() {
+				overallForThisRole = CalculateOverallForRoleGo(player.NumericAttributes, role.weights)
+			} else {
+				overallForThisRole = CalculateOverallForRoleGoLinear(player.NumericAttributes, role.weights)
+			}
 			calculatedRoleOveralls = append(calculatedRoleOveralls, RoleOverallScore{RoleName: role.name, Score: overallForThisRole})
 			if overallForThisRole > maxRoleBasedOverall {
 				maxRoleBasedOverall = overallForThisRole
