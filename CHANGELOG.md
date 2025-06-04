@@ -10,6 +10,22 @@
 * docs page stuff ([d93314a](https://git.liamhardman.com/liam/fm24-golang/commit/d93314a4fcf2cce610c45bdc27c5609bbef8084c))
 * improved landing page ([56bf115](https://git.liamhardman.com/liam/fm24-golang/commit/56bf115cc36d3d8b32a5b3367e11839e68a3e782))
 * local deploy doc ([bb397a2](https://git.liamhardman.com/liam/fm24-golang/commit/bb397a262336f5dc722647f0f9cb12392db3ec82))
+* logging for scaling algorithm switch ([6bd19e7](https://git.liamhardman.com/liam/fm24-golang/commit/6bd19e7c3495779da553c90bd58ae3321516124f))
+* making the scaled rating setting actually work ([a1310fd](https://git.liamhardman.com/liam/fm24-golang/commit/a1310fde84ba686ab2848f897d93a591522e9b94))
+* upload component improvement ([fc91ded](https://git.liamhardman.com/liam/fm24-golang/commit/fc91dedc3f462680c75ea60b993f73b8701330d2))
+
+## [1.3.0](https://git.liamhardman.com/liam/fm24-golang/compare/v1.2.0...v1.3.0) (2025-06-04)
+
+### 🚀 Features
+
+* testing if logic change works for scaled vs non-scaled ratings, added settings menu ([5e65048](https://git.liamhardman.com/liam/fm24-golang/commit/5e65048e54b138cc9583e4fe8828fb35556ee665))
+
+### 🐛 Bug Fixes
+
+* better landing page ([72c0590](https://git.liamhardman.com/liam/fm24-golang/commit/72c0590fe24b604881951ff02f6a2fd1dd6bb53b))
+* docs page stuff ([d93314a](https://git.liamhardman.com/liam/fm24-golang/commit/d93314a4fcf2cce610c45bdc27c5609bbef8084c))
+* improved landing page ([56bf115](https://git.liamhardman.com/liam/fm24-golang/commit/56bf115cc36d3d8b32a5b3367e11839e68a3e782))
+* local deploy doc ([bb397a2](https://git.liamhardman.com/liam/fm24-golang/commit/bb397a262336f5dc722647f0f9cb12392db3ec82))
 * making the scaled rating setting actually work ([a1310fd](https://git.liamhardman.com/liam/fm24-golang/commit/a1310fde84ba686ab2848f897d93a591522e9b94))
 * upload component improvement ([fc91ded](https://git.liamhardman.com/liam/fm24-golang/commit/fc91dedc3f462680c75ea60b993f73b8701330d2))
 
