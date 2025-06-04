@@ -1,11 +1,118 @@
 <template>
-    <q-page class="dataset-page">
-        <div class="q-pa-md">
-            <q-banner
-                v-if="pageLoadingError"
-                class="text-white bg-negative q-mb-md"
-                rounded
-            >
+    <q-page class="dataset-page full-height">
+        <!-- Compact Top Bar with Filters and Actions -->
+        <div class="top-bar" v-if="!pageLoading && !pageLoadingError && allPlayersData.length > 0">
+            <div class="top-bar-content">
+                <!-- Left section: Dataset info and stats -->
+                <div class="dataset-info">
+                    <div class="dataset-title">
+                        <q-icon name="analytics" size="1.2rem" class="q-mr-xs" />
+                        FM Data Hub
+                    </div>
+                    <div class="dataset-stats">
+                        <span class="stat-item">{{ formatNumber(allPlayersData.length) }} Players</span>
+                        <span class="stat-separator">•</span>
+                        <span class="stat-item">{{ formatNumber(uniqueClubs.length) }} Clubs</span>
+                        <span class="stat-separator">•</span>
+                        <span class="stat-item">{{ formatNumber(uniqueNationalities.length) }} Nations</span>
+                    </div>
+                </div>
+
+                <!-- Center section: Quick Actions -->
+                <div class="quick-actions">
+                    <q-btn
+                        unelevated
+                        dense
+                        icon="find_replace"
+                        label="Upgrade Finder"
+                        color="primary"
+                        @click="openUpgradeFinder"
+                        :disable="allPlayersData.length === 0"
+                        class="action-btn"
+                        size="sm"
+                    />
+                    <q-btn
+                        unelevated
+                        dense
+                        icon="stars"
+                        label="Wonderkids"
+                        color="secondary"
+                        @click="openWonderkids"
+                        :disable="allPlayersData.length === 0"
+                        class="action-btn"
+                        size="sm"
+                    />
+                    <q-btn
+                        unelevated
+                        dense
+                        icon="local_offer"
+                        label="Bargains"
+                        color="positive"
+                        @click="openBargainHunter"
+                        :disable="allPlayersData.length === 0"
+                        class="action-btn"
+                        size="sm"
+                    />
+                </div>
+
+                <!-- Right section: Share and filters toggle -->
+                <div class="top-bar-controls">
+                    <q-btn
+                        v-if="currentDatasetId"
+                        flat
+                        dense
+                        icon="share"
+                        @click="shareDataset"
+                        class="share-btn"
+                        size="sm"
+                    >
+                        <q-tooltip>Share Dataset</q-tooltip>
+                    </q-btn>
+                    <q-btn
+                        flat
+                        dense
+                        :icon="showFilters ? 'filter_list_off' : 'filter_list'"
+                        @click="showFilters = !showFilters"
+                        class="filter-toggle-btn"
+                        size="sm"
+                        :color="showFilters ? 'primary' : 'grey-6'"
+                    >
+                        <q-tooltip>{{ showFilters ? 'Hide' : 'Show' }} Filters</q-tooltip>
+                    </q-btn>
+                </div>
+            </div>
+
+            <!-- Collapsible Filters Section -->
+            <q-slide-transition>
+                <div v-show="showFilters" class="filters-section">
+                    <PlayerFilters
+                        @filter-changed="handleFiltersChanged"
+                        :all-available-roles="allAvailableRoles"
+                        :unique-clubs="uniqueClubs"
+                        :unique-nationalities="uniqueNationalities"
+                        :unique-media-handlings="uniqueMediaHandlings"
+                        :unique-personalities="uniquePersonalities"
+                        :transfer-value-range="transferValueRangeForFilters"
+                        :initial-dataset-range="initialDatasetTransferValueRangeForFilters"
+                        :salary-range="salaryRangeForFilters"
+                        :currency-symbol="detectedCurrencySymbol"
+                        :age-slider-min-default="AGE_SLIDER_MIN_DEFAULT"
+                        :age-slider-max-default="AGE_SLIDER_MAX_DEFAULT"
+                        :is-loading="loading"
+                    />
+                </div>
+            </q-slide-transition>
+        </div>
+
+        <!-- Loading State -->
+        <div v-if="pageLoading" class="loading-container">
+            <q-spinner-dots color="primary" size="3em" />
+            <div class="loading-text">Loading dataset...</div>
+        </div>
+
+        <!-- Error State -->
+        <div v-if="pageLoadingError" class="error-container">
+            <q-banner class="error-banner" rounded>
                 <template v-slot:avatar>
                     <q-icon name="error" />
                 </template>
@@ -18,185 +125,48 @@
                     class="q-ml-md"
                 />
             </q-banner>
+        </div>
 
-            <div v-if="pageLoading" class="text-center q-my-xl">
-                <q-spinner-dots color="primary" size="3em" />
-                <div
-                    class="q-mt-md text-caption"
-                    :class="
-                        quasarInstance.dark.isActive
-                            ? 'text-grey-5'
-                            : 'text-grey-7'
-                    "
-                >
-                    Loading dataset...
-                </div>
+        <!-- No Data State -->
+        <div v-if="!pageLoading && !pageLoadingError && allPlayersData.length === 0" class="no-data-container">
+            <q-banner class="no-data-banner">
+                <template v-slot:avatar>
+                    <q-icon name="warning" />
+                </template>
+                No player data found for this dataset.
+                <q-btn
+                    flat
+                    color="primary"
+                    label="Go to Upload Page"
+                    @click="router.push('/')"
+                    class="q-ml-md"
+                />
+            </q-banner>
+        </div>
+
+        <!-- Full Screen Player Data Table -->
+        <div
+            v-if="!pageLoading && !pageLoadingError && allPlayersData.length > 0"
+            class="table-container"
+        >
+            <div class="table-header">
+                <span class="table-title">Players ({{ filteredPlayers.length }})</span>
             </div>
-
-            <div v-if="!pageLoading && !pageLoadingError">
-                <!-- Hero Section -->
-                <div class="hero-section">
-                    <div class="hero-container">
-                        <div class="hero-content">
-                            <div class="hero-badge">
-                                <q-icon name="analytics" size="1.2rem" />
-                                <span>Dataset Analysis</span>
-                            </div>
-                            <h1 class="hero-title">
-                                Your Football Manager
-                                <span class="gradient-text">Data Hub</span>
-                            </h1>
-                            <p class="hero-subtitle">
-                                Explore comprehensive player analysis, team formations, and strategic insights 
-                                from your Football Manager dataset.
-                            </p>
-                        </div>
-                        <div class="hero-stats">
-                            <div class="stat-card">
-                                <div class="stat-number">{{ formatNumber(allPlayersData.length) }}</div>
-                                <div class="stat-label">Players</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-number">{{ formatNumber(uniqueClubs.length) }}</div>
-                                <div class="stat-label">Clubs</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-number">{{ formatNumber(uniqueNationalities.length) }}</div>
-                                <div class="stat-label">Nations</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Share Button positioned after hero -->
-                <div v-if="currentDatasetId" class="share-button-container">
-                    <q-btn
-                        unelevated
-                        icon="share"
-                        label="Share Dataset"
-                        color="positive"
-                        @click="shareDataset"
-                        class="share-btn-enhanced"
-                        size="md"
-                    >
-                        <q-tooltip>Copy shareable link to clipboard</q-tooltip>
-                    </q-btn>
-                </div>
-
-                <!-- Enhanced Quick Actions -->
-                <div class="quick-actions-section">
-                    <div class="actions-header">
-                        <h2 class="actions-title">Quick Actions</h2>
-                        <p class="actions-subtitle">Explore your dataset with these powerful analysis tools</p>
-                    </div>
-                    
-                    <div class="actions-grid">
-                        <div class="action-feature-card" @click="openUpgradeFinder" :class="{ 'disabled': allPlayersData.length === 0 }">
-                            <div class="feature-icon-container accent-gradient">
-                                <q-icon name="find_replace" size="2.5rem" />
-                            </div>
-                            <div class="feature-content">
-                                <h3 class="feature-title">Upgrade Finder</h3>
-                                <p class="feature-description">
-                                    Find potential player upgrades and compare similar profiles. Build your dream squad strategically.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div class="action-feature-card" @click="openWonderkids" :class="{ 'disabled': allPlayersData.length === 0 }">
-                            <div class="feature-icon-container wonderkids-gradient">
-                                <q-icon name="stars" size="2.5rem" />
-                            </div>
-                            <div class="feature-content">
-                                <h3 class="feature-title">Find Wonderkids</h3>
-                                <p class="feature-description">
-                                    Discover the best young talents aged 15-21. Filter by transfer value and salary to find your next star.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div class="action-feature-card" @click="openBargainHunter" :class="{ 'disabled': allPlayersData.length === 0 }">
-                            <div class="feature-icon-container bargain-gradient">
-                                <q-icon name="local_offer" size="2.5rem" />
-                            </div>
-                            <div class="feature-content">
-                                <h3 class="feature-title">Bargain Hunter</h3>
-                                <p class="feature-description">
-                                    Find the best value players within your budget. Ranked by value score: overall rating divided by transfer value.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <q-card
-                    v-if="allPlayersData.length > 0"
-                    class="q-mb-md"
-                >
-                    <q-card-section>
-                        <PlayerFilters
-                            @filter-changed="handleFiltersChanged"
-                            :all-available-roles="allAvailableRoles"
-                            :unique-clubs="uniqueClubs"
-                            :unique-nationalities="uniqueNationalities"
-                            :unique-media-handlings="uniqueMediaHandlings"
-                            :unique-personalities="uniquePersonalities"
-                            :transfer-value-range="transferValueRangeForFilters"
-                            :initial-dataset-range="
-                                initialDatasetTransferValueRangeForFilters
-                            "
-                            :salary-range="salaryRangeForFilters"
-                            :currency-symbol="detectedCurrencySymbol"
-                            :age-slider-min-default="AGE_SLIDER_MIN_DEFAULT"
-                            :age-slider-max-default="AGE_SLIDER_MAX_DEFAULT"
-                            :is-loading="loading"
-                        />
-                    </q-card-section>
-                </q-card>
-
-                <q-card
-                    v-if="allPlayersData.length > 0"
-                >
-                    <q-card-section>
-                        <div class="text-h6 q-mb-sm">
-                            Players ({{ filteredPlayers.length }})
-                        </div>
-                        <PlayerDataTable
-                            :players="filteredPlayers"
-                            :loading="loading"
-                            @player-selected="handlePlayerSelected"
-                            @team-selected="handleTeamSelected"
-                            :is-goalkeeper-view="isGoalkeeperView"
-                            :currency-symbol="detectedCurrencySymbol"
-                            :dataset-id="currentDatasetId"
-                        />
-                    </q-card-section>
-                </q-card>
-
-                <q-banner
-                    v-else-if="!pageLoading && !pageLoadingError"
-                    class="text-center q-mt-lg"
-                    :class="
-                        quasarInstance.dark.isActive
-                            ? 'bg-red-9 text-red-2'
-                            : 'bg-red-1 text-negative'
-                    "
-                >
-                    <template v-slot:avatar>
-                        <q-icon name="warning" />
-                    </template>
-                    No player data found for this dataset.
-                    <q-btn
-                        flat
-                        color="primary"
-                        label="Go to Upload Page"
-                        @click="router.push('/')"
-                        class="q-ml-md"
-                    />
-                </q-banner>
+            <div class="table-wrapper">
+                <PlayerDataTable
+                    :players="filteredPlayers"
+                    :loading="loading"
+                    @player-selected="handlePlayerSelected"
+                    @team-selected="handleTeamSelected"
+                    :is-goalkeeper-view="isGoalkeeperView"
+                    :currency-symbol="detectedCurrencySymbol"
+                    :dataset-id="currentDatasetId"
+                    class="full-screen-table"
+                />
             </div>
         </div>
 
+        <!-- Dialogs -->
         <PlayerDetailDialog
             :player="playerForDetailView"
             :show="showPlayerDetailDialog"
@@ -708,6 +678,8 @@ export default {
       analytics.trackButtonClick('Bargain Hunter', { feature_type: 'quick_action' })
     }
 
+    const showFilters = ref(false)
+
     watch(
       () => route.params.datasetId,
       async (newId, oldId) => {
@@ -799,7 +771,8 @@ export default {
       formatNumber,
       openUpgradeFinder,
       openWonderkids,
-      openBargainHunter
+      openBargainHunter,
+      showFilters
     }
   }
 }
@@ -807,418 +780,254 @@ export default {
 
 <style lang="scss" scoped>
 .dataset-page {
-    max-width: 1600px;
-    margin: 0 auto;
-}
-
-.page-title {
-    margin: 0;
-}
-
-.share-btn-enhanced {
-    font-weight: 600;
-    border-radius: 6px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    transition: all 0.2s ease;
-    min-width: 140px;
-
-    &:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-    }
-
-    .body--dark & {
-        box-shadow: 0 2px 4px rgba(255, 255, 255, 0.1);
-
-        &:hover {
-            box-shadow: 0 4px 8px rgba(255, 255, 255, 0.15);
-        }
-    }
-}
-
-.stats-card {
-    height: 100%;
-    transition: transform 0.2s ease;
-
-    &:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-
-    .body--dark & {
-        background-color: rgba(255, 255, 255, 0.05);
-
-        &:hover {
-            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
-        }
-    }
-}
-
-.q-card {
-    border-radius: $generic-border-radius;
-}
-
-.quick-actions-card {
-    .action-card {
-        height: 100%;
-        transition: all 0.3s ease;
-        border-radius: 12px;
-
-        &:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
-        }
-
-        .body--dark & {
-            background-color: rgba(255, 255, 255, 0.03);
-
-            &:hover {
-                background-color: rgba(255, 255, 255, 0.06);
-                box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-            }
-        }
-
-        .body--light & {
-            background-color: rgba(0, 0, 0, 0.02);
-
-            &:hover {
-                background-color: rgba(0, 0, 0, 0.04);
-            }
-        }
-    }
-}
-
-.share-button-container {
+    height: 100vh;
     display: flex;
-    justify-content: flex-end;
-    margin: 2rem 0;
-    padding: 0 2rem;
-}
-
-// Hero Section
-.hero-section {
-    padding: 4rem 0;
-    background: linear-gradient(135deg, #1a237e 0%, #283593 50%, #3949ab 100%);
-    color: white;
-    position: relative;
+    flex-direction: column;
     overflow: hidden;
-    margin: -1.5rem -1.5rem 2rem -1.5rem;
+}
+
+// Top Bar Styles
+.top-bar {
+    background: white;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    z-index: 10;
+    flex-shrink: 0;
     
-    &::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: radial-gradient(
-            circle at 30% 20%,
-            rgba(255, 255, 255, 0.05) 0%,
-            transparent 50%
-        );
-        pointer-events: none;
-    }
-    
-    .hero-container {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 0 2rem;
-        display: grid;
-        grid-template-columns: 1fr auto;
-        gap: 4rem;
-        align-items: center;
-        position: relative;
-        z-index: 1;
-        
-        @media (max-width: 768px) {
-            grid-template-columns: 1fr;
-            gap: 2rem;
-            text-align: center;
-        }
-    }
-    
-    .hero-content {
-        .hero-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            background: rgba(255, 255, 255, 0.1);
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 500;
-            margin-bottom: 2rem;
-            backdrop-filter: blur(10px);
-        }
-        
-        .hero-title {
-            font-size: 3.5rem;
-            font-weight: 700;
-            line-height: 1.1;
-            margin: 0 0 1.5rem 0;
-            
-            @media (max-width: 768px) {
-                font-size: 2.5rem;
-            }
-            
-            .gradient-text {
-                background: linear-gradient(135deg, #64b5f6 0%, #42a5f5 100%);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                background-clip: text;
-            }
-        }
-        
-        .hero-subtitle {
-            font-size: 1.2rem;
-            line-height: 1.6;
-            margin: 0;
-            opacity: 0.9;
-            font-weight: 300;
-            max-width: 500px;
-            
-            @media (max-width: 768px) {
-                font-size: 1.1rem;
-                max-width: none;
-            }
-        }
-    }
-    
-    .hero-stats {
-        display: flex;
-        gap: 1.5rem;
-        
-        @media (max-width: 768px) {
-            justify-content: center;
-        }
-        
-        @media (max-width: 480px) {
-            flex-direction: column;
-            gap: 1rem;
-        }
-        
-        .stat-card {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
-            padding: 1.5rem;
-            text-align: center;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            min-width: 100px;
-            
-            .stat-number {
-                font-size: 2.2rem;
-                font-weight: 700;
-                color: #64b5f6;
-                margin-bottom: 0.5rem;
-                line-height: 1;
-            }
-            
-            .stat-label {
-                font-size: 0.9rem;
-                opacity: 0.8;
-                font-weight: 500;
-            }
-        }
+    .body--dark & {
+        background: #1d1d1d;
+        border-bottom-color: rgba(255, 255, 255, 0.1);
     }
 }
 
-// Enhanced Quick Actions Section
-.quick-actions-section {
-    margin: 3rem 0;
-    padding: 0 1rem;
+.top-bar-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1.5rem;
+    gap: 1rem;
+    min-height: 60px;
+}
+
+.dataset-info {
+    flex: 1;
+    min-width: 0;
     
-    .actions-header {
-        text-align: center;
-        margin-bottom: 3rem;
-        
-        .actions-title {
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin: 0 0 1rem 0;
-            color: #1a237e;
-            
-            .body--dark & {
-                color: rgba(255, 255, 255, 0.9);
-            }
-        }
-        
-        .actions-subtitle {
-            font-size: 1.1rem;
-            color: #666;
-            margin: 0;
-            max-width: 600px;
-            margin: 0 auto;
-            
-            .body--dark & {
-                color: rgba(255, 255, 255, 0.7);
-            }
-        }
-    }
-    
-    .actions-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 2rem;
-        max-width: 1200px;
-        margin: 0 auto;
-        
-        @media (max-width: 1200px) {
-            grid-template-columns: repeat(2, 1fr);
-        }
-        
-        @media (max-width: 768px) {
-            grid-template-columns: 1fr;
-            gap: 1.5rem;
-        }
-    }
-    
-    .action-feature-card {
-        background: white;
-        border-radius: 20px;
-        padding: 2rem;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-        border: 1px solid rgba(0, 0, 0, 0.05);
-        cursor: pointer;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    .dataset-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #1976d2;
         display: flex;
-        flex-direction: column;
         align-items: center;
-        text-align: center;
-        gap: 1.5rem;
-        position: relative;
-        overflow: hidden;
-        
-        &::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(135deg, rgba(26, 35, 126, 0.02) 0%, transparent 100%);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-        
-        &:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-            
-            &::before {
-                opacity: 1;
-            }
-            
-            .feature-icon-container {
-                transform: scale(1.1) rotate(5deg);
-            }
-        }
-        
-        &.disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            
-            &:hover {
-                transform: none;
-                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-                
-                .feature-icon-container {
-                    transform: none;
-                }
-            }
-        }
+        margin-bottom: 0.25rem;
         
         .body--dark & {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            
-            &:hover {
-                background: rgba(255, 255, 255, 0.08);
-                box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
-            }
+            color: #64b5f6;
+        }
+    }
+    
+    .dataset-stats {
+        font-size: 0.8rem;
+        color: #666;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        
+        .body--dark & {
+            color: rgba(255, 255, 255, 0.7);
         }
         
-        .feature-icon-container {
-            width: 80px;
-            height: 80px;
-            border-radius: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            flex-shrink: 0;
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            
-            &.primary-gradient {
-                background: linear-gradient(135deg, #1976d2 0%, #42a5f5 100%);
-            }
-            
-            &.secondary-gradient {
-                background: linear-gradient(135deg, #7b1fa2 0%, #ba68c8 100%);
-            }
-            
-            &.info-gradient {
-                background: linear-gradient(135deg, #0288d1 0%, #4fc3f7 100%);
-            }
-            
-            &.accent-gradient {
-                background: linear-gradient(135deg, #c2185b 0%, #f06292 100%);
-            }
-            
-            &.wonderkids-gradient {
-                background: linear-gradient(135deg, #ffd700 0%, #ffa500 100%);
-            }
-            
-            &.bargain-gradient {
-                background: linear-gradient(135deg, #4caf50 0%, #8bc34a 100%);
-            }
+        .stat-item {
+            font-weight: 500;
         }
         
-        .feature-content {
-            .feature-title {
-                font-size: 1.4rem;
-                font-weight: 600;
-                margin: 0 0 0.5rem 0;
-                color: #1a237e;
-                
-                .body--dark & {
-                    color: rgba(255, 255, 255, 0.9);
-                }
-            }
-            
-            .feature-description {
-                font-size: 0.9rem;
-                line-height: 1.5;
-                color: #666;
-                margin: 0;
-                
-                .body--dark & {
-                    color: rgba(255, 255, 255, 0.7);
-                }
-            }
+        .stat-separator {
+            opacity: 0.5;
         }
+    }
+}
+
+.quick-actions {
+    display: flex;
+    gap: 0.5rem;
+    
+    .action-btn {
+        border-radius: 8px;
+        padding: 0 12px;
+        height: 32px;
+        font-size: 0.8rem;
+        font-weight: 500;
         
         @media (max-width: 768px) {
-            padding: 1.5rem;
+            padding: 0 8px;
+            font-size: 0.75rem;
             
-            .feature-icon-container {
-                width: 60px;
-                height: 60px;
-                
-                .q-icon {
-                    font-size: 2rem !important;
-                }
+            .q-icon {
+                font-size: 1rem;
             }
-            
-            .feature-content {
-                .feature-title {
-                    font-size: 1.2rem;
-                }
-                
-                .feature-description {
-                    font-size: 0.85rem;
-                }
-            }
+        }
+    }
+    
+    @media (max-width: 1024px) {
+        .action-btn .q-btn__content span:not(.q-icon) {
+            display: none;
+        }
+    }
+}
+
+.top-bar-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    
+    .share-btn,
+    .filter-toggle-btn {
+        border-radius: 8px;
+        width: 36px;
+        height: 36px;
+    }
+}
+
+.filters-section {
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    padding: 1rem 1.5rem;
+    background: rgba(0, 0, 0, 0.02);
+    
+    .body--dark & {
+        border-top-color: rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.02);
+    }
+}
+
+// Loading, Error, and No Data States
+.loading-container,
+.error-container,
+.no-data-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+.loading-text {
+    margin-top: 1rem;
+    color: #666;
+    font-size: 0.9rem;
+    
+    .body--dark & {
+        color: rgba(255, 255, 255, 0.7);
+    }
+}
+
+.error-banner,
+.no-data-banner {
+    max-width: 600px;
+    width: 100%;
+}
+
+.error-banner {
+    background: #f44336;
+    color: white;
+}
+
+.no-data-banner {
+    background: rgba(255, 152, 0, 0.1);
+    color: #f57c00;
+    
+    .body--dark & {
+        background: rgba(255, 152, 0, 0.2);
+        color: #ffb74d;
+    }
+}
+
+// Table Container Styles
+.table-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    margin: 0 1rem 1rem 1rem;
+}
+
+.table-header {
+    padding: 0.75rem 0 0.5rem 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    
+    .body--dark & {
+        border-bottom-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    .table-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #1976d2;
+        
+        .body--dark & {
+            color: #64b5f6;
+        }
+    }
+}
+
+.table-wrapper {
+    flex: 1;
+    overflow: hidden;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    
+    .body--dark & {
+        background: #1d1d1d;
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+}
+
+// Global utility classes
+.full-height {
+    height: 100vh !important;
+}
+
+// Media queries for responsiveness
+@media (max-width: 768px) {
+    .top-bar-content {
+        padding: 0.5rem 1rem;
+        flex-wrap: wrap;
+        min-height: auto;
+    }
+    
+    .dataset-info {
+        order: 1;
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    .quick-actions {
+        order: 2;
+        flex: 1;
+    }
+    
+    .top-bar-controls {
+        order: 3;
+        margin-left: auto;
+    }
+    
+    .filters-section {
+        padding: 0.75rem 1rem;
+    }
+    
+    .table-container {
+        margin: 0 0.5rem 0.5rem 0.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .quick-actions {
+        gap: 0.25rem;
+        
+        .action-btn {
+            padding: 0 6px;
+            height: 28px;
+            font-size: 0.7rem;
         }
     }
 }

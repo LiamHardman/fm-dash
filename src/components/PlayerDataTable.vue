@@ -63,7 +63,7 @@
                 :virtual-scroll-item-size="32"
                 :virtual-scroll-sticky-size-start="40"
                 :virtual-scroll-sticky-size-end="55"
-                style="height: 70vh; min-height: 400px; max-height: 800px;"
+                style="height: 100%; min-height: 500px;"
                 separator="horizontal"
                 no-data-label="No players to display"
             >
@@ -1835,5 +1835,44 @@ export default {
 
 .body--dark .fixed-table .q-table__top {
     border-color: rgba(255, 255, 255, 0.12);
+}
+
+// Full-screen table enhancements
+.full-screen-table {
+    height: 100% !important;
+    
+    .q-table {
+        height: 100% !important;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .q-table__container {
+        flex: 1 !important;
+        height: 100% !important;
+        overflow: hidden;
+    }
+    
+    .q-table__middle {
+        flex: 1 !important;
+        height: 100% !important;
+        overflow: hidden;
+    }
+    
+    .q-virtual-scroll {
+        height: 100% !important;
+    }
+}
+
+.player-data-table-container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    
+    .relative-position {
+        flex: 1;
+        height: 100%;
+        overflow: hidden;
+    }
 }
 </style>
