@@ -26,166 +26,231 @@
             <q-separator />
 
             <q-card-section class="settings-content">
-                <div class="settings-section">
-                    <div class="section-header">
-                        <q-icon name="assessment" size="1.5rem" class="q-mr-sm" />
-                        <span class="section-title">Rating Calculation Method</span>
-                    </div>
-                    
-                    <div class="section-description">
-                        Choose how player ratings are calculated throughout the application.
-                    </div>
-
-                    <div class="rating-method-options">
-                        <q-card 
-                            :class="{
-                                'method-card': true,
-                                'method-card--selected': useScaledRatings,
-                                'method-card--dark': $q.dark.isActive,
-                                'method-card--disabled': isLoading
-                            }"
-                            @click="!isLoading && setRatingMethod(true)"
-                        >
-                            <q-card-section class="method-content">
-                                <div class="method-header">
-                                    <q-radio 
-                                        v-model="useScaledRatings" 
-                                        :val="true" 
-                                        color="primary"
-                                        :disable="isLoading"
-                                        @click.stop="!isLoading && setRatingMethod(true)"
-                                    />
-                                    <span class="method-name">Scaled Ratings (Recommended)</span>
-                                    <q-badge color="positive" label="NEW" class="q-ml-sm" />
-                                    <q-spinner 
-                                        v-if="isLoading && useScaledRatings" 
-                                        color="primary" 
-                                        size="1.2rem" 
-                                        class="q-ml-md" 
-                                    />
-                                </div>
-                                <div class="method-description">
-                                    <p>Uses an enhanced rating system that:</p>
-                                    <ul>
-                                        <li>Keeps elite players (75+) at their current ratings</li>
-                                        <li>Progressively lowers average players (50-75)</li>
-                                        <li>Significantly reduces poor players (below 50)</li>
-                                        <li>Creates better differentiation between skill levels</li>
-                                    </ul>
-                                </div>
-                            </q-card-section>
-                        </q-card>
-
-                        <q-card 
-                            :class="{
-                                'method-card': true,
-                                'method-card--selected': !useScaledRatings,
-                                'method-card--dark': $q.dark.isActive,
-                                'method-card--disabled': isLoading
-                            }"
-                            @click="!isLoading && setRatingMethod(false)"
-                        >
-                            <q-card-section class="method-content">
-                                <div class="method-header">
-                                    <q-radio 
-                                        v-model="useScaledRatings" 
-                                        :val="false" 
-                                        color="primary"
-                                        :disable="isLoading"
-                                        @click.stop="!isLoading && setRatingMethod(false)"
-                                    />
-                                    <span class="method-name">Linear Ratings</span>
-                                    <q-badge color="grey-6" label="LEGACY" class="q-ml-sm" />
-                                    <q-spinner 
-                                        v-if="isLoading && !useScaledRatings" 
-                                        color="primary" 
-                                        size="1.2rem" 
-                                        class="q-ml-md" 
-                                    />
-                                </div>
-                                <div class="method-description">
-                                    <p>Uses the original linear scaling system:</p>
-                                    <ul>
-                                        <li>Direct linear conversion from attributes to ratings</li>
-                                        <li>Equal distribution across all rating ranges</li>
-                                        <li>Traditional FIFA-style calculation method</li>
-                                        <li>Consistent with previous versions</li>
-                                    </ul>
-                                </div>
-                            </q-card-section>
-                        </q-card>
-                    </div>
-
-                    <div class="rating-preview">
-                        <div class="preview-header">
-                            <q-icon name="preview" class="q-mr-sm" />
-                            <span>Rating Comparison Preview</span>
-                        </div>
-                        <div class="preview-content">
-                            <div class="preview-example">
-                                <div class="example-header">High-level Player (18/20 avg attributes)</div>
-                                <div class="example-ratings">
-                                    <div class="rating-comparison">
-                                        <span class="rating-label">Linear:</span>
-                                        <span class="rating-value rating-high">95</span>
-                                    </div>
-                                    <div class="rating-comparison">
-                                        <span class="rating-label">Scaled:</span>
-                                        <span class="rating-value rating-high">94</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="preview-example">
-                                <div class="example-header">Average Player (12/20 avg attributes)</div>
-                                <div class="example-ratings">
-                                    <div class="rating-comparison">
-                                        <span class="rating-label">Linear:</span>
-                                        <span class="rating-value rating-medium">64</span>
-                                    </div>
-                                    <div class="rating-comparison">
-                                        <span class="rating-label">Scaled:</span>
-                                        <span class="rating-value rating-medium">56</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="preview-example">
-                                <div class="example-header">Poor Player (8/20 avg attributes)</div>
-                                <div class="example-ratings">
-                                    <div class="rating-comparison">
-                                        <span class="rating-label">Linear:</span>
-                                        <span class="rating-value rating-low">42</span>
-                                    </div>
-                                    <div class="rating-comparison">
-                                        <span class="rating-label">Scaled:</span>
-                                        <span class="rating-value rating-low">27</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="settings-section">
-                    <div class="section-header">
-                        <q-icon name="info_outline" size="1.5rem" class="q-mr-sm" />
-                        <span class="section-title">About Rating Changes</span>
-                    </div>
-                    <div class="info-content">
-                        <q-card flat bordered class="info-card">
+                <div class="settings-sections">
+                    <!-- Rating Calculation Section -->
+                    <q-expansion-item
+                        expand-separator
+                        icon="assessment"
+                        label="Rating Calculation Method"
+                        caption="Configure how player ratings are calculated"
+                        default-opened
+                        header-class="settings-expansion-header"
+                        class="settings-expansion"
+                    >
+                        <q-card flat class="expansion-content">
                             <q-card-section>
-                                <div class="info-text">
-                                    <p><strong>Note:</strong> Changing the rating calculation method will affect how all player ratings are displayed throughout the application. This includes:</p>
-                                    <ul>
-                                        <li>Individual player FIFA stats (PAC, SHO, PAS, DRI, DEF, PHY)</li>
-                                        <li>Role-specific overall ratings</li>
-                                        <li>Player comparisons and rankings</li>
-                                        <li>Team ratings and analysis</li>
-                                    </ul>
-                                    <p>The setting is saved automatically and will persist across browser sessions.</p>
+                                <div class="section-description">
+                                    Choose how player ratings are calculated throughout the application.
+                                </div>
+
+                                <div class="rating-method-options">
+                                    <q-card 
+                                        :class="{
+                                            'method-card': true,
+                                            'method-card--selected': useScaledRatings,
+                                            'method-card--dark': $q.dark.isActive,
+                                            'method-card--disabled': isLoading
+                                        }"
+                                        @click="!isLoading && setRatingMethod(true)"
+                                    >
+                                        <q-card-section class="method-content">
+                                            <div class="method-header">
+                                                <q-radio 
+                                                    v-model="useScaledRatings" 
+                                                    :val="true" 
+                                                    color="primary"
+                                                    :disable="isLoading"
+                                                    @click.stop="!isLoading && setRatingMethod(true)"
+                                                />
+                                                <span class="method-name">Scaled Ratings (Recommended)</span>
+                                                <q-badge color="positive" label="NEW" class="q-ml-sm" />
+                                                <q-spinner 
+                                                    v-if="isLoading && useScaledRatings" 
+                                                    color="primary" 
+                                                    size="1.2rem" 
+                                                    class="q-ml-md" 
+                                                />
+                                            </div>
+                                            <div class="method-description">
+                                                <p>Uses an enhanced rating system that:</p>
+                                                <ul>
+                                                    <li>Keeps elite players (75+) at their current ratings</li>
+                                                    <li>Progressively lowers average players (50-75)</li>
+                                                    <li>Significantly reduces poor players (below 50)</li>
+                                                    <li>Creates better differentiation between skill levels</li>
+                                                </ul>
+                                            </div>
+                                        </q-card-section>
+                                    </q-card>
+
+                                    <q-card 
+                                        :class="{
+                                            'method-card': true,
+                                            'method-card--selected': !useScaledRatings,
+                                            'method-card--dark': $q.dark.isActive,
+                                            'method-card--disabled': isLoading
+                                        }"
+                                        @click="!isLoading && setRatingMethod(false)"
+                                    >
+                                        <q-card-section class="method-content">
+                                            <div class="method-header">
+                                                <q-radio 
+                                                    v-model="useScaledRatings" 
+                                                    :val="false" 
+                                                    color="primary"
+                                                    :disable="isLoading"
+                                                    @click.stop="!isLoading && setRatingMethod(false)"
+                                                />
+                                                <span class="method-name">Linear Ratings</span>
+                                                <q-badge color="grey-6" label="LEGACY" class="q-ml-sm" />
+                                                <q-spinner 
+                                                    v-if="isLoading && !useScaledRatings" 
+                                                    color="primary" 
+                                                    size="1.2rem" 
+                                                    class="q-ml-md" 
+                                                />
+                                            </div>
+                                            <div class="method-description">
+                                                <p>Uses the original linear scaling system:</p>
+                                                <ul>
+                                                    <li>Direct linear conversion from attributes to ratings</li>
+                                                    <li>Equal distribution across all rating ranges</li>
+                                                    <li>Traditional FIFA-style calculation method</li>
+                                                    <li>Consistent with previous versions</li>
+                                                </ul>
+                                            </div>
+                                        </q-card-section>
+                                    </q-card>
+                                </div>
+
+                                <div class="rating-preview">
+                                    <div class="preview-header">
+                                        <q-icon name="preview" class="q-mr-sm" />
+                                        <span>Rating Comparison Preview</span>
+                                    </div>
+                                    <div class="preview-content">
+                                        <div class="preview-example">
+                                            <div class="example-header">High-level Player (18/20 avg attributes)</div>
+                                            <div class="example-ratings">
+                                                <div class="rating-comparison">
+                                                    <span class="rating-label">Linear:</span>
+                                                    <span class="rating-value rating-high">95</span>
+                                                </div>
+                                                <div class="rating-comparison">
+                                                    <span class="rating-label">Scaled:</span>
+                                                    <span class="rating-value rating-high">94</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="preview-example">
+                                            <div class="example-header">Average Player (12/20 avg attributes)</div>
+                                            <div class="example-ratings">
+                                                <div class="rating-comparison">
+                                                    <span class="rating-label">Linear:</span>
+                                                    <span class="rating-value rating-medium">64</span>
+                                                </div>
+                                                <div class="rating-comparison">
+                                                    <span class="rating-label">Scaled:</span>
+                                                    <span class="rating-value rating-medium">56</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="preview-example">
+                                            <div class="example-header">Poor Player (8/20 avg attributes)</div>
+                                            <div class="example-ratings">
+                                                <div class="rating-comparison">
+                                                    <span class="rating-label">Linear:</span>
+                                                    <span class="rating-value rating-low">42</span>
+                                                </div>
+                                                <div class="rating-comparison">
+                                                    <span class="rating-label">Scaled:</span>
+                                                    <span class="rating-value rating-low">27</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="rating-info">
+                                    <q-card flat bordered class="info-card">
+                                        <q-card-section>
+                                            <div class="info-text">
+                                                <p><strong>Note:</strong> Changing the rating calculation method will affect how all player ratings are displayed throughout the application. This includes:</p>
+                                                <ul>
+                                                    <li>Individual player FIFA stats (PAC, SHO, PAS, DRI, DEF, PHY)</li>
+                                                    <li>Role-specific overall ratings</li>
+                                                    <li>Player comparisons and rankings</li>
+                                                    <li>Team ratings and analysis</li>
+                                                </ul>
+                                                <p>The setting is saved automatically and will persist across browser sessions.</p>
+                                            </div>
+                                        </q-card-section>
+                                    </q-card>
                                 </div>
                             </q-card-section>
                         </q-card>
-                    </div>
+                    </q-expansion-item>
+
+                    <!-- Future Settings Sections - Placeholder Examples -->
+                    <q-expansion-item
+                        expand-separator
+                        icon="view_module"
+                        label="Display Preferences"
+                        caption="Customize table columns, themes, and layout options"
+                        header-class="settings-expansion-header"
+                        class="settings-expansion"
+                        disable
+                    >
+                        <q-card flat class="expansion-content">
+                            <q-card-section>
+                                <div class="coming-soon">
+                                    <q-icon name="construction" size="2rem" class="q-mb-md" />
+                                    <p>Display preferences coming soon...</p>
+                                    <p class="text-caption">Configure table columns, themes, and layout options</p>
+                                </div>
+                            </q-card-section>
+                        </q-card>
+                    </q-expansion-item>
+
+                    <q-expansion-item
+                        expand-separator
+                        icon="filter_alt"
+                        label="Default Filters"
+                        caption="Set default age ranges, positions, and other filter preferences"
+                        header-class="settings-expansion-header"
+                        class="settings-expansion"
+                        disable
+                    >
+                        <q-card flat class="expansion-content">
+                            <q-card-section>
+                                <div class="coming-soon">
+                                    <q-icon name="construction" size="2rem" class="q-mb-md" />
+                                    <p>Default filters coming soon...</p>
+                                    <p class="text-caption">Configure default age ranges, positions, and filter preferences</p>
+                                </div>
+                            </q-card-section>
+                        </q-card>
+                    </q-expansion-item>
+
+                    <q-expansion-item
+                        expand-separator
+                        icon="notifications"
+                        label="Notifications"
+                        caption="Manage notification preferences and alerts"
+                        header-class="settings-expansion-header"
+                        class="settings-expansion"
+                        disable
+                    >
+                        <q-card flat class="expansion-content">
+                            <q-card-section>
+                                <div class="coming-soon">
+                                    <q-icon name="construction" size="2rem" class="q-mb-md" />
+                                    <p>Notification settings coming soon...</p>
+                                    <p class="text-caption">Configure notification preferences and alerts</p>
+                                </div>
+                            </q-card-section>
+                        </q-card>
+                    </q-expansion-item>
                 </div>
             </q-card-section>
 
@@ -391,28 +456,29 @@ export default defineComponent({
     padding: 2rem;
 }
 
-.settings-section {
-    margin-bottom: 2rem;
-    
-    &:last-child {
-        margin-bottom: 0;
+.settings-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.settings-expansion {
+    .q-expansion-item__content {
+        padding: 0;
     }
 }
 
-.section-header {
-    display: flex;
-    align-items: center;
-    margin-bottom: 1rem;
-    color: #1a237e;
+.settings-expansion-header {
+    padding: 1rem 1.5rem;
+    background: rgba(26, 35, 126, 0.05);
     
     .body--dark & {
-        color: rgba(255, 255, 255, 0.9);
+        background: rgba(255, 255, 255, 0.05);
     }
 }
 
-.section-title {
-    font-size: 1.2rem;
-    font-weight: 600;
+.expansion-content {
+    padding: 1rem;
 }
 
 .section-description {
@@ -615,7 +681,7 @@ export default defineComponent({
     }
 }
 
-.info-content {
+.rating-info {
     margin-top: 1rem;
 }
 
@@ -643,6 +709,28 @@ export default defineComponent({
     
     .body--dark & {
         color: rgba(255, 255, 255, 0.7);
+    }
+}
+
+.coming-soon {
+    text-align: center;
+    padding: 2rem;
+    color: #666;
+    
+    .body--dark & {
+        color: rgba(255, 255, 255, 0.7);
+    }
+    
+    p {
+        margin: 0.5rem 0;
+    }
+    
+    .q-icon {
+        color: #999;
+        
+        .body--dark & {
+            color: rgba(255, 255, 255, 0.5);
+        }
     }
 }
 
