@@ -478,7 +478,7 @@ func generatePercentilesCacheKey(datasetID, playerName, divisionFilter, targetDi
 	}
 
 	cacheKey := fmt.Sprintf("percentiles_%s", fmt.Sprintf("%x", hash)[:12])
-	
+
 	return cacheKey
 }
 

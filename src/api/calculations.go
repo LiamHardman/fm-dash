@@ -22,7 +22,7 @@ func applyNonLinearScaling(linearRating float64) int {
 
 	// Define the inflection point where compression starts (around 75)
 	inflectionPoint := 75.0
-	
+
 	if linearRating >= inflectionPoint {
 		// For ratings 75+, apply minimal compression (keep them roughly the same)
 		// Use a gentle curve that preserves most of the original rating
@@ -31,22 +31,22 @@ func applyNonLinearScaling(linearRating float64) int {
 	} else {
 		// For ratings below 75, apply progressive compression
 		// Use a power curve that becomes more aggressive as ratings get lower
-		
+
 		// Normalize to 0-1 scale relative to inflection point
 		normalizedRating := linearRating / inflectionPoint
-		
+
 		// Apply power curve: higher exponent = more compression for low values
 		// Using exponent 1.8 creates good separation
 		compressedNormalized := math.Pow(normalizedRating, 1.8)
-		
+
 		// Scale back to final rating
 		scaledRating := compressedNormalized * inflectionPoint
-		
+
 		// Ensure minimum rating progression (avoid clustering too much at bottom)
 		if scaledRating < 10 && linearRating > 20 {
 			scaledRating = 10 + (linearRating-20)*0.15
 		}
-		
+
 		return int(math.Round(scaledRating))
 	}
 }
@@ -151,7 +151,7 @@ func CalculateFifaStatGo(playerNumericAttributes map[string]int, categoryName st
 
 	// Apply original linear scaling first to get to ~0-100 scale
 	linearScore := weightedAverage * 5.3
-	
+
 	// Apply non-linear scaling to compress lower ratings
 	finalScore := applyNonLinearScaling(linearScore)
 
@@ -243,7 +243,7 @@ func CalculateOverallForRoleGo(playerNumericAttributes, roleSpecificAttrWeights 
 
 	// Apply original linear scaling first
 	linearScore := (weightedAttributeSum / totalApplicableWeightsSum) * overallScalingFactor
-	
+
 	// Apply non-linear scaling to compress lower ratings
 	finalScore := applyNonLinearScaling(linearScore)
 

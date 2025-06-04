@@ -545,7 +545,7 @@ func RecalculatePlayerRatings(player *Player) {
 	// Recalculate role-specific overalls
 	maxRoleBasedOverall := 0
 	bestRoleName := ""
-	
+
 	// Get current precomputed role weights
 	muPrecomputedRoleWeights.RLock()
 	currentPrecomputedWeights := precomputedRoleWeights
@@ -553,10 +553,10 @@ func RecalculatePlayerRatings(player *Player) {
 
 	// Clear existing role overalls and recalculate
 	player.RoleSpecificOveralls = make([]RoleOverallScore, 0)
-	
+
 	// Process all applicable roles for this player
 	processedRoleNames := make(map[string]struct{})
-	
+
 	for _, shortKey := range player.ShortPositions {
 		if applicableRoles, found := currentPrecomputedWeights[shortKey]; found {
 			for _, roleData := range applicableRoles {
@@ -567,23 +567,23 @@ func RecalculatePlayerRatings(player *Player) {
 					} else {
 						overallForThisRole = CalculateOverallForRoleGoLinear(player.NumericAttributes, roleData.Weights)
 					}
-					
+
 					player.RoleSpecificOveralls = append(player.RoleSpecificOveralls, RoleOverallScore{
 						RoleName: roleData.RoleName,
 						Score:    overallForThisRole,
 					})
-					
+
 					if overallForThisRole > maxRoleBasedOverall {
 						maxRoleBasedOverall = overallForThisRole
 						bestRoleName = roleData.RoleName
 					}
-					
+
 					processedRoleNames[roleData.RoleName] = struct{}{}
 				}
 			}
 		}
 	}
-	
+
 	// Sort role-specific overalls by score (highest first)
 	sort.Slice(player.RoleSpecificOveralls, func(i, j int) bool {
 		if player.RoleSpecificOveralls[i].Score != player.RoleSpecificOveralls[j].Score {
@@ -605,6 +605,6 @@ func RecalculateAllPlayersRatings(players []Player) []Player {
 		recalculatedPlayers[i] = players[i]
 		RecalculatePlayerRatings(&recalculatedPlayers[i])
 	}
-	
+
 	return recalculatedPlayers
 }

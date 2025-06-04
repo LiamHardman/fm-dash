@@ -593,7 +593,7 @@ func (s *S3Storage) getTeamLogo(ctx context.Context, filename string, w http.Res
 	}
 
 	// Construct the object key for logos
-	objectKey := "logos/Clubs/Normal/Normal" + filename
+	objectKey := "logos/Clubs/Normal/Normal/" + filename
 
 	// If we're using a separate logos bucket, don't add the prefix
 	if logosBucketName != s.bucketName {

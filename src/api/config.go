@@ -54,7 +54,7 @@ var (
 
 	// Metrics collection toggle
 	metricsEnabled bool
-	
+
 	// Rating calculation method toggle
 	useScaledRatings   bool = true // Default to new scaled ratings
 	muUseScaledRatings sync.RWMutex
@@ -305,11 +305,11 @@ func EnsureConfigInitialized(timeout time.Duration) error {
 	for !configInitialized && time.Now().Before(deadline) {
 		time.Sleep(10 * time.Millisecond)
 	}
-	
+
 	if !configInitialized {
 		return fmt.Errorf("configuration initialization timed out after %v", timeout)
 	}
-	
+
 	return configInitError
 }
 

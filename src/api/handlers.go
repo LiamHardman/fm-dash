@@ -1983,7 +1983,7 @@ func logosHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Try local storage as fallback
 	logosDir := getLogosDirectory()
-	logoFilePath := filepath.Join(logosDir, "clubs", logoFileName)
+	logoFilePath := filepath.Join(logosDir, "Clubs", "Normal", "Normal", logoFileName)
 
 	logInfo(ctx, "Attempting to retrieve logo from local storage", "path", logoFilePath)
 

@@ -77,7 +77,14 @@
                     <div class="team-hero-content">
                         <div class="team-primary-info">
                             <div class="team-name-section">
-                                <h1 class="team-name-hero">{{ selectedTeamName }}</h1>
+                                <div class="team-title-with-logo">
+                                    <TeamLogo 
+                                        :team-name="selectedTeamName"
+                                        :size="48"
+                                        class="team-logo-header"
+                                    />
+                                    <h1 class="team-name-hero">{{ selectedTeamName }}</h1>
+                                </div>
                                 <div v-if="teamDivision" class="team-division-hero">
                                     <q-icon name="military_tech" size="1.2rem" />
                                     <span>{{ teamDivision }}</span>
@@ -334,6 +341,7 @@ import { useRoute, useRouter } from 'vue-router'
 import PitchDisplay from '../components/PitchDisplay.vue'
 import PlayerDataTable from '../components/PlayerDataTable.vue'
 import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
+import TeamLogo from '../components/TeamLogo.vue'
 import { usePlayerStore } from '../stores/playerStore'
 import { debounce } from '../utils/debounce'
 import { formationCache } from '../utils/formationCache'
@@ -360,7 +368,7 @@ const fmSlotRoleMatcher = {
 
 export default {
   name: 'TeamViewPage',
-  components: { PlayerDataTable, PlayerDetailDialog, PitchDisplay },
+  components: { PlayerDataTable, PlayerDetailDialog, PitchDisplay, TeamLogo },
   setup() {
     const quasarInstance = useQuasar()
     const router = useRouter()
@@ -1749,10 +1757,32 @@ $border-radius-small: 8px;
             gap: 1.5rem;
             
             .team-name-section {
+                .team-title-with-logo {
+                    display: flex;
+                    align-items: center;
+                    gap: 1rem;
+                    justify-content: center;
+                    
+                    @media (max-width: 768px) {
+                        gap: 0.75rem;
+                    }
+                    
+                    .team-logo-header {
+                        width: 48px;
+                        height: 48px;
+                        flex-shrink: 0;
+                        
+                        @media (max-width: 768px) {
+                            width: 36px;
+                            height: 36px;
+                        }
+                    }
+                }
+                
                 .team-name-hero {
                     font-size: 3.5rem;
                     font-weight: 800;
-                    margin: 0 0 0.5rem 0;
+                    margin: 0;
                     color: white;
                     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
                     
