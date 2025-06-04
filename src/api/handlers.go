@@ -738,6 +738,11 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 		attribute.String("dataset.currency", currencySymbol),
 	)
 
+	// Recalculate all player ratings based on the current calculation method setting
+	ctx, recalcSpan := StartSpan(ctx, "ratings.recalculate")
+	players = RecalculateAllPlayersRatings(players)
+	recalcSpan.End()
+
 	// Parse division filter
 	var divisionFilter DivisionFilter = DivisionFilterAll
 	switch divisionFilterStr {
@@ -919,6 +924,9 @@ func leaguesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Recalculate all player ratings based on the current calculation method setting
+	players = RecalculateAllPlayersRatings(players)
+
 	// Process leagues data with concurrent processing
 	processor := NewConcurrentLeagueProcessor(runtime.NumCPU())
 	leaguesData := processor.ProcessLeaguesAsync(ctx, players)
@@ -956,6 +964,9 @@ func teamsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Player data not found for the given ID.", http.StatusNotFound)
 		return
 	}
+
+	// Recalculate all player ratings based on the current calculation method setting
+	players = RecalculateAllPlayersRatings(players)
 
 	// Process teams data for the specific division
 	teamsData := processTeamsData(players, division)
@@ -1314,6 +1325,9 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Recalculate all player ratings based on the current calculation method setting
+	players = RecalculateAllPlayersRatings(players)
+
 	logInfo(ctx, "Performing search", "dataset_id", datasetID, "query", query, "player_count", len(players))
 
 	// NEW: Generate cache key and try to load from cache first
@@ -1641,6 +1655,9 @@ func bargainHunterHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Player data not found for the given ID.", http.StatusNotFound)
 		return
 	}
+
+	// Recalculate all player ratings based on the current calculation method setting
+	players = RecalculateAllPlayersRatings(players)
 
 	// NEW: Generate cache key and try to load from cache first
 	cacheKey := generateBargainHunterCacheKey(datasetID, req.MaxBudget, req.MaxSalary, req.MinAge, req.MaxAge, req.MinOverall, players)

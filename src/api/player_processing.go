@@ -476,3 +476,134 @@ func EnhancePlayerWithCalculations(player *Player) {
 	// Now all players show their pure best role-specific overall score
 	// --- END: Overall Calculation ---
 }
+
+// RecalculatePlayerRatings recalculates all ratings for a player based on the current calculation method setting
+func RecalculatePlayerRatings(player *Player) {
+	// Determine if player is a goalkeeper first
+	isGoalkeeper := false
+	for _, posGroup := range player.PositionGroups {
+		if posGroup == "Goalkeepers" {
+			isGoalkeeper = true
+			break
+		}
+	}
+
+	// Calculate FIFA-style category stats based on player type and current setting
+	if isGoalkeeper {
+		// Goalkeepers get goalkeeper-specific stats
+		if GetUseScaledRatings() {
+			player.GK = CalculateFifaStatGo(player.NumericAttributes, "GK")
+			player.DIV = CalculateFifaStatGo(player.NumericAttributes, "DIV")
+			player.HAN = CalculateFifaStatGo(player.NumericAttributes, "HAN")
+			player.REF = CalculateFifaStatGo(player.NumericAttributes, "REF")
+			player.KIC = CalculateFifaStatGo(player.NumericAttributes, "KIC")
+			player.SPD = CalculateFifaStatGo(player.NumericAttributes, "SPD")
+			player.POS = CalculateFifaStatGo(player.NumericAttributes, "POS")
+		} else {
+			player.GK = CalculateFifaStatGoLinear(player.NumericAttributes, "GK")
+			player.DIV = CalculateFifaStatGoLinear(player.NumericAttributes, "DIV")
+			player.HAN = CalculateFifaStatGoLinear(player.NumericAttributes, "HAN")
+			player.REF = CalculateFifaStatGoLinear(player.NumericAttributes, "REF")
+			player.KIC = CalculateFifaStatGoLinear(player.NumericAttributes, "KIC")
+			player.SPD = CalculateFifaStatGoLinear(player.NumericAttributes, "SPD")
+			player.POS = CalculateFifaStatGoLinear(player.NumericAttributes, "POS")
+		}
+		// Set outfield stats to 0 for goalkeepers
+		player.PAC = 0
+		player.SHO = 0
+		player.PAS = 0
+		player.DRI = 0
+		player.DEF = 0
+		player.PHY = 0
+	} else {
+		// Outfield players get outfield stats
+		if GetUseScaledRatings() {
+			player.PAC = CalculateFifaStatGo(player.NumericAttributes, "PAC")
+			player.SHO = CalculateFifaStatGo(player.NumericAttributes, "SHO")
+			player.PAS = CalculateFifaStatGo(player.NumericAttributes, "PAS")
+			player.DRI = CalculateFifaStatGo(player.NumericAttributes, "DRI")
+			player.DEF = CalculateFifaStatGo(player.NumericAttributes, "DEF")
+			player.PHY = CalculateFifaStatGo(player.NumericAttributes, "PHY")
+		} else {
+			player.PAC = CalculateFifaStatGoLinear(player.NumericAttributes, "PAC")
+			player.SHO = CalculateFifaStatGoLinear(player.NumericAttributes, "SHO")
+			player.PAS = CalculateFifaStatGoLinear(player.NumericAttributes, "PAS")
+			player.DRI = CalculateFifaStatGoLinear(player.NumericAttributes, "DRI")
+			player.DEF = CalculateFifaStatGoLinear(player.NumericAttributes, "DEF")
+			player.PHY = CalculateFifaStatGoLinear(player.NumericAttributes, "PHY")
+		}
+		// Set goalkeeper stats to 0 for outfield players
+		player.GK = 0
+		player.DIV = 0
+		player.HAN = 0
+		player.REF = 0
+		player.KIC = 0
+		player.SPD = 0
+		player.POS = 0
+	}
+
+	// Recalculate role-specific overalls
+	maxRoleBasedOverall := 0
+	bestRoleName := ""
+	
+	// Get current precomputed role weights
+	muPrecomputedRoleWeights.RLock()
+	currentPrecomputedWeights := precomputedRoleWeights
+	muPrecomputedRoleWeights.RUnlock()
+
+	// Clear existing role overalls and recalculate
+	player.RoleSpecificOveralls = make([]RoleOverallScore, 0)
+	
+	// Process all applicable roles for this player
+	processedRoleNames := make(map[string]struct{})
+	
+	for _, shortKey := range player.ShortPositions {
+		if applicableRoles, found := currentPrecomputedWeights[shortKey]; found {
+			for _, roleData := range applicableRoles {
+				if _, alreadyProcessed := processedRoleNames[roleData.RoleName]; !alreadyProcessed {
+					var overallForThisRole int
+					if GetUseScaledRatings() {
+						overallForThisRole = CalculateOverallForRoleGo(player.NumericAttributes, roleData.Weights)
+					} else {
+						overallForThisRole = CalculateOverallForRoleGoLinear(player.NumericAttributes, roleData.Weights)
+					}
+					
+					player.RoleSpecificOveralls = append(player.RoleSpecificOveralls, RoleOverallScore{
+						RoleName: roleData.RoleName,
+						Score:    overallForThisRole,
+					})
+					
+					if overallForThisRole > maxRoleBasedOverall {
+						maxRoleBasedOverall = overallForThisRole
+						bestRoleName = roleData.RoleName
+					}
+					
+					processedRoleNames[roleData.RoleName] = struct{}{}
+				}
+			}
+		}
+	}
+	
+	// Sort role-specific overalls by score (highest first)
+	sort.Slice(player.RoleSpecificOveralls, func(i, j int) bool {
+		if player.RoleSpecificOveralls[i].Score != player.RoleSpecificOveralls[j].Score {
+			return player.RoleSpecificOveralls[i].Score > player.RoleSpecificOveralls[j].Score
+		}
+		return player.RoleSpecificOveralls[i].RoleName < player.RoleSpecificOveralls[j].RoleName
+	})
+
+	// Update overall and best role
+	player.BestRoleOverall = bestRoleName
+	player.Overall = maxRoleBasedOverall
+}
+
+// RecalculateAllPlayersRatings recalculates ratings for all players in a slice
+func RecalculateAllPlayersRatings(players []Player) []Player {
+	recalculatedPlayers := make([]Player, len(players))
+	for i := range players {
+		// Make a copy to avoid modifying the original
+		recalculatedPlayers[i] = players[i]
+		RecalculatePlayerRatings(&recalculatedPlayers[i])
+	}
+	return recalculatedPlayers
+}
