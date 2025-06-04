@@ -206,6 +206,7 @@
 <script>
 import { defineComponent, ref, computed, onMounted } from 'vue'
 import { useUiStore } from '../stores/uiStore'
+import { usePlayerStore } from '../stores/playerStore'
 import { useQuasar } from 'quasar'
 import playerService from '../services/playerService'
 
@@ -220,6 +221,7 @@ export default defineComponent({
     emits: ['update:modelValue'],
     setup(props, { emit }) {
         const uiStore = useUiStore()
+        const playerStore = usePlayerStore()
         const $q = useQuasar()
 
         const showDialog = computed({
@@ -260,10 +262,16 @@ export default defineComponent({
                 // Update local store
                 uiStore.setRatingCalculation(useScaled)
                 
+                // Trigger data refresh if we have a current dataset
+                if (playerStore.currentDatasetId) {
+                    console.log('🔄 Refreshing player data with new rating calculation method:', useScaled ? 'scaled' : 'linear')
+                    await playerStore.fetchPlayersByDatasetId(playerStore.currentDatasetId)
+                }
+                
                 // Show success notification
                 $q.notify({
                     message: useScaled ? 'Switched to Scaled Ratings' : 'Switched to Linear Ratings',
-                    caption: 'Ratings will be recalculated using the new method',
+                    caption: 'Ratings have been recalculated using the new method',
                     color: 'positive',
                     position: 'top',
                     timeout: 3000,

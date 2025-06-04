@@ -740,9 +740,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Recalculate all player ratings based on the current calculation method setting
 	ctx, recalcSpan := StartSpan(ctx, "ratings.recalculate")
-	log.Printf("🔄 About to recalculate ratings for %d players, current setting: %t", len(players), GetUseScaledRatings())
 	players = RecalculateAllPlayersRatings(players)
-	log.Printf("🔄 Finished recalculating ratings for %d players", len(players))
 	recalcSpan.End()
 
 	// Parse division filter
