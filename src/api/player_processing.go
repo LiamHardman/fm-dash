@@ -479,6 +479,8 @@ func EnhancePlayerWithCalculations(player *Player) {
 
 // RecalculatePlayerRatings recalculates all ratings for a player based on the current calculation method setting
 func RecalculatePlayerRatings(player *Player) {
+	log.Printf("🔄 Recalculating ratings for player: %s, useScaledRatings: %t", player.Name, GetUseScaledRatings())
+	
 	// Determine if player is a goalkeeper first
 	isGoalkeeper := false
 	for _, posGroup := range player.PositionGroups {
@@ -517,6 +519,7 @@ func RecalculatePlayerRatings(player *Player) {
 		player.PHY = 0
 	} else {
 		// Outfield players get outfield stats
+		oldPAC := player.PAC
 		if GetUseScaledRatings() {
 			player.PAC = CalculateFifaStatGo(player.NumericAttributes, "PAC")
 			player.SHO = CalculateFifaStatGo(player.NumericAttributes, "SHO")
@@ -540,11 +543,17 @@ func RecalculatePlayerRatings(player *Player) {
 		player.KIC = 0
 		player.SPD = 0
 		player.POS = 0
+		
+		// Debug log to show rating change
+		if oldPAC != player.PAC {
+			log.Printf("🔄 Player %s PAC changed from %d to %d (scaled: %t)", player.Name, oldPAC, player.PAC, GetUseScaledRatings())
+		}
 	}
 
 	// Recalculate role-specific overalls
 	maxRoleBasedOverall := 0
 	bestRoleName := ""
+	oldOverall := player.Overall
 	
 	// Get current precomputed role weights
 	muPrecomputedRoleWeights.RLock()
@@ -595,15 +604,24 @@ func RecalculatePlayerRatings(player *Player) {
 	// Update overall and best role
 	player.BestRoleOverall = bestRoleName
 	player.Overall = maxRoleBasedOverall
+	
+	// Debug log to show overall change
+	if oldOverall != player.Overall {
+		log.Printf("🔄 Player %s Overall changed from %d to %d (scaled: %t)", player.Name, oldOverall, player.Overall, GetUseScaledRatings())
+	}
 }
 
 // RecalculateAllPlayersRatings recalculates ratings for all players in a slice
 func RecalculateAllPlayersRatings(players []Player) []Player {
+	log.Printf("🔄 Starting recalculation for %d players, useScaledRatings: %t", len(players), GetUseScaledRatings())
+	
 	recalculatedPlayers := make([]Player, len(players))
 	for i := range players {
 		// Make a copy to avoid modifying the original
 		recalculatedPlayers[i] = players[i]
 		RecalculatePlayerRatings(&recalculatedPlayers[i])
 	}
+	
+	log.Printf("🔄 Completed recalculation for %d players", len(recalculatedPlayers))
 	return recalculatedPlayers
 }
