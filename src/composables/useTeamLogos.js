@@ -1,5 +1,5 @@
 import { computed } from 'vue'
-import teamsData from '../utils/teams_data.json'
+import teamsData from '../utils/teams_data.json' with { type: 'json' }
 
 /**
  * Composable for handling team logos
@@ -7,35 +7,51 @@ import teamsData from '../utils/teams_data.json'
  */
 export function useTeamLogos(options = {}) {
   const { 
-    similarityThreshold = 0.85, // Increased for better precision
+    similarityThreshold = 0.7, // Back to original threshold
     enableFuzzyMatching = true,
-    strictMode = false // If true, requires higher similarity and more exact matches
+    strictMode = false
   } = options
 
   /**
-   * More conservative team name normalization
+   * Improved normalization with better abbreviation handling
    * @param {string} name - The team name to normalize
    * @returns {string} - Normalized team name
    */
   const normalizeTeamName = (name) => {
     if (!name) return ''
     
-    return name
+    let normalized = name
       .toLowerCase()
       .trim()
-      // Only remove very common and unambiguous prefixes/suffixes
-      .replace(/^(fc|cf)\s+/i, '') // Only FC/CF, not others that might be important
-      .replace(/\s+(fc|cf)$/i, '') // Only FC/CF suffixes
-      // Handle dots but preserve important abbreviations
-      .replace(/\s+f\.c\.?$/i, ' fc')
-      .replace(/^f\.c\.?\s+/i, 'fc ')
-      // Normalize spacing but preserve structure
+      // Remove common prefixes (but more selectively)
+      .replace(/^(fc|cf)\s+/i, '')
+      .replace(/^(ac|sc)\s+/i, '') // Add these back but carefully
+      // Remove common suffixes
+      .replace(/\s+(fc|cf|f\.c\.?)$/i, '')
+      .replace(/\s+(ac|sc)$/i, '')
+      // Handle some abbreviations
+      .replace(/\s+f\.c\.?$/i, '')
+      .replace(/^f\.c\.?\s+/i, '')
+      // Normalize spacing
       .replace(/\s+/g, ' ')
       .trim()
+    
+    // Handle common abbreviations and expansions
+    if (normalized === 'psg') {
+      normalized = 'paris saint-germain'
+    } else if (normalized === 'paris saint-germain (psg)') {
+      normalized = 'paris saint-germain'
+    } else if (normalized === 'man utd') {
+      normalized = 'manchester united'
+    } else if (normalized === 'man united') {
+      normalized = 'manchester united'
+    }
+    
+    return normalized
   }
 
   /**
-   * Enhanced similarity calculation with multiple strategies
+   * Enhanced similarity calculation with abbreviation awareness
    * @param {string} str1 - First string
    * @param {string} str2 - Second string
    * @returns {number} - Similarity score (0-1)
@@ -49,61 +65,103 @@ export function useTeamLogos(options = {}) {
     // Exact match after normalization
     if (norm1 === norm2) return 1.0
     
-    // Check for exact substring matches (but be more careful)
-    if (norm1.length > 3 && norm2.length > 3) {
-      if (norm1.includes(norm2) && norm2.length / norm1.length > 0.8) {
-        return 0.95
-      }
-      if (norm2.includes(norm1) && norm1.length / norm2.length > 0.8) {
-        return 0.95
-      }
+    // Handle common abbreviation patterns
+    if (isAbbreviationMatch(norm1, norm2) || isAbbreviationMatch(norm2, norm1)) {
+      return 0.95
     }
     
-    // Word-based matching with better scoring
+    // Split into words
     const words1 = norm1.split(' ').filter(w => w.length > 1)
     const words2 = norm2.split(' ').filter(w => w.length > 1)
     
     if (words1.length === 0 || words2.length === 0) return 0
     
-    // Count exact word matches
-    let exactMatches = 0
+    // Check for exact substring matches with validation
+    if (norm1.length > 3 && norm2.length > 3) {
+      if (norm1.includes(norm2)) {
+        const ratio = norm2.length / norm1.length
+        if (ratio > 0.5) return 0.95
+        if (ratio > 0.3) return 0.85
+      }
+      if (norm2.includes(norm1)) {
+        const ratio = norm1.length / norm2.length
+        if (ratio > 0.5) return 0.95
+        if (ratio > 0.3) return 0.85
+      }
+    }
+    
+    // Word-based matching
+    let exactWordMatches = 0
     let partialMatches = 0
     
     for (const word1 of words1) {
-      let bestWordMatch = 0
+      let bestMatch = 0
       for (const word2 of words2) {
         if (word1 === word2) {
-          exactMatches++
-          bestWordMatch = 1
+          exactWordMatches++
+          bestMatch = 1
           break
         } else if (word1.length > 3 && word2.length > 3) {
-          // Check if words are very similar (for typos/variations)
-          if (word1.includes(word2) || word2.includes(word1)) {
-            const similarity = Math.min(word1.length, word2.length) / Math.max(word1.length, word2.length)
-            bestWordMatch = Math.max(bestWordMatch, similarity * 0.8)
+          // Allow partial matching for variations
+          if (word1.includes(word2) && word2.length >= 3) {
+            bestMatch = Math.max(bestMatch, 0.8)
+          } else if (word2.includes(word1) && word1.length >= 3) {
+            bestMatch = Math.max(bestMatch, 0.8)
           }
         }
       }
-      if (bestWordMatch > 0 && bestWordMatch < 1) {
-        partialMatches += bestWordMatch
+      if (bestMatch > 0 && bestMatch < 1) {
+        partialMatches += bestMatch
       }
     }
     
-    // Calculate final score
-    const totalWords = Math.max(words1.length, words2.length)
-    const exactScore = exactMatches / totalWords
-    const partialScore = partialMatches / totalWords
+    const maxWords = Math.max(words1.length, words2.length)
+    const exactScore = exactWordMatches / maxWords
+    const partialScore = partialMatches / maxWords
     
-    // Require at least one exact word match for high scores
-    if (exactMatches === 0 && totalWords > 1) {
-      return Math.min(0.7, exactScore + partialScore)
-    }
-    
-    return exactScore + partialScore * 0.5
+    // Combine scores with reasonable weighting
+    return Math.min(1.0, exactScore + partialScore * 0.5)
   }
 
   /**
-   * Check if a match is likely to be correct based on additional heuristics
+   * Check if two strings are abbreviation matches
+   * @param {string} short - Potentially shorter string
+   * @param {string} long - Potentially longer string
+   * @returns {boolean} - Whether short could be an abbreviation of long
+   */
+  const isAbbreviationMatch = (short, long) => {
+    if (short.length >= long.length) return false
+    
+    const shortWords = short.split(' ').filter(w => w.length > 1)
+    const longWords = long.split(' ').filter(w => w.length > 1)
+    
+    // Handle cases like "man utd" vs "manchester united"
+    if (shortWords.length === 2 && longWords.length === 2) {
+      const [short1, short2] = shortWords
+      const [long1, long2] = longWords
+      
+      // Check if each short word is a prefix or abbreviation of long word
+      if ((long1.startsWith(short1) || short1.startsWith(long1.substring(0, 3))) &&
+          (long2.startsWith(short2) || short2.startsWith(long2.substring(0, 3)))) {
+        return true
+      }
+    }
+    
+    // Handle cases like "psg" vs "paris saint-germain"
+    if (shortWords.length === 1 && longWords.length >= 2) {
+      const shortWord = shortWords[0]
+      // Check if short word is made of first letters of long words
+      if (shortWord.length === longWords.length && 
+          shortWord === longWords.map(w => w[0]).join('')) {
+        return true
+      }
+    }
+    
+    return false
+  }
+
+  /**
+   * Balanced validation that prevents false positives without breaking good matches
    * @param {string} searchName - Original search name
    * @param {string} foundName - Found team name
    * @param {number} score - Similarity score
@@ -113,33 +171,78 @@ export function useTeamLogos(options = {}) {
     // If exact match, always good
     if (score === 1.0) return true
     
-    // In strict mode, require higher scores
-    if (strictMode && score < 0.9) return false
+    // If score is too low, reject
+    if (score < similarityThreshold) return false
+    
+    // High scores are generally good
+    if (score >= 0.9) return true
     
     const searchWords = normalizeTeamName(searchName).split(' ').filter(w => w.length > 1)
     const foundWords = normalizeTeamName(foundName).split(' ').filter(w => w.length > 1)
     
-    // For teams with unique words, require higher precision
-    const hasUniqueWords = searchWords.some(word => 
-      word.length > 6 || // Long words are usually unique
-      ['united', 'city', 'town', 'rovers', 'wanderers'].includes(word)
-    )
+    // Count exact word matches
+    let exactMatches = 0
+    for (const searchWord of searchWords) {
+      for (const foundWord of foundWords) {
+        if (searchWord === foundWord) {
+          exactMatches++
+          break
+        }
+      }
+    }
     
-    if (hasUniqueWords && score < 0.9) {
+    // For multi-word search terms, be more careful
+    if (searchWords.length >= 2) {
+      // If no exact word matches, be suspicious
+      if (exactMatches === 0) {
+        // But allow if it's a very high similarity score
+        if (score < 0.85) return false
+      }
+      
+      // For specific problematic cases
+      const searchNorm = normalizeTeamName(searchName)
+      
+      // "Manchester United" should not match random teams with just "united"
+      if (searchNorm.includes('manchester') && searchNorm.includes('united')) {
+        if (!foundWords.includes('manchester') && score < 0.9) {
+          return false
+        }
+      }
+      
+      // "Tottenham Hotspur" should match something with "tottenham" or "hotspur"
+      if (searchNorm.includes('tottenham') && searchNorm.includes('hotspur')) {
+        if (!foundWords.includes('tottenham') && !foundWords.includes('hotspur') && score < 0.9) {
+          return false
+        }
+      }
+      
+      // "Nottingham Forest" should match something with "nottingham" or reasonable forest match
+      if (searchNorm.includes('nottingham') && searchNorm.includes('forest')) {
+        if (!foundWords.includes('nottingham') && !foundWords.some(w => w.includes('forest') || w.includes('nottm')) && score < 0.85) {
+          return false
+        }
+      }
+    }
+    
+    // In strict mode, apply additional validation
+    if (strictMode) {
+      const veryCommonWords = ['al', 'real', 'united', 'city', 'fc', 'cf']
+      const hasOnlyVeryCommon = searchWords.every(word => 
+        veryCommonWords.includes(word) || word.length <= 2
+      )
+      
+      if (hasOnlyVeryCommon && score < 0.9) {
+        return false
+      }
+    }
+    
+    // Check for reasonable length similarity (but be lenient)
+    const lengthRatio = Math.min(searchName.length, foundName.length) / Math.max(searchName.length, foundName.length)
+    if (lengthRatio < 0.25 && score < 0.85) {
       return false
     }
     
-    // Check for common false positive patterns
-    const commonNames = ['al', 'real', 'atletico', 'sporting', 'club', 'union']
-    const hasOnlyCommonWords = searchWords.every(word => 
-      commonNames.includes(word) || word.length <= 2
-    )
-    
-    if (hasOnlyCommonWords && score < 0.95) {
-      return false
-    }
-    
-    return score >= similarityThreshold
+    return true
   }
 
   /**
@@ -160,31 +263,17 @@ export function useTeamLogos(options = {}) {
     // If fuzzy matching is disabled, return null
     if (!enableFuzzyMatching) return null
     
-    // Then try fuzzy matching with better validation
+    // Fuzzy matching - simpler approach
     let bestMatch = null
     let bestScore = 0
-    const candidates = []
     
-    // Collect all potential matches above threshold
     for (const [numericalId, name] of Object.entries(teamsData)) {
       const similarity = calculateSimilarity(teamName, name)
-      if (similarity >= similarityThreshold) {
-        candidates.push({
-          id: numericalId,
-          name,
-          score: similarity
-        })
-      }
-    }
-    
-    // Sort by score and apply additional validation
-    candidates.sort((a, b) => b.score - a.score)
-    
-    for (const candidate of candidates) {
-      if (isLikelyCorrectMatch(teamName, candidate.name, candidate.score)) {
-        bestMatch = candidate.id
-        bestScore = candidate.score
-        break
+      if (similarity >= similarityThreshold && 
+          similarity > bestScore && 
+          isLikelyCorrectMatch(teamName, name, similarity)) {
+        bestScore = similarity
+        bestMatch = numericalId
       }
     }
     
@@ -194,7 +283,7 @@ export function useTeamLogos(options = {}) {
   /**
    * Get detailed match information for debugging
    * @param {string} teamName - The display name of the team
-   * @returns {Object|null} - Match details { id, name, score, alternatives } or null
+   * @returns {Object|null} - Match details or null
    */
   const getTeamMatchDetails = (teamName) => {
     if (!teamName) return null
@@ -209,12 +298,12 @@ export function useTeamLogos(options = {}) {
     // If fuzzy matching is disabled, return null
     if (!enableFuzzyMatching) return null
     
-    // Collect all potential matches
+    // Collect candidates
     const candidates = []
     
     for (const [numericalId, name] of Object.entries(teamsData)) {
       const similarity = calculateSimilarity(teamName, name)
-      if (similarity >= Math.max(0.5, similarityThreshold - 0.2)) { // Lower threshold for debugging
+      if (similarity >= Math.max(0.4, similarityThreshold - 0.3)) { // Lower threshold for debugging
         candidates.push({
           id: numericalId,
           name,
