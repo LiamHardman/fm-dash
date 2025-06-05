@@ -1,16 +1,25 @@
-import { computed } from 'vue'
+import { computed, ref, reactive, readonly } from 'vue'
 import teamsData from '../utils/teams_data.json' with { type: 'json' }
 
 /**
- * Composable for handling team logos
+ * Composable for handling team logos with async progressive loading
  * Maps team names to their numerical IDs and provides logo URLs
  */
 export function useTeamLogos(options = {}) {
   const { 
     similarityThreshold = 0.7,
     enableFuzzyMatching = true,
-    strictMode = false
+    strictMode = false,
+    batchSize = 10, // Process logos in batches
+    batchDelay = 5   // ms delay between batches
   } = options
+
+  // Reactive state for async processing
+  const logoCache = reactive(new Map())
+  const processingQueue = ref([])
+  const isProcessing = ref(false)
+  const processedCount = ref(0)
+  const totalCount = ref(0)
 
   /**
    * Improved normalization with better abbreviation handling
@@ -323,7 +332,7 @@ export function useTeamLogos(options = {}) {
   }
 
   /**
-   * OPTIMIZED: Get the numerical team ID for a given team name
+   * SYNC: Get the numerical team ID for a given team name (blocking)
    * @param {string} teamName - The display name of the team
    * @returns {string|null} - The numerical team ID or null if not found
    */
@@ -358,7 +367,144 @@ export function useTeamLogos(options = {}) {
   }
 
   /**
-   * OPTIMIZED: Get detailed match information for debugging
+   * ASYNC: Get the numerical team ID for a given team name (non-blocking)
+   * @param {string} teamName - The display name of the team
+   * @returns {Promise<string|null>} - Promise resolving to team ID or null
+   */
+  const getTeamIdAsync = async (teamName) => {
+    if (!teamName) return null
+    
+    // Check cache first
+    if (logoCache.has(teamName)) {
+      return logoCache.get(teamName)
+    }
+    
+    // For exact matches, process immediately
+    const exactId = teamIndex.exactLookup.get(teamName)
+    if (exactId) {
+      logoCache.set(teamName, exactId)
+      return exactId
+    }
+    
+    // For fuzzy matches, yield to event loop occasionally
+    return new Promise(resolve => {
+      setTimeout(() => {
+        const result = getTeamId(teamName)
+        logoCache.set(teamName, result)
+        resolve(result)
+      }, 0)
+    })
+  }
+
+  /**
+   * ASYNC: Process multiple team logos in batches
+   * @param {string[]} teamNames - Array of team names to process
+   * @param {function} onProgress - Callback for progress updates
+   * @returns {Promise<Map>} - Promise resolving to map of teamName -> teamId
+   */
+  const processTeamLogos = async (teamNames, onProgress = null) => {
+    const uniqueTeams = [...new Set(teamNames.filter(Boolean))]
+    const results = new Map()
+    
+    totalCount.value = uniqueTeams.length
+    processedCount.value = 0
+    isProcessing.value = true
+    
+    try {
+      // Process in batches to avoid blocking the UI
+      for (let i = 0; i < uniqueTeams.length; i += batchSize) {
+        const batch = uniqueTeams.slice(i, i + batchSize)
+        
+        // Process batch
+        const batchPromises = batch.map(async teamName => {
+          const teamId = await getTeamIdAsync(teamName)
+          results.set(teamName, teamId)
+          processedCount.value++
+          
+          if (onProgress) {
+            onProgress({
+              teamName,
+              teamId,
+              processed: processedCount.value,
+              total: totalCount.value,
+              progress: processedCount.value / totalCount.value
+            })
+          }
+          
+          return { teamName, teamId }
+        })
+        
+        await Promise.all(batchPromises)
+        
+        // Small delay between batches to keep UI responsive
+        if (i + batchSize < uniqueTeams.length) {
+          await new Promise(resolve => setTimeout(resolve, batchDelay))
+        }
+      }
+    } finally {
+      isProcessing.value = false
+    }
+    
+    return results
+  }
+
+  /**
+   * Get the logo URL for a team (sync)
+   * @param {string} teamName - The display name of the team
+   * @returns {string|null} - The logo URL or null if no team ID found
+   */
+  const getTeamLogoUrl = (teamName) => {
+    const teamId = getTeamId(teamName)
+    if (!teamId) return null
+    
+    return `/api/logos?teamId=${encodeURIComponent(teamId)}`
+  }
+
+  /**
+   * Get the logo URL for a team (async)
+   * @param {string} teamName - The display name of the team
+   * @returns {Promise<string|null>} - Promise resolving to logo URL or null
+   */
+  const getTeamLogoUrlAsync = async (teamName) => {
+    const teamId = await getTeamIdAsync(teamName)
+    if (!teamId) return null
+    
+    return `/api/logos?teamId=${encodeURIComponent(teamId)}`
+  }
+
+  /**
+   * Reactive logo URL getter - returns cached value and updates when available
+   * @param {string} teamName - The display name of the team
+   * @returns {import('vue').ComputedRef<string|null>} - Reactive logo URL
+   */
+  const getReactiveLogoUrl = (teamName) => {
+    return computed(() => {
+      const teamId = logoCache.get(teamName)
+      if (!teamId) return null
+      return `/api/logos?teamId=${encodeURIComponent(teamId)}`
+    })
+  }
+
+  /**
+   * Computed property factory for team logo URLs
+   * @param {import('vue').Ref<string>} teamNameRef - Reactive team name
+   * @returns {import('vue').ComputedRef<string|null>} - Reactive logo URL
+   */
+  const createTeamLogoUrl = (teamNameRef) => {
+    return computed(() => getTeamLogoUrl(teamNameRef.value))
+  }
+
+  /**
+   * Check if a team has a logo available (sync)
+   * @param {string} teamName - The display name of the team
+   * @returns {boolean} - True if team ID exists (logo may exist)
+   */
+  const hasTeamLogo = (teamName) => {
+    return getTeamId(teamName) !== null
+  }
+
+  /**
+   * Get detailed match information for debugging
    * @param {string} teamName - The display name of the team
    * @returns {Object|null} - Match details or null
    */
@@ -417,42 +563,26 @@ export function useTeamLogos(options = {}) {
     return null
   }
 
-  /**
-   * Get the logo URL for a team
-   * @param {string} teamName - The display name of the team
-   * @returns {string|null} - The logo URL or null if no team ID found
-   */
-  const getTeamLogoUrl = (teamName) => {
-    const teamId = getTeamId(teamName)
-    if (!teamId) return null
-    
-    return `/api/logos?teamId=${encodeURIComponent(teamId)}`
-  }
-
-  /**
-   * Computed property factory for team logo URLs
-   * @param {import('vue').Ref<string>} teamNameRef - Reactive team name
-   * @returns {import('vue').ComputedRef<string|null>} - Reactive logo URL
-   */
-  const createTeamLogoUrl = (teamNameRef) => {
-    return computed(() => getTeamLogoUrl(teamNameRef.value))
-  }
-
-  /**
-   * Check if a team has a logo available
-   * @param {string} teamName - The display name of the team
-   * @returns {boolean} - True if team ID exists (logo may exist)
-   */
-  const hasTeamLogo = (teamName) => {
-    return getTeamId(teamName) !== null
-  }
-
   return {
+    // Sync methods (for backward compatibility)
     getTeamId,
     getTeamLogoUrl,
     createTeamLogoUrl,
     hasTeamLogo,
     getTeamMatchDetails,
+    
+    // Async methods (for progressive loading)
+    getTeamIdAsync,
+    getTeamLogoUrlAsync,
+    processTeamLogos,
+    getReactiveLogoUrl,
+    
+    // Reactive state for async processing
+    logoCache: readonly(logoCache),
+    isProcessing: readonly(isProcessing),
+    processedCount: readonly(processedCount),
+    totalCount: readonly(totalCount),
+    
     // Utility methods
     normalizeTeamName,
     calculateSimilarity
