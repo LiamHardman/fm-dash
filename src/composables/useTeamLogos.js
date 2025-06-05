@@ -7,7 +7,7 @@ import teamsData from '../utils/teams_data.json' with { type: 'json' }
  */
 export function useTeamLogos(options = {}) {
   const { 
-    similarityThreshold = 0.7, // Back to original threshold
+    similarityThreshold = 0.7,
     enableFuzzyMatching = true,
     strictMode = false
   } = options
@@ -49,6 +49,37 @@ export function useTeamLogos(options = {}) {
     
     return normalized
   }
+
+  // Pre-process and index team data for performance
+  const teamIndex = (() => {
+    const exactLookup = new Map()
+    const normalizedLookup = new Map()
+    const wordIndex = new Map()
+    
+    // Pre-normalize all team names once
+    for (const [id, name] of Object.entries(teamsData)) {
+      // Exact lookup
+      exactLookup.set(name, id)
+      
+      // Normalized lookup
+      const normalized = normalizeTeamName(name)
+      if (!normalizedLookup.has(normalized)) {
+        normalizedLookup.set(normalized, [])
+      }
+      normalizedLookup.get(normalized).push({ id, name, normalized })
+      
+      // Word index for faster fuzzy search
+      const words = normalized.split(' ').filter(w => w.length > 2)
+      for (const word of words) {
+        if (!wordIndex.has(word)) {
+          wordIndex.set(word, [])
+        }
+        wordIndex.get(word).push({ id, name, normalized })
+      }
+    }
+    
+    return { exactLookup, normalizedLookup, wordIndex }
+  })()
 
   /**
    * Enhanced similarity calculation with abbreviation awareness
@@ -246,34 +277,80 @@ export function useTeamLogos(options = {}) {
   }
 
   /**
-   * Get the numerical team ID for a given team name
+   * OPTIMIZED: Get candidates efficiently using indexes
+   * @param {string} teamName - The display name of the team
+   * @returns {Array} - Array of candidate teams to check
+   */
+  const getCandidates = (teamName) => {
+    const normalized = normalizeTeamName(teamName)
+    const candidates = new Set()
+    
+    // 1. Check normalized exact matches (very fast)
+    const exactMatches = teamIndex.normalizedLookup.get(normalized)
+    if (exactMatches) {
+      exactMatches.forEach(team => candidates.add(team))
+    }
+    
+    // 2. If no exact matches, check word index (much faster than full scan)
+    if (candidates.size === 0 && enableFuzzyMatching) {
+      const words = normalized.split(' ').filter(w => w.length > 2)
+      
+      for (const word of words) {
+        const wordMatches = teamIndex.wordIndex.get(word)
+        if (wordMatches) {
+          wordMatches.forEach(team => candidates.add(team))
+        }
+        
+        // Also check partial word matches for the longest words
+        if (word.length > 4) {
+          for (const [indexWord, teams] of teamIndex.wordIndex) {
+            if (indexWord.includes(word) || word.includes(indexWord)) {
+              teams.forEach(team => candidates.add(team))
+            }
+          }
+        }
+      }
+      
+      // If still no candidates, fallback to full search (rare)
+      if (candidates.size === 0) {
+        for (const teams of teamIndex.normalizedLookup.values()) {
+          teams.forEach(team => candidates.add(team))
+        }
+      }
+    }
+    
+    return Array.from(candidates)
+  }
+
+  /**
+   * OPTIMIZED: Get the numerical team ID for a given team name
    * @param {string} teamName - The display name of the team
    * @returns {string|null} - The numerical team ID or null if not found
    */
   const getTeamId = (teamName) => {
     if (!teamName) return null
     
-    // First try exact match
-    for (const [numericalId, name] of Object.entries(teamsData)) {
-      if (name === teamName) {
-        return numericalId
-      }
-    }
+    // First try exact match (very fast lookup)
+    const exactId = teamIndex.exactLookup.get(teamName)
+    if (exactId) return exactId
     
     // If fuzzy matching is disabled, return null
     if (!enableFuzzyMatching) return null
     
-    // Fuzzy matching - simpler approach
+    // Get candidates efficiently (much smaller set than all 53k teams)
+    const candidates = getCandidates(teamName)
+    
     let bestMatch = null
     let bestScore = 0
     
-    for (const [numericalId, name] of Object.entries(teamsData)) {
-      const similarity = calculateSimilarity(teamName, name)
+    // Only process the candidate teams (much faster!)
+    for (const candidate of candidates) {
+      const similarity = calculateSimilarity(teamName, candidate.name)
       if (similarity >= similarityThreshold && 
           similarity > bestScore && 
-          isLikelyCorrectMatch(teamName, name, similarity)) {
+          isLikelyCorrectMatch(teamName, candidate.name, similarity)) {
         bestScore = similarity
-        bestMatch = numericalId
+        bestMatch = candidate.id
       }
     }
     
@@ -281,7 +358,7 @@ export function useTeamLogos(options = {}) {
   }
 
   /**
-   * Get detailed match information for debugging
+   * OPTIMIZED: Get detailed match information for debugging
    * @param {string} teamName - The display name of the team
    * @returns {Object|null} - Match details or null
    */
@@ -289,38 +366,39 @@ export function useTeamLogos(options = {}) {
     if (!teamName) return null
     
     // First try exact match
-    for (const [numericalId, name] of Object.entries(teamsData)) {
-      if (name === teamName) {
-        return { id: numericalId, name, score: 1.0, alternatives: [] }
-      }
+    const exactId = teamIndex.exactLookup.get(teamName)
+    if (exactId) {
+      return { id: exactId, name: teamName, score: 1.0, alternatives: [] }
     }
     
     // If fuzzy matching is disabled, return null
     if (!enableFuzzyMatching) return null
     
-    // Collect candidates
-    const candidates = []
+    // Get candidates efficiently
+    const candidates = getCandidates(teamName)
+    const scoredCandidates = []
     
-    for (const [numericalId, name] of Object.entries(teamsData)) {
-      const similarity = calculateSimilarity(teamName, name)
-      if (similarity >= Math.max(0.4, similarityThreshold - 0.3)) { // Lower threshold for debugging
-        candidates.push({
-          id: numericalId,
-          name,
+    // Score only the candidates
+    for (const candidate of candidates) {
+      const similarity = calculateSimilarity(teamName, candidate.name)
+      if (similarity >= Math.max(0.4, similarityThreshold - 0.3)) {
+        scoredCandidates.push({
+          id: candidate.id,
+          name: candidate.name,
           score: similarity,
-          isValid: isLikelyCorrectMatch(teamName, name, similarity)
+          isValid: isLikelyCorrectMatch(teamName, candidate.name, similarity)
         })
       }
     }
     
     // Sort by score
-    candidates.sort((a, b) => b.score - a.score)
+    scoredCandidates.sort((a, b) => b.score - a.score)
     
-    if (candidates.length === 0) return null
+    if (scoredCandidates.length === 0) return null
     
     // Find the best valid match
-    const bestValid = candidates.find(c => c.isValid)
-    const alternatives = candidates.slice(0, 5).map(c => ({
+    const bestValid = scoredCandidates.find(c => c.isValid)
+    const alternatives = scoredCandidates.slice(0, 5).map(c => ({
       id: c.id,
       name: c.name,
       score: c.score,
