@@ -10,41 +10,45 @@
                 </q-toolbar-title>
                 
                 <div class="nav-links">
+                    <!-- Always show Upload and Docs -->
                     <router-link to="/upload" class="nav-link">Upload</router-link>
-                    <router-link 
-                        v-if="currentDatasetId" 
-                        :to="`/dataset/${currentDatasetId}`" 
-                        class="nav-link"
-                    >
-                        Players
-                    </router-link>
-                    <router-link to="/team-view" class="nav-link">Team View</router-link>
-                    <router-link to="/nations" class="nav-link">Nations</router-link>
-                    <router-link to="/leagues" class="nav-link">Leagues</router-link>
-                    <router-link 
-                        v-if="currentDatasetId" 
-                        to="/wishlist" 
-                        class="nav-link wishlist-link"
-                    >
-                        <q-icon name="favorite" size="1rem" class="q-mr-xs" />
-                        Wishlist
-                        <q-badge 
-                            v-if="wishlistCount > 0" 
-                            :label="wishlistCount" 
-                            color="positive" 
-                            class="q-ml-xs"
-                        />
-                    </router-link>
                     <router-link to="/docs" class="nav-link">Docs</router-link>
+                    
+                    <!-- Only show these links when data is uploaded -->
+                    <template v-if="currentDatasetId">
+                        <router-link 
+                            :to="`/dataset/${currentDatasetId}`" 
+                            class="nav-link"
+                        >
+                            Players
+                        </router-link>
+                        <router-link to="/team-view" class="nav-link">Team View</router-link>
+                        <router-link to="/nations" class="nav-link">Nations</router-link>
+                        <router-link to="/leagues" class="nav-link">Leagues</router-link>
+                        <router-link 
+                            to="/wishlist" 
+                            class="nav-link wishlist-link"
+                        >
+                            <q-icon name="favorite" size="1rem" class="q-mr-xs" />
+                            Wishlist
+                            <q-badge 
+                                v-if="wishlistCount > 0" 
+                                :label="wishlistCount" 
+                                color="positive" 
+                                class="q-ml-xs"
+                            />
+                        </router-link>
+                    </template>
                 </div>
 
-                <!-- Universal Search Component -->
+                <!-- Universal Search Component - only show when data is uploaded -->
                 <div v-if="currentDatasetId" class="search-container">
                     <UniversalSearch />
                 </div>
                 
                 <q-space />
                 
+                <!-- Always show these buttons -->
                 <!-- Buy me a coffee button -->
                 <div class="bmc-button-wrapper">
                     <a 
@@ -68,6 +72,7 @@
                     <q-tooltip>Settings</q-tooltip>
                 </q-btn>
                 
+                <!-- Dark mode toggle -->
                 <q-btn
                     flat
                     round

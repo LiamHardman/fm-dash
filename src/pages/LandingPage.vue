@@ -105,20 +105,6 @@
                         </div>
                     </div>
                 </div>
-
-                <div class="quick-start">
-                    <q-btn
-                        unelevated
-                        color="primary"
-                        size="md"
-                        @click="navigateToUpload"
-                        class="quick-start-btn"
-                        no-caps
-                    >
-                        <q-icon name="rocket_launch" class="q-mr-sm" />
-                        Get Started Now
-                    </q-btn>
-                </div>
             </div>
         </div>
     </q-page>
