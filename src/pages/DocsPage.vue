@@ -194,6 +194,212 @@
                     </div>
                 </div>
 
+                <!-- Data Export Guide Section -->
+                <div
+                    v-if="activeSection === 'data-export'"
+                    class="content-section"
+                >
+                    <div class="section-header">
+                        <div class="section-badge">
+                            <q-icon name="upload" />
+                            <span>Data Export</span>
+                        </div>
+                        <h1 class="section-title">Export Data from FM24</h1>
+                        <p class="section-subtitle">
+                            Learn how to export your Football Manager 24 player data 
+                            for analysis in FM-Dash. This guide will walk you through 
+                            the complete process from setup to export.
+                        </p>
+                    </div>
+
+                    <!-- Overview Card -->
+                    <q-card class="info-card">
+                        <q-card-section>
+                            <div class="card-header">
+                                <q-icon
+                                    name="info"
+                                    size="1.5rem"
+                                    color="primary"
+                                />
+                                <h3>What You'll Need</h3>
+                            </div>
+                            <div class="requirement-grid">
+                                <div class="requirement-item">
+                                    <q-icon name="sports_soccer" size="1.5rem" color="primary" />
+                                    <div>
+                                        <h4>Football Manager 24</h4>
+                                        <p>An active save game with players to analyze</p>
+                                    </div>
+                                </div>
+                                <div class="requirement-item">
+                                    <q-icon name="download" size="1.5rem" color="secondary" />
+                                    <div>
+                                        <h4>Steam Workshop Access</h4>
+                                        <p>To download the FM Dash search view</p>
+                                    </div>
+                                </div>
+                                <div class="requirement-item">
+                                    <q-icon name="folder" size="1.5rem" color="positive" />
+                                    <div>
+                                        <h4>File Storage</h4>
+                                        <p>A place to save your exported data</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </q-card-section>
+                    </q-card>
+
+                    <!-- Step-by-Step Guide -->
+                    <q-card class="info-card">
+                        <q-card-section>
+                            <div class="card-header">
+                                <q-icon
+                                    name="list_alt"
+                                    size="1.5rem"
+                                    color="primary"
+                                />
+                                <h3>Step-by-Step Export Process</h3>
+                            </div>
+                            <div class="export-steps">
+                                <div
+                                    class="export-step"
+                                    v-for="(step, index) in exportSteps"
+                                    :key="index"
+                                >
+                                    <div class="step-number">
+                                        {{ index + 1 }}
+                                    </div>
+                                    <div class="step-content">
+                                        <h4>{{ step.title }}</h4>
+                                        <p>{{ step.description }}</p>
+                                        <div v-if="step.note" class="step-note">
+                                            <q-icon name="lightbulb" size="1rem" />
+                                            {{ step.note }}
+                                        </div>
+                                        <div v-if="step.warning" class="step-warning">
+                                            <q-icon name="warning" size="1rem" />
+                                            {{ step.warning }}
+                                        </div>
+                                        <div v-if="step.link" class="step-link">
+                                            <q-btn
+                                                outline
+                                                color="primary"
+                                                :label="step.linkText"
+                                                icon="open_in_new"
+                                                :href="step.link"
+                                                target="_blank"
+                                                size="sm"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </q-card-section>
+                    </q-card>
+
+                    <!-- Performance Tips -->
+                    <q-card class="info-card">
+                        <q-card-section>
+                            <div class="card-header">
+                                <q-icon
+                                    name="speed"
+                                    size="1.5rem"
+                                    color="orange"
+                                />
+                                <h3>Performance Tips</h3>
+                            </div>
+                            <div class="performance-tips">
+                                <div class="tip-item">
+                                    <q-icon name="filter_list" size="1.2rem" color="orange" />
+                                    <div>
+                                        <h4>Start Small</h4>
+                                        <p>For your first export, limit to under 5,000 players to test the process quickly.</p>
+                                    </div>
+                                </div>
+                                <div class="tip-item">
+                                    <q-icon name="hourglass_empty" size="1.2rem" color="orange" />
+                                    <div>
+                                        <h4>Large Datasets</h4>
+                                        <p>Exports with 10,000+ players can take 10+ seconds. Be patient and don't interact with the screen during export.</p>
+                                    </div>
+                                </div>
+                                <div class="tip-item">
+                                    <q-icon name="mouse" size="1.2rem" color="orange" />
+                                    <div>
+                                        <h4>Check Progress</h4>
+                                        <p>You can test if the export is working by hovering over players. If nothing changes when you hover, it's working correctly. If you see hover effects, navigate away from scouting and back to try again.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </q-card-section>
+                    </q-card>
+
+                    <!-- Troubleshooting -->
+                    <q-card class="info-card">
+                        <q-card-section>
+                            <div class="card-header">
+                                <q-icon
+                                    name="help_outline"
+                                    size="1.5rem"
+                                    color="negative"
+                                />
+                                <h3>Troubleshooting</h3>
+                            </div>
+                            <div class="troubleshooting-items">
+                                <div class="trouble-item">
+                                    <h4>Export seems stuck or frozen</h4>
+                                    <p>Large datasets can take 10+ seconds to export. You can test if it's working by hovering over players - if nothing changes, it's working correctly. If you see hover effects, navigate away from scouting and back to try again.</p>
+                                </div>
+                                <div class="trouble-item">
+                                    <h4>Can't find the FM Dash Search view</h4>
+                                    <p>Make sure you've subscribed to the Steam Workshop item and that Steam has downloaded it. Restart FM24 if the view doesn't appear.</p>
+                                </div>
+                                <div class="trouble-item">
+                                    <h4>Export file is too large</h4>
+                                    <p>Consider filtering your dataset further before export. Focus on specific leagues, age ranges, or positions to reduce file size.</p>
+                                </div>
+                            </div>
+                        </q-card-section>
+                    </q-card>
+
+                    <!-- Next Steps -->
+                    <q-card class="info-card success-card">
+                        <q-card-section>
+                            <div class="card-header">
+                                <q-icon
+                                    name="check_circle"
+                                    size="1.5rem"
+                                    color="positive"
+                                />
+                                <h3>Ready to Analyze!</h3>
+                            </div>
+                            <p class="success-description">
+                                Once you've successfully exported your data, you're ready to upload it to FM-Dash 
+                                and start analyzing your players. The exported HTML file contains all the player 
+                                data needed for comprehensive analysis.
+                            </p>
+                            <div class="next-actions">
+                                <q-btn
+                                    unelevated
+                                    color="positive"
+                                    label="Upload to FM-Dash"
+                                    icon="cloud_upload"
+                                    href="/"
+                                    class="action-btn"
+                                />
+                                <q-btn
+                                    outline
+                                    color="primary"
+                                    label="Getting Started Guide"
+                                    icon="rocket_launch"
+                                    @click="setActiveSection('getting-started')"
+                                    class="action-btn"
+                                />
+                            </div>
+                        </q-card-section>
+                    </q-card>
+                </div>
+
                 <!-- API Reference Section -->
                 <div
                     v-if="activeSection === 'api-reference'"
@@ -546,6 +752,12 @@ export default defineComponent({
         icon: 'rocket_launch'
       },
       {
+        id: 'data-export',
+        title: 'Data Export Guide',
+        subtitle: 'Export from FM24',
+        icon: 'upload'
+      },
+      {
         id: 'api-reference',
         title: 'API Reference',
         subtitle: 'Developer docs',
@@ -803,6 +1015,41 @@ volumes:
       }
     ]
 
+    const exportSteps = [
+      {
+        title: 'Download the FM Dash Search View',
+        description: 'First, you need to download a custom search view from the Steam Workshop that contains all the player attributes FM-Dash needs for analysis.',
+        link: 'https://steamcommunity.com/sharedfiles/filedetails/?id=3494146457',
+        linkText: 'Download FM Dash Search View',
+        note: 'Make sure you\'re logged into Steam and subscribed to the workshop item.'
+      },
+      {
+        title: 'Import the View in FM24',
+        description: 'Open Football Manager 24, navigate to Scouting, then click "Overview" (next to the "X Players Filtered" text). Select "Custom" → "Import View" and choose "FM Dash Search".',
+        note: 'If you don\'t see the view, restart FM24 and make sure Steam has downloaded the workshop item.'
+      },
+      {
+        title: 'Filter Your Dataset',
+        description: 'Use FM24\'s filtering options to narrow down your player selection. Consider filtering by league, position, age, or other criteria to focus on the players you want to analyze.',
+        note: 'Start with under 5,000 players for your first export to test the process quickly.'
+      },
+      {
+        title: 'Select All Players',
+        description: 'Once you have your filtered list, select all players using Ctrl+A (or Cmd+A on Mac). This will highlight all visible players in the current view.',
+        warning: 'Make sure all players are selected before proceeding to the export step.'
+      },
+      {
+        title: 'Export as Web Page',
+        description: 'With all players selected, press Ctrl+P (or Cmd+P on Mac) to open the print dialog, then choose "Web Page" as the format. This creates an HTML file with all the player data.',
+        warning: 'This process can be slow for large datasets (10,000+ players). Expect 10+ seconds and don\'t interact with the screen during export.'
+      },
+      {
+        title: 'Save Your Export File',
+        description: 'Choose a memorable location to save your HTML export file. You\'ll need to upload this file to FM-Dash for analysis.',
+        note: 'Consider naming the file with the date and dataset description for easy identification later.'
+      }
+    ]
+
     const copyToClipboard = async (text) => {
       try {
         await navigator.clipboard.writeText(text)
@@ -828,6 +1075,7 @@ volumes:
       localRequirements,
       dockerSteps,
       setupSteps,
+      exportSteps,
       copyToClipboard,
       setActiveSection
     }
@@ -1549,16 +1797,16 @@ volumes:
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 193, 7, 0.1);
-    border: 1px solid rgba(255, 193, 7, 0.3);
+    background: rgba(76, 175, 80, 0.1);
+    border: 1px solid rgba(76, 175, 80, 0.3);
     border-radius: 6px;
     padding: 0.5rem 0.75rem;
-    font-size: 0.8rem;
-    color: #f57c00;
-    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    color: #2e7d32;
+    margin: 0.5rem 0;
 
     .body--dark & {
-        color: #ffb74d;
+        color: #81c784;
     }
 }
 
@@ -1967,6 +2215,192 @@ volumes:
     
     strong {
         color: var(--q-primary);
+    }
+}
+
+// Data Export Guide Styles
+.requirement-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-top: 1rem;
+
+    @media (max-width: 768px) {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+}
+
+.requirement-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(25, 118, 210, 0.05);
+    border-radius: 8px;
+    border-left: 3px solid var(--q-primary);
+    transition: all 0.3s ease;
+
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(25, 118, 210, 0.15);
+    }
+
+    h4 {
+        margin: 0 0 0.5rem 0;
+        font-weight: 600;
+        color: #1976d2;
+        font-size: 1rem;
+
+        .body--dark & {
+            color: #64b5f6;
+        }
+    }
+
+    p {
+        margin: 0;
+        line-height: 1.4;
+        color: var(--q-secondary);
+        font-size: 0.875rem;
+    }
+}
+
+.export-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.export-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+
+    .step-number {
+        background: linear-gradient(135deg, var(--q-primary), #1976d2);
+        color: white;
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 1rem;
+        flex-shrink: 0;
+        margin-top: 0.25rem;
+    }
+
+    .step-content {
+        flex: 1;
+
+        h4 {
+            margin: 0 0 0.5rem 0;
+            font-weight: 600;
+            color: #1976d2;
+            font-size: 1.1rem;
+
+            .body--dark & {
+                color: #64b5f6;
+            }
+        }
+
+        p {
+            margin: 0 0 1rem 0;
+            line-height: 1.5;
+            color: var(--q-secondary);
+        }
+    }
+}
+
+.step-warning {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(255, 152, 0, 0.1);
+    border: 1px solid rgba(255, 152, 0, 0.3);
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    color: #ef6c00;
+    margin: 0.5rem 0;
+
+    .body--dark & {
+        color: #ffb74d;
+    }
+}
+
+.step-link {
+    margin-top: 0.75rem;
+}
+
+.performance-tips {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.tip-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(255, 152, 0, 0.05);
+    border-radius: 8px;
+    border-left: 3px solid #ff9800;
+
+    h4 {
+        margin: 0 0 0.5rem 0;
+        font-weight: 600;
+        color: #ef6c00;
+        font-size: 1rem;
+
+        .body--dark & {
+            color: #ffb74d;
+        }
+    }
+
+    p {
+        margin: 0;
+        line-height: 1.4;
+        color: var(--q-secondary);
+        font-size: 0.875rem;
+    }
+}
+
+.troubleshooting-items {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.success-card {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(76, 175, 80, 0.05));
+    border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.success-description {
+    line-height: 1.6;
+    color: var(--q-secondary);
+    margin-bottom: 1.5rem;
+}
+
+.next-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+
+    @media (max-width: 768px) {
+        flex-direction: column;
+    }
+
+    .action-btn {
+        flex: 1;
+        min-width: 150px;
+        text-transform: none;
+        border-radius: 8px;
+        padding: 0.75rem 1.5rem;
+        font-weight: 500;
     }
 }
 </style>
