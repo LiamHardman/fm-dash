@@ -1,0 +1,277 @@
+// Country to continent/region mapping
+// This maps country names (as they appear in player data) to continents/regions
+
+export const CountryToContinentMap = {
+  // Europe
+  'England': 'Europe',
+  'Scotland': 'Europe', 
+  'Wales': 'Europe',
+  'Northern Ireland': 'Europe',
+  'Republic of Ireland': 'Europe',
+  'France': 'Europe',
+  'Germany': 'Europe',
+  'Spain': 'Europe',
+  'Italy': 'Europe',
+  'Portugal': 'Europe',
+  'Netherlands': 'Europe',
+  'Belgium': 'Europe',
+  'Austria': 'Europe',
+  'Switzerland': 'Europe',
+  'Sweden': 'Europe',
+  'Norway': 'Europe',
+  'Denmark': 'Europe',
+  'Finland': 'Europe',
+  'Iceland': 'Europe',
+  'Poland': 'Europe',
+  'Czech Republic': 'Europe',
+  'Slovakia': 'Europe',
+  'Hungary': 'Europe',
+  'Romania': 'Europe',
+  'Bulgaria': 'Europe',
+  'Greece': 'Europe',
+  'Croatia': 'Europe',
+  'Serbia': 'Europe',
+  'Bosnia and Herzegovina': 'Europe',
+  'Montenegro': 'Europe',
+  'North Macedonia': 'Europe',
+  'Slovenia': 'Europe',
+  'Albania': 'Europe',
+  'Kosovo': 'Europe',
+  'Lithuania': 'Europe',
+  'Latvia': 'Europe',
+  'Estonia': 'Europe',
+  'Belarus': 'Europe',
+  'Ukraine': 'Europe',
+  'Moldova': 'Europe',
+  'Russia': 'Europe',
+  'Turkey': 'Europe',
+  'Cyprus': 'Europe',
+  'Malta': 'Europe',
+  'Luxembourg': 'Europe',
+  'Monaco': 'Europe',
+  'Liechtenstein': 'Europe',
+  'San Marino': 'Europe',
+  'Andorra': 'Europe',
+  'Vatican': 'Europe',
+  'Georgia': 'Europe',
+  'Armenia': 'Europe',
+  'Azerbaijan': 'Europe',
+
+  // European Union (for EU-specific filtering)
+  'Faroe Islands': 'Europe',
+  'Gibraltar': 'Europe',
+
+  // South America
+  'Brazil': 'South America',
+  'Argentina': 'South America',
+  'Uruguay': 'South America',
+  'Paraguay': 'South America',
+  'Chile': 'South America',
+  'Bolivia': 'South America',
+  'Peru': 'South America',
+  'Ecuador': 'South America',
+  'Colombia': 'South America',
+  'Venezuela': 'South America',
+  'Guyana': 'South America',
+  'Suriname': 'South America',
+  'French Guiana': 'South America',
+
+  // Africa
+  'Algeria': 'Africa',
+  'Angola': 'Africa',
+  'Benin': 'Africa',
+  'Botswana': 'Africa',
+  'Burkina Faso': 'Africa',
+  'Burundi': 'Africa',
+  'Cameroon': 'Africa',
+  'Cape Verde': 'Africa',
+  'Central African Republic': 'Africa',
+  'Chad': 'Africa',
+  'Comoros': 'Africa',
+  'Congo': 'Africa',
+  'DR Congo': 'Africa',
+  'Djibouti': 'Africa',
+  'Egypt': 'Africa',
+  'Equatorial Guinea': 'Africa',
+  'Eritrea': 'Africa',
+  'Eswatini': 'Africa',
+  'Ethiopia': 'Africa',
+  'Gabon': 'Africa',
+  'Gambia': 'Africa',
+  'Ghana': 'Africa',
+  'Guinea': 'Africa',
+  'Guinea-Bissau': 'Africa',
+  'Ivory Coast': 'Africa',
+  'Côte d\'Ivoire': 'Africa',
+  'Kenya': 'Africa',
+  'Lesotho': 'Africa',
+  'Liberia': 'Africa',
+  'Libya': 'Africa',
+  'Madagascar': 'Africa',
+  'Malawi': 'Africa',
+  'Mali': 'Africa',
+  'Mauritania': 'Africa',
+  'Mauritius': 'Africa',
+  'Morocco': 'Africa',
+  'Mozambique': 'Africa',
+  'Namibia': 'Africa',
+  'Niger': 'Africa',
+  'Nigeria': 'Africa',
+  'Rwanda': 'Africa',
+  'São Tomé and Príncipe': 'Africa',
+  'Senegal': 'Africa',
+  'Seychelles': 'Africa',
+  'Sierra Leone': 'Africa',
+  'Somalia': 'Africa',
+  'South Africa': 'Africa',
+  'South Sudan': 'Africa',
+  'Sudan': 'Africa',
+  'Tanzania': 'Africa',
+  'Togo': 'Africa',
+  'Tunisia': 'Africa',
+  'Uganda': 'Africa',
+  'Zambia': 'Africa',
+  'Zimbabwe': 'Africa',
+
+  // Asia
+  'Afghanistan': 'Asia',
+  'Bahrain': 'Asia',
+  'Bangladesh': 'Asia',
+  'Bhutan': 'Asia',
+  'Brunei Darussalam': 'Asia',
+  'Cambodia': 'Asia',
+  'China PR': 'Asia',
+  'Hong Kong': 'Asia',
+  'India': 'Asia',
+  'Indonesia': 'Asia',
+  'Iran': 'Asia',
+  'Iraq': 'Asia',
+  'Israel': 'Asia',
+  'Japan': 'Asia',
+  'Jordan': 'Asia',
+  'Kazakhstan': 'Asia',
+  'Korea Republic': 'Asia',
+  'Korea DPR': 'Asia',
+  'Kuwait': 'Asia',
+  'Kyrgyzstan': 'Asia',
+  'Laos': 'Asia',
+  'Lebanon': 'Asia',
+  'Macau': 'Asia',
+  'Malaysia': 'Asia',
+  'Maldives': 'Asia',
+  'Mongolia': 'Asia',
+  'Myanmar': 'Asia',
+  'Nepal': 'Asia',
+  'Oman': 'Asia',
+  'Pakistan': 'Asia',
+  'Palestine': 'Asia',
+  'Philippines': 'Asia',
+  'Qatar': 'Asia',
+  'Saudi Arabia': 'Asia',
+  'Singapore': 'Asia',
+  'Sri Lanka': 'Asia',
+  'Syria': 'Asia',
+  'Tajikistan': 'Asia',
+  'Thailand': 'Asia',
+  'Timor-Leste': 'Asia',
+  'Turkmenistan': 'Asia',
+  'United Arab Emirates': 'Asia',
+  'Uzbekistan': 'Asia',
+  'Vietnam': 'Asia',
+  'Yemen': 'Asia',
+  'Chinese Taipei': 'Asia',
+
+  // North America
+  'United States': 'North America',
+  'Canada': 'North America',
+  'Mexico': 'North America',
+  'Guatemala': 'North America',
+  'Belize': 'North America',
+  'El Salvador': 'North America',
+  'Honduras': 'North America',
+  'Nicaragua': 'North America',
+  'Costa Rica': 'North America',
+  'Panama': 'North America',
+
+  // Caribbean (part of North America but often grouped separately)
+  'Cuba': 'North America',
+  'Jamaica': 'North America',
+  'Haiti': 'North America',
+  'Dominican Republic': 'North America',
+  'Puerto Rico': 'North America',
+  'Trinidad and Tobago': 'North America',
+  'Barbados': 'North America',
+  'Saint Lucia': 'North America',
+  'Grenada': 'North America',
+  'Saint Vincent and the Grenadines': 'North America',
+  'Antigua and Barbuda': 'North America',
+  'Dominica': 'North America',
+  'Saint Kitts and Nevis': 'North America',
+  'Bahamas': 'North America',
+  'Bermuda': 'North America',
+  'Cayman Islands': 'North America',
+  'Turks and Caicos Islands': 'North America',
+  'British Virgin Islands': 'North America',
+  'US Virgin Islands': 'North America',
+  'Anguilla': 'North America',
+  'Montserrat': 'North America',
+  'Aruba': 'North America',
+  'Curaçao': 'North America',
+  'Netherlands Antilles': 'North America',
+
+  // Oceania
+  'Australia': 'Oceania',
+  'New Zealand': 'Oceania',
+  'Fiji': 'Oceania',
+  'Papua New Guinea': 'Oceania',
+  'Solomon Islands': 'Oceania',
+  'Vanuatu': 'Oceania',
+  'Samoa': 'Oceania',
+  'Tonga': 'Oceania',
+  'Cook Islands': 'Oceania',
+  'Tahiti': 'Oceania',
+  'New Caledonia': 'Oceania',
+  'Guam': 'Oceania',
+  'American Samoa': 'Oceania'
+}
+
+// European Union countries (for EU Players filter)
+export const EUCountries = [
+  'Austria', 'Belgium', 'Bulgaria', 'Croatia', 'Cyprus', 'Czech Republic',
+  'Denmark', 'Estonia', 'Finland', 'France', 'Germany', 'Greece',
+  'Hungary', 'Republic of Ireland', 'Italy', 'Latvia', 'Lithuania',
+  'Luxembourg', 'Malta', 'Netherlands', 'Poland', 'Portugal',
+  'Romania', 'Slovakia', 'Slovenia', 'Spain', 'Sweden'
+]
+
+// Get continent for a country
+export function getContinent(countryName) {
+  return CountryToContinentMap[countryName] || 'Unknown'
+}
+
+// Check if country is in EU
+export function isEUCountry(countryName) {
+  return EUCountries.includes(countryName)
+}
+
+// Get all countries from a continent
+export function getCountriesFromContinent(continentName) {
+  return Object.keys(CountryToContinentMap).filter(
+    country => CountryToContinentMap[country] === continentName
+  )
+}
+
+// Get all European countries (including non-EU)
+export function getAllEuropeanCountries() {
+  return getCountriesFromContinent('Europe')
+}
+
+// Get all South American countries 
+export function getAllSouthAmericanCountries() {
+  return getCountriesFromContinent('South America')
+}
+
+// Get all African countries
+export function getAllAfricanCountries() {
+  return getCountriesFromContinent('Africa')
+} 

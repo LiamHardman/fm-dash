@@ -795,6 +795,7 @@ import { usePlayerStore } from '@/stores/playerStore'
 import { formatCurrency } from '@/utils/currencyUtils'
 import { useQuasar } from 'quasar'
 import { computed, defineComponent, nextTick, onMounted, ref, watch } from 'vue'
+import { EUCountries, getAllEuropeanCountries, getAllSouthAmericanCountries, getAllAfricanCountries } from '../../utils/countryMapping'
 
 // Define attribute keys (ensure these match keys in player.attributes)
 // These are the raw keys from the data.
@@ -960,6 +961,7 @@ export default defineComponent({
       position: null,
       role: null,
       nationality: null,
+      continentNationalities: [],
       mediaHandling: [],
       personality: [],
       ageRange: { min: AGE_SLIDER_MIN, max: AGE_SLIDER_MAX },
@@ -1073,6 +1075,34 @@ export default defineComponent({
           minDri: 15,
           minFin: 15
         }
+      },
+      'eu-players': {
+        label: 'EU Players',
+        description: 'Players from European Union countries',
+        filters: {
+          continentNationalities: EUCountries
+        }
+      },
+      'european-players': {
+        label: 'European Players',
+        description: 'Players from all European countries',
+        filters: {
+          continentNationalities: getAllEuropeanCountries()
+        }
+      },
+      'south-american-players': {
+        label: 'South American Players',
+        description: 'Players from South American countries',
+        filters: {
+          continentNationalities: getAllSouthAmericanCountries()
+        }
+      },
+      'african-players': {
+        label: 'African Players',
+        description: 'Players from African countries',
+        filters: {
+          continentNationalities: getAllAfricanCountries()
+        }
       }
     }
 
@@ -1081,7 +1111,11 @@ export default defineComponent({
       { label: '🆓 Free Transfers', value: 'free-transfers' },
       { label: '⭐ Wonderkids', value: 'wonderkids' },
       { label: '👑 Prime Players', value: 'prime-players' },
-      { label: '🏆 Ballon D\'Or Contenders', value: 'ballon-dor' }
+      { label: '🏆 Ballon D\'Or Contenders', value: 'ballon-dor' },
+      { label: '🇪🇺 EU Players', value: 'eu-players' },
+      { label: '🌍 European Players', value: 'european-players' },
+      { label: '🌎 South American Players', value: 'south-american-players' },
+      { label: '🌍 African Players', value: 'african-players' }
     ])
 
     const applyPresetFilter = (presetKey) => {
@@ -1104,6 +1138,9 @@ export default defineComponent({
           filters.value.transferValueRangeLocal = { ...preset.filters[filterKey] }
         } else if (filterKey === 'ageRange') {
           filters.value.ageRange = { ...preset.filters[filterKey] }
+        } else if (filterKey === 'continentNationalities') {
+          // Set the continent nationalities for filtering
+          filters.value.continentNationalities = [...preset.filters[filterKey]]
         } else {
           filters.value[filterKey] = preset.filters[filterKey]
         }
@@ -1166,6 +1203,7 @@ export default defineComponent({
         filters.value.position !== null ||
         filters.value.role !== null ||
         filters.value.nationality !== null ||
+        (Array.isArray(filters.value.continentNationalities) && filters.value.continentNationalities.length > 0) ||
         (Array.isArray(filters.value.mediaHandling) && filters.value.mediaHandling.length > 0) ||
         (Array.isArray(filters.value.personality) && filters.value.personality.length > 0) ||
         filters.value.ageRange.min !== AGE_SLIDER_MIN ||
@@ -1350,6 +1388,7 @@ export default defineComponent({
         position: null,
         role: null,
         nationality: null,
+        continentNationalities: [],
         mediaHandling: [],
         personality: [],
         ageRange: { min: AGE_SLIDER_MIN, max: AGE_SLIDER_MAX },

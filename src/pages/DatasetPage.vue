@@ -326,7 +326,8 @@ export default {
       minREF: 0,
       minKIC: 0,
       minSPD: 0,
-      minPOS: 0
+      minPOS: 0,
+      continentNationalities: []
     })
 
     for (const attrKey of allRawFmAttributeKeys) {
@@ -397,6 +398,15 @@ export default {
           if (
             currentFilters.value.nationality &&
             player.nationality !== currentFilters.value.nationality
+          ) {
+            return false
+          }
+
+          // Continent-based nationality filter (for preset filters like EU, Europe, etc.)
+          if (
+            currentFilters.value.continentNationalities &&
+            currentFilters.value.continentNationalities.length > 0 &&
+            !currentFilters.value.continentNationalities.includes(player.nationality)
           ) {
             return false
           }
