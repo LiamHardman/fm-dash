@@ -118,80 +118,158 @@
                 >
                     <div class="section-header">
                         <div class="section-badge">
-                            <q-icon name="rocket_launch" />
-                            <span>Quick Start</span>
+                            <q-icon name="hub" />
+                            <span>Documentation Hub</span>
                         </div>
-                        <h1 class="section-title">Getting Started</h1>
+                        <h1 class="section-title">Welcome to FM-Dash</h1>
                         <p class="section-subtitle">
-                            Welcome to FM-Dash! This guide will help you get
-                            started with using the Football Manager Database and
-                            Player Analysis Tool.
+                            Choose your path to get the most out of Football Manager data analysis. 
+                            Whether you're analyzing players, hosting your own instance, or building 
+                            integrations, we've got you covered.
                         </p>
                     </div>
 
-                    <div class="content-cards">
-                        <q-card class="info-card">
-                            <q-card-section>
-                                <div class="card-header">
-                                    <q-icon
-                                        name="speed"
-                                        size="1.5rem"
-                                        color="primary"
-                                    />
-                                    <h3>Quick Start Guide</h3>
+                    <div class="hub-cards">
+                        <q-card class="hub-card use-card">
+                            <q-card-section class="hub-card-content">
+                                <div class="hub-icon">
+                                    <q-icon name="sports_soccer" size="3rem" />
                                 </div>
-                                <div class="step-list">
-                                    <div
-                                        class="step-item"
-                                        v-for="(step, index) in quickStartSteps"
-                                        :key="index"
-                                    >
-                                        <div class="step-number">
-                                            {{ index + 1 }}
-                                        </div>
-                                        <div class="step-content">
-                                            <h4>{{ step.title }}</h4>
-                                            <p>{{ step.description }}</p>
-                                        </div>
+                                <h2>Use FM-Dash</h2>
+                                <p class="hub-description">
+                                    Learn how to export your Football Manager 24 data and start 
+                                    analyzing players, teams, and formations with our powerful tools.
+                                </p>
+                                <div class="hub-features">
+                                    <div class="feature-item">
+                                        <q-icon name="upload" size="1rem" />
+                                        <span>Export data from FM24</span>
+                                    </div>
+                                    <div class="feature-item">
+                                        <q-icon name="analytics" size="1rem" />
+                                        <span>Analyze player performance</span>
+                                    </div>
+                                    <div class="feature-item">
+                                        <q-icon name="groups" size="1rem" />
+                                        <span>Build optimal teams</span>
                                     </div>
                                 </div>
+                                <q-btn
+                                    unelevated
+                                    color="primary"
+                                    label="Get Started"
+                                    icon="play_arrow"
+                                    @click="setActiveSection('data-export')"
+                                    class="hub-btn"
+                                    size="lg"
+                                />
                             </q-card-section>
                         </q-card>
 
-                        <q-card class="info-card">
-                            <q-card-section>
-                                <div class="card-header">
-                                    <q-icon
-                                        name="computer"
-                                        size="1.5rem"
-                                        color="secondary"
-                                    />
-                                    <h3>System Requirements</h3>
+                        <q-card class="hub-card host-card">
+                            <q-card-section class="hub-card-content">
+                                <div class="hub-icon">
+                                    <q-icon name="cloud_download" size="3rem" />
                                 </div>
-                                <q-list class="requirement-list">
-                                    <q-item
-                                        v-for="req in systemRequirements"
-                                        :key="req.id"
-                                    >
-                                        <q-item-section avatar>
-                                            <q-icon
-                                                :name="req.icon"
-                                                color="positive"
-                                            />
-                                        </q-item-section>
-                                        <q-item-section>
-                                            <q-item-label>{{
-                                                req.title
-                                            }}</q-item-label>
-                                            <q-item-label caption>{{
-                                                req.description
-                                            }}</q-item-label>
-                                        </q-item-section>
-                                    </q-item>
-                                </q-list>
+                                <h2>Host FM-Dash</h2>
+                                <p class="hub-description">
+                                    Set up your own FM-Dash instance locally. Perfect for privacy, 
+                                    customization, or when you need full control over your data.
+                                </p>
+                                <div class="hub-features">
+                                    <div class="feature-item">
+                                        <q-icon name="smart_toy" size="1rem" />
+                                        <span>Docker deployment</span>
+                                    </div>
+                                    <div class="feature-item">
+                                        <q-icon name="construction" size="1rem" />
+                                        <span>Manual installation</span>
+                                    </div>
+                                    <div class="feature-item">
+                                        <q-icon name="security" size="1rem" />
+                                        <span>Private & secure</span>
+                                    </div>
+                                </div>
+                                <q-btn
+                                    unelevated
+                                    color="secondary"
+                                    label="Deploy Now"
+                                    icon="rocket_launch"
+                                    @click="setActiveSection('local-deployment')"
+                                    class="hub-btn"
+                                    size="lg"
+                                />
+                            </q-card-section>
+                        </q-card>
+
+                        <q-card class="hub-card hack-card">
+                            <q-card-section class="hub-card-content">
+                                <div class="hub-icon">
+                                    <q-icon name="code" size="3rem" />
+                                </div>
+                                <h2>Hack FM-Dash</h2>
+                                <p class="hub-description">
+                                    Build integrations, create custom tools, or contribute to the project. 
+                                    Explore our API and extend FM-Dash's capabilities.
+                                </p>
+                                <div class="hub-features">
+                                    <div class="feature-item">
+                                        <q-icon name="api" size="1rem" />
+                                        <span>REST API endpoints</span>
+                                    </div>
+                                    <div class="feature-item">
+                                        <q-icon name="integration_instructions" size="1rem" />
+                                        <span>Integration guides</span>
+                                    </div>
+                                    <div class="feature-item">
+                                        <q-icon name="source" size="1rem" />
+                                        <span>Open source</span>
+                                    </div>
+                                </div>
+                                <q-btn
+                                    unelevated
+                                    color="positive"
+                                    label="Explore API"
+                                    icon="terminal"
+                                    @click="setActiveSection('api-reference')"
+                                    class="hub-btn"
+                                    size="lg"
+                                />
                             </q-card-section>
                         </q-card>
                     </div>
+
+                    <!-- Quick Stats -->
+                    <q-card class="info-card stats-card">
+                        <q-card-section>
+                            <div class="card-header">
+                                <q-icon
+                                    name="insights"
+                                    size="1.5rem"
+                                    color="primary"
+                                />
+                                <h3>Why Choose FM-Dash?</h3>
+                            </div>
+                            <div class="stats-grid">
+                                <div class="stat-item">
+                                    <div class="stat-number">50+</div>
+                                    <div class="stat-label">Player Attributes</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-number">25+</div>
+                                    <div class="stat-label">Playing Positions</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-number">100%</div>
+                                    <div class="stat-label">Free & Open Source</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-number">∞</div>
+                                    <div class="stat-label">Player Database Size</div>
+                                </div>
+                            </div>
+                        </q-card-section>
+                    </q-card>
                 </div>
 
                 <!-- Data Export Guide Section -->
@@ -2400,6 +2478,194 @@ volumes:
         text-transform: none;
         border-radius: 8px;
         padding: 0.75rem 1.5rem;
+        font-weight: 500;
+    }
+}
+
+// Documentation Hub Styles
+.hub-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    align-items: stretch;
+    gap: 2rem;
+    margin-bottom: 3rem;
+
+    @media (max-width: 1024px) {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+}
+
+.hub-card {
+    border-radius: 16px;
+    border: 2px solid transparent;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    background: var(--q-card);
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+
+    &:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+    }
+
+    &.use-card {
+        border-color: #1976d2;
+        background: linear-gradient(135deg, rgba(25, 118, 210, 0.05), rgba(25, 118, 210, 0.02));
+
+        &:hover {
+            border-color: #1976d2;
+            box-shadow: 0 12px 40px rgba(25, 118, 210, 0.2);
+        }
+
+        .hub-icon {
+            color: #1976d2;
+        }
+    }
+
+    &.host-card {
+        border-color: #9c27b0;
+        background: linear-gradient(135deg, rgba(156, 39, 176, 0.05), rgba(156, 39, 176, 0.02));
+
+        &:hover {
+            border-color: #9c27b0;
+            box-shadow: 0 12px 40px rgba(156, 39, 176, 0.2);
+        }
+
+        .hub-icon {
+            color: #9c27b0;
+        }
+    }
+
+    &.hack-card {
+        border-color: #4caf50;
+        background: linear-gradient(135deg, rgba(76, 175, 80, 0.05), rgba(76, 175, 80, 0.02));
+
+        &:hover {
+            border-color: #4caf50;
+            box-shadow: 0 12px 40px rgba(76, 175, 80, 0.2);
+        }
+
+        .hub-icon {
+            color: #4caf50;
+        }
+    }
+}
+
+.hub-card-content {
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    height: 100%;
+}
+
+.hub-icon {
+    margin-bottom: 1.5rem;
+    opacity: 0.9;
+}
+
+.hub-card h2 {
+    margin: 0 0 1rem 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1976d2;
+
+    .body--dark & {
+        color: #64b5f6;
+    }
+
+    .host-card & {
+        color: #9c27b0;
+
+        .body--dark & {
+            color: #ce93d8;
+        }
+    }
+
+    .hack-card & {
+        color: #4caf50;
+
+        .body--dark & {
+            color: #81c784;
+        }
+    }
+}
+
+.hub-description {
+    line-height: 1.6;
+    color: var(--q-secondary);
+    margin-bottom: 1.5rem;
+    flex-grow: 1;
+}
+
+.hub-features {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+    width: 100%;
+
+    .feature-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-size: 0.875rem;
+        color: var(--q-secondary);
+
+        .q-icon {
+            opacity: 0.7;
+        }
+    }
+}
+
+.hub-btn {
+    text-transform: none;
+    border-radius: 12px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    width: 100%;
+    max-width: 200px;
+}
+
+// Stats Card
+.stats-card {
+    background: linear-gradient(135deg, rgba(25, 118, 210, 0.05), rgba(25, 118, 210, 0.02));
+    border: 1px solid rgba(25, 118, 210, 0.2);
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2rem;
+
+    @media (max-width: 768px) {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+
+    @media (max-width: 480px) {
+        grid-template-columns: 1fr;
+    }
+}
+
+.stat-item {
+    text-align: center;
+
+    .stat-number {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--q-primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: var(--q-secondary);
         font-weight: 500;
     }
 }
