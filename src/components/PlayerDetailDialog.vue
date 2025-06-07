@@ -282,6 +282,15 @@
                                                     size="2.5em"
                                                     class="player-flag-placeholder"
                                                 />
+                                                
+                                                <!-- Club logo below nationality flag -->
+                                                <div class="q-mt-sm club-logo-container" v-if="player.club && player.club !== '-'">
+                                                    <TeamLogo 
+                                                        :team-name="player.club"
+                                                        :size="32"
+                                                        class="player-club-logo"
+                                                    />
+                                                </div>
                                             </div>
                                             
                                             <div class="col player-name-section">
@@ -659,6 +668,7 @@ import { computed, defineComponent, onMounted, ref, watch } from 'vue'
 import { usePlayerStore } from '../stores/playerStore'
 import { formatCurrency } from '../utils/currencyUtils'
 import { useUiStore } from '../stores/uiStore'
+import TeamLogo from '../components/TeamLogo.vue'
 
 const attributeFullNameMap = {
   Cor: 'Corners',
@@ -969,6 +979,9 @@ const detailedGroupToShortPositionsMap = {
 
 export default defineComponent({
   name: 'PlayerDetailDialog',
+  components: {
+    TeamLogo
+  },
   props: {
     player: { type: Object, default: () => null },
     show: { type: Boolean, default: false },
@@ -1900,6 +1913,7 @@ $breakpoint-xs-max: 599px !default;
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-direction: column;
 }
 
 .player-flag {
@@ -2739,6 +2753,25 @@ $breakpoint-xs-max: 599px !default;
             background: rgba(30, 41, 59, 1);
             color: rgba(255, 255, 255, 1);
         }
+    }
+}
+
+.club-logo-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.player-club-logo {
+    transition: all 0.2s ease;
+    
+    /* Better image rendering */
+    image-rendering: auto;
+    image-rendering: smooth;
+    image-rendering: high-quality;
+    
+    &:hover {
+        transform: scale(1.1);
     }
 }
 </style>

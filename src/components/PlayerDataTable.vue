@@ -215,12 +215,6 @@
                         </template>
                         <template v-else-if="col.name === 'club'">
                             <div class="club-cell">
-                                <TeamLogo 
-                                    :team-name="props.row[col.field]"
-                                    :size="20"
-                                    class="q-mr-xs"
-                                    v-if="props.row[col.field] && props.row[col.field] !== '-'"
-                                />
                                 <span 
                                     class="club-link"
                                     @click.stop="onClubClick(props.row)"
@@ -337,7 +331,6 @@ import { usePlayerCalculationWorker } from '../composables/useWebWorkers'
 import { usePlayerStore } from '../stores/playerStore'
 import { useWishlistStore } from '../stores/wishlistStore'
 import { formatCurrency } from '../utils/currencyUtils'
-import TeamLogo from '../components/TeamLogo.vue'
 import { useRouter } from 'vue-router'
 import { useUiStore } from '../stores/uiStore'
 
@@ -345,9 +338,6 @@ const MAX_DISPLAY_PLAYERS = 1000
 
 export default {
   name: 'PlayerDataTable',
-  components: {
-    TeamLogo
-  },
   props: {
     players: { type: Array, required: true },
     loading: { type: Boolean, default: false },
