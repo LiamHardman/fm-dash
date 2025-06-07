@@ -267,7 +267,7 @@
                                             <div class="col-auto q-mr-md player-flag-container">
                                                 <img
                                                     v-if="player.nationality_iso && !flagLoadError"
-                                                    :src="`https://flagcdn.com/w40/${player.nationality_iso.toLowerCase()}.png`"
+                                                    :src="`https://flagcdn.com/w80/${player.nationality_iso.toLowerCase()}.png`"
                                                     :alt="player.nationality || 'Flag'"
                                                     width="48"
                                                     height="32"
