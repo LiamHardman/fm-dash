@@ -239,37 +239,6 @@
                         </q-card>
                     </div>
 
-                    <!-- Quick Stats -->
-                    <q-card class="info-card stats-card">
-                        <q-card-section>
-                            <div class="card-header">
-                                <q-icon
-                                    name="insights"
-                                    size="1.5rem"
-                                    color="primary"
-                                />
-                                <h3>Why Choose FM-Dash?</h3>
-                            </div>
-                            <div class="stats-grid">
-                                <div class="stat-item">
-                                    <div class="stat-number">50+</div>
-                                    <div class="stat-label">Player Attributes</div>
-                                </div>
-                                <div class="stat-item">
-                                    <div class="stat-number">25+</div>
-                                    <div class="stat-label">Playing Positions</div>
-                                </div>
-                                <div class="stat-item">
-                                    <div class="stat-number">100%</div>
-                                    <div class="stat-label">Free & Open Source</div>
-                                </div>
-                                <div class="stat-item">
-                                    <div class="stat-number">∞</div>
-                                    <div class="stat-label">Player Database Size</div>
-                                </div>
-                            </div>
-                        </q-card-section>
-                    </q-card>
                 </div>
 
                 <!-- Data Export Guide Section -->
