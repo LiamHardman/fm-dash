@@ -61,6 +61,42 @@
 * making the scaled rating setting actually work ([a1310fd](https://git.liamhardman.com/liam/fm24-golang/commit/a1310fde84ba686ab2848f897d93a591522e9b94))
 * no longer showing logos directly on the playerdatatable ([9f82f93](https://git.liamhardman.com/liam/fm24-golang/commit/9f82f939b9d652396ab83051cac5ab0f1e52cb4a))
 * optimized fuzzy finding ([48f5817](https://git.liamhardman.com/liam/fm24-golang/commit/48f5817ec58a82f4313b04a3212c3800a22d9942))
+* readme update ([d5b0854](https://git.liamhardman.com/liam/fm24-golang/commit/d5b085494dea7102a519bf5080f2303f0ef2fae9))
+* reorganization of settings ([ab9e994](https://git.liamhardman.com/liam/fm24-golang/commit/ab9e994660c7601bc8d4236bc85c6ec3b86101aa))
+* small text improvements ([b09f489](https://git.liamhardman.com/liam/fm24-golang/commit/b09f48921aa8467ff0a1aea1e4e3b70cb1ec3e28))
+* team and face switch in settings actually work ([72a6630](https://git.liamhardman.com/liam/fm24-golang/commit/72a6630dca43a5c822ce4b4fe7b03947a7993337))
+* team logo in team view page,and path fix ([5372f9d](https://git.liamhardman.com/liam/fm24-golang/commit/5372f9df024665d7e1c88187bccac9a3bc695057))
+* Testing fix team mapping ([2d7e8f7](https://git.liamhardman.com/liam/fm24-golang/commit/2d7e8f7149067d4b931b19575d97e92ef5423e8a))
+* unit tests ([1c979f4](https://git.liamhardman.com/liam/fm24-golang/commit/1c979f4cf11ef6ed9216a7b10f246f550b42838c))
+* upload component improvement ([fc91ded](https://git.liamhardman.com/liam/fm24-golang/commit/fc91dedc3f462680c75ea60b993f73b8701330d2))
+
+## [1.3.0](https://git.liamhardman.com/liam/fm24-golang/compare/v1.2.0...v1.3.0) (2025-06-07)
+
+### 🚀 Features
+
+* nation player filters ([c4cdd55](https://git.liamhardman.com/liam/fm24-golang/commit/c4cdd55ebdce05d543ae652c30ef558aec3bc550))
+* revamp of the dataset page ([43196d5](https://git.liamhardman.com/liam/fm24-golang/commit/43196d56b7ff7a5122f1167fee36acd1e78e0d74))
+* testing if logic change works for scaled vs non-scaled ratings, added settings menu ([5e65048](https://git.liamhardman.com/liam/fm24-golang/commit/5e65048e54b138cc9583e4fe8828fb35556ee665))
+
+### 🐛 Bug Fixes
+
+* ability to toggle logos on and off ([7076559](https://git.liamhardman.com/liam/fm24-golang/commit/70765597d11ab7ec9f52086e1430133f47b50ea2))
+* added more tests ([8e35104](https://git.liamhardman.com/liam/fm24-golang/commit/8e351041d4049fa2530006ed97f815367e1dbfe2))
+* attempted fuzzy fix ([bf0d2f6](https://git.liamhardman.com/liam/fm24-golang/commit/bf0d2f61e0d24eae432e5069761186a45c495e31))
+* better flag quality ([ec6021b](https://git.liamhardman.com/liam/fm24-golang/commit/ec6021b4f88a16f293603e36d61d592545f4a4eb))
+* better landing page ([72c0590](https://git.liamhardman.com/liam/fm24-golang/commit/72c0590fe24b604881951ff02f6a2fd1dd6bb53b))
+* data refresh when settings changed ([cb4f843](https://git.liamhardman.com/liam/fm24-golang/commit/cb4f843348d54f0850249bb0122c456bd5495c27))
+* doc page ([e2ca185](https://git.liamhardman.com/liam/fm24-golang/commit/e2ca18554edbb765963b2a4275c6bd4b59045904))
+* docs page stuff ([d93314a](https://git.liamhardman.com/liam/fm24-golang/commit/d93314a4fcf2cce610c45bdc27c5609bbef8084c))
+* docspage ([05e00c6](https://git.liamhardman.com/liam/fm24-golang/commit/05e00c6597b21ec6db04916c78cfb528312be9ea))
+* hopeful fix for team logo matching ([7eb6ec0](https://git.liamhardman.com/liam/fm24-golang/commit/7eb6ec01644748b1eb9e6cb9e7e0d5aa03c9b729))
+* hopefully adding working team logos ([9f9635c](https://git.liamhardman.com/liam/fm24-golang/commit/9f9635cfb551b9a2c7036625ca06aa26ab84371c))
+* improved landing page ([56bf115](https://git.liamhardman.com/liam/fm24-golang/commit/56bf115cc36d3d8b32a5b3367e11839e68a3e782))
+* local deploy doc ([bb397a2](https://git.liamhardman.com/liam/fm24-golang/commit/bb397a262336f5dc722647f0f9cb12392db3ec82))
+* logging for scaling algorithm switch ([6bd19e7](https://git.liamhardman.com/liam/fm24-golang/commit/6bd19e7c3495779da553c90bd58ae3321516124f))
+* making the scaled rating setting actually work ([a1310fd](https://git.liamhardman.com/liam/fm24-golang/commit/a1310fde84ba686ab2848f897d93a591522e9b94))
+* no longer showing logos directly on the playerdatatable ([9f82f93](https://git.liamhardman.com/liam/fm24-golang/commit/9f82f939b9d652396ab83051cac5ab0f1e52cb4a))
+* optimized fuzzy finding ([48f5817](https://git.liamhardman.com/liam/fm24-golang/commit/48f5817ec58a82f4313b04a3212c3800a22d9942))
 * reorganization of settings ([ab9e994](https://git.liamhardman.com/liam/fm24-golang/commit/ab9e994660c7601bc8d4236bc85c6ec3b86101aa))
 * small text improvements ([b09f489](https://git.liamhardman.com/liam/fm24-golang/commit/b09f48921aa8467ff0a1aea1e4e3b70cb1ec3e28))
 * team and face switch in settings actually work ([72a6630](https://git.liamhardman.com/liam/fm24-golang/commit/72a6630dca43a5c822ce4b4fe7b03947a7993337))
