@@ -98,30 +98,51 @@ func parseCellsToPlayer(cells, headers []string) (Player, error) {
 			player.MediaHandling = cellValue
 			isAnAttributeField = false
 		case "Nat": // This header is ambiguous: could be Nationality (3-letter code) or Natural Fitness (attribute)
-			// Attempt to parse as int (for Natural Fitness attribute)
-			valInt, err := strconv.Atoi(cellValue)
-			if err == nil && valInt >= 1 && valInt <= 20 { // Valid range for an attribute
-				player.Attributes[headerNameClean] = cellValue // Store "Nat" as an attribute
-				// Numeric conversion will happen in EnhancePlayerWithCalculations
-			} else { // Assume it's Nationality (FIFA code)
-				fifaCode := strings.ToUpper(cellValue)
-				player.NationalityFIFACode = fifaCode
-				if fullName, ok := FifaCountryCodes[fifaCode]; ok {
-					player.Nationality = fullName
+			// Handle masked Natural Fitness attribute first
+			if cellValue == "-" {
+				// This is a masked Natural Fitness attribute, store it as an attribute
+				player.Attributes[headerNameClean] = cellValue
+				// Don't overwrite nationality if it's already been set
+				isAnAttributeField = true
+			} else {
+				// Attempt to parse as int or range (for Natural Fitness attribute)
+				valInt, err := strconv.Atoi(cellValue)
+				isValidRange := strings.Contains(cellValue, "-") && len(strings.Split(cellValue, "-")) == 2
+
+				if (err == nil && valInt >= 1 && valInt <= 20) || isValidRange {
+					// This is Natural Fitness (numeric attribute or range like "16-18")
+					player.Attributes[headerNameClean] = cellValue // Store "Nat" as an attribute
+					// Don't overwrite nationality if it's already been set
+					isAnAttributeField = true
 				} else {
-					player.Nationality = cellValue // Fallback to the provided value if code not found
-				}
-				if isoCode, ok := FifaToISO2[fifaCode]; ok {
-					player.NationalityISO = isoCode
-				} else {
-					// Basic fallback for ISO code if FIFA code is unknown
-					if len(fifaCode) >= 2 {
-						player.NationalityISO = strings.ToLower(fifaCode[:2])
+					// Only process as Nationality if we haven't already set nationality from a previous "Nat" column
+					if player.Nationality == "" && player.NationalityFIFACode == "" {
+						// Assume it's Nationality (FIFA code)
+						fifaCode := strings.ToUpper(cellValue)
+						player.NationalityFIFACode = fifaCode
+						if fullName, ok := FifaCountryCodes[fifaCode]; ok {
+							player.Nationality = fullName
+						} else {
+							player.Nationality = cellValue // Fallback to the provided value if code not found
+						}
+						if isoCode, ok := FifaToISO2[fifaCode]; ok {
+							player.NationalityISO = isoCode
+						} else {
+							// Basic fallback for ISO code if FIFA code is unknown
+							if len(fifaCode) >= 2 {
+								player.NationalityISO = strings.ToLower(fifaCode[:2])
+							} else {
+								player.NationalityISO = strings.ToLower(fifaCode)
+							}
+						}
+						isAnAttributeField = false // Processed as Nationality
 					} else {
-						player.NationalityISO = strings.ToLower(fifaCode)
+						// Nationality already set, this must be a non-numeric Natural Fitness value
+						// Store as attribute but don't overwrite nationality
+						player.Attributes[headerNameClean] = cellValue
+						isAnAttributeField = true
 					}
 				}
-				isAnAttributeField = false // Processed as Nationality
 			}
 		case "Left Foot", "Right Foot":
 			// These are often descriptive (e.g., "Very Strong") or ratings.
@@ -139,7 +160,9 @@ func parseCellsToPlayer(cells, headers []string) (Player, error) {
 
 		if isAnAttributeField {
 			if _, isKnownNonAttr := knownNonAttributeHeaders[headerNameClean]; !isKnownNonAttr {
-				if headerNameClean != "" && cellValue != "" && cellValue != "-" {
+				if headerNameClean != "" && cellValue != "" {
+					// Include all attributes, even those with "-" (masked) values
+					// The frontend will handle displaying masked attributes appropriately
 					player.Attributes[headerNameClean] = cellValue
 				}
 			}
@@ -198,8 +221,12 @@ func EnhancePlayerWithCalculations(player *Player) {
 		}
 
 		if isNumericTechnicalAttribute {
-			// Check for masked attributes like "10-15"
-			if strings.Contains(valStr, "-") {
+			// Check for masked attributes like "10-15" or completely masked "-"
+			if valStr == "-" {
+				// Completely masked attribute
+				player.NumericAttributes[key] = 0 // Default to 0 for completely masked
+				player.AttributeMasked = true
+			} else if strings.Contains(valStr, "-") {
 				parts := strings.Split(valStr, "-")
 				if len(parts) == 2 {
 					val1, err1 := strconv.Atoi(strings.TrimSpace(parts[0]))
@@ -503,6 +530,53 @@ func EnhancePlayerWithCalculations(player *Player) {
 	// Note: We changed from using the best role-specific overall score
 	// to using the mean of all role-specific overall scores
 	// --- END: Overall Calculation ---
+
+	// Check ALL attributes for masking and set the AttributeMasked flag
+	// This is more comprehensive than only checking technical attributes above
+	player.AttributeMasked = false
+
+	// Define FM attribute keys that should be checked for masking
+	fmAttributeKeys := map[string]bool{
+		// Physical
+		"Acc": true, "Pac": true, "Str": true, "Sta": true, "Nat": true, "Bal": true, "Jum": true, "Agi": true,
+		// Mental
+		"Agg": true, "Ant": true, "Bra": true, "Cmp": true, "Cnt": true, "Dec": true, "Det": true, "Fla": true,
+		"Ldr": true, "OtB": true, "Pos": true, "Tea": true, "Vis": true, "Wor": true,
+		// Technical
+		"Cor": true, "Cro": true, "Dri": true, "Fin": true, "Fir": true, "Fre": true, "Hea": true, "Lon": true,
+		"L Th": true, "Mar": true, "Pas": true, "Pen": true, "Tck": true, "Tec": true,
+		// Goalkeeping
+		"Aer": true, "Cmd": true, "Com": true, "Ecc": true, "Han": true, "Kic": true, "1v1": true, "Ref": true,
+		"TRO": true, "Thr": true, "Pun": true,
+		// Other potential FM attributes
+		"Left Foot": true, "Right Foot": true,
+	}
+
+	for key, value := range player.Attributes {
+		// Only check FM attributes, not performance stats
+		if !fmAttributeKeys[key] {
+			continue
+		}
+
+		// Check for completely masked attributes (-)
+		if value == "-" {
+			player.AttributeMasked = true
+			break
+		}
+		// Check for range attributes (e.g., "10-15", "12-18")
+		if strings.Contains(value, "-") {
+			parts := strings.Split(value, "-")
+			if len(parts) == 2 {
+				// Verify both parts are numeric to ensure it's a range, not something like "Real Madrid-B"
+				_, err1 := strconv.Atoi(strings.TrimSpace(parts[0]))
+				_, err2 := strconv.Atoi(strings.TrimSpace(parts[1]))
+				if err1 == nil && err2 == nil {
+					player.AttributeMasked = true
+					break
+				}
+			}
+		}
+	}
 }
 
 // RecalculatePlayerRatings recalculates all ratings for a player based on the current calculation method setting
@@ -633,6 +707,53 @@ func RecalculatePlayerRatings(player *Player) {
 	// Update overall and best role
 	player.BestRoleOverall = bestRoleName
 	player.Overall = meanRoleBasedOverall
+
+	// Check ALL attributes for masking and set the AttributeMasked flag
+	// This ensures the flag is updated even during recalculations
+	player.AttributeMasked = false
+
+	// Define FM attribute keys that should be checked for masking
+	fmAttributeKeys := map[string]bool{
+		// Physical
+		"Acc": true, "Pac": true, "Str": true, "Sta": true, "Nat": true, "Bal": true, "Jum": true, "Agi": true,
+		// Mental
+		"Agg": true, "Ant": true, "Bra": true, "Cmp": true, "Cnt": true, "Dec": true, "Det": true, "Fla": true,
+		"Ldr": true, "OtB": true, "Pos": true, "Tea": true, "Vis": true, "Wor": true,
+		// Technical
+		"Cor": true, "Cro": true, "Dri": true, "Fin": true, "Fir": true, "Fre": true, "Hea": true, "Lon": true,
+		"L Th": true, "Mar": true, "Pas": true, "Pen": true, "Tck": true, "Tec": true,
+		// Goalkeeping
+		"Aer": true, "Cmd": true, "Com": true, "Ecc": true, "Han": true, "Kic": true, "1v1": true, "Ref": true,
+		"TRO": true, "Thr": true, "Pun": true,
+		// Other potential FM attributes
+		"Left Foot": true, "Right Foot": true,
+	}
+
+	for key, value := range player.Attributes {
+		// Only check FM attributes, not performance stats
+		if !fmAttributeKeys[key] {
+			continue
+		}
+
+		// Check for completely masked attributes (-)
+		if value == "-" {
+			player.AttributeMasked = true
+			break
+		}
+		// Check for range attributes (e.g., "10-15", "12-18")
+		if strings.Contains(value, "-") {
+			parts := strings.Split(value, "-")
+			if len(parts) == 2 {
+				// Verify both parts are numeric to ensure it's a range, not something like "Real Madrid-B"
+				_, err1 := strconv.Atoi(strings.TrimSpace(parts[0]))
+				_, err2 := strconv.Atoi(strings.TrimSpace(parts[1]))
+				if err1 == nil && err2 == nil {
+					player.AttributeMasked = true
+					break
+				}
+			}
+		}
+	}
 }
 
 // RecalculateAllPlayersRatings recalculates ratings for all players in a slice

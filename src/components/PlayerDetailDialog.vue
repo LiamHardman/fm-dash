@@ -308,11 +308,23 @@
                                                                 v-if="player.attributeMasked"
                                                                 name="warning"
                                                                 color="warning"
-                                                                size="xs"
-                                                                class="q-ml-sm"
+                                                                size="sm"
+                                                                class="q-ml-sm scouting-warning-icon"
                                                             >
-                                                                <q-tooltip>
-                                                                    Warning: This player has some of their attributes masked, you should scout this player before attempting to sign them.
+                                                                <q-tooltip
+                                                                    :class="
+                                                                        qInstance.dark.isActive
+                                                                            ? 'bg-grey-7 text-white'
+                                                                            : 'bg-white text-dark'
+                                                                    "
+                                                                    :delay="300"
+                                                                    max-width="300px"
+                                                                    class="modern-tooltip"
+                                                                >
+                                                                    <div class="tooltip-header">⚠️ Scouting Required</div>
+                                                                    <div class="tooltip-description">
+                                                                        Some of this player's attributes are masked. Scout this player before attempting to sign them to see their full attributes.
+                                                                    </div>
                                                                 </q-tooltip>
                                                             </q-icon>
                                                         </h5>
@@ -1078,7 +1090,7 @@ export default defineComponent({
     // Reset face image error when player changes
     watch(
       () => props.player,
-      () => {
+      (newPlayer) => {
         faceImageLoadError.value = false
       },
       { immediate: true }
@@ -1576,6 +1588,11 @@ export default defineComponent({
 
       const rawValue = props.player.attributes[attrKey];
       if (rawValue === undefined) return "-";
+
+      // Handle completely masked attributes (shown as "-")
+      if (rawValue === "-") {
+        return "?";
+      }
 
       // If masks are enabled and the raw value is a range, show it
       if (showAttributeMasks.value && String(rawValue).includes('-')) {
@@ -2843,6 +2860,56 @@ $breakpoint-xs-max: 599px !default;
     
     &:hover {
         transform: scale(1.1);
+    }
+}
+
+.scouting-warning {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #f57c00;
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(245, 124, 0, 0.1);
+    border: 1px solid rgba(245, 124, 0, 0.3);
+    transition: all 0.2s ease;
+    cursor: help;
+    
+    &:hover {
+        background: rgba(245, 124, 0, 0.15);
+        border-color: rgba(245, 124, 0, 0.4);
+        transform: scale(1.02);
+    }
+    
+    .body--dark & {
+        color: #ffb74d;
+        background: rgba(255, 183, 77, 0.1);
+        border-color: rgba(255, 183, 77, 0.3);
+        
+        &:hover {
+            background: rgba(255, 183, 77, 0.15);
+            border-color: rgba(255, 183, 77, 0.4);
+        }
+    }
+}
+
+.scouting-warning-icon {
+    cursor: help;
+    transition: all 0.2s ease;
+    vertical-align: middle;
+    
+    &:hover {
+        transform: scale(1.1);
+        filter: brightness(1.2);
+    }
+    
+    .body--dark & {
+        color: #ffb74d !important;
+        
+        &:hover {
+            color: #fff3c4 !important;
+        }
     }
 }
 </style>
