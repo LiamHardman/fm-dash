@@ -1,3 +1,13 @@
+## [1.4.0](https://git.liamhardman.com/liam/fm24-golang/compare/v1.3.0...v1.4.0) (2025-06-09)
+
+### 🚀 Features
+
+* MUCH better export controls ([d3adfd1](https://git.liamhardman.com/liam/fm24-golang/commit/d3adfd18401f92f319965c54fb735b5fb7ffaa27))
+
+### 🐛 Bug Fixes
+
+* hopefully fixing release pipeline ([367b47a](https://git.liamhardman.com/liam/fm24-golang/commit/367b47a21f18d9a76a970f964214b0a7c96a630b))
+
 ## [1.3.0](https://git.liamhardman.com/liam/fm24-golang/compare/v1.2.0...v1.3.0) (2025-06-09)
 
 ### 🚀 Features
