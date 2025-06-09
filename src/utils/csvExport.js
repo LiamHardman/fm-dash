@@ -33,7 +33,7 @@ function getAvailableColumns(players) {
   
   const samplePlayer = players[0]
   
-  return {
+  const columns = {
     basic: [
       { key: 'name', label: 'Name' },
       { key: 'age', label: 'Age' },
@@ -63,6 +63,33 @@ function getAvailableColumns(players) {
       { key: 'media_handling', label: 'Media Handling' }
     ]
   }
+
+  // Add role ratings if available
+  if (samplePlayer?.roleSpecificOveralls && Array.isArray(samplePlayer.roleSpecificOveralls)) {
+    const allRoleNames = new Set()
+    
+    // Collect all unique role names from all players
+    players.forEach(player => {
+      if (player.roleSpecificOveralls && Array.isArray(player.roleSpecificOveralls)) {
+        player.roleSpecificOveralls.forEach(role => {
+          if (role.roleName) {
+            allRoleNames.add(role.roleName)
+          }
+        })
+      }
+    })
+    
+    const roleRatings = Array.from(allRoleNames).map(roleName => ({
+      key: `roleRating.${roleName}`,
+      label: `${roleName} Rating`
+    }))
+    
+    if (roleRatings.length > 0) {
+      columns.roleRatings = roleRatings
+    }
+  }
+
+  return columns
 }
 
 /**
@@ -109,7 +136,19 @@ export async function exportPlayersToCSV(players, selectedColumns = null, filena
   })
   
   // Generate header row
-  const headers = selectedColumns.map(key => columnMap[key] || key)
+  const headers = selectedColumns.map(key => {
+    if (key.startsWith('performancePercentiles.')) {
+      const parts = key.split('.')
+      if (parts.length === 3) {
+        const [, group, statName] = parts
+        return `${group} ${statName} %ile`
+      }
+    } else if (key.startsWith('roleRating.')) {
+      const roleName = key.substring('roleRating.'.length)
+      return `${roleName} Rating`
+    }
+    return columnMap[key] || key
+  })
   
   // Generate data rows
   const rows = players.map(player => {
@@ -125,6 +164,20 @@ export async function exportPlayersToCSV(players, selectedColumns = null, filena
         value = Array.isArray(player.shortPositions) 
           ? player.shortPositions.join(', ') 
           : (player.position || '')
+      } else if (key.startsWith('performancePercentiles.')) {
+        // Special handling for performance percentiles
+        const parts = key.split('.')
+        if (parts.length === 3) { // performancePercentiles.Group.StatName
+          const [, group, statName] = parts
+          value = player.performancePercentiles?.[group]?.[statName] || ''
+        }
+      } else if (key.startsWith('roleRating.')) {
+        // Special handling for role ratings
+        const roleName = key.substring('roleRating.'.length)
+        if (player.roleSpecificOveralls && Array.isArray(player.roleSpecificOveralls)) {
+          const roleData = player.roleSpecificOveralls.find(role => role.roleName === roleName)
+          value = roleData ? roleData.score : ''
+        }
       }
       
       return escapeCSVValue(value)
@@ -203,11 +256,16 @@ export function getDefaultExportColumns(context = 'basic', players = []) {
       ]
     
     case 'analysis':
-      return [
+      const analysisColumns = [
         'name', 'club', 'position', 'Overall',
         ...availableColumns.ratings.filter(col => col.key !== 'Potential' && col.key !== 'Overall').map(col => col.key),
         ...availableColumns.attributes.slice(0, 10).map(col => col.key) // First 10 attributes
       ]
+      // Add top 5 role ratings if available
+      if (availableColumns.roleRatings) {
+        analysisColumns.push(...availableColumns.roleRatings.slice(0, 5).map(col => col.key))
+      }
+      return analysisColumns
     
     default:
       return getDefaultExportColumns('basic', players)
@@ -314,4 +372,207 @@ function downloadJSON(jsonContent, filename) {
       navigator.msSaveBlob(blob, filename)
     }
   }
+}
+
+/**
+ * Get columns based on export options selected in the modal
+ * @param {Object} exportOptions - Export options from the modal
+ * @param {Array} players - Array of players to determine available columns
+ * @returns {Array} Array of column keys to include
+ */
+export function getColumnsFromExportOptions(exportOptions, players = []) {
+  if (!exportOptions || !exportOptions.options) {
+    return getDefaultExportColumns('basic', players)
+  }
+
+  const availableColumns = getAvailableColumns(players)
+  const selectedColumns = []
+  const { options } = exportOptions
+
+  // Basic Info
+  if (options.basicInfo) {
+    selectedColumns.push(...availableColumns.basic.map(col => col.key))
+  }
+
+  // FIFA Stats (Overall ratings)
+  if (options.fifahStats) {
+    selectedColumns.push(...availableColumns.ratings.map(col => col.key))
+  }
+
+  // FM Attributes
+  if (options.fmStats) {
+    selectedColumns.push(...availableColumns.attributes.map(col => col.key))
+  }
+
+  // Role Ratings
+  if (options.roleRatings && availableColumns.roleRatings) {
+    selectedColumns.push(...availableColumns.roleRatings.map(col => col.key))
+  }
+
+  // Performance Percentiles (add performance data if available)
+  if (options.performancePercentiles && players.length > 0) {
+    const samplePlayer = players[0]
+    if (samplePlayer?.performancePercentiles) {
+      // Add performance percentile columns for different position groups
+      Object.keys(samplePlayer.performancePercentiles).forEach(group => {
+        const groupData = samplePlayer.performancePercentiles[group]
+        if (groupData && typeof groupData === 'object') {
+          // Add individual percentile stats for this group
+          Object.keys(groupData).forEach(statKey => {
+            selectedColumns.push(`performancePercentiles.${group}.${statKey}`)
+          })
+        }
+      })
+    }
+  }
+
+  // Contract Info
+  if (options.contractInfo) {
+    selectedColumns.push('transferValue', 'wage')
+    // Add contract expiry if available
+    if (players.length > 0 && players[0].contractExpiry) {
+      selectedColumns.push('contractExpiry')
+    }
+  }
+
+  // Personal Info
+  if (options.personalInfo) {
+    selectedColumns.push(...availableColumns.personal.map(col => col.key))
+    // Add additional personal info if available
+    if (players.length > 0) {
+      const samplePlayer = players[0]
+      if (samplePlayer.foot) selectedColumns.push('foot')
+      if (samplePlayer.height) selectedColumns.push('height')
+      if (samplePlayer.weight) selectedColumns.push('weight')
+    }
+  }
+
+  // Remove duplicates and return
+  return [...new Set(selectedColumns)]
+}
+
+/**
+ * Export players with custom options from the modal
+ * @param {Array} players - Array of player objects to export
+ * @param {Object} exportOptions - Export options from the modal
+ * @param {string} filename - Optional filename (defaults to auto-generated)
+ * @returns {Promise<void>} Promise that resolves when download starts
+ */
+export async function exportPlayersWithOptions(players, exportOptions, filename = null) {
+  if (!players || players.length === 0) {
+    throw new Error('No players to export')
+  }
+
+  const selectedColumns = getColumnsFromExportOptions(exportOptions, players)
+  
+  if (exportOptions.format === 'csv') {
+    await exportPlayersToCSV(players, selectedColumns, filename)
+  } else if (exportOptions.format === 'json') {
+    await exportPlayersToJSONWithOptions(players, exportOptions, filename)
+  } else {
+    throw new Error('Invalid export format')
+  }
+}
+
+/**
+ * Export players to JSON with custom options
+ * @param {Array} players - Array of player objects to export
+ * @param {Object} exportOptions - Export options from the modal
+ * @param {string} filename - Optional filename (defaults to auto-generated)
+ * @returns {Promise<void>} Promise that resolves when download starts
+ */
+export async function exportPlayersToJSONWithOptions(players, exportOptions, filename = null) {
+  if (!players || players.length === 0) {
+    throw new Error('No players to export')
+  }
+
+  // Generate filename if not provided
+  if (!filename) {
+    const timestamp = new Date().toISOString().split('T')[0]
+    const presetSuffix = exportOptions.preset ? `_${exportOptions.preset}` : '_custom'
+    filename = `fm_players${presetSuffix}_${timestamp}.json`
+  }
+
+  // Filter players data based on export options
+  const filteredPlayers = players.map(player => {
+    const filteredPlayer = {}
+    const { options } = exportOptions
+
+    if (options.basicInfo) {
+      Object.assign(filteredPlayer, {
+        name: player.name,
+        age: player.age,
+        nationality: player.nationality,
+        club: player.club,
+        position: player.position,
+        shortPositions: player.shortPositions
+      })
+    }
+
+    if (options.fifahStats) {
+      Object.assign(filteredPlayer, {
+        Overall: player.Overall,
+        Potential: player.Potential,
+        PAC: player.PAC,
+        SHO: player.SHO,
+        PAS: player.PAS,
+        DRI: player.DRI,
+        DEF: player.DEF,
+        PHY: player.PHY,
+        GK: player.GK
+      })
+    }
+
+    if (options.fmStats && player.attributes) {
+      filteredPlayer.attributes = player.attributes
+    }
+
+    if (options.roleRatings && player.roleSpecificOveralls) {
+      filteredPlayer.roleSpecificOveralls = player.roleSpecificOveralls
+    }
+
+    if (options.performancePercentiles && player.performancePercentiles) {
+      filteredPlayer.performancePercentiles = player.performancePercentiles
+    }
+
+    if (options.contractInfo) {
+      Object.assign(filteredPlayer, {
+        transferValue: player.transferValue,
+        transferValueAmount: player.transferValueAmount,
+        wage: player.wage,
+        wageAmount: player.wageAmount,
+        contractExpiry: player.contractExpiry
+      })
+    }
+
+    if (options.personalInfo) {
+      Object.assign(filteredPlayer, {
+        personality: player.personality,
+        media_handling: player.media_handling,
+        foot: player.foot,
+        height: player.height,
+        weight: player.weight
+      })
+    }
+
+    return filteredPlayer
+  })
+
+  // Create the JSON export object with metadata
+  const exportData = {
+    metadata: {
+      exportDate: new Date().toISOString(),
+      totalPlayers: players.length,
+      exportType: exportOptions.preset || 'custom',
+      exportOptions: exportOptions.options,
+      version: '1.0'
+    },
+    players: filteredPlayers
+  }
+
+  // Convert to JSON string with proper formatting
+  const jsonContent = JSON.stringify(exportData, null, 2)
+
+  // Create and download file
+  downloadJSON(jsonContent, filename)
 } 

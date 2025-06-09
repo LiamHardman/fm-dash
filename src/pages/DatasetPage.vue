@@ -57,36 +57,18 @@
                         unelevated
                         dense
                         icon="download"
-                        label="Export CSV"
+                        label="Export"
                         color="accent"
-                        @click="handleExportCSV"
+                        @click="openExportOptions"
                         :disable="loading || !filteredPlayers || filteredPlayers.length === 0"
                         class="action-btn"
                         size="sm"
                     >
                         <q-tooltip v-if="filteredPlayers && filteredPlayers.length > 0">
-                            Export {{ filteredPlayers.length }} filtered players to CSV
+                            Export {{ filteredPlayers.length }} filtered players
                         </q-tooltip>
                         <q-tooltip v-else>
                             No players to export
-                        </q-tooltip>
-                    </q-btn>
-                    <q-btn
-                        unelevated
-                        dense
-                        icon="code"
-                        label="Export JSON"
-                        color="info"
-                        @click="handleExportJSON"
-                        :disable="loading || !allPlayersData || allPlayersData.length === 0"
-                        class="action-btn"
-                        size="sm"
-                    >
-                        <q-tooltip v-if="allPlayersData && allPlayersData.length > 0">
-                            Export {{ allPlayersData.length }} total players to JSON
-                        </q-tooltip>
-                        <q-tooltip v-else>
-                            No data available to export
                         </q-tooltip>
                     </q-btn>
                 </div>
@@ -231,6 +213,12 @@
             :currency-symbol="detectedCurrencySymbol"
             :dataset-id="currentDatasetId"
         />
+        <ExportOptionsDialog
+            :show="showExportOptions"
+            :player-count="filteredPlayers ? filteredPlayers.length : 0"
+            @close="showExportOptions = false"
+            @export="handleExportWithOptions"
+        />
     </q-page>
 </template>
 
@@ -244,10 +232,11 @@ import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
 import UpgradeFinderDialog from '../components/UpgradeFinderDialog.vue'
 import WonderkidsDialog from '../components/WonderkidsDialog.vue'
 import PlayerFilters from '../components/filters/PlayerFilters.vue'
+import ExportOptionsDialog from '../components/ExportOptionsDialog.vue'
 import { usePlayerStore } from '../stores/playerStore'
 import { useWishlistStore } from '../stores/wishlistStore'
 import { useAnalytics } from '../composables/useAnalytics'
-import { exportPlayersToCSV, exportPlayersToJSON, getDefaultExportColumns, validateExportData } from '../utils/csvExport'
+import { exportPlayersWithOptions, validateExportData } from '../utils/csvExport'
 
 const rawTechnicalAttributeKeysConst = [
   'Cor',
@@ -315,7 +304,8 @@ export default {
     PlayerFilters,
     UpgradeFinderDialog,
     WonderkidsDialog,
-    BargainHunterDialog
+    BargainHunterDialog,
+    ExportOptionsDialog
   },
   setup() {
     const quasarInstance = useQuasar()
@@ -332,6 +322,7 @@ export default {
     const showUpgradeFinder = ref(false)
     const showWonderkids = ref(false)
     const showBargainHunter = ref(false)
+    const showExportOptions = ref(false)
 
     const currentFilters = ref({
       name: '',
@@ -725,6 +716,73 @@ export default {
       analytics.trackButtonClick('Bargain Hunter', { feature_type: 'quick_action' })
     }
 
+    const openExportOptions = () => {
+      showExportOptions.value = true
+      analytics.trackButtonClick('Export Options', { feature_type: 'export' })
+    }
+
+    const handleExportWithOptions = async (exportOptions) => {
+      try {
+        // Validate the export data
+        const validation = validateExportData(filteredPlayers.value)
+        
+        if (!validation.valid) {
+          quasarInstance.notify({
+            type: 'negative',
+            message: `Export failed: ${validation.errors.join(', ')}`,
+            position: 'top'
+          })
+          return
+        }
+        
+        // Show warnings if any
+        if (validation.warnings.length > 0) {
+          validation.warnings.forEach(warning => {
+            quasarInstance.notify({
+              type: 'warning',
+              message: warning,
+              position: 'top'
+            })
+          })
+        }
+        
+        // Export with options
+        await exportPlayersWithOptions(filteredPlayers.value, exportOptions)
+        
+        // Show success message
+        quasarInstance.notify({
+          type: 'positive',
+          message: `Successfully exported ${filteredPlayers.value.length} players as ${exportOptions.format.toUpperCase()}`,
+          position: 'top',
+          actions: [
+            {
+              label: 'Dismiss',
+              color: 'white'
+            }
+          ]
+        })
+        
+        // Track export event
+        analytics.downloadData('players', exportOptions.format)
+        analytics.trackButtonClick(`Export ${exportOptions.format.toUpperCase()}`, { 
+          feature_type: 'export',
+          player_count: filteredPlayers.value.length,
+          preset: exportOptions.preset
+        })
+        
+        // Close the dialog
+        showExportOptions.value = false
+        
+      } catch (error) {
+        console.error('Export error:', error)
+        quasarInstance.notify({
+          type: 'negative',
+          message: `Export failed: ${error.message}`,
+          position: 'top'
+        })
+      }
+    }
+
     const showFilters = ref(false)
 
     watch(
@@ -784,125 +842,6 @@ export default {
       return num?.toString() || '0'
     }
 
-    const handleExportCSV = async () => {
-      try {
-        // Validate the export data
-        const validation = validateExportData(filteredPlayers.value)
-        
-        if (!validation.valid) {
-          quasarInstance.notify({
-            type: 'negative',
-            message: `Export failed: ${validation.errors.join(', ')}`,
-            position: 'top'
-          })
-          return
-        }
-        
-        // Show warnings if any
-        if (validation.warnings.length > 0) {
-          validation.warnings.forEach(warning => {
-            quasarInstance.notify({
-              type: 'warning',
-              message: warning,
-              position: 'top'
-            })
-          })
-        }
-        
-        // Get default columns for export
-        const exportColumns = getDefaultExportColumns('detailed', filteredPlayers.value)
-        
-        // Export to CSV
-        await exportPlayersToCSV(filteredPlayers.value, exportColumns)
-        
-        // Show success message
-        quasarInstance.notify({
-          type: 'positive',
-          message: `Successfully exported ${filteredPlayers.value.length} players to CSV`,
-          position: 'top',
-          actions: [
-            {
-              label: 'Dismiss',
-              color: 'white'
-            }
-          ]
-        })
-        
-        // Track export event
-        analytics.downloadData('players', 'csv')
-        analytics.trackButtonClick('Export CSV', { 
-          feature_type: 'export',
-          player_count: filteredPlayers.value.length 
-        })
-        
-      } catch (error) {
-        console.error('Export error:', error)
-        quasarInstance.notify({
-          type: 'negative',
-          message: `Export failed: ${error.message}`,
-          position: 'top'
-        })
-      }
-    }
-
-    const handleExportJSON = async () => {
-      try {
-        // Validate the export data
-        const validation = validateExportData(allPlayersData.value)
-        
-        if (!validation.valid) {
-          quasarInstance.notify({
-            type: 'negative',
-            message: `Export failed: ${validation.errors.join(', ')}`,
-            position: 'top'
-          })
-          return
-        }
-        
-        // Show warnings if any
-        if (validation.warnings.length > 0) {
-          validation.warnings.forEach(warning => {
-            quasarInstance.notify({
-              type: 'warning',
-              message: warning,
-              position: 'top'
-            })
-          })
-        }
-        
-        // Export to JSON
-        await exportPlayersToJSON(allPlayersData.value)
-        
-        // Show success message
-        quasarInstance.notify({
-          type: 'positive',
-          message: `Successfully exported ${allPlayersData.value.length} players to JSON`,
-          position: 'top',
-          actions: [
-            {
-              label: 'Dismiss',
-              color: 'white'
-            }
-          ]
-        })
-        
-        // Track export event
-        analytics.downloadData('players', 'json')
-        analytics.trackButtonClick('Export JSON', { 
-          feature_type: 'export',
-          player_count: allPlayersData.value.length 
-        })
-        
-      } catch (error) {
-        console.error('Export error:', error)
-        quasarInstance.notify({
-          type: 'negative',
-          message: `Export failed: ${error.message}`,
-          position: 'top'
-        })
-      }
-    }
-
     return {
       pageLoading,
       pageLoadingError,
@@ -927,6 +866,7 @@ export default {
       showUpgradeFinder,
       showWonderkids,
       showBargainHunter,
+      showExportOptions,
       shareDataset,
       handlePlayerSelected,
       handleTeamSelected,
@@ -938,9 +878,9 @@ export default {
       openUpgradeFinder,
       openWonderkids,
       openBargainHunter,
-      showFilters,
-      handleExportCSV,
-      handleExportJSON
+      openExportOptions,
+      handleExportWithOptions,
+      showFilters
     }
   }
 }
@@ -1199,4 +1139,4 @@ export default {
         }
     }
 }
-</style>
+</style> 
