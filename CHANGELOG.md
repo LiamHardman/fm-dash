@@ -1,3 +1,9 @@
+## [1.6.0](https://git.liamhardman.com/liam/fm24-golang/compare/v1.5.0...v1.6.0) (2025-06-09)
+
+### 🚀 Features
+
+* fixes and settings for player masking support ([328588e](https://git.liamhardman.com/liam/fm24-golang/commit/328588e1f74604d362b152005d6be51974e06ab3))
+
 ## [1.5.0](https://git.liamhardman.com/liam/fm24-golang/compare/v1.4.1...v1.5.0) (2025-06-09)
 
 ### 🚀 Features
