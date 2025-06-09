@@ -1,19 +1,25 @@
 {
-  "name": "fm-dash",
+  "name": "fm24-golang",
   "version": "1.4.0",
   "type": "module",
   "private": true,
-  "description": "A comprehensive platform for analyzing Football Manager player data with enterprise-grade performance and modern web architecture",
+  "description": "A comprehensive platform for analyzing Football Manager player data",
   "repository": {
     "type": "git",
-    "url": "https://github.com/LiamHardman/fm-dash.git"
+    "url": "https://git.liamhardman.com/liam/fm24-golang.git"
   },
-  "homepage": "https://github.com/LiamHardman/fm-dash#readme",
+  "homepage": "https://git.liamhardman.com/liam/fm24-golang#readme",
   "bugs": {
-    "url": "https://github.com/LiamHardman/fm-dash/issues"
+    "url": "https://git.liamhardman.com/liam/fm24-golang/issues"
   },
   "author": "Liam Hardman",
-  "keywords": ["football-manager", "data-analysis", "vue", "golang", "sports-analytics"],
+  "keywords": [
+    "football-manager",
+    "data-analysis",
+    "vue",
+    "golang",
+    "sports-analytics"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -53,6 +59,7 @@
     "@biomejs/biome": "^1.9.4",
     "@pinia/testing": "^1.0.1",
     "@quasar/vite-plugin": "^1.6.0",
+    "@saithodev/semantic-release-gitea": "^2.1.0",
     "@vitejs/plugin-vue": "^5.0.4",
     "@vue/test-utils": "^2.4.6",
     "happy-dom": "^17.5.6",
@@ -74,24 +81,61 @@
   },
   "release": {
     "branches": ["main"],
+    "repositoryUrl": "https://git.liamhardman.com/liam/fm24-golang.git",
     "plugins": [
       [
         "@semantic-release/commit-analyzer",
         {
           "preset": "conventionalcommits",
           "releaseRules": [
-            {"type": "feat", "release": "minor"},
-            {"type": "fix", "release": "patch"},
-            {"type": "perf", "release": "patch"},
-            {"type": "revert", "release": "patch"},
-            {"type": "docs", "release": false},
-            {"type": "style", "release": false},
-            {"type": "chore", "release": false},
-            {"type": "refactor", "release": "patch"},
-            {"type": "test", "release": false},
-            {"type": "build", "release": false},
-            {"type": "ci", "release": false},
-            {"breaking": true, "release": "major"}
+            {
+              "type": "feat",
+              "release": "minor"
+            },
+            {
+              "type": "fix",
+              "release": "patch"
+            },
+            {
+              "type": "perf",
+              "release": "patch"
+            },
+            {
+              "type": "revert",
+              "release": "patch"
+            },
+            {
+              "type": "docs",
+              "release": false
+            },
+            {
+              "type": "style",
+              "release": false
+            },
+            {
+              "type": "chore",
+              "release": false
+            },
+            {
+              "type": "refactor",
+              "release": "patch"
+            },
+            {
+              "type": "test",
+              "release": false
+            },
+            {
+              "type": "build",
+              "release": false
+            },
+            {
+              "type": "ci",
+              "release": false
+            },
+            {
+              "breaking": true,
+              "release": "major"
+            }
           ]
         }
       ],
@@ -101,17 +145,56 @@
           "preset": "conventionalcommits",
           "presetConfig": {
             "types": [
-              {"type": "feat", "section": "🚀 Features"},
-              {"type": "fix", "section": "🐛 Bug Fixes"},
-              {"type": "perf", "section": "⚡ Performance Improvements"},
-              {"type": "revert", "section": "⏪ Reverts"},
-              {"type": "docs", "section": "📚 Documentation", "hidden": false},
-              {"type": "style", "section": "💄 Styles", "hidden": true},
-              {"type": "chore", "section": "🔧 Chores", "hidden": true},
-              {"type": "refactor", "section": "♻️ Code Refactoring"},
-              {"type": "test", "section": "✅ Tests", "hidden": true},
-              {"type": "build", "section": "👷 Build System", "hidden": true},
-              {"type": "ci", "section": "🔄 CI", "hidden": true}
+              {
+                "type": "feat",
+                "section": "🚀 Features"
+              },
+              {
+                "type": "fix",
+                "section": "🐛 Bug Fixes"
+              },
+              {
+                "type": "perf",
+                "section": "⚡ Performance Improvements"
+              },
+              {
+                "type": "revert",
+                "section": "⏪ Reverts"
+              },
+              {
+                "type": "docs",
+                "section": "📚 Documentation",
+                "hidden": false
+              },
+              {
+                "type": "style",
+                "section": "💄 Styles",
+                "hidden": true
+              },
+              {
+                "type": "chore",
+                "section": "🔧 Chores",
+                "hidden": true
+              },
+              {
+                "type": "refactor",
+                "section": "♻️ Code Refactoring"
+              },
+              {
+                "type": "test",
+                "section": "✅ Tests",
+                "hidden": true
+              },
+              {
+                "type": "build",
+                "section": "👷 Build System",
+                "hidden": true
+              },
+              {
+                "type": "ci",
+                "section": "🔄 CI",
+                "hidden": true
+              }
             ]
           }
         }
@@ -123,15 +206,19 @@
         }
       ],
       [
-        "@semantic-release/npm",
+        "@saithodev/semantic-release-gitea",
         {
-          "npmPublish": false
+          "giteaUrl": "https://git.liamhardman.com"
         }
       ],
       [
         "@semantic-release/git",
         {
-          "assets": ["package.json", "package-lock.json", "CHANGELOG.md"],
+          "assets": [
+            "package.json",
+            "package-lock.json",
+            "CHANGELOG.md"
+          ],
           "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
         }
       ]
