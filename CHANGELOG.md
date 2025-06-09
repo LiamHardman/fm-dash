@@ -1,3 +1,13 @@
+## [1.7.0](https://git.liamhardman.com/liam/fm24-golang/compare/v1.6.0...v1.7.0) (2025-06-09)
+
+### 🚀 Features
+
+* multiple replica support ([e3411e1](https://git.liamhardman.com/liam/fm24-golang/commit/e3411e14a470ca88083e22c0f01778c8b46a77b9))
+
+### 🐛 Bug Fixes
+
+* attempted resolution of issues in build due to api url changes ([92eed18](https://git.liamhardman.com/liam/fm24-golang/commit/92eed185689fec048379dff8545949ca1b469554))
+
 ## [1.6.0](https://git.liamhardman.com/liam/fm24-golang/compare/v1.5.0...v1.6.0) (2025-06-09)
 
 ### 🚀 Features
