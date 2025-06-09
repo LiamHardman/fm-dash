@@ -14,7 +14,6 @@
 
 - Implement some form of authentication for wishlists and datasets, and allow naming of datasets
 - Implement Regen faces
-- Add an option to enable or disable real faces and regen faces
 - Experiment with a FIFA card-style display
 - Test notifications and fix the corresponding UI element
 - Multi-replica container deployment & documentation
