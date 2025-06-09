@@ -1,8 +1,19 @@
 {
-  "name": "fm24-golang",
+  "name": "fm-dash",
   "version": "1.4.0",
   "type": "module",
   "private": true,
+  "description": "A comprehensive platform for analyzing Football Manager player data with enterprise-grade performance and modern web architecture",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LiamHardman/fm-dash.git"
+  },
+  "homepage": "https://github.com/LiamHardman/fm-dash#readme",
+  "bugs": {
+    "url": "https://github.com/LiamHardman/fm-dash/issues"
+  },
+  "author": "Liam Hardman",
+  "keywords": ["football-manager", "data-analysis", "vue", "golang", "sports-analytics"],
   "scripts": {
     "dev": "vite",
     "build": "vite build",

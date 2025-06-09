@@ -11,6 +11,13 @@
 [![Quasar Version](https://img.shields.io/badge/Quasar-2.0+-1976D2?style=flat-square&logo=quasar)](https://quasar.dev)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
+[![CI/CD](https://github.com/LiamHardman/fm-dash/actions/workflows/code-quality.yml/badge.svg)](https://github.com/LiamHardman/fm-dash/actions/workflows/code-quality.yml)
+[![Release](https://github.com/LiamHardman/fm-dash/actions/workflows/release.yml/badge.svg)](https://github.com/LiamHardman/fm-dash/actions/workflows/release.yml)
+[![Docker](https://github.com/LiamHardman/fm-dash/actions/workflows/deploy.yml/badge.svg)](https://github.com/LiamHardman/fm-dash/actions/workflows/deploy.yml)
+[![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/LiamHardman/fm-dash?sort=semver&style=flat-square)](https://github.com/LiamHardman/fm-dash/releases)
+[![GitHub issues](https://img.shields.io/github/issues/LiamHardman/fm-dash?style=flat-square)](https://github.com/LiamHardman/fm-dash/issues)
+[![GitHub stars](https://img.shields.io/github/stars/LiamHardman/fm-dash?style=flat-square)](https://github.com/LiamHardman/fm-dash/stargazers)
+
 </div>
 
 ## Overview
@@ -85,8 +92,8 @@ Ensure you have the following installed:
 
 1. **Clone and Initialize**
    ```bash
-   git clone https://git.liamhardman.com/liam/v2fmdash.git
-   cd v2fmdash
+   git clone https://github.com/LiamHardman/fm-dash.git
+   cd fm-dash
    ./scripts/setup-dev.sh
    ```
 
