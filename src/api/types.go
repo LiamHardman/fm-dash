@@ -20,11 +20,12 @@ type Player struct {
 	Wage                    string                        `json:"wage"`           // Original string representation
 	Personality             string                        `json:"personality,omitempty"`
 	MediaHandling           string                        `json:"media_handling,omitempty"`
-	Nationality             string                        `json:"nationality"`            // Full nationality name
-	NationalityISO          string                        `json:"nationality_iso"`        // ISO 3166-1 alpha-2 code (or similar)
-	NationalityFIFACode     string                        `json:"nationality_fifa_code"`  // FIFA country code
+	Nationality             string                        `json:"nationality"`           // Full nationality name
+	NationalityISO          string                        `json:"nationality_iso"`       // ISO 3166-1 alpha-2 code (or similar)
+	NationalityFIFACode     string                        `json:"nationality_fifa_code"` // FIFA country code
+	AttributeMasked         bool                          `json:"attributeMasked,omitempty"`
 	Attributes              map[string]string             `json:"attributes"`             // Raw attributes from HTML
-	NumericAttributes       map[string]int                `json:"-"`                      // Parsed numeric attributes (1-20 scale)
+	NumericAttributes       map[string]int                `json:"numericAttributes"`      // Parsed numeric attributes (1-20 scale)
 	PerformanceStatsNumeric map[string]float64            `json:"-"`                      // Parsed numeric performance stats
 	PerformancePercentiles  map[string]map[string]float64 `json:"performancePercentiles"` // Percentiles for performance stats
 	ParsedPositions         []string                      `json:"parsedPositions"`        // Standardized long position names

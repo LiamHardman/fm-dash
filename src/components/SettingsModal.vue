@@ -246,6 +246,26 @@
                                             </div>
                                         </q-card-section>
                                     </q-card>
+
+                                    <!-- Attribute Masks Toggle -->
+                                    <q-card flat bordered class="option-card">
+                                        <q-card-section class="option-content">
+                                            <div class="option-header">
+                                                <div class="option-info">
+                                                    <q-icon name="visibility_off" size="1.5rem" class="option-icon" />
+                                                    <div class="option-text">
+                                                        <div class="option-title">View Attribute Masks</div>
+                                                        <div class="option-description">Show attribute ranges (e.g., 12-18) instead of the calculated midpoint</div>
+                                                    </div>
+                                                </div>
+                                                <q-toggle
+                                                    v-model="showAttributeMasks"
+                                                    color="primary"
+                                                    size="lg"
+                                                />
+                                            </div>
+                                        </q-card-section>
+                                    </q-card>
                                 </div>
 
                                 <div class="display-info">
@@ -326,8 +346,8 @@
 
 <script>
 import { defineComponent, ref, computed, onMounted } from 'vue'
-import { useUiStore } from '../stores/uiStore'
-import { usePlayerStore } from '../stores/playerStore'
+import { useUiStore } from '@/stores/uiStore'
+import { usePlayerStore } from '@/stores/playerStore'
 import { useQuasar } from 'quasar'
 import playerService from '../services/playerService'
 
@@ -341,14 +361,14 @@ export default defineComponent({
     },
     emits: ['update:modelValue'],
     setup(props, { emit }) {
-        const uiStore = useUiStore()
-        const playerStore = usePlayerStore()
-        const $q = useQuasar()
-
         const showDialog = computed({
             get: () => props.modelValue,
             set: (value) => emit('update:modelValue', value)
         })
+
+        const uiStore = useUiStore()
+        const playerStore = usePlayerStore()
+        const $q = useQuasar()
 
         const useScaledRatings = computed({
             get: () => uiStore.useScaledRatings,
@@ -365,7 +385,13 @@ export default defineComponent({
             set: (value) => uiStore.setLogosDisplay(value)
         })
 
+        const showAttributeMasks = computed({
+            get: () => uiStore.showAttributeMasks,
+            set: (value) => uiStore.toggleAttributeMasks()
+        })
+
         const isLoading = ref(false)
+        const activeTab = ref('general')
 
         // Load backend configuration on component mount
         onMounted(async () => {
@@ -443,17 +469,19 @@ export default defineComponent({
         }
 
         const closeModal = () => {
-            showDialog.value = false
+            emit('update:modelValue', false)
         }
 
         return {
             showDialog,
+            closeModal,
             useScaledRatings,
             setRatingMethod,
-            closeModal,
-            isLoading,
             showFaces,
-            showLogos
+            showLogos,
+            showAttributeMasks,
+            isLoading,
+            activeTab
         }
     }
 })

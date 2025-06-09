@@ -295,8 +295,57 @@
                                             
                                             <div class="col player-name-section">
                                                 <div class="player-name-container">
-                                                    <div class="player-name-text" :title="player.name || '-'">
-                                                        {{ player.name || "-" }}
+                                                    <div class="player-name-and-status">
+                                                        <h5
+                                                            class="text-h5 player-name no-margin"
+                                                            :class="
+                                                                qInstance.dark.isActive ? 'text-white' : 'text-dark'
+                                                            "
+                                                            :title="player.name"
+                                                        >
+                                                            {{ player.name }}
+                                                            <q-icon
+                                                                v-if="player.attributeMasked"
+                                                                name="warning"
+                                                                color="warning"
+                                                                size="xs"
+                                                                class="q-ml-sm"
+                                                            >
+                                                                <q-tooltip>
+                                                                    Warning: This player has some of their attributes masked, you should scout this player before attempting to sign them.
+                                                                </q-tooltip>
+                                                            </q-icon>
+                                                        </h5>
+                                                        <div class="player-status-badges q-mt-xs">
+                                                            <q-badge
+                                                                v-if="player.isNew"
+                                                                outline
+                                                                color="primary"
+                                                                label="New"
+                                                                class="player-status-badge q-mr-sm"
+                                                            />
+                                                            <q-badge
+                                                                v-if="player.isLoaned"
+                                                                outline
+                                                                color="secondary"
+                                                                label="Loaned"
+                                                                class="player-status-badge q-mr-sm"
+                                                            />
+                                                            <q-badge
+                                                                v-if="player.isOnLoan"
+                                                                outline
+                                                                color="teal"
+                                                                label="On Loan"
+                                                                class="player-status-badge q-mr-sm"
+                                                            />
+                                                            <q-badge
+                                                                v-if="player.isFree"
+                                                                outline
+                                                                color="purple"
+                                                                label="Free"
+                                                                class="player-status-badge q-mr-sm"
+                                                            />
+                                                        </div>
                                                     </div>
                                                     <div class="player-badges-row q-mt-xs">
                                                         <q-badge
@@ -463,7 +512,7 @@
                                                             getUnifiedRatingClass(player.attributes[attrKey], 20)
                                                         ]"
                                                     >
-                                                        {{ player.attributes[attrKey] !== undefined ? player.attributes[attrKey] : "-" }}
+                                                        {{ getDisplayAttribute(attrKey) }}
                                                     </span>
                                                 </q-item-section>
                                             </q-item>
@@ -527,7 +576,7 @@
                                                             getUnifiedRatingClass(player.attributes[attrKey], 20)
                                                         ]"
                                                     >
-                                                        {{ player.attributes[attrKey] !== undefined ? player.attributes[attrKey] : "-" }}
+                                                        {{ getDisplayAttribute(attrKey) }}
                                                     </span>
                                                 </q-item-section>
                                             </q-item>
@@ -590,7 +639,7 @@
                                                                     getUnifiedRatingClass(player.attributes[attrKey], 20)
                                                                 ]"
                                                             >
-                                                                {{ player.attributes[attrKey] !== undefined ? player.attributes[attrKey] : "-" }}
+                                                                {{ getDisplayAttribute(attrKey) }}
                                                             </span>
                                                         </q-item-section>
                                                     </q-item>
@@ -665,6 +714,7 @@
 <script>
 import { useQuasar } from 'quasar'
 import { computed, defineComponent, onMounted, ref, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 import { usePlayerStore } from '../stores/playerStore'
 import { formatCurrency } from '../utils/currencyUtils'
 import { useUiStore } from '../stores/uiStore'
@@ -1517,6 +1567,26 @@ export default defineComponent({
       }
     })
 
+    // Get showAttributeMasks from the uiStore
+    const { showAttributeMasks } = storeToRefs(uiStore)
+
+    // Helper method to get the correct attribute value to display
+    const getDisplayAttribute = (attrKey) => {
+      if (!props.player) return "-";
+
+      const rawValue = props.player.attributes[attrKey];
+      if (rawValue === undefined) return "-";
+
+      // If masks are enabled and the raw value is a range, show it
+      if (showAttributeMasks.value && String(rawValue).includes('-')) {
+        return rawValue;
+      }
+
+      // Otherwise, show the calculated numeric value
+      const numericValue = props.player.numericAttributes[attrKey];
+      return numericValue !== undefined ? numericValue : rawValue;
+    }
+
     return {
       qInstance,
       attributeCategories,
@@ -1546,7 +1616,8 @@ export default defineComponent({
       handleFaceImageError,
       handleFaceImageLoad,
       playerFaceImageUrl,
-      showFaces: computed(() => uiStore.showFaces)
+      showFaces: computed(() => uiStore.showFaces),
+      getDisplayAttribute
     }
   }
 })

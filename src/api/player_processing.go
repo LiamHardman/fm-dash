@@ -198,11 +198,29 @@ func EnhancePlayerWithCalculations(player *Player) {
 		}
 
 		if isNumericTechnicalAttribute {
-			valInt, err := strconv.Atoi(valStr)
-			if err == nil {
-				player.NumericAttributes[key] = valInt
+			// Check for masked attributes like "10-15"
+			if strings.Contains(valStr, "-") {
+				parts := strings.Split(valStr, "-")
+				if len(parts) == 2 {
+					val1, err1 := strconv.Atoi(strings.TrimSpace(parts[0]))
+					val2, err2 := strconv.Atoi(strings.TrimSpace(parts[1]))
+
+					if err1 == nil && err2 == nil {
+						player.NumericAttributes[key] = (val1 + val2) / 2
+						player.AttributeMasked = true
+					} else {
+						player.NumericAttributes[key] = 0 // Default on parsing error
+					}
+				} else {
+					player.NumericAttributes[key] = 0 // Default if split is not two parts
+				}
 			} else {
-				player.NumericAttributes[key] = 0 // Default to 0 if not a valid number
+				valInt, err := strconv.Atoi(valStr)
+				if err == nil {
+					player.NumericAttributes[key] = valInt
+				} else {
+					player.NumericAttributes[key] = 0 // Default to 0 if not a valid number
+				}
 			}
 		} else {
 			// If not a technical/mental/physical/GK attribute, check if it's a performance stat

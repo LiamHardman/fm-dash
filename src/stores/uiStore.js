@@ -17,6 +17,7 @@ export const useUiStore = defineStore('ui', () => {
   // Display preferences
   const showFaces = ref(true) // Default to showing faces
   const showLogos = ref(true) // Default to showing logos
+  const showAttributeMasks = ref(true) // Default to showing attribute masks
 
   // Function to toggle dark mode
   function toggleDarkMode() {
@@ -100,6 +101,16 @@ export const useUiStore = defineStore('ui', () => {
     }
   }
 
+  // Function to toggle attribute masks display
+  function toggleAttributeMasks() {
+    showAttributeMasks.value = !showAttributeMasks.value
+    try {
+      localStorage.setItem('showAttributeMasks', showAttributeMasks.value ? 'true' : 'false')
+    } catch (e) {
+      console.warn('Could not save attribute masks preference to localStorage:', e)
+    }
+  }
+
   // Initialize dark mode from localStorage or system preference
   function initDarkMode() {
     let darkModePreference = true
@@ -115,6 +126,14 @@ export const useUiStore = defineStore('ui', () => {
     // Set the ref and Quasar's dark mode
     isDarkModeActive.value = darkModePreference
     $q.dark.set(darkModePreference)
+    try {
+      const storedPreference = localStorage.getItem('showLogos')
+      if (storedPreference !== null) {
+        showLogos.value = storedPreference === 'true'
+      }
+    } catch (e) {
+      console.warn('Could not read logos display preference from localStorage:', e)
+    }
   }
 
   // Initialize notification preferences
@@ -165,6 +184,18 @@ export const useUiStore = defineStore('ui', () => {
     }
   }
 
+  // Initialize attribute masks display preferences
+  function initAttributeMasksDisplay() {
+    try {
+      const storedPreference = localStorage.getItem('showAttributeMasks')
+      if (storedPreference !== null) {
+        showAttributeMasks.value = storedPreference === 'true'
+      }
+    } catch (e) {
+      console.warn('Could not read attribute masks display preference from localStorage:', e)
+    }
+  }
+
   // Initialize all settings
   function initSettings() {
     initDarkMode()
@@ -172,6 +203,7 @@ export const useUiStore = defineStore('ui', () => {
     initRatingCalculation()
     initFacesDisplay()
     initLogosDisplay()
+    initAttributeMasksDisplay()
   }
 
   // Watch for changes in Quasar's dark mode state and update the store
@@ -211,6 +243,9 @@ export const useUiStore = defineStore('ui', () => {
     toggleLogos,
     setLogosDisplay,
     initLogosDisplay,
+    showAttributeMasks,
+    toggleAttributeMasks,
+    initAttributeMasksDisplay,
     initSettings
   }
 })
