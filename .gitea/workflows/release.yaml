@@ -32,6 +32,26 @@ jobs:
           git config --global user.name "gitea-actions[bot]"
           git config --global user.email "gitea-actions[bot]@users.noreply.gitea.com"
 
+      - name: Debug - Check semantic-release configuration
+        run: |
+          echo "🔍 Checking semantic-release configuration..."
+          echo "Current working directory: $(pwd)"
+          echo "Repository remotes:"
+          git remote -v
+          echo "Current branch:"
+          git branch --show-current
+          echo "Remote branches:"
+          git branch -r
+          echo "Checking for semantic-release config in package.json:"
+          if grep -q '"release"' package.json; then
+            echo "✅ Found release config in package.json"
+            grep -A 3 '"release"' package.json
+          else
+            echo "❌ No release config found in package.json"
+          fi
+          echo "Contents of current directory:"
+          ls -la
+          
       - name: Install semantic-release
         run: |
           npm install -g semantic-release @semantic-release/changelog @semantic-release/git conventional-changelog-conventionalcommits
