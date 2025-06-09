@@ -1,6 +1,5 @@
 import { useApi } from '../composables/useApi'
-
-const API_BASE_URL = ''
+import { API_BASE_URL_CONFIG } from '../config/api'
 
 export default {
   async uploadPlayerFile(formData, maxSizeBytes = 15 * 1024 * 1024, onProgress = null) {
@@ -41,7 +40,7 @@ export default {
       return Promise.reject(new Error('Dataset ID is required.'))
     }
     try {
-      let url = `${API_BASE_URL}/api/players/${datasetId}`
+      let url = `${API_BASE_URL_CONFIG}/api/players/${datasetId}`
       const params = new URLSearchParams()
       if (position) {
         params.append('position', position)
@@ -100,7 +99,7 @@ export default {
 
   async getAvailableRoles() {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/roles`)
+      const response = await fetch(`${API_BASE_URL_CONFIG}/api/roles`)
       if (!response.ok) {
         const errorText = await response.text()
         throw new Error(
@@ -116,7 +115,7 @@ export default {
 
   async getConfig() {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/config`)
+      const response = await fetch(`${API_BASE_URL_CONFIG}/api/config`)
       if (!response.ok) {
         const errorText = await response.text()
         throw new Error(
@@ -136,7 +135,7 @@ export default {
 
   async updateConfig(configUpdate) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/config`, {
+      const response = await fetch(`${API_BASE_URL_CONFIG}/api/config`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

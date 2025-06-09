@@ -1,7 +1,10 @@
+// Use environment variable for API base URL if available, otherwise default to empty string
+import { API_BASE_URL_CONFIG } from '../config/api'
+
 export default {
   async saveWishlist(datasetId, wishlistData) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/wishlists/${datasetId}`, {
+      const response = await fetch(`${API_BASE_URL_CONFIG}/api/wishlists/${datasetId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
@@ -23,7 +26,7 @@ export default {
 
   async loadWishlist(datasetId) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/wishlists/${datasetId}`)
+      const response = await fetch(`${API_BASE_URL_CONFIG}/api/wishlists/${datasetId}`)
 
       if (response.status === 404) {
         return this.loadFromLocalStorage(datasetId)
@@ -48,7 +51,7 @@ export default {
 
   async deleteWishlist(datasetId) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/wishlists/${datasetId}`, {
+      const response = await fetch(`${API_BASE_URL_CONFIG}/api/wishlists/${datasetId}`, {
         method: 'DELETE'
       })
 
