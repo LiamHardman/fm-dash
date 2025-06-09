@@ -1,3 +1,15 @@
+## [1.4.1](https://git.liamhardman.com/liam/fm24-golang/compare/v1.4.0...v1.4.1) (2025-06-09)
+
+### 🐛 Bug Fixes
+
+* add semantic-release configuration and debug workflow to resolve ERELEASEBRANCHES error ([7097358](https://git.liamhardman.com/liam/fm24-golang/commit/7097358536c01c991202d7f40b1e72b67159dc3f))
+* changed url for releases ([87dd8b9](https://git.liamhardman.com/liam/fm24-golang/commit/87dd8b999165dfb17148d628d75c03be9ac73e8a))
+* GitHub readiness update ([0b7e285](https://git.liamhardman.com/liam/fm24-golang/commit/0b7e285e6d5af6b684ff98bbe043a3c9beb94501))
+* hopeful fix of release pipeline for the 89432894289th time ([b809aca](https://git.liamhardman.com/liam/fm24-golang/commit/b809acad76c3c0784011613ec027cd872bbef033))
+* hopeful fix of releases ([9ca6844](https://git.liamhardman.com/liam/fm24-golang/commit/9ca6844b1f85084f4c9ccfcd84b7a389b50389e4))
+* hopefully fixing up release config ([d2666e4](https://git.liamhardman.com/liam/fm24-golang/commit/d2666e40e55fcb90d084827b98adc58efc0553e1))
+* small readme update ([d611dac](https://git.liamhardman.com/liam/fm24-golang/commit/d611dacd6c9ece4eeaec794b48976f6b408326f6))
+
 ## [1.4.0](https://git.liamhardman.com/liam/fm24-golang/compare/v1.3.0...v1.4.0) (2025-06-09)
 
 ### 🚀 Features
