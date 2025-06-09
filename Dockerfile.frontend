@@ -2,12 +2,15 @@
 FROM node:18-alpine AS vue-builder
 LABEL stage=vue-builder
 WORKDIR /app-vue
+
+# Copy package files first for better layer caching
 COPY package*.json ./
 RUN npm install
+
+# Copy all source files
 COPY . .
-ARG VITE_API_BASE_URL=/api
-ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
-RUN echo "Building Vue app with VITE_API_BASE_URL=${VITE_API_BASE_URL}"
+
+# Build the application
 RUN npm run build
 
 FROM nginx:alpine
@@ -16,6 +19,10 @@ LABEL stage=final-frontend
 # Copy custom nginx configuration
 COPY nginx-frontend.conf /etc/nginx/nginx.conf
 
+# Copy configuration injection script
+COPY config-injector.sh /usr/local/bin/config-injector.sh
+RUN chmod +x /usr/local/bin/config-injector.sh
+
 # Remove default nginx static assets
 RUN rm -rf /usr/share/nginx/html/*
 
@@ -23,10 +30,7 @@ RUN rm -rf /usr/share/nginx/html/*
 COPY --from=vue-builder /app-vue/dist /usr/share/nginx/html/
 
 # Create nginx user and set proper permissions
-RUN chown -R nginx:nginx /usr/share/nginx/html
-RUN chown -R nginx:nginx /var/cache/nginx
-RUN chown -R nginx:nginx /var/log/nginx
-RUN chown -R nginx:nginx /etc/nginx/conf.d
+RUN chown -R nginx:nginx /usr/share/nginx/html /var/cache/nginx /var/log/nginx /etc/nginx/conf.d
 RUN touch /var/run/nginx.pid && chown -R nginx:nginx /var/run/nginx.pid
 
 # Run as non-root user
@@ -34,4 +38,5 @@ USER nginx
 
 EXPOSE 8080
 
-CMD ["nginx", "-g", "daemon off;"] 
+# Use the configuration injection script as the entrypoint
+CMD ["/usr/local/bin/config-injector.sh"] 

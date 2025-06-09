@@ -139,6 +139,11 @@ spec:
             - name: http-nginx
               containerPort: 8080
           env:
+            # Runtime Configuration (injected at container startup)
+            # Use "" for relative paths (default). Set to a full URL for an external backend.
+            - name: API_ENDPOINT
+              value: ""
+            # Analytics Configuration
             - name: VITE_GA_TRACKING_ID
               value: "G-QYG3QS5C5Y"
           resources:

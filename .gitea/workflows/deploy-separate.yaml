@@ -75,8 +75,6 @@ jobs:
           file: ./Dockerfile.frontend
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.FRONTEND_IMAGE_NAME }}:main
-          build-args: |
-            VITE_API_BASE_URL=/api
 
       # Build and push the Backend Docker image
       - name: Build and push Backend Docker image

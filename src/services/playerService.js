@@ -1,5 +1,22 @@
 import { useApi } from '../composables/useApi'
-import { API_BASE_URL_CONFIG } from '../config/api'
+
+// Runtime API Endpoint Configuration
+const getApiEndpoint = () => {
+  // 1. Check for runtime config (injected by config-injector.sh)
+  if (typeof window !== 'undefined' && window.APP_CONFIG && typeof window.APP_CONFIG.API_ENDPOINT !== 'undefined') {
+    return window.APP_CONFIG.API_ENDPOINT;
+  }
+  
+  // 2. Fallback to build-time config (for local development)
+  if (typeof import.meta.env.VITE_API_ENDPOINT !== 'undefined') {
+    return import.meta.env.VITE_API_ENDPOINT;
+  }
+  
+  // 3. Default to an empty string for relative paths
+  return ''; 
+}
+
+const API_ENDPOINT = getApiEndpoint();
 
 export default {
   async uploadPlayerFile(formData, maxSizeBytes = 15 * 1024 * 1024, onProgress = null) {
@@ -40,7 +57,7 @@ export default {
       return Promise.reject(new Error('Dataset ID is required.'))
     }
     try {
-      let url = `${API_BASE_URL_CONFIG}/api/players/${datasetId}`
+      let url = `${API_ENDPOINT}/api/players/${datasetId}`
       const params = new URLSearchParams()
       if (position) {
         params.append('position', position)
@@ -99,7 +116,7 @@ export default {
 
   async getAvailableRoles() {
     try {
-      const response = await fetch(`${API_BASE_URL_CONFIG}/api/roles`)
+      const response = await fetch(`${API_ENDPOINT}/api/roles`)
       if (!response.ok) {
         const errorText = await response.text()
         throw new Error(
@@ -115,7 +132,7 @@ export default {
 
   async getConfig() {
     try {
-      const response = await fetch(`${API_BASE_URL_CONFIG}/api/config`)
+      const response = await fetch(`${API_ENDPOINT}/api/config`)
       if (!response.ok) {
         const errorText = await response.text()
         throw new Error(
@@ -135,7 +152,7 @@ export default {
 
   async updateConfig(configUpdate) {
     try {
-      const response = await fetch(`${API_BASE_URL_CONFIG}/api/config`, {
+      const response = await fetch(`${API_ENDPOINT}/api/config`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
