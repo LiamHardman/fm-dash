@@ -169,7 +169,7 @@ MINIO_SECRET_KEY=your-secret-key
 MINIO_USE_SSL=true
 
 # Observability
-OTEL_EXPORTER_OTLP_ENDPOINT=http://signoz:4317
+OTEL_EXPORTER_OTLP_ENDPOINT=http://your-otlp-endpoint:4317
 ENABLE_TRACING=true
 ENABLE_METRICS=true
 
