@@ -404,7 +404,7 @@ func EnhancePlayerWithCalculations(player *Player) {
 		}
 
 		if len(calculatedRoleOveralls) == 0 && len(player.ShortPositions) > 0 {
-			log.Printf("Fallback Warning: Player '%s' with ShortPositions %v found no matching roles in fallback roleSpecificOverallWeights. MaxRoleBasedOverall will be 0.", player.Name, player.ShortPositions)
+			log.Printf("Fallback Warning: Player '%s' with ShortPositions %v found no matching roles in fallback roleSpecificOverallWeights. Role-based overall will be 0.", player.Name, player.ShortPositions)
 		}
 
 	case len(player.ShortPositions) > 0:
@@ -451,7 +451,7 @@ func EnhancePlayerWithCalculations(player *Player) {
 		}
 
 		if !foundAnyRoleMatch && len(player.ShortPositions) > 0 {
-			log.Printf("Warning: Player '%s' with ShortPositions %v found no matching roles in precomputedRoleWeights. MaxRoleBasedOverall will be 0.", player.Name, player.ShortPositions)
+			log.Printf("Warning: Player '%s' with ShortPositions %v found no matching roles in precomputedRoleWeights. Role-based overall will be 0.", player.Name, player.ShortPositions)
 		}
 	default:
 		// This case means player has no short positions, so maxRoleBasedOverall will naturally be 0.
@@ -468,12 +468,22 @@ func EnhancePlayerWithCalculations(player *Player) {
 	// Set the best role name
 	player.BestRoleOverall = bestRoleName
 
-	// Set Overall to the best role-specific score for all players
-	// This ensures the player data table shows the best possible rating by default
-	player.Overall = maxRoleBasedOverall
+	// Calculate overall as the mean of all role ratings instead of using the maximum
+	meanRoleBasedOverall := 0
+	if len(calculatedRoleOveralls) > 0 {
+		totalRoleOveralls := 0
+		for _, roleOverall := range calculatedRoleOveralls {
+			totalRoleOveralls += roleOverall.Score
+		}
+		meanRoleBasedOverall = totalRoleOveralls / len(calculatedRoleOveralls)
+	}
 
-	// Note: We removed the old blended calculation for outfield players
-	// Now all players show their pure best role-specific overall score
+	// Set Overall to the mean of all role-specific scores
+	// This provides a more balanced representation of the player's abilities
+	player.Overall = meanRoleBasedOverall
+
+	// Note: We changed from using the best role-specific overall score
+	// to using the mean of all role-specific overall scores
 	// --- END: Overall Calculation ---
 }
 
@@ -592,9 +602,19 @@ func RecalculatePlayerRatings(player *Player) {
 		return player.RoleSpecificOveralls[i].RoleName < player.RoleSpecificOveralls[j].RoleName
 	})
 
+	// Calculate overall as the mean of all role ratings instead of using the maximum
+	meanRoleBasedOverall := 0
+	if len(player.RoleSpecificOveralls) > 0 {
+		totalRoleOveralls := 0
+		for _, roleOverall := range player.RoleSpecificOveralls {
+			totalRoleOveralls += roleOverall.Score
+		}
+		meanRoleBasedOverall = totalRoleOveralls / len(player.RoleSpecificOveralls)
+	}
+
 	// Update overall and best role
 	player.BestRoleOverall = bestRoleName
-	player.Overall = maxRoleBasedOverall
+	player.Overall = meanRoleBasedOverall
 }
 
 // RecalculateAllPlayersRatings recalculates ratings for all players in a slice
