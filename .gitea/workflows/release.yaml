@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Fetch full history for changelog generation
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -29,12 +29,12 @@ jobs:
 
       - name: Setup Git
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "gitea-actions[bot]"
+          git config --global user.email "gitea-actions[bot]@users.noreply.gitea.com"
 
       - name: Install semantic-release
         run: |
-          npm install -g semantic-release @semantic-release/changelog @semantic-release/git @semantic-release/github conventional-changelog-conventionalcommits
+          npm install -g semantic-release @semantic-release/changelog @semantic-release/git conventional-changelog-conventionalcommits
 
       - name: Create .releaserc.json
         run: |
@@ -101,15 +101,6 @@ jobs:
                   "assets": ["package.json", "package-lock.json", "CHANGELOG.md"],
                   "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
                 }
-              ],
-              [
-                "@semantic-release/github",
-                {
-                  "successComment": false,
-                  "failComment": false,
-                  "failTitle": false,
-                  "releasedLabels": false
-                }
               ]
             ]
           }
@@ -131,7 +122,7 @@ jobs:
           echo "🔍 Analyzing commits for release..."
           npx semantic-release --dry-run
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
           HUSKY: 0
 
       - name: Create release
@@ -139,7 +130,7 @@ jobs:
           echo "🚀 Creating release..."
           npx semantic-release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
           HUSKY: 0
 
       - name: Release summary
@@ -152,7 +143,7 @@ jobs:
           echo "📦 Package version updated (if applicable)"
           echo "📝 Changelog generated/updated"
           echo "🏷️ Git tag created (if new version)"
-          echo "📋 GitHub release created (if new version)"
+          echo "📋 Release created (if new version)"
           echo ""
           echo "ℹ️  Commit format guide:"
           echo "   feat: new feature (minor version bump)"
