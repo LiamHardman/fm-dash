@@ -1,3 +1,9 @@
+## [1.5.0](https://git.liamhardman.com/liam/fm24-golang/compare/v1.4.1...v1.5.0) (2025-06-09)
+
+### 🚀 Features
+
+* initial implementation of attribute masking support ([2a341bd](https://git.liamhardman.com/liam/fm24-golang/commit/2a341bdbc4f754c3b434696dc2cc7826a578edd1))
+
 ## [1.4.1](https://git.liamhardman.com/liam/fm24-golang/compare/v1.4.0...v1.4.1) (2025-06-09)
 
 ### 🐛 Bug Fixes
