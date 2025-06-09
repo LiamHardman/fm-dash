@@ -1,6 +1,6 @@
 import { onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { analytics, trackPageView } from '../services/analytics'
+import { analytics, trackPageView, trackEvent } from '../services/analytics'
 
 /**
  * Vue composable for Google Analytics integration
@@ -34,6 +34,7 @@ export function useAnalytics(options = {}) {
     
     // Additional utility functions
     trackPageView,
+    trackEvent,
     
     // Convenience method to track current page manually
     trackCurrentPage: () => {
@@ -42,7 +43,7 @@ export function useAnalytics(options = {}) {
     
     // Helper to track form submissions
     trackFormSubmission: (formName, formData = {}) => {
-      analytics.trackEvent('form_submission', {
+      trackEvent('form_submission', {
         form_name: formName,
         form_data: JSON.stringify(formData),
         event_category: 'form_interaction'
@@ -51,7 +52,7 @@ export function useAnalytics(options = {}) {
     
     // Helper to track button clicks
     trackButtonClick: (buttonName, context = {}) => {
-      analytics.trackEvent('button_click', {
+      trackEvent('button_click', {
         button_name: buttonName,
         ...context,
         event_category: 'ui_interaction'
@@ -60,7 +61,7 @@ export function useAnalytics(options = {}) {
     
     // Helper to track file operations
     trackFileOperation: (operation, fileName, fileSize = null) => {
-      analytics.trackEvent('file_operation', {
+      trackEvent('file_operation', {
         operation: operation, // 'upload', 'download', 'delete', etc.
         file_name: fileName,
         file_size: fileSize,

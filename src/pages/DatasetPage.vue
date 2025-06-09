@@ -53,6 +53,42 @@
                         class="action-btn"
                         size="sm"
                     />
+                    <q-btn
+                        unelevated
+                        dense
+                        icon="download"
+                        label="Export CSV"
+                        color="accent"
+                        @click="handleExportCSV"
+                        :disable="loading || !filteredPlayers || filteredPlayers.length === 0"
+                        class="action-btn"
+                        size="sm"
+                    >
+                        <q-tooltip v-if="filteredPlayers && filteredPlayers.length > 0">
+                            Export {{ filteredPlayers.length }} filtered players to CSV
+                        </q-tooltip>
+                        <q-tooltip v-else>
+                            No players to export
+                        </q-tooltip>
+                    </q-btn>
+                    <q-btn
+                        unelevated
+                        dense
+                        icon="code"
+                        label="Export JSON"
+                        color="info"
+                        @click="handleExportJSON"
+                        :disable="loading || !allPlayersData || allPlayersData.length === 0"
+                        class="action-btn"
+                        size="sm"
+                    >
+                        <q-tooltip v-if="allPlayersData && allPlayersData.length > 0">
+                            Export {{ allPlayersData.length }} total players to JSON
+                        </q-tooltip>
+                        <q-tooltip v-else>
+                            No data available to export
+                        </q-tooltip>
+                    </q-btn>
                 </div>
 
                 <!-- Right section: Share and filters toggle -->
@@ -211,6 +247,7 @@ import PlayerFilters from '../components/filters/PlayerFilters.vue'
 import { usePlayerStore } from '../stores/playerStore'
 import { useWishlistStore } from '../stores/wishlistStore'
 import { useAnalytics } from '../composables/useAnalytics'
+import { exportPlayersToCSV, exportPlayersToJSON, getDefaultExportColumns, validateExportData } from '../utils/csvExport'
 
 const rawTechnicalAttributeKeysConst = [
   'Cor',
@@ -747,6 +784,125 @@ export default {
       return num?.toString() || '0'
     }
 
+    const handleExportCSV = async () => {
+      try {
+        // Validate the export data
+        const validation = validateExportData(filteredPlayers.value)
+        
+        if (!validation.valid) {
+          quasarInstance.notify({
+            type: 'negative',
+            message: `Export failed: ${validation.errors.join(', ')}`,
+            position: 'top'
+          })
+          return
+        }
+        
+        // Show warnings if any
+        if (validation.warnings.length > 0) {
+          validation.warnings.forEach(warning => {
+            quasarInstance.notify({
+              type: 'warning',
+              message: warning,
+              position: 'top'
+            })
+          })
+        }
+        
+        // Get default columns for export
+        const exportColumns = getDefaultExportColumns('detailed', filteredPlayers.value)
+        
+        // Export to CSV
+        await exportPlayersToCSV(filteredPlayers.value, exportColumns)
+        
+        // Show success message
+        quasarInstance.notify({
+          type: 'positive',
+          message: `Successfully exported ${filteredPlayers.value.length} players to CSV`,
+          position: 'top',
+          actions: [
+            {
+              label: 'Dismiss',
+              color: 'white'
+            }
+          ]
+        })
+        
+        // Track export event
+        analytics.downloadData('players', 'csv')
+        analytics.trackButtonClick('Export CSV', { 
+          feature_type: 'export',
+          player_count: filteredPlayers.value.length 
+        })
+        
+      } catch (error) {
+        console.error('Export error:', error)
+        quasarInstance.notify({
+          type: 'negative',
+          message: `Export failed: ${error.message}`,
+          position: 'top'
+        })
+      }
+    }
+
+    const handleExportJSON = async () => {
+      try {
+        // Validate the export data
+        const validation = validateExportData(allPlayersData.value)
+        
+        if (!validation.valid) {
+          quasarInstance.notify({
+            type: 'negative',
+            message: `Export failed: ${validation.errors.join(', ')}`,
+            position: 'top'
+          })
+          return
+        }
+        
+        // Show warnings if any
+        if (validation.warnings.length > 0) {
+          validation.warnings.forEach(warning => {
+            quasarInstance.notify({
+              type: 'warning',
+              message: warning,
+              position: 'top'
+            })
+          })
+        }
+        
+        // Export to JSON
+        await exportPlayersToJSON(allPlayersData.value)
+        
+        // Show success message
+        quasarInstance.notify({
+          type: 'positive',
+          message: `Successfully exported ${allPlayersData.value.length} players to JSON`,
+          position: 'top',
+          actions: [
+            {
+              label: 'Dismiss',
+              color: 'white'
+            }
+          ]
+        })
+        
+        // Track export event
+        analytics.downloadData('players', 'json')
+        analytics.trackButtonClick('Export JSON', { 
+          feature_type: 'export',
+          player_count: allPlayersData.value.length 
+        })
+        
+      } catch (error) {
+        console.error('Export error:', error)
+        quasarInstance.notify({
+          type: 'negative',
+          message: `Export failed: ${error.message}`,
+          position: 'top'
+        })
+      }
+    }
+
     return {
       pageLoading,
       pageLoadingError,
@@ -782,7 +938,9 @@ export default {
       openUpgradeFinder,
       openWonderkids,
       openBargainHunter,
-      showFilters
+      showFilters,
+      handleExportCSV,
+      handleExportJSON
     }
   }
 }
