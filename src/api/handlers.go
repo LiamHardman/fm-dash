@@ -500,27 +500,17 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	parseDuration := time.Since(parseStartTime)
 	datasetID := uuid.New().String()
 
-	// Store using synchronous storage to ensure immediate availability across all replicas
-	ctx, storageSpan := StartSpan(ctx, "storage.save_dataset_sync")
+	// Store using async storage for performance (data available immediately in memory, persistent storage in background)
+	ctx, storageSpan := StartSpan(ctx, "storage.save_dataset_async")
 	SetSpanAttributes(ctx,
 		attribute.String("dataset.id", datasetID),
 		attribute.Int("dataset.player_count", len(playersList)),
 		attribute.String("dataset.currency", finalDatasetCurrencySymbol),
-		attribute.String("storage.method", "sync"),
+		attribute.String("storage.method", "async"),
 	)
 
-	// Use synchronous storage to ensure data is immediately available
-	SetPlayerData(datasetID, playersList, finalDatasetCurrencySymbol)
-
-	// Verify the data was stored successfully by attempting to retrieve it
-	_, _, dataFound := GetPlayerData(datasetID)
-	if !dataFound {
-		RecordError(ctx, fmt.Errorf("data verification failed for dataset %s", datasetID), "Dataset not found after storage")
-		http.Error(w, "Failed to store dataset data", http.StatusInternalServerError)
-		return
-	}
-
-	SetSpanAttributes(ctx, attribute.Bool("storage.verified", true))
+	// Use async storage for performance - data available immediately in memory
+	SetPlayerDataAsync(datasetID, playersList, finalDatasetCurrencySymbol)
 	storageSpan.End()
 
 	// Store the file hash mapping for duplicate detection

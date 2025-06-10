@@ -175,8 +175,15 @@
 ### Fixed
 - **Multi-replica deployment consistency**: Fixed intermittent "dataset not found" errors in multi-replica deployments
   - Added session affinity (ClientIP) to Kubernetes backend service to ensure request stickiness
-  - Modified data retrieval logic to prioritize persistent storage over in-memory cache for better cross-replica consistency
-  - Changed upload process from async to sync storage to ensure immediate data availability
+  - ~~Modified data retrieval logic to prioritize persistent storage over in-memory cache for better cross-replica consistency~~ **Reverted for performance**
+  - ~~Changed upload process from async to sync storage to ensure immediate data availability~~ **Reverted for performance**
   - Improved hybrid storage retrieval with async memory warming
   - Added retry mechanism with exponential backoff in frontend service for handling race conditions
-  - Enhanced storage verification step in upload process
+  - ~~Enhanced storage verification step in upload process~~ **Removed for performance**
+
+### Performance
+- **Restored original performance**: Reverted storage optimizations that caused slowdown in single-replica deployments
+  - Uploads use async storage again for fast response times
+  - Data retrieval prioritizes fast in-memory cache over persistent storage
+  - Removed blocking verification step from upload process
+  - Session affinity in Kubernetes handles most multi-replica consistency issues

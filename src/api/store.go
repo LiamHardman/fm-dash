@@ -208,29 +208,28 @@ func GetPlayerData(datasetID string) ([]Player, string, bool) {
 		attribute.String("store.type", "legacy_compatible"),
 	)
 
-	// First try persistent storage to ensure consistency across replicas
-	AddSpanEvent(ctx, "store.trying_persistent_first")
+	// Try fast in-memory cache first for performance
+	storeMutex.RLock()
+	if data, exists := playerDataStore[datasetID]; exists {
+		storeMutex.RUnlock()
+		AddSpanEvent(ctx, "store.memory_cache_hit")
+		SetSpanAttributes(ctx,
+			attribute.Int("dataset.player_count", len(data.Players)),
+			attribute.String("data.source", "memory_fast"),
+		)
+		return data.Players, data.CurrencySymbol, true
+	}
+	storeMutex.RUnlock()
+
+	// Fallback to persistent storage only if not in memory
+	AddSpanEvent(ctx, "store.fallback_to_persistent")
 	players, currency, err := RetrieveDataset(datasetID)
 	if err == nil {
 		SetSpanAttributes(ctx,
 			attribute.Int("dataset.player_count", len(players)),
-			attribute.String("data.source", "persistent"),
+			attribute.String("data.source", "persistent_fallback"),
 		)
 		return players, currency, true
-	}
-
-	// Fallback to legacy in-memory store if persistent storage fails
-	AddSpanEvent(ctx, "store.fallback_to_memory")
-	storeMutex.RLock()
-	defer storeMutex.RUnlock()
-
-	if data, exists := playerDataStore[datasetID]; exists {
-		AddSpanEvent(ctx, "store.legacy_cache_hit")
-		SetSpanAttributes(ctx,
-			attribute.Int("dataset.player_count", len(data.Players)),
-			attribute.String("data.source", "memory_fallback"),
-		)
-		return data.Players, data.CurrencySymbol, true
 	}
 
 	SetSpanAttributes(ctx, attribute.String("result", "not_found"))
