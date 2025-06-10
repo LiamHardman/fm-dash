@@ -1,3 +1,9 @@
+## [1.8.1](https://git.liamhardman.com/liam/fm24-golang/compare/v1.8.0...v1.8.1) (2025-06-10)
+
+### 🐛 Bug Fixes
+
+* hopeful team logo fix ([1573638](https://git.liamhardman.com/liam/fm24-golang/commit/1573638f17a75ff8e0e742ed1f2669f1f2d1438f))
+
 ## [1.8.0](https://git.liamhardman.com/liam/fm24-golang/compare/v1.7.1...v1.8.0) (2025-06-10)
 
 ### 🚀 Features
