@@ -457,7 +457,7 @@ export function useTeamLogos(options = {}) {
     const teamId = getTeamId(teamName)
     if (!teamId) return null
     
-    return `/api/logos?teamId=${encodeURIComponent(teamId)}`
+    return `/api/logos?teamId=${encodeURIComponent(teamId)}&size=256`
   }
 
   /**
@@ -469,7 +469,7 @@ export function useTeamLogos(options = {}) {
     const teamId = await getTeamIdAsync(teamName)
     if (!teamId) return null
     
-    return `/api/logos?teamId=${encodeURIComponent(teamId)}`
+    return `/api/logos?teamId=${encodeURIComponent(teamId)}&size=256`
   }
 
   /**
@@ -481,7 +481,7 @@ export function useTeamLogos(options = {}) {
     return computed(() => {
       const teamId = logoCache.get(teamName)
       if (!teamId) return null
-      return `/api/logos?teamId=${encodeURIComponent(teamId)}`
+      return `/api/logos?teamId=${encodeURIComponent(teamId)}&size=256`
     })
   }
 
