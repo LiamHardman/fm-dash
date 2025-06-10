@@ -1,3 +1,9 @@
+## [1.8.3](https://git.liamhardman.com/liam/fm24-golang/compare/v1.8.2...v1.8.3) (2025-06-10)
+
+### 🐛 Bug Fixes
+
+* attempted slowdown fix ([7338c92](https://git.liamhardman.com/liam/fm24-golang/commit/7338c926cf9f14de72353b76d3a6a2f9416d2343))
+
 ## [1.8.2](https://git.liamhardman.com/liam/fm24-golang/compare/v1.8.1...v1.8.2) (2025-06-10)
 
 ### 🐛 Bug Fixes
