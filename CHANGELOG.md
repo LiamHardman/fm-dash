@@ -1,3 +1,9 @@
+## [1.7.1](https://git.liamhardman.com/liam/fm24-golang/compare/v1.7.0...v1.7.1) (2025-06-10)
+
+### 🐛 Bug Fixes
+
+* change to render images at 256x256 instead of 512x512 ([23222e5](https://git.liamhardman.com/liam/fm24-golang/commit/23222e58a0c0b9d55924948f5c830837522ea54a))
+
 ## [1.7.0](https://git.liamhardman.com/liam/fm24-golang/compare/v1.6.0...v1.7.0) (2025-06-09)
 
 ### 🚀 Features
