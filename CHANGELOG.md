@@ -1,3 +1,9 @@
+## [1.8.0](https://git.liamhardman.com/liam/fm24-golang/compare/v1.7.1...v1.8.0) (2025-06-10)
+
+### 🚀 Features
+
+* ability to use sortitoutsi CDN ([f7e602f](https://git.liamhardman.com/liam/fm24-golang/commit/f7e602f64885add8d7465c805e8ed0227aafbb77))
+
 ## [1.7.1](https://git.liamhardman.com/liam/fm24-golang/compare/v1.7.0...v1.7.1) (2025-06-10)
 
 ### 🐛 Bug Fixes
