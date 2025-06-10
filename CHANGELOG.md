@@ -1,3 +1,9 @@
+## [1.8.2](https://git.liamhardman.com/liam/fm24-golang/compare/v1.8.1...v1.8.2) (2025-06-10)
+
+### 🐛 Bug Fixes
+
+* multi replica fixes ([efb6d56](https://git.liamhardman.com/liam/fm24-golang/commit/efb6d5659aab790552dfd47522d5990778056e14))
+
 ## [1.8.1](https://git.liamhardman.com/liam/fm24-golang/compare/v1.8.0...v1.8.1) (2025-06-10)
 
 ### 🐛 Bug Fixes
