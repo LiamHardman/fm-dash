@@ -893,25 +893,30 @@ func (s *HybridStorage) Store(datasetID string, data DatasetData) error {
 }
 
 func (s *HybridStorage) Retrieve(datasetID string) (DatasetData, error) {
-	// Try memory first
+	// Try memory first for fastest access
 	data, err := s.memory.Retrieve(datasetID)
 	if err == nil {
 		log.Printf("Retrieved dataset %s from memory", datasetID)
 		return data, nil
 	}
 
-	// Fallback to local file
-	log.Printf("Dataset %s not found in memory, checking local storage", datasetID)
+	// Try persistent storage (critical for multi-replica consistency)
+	log.Printf("Dataset %s not found in memory, checking persistent storage", datasetID)
 	data, err = s.local.Retrieve(datasetID)
 	if err != nil {
 		return DatasetData{}, err
 	}
 
-	// Store in memory for future access
-	if storeErr := s.memory.Store(datasetID, data); storeErr != nil {
-		log.Printf("Warning: Failed to cache dataset %s in memory: %v", datasetID, storeErr)
-	}
+	// Store in memory for future access (warm up the cache)
+	go func() {
+		if storeErr := s.memory.Store(datasetID, data); storeErr != nil {
+			log.Printf("Warning: Failed to cache dataset %s in memory: %v", datasetID, storeErr)
+		} else {
+			log.Printf("Successfully cached dataset %s in memory for future access", datasetID)
+		}
+	}()
 
+	log.Printf("Retrieved dataset %s from persistent storage and cached in memory", datasetID)
 	return data, nil
 }
 

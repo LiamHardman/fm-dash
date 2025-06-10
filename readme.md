@@ -331,5 +331,32 @@ For questions, feature requests, or technical support:
 - Open an issue on the repository
 - Consult the [changelog](CHANGELOG.md) for recent updates
 
+## Multi-Replica Deployment
+
+When running multiple replicas of the application, several considerations ensure data consistency:
+
+### Session Affinity
+The Kubernetes service configuration includes session affinity based on ClientIP, ensuring that requests from the same user are routed to the same backend replica for 1 hour. This prevents race conditions where upload and subsequent retrieval requests hit different replicas.
+
+### Storage Strategy
+- **Persistent Storage Priority**: Data retrieval prioritizes persistent storage (S3/local files) over in-memory cache to ensure consistency across replicas
+- **Synchronous Uploads**: Dataset uploads use synchronous storage to ensure immediate availability across all replicas
+- **Storage Verification**: Upload process includes verification step to confirm data was stored successfully
+- **Hybrid Storage**: Combines in-memory caching with persistent storage, with automatic cache warming
+
+### Client-Side Resilience
+- **Retry Mechanism**: Frontend automatically retries failed dataset requests with exponential backoff (200ms, 400ms, 800ms)
+- **Error Handling**: Graceful handling of temporary inconsistencies during replica synchronization
+
+### Configuration
+```yaml
+# Kubernetes Service with Session Affinity
+spec:
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 3600
+```
+
 ---
 

@@ -208,20 +208,29 @@ func GetPlayerData(datasetID string) ([]Player, string, bool) {
 		attribute.String("store.type", "legacy_compatible"),
 	)
 
+	// First try persistent storage to ensure consistency across replicas
+	AddSpanEvent(ctx, "store.trying_persistent_first")
+	players, currency, err := RetrieveDataset(datasetID)
+	if err == nil {
+		SetSpanAttributes(ctx,
+			attribute.Int("dataset.player_count", len(players)),
+			attribute.String("data.source", "persistent"),
+		)
+		return players, currency, true
+	}
+
+	// Fallback to legacy in-memory store if persistent storage fails
+	AddSpanEvent(ctx, "store.fallback_to_memory")
 	storeMutex.RLock()
 	defer storeMutex.RUnlock()
 
 	if data, exists := playerDataStore[datasetID]; exists {
 		AddSpanEvent(ctx, "store.legacy_cache_hit")
-		SetSpanAttributes(ctx, attribute.Int("dataset.player_count", len(data.Players)))
+		SetSpanAttributes(ctx,
+			attribute.Int("dataset.player_count", len(data.Players)),
+			attribute.String("data.source", "memory_fallback"),
+		)
 		return data.Players, data.CurrencySymbol, true
-	}
-
-	// Try to get from new storage system
-	AddSpanEvent(ctx, "store.trying_new_storage")
-	players, currency, err := RetrieveDataset(datasetID)
-	if err == nil {
-		return players, currency, true
 	}
 
 	SetSpanAttributes(ctx, attribute.String("result", "not_found"))

@@ -51,11 +51,16 @@ export default {
     maxSalary = null,
     divisionFilter = 'all',
     targetDivision = null,
-    positionCompare = 'all'
+    positionCompare = 'all',
+    retryCount = 0,
+    maxRetries = 3
   ) {
     if (!datasetId) {
       return Promise.reject(new Error('Dataset ID is required.'))
     }
+    
+    const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms))
+    
     try {
       let url = `${API_ENDPOINT}/api/players/${datasetId}`
       const params = new URLSearchParams()
@@ -102,6 +107,16 @@ export default {
       const response = await fetch(url)
       if (!response.ok) {
         if (response.status === 404) {
+          // Handle potential race condition in multi-replica deployments
+          if (retryCount < maxRetries) {
+            console.warn(`Dataset not found (attempt ${retryCount + 1}/${maxRetries + 1}), retrying in ${200 * Math.pow(2, retryCount)}ms...`)
+            await delay(200 * Math.pow(2, retryCount)) // Exponential backoff: 200ms, 400ms, 800ms
+            return this.getPlayersByDatasetId(
+              datasetId, position, role, ageRange, transferValueRange, 
+              maxSalary, divisionFilter, targetDivision, positionCompare, 
+              retryCount + 1, maxRetries
+            )
+          }
           throw new Error(`Player data not found for ID: ${datasetId}.`)
         }
         const errorText = await response.text()

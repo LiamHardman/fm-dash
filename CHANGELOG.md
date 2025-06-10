@@ -163,3 +163,14 @@
 * resolve async processing test hanging - fix double worker initialization, channel race conditions, and add test timeout protection ([554b530](https://git.liamhardman.com/liam/fm24-golang/commit/554b5302d1b8c923fdd67fcb4934bd411d662c30))
 * resolve pre-commit hook issues - increase Biome maxSize to 3MB, exclude teams_data.json from formatting, remove unused Go function, add optional frontend tests ([646c181](https://git.liamhardman.com/liam/fm24-golang/commit/646c1817ccd1b289ff4cdce82d203fb242c67953))
 * testing new release schedule thingy ([4d23469](https://git.liamhardman.com/liam/fm24-golang/commit/4d2346935ff2b3153290e8756313ec10734f9439))
+
+## [Unreleased]
+
+### Fixed
+- **Multi-replica deployment consistency**: Fixed intermittent "dataset not found" errors in multi-replica deployments
+  - Added session affinity (ClientIP) to Kubernetes backend service to ensure request stickiness
+  - Modified data retrieval logic to prioritize persistent storage over in-memory cache for better cross-replica consistency
+  - Changed upload process from async to sync storage to ensure immediate data availability
+  - Improved hybrid storage retrieval with async memory warming
+  - Added retry mechanism with exponential backoff in frontend service for handling race conditions
+  - Enhanced storage verification step in upload process

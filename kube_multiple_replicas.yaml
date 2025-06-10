@@ -187,6 +187,10 @@ metadata:
     component: backend
 spec:
   type: ClusterIP
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 3600
   selector:
     app: v2fmdash-backend
     component: backend
