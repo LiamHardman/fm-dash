@@ -48,6 +48,11 @@ S3_BUCKET=fm-dash-data                 # S3 bucket name
 S3_REGION=us-east-1                 # S3 region
 S3_USE_SSL=false                    # Use SSL for S3 connection (true/false)
 S3_FORCE_PATH_STYLE=true            # Force path-style URLs (for MinIO)
+
+# Image Storage Configuration
+IMAGE_API_URL=https://sortitoutsi.b-cdn.net/uploads  # External image API URL for faces/logos
+FACES_DIR=./faces                   # Local faces directory (fallback)
+LOGOS_DIR=./logos                   # Local logos directory (fallback)
 ```
 
 #### Processing Configuration
@@ -167,6 +172,10 @@ storage:
     region: "us-east-1"
     use_ssl: false
     force_path_style: true
+  images:
+    api_url: "https://sortitoutsi.b-cdn.net/uploads"  # External image API URL
+    faces_dir: "./faces"                              # Local faces directory
+    logos_dir: "./logos"                              # Local logos directory
 
 processing:
   worker_count: 4
@@ -569,6 +578,134 @@ WORKER_COUNT=8
 BATCH_SIZE=200
 CACHE_ENABLED=true
 ```
+
+## Image Storage Configuration
+
+The application supports multiple methods for serving player faces and team logos, with automatic fallback mechanisms for maximum reliability.
+
+### Image Loading Priority
+
+When requesting player faces or team logos, the system follows this priority order:
+
+1. **External Image API** (if `IMAGE_API_URL` is configured)
+2. **S3/MinIO Storage** (if S3 is configured and enabled)
+3. **Local File Storage** (fallback to local directories)
+
+### External Image API Configuration
+
+To use an external CDN or image API service (recommended for production):
+
+```bash
+# Set the base URL for your external image service
+IMAGE_API_URL=https://sortitoutsi.b-cdn.net/uploads
+```
+
+When configured, the system will redirect image requests to:
+- **Player Faces**: `{IMAGE_API_URL}/face/{playerUID}.png?width=256`
+- **Team Logos**: `{IMAGE_API_URL}/team/{teamId}.png?width=256`
+
+#### Example External URLs
+
+For the CDN URL `https://sortitoutsi.b-cdn.net/uploads`:
+- Player face: `https://sortitoutsi.b-cdn.net/uploads/face/123456.png?width=256`
+- Team logo: `https://sortitoutsi.b-cdn.net/uploads/team/5000.png?width=256`
+
+### Local Storage Configuration
+
+For local development or when external APIs are unavailable:
+
+```bash
+# Local directory paths (relative to application root)
+FACES_DIR=./faces                   # Directory containing player face images
+LOGOS_DIR=./logos                   # Directory containing team logo images
+```
+
+Expected directory structure:
+```
+faces/
+├── 123456.png                     # Player UID as filename
+├── 789012.png
+└── ...
+
+logos/
+└── Clubs/
+    └── Normal/
+        └── Normal/
+            ├── 5000.png            # Team ID as filename
+            ├── 5001.png
+            └── ...
+```
+
+### S3/MinIO Storage Configuration
+
+For cloud storage with S3-compatible services:
+
+```bash
+# S3 bucket configuration (uses same bucket as datasets by default)
+S3_FACES_BUCKET=fm-dash-faces       # Optional: separate bucket for faces
+S3_LOGOS_BUCKET=fm-dash-logos       # Optional: separate bucket for logos
+```
+
+Expected S3 object structure:
+```
+faces/
+├── 123456.png
+├── 789012.png
+└── ...
+
+logos/Clubs/Normal/Normal/
+├── 5000.png
+├── 5001.png
+└── ...
+```
+
+### Configuration Examples
+
+#### Production with External CDN
+
+```bash
+# Recommended for production - fastest performance
+IMAGE_API_URL=https://your-cdn.com/fm24-images
+
+# Fallback configuration (optional)
+S3_FACES_BUCKET=fm-dash-faces
+S3_LOGOS_BUCKET=fm-dash-logos
+FACES_DIR=./faces
+LOGOS_DIR=./logos
+```
+
+#### Development with Local Images
+
+```bash
+# For local development
+FACES_DIR=./assets/faces
+LOGOS_DIR=./assets/logos
+```
+
+#### Hybrid Configuration
+
+```bash
+# Use CDN for most images, S3 for fallback
+IMAGE_API_URL=https://your-cdn.com/fm24-images
+S3_ENDPOINT=s3.amazonaws.com
+S3_BUCKET_NAME=fm-dash-data
+S3_FACES_BUCKET=fm-dash-faces
+S3_LOGOS_BUCKET=fm-dash-logos
+```
+
+### Image Format Requirements
+
+- **Format**: PNG (recommended) or JPG
+- **Naming**: 
+  - Player faces: `{playerUID}.png`
+  - Team logos: `{teamId}.png`
+- **Size**: Any size (application will add `?width=256` parameter for optimization)
+
+### Troubleshooting Image Issues
+
+1. **Images not loading**: Check the browser developer console for 404 errors
+2. **Slow image loading**: Consider using a CDN with the `IMAGE_API_URL` option
+3. **CORS issues with external images**: Ensure your CDN supports CORS headers
 
 ## Performance Tuning
 

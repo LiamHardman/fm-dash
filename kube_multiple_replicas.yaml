@@ -64,6 +64,11 @@ spec:
               value: ""
             - name: DEPLOYMENT_ENV
               value: "kubernetes"
+            
+            # Image Storage Configuration
+            - name: IMAGE_API_URL
+              value: "https://sortitoutsi.b-cdn.net/uploads"
+            
             # S3-Compatible Storage Configuration
             - name: S3_ENDPOINT
               valueFrom:

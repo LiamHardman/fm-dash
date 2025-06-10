@@ -162,6 +162,11 @@ Multi-dimensional search capabilities:
 Key configuration options:
 
 ```bash
+# Image Storage Configuration
+IMAGE_API_URL=https://sortitoutsi.b-cdn.net/uploads  # External CDN for player faces and team logos
+FACES_DIR=./faces                                    # Local directory fallback for faces
+LOGOS_DIR=./logos                                    # Local directory fallback for logos
+
 # Storage Configuration
 MINIO_ENDPOINT=your-s3-endpoint
 MINIO_ACCESS_KEY=your-access-key

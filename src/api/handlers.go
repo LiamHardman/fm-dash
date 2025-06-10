@@ -1852,7 +1852,7 @@ func processBargainHunter(players []Player, maxBudget, maxSalary, minAge, maxAge
 	return results
 }
 
-// facesHandler serves player face images from S3 or local storage
+// facesHandler serves player face images from external API, S3 or local storage
 func facesHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	ctx, span := StartSpan(ctx, "handlers.faces")
@@ -1880,6 +1880,17 @@ func facesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	logInfo(ctx, "Processing face image request", "uid", uid)
+
+	// Check if IMAGE_API_URL is configured - if so, redirect to external API
+	if imageApiUrl := os.Getenv("IMAGE_API_URL"); imageApiUrl != "" {
+		externalUrl := fmt.Sprintf("%s/face/%s.png?width=256", imageApiUrl, uid)
+		logInfo(ctx, "Redirecting to external image API", "url", externalUrl)
+
+		// Set appropriate headers for redirect
+		setCORSHeaders(w, r)
+		http.Redirect(w, r, externalUrl, http.StatusFound)
+		return
+	}
 
 	// Set appropriate headers for image response
 	w.Header().Set("Content-Type", "image/png")
@@ -1930,7 +1941,7 @@ func getFacesDirectory() string {
 	return facesDir
 }
 
-// logosHandler serves team logo images from S3 or local storage
+// logosHandler serves team logo images from external API, S3 or local storage
 func logosHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	ctx, span := StartSpan(ctx, "handlers.logos")
@@ -1958,6 +1969,17 @@ func logosHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	logInfo(ctx, "Processing team logo request", "teamId", teamId)
+
+	// Check if IMAGE_API_URL is configured - if so, redirect to external API
+	if imageApiUrl := os.Getenv("IMAGE_API_URL"); imageApiUrl != "" {
+		externalUrl := fmt.Sprintf("%s/team/%s.png?width=256", imageApiUrl, teamId)
+		logInfo(ctx, "Redirecting to external image API", "url", externalUrl)
+
+		// Set appropriate headers for redirect
+		setCORSHeaders(w, r)
+		http.Redirect(w, r, externalUrl, http.StatusFound)
+		return
+	}
 
 	// Set appropriate headers for image response
 	w.Header().Set("Content-Type", "image/png")

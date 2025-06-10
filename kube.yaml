@@ -59,6 +59,10 @@ spec:
             - name: SERVICE_NAMESPACE 
               value: "fmdash"
             
+            # Image Storage Configuration
+            - name: IMAGE_API_URL
+              value: "https://sortitoutsi.b-cdn.net/uploads"
+            
             # Analytics Configuration
             - name: VITE_GA_TRACKING_ID
               value: "G-QYG3QS5C5Y"  # Production Google Analytics tracking ID
