@@ -1,3 +1,9 @@
+## [1.8.4](https://git.liamhardman.com/liam/fm24-golang/compare/v1.8.3...v1.8.4) (2025-06-12)
+
+### 🐛 Bug Fixes
+
+* fixed typeerror stopping ratings for nations from showign on nations page ([52f8192](https://git.liamhardman.com/liam/fm24-golang/commit/52f8192a79a68b63e463a1b45c128fd16bd51285))
+
 ## [1.8.3](https://git.liamhardman.com/liam/fm24-golang/compare/v1.8.2...v1.8.3) (2025-06-10)
 
 ### 🐛 Bug Fixes
