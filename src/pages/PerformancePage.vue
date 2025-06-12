@@ -70,6 +70,50 @@
         <!-- Performance Categories -->
         <div v-if="!pageLoadingError && currentDatasetId && allPlayersData.length > 0" class="performance-content">
             <div class="categories-container">
+                <!-- General Stats -->
+                <div class="category-section">
+                    <h2 class="category-title">
+                        <q-icon name="assessment" class="q-mr-sm" />
+                        General
+                    </h2>
+                    <div class="stats-grid">
+                        <div v-for="stat in generalStats" :key="stat.key" class="stat-card">
+                            <q-card flat bordered class="full-height">
+                                <q-card-section class="stat-header">
+                                    <div class="stat-name">{{ stat.name }}</div>
+                                </q-card-section>
+                                <q-card-section class="stat-players">
+                                    <div v-if="topPlayersByStat[stat.key] && topPlayersByStat[stat.key].length > 0">
+                                        <q-list separator dense>
+                                            <q-item 
+                                                v-for="(player, index) in topPlayersByStat[stat.key]" 
+                                                :key="player.id || index"
+                                                clickable
+                                                @click="openPlayerDetail(player)"
+                                                class="player-item"
+                                            >
+                                                <q-item-section avatar>
+                                                    <div class="rank-badge">{{ index + 1 }}</div>
+                                                </q-item-section>
+                                                <q-item-section>
+                                                    <q-item-label class="player-name">{{ getPlayerName(player) }}</q-item-label>
+                                                    <q-item-label caption>{{ getPlayerClub(player) }}</q-item-label>
+                                                </q-item-section>
+                                                <q-item-section side>
+                                                    <div class="stat-value">{{ formatStatValue(player.attributes[stat.key]) }}</div>
+                                                </q-item-section>
+                                            </q-item>
+                                        </q-list>
+                                    </div>
+                                    <div v-else class="no-data-message">
+                                        No data available
+                                    </div>
+                                </q-card-section>
+                            </q-card>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Offensive Stats -->
                 <div class="category-section">
                     <h2 class="category-title">
@@ -201,6 +245,50 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Goalkeeping Stats -->
+                <div class="category-section">
+                    <h2 class="category-title">
+                        <q-icon name="sports_hockey" class="q-mr-sm" />
+                        Goalkeeping
+                    </h2>
+                    <div class="stats-grid">
+                        <div v-for="stat in goalkeepingStats" :key="stat.key" class="stat-card">
+                            <q-card flat bordered class="full-height">
+                                <q-card-section class="stat-header">
+                                    <div class="stat-name">{{ stat.name }}</div>
+                                </q-card-section>
+                                <q-card-section class="stat-players">
+                                    <div v-if="topPlayersByStat[stat.key] && topPlayersByStat[stat.key].length > 0">
+                                        <q-list separator dense>
+                                            <q-item 
+                                                v-for="(player, index) in topPlayersByStat[stat.key]" 
+                                                :key="player.id || index"
+                                                clickable
+                                                @click="openPlayerDetail(player)"
+                                                class="player-item"
+                                            >
+                                                <q-item-section avatar>
+                                                    <div class="rank-badge">{{ index + 1 }}</div>
+                                                </q-item-section>
+                                                <q-item-section>
+                                                    <q-item-label class="player-name">{{ getPlayerName(player) }}</q-item-label>
+                                                    <q-item-label caption>{{ getPlayerClub(player) }}</q-item-label>
+                                                </q-item-section>
+                                                <q-item-section side>
+                                                    <div class="stat-value">{{ formatStatValue(player.attributes[stat.key]) }}</div>
+                                                </q-item-section>
+                                            </q-item>
+                                        </q-list>
+                                    </div>
+                                    <div v-else class="no-data-message">
+                                        No data available
+                                    </div>
+                                </q-card-section>
+                            </q-card>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -239,37 +327,56 @@ const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol
 const currentDatasetId = computed(() => playerStore.currentDatasetId)
 
 // Performance stat categories
+const generalStats = [
+    { key: 'Av Rat', name: 'Average Rating' },
+    { key: 'Apps', name: 'Appearances' },
+    { key: 'Mins', name: 'Minutes Played' },
+    { key: 'Clean Sheets', name: 'Clean Sheets' }
+]
+
 const offensiveStats = [
-    { key: 'Drb/90', name: 'Dribbles per 90' },
-    { key: 'xG/90', name: 'Expected Goals per 90' },
-    { key: 'ShT/90', name: 'Shots on Target per 90' },
-    { key: 'Shot/90', name: 'Shots per 90' },
     { key: 'Gls/90', name: 'Goals per 90' },
-    { key: 'Asts/90', name: 'Assists per 90' }
+    { key: 'xG/90', name: 'Expected Goals per 90' },
+    { key: 'NP-xG/90', name: 'Non-Penalty xG per 90' },
+    { key: 'Shot/90', name: 'Shots per 90' },
+    { key: 'ShT/90', name: 'Shots on Target per 90' },
+    { key: 'Conv %', name: 'Conversion %' },
+    { key: 'Drb/90', name: 'Dribbles per 90' }
 ]
 
 const passingStats = [
-    { key: 'Ch C/90', name: 'Chances Created per 90' },
-    { key: 'Cr C/90', name: 'Crosses Completed per 90' },
+    { key: 'Asts/90', name: 'Assists per 90' },
     { key: 'xA/90', name: 'Expected Assists per 90' },
+    { key: 'Ch C/90', name: 'Chances Created per 90' },
     { key: 'K Ps/90', name: 'Key Passes per 90' },
-    { key: 'Pas %', name: 'Pass Completion %' },
     { key: 'Ps C/90', name: 'Passes Completed per 90' },
-    { key: 'Poss Lost/90', name: 'Possession Lost per 90' },
+    { key: 'Ps A/90', name: 'Pass Attempts per 90' },
+    { key: 'Pas %', name: 'Pass Completion %' },
     { key: 'Pr passes/90', name: 'Progressive Passes per 90' },
-    { key: 'Cr C/A', name: 'Cross Completion %' }
+    { key: 'Cr C/90', name: 'Crosses Completed per 90' },
+    { key: 'CRS A/90', name: 'Crosses Attempted per 90' },
+    { key: 'Cr C/A', name: 'Cross Completion %' },
+    { key: 'Poss Lost/90', name: 'Possession Lost per 90' }
 ]
 
 const defensiveStats = [
-    { key: 'Blk/90', name: 'Blocks per 90' },
-    { key: 'Clr/90', name: 'Clearances per 90' },
-    { key: 'Hdrs W/90', name: 'Headers Won per 90' },
-    { key: 'Int/90', name: 'Interceptions per 90' },
-    { key: 'Poss Won/90', name: 'Possession Won per 90' },
-    { key: 'Pres C/90', name: 'Pressures Completed per 90' },
-    { key: 'Tck R', name: 'Tackle Ratio %' },
     { key: 'Tck/90', name: 'Tackles per 90' },
-    { key: 'Conv %', name: 'Conversion %' }
+    { key: 'Tck R', name: 'Tackle Ratio %' },
+    { key: 'Int/90', name: 'Interceptions per 90' },
+    { key: 'Clr/90', name: 'Clearances per 90' },
+    { key: 'Blk/90', name: 'Blocks per 90' },
+    { key: 'Hdrs W/90', name: 'Headers Won per 90' },
+    { key: 'Pres C/90', name: 'Pressures Completed per 90' },
+    { key: 'Poss Won/90', name: 'Possession Won per 90' },
+    { key: 'Fls', name: 'Fouls' },
+    { key: 'FA', name: 'Fouls Against' }
+]
+
+const goalkeepingStats = [
+    { key: 'Con/90', name: 'Goals Conceded per 90' },
+    { key: 'Cln/90', name: 'Clean Sheets per 90' },
+    { key: 'xGP/90', name: 'Expected Goals Prevented per 90' },
+    { key: 'Sv %', name: 'Save Percentage' }
 ]
 
 // Helper methods
@@ -285,23 +392,48 @@ const getPlayerClub = (player) => {
 const calculateTopPerformers = () => {
     console.log('🔍 Calculating performance stats for', allPlayersData.value.length, 'players')
     
-    const allStats = [...offensiveStats, ...passingStats, ...defensiveStats]
+    const allStats = [...generalStats, ...offensiveStats, ...passingStats, ...defensiveStats, ...goalkeepingStats]
     const results = {}
     
     allStats.forEach(stat => {
         // Filter players who have this stat
         const playersWithStat = allPlayersData.value.filter(player => {
             const value = player.attributes?.[stat.key]
-            return value !== undefined && value !== null && value !== '-' && value !== '' && !isNaN(parseFloat(value)) && parseFloat(value) > 0
+            if (value === undefined || value === null || value === '-' || value === '') {
+                return false
+            }
+            
+            // Handle comma-separated values and convert to number
+            const cleanValue = value.toString().replace(/,/g, '').replace(/%/g, '')
+            const numValue = parseFloat(cleanValue)
+            
+            // For defensive stats that should be lower (like Con/90), include all valid positive values
+            // For most other stats, only include values > 0
+            if (stat.key === 'Con/90') {
+                return !isNaN(numValue) && numValue >= 0
+            } else {
+                return !isNaN(numValue) && numValue > 0
+            }
         })
         
         console.log(`Found ${playersWithStat.length} players with valid ${stat.key} data`)
         
-        // Sort by stat value (descending) and take top 10
+        // Sort by stat value - ascending for "lower is better" stats, descending for others
         const sortedPlayers = playersWithStat.sort((a, b) => {
-            const valueA = parseFloat(a.attributes[stat.key])
-            const valueB = parseFloat(b.attributes[stat.key])
-            return valueB - valueA
+            const getNumericValue = (val) => {
+                const cleaned = val.toString().replace(/,/g, '').replace(/%/g, '')
+                return parseFloat(cleaned)
+            }
+            
+            const valueA = getNumericValue(a.attributes[stat.key])
+            const valueB = getNumericValue(b.attributes[stat.key])
+            
+            // For goals conceded, lower is better
+            if (stat.key === 'Con/90') {
+                return valueA - valueB
+            } else {
+                return valueB - valueA
+            }
         })
         
         results[stat.key] = sortedPlayers.slice(0, 10)
@@ -315,10 +447,26 @@ const formatStatValue = (value) => {
         return 'N/A'
     }
     
-    // Convert to number first
-    const numValue = parseFloat(value)
+    // Convert to string to handle both number and string values
+    const stringValue = value.toString()
+    
+    // Handle comma-separated values (like minutes)
+    const cleanValue = stringValue.replace(/,/g, '')
+    
+    // Convert to number
+    const numValue = parseFloat(cleanValue)
     if (isNaN(numValue)) {
         return 'N/A'
+    }
+    
+    // Special formatting for different stat types
+    if (stringValue.includes('%') || stringValue.includes('Sv %') || stringValue.includes('Conv %') || stringValue.includes('Pas %') || stringValue.includes('Tck R') || stringValue.includes('Cr C/A')) {
+        return numValue.toFixed(1) + '%'
+    }
+    
+    // For large numbers like minutes, add commas
+    if (numValue >= 1000 && Number.isInteger(numValue)) {
+        return numValue.toLocaleString()
     }
     
     // Round to 2 decimal places for most stats
