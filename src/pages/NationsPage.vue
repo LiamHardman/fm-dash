@@ -1396,7 +1396,15 @@ export default {
     })
 
     const nationIsGoalkeeperView = computed(() => {
-      return nationPlayers.value.some(p => p.positionGroups?.includes('Goalkeepers'))
+      // Only show goalkeeper view if more than half the players are goalkeepers
+      if (nationPlayers.value.length === 0) return false
+
+      const goalkeeperCount = nationPlayers.value.filter(p =>
+        p.positionGroups?.includes('Goalkeepers')
+      ).length
+
+      // Only show goalkeeper view if more than half the players are goalkeepers
+      return goalkeeperCount > nationPlayers.value.length / 2
     })
 
     const handlePlayerSelectedFromNation = player => {
