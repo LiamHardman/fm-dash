@@ -1,3 +1,9 @@
+## [1.9.0](https://git.liamhardman.com/liam/fm24-golang/compare/v1.8.5...v1.9.0) (2025-06-12)
+
+### 🚀 Features
+
+* performance page very WIP ([cd24024](https://git.liamhardman.com/liam/fm24-golang/commit/cd24024152bf9b31abf50cf5dc674cbe018d32ee))
+
 ## [1.8.5](https://git.liamhardman.com/liam/fm24-golang/compare/v1.8.4...v1.8.5) (2025-06-12)
 
 ### 🐛 Bug Fixes
