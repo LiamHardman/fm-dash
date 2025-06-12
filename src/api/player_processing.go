@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"math"
 	"sort"
@@ -261,8 +262,46 @@ func EnhancePlayerWithCalculations(player *Player) {
 			if isPerfStat {
 				if valStr != "-" && valStr != "" {
 					statStrCleaned := strings.ReplaceAll(valStr, "%", "") // Remove percentage sign for parsing
-					if val, err := strconv.ParseFloat(statStrCleaned, 64); err == nil {
-						player.PerformanceStatsNumeric[key] = val
+
+					// Handle specific cases for different performance stats
+					var parsedValue float64
+					var err error
+
+					switch key {
+					case "Mins":
+						// Handle comma-separated minutes like "1,980"
+						minsCleaned := strings.ReplaceAll(statStrCleaned, ",", "")
+						parsedValue, err = strconv.ParseFloat(minsCleaned, 64)
+					case "Apps":
+						// Handle appearances with substitutes like "22 (4)"
+						if strings.Contains(statStrCleaned, "(") {
+							// Extract main appearances and substitute appearances
+							parts := strings.Split(statStrCleaned, " (")
+							if len(parts) == 2 {
+								mainApps, err1 := strconv.ParseFloat(strings.TrimSpace(parts[0]), 64)
+								subAppsStr := strings.TrimRight(strings.TrimSpace(parts[1]), ")")
+								subApps, err2 := strconv.ParseFloat(subAppsStr, 64)
+								if err1 == nil && err2 == nil {
+									parsedValue = mainApps + subApps
+									err = nil
+								} else {
+									err = fmt.Errorf("failed to parse appearances")
+								}
+							} else {
+								err = fmt.Errorf("invalid appearances format")
+							}
+						} else {
+							// Simple number
+							parsedValue, err = strconv.ParseFloat(statStrCleaned, 64)
+						}
+					default:
+						// Default parsing - remove commas for any other stats that might have them
+						statStrCleaned = strings.ReplaceAll(statStrCleaned, ",", "")
+						parsedValue, err = strconv.ParseFloat(statStrCleaned, 64)
+					}
+
+					if err == nil {
+						player.PerformanceStatsNumeric[key] = parsedValue
 					} else {
 						player.PerformanceStatsNumeric[key] = math.NaN() // Use NaN for unparseable stats
 					}

@@ -1438,16 +1438,14 @@ export default defineComponent({
       const result = {}
       
       // Start with General at the top for all players
-      const categoryOrder = ['General', 'Passing']
+      let categoryOrder = ['General']
       
-      // Add Offensive and Defensive only for non-goalkeepers
-      if (!isGoalkeeper.value) {
-        categoryOrder.push('Offensive', 'Defensive')
-      }
-      
-      // Add Goalkeeping category for goalkeepers
+      // For goalkeepers: General → Goalkeeping → Passing
+      // For outfield players: General → Passing → Offensive → Defensive
       if (isGoalkeeper.value) {
-        categoryOrder.push('Goalkeeping')
+        categoryOrder.push('Goalkeeping', 'Passing')
+      } else {
+        categoryOrder.push('Passing', 'Offensive', 'Defensive')
       }
 
       for (const categoryName of categoryOrder) {
@@ -1474,7 +1472,19 @@ export default defineComponent({
           }
 
           if (statsInCategory.length > 0) {
-            result[categoryName] = statsInCategory.sort((a, b) => a.name.localeCompare(b.name))
+            // For General category, put Average Rating first
+            if (categoryName === 'General') {
+              const avgRatingIndex = statsInCategory.findIndex(stat => stat.key === 'Av Rat')
+              if (avgRatingIndex > -1) {
+                const avgRatingStat = statsInCategory.splice(avgRatingIndex, 1)[0]
+                const otherStats = statsInCategory.sort((a, b) => a.name.localeCompare(b.name))
+                result[categoryName] = [avgRatingStat, ...otherStats]
+              } else {
+                result[categoryName] = statsInCategory.sort((a, b) => a.name.localeCompare(b.name))
+              }
+            } else {
+              result[categoryName] = statsInCategory.sort((a, b) => a.name.localeCompare(b.name))
+            }
           }
         }
       }
