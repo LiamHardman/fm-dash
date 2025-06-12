@@ -109,54 +109,6 @@
                             
                             <q-card-section class="q-pa-md">
                                 <div v-if="hasAnyPerformanceData" class="percentile-content-area">
-                                    <div v-if="averageRatingData" class="q-mb-md">
-                                        <q-item class="performance-stat-item modern-stat-item average-rating-item">
-                                            <q-item-section class="stat-name-section">
-                                                <q-item-label
-                                                    lines="1"
-                                                    class="stat-name-label"
-                                                    :title="averageRatingData.name"
-                                                >
-                                                    {{ averageRatingData.name }}
-                                                </q-item-label>
-                                            </q-item-section>
-                                            <q-item-section class="stat-bar-section">
-                                                <div class="stat-bar-container">
-                                                    <div class="stat-bar-track">
-                                                        <div
-                                                            class="stat-bar-fill"
-                                                            :style="getBarFillStyle(averageRatingData.percentile)"
-                                                        ></div>
-                                                    </div>
-                                                    <span
-                                                        v-if="
-                                                            averageRatingData.percentile !== null &&
-                                                            averageRatingData.percentile >= 0
-                                                        "
-                                                        class="stat-percentile-text"
-                                                    >
-                                                        {{ Math.round(averageRatingData.percentile) }}
-                                                    </span>
-                                                    <span
-                                                        v-else
-                                                        class="stat-percentile-text text-caption text-grey-6"
-                                                        >N/A</span
-                                                    >
-                                                </div>
-                                            </q-item-section>
-                                            <q-item-section side class="stat-value-section">
-                                                <span class="performance-stat-value">
-                                                    {{ averageRatingData.value !== "-" ? averageRatingData.value : "N/A" }}
-                                                </span>
-                                            </q-item-section>
-                                        </q-item>
-                                    </div>
-
-                                    <q-separator
-                                        v-if="averageRatingData && Object.keys(categorizedPerformanceStats).length > 0"
-                                        class="q-my-md performance-separator"
-                                    />
-
                                     <div
                                         v-for="(stats, category, index) in categorizedPerformanceStats"
                                         :key="category"
@@ -997,20 +949,42 @@ const performanceStatMap = {
   'Conv %': 'Conversion %',
   'Tck R': 'Tackle Ratio %',
   'Pas %': 'Pass Completion %',
-  'Cr C/A': 'Cross Completion %'
+  'Cr C/A': 'Cross Completion %',
+  // New performance stats
+  'Fls': 'Fouls',
+  'Apps': 'Appearances',
+  'NP-xG/90': 'Non-Penalty xG per 90',
+  'Ps A/90': 'Pass Attempts per 90',
+  'Mins': 'Minutes Played',
+  'Clean Sheets': 'Clean Sheets',
+  'FA': 'Fouls Against',
+  'CRS A/90': 'Crosses Attempted per 90',
+  // Goalkeeper-specific stats
+  'Con/90': 'Goals Conceded per 90',
+  'Cln/90': 'Clean Sheets per 90',
+  'xGP/90': 'Expected Goals Prevented per 90',
+  'Sv %': 'Save Percentage'
 }
 
 const performanceStatCategories = {
-  Offensive: ['Gls/90', 'xG/90', 'Shot/90', 'ShT/90', 'Conv %', 'Drb/90'],
+  General: [
+    'Av Rat',
+    'Apps',
+    'Mins',
+    'Clean Sheets'
+  ],
+  Offensive: ['Gls/90', 'xG/90', 'NP-xG/90', 'Shot/90', 'ShT/90', 'Conv %', 'Drb/90'],
   Passing: [
     'Asts/90',
     'xA/90',
     'Ch C/90',
     'K Ps/90',
     'Ps C/90',
+    'Ps A/90',
     'Pas %',
     'Pr passes/90',
     'Cr C/90',
+    'CRS A/90',
     'Cr C/A',
     'Poss Lost/90'
   ],
@@ -1022,7 +996,15 @@ const performanceStatCategories = {
     'Blk/90',
     'Hdrs W/90',
     'Pres C/90',
-    'Poss Won/90'
+    'Poss Won/90',
+    'Fls',
+    'FA'
+  ],
+  Goalkeeping: [
+    'Con/90',
+    'Cln/90',
+    'xGP/90',
+    'Sv %'
   ]
 }
 
@@ -1454,7 +1436,19 @@ export default defineComponent({
       }
 
       const result = {}
-      const categoryOrder = ['Offensive', 'Passing', 'Defensive']
+      
+      // Start with General at the top for all players
+      const categoryOrder = ['General', 'Passing']
+      
+      // Add Offensive and Defensive only for non-goalkeepers
+      if (!isGoalkeeper.value) {
+        categoryOrder.push('Offensive', 'Defensive')
+      }
+      
+      // Add Goalkeeping category for goalkeepers
+      if (isGoalkeeper.value) {
+        categoryOrder.push('Goalkeeping')
+      }
 
       for (const categoryName of categoryOrder) {
         if (performanceStatCategories[categoryName]) {
@@ -1495,7 +1489,7 @@ export default defineComponent({
     })
 
     const hasAnyPerformanceData = computed(
-      () => averageRatingData.value || Object.keys(categorizedPerformanceStats.value).length > 0
+      () => Object.keys(categorizedPerformanceStats.value).length > 0
     )
 
     const getUnifiedRatingClass = (value, maxScale) => {
@@ -1622,7 +1616,6 @@ export default defineComponent({
       selectedComparisonGroup,
       performanceComparisonOptions,
       categorizedPerformanceStats,
-      averageRatingData,
       hasAnyPerformanceData,
       flagLoadError,
       handleFlagError,

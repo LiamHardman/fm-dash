@@ -102,6 +102,10 @@ var PerformanceStatKeys = []string{
 	"xA/90", "xG/90", "Gls/90", "Hdrs W/90", "Int/90", "K Ps/90", "Ps C/90",
 	"Shot/90", "Tck/90", "Poss Won/90", "ShT/90", "Pres C/90", "Poss Lost/90",
 	"Pr passes/90", "Conv %", "Tck R", "Pas %", "Cr C/A",
+	// New performance stats
+	"Fls", "Apps", "NP-xG/90", "Ps A/90", "Mins", "Clean Sheets", "FA", "CRS A/90",
+	// Goalkeeper-specific stats
+	"Con/90", "Cln/90", "xGP/90", "Sv %",
 }
 
 // PositionGroupsForPercentiles defines broad player categories used for percentile calculations.
