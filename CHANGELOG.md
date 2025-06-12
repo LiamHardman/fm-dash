@@ -1,3 +1,9 @@
+## [1.11.0](https://git.liamhardman.com/liam/fm24-golang/compare/v1.10.1...v1.11.0) (2025-06-12)
+
+### 🚀 Features
+
+* very initial scatter plot implementation ([83c897c](https://git.liamhardman.com/liam/fm24-golang/commit/83c897caa967e5b168580b7a9b8646580efdef8c))
+
 ## [1.10.1](https://git.liamhardman.com/liam/fm24-golang/compare/v1.10.0...v1.10.1) (2025-06-12)
 
 ### 🐛 Bug Fixes
