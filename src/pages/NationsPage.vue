@@ -370,8 +370,8 @@
                     
                     <div class="nations-list">
                         <div
-                            v-for="nation in (showAllNations ? nationsWithRatings : nationsWithRatings.slice(0, 10))"
-                            :key="nation.name"
+                            v-for="nation in (showAllNations ? nationsWithRatings : nationsWithRatings.slice(0, 10)).filter(n => n && n.name)"
+                            :key="nation.name || 'unknown'"
                             class="nation-row"
                             :class="{ 'calculating': nation.isCalculating }"
                             @click="selectNation(nation.name)"
