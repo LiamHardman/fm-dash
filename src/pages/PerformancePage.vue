@@ -70,6 +70,27 @@
         <!-- Performance Categories -->
         <div v-if="!pageLoadingError && currentDatasetId && allPlayersData.length > 0" class="performance-content">
             <div class="categories-container">
+                <!-- Visualizations Section -->
+                <div class="category-section">
+                    <h2 class="category-title">
+                        <q-icon name="scatter_plot" class="q-mr-sm" />
+                        Player Visualizations
+                    </h2>
+                    <div class="charts-grid">
+                         <ScatterPlotCard
+                            v-for="config in scatterPlotConfigs"
+                            :key="config.title"
+                            :title="config.title"
+                            :allPlayersData="allPlayersData"
+                            :xAxisKey="config.xAxisKey"
+                            :yAxisKey="config.yAxisKey"
+                            :xAxisLabel="config.xAxisLabel"
+                            :yAxisLabel="config.yAxisLabel"
+                            :quadrantLabels="config.quadrantLabels"
+                         />
+                    </div>
+                </div>
+
                 <!-- General Stats -->
                 <div class="category-section">
                     <h2 class="category-title">
@@ -309,6 +330,8 @@ import { useRouter, useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
 import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
 import { usePlayerStore } from '../stores/playerStore'
+// Import the new scatter plot component
+import ScatterPlotCard from '../components/ScatterPlotCard.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -325,6 +348,72 @@ const topPlayersByStat = ref({})
 const allPlayersData = computed(() => playerStore.allPlayers)
 const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol)
 const currentDatasetId = computed(() => playerStore.currentDatasetId)
+
+
+// Scatter Plot Configurations
+const scatterPlotConfigs = ref([
+    // Forwards & Goal-Scorers
+    {
+        title: 'Shooting Performance (Forwards)',
+        xAxisKey: 'xG/90',
+        yAxisKey: 'Gls/90',
+        xAxisLabel: 'Expected Goals per 90',
+        yAxisLabel: 'Goals per 90',
+        quadrantLabels: { topRight: 'Elite Scorer', topLeft: 'Clinical Finisher', bottomRight: 'Wasteful Forward', bottomLeft: 'Low Threat' }
+    },
+    {
+        title: 'Shooting Efficiency (Forwards)',
+        xAxisKey: 'Shot/90',
+        yAxisKey: 'Conv %',
+        xAxisLabel: 'Shots per 90',
+        yAxisLabel: 'Conversion %',
+        quadrantLabels: { topRight: 'Elite Attacker', topLeft: 'Selective Shooter', bottomRight: 'Inefficient Volume', bottomLeft: 'Limited Threat' }
+    },
+    // Midfielders & Playmakers
+    {
+        title: 'Creative Passing (Midfielders)',
+        xAxisKey: 'xA/90',
+        yAxisKey: 'Asts/90',
+        xAxisLabel: 'Expected Assists per 90',
+        yAxisLabel: 'Assists per 90',
+        quadrantLabels: { topRight: 'Elite Creator', topLeft: 'Fortunate Creator', bottomRight: 'Unlucky Creator', bottomLeft: 'Limited Creator' }
+    },
+    {
+        title: 'Crossing Performance (Wide Players)',
+        xAxisKey: 'CRS A/90',
+        yAxisKey: 'Cr C/A',
+        xAxisLabel: 'Crosses Attempted per 90',
+        yAxisLabel: 'Cross Completion %',
+        quadrantLabels: { topRight: 'Prolific & Accurate', topLeft: 'Selective & Accurate', bottomRight: 'Inefficient Volume', bottomLeft: 'Ineffective' }
+    },
+    // Defenders & Ball-Winners
+    {
+        title: 'Defensive Duels (Defenders)',
+        xAxisKey: 'Tck/90',
+        yAxisKey: 'Tck R',
+        xAxisLabel: 'Tackles per 90',
+        yAxisLabel: 'Tackle Success %',
+        quadrantLabels: { topRight: 'Elite Ball-Winner', topLeft: 'Conservative Defender', bottomRight: 'Reckless Defender', bottomLeft: 'Passive Defender' }
+    },
+    {
+        title: 'Pressing Efficiency',
+        xAxisKey: 'Pres C/90',
+        yAxisKey: 'Poss Won/90',
+        xAxisLabel: 'Pressures Completed per 90',
+        yAxisLabel: 'Possession Won per 90',
+        quadrantLabels: { topRight: 'Effective Presser', topLeft: 'Positional Winner', bottomRight: 'Ineffective Presser', bottomLeft: 'Low Activity' }
+    },
+    // Goalkeepers
+    {
+        title: 'Shot-Stopping (Goalkeepers)',
+        xAxisKey: 'Con/90',
+        yAxisKey: 'Sv %',
+        xAxisLabel: 'Goals Conceded per 90',
+        yAxisLabel: 'Save Percentage',
+        quadrantLabels: { topRight: 'Busy & Effective', topLeft: 'Elite Goalkeeper', bottomRight: 'Struggling', bottomLeft: 'Protected' }
+    }
+])
+
 
 // Performance stat categories
 const generalStats = [
@@ -407,16 +496,12 @@ const calculateTopPerformers = () => {
             const cleanValue = value.toString().replace(/,/g, '').replace(/%/g, '')
             const numValue = parseFloat(cleanValue)
             
-            // For defensive stats that should be lower (like Con/90), include all valid positive values
-            // For most other stats, only include values > 0
             if (stat.key === 'Con/90') {
                 return !isNaN(numValue) && numValue >= 0
             } else {
                 return !isNaN(numValue) && numValue > 0
             }
         })
-        
-        console.log(`Found ${playersWithStat.length} players with valid ${stat.key} data`)
         
         // Sort by stat value - ascending for "lower is better" stats, descending for others
         const sortedPlayers = playersWithStat.sort((a, b) => {
@@ -428,7 +513,6 @@ const calculateTopPerformers = () => {
             const valueA = getNumericValue(a.attributes[stat.key])
             const valueB = getNumericValue(b.attributes[stat.key])
             
-            // For goals conceded, lower is better
             if (stat.key === 'Con/90') {
                 return valueA - valueB
             } else {
@@ -447,29 +531,22 @@ const formatStatValue = (value) => {
         return 'N/A'
     }
     
-    // Convert to string to handle both number and string values
     const stringValue = value.toString()
-    
-    // Handle comma-separated values (like minutes)
     const cleanValue = stringValue.replace(/,/g, '')
-    
-    // Convert to number
     const numValue = parseFloat(cleanValue)
+
     if (isNaN(numValue)) {
         return 'N/A'
     }
     
-    // Special formatting for different stat types
-    if (stringValue.includes('%') || stringValue.includes('Sv %') || stringValue.includes('Conv %') || stringValue.includes('Pas %') || stringValue.includes('Tck R') || stringValue.includes('Cr C/A')) {
+    if (stringValue.includes('%') || ['Sv %', 'Conv %', 'Pas %', 'Tck R', 'Cr C/A'].includes(stringValue)) {
         return numValue.toFixed(1) + '%'
     }
     
-    // For large numbers like minutes, add commas
     if (numValue >= 1000 && Number.isInteger(numValue)) {
         return numValue.toLocaleString()
     }
     
-    // Round to 2 decimal places for most stats
     if (numValue % 1 === 0) {
         return numValue.toString()
     } else {
@@ -518,11 +595,9 @@ const shareDataset = () => {
 }
 
 const initializeData = () => {
-    // Check if we have a dataset from route params
     const datasetIdFromRoute = route.params?.datasetId
     const datasetIdFromQuery = route.query?.datasetId
     
-    // If we have a dataset ID from route/query, use it
     if (datasetIdFromRoute || datasetIdFromQuery) {
         const targetDatasetId = datasetIdFromRoute || datasetIdFromQuery
         if (targetDatasetId !== sessionStorage.getItem('currentDatasetId')) {
@@ -530,12 +605,10 @@ const initializeData = () => {
             playerStore.fetchPlayersByDatasetId(targetDatasetId)
         }
     } else if (!currentDatasetId.value) {
-        // No dataset loaded, show error
         pageLoadingError.value = 'No dataset available. Please upload a dataset first.'
         return
     }
     
-    // If we have players data, calculate top performers
     if (allPlayersData.value.length > 0) {
         calculateTopPerformers()
     }
@@ -663,6 +736,12 @@ onMounted(() => {
     gap: 24px;
 }
 
+.charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 24px;
+}
+
 .stat-card {
     height: 100%;
 }
@@ -728,7 +807,7 @@ onMounted(() => {
         align-items: stretch;
     }
     
-    .stats-grid {
+    .stats-grid, .charts-grid {
         grid-template-columns: 1fr;
     }
     
@@ -736,4 +815,4 @@ onMounted(() => {
         padding: 16px;
     }
 }
-</style> 
+</style>
