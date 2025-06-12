@@ -8,6 +8,7 @@ const NationsPage = () => import('../pages/NationsPage.vue')
 const LeaguesPage = () => import('../pages/LeaguesPage.vue')
 const DocsPage = () => import('../pages/DocsPage.vue')
 const WishlistPage = () => import('../pages/WishlistPage.vue')
+const PerformancePage = () => import('../pages/PerformancePage.vue')
 
 const routes = [
   {
@@ -57,6 +58,17 @@ const routes = [
     path: '/leagues/:datasetId',
     name: 'shared-leagues',
     component: LeaguesPage,
+    props: true
+  },
+  {
+    path: '/performance',
+    name: 'performance',
+    component: PerformancePage
+  },
+  {
+    path: '/performance/:datasetId',
+    name: 'shared-performance',
+    component: PerformancePage,
     props: true
   },
   {
