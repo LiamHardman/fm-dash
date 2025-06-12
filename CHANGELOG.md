@@ -1,3 +1,9 @@
+## [1.8.5](https://git.liamhardman.com/liam/fm24-golang/compare/v1.8.4...v1.8.5) (2025-06-12)
+
+### 🐛 Bug Fixes
+
+* nation page table fix ([b82fd9f](https://git.liamhardman.com/liam/fm24-golang/commit/b82fd9f1bae533b946ac281b3dd17c707254ab17))
+
 ## [1.8.4](https://git.liamhardman.com/liam/fm24-golang/compare/v1.8.3...v1.8.4) (2025-06-12)
 
 ### 🐛 Bug Fixes
