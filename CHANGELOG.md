@@ -1,3 +1,13 @@
+## [1.10.0](https://git.liamhardman.com/liam/fm24-golang/compare/v1.9.0...v1.10.0) (2025-06-12)
+
+### 🚀 Features
+
+* new stats ([7d0bffa](https://git.liamhardman.com/liam/fm24-golang/commit/7d0bffa126454a7d8ead4bb4952600a1da94bb71))
+
+### 🐛 Bug Fixes
+
+* fix for minutes processing ([d3bf2aa](https://git.liamhardman.com/liam/fm24-golang/commit/d3bf2aa1a11aba658c73e780edaec23674bd95d6))
+
 ## [1.9.0](https://git.liamhardman.com/liam/fm24-golang/compare/v1.8.5...v1.9.0) (2025-06-12)
 
 ### 🚀 Features
