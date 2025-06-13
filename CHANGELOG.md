@@ -1,3 +1,9 @@
+## [1.12.0](https://git.liamhardman.com/liam/fm24-golang/compare/v1.11.0...v1.12.0) (2025-06-13)
+
+### 🚀 Features
+
+* tabulated performance page ([cab76f5](https://git.liamhardman.com/liam/fm24-golang/commit/cab76f55a40a39bb6e2d9449e52bcc609248bedd))
+
 ## [1.11.0](https://git.liamhardman.com/liam/fm24-golang/compare/v1.10.1...v1.11.0) (2025-06-12)
 
 ### 🚀 Features
