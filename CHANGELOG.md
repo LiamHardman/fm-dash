@@ -1,3 +1,9 @@
+## [1.12.2](https://git.liamhardman.com/liam/fm24-golang/compare/v1.12.1...v1.12.2) (2025-06-13)
+
+### 🐛 Bug Fixes
+
+* fixed plot sizing ([4c50f18](https://git.liamhardman.com/liam/fm24-golang/commit/4c50f18781db8030a48b256e7666d6aa842613dd))
+
 ## [1.12.1](https://git.liamhardman.com/liam/fm24-golang/compare/v1.12.0...v1.12.1) (2025-06-13)
 
 ### 🐛 Bug Fixes
