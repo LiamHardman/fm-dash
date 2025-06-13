@@ -1,7 +1,13 @@
 <template>
     <q-page class="performance-page">
+        <!-- Loading State -->
+        <div v-if="pageLoading" class="loading-state">
+            <q-spinner-orbit color="primary" size="4em" />
+            <div class="loading-text">Loading player database...</div>
+        </div>
+
         <!-- Error State -->
-        <div v-if="pageLoadingError" class="error-container">
+        <div v-else-if="pageLoadingError" class="error-container">
             <q-banner class="error-banner" rounded>
                 <template v-slot:avatar>
                     <q-icon name="error" />
@@ -181,10 +187,11 @@ const showPlayerDetailDialog = ref(false);
 const playerForDetailView = ref(null);
 const topPlayersByStat = ref({});
 const currentTab = ref('attacking');
+const pageLoading = ref(true);
 
 // --- Filter State with new defaults ---
-const sliderValue = ref(1500);
-const selectedMinutes = ref(1500);
+const sliderValue = ref(0);
+const selectedMinutes = ref(0);
 const selectedDivisions = ref(['Premier League', 'Ligue 1 Uber Eats', 'Spanish First Division', 'Serie A', 'Bundesliga']);
 const divisionOptions = ref([]);
 
@@ -195,12 +202,37 @@ const currentDatasetId = computed(() => playerStore.currentDatasetId);
 
 // --- Computed Properties for Filtering ---
 const maxMinutes = computed(() => Math.max(2000, ...allPlayersData.value.map(p => getNumericValue(p.attributes?.Mins) || 0)));
+
+// Function to calculate minutes threshold for ~100 players
+const calculateMinutesThreshold = () => {
+    if (!allPlayersData.value.length) return 0;
+    
+    // First filter by selected divisions
+    const filteredByDivision = allPlayersData.value.filter(player => {
+        const division = getPlayerDivision(player);
+        return selectedDivisions.value.length === 0 || selectedDivisions.value.includes(division);
+    });
+    
+    // Sort players by minutes played in descending order
+    const sortedPlayers = [...filteredByDivision]
+        .map(p => getNumericValue(p.attributes?.Mins) || 0)
+        .sort((a, b) => b - a);
+    
+    // Get the minutes of the 100th player (or last player if less than 100)
+    const targetIndex = Math.min(99, sortedPlayers.length - 1);
+    const rawThreshold = sortedPlayers[targetIndex];
+    
+    // Round to nearest 50
+    return Math.round(rawThreshold / 50) * 50;
+};
+
 const availableDivisions = computed(() => {
     const divisions = [...new Set(allPlayersData.value.map(p => getPlayerDivision(p)).filter(Boolean))].sort();
     // Ensure default selections are included if they exist in the data
     selectedDivisions.value = selectedDivisions.value.filter(d => divisions.includes(d));
     return divisions;
 });
+
 const filteredPlayers = computed(() => {
     return allPlayersData.value.filter(player => {
         const minutesPlayed = getNumericValue(player.attributes?.Mins) || 0;
@@ -286,14 +318,38 @@ const shareDataset = () => {
     });
 };
 
+const fetchPlayersAndCurrency = async datasetId => {
+    pageLoading.value = true;
+    pageLoadingError.value = '';
+    try {
+        await playerStore.fetchPlayersByDatasetId(datasetId);
+        // Set the minutes threshold after data is loaded
+        const threshold = calculateMinutesThreshold();
+        sliderValue.value = threshold;
+        selectedMinutes.value = threshold;
+    } catch (err) {
+        pageLoadingError.value = `Failed to load player data: ${err.message || 'Unknown server error'}. Please try uploading again.`;
+    } finally {
+        pageLoading.value = false;
+    }
+};
+
 const initializeData = async () => {
-    const targetDatasetId = route.params?.datasetId || route.query?.datasetId;
-    if (targetDatasetId) {
-        if (targetDatasetId !== playerStore.currentDatasetId) {
-            await playerStore.fetchPlayersByDatasetId(targetDatasetId);
+    const datasetIdFromQuery = route.query.datasetId;
+    const datasetIdFromRoute = route.params.datasetId;
+    const finalDatasetId = datasetIdFromRoute || datasetIdFromQuery || sessionStorage.getItem('currentDatasetId');
+
+    if (finalDatasetId) {
+        if (datasetIdFromQuery && datasetIdFromQuery !== sessionStorage.getItem('currentDatasetId')) {
+            sessionStorage.setItem('currentDatasetId', datasetIdFromQuery);
+        } else if (!datasetIdFromQuery && sessionStorage.getItem('currentDatasetId')) {
+            // If loading from session, ensure query param is updated for consistency/bookmarking
+            router.replace({ query: { datasetId: finalDatasetId } });
         }
-    } else if (!currentDatasetId.value) {
+        await fetchPlayersAndCurrency(finalDatasetId);
+    } else {
         pageLoadingError.value = 'No dataset available. Please upload a dataset first.';
+        pageLoading.value = false;
     }
 };
 
@@ -305,6 +361,13 @@ const filterDivisionsFn = (val, update) => {
 };
 
 // --- Watchers & Lifecycle ---
+watch(() => route.query.datasetId, async (newId, oldId) => {
+    if (newId && newId !== oldId) {
+        sessionStorage.setItem('currentDatasetId', newId);
+        await fetchPlayersAndCurrency(newId);
+    }
+});
+
 watch(sliderValue, debounce((newValue) => {
     selectedMinutes.value = newValue;
 }, 300));
@@ -331,6 +394,23 @@ $border-radius: 16px;
     background-color: #f4f6f8;
     .body--dark & {
         background-color: #121212;
+    }
+}
+
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 50vh;
+    gap: 1rem;
+
+    .loading-text {
+        font-size: 1.2rem;
+        color: #666;
+        .body--dark & {
+            color: #999;
+        }
     }
 }
 
