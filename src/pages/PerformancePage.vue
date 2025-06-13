@@ -111,7 +111,14 @@
                         <div class="tab-content-layout">
                             <h2 class="category-title">Attacking Visualizations</h2>
                             <div class="charts-grid">
-                                <ScatterPlotCard v-for="config in attackingCharts" :key="config.title" v-bind="config" :is-dark-mode="$q.dark.isActive" :all-players-data="filteredPlayers" />
+                                <ScatterPlotCard 
+                                    v-for="config in attackingCharts" 
+                                    :key="config.title" 
+                                    v-bind="config" 
+                                    :is-dark-mode="$q.dark.isActive" 
+                                    :all-players-data="filteredPlayers"
+                                    @player-click="openPlayerDetail"
+                                />
                             </div>
                             <h2 class="category-title">Attacking Leaderboards</h2>
                             <div class="stats-grid">
@@ -124,7 +131,14 @@
                          <div class="tab-content-layout">
                             <h2 class="category-title">Passing Visualizations</h2>
                             <div class="charts-grid">
-                                <ScatterPlotCard v-for="config in passingCharts" :key="config.title" v-bind="config" :is-dark-mode="$q.dark.isActive" :all-players-data="filteredPlayers" />
+                                <ScatterPlotCard 
+                                    v-for="config in passingCharts" 
+                                    :key="config.title" 
+                                    v-bind="config" 
+                                    :is-dark-mode="$q.dark.isActive" 
+                                    :all-players-data="filteredPlayers"
+                                    @player-click="openPlayerDetail"
+                                />
                             </div>
                             <h2 class="category-title">Passing Leaderboards</h2>
                             <div class="stats-grid">
@@ -137,7 +151,14 @@
                         <div class="tab-content-layout">
                             <h2 class="category-title">Defending Visualizations</h2>
                             <div class="charts-grid">
-                                <ScatterPlotCard v-for="config in defendingCharts" :key="config.title" v-bind="config" :is-dark-mode="$q.dark.isActive" :all-players-data="filteredPlayers" />
+                                <ScatterPlotCard 
+                                    v-for="config in defendingCharts" 
+                                    :key="config.title" 
+                                    v-bind="config" 
+                                    :is-dark-mode="$q.dark.isActive" 
+                                    :all-players-data="filteredPlayers"
+                                    @player-click="openPlayerDetail"
+                                />
                             </div>
                             <h2 class="category-title">Defending Leaderboards</h2>
                             <div class="stats-grid">
@@ -150,7 +171,14 @@
                         <div class="tab-content-layout">
                             <h2 class="category-title">Goalkeeping Visualizations</h2>
                             <div class="charts-grid">
-                                <ScatterPlotCard v-for="config in goalkeepingCharts" :key="config.title" v-bind="config" :is-dark-mode="$q.dark.isActive" :all-players-data="filteredPlayers" />
+                                <ScatterPlotCard 
+                                    v-for="config in goalkeepingCharts" 
+                                    :key="config.title" 
+                                    v-bind="config" 
+                                    :is-dark-mode="$q.dark.isActive" 
+                                    :all-players-data="filteredPlayers"
+                                    @player-click="openPlayerDetail"
+                                />
                             </div>
                             <h2 class="category-title">Goalkeeping Leaderboards</h2>
                             <div class="stats-grid">
@@ -306,7 +334,13 @@ const calculateTopPerformers = () => {
 
 const formatNumber = (num) => new Intl.NumberFormat().format(num);
 const openPlayerDetail = (player) => {
-    playerForDetailView.value = player;
+    // Find the full player object from allPlayersData
+    const fullPlayer = allPlayersData.value.find(p => 
+        p.name === player.name && 
+        p.club === player.club
+    ) || player;
+    
+    playerForDetailView.value = fullPlayer;
     showPlayerDetailDialog.value = true;
 };
 

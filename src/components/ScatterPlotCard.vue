@@ -13,7 +13,11 @@
           Not enough player data to build this chart.
         </div>
         <div :class="{ 'chart-container-hidden': chartData.datasets[0].data.length < 5 }">
-          <Scatter :data="chartData" :options="chartOptions" />
+          <Scatter 
+            :data="chartData" 
+            :options="chartOptions" 
+            @click="handleChartClick"
+          />
         </div>
       </q-card-section>
     </q-card>
@@ -42,6 +46,8 @@
     quadrantLabels: { type: Object, required: true },
     isDarkMode: { type: Boolean, default: false },
   });
+  
+  const emit = defineEmits(['player-click']);
   
   // --- Theme Colors ---
   const lightThemeColors = {
@@ -81,22 +87,18 @@
   const processedData = computed(() => {
     return props.allPlayersData
       .map(player => {
-        const x = getNumericValue(player.attributes?.[props.xAxisKey]);
-        const y = getNumericValue(player.attributes?.[props.yAxisKey]);
-        if (x !== null && y !== null) {
-          return {
-            x,
-            y,
-            player: {
-              name: player.name || player.Name || player.Player || 'Unknown',
-              club: player.club || player.Club || 'Unknown',
-              faceUrl: player.faceUrl || null, // Expect a faceUrl for highlighted player images
-            },
-          };
-        }
-        return null;
+        const xValue = getNumericValue(player.attributes?.[props.xAxisKey]);
+        const yValue = getNumericValue(player.attributes?.[props.yAxisKey]);
+        
+        if (xValue === null || yValue === null) return null;
+        
+        return {
+          x: xValue,
+          y: yValue,
+          player: player // Store the full player object
+        };
       })
-      .filter(p => p !== null);
+      .filter(item => item !== null);
   });
   
   const avgX = computed(() => {
@@ -123,7 +125,8 @@
   
   const chartOptions = computed(() => ({
     responsive: true,
-    maintainAspectRatio: false,
+    maintainAspectRatio: true,
+    aspectRatio: 1.5,
     layout: {
       padding: 20
     },
@@ -165,6 +168,13 @@
           ...generatePlayerHighlightAnnotations(),
         }
       }
+    },
+    onClick: (event, elements) => {
+        if (elements && elements.length > 0) {
+            const index = elements[0].index;
+            const player = processedData.value[index].player;
+            emit('player-click', player);
+        }
     },
   }));
   
@@ -245,7 +255,7 @@
     display: flex;
     flex-direction: column;
     position: relative;
-    height: 500px;
+    height: 600px; /* Reduced from 1000px */
     transition: all 0.3s ease;
     border-radius: 16px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
@@ -329,8 +339,9 @@
   }
   
   .chart-area {
-    flex-grow: 1;
+    flex: 1;
     position: relative;
+    height: 500px; /* Reduced from 900px */
     padding: 1rem;
   }
   
