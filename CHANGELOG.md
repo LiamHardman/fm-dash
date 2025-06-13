@@ -1,3 +1,9 @@
+## [1.12.3](https://git.liamhardman.com/liam/fm24-golang/compare/v1.12.2...v1.12.3) (2025-06-13)
+
+### 🐛 Bug Fixes
+
+* added ability to configure storage retention ([4348438](https://git.liamhardman.com/liam/fm24-golang/commit/43484381397a4dd58a1dad59bce22a397099a623))
+
 ## [1.12.2](https://git.liamhardman.com/liam/fm24-golang/compare/v1.12.1...v1.12.2) (2025-06-13)
 
 ### 🐛 Bug Fixes
