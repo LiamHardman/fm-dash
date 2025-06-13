@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"log"
+	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -175,14 +177,36 @@ func StartCleanupScheduler() {
 	log.Println("Started automatic dataset cleanup scheduler (runs daily)")
 }
 
+// getRetentionPeriod returns the configured retention period for datasets
+func getRetentionPeriod() time.Duration {
+	// Default to 30 days if not configured
+	defaultRetention := 30 * 24 * time.Hour
+
+	// Get retention period from environment variable (in days)
+	retentionDays := os.Getenv("DATASET_RETENTION_DAYS")
+	if retentionDays == "" {
+		return defaultRetention
+	}
+
+	// Parse the retention period
+	days, err := strconv.Atoi(retentionDays)
+	if err != nil || days <= 0 {
+		log.Printf("Invalid DATASET_RETENTION_DAYS value: %s. Using default of 30 days.", retentionDays)
+		return defaultRetention
+	}
+
+	return time.Duration(days) * 24 * time.Hour
+}
+
 func runCleanup() {
 	log.Println("Starting automatic cleanup of old datasets...")
 
 	// Define datasets to exclude from cleanup
 	excludeDatasets := []string{"demo"}
 
-	// Clean up datasets older than 30 days
-	maxAge := 30 * 24 * time.Hour
+	// Get configured retention period
+	maxAge := getRetentionPeriod()
+	log.Printf("Using retention period of %d days", maxAge.Hours()/24)
 
 	err := CleanupOldDatasets(maxAge, excludeDatasets)
 	if err != nil {

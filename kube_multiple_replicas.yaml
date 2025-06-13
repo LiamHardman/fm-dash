@@ -90,6 +90,8 @@ spec:
                 secretKeyRef:
                   name: v2fmdash-minio-secret
                   key: use-ssl
+            - name: DATASET_RETENTION_DAYS
+              value: "30"
           resources:
             requests:
               cpu: "250m"

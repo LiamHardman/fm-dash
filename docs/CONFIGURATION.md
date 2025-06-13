@@ -49,6 +49,9 @@ S3_REGION=us-east-1                 # S3 region
 S3_USE_SSL=false                    # Use SSL for S3 connection (true/false)
 S3_FORCE_PATH_STYLE=true            # Force path-style URLs (for MinIO)
 
+# Dataset Retention Configuration
+DATASET_RETENTION_DAYS=30           # Number of days to retain datasets before automatic cleanup (default: 30)
+
 # Image Storage Configuration
 IMAGE_API_URL=https://sortitoutsi.b-cdn.net/uploads  # External image API URL for faces/logos
 FACES_DIR=./faces                   # Local faces directory (fallback)

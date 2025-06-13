@@ -102,6 +102,8 @@ spec:
                 secretKeyRef:
                   name: v2fmdash-minio-secret
                   key: use-ssl
+            - name: DATASET_RETENTION_DAYS
+              value: "30"
           # No secrets or API keys are mounted as per user request
           resources: # Optional: Define resource requests and limits
             requests:
