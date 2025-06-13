@@ -1,3 +1,9 @@
+## [1.12.4](https://git.liamhardman.com/liam/fm24-golang/compare/v1.12.3...v1.12.4) (2025-06-13)
+
+### 🐛 Bug Fixes
+
+* default closed dropdowns on settings modal and disclaimer for club matching ([4e65a3f](https://git.liamhardman.com/liam/fm24-golang/commit/4e65a3f0e7a3af75b72a0043f520c4d024e895e6))
+
 ## [1.12.3](https://git.liamhardman.com/liam/fm24-golang/compare/v1.12.2...v1.12.3) (2025-06-13)
 
 ### 🐛 Bug Fixes
