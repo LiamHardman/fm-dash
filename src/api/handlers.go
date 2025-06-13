@@ -209,14 +209,14 @@ type Team struct {
 func getMaxUploadSize() int64 {
 	envValue := os.Getenv("MAX_UPLOAD_SIZE")
 	if envValue == "" {
-		return 15 * 1024 * 1024 // Default 15MB
+		return 20 * 1024 * 1024 // Default 15MB
 	}
 
 	// Parse as integer (expecting value in MB)
 	sizeInMB, err := strconv.Atoi(envValue)
 	if err != nil || sizeInMB <= 0 {
-		log.Printf("Invalid MAX_UPLOAD_SIZE environment variable '%s', defaulting to 15MB", envValue)
-		return 15 * 1024 * 1024 // Default 15MB
+		log.Printf("Invalid MAX_UPLOAD_SIZE environment variable '%s', defaulting to 20MB", envValue)
+		return 20 * 1024 * 1024 // Default 15MB
 	}
 
 	return int64(sizeInMB) * 1024 * 1024

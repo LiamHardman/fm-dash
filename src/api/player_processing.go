@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"math"
 	"sort"
 	"strconv"
 	"strings"
@@ -303,10 +302,10 @@ func EnhancePlayerWithCalculations(player *Player) {
 					if err == nil {
 						player.PerformanceStatsNumeric[key] = parsedValue
 					} else {
-						player.PerformanceStatsNumeric[key] = math.NaN() // Use NaN for unparseable stats
+						player.PerformanceStatsNumeric[key] = 0 // Use 0 for unparseable stats
 					}
 				} else {
-					player.PerformanceStatsNumeric[key] = math.NaN() // Use NaN for missing stats ("-")
+					player.PerformanceStatsNumeric[key] = 0 // Use 0 for missing stats ("-")
 				}
 			}
 			// If it's neither a known numeric attribute nor a performance stat, it remains in player.Attributes as a string.

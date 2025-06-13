@@ -24,31 +24,31 @@ type Player struct {
 	NationalityISO          string                        `json:"nationality_iso"`       // ISO 3166-1 alpha-2 code (or similar)
 	NationalityFIFACode     string                        `json:"nationality_fifa_code"` // FIFA country code
 	AttributeMasked         bool                          `json:"attributeMasked,omitempty"`
-	Attributes              map[string]string             `json:"attributes"`             // Raw attributes from HTML
-	NumericAttributes       map[string]int                `json:"numericAttributes"`      // Parsed numeric attributes (1-20 scale)
-	PerformanceStatsNumeric map[string]float64            `json:"-"`                      // Parsed numeric performance stats
-	PerformancePercentiles  map[string]map[string]float64 `json:"performancePercentiles"` // Percentiles for performance stats
-	ParsedPositions         []string                      `json:"parsedPositions"`        // Standardized long position names
-	ShortPositions          []string                      `json:"shortPositions"`         // Standardized short position codes (e.g., DC, ST)
-	PositionGroups          []string                      `json:"positionGroups"`         // Broad groups like "Defenders", "Midfielders"
-	PAC                     int                           `json:"PAC"`                    // Calculated Pace category score (0-99)
-	SHO                     int                           `json:"SHO"`                    // Calculated Shooting category score (0-99)
-	PAS                     int                           `json:"PAS"`                    // Calculated Passing category score (0-99)
-	DRI                     int                           `json:"DRI"`                    // Calculated Dribbling category score (0-99)
-	DEF                     int                           `json:"DEF"`                    // Calculated Defending category score (0-99)
-	PHY                     int                           `json:"PHY"`                    // Calculated Physical category score (0-99)
-	GK                      int                           `json:"GK,omitempty"`           // Calculated Goalkeeping category score (0-99)
-	DIV                     int                           `json:"DIV,omitempty"`          // Calculated Diving category score (0-99)
-	HAN                     int                           `json:"HAN,omitempty"`          // Calculated Handling category score (0-99)
-	REF                     int                           `json:"REF,omitempty"`          // Calculated Reflexes category score (0-99)
-	KIC                     int                           `json:"KIC,omitempty"`          // Calculated Kicking category score (0-99)
-	SPD                     int                           `json:"SPD,omitempty"`          // Calculated Speed category score (0-99)
-	POS                     int                           `json:"POS,omitempty"`          // Calculated Positioning category score (0-99)
-	Overall                 int                           `json:"Overall"`                // Blended overall score (0-99)
-	BestRoleOverall         string                        `json:"bestRoleOverall"`        // Name of the role that produces the highest overall score
-	RoleSpecificOveralls    []RoleOverallScore            `json:"roleSpecificOveralls"`   // Overall scores for specific roles
-	TransferValueAmount     int64                         `json:"transferValueAmount"`    // Numeric transfer value
-	WageAmount              int64                         `json:"wageAmount"`             // Numeric wage amount
+	Attributes              map[string]string             `json:"attributes"`              // Raw attributes from HTML
+	NumericAttributes       map[string]int                `json:"numericAttributes"`       // Parsed numeric attributes (1-20 scale)
+	PerformanceStatsNumeric map[string]float64            `json:"performanceStatsNumeric"` // Performance statistics as numeric values
+	PerformancePercentiles  map[string]map[string]float64 `json:"performancePercentiles"`  // Percentiles for performance stats
+	ParsedPositions         []string                      `json:"parsedPositions"`         // Standardized long position names
+	ShortPositions          []string                      `json:"shortPositions"`          // Standardized short position codes (e.g., DC, ST)
+	PositionGroups          []string                      `json:"positionGroups"`          // Broad groups like "Defenders", "Midfielders"
+	PAC                     int                           `json:"PAC"`                     // Calculated Pace category score (0-99)
+	SHO                     int                           `json:"SHO"`                     // Calculated Shooting category score (0-99)
+	PAS                     int                           `json:"PAS"`                     // Calculated Passing category score (0-99)
+	DRI                     int                           `json:"DRI"`                     // Calculated Dribbling category score (0-99)
+	DEF                     int                           `json:"DEF"`                     // Calculated Defending category score (0-99)
+	PHY                     int                           `json:"PHY"`                     // Calculated Physical category score (0-99)
+	GK                      int                           `json:"GK,omitempty"`            // Calculated Goalkeeping category score (0-99)
+	DIV                     int                           `json:"DIV,omitempty"`           // Calculated Diving category score (0-99)
+	HAN                     int                           `json:"HAN,omitempty"`           // Calculated Handling category score (0-99)
+	REF                     int                           `json:"REF,omitempty"`           // Calculated Reflexes category score (0-99)
+	KIC                     int                           `json:"KIC,omitempty"`
+	SPD                     int                           `json:"SPD,omitempty"`        // Calculated Speed category score (0-99)
+	POS                     int                           `json:"POS,omitempty"`        // Calculated Positioning category score (0-99)
+	Overall                 int                           `json:"Overall"`              // Blended overall score (0-99)
+	BestRoleOverall         string                        `json:"bestRoleOverall"`      // Name of the role that produces the highest overall score
+	RoleSpecificOveralls    []RoleOverallScore            `json:"roleSpecificOveralls"` // Overall scores for specific roles
+	TransferValueAmount     int64                         `json:"transferValueAmount"`  // Numeric transfer value
+	WageAmount              int64                         `json:"wageAmount"`           // Numeric wage amount
 }
 
 // PlayerParseResult is used by worker goroutines to return a parsed player or an error.

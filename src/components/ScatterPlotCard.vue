@@ -87,10 +87,10 @@
   const processedData = computed(() => {
     return props.allPlayersData
       .map(player => {
-        const xValue = getNumericValue(player.attributes?.[props.xAxisKey]);
-        const yValue = getNumericValue(player.attributes?.[props.yAxisKey]);
+        const xValue = getNumericValue(player.performanceStatsNumeric?.[props.xAxisKey] || player.attributes?.[props.xAxisKey]);
+        const yValue = getNumericValue(player.performanceStatsNumeric?.[props.yAxisKey] || player.attributes?.[props.yAxisKey]);
         
-        if (xValue === null || yValue === null) return null;
+        if (xValue === null || yValue === null || xValue === 0 || yValue === 0) return null;
         
         return {
           x: xValue,
