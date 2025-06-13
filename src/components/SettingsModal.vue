@@ -33,9 +33,9 @@
                         icon="assessment"
                         label="Rating Calculation Method"
                         caption="Configure how player ratings are calculated"
-                        default-opened
                         header-class="settings-expansion-header"
                         class="settings-expansion"
+                        :default-opened="false"
                     >
                         <q-card flat class="expansion-content">
                             <q-card-section>
@@ -199,6 +199,7 @@
                         caption="Customize player faces, team logos, and layout options"
                         header-class="settings-expansion-header"
                         class="settings-expansion"
+                        :default-opened="false"
                     >
                         <q-card flat class="expansion-content">
                             <q-card-section>
@@ -236,6 +237,7 @@
                                                     <div class="option-text">
                                                         <div class="option-title">Team Logos</div>
                                                         <div class="option-description">Show or hide team logo images in team displays and player cards</div>
+                                                        <div class="option-disclaimer">Note: Saves with no real name fixes may have incorect logos!</div>
                                                     </div>
                                                 </div>
                                                 <q-toggle
@@ -295,7 +297,7 @@
                         caption="Set default age ranges, positions, and other filter preferences"
                         header-class="settings-expansion-header"
                         class="settings-expansion"
-                        disable
+                        :default-opened="false"
                     >
                         <q-card flat class="expansion-content">
                             <q-card-section>
@@ -906,6 +908,17 @@ export default defineComponent({
     
     .body--dark & {
         color: rgba(255, 255, 255, 0.7);
+    }
+}
+
+.option-disclaimer {
+    font-size: 0.8rem;
+    color: #f57c00;
+    margin-top: 0.5rem;
+    font-style: italic;
+    
+    .body--dark & {
+        color: #ffb74d;
     }
 }
 
