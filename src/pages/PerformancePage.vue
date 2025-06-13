@@ -1,38 +1,5 @@
 <template>
-    <q-page class="performance-page full-height">
-        <!-- Top Bar -->
-        <div class="top-bar" v-if="!pageLoadingError && currentDatasetId && allPlayersData.length > 0">
-            <div class="top-bar-content">
-                <!-- Left section: Page info -->
-                <div class="dataset-info">
-                    <div class="dataset-title">
-                        <q-icon name="trending_up" size="1.2rem" class="q-mr-xs" />
-                        Performance Leaders
-                    </div>
-                    <div class="dataset-stats">
-                        <span class="stat-item">Top Performers by Category</span>
-                        <span class="stat-separator">•</span>
-                        <span class="stat-item">{{ formatNumber(allPlayersData.length) }} Players</span>
-                    </div>
-                </div>
-
-                <!-- Right section: Share button -->
-                <div class="top-bar-controls">
-                    <q-btn
-                        v-if="currentDatasetId"
-                        flat
-                        dense
-                        icon="share"
-                        @click="shareDataset"
-                        class="share-btn"
-                        size="sm"
-                    >
-                        <q-tooltip>Share Performance Data</q-tooltip>
-                    </q-btn>
-                </div>
-            </div>
-        </div>
-
+    <q-page class="performance-page">
         <!-- Error State -->
         <div v-if="pageLoadingError" class="error-container">
             <q-banner class="error-banner" rounded>
@@ -40,779 +7,466 @@
                     <q-icon name="error" />
                 </template>
                 {{ pageLoadingError }}
-                <q-btn
-                    flat
-                    color="white"
-                    label="Go to Upload Page"
-                    @click="router.push('/')"
-                    class="q-ml-md"
-                />
+                <q-btn flat color="white" label="Go to Upload Page" @click="router.push('/')" class="q-ml-md" />
             </q-banner>
         </div>
 
         <!-- No Data State -->
-        <div v-if="!pageLoadingError && (!currentDatasetId || allPlayersData.length === 0)" class="no-data-container">
-            <q-banner class="no-data-banner">
+        <div v-else-if="!currentDatasetId || allPlayersData.length === 0" class="no-data-container">
+             <q-banner class="no-data-banner">
                 <template v-slot:avatar>
                     <q-icon name="warning" />
                 </template>
                 No player data found. Please upload a dataset first.
-                <q-btn
-                    flat
-                    color="primary"
-                    label="Go to Upload Page"
-                    @click="router.push('/')"
-                    class="q-ml-md"
-                />
+                <q-btn flat color="primary" label="Go to Upload Page" @click="router.push('/')" class="q-ml-md"/>
             </q-banner>
         </div>
 
-        <!-- Performance Categories -->
-        <div v-if="!pageLoadingError && currentDatasetId && allPlayersData.length > 0" class="performance-content">
-            <div class="categories-container">
-                <!-- Visualizations Section -->
-                <div class="category-section">
-                    <h2 class="category-title">
-                        <q-icon name="scatter_plot" class="q-mr-sm" />
-                        Player Visualizations
-                    </h2>
-                    <div class="charts-grid">
-                         <ScatterPlotCard
-                            v-for="config in scatterPlotConfigs"
-                            :key="config.title"
-                            :title="config.title"
-                            :allPlayersData="allPlayersData"
-                            :xAxisKey="config.xAxisKey"
-                            :yAxisKey="config.yAxisKey"
-                            :xAxisLabel="config.xAxisLabel"
-                            :yAxisLabel="config.yAxisLabel"
-                            :quadrantLabels="config.quadrantLabels"
-                         />
+        <!-- Main Content -->
+        <div v-else class="main-content">
+            <!-- New Styled Hero Header -->
+            <div class="performance-hero-section">
+                <div class="hero-content">
+                    <div class="hero-left">
+                        <div class="hero-title-line">
+                            <q-icon name="trending_up" size="2.5rem" />
+                            <h1 class="hero-title">Performance Leaders</h1>
+                        </div>
+                        <p class="hero-subtitle">
+                            {{ formatNumber(filteredPlayers.length) }} players matching filters from {{ formatNumber(allPlayersData.length) }} total
+                        </p>
+                    </div>
+                    <div class="hero-right">
+                         <q-btn unelevated icon="share" label="Share" @click="shareDataset" class="share-btn-modern"/>
                     </div>
                 </div>
 
-                <!-- General Stats -->
-                <div class="category-section">
-                    <h2 class="category-title">
-                        <q-icon name="assessment" class="q-mr-sm" />
-                        General
-                    </h2>
-                    <div class="stats-grid">
-                        <div v-for="stat in generalStats" :key="stat.key" class="stat-card">
-                            <q-card flat bordered class="full-height">
-                                <q-card-section class="stat-header">
-                                    <div class="stat-name">{{ stat.name }}</div>
-                                </q-card-section>
-                                <q-card-section class="stat-players">
-                                    <div v-if="topPlayersByStat[stat.key] && topPlayersByStat[stat.key].length > 0">
-                                        <q-list separator dense>
-                                            <q-item 
-                                                v-for="(player, index) in topPlayersByStat[stat.key]" 
-                                                :key="player.id || index"
-                                                clickable
-                                                @click="openPlayerDetail(player)"
-                                                class="player-item"
-                                            >
-                                                <q-item-section avatar>
-                                                    <div class="rank-badge">{{ index + 1 }}</div>
-                                                </q-item-section>
-                                                <q-item-section>
-                                                    <q-item-label class="player-name">{{ getPlayerName(player) }}</q-item-label>
-                                                    <q-item-label caption>{{ getPlayerClub(player) }}</q-item-label>
-                                                </q-item-section>
-                                                <q-item-section side>
-                                                    <div class="stat-value">{{ formatStatValue(player.attributes[stat.key]) }}</div>
-                                                </q-item-section>
-                                            </q-item>
-                                        </q-list>
-                                    </div>
-                                    <div v-else class="no-data-message">
-                                        No data available
-                                    </div>
-                                </q-card-section>
-                            </q-card>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Offensive Stats -->
-                <div class="category-section">
-                    <h2 class="category-title">
-                        <q-icon name="sports_soccer" class="q-mr-sm" />
-                        Offensive
-                    </h2>
-                    <div class="stats-grid">
-                        <div v-for="stat in offensiveStats" :key="stat.key" class="stat-card">
-                            <q-card flat bordered class="full-height">
-                                <q-card-section class="stat-header">
-                                    <div class="stat-name">{{ stat.name }}</div>
-                                </q-card-section>
-                                <q-card-section class="stat-players">
-                                    <div v-if="topPlayersByStat[stat.key] && topPlayersByStat[stat.key].length > 0">
-                                        <q-list separator dense>
-                                            <q-item 
-                                                v-for="(player, index) in topPlayersByStat[stat.key]" 
-                                                :key="player.id || index"
-                                                clickable
-                                                @click="openPlayerDetail(player)"
-                                                class="player-item"
-                                            >
-                                                <q-item-section avatar>
-                                                    <div class="rank-badge">{{ index + 1 }}</div>
-                                                </q-item-section>
-                                                <q-item-section>
-                                                    <q-item-label class="player-name">{{ getPlayerName(player) }}</q-item-label>
-                                                    <q-item-label caption>{{ getPlayerClub(player) }}</q-item-label>
-                                                </q-item-section>
-                                                <q-item-section side>
-                                                    <div class="stat-value">{{ formatStatValue(player.attributes[stat.key]) }}</div>
-                                                </q-item-section>
-                                            </q-item>
-                                        </q-list>
-                                    </div>
-                                    <div v-else class="no-data-message">
-                                        No data available
-                                    </div>
-                                </q-card-section>
-                            </q-card>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Passing Stats -->
-                <div class="category-section">
-                    <h2 class="category-title">
-                        <q-icon name="swap_horiz" class="q-mr-sm" />
-                        Passing
-                    </h2>
-                    <div class="stats-grid">
-                        <div v-for="stat in passingStats" :key="stat.key" class="stat-card">
-                            <q-card flat bordered class="full-height">
-                                <q-card-section class="stat-header">
-                                    <div class="stat-name">{{ stat.name }}</div>
-                                </q-card-section>
-                                <q-card-section class="stat-players">
-                                    <div v-if="topPlayersByStat[stat.key] && topPlayersByStat[stat.key].length > 0">
-                                        <q-list separator dense>
-                                            <q-item 
-                                                v-for="(player, index) in topPlayersByStat[stat.key]" 
-                                                :key="player.id || index"
-                                                clickable
-                                                @click="openPlayerDetail(player)"
-                                                class="player-item"
-                                            >
-                                                <q-item-section avatar>
-                                                    <div class="rank-badge">{{ index + 1 }}</div>
-                                                </q-item-section>
-                                                <q-item-section>
-                                                    <q-item-label class="player-name">{{ getPlayerName(player) }}</q-item-label>
-                                                    <q-item-label caption>{{ getPlayerClub(player) }}</q-item-label>
-                                                </q-item-section>
-                                                <q-item-section side>
-                                                    <div class="stat-value">{{ formatStatValue(player.attributes[stat.key]) }}</div>
-                                                </q-item-section>
-                                            </q-item>
-                                        </q-list>
-                                    </div>
-                                    <div v-else class="no-data-message">
-                                        No data available
-                                    </div>
-                                </q-card-section>
-                            </q-card>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Defensive Stats -->
-                <div class="category-section">
-                    <h2 class="category-title">
-                        <q-icon name="shield" class="q-mr-sm" />
-                        Defensive
-                    </h2>
-                    <div class="stats-grid">
-                        <div v-for="stat in defensiveStats" :key="stat.key" class="stat-card">
-                            <q-card flat bordered class="full-height">
-                                <q-card-section class="stat-header">
-                                    <div class="stat-name">{{ stat.name }}</div>
-                                </q-card-section>
-                                <q-card-section class="stat-players">
-                                    <div v-if="topPlayersByStat[stat.key] && topPlayersByStat[stat.key].length > 0">
-                                        <q-list separator dense>
-                                            <q-item 
-                                                v-for="(player, index) in topPlayersByStat[stat.key]" 
-                                                :key="player.id || index"
-                                                clickable
-                                                @click="openPlayerDetail(player)"
-                                                class="player-item"
-                                            >
-                                                <q-item-section avatar>
-                                                    <div class="rank-badge">{{ index + 1 }}</div>
-                                                </q-item-section>
-                                                <q-item-section>
-                                                    <q-item-label class="player-name">{{ getPlayerName(player) }}</q-item-label>
-                                                    <q-item-label caption>{{ getPlayerClub(player) }}</q-item-label>
-                                                </q-item-section>
-                                                <q-item-section side>
-                                                    <div class="stat-value">{{ formatStatValue(player.attributes[stat.key]) }}</div>
-                                                </q-item-section>
-                                            </q-item>
-                                        </q-list>
-                                    </div>
-                                    <div v-else class="no-data-message">
-                                        No data available
-                                    </div>
-                                </q-card-section>
-                            </q-card>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Goalkeeping Stats -->
-                <div class="category-section">
-                    <h2 class="category-title">
-                        <q-icon name="sports_hockey" class="q-mr-sm" />
-                        Goalkeeping
-                    </h2>
-                    <div class="stats-grid">
-                        <div v-for="stat in goalkeepingStats" :key="stat.key" class="stat-card">
-                            <q-card flat bordered class="full-height">
-                                <q-card-section class="stat-header">
-                                    <div class="stat-name">{{ stat.name }}</div>
-                                </q-card-section>
-                                <q-card-section class="stat-players">
-                                    <div v-if="topPlayersByStat[stat.key] && topPlayersByStat[stat.key].length > 0">
-                                        <q-list separator dense>
-                                            <q-item 
-                                                v-for="(player, index) in topPlayersByStat[stat.key]" 
-                                                :key="player.id || index"
-                                                clickable
-                                                @click="openPlayerDetail(player)"
-                                                class="player-item"
-                                            >
-                                                <q-item-section avatar>
-                                                    <div class="rank-badge">{{ index + 1 }}</div>
-                                                </q-item-section>
-                                                <q-item-section>
-                                                    <q-item-label class="player-name">{{ getPlayerName(player) }}</q-item-label>
-                                                    <q-item-label caption>{{ getPlayerClub(player) }}</q-item-label>
-                                                </q-item-section>
-                                                <q-item-section side>
-                                                    <div class="stat-value">{{ formatStatValue(player.attributes[stat.key]) }}</div>
-                                                </q-item-section>
-                                            </q-item>
-                                        </q-list>
-                                    </div>
-                                    <div v-else class="no-data-message">
-                                        No data available
-                                    </div>
-                                </q-card-section>
-                            </q-card>
-                        </div>
+                <!-- Filter Bar Integrated into Hero -->
+                <div class="filter-bar">
+                    <q-select
+                        v-model="selectedDivisions"
+                        :options="divisionOptions"
+                        label="Filter by Division"
+                        dense
+                        outlined
+                        multiple
+                        use-chips
+                        use-input
+                        @filter="filterDivisionsFn"
+                        class="division-filter"
+                        dark
+                        popup-content-class="bg-grey-10"
+                    >
+                         <template v-slot:no-option>
+                            <q-item>
+                                <q-item-section class="text-grey">No divisions found</q-item-section>
+                            </q-item>
+                        </template>
+                    </q-select>
+                    <div class="minutes-filter">
+                        <div class="slider-label">Minimum Minutes Played</div>
+                        <q-slider
+                            v-model="sliderValue"
+                            :min="0"
+                            :max="maxMinutes"
+                            :step="50"
+                            label
+                            :label-value="`${sliderValue}+ mins`"
+                            label-always
+                            class="q-mt-sm"
+                            dark
+                            color="light-blue-4"
+                        />
                     </div>
                 </div>
             </div>
+
+             <!-- Tabbed Content Section -->
+            <q-card class="tabs-card">
+                <q-tabs
+                    v-model="currentTab"
+                    dense
+                    class="text-grey"
+                    active-color="primary"
+                    indicator-color="primary"
+                    align="justify"
+                    narrow-indicator
+                >
+                    <q-tab name="attacking" icon="sports_soccer" label="Attacking" />
+                    <q-tab name="passing" icon="swap_horiz" label="Passing" />
+                    <q-tab name="defending" icon="shield" label="Defending" />
+                    <q-tab name="goalkeeping" icon="sports_hockey" label="Goalkeeping" />
+                </q-tabs>
+
+                <q-separator />
+
+                <q-tab-panels v-model="currentTab" animated>
+                    <q-tab-panel name="attacking">
+                        <div class="tab-content-layout">
+                            <h2 class="category-title">Attacking Visualizations</h2>
+                            <div class="charts-grid">
+                                <ScatterPlotCard v-for="config in attackingCharts" :key="config.title" v-bind="config" :is-dark-mode="$q.dark.isActive" :all-players-data="filteredPlayers" />
+                            </div>
+                            <h2 class="category-title">Attacking Leaderboards</h2>
+                            <div class="stats-grid">
+                                <StatCard v-for="stat in attackingStats" :key="stat.key" :stat="stat" :players="topPlayersByStat[stat.key]" @player-click="openPlayerDetail" />
+                            </div>
+                        </div>
+                    </q-tab-panel>
+
+                    <q-tab-panel name="passing">
+                         <div class="tab-content-layout">
+                            <h2 class="category-title">Passing Visualizations</h2>
+                            <div class="charts-grid">
+                                <ScatterPlotCard v-for="config in passingCharts" :key="config.title" v-bind="config" :is-dark-mode="$q.dark.isActive" :all-players-data="filteredPlayers" />
+                            </div>
+                            <h2 class="category-title">Passing Leaderboards</h2>
+                            <div class="stats-grid">
+                                <StatCard v-for="stat in passingStats" :key="stat.key" :stat="stat" :players="topPlayersByStat[stat.key]" @player-click="openPlayerDetail" />
+                            </div>
+                        </div>
+                    </q-tab-panel>
+
+                    <q-tab-panel name="defending">
+                        <div class="tab-content-layout">
+                            <h2 class="category-title">Defending Visualizations</h2>
+                            <div class="charts-grid">
+                                <ScatterPlotCard v-for="config in defendingCharts" :key="config.title" v-bind="config" :is-dark-mode="$q.dark.isActive" :all-players-data="filteredPlayers" />
+                            </div>
+                            <h2 class="category-title">Defending Leaderboards</h2>
+                            <div class="stats-grid">
+                                <StatCard v-for="stat in defendingStats" :key="stat.key" :stat="stat" :players="topPlayersByStat[stat.key]" @player-click="openPlayerDetail" />
+                            </div>
+                        </div>
+                    </q-tab-panel>
+
+                    <q-tab-panel name="goalkeeping">
+                        <div class="tab-content-layout">
+                            <h2 class="category-title">Goalkeeping Visualizations</h2>
+                            <div class="charts-grid">
+                                <ScatterPlotCard v-for="config in goalkeepingCharts" :key="config.title" v-bind="config" :is-dark-mode="$q.dark.isActive" :all-players-data="filteredPlayers" />
+                            </div>
+                            <h2 class="category-title">Goalkeeping Leaderboards</h2>
+                            <div class="stats-grid">
+                                <StatCard v-for="stat in goalkeepingStats" :key="stat.key" :stat="stat" :players="topPlayersByStat[stat.key]" @player-click="openPlayerDetail" />
+                            </div>
+                        </div>
+                    </q-tab-panel>
+                </q-tab-panels>
+            </q-card>
         </div>
 
         <!-- Player Detail Dialog -->
-        <PlayerDetailDialog
-            :player="playerForDetailView"
-            :show="showPlayerDetailDialog"
-            @close="showPlayerDetailDialog = false"
-            :currency-symbol="detectedCurrencySymbol"
-            :dataset-id="currentDatasetId"
-        />
+        <PlayerDetailDialog :player="playerForDetailView" :show="showPlayerDetailDialog" @close="showPlayerDetailDialog = false" :currency-symbol="detectedCurrencySymbol" :dataset-id="currentDatasetId" />
     </q-page>
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { useQuasar } from 'quasar'
-import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
-import { usePlayerStore } from '../stores/playerStore'
-// Import the new scatter plot component
-import ScatterPlotCard from '../components/ScatterPlotCard.vue'
+import { ref, onMounted, computed, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
+import { useQuasar, debounce } from 'quasar';
+import PlayerDetailDialog from '../components/PlayerDetailDialog.vue';
+import { usePlayerStore } from '../stores/playerStore';
+import ScatterPlotCard from '../components/ScatterPlotCard.vue';
+import StatCard from '../components/StatCard.vue';
 
-const router = useRouter()
-const route = useRoute()
-const $q = useQuasar()
-const playerStore = usePlayerStore()
+const router = useRouter();
+const route = useRoute();
+const $q = useQuasar();
+const playerStore = usePlayerStore();
 
-// Reactive data
-const pageLoadingError = ref('')
-const showPlayerDetailDialog = ref(false)
-const playerForDetailView = ref(null)
-const topPlayersByStat = ref({})
+// --- Reactive Data ---
+const pageLoadingError = ref('');
+const showPlayerDetailDialog = ref(false);
+const playerForDetailView = ref(null);
+const topPlayersByStat = ref({});
+const currentTab = ref('attacking');
 
-// Computed properties from store
-const allPlayersData = computed(() => playerStore.allPlayers)
-const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol)
-const currentDatasetId = computed(() => playerStore.currentDatasetId)
+// --- Filter State with new defaults ---
+const sliderValue = ref(1500);
+const selectedMinutes = ref(1500);
+const selectedDivisions = ref(['Premier League', 'Ligue 1 Uber Eats', 'Spanish First Division', 'Serie A', 'Bundesliga']);
+const divisionOptions = ref([]);
 
+// --- Computed Properties from Store ---
+const allPlayersData = computed(() => playerStore.allPlayers);
+const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol);
+const currentDatasetId = computed(() => playerStore.currentDatasetId);
 
-// Scatter Plot Configurations
+// --- Computed Properties for Filtering ---
+const maxMinutes = computed(() => Math.max(2000, ...allPlayersData.value.map(p => getNumericValue(p.attributes?.Mins) || 0)));
+const availableDivisions = computed(() => {
+    const divisions = [...new Set(allPlayersData.value.map(p => getPlayerDivision(p)).filter(Boolean))].sort();
+    // Ensure default selections are included if they exist in the data
+    selectedDivisions.value = selectedDivisions.value.filter(d => divisions.includes(d));
+    return divisions;
+});
+const filteredPlayers = computed(() => {
+    return allPlayersData.value.filter(player => {
+        const minutesPlayed = getNumericValue(player.attributes?.Mins) || 0;
+        const division = getPlayerDivision(player);
+        const matchesMinutes = minutesPlayed >= selectedMinutes.value;
+        const matchesDivision = selectedDivisions.value.length === 0 || selectedDivisions.value.includes(division);
+        return matchesMinutes && matchesDivision;
+    });
+});
+
+// --- Data Definitions (Charts & Stats) ---
 const scatterPlotConfigs = ref([
-    // Forwards & Goal-Scorers
-    {
-        title: 'Shooting Performance (Forwards)',
-        xAxisKey: 'xG/90',
-        yAxisKey: 'Gls/90',
-        xAxisLabel: 'Expected Goals per 90',
-        yAxisLabel: 'Goals per 90',
-        quadrantLabels: { topRight: 'Elite Scorer', topLeft: 'Clinical Finisher', bottomRight: 'Wasteful Forward', bottomLeft: 'Low Threat' }
-    },
-    {
-        title: 'Shooting Efficiency (Forwards)',
-        xAxisKey: 'Shot/90',
-        yAxisKey: 'Conv %',
-        xAxisLabel: 'Shots per 90',
-        yAxisLabel: 'Conversion %',
-        quadrantLabels: { topRight: 'Elite Attacker', topLeft: 'Selective Shooter', bottomRight: 'Inefficient Volume', bottomLeft: 'Limited Threat' }
-    },
-    // Midfielders & Playmakers
-    {
-        title: 'Creative Passing (Midfielders)',
-        xAxisKey: 'xA/90',
-        yAxisKey: 'Asts/90',
-        xAxisLabel: 'Expected Assists per 90',
-        yAxisLabel: 'Assists per 90',
-        quadrantLabels: { topRight: 'Elite Creator', topLeft: 'Fortunate Creator', bottomRight: 'Unlucky Creator', bottomLeft: 'Limited Creator' }
-    },
-    {
-        title: 'Crossing Performance (Wide Players)',
-        xAxisKey: 'CRS A/90',
-        yAxisKey: 'Cr C/A',
-        xAxisLabel: 'Crosses Attempted per 90',
-        yAxisLabel: 'Cross Completion %',
-        quadrantLabels: { topRight: 'Prolific & Accurate', topLeft: 'Selective & Accurate', bottomRight: 'Inefficient Volume', bottomLeft: 'Ineffective' }
-    },
-    // Defenders & Ball-Winners
-    {
-        title: 'Defensive Duels (Defenders)',
-        xAxisKey: 'Tck/90',
-        yAxisKey: 'Tck R',
-        xAxisLabel: 'Tackles per 90',
-        yAxisLabel: 'Tackle Success %',
-        quadrantLabels: { topRight: 'Elite Ball-Winner', topLeft: 'Conservative Defender', bottomRight: 'Reckless Defender', bottomLeft: 'Passive Defender' }
-    },
-    {
-        title: 'Pressing Efficiency',
-        xAxisKey: 'Pres C/90',
-        yAxisKey: 'Poss Won/90',
-        xAxisLabel: 'Pressures Completed per 90',
-        yAxisLabel: 'Possession Won per 90',
-        quadrantLabels: { topRight: 'Effective Presser', topLeft: 'Positional Winner', bottomRight: 'Ineffective Presser', bottomLeft: 'Low Activity' }
-    },
-    // Goalkeepers
-    {
-        title: 'Shot-Stopping (Goalkeepers)',
-        xAxisKey: 'Con/90',
-        yAxisKey: 'Sv %',
-        xAxisLabel: 'Goals Conceded per 90',
-        yAxisLabel: 'Save Percentage',
-        quadrantLabels: { topRight: 'Busy & Effective', topLeft: 'Elite Goalkeeper', bottomRight: 'Struggling', bottomLeft: 'Protected' }
-    }
-])
+    { category: 'attacking', title: 'Shooting Performance', xAxisKey: 'xG/90', yAxisKey: 'Gls/90', xAxisLabel: 'Expected Goals per 90', yAxisLabel: 'Goals per 90', quadrantLabels: { topRight: ['Elite', 'Over-performing'], topLeft: ['Clinical', 'Over-performing'], bottomRight: ['Wasteful', 'Under-performing'], bottomLeft: ['Low Threat', 'Under-performing'] }},
+    { category: 'attacking', title: 'Shooting Efficiency', xAxisKey: 'Shot/90', yAxisKey: 'Conv %', xAxisLabel: 'Shots per 90', yAxisLabel: 'Conversion %', quadrantLabels: { topRight: ['Elite Attacker', ''], topLeft: ['Selective Shooter', ''], bottomRight: ['Inefficient Volume', ''], bottomLeft: ['Limited Threat', ''] }},
+    { category: 'passing', title: 'Creative Passing', xAxisKey: 'xA/90', yAxisKey: 'Asts/90', xAxisLabel: 'Expected Assists per 90', yAxisLabel: 'Assists per 90', quadrantLabels: { topRight: ['Elite Creator', ''], topLeft: ['Fortunate Creator', ''], bottomRight: ['Unlucky Creator', ''], bottomLeft: ['Limited Creator', ''] }},
+    { category: 'passing', title: 'PASSING PROGRESSION', xAxisKey: 'Pr passes/90', yAxisKey: 'Pas %', xAxisLabel: 'PROGRESSIVE PASSES/90', yAxisLabel: 'PASS COMPLETION (%)', quadrantLabels: { topRight: ['Accurate passing', 'High volume'], topLeft: ['Accurate passing', 'Low volume'], bottomRight: ['Inaccurate passing', 'High volume'], bottomLeft: ['Inaccurate passing', 'Low volume'] }},
+    { category: 'defending', title: 'Defensive Duels', xAxisKey: 'Tck/90', yAxisKey: 'Tck R', xAxisLabel: 'Tackles per 90', yAxisLabel: 'Tackle Success %', quadrantLabels: { topRight: ['Elite Ball-Winner', ''], topLeft: ['Conservative', ''], bottomRight: ['Reckless', ''], bottomLeft: ['Passive', ''] }},
+    { category: 'defending', title: 'Pressing Efficiency', xAxisKey: 'Pres C/90', yAxisKey: 'Poss Won/90', xAxisLabel: 'Pressures Completed per 90', yAxisLabel: 'Possession Won per 90', quadrantLabels: { topRight: ['Effective Presser', ''], topLeft: ['Positional Winner', ''], bottomRight: ['Ineffective Presser', ''], bottomLeft: ['Low Activity', ''] }},
+    { category: 'goalkeeping', title: 'Shot-Stopping', xAxisKey: 'Con/90', yAxisKey: 'Sv %', xAxisLabel: 'Goals Conceded per 90', yAxisLabel: 'Save Percentage', quadrantLabels: { topRight: ['Busy & Effective', ''], topLeft: ['Elite Goalkeeper', ''], bottomRight: ['Struggling', ''], bottomLeft: ['Protected', ''] }}
+]);
 
+const statCategories = {
+    offensive: [{ key: 'Gls/90', name: 'Goals per 90' }, { key: 'xG/90', name: 'xG per 90' }, { key: 'Shot/90', name: 'Shots per 90' }, { key: 'Conv %', name: 'Conversion %' }],
+    passing: [{ key: 'Asts/90', name: 'Assists per 90' }, { key: 'xA/90', name: 'xA per 90' }, { key: 'K Ps/90', name: 'Key Passes per 90' }, { key: 'Pas %', name: 'Pass Completion %' }],
+    defensive: [{ key: 'Tck/90', name: 'Tackles per 90' }, { key: 'Int/90', name: 'Interceptions per 90' }, { key: 'Hdrs W/90', name: 'Headers Won per 90' }, { key: 'Pres C/90', name: 'Pressures Completed p90' }],
+    goalkeeping: [{ key: 'Con/90', name: 'Goals Conceded p90' }, { key: 'xGP/90', name: 'xG Prevented p90' }, { key: 'Sv %', name: 'Save Percentage' }, { key: 'Clean Sheets', name: 'Clean Sheets' }]
+};
 
-// Performance stat categories
-const generalStats = [
-    { key: 'Av Rat', name: 'Average Rating' },
-    { key: 'Apps', name: 'Appearances' },
-    { key: 'Mins', name: 'Minutes Played' },
-    { key: 'Clean Sheets', name: 'Clean Sheets' }
-]
+// --- Computed properties for each tab ---
+const attackingCharts = computed(() => scatterPlotConfigs.value.filter(c => c.category === 'attacking'));
+const passingCharts = computed(() => scatterPlotConfigs.value.filter(c => c.category === 'passing'));
+const defendingCharts = computed(() => scatterPlotConfigs.value.filter(c => c.category === 'defending'));
+const goalkeepingCharts = computed(() => scatterPlotConfigs.value.filter(c => c.category === 'goalkeeping'));
 
-const offensiveStats = [
-    { key: 'Gls/90', name: 'Goals per 90' },
-    { key: 'xG/90', name: 'Expected Goals per 90' },
-    { key: 'NP-xG/90', name: 'Non-Penalty xG per 90' },
-    { key: 'Shot/90', name: 'Shots per 90' },
-    { key: 'ShT/90', name: 'Shots on Target per 90' },
-    { key: 'Conv %', name: 'Conversion %' },
-    { key: 'Drb/90', name: 'Dribbles per 90' }
-]
+const attackingStats = computed(() => statCategories.offensive);
+const passingStats = computed(() => statCategories.passing);
+const defendingStats = computed(() => statCategories.defensive);
+const goalkeepingStats = computed(() => statCategories.goalkeeping);
 
-const passingStats = [
-    { key: 'Asts/90', name: 'Assists per 90' },
-    { key: 'xA/90', name: 'Expected Assists per 90' },
-    { key: 'Ch C/90', name: 'Chances Created per 90' },
-    { key: 'K Ps/90', name: 'Key Passes per 90' },
-    { key: 'Ps C/90', name: 'Passes Completed per 90' },
-    { key: 'Ps A/90', name: 'Pass Attempts per 90' },
-    { key: 'Pas %', name: 'Pass Completion %' },
-    { key: 'Pr passes/90', name: 'Progressive Passes per 90' },
-    { key: 'Cr C/90', name: 'Crosses Completed per 90' },
-    { key: 'CRS A/90', name: 'Crosses Attempted per 90' },
-    { key: 'Cr C/A', name: 'Cross Completion %' },
-    { key: 'Poss Lost/90', name: 'Possession Lost per 90' }
-]
+const allStatsForCalculation = computed(() => [...attackingStats.value, ...passingStats.value, ...defendingStats.value, ...goalkeepingStats.value]);
 
-const defensiveStats = [
-    { key: 'Tck/90', name: 'Tackles per 90' },
-    { key: 'Tck R', name: 'Tackle Ratio %' },
-    { key: 'Int/90', name: 'Interceptions per 90' },
-    { key: 'Clr/90', name: 'Clearances per 90' },
-    { key: 'Blk/90', name: 'Blocks per 90' },
-    { key: 'Hdrs W/90', name: 'Headers Won per 90' },
-    { key: 'Pres C/90', name: 'Pressures Completed per 90' },
-    { key: 'Poss Won/90', name: 'Possession Won per 90' },
-    { key: 'Fls', name: 'Fouls' },
-    { key: 'FA', name: 'Fouls Against' }
-]
+// --- Helper Methods ---
+const getPlayerName = (player) => player.name || player.Name || player.Player || 'Unknown Player';
+const getPlayerDivision = (player) => player.division || player.Division || 'N/A';
+const getNumericValue = (val) => {
+    if (val === undefined || val === null || val === '-' || val === '') return null;
+    const cleaned = String(val).replace(/,/g, '').replace(/%/g, '');
+    const num = parseFloat(cleaned);
+    return isNaN(num) ? null : num;
+};
 
-const goalkeepingStats = [
-    { key: 'Con/90', name: 'Goals Conceded per 90' },
-    { key: 'Cln/90', name: 'Clean Sheets per 90' },
-    { key: 'xGP/90', name: 'Expected Goals Prevented per 90' },
-    { key: 'Sv %', name: 'Save Percentage' }
-]
-
-// Helper methods
-const getPlayerName = (player) => {
-    return player.name || player.Name || player.Player || 'Unknown Player'
-}
-
-const getPlayerClub = (player) => {
-    return player.club || player.Club || 'Unknown Club'
-}
-
-// Methods
+// --- Core Methods ---
 const calculateTopPerformers = () => {
-    console.log('🔍 Calculating performance stats for', allPlayersData.value.length, 'players')
-    
-    const allStats = [...generalStats, ...offensiveStats, ...passingStats, ...defensiveStats, ...goalkeepingStats]
-    const results = {}
-    
-    allStats.forEach(stat => {
-        // Filter players who have this stat
-        const playersWithStat = allPlayersData.value.filter(player => {
-            const value = player.attributes?.[stat.key]
-            if (value === undefined || value === null || value === '-' || value === '') {
-                return false
-            }
-            
-            // Handle comma-separated values and convert to number
-            const cleanValue = value.toString().replace(/,/g, '').replace(/%/g, '')
-            const numValue = parseFloat(cleanValue)
-            
-            if (stat.key === 'Con/90') {
-                return !isNaN(numValue) && numValue >= 0
-            } else {
-                return !isNaN(numValue) && numValue > 0
-            }
-        })
-        
-        // Sort by stat value - ascending for "lower is better" stats, descending for others
-        const sortedPlayers = playersWithStat.sort((a, b) => {
-            const getNumericValue = (val) => {
-                const cleaned = val.toString().replace(/,/g, '').replace(/%/g, '')
-                return parseFloat(cleaned)
-            }
-            
-            const valueA = getNumericValue(a.attributes[stat.key])
-            const valueB = getNumericValue(b.attributes[stat.key])
-            
-            if (stat.key === 'Con/90') {
-                return valueA - valueB
-            } else {
-                return valueB - valueA
-            }
-        })
-        
-        results[stat.key] = sortedPlayers.slice(0, 10)
-    })
-    
-    topPlayersByStat.value = results
-}
+    const playersToProcess = filteredPlayers.value;
+    const results = {};
+    const uniqueStats = [...new Map(allStatsForCalculation.value.map(item => [item['key'], item])).values()];
 
-const formatStatValue = (value) => {
-    if (value === undefined || value === null || value === '-' || value === '') {
-        return 'N/A'
-    }
-    
-    const stringValue = value.toString()
-    const cleanValue = stringValue.replace(/,/g, '')
-    const numValue = parseFloat(cleanValue)
+    uniqueStats.forEach(stat => {
+        const playersWithStat = playersToProcess.filter(player => {
+            const numValue = getNumericValue(player.attributes?.[stat.key]);
+            return numValue !== null && (stat.key === 'Con/90' ? numValue >= 0 : numValue > 0);
+        });
+        results[stat.key] = playersWithStat.sort((a, b) => {
+            const valA = getNumericValue(a.attributes[stat.key]);
+            const valB = getNumericValue(b.attributes[stat.key]);
+            return stat.key === 'Con/90' ? valA - valB : valB - valA;
+        }).slice(0, 10);
+    });
+    topPlayersByStat.value = results;
+};
 
-    if (isNaN(numValue)) {
-        return 'N/A'
-    }
-    
-    if (stringValue.includes('%') || ['Sv %', 'Conv %', 'Pas %', 'Tck R', 'Cr C/A'].includes(stringValue)) {
-        return numValue.toFixed(1) + '%'
-    }
-    
-    if (numValue >= 1000 && Number.isInteger(numValue)) {
-        return numValue.toLocaleString()
-    }
-    
-    if (numValue % 1 === 0) {
-        return numValue.toString()
-    } else {
-        return numValue.toFixed(2)
-    }
-}
-
-const formatNumber = (num) => {
-    return new Intl.NumberFormat().format(num)
-}
-
+const formatNumber = (num) => new Intl.NumberFormat().format(num);
 const openPlayerDetail = (player) => {
-    playerForDetailView.value = player
-    showPlayerDetailDialog.value = true
-}
+    playerForDetailView.value = player;
+    showPlayerDetailDialog.value = true;
+};
 
 const shareDataset = () => {
-    if (!currentDatasetId.value) return
-    
-    const shareUrl = `${window.location.origin}/performance/${currentDatasetId.value}`
-    
-    if (navigator.share) {
-        navigator.share({
-            title: 'FM Performance Data',
-            text: 'Check out these top performance statistics!',
-            url: shareUrl
-        }).catch(err => console.log('Error sharing:', err))
-    } else {
-        navigator.clipboard.writeText(shareUrl).then(() => {
-            $q.notify({
-                message: 'Link copied to clipboard!',
-                color: 'positive',
-                icon: 'content_copy',
-                position: 'top'
-            })
-        }).catch(err => {
-            console.error('Failed to copy link:', err)
-            $q.notify({
-                message: 'Failed to copy link',
-                color: 'negative',
-                icon: 'error',
-                position: 'top'
-            })
-        })
-    }
-}
+    if (!currentDatasetId.value) return;
+    const shareUrl = `${window.location.origin}/performance/${currentDatasetId.value}`;
+    navigator.clipboard.writeText(shareUrl).then(() => {
+        $q.notify({ message: 'Link copied to clipboard!', color: 'positive', icon: 'content_copy', position: 'top' });
+    });
+};
 
-const initializeData = () => {
-    const datasetIdFromRoute = route.params?.datasetId
-    const datasetIdFromQuery = route.query?.datasetId
-    
-    if (datasetIdFromRoute || datasetIdFromQuery) {
-        const targetDatasetId = datasetIdFromRoute || datasetIdFromQuery
-        if (targetDatasetId !== sessionStorage.getItem('currentDatasetId')) {
-            sessionStorage.setItem('currentDatasetId', targetDatasetId)
-            playerStore.fetchPlayersByDatasetId(targetDatasetId)
+const initializeData = async () => {
+    const targetDatasetId = route.params?.datasetId || route.query?.datasetId;
+    if (targetDatasetId) {
+        if (targetDatasetId !== playerStore.currentDatasetId) {
+            await playerStore.fetchPlayersByDatasetId(targetDatasetId);
         }
     } else if (!currentDatasetId.value) {
-        pageLoadingError.value = 'No dataset available. Please upload a dataset first.'
-        return
+        pageLoadingError.value = 'No dataset available. Please upload a dataset first.';
     }
-    
-    if (allPlayersData.value.length > 0) {
-        calculateTopPerformers()
-    }
-}
+};
 
-// Watchers
-watch(allPlayersData, (newPlayers) => {
-    if (newPlayers.length > 0) {
-        calculateTopPerformers()
-        pageLoadingError.value = ''
-    }
-}, { deep: true })
+const filterDivisionsFn = (val, update) => {
+  update(() => {
+    const needle = val.toLowerCase();
+    divisionOptions.value = availableDivisions.value.filter(v => v.toLowerCase().indexOf(needle) > -1);
+  })
+};
 
-// Lifecycle
+// --- Watchers & Lifecycle ---
+watch(sliderValue, debounce((newValue) => {
+    selectedMinutes.value = newValue;
+}, 300));
+
+watch(filteredPlayers, () => {
+    calculateTopPerformers();
+}, { deep: true, immediate: true });
+
+watch(availableDivisions, (newDivisions) => {
+    divisionOptions.value = newDivisions;
+}, { immediate: true });
+
 onMounted(() => {
-    initializeData()
-})
+    initializeData();
+});
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+$primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+$card-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+$border-radius: 16px;
+
 .performance-page {
-    background: var(--q-color-background);
+    background-color: #f4f6f8;
+    .body--dark & {
+        background-color: #121212;
+    }
 }
 
-.top-bar {
-    background: var(--q-color-surface);
-    border-bottom: 1px solid var(--q-color-separator);
-    padding: 16px 24px;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-}
-
-.top-bar-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    max-width: 1400px;
+.main-content {
+    max-width: 1600px;
     margin: 0 auto;
+    padding: 2rem;
 }
 
-.dataset-info {
+// Hero Section Styling
+.performance-hero-section {
+    background: $primary-gradient;
+    color: white;
+    border-radius: $border-radius;
+    padding: 2rem 2.5rem;
+    margin-bottom: 2rem;
+    box-shadow: $card-shadow;
+    
+    .hero-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1.5rem;
+
+        .hero-left {
+            .hero-title-line {
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+            }
+            .hero-title {
+                font-size: 2.25rem;
+                font-weight: 700;
+                margin: 0;
+                line-height: 1.2;
+            }
+            .hero-subtitle {
+                font-size: 1rem;
+                margin: 0.5rem 0 0 0;
+                color: rgba(255, 255, 255, 0.8);
+            }
+        }
+        .share-btn-modern {
+            background: rgba(255,255,255,0.15);
+            color: white;
+            font-weight: 600;
+            border-radius: 8px;
+            &:hover {
+                background: rgba(255,255,255,0.25);
+            }
+        }
+    }
+
+    .filter-bar {
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 2rem;
+        align-items: center;
+    }
+    .minutes-filter .slider-label {
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.8);
+        margin-bottom: -0.5rem;
+    }
+}
+
+// Tabs Styling
+.tabs-card {
+    border-radius: $border-radius;
+    box-shadow: $card-shadow;
+    overflow: hidden;
+
+    .body--dark & {
+        background-color: #1e1e1e;
+    }
+
+    .q-tabs {
+        padding: 0 1rem;
+    }
+    .q-tab {
+        font-weight: 600;
+    }
+    .q-tab-panel {
+        padding: 2rem;
+    }
+}
+
+.tab-content-layout {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-}
-
-.dataset-title {
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: var(--q-color-on-surface);
-    display: flex;
-    align-items: center;
-}
-
-.dataset-stats {
-    color: var(--q-color-on-surface-variant);
-    font-size: 0.875rem;
-}
-
-.stat-item {
-    font-weight: 500;
-}
-
-.stat-separator {
-    opacity: 0.5;
-    margin: 0 8px;
-}
-
-.top-bar-controls {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.share-btn {
-    border-radius: 8px;
-    width: 36px;
-    height: 36px;
-}
-
-.error-container,
-.no-data-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 400px;
-    padding: 48px 24px;
-}
-
-.error-banner,
-.no-data-banner {
-    max-width: 600px;
-}
-
-.performance-content {
-    padding: 24px;
-    max-width: 1400px;
-    margin: 0 auto;
-}
-
-.categories-container {
-    display: flex;
-    flex-direction: column;
-    gap: 48px;
-}
-
-.category-section {
-    width: 100%;
+    gap: 2rem;
 }
 
 .category-title {
     font-size: 1.5rem;
     font-weight: 600;
-    color: var(--q-color-on-surface);
-    margin: 0 0 24px 0;
-    display: flex;
-    align-items: center;
-}
+    color: #333;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #667eea;
+    align-self: flex-start;
 
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 24px;
+    .body--dark & {
+        color: #f5f5f5;
+    }
 }
 
 .charts-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
     gap: 24px;
 }
 
-.stat-card {
-    height: 100%;
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
 }
 
-.stat-header {
-    background: var(--q-color-primary);
+// Banners for error/no-data states
+.error-container, .no-data-container {
+    padding: 2rem;
+}
+
+.error-banner {
+    background: linear-gradient(135deg, #d32f2f, #c62828);
     color: white;
-    padding: 12px 16px;
 }
-
-.stat-name {
-    font-weight: 600;
-    font-size: 0.9rem;
-}
-
-.stat-players {
-    padding: 0;
-}
-
-.player-item {
-    transition: background-color 0.2s ease;
-}
-
-.player-item:hover {
-    background: var(--q-color-surface-variant);
-}
-
-.rank-badge {
-    background: var(--q-color-primary);
-    color: white;
-    border-radius: 50%;
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.75rem;
-    font-weight: 600;
-}
-
-.player-name {
-    font-weight: 500;
-    color: var(--q-color-on-surface);
-}
-
-.stat-value {
-    font-weight: 600;
-    color: var(--q-color-primary);
-    font-size: 0.9rem;
-}
-
-.no-data-message {
-    padding: 16px;
-    text-align: center;
-    color: var(--q-color-on-surface-variant);
-    font-style: italic;
-}
-
-@media (max-width: 768px) {
-    .top-bar-content {
-        flex-direction: column;
-        gap: 16px;
-        align-items: stretch;
-    }
-    
-    .stats-grid, .charts-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .performance-content {
-        padding: 16px;
+.no-data-banner {
+    background: #fff;
+    border: 1px solid #ddd;
+    box-shadow: none;
+    .body--dark & {
+        background-color: #2d2d2d;
+        color: #f5f5f5;
+        border-color: #424242;
     }
 }
 </style>
