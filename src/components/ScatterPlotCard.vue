@@ -246,32 +246,53 @@
     flex-direction: column;
     position: relative;
     height: 500px;
-    transition: background-color 0.3s, color 0.3s;
+    transition: all 0.3s ease;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+    }
   }
   
   /* Light Theme */
   .theme-light {
     background-color: #ffffff;
     color: #333333;
-    border: 1px solid #e0e0e0;
+    border: 1px solid rgba(0, 0, 0, 0.05);
   }
   .theme-light .card-subtitle { color: #666; }
-  .theme-light .no-data-overlay { background: rgba(255, 255, 255, 0.8); color: #666; }
+  .theme-light .no-data-overlay { 
+    background: rgba(255, 255, 255, 0.9); 
+    color: #666;
+    backdrop-filter: blur(10px);
+  }
   
   /* Dark Theme */
   .theme-dark {
-    background-color: #313742;
+    background-color: #1e1e1e;
     color: rgba(255, 255, 255, 0.9);
-    border: 1px solid #424242;
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
   .theme-dark .card-subtitle { color: rgba(255, 255, 255, 0.7); }
-  .theme-dark .no-data-overlay { background: rgba(49, 55, 66, 0.8); color: rgba(255, 255, 255, 0.7); }
+  .theme-dark .no-data-overlay { 
+    background: rgba(30, 30, 30, 0.9); 
+    color: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+  }
   
   .card-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    padding-bottom: 8px;
+    padding: 1.5rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    
+    .theme-dark & {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
   }
   
   .title-section {
@@ -279,38 +300,69 @@
   }
   
   .card-title {
-    font-size: 1.1rem;
+    font-size: 1.2rem;
     font-weight: 600;
     line-height: 1.2;
+    margin: 0;
+    color: #2d3436;
+    
+    .theme-dark & {
+        color: rgba(255, 255, 255, 0.9);
+    }
   }
   
   .card-subtitle {
-    font-size: 0.8rem;
+    font-size: 0.9rem;
     font-weight: 500;
+    margin-top: 0.25rem;
   }
   
   .chart-logo {
     height: 35px;
     width: auto;
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+    
+    &:hover {
+        opacity: 1;
+    }
   }
   
   .chart-area {
     flex-grow: 1;
     position: relative;
+    padding: 1rem;
   }
   
   .no-data-overlay {
     position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 10;
     font-style: italic;
     border-radius: inherit;
+    gap: 0.5rem;
+    
+    .q-icon {
+        font-size: 1.5rem;
+        opacity: 0.7;
+    }
   }
   
   .chart-container-hidden {
     visibility: hidden;
+  }
+  
+  .chart-container {
+    width: 100%;
+    height: 100%;
+    transition: background-color 0.3s;
+    border-radius: 8px;
+    overflow: hidden;
   }
   </style>

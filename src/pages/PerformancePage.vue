@@ -386,9 +386,15 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
+// Modern Design System Variables
 $primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-$card-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+$success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+$warning-gradient: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 100%);
+$danger-gradient: linear-gradient(135deg, #fd79a8 0%, #fdcb6e 100%);
+$card-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+$card-shadow-hover: 0 12px 40px rgba(0, 0, 0, 0.15);
 $border-radius: 16px;
+$border-radius-small: 8px;
 
 .performance-page {
     background-color: #f4f6f8;
@@ -428,8 +434,25 @@ $border-radius: 16px;
     padding: 2rem 2.5rem;
     margin-bottom: 2rem;
     box-shadow: $card-shadow;
+    position: relative;
+    overflow: hidden;
+    
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: 
+            radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+        animation: float 20s ease-in-out infinite;
+    }
     
     .hero-content {
+        position: relative;
+        z-index: 2;
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
@@ -446,6 +469,7 @@ $border-radius: 16px;
                 font-weight: 700;
                 margin: 0;
                 line-height: 1.2;
+                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
             }
             .hero-subtitle {
                 font-size: 1rem;
@@ -457,24 +481,59 @@ $border-radius: 16px;
             background: rgba(255,255,255,0.15);
             color: white;
             font-weight: 600;
-            border-radius: 8px;
+            border-radius: $border-radius-small;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
             &:hover {
                 background: rgba(255,255,255,0.25);
+                transform: translateY(-2px);
             }
         }
     }
 
     .filter-bar {
+        position: relative;
+        z-index: 2;
         display: grid;
         grid-template-columns: 1fr 2fr;
         gap: 2rem;
         align-items: center;
-    }
-    .minutes-filter .slider-label {
-        font-size: 0.8rem;
-        font-weight: 500;
-        color: rgba(255, 255, 255, 0.8);
-        margin-bottom: -0.5rem;
+        background: rgba(255,255,255,0.1);
+        padding: 1.5rem;
+        border-radius: $border-radius-small;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.2);
+
+        .division-filter {
+            :deep(.q-field__control) {
+                background: rgba(255,255,255,0.15);
+                border: 1px solid rgba(255,255,255,0.2);
+                border-radius: $border-radius-small;
+                color: white;
+            }
+            :deep(.q-field__label) {
+                color: rgba(255,255,255,0.8);
+            }
+        }
+
+        .minutes-filter {
+            .slider-label {
+                font-size: 0.9rem;
+                font-weight: 500;
+                color: rgba(255,255,255,0.9);
+                margin-bottom: 0.5rem;
+            }
+            :deep(.q-slider__track) {
+                background: rgba(255,255,255,0.2);
+            }
+            :deep(.q-slider__track--active) {
+                background: white;
+            }
+            :deep(.q-slider__thumb) {
+                background: white;
+                border: 2px solid rgba(255,255,255,0.5);
+            }
+        }
     }
 }
 
@@ -483,17 +542,50 @@ $border-radius: 16px;
     border-radius: $border-radius;
     box-shadow: $card-shadow;
     overflow: hidden;
+    background: white;
+    transition: all 0.3s ease;
 
     .body--dark & {
-        background-color: #1e1e1e;
+        background: #1e1e1e;
+        border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    &:hover {
+        box-shadow: $card-shadow-hover;
+        transform: translateY(-2px);
     }
 
     .q-tabs {
         padding: 0 1rem;
+        background: rgba(0,0,0,0.02);
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+
+        .body--dark & {
+            background: rgba(255,255,255,0.02);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .q-tab {
+            font-weight: 600;
+            padding: 1rem 1.5rem;
+            transition: all 0.3s ease;
+
+            &:hover {
+                background: rgba(0,0,0,0.02);
+                .body--dark & {
+                    background: rgba(255,255,255,0.05);
+                }
+            }
+
+            &--active {
+                color: #667eea;
+                .body--dark & {
+                    color: #90caf9;
+                }
+            }
+        }
     }
-    .q-tab {
-        font-weight: 600;
-    }
+
     .q-tab-panel {
         padding: 2rem;
     }
@@ -512,9 +604,11 @@ $border-radius: 16px;
     padding-bottom: 0.5rem;
     border-bottom: 2px solid #667eea;
     align-self: flex-start;
+    margin-bottom: 1rem;
 
     .body--dark & {
         color: #f5f5f5;
+        border-bottom-color: #90caf9;
     }
 }
 
@@ -536,17 +630,75 @@ $border-radius: 16px;
 }
 
 .error-banner {
-    background: linear-gradient(135deg, #d32f2f, #c62828);
+    background: $danger-gradient;
     color: white;
+    border-radius: $border-radius;
+    box-shadow: $card-shadow;
 }
+
 .no-data-banner {
-    background: #fff;
-    border: 1px solid #ddd;
-    box-shadow: none;
+    background: white;
+    border: 1px solid rgba(0,0,0,0.1);
+    border-radius: $border-radius;
+    box-shadow: $card-shadow;
+    
     .body--dark & {
-        background-color: #2d2d2d;
+        background: #1e1e1e;
         color: #f5f5f5;
-        border-color: #424242;
+        border-color: rgba(255,255,255,0.1);
+    }
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    33% { transform: translateY(-20px) rotate(1deg); }
+    66% { transform: translateY(-10px) rotate(-1deg); }
+}
+
+// Responsive Design
+@media (max-width: 1200px) {
+    .main-content {
+        padding: 1.5rem;
+    }
+    
+    .performance-hero-section {
+        padding: 1.5rem;
+    }
+    
+    .filter-bar {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .main-content {
+        padding: 1rem;
+    }
+    
+    .performance-hero-section {
+        padding: 1.25rem;
+        
+        .hero-content {
+            flex-direction: column;
+            gap: 1rem;
+            
+            .hero-left {
+                text-align: center;
+                
+                .hero-title-line {
+                    justify-content: center;
+                }
+            }
+        }
+    }
+    
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
     }
 }
 </style>
