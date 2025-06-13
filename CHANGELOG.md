@@ -1,3 +1,10 @@
+## [1.12.1](https://git.liamhardman.com/liam/fm24-golang/compare/v1.12.0...v1.12.1) (2025-06-13)
+
+### 🐛 Bug Fixes
+
+* auto defining of minimum minutes so at least 100 players match, styling fixes etc ([0501847](https://git.liamhardman.com/liam/fm24-golang/commit/0501847c1614da5a94ce904bb06a2b54cab3a5c6))
+* styling for performance page ([2974b58](https://git.liamhardman.com/liam/fm24-golang/commit/2974b5816874e5b11082a4a0fb5b3bce50b408fe))
+
 ## [1.12.0](https://git.liamhardman.com/liam/fm24-golang/compare/v1.11.0...v1.12.0) (2025-06-13)
 
 ### 🚀 Features
