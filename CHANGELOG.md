@@ -1,3 +1,9 @@
+## [1.12.6](https://git.liamhardman.com/liam/fm24-golang/compare/v1.12.5...v1.12.6) (2025-06-14)
+
+### 🐛 Bug Fixes
+
+* fixed passing volume graph ([7ac8e59](https://git.liamhardman.com/liam/fm24-golang/commit/7ac8e5939f9dd56a0340c455aeefb822efe0aa4d))
+
 ## [1.12.5](https://git.liamhardman.com/liam/fm24-golang/compare/v1.12.4...v1.12.5) (2025-06-14)
 
 ### 🐛 Bug Fixes
