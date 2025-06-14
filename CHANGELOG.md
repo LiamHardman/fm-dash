@@ -1,3 +1,9 @@
+## [1.12.5](https://git.liamhardman.com/liam/fm24-golang/compare/v1.12.4...v1.12.5) (2025-06-14)
+
+### 🐛 Bug Fixes
+
+* tabs in tabs for performance page for better visibility ([6393f1a](https://git.liamhardman.com/liam/fm24-golang/commit/6393f1a59d49f286f454ca871db53ec3db878ee6))
+
 ## [1.12.4](https://git.liamhardman.com/liam/fm24-golang/compare/v1.12.3...v1.12.4) (2025-06-13)
 
 ### 🐛 Bug Fixes
