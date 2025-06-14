@@ -109,81 +109,217 @@
                 <q-tab-panels v-model="currentTab" animated>
                     <q-tab-panel name="attacking">
                         <div class="tab-content-layout">
-                            <h2 class="category-title">Attacking Visualizations</h2>
-                            <div class="charts-grid">
-                                <ScatterPlotCard 
-                                    v-for="config in attackingCharts" 
-                                    :key="config.title" 
-                                    v-bind="config" 
-                                    :is-dark-mode="$q.dark.isActive" 
-                                    :all-players-data="filteredPlayers"
-                                    @player-click="openPlayerDetail"
-                                />
-                            </div>
-                            <h2 class="category-title">Attacking Leaderboards</h2>
-                            <div class="stats-grid">
-                                <StatCard v-for="stat in attackingStats" :key="stat.key" :stat="stat" :players="topPlayersByStat[stat.key]" @player-click="openPlayerDetail" />
-                            </div>
+                            <q-tabs
+                                v-model="attackingPlotTab"
+                                dense
+                                class="text-grey"
+                                active-color="primary"
+                                indicator-color="primary"
+                                align="justify"
+                                narrow-indicator
+                            >
+                                <q-tab name="shooting" icon="sports_soccer" label="Shooting" />
+                            </q-tabs>
+
+                            <q-tab-panels v-model="attackingPlotTab" animated>
+                                <q-tab-panel name="shooting">
+                                    <div class="charts-grid">
+                                        <ScatterPlotCard 
+                                            v-for="config in attackingShootingCharts" 
+                                            :key="config.title" 
+                                            v-bind="config" 
+                                            :is-dark-mode="$q.dark.isActive" 
+                                            :all-players-data="filteredPlayers"
+                                            @player-click="openPlayerDetail"
+                                        />
+                                    </div>
+                                    <div class="stats-grid">
+                                        <StatCard v-for="stat in attackingStats" :key="stat.key" :stat="stat" :players="topPlayersByStat[stat.key]" @player-click="openPlayerDetail" />
+                                    </div>
+                                </q-tab-panel>
+                            </q-tab-panels>
                         </div>
                     </q-tab-panel>
 
                     <q-tab-panel name="passing">
-                         <div class="tab-content-layout">
-                            <h2 class="category-title">Passing Visualizations</h2>
-                            <div class="charts-grid">
-                                <ScatterPlotCard 
-                                    v-for="config in passingCharts" 
-                                    :key="config.title" 
-                                    v-bind="config" 
-                                    :is-dark-mode="$q.dark.isActive" 
-                                    :all-players-data="filteredPlayers"
-                                    @player-click="openPlayerDetail"
-                                />
-                            </div>
-                            <h2 class="category-title">Passing Leaderboards</h2>
-                            <div class="stats-grid">
-                                <StatCard v-for="stat in passingStats" :key="stat.key" :stat="stat" :players="topPlayersByStat[stat.key]" @player-click="openPlayerDetail" />
-                            </div>
+                        <div class="tab-content-layout">
+                            <q-tabs
+                                v-model="passingPlotTab"
+                                dense
+                                class="text-grey"
+                                active-color="primary"
+                                indicator-color="primary"
+                                align="justify"
+                                narrow-indicator
+                            >
+                                <q-tab name="creative" icon="lightbulb" label="Creative" />
+                                <q-tab name="progression" icon="trending_up" label="Progression" />
+                                <q-tab name="crossing" icon="swap_horiz" label="Crossing" />
+                            </q-tabs>
+
+                            <q-tab-panels v-model="passingPlotTab" animated>
+                                <q-tab-panel name="creative">
+                                    <div class="charts-grid">
+                                        <ScatterPlotCard 
+                                            v-for="config in passingCreativeCharts" 
+                                            :key="config.title" 
+                                            v-bind="config" 
+                                            :is-dark-mode="$q.dark.isActive" 
+                                            :all-players-data="filteredPlayers"
+                                            @player-click="openPlayerDetail"
+                                        />
+                                    </div>
+                                    <div class="stats-grid">
+                                        <StatCard v-for="stat in passingStats" :key="stat.key" :stat="stat" :players="topPlayersByStat[stat.key]" @player-click="openPlayerDetail" />
+                                    </div>
+                                </q-tab-panel>
+                                <q-tab-panel name="progression">
+                                    <div class="charts-grid">
+                                        <ScatterPlotCard 
+                                            v-for="config in passingProgressionCharts" 
+                                            :key="config.title" 
+                                            v-bind="config" 
+                                            :is-dark-mode="$q.dark.isActive" 
+                                            :all-players-data="filteredPlayers"
+                                            @player-click="openPlayerDetail"
+                                        />
+                                    </div>
+                                    <div class="stats-grid">
+                                        <StatCard v-for="stat in passingStats" :key="stat.key" :stat="stat" :players="topPlayersByStat[stat.key]" @player-click="openPlayerDetail" />
+                                    </div>
+                                </q-tab-panel>
+                                <q-tab-panel name="crossing">
+                                    <div class="charts-grid">
+                                        <ScatterPlotCard 
+                                            v-for="config in passingCrossingCharts" 
+                                            :key="config.title" 
+                                            v-bind="config" 
+                                            :is-dark-mode="$q.dark.isActive" 
+                                            :all-players-data="filteredPlayers"
+                                            @player-click="openPlayerDetail"
+                                        />
+                                    </div>
+                                    <div class="stats-grid">
+                                        <StatCard v-for="stat in passingStats" :key="stat.key" :stat="stat" :players="topPlayersByStat[stat.key]" @player-click="openPlayerDetail" />
+                                    </div>
+                                </q-tab-panel>
+                            </q-tab-panels>
                         </div>
                     </q-tab-panel>
 
                     <q-tab-panel name="defending">
                         <div class="tab-content-layout">
-                            <h2 class="category-title">Defending Visualizations</h2>
-                            <div class="charts-grid">
-                                <ScatterPlotCard 
-                                    v-for="config in defendingCharts" 
-                                    :key="config.title" 
-                                    v-bind="config" 
-                                    :is-dark-mode="$q.dark.isActive" 
-                                    :all-players-data="filteredPlayers"
-                                    @player-click="openPlayerDetail"
-                                />
-                            </div>
-                            <h2 class="category-title">Defending Leaderboards</h2>
-                            <div class="stats-grid">
-                                <StatCard v-for="stat in defendingStats" :key="stat.key" :stat="stat" :players="topPlayersByStat[stat.key]" @player-click="openPlayerDetail" />
-                            </div>
+                            <q-tabs
+                                v-model="defendingPlotTab"
+                                dense
+                                class="text-grey"
+                                active-color="primary"
+                                indicator-color="primary"
+                                align="justify"
+                                narrow-indicator
+                            >
+                                <q-tab name="duels" icon="sports_martial_arts" label="Duels" />
+                                <q-tab name="pressing" icon="speed" label="Pressing" />
+                                <q-tab name="aerial" icon="vertical_align_top" label="Aerial" />
+                                <q-tab name="workrate" icon="directions_run" label="Work Rate" />
+                            </q-tabs>
+
+                            <q-tab-panels v-model="defendingPlotTab" animated>
+                                <q-tab-panel name="duels">
+                                    <div class="charts-grid">
+                                        <ScatterPlotCard 
+                                            v-for="config in defendingDuelsCharts" 
+                                            :key="config.title" 
+                                            v-bind="config" 
+                                            :is-dark-mode="$q.dark.isActive" 
+                                            :all-players-data="filteredPlayers"
+                                            @player-click="openPlayerDetail"
+                                        />
+                                    </div>
+                                    <div class="stats-grid">
+                                        <StatCard v-for="stat in defendingStats" :key="stat.key" :stat="stat" :players="topPlayersByStat[stat.key]" @player-click="openPlayerDetail" />
+                                    </div>
+                                </q-tab-panel>
+                                <q-tab-panel name="pressing">
+                                    <div class="charts-grid">
+                                        <ScatterPlotCard 
+                                            v-for="config in defendingPressingCharts" 
+                                            :key="config.title" 
+                                            v-bind="config" 
+                                            :is-dark-mode="$q.dark.isActive" 
+                                            :all-players-data="filteredPlayers"
+                                            @player-click="openPlayerDetail"
+                                        />
+                                    </div>
+                                    <div class="stats-grid">
+                                        <StatCard v-for="stat in defendingStats" :key="stat.key" :stat="stat" :players="topPlayersByStat[stat.key]" @player-click="openPlayerDetail" />
+                                    </div>
+                                </q-tab-panel>
+                                <q-tab-panel name="aerial">
+                                    <div class="charts-grid">
+                                        <ScatterPlotCard 
+                                            v-for="config in defendingAerialCharts" 
+                                            :key="config.title" 
+                                            v-bind="config" 
+                                            :is-dark-mode="$q.dark.isActive" 
+                                            :all-players-data="filteredPlayers"
+                                            @player-click="openPlayerDetail"
+                                        />
+                                    </div>
+                                    <div class="stats-grid">
+                                        <StatCard v-for="stat in defendingStats" :key="stat.key" :stat="stat" :players="topPlayersByStat[stat.key]" @player-click="openPlayerDetail" />
+                                    </div>
+                                </q-tab-panel>
+                                <q-tab-panel name="workrate">
+                                    <div class="charts-grid">
+                                        <ScatterPlotCard 
+                                            v-for="config in defendingWorkrateCharts" 
+                                            :key="config.title" 
+                                            v-bind="config" 
+                                            :is-dark-mode="$q.dark.isActive" 
+                                            :all-players-data="filteredPlayers"
+                                            @player-click="openPlayerDetail"
+                                        />
+                                    </div>
+                                    <div class="stats-grid">
+                                        <StatCard v-for="stat in defendingStats" :key="stat.key" :stat="stat" :players="topPlayersByStat[stat.key]" @player-click="openPlayerDetail" />
+                                    </div>
+                                </q-tab-panel>
+                            </q-tab-panels>
                         </div>
                     </q-tab-panel>
 
                     <q-tab-panel name="goalkeeping">
                         <div class="tab-content-layout">
-                            <h2 class="category-title">Goalkeeping Visualizations</h2>
-                            <div class="charts-grid">
-                                <ScatterPlotCard 
-                                    v-for="config in goalkeepingCharts" 
-                                    :key="config.title" 
-                                    v-bind="config" 
-                                    :is-dark-mode="$q.dark.isActive" 
-                                    :all-players-data="filteredPlayers"
-                                    @player-click="openPlayerDetail"
-                                />
-                            </div>
-                            <h2 class="category-title">Goalkeeping Leaderboards</h2>
-                            <div class="stats-grid">
-                                <StatCard v-for="stat in goalkeepingStats" :key="stat.key" :stat="stat" :players="topPlayersByStat[stat.key]" @player-click="openPlayerDetail" />
-                            </div>
+                            <q-tabs
+                                v-model="goalkeepingPlotTab"
+                                dense
+                                class="text-grey"
+                                active-color="primary"
+                                indicator-color="primary"
+                                align="justify"
+                                narrow-indicator
+                            >
+                                <q-tab name="shotstopping" icon="sports_hockey" label="Shot-Stopping" />
+                            </q-tabs>
+
+                            <q-tab-panels v-model="goalkeepingPlotTab" animated>
+                                <q-tab-panel name="shotstopping">
+                                    <div class="charts-grid">
+                                        <ScatterPlotCard 
+                                            v-for="config in goalkeepingShotstoppingCharts" 
+                                            :key="config.title" 
+                                            v-bind="config" 
+                                            :is-dark-mode="$q.dark.isActive" 
+                                            :all-players-data="filteredPlayers"
+                                            @player-click="openPlayerDetail"
+                                        />
+                                    </div>
+                                    <div class="stats-grid">
+                                        <StatCard v-for="stat in goalkeepingStats" :key="stat.key" :stat="stat" :players="topPlayersByStat[stat.key]" @player-click="openPlayerDetail" />
+                                    </div>
+                                </q-tab-panel>
+                            </q-tab-panels>
                         </div>
                     </q-tab-panel>
                 </q-tab-panels>
@@ -273,20 +409,36 @@ const filteredPlayers = computed(() => {
 
 // --- Data Definitions (Charts & Stats) ---
 const scatterPlotConfigs = ref([
-    { category: 'attacking', title: 'Shooting Performance', xAxisKey: 'xG/90', yAxisKey: 'Gls/90', xAxisLabel: 'Expected Goals per 90', yAxisLabel: 'Goals per 90', quadrantLabels: { topRight: ['Elite', 'Over-performing'], topLeft: ['Clinical', 'Over-performing'], bottomRight: ['Wasteful', 'Under-performing'], bottomLeft: ['Low Threat', 'Under-performing'] }},
-    { category: 'attacking', title: 'Shooting Efficiency', xAxisKey: 'Shot/90', yAxisKey: 'Conv %', xAxisLabel: 'Shots per 90', yAxisLabel: 'Conversion %', quadrantLabels: { topRight: ['Elite Attacker', ''], topLeft: ['Selective Shooter', ''], bottomRight: ['Inefficient Volume', ''], bottomLeft: ['Limited Threat', ''] }},
-    { category: 'passing', title: 'Creative Passing', xAxisKey: 'xA/90', yAxisKey: 'Asts/90', xAxisLabel: 'Expected Assists per 90', yAxisLabel: 'Assists per 90', quadrantLabels: { topRight: ['Elite Creator', ''], topLeft: ['Fortunate Creator', ''], bottomRight: ['Unlucky Creator', ''], bottomLeft: ['Limited Creator', ''] }},
-    { category: 'passing', title: 'PASSING PROGRESSION', xAxisKey: 'Pr passes/90', yAxisKey: 'Pas %', xAxisLabel: 'PROGRESSIVE PASSES/90', yAxisLabel: 'PASS COMPLETION (%)', quadrantLabels: { topRight: ['Accurate passing', 'High volume'], topLeft: ['Accurate passing', 'Low volume'], bottomRight: ['Inaccurate passing', 'High volume'], bottomLeft: ['Inaccurate passing', 'Low volume'] }},
-    { category: 'defending', title: 'Defensive Duels', xAxisKey: 'Tck/90', yAxisKey: 'Tck R', xAxisLabel: 'Tackles per 90', yAxisLabel: 'Tackle Success %', quadrantLabels: { topRight: ['Elite Ball-Winner', ''], topLeft: ['Conservative', ''], bottomRight: ['Reckless', ''], bottomLeft: ['Passive', ''] }},
-    { category: 'defending', title: 'Pressing Efficiency', xAxisKey: 'Pres C/90', yAxisKey: 'Poss Won/90', xAxisLabel: 'Pressures Completed per 90', yAxisLabel: 'Possession Won per 90', quadrantLabels: { topRight: ['Effective Presser', ''], topLeft: ['Positional Winner', ''], bottomRight: ['Ineffective Presser', ''], bottomLeft: ['Low Activity', ''] }},
-    { category: 'goalkeeping', title: 'Shot-Stopping', xAxisKey: 'Con/90', yAxisKey: 'Sv %', xAxisLabel: 'Goals Conceded per 90', yAxisLabel: 'Save Percentage', quadrantLabels: { topRight: ['Busy & Effective', ''], topLeft: ['Elite Goalkeeper', ''], bottomRight: ['Struggling', ''], bottomLeft: ['Protected', ''] }},
-    // Updated scatter plots with correct column names
-    { category: 'defending', title: 'Aerial Duels', xAxisKey: 'Aer A/90', yAxisKey: 'Hdrs W/90', xAxisLabel: 'Aerial Challenges per 90', yAxisLabel: 'Headers Won per 90', quadrantLabels: { topRight: ['Elite Aerial', ''], topLeft: ['Selective Winner', ''], bottomRight: ['Ineffective Challenger', ''], bottomLeft: ['Limited Aerial', ''] }},
-    { category: 'defending', title: 'Work Rate', xAxisKey: 'Dist/90', yAxisKey: 'Sprints/90', xAxisLabel: 'Distance Covered per 90', yAxisLabel: 'Sprints per 90', quadrantLabels: { topRight: ['Elite Work Rate', ''], topLeft: ['Endurance Runner', ''], bottomRight: ['Sprint Specialist', ''], bottomLeft: ['Limited Movement', ''] }},
-    { category: 'defending', title: 'Pressing Impact', xAxisKey: 'Pres A/90', yAxisKey: 'Poss Won/90', xAxisLabel: 'Pressures Attempted per 90', yAxisLabel: 'Possession Won per 90', quadrantLabels: { topRight: ['Elite Presser', ''], topLeft: ['Selective Presser', ''], bottomRight: ['Ineffective Presser', ''], bottomLeft: ['Limited Presser', ''] }},
-    { category: 'defending', title: 'Defensive Actions', xAxisKey: 'Tck/90', yAxisKey: 'Int/90', xAxisLabel: 'Tackles per 90', yAxisLabel: 'Interceptions per 90', quadrantLabels: { topRight: ['Elite Defender', ''], topLeft: ['Tackle Specialist', ''], bottomRight: ['Interception Specialist', ''], bottomLeft: ['Limited Defender', ''] }},
-    { category: 'defending', title: 'Aerial & Clearance Impact', xAxisKey: 'K Hdrs/90', yAxisKey: 'Clr/90', xAxisLabel: 'Key Headers per 90', yAxisLabel: 'Clearances per 90', quadrantLabels: { topRight: ['Elite Aerial Defender', ''], topLeft: ['Selective Header', ''], bottomRight: ['Clearance Specialist', ''], bottomLeft: ['Limited Aerial', ''] }},
-    { category: 'passing', title: 'Crossing Efficiency', xAxisKey: 'Crs A/90', yAxisKey: 'Cr C/90', xAxisLabel: 'Crosses Attempted per 90', yAxisLabel: 'Crosses Completed per 90', quadrantLabels: { topRight: ['Elite Crosser', ''], topLeft: ['Selective Crosser', ''], bottomRight: ['Volume Crosser', ''], bottomLeft: ['Limited Crosser', ''] }}
+    // Attacking plots
+    { category: 'attacking', group: 'shooting', title: 'Shooting Performance', xAxisKey: 'xG/90', yAxisKey: 'Gls/90', xAxisLabel: 'Expected Goals per 90', yAxisLabel: 'Goals per 90', quadrantLabels: { topRight: ['Elite', 'Over-performing'], topLeft: ['Clinical', 'Over-performing'], bottomRight: ['Wasteful', 'Under-performing'], bottomLeft: ['Low Threat', 'Under-performing'] }},
+    { category: 'attacking', group: 'shooting', title: 'Shooting Efficiency', xAxisKey: 'Shot/90', yAxisKey: 'Conv %', xAxisLabel: 'Shots per 90', yAxisLabel: 'Conversion %', quadrantLabels: { topRight: ['Elite Attacker', ''], topLeft: ['Selective Shooter', ''], bottomRight: ['Inefficient Volume', ''], bottomLeft: ['Limited Threat', ''] }},
+    
+    // Passing plots
+    { category: 'passing', group: 'creative', title: 'Creative Passing', xAxisKey: 'xA/90', yAxisKey: 'Asts/90', xAxisLabel: 'Expected Assists per 90', yAxisLabel: 'Assists per 90', quadrantLabels: { topRight: ['Elite Creator', ''], topLeft: ['Fortunate Creator', ''], bottomRight: ['Unlucky Creator', ''], bottomLeft: ['Limited Creator', ''] }},
+    { category: 'passing', group: 'creative', title: 'Key Passes', xAxisKey: 'K Ps/90', yAxisKey: 'Asts/90', xAxisLabel: 'Key Passes per 90', yAxisLabel: 'Assists per 90', quadrantLabels: { topRight: ['Elite Creator', ''], topLeft: ['Clinical Passer', ''], bottomRight: ['Wasteful Creator', ''], bottomLeft: ['Limited Creator', ''] }},
+    
+    { category: 'passing', group: 'progression', title: 'Passing Progression', xAxisKey: 'Pr passes/90', yAxisKey: 'Pas %', xAxisLabel: 'Progressive Passes per 90', yAxisLabel: 'Pass Completion %', quadrantLabels: { topRight: ['Accurate Progressive', ''], topLeft: ['Selective Progressive', ''], bottomRight: ['Risky Progressive', ''], bottomLeft: ['Limited Progressive', ''] }},
+    { category: 'passing', group: 'progression', title: 'Passing Volume', xAxisKey: 'Pas/90', yAxisKey: 'Pas %', xAxisLabel: 'Passes per 90', yAxisLabel: 'Pass Completion %', quadrantLabels: { topRight: ['Elite Passer', ''], topLeft: ['Accurate Passer', ''], bottomRight: ['Volume Passer', ''], bottomLeft: ['Limited Passer', ''] }},
+    
+    { category: 'passing', group: 'crossing', title: 'Crossing Efficiency', xAxisKey: 'Crs A/90', yAxisKey: 'Cr C/90', xAxisLabel: 'Crosses Attempted per 90', yAxisLabel: 'Crosses Completed per 90', quadrantLabels: { topRight: ['Elite Crosser', ''], topLeft: ['Selective Crosser', ''], bottomRight: ['Volume Crosser', ''], bottomLeft: ['Limited Crosser', ''] }},
+    { category: 'passing', group: 'crossing', title: 'Crossing Impact', xAxisKey: 'Crs A/90', yAxisKey: 'xA/90', xAxisLabel: 'Crosses Attempted per 90', yAxisLabel: 'Expected Assists per 90', quadrantLabels: { topRight: ['Elite Crosser', ''], topLeft: ['Clinical Crosser', ''], bottomRight: ['Volume Crosser', ''], bottomLeft: ['Limited Crosser', ''] }},
+    
+    // Defending plots
+    { category: 'defending', group: 'duels', title: 'Defensive Duels', xAxisKey: 'Tck/90', yAxisKey: 'Tck R', xAxisLabel: 'Tackles per 90', yAxisLabel: 'Tackle Success %', quadrantLabels: { topRight: ['Elite Ball-Winner', ''], topLeft: ['Conservative', ''], bottomRight: ['Reckless', ''], bottomLeft: ['Passive', ''] }},
+    { category: 'defending', group: 'duels', title: 'Defensive Actions', xAxisKey: 'Tck/90', yAxisKey: 'Int/90', xAxisLabel: 'Tackles per 90', yAxisLabel: 'Interceptions per 90', quadrantLabels: { topRight: ['Elite Defender', ''], topLeft: ['Tackle Specialist', ''], bottomRight: ['Interception Specialist', ''], bottomLeft: ['Limited Defender', ''] }},
+    
+    { category: 'defending', group: 'pressing', title: 'Pressing Efficiency', xAxisKey: 'Pres C/90', yAxisKey: 'Poss Won/90', xAxisLabel: 'Pressures Completed per 90', yAxisLabel: 'Possession Won per 90', quadrantLabels: { topRight: ['Effective Presser', ''], topLeft: ['Positional Winner', ''], bottomRight: ['Ineffective Presser', ''], bottomLeft: ['Low Activity', ''] }},
+    { category: 'defending', group: 'pressing', title: 'Pressing Impact', xAxisKey: 'Pres A/90', yAxisKey: 'Poss Won/90', xAxisLabel: 'Pressures Attempted per 90', yAxisLabel: 'Possession Won per 90', quadrantLabels: { topRight: ['Elite Presser', ''], topLeft: ['Selective Presser', ''], bottomRight: ['Ineffective Presser', ''], bottomLeft: ['Limited Presser', ''] }},
+    
+    { category: 'defending', group: 'aerial', title: 'Aerial Duels', xAxisKey: 'Aer A/90', yAxisKey: 'Hdrs W/90', xAxisLabel: 'Aerial Challenges per 90', yAxisLabel: 'Headers Won per 90', quadrantLabels: { topRight: ['Elite Aerial', ''], topLeft: ['Selective Winner', ''], bottomRight: ['Ineffective Challenger', ''], bottomLeft: ['Limited Aerial', ''] }},
+    { category: 'defending', group: 'aerial', title: 'Aerial & Clearance Impact', xAxisKey: 'K Hdrs/90', yAxisKey: 'Clr/90', xAxisLabel: 'Key Headers per 90', yAxisLabel: 'Clearances per 90', quadrantLabels: { topRight: ['Elite Aerial Defender', ''], topLeft: ['Selective Header', ''], bottomRight: ['Clearance Specialist', ''], bottomLeft: ['Limited Aerial', ''] }},
+    
+    { category: 'defending', group: 'workrate', title: 'Work Rate', xAxisKey: 'Dist/90', yAxisKey: 'Sprints/90', xAxisLabel: 'Distance Covered per 90', yAxisLabel: 'Sprints per 90', quadrantLabels: { topRight: ['Elite Work Rate', ''], topLeft: ['Endurance Runner', ''], bottomRight: ['Sprint Specialist', ''], bottomLeft: ['Limited Movement', ''] }},
+    { category: 'defending', group: 'workrate', title: 'Defensive Intensity', xAxisKey: 'Dist/90', yAxisKey: 'Pres A/90', xAxisLabel: 'Distance Covered per 90', yAxisLabel: 'Pressures Attempted per 90', quadrantLabels: { topRight: ['Elite Intensity', ''], topLeft: ['Endurance Presser', ''], bottomRight: ['Sprint Presser', ''], bottomLeft: ['Limited Intensity', ''] }},
+    
+    // Goalkeeping plots
+    { category: 'goalkeeping', group: 'shotstopping', title: 'Shot-Stopping', xAxisKey: 'Con/90', yAxisKey: 'Sv %', xAxisLabel: 'Goals Conceded per 90', yAxisLabel: 'Save Percentage', quadrantLabels: { topRight: ['Busy & Effective', ''], topLeft: ['Elite Goalkeeper', ''], bottomRight: ['Struggling', ''], bottomLeft: ['Protected', ''] }},
+    { category: 'goalkeeping', group: 'shotstopping', title: 'Shot Prevention', xAxisKey: 'xGP/90', yAxisKey: 'Con/90', xAxisLabel: 'Expected Goals Prevented per 90', yAxisLabel: 'Goals Conceded per 90', quadrantLabels: { topRight: ['Elite Shot-Stopper', ''], topLeft: ['Protected Keeper', ''], bottomRight: ['Exposed Keeper', ''], bottomLeft: ['Limited Impact', ''] }}
 ]);
 
 const statCategories = {
@@ -301,6 +453,17 @@ const attackingCharts = computed(() => scatterPlotConfigs.value.filter(c => c.ca
 const passingCharts = computed(() => scatterPlotConfigs.value.filter(c => c.category === 'passing'));
 const defendingCharts = computed(() => scatterPlotConfigs.value.filter(c => c.category === 'defending'));
 const goalkeepingCharts = computed(() => scatterPlotConfigs.value.filter(c => c.category === 'goalkeeping'));
+
+// Add computed properties for each subcategory
+const attackingShootingCharts = computed(() => attackingCharts.value.filter(c => c.group === 'shooting'));
+const passingCreativeCharts = computed(() => passingCharts.value.filter(c => c.group === 'creative'));
+const passingProgressionCharts = computed(() => passingCharts.value.filter(c => c.group === 'progression'));
+const passingCrossingCharts = computed(() => passingCharts.value.filter(c => c.group === 'crossing'));
+const defendingDuelsCharts = computed(() => defendingCharts.value.filter(c => c.group === 'duels'));
+const defendingPressingCharts = computed(() => defendingCharts.value.filter(c => c.group === 'pressing'));
+const defendingAerialCharts = computed(() => defendingCharts.value.filter(c => c.group === 'aerial'));
+const defendingWorkrateCharts = computed(() => defendingCharts.value.filter(c => c.group === 'workrate'));
+const goalkeepingShotstoppingCharts = computed(() => goalkeepingCharts.value.filter(c => c.group === 'shotstopping'));
 
 const attackingStats = computed(() => statCategories.offensive);
 const passingStats = computed(() => statCategories.passing);
@@ -420,6 +583,12 @@ watch(filteredPlayers, () => {
 watch(availableDivisions, (newDivisions) => {
     divisionOptions.value = newDivisions;
 }, { immediate: true });
+
+// Add these refs after the existing refs
+const attackingPlotTab = ref('shooting');
+const passingPlotTab = ref('creative');
+const defendingPlotTab = ref('duels');
+const goalkeepingPlotTab = ref('shotstopping');
 
 onMounted(() => {
     initializeData();
@@ -655,14 +824,15 @@ $border-radius-small: 8px;
 
 .charts-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
-    gap: 24px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
 }
 
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 24px;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
 }
 
 // Banners for error/no-data states
@@ -741,5 +911,10 @@ $border-radius-small: 8px;
     .stats-grid {
         grid-template-columns: 1fr;
     }
+}
+
+// For goalkeeping, we want single column
+.goalkeeping .charts-grid {
+    grid-template-columns: 1fr;
 }
 </style>
