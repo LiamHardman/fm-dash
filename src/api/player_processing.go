@@ -551,22 +551,33 @@ func EnhancePlayerWithCalculations(player *Player) {
 	// Set the best role name
 	player.BestRoleOverall = bestRoleName
 
-	// Calculate overall as the mean of all role ratings instead of using the maximum
+	// Calculate overall as the mean of the top 7 role ratings instead of using all role ratings
 	meanRoleBasedOverall := 0
 	if len(calculatedRoleOveralls) > 0 {
-		totalRoleOveralls := 0
-		for _, roleOverall := range calculatedRoleOveralls {
-			totalRoleOveralls += roleOverall.Score
+		// Sort the role overalls by score (highest first) to get the top ratings
+		sort.Slice(calculatedRoleOveralls, func(i, j int) bool {
+			return calculatedRoleOveralls[i].Score > calculatedRoleOveralls[j].Score
+		})
+
+		// Take the top 7 role ratings (or all of them if there are fewer than 7)
+		topRoleCount := len(calculatedRoleOveralls)
+		if topRoleCount > 7 {
+			topRoleCount = 7
 		}
-		meanRoleBasedOverall = totalRoleOveralls / len(calculatedRoleOveralls)
+
+		totalRoleOveralls := 0
+		for i := 0; i < topRoleCount; i++ {
+			totalRoleOveralls += calculatedRoleOveralls[i].Score
+		}
+		meanRoleBasedOverall = totalRoleOveralls / topRoleCount
 	}
 
-	// Set Overall to the mean of all role-specific scores
-	// This provides a more balanced representation of the player's abilities
+	// Set Overall to the mean of the top 7 role-specific scores
+	// This provides a more balanced representation of the player's abilities focused on their best roles
 	player.Overall = meanRoleBasedOverall
 
-	// Note: We changed from using the best role-specific overall score
-	// to using the mean of all role-specific overall scores
+	// Note: We changed from using the mean of all role-specific overall scores
+	// to using the mean of the top 7 role-specific overall scores
 	// --- END: Overall Calculation ---
 
 	// Check ALL attributes for masking and set the AttributeMasked flag
@@ -732,14 +743,20 @@ func RecalculatePlayerRatings(player *Player) {
 		return player.RoleSpecificOveralls[i].RoleName < player.RoleSpecificOveralls[j].RoleName
 	})
 
-	// Calculate overall as the mean of all role ratings instead of using the maximum
+	// Calculate overall as the mean of the top 7 role ratings instead of using all role ratings
 	meanRoleBasedOverall := 0
 	if len(player.RoleSpecificOveralls) > 0 {
-		totalRoleOveralls := 0
-		for _, roleOverall := range player.RoleSpecificOveralls {
-			totalRoleOveralls += roleOverall.Score
+		// Take the top 7 role ratings (or all of them if there are fewer than 7)
+		topRoleCount := len(player.RoleSpecificOveralls)
+		if topRoleCount > 7 {
+			topRoleCount = 7
 		}
-		meanRoleBasedOverall = totalRoleOveralls / len(player.RoleSpecificOveralls)
+
+		totalRoleOveralls := 0
+		for i := 0; i < topRoleCount; i++ {
+			totalRoleOveralls += player.RoleSpecificOveralls[i].Score
+		}
+		meanRoleBasedOverall = totalRoleOveralls / topRoleCount
 	}
 
 	// Update overall and best role
