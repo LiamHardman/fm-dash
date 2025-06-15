@@ -1,3 +1,9 @@
+## [1.12.9](https://git.liamhardman.com/liam/fm24-golang/compare/v1.12.8...v1.12.9) (2025-06-15)
+
+### 🐛 Bug Fixes
+
+* select all divisions ([b297dde](https://git.liamhardman.com/liam/fm24-golang/commit/b297dde2cf7051d4bc677a57617484bf2230087f))
+
 ## [1.12.8](https://git.liamhardman.com/liam/fm24-golang/compare/v1.12.7...v1.12.8) (2025-06-15)
 
 ### 🐛 Bug Fixes
