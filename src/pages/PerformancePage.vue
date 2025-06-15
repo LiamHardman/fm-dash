@@ -49,26 +49,51 @@
 
                 <!-- Filter Bar Integrated into Hero -->
                 <div class="filter-bar">
-                    <q-select
-                        v-model="selectedDivisions"
-                        :options="divisionOptions"
-                        label="Filter by Division"
-                        dense
-                        outlined
-                        multiple
-                        use-chips
-                        use-input
-                        @filter="filterDivisionsFn"
-                        class="division-filter"
-                        dark
-                        popup-content-class="bg-grey-10"
-                    >
-                         <template v-slot:no-option>
-                            <q-item>
-                                <q-item-section class="text-grey">No divisions found</q-item-section>
-                            </q-item>
-                        </template>
-                    </q-select>
+                    <div class="division-filter-container">
+                        <div class="division-filter-header">
+                            <q-btn
+                                @click="selectAllDivisions"
+                                size="sm"
+                                color="primary"
+                                icon="select_all"
+                                label="Select All"
+                                dense
+                                outline
+                                class="division-action-btn"
+                            />
+                            <q-btn
+                                @click="clearAllDivisions"
+                                size="sm"
+                                color="negative"
+                                icon="clear_all"
+                                label="Clear All"
+                                dense
+                                outline
+                                class="division-action-btn"
+                            />
+                        </div>
+                        <q-select
+                            v-model="selectedDivisions"
+                            :options="divisionOptions"
+                            label="Filter by Division"
+                            dense
+                            outlined
+                            multiple
+                            :use-chips="selectedDivisions.length <= 5"
+                            use-input
+                            @filter="filterDivisionsFn"
+                            class="division-filter"
+                            dark
+                            popup-content-class="bg-grey-10"
+                            :display-value="selectedDivisionsDisplayText"
+                        >
+                             <template v-slot:no-option>
+                                <q-item>
+                                    <q-item-section class="text-grey">No divisions found</q-item-section>
+                                </q-item>
+                            </template>
+                        </q-select>
+                    </div>
                     <div class="minutes-filter">
                         <div class="slider-label">Minimum Minutes Played</div>
                         <q-slider
@@ -407,6 +432,18 @@ const filteredPlayers = computed(() => {
     });
 });
 
+// Computed property for custom display text in division filter
+const selectedDivisionsDisplayText = computed(() => {
+    const count = selectedDivisions.value.length;
+    if (count === 0) {
+        return '';
+    } else if (count <= 5) {
+        return selectedDivisions.value.join(', ');
+    } else {
+        return `${count} divisions selected`;
+    }
+});
+
 // --- Data Definitions (Charts & Stats) ---
 const scatterPlotConfigs = ref([
     // Attacking plots
@@ -564,6 +601,15 @@ const filterDivisionsFn = (val, update) => {
   })
 };
 
+// Functions to handle select all and clear all divisions
+const selectAllDivisions = () => {
+    selectedDivisions.value = [...availableDivisions.value];
+};
+
+const clearAllDivisions = () => {
+    selectedDivisions.value = [];
+};
+
 // --- Watchers & Lifecycle ---
 watch(() => route.query.datasetId, async (newId, oldId) => {
     if (newId && newId !== oldId) {
@@ -714,15 +760,60 @@ $border-radius-small: 8px;
         backdrop-filter: blur(10px);
         border: 1px solid rgba(255,255,255,0.2);
 
-        .division-filter {
-            :deep(.q-field__control) {
-                background: rgba(255,255,255,0.15);
-                border: 1px solid rgba(255,255,255,0.2);
-                border-radius: $border-radius-small;
-                color: white;
+        .division-filter-container {
+            width: 100%;
+            
+            .division-filter-header {
+                display: flex;
+                gap: 0.5rem;
+                margin-bottom: 0.75rem;
+                
+                .division-action-btn {
+                    background: rgba(255,255,255,0.1);
+                    border-color: rgba(255,255,255,0.3);
+                    color: white;
+                    font-size: 0.8rem;
+                    
+                    &:hover {
+                        background: rgba(255,255,255,0.2);
+                        transform: translateY(-1px);
+                    }
+                    
+                    &.q-btn--outline {
+                        border-width: 1px;
+                    }
+                    
+                    // Override Quasar's color classes for dark theme
+                    &.text-primary {
+                        color: #90caf9 !important;
+                        border-color: rgba(144, 202, 249, 0.5) !important;
+                        
+                        &:hover {
+                            background: rgba(144, 202, 249, 0.1) !important;
+                        }
+                    }
+                    
+                    &.text-negative {
+                        color: #f48fb1 !important;
+                        border-color: rgba(244, 143, 177, 0.5) !important;
+                        
+                        &:hover {
+                            background: rgba(244, 143, 177, 0.1) !important;
+                        }
+                    }
+                }
             }
-            :deep(.q-field__label) {
-                color: rgba(255,255,255,0.8);
+            
+            .division-filter {
+                :deep(.q-field__control) {
+                    background: rgba(255,255,255,0.15);
+                    border: 1px solid rgba(255,255,255,0.2);
+                    border-radius: $border-radius-small;
+                    color: white;
+                }
+                :deep(.q-field__label) {
+                    color: rgba(255,255,255,0.8);
+                }
             }
         }
 

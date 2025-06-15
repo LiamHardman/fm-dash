@@ -450,7 +450,7 @@ export default {
     const maxPlayersSupported = computed(() => {
       // Rule: 15MB = 10,000 players
       // So players = (current max file size in MB / 15MB) * 10,000
-      const exactPlayers = Math.floor((maxFileSizeMB.value / 15) * 10000)
+      const exactPlayers = Math.floor((maxFileSizeMB.value / 20) * 10000)
       
       // Round to nearest 5000 for cleaner display
       // For example: 66,666 becomes 65,000
