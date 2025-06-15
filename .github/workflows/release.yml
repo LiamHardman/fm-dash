@@ -35,12 +35,33 @@ jobs:
           # Set the origin remote to GitHub for this workflow
           git remote set-url origin https://github.com/LiamHardman/fm-dash.git
           
-          # Add Gitea as a separate remote for dual releases
-          git remote add gitea https://git.liamhardman.com/liam/fm24-golang.git
+          # Remove any other remotes to avoid confusion
+          git remote remove gitea 2>/dev/null || true
 
-      - name: Install semantic-release for GitHub
+      - name: Clear npm cache and install semantic-release for GitHub
         run: |
+          # Clear npm cache to avoid plugin conflicts
+          npm cache clean --force
+          
+          # Uninstall any existing semantic-release plugins
+          npm uninstall -g @saithodev/semantic-release-gitea 2>/dev/null || true
+          
+          # Install only GitHub-compatible plugins
           npm install -g semantic-release @semantic-release/changelog @semantic-release/git @semantic-release/github conventional-changelog-conventionalcommits
+
+      - name: Verify Git configuration
+        run: |
+          echo "🔍 Git remotes:"
+          git remote -v
+          echo ""
+          echo "🔍 Current repository URL:"
+          git config --get remote.origin.url
+          echo ""
+          echo "🔍 Current working directory:"
+          pwd
+          echo ""
+          echo "🔍 Git status:"
+          git status --porcelain
 
       - name: Create GitHub release config
         run: |
