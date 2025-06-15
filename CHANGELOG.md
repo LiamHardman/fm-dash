@@ -1,3 +1,9 @@
+## [1.12.10](https://git.liamhardman.com/liam/fm24-golang/compare/v1.12.9...v1.12.10) (2025-06-15)
+
+### 🐛 Bug Fixes
+
+* fixes for useTeamLogos for matching ([4de53b8](https://git.liamhardman.com/liam/fm24-golang/commit/4de53b8141a53089669f8057e0f08140f41125cb))
+
 ## [1.12.9](https://git.liamhardman.com/liam/fm24-golang/compare/v1.12.8...v1.12.9) (2025-06-15)
 
 ### 🐛 Bug Fixes
