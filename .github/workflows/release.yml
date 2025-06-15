@@ -202,7 +202,7 @@ jobs:
       - name: Run semantic-release (dry-run) - GitHub
         run: |
           echo "🔍 Analyzing commits for GitHub release..."
-          npx semantic-release --dry-run --extends .releaserc.github.json
+          npx semantic-release --dry-run --config .releaserc.github.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HUSKY: 0
@@ -210,7 +210,7 @@ jobs:
       - name: Run semantic-release (dry-run) - Gitea
         run: |
           echo "🔍 Analyzing commits for Gitea release..."
-          npx semantic-release --dry-run --extends .releaserc.gitea.json
+          npx semantic-release --dry-run --config .releaserc.gitea.json
         env:
           GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
           HUSKY: 0
@@ -218,7 +218,7 @@ jobs:
       - name: Create GitHub release
         run: |
           echo "🚀 Creating GitHub release..."
-          npx semantic-release --extends .releaserc.github.json
+          npx semantic-release --config .releaserc.github.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HUSKY: 0
@@ -226,7 +226,7 @@ jobs:
       - name: Create Gitea release
         run: |
           echo "🚀 Creating Gitea release..."
-          npx semantic-release --extends .releaserc.gitea.json
+          npx semantic-release --config .releaserc.gitea.json
         env:
           GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
           HUSKY: 0
