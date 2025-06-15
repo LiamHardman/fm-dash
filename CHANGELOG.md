@@ -1,3 +1,21 @@
+## [1.12.7](https://git.liamhardman.com/liam/fm24-golang/compare/v1.12.6...v1.12.7) (2025-06-15)
+
+### 🐛 Bug Fixes
+
+* attempted release for both repos ([c362843](https://git.liamhardman.com/liam/fm24-golang/commit/c362843900bb834e53e8722b0b05722612f04368))
+* attempting to have both gitea and github releases ([f24c0e2](https://git.liamhardman.com/liam/fm24-golang/commit/f24c0e2e32bf6b26e3007dcc5d94944a15787a05))
+* first gh-ready release ([b85b53d](https://git.liamhardman.com/liam/fm24-golang/commit/b85b53da1874aef6618b00906b619baf58a4becf))
+* fixed --config var ([ef2673d](https://git.liamhardman.com/liam/fm24-golang/commit/ef2673d689edb71d2d6be2803d74af9e2b1e1019))
+* fixed --config var ([216e645](https://git.liamhardman.com/liam/fm24-golang/commit/216e64545e7103bdb814950c2c457de157539550))
+* only github 2 electric boogaloo ([27d8e12](https://git.liamhardman.com/liam/fm24-golang/commit/27d8e123c77379faa7c7ce09f287b324a66a3619))
+* only github 2 electric boogaloo ([e99c160](https://git.liamhardman.com/liam/fm24-golang/commit/e99c160a64bf588258e8b97a6555c3599267066c))
+* only github 2 electric boogaloo ([abd55c2](https://git.liamhardman.com/liam/fm24-golang/commit/abd55c2b353a9c06e55c77875923d4a6da236dad))
+* only github 2 electric boogaloo ([add4002](https://git.liamhardman.com/liam/fm24-golang/commit/add400276fd3e798ee5e329e45c9252164b03602))
+* only github 2 electric boogaloo ([56194c7](https://git.liamhardman.com/liam/fm24-golang/commit/56194c7f06f050837d9f3b6c3c801d72106159c8))
+* only github 2 electric boogaloo ([79c9f7d](https://git.liamhardman.com/liam/fm24-golang/commit/79c9f7d13ba393d29bf5578a888e652cb6005903))
+* only github 2 electric boogaloo ([d70bf4b](https://git.liamhardman.com/liam/fm24-golang/commit/d70bf4b5e6e61d07b783e7bc032512289b63f14c))
+* only github release ([c5a3719](https://git.liamhardman.com/liam/fm24-golang/commit/c5a37199431f846325559aa47411d30c2fae53a3))
+
 ## [1.12.6](https://git.liamhardman.com/liam/fm24-golang/compare/v1.12.5...v1.12.6) (2025-06-14)
 
 ### 🐛 Bug Fixes
