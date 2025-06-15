@@ -82,7 +82,10 @@ jobs:
         run: |
           cat > .releaserc.json << 'EOF'
           {
-            "branches": ["main"],
+            "branches": [
+              "main",
+              "gh-test"
+            ],
             "repositoryUrl": "https://github.com/LiamHardman/fm-dash.git",
             "plugins": [
               "@semantic-release/commit-analyzer",
@@ -115,6 +118,9 @@ jobs:
             ]
           }
           EOF
+          
+          echo "🔍 Verifying .releaserc.json was created correctly:"
+          cat .releaserc.json
 
 
 
