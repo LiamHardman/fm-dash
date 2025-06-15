@@ -62,11 +62,19 @@ jobs:
           echo "🔍 Current working directory:"
           pwd
           echo ""
-          echo "🔍 Looking for existing semantic-release config files:"
-          find . -name ".releaserc*" -o -name "release.config.*" -o -name "package.json" | head -10
-          echo ""
+          echo "🔍 Backing up original package.json and removing semantic-release config:"
+          cp package.json package.json.backup
+          
+          # Remove the "release" section from package.json using jq
+          if command -v jq >/dev/null 2>&1; then
+            jq 'del(.release)' package.json > package.json.tmp && mv package.json.tmp package.json
+            echo "✅ Removed release configuration from package.json"
+          else
+            echo "⚠️ jq not available, will rely on .releaserc.json to override"
+          fi
+          
           echo "🔍 Removing any existing semantic-release config files:"
-          rm -f .releaserc .releaserc.json .releaserc.js .releaserc.yaml .releaserc.yml
+          rm -f .releaserc .releaserc.js .releaserc.yaml .releaserc.yml
           rm -f release.config.js release.config.json
           echo "✅ Cleanup complete"
 
@@ -136,6 +144,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HUSKY: 0
+
+      - name: Restore original package.json
+        if: always()
+        run: |
+          if [ -f package.json.backup ]; then
+            mv package.json.backup package.json
+            echo "✅ Restored original package.json"
+          fi
 
       - name: GitHub release summary
         if: always()
