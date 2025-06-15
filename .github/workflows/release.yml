@@ -3,7 +3,7 @@ run-name: ${{ github.actor }} is creating a release 🚀
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, gh-test ]
 
 jobs:
   release:
