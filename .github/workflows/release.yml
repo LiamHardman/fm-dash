@@ -38,16 +38,34 @@ jobs:
           # Remove any other remotes to avoid confusion
           git remote remove gitea 2>/dev/null || true
 
-      - name: Clear npm cache and install semantic-release for GitHub
+      - name: Create clean package.json and install semantic-release locally
         run: |
-          # Clear npm cache to avoid plugin conflicts
-          npm cache clean --force
+          # Create a minimal package.json for local installation
+          cat > package.json << 'EOF'
+          {
+            "name": "github-release-temp",
+            "version": "1.0.0",
+            "private": true,
+            "devDependencies": {
+              "semantic-release": "^24.2.5",
+              "@semantic-release/changelog": "^6.0.3",
+              "@semantic-release/git": "^10.0.1",
+              "@semantic-release/github": "^10.0.7",
+              "conventional-changelog-conventionalcommits": "^8.0.0"
+            }
+          }
+          EOF
           
-          # Uninstall any existing semantic-release plugins
-          npm uninstall -g @saithodev/semantic-release-gitea 2>/dev/null || true
-          
-          # Install only GitHub-compatible plugins
-          npm install -g semantic-release @semantic-release/changelog @semantic-release/git @semantic-release/github conventional-changelog-conventionalcommits
+          # Install locally (not globally) to avoid conflicts
+          npm install
+
+      - name: Verify installed packages
+        run: |
+          echo "🔍 Installed semantic-release packages:"
+          npm list --depth=0 | grep semantic-release || echo "No semantic-release packages found"
+          echo ""
+          echo "🔍 Checking for Gitea plugin:"
+          npm list @saithodev/semantic-release-gitea 2>/dev/null || echo "✅ Gitea plugin not installed"
 
       - name: Verify Git configuration and clean up
         run: |
@@ -122,7 +140,7 @@ jobs:
       - name: Run semantic-release (dry-run) - GitHub
         run: |
           echo "🔍 Analyzing commits for GitHub release..."
-          npx semantic-release --dry-run
+          ./node_modules/.bin/semantic-release --dry-run
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HUSKY: 0
@@ -130,7 +148,7 @@ jobs:
       - name: Create GitHub release
         run: |
           echo "🚀 Creating GitHub release..."
-          npx semantic-release
+          ./node_modules/.bin/semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HUSKY: 0
