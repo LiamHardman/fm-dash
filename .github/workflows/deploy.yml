@@ -3,8 +3,7 @@ run-name: ${{ github.actor }} is building and publishing FM-Dash Docker image ğŸ
 
 on:
   push:
-    branches:
-      - main # Target branch for deployment
+    branches: [ main, gh-test ]
   release:
     types: [published]
 
