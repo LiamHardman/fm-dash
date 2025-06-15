@@ -49,7 +49,7 @@ jobs:
           # Install only GitHub-compatible plugins
           npm install -g semantic-release @semantic-release/changelog @semantic-release/git @semantic-release/github conventional-changelog-conventionalcommits
 
-      - name: Verify Git configuration
+      - name: Verify Git configuration and clean up
         run: |
           echo "🔍 Git remotes:"
           git remote -v
@@ -60,12 +60,17 @@ jobs:
           echo "🔍 Current working directory:"
           pwd
           echo ""
-          echo "🔍 Git status:"
-          git status --porcelain
+          echo "🔍 Looking for existing semantic-release config files:"
+          find . -name ".releaserc*" -o -name "release.config.*" -o -name "package.json" | head -10
+          echo ""
+          echo "🔍 Removing any existing semantic-release config files:"
+          rm -f .releaserc .releaserc.json .releaserc.js .releaserc.yaml .releaserc.yml
+          rm -f release.config.js release.config.json
+          echo "✅ Cleanup complete"
 
       - name: Create GitHub release config
         run: |
-          cat > .releaserc.github.json << 'EOF'
+          cat > .releaserc.json << 'EOF'
           {
             "branches": ["main"],
             "repositoryUrl": "https://github.com/LiamHardman/fm-dash.git",
@@ -117,7 +122,7 @@ jobs:
       - name: Run semantic-release (dry-run) - GitHub
         run: |
           echo "🔍 Analyzing commits for GitHub release..."
-          npx semantic-release --dry-run --config .releaserc.github.json
+          npx semantic-release --dry-run
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HUSKY: 0
@@ -125,7 +130,7 @@ jobs:
       - name: Create GitHub release
         run: |
           echo "🚀 Creating GitHub release..."
-          npx semantic-release --config .releaserc.github.json
+          npx semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HUSKY: 0
