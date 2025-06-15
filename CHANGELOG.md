@@ -1,3 +1,9 @@
+## [1.12.8](https://git.liamhardman.com/liam/fm24-golang/compare/v1.12.7...v1.12.8) (2025-06-15)
+
+### 🐛 Bug Fixes
+
+* using mean of 7 role ratings instead of all for overall calc ([b6b7001](https://git.liamhardman.com/liam/fm24-golang/commit/b6b7001a7bad47034a27c5834e6bb3c39ef96e91))
+
 ## [1.12.7](https://git.liamhardman.com/liam/fm24-golang/compare/v1.12.6...v1.12.7) (2025-06-15)
 
 ### 🐛 Bug Fixes
