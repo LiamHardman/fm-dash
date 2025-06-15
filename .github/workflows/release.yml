@@ -10,6 +10,11 @@ jobs:
     name: Create Release
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip release]')"
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      packages: write
     
     steps:
       - name: Checkout code
