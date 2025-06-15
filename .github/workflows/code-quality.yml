@@ -3,9 +3,9 @@ run-name: ${{ github.actor }} is running code quality checks 🔍
 
 on:
   push:
-    branches: [ main, develop, gh-test ]
+    branches: [ main, develop ]
   pull_request:
-    branches: [ main, develop, gh-test ]
+    branches: [ main, develop ]
 
 jobs:
   frontend-linting:
