@@ -38,26 +38,10 @@ jobs:
           # Remove any other remotes to avoid confusion
           git remote remove gitea 2>/dev/null || true
 
-      - name: Create clean package.json and install semantic-release locally
+      - name: Install semantic-release locally (preserving existing package.json)
         run: |
-          # Create a minimal package.json for local installation
-          cat > package.json << 'EOF'
-          {
-            "name": "github-release-temp",
-            "version": "1.0.0",
-            "private": true,
-            "devDependencies": {
-              "semantic-release": "^24.2.5",
-              "@semantic-release/changelog": "^6.0.3",
-              "@semantic-release/git": "^10.0.1",
-              "@semantic-release/github": "^10.0.7",
-              "conventional-changelog-conventionalcommits": "^8.0.0"
-            }
-          }
-          EOF
-          
-          # Install locally (not globally) to avoid conflicts
-          npm install
+          # Install semantic-release packages locally without modifying existing package.json
+          npm install --save-dev semantic-release@^24.2.5 @semantic-release/changelog@^6.0.3 @semantic-release/git@^10.0.1 @semantic-release/github@^10.0.7 conventional-changelog-conventionalcommits@^8.0.0
 
       - name: Verify installed packages
         run: |
