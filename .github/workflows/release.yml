@@ -1,5 +1,5 @@
-name: Conventional Commit Release
-run-name: ${{ github.actor }} is creating a release 🚀
+name: GitHub Release
+run-name: ${{ github.actor }} is creating a GitHub release 🚀
 
 on:
   push:
@@ -38,9 +38,9 @@ jobs:
           # Add Gitea as a separate remote for dual releases
           git remote add gitea https://git.liamhardman.com/liam/fm24-golang.git
 
-      - name: Install semantic-release
+      - name: Install semantic-release for GitHub
         run: |
-          npm install -g semantic-release @semantic-release/changelog @semantic-release/git @semantic-release/github @saithodev/semantic-release-gitea conventional-changelog-conventionalcommits
+          npm install -g semantic-release @semantic-release/changelog @semantic-release/git @semantic-release/github conventional-changelog-conventionalcommits
 
       - name: Create GitHub release config
         run: |
@@ -80,30 +80,7 @@ jobs:
           }
           EOF
 
-      - name: Create Gitea release config
-        run: |
-          cat > .releaserc.gitea.json << 'EOF'
-          {
-            "branches": ["main"],
-            "repositoryUrl": "https://git.liamhardman.com/liam/fm24-golang.git",
-            "plugins": [
-              "@semantic-release/commit-analyzer",
-              "@semantic-release/release-notes-generator",
-              [
-                "@saithodev/semantic-release-gitea",
-                {
-                  "giteaUrl": "https://git.liamhardman.com",
-                  "assets": [
-                    {
-                      "path": "dist/**/*",
-                      "label": "Build artifacts"
-                    }
-                  ]
-                }
-              ]
-            ]
-          }
-          EOF
+
 
       - name: Build application
         run: |
@@ -124,14 +101,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HUSKY: 0
 
-      - name: Run semantic-release (dry-run) - Gitea
-        run: |
-          echo "🔍 Analyzing commits for Gitea release..."
-          npx semantic-release --dry-run --config .releaserc.gitea.json
-        env:
-          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
-          HUSKY: 0
-
       - name: Create GitHub release
         run: |
           echo "🚀 Creating GitHub release..."
@@ -140,25 +109,17 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HUSKY: 0
 
-      - name: Create Gitea release
-        run: |
-          echo "🚀 Creating Gitea release..."
-          npx semantic-release --config .releaserc.gitea.json
-        env:
-          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
-          HUSKY: 0
-
-      - name: Release summary
+      - name: GitHub release summary
         if: always()
         run: |
-          echo "📋 Release Pipeline Summary"
-          echo "=========================="
+          echo "📋 GitHub Release Pipeline Summary"
+          echo "================================="
           echo ""
           echo "✅ Conventional commit analysis completed"
           echo "📦 Package version updated (if applicable)"
           echo "📝 Changelog generated/updated"
           echo "🏷️ Git tag created (if new version)"
-          echo "📋 Release created (if new version)"
+          echo "📋 GitHub release created (if new version)"
           echo ""
           echo "ℹ️  Commit format guide:"
           echo "   feat: new feature (minor version bump)"
@@ -167,4 +128,7 @@ jobs:
           echo "   docs: documentation changes (no version bump)"
           echo "   chore: maintenance tasks (no version bump)"
           echo ""
-          echo "🚫 To skip release: Add '[skip release]' to commit message" 
+          echo "🚫 To skip release: Add '[skip release]' to commit message"
+          echo ""
+          echo "📝 Note: This workflow only creates GitHub releases"
+          echo "🔗 Repository: https://github.com/LiamHardman/fm-dash" 
