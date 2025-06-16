@@ -1066,7 +1066,7 @@ volumes:
       {
         title: 'Download the FM Dash Search View',
         description: 'First, you need to download a custom search view from the Steam Workshop that contains all the player attributes FM-Dash needs for analysis.',
-        link: 'https://steamcommunity.com/sharedfiles/filedetails/?id=3494146457',
+        link: 'https://steamcommunity.com/sharedfiles/filedetails/?id=3498467200',
         linkText: 'Download FM Dash Search View',
         note: 'Make sure you\'re logged into Steam and subscribed to the workshop item.'
       },
