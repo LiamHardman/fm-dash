@@ -4,6 +4,14 @@ import teamsData from '../utils/teams_data.json' with { type: 'json' }
 /**
  * Enhanced composable for handling team logos with optimized matching
  * Maps team names to their numerical IDs and provides logo URLs
+ * 
+ * @param {Object} options - Configuration options
+ * @param {number} options.similarityThreshold - Minimum similarity score to consider a match (default: 0.7)
+ * @param {boolean} options.enableFuzzyMatching - Whether to enable fuzzy matching (default: true)
+ * @param {boolean} options.strictMode - Whether to use strict matching mode (default: false)
+ * @param {number} options.batchSize - Number of teams to process in each batch (default: 50)
+ * @param {number} options.batchDelay - Delay between batches in milliseconds (default: 1)
+ * @param {number} options.lowerIdPreferenceThreshold - How close similarity scores need to be to prefer lower IDs (default: 0.05)
  */
 export function useTeamLogos(options = {}) {
   const { 
@@ -11,7 +19,8 @@ export function useTeamLogos(options = {}) {
     enableFuzzyMatching = true,
     strictMode = false,
     batchSize = 50, // Increased batch size for better performance
-    batchDelay = 1   // Reduced delay for faster processing
+    batchDelay = 1,   // Reduced delay for faster processing
+    lowerIdPreferenceThreshold = 0.05 // New option: how close scores need to be to prefer lower IDs
   } = options
 
   // Enhanced stop words for better matching
@@ -372,9 +381,14 @@ export function useTeamLogos(options = {}) {
     const exactMatches = teamIndex.normalizedLookup.get(normalized)
     if (exactMatches) {
       exactMatches.forEach(team => candidates.set(team.id, { ...team, priority: 1 }))
-      // If we found exact matches, return early for performance
+      // If we found exact matches, sort by ID (lower IDs preferred) and return early for performance
       if (exactMatches.length > 0) {
-        return Array.from(candidates.values())
+        const sortedExactMatches = Array.from(candidates.values()).sort((a, b) => {
+          const idA = parseInt(a.id, 10)
+          const idB = parseInt(b.id, 10)
+          return idA - idB // Lower ID wins
+        })
+        return sortedExactMatches
       }
     }
     
@@ -398,13 +412,18 @@ export function useTeamLogos(options = {}) {
       }
     }
     
-    // Limit candidates for performance - prioritize teams with more word matches
+    // Limit candidates for performance - prioritize teams with more word matches, then by lower ID
     const sortedCandidates = Array.from(candidates.values())
       .sort((a, b) => {
         const scoreA = wordScores.get(a.id) || 0
         const scoreB = wordScores.get(b.id) || 0
         if (scoreA !== scoreB) return scoreB - scoreA // Higher word match count first
-        return a.priority - b.priority // Then by priority
+        if (a.priority !== b.priority) return a.priority - b.priority // Then by priority
+        
+        // If same score and priority, favor lower ID
+        const idA = parseInt(a.id, 10)
+        const idB = parseInt(b.id, 10)
+        return idA - idB // Lower ID wins
       })
       .slice(0, 50) // Limit to top 50 candidates for performance
     
@@ -441,23 +460,49 @@ export function useTeamLogos(options = {}) {
     
     let bestMatch = null
     let bestScore = 0
+    const validCandidates = []
     
-    // Process candidates in priority order
+    // First pass: collect all candidates with their scores
     for (const candidate of candidates) {
       const similarity = calculateSimilarity(teamName, candidate.name)
       
       if (similarity >= similarityThreshold && 
-          similarity > bestScore && 
           isLikelyCorrectMatch(teamName, candidate.name, similarity)) {
-        bestScore = similarity
-        bestMatch = candidate.id
-        
-        // Early exit for very high confidence matches
-        if (similarity >= 0.95) {
-          break
-        }
+        validCandidates.push({
+          id: candidate.id,
+          score: similarity,
+          candidate: candidate
+        })
       }
     }
+    
+    if (validCandidates.length === 0) {
+      logoCache.set(teamName, null)
+      return null
+    }
+    
+    // Sort candidates by score first, then by ID (lower IDs preferred)
+    // This implements a "lower ID preference" feature where teams with numerically
+    // lower IDs are favored when similarity scores are close (within the threshold).
+    // This helps ensure consistent results and can prioritize more "canonical" teams
+    // that might have been assigned lower IDs in the original data source.
+    validCandidates.sort((a, b) => {
+      const scoreDiff = b.score - a.score
+      
+      // If scores are very close (within configured threshold), favor the team with lower ID
+      if (Math.abs(scoreDiff) <= lowerIdPreferenceThreshold) {
+        const idA = parseInt(a.id, 10)
+        const idB = parseInt(b.id, 10)
+        return idA - idB // Lower ID wins
+      }
+      
+      // Otherwise, higher score wins (original behavior)
+      return scoreDiff
+    })
+    
+    // Select the best candidate after sorting
+    bestMatch = validCandidates[0].id
+    bestScore = validCandidates[0].score
     
     // Cache the result
     logoCache.set(teamName, bestMatch)
