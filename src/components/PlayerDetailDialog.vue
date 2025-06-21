@@ -111,7 +111,7 @@
                                 <div v-if="hasAnyPerformanceData" class="percentile-content-area">
                                     <div
                                         v-for="(stats, category, index) in categorizedPerformanceStats"
-                                        :key="category"
+                                        :key="`perf-${category}-${selectedComparisonGroup}`"
                                         class="performance-category"
                                     >
                                         <div class="performance-category-header q-mb-sm">
@@ -121,7 +121,7 @@
                                         <q-list separator dense class="performance-stats-list">
                                             <q-item
                                                 v-for="statItem in stats"
-                                                :key="statItem.key"
+                                                :key="`${statItem.key}-${selectedComparisonGroup}-${divisionFilter}`"
                                                 class="performance-stat-item modern-stat-item"
                                             >
                                                 <q-item-section class="stat-name-section">
@@ -391,7 +391,7 @@
                                     <div class="fifa-stats-grid">
                                         <div
                                             v-for="stat in fifaStatsToDisplay"
-                                            :key="stat.name"
+                                            :key="`fifa-${stat.name}-${player?.UID || player?.uid}`"
                                             class="fifa-stat-card"
                                         >
                                             <q-card
@@ -632,7 +632,7 @@
                                                 <q-list separator dense class="role-specific-ratings-list">
                                                     <q-item
                                                         v-for="roleOverall in sortedRoleSpecificOveralls"
-                                                        :key="roleOverall.roleName"
+                                                        :key="`role-${roleOverall.roleName}-${roleOverall.score}`"
                                                         :class="{
                                                             'best-role-highlight': roleOverall.score === player.Overall,
                                                         }"
@@ -677,7 +677,7 @@
 
 <script>
 import { useQuasar } from 'quasar'
-import { computed, defineComponent, onMounted, ref, watch } from 'vue'
+import { computed, defineComponent, onMounted, onUnmounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { usePlayerStore } from '../stores/playerStore'
 import { formatCurrency } from '../utils/currencyUtils'
@@ -1078,33 +1078,53 @@ export default defineComponent({
       { immediate: true }
     )
 
+    // Cleanup all caches
+    const clearAllCaches = () => {
+      performanceStatsCache.clear()
+      performanceComparisonOptionsCache.clear()
+      currencyCache.clear()
+      attributeDisplayCache.clear()
+    }
+
     onMounted(() => {
       /* Initialization logic if needed */
     })
 
+    onUnmounted(() => {
+      clearAllCaches()
+    })
+
+    // Memoized performance comparison options with better caching
+    const performanceComparisonOptionsCache = new Map()
+    
     const performanceComparisonOptions = computed(() => {
-      const options = []
-      if (
-        !props.player ||
-        !props.player.performancePercentiles ||
-        !props.player.shortPositions ||
-        !props.player.positionGroups
-      ) {
-        // If essential player data is missing, return empty or just Global if it exists
-        if (props.player?.performancePercentiles?.Global) {
-          return [{ label: 'Overall Dataset', value: 'Global' }]
-        }
-        return options
+      if (!props.player?.performancePercentiles) {
+        return props.player?.performancePercentiles?.Global 
+          ? [{ label: 'Overall Dataset', value: 'Global' }]
+          : []
       }
 
-      const playerPercentiles = props.player.performancePercentiles
-      const playerShortPositions = props.player.shortPositions // e.g., ["DC", "DM"]
-      const playerBroadGroups = props.player.positionGroups // e.g., ["Defenders", "Midfielders"]
+      const player = props.player
+      const cacheKey = `${getCacheKey(player, 'options')}-${JSON.stringify(player.shortPositions)}-${JSON.stringify(player.positionGroups)}`
+      
+      if (performanceComparisonOptionsCache.has(cacheKey)) {
+        return performanceComparisonOptionsCache.get(cacheKey)
+      }
+
+      const playerPercentiles = player.performancePercentiles
+      const playerShortPositions = player.shortPositions || []
+      const playerBroadGroups = player.positionGroups || []
+      const options = []
+
+      // Pre-create sets for faster lookups
+      const broadGroupsSet = new Set(playerBroadGroups)
+      const shortPositionsSet = new Set(playerShortPositions)
+      const addedValues = new Set()
 
       const preferredOrder = [
         'Global',
         'Goalkeepers',
-        'Defenders',
+        'Defenders', 
         'Midfielders',
         'Attackers',
         'Full-backs',
@@ -1118,66 +1138,39 @@ export default defineComponent({
         'Strikers'
       ]
 
-      for (const groupKey of preferredOrder) {
-        if (Object.prototype.hasOwnProperty.call(playerPercentiles, groupKey)) {
-          let includeGroup = false
-          if (groupKey === 'Global') {
-            includeGroup = true
-          } else if (['Goalkeepers', 'Defenders', 'Midfielders', 'Attackers'].includes(groupKey)) {
-            // Broad groups: check if player belongs to this broad group
-            if (playerBroadGroups.includes(groupKey)) {
-              includeGroup = true
-            }
-          } else if (detailedGroupToShortPositionsMap[groupKey]) {
-            // Detailed groups: check if player's short positions match any in the detailed group
-            const requiredShortPos = detailedGroupToShortPositionsMap[groupKey]
-            if (playerShortPositions.some(psp => requiredShortPos.includes(psp))) {
-              includeGroup = true
-            }
-          }
+      const shouldIncludeGroup = (groupKey) => {
+        if (groupKey === 'Global') return true
+        
+        // Check broad groups
+        if (broadGroupsSet.has(groupKey)) return true
+        
+        // Check detailed groups
+        const requiredPositions = detailedGroupToShortPositionsMap[groupKey]
+        if (requiredPositions) {
+          return requiredPositions.some(pos => shortPositionsSet.has(pos))
+        }
+        
+        return false
+      }
 
-          if (includeGroup && !options.some(opt => opt.value === groupKey)) {
-            options.push({
-              label: groupKey === 'Global' ? 'Overall Dataset' : `vs. ${groupKey}`,
-              value: groupKey
-            })
-          }
+      // Process preferred order groups
+      for (let i = 0; i < preferredOrder.length; i++) {
+        const groupKey = preferredOrder[i]
+        if (playerPercentiles[groupKey] && shouldIncludeGroup(groupKey) && !addedValues.has(groupKey)) {
+          options.push({
+            label: groupKey === 'Global' ? 'Overall Dataset' : `vs. ${groupKey}`,
+            value: groupKey
+          })
+          addedValues.add(groupKey)
         }
       }
 
-      // Add any other percentile groups the player might have that are not in preferredOrder
-      // (This ensures if backend adds new groups not yet in preferredOrder, they still show up if relevant)
-      for (const groupKey of Object.keys(playerPercentiles)) {
-        if (!options.some(opt => opt.value === groupKey)) {
-          let includeGroup = false
-          if (['Goalkeepers', 'Defenders', 'Midfielders', 'Attackers'].includes(groupKey)) {
-            if (playerBroadGroups.includes(groupKey)) includeGroup = true
-          } else if (detailedGroupToShortPositionsMap[groupKey]) {
-            const requiredShortPos = detailedGroupToShortPositionsMap[groupKey]
-            if (playerShortPositions.some(psp => requiredShortPos.includes(psp)))
-              includeGroup = true
-          } else if (groupKey === 'Global') {
-            // Should be caught by preferredOrder but good fallback
-            includeGroup = true
-          }
-          // For any other arbitrary group key not covered, we might include it if it exists,
-          // or decide to only show explicitly defined/matched ones.
-          // For now, let's assume if it's in playerPercentiles and not yet added, and it's not a known type we already checked,
-          // it might be a custom group or a new one we should display.
-          // However, to be safer and more aligned with the request, only add if it's a known type.
-          // The current logic with preferredOrder and specific checks should cover all defined groups.
-          // This secondary loop might not be strictly necessary if preferredOrder is exhaustive for relevant groups.
-          // Let's refine to ensure it doesn't add groups the player doesn't belong to.
-          if (includeGroup) {
-            // Re-check belonging for keys not in preferredOrder
-            options.push({
-              label: `vs. ${groupKey}`,
-              value: groupKey
-            })
-          }
-        }
+      // Clean up cache if it gets too large
+      if (performanceComparisonOptionsCache.size > 20) {
+        performanceComparisonOptionsCache.clear()
       }
-
+      
+      performanceComparisonOptionsCache.set(cacheKey, options)
       return options
     })
 
@@ -1225,33 +1218,38 @@ export default defineComponent({
       return positionToGroupMap[shortPosition] || null
     }
 
+    // Optimized player watcher with cache cleanup
     watch(
       () => props.player,
-      newPlayer => {
+      (newPlayer, oldPlayer) => {
+        // Clear caches when player changes to prevent stale data
+        if (oldPlayer && newPlayer !== oldPlayer) {
+          clearAllCaches()
+        }
+        
         flagLoadError.value = false
+        faceImageLoadError.value = false
+
+        if (!newPlayer?.performancePercentiles) {
+          selectedComparisonGroup.value = 'Global'
+          return
+        }
+
         const newOptions = performanceComparisonOptions.value
+        const highestRoleGroup = getPositionGroupForHighestRole()
 
-        if (newPlayer?.performancePercentiles) {
-          // Always try to set to the position group for the highest role first
-          const highestRoleGroup = getPositionGroupForHighestRole()
-
-          if (highestRoleGroup && newOptions.some(opt => opt.value === highestRoleGroup)) {
-            selectedComparisonGroup.value = highestRoleGroup
-          } else if (!newOptions.some(opt => opt.value === selectedComparisonGroup.value)) {
-            // If highest role group not available and current selection is invalid, fallback
-            if (newOptions.some(opt => opt.value === 'Global')) {
-              selectedComparisonGroup.value = 'Global'
-            } else if (newOptions.length > 0) {
-              selectedComparisonGroup.value = newOptions[0].value
-            } else {
-              selectedComparisonGroup.value = 'Global'
-            }
-          }
+        // Priority-based selection logic
+        if (highestRoleGroup && newOptions.some(opt => opt.value === highestRoleGroup)) {
+          selectedComparisonGroup.value = highestRoleGroup
+        } else if (newOptions.some(opt => opt.value === 'Global')) {
+          selectedComparisonGroup.value = 'Global'
+        } else if (newOptions.length > 0) {
+          selectedComparisonGroup.value = newOptions[0].value
         } else {
           selectedComparisonGroup.value = 'Global'
         }
       },
-      { immediate: true, deep: true }
+      { immediate: true }
     )
 
     const divisionFilterOptions = computed(() => [
@@ -1327,8 +1325,9 @@ export default defineComponent({
             Object.assign(props.player.performancePercentiles, updatedPercentiles)
             console.log('Updated player percentiles:', props.player.performancePercentiles)
             
-            // Clear the performance stats cache to force recomputation
+            // Clear relevant caches to force recomputation
             performanceStatsCache.clear()
+            performanceComparisonOptionsCache.clear()
           }
         } else {
           console.error('Failed to fetch updated percentiles:', response.status, response.statusText)
@@ -1349,42 +1348,52 @@ export default defineComponent({
       )
     })
 
-    const getPlayerAttributesInOrder = categoryOrderedKeys => {
-      if (!props.player || !props.player.attributes) return []
-      return categoryOrderedKeys.filter(key =>
-        Object.prototype.hasOwnProperty.call(props.player.attributes, key)
-      )
-    }
+    // Memoized attribute filtering for better performance
+    const attributeCategories = computed(() => {
+      if (!props.player?.attributes) {
+        return {
+          technical: [],
+          mental: [],
+          physical: [],
+          goalkeeping: []
+        }
+      }
 
-    const attributeCategories = computed(() => ({
-      technical: getPlayerAttributesInOrder(technicalAttrsOrdered),
-      mental: getPlayerAttributesInOrder(mentalAttrsOrdered),
-      physical: getPlayerAttributesInOrder(physicalAttrsOrdered),
-      goalkeeping: isGoalkeeper.value ? getPlayerAttributesInOrder(goalkeepingAttrsOrdered) : []
-    }))
+      const playerAttributes = props.player.attributes
+      const hasAttribute = (key) => playerAttributes.hasOwnProperty(key)
+
+      return {
+        technical: technicalAttrsOrdered.filter(hasAttribute),
+        mental: mentalAttrsOrdered.filter(hasAttribute),
+        physical: physicalAttrsOrdered.filter(hasAttribute),
+        goalkeeping: isGoalkeeper.value ? goalkeepingAttrsOrdered.filter(hasAttribute) : []
+      }
+    })
+
+    // Pre-defined stat configurations for better performance
+    const goalkeepingStats = [
+      { name: 'DIV', label: 'DIV' },
+      { name: 'HAN', label: 'HAN' },
+      { name: 'REF', label: 'REF' },
+      { name: 'KIC', label: 'KIC' },
+      { name: 'SPD', label: 'SPD' },
+      { name: 'POS', label: 'POS' }
+    ]
+
+    const outfieldStats = [
+      { name: 'PAC', label: 'PAC' },
+      { name: 'SHO', label: 'SHO' },
+      { name: 'PAS', label: 'PAS' },
+      { name: 'DRI', label: 'DRI' },
+      { name: 'DEF', label: 'DEF' },
+      { name: 'PHY', label: 'PHY' }
+    ]
 
     const fifaStatsToDisplay = computed(() => {
-      let orderedStats = []
-      if (isGoalkeeper.value) {
-        orderedStats = [
-          { name: 'DIV', label: 'DIV' },
-          { name: 'HAN', label: 'HAN' },
-          { name: 'REF', label: 'REF' },
-          { name: 'KIC', label: 'KIC' },
-          { name: 'SPD', label: 'SPD' },
-          { name: 'POS', label: 'POS' }
-        ]
-      } else {
-        orderedStats = [
-          { name: 'PAC', label: 'PAC' },
-          { name: 'SHO', label: 'SHO' },
-          { name: 'PAS', label: 'PAS' },
-          { name: 'DRI', label: 'DRI' },
-          { name: 'DEF', label: 'DEF' },
-          { name: 'PHY', label: 'PHY' }
-        ]
-      }
-      return orderedStats.filter(stat => props.player && props.player[stat.name] !== undefined)
+      if (!props.player) return []
+      
+      const statsTemplate = isGoalkeeper.value ? goalkeepingStats : outfieldStats
+      return statsTemplate.filter(stat => props.player[stat.name] !== undefined)
     })
 
     const averageRatingData = computed(() => {
@@ -1409,92 +1418,106 @@ export default defineComponent({
       }
     })
 
-    // Cache for performance stats to avoid rebuilding on every change
+    // Optimized cache with LRU-like behavior
     const performanceStatsCache = new Map()
+    const maxCacheSize = 50
+
+    // Memoized helper functions
+    const getCategoryOrder = computed(() => {
+      return isGoalkeeper.value 
+        ? ['General', 'Goalkeeping', 'Passing']
+        : ['General', 'Passing', 'Offensive', 'Defensive']
+    })
+
+    const getCacheKey = (player, groupKey) => {
+      const playerUID = player.UID || player.uid
+      if (playerUID && playerUID !== '') {
+        return `${playerUID}-${groupKey}-${player.version || 0}`
+      }
+      return `${player.name || 'unknown'}-${player.club || 'unknown'}-${player.age || 'unknown'}-${groupKey}`
+    }
+
+    const buildStatsForCategory = (categoryName, percentilesForGroup, playerAttributes) => {
+      const categoryStats = performanceStatCategories[categoryName]
+      if (!categoryStats) return []
+
+      const statsInCategory = []
+      
+      for (let i = 0; i < categoryStats.length; i++) {
+        const statKey = categoryStats[i]
+        const rawAttributeValue = playerAttributes[statKey]
+        const percentileValue = percentilesForGroup[statKey]
+
+        if (
+          performanceStatMap[statKey] &&
+          rawAttributeValue !== undefined &&
+          rawAttributeValue !== '-' &&
+          rawAttributeValue !== '' &&
+          percentileValue !== undefined
+        ) {
+          statsInCategory.push({
+            key: statKey,
+            name: performanceStatMap[statKey],
+            value: rawAttributeValue,
+            percentile: percentileValue >= 0 ? percentileValue : null
+          })
+        }
+      }
+
+      if (statsInCategory.length === 0) return []
+
+      // Optimize sorting for General category
+      if (categoryName === 'General') {
+        const avgRatingIndex = statsInCategory.findIndex(stat => stat.key === 'Av Rat')
+        if (avgRatingIndex > -1) {
+          const avgRatingStat = statsInCategory.splice(avgRatingIndex, 1)[0]
+          statsInCategory.sort((a, b) => a.name.localeCompare(b.name))
+          return [avgRatingStat, ...statsInCategory]
+        }
+      }
+      
+      return statsInCategory.sort((a, b) => a.name.localeCompare(b.name))
+    }
 
     const categorizedPerformanceStats = computed(() => {
-      if (!props.player || !props.player.attributes || !props.player.performancePercentiles)
+      if (!props.player?.attributes || !props.player?.performancePercentiles) {
         return {}
+      }
 
       const groupKey = selectedComparisonGroup.value
       const percentilesForGroup = props.player.performancePercentiles[groupKey]
       if (!percentilesForGroup) return {}
 
-      // Create cache key based on player UID and group
-      let playerUID = props.player.UID || props.player.uid
-
-      // If no UID available or UID is empty, create a composite unique key
-      if (!playerUID || playerUID === '') {
-        playerUID = `${props.player.name || 'unknown'}-${props.player.club || 'unknown'}-${props.player.age || 'unknown'}-${props.player.position || 'unknown'}`
-      }
-
-      const cacheKey = `${playerUID}-${groupKey}`
+      const cacheKey = getCacheKey(props.player, groupKey)
 
       // Return cached result if available
       if (performanceStatsCache.has(cacheKey)) {
-        return performanceStatsCache.get(cacheKey)
+        const cached = performanceStatsCache.get(cacheKey)
+        // Move to end for LRU behavior
+        performanceStatsCache.delete(cacheKey)
+        performanceStatsCache.set(cacheKey, cached)
+        return cached
       }
 
       const result = {}
+      const categoryOrder = getCategoryOrder.value
       
-      // Start with General at the top for all players
-      let categoryOrder = ['General']
-      
-      // For goalkeepers: General → Goalkeeping → Passing
-      // For outfield players: General → Passing → Offensive → Defensive
-      if (isGoalkeeper.value) {
-        categoryOrder.push('Goalkeeping', 'Passing')
-      } else {
-        categoryOrder.push('Passing', 'Offensive', 'Defensive')
-      }
-
-      for (const categoryName of categoryOrder) {
-        if (performanceStatCategories[categoryName]) {
-          const statsInCategory = []
-          for (const statKey of performanceStatCategories[categoryName]) {
-            const rawAttributeValue = props.player.attributes[statKey]
-            const percentileValue = percentilesForGroup[statKey]
-
-            if (
-              performanceStatMap[statKey] &&
-              rawAttributeValue !== undefined &&
-              rawAttributeValue !== '-' &&
-              rawAttributeValue !== '' &&
-              percentileValue !== undefined
-            ) {
-              statsInCategory.push({
-                key: statKey,
-                name: performanceStatMap[statKey],
-                value: rawAttributeValue,
-                percentile: percentileValue >= 0 ? percentileValue : null
-              })
-            }
-          }
-
-          if (statsInCategory.length > 0) {
-            // For General category, put Average Rating first
-            if (categoryName === 'General') {
-              const avgRatingIndex = statsInCategory.findIndex(stat => stat.key === 'Av Rat')
-              if (avgRatingIndex > -1) {
-                const avgRatingStat = statsInCategory.splice(avgRatingIndex, 1)[0]
-                const otherStats = statsInCategory.sort((a, b) => a.name.localeCompare(b.name))
-                result[categoryName] = [avgRatingStat, ...otherStats]
-              } else {
-                result[categoryName] = statsInCategory.sort((a, b) => a.name.localeCompare(b.name))
-              }
-            } else {
-              result[categoryName] = statsInCategory.sort((a, b) => a.name.localeCompare(b.name))
-            }
-          }
+      for (let i = 0; i < categoryOrder.length; i++) {
+        const categoryName = categoryOrder[i]
+        const categoryStats = buildStatsForCategory(categoryName, percentilesForGroup, props.player.attributes)
+        
+        if (categoryStats.length > 0) {
+          result[categoryName] = categoryStats
         }
       }
 
-      // Cache result (limit cache size)
-      if (performanceStatsCache.size > 20) {
-        performanceStatsCache.clear()
+      // Implement LRU cache eviction
+      if (performanceStatsCache.size >= maxCacheSize) {
+        const firstKey = performanceStatsCache.keys().next().value
+        performanceStatsCache.delete(firstKey)
       }
+      
       performanceStatsCache.set(cacheKey, result)
-
       return result
     })
 
@@ -1542,23 +1565,53 @@ export default defineComponent({
       }
     }
 
+    // Memoized role sorting with shallow comparison optimization
+    let lastRoleOveralls = null
+    let lastSortedRoles = []
+
     const sortedRoleSpecificOveralls = computed(() => {
-      if (!props.player?.roleSpecificOveralls) {
+      const roleOveralls = props.player?.roleSpecificOveralls
+      if (!roleOveralls || roleOveralls.length === 0) {
         return []
       }
 
-      // Only sort if the array has changed, avoiding unnecessary operations
-      const roleOveralls = props.player.roleSpecificOveralls
-      if (roleOveralls.length <= 1) {
+      if (roleOveralls.length === 1) {
         return roleOveralls
       }
 
-      return [...roleOveralls].sort((a, b) => b.score - a.score)
+      // Shallow comparison optimization - only re-sort if array reference changed
+      if (roleOveralls === lastRoleOveralls) {
+        return lastSortedRoles
+      }
+
+      lastRoleOveralls = roleOveralls
+      lastSortedRoles = [...roleOveralls].sort((a, b) => b.score - a.score)
+      return lastSortedRoles
     })
+
+    // Memoized currency formatting with caching
+    const currencyCache = new Map()
+
+    const createCurrencyFormatter = (amount, symbol, fallback) => {
+      const cacheKey = `${amount}-${symbol}-${fallback}`
+      if (currencyCache.has(cacheKey)) {
+        return currencyCache.get(cacheKey)
+      }
+      
+      const formatted = formatCurrency(amount, symbol, fallback)
+      
+      // Keep cache size reasonable
+      if (currencyCache.size > 100) {
+        currencyCache.clear()
+      }
+      
+      currencyCache.set(cacheKey, formatted)
+      return formatted
+    }
 
     const formattedTransferValue = computed(() => {
       if (!props.player) return '-'
-      return formatCurrency(
+      return createCurrencyFormatter(
         props.player.transferValueAmount,
         props.currencySymbol,
         props.player.transfer_value
@@ -1567,7 +1620,11 @@ export default defineComponent({
 
     const formattedWage = computed(() => {
       if (!props.player) return '-'
-      return formatCurrency(props.player.wageAmount, props.currencySymbol, props.player.wage)
+      return createCurrencyFormatter(
+        props.player.wageAmount, 
+        props.currencySymbol, 
+        props.player.wage
+      )
     })
 
     const currencyIcon = computed(() => {
@@ -1586,26 +1643,37 @@ export default defineComponent({
     // Get showAttributeMasks from the uiStore
     const { showAttributeMasks } = storeToRefs(uiStore)
 
-    // Helper method to get the correct attribute value to display
+    // Optimized attribute display with memoization
+    const attributeDisplayCache = new Map()
+
     const getDisplayAttribute = (attrKey) => {
-      if (!props.player) return "-";
+      if (!props.player) return "-"
 
-      const rawValue = props.player.attributes[attrKey];
-      if (rawValue === undefined) return "-";
+      const cacheKey = `${attrKey}-${props.player.UID || props.player.uid}-${showAttributeMasks.value}`
+      if (attributeDisplayCache.has(cacheKey)) {
+        return attributeDisplayCache.get(cacheKey)
+      }
 
-      // Handle completely masked attributes (shown as "-")
+      const rawValue = props.player.attributes?.[attrKey]
+      if (rawValue === undefined) return "-"
+
+      let displayValue
       if (rawValue === "-") {
-        return "?";
+        displayValue = "?"
+      } else if (showAttributeMasks.value && String(rawValue).includes('-')) {
+        displayValue = rawValue
+      } else {
+        const numericValue = props.player.numericAttributes?.[attrKey]
+        displayValue = numericValue !== undefined ? numericValue : rawValue
       }
 
-      // If masks are enabled and the raw value is a range, show it
-      if (showAttributeMasks.value && String(rawValue).includes('-')) {
-        return rawValue;
+      // Cache management
+      if (attributeDisplayCache.size > 200) {
+        attributeDisplayCache.clear()
       }
-
-      // Otherwise, show the calculated numeric value
-      const numericValue = props.player.numericAttributes[attrKey];
-      return numericValue !== undefined ? numericValue : rawValue;
+      
+      attributeDisplayCache.set(cacheKey, displayValue)
+      return displayValue
     }
 
     return {
