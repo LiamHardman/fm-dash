@@ -237,11 +237,31 @@
                                                 
                                                 <!-- Club logo below nationality flag -->
                                                 <div class="q-mt-sm club-logo-container" v-if="player.club && player.club !== '-'">
-                                                    <TeamLogo 
-                                                        :team-name="player.club"
-                                                        :size="32"
-                                                        class="player-club-logo"
-                                                    />
+                                                    <Suspense v-if="shouldShowTeamLogo">
+                                                        <template #default>
+                                                            <TeamLogo 
+                                                                :team-name="player.club"
+                                                                :size="32"
+                                                                class="player-club-logo"
+                                                            />
+                                                        </template>
+                                                        <template #fallback>
+                                                            <div class="club-logo-placeholder">
+                                                                <q-skeleton 
+                                                                    type="circle" 
+                                                                    size="32px"
+                                                                    class="club-logo-skeleton"
+                                                                />
+                                                            </div>
+                                                        </template>
+                                                    </Suspense>
+                                                    <div v-else class="club-logo-placeholder">
+                                                        <q-skeleton 
+                                                            type="circle" 
+                                                            size="32px"
+                                                            class="club-logo-skeleton"
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
                                             
@@ -677,12 +697,14 @@
 
 <script>
 import { useQuasar } from 'quasar'
-import { computed, defineComponent, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, defineComponent, onMounted, onUnmounted, ref, watch, Suspense, defineAsyncComponent } from 'vue'
 import { storeToRefs } from 'pinia'
 import { usePlayerStore } from '../stores/playerStore'
 import { formatCurrency } from '../utils/currencyUtils'
 import { useUiStore } from '../stores/uiStore'
-import TeamLogo from '../components/TeamLogo.vue'
+
+// Lazy load TeamLogo component to prevent blocking dialog opening
+const TeamLogo = defineAsyncComponent(() => import('../components/TeamLogo.vue'))
 
 const attributeFullNameMap = {
   Cor: 'Corners',
@@ -1043,6 +1065,7 @@ export default defineComponent({
 
     // Face image handling
     const faceImageLoadError = ref(false)
+    const shouldShowTeamLogo = ref(false)
 
     const handleFlagError = () => {
       flagLoadError.value = true
@@ -1229,6 +1252,7 @@ export default defineComponent({
         
         flagLoadError.value = false
         faceImageLoadError.value = false
+        shouldShowTeamLogo.value = false
 
         if (!newPlayer?.performancePercentiles) {
           selectedComparisonGroup.value = 'Global'
@@ -1247,6 +1271,22 @@ export default defineComponent({
           selectedComparisonGroup.value = newOptions[0].value
         } else {
           selectedComparisonGroup.value = 'Global'
+        }
+      },
+      { immediate: true }
+    )
+
+    // Watch dialog visibility to delay team logo loading
+    watch(
+      () => props.show,
+      (isShowing) => {
+        if (isShowing) {
+          // Delay team logo rendering until dialog is fully opened
+          setTimeout(() => {
+            shouldShowTeamLogo.value = true
+          }, 50) // Small delay to ensure smooth dialog opening
+        } else {
+          shouldShowTeamLogo.value = false
         }
       },
       { immediate: true }
@@ -1705,7 +1745,8 @@ export default defineComponent({
       handleFaceImageLoad,
       playerFaceImageUrl,
       showFaces: computed(() => uiStore.showFaces),
-      getDisplayAttribute
+      getDisplayAttribute,
+      shouldShowTeamLogo
     }
   }
 })
@@ -2919,6 +2960,18 @@ $breakpoint-xs-max: 599px !default;
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.club-logo-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+}
+
+.club-logo-skeleton {
+    opacity: 0.6;
 }
 
 .player-club-logo {
