@@ -30,7 +30,12 @@
 import { defineComponent, ref, computed, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useUiStore } from '../stores/uiStore'
-import { useTeamLogos } from '../composables/useTeamLogos'
+
+// Simple global cache - maps team name directly to logo URL
+const logoCache = new Map()
+
+// Single global composable instance to avoid recreation
+let globalTeamLogos = null
 
 export default defineComponent({
   name: 'TeamLogo',
@@ -67,13 +72,39 @@ export default defineComponent({
   setup(props) {
     const $q = useQuasar()
     const uiStore = useUiStore()
-    const { getTeamLogoUrl } = useTeamLogos()
     
     const logoLoadError = ref(false)
+    const logoUrl = ref(null)
 
-    const logoUrl = computed(() => {
-      return getTeamLogoUrl(props.teamName)
-    })
+    // Load logo when team name changes
+    const loadLogo = async (teamName) => {
+      if (!teamName || teamName === '-') {
+        logoUrl.value = null
+        return
+      }
+
+      // Check cache first - instant if cached
+      if (logoCache.has(teamName)) {
+        logoUrl.value = logoCache.get(teamName)
+        return
+      }
+
+      // Initialize composable if needed
+      if (!globalTeamLogos) {
+        const module = await import('../composables/useTeamLogos')
+        globalTeamLogos = module.useTeamLogos()
+      }
+
+      // Load and cache
+      try {
+        const url = await globalTeamLogos.getTeamLogoUrlAsync(teamName)
+        logoCache.set(teamName, url)
+        logoUrl.value = url
+      } catch (error) {
+        logoCache.set(teamName, null)
+        logoUrl.value = null
+      }
+    }
 
     const iconSize = computed(() => {
       const sizeNum = typeof props.size === 'string' ? parseInt(props.size) : props.size
@@ -101,11 +132,12 @@ export default defineComponent({
       logoLoadError.value = false
     }
 
-    // Reset error state when team changes
+    // Watch for team name changes
     watch(
       () => props.teamName,
-      () => {
+      (newTeamName) => {
         logoLoadError.value = false
+        loadLogo(newTeamName)
       },
       { immediate: true }
     )

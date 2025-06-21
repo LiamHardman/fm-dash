@@ -449,6 +449,16 @@ export function useTeamLogos(options = {}) {
       logoCache.set(teamName, exactId)
       return exactId
     }
+
+    // Quick normalized lookup before expensive fuzzy matching
+    const normalized = normalizeTeamName(teamName)
+    const normalizedCandidates = teamIndex.normalizedLookup.get(normalized)
+    if (normalizedCandidates && normalizedCandidates.length === 1) {
+      // Single exact normalized match - very fast path
+      const result = normalizedCandidates[0].id
+      logoCache.set(teamName, result)
+      return result
+    }
     
     if (!enableFuzzyMatching) {
       logoCache.set(teamName, null)
