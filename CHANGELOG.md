@@ -1,3 +1,14 @@
+## [1.12.11](https://git.liamhardman.com/liam/fm24-golang/compare/v1.12.10...v1.12.11) (2025-06-21)
+
+### 🐛 Bug Fixes
+
+* implemented some weighting for lower ID teams ([8403115](https://git.liamhardman.com/liam/fm24-golang/commit/84031155745fc4ac8732010c3e82340f1850a6f2))
+* playerdetaildialog optimization ([7f78200](https://git.liamhardman.com/liam/fm24-golang/commit/7f782000f9c71926ae8018a33351bd8760f3b859))
+
+### 📚 Documentation
+
+* docs update ([532b5f1](https://git.liamhardman.com/liam/fm24-golang/commit/532b5f11a39ac5e679411e44af1394efee0e84d7))
+
 ## [1.12.11](https://git.liamhardman.com/liam/fm24-golang/compare/v1.12.10...v1.12.11) (2025-06-20)
 
 ### 🐛 Bug Fixes
