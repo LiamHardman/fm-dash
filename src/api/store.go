@@ -206,7 +206,7 @@ func runCleanup() {
 
 	// Get configured retention period
 	maxAge := getRetentionPeriod()
-	log.Printf("Using retention period of %d days", maxAge.Hours()/24)
+	log.Printf("Using retention period of %.0f days", maxAge.Hours()/24)
 
 	err := CleanupOldDatasets(maxAge, excludeDatasets)
 	if err != nil {

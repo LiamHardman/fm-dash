@@ -3,29 +3,16 @@ package main
 import (
 	"errors"
 	"fmt"
-	"log"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 )
 
-// Memory pools for reducing allocations during role calculations
+// Pre-compiled regex patterns for better performance
 var (
-	roleSlicePool = sync.Pool{
-		New: func() interface{} {
-			return make([]struct {
-				name    string
-				weights map[string]int
-			}, 0, 24)
-		},
-	}
-
-	processedRoleNamesPool = sync.Pool{
-		New: func() interface{} {
-			return make(map[string]struct{}, 16)
-		},
-	}
+	ageRegex = regexp.MustCompile(`^\d+$`)
+	rangeRegex = regexp.MustCompile(`^\d+-\d+$`)
 )
 
 // parseCellsToPlayer converts a slice of string cells (a row from the HTML table)
@@ -38,30 +25,44 @@ func parseCellsToPlayer(cells, headers []string) (Player, error) {
 	// Ensure cells slice is at least as long as headers, padding with empty strings if necessary.
 	if len(cells) < len(headers) {
 		diff := len(headers) - len(cells)
-		padding := make([]string, diff) // Slice of empty strings
+		padding := make([]string, diff)
 		cells = append(cells, padding...)
 	}
 
+	// Create new maps and slices for each player to avoid race conditions
+	attributes := make(map[string]string, defaultAttributeCapacity)
+	numericAttributes := make(map[string]int, defaultAttributeCapacity)
+	performanceStatsNumeric := make(map[string]float64, len(PerformanceStatKeys))
+	performancePercentiles := make(map[string]map[string]float64)
+	parsedPositions := make([]string, 0, 8)
+	shortPositions := make([]string, 0, 8)
+	positionGroups := make([]string, 0, 4)
+	roleSpecificOveralls := make([]RoleOverallScore, 0, 16)
+
 	player := Player{
-		Attributes:              make(map[string]string, defaultAttributeCapacity),
-		NumericAttributes:       make(map[string]int, defaultAttributeCapacity),
-		PerformanceStatsNumeric: make(map[string]float64, len(PerformanceStatKeys)),
-		PerformancePercentiles:  make(map[string]map[string]float64),
+		Attributes:              attributes,
+		NumericAttributes:       numericAttributes,
+		PerformanceStatsNumeric: performanceStatsNumeric,
+		PerformancePercentiles:  performancePercentiles,
+		ParsedPositions:         parsedPositions,
+		ShortPositions:          shortPositions,
+		PositionGroups:          positionGroups,
+		RoleSpecificOveralls:    roleSpecificOveralls,
 	}
 
 	// Headers that are known not to be player attributes (e.g., "Inf", "Rec" for recommendations).
 	knownNonAttributeHeaders := map[string]bool{
-		"Inf": true, "Rec": true, "Salary": true, // "Salary" is often "Wage"
+		"Inf": true, "Rec": true, "Salary": true,
 	}
 	foundName := false
 
 	for i, headerNameClean := range headers {
 		cellValue := ""
-		if i < len(cells) { // Should always be true due to padding
+		if i < len(cells) {
 			cellValue = strings.TrimSpace(cells[i])
 		}
 
-		isAnAttributeField := true // Assume it's an attribute unless handled otherwise
+		isAnAttributeField := true
 
 		switch headerNameClean {
 		case "UID", "uid", "Uid", "ID", "id", "Id", "Player ID", "PlayerId", "player_id", "unique_id", "UniqueId":
@@ -86,7 +87,7 @@ func parseCellsToPlayer(cells, headers []string) (Player, error) {
 			player.Division = cellValue
 			isAnAttributeField = false
 		case "Transfer Value":
-			player.TransferValue, player.TransferValueAmount, _ = ParseMonetaryValueGo(cellValue) // Currency symbol detection handled by caller if needed globally
+			player.TransferValue, player.TransferValueAmount, _ = ParseMonetaryValueGo(cellValue)
 			isAnAttributeField = false
 		case "Wage":
 			player.Wage, player.WageAmount, _ = ParseMonetaryValueGo(cellValue)
@@ -97,56 +98,46 @@ func parseCellsToPlayer(cells, headers []string) (Player, error) {
 		case "Media Handling":
 			player.MediaHandling = cellValue
 			isAnAttributeField = false
-		case "Nat": // This header is ambiguous: could be Nationality (3-letter code) or Natural Fitness (attribute)
+		case "Nat":
 			// Handle masked Natural Fitness attribute first
 			if cellValue == "-" {
-				// This is a masked Natural Fitness attribute, store it as an attribute
 				player.Attributes[headerNameClean] = cellValue
-				// Don't overwrite nationality if it's already been set
 				isAnAttributeField = true
 			} else {
-				// Attempt to parse as int or range (for Natural Fitness attribute)
-				valInt, err := strconv.Atoi(cellValue)
-				isValidRange := strings.Contains(cellValue, "-") && len(strings.Split(cellValue, "-")) == 2
+				// Use pre-compiled regex for better performance
+				isValidInt := ageRegex.MatchString(cellValue)
+				isValidRange := rangeRegex.MatchString(cellValue)
 
-				if (err == nil && valInt >= 1 && valInt <= 20) || isValidRange {
-					// This is Natural Fitness (numeric attribute or range like "16-18")
-					player.Attributes[headerNameClean] = cellValue // Store "Nat" as an attribute
-					// Don't overwrite nationality if it's already been set
+				if isValidInt || isValidRange {
+					player.Attributes[headerNameClean] = cellValue
 					isAnAttributeField = true
 				} else {
-					// Only process as Nationality if we haven't already set nationality from a previous "Nat" column
+					// Only process as Nationality if we haven't already set nationality
 					if player.Nationality == "" && player.NationalityFIFACode == "" {
-						// Assume it's Nationality (FIFA code)
 						fifaCode := strings.ToUpper(cellValue)
 						player.NationalityFIFACode = fifaCode
 						if fullName, ok := FifaCountryCodes[fifaCode]; ok {
 							player.Nationality = fullName
 						} else {
-							player.Nationality = cellValue // Fallback to the provided value if code not found
+							player.Nationality = cellValue
 						}
 						if isoCode, ok := FifaToISO2[fifaCode]; ok {
 							player.NationalityISO = isoCode
 						} else {
-							// Basic fallback for ISO code if FIFA code is unknown
 							if len(fifaCode) >= 2 {
 								player.NationalityISO = strings.ToLower(fifaCode[:2])
 							} else {
 								player.NationalityISO = strings.ToLower(fifaCode)
 							}
 						}
-						isAnAttributeField = false // Processed as Nationality
+						isAnAttributeField = false
 					} else {
-						// Nationality already set, this must be a non-numeric Natural Fitness value
-						// Store as attribute but don't overwrite nationality
 						player.Attributes[headerNameClean] = cellValue
 						isAnAttributeField = true
 					}
 				}
 			}
 		case "Left Foot", "Right Foot":
-			// These are often descriptive (e.g., "Very Strong") or ratings.
-			// Treat as attributes if not empty.
 			if cellValue != "" && cellValue != "-" {
 				player.Attributes[headerNameClean] = cellValue
 			} else {
@@ -154,15 +145,11 @@ func parseCellsToPlayer(cells, headers []string) (Player, error) {
 			}
 		default:
 			// If not explicitly handled, it's potentially an attribute or a performance stat.
-			// Attributes map will store it. Numeric conversion and performance stat parsing
-			// will be handled in EnhancePlayerWithCalculations.
 		}
 
 		if isAnAttributeField {
 			if _, isKnownNonAttr := knownNonAttributeHeaders[headerNameClean]; !isKnownNonAttr {
 				if headerNameClean != "" && cellValue != "" {
-					// Include all attributes, even those with "-" (masked) values
-					// The frontend will handle displaying masked attributes appropriately
 					player.Attributes[headerNameClean] = cellValue
 				}
 			}
@@ -179,7 +166,6 @@ func parseCellsToPlayer(cells, headers []string) (Player, error) {
 			}
 		}
 		if isPotentiallyMeaningfulRow {
-			// Log first few cells for debugging if a non-empty row lacks a name
 			return Player{}, errors.New("skipped row: 'Name' field is missing or empty, but other data present. First few cells: " + strings.Join(GetFirstNCells(cells, 5), ", "))
 		}
 		return Player{}, errors.New("skipped row: 'Name' field missing and row appears empty or is likely a non-player row (e.g., header repetition, spacer)")
@@ -405,142 +391,70 @@ func EnhancePlayerWithCalculations(player *Player) {
 		player.POS = 0
 	}
 
-	// --- START: Overall Calculation (Optimized) ---
+	// Calculate role-specific overalls
 	maxRoleBasedOverall := 0
 	bestRoleName := ""
-	calculatedRoleOveralls := make([]RoleOverallScore, 0, 8) // Increased estimate capacity
 
-	// Get processedRoleNames from pool and ensure it's clean
-	processedRoleNames := processedRoleNamesPool.Get().(map[string]struct{})
-	defer func() {
-		// Clear the map and return to pool
-		for k := range processedRoleNames {
-			delete(processedRoleNames, k)
-		}
-		processedRoleNamesPool.Put(processedRoleNames)
-	}()
-
+	// Get current precomputed role weights with proper synchronization
 	muPrecomputedRoleWeights.RLock()
-	currentPrecomputedWeights := precomputedRoleWeights // Use a local copy of the map pointer (precomputedRoleWeights from config.go)
+	currentPrecomputedWeights := make(map[string][]struct {
+		RoleName string
+		Weights  map[string]int
+	}, len(precomputedRoleWeights))
+	
+	// Create a defensive copy to avoid race conditions
+	for k, v := range precomputedRoleWeights {
+		roleSlice := make([]struct {
+			RoleName string
+			Weights  map[string]int
+		}, len(v))
+		for i, role := range v {
+			roleSlice[i] = struct {
+				RoleName string
+				Weights  map[string]int
+			}{
+				RoleName: role.RoleName,
+				Weights:  role.Weights, // This is safe as weights maps are read-only after initialization
+			}
+		}
+		currentPrecomputedWeights[k] = roleSlice
+	}
 	muPrecomputedRoleWeights.RUnlock()
 
-	shouldUseFallback := len(currentPrecomputedWeights) == 0
-	if shouldUseFallback {
-		muRoleSpecificOverallWeights.RLock()
-		if len(roleSpecificOverallWeights) > 0 { // roleSpecificOverallWeights from config.go
-			// Only log this warning once to avoid spam
-			log.Printf("Warning: precomputedRoleWeights is empty. Falling back to iterating roleSpecificOverallWeights (SLOW PATH). Check init logs.")
-		} else {
-			shouldUseFallback = false
-		}
-		muRoleSpecificOverallWeights.RUnlock()
-	}
+	// Clear existing role overalls and recalculate
+	player.RoleSpecificOveralls = make([]RoleOverallScore, 0)
 
-	switch {
-	case shouldUseFallback:
-		muRoleSpecificOverallWeights.RLock()
-		fallbackWeights := roleSpecificOverallWeights
-		muRoleSpecificOverallWeights.RUnlock()
+	// Process all applicable roles for this player
+	processedRoleNames := make(map[string]struct{})
 
-		// Get matchingRoles slice from pool
-		matchingRoles := roleSlicePool.Get().([]struct {
-			name    string
-			weights map[string]int
-		})
-		matchingRoles = matchingRoles[:0] // Reset length but keep capacity
-		//nolint:staticcheck // SA6002: slice type is appropriate for sync.Pool
-		defer roleSlicePool.Put(matchingRoles)
-
-		// Collect all matching roles first (avoid redundant string operations)
-		for _, shortPosKey := range player.ShortPositions {
-			posPrefix := shortPosKey + " - "
-			isGK := shortPosKey == "GK"
-
-			for roleFullName, specificWeights := range fallbackWeights {
-				if _, alreadyProcessed := processedRoleNames[roleFullName]; alreadyProcessed {
-					continue
-				}
-
-				if strings.HasPrefix(roleFullName, posPrefix) || (isGK && roleFullName == "GK - Goalkeeper - Defend") {
-					matchingRoles = append(matchingRoles, struct {
-						name    string
-						weights map[string]int
-					}{name: roleFullName, weights: specificWeights})
-					processedRoleNames[roleFullName] = struct{}{}
-				}
-			}
-		}
-
-		// Batch process all matching roles
-		for _, role := range matchingRoles {
-			var overallForThisRole int
-			if GetUseScaledRatings() {
-				overallForThisRole = CalculateOverallForRoleGo(player.NumericAttributes, role.weights)
-			} else {
-				overallForThisRole = CalculateOverallForRoleGoLinear(player.NumericAttributes, role.weights)
-			}
-			calculatedRoleOveralls = append(calculatedRoleOveralls, RoleOverallScore{RoleName: role.name, Score: overallForThisRole})
-			if overallForThisRole > maxRoleBasedOverall {
-				maxRoleBasedOverall = overallForThisRole
-				bestRoleName = role.name
-			}
-		}
-
-		if len(calculatedRoleOveralls) == 0 && len(player.ShortPositions) > 0 {
-			log.Printf("Fallback Warning: Player '%s' with ShortPositions %v found no matching roles in fallback roleSpecificOverallWeights. Role-based overall will be 0.", player.Name, player.ShortPositions)
-		}
-
-	case len(player.ShortPositions) > 0:
-		foundAnyRoleMatch := false
-
-		// Get allApplicableRoles slice from pool
-		allApplicableRoles := roleSlicePool.Get().([]struct {
-			name    string
-			weights map[string]int
-		})
-		allApplicableRoles = allApplicableRoles[:0] // Reset length but keep capacity
-		//nolint:staticcheck // SA6002: slice type is appropriate for sync.Pool
-		defer roleSlicePool.Put(allApplicableRoles)
-
-		// Collect all applicable roles from all positions in one pass
-		for _, shortKey := range player.ShortPositions {
-			if applicableRoles, found := currentPrecomputedWeights[shortKey]; found {
-				foundAnyRoleMatch = true
-				for _, roleData := range applicableRoles {
-					if _, alreadyProcessed := processedRoleNames[roleData.RoleName]; !alreadyProcessed {
-						allApplicableRoles = append(allApplicableRoles, struct {
-							name    string
-							weights map[string]int
-						}{name: roleData.RoleName, weights: roleData.Weights})
-						processedRoleNames[roleData.RoleName] = struct{}{}
+	for _, shortKey := range player.ShortPositions {
+		if applicableRoles, found := currentPrecomputedWeights[shortKey]; found {
+			for _, roleData := range applicableRoles {
+				if _, alreadyProcessed := processedRoleNames[roleData.RoleName]; !alreadyProcessed {
+					var overallForThisRole int
+					if GetUseScaledRatings() {
+						overallForThisRole = CalculateOverallForRoleGo(player.NumericAttributes, roleData.Weights)
+					} else {
+						overallForThisRole = CalculateOverallForRoleGoLinear(player.NumericAttributes, roleData.Weights)
 					}
+
+					player.RoleSpecificOveralls = append(player.RoleSpecificOveralls, RoleOverallScore{
+						RoleName: roleData.RoleName,
+						Score:    overallForThisRole,
+					})
+
+					if overallForThisRole > maxRoleBasedOverall {
+						maxRoleBasedOverall = overallForThisRole
+						bestRoleName = roleData.RoleName
+					}
+
+					processedRoleNames[roleData.RoleName] = struct{}{}
 				}
 			}
 		}
-
-		// Batch process all applicable roles
-		for _, role := range allApplicableRoles {
-			var overallForThisRole int
-			if GetUseScaledRatings() {
-				overallForThisRole = CalculateOverallForRoleGo(player.NumericAttributes, role.weights)
-			} else {
-				overallForThisRole = CalculateOverallForRoleGoLinear(player.NumericAttributes, role.weights)
-			}
-			calculatedRoleOveralls = append(calculatedRoleOveralls, RoleOverallScore{RoleName: role.name, Score: overallForThisRole})
-			if overallForThisRole > maxRoleBasedOverall {
-				maxRoleBasedOverall = overallForThisRole
-				bestRoleName = role.name
-			}
-		}
-
-		if !foundAnyRoleMatch && len(player.ShortPositions) > 0 {
-			log.Printf("Warning: Player '%s' with ShortPositions %v found no matching roles in precomputedRoleWeights. Role-based overall will be 0.", player.Name, player.ShortPositions)
-		}
-	default:
-		// This case means player has no short positions, so maxRoleBasedOverall will naturally be 0.
 	}
 
-	player.RoleSpecificOveralls = calculatedRoleOveralls
+	// Sort role-specific overalls by score (highest first)
 	sort.Slice(player.RoleSpecificOveralls, func(i, j int) bool {
 		if player.RoleSpecificOveralls[i].Score != player.RoleSpecificOveralls[j].Score {
 			return player.RoleSpecificOveralls[i].Score > player.RoleSpecificOveralls[j].Score
@@ -548,40 +462,28 @@ func EnhancePlayerWithCalculations(player *Player) {
 		return player.RoleSpecificOveralls[i].RoleName < player.RoleSpecificOveralls[j].RoleName
 	})
 
-	// Set the best role name
-	player.BestRoleOverall = bestRoleName
-
 	// Calculate overall as the mean of the top 7 role ratings instead of using all role ratings
 	meanRoleBasedOverall := 0
-	if len(calculatedRoleOveralls) > 0 {
-		// Sort the role overalls by score (highest first) to get the top ratings
-		sort.Slice(calculatedRoleOveralls, func(i, j int) bool {
-			return calculatedRoleOveralls[i].Score > calculatedRoleOveralls[j].Score
-		})
-
+	if len(player.RoleSpecificOveralls) > 0 {
 		// Take the top 7 role ratings (or all of them if there are fewer than 7)
-		topRoleCount := len(calculatedRoleOveralls)
+		topRoleCount := len(player.RoleSpecificOveralls)
 		if topRoleCount > 7 {
 			topRoleCount = 7
 		}
 
 		totalRoleOveralls := 0
 		for i := 0; i < topRoleCount; i++ {
-			totalRoleOveralls += calculatedRoleOveralls[i].Score
+			totalRoleOveralls += player.RoleSpecificOveralls[i].Score
 		}
 		meanRoleBasedOverall = totalRoleOveralls / topRoleCount
 	}
 
-	// Set Overall to the mean of the top 7 role-specific scores
-	// This provides a more balanced representation of the player's abilities focused on their best roles
+	// Update overall and best role
+	player.BestRoleOverall = bestRoleName
 	player.Overall = meanRoleBasedOverall
 
-	// Note: We changed from using the mean of all role-specific overall scores
-	// to using the mean of the top 7 role-specific overall scores
-	// --- END: Overall Calculation ---
-
 	// Check ALL attributes for masking and set the AttributeMasked flag
-	// This is more comprehensive than only checking technical attributes above
+	// This ensures the flag is updated even during recalculations
 	player.AttributeMasked = false
 
 	// Define FM attribute keys that should be checked for masking

@@ -4,40 +4,42 @@ import (
 	"log"
 	"math"
 	"sort"
+	"sync"
+)
+
+// Object pools for reducing allocations during percentile calculations
+var (
+	float64SlicePool = sync.Pool{
+		New: func() interface{} {
+			return make([]float64, 0, 1000) // Pre-allocate with reasonable capacity
+		},
+	}
+	
+	percentileMapPool = sync.Pool{
+		New: func() interface{} {
+			return make(map[string]float64, len(PerformanceStatKeys))
+		},
+	}
 )
 
 // calculatePercentileValue computes the percentile rank of a specific value within a sorted list of values.
-// It uses the formula: (count_smaller + 0.5 * count_equal) / total_count * 100.
-// Returns -1 if sortedValues is empty.
+// Optimized version with better performance for large datasets.
 func calculatePercentileValue(value float64, sortedValues []float64) float64 {
 	n := len(sortedValues)
 	if n == 0 {
-		return -1 // Undefined for empty list
+		return -1
 	}
 
-	// Find the first index where sortedValues[i] >= value
-	countSmaller := sort.SearchFloat64s(sortedValues, value)
-
-	// Find the first index where sortedValues[i] > value
-	// This helps count how many elements are equal to 'value'
-	endRangeIndex := sort.Search(n, func(i int) bool { return sortedValues[i] > value })
-
-	countEqual := endRangeIndex - countSmaller
-
-	// If value is not found, SearchFloat64s returns insertion point.
-	// If value is larger than all elements, countSmaller = n.
-	// If value is smaller than all elements, countSmaller = 0.
-	// If value is found, countSmaller is the index of the first occurrence.
-
-	// Adjust countEqual if value is not actually in the slice
-	// (e.g. value is between two elements in sortedValues)
-	if countSmaller < n && sortedValues[countSmaller] != value {
-		countEqual = 0 // Value itself is not present, so no "equal" elements at its hypothetical position
-	} else if countSmaller == n { // Value is greater than all elements
-		countEqual = 0
+	// Use binary search for better performance on large datasets
+	index := sort.SearchFloat64s(sortedValues, value)
+	
+	// Count equal values
+	countEqual := 0
+	for i := index; i < n && sortedValues[i] == value; i++ {
+		countEqual++
 	}
 
-	percentile := (float64(countSmaller) + (0.5 * float64(countEqual))) / float64(n) * 100.0
+	percentile := (float64(index) + (0.5 * float64(countEqual))) / float64(n) * 100.0
 	return math.Round(percentile)
 }
 
@@ -115,9 +117,18 @@ func CalculatePlayerPerformancePercentilesWithDivisionFilter(players []Player, d
 	}
 
 	// --- Global Percentiles (apply division filtering when not "all") ---
-	for _, statKey := range PerformanceStatKeys { // PerformanceStatKeys from config.go
-		allStatValues := make([]float64, 0, len(players))
-		for i := range players { // Iterate by index to modify original slice elements
+	for _, statKey := range PerformanceStatKeys {
+		// Get slice from pool
+		allStatValues := float64SlicePool.Get().([]float64)
+		allStatValues = allStatValues[:0] // Reset slice
+		defer float64SlicePool.Put(allStatValues)
+		
+		// Pre-allocate with estimated capacity
+		if cap(allStatValues) < includedCount {
+			allStatValues = make([]float64, 0, includedCount)
+		}
+		
+		for i := range players {
 			player := &players[i]
 			val, ok := player.PerformanceStatsNumeric[statKey]
 			// Apply division filter for Global percentiles too (except when filter is "all")
@@ -126,47 +137,52 @@ func CalculatePlayerPerformancePercentilesWithDivisionFilter(players []Player, d
 			}
 		}
 
-		if len(allStatValues) == 0 { // No valid data for this stat across filtered players
+		if len(allStatValues) == 0 {
 			for i := range players {
-				players[i].PerformancePercentiles["Global"][statKey] = -1 // Mark as undefined
+				players[i].PerformancePercentiles["Global"][statKey] = -1
 			}
-			continue // Move to the next statKey
+			continue
 		}
-		sort.Float64s(allStatValues) // Sort all values for this stat
+		sort.Float64s(allStatValues)
 
 		for i := range players {
 			val, ok := players[i].PerformanceStatsNumeric[statKey]
 			if ok && !math.IsNaN(val) {
 				players[i].PerformancePercentiles["Global"][statKey] = calculatePercentileValue(val, allStatValues)
 			} else {
-				players[i].PerformancePercentiles["Global"][statKey] = -1 // Undefined if player has no valid stat
+				players[i].PerformancePercentiles["Global"][statKey] = -1
 			}
 		}
 	}
 
-	// --- Broad Positional Group Percentiles (e.g., "Defenders", "Midfielders") with division filtering ---
+	// --- Broad Positional Group Percentiles with division filtering ---
 	// Pre-collect stat values for each broad group to avoid repeated filtering
-	groupStatValueLists := make(map[string]map[string][]float64) // groupName -> statKey -> []values
+	groupStatValueLists := make(map[string]map[string][]float64)
 
-	for _, groupName := range PositionGroupsForPercentiles { // From config.go
+	for _, groupName := range PositionGroupsForPercentiles {
 		groupStatValueLists[groupName] = make(map[string][]float64)
 		for _, statKey := range PerformanceStatKeys {
-			groupStatValueLists[groupName][statKey] = make([]float64, 0, len(players)/len(PositionGroupsForPercentiles)) // Estimate capacity
+			// Estimate capacity based on player count and group distribution
+			estimatedCapacity := includedCount / len(PositionGroupsForPercentiles)
+			if estimatedCapacity < 10 {
+				estimatedCapacity = 10
+			}
+			groupStatValueLists[groupName][statKey] = make([]float64, 0, estimatedCapacity)
 		}
 	}
 
 	// Populate the stat lists for each group (with division filtering)
 	for i := range players {
-		player := &players[i] // Work with a pointer to the player
+		player := &players[i]
 		if !isPlayerInTargetDivision(player, divisionFilter, targetDivision) {
-			continue // Skip players not in target division filter
+			continue
 		}
-		for _, pg := range player.PositionGroups { // Player's broad position groups
-			if _, ok := groupStatValueLists[pg]; ok { // If this is a group we're tracking
+		for _, pg := range player.PositionGroups {
+			if statMap, ok := groupStatValueLists[pg]; ok {
 				for _, statKey := range PerformanceStatKeys {
 					val, statOk := player.PerformanceStatsNumeric[statKey]
 					if statOk && !math.IsNaN(val) {
-						groupStatValueLists[pg][statKey] = append(groupStatValueLists[pg][statKey], val)
+						statMap[statKey] = append(statMap[statKey], val)
 					}
 				}
 			}
@@ -185,8 +201,8 @@ func CalculatePlayerPerformancePercentilesWithDivisionFilter(players []Player, d
 		for _, statKey := range PerformanceStatKeys {
 			groupValues := groupStatValueLists[groupName][statKey]
 
-			if len(groupValues) == 0 { // No data for this stat in this group
-				for i := range players { // Iterate all players
+			if len(groupValues) == 0 {
+				for i := range players {
 					isPlayerInGroup := false
 					for _, pg := range players[i].PositionGroups {
 						if pg == groupName {
@@ -194,39 +210,37 @@ func CalculatePlayerPerformancePercentilesWithDivisionFilter(players []Player, d
 							break
 						}
 					}
-					if isPlayerInGroup { // Only mark for players in this group
+					if isPlayerInGroup {
 						players[i].PerformancePercentiles[groupName][statKey] = -1
 					}
 				}
 				continue
 			}
+
 			sort.Float64s(groupValues)
 
 			for i := range players {
-				player := &players[i]
 				isPlayerInGroup := false
-				for _, pg := range player.PositionGroups {
+				for _, pg := range players[i].PositionGroups {
 					if pg == groupName {
 						isPlayerInGroup = true
 						break
 					}
 				}
-
 				if isPlayerInGroup {
-					val, statOk := player.PerformanceStatsNumeric[statKey]
-					if statOk && !math.IsNaN(val) {
-						player.PerformancePercentiles[groupName][statKey] = calculatePercentileValue(val, groupValues)
+					val, ok := players[i].PerformanceStatsNumeric[statKey]
+					if ok && !math.IsNaN(val) {
+						players[i].PerformancePercentiles[groupName][statKey] = calculatePercentileValue(val, groupValues)
 					} else {
-						player.PerformancePercentiles[groupName][statKey] = -1
+						players[i].PerformancePercentiles[groupName][statKey] = -1
 					}
 				}
 			}
 		}
 	}
 
-	// --- Detailed Positional Group Percentiles (e.g., "Full-backs", "Centre-backs") with division filtering ---
-	// DetailedPositionGroupsForPercentiles from config.go
-	for detailedGroupName, shortPositionsInGroup := range DetailedPositionGroupsForPercentiles {
+	// --- Detailed Position Group Percentiles ---
+	for detailedGroupName, shortPositions := range DetailedPositionGroupsForPercentiles {
 		// Ensure percentile map for this detailed group is initialized for all players
 		for i := range players {
 			if players[i].PerformancePercentiles[detailedGroupName] == nil {
@@ -234,64 +248,83 @@ func CalculatePlayerPerformancePercentilesWithDivisionFilter(players []Player, d
 			}
 		}
 
-		currentDetailedGroupStatValues := make(map[string][]float64) // statKey -> []values
-		for _, statKey := range PerformanceStatKeys {
-			currentDetailedGroupStatValues[statKey] = make([]float64, 0, len(players)/10) // Estimate capacity
+		// Create a set for O(1) lookup
+		shortPositionsSet := make(map[string]bool, len(shortPositions))
+		for _, pos := range shortPositions {
+			shortPositionsSet[pos] = true
 		}
 
-		playerIndicesInDetailedGroup := []int{} // Store indices of players belonging to this detailed group
-
-		// Collect stat values and player indices for the current detailed group (with division filtering)
-		for i := range players {
-			player := &players[i]
-			if !isPlayerInTargetDivision(player, divisionFilter, targetDivision) {
-				continue // Skip players not in target division filter
-			}
-			isPlayerInThisDetailedGroup := false
-			for _, playerShortPos := range player.ShortPositions { // Check against player's short codes
-				for _, requiredShortPos := range shortPositionsInGroup {
-					if playerShortPos == requiredShortPos {
-						isPlayerInThisDetailedGroup = true
+		for _, statKey := range PerformanceStatKeys {
+			// Get slice from pool for detailed group values
+			detailedGroupValues := float64SlicePool.Get().([]float64)
+			detailedGroupValues = detailedGroupValues[:0]
+			
+			// Collect values for this detailed group
+			for i := range players {
+				player := &players[i]
+				if !isPlayerInTargetDivision(player, divisionFilter, targetDivision) {
+					continue
+				}
+				
+				// Check if player has any position in this detailed group
+				hasDetailedPosition := false
+				for _, shortPos := range player.ShortPositions {
+					if shortPositionsSet[shortPos] {
+						hasDetailedPosition = true
 						break
 					}
 				}
-				if isPlayerInThisDetailedGroup {
-					break
-				}
-			}
-
-			if isPlayerInThisDetailedGroup {
-				playerIndicesInDetailedGroup = append(playerIndicesInDetailedGroup, i)
-				for _, statKey := range PerformanceStatKeys {
-					val, statOk := player.PerformanceStatsNumeric[statKey]
-					if statOk && !math.IsNaN(val) {
-						currentDetailedGroupStatValues[statKey] = append(currentDetailedGroupStatValues[statKey], val)
+				
+				if hasDetailedPosition {
+					val, ok := player.PerformanceStatsNumeric[statKey]
+					if ok && !math.IsNaN(val) {
+						detailedGroupValues = append(detailedGroupValues, val)
 					}
 				}
 			}
-		}
 
-		// Calculate percentiles for this detailed group
-		for _, statKey := range PerformanceStatKeys {
-			statValuesForCalc := currentDetailedGroupStatValues[statKey]
-
-			if len(statValuesForCalc) == 0 { // No data for this stat in this detailed group
-				for _, playerIndex := range playerIndicesInDetailedGroup {
-					players[playerIndex].PerformancePercentiles[detailedGroupName][statKey] = -1
+			if len(detailedGroupValues) == 0 {
+				// Mark all players in this detailed group as undefined for this stat
+				for i := range players {
+					hasDetailedPosition := false
+					for _, shortPos := range players[i].ShortPositions {
+						if shortPositionsSet[shortPos] {
+							hasDetailedPosition = true
+							break
+						}
+					}
+					if hasDetailedPosition {
+						players[i].PerformancePercentiles[detailedGroupName][statKey] = -1
+					}
 				}
+				float64SlicePool.Put(detailedGroupValues)
 				continue
 			}
-			sort.Float64s(statValuesForCalc)
 
-			for _, playerIndex := range playerIndicesInDetailedGroup {
-				player := &players[playerIndex]
-				val, statOk := player.PerformanceStatsNumeric[statKey]
-				if statOk && !math.IsNaN(val) {
-					player.PerformancePercentiles[detailedGroupName][statKey] = calculatePercentileValue(val, statValuesForCalc)
-				} else {
-					player.PerformancePercentiles[detailedGroupName][statKey] = -1
+			sort.Float64s(detailedGroupValues)
+
+			// Calculate percentiles for players in this detailed group
+			for i := range players {
+				hasDetailedPosition := false
+				for _, shortPos := range players[i].ShortPositions {
+					if shortPositionsSet[shortPos] {
+						hasDetailedPosition = true
+						break
+					}
+				}
+				if hasDetailedPosition {
+					val, ok := players[i].PerformanceStatsNumeric[statKey]
+					if ok && !math.IsNaN(val) {
+						players[i].PerformancePercentiles[detailedGroupName][statKey] = calculatePercentileValue(val, detailedGroupValues)
+					} else {
+						players[i].PerformancePercentiles[detailedGroupName][statKey] = -1
+					}
 				}
 			}
+			
+			float64SlicePool.Put(detailedGroupValues)
 		}
 	}
+
+	log.Printf("✅ Percentile calculation completed for %d players", len(players))
 }

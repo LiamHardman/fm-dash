@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -130,47 +131,35 @@ func loadJSONWeights(filePath string, defaultWeights map[string]map[string]int) 
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		log.Printf("Warning: Could not read %s: %v. Using default weights.", filePath, err)
-		// Return a deep copy of default weights
-		copiedDefault := make(map[string]map[string]int, len(defaultWeights))
-		for k, v := range defaultWeights {
-			innerCopy := make(map[string]int, len(v))
-			for ik, iv := range v {
-				innerCopy[ik] = iv
-			}
-			copiedDefault[k] = innerCopy
-		}
-		return copiedDefault, err
+		return deepCopyWeights(defaultWeights), err
 	}
 
 	var weights map[string]map[string]int
 	if err := json.Unmarshal(data, &weights); err != nil {
 		log.Printf("Warning: Could not unmarshal %s: %v. Using default weights.", filePath, err)
-		copiedDefault := make(map[string]map[string]int, len(defaultWeights))
-		for k, v := range defaultWeights {
-			innerCopy := make(map[string]int, len(v))
-			for ik, iv := range v {
-				innerCopy[ik] = iv
-			}
-			copiedDefault[k] = innerCopy
-		}
-		return copiedDefault, err
+		return deepCopyWeights(defaultWeights), err
 	}
 
 	if len(weights) == 0 {
 		log.Printf("Warning: Weights file %s was loaded but is empty. Using default weights.", filePath)
-		copiedDefault := make(map[string]map[string]int, len(defaultWeights))
-		for k, v := range defaultWeights {
-			innerCopy := make(map[string]int, len(v))
-			for ik, iv := range v {
-				innerCopy[ik] = iv
-			}
-			copiedDefault[k] = innerCopy
-		}
-		return copiedDefault, errors.New("loaded weights file is empty")
+		return deepCopyWeights(defaultWeights), errors.New("loaded weights file is empty")
 	}
 
 	log.Printf("Successfully loaded weights from %s with %d entries.", filePath, len(weights))
 	return weights, nil
+}
+
+// deepCopyWeights creates a deep copy of the weights map to avoid sharing references
+func deepCopyWeights(source map[string]map[string]int) map[string]map[string]int {
+	copiedDefault := make(map[string]map[string]int, len(source))
+	for k, v := range source {
+		innerCopy := make(map[string]int, len(v))
+		for ik, iv := range v {
+			innerCopy[ik] = iv
+		}
+		copiedDefault[k] = innerCopy
+	}
+	return copiedDefault
 }
 
 // Configuration loading state
@@ -260,47 +249,37 @@ func initializeConfigAsync() {
 	}
 }
 
-// deepCopyWeights creates a deep copy of weight maps
-func deepCopyWeights(source map[string]map[string]int) map[string]map[string]int {
-	result := make(map[string]map[string]int, len(source))
-	for k, v := range source {
-		innerMap := make(map[string]int, len(v))
-		for ik, iv := range v {
-			innerMap[ik] = iv
-		}
-		result[k] = innerMap
-	}
-	return result
-}
-
-// precomputeRoleWeights computes role weights for faster lookup
+// precomputeRoleWeights optimizes role weight lookups by creating a precomputed slice
 func precomputeRoleWeights() {
+	muRoleSpecificOverallWeights.RLock()
+	weights := roleSpecificOverallWeights
+	muRoleSpecificOverallWeights.RUnlock()
+
 	muPrecomputedRoleWeights.Lock()
 	defer muPrecomputedRoleWeights.Unlock()
 
 	precomputedRoleWeights = make(map[string][]struct {
 		RoleName string
 		Weights  map[string]int
-	})
+	}, len(weights))
 
-	muRoleSpecificOverallWeights.RLock()
-	sourceWeights := roleSpecificOverallWeights
-	muRoleSpecificOverallWeights.RUnlock()
-
-	for roleFullName, weights := range sourceWeights {
-		shortKey := GetShortPositionKeyFromRoleName(roleFullName)
-		if shortKey != "" {
-			copiedWeights := make(map[string]int, len(weights))
-			for k, v := range weights {
-				copiedWeights[k] = v
-			}
-			precomputedRoleWeights[shortKey] = append(precomputedRoleWeights[shortKey], struct {
+	for roleName, roleWeights := range weights {
+		// Extract the base role (e.g., "DC - Ball Playing Defender - Defend" -> "DC")
+		parts := strings.Split(roleName, " - ")
+		if len(parts) >= 1 {
+			baseRole := parts[0]
+			entry := struct {
 				RoleName string
 				Weights  map[string]int
-			}{RoleName: roleFullName, Weights: copiedWeights})
+			}{
+				RoleName: roleName,
+				Weights:  roleWeights,
+			}
+			precomputedRoleWeights[baseRole] = append(precomputedRoleWeights[baseRole], entry)
 		}
 	}
-	log.Printf("Precomputed %d base position keys for role weights.", len(precomputedRoleWeights))
+
+	log.Printf("Precomputed role weights for %d base roles", len(precomputedRoleWeights))
 }
 
 // EnsureConfigInitialized waits for configuration to be loaded (with timeout)

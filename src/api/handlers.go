@@ -522,11 +522,49 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Process percentiles asynchronously to avoid blocking the upload response
 	if len(playersList) > 0 {
-		// Make a deep copy for async processing to avoid data races
+		// Optimized deep copy for async processing to avoid data races
 		playersListCopy := make([]Player, len(playersList))
+		
+		// Pre-allocate maps and slices to reduce allocations
 		for i := range playersList {
-			// Deep copy each player to avoid concurrent map access
 			player := &playersList[i]
+			
+			// Create new maps with appropriate capacity
+			attributes := make(map[string]string, len(player.Attributes))
+			numericAttributes := make(map[string]int, len(player.NumericAttributes))
+			performanceStatsNumeric := make(map[string]float64, len(player.PerformanceStatsNumeric))
+			performancePercentiles := make(map[string]map[string]float64, len(player.PerformancePercentiles))
+			
+			// Copy map contents efficiently
+			for k, v := range player.Attributes {
+				attributes[k] = v
+			}
+			for k, v := range player.NumericAttributes {
+				numericAttributes[k] = v
+			}
+			for k, v := range player.PerformanceStatsNumeric {
+				performanceStatsNumeric[k] = v
+			}
+			for k, v := range player.PerformancePercentiles {
+				performancePercentiles[k] = make(map[string]float64, len(v))
+				for kk, vv := range v {
+					performancePercentiles[k][kk] = vv
+				}
+			}
+			
+			// Create new slices with appropriate capacity
+			parsedPositions := make([]string, len(player.ParsedPositions))
+			copy(parsedPositions, player.ParsedPositions)
+			
+			shortPositions := make([]string, len(player.ShortPositions))
+			copy(shortPositions, player.ShortPositions)
+			
+			positionGroups := make([]string, len(player.PositionGroups))
+			copy(positionGroups, player.PositionGroups)
+			
+			roleSpecificOveralls := make([]RoleOverallScore, len(player.RoleSpecificOveralls))
+			copy(roleSpecificOveralls, player.RoleSpecificOveralls)
+			
 			playersListCopy[i] = Player{
 				UID:                 player.UID,
 				Name:                player.Name,
@@ -557,33 +595,14 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 				SPD:                 player.SPD,
 				POS:                 player.POS,
 				Overall:             player.Overall,
-				// Deep copy maps
-				Attributes:              make(map[string]string),
-				NumericAttributes:       make(map[string]int),
-				PerformanceStatsNumeric: make(map[string]float64),
-				PerformancePercentiles:  make(map[string]map[string]float64),
-				// Copy slices
-				ParsedPositions:      append([]string(nil), player.ParsedPositions...),
-				ShortPositions:       append([]string(nil), player.ShortPositions...),
-				PositionGroups:       append([]string(nil), player.PositionGroups...),
-				RoleSpecificOveralls: append([]RoleOverallScore(nil), player.RoleSpecificOveralls...),
-			}
-
-			// Copy map contents
-			for k, v := range player.Attributes {
-				playersListCopy[i].Attributes[k] = v
-			}
-			for k, v := range player.NumericAttributes {
-				playersListCopy[i].NumericAttributes[k] = v
-			}
-			for k, v := range player.PerformanceStatsNumeric {
-				playersListCopy[i].PerformanceStatsNumeric[k] = v
-			}
-			for k, v := range player.PerformancePercentiles {
-				playersListCopy[i].PerformancePercentiles[k] = make(map[string]float64)
-				for kk, vv := range v {
-					playersListCopy[i].PerformancePercentiles[k][kk] = vv
-				}
+				Attributes:              attributes,
+				NumericAttributes:       numericAttributes,
+				PerformanceStatsNumeric: performanceStatsNumeric,
+				PerformancePercentiles:  performancePercentiles,
+				ParsedPositions:         parsedPositions,
+				ShortPositions:          shortPositions,
+				PositionGroups:          positionGroups,
+				RoleSpecificOveralls:    roleSpecificOveralls,
 			}
 		}
 		processPercentilesAsync(datasetID, playersListCopy)

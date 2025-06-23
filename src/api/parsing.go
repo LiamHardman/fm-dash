@@ -15,131 +15,93 @@ import (
 	"golang.org/x/net/html"
 )
 
+// Object pools for reducing allocations during parsing
+var (
+	cellBuilderPool = sync.Pool{
+		New: func() interface{} {
+			return &strings.Builder{}
+		},
+	}
+	
+	cellsSlicePool = sync.Pool{
+		New: func() interface{} {
+			return make([]string, 0, defaultCellCapacity)
+		},
+	}
+)
+
 // sendRowWithBackpressure attempts to send row data to channel with timeout handling
 func sendRowWithBackpressure(rowCellsChan chan []string, cells []string, timeout time.Duration) {
-	cellsCopy := make([]string, len(cells))
-	copy(cellsCopy, cells)
-
+	// Reuse the cells slice from pool instead of copying
 	select {
-	case rowCellsChan <- cellsCopy:
+	case rowCellsChan <- cells:
 		// Successfully sent
 	case <-time.After(timeout):
 		log.Printf("Warning: Channel send timeout after %v, dropping row with %d cells", timeout, len(cells))
+		// Return cells to pool since we're not using them
+		cellsSlicePool.Put(cells[:0]) // Reset slice before returning to pool
 	}
 }
 
-// Updated currencySymbolRegex to include more symbols.
-// This regex tries to match common currency symbols or specific multi-character codes.
-// It's important to order alternatives carefully if some are substrings of others (e.g., R vs R$).
-// Using non-capturing groups (?:...) for multi-character codes if needed, but simple alternation should work.
+// Optimized currency symbol regex with better ordering and non-capturing groups
 var currencySymbolRegex = regexp.MustCompile(
-	`([€£$¥₹₽₺₩])|` + // Single character symbols (Euro, Pound, Dollar, Yen, Rupee, Ruble, Lira, Won)
-		`(R\$)|` + // Brazilian Real
-		`(CHF)|` + // Swiss Franc
-		`(A\$)|` + // Australian Dollar
-		`(CA\$)|` + // Canadian Dollar (use CA$ to distinguish from A$)
-		`(Mex\$)|` + // Mexican Peso
-		`(kr)|` + // Krona (Swedish, Norwegian, Danish) - might be too generic, consider specific like SEK, NOK, DKK if available in data
-		`(zł)|` + // Polish Zloty
-		`(R)`, // South African Rand (must be last if 'R$' is also used to avoid partial match)
+	`(?:R\$|CHF|A\$|CA\$|Mex\$|kr|zł)|` + // Multi-character codes first
+	`[€£$¥₹₽₺₩R]`, // Single character symbols last
 )
 
 // ParseMonetaryValueGo extracts the original display string, a numeric value, and a detected currency symbol
 // from a raw monetary string (e.g., "$1.5M", "£25K p/w", "¥100M").
 func ParseMonetaryValueGo(rawValue string) (originalDisplay string, numericValue int64, detectedSymbol string) {
 	cleanedValue := strings.TrimSpace(rawValue)
-	originalDisplay = cleanedValue // Store the original formatting
+	originalDisplay = cleanedValue
 
-	// Try to detect currency symbol from the raw value using the updated regex
-	matches := currencySymbolRegex.FindStringSubmatch(cleanedValue)
-	// FindStringSubmatch returns an array where matches[0] is the full match,
-	// and subsequent elements are the captures of each group in the regex.
-	// We iterate through the capture groups to find which one matched.
-	if len(matches) > 1 {
-		for i := 1; i < len(matches); i++ {
-			if matches[i] != "" {
-				detectedSymbol = matches[i]
-				break
-			}
-		}
-	}
-	if detectedSymbol == "" {
-		// Fallback if no specific symbol from the regex is found, but common ones might exist without being in the regex groups
-		// This part might be redundant if the regex is comprehensive.
-		switch {
-		case strings.Contains(cleanedValue, "€"):
-			detectedSymbol = "€"
-		case strings.Contains(cleanedValue, "£"):
-			detectedSymbol = "£"
-		case strings.Contains(cleanedValue, "$"): // This could be USD, CAD, AUD etc.
-			detectedSymbol = "$" // Default to $ if only $ is found
-		}
+	// Optimized currency detection - single regex match
+	if match := currencySymbolRegex.FindString(cleanedValue); match != "" {
+		detectedSymbol = match
 	}
 
-	// Handle ranges like "£10M - £15M", take the higher value or average if needed.
-	// Current implementation takes the part after " - " if present.
+	// Handle ranges like "£10M - £15M", take the higher value
 	if strings.Contains(cleanedValue, " - ") {
-		parts := strings.Split(cleanedValue, " - ")
+		parts := strings.SplitN(cleanedValue, " - ", 2)
 		if len(parts) == 2 {
-			cleanedValue = strings.TrimSpace(parts[1]) // Use the second part of the range
+			cleanedValue = strings.TrimSpace(parts[1])
 			// Re-detect symbol if it was in the second part
-			rangeSymbolMatches := currencySymbolRegex.FindStringSubmatch(cleanedValue)
-			if len(rangeSymbolMatches) > 1 {
-				for i := 1; i < len(rangeSymbolMatches); i++ {
-					if rangeSymbolMatches[i] != "" {
-						detectedSymbol = rangeSymbolMatches[i]
-						break
-					}
-				}
+			if match := currencySymbolRegex.FindString(cleanedValue); match != "" {
+				detectedSymbol = match
 			}
 		}
 	}
 
-	// Remove currency symbols and suffixes for parsing
-	// Create a list of all symbols/codes from the regex to remove them for numeric parsing.
-	// This needs to be robust.
+	// Optimized symbol removal - single pass
 	valueToParse := cleanedValue
-	if detectedSymbol != "" { // If a symbol was detected, try removing it specifically
+	if detectedSymbol != "" {
 		valueToParse = strings.ReplaceAll(valueToParse, detectedSymbol, "")
 	}
-	// Generic removal of common symbols as a fallback or additional cleanup
-	valueToParse = strings.ReplaceAll(valueToParse, "€", "")
-	valueToParse = strings.ReplaceAll(valueToParse, "£", "")
-	valueToParse = strings.ReplaceAll(valueToParse, "$", "") // Catches general dollars
-	valueToParse = strings.ReplaceAll(valueToParse, "¥", "")
-	valueToParse = strings.ReplaceAll(valueToParse, "₹", "")
-	valueToParse = strings.ReplaceAll(valueToParse, "₽", "")
-	valueToParse = strings.ReplaceAll(valueToParse, "₺", "")
-	valueToParse = strings.ReplaceAll(valueToParse, "₩", "")
-	valueToParse = strings.ReplaceAll(valueToParse, "R", "") // For R, R$, ensure R$ is handled first by regex
-	valueToParse = strings.ReplaceAll(valueToParse, "CHF", "")
-	valueToParse = strings.ReplaceAll(valueToParse, "kr", "")
-	valueToParse = strings.ReplaceAll(valueToParse, "zł", "")
-	// Ensure multi-character codes like CA$, A$, Mex$ are also removed if they were the detectedSymbol
-	// The current logic of `strings.ReplaceAll(valueToParse, detectedSymbol, "")` should handle this.
 
-	valueToParse = strings.TrimSpace(strings.ReplaceAll(valueToParse, "p/w", "")) // Per week
-	valueToParse = strings.TrimSpace(strings.ReplaceAll(valueToParse, "/w", ""))  // Per week (alternative)
+	// Remove common suffixes in one pass
+	valueToParse = strings.ReplaceAll(valueToParse, "p/w", "")
+	valueToParse = strings.ReplaceAll(valueToParse, "/w", "")
+	valueToParse = strings.TrimSpace(valueToParse)
 
+	// Optimized multiplier detection
 	multiplier := int64(1)
-	if strings.HasSuffix(strings.ToUpper(valueToParse), "M") {
+	upperValue := strings.ToUpper(valueToParse)
+	if strings.HasSuffix(upperValue, "M") {
 		multiplier = 1000000
 		valueToParse = strings.TrimRight(valueToParse, "Mm")
-	} else if strings.HasSuffix(strings.ToUpper(valueToParse), "K") {
+	} else if strings.HasSuffix(upperValue, "K") {
 		multiplier = 1000
 		valueToParse = strings.TrimRight(valueToParse, "Kk")
 	}
 
-	valueToParse = strings.ReplaceAll(valueToParse, ",", "") // Remove commas
-
-	valFloat, err := strconv.ParseFloat(strings.TrimSpace(valueToParse), 64)
-	if err == nil {
+	// Remove commas and parse
+	valueToParse = strings.ReplaceAll(valueToParse, ",", "")
+	
+	if valFloat, err := strconv.ParseFloat(strings.TrimSpace(valueToParse), 64); err == nil {
 		numericValue = int64(valFloat * float64(multiplier))
-	} else {
-		numericValue = 0 // Default to 0 if parsing fails
 	}
 
-	// If no symbol was detected initially, but we have a value, set to default $
+	// Default to $ if no symbol detected but we have a value
 	if detectedSymbol == "" && numericValue != 0 {
 		detectedSymbol = "$"
 	}
@@ -151,20 +113,23 @@ func ParseMonetaryValueGo(rawValue string) (originalDisplay string, numericValue
 // and sends extracted table headers and row data (as slices of strings) to respective channels.
 // It manages the HTML parsing state machine.
 func ParseHTMLPlayerTable(file io.Reader, headersSnapshot *[]string, rowCellsChan chan []string, numWorkers int, resultsChan chan<- PlayerParseResult, wg *sync.WaitGroup) (processingError error) {
-	bufferedReader := bufio.NewReaderSize(file, maxTokenBufferSize) // maxTokenBufferSize from config.go
+	bufferedReader := bufio.NewReaderSize(file, maxTokenBufferSize)
 	tokenizer := html.NewTokenizer(bufferedReader)
 
-	var currentHeaders []string // Temporary headers collected
-	var currentCells []string   // Cells for the current <tr> being processed
-	inHeaderRow := false        // True if currently inside a <tr> identified as a header row
-	inDataRow := false          // True if currently inside a <tr> identified as a data row
-	inTable := false            // True if currently inside a <table> element
-	inTHead := false            // True if currently inside a <thead> element
-	inTBody := false            // True if currently inside a <tbody> element
-	var cellBuilder strings.Builder
+	var currentHeaders []string
+	var currentCells []string
+	inHeaderRow := false
+	inDataRow := false
+	inTable := false
+	inTHead := false
+	inTBody := false
+	
+	// Get cellBuilder from pool
+	cellBuilder := cellBuilderPool.Get().(*strings.Builder)
+	defer cellBuilderPool.Put(cellBuilder)
 
 	workersStarted := false
-	var localHeadersForWorker []string // To pass to workers once finalized
+	var localHeadersForWorker []string
 
 tokenLoop:
 	for {
@@ -207,28 +172,24 @@ tokenLoop:
 					}
 				}
 			case "tr":
-				currentCells = make([]string, 0, defaultCellCapacity) // defaultCellCapacity from config.go
+				// Get cells slice from pool
+				currentCells = cellsSlicePool.Get().([]string)
+				currentCells = currentCells[:0] // Reset slice
+				
 				// Determine if this TR is a header row or data row
 				switch {
 				case inTHead:
 					inHeaderRow = true
 					inDataRow = false
 				case inTable && !workersStarted && len(currentHeaders) == 0 && !inTBody:
-					// If in a table, workers haven't started, no headers collected yet, AND not in <tbody>:
-					// Treat this as a potential header row.
 					inHeaderRow = true
 					inDataRow = false
 				default:
-					// Otherwise (e.g., in tbody, or workers started, or headers already found), it's a data row.
 					inHeaderRow = false
 					inDataRow = true
 				}
-			case "th":
+			case "th", "td":
 				if inHeaderRow || inDataRow {
-					cellBuilder.Reset()
-				}
-			case "td":
-				if inHeaderRow || inDataRow { // Cell content applies to both header and data rows
 					cellBuilder.Reset()
 				}
 			}
@@ -241,7 +202,7 @@ tokenLoop:
 			case "th":
 				if inHeaderRow {
 					headerContent := strings.TrimSpace(cellBuilder.String())
-					if headerContent != "" { // Only add non-empty headers
+					if headerContent != "" {
 						currentHeaders = append(currentHeaders, headerContent)
 					}
 					cellBuilder.Reset()
@@ -250,20 +211,19 @@ tokenLoop:
 					cellBuilder.Reset()
 				}
 			case "td":
-				if inHeaderRow { // If this row was marked as a header row, <td> can be a header
+				if inHeaderRow {
 					headerContent := strings.TrimSpace(cellBuilder.String())
-					if headerContent != "" { // Only add non-empty headers
+					if headerContent != "" {
 						currentHeaders = append(currentHeaders, headerContent)
 					}
 					cellBuilder.Reset()
-				} else if inDataRow { // If this row was marked as a data row
+				} else if inDataRow {
 					currentCells = append(currentCells, strings.TrimSpace(cellBuilder.String()))
 					cellBuilder.Reset()
 				}
 			case "tr":
-				if inHeaderRow { // This was a header row that just ended
-					inHeaderRow = false // Reset for the next row
-					// If workers haven't started AND we now have some headers, start them.
+				if inHeaderRow {
+					inHeaderRow = false
 					if !workersStarted && len(currentHeaders) > 0 {
 						localHeadersForWorker = make([]string, len(currentHeaders))
 						copy(localHeadersForWorker, currentHeaders)
@@ -275,21 +235,22 @@ tokenLoop:
 						}
 						workersStarted = true
 					}
-				} else if inDataRow { // This was a data row that just ended
-					inDataRow = false // Reset for the next row
+				} else if inDataRow {
+					inDataRow = false
 					if len(currentCells) > 0 && workersStarted {
 						sendRowWithBackpressure(rowCellsChan, currentCells, 5*time.Second)
 					} else if len(currentCells) > 0 && !workersStarted && len(localHeadersForWorker) > 0 {
-						// Fallback: headers were found, but workers didn't start (e.g. no tbody, thead).
-						// This data row ending might be the trigger.
 						log.Printf("Fallback: Headers exist, workers not started, data row found. Launching workers.")
-						*headersSnapshot = localHeadersForWorker // Ensure snapshot is set
+						*headersSnapshot = localHeadersForWorker
 						wg.Add(numWorkers)
 						for i := 0; i < numWorkers; i++ {
 							go PlayerParserWorker(i, rowCellsChan, resultsChan, wg, localHeadersForWorker)
 						}
 						workersStarted = true
-						sendRowWithBackpressure(rowCellsChan, currentCells, 5*time.Second) // Send the current row
+						sendRowWithBackpressure(rowCellsChan, currentCells, 5*time.Second)
+					} else {
+						// Return unused cells to pool
+						cellsSlicePool.Put(currentCells)
 					}
 				}
 			case "thead":
@@ -313,7 +274,7 @@ tokenLoop:
 		}
 	}
 
-	// Fallback after loop: if workers haven't started but headers were collected (e.g. very short table)
+	// Fallback after loop: if workers haven't started but headers were collected
 	if !workersStarted && len(currentHeaders) > 0 {
 		localHeadersForWorker = make([]string, len(currentHeaders))
 		copy(localHeadersForWorker, currentHeaders)

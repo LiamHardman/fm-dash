@@ -54,10 +54,17 @@ func applyNonLinearScaling(linearRating float64) int {
 // CalculateFifaStatGoLinear calculates a FIFA-style category stat using linear scaling (legacy method)
 func CalculateFifaStatGoLinear(playerNumericAttributes map[string]int, categoryName string) int {
 	muAttributeWeights.RLock()
-	// Prefer loaded attributeWeights, fallback to defaultAttributeWeightsGo if the first is nil or category is missing
+	// Create a defensive copy to avoid race conditions
 	var currentCategoryWeightsSource map[string]map[string]int
 	if attributeWeights != nil {
-		currentCategoryWeightsSource = attributeWeights
+		currentCategoryWeightsSource = make(map[string]map[string]int, len(attributeWeights))
+		for k, v := range attributeWeights {
+			innerMap := make(map[string]int, len(v))
+			for ik, iv := range v {
+				innerMap[ik] = iv
+			}
+			currentCategoryWeightsSource[k] = innerMap
+		}
 	} else {
 		log.Printf("Warning: global attributeWeights is nil in CalculateFifaStatGoLinear. Using default for %s.", categoryName)
 		currentCategoryWeightsSource = defaultAttributeWeightsGo // Fallback to compiled-in defaults
@@ -107,10 +114,17 @@ func CalculateFifaStatGoLinear(playerNumericAttributes map[string]int, categoryN
 // The result is scaled using non-linear scaling and clamped at 99.
 func CalculateFifaStatGo(playerNumericAttributes map[string]int, categoryName string) int {
 	muAttributeWeights.RLock()
-	// Prefer loaded attributeWeights, fallback to defaultAttributeWeightsGo if the first is nil or category is missing
+	// Create a defensive copy to avoid race conditions
 	var currentCategoryWeightsSource map[string]map[string]int
 	if attributeWeights != nil {
-		currentCategoryWeightsSource = attributeWeights
+		currentCategoryWeightsSource = make(map[string]map[string]int, len(attributeWeights))
+		for k, v := range attributeWeights {
+			innerMap := make(map[string]int, len(v))
+			for ik, iv := range v {
+				innerMap[ik] = iv
+			}
+			currentCategoryWeightsSource[k] = innerMap
+		}
 	} else {
 		log.Printf("Warning: global attributeWeights is nil in CalculateFifaStatGo. Using default for %s.", categoryName)
 		currentCategoryWeightsSource = defaultAttributeWeightsGo // Fallback to compiled-in defaults
