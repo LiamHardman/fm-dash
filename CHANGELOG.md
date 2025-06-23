@@ -1,3 +1,20 @@
+## [1.13.0](https://git.liamhardman.com/liam/fm24-golang/compare/v1.12.10...v1.13.0) (2025-06-23)
+
+### 🚀 Features
+
+* multithreading optimizations ([eb1689a](https://git.liamhardman.com/liam/fm24-golang/commit/eb1689a2a8eb19f49f2d96b19c6dbed54de57099))
+
+### 🐛 Bug Fixes
+
+* cache implemented for team logos ([428f0a7](https://git.liamhardman.com/liam/fm24-golang/commit/428f0a7a21d6827d1a1e9236de07edb1b7650b43))
+* implemented some weighting for lower ID teams ([8403115](https://git.liamhardman.com/liam/fm24-golang/commit/84031155745fc4ac8732010c3e82340f1850a6f2))
+* instantly opening playerdetaildialog ([821c5b1](https://git.liamhardman.com/liam/fm24-golang/commit/821c5b169ff469342033219c26cb77315cbc5e41))
+* playerdetaildialog optimization ([7f78200](https://git.liamhardman.com/liam/fm24-golang/commit/7f782000f9c71926ae8018a33351bd8760f3b859))
+
+### 📚 Documentation
+
+* docs update ([532b5f1](https://git.liamhardman.com/liam/fm24-golang/commit/532b5f11a39ac5e679411e44af1394efee0e84d7))
+
 ## [1.12.11](https://git.liamhardman.com/liam/fm24-golang/compare/v1.12.10...v1.12.11) (2025-06-21)
 
 ### 🐛 Bug Fixes
