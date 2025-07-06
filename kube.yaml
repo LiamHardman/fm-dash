@@ -1,0 +1,116 @@
+# kubernetes_v2fmdash_unified_nginx.yaml
+# Location: Root of your project (as per current assumption)
+
+# --- Deployment for the Unified Nginx+Go Application ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: v2fmdash # Application name
+  namespace: default # Or your target namespace
+  labels:
+    app: v2fmdash # Application name
+spec:
+  replicas: 1 # Adjust as needed
+  selector:
+    matchLabels:
+      app: v2fmdash # Application name
+  template:
+    metadata:
+      labels:
+        app: v2fmdash # Application name
+    spec:
+      # Optional: Define security context if needed.
+      # Supervisord runs as root by default, and Nginx often needs to.
+      # If you run Go app as non-root under supervisord, ensure permissions.
+      # securityContext:
+      #   runAsUser: 0 # Supervisord needs to run as root
+      containers:
+        - name: v2fmdash-container # Container name
+          image: git.liamhardman.com/liam/v2fmdash:main # Corrected image name and tag
+          imagePullPolicy: Always
+          ports:
+            - name: http-nginx # Port Nginx listens on inside the container
+              containerPort: 8080 # This should match EXPOSE in Dockerfile and listen directive in nginx.conf
+          env:
+            # Runtime Configuration Path
+            - name: CONFIG_FILE_PATH
+              value: "/app/config/app-config.yaml"
+            
+            # Environment-specific overrides
+            - name: ENVIRONMENT
+              value: "production"
+            - name: DEPLOYMENT_ENV
+              value: "kubernetes"
+            
+            # CI/CD populated values (will be set by your CI/CD pipeline)
+            - name: GIT_COMMIT_SHA
+              value: "main"  # Replace with actual commit SHA in CI/CD
+            - name: BUILD_ID
+              value: ""  # Set by CI/CD pipeline
+            - name: BUILD_TIMESTAMP
+              value: ""  # Set by CI/CD pipeline
+
+            # S3-Compatible Storage Configuration (from secrets)
+            - name: S3_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: v2fmdash-minio-secret
+                  key: endpoint
+            - name: S3_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: v2fmdash-minio-secret
+                  key: access-key
+            - name: S3_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: v2fmdash-minio-secret
+                  key: secret-key
+            - name: S3_USE_SSL
+              valueFrom:
+                secretKeyRef:
+                  name: v2fmdash-minio-secret
+                  key: use-ssl
+          # No secrets or API keys are mounted as per user request
+          resources: # Optional: Define resource requests and limits
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "4500m"
+              memory: "2048Mi"
+          readinessProbe:
+            httpGet:
+              path: / # Vue app's root, served by Nginx
+              port: http-nginx # Use the named port
+            initialDelaySeconds: 20
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: / # Or a dedicated /healthz endpoint served by Nginx/Go
+              port: http-nginx
+            initialDelaySeconds: 45
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+---
+# --- Service for the Unified Nginx+Go Application ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: v2fmdash # Application name
+  namespace: default # Or your target namespace
+  labels:
+    app: v2fmdash # Application name
+spec:
+  type: ClusterIP # Or LoadBalancer/NodePort depending on how you expose it
+  selector:
+    app: v2fmdash # Application name
+  ports:
+    - name: http # Name for the service port
+      protocol: TCP
+      port: 80 # Port the service is available on within the cluster (can be different from targetPort)
+      targetPort: http-nginx # Named port from the Deployment (Nginx's listening port, 8080)

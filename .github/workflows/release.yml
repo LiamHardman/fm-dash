@@ -1,0 +1,188 @@
+name: GitHub Release
+run-name: ${{ github.actor }} is creating a GitHub release 🚀
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip release]')"
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      packages: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch full history for changelog generation
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          
+          # Set the origin remote to GitHub for this workflow
+          git remote set-url origin https://github.com/LiamHardman/fm-dash.git
+          
+          # Remove any other remotes to avoid confusion
+          git remote remove gitea 2>/dev/null || true
+
+      - name: Install semantic-release locally (preserving existing package.json)
+        run: |
+          # Install semantic-release packages locally without modifying existing package.json
+          npm install --save-dev semantic-release@^24.2.5 @semantic-release/changelog@^6.0.3 @semantic-release/git@^10.0.1 @semantic-release/github@^10.0.7 conventional-changelog-conventionalcommits@^8.0.0
+
+      - name: Verify installed packages
+        run: |
+          echo "🔍 Installed semantic-release packages:"
+          npm list --depth=0 | grep semantic-release || echo "No semantic-release packages found"
+          echo ""
+          echo "🔍 Checking for Gitea plugin:"
+          npm list @saithodev/semantic-release-gitea 2>/dev/null || echo "✅ Gitea plugin not installed"
+
+      - name: Verify Git configuration and clean up
+        run: |
+          echo "🔍 Git remotes:"
+          git remote -v
+          echo ""
+          echo "🔍 Current repository URL:"
+          git config --get remote.origin.url
+          echo ""
+          echo "🔍 Current working directory:"
+          pwd
+          echo ""
+          echo "🔍 Backing up original package.json and removing semantic-release config:"
+          cp package.json package.json.backup
+          
+          # Remove the "release" section from package.json using jq
+          if command -v jq >/dev/null 2>&1; then
+            jq 'del(.release)' package.json > package.json.tmp && mv package.json.tmp package.json
+            echo "✅ Removed release configuration from package.json"
+          else
+            echo "⚠️ jq not available, will rely on .releaserc.json to override"
+          fi
+          
+          echo "🔍 Removing any existing semantic-release config files:"
+          rm -f .releaserc .releaserc.js .releaserc.yaml .releaserc.yml
+          rm -f release.config.js release.config.json
+          echo "✅ Cleanup complete"
+
+      - name: Create GitHub release config
+        run: |
+          cat > .releaserc.json << 'EOF'
+          {
+            "branches": [
+              "main"
+            ],
+            "repositoryUrl": "https://github.com/LiamHardman/fm-dash.git",
+            "plugins": [
+              "@semantic-release/commit-analyzer",
+              "@semantic-release/release-notes-generator",
+              "@semantic-release/changelog",
+              [
+                "@semantic-release/npm",
+                {
+                  "npmPublish": false
+                }
+              ],
+              [
+                "@semantic-release/git",
+                {
+                  "assets": ["package.json", "package-lock.json", "CHANGELOG.md"],
+                  "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+                }
+              ],
+              [
+                "@semantic-release/github",
+                {
+                  "assets": [
+                    {
+                      "path": "dist/**/*",
+                      "label": "Build artifacts"
+                    }
+                  ]
+                }
+              ]
+            ]
+          }
+          EOF
+          
+          echo "🔍 Verifying .releaserc.json was created correctly:"
+          cat .releaserc.json
+
+
+
+      - name: Build application
+        run: |
+          echo "🏗️ Building application for release..."
+          npm run build
+
+      - name: Run tests
+        run: |
+          echo "🧪 Running tests before release..."
+          npm run test:optional
+          npm run test:go:timeout
+
+      - name: Run semantic-release (dry-run) - GitHub
+        run: |
+          echo "🔍 Analyzing commits for GitHub release..."
+          ./node_modules/.bin/semantic-release --dry-run
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HUSKY: 0
+
+      - name: Create GitHub release
+        run: |
+          echo "🚀 Creating GitHub release..."
+          ./node_modules/.bin/semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HUSKY: 0
+
+      - name: Restore original package.json
+        if: always()
+        run: |
+          if [ -f package.json.backup ]; then
+            mv package.json.backup package.json
+            echo "✅ Restored original package.json"
+          fi
+
+      - name: GitHub release summary
+        if: always()
+        run: |
+          echo "📋 GitHub Release Pipeline Summary"
+          echo "================================="
+          echo ""
+          echo "✅ Conventional commit analysis completed"
+          echo "📦 Package version updated (if applicable)"
+          echo "📝 Changelog generated/updated"
+          echo "🏷️ Git tag created (if new version)"
+          echo "📋 GitHub release created (if new version)"
+          echo ""
+          echo "ℹ️  Commit format guide:"
+          echo "   feat: new feature (minor version bump)"
+          echo "   fix: bug fix (patch version bump)"
+          echo "   feat!: breaking change (major version bump)"
+          echo "   docs: documentation changes (no version bump)"
+          echo "   chore: maintenance tasks (no version bump)"
+          echo ""
+          echo "🚫 To skip release: Add '[skip release]' to commit message"
+          echo ""
+          echo "📝 Note: This workflow only creates GitHub releases"
+          echo "🔗 Repository: https://github.com/LiamHardman/fm-dash" 

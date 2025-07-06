@@ -1,0 +1,362 @@
+// src/css/app.scss
+
+// Quasar SCSS variables are available here due to vite.config.js additionalData
+
+// Design System Variables
+$border-radius: 12px;
+$border-radius-small: 8px;
+$card-shadow: 0 4px 6px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.06);
+$card-shadow-hover: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+
+// Global dark mode background
+body.body--dark {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+    min-height: 100vh;
+}
+
+/* Additional dark mode body background enforcement for dialogs */
+.body--dark,
+html.body--dark,
+body.body--dark.q-body--dialog,
+.body--dark.q-body--dialog {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+    min-height: 100vh;
+}
+
+/* Ensure all Quasar body classes maintain dark background */
+.q-body--dark,
+body.q-body--dark,
+html.q-body--dark {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+}
+
+// Global page background for both light and dark modes
+.q-page {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    min-height: 100vh;
+    
+    .body--dark & {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    }
+}
+
+.q-card {
+    border-radius: $border-radius-small;
+    box-shadow: $card-shadow;
+    background: white;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    transition: box-shadow 0.3s ease, transform 0.2s ease;
+    
+    .body--dark & {
+        background: #1e293b;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+    }
+    
+    &:hover {
+        box-shadow: $card-shadow-hover;
+        transform: translateY(-1px);
+    }
+}
+
+.q-card--bordered {
+    border-color: rgba(0, 0, 0, 0.08);
+    .body--dark & {
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+}
+
+// Enhanced Card Headers
+.card-header {
+    margin-bottom: 1.5rem;
+    
+    .card-title {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-size: 1.3rem;
+        font-weight: 700;
+        margin: 0 0 0.5rem 0;
+        color: #1e293b;
+        
+        .body--dark & {
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .card-icon {
+            color: #2e74b5;
+            
+            .body--dark & {
+                color: #60a5fa;
+            }
+        }
+    }
+    
+    .card-subtitle {
+        color: #64748b;
+        font-size: 0.9rem;
+        margin: 0;
+        
+        .body--dark & {
+            color: rgba(255, 255, 255, 0.6);
+        }
+    }
+}
+
+// Enhanced dark mode text colors
+.body--dark {
+    // Primary text
+    color: rgba(255, 255, 255, 0.9) !important;
+    
+    // Secondary text elements
+    .text-grey-6,
+    .text-grey-7,
+    .text-grey-8 {
+        color: rgba(255, 255, 255, 0.7) !important;
+    }
+    
+    // Tertiary text elements
+    .text-grey-5 {
+        color: rgba(255, 255, 255, 0.6) !important;
+    }
+    
+    // Subtle text elements
+    .text-grey-4 {
+        color: rgba(255, 255, 255, 0.5) !important;
+    }
+    
+    // Enhanced Card Sections for Dark Mode - More Specific Selectors
+    .q-card .q-card-section {
+        background: transparent !important;
+        color: rgba(255, 255, 255, 0.9) !important;
+    }
+    
+    .q-card .q-card-actions {
+        background: transparent !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+    }
+    
+    // Additional specificity for stubborn cases
+    .q-card-section {
+        background-color: transparent !important;
+    }
+    
+    .q-card-actions {
+        background-color: transparent !important;
+    }
+}
+
+// Enhanced form field styling for dark mode
+.body--dark {
+    .q-field__control {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    .q-field__native {
+        color: rgba(255, 255, 255, 0.9);
+    }
+    
+    .q-field__label {
+        color: rgba(255, 255, 255, 0.7);
+    }
+    
+    .q-select__dropdown-icon {
+        color: rgba(255, 255, 255, 0.7);
+    }
+    
+    // Force transparent backgrounds on all card elements
+    .q-card,
+    .q-card--bordered,
+    .q-card--flat {
+        .q-card-section,
+        .q-card-actions {
+            background: transparent !important;
+            background-color: transparent !important;
+        }
+    }
+}
+
+// Enhanced button styling for dark mode
+.body--dark {
+    .q-btn {
+        &.q-btn--outline {
+            border-color: rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.9);
+            
+            &:hover {
+                background: rgba(255, 255, 255, 0.1);
+            }
+        }
+        
+        &.q-btn--flat {
+            color: rgba(255, 255, 255, 0.9);
+            
+            &:hover {
+                background: rgba(255, 255, 255, 0.1);
+            }
+        }
+    }
+}
+
+// Enhanced table styling for dark mode
+.body--dark {
+    .q-table {
+        background: #1e293b;
+        
+        .q-table__top {
+            background: rgba(96, 165, 250, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        th {
+            background: rgba(96, 165, 250, 0.08);
+            color: rgba(255, 255, 255, 0.9);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        td {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        tbody tr:hover {
+            background: rgba(96, 165, 250, 0.08);
+        }
+    }
+}
+
+// Enhanced dialog styling for dark mode
+.body--dark {
+    .q-dialog__inner {
+        .q-card {
+            background: #1e293b;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+        }
+    }
+}
+
+// Enhanced banner styling for dark mode
+.body--dark {
+    .q-banner {
+        background: #1e293b;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.9);
+    }
+}
+
+// Enhanced separator styling for dark mode
+.body--dark {
+    .q-separator {
+        background: rgba(255, 255, 255, 0.1);
+    }
+}
+
+// Unified Rating Tier Colors (GLOBAL)
+// These classes are used for both FM attributes (1-20) and FIFA stats (0-100)
+// The JS logic maps the value ranges to these tiers.
+
+// Tier 6 (Elite) - Purple
+.rating-tier-6 {
+    background-color: #7e57c2; // Purple
+    color: white !important; // Ensure text color overrides defaults
+    font-weight: 700;
+    border: 1px solid #5e35b1;
+    .body--dark & {
+        background-color: #9575cd;
+        color: white !important;
+        border-color: #7e57c2;
+    }
+}
+
+// Tier 5 (Excellent/Very Good) - Bright Green / Teal
+.rating-tier-5 {
+    background-color: #26a69a; // Teal
+    color: white !important;
+    .body--dark & {
+        background-color: #00897b; // Darker Teal
+        color: white !important;
+    }
+}
+
+// Tier 4 (Good) - Green
+.rating-tier-4 {
+    background-color: #66bb6a; // Green
+    color: white !important;
+    .body--dark & {
+        background-color: #4caf50; // Slightly darker Green
+        color: white !important;
+    }
+}
+
+// Tier 3 (Average) - Light Blue / Sky Blue
+.rating-tier-3 {
+    background-color: #42a5f5; // Light Blue
+    color: white !important;
+    .body--dark & {
+        background-color: #2196f3; // Darker Light Blue
+        color: white !important;
+    }
+}
+
+// Tier 2 (Below Average) - Orange
+.rating-tier-2 {
+    background-color: #ffa726; // Orange
+    color: #333333 !important;
+    .body--dark & {
+        background-color: #fb8c00; // Darker Orange
+        color: white !important;
+    }
+}
+
+// Tier 1 (Poor) - Red
+.rating-tier-1 {
+    background-color: #ef5350; // Red
+    color: white !important;
+    .body--dark & {
+        background-color: #e53935; // Darker Red
+        color: white !important;
+    }
+}
+
+// N/A or missing values
+.rating-na {
+    background-color: #bdbdbd; // Grey
+    color: #424242 !important;
+    .body--dark & {
+        background-color: #424242; // Dark Grey
+        color: #bdbdbd !important;
+    }
+}
+
+// Overall Class Colors (from NationsPage)
+.excellent {
+    background-color: #10b981 !important;
+    color: white !important;
+}
+
+.very-good {
+    background-color: #34d399 !important;
+    color: white !important;
+}
+
+.good {
+    background-color: #fbbf24 !important;
+    color: white !important;
+}
+
+.average {
+    background-color: #f59e0b !important;
+    color: white !important;
+}
+
+.below-average {
+    background-color: #ef4444 !important;
+    color: white !important;
+}
+
+.poor {
+    background-color: #991b1b !important;
+    color: white !important;
+}

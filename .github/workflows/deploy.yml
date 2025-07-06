@@ -1,0 +1,107 @@
+name: FM-Dash Deployment (Docker Build)
+run-name: ${{ github.actor }} is building and publishing FM-Dash Docker image 🚀
+
+on:
+  push:
+    branches: [ main ]
+  release:
+    types: [published]
+
+jobs:
+  # Quick code quality check (informational only)
+  code-quality-check:
+    name: Quick Code Quality Check
+    runs-on: ubuntu-latest
+    continue-on-error: true # Don't block deployment if this fails
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Quick Biome check
+        run: |
+          echo "🔍 Quick code quality check with Biome..."
+          npm run lint:check || echo "⚠️ Code quality issues found (not blocking deployment)"
+
+      - name: Code quality notice
+        if: always()
+        run: |
+          echo "📝 Code quality check completed (informational only)"
+          echo "🚀 Deployment will proceed regardless of code quality results"
+          echo "💡 For detailed checks, see the 'Code Quality Checks' workflow"
+
+  build-and-push:
+    needs: [code-quality-check] # Run after code quality check but don't depend on its success
+    runs-on: ubuntu-latest
+    if: always() # Always run deployment regardless of code quality results
+    permissions:
+      contents: read
+      packages: write
+    
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_NAME: ${{ github.repository }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      # Build and push the Docker image
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VITE_API_BASE_URL=/api
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deployment summary
+        run: |
+          echo "🎯 Deployment Summary"
+          echo "===================="
+          echo ""
+          echo "✅ Docker image built and pushed to GitHub Container Registry"
+          echo "🏷️ Image tags: ${{ steps.meta.outputs.tags }}"
+          echo "📦 Registry: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          echo ""
+          echo "🚀 To deploy this image:"
+          echo "   docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          echo "   docker run -p 8080:8080 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          echo ""
+          echo "📋 For Kubernetes deployment, see kube.yaml in the repository" 

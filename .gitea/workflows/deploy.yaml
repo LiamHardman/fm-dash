@@ -1,0 +1,113 @@
+name: v2fmdash Deployment (Unified Nginx+Go)
+run-name: ${{ gitea.actor }} is deploying v2fmdash (Unified Nginx+Go) to Portainer. 🚀
+on:
+  push:
+    branches:
+      - main # Target branch for deployment
+
+jobs:
+  # Quick code quality check (informational only)
+  code-quality-check:
+    name: Quick Code Quality Check
+    runs-on: ubuntu-latest
+    continue-on-error: true # Don't block deployment if this fails
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Quick Biome check
+        run: |
+          echo "🔍 Quick code quality check with Biome..."
+          npm run lint:check || echo "⚠️ Code quality issues found (not blocking deployment)"
+
+      - name: Code quality notice
+        if: always()
+        run: |
+          echo "📝 Code quality check completed (informational only)"
+          echo "🚀 Deployment will proceed regardless of code quality results"
+          echo "💡 For detailed checks, see the 'Code Quality Checks' workflow"
+
+  deploy:
+    needs: [code-quality-check] # Run after code quality check but don't depend on its success
+    runs-on: ubuntu-latest
+    if: always() # Always run deployment regardless of code quality results
+    env:
+      REGISTRY: git.liamhardman.com # Your Gitea container registry
+      IMAGE_NAMESPACE: liam # Your preferred namespace on the registry
+      IMAGE_NAME: v2fmdash # Name for the unified Docker image
+      APP_NAME_K8S: v2fmdash # Kubernetes Deployment/Service name
+      KUBE_MANIFEST_FILE: kube.yaml # Name of your Kubernetes manifest file in the repo root
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install docker for ubuntu-latest runner
+        uses: papodaca/install-docker-action@main
+
+      - name: Log in to Container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ gitea.actor }}
+          password: ${{ secrets.RELEASE_TOKEN }} # Gitea personal access token
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Build and push the Unified Nginx+Go Docker image
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./ # Build context is the root of your repository
+          file: ./Dockerfile # Path to your unified Dockerfile (assumed to be at root)
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_NAME }}:main # Tag is 'main'
+          build-args: |
+            VITE_API_BASE_URL=/api
+          # Comments about build args should be YAML comments, like this one.
+          # The VITE_API_BASE_URL=/api is for the Vue app to know its API endpoint.
+
+      - name: Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          mv kubectl /usr/local/bin/
+
+      - name: Configure kubectl
+        env:
+          KUBECONFIG_YAML: ${{ secrets.KUBECONFIG_YAML }} # Your kubeconfig as a secret
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${KUBECONFIG_YAML}" > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+          echo "kubectl config loaded. Current context:"
+          kubectl config current-context
+          echo "Attempting to get pods in default namespace (test connection):"
+          kubectl get pods --namespace default --request-timeout=10s || echo "kubectl get pods failed, but continuing."
+
+      - name: Apply or Restart deployment
+        run: |
+          # Check if the deployment exists
+          if kubectl get deployment ${{ env.APP_NAME_K8S }} --namespace default --ignore-not-found -o name | grep -q "${{ env.APP_NAME_K8S }}"; then
+            echo "Deployment ${{ env.APP_NAME_K8S }} exists. Restarting..."
+            kubectl rollout restart deployment/${{ env.APP_NAME_K8S }} --namespace default
+            echo "Waiting for rollout to complete..."
+            kubectl rollout status deployment/${{ env.APP_NAME_K8S }} --namespace default --timeout=5m
+          else
+            echo "Deployment ${{ env.APP_NAME_K8S }} does not exist. Applying manifest from ${{ env.KUBE_MANIFEST_FILE }}..."
+            kubectl apply -f ${{ env.KUBE_MANIFEST_FILE }} --namespace default
+            echo "Waiting for deployment to be ready..."
+            kubectl rollout status deployment/${{ env.APP_NAME_K8S }} --namespace default --timeout=5m
+          fi
+          echo "Deployment process complete."

@@ -1,0 +1,44 @@
+// src/quasar-variables.scss
+
+// REMOVED: @import '~quasar/src/css/variables.sass';
+// The @quasar/vite-plugin should make Quasar's default SASS variables
+// (like $primary, $grey-1, etc.) globally available.
+// Your custom variable definitions below will override or augment these.
+
+// Quasar SCSS (& Sass) Variables
+// --------------------------------------------------
+// To customize the look and feel of this app, you can override
+// the Sass/SCSS variables found in Quasar's source Sass/SCSS files.
+
+// Check documentation for full list of Quasar variables
+
+// Your own variables (that are declared here) and Quasar's own
+// ones will be available out of the box in your .vue/.scss/.sass files
+
+// It's highly recommended to change the default colors
+// to match your app's branding.
+// Tip: Use the Quasar Color Palette Generator to find the ideal shades
+// -> https://quasar.dev/style/color-palette#color-palette-generator
+
+$primary: #2e74b5; // Your custom primary
+$secondary: #6c757d; // Your custom secondary
+$accent: #545b62; // Your custom accent
+
+$dark: #1d1d1d; // Your custom dark page background for dark mode
+
+$positive: #28a745; // Your custom positive
+$negative: #dc3545; // Your custom negative
+$info: #17a2b8; // Your custom info
+$warning: #ffc107; // Your custom warning
+
+// Example: Overriding a specific grey from Quasar's palette if needed
+// $grey-1: #fefefe; // This would override Quasar's default $grey-1
+// $grey-4: #bdbdbd; // Example if you needed to define it, but Quasar provides these
+
+$typography-font-family: "Inter", sans-serif !default;
+
+// Custom design system variables
+$border-radius: 12px;
+$border-radius-small: 8px;
+$card-shadow: 0 4px 6px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.06);
+$card-shadow-hover: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);

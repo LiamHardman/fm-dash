@@ -1,0 +1,18 @@
+[Unit]
+Description=V2FMDash Go API Server
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/app/v2fmdash-server
+WorkingDirectory=/app
+User=appuser
+Group=appgroup
+Environment="PORT=8091"
+Restart=always
+RestartSec=5s
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
