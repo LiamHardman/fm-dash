@@ -1,0 +1,102 @@
+version: 2
+updates:
+  # Frontend dependencies (Vue.js/npm)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "liam"
+    assignees:
+      - "liam"
+    commit-message:
+      prefix: "frontend"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "frontend"
+    ignore:
+      # Ignore major version updates for Vue and core dependencies
+      - dependency-name: "vue"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@vue/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "quasar"
+        update-types: ["version-update:semver-major"]
+
+  # Backend dependencies (Go - root module)
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "liam"
+    assignees:
+      - "liam"
+    commit-message:
+      prefix: "backend"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "backend"
+      - "golang"
+
+  # API module dependencies (Go - src/api)
+  - package-ecosystem: "gomod"
+    directory: "/src/api"
+    schedule:
+      interval: "daily"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "liam"
+    assignees:
+      - "liam"
+    commit-message:
+      prefix: "api"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "api"
+      - "golang"
+
+  # Test API module dependencies (Go - test/api)
+  - package-ecosystem: "gomod"
+    directory: "/test/api"
+    schedule:
+      interval: "daily"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "liam"
+    assignees:
+      - "liam"
+    commit-message:
+      prefix: "test"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "test"
+      - "golang"
+
+  # Docker dependencies
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "liam"
+    assignees:
+      - "liam"
+    commit-message:
+      prefix: "docker"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "docker" 
