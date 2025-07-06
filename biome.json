@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.0.6/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -8,19 +8,7 @@
   "files": {
     "ignoreUnknown": false,
     "maxSize": 3145728,
-    "ignore": [
-      "dist/**",
-      "node_modules/**",
-      "build/**",
-      "coverage/**",
-      ".git/**",
-      "*.min.js",
-      "*.min.css",
-      "testdata.html",
-      "src/api/**",
-      "src/utils/teams_data.json"
-    ],
-    "include": [
+    "includes": [
       "src/**/*.js",
       "src/**/*.ts",
       "src/**/*.vue",
@@ -31,6 +19,18 @@
       "*.vue",
       "*.json",
       "*.md"
+    ],
+    "experimentalScannerIgnores": [
+      "dist/**",
+      "node_modules/**",
+      "build/**",
+      "coverage/**",
+      ".git/**",
+      "*.min.js",
+      "*.min.css",
+      "testdata.html",
+      "src/api/**",
+      "src/utils/teams_data.json"
     ]
   },
   "formatter": {
@@ -40,19 +40,15 @@
     "lineWidth": 100,
     "lineEnding": "lf"
   },
-  "organizeImports": {
-    "enabled": true
-  },
   "linter": {
     "enabled": true,
     "rules": {
       "recommended": true,
       "suspicious": {
-        "noConsoleLog": "warn",
+        "noConsole": "warn",
         "noDebugger": "warn"
       },
       "style": {
-        "noVar": "error",
         "useConst": "error"
       },
       "correctness": {
