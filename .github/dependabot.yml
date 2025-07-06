@@ -8,9 +8,9 @@ updates:
       time: "09:00"
     open-pull-requests-limit: 10
     reviewers:
-      - "liam"
+      - "LiamHardman"
     assignees:
-      - "liam"
+      - "LiamHardman"
     commit-message:
       prefix: "frontend"
       include: "scope"
@@ -34,9 +34,9 @@ updates:
       time: "09:00"
     open-pull-requests-limit: 10
     reviewers:
-      - "liam"
+      - "LiamHardman"
     assignees:
-      - "liam"
+      - "LiamHardman"
     commit-message:
       prefix: "backend"
       include: "scope"
@@ -53,9 +53,9 @@ updates:
       time: "09:00"
     open-pull-requests-limit: 10
     reviewers:
-      - "liam"
+      - "LiamHardman"
     assignees:
-      - "liam"
+      - "LiamHardman"
     commit-message:
       prefix: "api"
       include: "scope"
@@ -72,9 +72,9 @@ updates:
       time: "09:00"
     open-pull-requests-limit: 10
     reviewers:
-      - "liam"
+      - "LiamHardman"
     assignees:
-      - "liam"
+      - "LiamHardman"
     commit-message:
       prefix: "test"
       include: "scope"
@@ -91,9 +91,9 @@ updates:
       time: "09:00"
     open-pull-requests-limit: 5
     reviewers:
-      - "liam"
+      - "LiamHardman"
     assignees:
-      - "liam"
+      - "LiamHardman"
     commit-message:
       prefix: "docker"
       include: "scope"
