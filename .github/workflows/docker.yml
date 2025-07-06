@@ -1,0 +1,124 @@
+name: Docker Build and Push
+run-name: ${{ github.actor }} is building Docker image 🐳
+
+on:
+  push:
+    branches: [ main, gh-release ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [published]
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  docker-build:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_NAME: ${{ github.repository }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=FM-Dash
+            org.opencontainers.image.description=A comprehensive platform for analyzing Football Manager player data
+            org.opencontainers.image.vendor=Liam Hardman
+            org.opencontainers.image.licenses=MIT
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VITE_API_BASE_URL=/api
+          platforms: linux/amd64,linux/arm64
+          # Using registry cache to avoid GitHub Actions cache artifacts
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+
+      - name: Docker build summary
+        run: |
+          echo "🐳 Docker Build Summary"
+          echo "======================="
+          echo ""
+          echo "✅ Docker image built and pushed successfully"
+          echo "🏷️ Image tags: ${{ steps.meta.outputs.tags }}"
+          echo "📦 Registry: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          echo "🏗️ Platforms: linux/amd64, linux/arm64"
+          echo ""
+          echo "🚀 To use this image:"
+          echo "   docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          echo "   docker run -p 8080:8080 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          echo ""
+          echo "📋 For Kubernetes deployment:"
+          echo "   kubectl apply -f kube.yaml"
+          echo ""
+          echo "🔗 Container Registry: https://github.com/${{ github.repository }}/pkgs/container/fm-dash"
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: docker-build
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      security-events: write
+    
+    steps:
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+        env:
+          REGISTRY: ghcr.io
+          IMAGE_NAME: ${{ github.repository }}
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Security scan summary
+        run: |
+          echo "🔒 Security Scan Summary"
+          echo "========================"
+          echo ""
+          echo "✅ Container vulnerability scan completed"
+          echo "📋 Results uploaded to GitHub Security tab"
+          echo "🔍 Check the Security tab for detailed results" 
