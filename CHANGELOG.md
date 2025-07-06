@@ -1,3 +1,11 @@
+## [1.0.5](https://github.com/LiamHardman/fm-dash/compare/v1.0.4...v1.0.5) (2025-07-06)
+
+
+### Bug Fixes
+
+* resolve all biome linting issues ([a230cad](https://github.com/LiamHardman/fm-dash/commit/a230cada584c9358d0dd3389d1f9e5e6733e7ac8))
+* update biome configuration for version 2.0.6 compatibility ([35523e7](https://github.com/LiamHardman/fm-dash/commit/35523e772e470e2fe834f2191055b8682c81e65b))
+
 ## [1.0.4](https://github.com/LiamHardman/fm-dash/compare/v1.0.3...v1.0.4) (2025-07-06)
 
 
