@@ -22,6 +22,8 @@ jobs:
     env:
       REGISTRY: ghcr.io
       IMAGE_NAME: ${{ github.repository }}
+      # Lowercase version for cache refs (required by GitHub Container Registry)
+      CACHE_IMAGE: ghcr.io/liamhardman/fm-dash
 
     steps:
       - name: Checkout code
@@ -66,8 +68,8 @@ jobs:
             VITE_API_BASE_URL=/api
           platforms: linux/amd64,linux/arm64
           # Using registry cache to avoid GitHub Actions cache artifacts
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+          cache-from: type=registry,ref=${{ env.CACHE_IMAGE }}:buildcache
+          cache-to: type=registry,ref=${{ env.CACHE_IMAGE }}:buildcache,mode=max
 
       - name: Docker build summary
         run: |
@@ -101,12 +103,9 @@ jobs:
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          image-ref: ghcr.io/liamhardman/fm-dash:latest
           format: 'sarif'
           output: 'trivy-results.sarif'
-        env:
-          REGISTRY: ghcr.io
-          IMAGE_NAME: ${{ github.repository }}
 
       - name: Upload Trivy scan results
         uses: github/codeql-action/upload-sarif@v2
