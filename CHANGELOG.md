@@ -1,3 +1,10 @@
+## [1.0.4](https://github.com/LiamHardman/fm-dash/compare/v1.0.3...v1.0.4) (2025-07-06)
+
+
+### Bug Fixes
+
+* docker auth ([1188d0f](https://github.com/LiamHardman/fm-dash/commit/1188d0fdd4235ab954f283b0abdd015d666a8cd7))
+
 ## [1.0.3](https://github.com/LiamHardman/fm-dash/compare/v1.0.2...v1.0.3) (2025-07-06)
 
 
