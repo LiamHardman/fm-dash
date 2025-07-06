@@ -1,6 +1,6 @@
 {
   "name": "fm-dash",
-  "version": "1.4.0",
+  "version": "1.0.0",
   "type": "module",
   "private": true,
   "description": "A comprehensive platform for analyzing Football Manager player data",
@@ -66,14 +66,19 @@
     "@pinia/testing": "^1.0.1",
     "@quasar/vite-plugin": "^1.6.0",
     "@saithodev/semantic-release-gitea": "^2.1.0",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^10.3.5",
     "@vitejs/plugin-vue": "^5.0.4",
     "@vue/test-utils": "^2.4.6",
+    "conventional-changelog-conventionalcommits": "^8.0.0",
     "happy-dom": "^17.5.6",
     "husky": "^9.1.7",
     "jsdom": "^26.1.0",
     "lint-staged": "^16.1.0",
     "rollup-plugin-visualizer": "^6.0.3",
     "sass": "^1.71.1",
+    "semantic-release": "^24.2.6",
     "terser": "^5.43.1",
     "vite": "^5.1.4",
     "vitest": "^3.1.4"
@@ -85,153 +90,6 @@
     ],
     "src/api/**/*.go": [
       "sh -c 'cd src/api && golangci-lint run --fix'"
-    ]
-  },
-  "release": {
-    "branches": [
-      "main"
-    ],
-    "repositoryUrl": "https://github.com/LiamHardman/fm-dash.git",
-    "plugins": [
-      [
-        "@semantic-release/commit-analyzer",
-        {
-          "preset": "conventionalcommits",
-          "releaseRules": [
-            {
-              "type": "feat",
-              "release": "minor"
-            },
-            {
-              "type": "fix",
-              "release": "patch"
-            },
-            {
-              "type": "perf",
-              "release": "patch"
-            },
-            {
-              "type": "revert",
-              "release": "patch"
-            },
-            {
-              "type": "docs",
-              "release": false
-            },
-            {
-              "type": "style",
-              "release": false
-            },
-            {
-              "type": "chore",
-              "release": false
-            },
-            {
-              "type": "refactor",
-              "release": "patch"
-            },
-            {
-              "type": "test",
-              "release": false
-            },
-            {
-              "type": "build",
-              "release": false
-            },
-            {
-              "type": "ci",
-              "release": false
-            },
-            {
-              "breaking": true,
-              "release": "major"
-            }
-          ]
-        }
-      ],
-      [
-        "@semantic-release/release-notes-generator",
-        {
-          "preset": "conventionalcommits",
-          "presetConfig": {
-            "types": [
-              {
-                "type": "feat",
-                "section": "🚀 Features"
-              },
-              {
-                "type": "fix",
-                "section": "🐛 Bug Fixes"
-              },
-              {
-                "type": "perf",
-                "section": "⚡ Performance Improvements"
-              },
-              {
-                "type": "revert",
-                "section": "⏪ Reverts"
-              },
-              {
-                "type": "docs",
-                "section": "📚 Documentation",
-                "hidden": false
-              },
-              {
-                "type": "style",
-                "section": "💄 Styles",
-                "hidden": true
-              },
-              {
-                "type": "chore",
-                "section": "🔧 Chores",
-                "hidden": true
-              },
-              {
-                "type": "refactor",
-                "section": "♻️ Code Refactoring"
-              },
-              {
-                "type": "test",
-                "section": "✅ Tests",
-                "hidden": true
-              },
-              {
-                "type": "build",
-                "section": "👷 Build System",
-                "hidden": true
-              },
-              {
-                "type": "ci",
-                "section": "🔄 CI",
-                "hidden": true
-              }
-            ]
-          }
-        }
-      ],
-      [
-        "@semantic-release/changelog",
-        {
-          "changelogFile": "CHANGELOG.md"
-        }
-      ],
-      [
-        "@saithodev/semantic-release-gitea",
-        {
-          "giteaUrl": "https://git.liamhardman.com"
-        }
-      ],
-      [
-        "@semantic-release/git",
-        {
-          "assets": [
-            "package.json",
-            "package-lock.json",
-            "CHANGELOG.md"
-          ],
-          "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
-        }
-      ]
     ]
   }
 }
