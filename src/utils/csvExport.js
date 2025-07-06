@@ -10,16 +10,16 @@
  */
 function escapeCSVValue(value) {
   if (value === null || value === undefined) return ''
-  
+
   let stringValue = String(value)
-  
+
   // If the value contains comma, newline, or double quote, wrap it in quotes
   if (stringValue.includes(',') || stringValue.includes('\n') || stringValue.includes('"')) {
     // Escape any double quotes by doubling them
     stringValue = stringValue.replace(/"/g, '""')
     return `"${stringValue}"`
   }
-  
+
   return stringValue
 }
 
@@ -30,9 +30,9 @@ function escapeCSVValue(value) {
  */
 function getAvailableColumns(players) {
   if (!players || players.length === 0) return {}
-  
+
   const samplePlayer = players[0]
-  
+
   const columns = {
     basic: [
       { key: 'name', label: 'Name' },
@@ -54,10 +54,12 @@ function getAvailableColumns(players) {
       { key: 'PHY', label: 'Physical' },
       { key: 'GK', label: 'Goalkeeping' }
     ],
-    attributes: samplePlayer?.attributes ? Object.keys(samplePlayer.attributes).map(key => ({
-      key: `attributes.${key}`,
-      label: key
-    })) : [],
+    attributes: samplePlayer?.attributes
+      ? Object.keys(samplePlayer.attributes).map(key => ({
+          key: `attributes.${key}`,
+          label: key
+        }))
+      : [],
     personal: [
       { key: 'personality', label: 'Personality' },
       { key: 'media_handling', label: 'Media Handling' }
@@ -67,7 +69,7 @@ function getAvailableColumns(players) {
   // Add role ratings if available
   if (samplePlayer?.roleSpecificOveralls && Array.isArray(samplePlayer.roleSpecificOveralls)) {
     const allRoleNames = new Set()
-    
+
     // Collect all unique role names from all players
     players.forEach(player => {
       if (player.roleSpecificOveralls && Array.isArray(player.roleSpecificOveralls)) {
@@ -78,12 +80,12 @@ function getAvailableColumns(players) {
         })
       }
     })
-    
+
     const roleRatings = Array.from(allRoleNames).map(roleName => ({
       key: `roleRating.${roleName}`,
       label: `${roleName} Rating`
     }))
-    
+
     if (roleRatings.length > 0) {
       columns.roleRatings = roleRatings
     }
@@ -115,10 +117,10 @@ export async function exportPlayersToCSV(players, selectedColumns = null, filena
   if (!players || players.length === 0) {
     throw new Error('No players to export')
   }
-  
+
   // Get available columns
   const availableColumns = getAvailableColumns(players)
-  
+
   // If no columns specified, use basic + ratings by default
   if (!selectedColumns) {
     selectedColumns = [
@@ -126,7 +128,7 @@ export async function exportPlayersToCSV(players, selectedColumns = null, filena
       ...availableColumns.ratings.map(col => col.key)
     ]
   }
-  
+
   // Create column mapping
   const columnMap = {}
   Object.values(availableColumns).forEach(category => {
@@ -134,7 +136,7 @@ export async function exportPlayersToCSV(players, selectedColumns = null, filena
       columnMap[col.key] = col.label
     })
   })
-  
+
   // Generate header row
   const headers = selectedColumns.map(key => {
     if (key.startsWith('performancePercentiles.')) {
@@ -149,25 +151,26 @@ export async function exportPlayersToCSV(players, selectedColumns = null, filena
     }
     return columnMap[key] || key
   })
-  
+
   // Generate data rows
   const rows = players.map(player => {
     return selectedColumns.map(key => {
       let value = getNestedValue(player, key)
-      
+
       // Special handling for certain fields
       if (key === 'transferValue') {
         value = player.transferValue || `${player.transferValueAmount || 0}`
       } else if (key === 'wage') {
         value = player.wage || `${player.wageAmount || 0}`
       } else if (key === 'position') {
-        value = Array.isArray(player.shortPositions) 
-          ? player.shortPositions.join(', ') 
-          : (player.position || '')
+        value = Array.isArray(player.shortPositions)
+          ? player.shortPositions.join(', ')
+          : player.position || ''
       } else if (key.startsWith('performancePercentiles.')) {
         // Special handling for performance percentiles
         const parts = key.split('.')
-        if (parts.length === 3) { // performancePercentiles.Group.StatName
+        if (parts.length === 3) {
+          // performancePercentiles.Group.StatName
           const [, group, statName] = parts
           value = player.performancePercentiles?.[group]?.[statName] || ''
         }
@@ -179,20 +182,20 @@ export async function exportPlayersToCSV(players, selectedColumns = null, filena
           value = roleData ? roleData.score : ''
         }
       }
-      
+
       return escapeCSVValue(value)
     })
   })
-  
+
   // Combine headers and rows
   const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n')
-  
+
   // Generate filename if not provided
   if (!filename) {
     const timestamp = new Date().toISOString().split('T')[0]
     filename = `fm_players_export_${timestamp}.csv`
   }
-  
+
   // Create and download file
   downloadCSV(csvContent, filename)
 }
@@ -205,7 +208,7 @@ export async function exportPlayersToCSV(players, selectedColumns = null, filena
 function downloadCSV(csvContent, filename) {
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
   const link = document.createElement('a')
-  
+
   if (link.download !== undefined) {
     // Use HTML5 download attribute
     const url = URL.createObjectURL(blob)
@@ -232,33 +235,50 @@ function downloadCSV(csvContent, filename) {
  */
 export function getDefaultExportColumns(context = 'basic', players = []) {
   const availableColumns = getAvailableColumns(players)
-  
+
   switch (context) {
     case 'basic':
-      return [
-        'name', 'age', 'nationality', 'club', 'position', 
-        'transferValue', 'wage', 'Overall'
-      ]
-    
+      return ['name', 'age', 'nationality', 'club', 'position', 'transferValue', 'wage', 'Overall']
+
     case 'detailed':
       return [
-        'name', 'age', 'nationality', 'club', 'position',
-        'transferValue', 'wage', 'Overall',
-        ...availableColumns.ratings.filter(col => col.key !== 'Potential' && col.key !== 'Overall').map(col => col.key),
-        'personality', 'media_handling'
+        'name',
+        'age',
+        'nationality',
+        'club',
+        'position',
+        'transferValue',
+        'wage',
+        'Overall',
+        ...availableColumns.ratings
+          .filter(col => col.key !== 'Potential' && col.key !== 'Overall')
+          .map(col => col.key),
+        'personality',
+        'media_handling'
       ]
-    
+
     case 'scout':
       return [
-        'name', 'age', 'nationality', 'club', 'position',
-        'Overall', 'transferValue', 'wage',
+        'name',
+        'age',
+        'nationality',
+        'club',
+        'position',
+        'Overall',
+        'transferValue',
+        'wage',
         'personality'
       ]
-    
-    case 'analysis':
+
+    case 'analysis': {
       const analysisColumns = [
-        'name', 'club', 'position', 'Overall',
-        ...availableColumns.ratings.filter(col => col.key !== 'Potential' && col.key !== 'Overall').map(col => col.key),
+        'name',
+        'club',
+        'position',
+        'Overall',
+        ...availableColumns.ratings
+          .filter(col => col.key !== 'Potential' && col.key !== 'Overall')
+          .map(col => col.key),
         ...availableColumns.attributes.slice(0, 10).map(col => col.key) // First 10 attributes
       ]
       // Add top 5 role ratings if available
@@ -266,7 +286,8 @@ export function getDefaultExportColumns(context = 'basic', players = []) {
         analysisColumns.push(...availableColumns.roleRatings.slice(0, 5).map(col => col.key))
       }
       return analysisColumns
-    
+    }
+
     default:
       return getDefaultExportColumns('basic', players)
   }
@@ -280,31 +301,29 @@ export function getDefaultExportColumns(context = 'basic', players = []) {
 export function validateExportData(players) {
   const errors = []
   const warnings = []
-  
+
   if (!Array.isArray(players)) {
     errors.push('Players data must be an array')
     return { valid: false, errors, warnings }
   }
-  
+
   if (players.length === 0) {
     errors.push('No players to export')
     return { valid: false, errors, warnings }
   }
-  
+
   if (players.length > 10000) {
     warnings.push('Large export (>10,000 players) may take some time')
   }
-  
+
   // Check for required fields
   const requiredFields = ['name']
-  const missingFields = requiredFields.filter(field => 
-    !players[0].hasOwnProperty(field)
-  )
-  
+  const missingFields = requiredFields.filter(field => !Object.hasOwn(players[0], field))
+
   if (missingFields.length > 0) {
     errors.push(`Missing required fields: ${missingFields.join(', ')}`)
   }
-  
+
   return {
     valid: errors.length === 0,
     errors,
@@ -322,13 +341,13 @@ export async function exportPlayersToJSON(players, filename = null) {
   if (!players || players.length === 0) {
     throw new Error('No players to export')
   }
-  
+
   // Generate filename if not provided
   if (!filename) {
     const timestamp = new Date().toISOString().split('T')[0]
     filename = `fm_players_full_dataset_${timestamp}.json`
   }
-  
+
   // Create the JSON export object with metadata
   const exportData = {
     metadata: {
@@ -339,10 +358,10 @@ export async function exportPlayersToJSON(players, filename = null) {
     },
     players: players
   }
-  
+
   // Convert to JSON string with proper formatting
   const jsonContent = JSON.stringify(exportData, null, 2)
-  
+
   // Create and download file
   downloadJSON(jsonContent, filename)
 }
@@ -355,7 +374,7 @@ export async function exportPlayersToJSON(players, filename = null) {
 function downloadJSON(jsonContent, filename) {
   const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8;' })
   const link = document.createElement('a')
-  
+
   if (link.download !== undefined) {
     // Use HTML5 download attribute
     const url = URL.createObjectURL(blob)
@@ -464,7 +483,7 @@ export async function exportPlayersWithOptions(players, exportOptions, filename 
   }
 
   const selectedColumns = getColumnsFromExportOptions(exportOptions, players)
-  
+
   if (exportOptions.format === 'csv') {
     await exportPlayersToCSV(players, selectedColumns, filename)
   } else if (exportOptions.format === 'json') {
@@ -575,4 +594,4 @@ export async function exportPlayersToJSONWithOptions(players, exportOptions, fil
 
   // Create and download file
   downloadJSON(jsonContent, filename)
-} 
+}

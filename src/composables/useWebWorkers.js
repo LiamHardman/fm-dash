@@ -36,8 +36,6 @@ export function useWebWorkers() {
 
     // Handle worker errors
     worker.onerror = error => {
-      console.error(`Worker ${workerName} error:`, error)
-
       // Reject all pending tasks for this worker
       for (const [id, task] of pendingTasks.value.entries()) {
         if (task.workerName === workerName) {
@@ -168,8 +166,7 @@ export function usePlayerCalculationWorker() {
       // Create worker from the workers directory
       const workerUrl = new URL('../workers/playerCalculationWorker.js', import.meta.url)
       return createWorker(workerUrl.href, 'playerCalculation')
-    } catch (error) {
-      console.warn('Web Worker not supported, falling back to main thread:', error.message || error)
+    } catch (_error) {
       return null
     }
   }
@@ -183,8 +180,7 @@ export function usePlayerCalculationWorker() {
       try {
         initWorker()
         workerInitialized = true
-      } catch (error) {
-        console.warn('Failed to initialize web worker:', error)
+      } catch (_error) {
         workerInitializationFailed = true
       }
     }

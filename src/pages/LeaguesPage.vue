@@ -281,7 +281,6 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
 import { usePlayerStore } from '../stores/playerStore'
-import { debounce } from '../utils/debounce'
 
 export default {
   name: 'LeaguesPage',
@@ -352,8 +351,7 @@ export default {
         }
         const teamsData = await response.json()
         leagueTeams.value = teamsData || []
-      } catch (err) {
-        console.error('Error fetching teams data:', err)
+      } catch (_err) {
         leagueTeams.value = []
       } finally {
         loadingLeague.value = false

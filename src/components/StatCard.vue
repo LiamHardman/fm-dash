@@ -34,57 +34,57 @@
   </template>
   
   <script>
-  import { defineComponent } from 'vue';
-  
-  export default defineComponent({
-    name: 'StatCard',
-    props: {
-      stat: {
-        type: Object,
-        required: true,
-      },
-      players: {
-        type: Array,
-        default: () => [],
-      },
+import { defineComponent } from 'vue'
+
+export default defineComponent({
+  name: 'StatCard',
+  props: {
+    stat: {
+      type: Object,
+      required: true
     },
-    emits: ['player-click'],
-    methods: {
-      getPlayerName(player) {
-        return player.name || player.Name || player.Player || 'Unknown Player';
-      },
-      getPlayerClub(player) {
-        return player.club || player.Club || 'Unknown Club';
-      },
-      formatStatValue(value, statKey) {
-        if (value === undefined || value === null || value === '-' || value === '') {
-          return 'N/A';
-        }
-        const stringValue = String(value);
-        const cleanValue = stringValue.replace(/,/g, '').replace(/%/g, '');
-        const numValue = parseFloat(cleanValue);
-  
-        if (isNaN(numValue)) {
-          return stringValue;
-        }
-  
-        if (stringValue.includes('%') || ['Sv %', 'Conv %', 'Pas %', 'Tck R'].includes(statKey)) {
-          return numValue.toFixed(1) + '%';
-        }
-  
-        if (numValue >= 1000 && Number.isInteger(numValue)) {
-          return numValue.toLocaleString();
-        }
-        
-        if (numValue % 1 === 0) {
-          return numValue.toString();
-        }
-        
-        return numValue.toFixed(2);
-      }
+    players: {
+      type: Array,
+      default: () => []
     }
-  });
-  </script>
+  },
+  emits: ['player-click'],
+  methods: {
+    getPlayerName(player) {
+      return player.name || player.Name || player.Player || 'Unknown Player'
+    },
+    getPlayerClub(player) {
+      return player.club || player.Club || 'Unknown Club'
+    },
+    formatStatValue(value, statKey) {
+      if (value === undefined || value === null || value === '-' || value === '') {
+        return 'N/A'
+      }
+      const stringValue = String(value)
+      const cleanValue = stringValue.replace(/,/g, '').replace(/%/g, '')
+      const numValue = parseFloat(cleanValue)
+
+      if (Number.isNaN(numValue)) {
+        return stringValue
+      }
+
+      if (stringValue.includes('%') || ['Sv %', 'Conv %', 'Pas %', 'Tck R'].includes(statKey)) {
+        return `${numValue.toFixed(1)}%`
+      }
+
+      if (numValue >= 1000 && Number.isInteger(numValue)) {
+        return numValue.toLocaleString()
+      }
+
+      if (numValue % 1 === 0) {
+        return numValue.toString()
+      }
+
+      return numValue.toFixed(2)
+    }
+  }
+})
+</script>
   
   <style lang="scss" scoped>
   .stat-card {

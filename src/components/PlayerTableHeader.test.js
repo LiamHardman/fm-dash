@@ -1,6 +1,6 @@
 import { mount } from '@vue/test-utils'
-import { QIcon, Quasar } from 'quasar'
-import { describe, expect, it, vi } from 'vitest'
+import { Quasar } from 'quasar'
+import { describe, expect, it } from 'vitest'
 import PlayerTableHeader from './PlayerTableHeader.vue'
 
 // Global test config

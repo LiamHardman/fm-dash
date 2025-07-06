@@ -162,257 +162,264 @@
 </template>
 
 <script>
-import { defineComponent, ref, computed, watch } from 'vue'
 import { useQuasar } from 'quasar'
+import { computed, defineComponent, ref, watch } from 'vue'
 
 export default defineComponent({
-    name: 'ExportOptionsDialog',
-    props: {
-        show: {
-            type: Boolean,
-            default: false
-        },
-        playerCount: {
-            type: Number,
-            default: 0
-        },
-        exportType: {
-            type: String, // 'csv' or 'json'
-            default: 'csv'
-        }
+  name: 'ExportOptionsDialog',
+  props: {
+    show: {
+      type: Boolean,
+      default: false
     },
-    emits: ['close', 'export'],
-    setup(props, { emit }) {
-        const $q = useQuasar()
-        const exporting = ref(false)
+    playerCount: {
+      type: Number,
+      default: 0
+    },
+    exportType: {
+      type: String, // 'csv' or 'json'
+      default: 'csv'
+    }
+  },
+  emits: ['close', 'export'],
+  setup(props, { emit }) {
+    const $q = useQuasar()
+    const exporting = ref(false)
 
-        const selectedFormat = ref(props.exportType)
-        const selectedPreset = ref('detailed')
+    const selectedFormat = ref(props.exportType)
+    const selectedPreset = ref('detailed')
 
-        const selectedOptions = ref({
+    const selectedOptions = ref({
+      basicInfo: true,
+      fifahStats: true,
+      fmStats: true,
+      roleRatings: false,
+      performancePercentiles: false,
+      contractInfo: true,
+      personalInfo: false
+    })
+
+    const formatOptions = [
+      { label: 'CSV', value: 'csv' },
+      { label: 'JSON', value: 'json' }
+    ]
+
+    const presetOptions = [
+      { label: 'Basic', value: 'basic' },
+      { label: 'Detailed', value: 'detailed' },
+      { label: 'Scout Report', value: 'scout' },
+      { label: 'Analysis', value: 'analysis' },
+      { label: 'All Data', value: 'all' }
+    ]
+
+    const selectedCategoriesCount = computed(() => {
+      return Object.values(selectedOptions.value).filter(Boolean).length
+    })
+
+    const selectPreset = preset => {
+      selectedPreset.value = preset
+
+      switch (preset) {
+        case 'basic':
+          selectedOptions.value = {
             basicInfo: true,
-            fifahStats: true, 
-            fmStats: true,
+            fifahStats: true,
+            fmStats: false,
             roleRatings: false,
             performancePercentiles: false,
             contractInfo: true,
             personalInfo: false
-        })
-
-        const formatOptions = [
-            { label: 'CSV', value: 'csv' },
-            { label: 'JSON', value: 'json' }
-        ]
-
-        const presetOptions = [
-            { label: 'Basic', value: 'basic' },
-            { label: 'Detailed', value: 'detailed' },
-            { label: 'Scout Report', value: 'scout' },
-            { label: 'Analysis', value: 'analysis' },
-            { label: 'All Data', value: 'all' }
-        ]
-
-        const selectedCategoriesCount = computed(() => {
-            return Object.values(selectedOptions.value).filter(Boolean).length
-        })
-
-        const selectPreset = (preset) => {
-            selectedPreset.value = preset
-            
-            switch (preset) {
-                case 'basic':
-                    selectedOptions.value = {
-                        basicInfo: true,
-                        fifahStats: true,
-                        fmStats: false,
-                        roleRatings: false,
-                        performancePercentiles: false,
-                        contractInfo: true,
-                        personalInfo: false
-                    }
-                    break
-                case 'detailed':
-                    selectedOptions.value = {
-                        basicInfo: true,
-                        fifahStats: true,
-                        fmStats: true,
-                        roleRatings: false,
-                        performancePercentiles: false,
-                        contractInfo: true,
-                        personalInfo: true
-                    }
-                    break
-                case 'scout':
-                    selectedOptions.value = {
-                        basicInfo: true,
-                        fifahStats: true,
-                        fmStats: false,
-                        roleRatings: true,
-                        performancePercentiles: true,
-                        contractInfo: true,
-                        personalInfo: true
-                    }
-                    break
-                case 'analysis':
-                    selectedOptions.value = {
-                        basicInfo: true,
-                        fifahStats: true,
-                        fmStats: true,
-                        roleRatings: true,
-                        performancePercentiles: true,
-                        contractInfo: false,
-                        personalInfo: false
-                    }
-                    break
-                case 'all':
-                    selectedOptions.value = {
-                        basicInfo: true,
-                        fifahStats: true,
-                        fmStats: true,
-                        roleRatings: false,
-                        performancePercentiles: true,
-                        contractInfo: true,
-                        personalInfo: true
-                    }
-                    break
-            }
-        }
-
-        // Watch for changes in selectedOptions to reset preset selection
-        watch(() => selectedOptions.value, () => {
-            // Check if current selection matches any preset
-            const currentSelection = selectedOptions.value
-            let matchingPreset = null
-
-            for (const preset of presetOptions) {
-                let tempOptions = {}
-                
-                // Simulate selecting each preset to compare
-                switch (preset.value) {
-                    case 'basic':
-                        tempOptions = {
-                            basicInfo: true,
-                            fifahStats: true,
-                            fmStats: false,
-                            roleRatings: false,
-                            performancePercentiles: false,
-                            contractInfo: true,
-                            personalInfo: false
-                        }
-                        break
-                    case 'detailed':
-                        tempOptions = {
-                            basicInfo: true,
-                            fifahStats: true,
-                            fmStats: true,
-                            roleRatings: false,
-                            performancePercentiles: false,
-                            contractInfo: true,
-                            personalInfo: true
-                        }
-                        break
-                    case 'scout':
-                        tempOptions = {
-                            basicInfo: true,
-                            fifahStats: true,
-                            fmStats: false,
-                            roleRatings: true,
-                            performancePercentiles: true,
-                            contractInfo: true,
-                            personalInfo: true
-                        }
-                        break
-                    case 'analysis':
-                        tempOptions = {
-                            basicInfo: true,
-                            fifahStats: true,
-                            fmStats: true,
-                            roleRatings: true,
-                            performancePercentiles: true,
-                            contractInfo: false,
-                            personalInfo: false
-                        }
-                        break
-                    case 'all':
-                        tempOptions = {
-                            basicInfo: true,
-                            fifahStats: true,
-                            fmStats: true,
-                            roleRatings: false,
-                            performancePercentiles: true,
-                            contractInfo: true,
-                            personalInfo: true
-                        }
-                        break
-                }
-
-                // Check if all options match
-                const matches = Object.keys(tempOptions).every(
-                    key => tempOptions[key] === currentSelection[key]
-                )
-
-                if (matches) {
-                    matchingPreset = preset.value
-                    break
-                }
-            }
-
-            if (matchingPreset) {
-                selectedPreset.value = matchingPreset
-            } else {
-                selectedPreset.value = null // Custom selection
-            }
-        }, { deep: true })
-
-        const handleExport = async () => {
-            if (selectedCategoriesCount.value === 0) {
-                $q.notify({
-                    type: 'warning',
-                    message: 'Please select at least one data category to export',
-                    position: 'top'
-                })
-                return
-            }
-
-            exporting.value = true
-
-            try {
-                const exportOptions = {
-                    format: selectedFormat.value,
-                    options: selectedOptions.value,
-                    preset: selectedPreset.value
-                }
-
-                emit('export', exportOptions)
-            } catch (error) {
-                console.error('Export error:', error)
-                $q.notify({
-                    type: 'negative',
-                    message: 'Export failed. Please try again.',
-                    position: 'top'
-                })
-            } finally {
-                exporting.value = false
-            }
-        }
-
-        // Initialize format based on prop
-        watch(() => props.exportType, (newType) => {
-            selectedFormat.value = newType
-        }, { immediate: true })
-
-        return {
-            selectedFormat,
-            selectedPreset,
-            selectedOptions,
-            formatOptions,
-            presetOptions,
-            selectedCategoriesCount,
-            exporting,
-            selectPreset,
-            handleExport
-        }
+          }
+          break
+        case 'detailed':
+          selectedOptions.value = {
+            basicInfo: true,
+            fifahStats: true,
+            fmStats: true,
+            roleRatings: false,
+            performancePercentiles: false,
+            contractInfo: true,
+            personalInfo: true
+          }
+          break
+        case 'scout':
+          selectedOptions.value = {
+            basicInfo: true,
+            fifahStats: true,
+            fmStats: false,
+            roleRatings: true,
+            performancePercentiles: true,
+            contractInfo: true,
+            personalInfo: true
+          }
+          break
+        case 'analysis':
+          selectedOptions.value = {
+            basicInfo: true,
+            fifahStats: true,
+            fmStats: true,
+            roleRatings: true,
+            performancePercentiles: true,
+            contractInfo: false,
+            personalInfo: false
+          }
+          break
+        case 'all':
+          selectedOptions.value = {
+            basicInfo: true,
+            fifahStats: true,
+            fmStats: true,
+            roleRatings: false,
+            performancePercentiles: true,
+            contractInfo: true,
+            personalInfo: true
+          }
+          break
+      }
     }
+
+    // Watch for changes in selectedOptions to reset preset selection
+    watch(
+      () => selectedOptions.value,
+      () => {
+        // Check if current selection matches any preset
+        const currentSelection = selectedOptions.value
+        let matchingPreset = null
+
+        for (const preset of presetOptions) {
+          let tempOptions = {}
+
+          // Simulate selecting each preset to compare
+          switch (preset.value) {
+            case 'basic':
+              tempOptions = {
+                basicInfo: true,
+                fifahStats: true,
+                fmStats: false,
+                roleRatings: false,
+                performancePercentiles: false,
+                contractInfo: true,
+                personalInfo: false
+              }
+              break
+            case 'detailed':
+              tempOptions = {
+                basicInfo: true,
+                fifahStats: true,
+                fmStats: true,
+                roleRatings: false,
+                performancePercentiles: false,
+                contractInfo: true,
+                personalInfo: true
+              }
+              break
+            case 'scout':
+              tempOptions = {
+                basicInfo: true,
+                fifahStats: true,
+                fmStats: false,
+                roleRatings: true,
+                performancePercentiles: true,
+                contractInfo: true,
+                personalInfo: true
+              }
+              break
+            case 'analysis':
+              tempOptions = {
+                basicInfo: true,
+                fifahStats: true,
+                fmStats: true,
+                roleRatings: true,
+                performancePercentiles: true,
+                contractInfo: false,
+                personalInfo: false
+              }
+              break
+            case 'all':
+              tempOptions = {
+                basicInfo: true,
+                fifahStats: true,
+                fmStats: true,
+                roleRatings: false,
+                performancePercentiles: true,
+                contractInfo: true,
+                personalInfo: true
+              }
+              break
+          }
+
+          // Check if all options match
+          const matches = Object.keys(tempOptions).every(
+            key => tempOptions[key] === currentSelection[key]
+          )
+
+          if (matches) {
+            matchingPreset = preset.value
+            break
+          }
+        }
+
+        if (matchingPreset) {
+          selectedPreset.value = matchingPreset
+        } else {
+          selectedPreset.value = null // Custom selection
+        }
+      },
+      { deep: true }
+    )
+
+    const handleExport = async () => {
+      if (selectedCategoriesCount.value === 0) {
+        $q.notify({
+          type: 'warning',
+          message: 'Please select at least one data category to export',
+          position: 'top'
+        })
+        return
+      }
+
+      exporting.value = true
+
+      try {
+        const exportOptions = {
+          format: selectedFormat.value,
+          options: selectedOptions.value,
+          preset: selectedPreset.value
+        }
+
+        emit('export', exportOptions)
+      } catch (_error) {
+        $q.notify({
+          type: 'negative',
+          message: 'Export failed. Please try again.',
+          position: 'top'
+        })
+      } finally {
+        exporting.value = false
+      }
+    }
+
+    // Initialize format based on prop
+    watch(
+      () => props.exportType,
+      newType => {
+        selectedFormat.value = newType
+      },
+      { immediate: true }
+    )
+
+    return {
+      selectedFormat,
+      selectedPreset,
+      selectedOptions,
+      formatOptions,
+      presetOptions,
+      selectedCategoriesCount,
+      exporting,
+      selectPreset,
+      handleExport
+    }
+  }
 })
 </script>
 

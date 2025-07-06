@@ -217,9 +217,9 @@
 </template>
 
 <script>
-import { defineComponent, computed, ref } from 'vue'
-import { useUiStore } from '@/stores/uiStore'
+import { computed, defineComponent, ref } from 'vue'
 import TeamLogo from '@/components/TeamLogo.vue'
+import { useUiStore } from '@/stores/uiStore'
 
 export default defineComponent({
   name: 'PlayerProfileCard',
@@ -238,45 +238,45 @@ export default defineComponent({
   },
   setup(props) {
     const uiStore = useUiStore()
-    
+
     // Image loading states
     const faceImageLoadError = ref(false)
     const flagLoadError = ref(false)
-    
+
     // UI settings
     const showFaces = computed(() => uiStore.showFaces)
     const shouldShowTeamLogo = computed(() => uiStore.shouldShowTeamLogo)
-    
+
     // Player face image URL
     const playerFaceImageUrl = computed(() => {
       if (!props.player?.uid || !showFaces.value) return null
       return `/faces/${props.player.uid}.png`
     })
-    
+
     // Formatted financial values
     const formattedTransferValue = computed(() => {
       if (!props.player?.transferValue) return 'N/A'
       return props.player.transferValue
     })
-    
+
     const formattedWage = computed(() => {
       if (!props.player?.wage) return 'N/A'
       return props.player.wage
     })
-    
+
     // Image error handlers
     const handleFaceImageError = () => {
       faceImageLoadError.value = true
     }
-    
+
     const handleFaceImageLoad = () => {
       faceImageLoadError.value = false
     }
-    
+
     const handleFlagError = () => {
       flagLoadError.value = true
     }
-    
+
     return {
       faceImageLoadError,
       flagLoadError,

@@ -17,59 +17,48 @@ class Logger {
     return [`${timestamp} ${level} ${prefix}`, ...args]
   }
 
-  log(...args) {
+  log(..._args) {
     if (isDev && !isTest) {
-      console.log(...this._formatMessage('ℹ️', args))
     }
   }
 
-  info(...args) {
+  info(..._args) {
     if (isDev && !isTest) {
-      console.info(...this._formatMessage('ℹ️', args))
     }
   }
 
-  warn(...args) {
+  warn(..._args) {
     if (isDev && !isTest) {
-      console.warn(...this._formatMessage('⚠️', args))
     }
   }
 
-  error(...args) {
-    // Always log errors, even in production
-    console.error(...this._formatMessage('❌', args))
-  }
+  error(..._args) {}
 
-  debug(...args) {
+  debug(..._args) {
     if (isDev && !isTest) {
-      console.debug(...this._formatMessage('🐛', args))
     }
   }
 
   // Performance logging
-  time(label) {
+  time(_label) {
     if (isDev && !isTest) {
-      console.time(`⏱️ ${this.namespace} ${label}`)
     }
   }
 
-  timeEnd(label) {
+  timeEnd(_label) {
     if (isDev && !isTest) {
-      console.timeEnd(`⏱️ ${this.namespace} ${label}`)
     }
   }
 
   // Cache operations
-  cache(operation, key, ...args) {
+  cache(_operation, _key, ..._args) {
     if (isDev && !isTest) {
-      console.log(...this._formatMessage('💾', [`Cache ${operation}:`, key, ...args]))
     }
   }
 
   // Performance operations
-  perf(operation, ...args) {
+  perf(_operation, ..._args) {
     if (isDev && !isTest) {
-      console.log(...this._formatMessage('⚡', [operation, ...args]))
     }
   }
 }
@@ -95,7 +84,7 @@ export const performance = {
   /**
    * Mark the start of a performance measurement
    */
-  mark: (name) => {
+  mark: name => {
     if (isDev && window.performance) {
       window.performance.mark(`${name}-start`)
     }
@@ -104,7 +93,7 @@ export const performance = {
   /**
    * Measure performance between marks
    */
-  measure: (name) => {
+  measure: name => {
     if (isDev && window.performance) {
       try {
         window.performance.mark(`${name}-end`)
@@ -120,4 +109,4 @@ export const performance = {
   }
 }
 
-export default logger 
+export default logger

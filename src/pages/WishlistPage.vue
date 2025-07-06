@@ -267,7 +267,6 @@ export default defineComponent({
         }).href
         const newWindow = window.open(url, '_blank')
         if (!newWindow) {
-          console.error('Failed to open new window - likely blocked by popup blocker')
         } else {
         }
       } else {

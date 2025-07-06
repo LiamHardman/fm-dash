@@ -39,4 +39,10 @@ async function initializeApp() {
 }
 
 // Initialize the app
-initializeApp().catch(console.error)
+initializeApp().catch(error => {
+  // Handle initialization errors
+  if (typeof window !== 'undefined' && window.alert) {
+    window.alert('Failed to initialize application. Please refresh the page.')
+  }
+  throw error
+})

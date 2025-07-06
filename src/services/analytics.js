@@ -17,7 +17,6 @@ const GA_TRACKING_ID = import.meta.env.VITE_GA_TRACKING_ID || __GA_TRACKING_ID__
  */
 const initializeGA = () => {
   if (typeof window === 'undefined' || !GA_TRACKING_ID) {
-    console.warn('Google Analytics not initialized: missing tracking ID or not in browser environment')
     return
   }
 
@@ -30,8 +29,8 @@ const initializeGA = () => {
 
     // Initialize dataLayer and gtag function
     window.dataLayer = window.dataLayer || []
-    window.gtag = function() {
-      window.dataLayer.push(arguments)
+    window.gtag = (...args) => {
+      window.dataLayer.push(args)
     }
 
     // Initialize with current date and config
@@ -40,14 +39,12 @@ const initializeGA = () => {
       // Enhanced configuration options
       send_page_view: false, // We'll handle page views manually
       custom_map: {
-        'custom_parameter_1': 'dataset_id'
+        custom_parameter_1: 'dataset_id'
       }
     })
 
     // console.log('✅ Google Analytics initialized with tracking ID:', GA_TRACKING_ID)
-  } catch (error) {
-    console.error('Failed to initialize Google Analytics:', error)
-  }
+  } catch (_error) {}
 }
 
 // Auto-initialize when the module is loaded
@@ -69,7 +66,6 @@ export const isGtagAvailable = () => {
 export const trackPageView = (pagePath, pageTitle = '') => {
   // Google Analytics tracking
   if (!isGtagAvailable()) {
-    console.warn('Google Analytics not available')
     return
   }
 
@@ -78,9 +74,7 @@ export const trackPageView = (pagePath, pageTitle = '') => {
       page_path: pagePath,
       page_title: pageTitle
     })
-  } catch (error) {
-    console.error('Failed to track page view:', error)
-  }
+  } catch (_error) {}
 }
 
 /**
@@ -91,7 +85,6 @@ export const trackPageView = (pagePath, pageTitle = '') => {
 export const trackEvent = (eventName, parameters = {}) => {
   // Google Analytics tracking
   if (!isGtagAvailable()) {
-    console.warn('Google Analytics not available')
     return
   }
 
@@ -100,9 +93,7 @@ export const trackEvent = (eventName, parameters = {}) => {
       ...parameters,
       timestamp: new Date().toISOString()
     })
-  } catch (error) {
-    console.error('Failed to track event:', error)
-  }
+  } catch (_error) {}
 }
 
 /**
@@ -110,7 +101,7 @@ export const trackEvent = (eventName, parameters = {}) => {
  */
 export const analytics = {
   // User interactions
-  shareDataset: (datasetId) => {
+  shareDataset: datasetId => {
     trackEvent('share_dataset', {
       dataset_id: datasetId,
       event_category: 'engagement'
@@ -182,14 +173,14 @@ export const analytics = {
     })
   },
 
-  useWonderkids: (filters) => {
+  useWonderkids: filters => {
     trackEvent('use_wonderkids', {
       filters_applied: Object.keys(filters).length,
       event_category: 'feature_usage'
     })
   },
 
-  useBargainHunter: (filters) => {
+  useBargainHunter: filters => {
     trackEvent('use_bargain_hunter', {
       filters_applied: Object.keys(filters).length,
       event_category: 'feature_usage'
@@ -216,4 +207,4 @@ export const analytics = {
   }
 }
 
-export default analytics 
+export default analytics

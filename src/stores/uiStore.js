@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { useQuasar } from 'quasar'
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 
 export const useUiStore = defineStore('ui', () => {
   const $q = useQuasar()
@@ -26,9 +26,7 @@ export const useUiStore = defineStore('ui', () => {
     $q.dark.set(isDarkModeActive.value)
     try {
       localStorage.setItem('darkMode', isDarkModeActive.value ? 'true' : 'false')
-    } catch (e) {
-      console.warn('Could not save dark mode preference to localStorage:', e)
-    }
+    } catch (_e) {}
   }
 
   // Function to toggle notifications
@@ -36,9 +34,7 @@ export const useUiStore = defineStore('ui', () => {
     notificationsEnabled.value = !notificationsEnabled.value
     try {
       localStorage.setItem('notificationsEnabled', notificationsEnabled.value ? 'true' : 'false')
-    } catch (e) {
-      console.warn('Could not save notification preference to localStorage:', e)
-    }
+    } catch (_e) {}
   }
 
   // Function to toggle rating calculation method
@@ -46,9 +42,7 @@ export const useUiStore = defineStore('ui', () => {
     useScaledRatings.value = !useScaledRatings.value
     try {
       localStorage.setItem('useScaledRatings', useScaledRatings.value ? 'true' : 'false')
-    } catch (e) {
-      console.warn('Could not save rating calculation preference to localStorage:', e)
-    }
+    } catch (_e) {}
   }
 
   // Function to set rating calculation method directly
@@ -56,9 +50,7 @@ export const useUiStore = defineStore('ui', () => {
     useScaledRatings.value = useScaled
     try {
       localStorage.setItem('useScaledRatings', useScaled ? 'true' : 'false')
-    } catch (e) {
-      console.warn('Could not save rating calculation preference to localStorage:', e)
-    }
+    } catch (_e) {}
   }
 
   // Function to toggle faces display
@@ -66,9 +58,7 @@ export const useUiStore = defineStore('ui', () => {
     showFaces.value = !showFaces.value
     try {
       localStorage.setItem('showFaces', showFaces.value ? 'true' : 'false')
-    } catch (e) {
-      console.warn('Could not save faces preference to localStorage:', e)
-    }
+    } catch (_e) {}
   }
 
   // Function to set faces display directly
@@ -76,9 +66,7 @@ export const useUiStore = defineStore('ui', () => {
     showFaces.value = showFacesEnabled
     try {
       localStorage.setItem('showFaces', showFacesEnabled ? 'true' : 'false')
-    } catch (e) {
-      console.warn('Could not save faces preference to localStorage:', e)
-    }
+    } catch (_e) {}
   }
 
   // Function to toggle logos display
@@ -86,9 +74,7 @@ export const useUiStore = defineStore('ui', () => {
     showLogos.value = !showLogos.value
     try {
       localStorage.setItem('showLogos', showLogos.value ? 'true' : 'false')
-    } catch (e) {
-      console.warn('Could not save logos preference to localStorage:', e)
-    }
+    } catch (_e) {}
   }
 
   // Function to set logos display directly
@@ -96,9 +82,7 @@ export const useUiStore = defineStore('ui', () => {
     showLogos.value = showLogosEnabled
     try {
       localStorage.setItem('showLogos', showLogosEnabled ? 'true' : 'false')
-    } catch (e) {
-      console.warn('Could not save logos preference to localStorage:', e)
-    }
+    } catch (_e) {}
   }
 
   // Function to toggle attribute masks display
@@ -106,9 +90,7 @@ export const useUiStore = defineStore('ui', () => {
     showAttributeMasks.value = !showAttributeMasks.value
     try {
       localStorage.setItem('showAttributeMasks', showAttributeMasks.value ? 'true' : 'false')
-    } catch (e) {
-      console.warn('Could not save attribute masks preference to localStorage:', e)
-    }
+    } catch (_e) {}
   }
 
   // Initialize dark mode from localStorage or system preference
@@ -119,8 +101,7 @@ export const useUiStore = defineStore('ui', () => {
       if (storedPreference !== null) {
         darkModePreference = storedPreference === 'true'
       }
-    } catch (e) {
-      console.warn('Could not read dark mode preference from localStorage:', e)
+    } catch (_e) {
       darkModePreference = true
     }
     // Set the ref and Quasar's dark mode
@@ -131,9 +112,7 @@ export const useUiStore = defineStore('ui', () => {
       if (storedPreference !== null) {
         showLogos.value = storedPreference === 'true'
       }
-    } catch (e) {
-      console.warn('Could not read logos display preference from localStorage:', e)
-    }
+    } catch (_e) {}
   }
 
   // Initialize notification preferences
@@ -143,9 +122,7 @@ export const useUiStore = defineStore('ui', () => {
       if (storedPreference !== null) {
         notificationsEnabled.value = storedPreference === 'true'
       }
-    } catch (e) {
-      console.warn('Could not read notification preference from localStorage:', e)
-    }
+    } catch (_e) {}
   }
 
   // Initialize rating calculation preferences
@@ -155,9 +132,7 @@ export const useUiStore = defineStore('ui', () => {
       if (storedPreference !== null) {
         useScaledRatings.value = storedPreference === 'true'
       }
-    } catch (e) {
-      console.warn('Could not read rating calculation preference from localStorage:', e)
-    }
+    } catch (_e) {}
   }
 
   // Initialize faces display preferences
@@ -167,9 +142,7 @@ export const useUiStore = defineStore('ui', () => {
       if (storedPreference !== null) {
         showFaces.value = storedPreference === 'true'
       }
-    } catch (e) {
-      console.warn('Could not read faces display preference from localStorage:', e)
-    }
+    } catch (_e) {}
   }
 
   // Initialize logos display preferences
@@ -179,9 +152,7 @@ export const useUiStore = defineStore('ui', () => {
       if (storedPreference !== null) {
         showLogos.value = storedPreference === 'true'
       }
-    } catch (e) {
-      console.warn('Could not read logos display preference from localStorage:', e)
-    }
+    } catch (_e) {}
   }
 
   // Initialize attribute masks display preferences
@@ -191,9 +162,7 @@ export const useUiStore = defineStore('ui', () => {
       if (storedPreference !== null) {
         showAttributeMasks.value = storedPreference === 'true'
       }
-    } catch (e) {
-      console.warn('Could not read attribute masks display preference from localStorage:', e)
-    }
+    } catch (_e) {}
   }
 
   // Initialize all settings

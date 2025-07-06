@@ -38,8 +38,8 @@
 </template>
 
 <script>
-import { defineComponent, ref, computed, watch } from 'vue'
 import { useQuasar } from 'quasar'
+import { computed, defineComponent, ref, watch } from 'vue'
 import { useUiStore } from '../stores/uiStore'
 
 // Single global composable instance to avoid recreation
@@ -80,13 +80,13 @@ export default defineComponent({
   setup(props) {
     const $q = useQuasar()
     const uiStore = useUiStore()
-    
+
     const logoLoadError = ref(false)
     const logoUrl = ref(null)
     const isLoadingLogo = ref(false)
 
     // Load logo when team name changes
-    const loadLogo = async (teamName) => {
+    const loadLogo = async teamName => {
       if (!teamName || teamName === '-') {
         logoUrl.value = null
         isLoadingLogo.value = false
@@ -105,13 +105,12 @@ export default defineComponent({
       // Load with loading state
       isLoadingLogo.value = true
       logoLoadError.value = false
-      
+
       try {
         const url = await globalTeamLogos.getTeamLogoUrl(teamName)
         logoUrl.value = url
         logoLoadError.value = !url // Set error if no URL found
-      } catch (error) {
-        console.warn(`Failed to load logo for team "${teamName}":`, error)
+      } catch (_error) {
         logoUrl.value = null
         logoLoadError.value = true
       } finally {
@@ -148,7 +147,7 @@ export default defineComponent({
     // Watch for team name changes
     watch(
       () => props.teamName,
-      (newTeamName) => {
+      newTeamName => {
         logoLoadError.value = false
         loadLogo(newTeamName)
       },

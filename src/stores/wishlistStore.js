@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
-import wishlistService from '../services/wishlistService'
+import { ref } from 'vue'
 import { analytics } from '../services/analytics'
+import wishlistService from '../services/wishlistService'
 
 export const useWishlistStore = defineStore('wishlist', () => {
   // Wishlist data structure: { [datasetId]: [player objects] }
@@ -23,8 +23,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
       const wishlistData = await wishlistService.loadWishlist(datasetId)
       wishlistsByDataset.value[datasetId] = wishlistData || []
       return wishlistsByDataset.value[datasetId]
-    } catch (error) {
-      console.error(`Failed to load wishlist for dataset ${datasetId}:`, error)
+    } catch (_error) {
       // Fallback to empty array
       wishlistsByDataset.value[datasetId] = []
       return []
@@ -39,10 +38,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
 
     try {
       await wishlistService.saveWishlist(datasetId, wishlistsByDataset.value[datasetId])
-    } catch (error) {
-      // Error is already logged in service, wishlist is saved to localStorage as fallback
-      console.error(`Failed to save wishlist for dataset ${datasetId} to MinIO:`, error)
-    }
+    } catch (_error) {}
   }
 
   // Add player to wishlist for specific dataset
@@ -62,10 +58,10 @@ export const useWishlistStore = defineStore('wishlist', () => {
     if (existingIndex === -1) {
       wishlistsByDataset.value[datasetId].push(player)
       await saveWishlistForDataset(datasetId)
-      
+
       // Track the wishlist addition
       analytics.useWishlist('add', player.id || player.name)
-      
+
       return true
     }
 
@@ -83,10 +79,10 @@ export const useWishlistStore = defineStore('wishlist', () => {
     if (index !== -1) {
       wishlistsByDataset.value[datasetId].splice(index, 1)
       await saveWishlistForDataset(datasetId)
-      
+
       // Track the wishlist removal
       analytics.useWishlist('remove', player.id || player.name)
-      
+
       return true
     }
 
@@ -111,9 +107,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
       // Also delete from both MinIO and localStorage
       try {
         await wishlistService.deleteWishlist(datasetId)
-      } catch (error) {
-        console.error(`Failed to delete wishlist for dataset ${datasetId}:`, error)
-      }
+      } catch (_error) {}
     }
   }
 
@@ -151,9 +145,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
         // Remove old localStorage entry after successful migration
         localStorage.removeItem('fm_dash_wishlists')
       }
-    } catch (error) {
-      console.error('Failed to migrate wishlists from old localStorage format:', error)
-    }
+    } catch (_error) {}
   }
 
   // Auto-migrate on store initialization

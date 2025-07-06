@@ -696,12 +696,20 @@
 </template>
 
 <script>
-import { useQuasar } from 'quasar'
-import { computed, defineComponent, onMounted, onUnmounted, ref, watch, Suspense, defineAsyncComponent } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useQuasar } from 'quasar'
+import {
+  computed,
+  defineAsyncComponent,
+  defineComponent,
+  onMounted,
+  onUnmounted,
+  ref,
+  watch
+} from 'vue'
 import { usePlayerStore } from '../stores/playerStore'
-import { formatCurrency } from '../utils/currencyUtils'
 import { useUiStore } from '../stores/uiStore'
+import { formatCurrency } from '../utils/currencyUtils'
 
 // Lazy load TeamLogo component to prevent blocking dialog opening
 const TeamLogo = defineAsyncComponent(() => import('../components/TeamLogo.vue'))
@@ -841,12 +849,14 @@ const fifaToFmAttributeMapping = {
   SHO: {
     primary: ['Fin', 'Lon'],
     secondary: ['Pen', 'Hea', 'Cmp', 'Tec', 'Ant', 'Dec', 'Fla'],
-    description: 'Based on Finishing, Long Shots, Penalties, Heading, Composure, Technique, Anticipation, Decisions, and Flair'
+    description:
+      'Based on Finishing, Long Shots, Penalties, Heading, Composure, Technique, Anticipation, Decisions, and Flair'
   },
   PAS: {
     primary: ['Pas', 'Vis'],
     secondary: ['Cro', 'Tec', 'Fre', 'Tea', 'Dec', 'Fir', 'Cor', 'OtB'],
-    description: 'Based on Passing, Vision, Crossing, Technique, Free Kicks, Teamwork, Decisions, First Touch, Corners, and Off the Ball'
+    description:
+      'Based on Passing, Vision, Crossing, Technique, Free Kicks, Teamwork, Decisions, First Touch, Corners, and Off the Ball'
   },
   DRI: {
     primary: ['Dri', 'Fir', 'Tec'],
@@ -856,14 +866,16 @@ const fifaToFmAttributeMapping = {
   DEF: {
     primary: ['Mar', 'Tck', 'Ant', 'Pos'],
     secondary: ['Hea', 'Cnt', 'Dec', 'Cmp', 'Bra', 'Agg', 'Wor'],
-    description: 'Based on Marking, Tackling, Anticipation, Positioning, Heading, Concentration, Decisions, Composure, Bravery, Aggression, and Work Rate'
+    description:
+      'Based on Marking, Tackling, Anticipation, Positioning, Heading, Concentration, Decisions, Composure, Bravery, Aggression, and Work Rate'
   },
   PHY: {
     primary: ['Str', 'Sta', 'Nat'],
     secondary: ['Jum', 'Agg', 'Bra', 'Wor', 'Bal'],
-    description: 'Based on Strength, Stamina, Natural Fitness, Jumping Reach, Aggression, Bravery, Work Rate, and Balance'
+    description:
+      'Based on Strength, Stamina, Natural Fitness, Jumping Reach, Aggression, Bravery, Work Rate, and Balance'
   },
-  
+
   // Goalkeeper FIFA Stats mapped to FM attributes
   DIV: {
     primary: ['Aer', 'Ref', '1v1'],
@@ -893,7 +905,8 @@ const fifaToFmAttributeMapping = {
   POS: {
     primary: ['Pos', 'Cmd', 'Ant', 'Dec'],
     secondary: ['TRO', 'Cnt', 'Com'],
-    description: 'Based on Positioning, Command of Area, Anticipation, Decisions, Rushing Out Tendency, Concentration, and Communication'
+    description:
+      'Based on Positioning, Command of Area, Anticipation, Decisions, Rushing Out Tendency, Concentration, and Communication'
   }
 }
 
@@ -973,13 +986,13 @@ const performanceStatMap = {
   'Pas %': 'Pass Completion %',
   'Cr C/A': 'Cross Completion %',
   // New performance stats
-  'Fls': 'Fouls',
-  'Apps': 'Appearances',
+  Fls: 'Fouls',
+  Apps: 'Appearances',
   'NP-xG/90': 'Non-Penalty xG per 90',
   'Ps A/90': 'Pass Attempts per 90',
-  'Mins': 'Minutes Played',
+  Mins: 'Minutes Played',
   'Clean Sheets': 'Clean Sheets',
-  'FA': 'Fouls Against',
+  FA: 'Fouls Against',
   'CRS A/90': 'Crosses Attempted per 90',
   // Goalkeeper-specific stats
   'Con/90': 'Goals Conceded per 90',
@@ -989,12 +1002,7 @@ const performanceStatMap = {
 }
 
 const performanceStatCategories = {
-  General: [
-    'Av Rat',
-    'Apps',
-    'Mins',
-    'Clean Sheets'
-  ],
+  General: ['Av Rat', 'Apps', 'Mins', 'Clean Sheets'],
   Offensive: ['Gls/90', 'xG/90', 'NP-xG/90', 'Shot/90', 'ShT/90', 'Conv %', 'Drb/90'],
   Passing: [
     'Asts/90',
@@ -1022,12 +1030,7 @@ const performanceStatCategories = {
     'Fls',
     'FA'
   ],
-  Goalkeeping: [
-    'Con/90',
-    'Cln/90',
-    'xGP/90',
-    'Sv %'
-  ]
+  Goalkeeping: ['Con/90', 'Cln/90', 'xGP/90', 'Sv %']
 }
 
 // Mapping from detailed group name (key in performancePercentiles) to the ShortPositions that define them
@@ -1082,12 +1085,12 @@ export default defineComponent({
     // Computed property for player face image URL
     const playerFaceImageUrl = computed(() => {
       if (!props.player) return ''
-      
+
       const playerUID = props.player.UID || props.player.uid
       if (!playerUID) {
         return ''
       }
-      
+
       // Construct the face API URL
       return `/api/faces?uid=${encodeURIComponent(playerUID)}`
     })
@@ -1095,7 +1098,7 @@ export default defineComponent({
     // Reset face image error when player changes
     watch(
       () => props.player,
-      (newPlayer) => {
+      _newPlayer => {
         faceImageLoadError.value = false
       },
       { immediate: true }
@@ -1119,17 +1122,17 @@ export default defineComponent({
 
     // Memoized performance comparison options with better caching
     const performanceComparisonOptionsCache = new Map()
-    
+
     const performanceComparisonOptions = computed(() => {
       if (!props.player?.performancePercentiles) {
-        return props.player?.performancePercentiles?.Global 
+        return props.player?.performancePercentiles?.Global
           ? [{ label: 'Overall Dataset', value: 'Global' }]
           : []
       }
 
       const player = props.player
       const cacheKey = `${getCacheKey(player, 'options')}-${JSON.stringify(player.shortPositions)}-${JSON.stringify(player.positionGroups)}`
-      
+
       if (performanceComparisonOptionsCache.has(cacheKey)) {
         return performanceComparisonOptionsCache.get(cacheKey)
       }
@@ -1147,7 +1150,7 @@ export default defineComponent({
       const preferredOrder = [
         'Global',
         'Goalkeepers',
-        'Defenders', 
+        'Defenders',
         'Midfielders',
         'Attackers',
         'Full-backs',
@@ -1161,25 +1164,29 @@ export default defineComponent({
         'Strikers'
       ]
 
-      const shouldIncludeGroup = (groupKey) => {
+      const shouldIncludeGroup = groupKey => {
         if (groupKey === 'Global') return true
-        
+
         // Check broad groups
         if (broadGroupsSet.has(groupKey)) return true
-        
+
         // Check detailed groups
         const requiredPositions = detailedGroupToShortPositionsMap[groupKey]
         if (requiredPositions) {
           return requiredPositions.some(pos => shortPositionsSet.has(pos))
         }
-        
+
         return false
       }
 
       // Process preferred order groups
       for (let i = 0; i < preferredOrder.length; i++) {
         const groupKey = preferredOrder[i]
-        if (playerPercentiles[groupKey] && shouldIncludeGroup(groupKey) && !addedValues.has(groupKey)) {
+        if (
+          playerPercentiles[groupKey] &&
+          shouldIncludeGroup(groupKey) &&
+          !addedValues.has(groupKey)
+        ) {
           options.push({
             label: groupKey === 'Global' ? 'Overall Dataset' : `vs. ${groupKey}`,
             value: groupKey
@@ -1192,7 +1199,7 @@ export default defineComponent({
       if (performanceComparisonOptionsCache.size > 20) {
         performanceComparisonOptionsCache.clear()
       }
-      
+
       performanceComparisonOptionsCache.set(cacheKey, options)
       return options
     })
@@ -1249,7 +1256,7 @@ export default defineComponent({
         if (oldPlayer && newPlayer !== oldPlayer) {
           clearAllCaches()
         }
-        
+
         flagLoadError.value = false
         faceImageLoadError.value = false
         shouldShowTeamLogo.value = false
@@ -1279,7 +1286,7 @@ export default defineComponent({
     // Watch dialog visibility to delay team logo loading
     watch(
       () => props.show,
-      (isShowing) => {
+      isShowing => {
         if (isShowing) {
           // Delay team logo rendering until dialog is fully opened
           setTimeout(() => {
@@ -1313,20 +1320,11 @@ export default defineComponent({
           divisionFilter: divisionFilter.value,
           targetDivision: targetDivision
         }
-        
-        console.log('Division filter change:', {
-          divisionFilter: divisionFilter.value,
-          targetDivision: targetDivision,
-          playerName: props.player.name,
-          playerDivision: props.player.division,
-          requestPayload: requestPayload
-        })
-        
+
         // Instead of refetching all data, we need to fetch just updated percentiles for this player
         // For now, let's create a dedicated API call for this
         const url = `/api/percentiles/${props.datasetId}`
-        console.log('Making request to:', url, 'with payload:', requestPayload)
-        
+
         const response = await fetch(url, {
           method: 'POST',
           headers: {
@@ -1335,48 +1333,36 @@ export default defineComponent({
           body: JSON.stringify(requestPayload)
         })
 
-        console.log('Response status:', response.status)
-        console.log('Response headers:', Object.fromEntries(response.headers.entries()))
-
         if (response.ok) {
           const updatedPercentiles = await response.json()
-          console.log('Received updated percentiles:', updatedPercentiles)
-          
+
           // Count non-empty percentile groups for debugging
-          let nonEmptyGroups = 0
-          let totalStats = 0
-          for (const [groupKey, groupPercentiles] of Object.entries(updatedPercentiles)) {
+          let _nonEmptyGroups = 0
+          let _totalStats = 0
+          for (const [_groupKey, groupPercentiles] of Object.entries(updatedPercentiles)) {
             const statsInGroup = Object.keys(groupPercentiles).length
             const nonNegativeStats = Object.values(groupPercentiles).filter(val => val >= 0).length
             if (nonNegativeStats > 0) {
-              nonEmptyGroups++
+              _nonEmptyGroups++
             }
-            totalStats += statsInGroup
-            console.log(`Group ${groupKey}: ${statsInGroup} total stats, ${nonNegativeStats} with valid values`)
+            _totalStats += statsInGroup
           }
-          console.log(`Division filter result: ${nonEmptyGroups} groups with data, ${totalStats} total stats`)
-          
+
           // Log whether this is a cache hit or miss
-          const cacheStatus = response.headers.get('X-Cache-Status')
-          console.log('Cache status:', cacheStatus)
-          
+          const _cacheStatus = response.headers.get('X-Cache-Status')
+
           // Update the player's percentiles without affecting the main dataset
           if (props.player.performancePercentiles) {
             Object.assign(props.player.performancePercentiles, updatedPercentiles)
-            console.log('Updated player percentiles:', props.player.performancePercentiles)
-            
+
             // Clear relevant caches to force recomputation
             performanceStatsCache.clear()
             performanceComparisonOptionsCache.clear()
           }
         } else {
-          console.error('Failed to fetch updated percentiles:', response.status, response.statusText)
-          const errorText = await response.text()
-          console.error('Error response:', errorText)
+          const _errorText = await response.text()
         }
-      } catch (error) {
-        console.error('Error updating percentiles with division filter:', error)
-      }
+      } catch (_error) {}
     }
 
     const isGoalkeeper = computed(() => {
@@ -1400,7 +1386,7 @@ export default defineComponent({
       }
 
       const playerAttributes = props.player.attributes
-      const hasAttribute = (key) => playerAttributes.hasOwnProperty(key)
+      const hasAttribute = key => Object.hasOwn(playerAttributes, key)
 
       return {
         technical: technicalAttrsOrdered.filter(hasAttribute),
@@ -1431,22 +1417,22 @@ export default defineComponent({
 
     const fifaStatsToDisplay = computed(() => {
       if (!props.player) return []
-      
+
       const statsTemplate = isGoalkeeper.value ? goalkeepingStats : outfieldStats
       return statsTemplate.filter(stat => props.player[stat.name] !== undefined)
     })
 
-    const averageRatingData = computed(() => {
+    const _averageRatingData = computed(() => {
       if (!props.player || !props.player.attributes || !props.player.performancePercentiles)
         return null
       const groupKey = selectedComparisonGroup.value
       const percentilesForGroup = props.player.performancePercentiles[groupKey]
       if (
         !percentilesForGroup ||
-        !Object.prototype.hasOwnProperty.call(props.player.attributes, 'Av Rat') ||
+        !Object.hasOwn(props.player.attributes, 'Av Rat') ||
         props.player.attributes['Av Rat'] === '-' ||
         props.player.attributes['Av Rat'] === '' ||
-        !Object.prototype.hasOwnProperty.call(percentilesForGroup, 'Av Rat')
+        !Object.hasOwn(percentilesForGroup, 'Av Rat')
       ) {
         return null
       }
@@ -1464,7 +1450,7 @@ export default defineComponent({
 
     // Memoized helper functions
     const getCategoryOrder = computed(() => {
-      return isGoalkeeper.value 
+      return isGoalkeeper.value
         ? ['General', 'Goalkeeping', 'Passing']
         : ['General', 'Passing', 'Offensive', 'Defensive']
     })
@@ -1482,7 +1468,7 @@ export default defineComponent({
       if (!categoryStats) return []
 
       const statsInCategory = []
-      
+
       for (let i = 0; i < categoryStats.length; i++) {
         const statKey = categoryStats[i]
         const rawAttributeValue = playerAttributes[statKey]
@@ -1515,7 +1501,7 @@ export default defineComponent({
           return [avgRatingStat, ...statsInCategory]
         }
       }
-      
+
       return statsInCategory.sort((a, b) => a.name.localeCompare(b.name))
     }
 
@@ -1541,11 +1527,15 @@ export default defineComponent({
 
       const result = {}
       const categoryOrder = getCategoryOrder.value
-      
+
       for (let i = 0; i < categoryOrder.length; i++) {
         const categoryName = categoryOrder[i]
-        const categoryStats = buildStatsForCategory(categoryName, percentilesForGroup, props.player.attributes)
-        
+        const categoryStats = buildStatsForCategory(
+          categoryName,
+          percentilesForGroup,
+          props.player.attributes
+        )
+
         if (categoryStats.length > 0) {
           result[categoryName] = categoryStats
         }
@@ -1556,7 +1546,7 @@ export default defineComponent({
         const firstKey = performanceStatsCache.keys().next().value
         performanceStatsCache.delete(firstKey)
       }
-      
+
       performanceStatsCache.set(cacheKey, result)
       return result
     })
@@ -1637,14 +1627,14 @@ export default defineComponent({
       if (currencyCache.has(cacheKey)) {
         return currencyCache.get(cacheKey)
       }
-      
+
       const formatted = formatCurrency(amount, symbol, fallback)
-      
+
       // Keep cache size reasonable
       if (currencyCache.size > 100) {
         currencyCache.clear()
       }
-      
+
       currencyCache.set(cacheKey, formatted)
       return formatted
     }
@@ -1661,8 +1651,8 @@ export default defineComponent({
     const formattedWage = computed(() => {
       if (!props.player) return '-'
       return createCurrencyFormatter(
-        props.player.wageAmount, 
-        props.currencySymbol, 
+        props.player.wageAmount,
+        props.currencySymbol,
         props.player.wage
       )
     })
@@ -1686,8 +1676,8 @@ export default defineComponent({
     // Optimized attribute display with memoization
     const attributeDisplayCache = new Map()
 
-    const getDisplayAttribute = (attrKey) => {
-      if (!props.player) return "-"
+    const getDisplayAttribute = attrKey => {
+      if (!props.player) return '-'
 
       const cacheKey = `${attrKey}-${props.player.UID || props.player.uid}-${showAttributeMasks.value}`
       if (attributeDisplayCache.has(cacheKey)) {
@@ -1695,11 +1685,11 @@ export default defineComponent({
       }
 
       const rawValue = props.player.attributes?.[attrKey]
-      if (rawValue === undefined) return "-"
+      if (rawValue === undefined) return '-'
 
       let displayValue
-      if (rawValue === "-") {
-        displayValue = "?"
+      if (rawValue === '-') {
+        displayValue = '?'
       } else if (showAttributeMasks.value && String(rawValue).includes('-')) {
         displayValue = rawValue
       } else {
@@ -1711,7 +1701,7 @@ export default defineComponent({
       if (attributeDisplayCache.size > 200) {
         attributeDisplayCache.clear()
       }
-      
+
       attributeDisplayCache.set(cacheKey, displayValue)
       return displayValue
     }

@@ -2,7 +2,7 @@
  * Image optimization utilities for better performance
  */
 
-import { ref, computed } from 'vue'
+import { computed, ref } from 'vue'
 
 /**
  * Creates optimized image URLs with fallbacks
@@ -12,10 +12,10 @@ import { ref, computed } from 'vue'
  */
 export function createOptimizedImageUrl(baseUrl, options = {}) {
   const {
-    width = null,
-    height = null,
-    format = 'auto',
-    quality = 80,
+    width: _width = null,
+    height: _height = null,
+    format: _format = 'auto',
+    quality: _quality = 80,
     fallbacks = true
   } = options
 
@@ -25,10 +25,12 @@ export function createOptimizedImageUrl(baseUrl, options = {}) {
     return {
       webp: webpUrl,
       fallback: baseUrl,
-      sources: fallbacks ? [
-        { srcset: webpUrl, type: 'image/webp' },
-        { srcset: baseUrl, type: 'image/png' }
-      ] : null
+      sources: fallbacks
+        ? [
+            { srcset: webpUrl, type: 'image/webp' },
+            { srcset: baseUrl, type: 'image/png' }
+          ]
+        : null
     }
   }
 
@@ -49,18 +51,18 @@ export function createOptimizedImageUrl(baseUrl, options = {}) {
  */
 export function loadImageProgressively(imgElement, src, onLoad, onError) {
   const img = new Image()
-  
+
   img.onload = () => {
     imgElement.src = src
     imgElement.classList.add('loaded')
     if (onLoad) onLoad()
   }
-  
+
   img.onerror = () => {
     imgElement.classList.add('error')
     if (onError) onError()
   }
-  
+
   img.src = src
 }
 
@@ -74,11 +76,8 @@ export class LazyImageLoader {
       threshold: 0.1,
       ...options
     }
-    
-    this.observer = new IntersectionObserver(
-      this.handleIntersection.bind(this),
-      this.options
-    )
+
+    this.observer = new IntersectionObserver(this.handleIntersection.bind(this), this.options)
   }
 
   observe(element) {
@@ -94,16 +93,16 @@ export class LazyImageLoader {
       if (entry.isIntersecting) {
         const img = entry.target
         const src = img.dataset.src
-        
+
         if (src) {
           loadImageProgressively(
             img,
             src,
             () => img.removeAttribute('data-src'),
-            () => console.warn('Failed to load image:', src)
+            () => {}
           )
         }
-        
+
         this.observer.unobserve(img)
       }
     })
@@ -132,21 +131,19 @@ export class ImagePreloader {
 
     return new Promise((resolve, reject) => {
       const img = new Image()
-      
+
       img.onload = () => {
         this.cache.add(src)
         resolve()
       }
-      
+
       img.onerror = reject
       img.src = src
     })
   }
 
   preloadMultiple(sources) {
-    return Promise.allSettled(
-      sources.map(src => this.preload(src))
-    )
+    return Promise.allSettled(sources.map(src => this.preload(src)))
   }
 }
 
@@ -161,9 +158,7 @@ export function useOptimizedImage(src, options = {}) {
   const error = ref(false)
   const loaded = ref(false)
 
-  const optimizedUrls = computed(() => 
-    createOptimizedImageUrl(src.value || src, options)
-  )
+  const optimizedUrls = computed(() => createOptimizedImageUrl(src.value || src, options))
 
   const handleLoad = () => {
     loading.value = false
@@ -185,4 +180,4 @@ export function useOptimizedImage(src, options = {}) {
     handleLoad,
     handleError
   }
-} 
+}

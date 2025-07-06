@@ -1,8 +1,8 @@
 import path from 'node:path'
 import { quasar, transformAssetUrls } from '@quasar/vite-plugin'
 import vue from '@vitejs/plugin-vue'
-import { defineConfig } from 'vite'
 import { visualizer } from 'rollup-plugin-visualizer'
+import { defineConfig } from 'vite'
 
 export default defineConfig({
   resolve: {
@@ -18,13 +18,14 @@ export default defineConfig({
       sassVariables: '@/quasar-variables.scss'
     }),
     // Bundle analyzer - only in development or when explicitly requested
-    (process.env.ANALYZE === 'true' || process.env.NODE_ENV === 'development') && visualizer({
-      filename: 'dist/stats.html',
-      open: process.env.ANALYZE === 'true',
-      gzipSize: true,
-      brotliSize: true,
-      template: 'treemap' // Better visualization
-    })
+    (process.env.ANALYZE === 'true' || process.env.NODE_ENV === 'development') &&
+      visualizer({
+        filename: 'dist/stats.html',
+        open: process.env.ANALYZE === 'true',
+        gzipSize: true,
+        brotliSize: true,
+        template: 'treemap' // Better visualization
+      })
   ].filter(Boolean),
   build: {
     // Optimize build output with advanced chunking
@@ -37,17 +38,19 @@ export default defineConfig({
           // UI framework
           'ui-framework': ['quasar'],
           // Charts and visualization
-          'charts': ['chart.js', 'vue-chartjs', 'chartjs-plugin-annotation'],
+          charts: ['chart.js', 'vue-chartjs', 'chartjs-plugin-annotation'],
           // Utilities and composables
-          'utils': ['@vueuse/core'],
+          utils: ['@vueuse/core'],
           // Large vendor libraries
           'vendor-large': []
         },
-        chunkFileNames: (chunkInfo) => {
-          const facadeModuleId = chunkInfo.facadeModuleId ? chunkInfo.facadeModuleId.split('/').pop().replace('.vue', '') : 'chunk'
+        chunkFileNames: chunkInfo => {
+          const facadeModuleId = chunkInfo.facadeModuleId
+            ? chunkInfo.facadeModuleId.split('/').pop().replace('.vue', '')
+            : 'chunk'
           return `js/${facadeModuleId}-[hash].js`
         },
-        assetFileNames: (assetInfo) => {
+        assetFileNames: assetInfo => {
           const info = assetInfo.name.split('.')
           const ext = info[info.length - 1]
           if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(ext)) {
@@ -112,16 +115,16 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version || '1.0.0'),
     __BUILD_DATE__: JSON.stringify(new Date().toISOString()),
     // Define global to prevent require() errors
-    global: 'globalThis',
+    global: 'globalThis'
   },
   // Alternative way to expose env vars (prefixed with VITE_)
   envPrefix: ['VITE_'],
   // Enhanced dependency optimization
   optimizeDeps: {
     include: [
-      'vue', 
-      'vue-router', 
-      'pinia', 
+      'vue',
+      'vue-router',
+      'pinia',
       'quasar',
       '@vueuse/core',
       // Pre-bundle commonly used utilities

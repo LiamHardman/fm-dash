@@ -604,10 +604,10 @@
 </template>
 
 <script>
-import { usePlayerStore } from '@/stores/playerStore' // Corrected Import Path
-import { formatCurrency } from '@/utils/currencyUtils'
 import { useQuasar } from 'quasar'
 import { computed, onMounted, ref, watch } from 'vue'
+import { usePlayerStore } from '@/stores/playerStore' // Corrected Import Path
+import { formatCurrency } from '@/utils/currencyUtils'
 import PlayerDataTable from './PlayerDataTable.vue'
 import PlayerDetailDialog from './PlayerDetailDialog.vue'
 
@@ -1014,8 +1014,7 @@ export default {
             )
             return (overallB || 0) - (overallA || 0)
           })
-      } catch (error) {
-        console.error('Error finding upgrades:', error)
+      } catch (_error) {
       } finally {
         loading.value = false
       }

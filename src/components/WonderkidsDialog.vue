@@ -158,7 +158,7 @@
 
 <script>
 import { useQuasar } from 'quasar'
-import { computed, defineComponent, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, defineComponent, onMounted, ref, watch } from 'vue'
 import { usePlayerStore } from '../stores/playerStore'
 import { formatCurrency } from '../utils/currencyUtils'
 import PlayerDataTable from './PlayerDataTable.vue'
@@ -247,7 +247,7 @@ export default defineComponent({
     const transferValueSliderMax = computed(() => props.transferValueRange?.max || 100000000)
     const salarySliderMin = computed(() => props.salaryRange?.min || 0)
     const salarySliderMax = computed(() => props.salaryRange?.max || 1000000)
-    
+
     const isDataAvailable = computed(() => props.players && props.players.length > 0)
 
     const transferValueSliderStep = computed(() => {
@@ -280,9 +280,11 @@ export default defineComponent({
     })
 
     const hasActiveFilters = computed(() => {
-      return selectedPosition.value !== null ||
-             maxTransferValue.value < transferValueSliderMax.value ||
-             maxSalary.value < salarySliderMax.value
+      return (
+        selectedPosition.value !== null ||
+        maxTransferValue.value < transferValueSliderMax.value ||
+        maxSalary.value < salarySliderMax.value
+      )
     })
 
     const filterSummary = computed(() => {
@@ -299,10 +301,10 @@ export default defineComponent({
     })
 
     // Methods
-    const getAllWonderkids = (allPlayers) => {
+    const getAllWonderkids = allPlayers => {
       // Get top 10 players from each age (15-21) that meet the filter criteria
       const allWonderkidsFromAllAges = []
-      
+
       for (const age of ages) {
         const playersOfAge = allPlayers
           .filter(player => {
@@ -311,35 +313,36 @@ export default defineComponent({
             if (playerAge !== age) {
               return false
             }
-            
+
             // Apply position filter
             if (selectedPosition.value) {
               if (!player.shortPositions?.includes(selectedPosition.value)) {
                 return false
               }
             }
-            
+
             // Apply transfer value filter
-            if (maxTransferValue.value < transferValueSliderMax.value && 
-                player.transferValueAmount > maxTransferValue.value) {
+            if (
+              maxTransferValue.value < transferValueSliderMax.value &&
+              player.transferValueAmount > maxTransferValue.value
+            ) {
               return false
             }
-            
+
             // Apply salary filter
-            if (maxSalary.value < salarySliderMax.value && 
-                player.wageAmount > maxSalary.value) {
+            if (maxSalary.value < salarySliderMax.value && player.wageAmount > maxSalary.value) {
               return false
             }
-            
+
             return true
           })
           .sort((a, b) => (b.Overall || 0) - (a.Overall || 0))
           .slice(0, 10) // Take top 10 for this age
-          
+
         // Add all top 10 players from this age to the combined array
         allWonderkidsFromAllAges.push(...playersOfAge)
       }
-      
+
       // Sort the final combined array by overall rating (best first)
       return allWonderkidsFromAllAges.sort((a, b) => (b.Overall || 0) - (a.Overall || 0))
     }
@@ -349,8 +352,7 @@ export default defineComponent({
       try {
         const allPlayers = props.players
         wonderkidsData.value = getAllWonderkids(allPlayers)
-      } catch (error) {
-        console.error('Error loading wonderkids:', error)
+      } catch (_error) {
         qInstance.notify({
           color: 'negative',
           message: 'Failed to load wonderkids',
@@ -380,7 +382,7 @@ export default defineComponent({
     // Initialize sliders when props change
     watch(
       () => props.transferValueRange,
-      (newRange) => {
+      newRange => {
         if (newRange && maxTransferValue.value === 100000000) {
           maxTransferValue.value = newRange.max
         }
@@ -390,7 +392,7 @@ export default defineComponent({
 
     watch(
       () => props.salaryRange,
-      (newRange) => {
+      newRange => {
         if (newRange && maxSalary.value === 1000000) {
           maxSalary.value = newRange.max
         }

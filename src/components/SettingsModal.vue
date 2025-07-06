@@ -347,145 +347,140 @@
 </template>
 
 <script>
-import { defineComponent, ref, computed, onMounted } from 'vue'
-import { useUiStore } from '@/stores/uiStore'
-import { usePlayerStore } from '@/stores/playerStore'
 import { useQuasar } from 'quasar'
+import { computed, defineComponent, onMounted, ref } from 'vue'
+import { usePlayerStore } from '@/stores/playerStore'
+import { useUiStore } from '@/stores/uiStore'
 import playerService from '../services/playerService'
 
 export default defineComponent({
-    name: 'SettingsModal',
-    props: {
-        modelValue: {
-            type: Boolean,
-            default: false
-        }
-    },
-    emits: ['update:modelValue'],
-    setup(props, { emit }) {
-        const showDialog = computed({
-            get: () => props.modelValue,
-            set: (value) => emit('update:modelValue', value)
-        })
-
-        const uiStore = useUiStore()
-        const playerStore = usePlayerStore()
-        const $q = useQuasar()
-
-        const useScaledRatings = computed({
-            get: () => uiStore.useScaledRatings,
-            set: (value) => uiStore.setRatingCalculation(value)
-        })
-
-        const showFaces = computed({
-            get: () => uiStore.showFaces,
-            set: (value) => uiStore.setFacesDisplay(value)
-        })
-
-        const showLogos = computed({
-            get: () => uiStore.showLogos,
-            set: (value) => uiStore.setLogosDisplay(value)
-        })
-
-        const showAttributeMasks = computed({
-            get: () => uiStore.showAttributeMasks,
-            set: (value) => uiStore.toggleAttributeMasks()
-        })
-
-        const isLoading = ref(false)
-        const activeTab = ref('general')
-
-        // Load backend configuration on component mount
-        onMounted(async () => {
-            try {
-                const config = await playerService.getConfig()
-                if (config.useScaledRatings !== undefined) {
-                    uiStore.setRatingCalculation(config.useScaledRatings)
-                }
-            } catch (error) {
-                console.warn('Failed to load backend configuration:', error)
-            }
-        })
-
-        const setRatingMethod = async (useScaled) => {
-            if (isLoading.value) return
-            
-            isLoading.value = true
-            
-            try {
-                // Update backend first
-                await playerService.updateConfig({
-                    useScaledRatings: useScaled
-                })
-                
-                // Update local store
-                uiStore.setRatingCalculation(useScaled)
-                
-                // Trigger data refresh if we have a current dataset
-                if (playerStore.currentDatasetId) {
-                    // Rating calculation method changed - data will refresh automatically via store reactivity
-                    await playerStore.fetchPlayersByDatasetId(playerStore.currentDatasetId)
-                }
-                
-                // Show success notification
-                $q.notify({
-                    message: useScaled ? 'Switched to Scaled Ratings' : 'Switched to Linear Ratings',
-                    caption: 'Ratings have been recalculated using the new method',
-                    color: 'positive',
-                    position: 'top',
-                    timeout: 3000,
-                    icon: 'assessment',
-                    actions: [
-                        {
-                            icon: 'close',
-                            color: 'white',
-                            round: true,
-                            handler: () => {}
-                        }
-                    ]
-                })
-                
-            } catch (error) {
-                console.error('Failed to update rating calculation method:', error)
-                
-                // Show error notification
-                $q.notify({
-                    message: 'Failed to update rating calculation method',
-                    caption: 'Please try again or check your connection',
-                    color: 'negative',
-                    position: 'top',
-                    timeout: 5000,
-                    icon: 'error',
-                    actions: [
-                        {
-                            icon: 'close',
-                            color: 'white',
-                            round: true,
-                            handler: () => {}
-                        }
-                    ]
-                })
-            } finally {
-                isLoading.value = false
-            }
-        }
-
-        const closeModal = () => {
-            emit('update:modelValue', false)
-        }
-
-        return {
-            showDialog,
-            closeModal,
-            useScaledRatings,
-            setRatingMethod,
-            showFaces,
-            showLogos,
-            showAttributeMasks,
-            isLoading,
-            activeTab
-        }
+  name: 'SettingsModal',
+  props: {
+    modelValue: {
+      type: Boolean,
+      default: false
     }
+  },
+  emits: ['update:modelValue'],
+  setup(props, { emit }) {
+    const showDialog = computed({
+      get: () => props.modelValue,
+      set: value => emit('update:modelValue', value)
+    })
+
+    const uiStore = useUiStore()
+    const playerStore = usePlayerStore()
+    const $q = useQuasar()
+
+    const useScaledRatings = computed({
+      get: () => uiStore.useScaledRatings,
+      set: value => uiStore.setRatingCalculation(value)
+    })
+
+    const showFaces = computed({
+      get: () => uiStore.showFaces,
+      set: value => uiStore.setFacesDisplay(value)
+    })
+
+    const showLogos = computed({
+      get: () => uiStore.showLogos,
+      set: value => uiStore.setLogosDisplay(value)
+    })
+
+    const showAttributeMasks = computed({
+      get: () => uiStore.showAttributeMasks,
+      set: _value => uiStore.toggleAttributeMasks()
+    })
+
+    const isLoading = ref(false)
+    const activeTab = ref('general')
+
+    // Load backend configuration on component mount
+    onMounted(async () => {
+      try {
+        const config = await playerService.getConfig()
+        if (config.useScaledRatings !== undefined) {
+          uiStore.setRatingCalculation(config.useScaledRatings)
+        }
+      } catch (_error) {}
+    })
+
+    const setRatingMethod = async useScaled => {
+      if (isLoading.value) return
+
+      isLoading.value = true
+
+      try {
+        // Update backend first
+        await playerService.updateConfig({
+          useScaledRatings: useScaled
+        })
+
+        // Update local store
+        uiStore.setRatingCalculation(useScaled)
+
+        // Trigger data refresh if we have a current dataset
+        if (playerStore.currentDatasetId) {
+          // Rating calculation method changed - data will refresh automatically via store reactivity
+          await playerStore.fetchPlayersByDatasetId(playerStore.currentDatasetId)
+        }
+
+        // Show success notification
+        $q.notify({
+          message: useScaled ? 'Switched to Scaled Ratings' : 'Switched to Linear Ratings',
+          caption: 'Ratings have been recalculated using the new method',
+          color: 'positive',
+          position: 'top',
+          timeout: 3000,
+          icon: 'assessment',
+          actions: [
+            {
+              icon: 'close',
+              color: 'white',
+              round: true,
+              handler: () => {}
+            }
+          ]
+        })
+      } catch (_error) {
+        // Show error notification
+        $q.notify({
+          message: 'Failed to update rating calculation method',
+          caption: 'Please try again or check your connection',
+          color: 'negative',
+          position: 'top',
+          timeout: 5000,
+          icon: 'error',
+          actions: [
+            {
+              icon: 'close',
+              color: 'white',
+              round: true,
+              handler: () => {}
+            }
+          ]
+        })
+      } finally {
+        isLoading.value = false
+      }
+    }
+
+    const closeModal = () => {
+      emit('update:modelValue', false)
+    }
+
+    return {
+      showDialog,
+      closeModal,
+      useScaledRatings,
+      setRatingMethod,
+      showFaces,
+      showLogos,
+      showAttributeMasks,
+      isLoading,
+      activeTab
+    }
+  }
 })
 </script>
 

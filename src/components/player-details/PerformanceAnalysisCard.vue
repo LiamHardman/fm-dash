@@ -123,7 +123,7 @@
 </template>
 
 <script>
-import { defineComponent, computed } from 'vue'
+import { computed, defineComponent } from 'vue'
 
 export default defineComponent({
   name: 'PerformanceAnalysisCard',
@@ -154,35 +154,40 @@ export default defineComponent({
     // Check if player has any performance data
     const hasAnyPerformanceData = computed(() => {
       if (!props.player?.performancePercentiles) return false
-      
+
       const percentiles = props.player.performancePercentiles[props.selectedComparisonGroup]
       if (!percentiles) return false
-      
-      return Object.values(percentiles).some(value => 
-        value !== null && value !== undefined && value >= 0
+
+      return Object.values(percentiles).some(
+        value => value !== null && value !== undefined && value >= 0
       )
     })
-    
+
     // Categorize performance stats
     const categorizedPerformanceStats = computed(() => {
       if (!props.player?.performancePercentiles) return {}
-      
+
       const percentiles = props.player.performancePercentiles[props.selectedComparisonGroup]
       if (!percentiles) return {}
-      
+
       // Define stat categories
       const categories = {
-        'Attacking': ['goals', 'assists', 'key_passes', 'shots_per_game', 'shots_on_target_per_game'],
-        'Defensive': ['tackles_per_game', 'interceptions_per_game', 'clearances_per_game', 'blocks_per_game'],
-        'Passing': ['passes_per_game', 'pass_accuracy', 'crosses_per_game', 'long_balls_per_game'],
-        'Physical': ['fouls_per_game', 'was_fouled_per_game', 'cards_per_game', 'distance_covered']
+        Attacking: ['goals', 'assists', 'key_passes', 'shots_per_game', 'shots_on_target_per_game'],
+        Defensive: [
+          'tackles_per_game',
+          'interceptions_per_game',
+          'clearances_per_game',
+          'blocks_per_game'
+        ],
+        Passing: ['passes_per_game', 'pass_accuracy', 'crosses_per_game', 'long_balls_per_game'],
+        Physical: ['fouls_per_game', 'was_fouled_per_game', 'cards_per_game', 'distance_covered']
       }
-      
+
       const result = {}
-      
+
       for (const [category, statKeys] of Object.entries(categories)) {
         const categoryStats = []
-        
+
         for (const statKey of statKeys) {
           if (percentiles[statKey] !== undefined) {
             categoryStats.push({
@@ -193,55 +198,55 @@ export default defineComponent({
             })
           }
         }
-        
+
         if (categoryStats.length > 0) {
           result[category] = categoryStats
         }
       }
-      
+
       return result
     })
-    
+
     // Format stat names for display
-    const formatStatName = (statKey) => {
+    const formatStatName = statKey => {
       const nameMap = {
-        'goals': 'Goals',
-        'assists': 'Assists',
-        'key_passes': 'Key Passes',
-        'shots_per_game': 'Shots/Game',
-        'shots_on_target_per_game': 'Shots on Target/Game',
-        'tackles_per_game': 'Tackles/Game',
-        'interceptions_per_game': 'Interceptions/Game',
-        'clearances_per_game': 'Clearances/Game',
-        'blocks_per_game': 'Blocks/Game',
-        'passes_per_game': 'Passes/Game',
-        'pass_accuracy': 'Pass Accuracy %',
-        'crosses_per_game': 'Crosses/Game',
-        'long_balls_per_game': 'Long Balls/Game',
-        'fouls_per_game': 'Fouls/Game',
-        'was_fouled_per_game': 'Was Fouled/Game',
-        'cards_per_game': 'Cards/Game',
-        'distance_covered': 'Distance Covered'
+        goals: 'Goals',
+        assists: 'Assists',
+        key_passes: 'Key Passes',
+        shots_per_game: 'Shots/Game',
+        shots_on_target_per_game: 'Shots on Target/Game',
+        tackles_per_game: 'Tackles/Game',
+        interceptions_per_game: 'Interceptions/Game',
+        clearances_per_game: 'Clearances/Game',
+        blocks_per_game: 'Blocks/Game',
+        passes_per_game: 'Passes/Game',
+        pass_accuracy: 'Pass Accuracy %',
+        crosses_per_game: 'Crosses/Game',
+        long_balls_per_game: 'Long Balls/Game',
+        fouls_per_game: 'Fouls/Game',
+        was_fouled_per_game: 'Was Fouled/Game',
+        cards_per_game: 'Cards/Game',
+        distance_covered: 'Distance Covered'
       }
-      
+
       return nameMap[statKey] || statKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
     }
-    
+
     // Get actual stat value from player data
-    const getStatValue = (statKey) => {
+    const getStatValue = statKey => {
       if (!props.player?.performance) return '-'
       return props.player.performance[statKey] || '-'
     }
-    
+
     // Generate bar fill style based on percentile
-    const getBarFillStyle = (percentile) => {
+    const getBarFillStyle = percentile => {
       if (percentile === null || percentile === undefined || percentile < 0) {
         return { width: '0%', backgroundColor: '#e0e0e0' }
       }
-      
+
       const width = Math.min(100, Math.max(0, percentile))
       let color = '#f44336' // Red for low percentiles
-      
+
       if (percentile >= 80) {
         color = '#4caf50' // Green for high percentiles
       } else if (percentile >= 60) {
@@ -251,14 +256,14 @@ export default defineComponent({
       } else if (percentile >= 20) {
         color = '#ff5722' // Orange-red
       }
-      
+
       return {
         width: `${width}%`,
         backgroundColor: color,
         transition: 'all 0.3s ease'
       }
     }
-    
+
     return {
       hasAnyPerformanceData,
       categorizedPerformanceStats,

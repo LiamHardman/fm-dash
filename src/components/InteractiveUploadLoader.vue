@@ -78,7 +78,7 @@
 </template>
 
 <script>
-import { ref, computed, watch, onUnmounted } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 
 export default {
   name: 'InteractiveUploadLoader',
@@ -116,187 +116,187 @@ export default {
     const loadingMessages = [
       // Upload stage messages (0-70%)
       {
-        title: "Uploading Player Data",
-        subtitle: "Transferring your save file to our servers",
-        stage: "upload"
+        title: 'Uploading Player Data',
+        subtitle: 'Transferring your save file to our servers',
+        stage: 'upload'
       },
       {
-        title: "Reticulating Splines", 
-        subtitle: "The classic... organizing tactical formations",
-        stage: "upload"
+        title: 'Reticulating Splines',
+        subtitle: 'The classic... organizing tactical formations',
+        stage: 'upload'
       },
       {
-        title: "Calculating Player DNA",
-        subtitle: "Analyzing genetic predisposition for late winners", 
-        stage: "upload"
+        title: 'Calculating Player DNA',
+        subtitle: 'Analyzing genetic predisposition for late winners',
+        stage: 'upload'
       },
       {
-        title: "Quantifying Bottle Jobs",
-        subtitle: "Measuring tendency to lose when it matters most",
-        stage: "upload"
+        title: 'Quantifying Bottle Jobs',
+        subtitle: 'Measuring tendency to lose when it matters most',
+        stage: 'upload'
       },
       {
-        title: "Digitizing Championship Dreams",
-        subtitle: "Converting hopes into 1s and 0s",
-        stage: "upload"
+        title: 'Digitizing Championship Dreams',
+        subtitle: 'Converting hopes into 1s and 0s',
+        stage: 'upload'
       },
       {
-        title: "Extracting Tactical Genius",
-        subtitle: "Locating your 4-4-2 diamond formation data",
-        stage: "upload"
+        title: 'Extracting Tactical Genius',
+        subtitle: 'Locating your 4-4-2 diamond formation data',
+        stage: 'upload'
       },
       {
-        title: "Uploading Transfer Budget Fantasies",
-        subtitle: "Processing unrealistic spending expectations",
-        stage: "upload"
+        title: 'Uploading Transfer Budget Fantasies',
+        subtitle: 'Processing unrealistic spending expectations',
+        stage: 'upload'
       },
       {
-        title: "Compressing Squad Rotation Strategies",
-        subtitle: "Squeezing 25 players into 11 positions",
-        stage: "upload"
+        title: 'Compressing Squad Rotation Strategies',
+        subtitle: 'Squeezing 25 players into 11 positions',
+        stage: 'upload'
       },
       // Processing stage messages (70-80%)
       {
-        title: "Processing Player Database",
-        subtitle: "Parsing player attributes and statistics",
-        stage: "processing"
+        title: 'Processing Player Database',
+        subtitle: 'Parsing player attributes and statistics',
+        stage: 'processing'
       },
       {
-        title: "Consulting Team Talks Database",
-        subtitle: "Loading passionate speeches and motivational clichés",
-        stage: "processing"
+        title: 'Consulting Team Talks Database',
+        subtitle: 'Loading passionate speeches and motivational clichés',
+        stage: 'processing'
       },
       {
-        title: "Simulating Transfer Negotiations",
-        subtitle: "Adding unrealistic agent demands",
-        stage: "processing"
+        title: 'Simulating Transfer Negotiations',
+        subtitle: 'Adding unrealistic agent demands',
+        stage: 'processing'
       },
       {
-        title: "Calculating Injury Probability Matrix",
-        subtitle: "Programming your best player to get injured in January",
-        stage: "processing"
+        title: 'Calculating Injury Probability Matrix',
+        subtitle: 'Programming your best player to get injured in January',
+        stage: 'processing'
       },
       {
-        title: "Installing Referee Bias Algorithms",
-        subtitle: "Ensuring controversial decisions at crucial moments",
-        stage: "processing"
+        title: 'Installing Referee Bias Algorithms',
+        subtitle: 'Ensuring controversial decisions at crucial moments',
+        stage: 'processing'
       },
       {
-        title: "Generating Press Conference Scripts",
+        title: 'Generating Press Conference Scripts',
         subtitle: "Preparing 47 variations of 'I'm happy with the performance'",
-        stage: "processing"
+        stage: 'processing'
       },
       {
-        title: "Optimizing Formation Confusion",
-        subtitle: "Making sure 3-5-2 looks exactly like 5-3-2",
-        stage: "processing"
+        title: 'Optimizing Formation Confusion',
+        subtitle: 'Making sure 3-5-2 looks exactly like 5-3-2',
+        stage: 'processing'
       },
       {
-        title: "Compiling Excuses Database",
+        title: 'Compiling Excuses Database',
         subtitle: "Loading reasons why it's never your fault",
-        stage: "processing"
+        stage: 'processing'
       },
       {
-        title: "Processing Board Expectations",
-        subtitle: "Multiplying unrealistic demands by coefficient of impossibility",
-        stage: "processing"
+        title: 'Processing Board Expectations',
+        subtitle: 'Multiplying unrealistic demands by coefficient of impossibility',
+        stage: 'processing'
       },
       // Data fetching stage messages (80-95%)
       {
-        title: "Organizing Squad Data",
-        subtitle: "Sorting players by potential and current ability",
-        stage: "fetching"
+        title: 'Organizing Squad Data',
+        subtitle: 'Sorting players by potential and current ability',
+        stage: 'fetching'
       },
       {
-        title: "Calibrating Wonderkid Sensors",
+        title: 'Calibrating Wonderkid Sensors',
         subtitle: "Detecting future Ballon d'Or winners",
-        stage: "fetching"
+        stage: 'fetching'
       },
       {
-        title: "Loading Match Engine Physics",
-        subtitle: "Implementing impossible last-minute goals",
-        stage: "fetching"
+        title: 'Loading Match Engine Physics',
+        subtitle: 'Implementing impossible last-minute goals',
+        stage: 'fetching'
       },
       {
-        title: "Synchronizing Striker Finishing",
-        subtitle: "Ensuring they miss from 2 yards when you need a goal",
-        stage: "fetching"
+        title: 'Synchronizing Striker Finishing',
+        subtitle: 'Ensuring they miss from 2 yards when you need a goal',
+        stage: 'fetching'
       },
       {
-        title: "Randomizing Set Piece Accuracy",
-        subtitle: "Making corners as effective as throwing paper planes",
-        stage: "fetching"
+        title: 'Randomizing Set Piece Accuracy',
+        subtitle: 'Making corners as effective as throwing paper planes',
+        stage: 'fetching'
       },
       {
-        title: "Indexing Youth Intake Quality",
-        subtitle: "Preparing to disappoint you with 2-star potential players",
-        stage: "fetching"
+        title: 'Indexing Youth Intake Quality',
+        subtitle: 'Preparing to disappoint you with 2-star potential players',
+        stage: 'fetching'
       },
       {
-        title: "Configuring VAR Incompetence",
-        subtitle: "Training virtual assistants to make questionable calls",
-        stage: "fetching"
+        title: 'Configuring VAR Incompetence',
+        subtitle: 'Training virtual assistants to make questionable calls',
+        stage: 'fetching'
       },
       {
-        title: "Loading Weather Impact Systems",
-        subtitle: "Ensuring rain ruins your tiki-taka masterpiece",
-        stage: "fetching"
+        title: 'Loading Weather Impact Systems',
+        subtitle: 'Ensuring rain ruins your tiki-taka masterpiece',
+        stage: 'fetching'
       },
       {
-        title: "Assembling Loan Army Statistics",
+        title: 'Assembling Loan Army Statistics',
         subtitle: "Cataloging players you'll never see again",
-        stage: "fetching"
+        stage: 'fetching'
       },
       {
-        title: "Buffering Transfer Market Chaos",
-        subtitle: "Preparing unrealistic valuations for average players",
-        stage: "fetching"
+        title: 'Buffering Transfer Market Chaos',
+        subtitle: 'Preparing unrealistic valuations for average players',
+        stage: 'fetching'
       },
       // Finalizing stage messages (95-100%)
       {
-        title: "Finalizing Dataset",
-        subtitle: "Preparing your player database for analysis",
-        stage: "finalizing"
+        title: 'Finalizing Dataset',
+        subtitle: 'Preparing your player database for analysis',
+        stage: 'finalizing'
       },
       {
-        title: "Generating Media Questions",
-        subtitle: "Preparing repetitive press conference topics",
-        stage: "finalizing"
+        title: 'Generating Media Questions',
+        subtitle: 'Preparing repetitive press conference topics',
+        stage: 'finalizing'
       },
       {
-        title: "Optimizing Squad Harmony",
-        subtitle: "Balancing egos and personality clashes",
-        stage: "finalizing"
+        title: 'Optimizing Squad Harmony',
+        subtitle: 'Balancing egos and personality clashes',
+        stage: 'finalizing'
       },
       {
-        title: "Calibrating Last-Minute Drama",
-        subtitle: "Ensuring maximum stress during crucial matches",
-        stage: "finalizing"
+        title: 'Calibrating Last-Minute Drama',
+        subtitle: 'Ensuring maximum stress during crucial matches',
+        stage: 'finalizing'
       },
       {
-        title: "Finalizing Tactical Flexibility",
-        subtitle: "Making every formation feel slightly wrong",
-        stage: "finalizing"
+        title: 'Finalizing Tactical Flexibility',
+        subtitle: 'Making every formation feel slightly wrong',
+        stage: 'finalizing'
       },
       {
-        title: "Polishing Championship Bottling",
+        title: 'Polishing Championship Bottling',
         subtitle: "Perfecting the art of losing when you're ahead",
-        stage: "finalizing"
+        stage: 'finalizing'
       },
       {
-        title: "Completing Scouting Network",
-        subtitle: "Ensuring recommended players are always overpriced",
-        stage: "finalizing"
+        title: 'Completing Scouting Network',
+        subtitle: 'Ensuring recommended players are always overpriced',
+        stage: 'finalizing'
       },
       {
-        title: "Finalizing Goalkeeper AI",
-        subtitle: "Programming them to parry into dangerous areas",
-        stage: "finalizing"
+        title: 'Finalizing Goalkeeper AI',
+        subtitle: 'Programming them to parry into dangerous areas',
+        stage: 'finalizing'
       },
       {
-        title: "Wrapping Up Wage Structure",
-        subtitle: "Making sure backup players earn more than starters",
-        stage: "finalizing"
+        title: 'Wrapping Up Wage Structure',
+        subtitle: 'Making sure backup players earn more than starters',
+        stage: 'finalizing'
       }
     ]
 
@@ -316,20 +316,20 @@ export default {
     // Get current stage based on progress
     const getCurrentStage = () => {
       const progress = props.progress
-      if (progress < 70) return "upload"
-      if (progress < 80) return "processing" 
-      if (progress < 95) return "fetching"
-      return "finalizing"
+      if (progress < 70) return 'upload'
+      if (progress < 80) return 'processing'
+      if (progress < 95) return 'fetching'
+      return 'finalizing'
     }
 
     const previousStage = ref(getCurrentStage())
 
     // Randomize array function
-    const shuffleArray = (array) => {
+    const shuffleArray = array => {
       const shuffled = [...array]
       for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+        const j = Math.floor(Math.random() * (i + 1))
+        ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
       }
       return shuffled
     }
@@ -368,7 +368,7 @@ export default {
       startTime.value = Date.now()
       showCancelButton.value = true
       currentMessage.value = getRandomMessage()
-      
+
       // Change message every 3 seconds
       messageInterval = setInterval(() => {
         currentMessage.value = getRandomMessage()
@@ -416,23 +416,30 @@ export default {
     }
 
     // Watch for visibility changes
-    watch(() => props.visible, (newVal) => {
-      showDialog.value = newVal
-      if (newVal) {
-        startLoader()
-      } else {
-        stopLoader()
-      }
-    }, { immediate: true })
+    watch(
+      () => props.visible,
+      newVal => {
+        showDialog.value = newVal
+        if (newVal) {
+          startLoader()
+        } else {
+          stopLoader()
+        }
+      },
+      { immediate: true }
+    )
 
     // Watch for stage changes and reset message index
-    watch(() => props.progress, () => {
-      const currentStage = getCurrentStage()
-      if (currentStage !== previousStage.value) {
-        currentMessage.value = getRandomMessage()
-        previousStage.value = currentStage
+    watch(
+      () => props.progress,
+      () => {
+        const currentStage = getCurrentStage()
+        if (currentStage !== previousStage.value) {
+          currentMessage.value = getRandomMessage()
+          previousStage.value = currentStage
+        }
       }
-    })
+    )
 
     // Cleanup on unmount
     onUnmounted(() => {

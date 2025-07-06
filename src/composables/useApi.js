@@ -3,7 +3,7 @@ import { useErrorHandling } from './useErrorHandling'
 
 // Determine the base URL at runtime
 const getBaseURL = () => {
-  if (window.APP_CONFIG && window.APP_CONFIG.API_ENDPOINT) {
+  if (window.APP_CONFIG?.API_ENDPOINT) {
     return window.APP_CONFIG.API_ENDPOINT
   }
   // Fallback for development or when config is not injected
@@ -160,7 +160,7 @@ export function useApi(initialBaseURL) {
           })
 
           xhr.open('POST', fullUrl)
-          
+
           // Add any custom headers except Content-Type
           if (config.headers) {
             Object.entries(config.headers).forEach(([key, value]) => {
@@ -169,7 +169,7 @@ export function useApi(initialBaseURL) {
               }
             })
           }
-          
+
           xhr.send(formData)
         })
       }

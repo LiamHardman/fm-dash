@@ -1,5 +1,4 @@
 import { formatCurrency } from '@/utils/currencyUtils'
-import { computed } from 'vue'
 
 export function useCurrency(currencySymbol = '$') {
   // Format currency with the provided symbol
@@ -35,7 +34,7 @@ export function useCurrency(currencySymbol = '$') {
   const isCurrencyValue = value => {
     if (typeof value === 'number') return true
     if (typeof value === 'string') {
-      return /^[\$£€¥]?[\d,]+(\.\d{2})?[KkMm]?$/.test(value.trim())
+      return /^[$£€¥]?[\d,]+(\.\d{2})?[KkMm]?$/.test(value.trim())
     }
     return false
   }

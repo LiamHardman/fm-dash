@@ -1,5 +1,3 @@
-import { computed } from 'vue'
-
 export function usePlayerUtils() {
   // GK stat mapping for FIFA-style display
   const gkStatMapping = {

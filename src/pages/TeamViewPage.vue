@@ -346,6 +346,7 @@ import { usePlayerStore } from '../stores/playerStore'
 import { debounce } from '../utils/debounce'
 import { formationCache } from '../utils/formationCache'
 import { formations, getFormationLayout } from '../utils/formations'
+
 // Currency utils are not directly used here for formatting,
 // but PlayerDataTable and PlayerDetailDialog will use them with the passed symbol.
 
@@ -1462,7 +1463,7 @@ export default {
 
     watch(
       () => route.query.team,
-      (newTeam) => {
+      newTeam => {
         if (newTeam && newTeam !== selectedTeamName.value) {
           selectedTeamName.value = newTeam
           loadTeamPlayers()
@@ -1505,13 +1506,13 @@ export default {
       }
     }
 
-    const startersWithRoleRatings = computed(() => {
+    const _startersWithRoleRatings = computed(() => {
       if (!squadComposition.value || Object.keys(squadComposition.value).length === 0) {
         return {}
       }
       const starters = {}
       for (const [slotId, starterEntry] of Object.entries(squadComposition.value)) {
-        if (starterEntry && starterEntry.player) {
+        if (starterEntry?.player) {
           starters[slotId] = {
             ...starterEntry.player,
             Overall: starterEntry.overallInRole,

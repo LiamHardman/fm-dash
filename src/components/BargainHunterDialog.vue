@@ -358,10 +358,10 @@
 
 <script>
 import { useQuasar } from 'quasar'
-import { computed, defineComponent, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, defineComponent, onMounted, ref, watch } from 'vue'
 import { formatCurrency } from '../utils/currencyUtils'
-import PlayerDetailDialog from './PlayerDetailDialog.vue'
 import PlayerDataTable from './PlayerDataTable.vue'
+import PlayerDetailDialog from './PlayerDetailDialog.vue'
 
 export default defineComponent({
   name: 'BargainHunterDialog',
@@ -395,7 +395,7 @@ export default defineComponent({
     const AGE_SLIDER_MIN = 15
     const AGE_SLIDER_MAX = 50
     const MAX_BUDGET_SLIDER_MIN = 0
-    const MAX_BUDGET_SLIDER_MAX = 500  // 500M
+    const MAX_BUDGET_SLIDER_MAX = 500 // 500M
     const MAX_SALARY_SLIDER_MIN = 0
     const MAX_SALARY_SLIDER_MAX = 1000 // 1000K per week
     const MIN_OVERALL_SLIDER_MIN = 40
@@ -494,7 +494,6 @@ export default defineComponent({
     // Methods
     const findBargains = async () => {
       if (!props.datasetId) {
-        console.warn('No dataset ID available')
         return
       }
 
@@ -525,9 +524,7 @@ export default defineComponent({
 
         const bargainData = await response.json()
         bargainResults.value = bargainData || []
-
-      } catch (error) {
-        console.error('Error finding bargains:', error)
+      } catch (_error) {
         qInstance.notify({
           message: 'Error finding bargains. Please try again.',
           color: 'negative',
@@ -548,22 +545,22 @@ export default defineComponent({
       }, 300)
     }
 
-    const handlePlayerSelected = (player) => {
+    const handlePlayerSelected = player => {
       selectedPlayer.value = player
       showPlayerDetail.value = true
     }
 
-    const handleTeamSelected = (teamName) => {
+    const handleTeamSelected = _teamName => {
       // For bargain hunter, we don't need team selection functionality
       // but we need to provide the handler for PlayerDataTable compatibility
     }
 
-    const formatValueScore = (score) => {
+    const _formatValueScore = score => {
       if (typeof score !== 'number') return '0'
       return Math.round(score).toString()
     }
 
-    const toggleValueTier = (tier) => {
+    const toggleValueTier = tier => {
       if (tier === 'excellent') {
         showExcellentValue.value = !showExcellentValue.value
       } else if (tier === 'great') {
@@ -575,7 +572,7 @@ export default defineComponent({
       } else if (tier === 'poor') {
         showPoorValue.value = !showPoorValue.value
       }
-      
+
       // No need to trigger a new backend search for value tier changes
       // The filteredBargainResults computed property will handle the filtering
     }

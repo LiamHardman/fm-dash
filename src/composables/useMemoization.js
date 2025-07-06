@@ -1,4 +1,4 @@
-import { computed, isRef, ref, shallowRef, watchEffect } from 'vue'
+import { computed, isRef, ref, shallowRef } from 'vue'
 
 // Cache for memoized functions
 const memoCache = new Map()

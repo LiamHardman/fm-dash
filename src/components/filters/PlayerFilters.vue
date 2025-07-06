@@ -790,12 +790,16 @@
 </template>
 
 <script>
-import { memoizedComputed } from '@/composables/useMemoization'
-import { usePlayerStore } from '@/stores/playerStore'
-import { formatCurrency } from '@/utils/currencyUtils'
 import { useQuasar } from 'quasar'
 import { computed, defineComponent, nextTick, onMounted, ref, watch } from 'vue'
-import { EUCountries, getAllEuropeanCountries, getAllSouthAmericanCountries, getAllAfricanCountries } from '../../utils/countryMapping'
+import { usePlayerStore } from '@/stores/playerStore'
+import { formatCurrency } from '@/utils/currencyUtils'
+import {
+  EUCountries,
+  getAllAfricanCountries,
+  getAllEuropeanCountries,
+  getAllSouthAmericanCountries
+} from '../../utils/countryMapping'
 
 // Define attribute keys (ensure these match keys in player.attributes)
 // These are the raw keys from the data.
@@ -1048,7 +1052,7 @@ export default defineComponent({
           transferValueRangeLocal: { min: 0, max: 0 }
         }
       },
-      'wonderkids': {
+      wonderkids: {
         label: 'Wonderkids',
         description: 'Young talented players (15-21 years)',
         filters: {
@@ -1065,7 +1069,7 @@ export default defineComponent({
         }
       },
       'ballon-dor': {
-        label: 'Ballon D\'Or Contenders',
+        label: "Ballon D'Or Contenders",
         description: 'Elite players worthy of individual awards',
         filters: {
           ageRange: { min: 23, max: 32 },
@@ -1111,27 +1115,27 @@ export default defineComponent({
       { label: '🆓 Free Transfers', value: 'free-transfers' },
       { label: '⭐ Wonderkids', value: 'wonderkids' },
       { label: '👑 Prime Players', value: 'prime-players' },
-      { label: '🏆 Ballon D\'Or Contenders', value: 'ballon-dor' },
+      { label: "🏆 Ballon D'Or Contenders", value: 'ballon-dor' },
       { label: '🇪🇺 EU Players', value: 'eu-players' },
       { label: '🌍 European Players', value: 'european-players' },
       { label: '🌎 South American Players', value: 'south-american-players' },
       { label: '🌍 African Players', value: 'african-players' }
     ])
 
-    const applyPresetFilter = (presetKey) => {
+    const applyPresetFilter = presetKey => {
       if (!presetKey || !presetFilters[presetKey]) {
         selectedPreset.value = null
         return
       }
 
       const preset = presetFilters[presetKey]
-      
+
       // Clear existing filters first
       clearAllFilters()
-      
+
       // Set the selected preset (since clearAllFilters resets it to null)
       selectedPreset.value = presetKey
-      
+
       // Apply preset filters
       Object.keys(preset.filters).forEach(filterKey => {
         if (filterKey === 'transferValueRangeLocal') {
@@ -1148,7 +1152,7 @@ export default defineComponent({
 
       // Apply the filters
       applyFilters()
-      
+
       // Show notification
       quasarInstance.notify({
         type: 'positive',
@@ -1203,7 +1207,8 @@ export default defineComponent({
         filters.value.position !== null ||
         filters.value.role !== null ||
         filters.value.nationality !== null ||
-        (Array.isArray(filters.value.continentNationalities) && filters.value.continentNationalities.length > 0) ||
+        (Array.isArray(filters.value.continentNationalities) &&
+          filters.value.continentNationalities.length > 0) ||
         (Array.isArray(filters.value.mediaHandling) && filters.value.mediaHandling.length > 0) ||
         (Array.isArray(filters.value.personality) && filters.value.personality.length > 0) ||
         filters.value.ageRange.min !== AGE_SLIDER_MIN ||

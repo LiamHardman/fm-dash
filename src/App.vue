@@ -103,12 +103,12 @@
 
 <script>
 import { computed, defineComponent, onMounted, ref } from 'vue'
-import UniversalSearch from './components/UniversalSearch.vue'
 import SettingsModal from './components/SettingsModal.vue'
+import UniversalSearch from './components/UniversalSearch.vue'
+import { useAnalytics } from './composables/useAnalytics'
 import { usePlayerStore } from './stores/playerStore'
 import { useUiStore } from './stores/uiStore'
 import { useWishlistStore } from './stores/wishlistStore'
-import { useAnalytics } from './composables/useAnalytics'
 
 export default defineComponent({
   name: 'App',
@@ -120,9 +120,9 @@ export default defineComponent({
     const uiStore = useUiStore()
     const playerStore = usePlayerStore()
     const wishlistStore = useWishlistStore()
-    
+
     // Initialize analytics with automatic page view tracking
-    const analytics = useAnalytics()
+    const _analytics = useAnalytics()
 
     // Settings modal state
     const showSettingsModal = ref(false)

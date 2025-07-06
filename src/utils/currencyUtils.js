@@ -1,4 +1,3 @@
-
 /**
  * Formats a numeric monetary value into a string with a currency symbol and K/M suffix.
  * Example: 1500000 with symbol '€' becomes "€1.5M".

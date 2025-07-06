@@ -226,7 +226,7 @@
 </template>
 
 <script>
-import { defineComponent, computed } from 'vue'
+import { computed, defineComponent } from 'vue'
 
 export default defineComponent({
   name: 'PlayerAttributesCard',
@@ -243,35 +243,79 @@ export default defineComponent({
       const position = props.player.position.toLowerCase()
       return position.includes('gk') || position.includes('goalkeeper')
     })
-    
+
     // Attribute categories
     const attributeCategories = computed(() => {
       const allAttributes = props.player?.attributes || {}
       const attributeKeys = Object.keys(allAttributes)
-      
-      const technical = attributeKeys.filter(key => 
-        ['corners', 'crossing', 'dribbling', 'finishing', 'first_touch', 'free_kick_taking', 
-         'heading', 'long_shots', 'long_throws', 'marking', 'passing', 'penalty_taking', 
-         'tackling', 'technique'].includes(key)
+
+      const technical = attributeKeys.filter(key =>
+        [
+          'corners',
+          'crossing',
+          'dribbling',
+          'finishing',
+          'first_touch',
+          'free_kick_taking',
+          'heading',
+          'long_shots',
+          'long_throws',
+          'marking',
+          'passing',
+          'penalty_taking',
+          'tackling',
+          'technique'
+        ].includes(key)
       )
-      
+
       const goalkeeping = attributeKeys.filter(key =>
-        ['aerial_reach', 'command_of_area', 'communication', 'eccentricity', 'handling',
-         'kicking', 'one_on_ones', 'reflexes', 'rushing_out', 'tendency_to_punch',
-         'throwing'].includes(key)
+        [
+          'aerial_reach',
+          'command_of_area',
+          'communication',
+          'eccentricity',
+          'handling',
+          'kicking',
+          'one_on_ones',
+          'reflexes',
+          'rushing_out',
+          'tendency_to_punch',
+          'throwing'
+        ].includes(key)
       )
-      
+
       const mental = attributeKeys.filter(key =>
-        ['aggression', 'anticipation', 'bravery', 'composure', 'concentration', 'decisions',
-         'determination', 'flair', 'leadership', 'off_the_ball', 'positioning', 'teamwork',
-         'vision', 'work_rate'].includes(key)
+        [
+          'aggression',
+          'anticipation',
+          'bravery',
+          'composure',
+          'concentration',
+          'decisions',
+          'determination',
+          'flair',
+          'leadership',
+          'off_the_ball',
+          'positioning',
+          'teamwork',
+          'vision',
+          'work_rate'
+        ].includes(key)
       )
-      
+
       const physical = attributeKeys.filter(key =>
-        ['acceleration', 'agility', 'balance', 'jumping_reach', 'natural_fitness',
-         'pace', 'stamina', 'strength'].includes(key)
+        [
+          'acceleration',
+          'agility',
+          'balance',
+          'jumping_reach',
+          'natural_fitness',
+          'pace',
+          'stamina',
+          'strength'
+        ].includes(key)
       )
-      
+
       return {
         technical,
         goalkeeping,
@@ -279,7 +323,7 @@ export default defineComponent({
         physical
       }
     })
-    
+
     // Attribute full name mapping
     const attributeFullNameMap = {
       corners: 'Corners',
@@ -330,7 +374,7 @@ export default defineComponent({
       stamina: 'Stamina',
       strength: 'Strength'
     }
-    
+
     // Attribute descriptions
     const attributeDescriptions = {
       corners: 'Ability to deliver accurate corner kicks',
@@ -346,32 +390,30 @@ export default defineComponent({
       passing: 'Accuracy and vision when passing the ball',
       penalty_taking: 'Ability to score from penalty kicks',
       tackling: 'Ability to win the ball through tackles',
-      technique: 'Technical skill and ball control',
+      technique: 'Technical skill and ball control'
       // Add more descriptions as needed...
     }
-    
+
     // Sorted role specific overalls
     const sortedRoleSpecificOveralls = computed(() => {
       if (!props.player?.roleSpecificOveralls) return []
-      
-      return [...props.player.roleSpecificOveralls]
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 10) // Show top 10 roles
+
+      return [...props.player.roleSpecificOveralls].sort((a, b) => b.score - a.score).slice(0, 10) // Show top 10 roles
     })
-    
+
     // Get display attribute value
-    const getDisplayAttribute = (attrKey) => {
+    const getDisplayAttribute = attrKey => {
       const value = props.player?.attributes?.[attrKey]
       if (value === undefined || value === null) return '-'
       return value
     }
-    
+
     // Get unified rating class
     const getUnifiedRatingClass = (value, maxValue = 20) => {
       if (!value || value === '-') return 'rating-unknown'
-      
+
       const percentage = (value / maxValue) * 100
-      
+
       if (percentage >= 85) return 'rating-excellent'
       if (percentage >= 70) return 'rating-very-good'
       if (percentage >= 55) return 'rating-good'
@@ -379,7 +421,7 @@ export default defineComponent({
       if (percentage >= 25) return 'rating-poor'
       return 'rating-very-poor'
     }
-    
+
     return {
       isGoalkeeper,
       attributeCategories,

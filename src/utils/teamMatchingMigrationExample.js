@@ -1,6 +1,6 @@
 /**
  * Migration Example: From Frontend Team Matching to Backend API
- * 
+ *
  * This file demonstrates how to migrate from the heavy frontend team matching
  * (which loads 1.7MB teams_data.json) to the lightweight backend API approach.
  */
@@ -29,16 +29,13 @@ const { getTeamId, getTeamLogoUrl, getTeamMatches } = useTeamLogosBackend()
 // Usage examples
 async function examples() {
   // 1. Basic team ID lookup
-  const teamId = await getTeamId('Valencia')
-  console.log('Team ID for Valencia:', teamId)
+  const _teamId = await getTeamId('Valencia')
 
   // 2. Get team logo URL
-  const logoUrl = await getTeamLogoUrl('Valencia')
-  console.log('Logo URL for Valencia:', logoUrl)
+  const _logoUrl = await getTeamLogoUrl('Valencia')
 
   // 3. Get all matches for fuzzy search
-  const matches = await getTeamMatches('Valenc') // Partial name
-  console.log('Matches for "Valenc":', matches)
+  const _matches = await getTeamMatches('Valenc') // Partial name
   // Example output:
   // [
   //   { id: "433", name: "Valencia", score: 0.95 },
@@ -49,11 +46,7 @@ async function examples() {
   // 4. Batch processing for multiple teams
   const { batchGetTeamLogos } = useTeamLogosBackend()
   const teamNames = ['Valencia', 'Barcelona', 'Real Madrid']
-  const logoMap = await batchGetTeamLogos(teamNames, (progress) => {
-    console.log(`Processing: ${progress.percentage}% complete`)
-  })
-  
-  console.log('Batch results:', logoMap)
+  const _logoMap = await batchGetTeamLogos(teamNames, _progress => {})
 }
 
 // MIGRATION STEPS
@@ -61,33 +54,33 @@ async function examples() {
 
 /**
  * Step 1: Replace imports
- * 
+ *
  * OLD:
  * import { useTeamLogos } from '../composables/useTeamLogos.js'
- * 
+ *
  * NEW:
  * import { useTeamLogosBackend } from '../composables/useTeamLogosBackend.js'
  */
 
 /**
  * Step 2: Update function calls to async/await
- * 
+ *
  * OLD:
  * const teamId = getTeamId('Valencia')
- * 
+ *
  * NEW:
  * const teamId = await getTeamId('Valencia')
  */
 
 /**
  * Step 3: Handle loading states (optional but recommended)
- * 
+ *
  * const { getTeamId, isLoading, lastError } = useTeamLogosBackend()
- * 
+ *
  * if (isLoading.value) {
  *   console.log('Loading team data...')
  * }
- * 
+ *
  * if (lastError.value) {
  *   console.error('Error:', lastError.value)
  * }
@@ -95,33 +88,33 @@ async function examples() {
 
 /**
  * Step 4: Update Vue components
- * 
+ *
  * OLD:
  * <template>
  *   <img :src="getTeamLogoUrl(team.name)" :alt="team.name" />
  * </template>
- * 
+ *
  * <script setup>
  * import { useTeamLogos } from '@/composables/useTeamLogos'
  * const { getTeamLogoUrl } = useTeamLogos()
  * </script>
- * 
+ *
  * NEW:
  * <template>
  *   <img :src="logoUrl" :alt="team.name" v-if="logoUrl" />
  *   <div v-else-if="isLoadingLogo">Loading...</div>
  * </template>
- * 
+ *
  * <script setup>
  * import { ref, watchEffect } from 'vue'
  * import { useTeamLogosBackend } from '@/composables/useTeamLogosBackend'
- * 
+ *
  * const props = defineProps(['team'])
  * const { getTeamLogoUrl } = useTeamLogosBackend()
- * 
+ *
  * const logoUrl = ref(null)
  * const isLoadingLogo = ref(false)
- * 
+ *
  * watchEffect(async () => {
  *   if (props.team?.name) {
  *     isLoadingLogo.value = true
@@ -141,7 +134,7 @@ async function examples() {
  * - Memory usage: ~53k team objects in memory
  * - Search time: O(n) where n = 53,000 teams
  * - Network: One large JSON download
- * 
+ *
  * New approach:
  * - Initial page load: ~5KB additional JavaScript
  * - Memory usage: Small cache of recently searched teams
@@ -155,10 +148,10 @@ async function examples() {
 
 /**
  * The backend API endpoint: GET /api/team-match?name={teamName}
- * 
+ *
  * Example request:
  * GET /api/team-match?name=Valencia
- * 
+ *
  * Example response:
  * [
  *   {
@@ -167,13 +160,13 @@ async function examples() {
  *     "score": 1.0
  *   },
  *   {
- *     "id": "1234", 
+ *     "id": "1234",
  *     "name": "Valencia CF",
  *     "score": 0.95
  *   }
  * ]
- * 
+ *
  * The response is sorted by score (best matches first) and limited to top 10 results.
  */
 
-export { examples } 
+export { examples }

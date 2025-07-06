@@ -866,73 +866,85 @@ export default defineComponent({
         id: 1,
         method: 'POST',
         path: '/upload',
-        description: 'Upload and process Football Manager player data files (HTML format). Returns a dataset ID (file hash) on success.'
+        description:
+          'Upload and process Football Manager player data files (HTML format). Returns a dataset ID (file hash) on success.'
       },
       {
         id: 2,
         method: 'GET',
         path: '/api/players/{dataset_id}',
-        description: 'Retrieve player information for a specific dataset. Supports query parameters for filtering (e.g., position, age, name) and pagination.'
+        description:
+          'Retrieve player information for a specific dataset. Supports query parameters for filtering (e.g., position, age, name) and pagination.'
       },
       {
         id: 3,
         method: 'GET',
         path: '/api/roles',
-        description: 'Get a list of available player roles and their associated attribute weights used for calculating player suitability and ratings.'
+        description:
+          'Get a list of available player roles and their associated attribute weights used for calculating player suitability and ratings.'
       },
       {
         id: 4,
         method: 'GET',
         path: '/api/leagues/{dataset_id}',
-        description: 'Retrieve all leagues present in a given dataset, along with team counts and aggregate quality metrics for each league.'
+        description:
+          'Retrieve all leagues present in a given dataset, along with team counts and aggregate quality metrics for each league.'
       },
       {
         id: 5,
         method: 'GET',
         path: '/api/teams/{dataset_id}?league={league_name}',
-        description: 'Get detailed team data for a specific league within a dataset. Includes player rosters, average ratings, and tactical information.'
+        description:
+          'Get detailed team data for a specific league within a dataset. Includes player rosters, average ratings, and tactical information.'
       },
       {
         id: 6,
         method: 'POST',
         path: '/api/percentiles/{dataset_id}',
-        description: 'Calculate and retrieve player performance percentiles. Request body can specify player name for individual analysis, or division filters to compare against specific cohorts.'
+        description:
+          'Calculate and retrieve player performance percentiles. Request body can specify player name for individual analysis, or division filters to compare against specific cohorts.'
       },
       {
         id: 7,
         method: 'GET',
         path: '/api/search/{dataset_id}?q={query}',
-        description: 'Perform a global search within a specific dataset for players, teams, leagues, or nations based on the provided query string.'
+        description:
+          'Perform a global search within a specific dataset for players, teams, leagues, or nations based on the provided query string.'
       },
       {
         id: 8,
         method: 'GET',
         path: '/api/config',
-        description: 'Retrieve application-level configuration, such as available player positions, attribute groups, UI settings, and version information.'
+        description:
+          'Retrieve application-level configuration, such as available player positions, attribute groups, UI settings, and version information.'
       },
       {
         id: 9,
         method: 'POST',
         path: '/api/bargain-hunter/{dataset_id}',
-        description: 'Analyze player data to find undervalued players (bargains). Request body includes criteria like max budget, max salary, min/max age, and minimum overall rating.'
+        description:
+          'Analyze player data to find undervalued players (bargains). Request body includes criteria like max budget, max salary, min/max age, and minimum overall rating.'
       },
       {
         id: 10,
         method: 'GET',
         path: '/api/faces?id={face_id}',
-        description: 'Retrieve player face images by their unique face ID. Returns image data if available.'
+        description:
+          'Retrieve player face images by their unique face ID. Returns image data if available.'
       },
       {
         id: 11,
         method: 'GET',
         path: '/api/cache/nation-ratings/{dataset_id}',
-        description: 'Retrieves cached aggregated ratings (attack, midfield, defense, overall) for all nations represented in the specified dataset.'
+        description:
+          'Retrieves cached aggregated ratings (attack, midfield, defense, overall) for all nations represented in the specified dataset.'
       },
       {
         id: 12,
         method: 'POST',
         path: '/api/cache/nation-ratings/{dataset_id}',
-        description: 'Generates or updates the cached aggregated ratings for all nations in the specified dataset. (Primarily for internal use or administrative tasks).'
+        description:
+          'Generates or updates the cached aggregated ratings for all nations in the specified dataset. (Primarily for internal use or administrative tasks).'
       }
     ]
 
@@ -977,10 +989,7 @@ export default defineComponent({
       {
         title: 'Clone the Repository',
         description: 'Download the FM-Dash source code which includes the Docker configuration:',
-        commands: [
-          'git clone https://github.com/LiamHardman/fmdash.git',
-          'cd fmdash'
-        ],
+        commands: ['git clone https://github.com/LiamHardman/fmdash.git', 'cd fmdash'],
         note: 'This downloads all the necessary files including docker-compose.yml'
       },
       {
@@ -1015,18 +1024,13 @@ volumes:
       {
         title: 'Start the Application',
         description: 'Build and start the FM-Dash containers:',
-        commands: [
-          'docker-compose up -d'
-        ],
+        commands: ['docker-compose up -d'],
         note: 'This builds the Docker image and starts the container. First run may take several minutes.'
       },
       {
         title: 'Verify Installation',
         description: 'Check that the application is running properly:',
-        commands: [
-          'docker-compose ps',
-          'docker-compose logs fmdash'
-        ],
+        commands: ['docker-compose ps', 'docker-compose logs fmdash'],
         note: 'The first command shows running containers, the second shows application logs'
       }
     ]
@@ -1034,11 +1038,9 @@ volumes:
     const setupSteps = [
       {
         title: 'Download the Source Code',
-        description: 'Open a terminal or command prompt and run these commands to download FM-Dash:',
-        commands: [
-          'git clone https://github.com/LiamHardman/fmdash.git',
-          'cd fmdash'
-        ],
+        description:
+          'Open a terminal or command prompt and run these commands to download FM-Dash:',
+        commands: ['git clone https://github.com/LiamHardman/fmdash.git', 'cd fmdash'],
         note: 'This creates a "fmdash" folder with all the necessary files'
       },
       {
@@ -1064,45 +1066,50 @@ volumes:
     const exportSteps = [
       {
         title: 'Download the FM Dash Search View',
-        description: 'First, you need to download a custom search view from the Steam Workshop that contains all the player attributes FM-Dash needs for analysis.',
+        description:
+          'First, you need to download a custom search view from the Steam Workshop that contains all the player attributes FM-Dash needs for analysis.',
         link: 'https://steamcommunity.com/sharedfiles/filedetails/?id=3498467200',
         linkText: 'Download FM Dash Search View',
-        note: 'Make sure you\'re logged into Steam and subscribed to the workshop item.'
+        note: "Make sure you're logged into Steam and subscribed to the workshop item."
       },
       {
         title: 'Import the View in FM24',
-        description: 'Open Football Manager 24, navigate to Scouting, then click "Overview" (next to the "X Players Filtered" text). Select "Custom" → "Import View" and choose "FM Dash Search".',
-        note: 'If you don\'t see the view, restart FM24 and make sure Steam has downloaded the workshop item.'
+        description:
+          'Open Football Manager 24, navigate to Scouting, then click "Overview" (next to the "X Players Filtered" text). Select "Custom" → "Import View" and choose "FM Dash Search".',
+        note: "If you don't see the view, restart FM24 and make sure Steam has downloaded the workshop item."
       },
       {
         title: 'Filter Your Dataset',
-        description: 'Use FM24\'s filtering options to narrow down your player selection. Consider filtering by league, position, age, or other criteria to focus on the players you want to analyze.',
+        description:
+          "Use FM24's filtering options to narrow down your player selection. Consider filtering by league, position, age, or other criteria to focus on the players you want to analyze.",
         note: 'Start with under 5,000 players for your first export to test the process quickly.'
       },
       {
         title: 'Select All Players',
-        description: 'Once you have your filtered list, select all players using Ctrl+A (or Cmd+A on Mac). This will highlight all visible players in the current view.',
+        description:
+          'Once you have your filtered list, select all players using Ctrl+A (or Cmd+A on Mac). This will highlight all visible players in the current view.',
         warning: 'Make sure all players are selected before proceeding to the export step.'
       },
       {
         title: 'Export as Web Page',
-        description: 'With all players selected, press Ctrl+P (or Cmd+P on Mac) to open the print dialog, then choose "Web Page" as the format. This creates an HTML file with all the player data.',
-        warning: 'This process can be slow for large datasets (10,000+ players). Expect 10+ seconds and don\'t interact with the screen during export.'
+        description:
+          'With all players selected, press Ctrl+P (or Cmd+P on Mac) to open the print dialog, then choose "Web Page" as the format. This creates an HTML file with all the player data.',
+        warning:
+          "This process can be slow for large datasets (10,000+ players). Expect 10+ seconds and don't interact with the screen during export."
       },
       {
         title: 'Save Your Export File',
-        description: 'Choose a memorable location to save your HTML export file. You\'ll need to upload this file to FM-Dash for analysis.',
+        description:
+          "Choose a memorable location to save your HTML export file. You'll need to upload this file to FM-Dash for analysis.",
         note: 'Consider naming the file with the date and dataset description for easy identification later.'
       }
     ]
 
-    const copyToClipboard = async (text) => {
+    const copyToClipboard = async text => {
       try {
         await navigator.clipboard.writeText(text)
         // You could add a toast notification here if desired
-      } catch (err) {
-        console.error('Failed to copy text: ', err)
-      }
+      } catch (_err) {}
     }
 
     const setActiveSection = sectionId => {

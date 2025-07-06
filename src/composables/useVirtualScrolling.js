@@ -1,4 +1,4 @@
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 
 export function useVirtualScrolling(options = {}) {
   const { itemHeight = 30, bufferSize = 10, containerHeight = 400, visibleRange = null } = options

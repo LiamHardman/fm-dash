@@ -1,20 +1,24 @@
 // Runtime API Endpoint Configuration
 const getApiEndpoint = () => {
   // 1. Check for runtime config (injected by config-injector.sh)
-  if (typeof window !== 'undefined' && window.APP_CONFIG && typeof window.APP_CONFIG.API_ENDPOINT !== 'undefined') {
-    return window.APP_CONFIG.API_ENDPOINT;
+  if (
+    typeof window !== 'undefined' &&
+    window.APP_CONFIG &&
+    typeof window.APP_CONFIG.API_ENDPOINT !== 'undefined'
+  ) {
+    return window.APP_CONFIG.API_ENDPOINT
   }
-  
+
   // 2. Fallback to build-time config (for local development)
   if (typeof import.meta.env.VITE_API_ENDPOINT !== 'undefined') {
-    return import.meta.env.VITE_API_ENDPOINT;
+    return import.meta.env.VITE_API_ENDPOINT
   }
-  
+
   // 3. Default to an empty string for relative paths
-  return ''; 
+  return ''
 }
 
-const API_ENDPOINT = getApiEndpoint();
+const API_ENDPOINT = getApiEndpoint()
 
 export default {
   async saveWishlist(datasetId, wishlistData) {
@@ -32,7 +36,6 @@ export default {
       }
       return await response.json()
     } catch (error) {
-      console.warn('Failed to save wishlist to MinIO, falling back to localStorage:', error)
       // Fallback to localStorage
       this.saveToLocalStorage(datasetId, wishlistData)
       throw error // Re-throw to let caller know MinIO failed
@@ -57,8 +60,7 @@ export default {
       this.saveToLocalStorage(datasetId, data)
 
       return data
-    } catch (error) {
-      console.warn('Failed to load wishlist from MinIO, falling back to localStorage:', error)
+    } catch (_error) {
       // Fallback to localStorage
       return this.loadFromLocalStorage(datasetId)
     }
@@ -73,8 +75,7 @@ export default {
       if (!response.ok && response.status !== 404) {
         throw new Error(`API Error: ${response.status} - ${response.statusText}`)
       }
-    } catch (error) {
-      console.warn('Failed to delete wishlist from MinIO:', error)
+    } catch (_error) {
     } finally {
       // Always delete from localStorage regardless of MinIO result
       this.deleteFromLocalStorage(datasetId)
@@ -86,9 +87,7 @@ export default {
     try {
       const key = `fm_dash_wishlist_${datasetId}`
       localStorage.setItem(key, JSON.stringify(wishlistData))
-    } catch (error) {
-      console.error('Failed to save to localStorage:', error)
-    }
+    } catch (_error) {}
   },
 
   loadFromLocalStorage(datasetId) {
@@ -99,8 +98,7 @@ export default {
         return JSON.parse(stored)
       }
       return []
-    } catch (error) {
-      console.error('Failed to load from localStorage:', error)
+    } catch (_error) {
       return []
     }
   },
@@ -109,9 +107,7 @@ export default {
     try {
       const key = `fm_dash_wishlist_${datasetId}`
       localStorage.removeItem(key)
-    } catch (error) {
-      console.error('Failed to delete from localStorage:', error)
-    }
+    } catch (_error) {}
   },
 
   // Migration method to sync all localStorage wishlists to MinIO
@@ -127,13 +123,9 @@ export default {
         if (wishlistData && wishlistData.length > 0) {
           try {
             await this.saveWishlist(datasetId, wishlistData)
-          } catch (error) {
-            console.warn(`Failed to migrate wishlist for dataset ${datasetId}:`, error)
-          }
+          } catch (_error) {}
         }
       }
-    } catch (error) {
-      console.error('Error during wishlist migration:', error)
-    }
+    } catch (_error) {}
   }
 }

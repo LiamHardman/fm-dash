@@ -72,7 +72,7 @@ export const usePlayerStore = defineStore('player', () => {
     if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) {
       return { min: 0, max: 100000000 } // Default
     }
-    
+
     let min = Number.MAX_SAFE_INTEGER
     let max = Number.MIN_SAFE_INTEGER
     let hasValidValue = false
@@ -143,27 +143,27 @@ export const usePlayerStore = defineStore('player', () => {
       tracker.checkpoint('Starting upload')
       const response = await playerService.uploadPlayerFile(formData, maxSizeBytes, onProgress)
       tracker.checkpoint('Upload completed')
-      
+
       currentDatasetId.value = response.datasetId
       detectedCurrencySymbol.value = response.detectedCurrencySymbol || '$'
       sessionStorage.setItem('currentDatasetId', currentDatasetId.value)
       sessionStorage.setItem('detectedCurrencySymbol', detectedCurrencySymbol.value)
       tracker.checkpoint('Session storage updated')
-      
+
       // Stage 2 & 3: Fetch processed data and available roles in parallel
       if (onProgress) onProgress(80)
-      
+
       // Run both API calls in parallel to reduce total time
-      const [playerDataResponse] = await Promise.all([
+      const [_playerDataResponse] = await Promise.all([
         fetchPlayersByDatasetId(currentDatasetId.value),
         fetchAllAvailableRoles() // This can run in parallel since it doesn't depend on player data
       ])
       tracker.checkpoint('Data fetching completed')
-      
+
       // Stage 4: Complete
       if (onProgress) onProgress(100)
       tracker.finish()
-      
+
       return response
     } catch (e) {
       tracker.checkpoint('Error occurred')
@@ -211,17 +211,17 @@ export const usePlayerStore = defineStore('player', () => {
         positionCompare
       )
       tracker.checkpoint('API call completed')
-      
+
       allPlayers.value = processPlayersFromAPI(response.players)
       tracker.checkpoint('Players processed')
-      
+
       currentDatasetId.value = datasetId
       detectedCurrencySymbol.value = response.currencySymbol || '$'
       sessionStorage.setItem('currentDatasetId', currentDatasetId.value)
       sessionStorage.setItem('detectedCurrencySymbol', detectedCurrencySymbol.value)
       tracker.checkpoint('State updated')
       tracker.finish()
-      
+
       return response
     } catch (e) {
       tracker.checkpoint('Error occurred')
@@ -238,8 +238,7 @@ export const usePlayerStore = defineStore('player', () => {
     try {
       const roles = await playerService.getAvailableRoles()
       allAvailableRoles.value = roles.sort()
-    } catch (e) {
-      console.error('playerStore: Error fetching available roles:', e)
+    } catch (_e) {
       allAvailableRoles.value = []
     }
   }

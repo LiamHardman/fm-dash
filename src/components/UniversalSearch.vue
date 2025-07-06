@@ -88,7 +88,7 @@
 </template>
 
 <script>
-import { computed, defineComponent, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, defineComponent, nextTick, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePlayerStore } from '../stores/playerStore'
 import { debounce } from '../utils/debounce'
@@ -132,13 +132,11 @@ export default defineComponent({
           // Ensure we always return an array
           return Array.isArray(data) ? data : []
         }
-        console.error('Search API error:', response.status)
         return []
       } catch (error) {
         if (error.name === 'AbortError') {
           return []
         }
-        console.error('Search network error:', error)
         return []
       }
     }
@@ -147,7 +145,7 @@ export default defineComponent({
     const debouncedSearchFn = debounce(async query => {
       // Generate unique ID for this search
       const searchId = ++currentSearchId
-      
+
       // Cancel previous request if it exists
       if (currentSearchController) {
         currentSearchController.abort()
@@ -171,14 +169,13 @@ export default defineComponent({
 
       try {
         const searchResults = await searchAPI(query, signal)
-        
+
         // Only update results if this is still the latest search and wasn't aborted
         if (searchId === currentSearchId && !signal.aborted) {
           results.value = Array.isArray(searchResults) ? searchResults : []
         }
       } catch (error) {
         if (error.name !== 'AbortError') {
-          console.error('Search failed:', error)
           // Only update results if this is still the latest search
           if (searchId === currentSearchId) {
             results.value = []
@@ -237,7 +234,7 @@ export default defineComponent({
     // Unified rating class function (same as used in PlayerDataTable)
     const getUnifiedRatingClass = (value, maxScale) => {
       const numValue = parseInt(value, 10)
-      if (isNaN(numValue) || value === null || value === undefined || value === '-')
+      if (Number.isNaN(numValue) || value === null || value === undefined || value === '-')
         return 'rating-na'
       const percentage = (numValue / maxScale) * 100
       if (percentage >= 90) return 'rating-tier-6'

@@ -273,10 +273,10 @@ import { useWebNotification } from '@vueuse/core'
 import { Notify, useQuasar } from 'quasar'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import InteractiveUploadLoader from '../components/InteractiveUploadLoader.vue'
 import playerService from '../services/playerService'
 import { usePlayerStore } from '../stores/playerStore'
 import { useUiStore } from '../stores/uiStore'
-import InteractiveUploadLoader from '../components/InteractiveUploadLoader.vue'
 
 export default {
   name: 'PlayerUploadPage',
@@ -332,9 +332,7 @@ export default {
         maxFileSizeBytes.value = config.maxUploadSizeBytes
         maxFileSizeMB.value = config.maxUploadSizeMB
         datasetRetentionDays.value = config.datasetRetentionDays || 30
-      } catch (error) {
-        console.warn('Failed to fetch config, using defaults:', error)
-      }
+      } catch (_error) {}
       // Initialize UI preferences
       uiStore.initNotifications()
     })
@@ -366,7 +364,7 @@ export default {
       })
     }
 
-    const updateProgress = (progress) => {
+    const updateProgress = progress => {
       // If progress is from file upload (0-100 range), scale to 70%
       // If progress is explicit stage progress (80, 95, 100), use directly
       if (progress <= 100 && uploadProgress.value < 70) {
@@ -396,15 +394,19 @@ export default {
       try {
         const formData = new FormData()
         formData.append('playerFile', playerFile.value)
-        
+
         // The player store will now handle all progress stages
-        const response = await playerStore.uploadPlayerFile(formData, maxFileSizeBytes.value, updateProgress)
-        
+        const response = await playerStore.uploadPlayerFile(
+          formData,
+          maxFileSizeBytes.value,
+          updateProgress
+        )
+
         if (!playerStore.error) {
           // Check if this was a duplicate upload by looking at the response message
-          const isDuplicate = response.message && response.message.includes('Duplicate file detected')
-          
-          const successMessage = isDuplicate 
+          const isDuplicate = response.message?.includes('Duplicate file detected')
+
+          const successMessage = isDuplicate
             ? 'Duplicate file detected! Redirecting to existing dataset...'
             : 'File uploaded and parsed successfully! Redirecting to dataset view...'
 
@@ -435,8 +437,6 @@ export default {
         }
       } catch (e) {
         uploadProgress.value = 0
-        
-        console.error('Upload and Parse error in page:', e)
         if (playerStore.error) {
           Notify.create({
             type: 'negative',
@@ -469,7 +469,7 @@ export default {
       // Rule: 15MB = 10,000 players
       // So players = (current max file size in MB / 15MB) * 10,000
       const exactPlayers = Math.floor((maxFileSizeMB.value / 20) * 10000)
-      
+
       // Round to nearest 5000 for cleaner display
       // For example: 66,666 becomes 65,000
       return Math.floor(exactPlayers / 5000) * 5000

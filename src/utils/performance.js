@@ -10,9 +10,10 @@ export class PerformanceTracker {
   checkpoint(label) {
     const now = performance.now()
     const elapsed = now - this.startTime
-    const lastCheckpoint = this.checkpoints.length > 0 
-      ? this.checkpoints[this.checkpoints.length - 1]
-      : { time: this.startTime }
+    const lastCheckpoint =
+      this.checkpoints.length > 0
+        ? this.checkpoints[this.checkpoints.length - 1]
+        : { time: this.startTime }
     const sinceLastCheckpoint = now - lastCheckpoint.time
 
     this.checkpoints.push({
@@ -21,14 +22,10 @@ export class PerformanceTracker {
       elapsed,
       sinceLastCheckpoint
     })
-
-    console.log(`[${this.name}] ${label}: ${sinceLastCheckpoint.toFixed(2)}ms (total: ${elapsed.toFixed(2)}ms)`)
   }
 
   finish() {
     const totalTime = performance.now() - this.startTime
-    console.log(`[${this.name}] Total time: ${totalTime.toFixed(2)}ms`)
-    console.table(this.checkpoints)
     return totalTime
   }
 }
@@ -55,19 +52,19 @@ export async function batchProcess(array, batchSize = 100, processor) {
 }
 
 // Optimized min/max finder for large arrays
-export function findMinMax(array, valueExtractor = (x) => x) {
+export function findMinMax(array, valueExtractor = x => x) {
   if (array.length === 0) return { min: 0, max: 0 }
-  
+
   let min = Number.MAX_SAFE_INTEGER
   let max = Number.MIN_SAFE_INTEGER
-  
+
   for (const item of array) {
     const value = valueExtractor(item)
-    if (typeof value === 'number' && !isNaN(value)) {
+    if (typeof value === 'number' && !Number.isNaN(value)) {
       if (value < min) min = value
       if (value > max) max = value
     }
   }
-  
+
   return { min, max }
-} 
+}

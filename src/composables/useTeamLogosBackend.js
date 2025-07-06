@@ -1,13 +1,13 @@
-import { ref, reactive, computed } from 'vue'
+import { computed, reactive, ref } from 'vue'
 
 /**
  * Backend-powered composable for team logo handling
  * Uses the Go API for team name to ID matching instead of loading full teams data
  */
 export function useTeamLogosBackend(options = {}) {
-  const { 
+  const {
     similarityThreshold = 0.7,
-    maxResults = 10,
+    maxResults: _maxResults = 10,
     cacheTimeout = 3600000 // 1 hour cache
   } = options
 
@@ -22,14 +22,14 @@ export function useTeamLogosBackend(options = {}) {
    * @param {string} teamName - Team name to search for
    * @returns {Promise<Array>} - Array of team matches
    */
-  const getTeamMatches = async (teamName) => {
+  const getTeamMatches = async teamName => {
     if (!teamName || teamName.trim() === '') {
       return []
     }
 
     const normalizedName = teamName.trim()
     const cacheKey = `matches_${normalizedName.toLowerCase()}`
-    
+
     // Check cache first
     const cached = matchCache.get(cacheKey)
     if (cached && Date.now() - cached.timestamp < cacheTimeout) {
@@ -41,13 +41,13 @@ export function useTeamLogosBackend(options = {}) {
       lastError.value = null
 
       const response = await fetch(`/api/team-match?name=${encodeURIComponent(normalizedName)}`)
-      
+
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
 
       const matches = await response.json()
-      
+
       // Cache the results
       matchCache.set(cacheKey, {
         data: matches,
@@ -57,7 +57,6 @@ export function useTeamLogosBackend(options = {}) {
       return matches
     } catch (error) {
       lastError.value = error.message
-      console.error('Error fetching team matches:', error)
       return []
     } finally {
       isLoading.value = false
@@ -69,9 +68,9 @@ export function useTeamLogosBackend(options = {}) {
    * @param {string} teamName - Team name to search for
    * @returns {Promise<Object|null>} - Best match or null
    */
-  const getBestTeamMatch = async (teamName) => {
+  const getBestTeamMatch = async teamName => {
     const matches = await getTeamMatches(teamName)
-    
+
     if (matches.length === 0) {
       return null
     }
@@ -90,7 +89,7 @@ export function useTeamLogosBackend(options = {}) {
    * @param {string} teamName - Team name to search for
    * @returns {Promise<string|null>} - Team ID or null
    */
-  const getTeamId = async (teamName) => {
+  const getTeamId = async teamName => {
     const match = await getBestTeamMatch(teamName)
     return match ? match.id : null
   }
@@ -100,12 +99,12 @@ export function useTeamLogosBackend(options = {}) {
    * @param {string} teamName - Team name to search for
    * @returns {Promise<string|null>} - Logo URL or null
    */
-  const getTeamLogoUrl = async (teamName) => {
+  const getTeamLogoUrl = async teamName => {
     if (!teamName) return null
 
     const cacheKey = `logo_${teamName.toLowerCase()}`
     const cached = logoCache.get(cacheKey)
-    
+
     if (cached && Date.now() - cached.timestamp < cacheTimeout) {
       return cached.url
     }
@@ -121,7 +120,7 @@ export function useTeamLogosBackend(options = {}) {
     }
 
     const logoUrl = `/api/logos?teamId=${encodeURIComponent(teamId)}`
-    
+
     // Cache the logo URL
     logoCache.set(cacheKey, {
       url: logoUrl,
@@ -136,9 +135,9 @@ export function useTeamLogosBackend(options = {}) {
    * @param {import('vue').Ref<string>} teamNameRef - Reactive team name reference
    * @returns {import('vue').ComputedRef<string|null>} - Reactive logo URL
    */
-  const createReactiveLogoUrl = (teamNameRef) => {
+  const createReactiveLogoUrl = teamNameRef => {
     const logoUrl = ref(null)
-    
+
     // Watch for changes in team name and update logo URL
     const updateLogoUrl = async () => {
       if (teamNameRef.value) {
@@ -187,7 +186,7 @@ export function useTeamLogosBackend(options = {}) {
    * @param {string} teamName - Team name to check
    * @returns {Promise<boolean>} - True if logo is available
    */
-  const hasTeamLogo = async (teamName) => {
+  const hasTeamLogo = async teamName => {
     const logoUrl = await getTeamLogoUrl(teamName)
     return logoUrl !== null
   }
@@ -216,7 +215,7 @@ export function useTeamLogosBackend(options = {}) {
    * Preload team matches for common searches
    * @param {Array<string>} teamNames - Array of team names to preload
    */
-  const preloadTeamMatches = async (teamNames) => {
+  const preloadTeamMatches = async teamNames => {
     const promises = teamNames.map(name => getTeamMatches(name))
     await Promise.allSettled(promises)
   }
@@ -241,4 +240,4 @@ export function useTeamLogosBackend(options = {}) {
     // Utilities
     getCacheStats
   }
-} 
+}

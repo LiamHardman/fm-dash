@@ -26,7 +26,6 @@
 
 <script>
 import { useQuasar } from 'quasar'
-import { computed } from 'vue'
 
 export default {
   name: 'PlayerTableHeader',

@@ -13,7 +13,7 @@ const getApiEndpoint = () => {
 }
 
 // If no API_ENDPOINT is set, use the current location
-const resolvedApiEndpoint = API_ENDPOINT || getApiEndpoint()
+const _resolvedApiEndpoint = API_ENDPOINT || getApiEndpoint()
 
 export default {
   async uploadPlayerFile(formData, maxSizeBytes = 15 * 1024 * 1024, onProgress = null) {
@@ -24,19 +24,19 @@ export default {
 
     try {
       const { uploadFile } = useApi('')
-      
+
       const response = await uploadFile('/upload', file, onProgress)
       return response
     } catch (error) {
       logger.error('Upload error in playerService:', error)
-      
+
       if (error.message?.includes('413') || error.message?.includes('too large')) {
         const maxSizeMB = Math.round(maxSizeBytes / (1024 * 1024))
         const newError = new Error(`File too large. Maximum size allowed is ${maxSizeMB}MB.`)
         newError.status = 413
         throw newError
       }
-      
+
       throw error
     }
   },
@@ -57,9 +57,9 @@ export default {
     if (!datasetId) {
       return Promise.reject(new Error('Dataset ID is required.'))
     }
-    
-    const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms))
-    
+
+    const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
+
     try {
       let url = `${API_ENDPOINT}/api/players/${datasetId}`
       const params = new URLSearchParams()
@@ -108,12 +108,22 @@ export default {
         if (response.status === 404) {
           // Handle potential race condition in multi-replica deployments
           if (retryCount < maxRetries) {
-            logger.warn(`Dataset not found (attempt ${retryCount + 1}/${maxRetries + 1}), retrying in ${200 * Math.pow(2, retryCount)}ms...`)
-            await delay(200 * Math.pow(2, retryCount)) // Exponential backoff: 200ms, 400ms, 800ms
+            logger.warn(
+              `Dataset not found (attempt ${retryCount + 1}/${maxRetries + 1}), retrying in ${200 * 2 ** retryCount}ms...`
+            )
+            await delay(200 * 2 ** retryCount) // Exponential backoff: 200ms, 400ms, 800ms
             return this.getPlayersByDatasetId(
-              datasetId, position, role, ageRange, transferValueRange, 
-              maxSalary, divisionFilter, targetDivision, positionCompare, 
-              retryCount + 1, maxRetries
+              datasetId,
+              position,
+              role,
+              ageRange,
+              transferValueRange,
+              maxSalary,
+              divisionFilter,
+              targetDivision,
+              positionCompare,
+              retryCount + 1,
+              maxRetries
             )
           }
           throw new Error(`Player data not found for ID: ${datasetId}.`)
@@ -174,14 +184,14 @@ export default {
         },
         body: JSON.stringify(configUpdate)
       })
-      
+
       if (!response.ok) {
         const errorText = await response.text()
         throw new Error(
           `API Error updating config: ${response.status} - ${errorText || response.statusText}`
         )
       }
-      
+
       return await response.json()
     } catch (error) {
       logger.error('Error updating config in playerService:', error)

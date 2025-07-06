@@ -325,14 +325,14 @@
 <script>
 import { useQuasar } from 'quasar'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import { memoize, memoizedComputed, useMemoizedComputeds } from '../composables/useMemoization'
+import { useRouter } from 'vue-router'
+import { memoize } from '../composables/useMemoization'
 import { useOptimizedSorting } from '../composables/useVirtualScrolling'
 import { usePlayerCalculationWorker } from '../composables/useWebWorkers'
 import { usePlayerStore } from '../stores/playerStore'
+import { useUiStore } from '../stores/uiStore'
 import { useWishlistStore } from '../stores/wishlistStore'
 import { formatCurrency } from '../utils/currencyUtils'
-import { useRouter } from 'vue-router'
-import { useUiStore } from '../stores/uiStore'
 
 const MAX_DISPLAY_PLAYERS = 1000
 
@@ -362,8 +362,8 @@ export default {
     const $q = useQuasar()
     const playerStore = usePlayerStore()
     const wishlistStore = useWishlistStore()
-    const router = useRouter()
-    const uiStore = useUiStore()
+    const _router = useRouter()
+    const _uiStore = useUiStore()
 
     // Initialize optimized sorting and web workers
     const { sortLargeArray, clearSortCache } = useOptimizedSorting()
@@ -756,12 +756,12 @@ export default {
         baseColumnDefinitions.wage,
         baseColumnDefinitions.Overall
       ]
-      
+
       // Add value score column if enabled
       if (props.showValueScore) {
         newOrderBase.push(baseColumnDefinitions.valueScore)
       }
-      
+
       const fifaColumnsInOrder = props.isGoalkeeperView
         ? [
             allFifaStatDefinitions.DIV,
@@ -779,7 +779,7 @@ export default {
             allFifaStatDefinitions.DEF,
             allFifaStatDefinitions.PHY
           ]
-      
+
       const trailingColumns = [
         baseColumnDefinitions.personality,
         baseColumnDefinitions.media_handling
@@ -895,12 +895,12 @@ export default {
           totalSortedCount.value = props.players.length
           isSliced.value = props.players.length > MAX_DISPLAY_PLAYERS
           lastSortKey.value = currentSortKey
-          
+
           // Defer sorting to next tick to avoid blocking UI
           nextTick(() => {
             triggerAsyncSort(fieldKey, direction, customSortFn, currentSortKey)
           })
-          
+
           return initialDisplay
         }
 
@@ -965,8 +965,7 @@ export default {
               sortField.value,
               props.isGoalkeeperView
             )
-          } catch (workerError) {
-            console.warn('Web Worker failed, falling back to main thread:', workerError)
+          } catch (_workerError) {
             // Fallback to main thread if Web Worker fails
             fullSortedList = await sortLargeArray(
               [...props.players],
@@ -1009,12 +1008,10 @@ export default {
           sortedPlayersCache.value = result
           lastSortKey.value = sortKey
         })
-      } catch (error) {
+      } catch (_error) {
         if (sortController.cancelled) {
           return
         }
-
-        console.error('Error during async sorting:', error.message || error)
 
         // Show user-friendly error notification
         $q.notify({
@@ -1119,16 +1116,16 @@ export default {
       return 'money-uniform'
     }
 
-    const getValueScoreClass = (valueScore) => {
+    const getValueScoreClass = valueScore => {
       if (valueScore === null || valueScore === undefined) return 'rating-na'
       const score = Number(valueScore)
       if (Number.isNaN(score)) return 'rating-na'
-      
+
       if (score >= 80) return 'rating-tier-6' // Excellent value - highest tier
       if (score >= 60) return 'rating-tier-5' // Great value
       if (score >= 40) return 'rating-tier-4' // Good value
       if (score >= 20) return 'rating-tier-3' // Fair value
-      if (score >= 0) return 'rating-tier-2'  // Poor value
+      if (score >= 0) return 'rating-tier-2' // Poor value
       return 'rating-na'
     }
 
@@ -1182,8 +1179,6 @@ export default {
     }
 
     const sortTable = fieldName => {
-      console.time('PlayerDataTable: sortTable_execution')
-
       // Prevent rapid clicking during sort operations
       if (isAsyncSorting.value) {
         return
@@ -1229,7 +1224,6 @@ export default {
         isValueScore: currentColumns.value.find(c => c.name === fieldName)?.isValueScore,
         displayField: fieldName
       })
-      console.timeEnd('PlayerDataTable: sortTable_execution')
     }
 
     const onRowClick = player => {

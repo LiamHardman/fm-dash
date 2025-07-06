@@ -130,9 +130,9 @@
 
 <script>
 import { useQuasar } from 'quasar'
-import { computed, defineComponent, onMounted, ref, watch } from 'vue'
-import PlayerDetailDialog from './PlayerDetailDialog.vue'
+import { defineComponent, onMounted, ref, watch } from 'vue'
 import PlayerDataTable from './PlayerDataTable.vue'
+import PlayerDetailDialog from './PlayerDetailDialog.vue'
 
 export default defineComponent({
   name: 'FreeAgentsDialog',
@@ -171,20 +171,22 @@ export default defineComponent({
     // Methods
     const findFreeAgents = async () => {
       loading.value = true
-      
+
       try {
         // Filter players without clubs and sort by overall rating
         const freePlayersList = props.players
           .filter(player => {
             // Check if player has no club (various possible formats)
             const club = player.club
-            return !club || 
-                   club === '' || 
-                   club === '-' || 
-                   club === 'Free Agent' ||
-                   club === 'Unattached' ||
-                   club.toLowerCase().includes('free') ||
-                   club.toLowerCase().includes('unattached')
+            return (
+              !club ||
+              club === '' ||
+              club === '-' ||
+              club === 'Free Agent' ||
+              club === 'Unattached' ||
+              club.toLowerCase().includes('free') ||
+              club.toLowerCase().includes('unattached')
+            )
           })
           .sort((a, b) => {
             // Sort by Overall rating (highest first)
@@ -192,10 +194,9 @@ export default defineComponent({
             const overallB = Number(b.Overall) || 0
             return overallB - overallA
           })
-        
+
         freeAgents.value = freePlayersList
-      } catch (error) {
-        console.error('Error finding free agents:', error)
+      } catch (_error) {
         qInstance.notify({
           message: 'Error finding free agents. Please try again.',
           color: 'negative',
@@ -206,12 +207,12 @@ export default defineComponent({
       }
     }
 
-    const handlePlayerSelected = (player) => {
+    const handlePlayerSelected = player => {
       selectedPlayer.value = player
       showPlayerDetail.value = true
     }
 
-    const handleTeamSelected = (teamName) => {
+    const handleTeamSelected = _teamName => {
       // For free agents, we don't need team selection functionality
       // but we need to provide the handler for PlayerDataTable compatibility
     }

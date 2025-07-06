@@ -245,16 +245,16 @@ import { useQuasar } from 'quasar'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BargainHunterDialog from '../components/BargainHunterDialog.vue'
+import ExportOptionsDialog from '../components/ExportOptionsDialog.vue'
 import FreeAgentsDialog from '../components/FreeAgentsDialog.vue'
+import PlayerFilters from '../components/filters/PlayerFilters.vue'
 import PlayerDataTable from '../components/PlayerDataTable.vue'
 import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
 import UpgradeFinderDialog from '../components/UpgradeFinderDialog.vue'
 import WonderkidsDialog from '../components/WonderkidsDialog.vue'
-import PlayerFilters from '../components/filters/PlayerFilters.vue'
-import ExportOptionsDialog from '../components/ExportOptionsDialog.vue'
+import { useAnalytics } from '../composables/useAnalytics'
 import { usePlayerStore } from '../stores/playerStore'
 import { useWishlistStore } from '../stores/wishlistStore'
-import { useAnalytics } from '../composables/useAnalytics'
 import { exportPlayersWithOptions, validateExportData } from '../utils/csvExport'
 
 const rawTechnicalAttributeKeysConst = [
@@ -572,26 +572,28 @@ export default {
 
     const isGoalkeeperView = computed(() => {
       // First check explicit position or role filters
-      if (currentFilters.value.position === 'GK' || currentFilters.value.role?.includes('Goalkeeper')) {
+      if (
+        currentFilters.value.position === 'GK' ||
+        currentFilters.value.role?.includes('Goalkeeper')
+      ) {
         return true
       }
-      
+
       // If we have filtered players, check if majority are goalkeepers
       if (filteredPlayers.value && filteredPlayers.value.length > 0) {
         const goalkeeperCount = filteredPlayers.value.filter(player => {
-          const isGK = (
+          const isGK =
             player.position?.includes('GK') ||
             player.shortPositions?.includes('GK') ||
             player.positionGroups?.includes('Goalkeepers')
-          )
           return isGK
         }).length
-        
+
         // Show goalkeeper view if more than 50% of filtered players are goalkeepers
         // and we have at least one goalkeeper
         return goalkeeperCount > 0 && goalkeeperCount > filteredPlayers.value.length / 2
       }
-      
+
       return false
     })
 
@@ -659,7 +661,7 @@ export default {
           timeout: 2000
         })
       }
-      
+
       // Track the share event using our analytics service
       analytics.shareDataset(currentDatasetId.value)
     }
@@ -667,7 +669,7 @@ export default {
     const handlePlayerSelected = player => {
       playerForDetailView.value = player
       showPlayerDetailDialog.value = true
-      
+
       // Track player detail view
       analytics.viewPlayerDetails(player.id || player.name, player.name)
     }
@@ -683,7 +685,6 @@ export default {
         }).href
         const newWindow = window.open(url, '_blank')
         if (!newWindow) {
-          console.error('Failed to open new window - likely blocked by popup blocker')
         } else {
           // Track team navigation
           analytics.navigateToTeamView(teamName, currentDatasetId.value)
@@ -700,10 +701,18 @@ export default {
       Object.keys(filtersFromChild).forEach(filterKey => {
         const newValue = filtersFromChild[filterKey]
         const oldValue = currentFilters.value[filterKey]
-        
+
         // Only track if the value actually changed and is meaningful
-        if (newValue !== oldValue && newValue !== '' && newValue !== null && newValue !== undefined) {
-          analytics.useFilter(filterKey, typeof newValue === 'object' ? JSON.stringify(newValue) : newValue)
+        if (
+          newValue !== oldValue &&
+          newValue !== '' &&
+          newValue !== null &&
+          newValue !== undefined
+        ) {
+          analytics.useFilter(
+            filterKey,
+            typeof newValue === 'object' ? JSON.stringify(newValue) : newValue
+          )
         }
       })
 
@@ -747,11 +756,11 @@ export default {
       analytics.trackButtonClick('Export Options', { feature_type: 'export' })
     }
 
-    const handleExportWithOptions = async (exportOptions) => {
+    const handleExportWithOptions = async exportOptions => {
       try {
         // Validate the export data
         const validation = validateExportData(filteredPlayers.value)
-        
+
         if (!validation.valid) {
           quasarInstance.notify({
             type: 'negative',
@@ -760,7 +769,7 @@ export default {
           })
           return
         }
-        
+
         // Show warnings if any
         if (validation.warnings.length > 0) {
           validation.warnings.forEach(warning => {
@@ -771,10 +780,10 @@ export default {
             })
           })
         }
-        
+
         // Export with options
         await exportPlayersWithOptions(filteredPlayers.value, exportOptions)
-        
+
         // Show success message
         quasarInstance.notify({
           type: 'positive',
@@ -787,20 +796,18 @@ export default {
             }
           ]
         })
-        
+
         // Track export event
         analytics.downloadData('players', exportOptions.format)
-        analytics.trackButtonClick(`Export ${exportOptions.format.toUpperCase()}`, { 
+        analytics.trackButtonClick(`Export ${exportOptions.format.toUpperCase()}`, {
           feature_type: 'export',
           player_count: filteredPlayers.value.length,
           preset: exportOptions.preset
         })
-        
+
         // Close the dialog
         showExportOptions.value = false
-        
       } catch (error) {
-        console.error('Export error:', error)
         quasarInstance.notify({
           type: 'negative',
           message: `Export failed: ${error.message}`,
