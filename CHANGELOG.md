@@ -1,3 +1,10 @@
+## [1.0.3](https://github.com/LiamHardman/fm-dash/compare/v1.0.2...v1.0.3) (2025-07-06)
+
+
+### Bug Fixes
+
+* docker image fix ([6adc333](https://github.com/LiamHardman/fm-dash/commit/6adc33325bafb774de5463aca66df32a4b36759c))
+
 ## [1.0.2](https://github.com/LiamHardman/fm-dash/compare/v1.0.1...v1.0.2) (2025-07-06)
 
 
