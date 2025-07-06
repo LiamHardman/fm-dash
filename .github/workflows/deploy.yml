@@ -88,8 +88,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             VITE_API_BASE_URL=/api
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # Removed cache-from and cache-to to prevent SHA256 artifacts
 
       - name: Deployment summary
         run: |
@@ -104,4 +103,103 @@ jobs:
           echo "   docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
           echo "   docker run -p 8080:8080 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
           echo ""
-          echo "📋 For Kubernetes deployment, see kube.yaml in the repository" 
+          echo "📋 For Kubernetes deployment, see kube.yaml in the repository"
+
+  create-release-artifacts:
+    needs: [build-and-push]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: |
+          echo "🏗️ Building frontend for release..."
+          npm run build:prod
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
+          cache-dependency-path: |
+            go.sum
+            src/api/go.sum
+
+      - name: Build Go backend
+        run: |
+          echo "🏗️ Building Go backend for release..."
+          cd src/api
+          go build -o ../../fm-dash-backend .
+
+      - name: Create release archives
+        run: |
+          echo "📦 Creating release archives..."
+          
+          # Create frontend build archive
+          cd dist && tar -czf ../fm-dash-frontend.tar.gz . && cd ..
+          
+          # Create source code archive (excluding node_modules, dist, etc.)
+          tar -czf fm-dash-source.tar.gz \
+            --exclude='node_modules' \
+            --exclude='dist' \
+            --exclude='.git' \
+            --exclude='*.log' \
+            --exclude='coverage' \
+            --exclude='src/api/coverage' \
+            .
+
+      - name: Upload release artifacts
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./fm-dash-frontend.tar.gz
+          asset_name: fm-dash-frontend-${{ github.event.release.tag_name }}.tar.gz
+          asset_content_type: application/gzip
+
+      - name: Upload backend binary
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./fm-dash-backend
+          asset_name: fm-dash-backend-${{ github.event.release.tag_name }}
+          asset_content_type: application/octet-stream
+
+      - name: Upload source archive
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./fm-dash-source.tar.gz
+          asset_name: fm-dash-source-${{ github.event.release.tag_name }}.tar.gz
+          asset_content_type: application/gzip
+
+      - name: Release artifacts summary
+        run: |
+          echo "📦 Release Artifacts Created"
+          echo "============================"
+          echo ""
+          echo "✅ Frontend build archive: fm-dash-frontend-${{ github.event.release.tag_name }}.tar.gz"
+          echo "✅ Backend binary: fm-dash-backend-${{ github.event.release.tag_name }}"
+          echo "✅ Source code archive: fm-dash-source-${{ github.event.release.tag_name }}.tar.gz"
+          echo "✅ Docker image: Available in GitHub Container Registry"
+          echo ""
+          echo "🚀 All artifacts are now available in the GitHub release!" 
