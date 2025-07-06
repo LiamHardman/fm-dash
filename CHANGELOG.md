@@ -1,3 +1,10 @@
+## [1.0.6](https://github.com/LiamHardman/fm-dash/compare/v1.0.5...v1.0.6) (2025-07-06)
+
+
+### Bug Fixes
+
+* dependabot yml ([2e03579](https://github.com/LiamHardman/fm-dash/commit/2e03579edf5e59f7fbafb20bec97ed8bf8ccb17e))
+
 ## [1.0.5](https://github.com/LiamHardman/fm-dash/compare/v1.0.4...v1.0.5) (2025-07-06)
 
 
