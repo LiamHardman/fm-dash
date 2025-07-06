@@ -1,16 +1,16 @@
 {
-  "name": "fm24-golang",
+  "name": "fm-dash",
   "version": "1.4.0",
   "type": "module",
   "private": true,
   "description": "A comprehensive platform for analyzing Football Manager player data",
   "repository": {
     "type": "git",
-    "url": "https://git.liamhardman.com/liam/fm24-golang.git"
+    "url": "https://github.com/LiamHardman/fm-dash.git"
   },
-  "homepage": "https://git.liamhardman.com/liam/fm24-golang#readme",
+  "homepage": "https://github.com/LiamHardman/fm-dash#readme",
   "bugs": {
-    "url": "https://git.liamhardman.com/liam/fm24-golang/issues"
+    "url": "https://github.com/LiamHardman/fm-dash/issues"
   },
   "author": "Liam Hardman",
   "keywords": [
@@ -91,7 +91,7 @@
     "branches": [
       "main"
     ],
-    "repositoryUrl": "https://git.liamhardman.com/liam/fm24-golang.git",
+    "repositoryUrl": "https://github.com/LiamHardman/fm-dash.git",
     "plugins": [
       [
         "@semantic-release/commit-analyzer",
