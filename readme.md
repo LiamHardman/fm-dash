@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![FM-Dash Logo](https://img.shields.io/badge/FM--Dash-Football%20Manager%20Data%20Browser-blue?style=for-the-badge)
+![FM-Dash Logo](https://img.shields.io/badge/FM--Dash-Football%20Manager%20Data%20Analysis-blue?style=for-the-badge)
 
 **A comprehensive platform for analyzing Football Manager player data with enterprise-grade performance and modern web architecture**
 
@@ -22,12 +22,12 @@
 
 ## Overview
 
-FM-Dash is a sophisticated Football Manager data analysis platform that transforms HTML exports into actionable insights. Built with a modern Vue.js frontend and high-performance Go backend, it provides scouts, managers, and analysts with powerful tools for player evaluation, team building, and strategic planning.
+FM-Dash is a sophisticated Football Manager data analysis platform that transforms HTML export data into a one-stop shop for finding your best next signings. Built with a modern Vue.js frontend and high-performance Go backend, it provides scouts, managers, and analysts with powerful tools for player evaluation, team building, and strategic planning.
 
 ## Core Features
 
 ### 🔍 **Advanced Player Analysis**
-- **Specialized Search Tools**: Bargain Hunter, Wonderkids Discovery, and Upgrade Finder dialogs
+- **Specialized Search Tools**: Bargain Hunter, Wonderkids Discovery, Free Agents and Upgrade Finder dialogs
 - **Multi-dimensional Filtering**: Position, nationality, league, club, age, and attribute-based filters
 - **Performance Metrics**: FIFA-style ratings, percentile rankings, and custom calculation algorithms
 - **Detailed Player Profiles**: Comprehensive attribute analysis with visual representations
