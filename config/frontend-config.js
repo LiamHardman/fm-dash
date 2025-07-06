@@ -14,7 +14,7 @@ window.APP_CONFIG = {
   // Application Information
   app: {
     title: 'Football Manager Data Browser',
-    version: '1.4.0',
+    version: '1.0.0',
     description: 'A comprehensive platform for analyzing Football Manager player data',
   },
 
