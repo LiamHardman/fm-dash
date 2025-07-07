@@ -4,9 +4,10 @@ updates:
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+      day: "monday" 
       time: "09:00"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     reviewers:
       - "LiamHardman"
     assignees:
@@ -30,9 +31,10 @@ updates:
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+      day: "tuesday"
       time: "09:00"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 3
     reviewers:
       - "LiamHardman"
     assignees:
@@ -49,9 +51,10 @@ updates:
   - package-ecosystem: "gomod"
     directory: "/src/api"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+      day: "tuesday"
       time: "09:00"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 3
     reviewers:
       - "LiamHardman"
     assignees:
@@ -68,9 +71,10 @@ updates:
   - package-ecosystem: "gomod"
     directory: "/test/api"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+      day: "tuesday" 
       time: "09:00"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 3
     reviewers:
       - "LiamHardman"
     assignees:
@@ -87,9 +91,10 @@ updates:
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+      day: "wednesday"
       time: "09:00"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 2
     reviewers:
       - "LiamHardman"
     assignees:
