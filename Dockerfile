@@ -1,4 +1,4 @@
-FROM node:18-alpine AS vue-builder
+FROM node:24-alpine AS vue-builder
 LABEL stage=vue-builder
 WORKDIR /app-vue
 COPY package*.json ./
