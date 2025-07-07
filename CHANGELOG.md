@@ -1,3 +1,10 @@
+## [1.0.13](https://github.com/LiamHardman/fm-dash/compare/v1.0.12...v1.0.13) (2025-07-07)
+
+
+### Bug Fixes
+
+* audit fix force ([0cc7c3d](https://github.com/LiamHardman/fm-dash/commit/0cc7c3d3c7489b4a14d23904e831532d9eaa298e))
+
 ## [1.0.12](https://github.com/LiamHardman/fm-dash/compare/v1.0.11...v1.0.12) (2025-07-07)
 
 
