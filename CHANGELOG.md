@@ -1,3 +1,10 @@
+## [1.0.15](https://github.com/LiamHardman/fm-dash/compare/v1.0.14...v1.0.15) (2025-07-07)
+
+
+### Bug Fixes
+
+* dockerfile security fixes ([b76468e](https://github.com/LiamHardman/fm-dash/commit/b76468ef639ed8edd4be53febef48d8f8a8b35ea))
+
 ## [1.0.14](https://github.com/LiamHardman/fm-dash/compare/v1.0.13...v1.0.14) (2025-07-07)
 
 
