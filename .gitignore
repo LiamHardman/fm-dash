@@ -110,3 +110,10 @@ temp/
 
 # Claude Code
 .claude/
+
+# CodeQL databases and results
+codeql-databases/
+*.sarif
+
+# Docker security scanning results
+docker-security-results/
