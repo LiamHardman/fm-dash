@@ -1,22 +1,18 @@
 # Backend Dockerfile for Go API
-FROM golang:1.24-bullseye AS go-builder
+FROM golang:1.24-alpine AS go-builder
 LABEL stage=go-builder
 WORKDIR /app-go
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache ca-certificates git
 COPY src/api/go.mod src/api/go.sum ./
 RUN go mod download
 RUN go mod verify
 COPY src/api/ ./
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /app-go/v2fmdash-server .
 
-FROM debian:bullseye-slim
+# Use distroless for maximum security
+FROM gcr.io/distroless/static-debian12:nonroot
 LABEL stage=final-backend
 WORKDIR /app
-
-RUN apt-get update && apt-get install -y \
-    ca-certificates \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
 
 # Copy the built Go binary
 COPY --from=go-builder /app-go/v2fmdash-server .
@@ -24,16 +20,12 @@ COPY --from=go-builder /app-go/v2fmdash-server .
 # Copy public directory if it exists
 COPY --from=go-builder /app-go/public ./public/
 
-# Create application user
-RUN groupadd -r appgroup && useradd -r -g appgroup -d /app -s /sbin/nologin -c "Application User" appuser
-RUN chown -R appuser:appgroup /app/public
-RUN chown appuser:appgroup /app/v2fmdash-server
-
-# Run as non-root user
-USER appuser
+# Copy utils directory containing teams_data.json
+COPY --from=go-builder /app-go/utils ./utils/
 
 EXPOSE 8091
 
 ENV PORT_GO_API=8091
 
+# Run as non-root user (distroless nonroot user)
 CMD ["./v2fmdash-server"] 

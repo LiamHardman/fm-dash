@@ -1,0 +1,97 @@
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+README*
+docs/
+*.txt
+CHANGELOG*
+LICENSE*
+CONTRIBUTING*
+
+# Development files
+.env
+.env.*
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage and test files
+coverage/
+.nyc_output/
+test/
+tests/
+spec/
+**/*.test.js
+**/*.spec.js
+
+# Build artifacts (except needed ones)
+dist/
+build/
+.next/
+.nuxt/
+
+# Node modules (will be installed fresh)
+node_modules/
+
+# Go build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+bin/
+vendor/ 
+
+# Security scan results
+docker-security-results/
+codeql-databases/
+
+# Scripts and utilities not needed in container
+scripts/
+dev-utils/
+launch_dev.*
+run-dev.sh
+debug-config.sh
+
+# Kubernetes configs
+kube*.yaml
+
+# Other config files not needed in production
+biome.json
+vitest.config.js
+# vite.config.js # Actually needed for build process
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp 
