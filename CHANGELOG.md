@@ -1,3 +1,10 @@
+## [1.0.16](https://github.com/LiamHardman/fm-dash/compare/v1.0.15...v1.0.16) (2025-07-07)
+
+
+### Bug Fixes
+
+* scatterplot fixes ([5ed84a5](https://github.com/LiamHardman/fm-dash/commit/5ed84a50256efb04c3dfa8917b7e0c2812da338f))
+
 ## [1.0.15](https://github.com/LiamHardman/fm-dash/compare/v1.0.14...v1.0.15) (2025-07-07)
 
 
