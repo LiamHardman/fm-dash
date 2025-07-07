@@ -69,7 +69,7 @@
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
     "@semantic-release/github": "^11.0.3",
-    "@vitejs/plugin-vue": "^5.2.4",
+    "@vitejs/plugin-vue": "^6.0.0",
     "@vue/test-utils": "^2.4.6",
     "conventional-changelog-conventionalcommits": "^8.0.0",
     "happy-dom": "^18.0.1",
@@ -80,8 +80,8 @@
     "sass": "^1.71.1",
     "semantic-release": "^24.2.6",
     "terser": "^5.43.1",
-    "vite": "^6.3.5",
-    "vitest": "^3.1.4"
+    "vite": "^7.0.2",
+    "vitest": "^3.2.0"
   },
   "lint-staged": {
     "*.{js,ts,vue,json,html,css,scss,md}": [
