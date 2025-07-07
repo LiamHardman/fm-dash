@@ -1,3 +1,10 @@
+## [1.0.8](https://github.com/LiamHardman/fm-dash/compare/v1.0.7...v1.0.8) (2025-07-07)
+
+
+### Bug Fixes
+
+* dependabot name ([de772dd](https://github.com/LiamHardman/fm-dash/commit/de772dd7c24d7cb883ab9fc5babdc8253b09da7d))
+
 ## [1.0.7](https://github.com/LiamHardman/fm-dash/compare/v1.0.6...v1.0.7) (2025-07-06)
 
 
