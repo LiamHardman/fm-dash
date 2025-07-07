@@ -2,7 +2,7 @@ FROM node:24-alpine AS vue-builder
 LABEL stage=vue-builder
 WORKDIR /app-vue
 COPY package*.json ./
-RUN npm install
+RUN npm ci --ignore-scripts
 COPY . .
 ARG VITE_API_BASE_URL=/api
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
@@ -17,6 +17,7 @@ COPY src/api/go.mod src/api/go.sum ./
 RUN go mod download
 RUN go mod verify
 COPY src/api/ ./
+RUN go mod tidy
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /app-go/v2fmdash-server .
 
 FROM debian:bullseye-slim
