@@ -420,6 +420,9 @@
 import { debounce, useQuasar } from 'quasar'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
+import ScatterPlotCard from '../components/ScatterPlotCard.vue'
+import StatCard from '../components/StatCard.vue'
 import { usePlayerStore } from '../stores/playerStore'
 
 const router = useRouter()
@@ -432,7 +435,7 @@ const pageLoadingError = ref('')
 const showPlayerDetailDialog = ref(false)
 const playerForDetailView = ref(null)
 const topPlayersByStat = ref({})
-const _currentTab = ref('attacking')
+const currentTab = ref('attacking')
 const pageLoading = ref(true)
 
 // --- Filter State with new defaults ---
@@ -447,14 +450,14 @@ const positionOptions = ref([])
 
 // --- Computed Properties from Store ---
 const allPlayersData = computed(() => playerStore.allPlayers)
-const _detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol)
+const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol)
 const currentDatasetId = computed(() => playerStore.currentDatasetId)
 
 // --- Computed Properties for Filtering ---
-const _maxMinutes = computed(() =>
+const maxMinutes = computed(() =>
   Math.max(2000, ...allPlayersData.value.map(p => getNumericValue(p.attributes?.Mins) || 0))
 )
-const _maxOverall = computed(() => Math.max(100, ...allPlayersData.value.map(p => p.Overall || 0)))
+const maxOverall = computed(() => Math.max(100, ...allPlayersData.value.map(p => p.Overall || 0)))
 
 // Function to calculate thresholds for ~100 players
 const calculateThresholds = () => {
@@ -567,7 +570,7 @@ const filteredPlayers = computed(() => {
 })
 
 // Computed property for custom display text in division filter
-const _selectedDivisionsDisplayText = computed(() => {
+const selectedDivisionsDisplayText = computed(() => {
   const count = selectedDivisions.value.length
   const allAvailableDivisions = [
     ...new Set(allPlayersData.value.map(p => getPlayerDivision(p)).filter(Boolean))
@@ -583,7 +586,7 @@ const _selectedDivisionsDisplayText = computed(() => {
 })
 
 // Computed property for custom display text in position filter
-const _selectedPositionsDisplayText = computed(() => {
+const selectedPositionsDisplayText = computed(() => {
   const count = selectedPositions.value.length
   if (count === 0) {
     return ''
@@ -920,29 +923,29 @@ const goalkeepingCharts = computed(() =>
 )
 
 // Add computed properties for each subcategory
-const _attackingShootingCharts = computed(() =>
+const attackingShootingCharts = computed(() =>
   attackingCharts.value.filter(c => c.group === 'shooting')
 )
-const _passingCreativeCharts = computed(() =>
+const passingCreativeCharts = computed(() =>
   passingCharts.value.filter(c => c.group === 'creative')
 )
-const _passingProgressionCharts = computed(() =>
+const passingProgressionCharts = computed(() =>
   passingCharts.value.filter(c => c.group === 'progression')
 )
-const _passingCrossingCharts = computed(() =>
+const passingCrossingCharts = computed(() =>
   passingCharts.value.filter(c => c.group === 'crossing')
 )
-const _defendingDuelsCharts = computed(() => defendingCharts.value.filter(c => c.group === 'duels'))
-const _defendingPressingCharts = computed(() =>
+const defendingDuelsCharts = computed(() => defendingCharts.value.filter(c => c.group === 'duels'))
+const defendingPressingCharts = computed(() =>
   defendingCharts.value.filter(c => c.group === 'pressing')
 )
-const _defendingAerialCharts = computed(() =>
+const defendingAerialCharts = computed(() =>
   defendingCharts.value.filter(c => c.group === 'aerial')
 )
-const _defendingWorkrateCharts = computed(() =>
+const defendingWorkrateCharts = computed(() =>
   defendingCharts.value.filter(c => c.group === 'workrate')
 )
-const _goalkeepingShotstoppingCharts = computed(() =>
+const goalkeepingShotstoppingCharts = computed(() =>
   goalkeepingCharts.value.filter(c => c.group === 'shotstopping')
 )
 
@@ -959,7 +962,7 @@ const allStatsForCalculation = computed(() => [
 ])
 
 // --- Helper Methods ---
-const _getPlayerName = player => player.name || player.Name || player.Player || 'Unknown Player'
+const getPlayerName = player => player.name || player.Name || player.Player || 'Unknown Player'
 const getPlayerDivision = player => player.division || player.Division || 'N/A'
 const getNumericValue = val => {
   if (val === undefined || val === null || val === '-' || val === '') return null
@@ -992,8 +995,8 @@ const calculateTopPerformers = () => {
   topPlayersByStat.value = results
 }
 
-const _formatNumber = num => new Intl.NumberFormat().format(num)
-const _openPlayerDetail = player => {
+const formatNumber = num => new Intl.NumberFormat().format(num)
+const openPlayerDetail = player => {
   // Find the full player object from allPlayersData
   const fullPlayer =
     allPlayersData.value.find(p => p.name === player.name && p.club === player.club) || player
@@ -1002,7 +1005,7 @@ const _openPlayerDetail = player => {
   showPlayerDetailDialog.value = true
 }
 
-const _shareDataset = () => {
+const shareDataset = () => {
   if (!currentDatasetId.value) return
   const shareUrl = `${window.location.origin}/performance/${currentDatasetId.value}`
   navigator.clipboard.writeText(shareUrl).then(() => {
@@ -1062,7 +1065,7 @@ const initializeData = async () => {
   }
 }
 
-const _filterDivisionsFn = (val, update) => {
+const filterDivisionsFn = (val, update) => {
   update(() => {
     const needle = val.toLowerCase()
     divisionOptions.value = availableDivisions.value.filter(
@@ -1072,15 +1075,15 @@ const _filterDivisionsFn = (val, update) => {
 }
 
 // Functions to handle select all and clear all divisions
-const _selectAllDivisions = () => {
+const selectAllDivisions = () => {
   selectedDivisions.value = [...availableDivisions.value]
 }
 
-const _clearAllDivisions = () => {
+const clearAllDivisions = () => {
   selectedDivisions.value = []
 }
 
-const _filterPositionsFn = (val, update) => {
+const filterPositionsFn = (val, update) => {
   update(() => {
     const needle = val.toLowerCase()
     positionOptions.value = availablePositions.value.filter(
@@ -1090,11 +1093,11 @@ const _filterPositionsFn = (val, update) => {
 }
 
 // Functions to handle select all and clear all positions
-const _selectAllPositions = () => {
+const selectAllPositions = () => {
   selectedPositions.value = [...availablePositions.value]
 }
 
-const _clearAllPositions = () => {
+const clearAllPositions = () => {
   selectedPositions.value = []
 }
 
@@ -1159,10 +1162,10 @@ watch(
 )
 
 // Add these refs after the existing refs
-const _attackingPlotTab = ref('shooting')
-const _passingPlotTab = ref('creative')
-const _defendingPlotTab = ref('duels')
-const _goalkeepingPlotTab = ref('shotstopping')
+const attackingPlotTab = ref('shooting')
+const passingPlotTab = ref('creative')
+const defendingPlotTab = ref('duels')
+const goalkeepingPlotTab = ref('shotstopping')
 
 onMounted(() => {
   initializeData()

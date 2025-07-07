@@ -15,8 +15,7 @@
         <div :class="{ 'chart-container-hidden': chartData.datasets[0].data.length < 5 }">
           <Scatter 
             :data="chartData" 
-            :options="chartOptions" 
-            @click="handleChartClick"
+            :options="chartOptions"
           />
         </div>
       </q-card-section>
@@ -27,6 +26,7 @@
 import { Chart as ChartJS, Legend, LinearScale, PointElement, Title, Tooltip } from 'chart.js'
 import annotationPlugin from 'chartjs-plugin-annotation'
 import { computed } from 'vue'
+import { Scatter } from 'vue-chartjs'
 
 // Register Chart.js components and the annotation plugin
 ChartJS.register(Title, Tooltip, Legend, PointElement, LinearScale, annotationPlugin)
@@ -117,7 +117,7 @@ const avgY = computed(() => {
 })
 
 // --- Chart Configuration ---
-const _chartData = computed(() => ({
+const chartData = computed(() => ({
   datasets: [
     {
       data: processedData.value,
@@ -128,7 +128,7 @@ const _chartData = computed(() => ({
   ]
 }))
 
-const _chartOptions = computed(() => ({
+const chartOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: true,
   aspectRatio: 1.5,
