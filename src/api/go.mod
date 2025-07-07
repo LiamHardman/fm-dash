@@ -5,7 +5,7 @@ go 1.24.3
 require (
 	github.com/google/uuid v1.6.0
 	github.com/klauspost/compress v1.18.0
-	github.com/minio/minio-go/v7 v7.0.92
+	github.com/minio/minio-go/v7 v7.0.94
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.62.0
 	go.opentelemetry.io/otel v1.37.0
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.12.2
