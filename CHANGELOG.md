@@ -1,3 +1,10 @@
+## [1.0.12](https://github.com/LiamHardman/fm-dash/compare/v1.0.11...v1.0.12) (2025-07-07)
+
+
+### Bug Fixes
+
+* codeql ([c7ac4cd](https://github.com/LiamHardman/fm-dash/commit/c7ac4cd40da23fe94162588a5ae65e0ad5c1dd1c))
+
 ## [1.0.11](https://github.com/LiamHardman/fm-dash/compare/v1.0.10...v1.0.11) (2025-07-07)
 
 
