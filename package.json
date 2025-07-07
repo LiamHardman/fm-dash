@@ -1,6 +1,6 @@
 {
   "name": "fm-dash",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "type": "module",
   "private": true,
   "description": "A comprehensive platform for analyzing Football Manager player data",

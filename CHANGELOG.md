@@ -1,3 +1,10 @@
+## [1.0.14](https://github.com/LiamHardman/fm-dash/compare/v1.0.13...v1.0.14) (2025-07-07)
+
+
+### Bug Fixes
+
+* security scan local scripts ([daa560c](https://github.com/LiamHardman/fm-dash/commit/daa560c4551314d0bdafadaaa567d42d95321d06))
+
 ## [1.0.13](https://github.com/LiamHardman/fm-dash/compare/v1.0.12...v1.0.13) (2025-07-07)
 
 
