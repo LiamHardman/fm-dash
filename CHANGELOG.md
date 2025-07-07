@@ -1,3 +1,27 @@
+## [1.0.10](https://github.com/LiamHardman/fm-dash/compare/v1.0.9...v1.0.10) (2025-07-07)
+
+
+### Bug Fixes
+
+* dockerfile ([efc2d96](https://github.com/LiamHardman/fm-dash/commit/efc2d96b6753dc243e490ad0154db6a46b8d8d18))
+* pipeline fix ([3234344](https://github.com/LiamHardman/fm-dash/commit/32343444896984705114700201c9de6a9b81a65d))
+* scan fix ([71f6023](https://github.com/LiamHardman/fm-dash/commit/71f6023c60ce3c9b3875f5839583d5c27af49b7f))
+* update to vite 7 ([d4ca4e5](https://github.com/LiamHardman/fm-dash/commit/d4ca4e5d4b5a114ef23bc28f36e16a6ef2e90a5b))
+
+## [1.0.9](https://github.com/LiamHardman/fm-dash/compare/v1.0.8...v1.0.9) (2025-07-07)
+
+
+### Bug Fixes
+
+* dockerfile tweak ([60b30cf](https://github.com/LiamHardman/fm-dash/commit/60b30cf99066791a52dfb655c5b2f6a66fa90f92))
+
+## [1.0.8](https://github.com/LiamHardman/fm-dash/compare/v1.0.7...v1.0.8) (2025-07-07)
+
+
+### Bug Fixes
+
+* dependabot name ([de772dd](https://github.com/LiamHardman/fm-dash/commit/de772dd7c24d7cb883ab9fc5babdc8253b09da7d))
+
 ## [1.0.7](https://github.com/LiamHardman/fm-dash/compare/v1.0.6...v1.0.7) (2025-07-06)
 
 
