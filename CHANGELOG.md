@@ -1,3 +1,10 @@
+## [1.1.6](https://github.com/LiamHardman/fm-dash/compare/v1.1.5...v1.1.6) (2025-07-08)
+
+
+### Bug Fixes
+
+* pls semver docker tags pls ([929e1ae](https://github.com/LiamHardman/fm-dash/commit/929e1ae9c867492b61024cd416da423e36cc7665))
+
 ## [1.1.5](https://github.com/LiamHardman/fm-dash/compare/v1.1.4...v1.1.5) (2025-07-08)
 
 
