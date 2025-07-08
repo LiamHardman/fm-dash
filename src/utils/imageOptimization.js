@@ -5,6 +5,24 @@
 import { computed, ref } from 'vue'
 
 /**
+ * Validates if a URL is from the trusted flagcdn.com domain
+ * Prevents URL injection attacks by validating the full hostname
+ */
+function isValidFlagCdnUrl(url) {
+  if (typeof url !== 'string') return false
+  
+  try {
+    const urlObj = new URL(url)
+    const hostname = urlObj.hostname.toLowerCase()
+    
+    // Only allow exact domain or subdomains of flagcdn.com
+    return hostname === 'flagcdn.com' || hostname.endsWith('.flagcdn.com')
+  } catch (error) {
+    return false
+  }
+}
+
+/**
  * Creates optimized image URLs with fallbacks
  * @param {string} baseUrl - Base image URL
  * @param {object} options - Optimization options
@@ -20,7 +38,8 @@ export function createOptimizedImageUrl(baseUrl, options = {}) {
   } = options
 
   // For external services like flagcdn.com, create optimized URLs
-  if (baseUrl.includes('flagcdn.com')) {
+  // Secure domain validation to prevent URL injection
+  if (isValidFlagCdnUrl(baseUrl)) {
     const webpUrl = baseUrl.replace(/\.(png|jpg|jpeg)$/, '.webp')
     return {
       webp: webpUrl,

@@ -3,6 +3,8 @@
  * Handles exporting filtered player datasets to CSV format
  */
 
+import { safeMerge } from './security.js'
+
 /**
  * Convert a value to CSV-safe string
  * @param {*} value - The value to convert
@@ -518,18 +520,19 @@ export async function exportPlayersToJSONWithOptions(players, exportOptions, fil
     const { options } = exportOptions
 
     if (options.basicInfo) {
-      Object.assign(filteredPlayer, {
+      const basicInfo = {
         name: player.name,
         age: player.age,
         nationality: player.nationality,
         club: player.club,
         position: player.position,
         shortPositions: player.shortPositions
-      })
+      }
+      Object.assign(filteredPlayer, safeMerge(filteredPlayer, basicInfo))
     }
 
     if (options.fifahStats) {
-      Object.assign(filteredPlayer, {
+      const fifaStats = {
         Overall: player.Overall,
         Potential: player.Potential,
         PAC: player.PAC,
@@ -539,7 +542,8 @@ export async function exportPlayersToJSONWithOptions(players, exportOptions, fil
         DEF: player.DEF,
         PHY: player.PHY,
         GK: player.GK
-      })
+      }
+      Object.assign(filteredPlayer, safeMerge(filteredPlayer, fifaStats))
     }
 
     if (options.fmStats && player.attributes) {
@@ -555,23 +559,25 @@ export async function exportPlayersToJSONWithOptions(players, exportOptions, fil
     }
 
     if (options.contractInfo) {
-      Object.assign(filteredPlayer, {
+      const contractInfo = {
         transferValue: player.transferValue,
         transferValueAmount: player.transferValueAmount,
         wage: player.wage,
         wageAmount: player.wageAmount,
         contractExpiry: player.contractExpiry
-      })
+      }
+      Object.assign(filteredPlayer, safeMerge(filteredPlayer, contractInfo))
     }
 
     if (options.personalInfo) {
-      Object.assign(filteredPlayer, {
+      const personalInfo = {
         personality: player.personality,
         media_handling: player.media_handling,
         foot: player.foot,
         height: player.height,
         weight: player.weight
-      })
+      }
+      Object.assign(filteredPlayer, safeMerge(filteredPlayer, personalInfo))
     }
 
     return filteredPlayer

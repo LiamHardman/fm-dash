@@ -1,6 +1,10 @@
-// Worker for expensive player calculations
-// This runs in a separate thread to avoid blocking the main UI thread
+/**
+ * Player Calculation Worker
+ * Handles computationally expensive player sorting and filtering operations
+ * Updated with security fixes to prevent remote property injection
+ */
 
+// GK stat mapping for goalkeeper view
 const gkStatMapping = {
   PAC: 'SPD',
   SHO: 'KIC',
@@ -28,13 +32,46 @@ const positionSortOrder = [
   'ST'
 ]
 
+// Security utilities
+const SAFE_PLAYER_PROPERTIES = new Set([
+  'name', 'age', 'nationality', 'club', 'position', 'shortPositions',
+  'Overall', 'Potential', 'PAC', 'SHO', 'PAS', 'DRI', 'DEF', 'PHY', 'GK',
+  'transferValue', 'transferValueAmount', 'wage', 'wageAmount', 'contractExpiry',
+  'personality', 'media_handling', 'foot', 'height', 'weight',
+  'attributes', 'roleSpecificOveralls', 'performancePercentiles'
+])
+
+const DANGEROUS_PROPS = new Set([
+  '__proto__', 'constructor', 'prototype', 'toString', 'valueOf',
+  'hasOwnProperty', 'isPrototypeOf', 'propertyIsEnumerable'
+])
+
 /**
- * Get player value with GK mapping applied
+ * Safely validates if a property is safe for access
+ */
+function isValidPlayerProperty(propertyName) {
+  if (typeof propertyName !== 'string') return false
+  if (propertyName.includes('__')) return false
+  if (DANGEROUS_PROPS.has(propertyName)) return false
+  return SAFE_PLAYER_PROPERTIES.has(propertyName)
+}
+
+/**
+ * Get player value with GK mapping applied - SECURE VERSION
+ * Prevents remote property injection by validating property names
  */
 function getPlayerValue(player, fieldKey, columnName = null, isGoalkeeperView = false) {
+  if (!player || typeof player !== 'object') return undefined
+  
+  // Validate fieldKey to prevent remote property injection
+  if (!isValidPlayerProperty(fieldKey)) {
+    console.warn(`Invalid property access attempted: ${fieldKey}`)
+    return undefined
+  }
+
   if (!isGoalkeeperView && player.position && player.position.includes('GK')) {
     const mappedStat = gkStatMapping[columnName || fieldKey]
-    if (mappedStat && player[mappedStat] !== undefined) {
+    if (mappedStat && isValidPlayerProperty(mappedStat) && player[mappedStat] !== undefined) {
       return player[mappedStat]
     }
   }
@@ -276,6 +313,12 @@ function batchProcess(players, operations) {
 
 // Handle messages from main thread
 self.onmessage = e => {
+  // Validate message origin for security
+  if (e.origin && e.origin !== self.location.origin) {
+    console.warn(`Invalid message origin: ${e.origin}`)
+    return
+  }
+
   const { type, data, id } = e.data
 
   try {
