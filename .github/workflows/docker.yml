@@ -9,6 +9,10 @@ on:
   release:
     types: [published]
   workflow_dispatch: # Allow manual trigger
+  # Trigger when semantic-release creates a tag
+  create:
+    tags:
+      - 'v*'
 
 jobs:
   docker-build:
@@ -60,9 +64,12 @@ jobs:
           tags: |
             type=ref,event=branch
             type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern=v{{version}}
+            type=semver,pattern=v{{major}}.{{minor}}
+            type=semver,pattern=v{{major}}
             type=raw,value=latest,enable={{is_default_branch}}
+          flavor: |
+            latest=auto
           labels: |
             org.opencontainers.image.title=FM-Dash
             org.opencontainers.image.description=A comprehensive platform for analyzing Football Manager player data
