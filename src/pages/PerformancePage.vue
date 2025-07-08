@@ -131,6 +131,8 @@
                             dark
                             popup-content-class="bg-grey-10"
                             :display-value="selectedPositionsDisplayText"
+                            emit-value
+                            map-options
                         >
                              <template v-slot:no-option>
                                 <q-item>
@@ -480,6 +482,7 @@ const calculateThresholds = () => {
     const positionMatch =
       selectedPositions.value.length === 0 ||
       selectedPositions.value.some(selectedPos => {
+        // Handle position groups
         if (selectedPos === 'Goalkeeper') return player.shortPositions?.includes('GK')
         if (selectedPos === 'Defender')
           return player.shortPositions?.some(pos => ['DC', 'DR', 'DL', 'WBR', 'WBL'].includes(pos))
@@ -488,6 +491,29 @@ const calculateThresholds = () => {
             ['DM', 'MC', 'MR', 'ML', 'AMR', 'AMC', 'AML'].includes(pos)
           )
         if (selectedPos === 'Forward') return player.shortPositions?.includes('ST')
+
+        // Handle specific positions
+        if (
+          [
+            'GK',
+            'DC',
+            'DR',
+            'DL',
+            'WBR',
+            'WBL',
+            'DM',
+            'MC',
+            'MR',
+            'ML',
+            'AMC',
+            'AMR',
+            'AML',
+            'ST'
+          ].includes(selectedPos)
+        ) {
+          return player.shortPositions?.includes(selectedPos)
+        }
+
         return false
       })
 
@@ -529,7 +555,39 @@ const availableDivisions = computed(() => {
 })
 
 const availablePositions = computed(() => {
-  return ['Goalkeeper', 'Defender', 'Midfielder', 'Forward']
+  return [
+    // Position Groups
+    { label: '--- Position Groups ---', value: null, disable: true },
+    { label: 'Goalkeeper', value: 'Goalkeeper', group: true },
+    { label: 'Defender', value: 'Defender', group: true },
+    { label: 'Midfielder', value: 'Midfielder', group: true },
+    { label: 'Forward', value: 'Forward', group: true },
+
+    // Specific Positions
+    { label: '--- Specific Positions ---', value: null, disable: true },
+
+    // Goalkeeper
+    { label: 'GK - Goalkeeper', value: 'GK' },
+
+    // Defenders
+    { label: 'DC - Centre Back', value: 'DC' },
+    { label: 'DR - Right Back', value: 'DR' },
+    { label: 'DL - Left Back', value: 'DL' },
+    { label: 'WBR - Right Wing-Back', value: 'WBR' },
+    { label: 'WBL - Left Wing-Back', value: 'WBL' },
+
+    // Midfielders
+    { label: 'DM - Defensive Midfielder', value: 'DM' },
+    { label: 'MC - Centre Midfielder', value: 'MC' },
+    { label: 'MR - Right Midfielder', value: 'MR' },
+    { label: 'ML - Left Midfielder', value: 'ML' },
+    { label: 'AMC - Attacking Mid (Centre)', value: 'AMC' },
+    { label: 'AMR - Attacking Mid (Right)', value: 'AMR' },
+    { label: 'AML - Attacking Mid (Left)', value: 'AML' },
+
+    // Forwards
+    { label: 'ST - Striker', value: 'ST' }
+  ]
 })
 
 const filteredPlayers = computed(() => {
@@ -554,6 +612,7 @@ const filteredPlayers = computed(() => {
     const matchesPosition =
       selectedPositions.value.length === 0 ||
       selectedPositions.value.some(selectedPos => {
+        // Handle position groups
         if (selectedPos === 'Goalkeeper') return player.shortPositions?.includes('GK')
         if (selectedPos === 'Defender')
           return player.shortPositions?.some(pos => ['DC', 'DR', 'DL', 'WBR', 'WBL'].includes(pos))
@@ -562,6 +621,29 @@ const filteredPlayers = computed(() => {
             ['DM', 'MC', 'MR', 'ML', 'AMR', 'AMC', 'AML'].includes(pos)
           )
         if (selectedPos === 'Forward') return player.shortPositions?.includes('ST')
+
+        // Handle specific positions
+        if (
+          [
+            'GK',
+            'DC',
+            'DR',
+            'DL',
+            'WBR',
+            'WBL',
+            'DM',
+            'MC',
+            'MR',
+            'ML',
+            'AMC',
+            'AMR',
+            'AML',
+            'ST'
+          ].includes(selectedPos)
+        ) {
+          return player.shortPositions?.includes(selectedPos)
+        }
+
         return false
       })
 
@@ -591,7 +673,12 @@ const selectedPositionsDisplayText = computed(() => {
   if (count === 0) {
     return ''
   } else if (count <= 3) {
-    return selectedPositions.value.join(', ')
+    // Show labels for the selected positions
+    const labels = selectedPositions.value.map(value => {
+      const option = availablePositions.value.find(opt => opt.value === value)
+      return option ? option.label : value
+    })
+    return labels.join(', ')
   } else {
     return `${count} positions selected`
   }
@@ -1087,14 +1174,16 @@ const filterPositionsFn = (val, update) => {
   update(() => {
     const needle = val.toLowerCase()
     positionOptions.value = availablePositions.value.filter(
-      v => v.toLowerCase().indexOf(needle) > -1
+      option => option.label.toLowerCase().indexOf(needle) > -1
     )
   })
 }
 
 // Functions to handle select all and clear all positions
 const selectAllPositions = () => {
-  selectedPositions.value = [...availablePositions.value]
+  selectedPositions.value = availablePositions.value
+    .filter(option => option.value !== null && !option.disable)
+    .map(option => option.value)
 }
 
 const clearAllPositions = () => {
@@ -1401,6 +1490,16 @@ $border-radius-small: 8px;
                 }
                 :deep(.q-field__label) {
                     color: rgba(255,255,255,0.8);
+                }
+                
+                // Style for position group separators
+                :deep(.q-item--disabled) {
+                    font-weight: 600;
+                    color: rgba(255,255,255,0.6) !important;
+                    background: rgba(255,255,255,0.05);
+                    text-align: center;
+                    font-size: 0.8rem;
+                    pointer-events: none;
                 }
             }
         }
