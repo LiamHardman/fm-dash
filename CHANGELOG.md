@@ -1,3 +1,17 @@
+## [1.1.4](https://github.com/LiamHardman/fm-dash/compare/v1.1.3...v1.1.4) (2025-07-08)
+
+
+### Bug Fixes
+
+* added package lock again ([bd39385](https://github.com/LiamHardman/fm-dash/commit/bd39385ebfb8ce4e3ac02c177d8c5feb1e4c226e))
+* attempt fix for release ([5ba740f](https://github.com/LiamHardman/fm-dash/commit/5ba740f76270c9b99d4eadbec5e45884460cc793))
+* biome fix ([63298e2](https://github.com/LiamHardman/fm-dash/commit/63298e259dade1d4fc99d6359e7b78dd8c9baf16))
+* github semvar ([7104ac2](https://github.com/LiamHardman/fm-dash/commit/7104ac2565bb2ee38cb8b0801b935d41e55d2fd9))
+* package lock remove ([75d2a6e](https://github.com/LiamHardman/fm-dash/commit/75d2a6ec63b4e7cebdf8f4b63c9fbc773d30bc12))
+* release fix ([ff34a3a](https://github.com/LiamHardman/fm-dash/commit/ff34a3a2c01021284a89c4e2c4a9f77c9d1d41c0))
+* semver docker tag ([614a1b5](https://github.com/LiamHardman/fm-dash/commit/614a1b57144c87eafeb23ffe8549e1a0da93efba))
+* semver docker tag ([0291ad8](https://github.com/LiamHardman/fm-dash/commit/0291ad8f94658209a31ef037598a8362d47f58fd))
+
 ## [1.1.3](https://github.com/LiamHardman/fm-dash/compare/v1.1.2...v1.1.3) (2025-07-08)
 
 
