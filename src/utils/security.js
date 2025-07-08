@@ -8,19 +8,48 @@
  * This prevents prototype pollution and remote property injection
  */
 const SAFE_PLAYER_PROPERTIES = new Set([
-  'name', 'age', 'nationality', 'club', 'position', 'shortPositions',
-  'Overall', 'Potential', 'PAC', 'SHO', 'PAS', 'DRI', 'DEF', 'PHY', 'GK',
-  'transferValue', 'transferValueAmount', 'wage', 'wageAmount', 'contractExpiry',
-  'personality', 'media_handling', 'foot', 'height', 'weight',
-  'attributes', 'roleSpecificOveralls', 'performancePercentiles'
+  'name',
+  'age',
+  'nationality',
+  'club',
+  'position',
+  'shortPositions',
+  'Overall',
+  'Potential',
+  'PAC',
+  'SHO',
+  'PAS',
+  'DRI',
+  'DEF',
+  'PHY',
+  'GK',
+  'transferValue',
+  'transferValueAmount',
+  'wage',
+  'wageAmount',
+  'contractExpiry',
+  'personality',
+  'media_handling',
+  'foot',
+  'height',
+  'weight',
+  'attributes',
+  'roleSpecificOveralls',
+  'performancePercentiles'
 ])
 
 /**
  * Dangerous prototype properties that should never be set
  */
 const DANGEROUS_PROPS = new Set([
-  '__proto__', 'constructor', 'prototype', 'toString', 'valueOf',
-  'hasOwnProperty', 'isPrototypeOf', 'propertyIsEnumerable'
+  '__proto__',
+  'constructor',
+  'prototype',
+  'toString',
+  'valueOf',
+  'hasOwnProperty',
+  'isPrototypeOf',
+  'propertyIsEnumerable'
 ])
 
 /**
@@ -44,7 +73,7 @@ export function isValidPlayerProperty(propertyName) {
 export function safeGetPlayerProperty(player, fieldKey) {
   if (!player || typeof player !== 'object') return undefined
   if (!isValidPlayerProperty(fieldKey)) return undefined
-  
+
   return player[fieldKey]
 }
 
@@ -56,21 +85,20 @@ export function safeGetPlayerProperty(player, fieldKey) {
  */
 export function isValidImageUrl(url, trustedDomains = ['flagcdn.com']) {
   if (typeof url !== 'string') return false
-  
+
   try {
     const urlObj = new URL(url)
-    
+
     // Check if the hostname ends with any of the trusted domains
     return trustedDomains.some(domain => {
       // Ensure the domain is at the end of the hostname with proper boundary
       const hostname = urlObj.hostname.toLowerCase()
       const trustedDomain = domain.toLowerCase()
-      
+
       // Exact match or subdomain of trusted domain
-      return hostname === trustedDomain || 
-             hostname.endsWith('.' + trustedDomain)
+      return hostname === trustedDomain || hostname.endsWith(`.${trustedDomain}`)
     })
-  } catch (error) {
+  } catch (_error) {
     return false
   }
 }
@@ -84,22 +112,22 @@ export function isValidImageUrl(url, trustedDomains = ['flagcdn.com']) {
 export function safeMerge(target, source) {
   if (!target || typeof target !== 'object') target = {}
   if (!source || typeof source !== 'object') return target
-  
+
   const result = { ...target }
-  
+
   for (const key in source) {
     // Skip dangerous properties
     if (DANGEROUS_PROPS.has(key)) continue
-    
+
     // Only copy own properties
-    if (!Object.prototype.hasOwnProperty.call(source, key)) continue
-    
+    if (!Object.hasOwn(source, key)) continue
+
     // Skip properties starting with double underscore
     if (key.startsWith('__')) continue
-    
+
     result[key] = source[key]
   }
-  
+
   return result
 }
 
@@ -111,10 +139,10 @@ export function safeMerge(target, source) {
  */
 export function isValidOrigin(origin, allowedOrigins = []) {
   if (typeof origin !== 'string') return false
-  
+
   // Always allow same origin
   if (origin === window.location.origin) return true
-  
+
   // Check against explicitly allowed origins
   return allowedOrigins.includes(origin)
 }
@@ -127,16 +155,16 @@ export function isValidOrigin(origin, allowedOrigins = []) {
  */
 export function sanitizeString(input, maxLength = 1000) {
   if (typeof input !== 'string') return ''
-  
+
   // Truncate if too long
   if (input.length > maxLength) {
     input = input.substring(0, maxLength)
   }
-  
+
   // Remove potentially dangerous characters
   return input
     .replace(/[<>'"]/g, '') // Remove HTML/JS injection chars
-    .replace(/\x00/g, '') // Remove null bytes
+    .replace(/\0/g, '') // Remove null bytes
     .trim()
 }
 
@@ -152,7 +180,7 @@ export function securePropertyAccess(obj, property, allowedProperties) {
   if (typeof property !== 'string') return undefined
   if (!allowedProperties.has(property)) return undefined
   if (DANGEROUS_PROPS.has(property)) return undefined
-  
+
   return obj[property]
 }
 
@@ -163,13 +191,13 @@ export function securePropertyAccess(obj, property, allowedProperties) {
  */
 export function sanitizeFilters(filters) {
   if (!filters || typeof filters !== 'object') return {}
-  
+
   const sanitized = {}
-  
+
   for (const [key, value] of Object.entries(filters)) {
     // Skip dangerous properties
     if (DANGEROUS_PROPS.has(key) || key.startsWith('__')) continue
-    
+
     // Sanitize string values
     if (typeof value === 'string') {
       sanitized[key] = sanitizeString(value, 200)
@@ -192,6 +220,6 @@ export function sanitizeFilters(filters) {
       sanitized[key] = safeMerge({}, value)
     }
   }
-  
+
   return sanitized
-} 
+}

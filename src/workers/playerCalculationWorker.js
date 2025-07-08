@@ -34,16 +34,45 @@ const positionSortOrder = [
 
 // Security utilities
 const SAFE_PLAYER_PROPERTIES = new Set([
-  'name', 'age', 'nationality', 'club', 'position', 'shortPositions',
-  'Overall', 'Potential', 'PAC', 'SHO', 'PAS', 'DRI', 'DEF', 'PHY', 'GK',
-  'transferValue', 'transferValueAmount', 'wage', 'wageAmount', 'contractExpiry',
-  'personality', 'media_handling', 'foot', 'height', 'weight',
-  'attributes', 'roleSpecificOveralls', 'performancePercentiles'
+  'name',
+  'age',
+  'nationality',
+  'club',
+  'position',
+  'shortPositions',
+  'Overall',
+  'Potential',
+  'PAC',
+  'SHO',
+  'PAS',
+  'DRI',
+  'DEF',
+  'PHY',
+  'GK',
+  'transferValue',
+  'transferValueAmount',
+  'wage',
+  'wageAmount',
+  'contractExpiry',
+  'personality',
+  'media_handling',
+  'foot',
+  'height',
+  'weight',
+  'attributes',
+  'roleSpecificOveralls',
+  'performancePercentiles'
 ])
 
 const DANGEROUS_PROPS = new Set([
-  '__proto__', 'constructor', 'prototype', 'toString', 'valueOf',
-  'hasOwnProperty', 'isPrototypeOf', 'propertyIsEnumerable'
+  '__proto__',
+  'constructor',
+  'prototype',
+  'toString',
+  'valueOf',
+  'hasOwnProperty',
+  'isPrototypeOf',
+  'propertyIsEnumerable'
 ])
 
 /**
@@ -62,10 +91,9 @@ function isValidPlayerProperty(propertyName) {
  */
 function getPlayerValue(player, fieldKey, columnName = null, isGoalkeeperView = false) {
   if (!player || typeof player !== 'object') return undefined
-  
+
   // Validate fieldKey to prevent remote property injection
   if (!isValidPlayerProperty(fieldKey)) {
-    console.warn(`Invalid property access attempted: ${fieldKey}`)
     return undefined
   }
 
@@ -315,7 +343,6 @@ function batchProcess(players, operations) {
 self.onmessage = e => {
   // Validate message origin for security
   if (e.origin && e.origin !== self.location.origin) {
-    console.warn(`Invalid message origin: ${e.origin}`)
     return
   }
 

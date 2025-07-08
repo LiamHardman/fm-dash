@@ -10,14 +10,14 @@ import { computed, ref } from 'vue'
  */
 function isValidFlagCdnUrl(url) {
   if (typeof url !== 'string') return false
-  
+
   try {
     const urlObj = new URL(url)
     const hostname = urlObj.hostname.toLowerCase()
-    
+
     // Only allow exact domain or subdomains of flagcdn.com
     return hostname === 'flagcdn.com' || hostname.endsWith('.flagcdn.com')
-  } catch (error) {
+  } catch (_error) {
     return false
   }
 }
