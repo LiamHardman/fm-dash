@@ -1,3 +1,10 @@
+## [1.0.20](https://github.com/LiamHardman/fm-dash/compare/v1.0.19...v1.0.20) (2025-07-08)
+
+
+### Bug Fixes
+
+* security fixes ([f79052c](https://github.com/LiamHardman/fm-dash/commit/f79052cd7716d900062a17d4e7e7a2fd791cebdd))
+
 ## [1.0.19](https://github.com/LiamHardman/fm-dash/compare/v1.0.18...v1.0.19) (2025-07-08)
 
 
