@@ -24,6 +24,7 @@ jobs:
         with:
           fetch-depth: 0 # Fetch full history for changelog generation
           token: ${{ secrets.GITHUB_TOKEN }}
+          ref: gh-release
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -48,6 +49,17 @@ jobs:
           
           # Remove any other remotes to avoid confusion
           git remote remove gitea 2>/dev/null || true
+          
+          # Ensure we're in sync with the remote branch
+          echo "🔄 Syncing with remote repository..."
+          git fetch origin gh-release
+          git reset --hard origin/gh-release
+          git clean -fd
+          
+          echo "📍 Current git state:"
+          echo "Branch: $(git branch --show-current)"
+          echo "Latest commit: $(git log -1 --oneline)"
+          echo "Remote ahead by: $(git rev-list --count HEAD..origin/gh-release) commits"
 
       - name: Install semantic-release locally (preserving existing package.json)
         run: |
