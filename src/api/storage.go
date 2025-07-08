@@ -10,7 +10,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -660,8 +659,14 @@ func (s *LocalFileStorage) Store(datasetID string, data DatasetData) error {
 	ctx, span := StartSpan(ctx, "storage.local_file.store")
 	defer span.End()
 
+	// Validate datasetID to prevent path injection
+	if err := validateID(datasetID, 255); err != nil {
+		RecordError(ctx, fmt.Errorf("invalid dataset ID: %s, error: %v", sanitizeForLogging(datasetID), err), "Invalid dataset ID format")
+		return fmt.Errorf("invalid dataset ID: %w", err)
+	}
+
 	SetSpanAttributes(ctx,
-		attribute.String("dataset.id", datasetID),
+		attribute.String("dataset.id", sanitizeForLogging(datasetID)),
 		attribute.Int("dataset.player_count", len(data.Players)),
 		attribute.String("storage.type", "local_file"),
 	)
@@ -669,7 +674,12 @@ func (s *LocalFileStorage) Store(datasetID string, data DatasetData) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	filename := filepath.Join(s.datasetDir, fmt.Sprintf("%s.json.gz", datasetID))
+	// Safely construct the filename to prevent path injection
+	filename, err := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s.json.gz", datasetID))
+	if err != nil {
+		RecordError(ctx, fmt.Errorf("invalid file path for dataset %s: %v", sanitizeForLogging(datasetID), err), "Path validation failed")
+		return fmt.Errorf("invalid file path: %w", err)
+	}
 
 	// Marshal to JSON
 	jsonData, err := json.Marshal(data)
@@ -692,12 +702,12 @@ func (s *LocalFileStorage) Store(datasetID string, data DatasetData) error {
 	}
 
 	SetSpanAttributes(ctx,
-		attribute.String("file.path", filename),
+		attribute.String("file.path", sanitizeForLogging(filename)),
 		attribute.Int("data.size_bytes", len(jsonData)),
 		attribute.Int("compressed.size_bytes", len(compressedData)),
 	)
 
-	log.Printf("Stored dataset %s to local file: %s", datasetID, filename)
+	log.Printf("Stored dataset %s to local file: %s", sanitizeForLogging(datasetID), sanitizeForLogging(filename))
 	return nil
 }
 
@@ -706,28 +716,42 @@ func (s *LocalFileStorage) Retrieve(datasetID string) (DatasetData, error) {
 	ctx, span := StartSpan(ctx, "storage.local_file.retrieve")
 	defer span.End()
 
+	// Validate datasetID to prevent path injection
+	if err := validateID(datasetID, 255); err != nil {
+		RecordError(ctx, fmt.Errorf("invalid dataset ID: %s, error: %v", sanitizeForLogging(datasetID), err), "Invalid dataset ID format")
+		return DatasetData{}, fmt.Errorf("invalid dataset ID: %w", err)
+	}
+
 	SetSpanAttributes(ctx,
-		attribute.String("dataset.id", datasetID),
+		attribute.String("dataset.id", sanitizeForLogging(datasetID)),
 		attribute.String("storage.type", "local_file"),
 	)
 
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
-	// Try compressed file first
-	filename := filepath.Join(s.datasetDir, fmt.Sprintf("%s.json.gz", datasetID))
+	// Try compressed file first - safely construct the filename
+	filename, err := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s.json.gz", datasetID))
+	if err != nil {
+		RecordError(ctx, fmt.Errorf("invalid file path for dataset %s: %v", sanitizeForLogging(datasetID), err), "Path validation failed")
+		return DatasetData{}, fmt.Errorf("invalid file path: %w", err)
+	}
 	isCompressed := true
 
 	data, err := os.ReadFile(filename)
 	if err != nil {
-		// Try uncompressed file
-		filename = filepath.Join(s.datasetDir, fmt.Sprintf("%s.json", datasetID))
+		// Try uncompressed file - safely construct the filename
+		filename, err = validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s.json", datasetID))
+		if err != nil {
+			RecordError(ctx, fmt.Errorf("invalid file path for dataset %s: %v", sanitizeForLogging(datasetID), err), "Path validation failed")
+			return DatasetData{}, fmt.Errorf("invalid file path: %w", err)
+		}
 		isCompressed = false
 		data, err = os.ReadFile(filename)
 		if err != nil {
 			if os.IsNotExist(err) {
-				RecordError(ctx, fmt.Errorf("dataset %s not found", datasetID), "Dataset not found in local storage")
-				return DatasetData{}, fmt.Errorf("dataset %s not found", datasetID)
+				RecordError(ctx, fmt.Errorf("dataset %s not found", sanitizeForLogging(datasetID)), "Dataset not found in local storage")
+				return DatasetData{}, fmt.Errorf("dataset %s not found", sanitizeForLogging(datasetID))
 			}
 			RecordError(ctx, err, "Failed to read dataset file")
 			return DatasetData{}, fmt.Errorf("failed to read dataset file: %w", err)
@@ -735,7 +759,7 @@ func (s *LocalFileStorage) Retrieve(datasetID string) (DatasetData, error) {
 	}
 
 	SetSpanAttributes(ctx,
-		attribute.String("file.path", filename),
+		attribute.String("file.path", sanitizeForLogging(filename)),
 		attribute.Int("data.size_bytes", len(data)),
 		attribute.Bool("data.compressed", isCompressed),
 	)
@@ -760,23 +784,35 @@ func (s *LocalFileStorage) Retrieve(datasetID string) (DatasetData, error) {
 	}
 
 	SetSpanAttributes(ctx, attribute.Int("dataset.player_count", len(dataset.Players)))
-	log.Printf("Retrieved dataset %s from local file: %s", datasetID, filename)
+	log.Printf("Retrieved dataset %s from local file: %s", sanitizeForLogging(datasetID), sanitizeForLogging(filename))
 	return dataset, nil
 }
 
 func (s *LocalFileStorage) Delete(datasetID string) error {
+	// Validate datasetID to prevent path injection
+	if err := validateID(datasetID, 255); err != nil {
+		return fmt.Errorf("invalid dataset ID: %w", err)
+	}
+
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	// Try to delete both compressed and uncompressed versions
-	compressedFile := filepath.Join(s.datasetDir, fmt.Sprintf("%s.json.gz", datasetID))
-	uncompressedFile := filepath.Join(s.datasetDir, fmt.Sprintf("%s.json", datasetID))
+	// Try to delete both compressed and uncompressed versions - safely construct paths
+	compressedFile, err := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s.json.gz", datasetID))
+	if err != nil {
+		return fmt.Errorf("invalid file path for compressed file: %w", err)
+	}
+
+	uncompressedFile, err := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s.json", datasetID))
+	if err != nil {
+		return fmt.Errorf("invalid file path for uncompressed file: %w", err)
+	}
 
 	// Don't treat "file not found" as an error
 	os.Remove(compressedFile)
 	os.Remove(uncompressedFile)
 
-	log.Printf("Deleted dataset %s from local storage", datasetID)
+	log.Printf("Deleted dataset %s from local storage", sanitizeForLogging(datasetID))
 	return nil
 }
 
@@ -855,24 +891,29 @@ func (s *LocalFileStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatas
 
 		// Skip excluded datasets
 		if excludeSet[datasetID] {
-			log.Printf("Skipping cleanup for excluded dataset: %s", datasetID)
+			log.Printf("Skipping cleanup for excluded dataset: %s", sanitizeForLogging(datasetID))
 			continue
 		}
 
-		// Get file info to check modification time
-		filePath := filepath.Join(s.datasetDir, name)
+		// Get file info to check modification time - safely construct the file path
+		filePath, err := validateAndJoinPath(s.datasetDir, name)
+		if err != nil {
+			log.Printf("Warning: Invalid file path for %s: %v", sanitizeForLogging(name), err)
+			continue
+		}
+
 		info, err := os.Stat(filePath)
 		if err != nil {
-			log.Printf("Warning: Failed to get file info for %s: %v", filePath, err)
+			log.Printf("Warning: Failed to get file info for %s: %v", sanitizeForLogging(filePath), err)
 			continue
 		}
 
 		// Check if file is older than cutoff time
 		if info.ModTime().Before(cutoffTime) {
-			log.Printf("Deleting old dataset file: %s (last modified: %s)", name, info.ModTime().Format(time.RFC3339))
+			log.Printf("Deleting old dataset file: %s (last modified: %s)", sanitizeForLogging(name), info.ModTime().Format(time.RFC3339))
 
 			if err := os.Remove(filePath); err != nil {
-				log.Printf("Warning: Failed to delete old dataset file %s: %v", filePath, err)
+				log.Printf("Warning: Failed to delete old dataset file %s: %v", sanitizeForLogging(filePath), err)
 				continue
 			}
 
@@ -907,7 +948,7 @@ func NewHybridStorage(datasetDir string) (*HybridStorage, error) {
 func (s *HybridStorage) Store(datasetID string, data DatasetData) error {
 	// Store in both memory and local file
 	if err := s.memory.Store(datasetID, data); err != nil {
-		log.Printf("Warning: Failed to store dataset %s in memory: %v", datasetID, err)
+		log.Printf("Warning: Failed to store dataset %s in memory: %v", sanitizeForLogging(datasetID), err)
 	}
 
 	return s.local.Store(datasetID, data)
@@ -917,12 +958,12 @@ func (s *HybridStorage) Retrieve(datasetID string) (DatasetData, error) {
 	// Try memory first for fastest access
 	data, err := s.memory.Retrieve(datasetID)
 	if err == nil {
-		log.Printf("Retrieved dataset %s from memory", datasetID)
+		log.Printf("Retrieved dataset %s from memory", sanitizeForLogging(datasetID))
 		return data, nil
 	}
 
 	// Try persistent storage (critical for multi-replica consistency)
-	log.Printf("Dataset %s not found in memory, checking persistent storage", datasetID)
+	log.Printf("Dataset %s not found in memory, checking persistent storage", sanitizeForLogging(datasetID))
 	data, err = s.local.Retrieve(datasetID)
 	if err != nil {
 		return DatasetData{}, err
@@ -931,13 +972,13 @@ func (s *HybridStorage) Retrieve(datasetID string) (DatasetData, error) {
 	// Store in memory for future access (warm up the cache)
 	go func() {
 		if storeErr := s.memory.Store(datasetID, data); storeErr != nil {
-			log.Printf("Warning: Failed to cache dataset %s in memory: %v", datasetID, storeErr)
+			log.Printf("Warning: Failed to cache dataset %s in memory: %v", sanitizeForLogging(datasetID), storeErr)
 		} else {
-			log.Printf("Successfully cached dataset %s in memory for future access", datasetID)
+			log.Printf("Successfully cached dataset %s in memory for future access", sanitizeForLogging(datasetID))
 		}
 	}()
 
-	log.Printf("Retrieved dataset %s from persistent storage and cached in memory", datasetID)
+	log.Printf("Retrieved dataset %s from persistent storage and cached in memory", sanitizeForLogging(datasetID))
 	return data, nil
 }
 
@@ -945,7 +986,7 @@ func (s *HybridStorage) Delete(datasetID string) error {
 	// Delete from both memory and local file
 	if err := s.memory.Delete(datasetID); err != nil {
 		// Ignore error since it might not exist in memory
-		log.Printf("Note: Dataset %s not found in memory during deletion", datasetID)
+		log.Printf("Note: Dataset %s not found in memory during deletion", sanitizeForLogging(datasetID))
 	}
 	return s.local.Delete(datasetID)
 }

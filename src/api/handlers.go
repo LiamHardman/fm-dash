@@ -13,7 +13,6 @@ import (
 	"math"
 	"net/http"
 	"os"
-	"path/filepath"
 	"runtime"
 	"sort"
 	"strconv"
@@ -1903,14 +1902,14 @@ func facesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate UID format (basic sanitation)
-	if uid == "" || len(uid) > 100 {
-		RecordError(ctx, fmt.Errorf("invalid UID: %s", uid), "Invalid UID format")
-		http.Error(w, "Invalid UID format. UID must be 1-100 characters long.", http.StatusBadRequest)
+	// Validate UID format for security (prevent path injection)
+	if err := validateID(uid, 100); err != nil {
+		RecordError(ctx, fmt.Errorf("invalid UID: %s, error: %v", sanitizeForLogging(uid), err), "Invalid UID format")
+		http.Error(w, "Invalid UID format", http.StatusBadRequest)
 		return
 	}
 
-	logInfo(ctx, "Processing face image request", "uid", uid)
+	logInfo(ctx, "Processing face image request", "uid", sanitizeForLogging(uid))
 
 	// Check if IMAGE_API_URL is configured - if so, redirect to external API
 	if imageAPIURL := os.Getenv("IMAGE_API_URL"); imageAPIURL != "" {
@@ -1933,34 +1932,41 @@ func facesHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Try S3 first if configured
 	if s3Storage, ok := storage.(*S3Storage); ok && s3Storage.client != nil {
-		logInfo(ctx, "Attempting to retrieve face from S3", "filename", faceFileName)
+		logInfo(ctx, "Attempting to retrieve face from S3", "filename", sanitizeForLogging(faceFileName))
 
 		// Get face image from S3
 		if err := s3Storage.getFaceImage(ctx, faceFileName, w); err != nil {
-			logWarn(ctx, "Failed to retrieve face from S3", "filename", faceFileName, "error", err)
+			logWarn(ctx, "Failed to retrieve face from S3", "filename", sanitizeForLogging(faceFileName), "error", err)
 			// Fall through to local storage
 		} else {
-			logInfo(ctx, "Successfully served face from S3", "filename", faceFileName)
+			logInfo(ctx, "Successfully served face from S3", "filename", sanitizeForLogging(faceFileName))
 			return
 		}
 	}
 
 	// Try local storage as fallback
 	facesDir := getFacesDirectory()
-	faceFilePath := filepath.Join(facesDir, faceFileName)
 
-	logInfo(ctx, "Attempting to retrieve face from local storage", "path", faceFilePath)
+	// Safely construct the file path to prevent path injection
+	faceFilePath, err := validateAndJoinPath(facesDir, faceFileName)
+	if err != nil {
+		RecordError(ctx, fmt.Errorf("invalid file path for UID %s: %v", sanitizeForLogging(uid), err), "Path validation failed")
+		http.Error(w, "Invalid file path", http.StatusBadRequest)
+		return
+	}
+
+	logInfo(ctx, "Attempting to retrieve face from local storage", "path", sanitizeForLogging(faceFilePath))
 
 	// Check if file exists
 	if _, err := os.Stat(faceFilePath); os.IsNotExist(err) {
-		logWarn(ctx, "Face image not found", "path", faceFilePath)
+		logWarn(ctx, "Face image not found", "path", sanitizeForLogging(faceFilePath))
 		http.Error(w, "Face image not found", http.StatusNotFound)
 		return
 	}
 
 	// Serve the file
 	http.ServeFile(w, r, faceFilePath)
-	logInfo(ctx, "Successfully served face from local storage", "path", faceFilePath)
+	logInfo(ctx, "Successfully served face from local storage", "path", sanitizeForLogging(faceFilePath))
 }
 
 // getFacesDirectory returns the directory path for local face storage
@@ -1992,14 +1998,14 @@ func logosHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate team ID format (basic sanitation)
-	if teamID == "" || len(teamID) > 100 {
-		logWarn(ctx, "Invalid teamId parameter length", "teamId", teamID)
+	// Validate team ID format for security (prevent path injection)
+	if err := validateID(teamID, 100); err != nil {
+		RecordError(ctx, fmt.Errorf("invalid team ID: %s, error: %v", sanitizeForLogging(teamID), err), "Invalid team ID format")
 		http.Error(w, "Invalid team ID format", http.StatusBadRequest)
 		return
 	}
 
-	logInfo(ctx, "Processing team logo request", "teamId", teamID)
+	logInfo(ctx, "Processing team logo request", "teamId", sanitizeForLogging(teamID))
 
 	// Check if IMAGE_API_URL is configured - if so, redirect to external API
 	if imageAPIURL := os.Getenv("IMAGE_API_URL"); imageAPIURL != "" {
@@ -2022,34 +2028,63 @@ func logosHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Try S3 first if configured
 	if s3Storage, ok := storage.(*S3Storage); ok && s3Storage.client != nil {
-		logInfo(ctx, "Attempting to retrieve logo from S3", "filename", logoFileName)
+		logInfo(ctx, "Attempting to retrieve logo from S3", "filename", sanitizeForLogging(logoFileName))
 
 		// Get logo image from S3
 		if err := s3Storage.getTeamLogo(ctx, logoFileName, w); err != nil {
-			logWarn(ctx, "Failed to retrieve logo from S3", "filename", logoFileName, "error", err)
+			logWarn(ctx, "Failed to retrieve logo from S3", "filename", sanitizeForLogging(logoFileName), "error", err)
 			// Fall through to local storage
 		} else {
-			logInfo(ctx, "Successfully served logo from S3", "filename", logoFileName)
+			logInfo(ctx, "Successfully served logo from S3", "filename", sanitizeForLogging(logoFileName))
 			return
 		}
 	}
 
 	// Try local storage as fallback
 	logosDir := getLogosDirectory()
-	logoFilePath := filepath.Join(logosDir, "Clubs", "Normal", "Normal", logoFileName)
 
-	logInfo(ctx, "Attempting to retrieve logo from local storage", "path", logoFilePath)
+	// Safely construct the file path to prevent path injection
+	// Build the nested path: logosDir/Clubs/Normal/Normal/logoFileName
+	clubsDir, err := validateAndJoinPath(logosDir, "Clubs")
+	if err != nil {
+		RecordError(ctx, fmt.Errorf("invalid clubs directory path: %v", err), "Path validation failed")
+		http.Error(w, "Invalid file path", http.StatusBadRequest)
+		return
+	}
+
+	normalDir1, err := validateAndJoinPath(clubsDir, "Normal")
+	if err != nil {
+		RecordError(ctx, fmt.Errorf("invalid normal directory path: %v", err), "Path validation failed")
+		http.Error(w, "Invalid file path", http.StatusBadRequest)
+		return
+	}
+
+	normalDir2, err := validateAndJoinPath(normalDir1, "Normal")
+	if err != nil {
+		RecordError(ctx, fmt.Errorf("invalid normal directory path: %v", err), "Path validation failed")
+		http.Error(w, "Invalid file path", http.StatusBadRequest)
+		return
+	}
+
+	logoFilePath, err := validateAndJoinPath(normalDir2, logoFileName)
+	if err != nil {
+		RecordError(ctx, fmt.Errorf("invalid file path for team ID %s: %v", sanitizeForLogging(teamID), err), "Path validation failed")
+		http.Error(w, "Invalid file path", http.StatusBadRequest)
+		return
+	}
+
+	logInfo(ctx, "Attempting to retrieve logo from local storage", "path", sanitizeForLogging(logoFilePath))
 
 	// Check if file exists
 	if _, err := os.Stat(logoFilePath); os.IsNotExist(err) {
-		logWarn(ctx, "Team logo not found", "path", logoFilePath)
+		logWarn(ctx, "Team logo not found", "path", sanitizeForLogging(logoFilePath))
 		http.Error(w, "Team logo not found", http.StatusNotFound)
 		return
 	}
 
 	// Serve the file
 	http.ServeFile(w, r, logoFilePath)
-	logInfo(ctx, "Successfully served logo from local storage", "path", logoFilePath)
+	logInfo(ctx, "Successfully served logo from local storage", "path", sanitizeForLogging(logoFilePath))
 }
 
 // getLogosDirectory returns the directory path for local logo storage
