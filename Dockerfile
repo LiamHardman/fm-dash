@@ -1,7 +1,8 @@
 FROM node:24-alpine AS vue-builder
 LABEL stage=vue-builder
 WORKDIR /app-vue
-COPY package*.json ./
+COPY package.json ./
+# Remove package-lock.json and let npm install detect the correct platform dependencies
 RUN npm install --no-audit --no-fund --legacy-peer-deps
 COPY . .
 ARG VITE_API_BASE_URL=/api

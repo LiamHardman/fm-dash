@@ -4,9 +4,9 @@ LABEL stage=vue-builder
 WORKDIR /app-vue
 
 # Copy package files first for better layer caching
-COPY package.json ./
-# Regenerate package-lock.json in Linux environment to fix Rollup optional dependencies
-RUN npm install --legacy-peer-deps --package-lock-only && npm ci --legacy-peer-deps
+COPY package*.json ./
+# Install dependencies, forcing npm to handle optional dependencies correctly for Alpine
+RUN npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
 # Copy all source files
 COPY . .
