@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/LiamHardman/fm-dash/compare/v1.1.0...v1.1.1) (2025-07-08)
+
+
+### Bug Fixes
+
+* more golang security fixes ([328abe7](https://github.com/LiamHardman/fm-dash/commit/328abe75f08d2b2b21a43dc018e0a80e58a6b4e4))
+
 # [1.1.0](https://github.com/LiamHardman/fm-dash/compare/v1.0.20...v1.1.0) (2025-07-08)
 
 
