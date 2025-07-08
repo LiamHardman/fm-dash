@@ -282,8 +282,14 @@ function filterPlayers(players, filters) {
 
 /**
  * Calculate rating statistics for a group of players
+ * SECURITY FIX: Added validation to prevent remote property injection
  */
 function calculateRatingStats(players, statKey) {
+  // Validate statKey to prevent remote property injection
+  if (!isValidPlayerProperty(statKey)) {
+    return { min: 0, max: 0, mean: 0, median: 0, count: 0, error: 'Invalid property name' }
+  }
+
   const values = players
     .map(p => p[statKey])
     .filter(v => v !== null && v !== undefined && !Number.isNaN(v))
@@ -307,6 +313,7 @@ function calculateRatingStats(players, statKey) {
 
 /**
  * Batch process multiple calculations
+ * SECURITY FIX: Added validation to prevent remote property injection
  */
 function batchProcess(players, operations) {
   const results = {}
@@ -314,6 +321,16 @@ function batchProcess(players, operations) {
   for (const operation of operations) {
     switch (operation.type) {
       case 'sort':
+        // Validate fieldKey to prevent remote property injection
+        if (!isValidPlayerProperty(operation.fieldKey)) {
+          results[operation.id] = { error: 'Invalid fieldKey property name' }
+          break
+        }
+        // Validate sortField if provided
+        if (operation.sortField && !isValidPlayerProperty(operation.sortField)) {
+          results[operation.id] = { error: 'Invalid sortField property name' }
+          break
+        }
         results[operation.id] = customSortPlayers(
           [...players],
           operation.fieldKey,
@@ -328,6 +345,7 @@ function batchProcess(players, operations) {
         break
 
       case 'stats':
+        // Validation is handled inside calculateRatingStats function
         results[operation.id] = calculateRatingStats(players, operation.statKey)
         break
 
@@ -353,6 +371,14 @@ self.onmessage = e => {
 
     switch (type) {
       case 'SORT_PLAYERS':
+        // Validate fieldKey to prevent remote property injection
+        if (!isValidPlayerProperty(data.fieldKey)) {
+          throw new Error('Invalid fieldKey property name')
+        }
+        // Validate sortField if provided
+        if (data.sortField && !isValidPlayerProperty(data.sortField)) {
+          throw new Error('Invalid sortField property name')
+        }
         result = customSortPlayers(
           data.players,
           data.fieldKey,
@@ -363,6 +389,14 @@ self.onmessage = e => {
         break
 
       case 'FAST_SORT_PLAYERS':
+        // Validate fieldKey to prevent remote property injection
+        if (!isValidPlayerProperty(data.fieldKey)) {
+          throw new Error('Invalid fieldKey property name')
+        }
+        // Validate sortField if provided
+        if (data.sortField && !isValidPlayerProperty(data.sortField)) {
+          throw new Error('Invalid sortField property name')
+        }
         result = fastSortPlayers(
           data.players,
           data.fieldKey,
@@ -377,6 +411,7 @@ self.onmessage = e => {
         break
 
       case 'CALCULATE_STATS':
+        // Validation is handled inside calculateRatingStats function
         result = calculateRatingStats(data.players, data.statKey)
         break
 
@@ -389,6 +424,13 @@ self.onmessage = e => {
         break
 
       case 'GET_PLAYER_VALUE':
+        // Validate fieldKey and columnName to prevent remote property injection
+        if (!isValidPlayerProperty(data.fieldKey)) {
+          throw new Error('Invalid fieldKey property name')
+        }
+        if (data.columnName && !isValidPlayerProperty(data.columnName)) {
+          throw new Error('Invalid columnName property name')
+        }
         result = getPlayerValue(data.player, data.fieldKey, data.columnName, data.isGoalkeeperView)
         break
 
