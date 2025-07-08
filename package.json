@@ -86,7 +86,11 @@
     "vitest": "^3.2.0"
   },
   "lint-staged": {
-    "*.{js,ts,vue,json,html,css,scss,md}": [
+    "*.{js,ts,vue,html,css,scss,md}": [
+      "biome check --write --files-ignore-unknown=true",
+      "biome format --write --files-ignore-unknown=true"
+    ],
+    "!(package-lock).json": [
       "biome check --write --files-ignore-unknown=true",
       "biome format --write --files-ignore-unknown=true"
     ],
