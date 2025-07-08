@@ -4,8 +4,9 @@ LABEL stage=vue-builder
 WORKDIR /app-vue
 
 # Copy package files first for better layer caching
-COPY package*.json ./
-RUN npm install
+COPY package.json ./
+# Regenerate package-lock.json in Linux environment to fix Rollup optional dependencies
+RUN npm install --legacy-peer-deps --package-lock-only && npm ci --legacy-peer-deps
 
 # Copy all source files
 COPY . .
