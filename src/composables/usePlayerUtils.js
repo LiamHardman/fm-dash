@@ -1,3 +1,5 @@
+import { isValidPlayerProperty } from '../utils/security.js'
+
 export function usePlayerUtils() {
   // GK stat mapping for FIFA-style display
   const gkStatMapping = {
@@ -17,11 +19,18 @@ export function usePlayerUtils() {
     ATT: ['ST', 'CF', 'LW', 'RW', 'IF', 'TQ', 'F9']
   }
 
-  // Get player value with GK mapping applied
+  // Get player value with GK mapping applied - SECURITY FIXED
   const getPlayerValue = (player, fieldKey, columnName = null, isGoalkeeperView = false) => {
+    if (!player || typeof player !== 'object') return undefined
+
+    // Validate fieldKey to prevent remote property injection
+    if (!isValidPlayerProperty(fieldKey)) {
+      return undefined
+    }
+
     if (!isGoalkeeperView && player.position && player.position.includes('GK')) {
       const mappedStat = gkStatMapping[columnName || fieldKey]
-      if (mappedStat && player[mappedStat] !== undefined) {
+      if (mappedStat && isValidPlayerProperty(mappedStat) && player[mappedStat] !== undefined) {
         return player[mappedStat]
       }
     }

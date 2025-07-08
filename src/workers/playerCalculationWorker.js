@@ -86,6 +86,30 @@ function isValidPlayerProperty(propertyName) {
 }
 
 /**
+ * Validates if an operation ID is safe to use as an object key
+ * Prevents prototype pollution and remote property injection
+ */
+function isValidOperationId(id) {
+  if (typeof id !== 'string') return false
+  if (id.length === 0 || id.length > 100) return false
+  if (id.includes('__')) return false
+  if (DANGEROUS_PROPS.has(id)) return false
+  // Allow alphanumeric, dash, underscore, and dot
+  return /^[a-zA-Z0-9_.-]+$/.test(id)
+}
+
+/**
+ * Safely sets a property on an object with validation
+ */
+function safeSetProperty(obj, key, value) {
+  if (!isValidOperationId(key)) {
+    return false
+  }
+  obj[key] = value
+  return true
+}
+
+/**
  * Get player value with GK mapping applied - SECURE VERSION
  * Prevents remote property injection by validating property names
  */
@@ -319,38 +343,52 @@ function batchProcess(players, operations) {
   const results = {}
 
   for (const operation of operations) {
+    // Validate operation.id to prevent remote property injection
+    if (!isValidOperationId(operation.id)) {
+      // Use a safe fallback key for invalid IDs
+      const safeKey = 'invalid_' + Math.random().toString(36).substr(2, 9)
+      results[safeKey] = { error: 'Invalid operation ID' }
+      continue
+    }
+
     switch (operation.type) {
       case 'sort':
         // Validate fieldKey to prevent remote property injection
         if (!isValidPlayerProperty(operation.fieldKey)) {
-          results[operation.id] = { error: 'Invalid fieldKey property name' }
+          safeSetProperty(results, operation.id, { error: 'Invalid fieldKey property name' })
           break
         }
         // Validate sortField if provided
         if (operation.sortField && !isValidPlayerProperty(operation.sortField)) {
-          results[operation.id] = { error: 'Invalid sortField property name' }
+          safeSetProperty(results, operation.id, { error: 'Invalid sortField property name' })
           break
         }
-        results[operation.id] = customSortPlayers(
-          [...players],
-          operation.fieldKey,
-          operation.direction,
-          operation.sortField,
-          operation.isGoalkeeperView
+        safeSetProperty(
+          results,
+          operation.id,
+          customSortPlayers(
+            [...players],
+            operation.fieldKey,
+            operation.direction,
+            operation.sortField,
+            operation.isGoalkeeperView
+          )
         )
         break
 
       case 'filter':
-        results[operation.id] = filterPlayers(players, operation.filters)
+        safeSetProperty(results, operation.id, filterPlayers(players, operation.filters))
         break
 
       case 'stats':
         // Validation is handled inside calculateRatingStats function
-        results[operation.id] = calculateRatingStats(players, operation.statKey)
+        safeSetProperty(results, operation.id, calculateRatingStats(players, operation.statKey))
         break
 
       default:
-        results[operation.id] = { error: `Unknown operation type: ${operation.type}` }
+        safeSetProperty(results, operation.id, {
+          error: `Unknown operation type: ${operation.type}`
+        })
     }
   }
 

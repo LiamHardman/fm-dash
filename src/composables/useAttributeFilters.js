@@ -1,4 +1,5 @@
 import { computed, reactive, ref } from 'vue'
+import { isValidPlayerProperty } from '../utils/security.js'
 import { usePlayerRatings } from './usePlayerRatings'
 
 export function useAttributeFilters() {
@@ -76,11 +77,17 @@ export function useAttributeFilters() {
     attributeThresholds[attribute] = threshold
   }
 
-  // Check if player matches attribute filters
+  // Check if player matches attribute filters - SECURITY FIXED
   const playerMatchesAttributeFilters = player => {
     if (selectedAttributes.value.length === 0) return true
+    if (!player || typeof player !== 'object') return false
 
     return selectedAttributes.value.every(attr => {
+      // Validate attribute name to prevent remote property injection
+      if (!isValidPlayerProperty(attr)) {
+        return false
+      }
+
       const threshold = attributeThresholds[attr]
       if (!threshold) return true
 
