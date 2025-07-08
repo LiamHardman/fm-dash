@@ -15,6 +15,8 @@ jobs:
       issues: write
       pull-requests: write
       packages: write
+      id-token: write
+      attestations: write
     
     steps:
       - name: Checkout code
@@ -149,6 +151,60 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HUSKY: 0
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern=v{{version}}
+            type=semver,pattern=v{{major}}.{{minor}}
+            type=semver,pattern=v{{major}}
+            type=raw,value=latest,enable={{is_default_branch}}
+          flavor: |
+            latest=auto
+
+      - name: Build and push Docker image with semver tags
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VITE_API_BASE_URL=/api
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=registry,ref=ghcr.io/liamhardman/fm-dash:buildcache
+          cache-to: type=registry,ref=ghcr.io/liamhardman/fm-dash:buildcache,mode=max
+          provenance: false
+          sbom: false
+
+      - name: Docker image summary
+        run: |
+          echo "🐳 Docker Image Summary"
+          echo "======================="
+          echo ""
+          echo "✅ Docker image built and pushed with semantic versioning"
+          echo "🏷️ Image tags: ${{ steps.meta.outputs.tags }}"
+          echo "📦 Registry: ghcr.io/${{ github.repository }}"
+          echo "🏗️ Platforms: linux/amd64, linux/arm64"
+          echo ""
+          echo "🚀 To use this image:"
+          echo "   docker pull ghcr.io/${{ github.repository }}:latest"
+          echo "   docker pull ghcr.io/${{ github.repository }}:$(git describe --tags --abbrev=0)"
+
       - name: Restore original package.json
         if: always()
         run: |
@@ -168,6 +224,7 @@ jobs:
           echo "📝 Changelog generated/updated"
           echo "🏷️ Git tag created (if new version)"
           echo "📋 GitHub release created (if new version)"
+          echo "🐳 Docker image built and pushed with semver tags (if new version)"
           echo ""
           echo "ℹ️  Commit format guide:"
           echo "   feat: new feature (minor version bump)"
@@ -178,5 +235,6 @@ jobs:
           echo ""
           echo "🚫 To skip release: Add '[skip release]' to commit message"
           echo ""
-          echo "📝 Note: This workflow only creates GitHub releases"
-          echo "🔗 Repository: https://github.com/LiamHardman/fm-dash" 
+          echo "📝 This workflow creates GitHub releases AND Docker images"
+          echo "🔗 Repository: https://github.com/LiamHardman/fm-dash"
+          echo "🐳 Container Registry: https://github.com/LiamHardman/fm-dash/pkgs/container/fm-dash" 
