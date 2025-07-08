@@ -30,7 +30,8 @@
       "*.min.css",
       "testdata.html",
       "src/api/**",
-      "src/utils/teams_data.json"
+      "src/utils/teams_data.json",
+      "package-lock.json"
     ]
   },
   "formatter": {
