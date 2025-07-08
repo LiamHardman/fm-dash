@@ -1,3 +1,10 @@
+## [1.1.5](https://github.com/LiamHardman/fm-dash/compare/v1.1.4...v1.1.5) (2025-07-08)
+
+
+### Bug Fixes
+
+* semver was kinda working in last commit, just not docker image tagging, hopefully this fixes it ([ce16cbf](https://github.com/LiamHardman/fm-dash/commit/ce16cbff7dc08c42b7ff99c64c8c5a22ebea1fc0))
+
 ## [1.1.4](https://github.com/LiamHardman/fm-dash/compare/v1.1.3...v1.1.4) (2025-07-08)
 
 
