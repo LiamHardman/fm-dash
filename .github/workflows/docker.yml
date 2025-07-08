@@ -4,15 +4,12 @@ run-name: ${{ github.actor }} is building Docker image 🐳
 on:
   push:
     branches: [ main, gh-release ]
+    tags: [ 'v*' ]
   pull_request:
     branches: [ main, gh-release ]
   release:
     types: [published]
   workflow_dispatch: # Allow manual trigger
-  # Trigger when semantic-release creates a tag
-  create:
-    tags:
-      - 'v*'
 
 jobs:
   docker-build:
