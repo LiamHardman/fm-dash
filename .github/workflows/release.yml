@@ -50,16 +50,18 @@ jobs:
           # Remove any other remotes to avoid confusion
           git remote remove gitea 2>/dev/null || true
           
-          # Ensure we're in sync with the remote branch
-          echo "🔄 Syncing with remote repository..."
-          git fetch origin gh-release
+          # Ensure we have a completely clean state
+          echo "🔄 Ensuring clean git state..."
+          git fetch --all --prune
+          git checkout gh-release
           git reset --hard origin/gh-release
-          git clean -fd
+          git clean -fdx
           
-          echo "📍 Current git state:"
+          echo "📍 Final git state:"
           echo "Branch: $(git branch --show-current)"
           echo "Latest commit: $(git log -1 --oneline)"
-          echo "Remote ahead by: $(git rev-list --count HEAD..origin/gh-release) commits"
+          echo "Status: $(git status --porcelain)"
+          echo "Remote comparison: $(git rev-list --left-right --count HEAD...origin/gh-release)"
 
       - name: Install semantic-release locally (preserving existing package.json)
         run: |
@@ -150,7 +152,11 @@ jobs:
       - name: Run semantic-release (dry-run) - GitHub
         run: |
           echo "🔍 Analyzing commits for GitHub release..."
-          ./node_modules/.bin/semantic-release --dry-run
+          echo "📍 Pre-release git state check:"
+          git status
+          git log --oneline -5
+          echo "📍 Running semantic-release dry-run..."
+          ./node_modules/.bin/semantic-release --dry-run --debug
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HUSKY: 0
@@ -158,7 +164,11 @@ jobs:
       - name: Create GitHub release
         run: |
           echo "🚀 Creating GitHub release..."
-          ./node_modules/.bin/semantic-release
+          echo "📍 Final git state before release:"
+          git status
+          git log --oneline -3
+          echo "📍 Running semantic-release..."
+          ./node_modules/.bin/semantic-release --debug
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HUSKY: 0
