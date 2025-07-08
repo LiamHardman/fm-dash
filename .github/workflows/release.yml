@@ -33,7 +33,7 @@ jobs:
         run: |
           # Regenerate package-lock.json in Linux environment to fix Rollup optional dependencies
           rm -f package-lock.json
-          npm install --legacy-peer-deps --package-lock-only
+          npm install --legacy-peer-deps --package-lock-only --ignore-scripts
           npm ci --legacy-peer-deps
 
       - name: Setup Git
