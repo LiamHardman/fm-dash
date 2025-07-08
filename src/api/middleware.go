@@ -244,7 +244,7 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 
 		// Legacy log for backward compatibility (only for non-200 responses)
 		if wrapped.statusCode != http.StatusOK {
-			log.Printf("%s %s %d %v", r.Method, r.URL.Path, wrapped.statusCode, duration)
+			log.Printf("%s %s %d %v", r.Method, sanitizeForLogging(r.URL.Path), wrapped.statusCode, duration)
 		}
 	})
 }

@@ -98,7 +98,7 @@ func StoreDatasetAsync(datasetID string, players []Player, currencySymbol string
 
 		if err != nil {
 			RecordError(ctx, err, "Failed to store dataset asynchronously")
-			log.Printf("Error storing dataset %s asynchronously: %v", datasetID, err)
+			log.Printf("Error storing dataset %s asynchronously: %v", sanitizeForLogging(datasetID), err)
 			return
 		}
 
@@ -118,7 +118,7 @@ func StoreDatasetAsync(datasetID string, players []Player, currencySymbol string
 			"operation_type": "async",
 		})
 
-		log.Printf("Successfully stored dataset %s asynchronously in %v", datasetID, duration)
+		log.Printf("Successfully stored dataset %s asynchronously in %v", sanitizeForLogging(datasetID), duration)
 	}()
 }
 
@@ -345,7 +345,7 @@ func SetPlayerDataAsync(datasetID string, players []Player, currencySymbol strin
 	serializedData, err := json.Marshal(data)
 	if err != nil {
 		RecordError(ctx, err, "Failed to serialize data for async storage")
-		log.Printf("Error serializing dataset %s for async storage: %v", datasetID, err)
+		log.Printf("Error serializing dataset %s for async storage: %v", sanitizeForLogging(datasetID), err)
 		return
 	}
 
@@ -366,13 +366,13 @@ func SetPlayerDataAsync(datasetID string, players []Player, currencySymbol strin
 		var deserializedData DatasetData
 		if err := json.Unmarshal(serializedData, &deserializedData); err != nil {
 			RecordError(asyncCtx, err, "Failed to deserialize data for async storage")
-			log.Printf("Error deserializing dataset %s for async storage: %v", datasetID, err)
+			log.Printf("Error deserializing dataset %s for async storage: %v", sanitizeForLogging(datasetID), err)
 			return
 		}
 
 		if err := StoreDataset(datasetID, deserializedData.Players, deserializedData.CurrencySymbol); err != nil {
 			RecordError(asyncCtx, err, "Failed to store in new storage system asynchronously")
-			log.Printf("Error storing dataset %s to persistent storage asynchronously: %v", datasetID, err)
+			log.Printf("Error storing dataset %s to persistent storage asynchronously: %v", sanitizeForLogging(datasetID), err)
 			return
 		}
 
@@ -382,7 +382,7 @@ func SetPlayerDataAsync(datasetID string, players []Player, currencySymbol strin
 			attribute.String("async_storage.status", "success"),
 		)
 
-		log.Printf("Successfully stored dataset %s to persistent storage asynchronously in %v", datasetID, duration)
+		log.Printf("Successfully stored dataset %s to persistent storage asynchronously in %v", sanitizeForLogging(datasetID), duration)
 	}()
 }
 
@@ -407,7 +407,7 @@ func invalidateDatasetCache(datasetID string) {
 		}
 	}
 
-	log.Printf("Invalidated all cache entries for dataset: %s", datasetID)
+	log.Printf("Invalidated all cache entries for dataset: %s", sanitizeForLogging(datasetID))
 }
 
 // invalidatePatternCache removes cache entries matching a pattern
@@ -432,6 +432,6 @@ func invalidatePatternCache(pattern string) {
 	// Delete matching keys
 	for _, key := range keysToDelete {
 		deleteFromMemCache(key)
-		log.Printf("Invalidated cache key (pattern): %s", key)
+		log.Printf("Invalidated cache key (pattern): %s", sanitizeForLogging(key))
 	}
 }

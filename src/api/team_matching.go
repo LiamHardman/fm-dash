@@ -192,9 +192,9 @@ func normalizeTeamName(name string) string {
 
 	// Log normalization steps if there were significant changes
 	if original != normalized {
-		log.Printf("Team normalization: '%s' -> '%s'", original, normalized)
+		log.Printf("Team normalization: '%s' -> '%s'", sanitizeForLogging(original), sanitizeForLogging(normalized))
 		if beforePatterns != normalized {
-			log.Printf("Team normalization: Removed patterns: '%s' -> '%s'", beforePatterns, normalized)
+			log.Printf("Team normalization: Removed patterns: '%s' -> '%s'", sanitizeForLogging(beforePatterns), sanitizeForLogging(normalized))
 		}
 	}
 
@@ -221,7 +221,7 @@ func extractWords(normalized string) []string {
 		}
 	}
 
-	log.Printf("Team matching: Extracted words from '%s': %v", normalized, result)
+	log.Printf("Team matching: Extracted words from '%s': %d words", sanitizeForLogging(normalized), len(result))
 	return result
 }
 
@@ -470,44 +470,44 @@ func findTeamMatches(teamName string) []TeamMatch {
 		return []TeamMatch{}
 	}
 
-	log.Printf("Team matching: Starting search for '%s'", teamName)
+	log.Printf("Team matching: Starting search for '%s'", sanitizeForLogging(teamName))
 
 	normalized := normalizeTeamName(teamName)
 	words := extractWords(normalized)
 
-	log.Printf("Team matching: Normalized '%s' -> '%s'", teamName, normalized)
-	log.Printf("Team matching: Extracted words: %v", words)
+	log.Printf("Team matching: Normalized '%s' -> '%s'", sanitizeForLogging(teamName), sanitizeForLogging(normalized))
+	log.Printf("Team matching: Extracted %d words", len(words))
 
 	// Track candidates and their scores
 	candidates := make(map[string]*TeamMatch)
 
 	// 1. Exact match on normalized name
 	if entries, exists := teamsIndex[normalized]; exists {
-		log.Printf("Team matching: Found %d exact matches for normalized name '%s'", len(entries), normalized)
+		log.Printf("Team matching: Found %d exact matches for normalized name", len(entries))
 		for _, entry := range entries {
 			candidates[entry.ID] = &TeamMatch{
 				ID:    entry.ID,
 				Name:  entry.Name,
 				Score: 1.0,
 			}
-			log.Printf("Team matching: Exact match - ID: %s, Name: '%s', Score: 1.0", entry.ID, entry.Name)
+			log.Printf("Team matching: Exact match - ID: %s, Name: '%s', Score: 1.0", entry.ID, sanitizeForLogging(entry.Name))
 		}
 	} else {
-		log.Printf("Team matching: No exact matches found for normalized name '%s'", normalized)
+		log.Printf("Team matching: No exact matches found for normalized name")
 	}
 
 	// 2. Partial word matches
 	wordMatchCount := 0
 	for _, word := range words {
 		if entries, exists := teamsIndex[word]; exists {
-			log.Printf("Team matching: Found %d entries for word '%s'", len(entries), word)
+			log.Printf("Team matching: Found %d entries for word", len(entries))
 			for _, entry := range entries {
 				if existing, found := candidates[entry.ID]; found {
 					// Boost score for multiple word matches
 					oldScore := existing.Score
 					existing.Score = math.Min(1.0, existing.Score+0.2)
-					log.Printf("Team matching: Boosted score for ID %s from %.3f to %.3f (word: '%s')",
-						entry.ID, oldScore, existing.Score, word)
+					log.Printf("Team matching: Boosted score for ID %s from %.3f to %.3f",
+						entry.ID, oldScore, existing.Score)
 				} else {
 					// Calculate similarity for partial matches
 					score := calculateSimilarity(normalized, entry.NormalizedName)
@@ -515,7 +515,7 @@ func findTeamMatches(teamName string) []TeamMatch {
 					// Special bonus for abbreviation matches
 					if checkAbbreviationBonus(word, entry.NormalizedName) {
 						score = math.Min(1.0, score+0.3)
-						log.Printf("Team matching: Applied abbreviation bonus for word '%s' in '%s'", word, entry.NormalizedName)
+						log.Printf("Team matching: Applied abbreviation bonus for word in team '%s'", sanitizeForLogging(entry.NormalizedName))
 					}
 
 					if score > 0.3 { // Only include reasonably similar matches
@@ -524,8 +524,8 @@ func findTeamMatches(teamName string) []TeamMatch {
 							Name:  entry.Name,
 							Score: score,
 						}
-						log.Printf("Team matching: Word match - ID: %s, Name: '%s', Score: %.3f (word: '%s')",
-							entry.ID, entry.Name, score, word)
+						log.Printf("Team matching: Word match - ID: %s, Name: '%s', Score: %.3f",
+							entry.ID, sanitizeForLogging(entry.Name), score)
 						wordMatchCount++
 					}
 				}
@@ -536,14 +536,14 @@ func findTeamMatches(teamName string) []TeamMatch {
 		if expansions := getAbbreviationExpansions(word); len(expansions) > 0 {
 			for _, expansion := range expansions {
 				if entries, exists := teamsIndex[expansion]; exists {
-					log.Printf("Team matching: Found %d entries for abbreviation expansion '%s' -> '%s'", len(entries), word, expansion)
+					log.Printf("Team matching: Found %d entries for abbreviation expansion", len(entries))
 					for _, entry := range entries {
 						if existing, found := candidates[entry.ID]; found {
 							// Boost existing scores for abbreviation matches
 							oldScore := existing.Score
 							existing.Score = math.Min(1.0, existing.Score+0.3)
-							log.Printf("Team matching: Boosted score for abbreviation match ID %s from %.3f to %.3f (abbr: '%s' -> '%s')",
-								entry.ID, oldScore, existing.Score, word, expansion)
+							log.Printf("Team matching: Boosted score for abbreviation match ID %s from %.3f to %.3f",
+								entry.ID, oldScore, existing.Score)
 						} else {
 							// High score for abbreviation matches
 							score := 0.85 // High base score for abbreviation matches
@@ -552,8 +552,8 @@ func findTeamMatches(teamName string) []TeamMatch {
 								Name:  entry.Name,
 								Score: score,
 							}
-							log.Printf("Team matching: Abbreviation match - ID: %s, Name: '%s', Score: %.3f (abbr: '%s' -> '%s')",
-								entry.ID, entry.Name, score, word, expansion)
+							log.Printf("Team matching: Abbreviation match - ID: %s, Name: '%s', Score: %.3f",
+								entry.ID, sanitizeForLogging(entry.Name), score)
 							wordMatchCount++
 						}
 					}
@@ -569,7 +569,7 @@ func findTeamMatches(teamName string) []TeamMatch {
 		for i := 3; i <= len(normalized) && i <= 8; i++ {
 			prefix := normalized[:i]
 			if entries, exists := teamsIndex[prefix]; exists {
-				log.Printf("Team matching: Found %d entries for prefix '%s'", len(entries), prefix)
+				log.Printf("Team matching: Found %d entries for prefix", len(entries))
 				for _, entry := range entries {
 					if _, found := candidates[entry.ID]; !found {
 						score := calculateSimilarity(normalized, entry.NormalizedName)
@@ -579,8 +579,8 @@ func findTeamMatches(teamName string) []TeamMatch {
 								Name:  entry.Name,
 								Score: score,
 							}
-							log.Printf("Team matching: Prefix match - ID: %s, Name: '%s', Score: %.3f (prefix: '%s')",
-								entry.ID, entry.Name, score, prefix)
+							log.Printf("Team matching: Prefix match - ID: %s, Name: '%s', Score: %.3f",
+								entry.ID, sanitizeForLogging(entry.Name), score)
 							prefixMatchCount++
 						}
 					}
@@ -613,7 +613,7 @@ func findTeamMatches(teamName string) []TeamMatch {
 						Score: score,
 					}
 					log.Printf("Team matching: Fallback match - ID: %s, Name: '%s', Score: %.3f",
-						id, name, score)
+						id, sanitizeForLogging(name), score)
 					fallbackMatchCount++
 				}
 			}
@@ -659,13 +659,13 @@ func findTeamMatches(teamName string) []TeamMatch {
 
 	// Log final results summary
 	if len(matches) > 0 {
-		log.Printf("Team matching: Final results for '%s' (%d matches):", teamName, len(matches))
+		log.Printf("Team matching: Final results for '%s' (%d matches):", sanitizeForLogging(teamName), len(matches))
 		for i, match := range matches {
 			log.Printf("Team matching: Result %d - ID: %s, Name: '%s', Score: %.3f",
-				i+1, match.ID, match.Name, match.Score)
+				i+1, match.ID, sanitizeForLogging(match.Name), match.Score)
 		}
 	} else {
-		log.Printf("Team matching: No matches found for '%s'", teamName)
+		log.Printf("Team matching: No matches found for '%s'", sanitizeForLogging(teamName))
 	}
 
 	return matches
