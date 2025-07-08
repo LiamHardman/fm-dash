@@ -266,7 +266,7 @@ func CalculatePlayerPerformancePercentilesWithDivisionFilter(players []Player, d
 	}
 
 	startTime := time.Now()
-	log.Printf("🔄 Calculating percentiles with division filter: %d, target: %s, player count: %d", divisionFilter, targetDivision, len(players))
+	log.Printf("🔄 Calculating percentiles with division filter: %d, target: %s, player count: %d", divisionFilter, sanitizeForLogging(targetDivision), len(players))
 
 	// Pre-filter players once to avoid repeated checks
 	var filteredPlayerIndices []int

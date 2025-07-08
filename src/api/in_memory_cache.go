@@ -93,7 +93,7 @@ func getFromMemCache(key string) (interface{}, bool) {
 
 func setInMemCache(key string, value interface{}, expiration time.Duration) {
 	if memCache == nil {
-		log.Printf("Warning: Memory cache not initialized, cannot set key: %s", key)
+		log.Printf("Warning: Memory cache not initialized, cannot set key: %s", sanitizeForLogging(key))
 		return
 	}
 

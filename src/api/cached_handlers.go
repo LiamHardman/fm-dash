@@ -94,7 +94,11 @@ func cachedConfigHandler(w http.ResponseWriter, r *http.Request) {
 
 		if updateRequest.UseScaledRatings != nil {
 			SetUseScaledRatings(*updateRequest.UseScaledRatings)
-			log.Printf("Rating calculation method updated via API: %t", *updateRequest.UseScaledRatings)
+			if *updateRequest.UseScaledRatings {
+				log.Printf("Rating calculation method updated via API: enabled scaled ratings")
+			} else {
+				log.Printf("Rating calculation method updated via API: disabled scaled ratings")
+			}
 			deleteFromMemCache(cacheKey)
 		}
 

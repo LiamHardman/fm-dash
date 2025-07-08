@@ -6,8 +6,24 @@ import (
 	"log"
 	"net/http"
 	"runtime/debug"
+	"strings"
 	"time"
 )
+
+// sanitizeForLogging sanitizes input for safe logging
+func sanitizeForLogging(input string) string {
+	// Remove or escape newlines and carriage returns
+	sanitized := strings.ReplaceAll(input, "\n", "\\n")
+	sanitized = strings.ReplaceAll(sanitized, "\r", "\\r")
+	sanitized = strings.ReplaceAll(sanitized, "\t", "\\t")
+
+	// Truncate if too long
+	if len(sanitized) > 200 {
+		sanitized = sanitized[:200] + "..."
+	}
+
+	return sanitized
+}
 
 // ErrorResponse represents the JSON error response structure
 type ErrorResponse struct {
@@ -68,10 +84,10 @@ func ErrorHandlerMiddleware(next http.Handler) http.Handler {
 		// Execute the handler
 		next.ServeHTTP(wrapped, r)
 
-		// Log the request
+		// Log the request with sanitized URL path
 		log.Printf("%s %s %d %d bytes",
 			r.Method,
-			r.URL.Path,
+			sanitizeForLogging(r.URL.Path),
 			wrapped.StatusCode,
 			wrapped.Size,
 		)

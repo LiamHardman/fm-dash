@@ -940,7 +940,7 @@ func leaguesHandler(w http.ResponseWriter, r *http.Request) {
 			setCORSHeaders(w, r)
 			if err := json.NewEncoder(w).Encode(leaguesData); err != nil {
 				http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
-				log.Printf("Error encoding JSON response for cached leagues (DatasetID: %s): %v", datasetID, err)
+				log.Printf("Error encoding JSON response for cached leagues (DatasetID: %s): %v", sanitizeForLogging(datasetID), err)
 			}
 			return
 		}
@@ -969,7 +969,7 @@ func leaguesHandler(w http.ResponseWriter, r *http.Request) {
 	setCORSHeaders(w, r)
 	if err := json.NewEncoder(w).Encode(leaguesData); err != nil {
 		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
-		log.Printf("Error encoding JSON response for leagues (DatasetID: %s): %v", datasetID, err)
+		log.Printf("Error encoding JSON response for leagues (DatasetID: %s): %v", sanitizeForLogging(datasetID), err)
 	}
 }
 
@@ -1002,7 +1002,7 @@ func teamsHandler(w http.ResponseWriter, r *http.Request) {
 			setCORSHeaders(w, r)
 			if err := json.NewEncoder(w).Encode(teamsData); err != nil {
 				http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
-				log.Printf("Error encoding JSON response for cached teams (DatasetID: %s, Division: %s): %v", datasetID, division, err)
+				log.Printf("Error encoding JSON response for cached teams (DatasetID: %s, Division: %s): %v", sanitizeForLogging(datasetID), sanitizeForLogging(division), err)
 			}
 			return
 		}
@@ -1030,7 +1030,7 @@ func teamsHandler(w http.ResponseWriter, r *http.Request) {
 	setCORSHeaders(w, r)
 	if err := json.NewEncoder(w).Encode(teamsData); err != nil {
 		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
-		log.Printf("Error encoding JSON response for teams (DatasetID: %s, Division: %s): %v", datasetID, division, err)
+		log.Printf("Error encoding JSON response for teams (DatasetID: %s, Division: %s): %v", sanitizeForLogging(datasetID), sanitizeForLogging(division), err)
 	}
 }
 
@@ -1183,7 +1183,7 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Cache-Status", "HIT")
 		setCORSHeaders(w, r)
 		if err := json.NewEncoder(w).Encode(cachedPercentiles); err != nil {
-			log.Printf("Error encoding JSON response for cached percentiles (DatasetID: %s): %v", datasetID, err)
+			log.Printf("Error encoding JSON response for cached percentiles (DatasetID: %s): %v", sanitizeForLogging(datasetID), err)
 			http.Error(w, "Error encoding response", http.StatusInternalServerError)
 		}
 		return
@@ -1215,7 +1215,7 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Cache-Status", "MISS")
 	setCORSHeaders(w, r)
 	if err := json.NewEncoder(w).Encode(updatedPercentiles); err != nil {
-		log.Printf("Error encoding JSON response for percentiles (DatasetID: %s): %v", datasetID, err)
+		log.Printf("Error encoding JSON response for percentiles (DatasetID: %s): %v", sanitizeForLogging(datasetID), err)
 		http.Error(w, "Error encoding response", http.StatusInternalServerError)
 	}
 }
@@ -1693,7 +1693,7 @@ func bargainHunterHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Cache-Status", "HIT")
 		setCORSHeaders(w, r)
 		if err := json.NewEncoder(w).Encode(cachedResults); err != nil {
-			log.Printf("Error encoding JSON response for cached bargain hunter (DatasetID: %s): %v", datasetID, err)
+			log.Printf("Error encoding JSON response for cached bargain hunter (DatasetID: %s): %v", sanitizeForLogging(datasetID), err)
 			http.Error(w, "Error encoding response", http.StatusInternalServerError)
 		}
 		return
@@ -1717,7 +1717,7 @@ func bargainHunterHandler(w http.ResponseWriter, r *http.Request) {
 	setCORSHeaders(w, r)
 	if err := json.NewEncoder(w).Encode(bargainPlayers); err != nil {
 		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
-		log.Printf("Error encoding JSON response for bargain hunter (DatasetID: %s): %v", datasetID, err)
+		log.Printf("Error encoding JSON response for bargain hunter (DatasetID: %s): %v", sanitizeForLogging(datasetID), err)
 	}
 }
 

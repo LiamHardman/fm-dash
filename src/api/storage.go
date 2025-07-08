@@ -314,14 +314,14 @@ func (s *S3Storage) storeSync(datasetID string, data DatasetData) error {
 	defer func() {
 		if r := recover(); r != nil {
 			RecordError(ctx, fmt.Errorf("panic during JSON marshal: %v", r), "JSON marshal panic recovered")
-			log.Printf("PANIC during JSON marshaling for dataset %s: %v", datasetID, r)
+			log.Printf("PANIC during JSON marshaling for dataset %s: %v", sanitizeForLogging(datasetID), r)
 		}
 	}()
 
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		RecordError(ctx, err, "Failed to marshal dataset data")
-		log.Printf("JSON marshal error for dataset %s: %v", datasetID, err)
+		log.Printf("JSON marshal error for dataset %s: %v", sanitizeForLogging(datasetID), err)
 		return fmt.Errorf("failed to marshal data: %w", err)
 	}
 
@@ -358,7 +358,7 @@ func (s *S3Storage) storeSync(datasetID string, data DatasetData) error {
 	}
 
 	RecordDBOperation(ctx, "store", "s3_datasets", time.Since(start), 1)
-	log.Printf("Stored dataset %s to S3", datasetID)
+	log.Printf("Stored dataset %s to S3", sanitizeForLogging(datasetID))
 	return nil
 }
 
@@ -447,7 +447,7 @@ func (s *S3Storage) retrieveSync(datasetID string) (DatasetData, error) {
 
 	SetSpanAttributes(ctx, attribute.Int("dataset.player_count", len(dataset.Players)))
 	RecordDBOperation(ctx, "retrieve", "s3_datasets", time.Since(start), 1)
-	log.Printf("Retrieved dataset %s from S3", datasetID)
+	log.Printf("Retrieved dataset %s from S3", sanitizeForLogging(datasetID))
 	return dataset, nil
 }
 
@@ -475,7 +475,7 @@ func (s *S3Storage) deleteSync(datasetID string) error {
 		log.Printf("Warning: Failed to delete from fallback storage: %v", err)
 		// Don't return error since S3 deletion succeeded
 	}
-	log.Printf("Deleted dataset %s from S3", datasetID)
+	log.Printf("Deleted dataset %s from S3", sanitizeForLogging(datasetID))
 	return nil
 }
 
@@ -542,17 +542,17 @@ func (s *S3Storage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets []s
 
 		// Skip excluded datasets (like demo)
 		if excludeSet[datasetID] {
-			log.Printf("Skipping cleanup for excluded dataset: %s", datasetID)
+			log.Printf("Skipping cleanup for excluded dataset: %s", sanitizeForLogging(datasetID))
 			continue
 		}
 
 		// Check if object is older than cutoff time
 		if object.LastModified.Before(cutoffTime) {
-			log.Printf("Deleting old dataset: %s (last modified: %s)", datasetID, object.LastModified.Format(time.RFC3339))
+			log.Printf("Deleting old dataset: %s (last modified: %s)", sanitizeForLogging(datasetID), object.LastModified.Format(time.RFC3339))
 
 			err := s.client.RemoveObject(ctx, s.bucketName, object.Key, minio.RemoveObjectOptions{})
 			if err != nil {
-				log.Printf("Warning: Failed to delete old dataset %s from S3: %v", datasetID, err)
+				log.Printf("Warning: Failed to delete old dataset %s from S3: %v", sanitizeForLogging(datasetID), err)
 				continue
 			}
 

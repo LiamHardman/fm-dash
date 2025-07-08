@@ -222,7 +222,7 @@ tokenLoop:
 				}
 				break tokenLoop
 			}
-			log.Printf("HTML tokenization error: %v", err)
+			log.Printf("HTML tokenization error occurred during parsing")
 			processingError = errors.New("Error tokenizing HTML: " + err.Error())
 			break tokenLoop
 		case html.StartTagToken:
@@ -240,7 +240,7 @@ tokenLoop:
 						localHeadersForWorker = make([]string, len(currentHeaders))
 						copy(localHeadersForWorker, currentHeaders)
 						*headersSnapshot = localHeadersForWorker
-						log.Printf("Headers found (tbody start), launching %d workers: %v", numWorkers, localHeadersForWorker)
+						log.Printf("Headers found (tbody start), launching %d workers with %d headers", numWorkers, len(localHeadersForWorker))
 						wg.Add(numWorkers)
 						for i := 0; i < numWorkers; i++ {
 							go PlayerParserWorker(i, rowCellsChan, resultsChan, wg, localHeadersForWorker)
@@ -310,7 +310,7 @@ tokenLoop:
 						localHeadersForWorker = make([]string, len(currentHeaders))
 						copy(localHeadersForWorker, currentHeaders)
 						*headersSnapshot = localHeadersForWorker
-						log.Printf("Headers found (tr end), launching %d workers: %v", numWorkers, localHeadersForWorker)
+						log.Printf("Headers found (tr end), launching %d workers with %d headers", numWorkers, len(localHeadersForWorker))
 						wg.Add(numWorkers)
 						for i := 0; i < numWorkers; i++ {
 							go PlayerParserWorker(i, rowCellsChan, resultsChan, wg, localHeadersForWorker)
@@ -331,7 +331,7 @@ tokenLoop:
 					localHeadersForWorker = make([]string, len(currentHeaders))
 					copy(localHeadersForWorker, currentHeaders)
 					*headersSnapshot = localHeadersForWorker
-					log.Printf("Headers found (table end), launching %d workers: %v", numWorkers, localHeadersForWorker)
+					log.Printf("Headers found (table end), launching %d workers with %d headers", numWorkers, len(localHeadersForWorker))
 					wg.Add(numWorkers)
 					for i := 0; i < numWorkers; i++ {
 						go PlayerParserWorker(i, rowCellsChan, resultsChan, wg, localHeadersForWorker)
