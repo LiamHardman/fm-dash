@@ -8,6 +8,23 @@
 * biome fix ([63298e2](https://github.com/LiamHardman/fm-dash/commit/63298e259dade1d4fc99d6359e7b78dd8c9baf16))
 * github semvar ([7104ac2](https://github.com/LiamHardman/fm-dash/commit/7104ac2565bb2ee38cb8b0801b935d41e55d2fd9))
 * package lock remove ([75d2a6e](https://github.com/LiamHardman/fm-dash/commit/75d2a6ec63b4e7cebdf8f4b63c9fbc773d30bc12))
+* please i beg just fix the fucking releases ([515dad1](https://github.com/LiamHardman/fm-dash/commit/515dad12f82fca8054a8c37b9d0d7986d75508b1))
+* release fix ([d73edf7](https://github.com/LiamHardman/fm-dash/commit/d73edf7b774e82abf7de5aa2d0cdeb9b5787e5ce))
+* release fix ([ff34a3a](https://github.com/LiamHardman/fm-dash/commit/ff34a3a2c01021284a89c4e2c4a9f77c9d1d41c0))
+* semantic release ([8bae1a5](https://github.com/LiamHardman/fm-dash/commit/8bae1a5653bc2f9ad5ca15e26aabe33ec857ce37))
+* semver docker tag ([614a1b5](https://github.com/LiamHardman/fm-dash/commit/614a1b57144c87eafeb23ffe8549e1a0da93efba))
+* semver docker tag ([0291ad8](https://github.com/LiamHardman/fm-dash/commit/0291ad8f94658209a31ef037598a8362d47f58fd))
+
+## [1.1.4](https://github.com/LiamHardman/fm-dash/compare/v1.1.3...v1.1.4) (2025-07-08)
+
+
+### Bug Fixes
+
+* added package lock again ([bd39385](https://github.com/LiamHardman/fm-dash/commit/bd39385ebfb8ce4e3ac02c177d8c5feb1e4c226e))
+* attempt fix for release ([5ba740f](https://github.com/LiamHardman/fm-dash/commit/5ba740f76270c9b99d4eadbec5e45884460cc793))
+* biome fix ([63298e2](https://github.com/LiamHardman/fm-dash/commit/63298e259dade1d4fc99d6359e7b78dd8c9baf16))
+* github semvar ([7104ac2](https://github.com/LiamHardman/fm-dash/commit/7104ac2565bb2ee38cb8b0801b935d41e55d2fd9))
+* package lock remove ([75d2a6e](https://github.com/LiamHardman/fm-dash/commit/75d2a6ec63b4e7cebdf8f4b63c9fbc773d30bc12))
 * release fix ([d73edf7](https://github.com/LiamHardman/fm-dash/commit/d73edf7b774e82abf7de5aa2d0cdeb9b5787e5ce))
 * release fix ([ff34a3a](https://github.com/LiamHardman/fm-dash/commit/ff34a3a2c01021284a89c4e2c4a9f77c9d1d41c0))
 * semantic release ([8bae1a5](https://github.com/LiamHardman/fm-dash/commit/8bae1a5653bc2f9ad5ca15e26aabe33ec857ce37))
