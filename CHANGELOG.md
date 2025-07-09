@@ -1,3 +1,10 @@
+## [1.2.8](https://github.com/LiamHardman/fm-dash/compare/v1.2.7...v1.2.8) (2025-07-09)
+
+
+### Bug Fixes
+
+* performance monitor adding total time and rows per second ([741f601](https://github.com/LiamHardman/fm-dash/commit/741f601ab57c68cebeba31f4ca300d7e6604f4e2))
+
 ## [1.2.7](https://github.com/LiamHardman/fm-dash/compare/v1.2.6...v1.2.7) (2025-07-09)
 
 
