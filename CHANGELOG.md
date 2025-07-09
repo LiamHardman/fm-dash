@@ -1,3 +1,10 @@
+## [1.2.4](https://github.com/LiamHardman/fm-dash/compare/v1.2.3...v1.2.4) (2025-07-09)
+
+
+### Bug Fixes
+
+* insecure mode defined in kube again ([e4e13ad](https://github.com/LiamHardman/fm-dash/commit/e4e13adcf31ec56b65a1e6443de298fa793f40a8))
+
 ## [1.2.3](https://github.com/LiamHardman/fm-dash/compare/v1.2.2...v1.2.3) (2025-07-09)
 
 
