@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
         - name: v2fmdash-backend-container
-          image: git.liamhardman.com/liam/v2fmdash-backend:main
+          image: ghcr.io/liamhardman/fm-dash-backend:latest
           imagePullPolicy: Always
           ports:
             - name: http-api
@@ -117,7 +117,7 @@ spec:
     spec:
       containers:
         - name: v2fmdash-frontend-container
-          image: git.liamhardman.com/liam/v2fmdash-frontend:main
+          image: ghcr.io/liamhardman/fm-dash-frontend:latest
           imagePullPolicy: Always
           ports:
             - name: http-nginx

@@ -26,7 +26,7 @@ spec:
       #   runAsUser: 0 # Supervisord needs to run as root
       containers:
         - name: v2fmdash-container # Container name
-          image: git.liamhardman.com/liam/v2fmdash:main # Corrected image name and tag
+          image: ghcr.io/liamhardman/fm-dash-unified:latest # GitHub Container Registry unified image
           imagePullPolicy: Always
           ports:
             - name: http-nginx # Port Nginx listens on inside the container
