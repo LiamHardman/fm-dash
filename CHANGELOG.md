@@ -1,3 +1,10 @@
+## [1.2.2](https://github.com/LiamHardman/fm-dash/compare/v1.2.1...v1.2.2) (2025-07-09)
+
+
+### Bug Fixes
+
+* changed otel collector config ([0581e6c](https://github.com/LiamHardman/fm-dash/commit/0581e6c79cf0c7dea1b0996d0a47ed7871ec58a0))
+
 ## [1.2.1](https://github.com/LiamHardman/fm-dash/compare/v1.2.0...v1.2.1) (2025-07-09)
 
 
