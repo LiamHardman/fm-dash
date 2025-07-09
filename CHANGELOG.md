@@ -1,3 +1,10 @@
+## [1.2.1](https://github.com/LiamHardman/fm-dash/compare/v1.2.0...v1.2.1) (2025-07-09)
+
+
+### Bug Fixes
+
+* fixed broken signoz integration with logging ([0706ce7](https://github.com/LiamHardman/fm-dash/commit/0706ce7c4ea460951ce630162586bb18cf45ff90))
+
 # [1.2.0](https://github.com/LiamHardman/fm-dash/compare/v1.1.9...v1.2.0) (2025-07-09)
 
 
