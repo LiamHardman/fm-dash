@@ -1,3 +1,10 @@
+## [1.2.10](https://github.com/LiamHardman/fm-dash/compare/v1.2.9...v1.2.10) (2025-07-09)
+
+
+### Bug Fixes
+
+* stopped using slog ([60978c4](https://github.com/LiamHardman/fm-dash/commit/60978c4ec9d663460cfa3df19df3c31b381254d7))
+
 ## [1.2.9](https://github.com/LiamHardman/fm-dash/compare/v1.2.8...v1.2.9) (2025-07-09)
 
 
