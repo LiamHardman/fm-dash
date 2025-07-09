@@ -2,7 +2,7 @@
 
 ## Overview
 
-The application now supports configurable log levels to control the verbosity of logging output. This allows you to filter logs based on their importance and reduce noise in production environments.
+The application now supports configurable log levels to control the verbosity of logging output. This allows you to filter logs based on their importance and reduce noise in production environments. **All logs now properly integrate with SignOz via OpenTelemetry OTLP handler.**
 
 ## Log Levels
 
@@ -26,6 +26,11 @@ The following log levels are available (in order of severity):
 - **`LOG_ALL_REQUESTS`**: Controls whether all HTTP requests are logged
   - Valid values: `true`, `false`
   - Default: `false` (only logs non-200 responses)
+
+- **`OTEL_ENABLED`**: Controls whether OpenTelemetry (and SignOz integration) is enabled
+  - Valid values: `true`, `false`
+  - Default: `false`
+  - When `true`, logs are sent to SignOz via OTLP
 
 ## Usage in Code
 
@@ -54,19 +59,22 @@ LogCritical("Failed to initialize required service: %v", err)
 ### Production Setup (Minimal Logging)
 ```bash
 export LOG_LEVEL=WARN
-# Only warnings and critical errors will be shown
+export OTEL_ENABLED=true
+# Only warnings and critical errors will be shown, all logs sent to SignOz
 ```
 
 ### Development Setup (Verbose Logging)
 ```bash
 export LOG_LEVEL=DEBUG
-# All log messages will be shown, including cache hits and debug info
+export OTEL_ENABLED=true
+# All log messages will be shown, including cache hits and debug info, all sent to SignOz
 ```
 
 ### Standard Setup (Balanced)
 ```bash
 export LOG_LEVEL=INFO  # This is the default
-# Shows info, warnings, and critical messages
+export OTEL_ENABLED=true
+# Shows info, warnings, and critical messages, all sent to SignOz
 ```
 
 ## Log Format
@@ -80,15 +88,42 @@ Each log message is prefixed with its level:
 [CRITICAL] Failed to initialize database connection
 ```
 
+## SignOz Integration
+
+When `OTEL_ENABLED=true`, all logs from the leveled logging functions (`LogDebug`, `LogInfo`, `LogWarn`, `LogCritical`) are automatically sent to SignOz via the OpenTelemetry OTLP handler. This includes:
+
+- Structured logging with trace correlation
+- Automatic context enrichment (trace IDs, span IDs)
+- Integration with distributed tracing
+- Centralized log aggregation in SignOz
+
 ## Migration Notes
 
 The system is backward compatible:
 - Existing `log.Printf()` calls continue to work unchanged
-- New leveled functions (`LogDebug`, `LogInfo`, etc.) respect the minimum log level
+- New leveled functions (`LogDebug`, `LogInfo`, etc.) respect the minimum log level **and now properly send logs to SignOz**
 - Cache-related debug messages have been moved to DEBUG level to reduce noise at INFO level
 
 ## Performance
 
 - Log level checking is very fast (simple integer comparison)
 - Messages below the minimum level are not formatted or processed
-- No performance impact on production systems when using higher log levels 
+- No performance impact on production systems when using higher log levels
+- SignOz integration adds minimal overhead via efficient OTLP batching
+
+## Troubleshooting
+
+### Logs not appearing in SignOz
+
+1. **Check OTEL_ENABLED**: Ensure `OTEL_ENABLED=true` in your environment
+2. **Verify LOG_LEVEL**: Make sure your log level allows the messages you expect (e.g., `LOG_LEVEL=DEBUG` for debug messages)
+3. **Check SignOz configuration**: Verify `OTEL_EXPORTER_OTLP_ENDPOINT` points to your SignOz collector
+4. **Use slog functions**: Only `slog.*` and the leveled functions (`LogDebug`, `LogInfo`, etc.) send logs to SignOz. Direct `log.Printf()` calls only go to stdout/stderr.
+
+### Recent Fix (2024)
+
+**Issue**: After implementing leveled logging functions, logs stopped appearing in SignOz.
+
+**Root Cause**: The leveled logging functions (`LogDebug`, `LogInfo`, etc.) were using `log.Printf()` which bypasses the OpenTelemetry slog handler.
+
+**Fix**: Updated all leveled logging functions to use `slog` instead of `log.Printf()`, ensuring proper SignOz integration while maintaining LOG_LEVEL filtering behavior. 

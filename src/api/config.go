@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -411,27 +412,31 @@ func shouldLog(level int) bool {
 	return level >= GetMinLogLevel()
 }
 
-// Log helper functions that respect the minimum log level
+// Log helper functions that respect the minimum log level and use slog for SignOz integration
 func LogDebug(format string, args ...interface{}) {
 	if shouldLog(LogLevelDebug) {
-		log.Printf("[DEBUG] "+format, args...)
+		// Use slog so logs go to SignOz via OTLP handler
+		slog.Debug("[DEBUG] " + fmt.Sprintf(format, args...))
 	}
 }
 
 func LogInfo(format string, args ...interface{}) {
 	if shouldLog(LogLevelInfo) {
-		log.Printf("[INFO] "+format, args...)
+		// Use slog so logs go to SignOz via OTLP handler
+		slog.Info("[INFO] " + fmt.Sprintf(format, args...))
 	}
 }
 
 func LogWarn(format string, args ...interface{}) {
 	if shouldLog(LogLevelWarn) {
-		log.Printf("[WARN] "+format, args...)
+		// Use slog so logs go to SignOz via OTLP handler
+		slog.Warn("[WARN] " + fmt.Sprintf(format, args...))
 	}
 }
 
 func LogCritical(format string, args ...interface{}) {
 	if shouldLog(LogLevelCritical) {
-		log.Printf("[CRITICAL] "+format, args...)
+		// Use slog so logs go to SignOz via OTLP handler
+		slog.Error("[CRITICAL] " + fmt.Sprintf(format, args...))
 	}
 }
