@@ -1,3 +1,10 @@
+## [1.2.7](https://github.com/LiamHardman/fm-dash/compare/v1.2.6...v1.2.7) (2025-07-09)
+
+
+### Bug Fixes
+
+* team matching log tweaks ([1097ccc](https://github.com/LiamHardman/fm-dash/commit/1097ccc120c457732563155e8dd494cc56fe2ac2))
+
 ## [1.2.6](https://github.com/LiamHardman/fm-dash/compare/v1.2.5...v1.2.6) (2025-07-09)
 
 
