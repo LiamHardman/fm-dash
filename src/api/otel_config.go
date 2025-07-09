@@ -44,7 +44,7 @@ func LoadOTelConfig() *OTelConfig {
 		ServiceVersion:           getEnvWithDefault("SERVICE_VERSION", "v1.0.0"),
 		Environment:              getEnvWithDefault("ENVIRONMENT", "development"),
 		CollectorURL:             getEnvWithDefault("OTEL_EXPORTER_OTLP_ENDPOINT", "signoz-otel-collector.signoz-helm:4317"),
-		InsecureMode:             getEnvBool("INSECURE_MODE", false),
+		InsecureMode:             getEnvBool("OTEL_EXPORTER_OTLP_INSECURE", false),
 		TraceSampleRate:          getEnvFloat("OTEL_TRACE_SAMPLE_RATE", -1.0),      // -1 means use adaptive
 		MetricExportInterval:     getEnvDuration("OTEL_METRIC_EXPORT_INTERVAL", 0), // 0 means use adaptive
 		ResourceDetectionTimeout: getEnvDuration("OTEL_RESOURCE_DETECTION_TIMEOUT", 5*time.Second),

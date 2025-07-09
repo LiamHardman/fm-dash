@@ -269,7 +269,7 @@ func applyEnvironmentOverrides(config *Config) {
 	if enabled := os.Getenv("OTEL_ENABLED"); enabled != "" {
 		config.Observability.Otel.Enabled = enabled == "true"
 	}
-	if insecureMode := os.Getenv("INSECURE_MODE"); insecureMode != "" {
+	if insecureMode := os.Getenv("OTEL_EXPORTER_OTLP_INSECURE"); insecureMode != "" {
 		config.Observability.Otel.InsecureMode = insecureMode == "true"
 	}
 	if telemetryDisabled := os.Getenv("OTEL_TELEMETRY_DISABLED"); telemetryDisabled != "" {
