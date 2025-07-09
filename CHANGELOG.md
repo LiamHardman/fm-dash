@@ -1,3 +1,10 @@
+## [1.2.5](https://github.com/LiamHardman/fm-dash/compare/v1.2.4...v1.2.5) (2025-07-09)
+
+
+### Bug Fixes
+
+* otel url fix ([fd80f9b](https://github.com/LiamHardman/fm-dash/commit/fd80f9b0ce5b35905a484def228135298ab9e868))
+
 ## [1.2.4](https://github.com/LiamHardman/fm-dash/compare/v1.2.3...v1.2.4) (2025-07-09)
 
 
