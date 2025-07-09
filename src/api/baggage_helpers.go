@@ -35,19 +35,26 @@ func SetBaggageValue(ctx context.Context, key, value string) context.Context {
 	bag := baggage.FromContext(ctx)
 	member, err := baggage.NewMember(key, value)
 	if err != nil {
-		slog.WarnContext(ctx, "Failed to create baggage member",
-			"key", key, "value", value, "error", err)
+		if GetMinLogLevel() <= LogLevelWarn {
+			slog.WarnContext(ctx, "Failed to create baggage member",
+				"key", key,
+				"value", value,
+				"error", err)
+		}
 		return ctx
 	}
 
-	bag, err = bag.SetMember(member)
+	newBag, err := bag.SetMember(member)
 	if err != nil {
-		slog.WarnContext(ctx, "Failed to set baggage member",
-			"key", key, "value", value, "error", err)
+		if GetMinLogLevel() <= LogLevelWarn {
+			slog.WarnContext(ctx, "Failed to set baggage member",
+				"key", key,
+				"error", err)
+		}
 		return ctx
 	}
 
-	return baggage.ContextWithBaggage(ctx, bag)
+	return baggage.ContextWithBaggage(ctx, newBag)
 }
 
 // GetBaggageValue retrieves a baggage value from the context

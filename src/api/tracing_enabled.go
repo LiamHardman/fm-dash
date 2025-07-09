@@ -135,7 +135,9 @@ func RecordError(ctx context.Context, err error, description string, opts ...Err
 		logAttrs = append(logAttrs, "error_severity", errorInfo.Severity)
 	}
 
-	slog.ErrorContext(ctx, "Operation failed", logAttrs...)
+	if GetMinLogLevel() <= LogLevelCritical {
+		slog.ErrorContext(ctx, "Operation failed", logAttrs...)
+	}
 }
 
 // ErrorInfo holds enhanced error context
@@ -376,11 +378,13 @@ func TraceSlowQuery(ctx context.Context, operation string, threshold time.Durati
 		))
 
 		// Log slow query warning
-		slog.WarnContext(ctx, "Slow query detected",
-			"operation", operation,
-			"duration_ms", float64(duration.Nanoseconds())/1e6,
-			"threshold_ms", float64(threshold.Nanoseconds())/1e6,
-		)
+		if GetMinLogLevel() <= LogLevelWarn {
+			slog.WarnContext(ctx, "Slow query detected",
+				"operation", operation,
+				"duration_ms", float64(duration.Nanoseconds())/1e6,
+				"threshold_ms", float64(threshold.Nanoseconds())/1e6,
+			)
+		}
 	}
 
 	if err != nil {

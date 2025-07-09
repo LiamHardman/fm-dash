@@ -97,12 +97,14 @@ func RequestTimeoutMiddleware(timeout time.Duration) func(http.Handler) http.Han
 						attribute.Float64("timeout_seconds", timeout.Seconds()),
 					))
 
-					slog.WarnContext(ctx, "Request timeout",
-						"timeout_seconds", timeout.Seconds(),
-						"method", r.Method,
-						"path", r.URL.Path,
-						"trace_id", GetTraceID(ctx),
-					)
+					if GetMinLogLevel() <= LogLevelWarn {
+						slog.WarnContext(ctx, "Request timeout",
+							"timeout_seconds", timeout.Seconds(),
+							"method", r.Method,
+							"path", r.URL.Path,
+							"trace_id", GetTraceID(ctx),
+						)
+					}
 
 					http.Error(w, fmt.Sprintf("Request timeout after %v", timeout), http.StatusRequestTimeout)
 				} else {
@@ -224,7 +226,7 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 		// Only log non-200 responses or when explicitly configured to log all requests
 		shouldLog := wrapped.statusCode != http.StatusOK || logAllRequests
 
-		if shouldLog {
+		if shouldLog && GetMinLogLevel() <= LogLevelDebug {
 			slog.DebugContext(ctx, "HTTP request completed",
 				"method", r.Method,
 				"path", r.URL.Path,
@@ -298,13 +300,15 @@ func PanicRecoveryMiddleware(next http.Handler) http.Handler {
 				)
 
 				// Log the panic with trace correlation
-				slog.ErrorContext(ctx, "Handler panic recovered",
-					"panic", err,
-					"method", r.Method,
-					"path", r.URL.Path,
-					"trace_id", GetTraceID(ctx),
-					"span_id", GetSpanID(ctx),
-				)
+				if GetMinLogLevel() <= LogLevelWarn {
+					slog.ErrorContext(ctx, "Handler panic recovered",
+						"panic", err,
+						"method", r.Method,
+						"path", r.URL.Path,
+						"trace_id", GetTraceID(ctx),
+						"span_id", GetSpanID(ctx),
+					)
+				}
 
 				// Record error metric
 				RecordError(ctx, panicErr, "Handler panic")
@@ -389,7 +393,9 @@ func CompressionMiddleware(next http.Handler) http.Handler {
 		defer func() {
 			if err := gw.Close(); err != nil {
 				span.RecordError(err)
-				slog.WarnContext(ctx, "Failed to close gzip writer", "error", err)
+				if GetMinLogLevel() <= LogLevelWarn {
+					slog.WarnContext(ctx, "Failed to close gzip writer", "error", err)
+				}
 			}
 		}()
 

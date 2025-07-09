@@ -141,21 +141,29 @@ func calculateOptimalBufferSize(numWorkers int, fileSize int64) int {
 	return adjustedSize
 }
 
-// Structured logging helpers with trace context
+// Structured logging helpers with trace context that respect LOG_LEVEL
 func logDebug(ctx context.Context, msg string, args ...any) {
-	slog.DebugContext(ctx, msg, args...)
+	if shouldLog(LogLevelDebug) {
+		slog.DebugContext(ctx, msg, args...)
+	}
 }
 
 func logInfo(ctx context.Context, msg string, args ...any) {
-	slog.InfoContext(ctx, msg, args...)
+	if shouldLog(LogLevelInfo) {
+		slog.InfoContext(ctx, msg, args...)
+	}
 }
 
 func logWarn(ctx context.Context, msg string, args ...any) {
-	slog.WarnContext(ctx, msg, args...)
+	if shouldLog(LogLevelWarn) {
+		slog.WarnContext(ctx, msg, args...)
+	}
 }
 
 func logError(ctx context.Context, msg string, args ...any) {
-	slog.ErrorContext(ctx, msg, args...)
+	if shouldLog(LogLevelCritical) {
+		slog.ErrorContext(ctx, msg, args...)
+	}
 }
 
 // League represents a division/league with its teams

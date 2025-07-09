@@ -248,7 +248,9 @@ func LogMemoryStats(ctx context.Context) {
 	}
 
 	stats := GetMemoryStats()
-	slog.InfoContext(ctx, "Runtime memory statistics", "stats", stats)
+	if GetMinLogLevel() <= LogLevelInfo {
+		slog.InfoContext(ctx, "Runtime memory statistics", "stats", stats)
+	}
 }
 
 // StartMemoryMonitoring starts a goroutine that periodically logs memory stats
@@ -266,11 +268,15 @@ func StartMemoryMonitoring(ctx context.Context, interval time.Duration) {
 			case <-ticker.C:
 				LogMemoryStats(ctx)
 			case <-ctx.Done():
-				slog.InfoContext(ctx, "Memory monitoring stopped")
+				if GetMinLogLevel() <= LogLevelInfo {
+					slog.InfoContext(ctx, "Memory monitoring stopped")
+				}
 				return
 			}
 		}
 	}()
 
-	slog.InfoContext(ctx, "Memory monitoring started", "interval", interval)
+	if GetMinLogLevel() <= LogLevelInfo {
+		slog.InfoContext(ctx, "Memory monitoring started", "interval", interval)
+	}
 }
