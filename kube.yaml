@@ -41,6 +41,8 @@ spec:
               value: "production"
             - name: DEPLOYMENT_ENV
               value: "kubernetes"
+            - name: LOG_LEVEL
+              value: "INFO"
             
             # CI/CD populated values (will be set by your CI/CD pipeline)
             - name: GIT_COMMIT_SHA

@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.0.6/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.1.1/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -17,8 +17,7 @@
       "*.js",
       "*.ts",
       "*.vue",
-      "*.json",
-      "*.md"
+      "*.json"
     ],
     "experimentalScannerIgnores": [
       "dist/**",
@@ -28,6 +27,8 @@
       ".git/**",
       "*.min.js",
       "*.min.css",
+      "*.md",
+      "docs/**/*.md",
       "testdata.html",
       "src/api/**",
       "src/utils/teams_data.json",
