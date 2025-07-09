@@ -155,7 +155,7 @@ func handleNationRatingsCache(w http.ResponseWriter, r *http.Request, cacheKey s
 		}
 
 		if err := storage.Store(cacheDatasetID, dummyData); err != nil {
-			log.Printf("Error storing nation ratings cache: %v", err)
+			LogWarn("Error storing nation ratings cache: %v", err)
 			http.Error(w, "Failed to store cache", http.StatusInternalServerError)
 			return
 		}
@@ -163,18 +163,18 @@ func handleNationRatingsCache(w http.ResponseWriter, r *http.Request, cacheKey s
 		w.Header().Set("Content-Type", "application/json")
 		setCORSHeaders(w, r)
 		if err := json.NewEncoder(w).Encode(map[string]string{"status": "cached"}); err != nil {
-			log.Printf("Error encoding response: %v", err)
+			LogWarn("Error encoding response: %v", err)
 		}
 
 	case http.MethodDelete:
 		if err := storage.Delete(cacheDatasetID); err != nil {
-			log.Printf("Error deleting cache: %v", err)
+			LogWarn("Error deleting cache: %v", err)
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		setCORSHeaders(w, r)
 		if err := json.NewEncoder(w).Encode(map[string]string{"status": "deleted"}); err != nil {
-			log.Printf("Error encoding response: %v", err)
+			LogWarn("Error encoding response: %v", err)
 		}
 
 	default:
@@ -197,18 +197,18 @@ func handlePercentilesCache(w http.ResponseWriter, r *http.Request, cacheKey str
 		w.Header().Set("Content-Type", "application/json")
 		setCORSHeaders(w, r)
 		if _, err := w.Write([]byte(data.CurrencySymbol)); err != nil {
-			log.Printf("Error writing response: %v", err)
+			LogWarn("Error writing response: %v", err)
 		}
 
 	case http.MethodDelete:
 		if err := storage.Delete(cacheDatasetID); err != nil {
-			log.Printf("Error deleting percentiles cache: %v", err)
+			LogWarn("Error deleting percentiles cache: %v", err)
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		setCORSHeaders(w, r)
 		if err := json.NewEncoder(w).Encode(map[string]string{"status": "deleted"}); err != nil {
-			log.Printf("Error encoding response: %v", err)
+			LogWarn("Error encoding response: %v", err)
 		}
 
 	default:
@@ -231,18 +231,18 @@ func handleBargainHunterCache(w http.ResponseWriter, r *http.Request, cacheKey s
 		w.Header().Set("Content-Type", "application/json")
 		setCORSHeaders(w, r)
 		if _, err := w.Write([]byte(data.CurrencySymbol)); err != nil {
-			log.Printf("Error writing response: %v", err)
+			LogWarn("Error writing response: %v", err)
 		}
 
 	case http.MethodDelete:
 		if err := storage.Delete(cacheDatasetID); err != nil {
-			log.Printf("Error deleting bargain hunter cache: %v", err)
+			LogWarn("Error deleting bargain hunter cache: %v", err)
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		setCORSHeaders(w, r)
 		if err := json.NewEncoder(w).Encode(map[string]string{"status": "deleted"}); err != nil {
-			log.Printf("Error encoding response: %v", err)
+			LogWarn("Error encoding response: %v", err)
 		}
 
 	default:
@@ -265,18 +265,18 @@ func handleSearchCache(w http.ResponseWriter, r *http.Request, cacheKey string) 
 		w.Header().Set("Content-Type", "application/json")
 		setCORSHeaders(w, r)
 		if _, err := w.Write([]byte(data.CurrencySymbol)); err != nil {
-			log.Printf("Error writing response: %v", err)
+			LogWarn("Error writing response: %v", err)
 		}
 
 	case http.MethodDelete:
 		if err := storage.Delete(cacheDatasetID); err != nil {
-			log.Printf("Error deleting search cache: %v", err)
+			LogWarn("Error deleting search cache: %v", err)
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		setCORSHeaders(w, r)
 		if err := json.NewEncoder(w).Encode(map[string]string{"status": "deleted"}); err != nil {
-			log.Printf("Error encoding response: %v", err)
+			LogWarn("Error encoding response: %v", err)
 		}
 
 	default:
@@ -365,18 +365,18 @@ func savePercentilesToCache(cacheKey, datasetID, playerName, divisionFilter, tar
 	// Encode our cache data as JSON and store it in the currency symbol field
 	cacheJSON, err := json.Marshal(cacheData)
 	if err != nil {
-		log.Printf("⚠️ Error marshaling percentiles cache data: %v", err)
+		LogWarn("⚠️ Error marshaling percentiles cache data: %v", err)
 		return
 	}
 
 	dummyData.CurrencySymbol = string(cacheJSON)
 
 	if err := storage.Store(cacheDatasetID, dummyData); err != nil {
-		log.Printf("⚠️ Error storing percentiles cache: %v", err)
+		LogWarn("⚠️ Error storing percentiles cache: %v", err)
 		return
 	}
 
-	log.Printf("✅ Percentiles cached successfully as %s", cacheKey)
+	LogDebug("✅ Percentiles cached successfully as %s", cacheKey)
 }
 
 // loadPercentilesFromCache loads percentiles calculation from cache
@@ -391,13 +391,13 @@ func loadPercentilesFromCache(cacheKey, datasetID, playerName, divisionFilter, t
 	// Decode our cache data from the currency symbol field
 	var cacheData PercentilesCacheData
 	if err := json.Unmarshal([]byte(dummyData.CurrencySymbol), &cacheData); err != nil {
-		log.Printf("⚠️ Error unmarshaling percentiles cache data: %v", err)
+		LogWarn("⚠️ Error unmarshaling percentiles cache data: %v", err)
 		return nil, false
 	}
 
 	// Validate cache data
 	if cacheData.Version != cacheVersion {
-		log.Printf("♻️ Percentiles cache version mismatch, recalculating...")
+		LogDebug("♻️ Percentiles cache version mismatch, recalculating...")
 		return nil, false
 	}
 
@@ -405,22 +405,22 @@ func loadPercentilesFromCache(cacheKey, datasetID, playerName, divisionFilter, t
 		cacheData.CacheKey.PlayerName != playerName ||
 		cacheData.CacheKey.DivisionFilter != divisionFilter ||
 		cacheData.CacheKey.TargetDivision != targetDivision {
-		log.Printf("♻️ Percentiles cache key mismatch, recalculating...")
+		LogDebug("♻️ Percentiles cache key mismatch, recalculating...")
 		return nil, false
 	}
 
 	if cacheData.CacheKey.PlayerCount != len(players) {
-		log.Printf("♻️ Player count changed (%d vs %d), recalculating percentiles...",
+		LogDebug("♻️ Player count changed (%d vs %d), recalculating percentiles...",
 			cacheData.CacheKey.PlayerCount, len(players))
 		return nil, false
 	}
 
 	if cacheData.CacheKey.DataHash != generateDataHash(players) {
-		log.Printf("♻️ Dataset hash changed, recalculating percentiles...")
+		LogDebug("♻️ Dataset hash changed, recalculating percentiles...")
 		return nil, false
 	}
 
-	log.Printf("✅ Loaded percentiles from cache (generated %s)", cacheData.GeneratedAt.Format(time.RFC3339))
+	LogDebug("✅ Loaded percentiles from cache (generated %s)", cacheData.GeneratedAt.Format(time.RFC3339))
 	return cacheData.Percentiles, true
 }
 
@@ -523,18 +523,18 @@ func saveBargainHunterToCache(cacheKey, datasetID string, maxBudget, maxSalary i
 
 	cacheJSON, err := json.Marshal(cacheData)
 	if err != nil {
-		log.Printf("⚠️ Error marshaling bargain hunter cache data: %v", err)
+		LogWarn("⚠️ Error marshaling bargain hunter cache data: %v", err)
 		return
 	}
 
 	dummyData.CurrencySymbol = string(cacheJSON)
 
 	if err := storage.Store(cacheDatasetID, dummyData); err != nil {
-		log.Printf("⚠️ Error storing bargain hunter cache: %v", err)
+		LogWarn("⚠️ Error storing bargain hunter cache: %v", err)
 		return
 	}
 
-	log.Printf("✅ Bargain hunter results cached successfully as %s", cacheKey)
+	LogDebug("✅ Bargain hunter results cached successfully as %s", cacheKey)
 }
 
 // loadBargainHunterFromCache loads bargain hunter calculation from cache
@@ -548,13 +548,13 @@ func loadBargainHunterFromCache(cacheKey, datasetID string, maxBudget, maxSalary
 
 	var cacheData BargainHunterCacheData
 	if err := json.Unmarshal([]byte(dummyData.CurrencySymbol), &cacheData); err != nil {
-		log.Printf("⚠️ Error unmarshaling bargain hunter cache data: %v", err)
+		LogWarn("⚠️ Error unmarshaling bargain hunter cache data: %v", err)
 		return nil, false
 	}
 
 	// Validate cache data
 	if cacheData.Version != cacheVersion {
-		log.Printf("♻️ Bargain hunter cache version mismatch, recalculating...")
+		LogDebug("♻️ Bargain hunter cache version mismatch, recalculating...")
 		return nil, false
 	}
 
@@ -564,22 +564,22 @@ func loadBargainHunterFromCache(cacheKey, datasetID string, maxBudget, maxSalary
 		cacheData.CacheKey.MinAge != minAge ||
 		cacheData.CacheKey.MaxAge != maxAge ||
 		cacheData.CacheKey.MinOverall != minOverall {
-		log.Printf("♻️ Bargain hunter cache key mismatch, recalculating...")
+		LogDebug("♻️ Bargain hunter cache key mismatch, recalculating...")
 		return nil, false
 	}
 
 	if cacheData.CacheKey.PlayerCount != len(players) {
-		log.Printf("♻️ Player count changed (%d vs %d), recalculating bargain hunter...",
+		LogDebug("♻️ Player count changed (%d vs %d), recalculating bargain hunter...",
 			cacheData.CacheKey.PlayerCount, len(players))
 		return nil, false
 	}
 
 	if cacheData.CacheKey.DataHash != generateDataHash(players) {
-		log.Printf("♻️ Dataset hash changed, recalculating bargain hunter...")
+		LogDebug("♻️ Dataset hash changed, recalculating bargain hunter...")
 		return nil, false
 	}
 
-	log.Printf("✅ Loaded bargain hunter results from cache (generated %s)", cacheData.GeneratedAt.Format(time.RFC3339))
+	LogDebug("✅ Loaded bargain hunter results from cache (generated %s)", cacheData.GeneratedAt.Format(time.RFC3339))
 	return cacheData.Results, true
 }
 
@@ -641,18 +641,18 @@ func saveSearchToCache(cacheKey, datasetID, query string, players []Player, resu
 
 	cacheJSON, err := json.Marshal(cacheData)
 	if err != nil {
-		log.Printf("⚠️ Error marshaling search cache data: %v", err)
+		LogWarn("⚠️ Error marshaling search cache data: %v", err)
 		return
 	}
 
 	dummyData.CurrencySymbol = string(cacheJSON)
 
 	if err := storage.Store(cacheDatasetID, dummyData); err != nil {
-		log.Printf("⚠️ Error storing search cache: %v", err)
+		LogWarn("⚠️ Error storing search cache: %v", err)
 		return
 	}
 
-	log.Printf("✅ Search results cached successfully as %s", cacheKey)
+	LogDebug("✅ Search results cached successfully as %s", cacheKey)
 }
 
 // loadSearchFromCache loads search results from cache
@@ -666,33 +666,33 @@ func loadSearchFromCache(cacheKey, datasetID, query string, players []Player) ([
 
 	var cacheData SearchCacheData
 	if err := json.Unmarshal([]byte(dummyData.CurrencySymbol), &cacheData); err != nil {
-		log.Printf("⚠️ Error unmarshaling search cache data: %v", err)
+		LogWarn("⚠️ Error unmarshaling search cache data: %v", err)
 		return nil, false
 	}
 
 	// Validate cache data
 	if cacheData.Version != cacheVersion {
-		log.Printf("♻️ Search cache version mismatch, recalculating...")
+		LogDebug("♻️ Search cache version mismatch, recalculating...")
 		return nil, false
 	}
 
 	if cacheData.CacheKey.DatasetID != datasetID ||
 		cacheData.CacheKey.Query != query {
-		log.Printf("♻️ Search cache key mismatch, recalculating...")
+		LogDebug("♻️ Search cache key mismatch, recalculating...")
 		return nil, false
 	}
 
 	if cacheData.CacheKey.PlayerCount != len(players) {
-		log.Printf("♻️ Player count changed (%d vs %d), recalculating search...",
+		LogDebug("♻️ Player count changed (%d vs %d), recalculating search...",
 			cacheData.CacheKey.PlayerCount, len(players))
 		return nil, false
 	}
 
 	if cacheData.CacheKey.DataHash != generateDataHash(players) {
-		log.Printf("♻️ Dataset hash changed, recalculating search...")
+		LogDebug("♻️ Dataset hash changed, recalculating search...")
 		return nil, false
 	}
 
-	log.Printf("✅ Loaded search results from cache (generated %s)", cacheData.GeneratedAt.Format(time.RFC3339))
+	LogDebug("✅ Loaded search results from cache (generated %s)", cacheData.GeneratedAt.Format(time.RFC3339))
 	return cacheData.Results, true
 }

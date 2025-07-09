@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -238,11 +237,11 @@ var (
 func init() {
 	// Only initialize metrics toggle from environment variable
 	metricsEnabled = os.Getenv("ENABLE_METRICS") == "true"
-	log.Printf("Metrics collection enabled: %v", metricsEnabled)
+	LogInfo("Metrics collection enabled: %v", metricsEnabled)
 
 	// Initialize logging configuration from environment variable
 	logAllRequests = os.Getenv("LOG_ALL_REQUESTS") == "true"
-	log.Printf("Log all requests enabled: %v", logAllRequests)
+	LogInfo("Log all requests enabled: %v", logAllRequests)
 
 	// Initialize log level from environment variable
 	logLevelStr := os.Getenv("LOG_LEVEL")
@@ -250,7 +249,7 @@ func init() {
 		logLevelStr = "INFO" // Default to INFO
 	}
 	SetMinLogLevel(parseLogLevel(logLevelStr))
-	log.Printf("Log level set to: %s", logLevelNames[GetMinLogLevel()])
+	LogInfo("Log level set to: %s", logLevelNames[GetMinLogLevel()])
 
 	// Initialize OpenTelemetry metrics if enabled (lightweight operation)
 	if metricsEnabled {
@@ -390,7 +389,7 @@ func SetUseScaledRatings(useScaled bool) {
 	muUseScaledRatings.Lock()
 	defer muUseScaledRatings.Unlock()
 	useScaledRatings = useScaled
-	log.Printf("Rating calculation method changed to: %s", map[bool]string{true: "scaled", false: "linear"}[useScaled])
+	LogInfo("Rating calculation method changed to: %s", map[bool]string{true: "scaled", false: "linear"}[useScaled])
 }
 
 // GetMinLogLevel returns the current minimum log level

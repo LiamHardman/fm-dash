@@ -45,13 +45,13 @@ func initTeamsData() error {
 		return nil
 	}
 
-	log.Printf("Team data initialization: Starting teams data loading process")
+	LogInfo("Team data initialization: Starting teams data loading process")
 
 	// Load teams data from JSON file
 	// In containerized environment, the file is at utils/teams_data.json relative to working directory
 	teamsFilePath := filepath.Join("utils", "teams_data.json")
 	if _, err := os.Stat(teamsFilePath); os.IsNotExist(err) {
-		log.Printf("Team data initialization: Primary path not found: %s", teamsFilePath)
+		LogDebug("Team data initialization: Primary path not found: %s", teamsFilePath)
 		// Try alternative paths (for different deployment scenarios)
 		alternativePaths := []string{
 			filepath.Join("src", "api", "utils", "teams_data.json"), // Local development
@@ -61,37 +61,37 @@ func initTeamsData() error {
 
 		found := false
 		for _, altPath := range alternativePaths {
-			log.Printf("Team data initialization: Trying alternative path: %s", altPath)
+			LogDebug("Team data initialization: Trying alternative path: %s", altPath)
 			if _, err := os.Stat(altPath); err == nil {
 				teamsFilePath = altPath
 				found = true
-				log.Printf("Team data initialization: Found teams data at: %s", altPath)
+				LogInfo("Team data initialization: Found teams data at: %s", altPath)
 				break
 			}
 		}
 
 		if !found {
-			log.Printf("Team data initialization: Teams data file not found at any location: %v", err)
+			LogWarn("Team data initialization: Teams data file not found at any location: %v", err)
 			return err
 		}
 	} else {
-		log.Printf("Team data initialization: Found teams data at primary path: %s", teamsFilePath)
+		LogInfo("Team data initialization: Found teams data at primary path: %s", teamsFilePath)
 	}
 
 	data, err := os.ReadFile(teamsFilePath)
 	if err != nil {
-		log.Printf("Team data initialization: Error reading teams data file: %v", err)
+		LogWarn("Team data initialization: Error reading teams data file: %v", err)
 		return err
 	}
 
-	log.Printf("Team data initialization: Successfully read teams data file (%d bytes)", len(data))
+	LogDebug("Team data initialization: Successfully read teams data file (%d bytes)", len(data))
 
 	if err := json.Unmarshal(data, &teamsData); err != nil {
-		log.Printf("Team data initialization: Error parsing teams data JSON: %v", err)
+		LogWarn("Team data initialization: Error parsing teams data JSON: %v", err)
 		return err
 	}
 
-	log.Printf("Team data initialization: Successfully parsed JSON, found %d teams", len(teamsData))
+	LogInfo("Team data initialization: Successfully parsed JSON, found %d teams", len(teamsData))
 
 	// Build search index
 	teamsIndex = make(map[string][]TeamIndexEntry)
@@ -131,14 +131,14 @@ func initTeamsData() error {
 	}
 
 	teamsLoaded = true
-	log.Printf("Team data initialization: Loaded %d teams and built search index with %d total index entries", len(teamsData), indexEntries)
-	log.Printf("Team data initialization: Index has %d unique keys", len(teamsIndex))
+	LogInfo("Team data initialization: Loaded %d teams and built search index with %d total index entries", len(teamsData), indexEntries)
+	LogDebug("Team data initialization: Index has %d unique keys", len(teamsIndex))
 
 	// Log some sample teams for verification
 	sampleCount := 0
 	for id, name := range teamsData {
 		if sampleCount < 5 {
-			log.Printf("Team data initialization: Sample team - ID: %s, Name: '%s'", id, name)
+			LogDebug("Team data initialization: Sample team - ID: %s, Name: '%s'", id, name)
 			sampleCount++
 		} else {
 			break
@@ -192,9 +192,9 @@ func normalizeTeamName(name string) string {
 
 	// Log normalization steps if there were significant changes
 	if original != normalized {
-		log.Printf("Team normalization: '%s' -> '%s'", sanitizeForLogging(original), sanitizeForLogging(normalized))
+		LogDebug("Team normalization: '%s' -> '%s'", sanitizeForLogging(original), sanitizeForLogging(normalized))
 		if beforePatterns != normalized {
-			log.Printf("Team normalization: Removed patterns: '%s' -> '%s'", sanitizeForLogging(beforePatterns), sanitizeForLogging(normalized))
+			LogDebug("Team normalization: Removed patterns: '%s' -> '%s'", sanitizeForLogging(beforePatterns), sanitizeForLogging(normalized))
 		}
 	}
 
@@ -221,7 +221,7 @@ func extractWords(normalized string) []string {
 		}
 	}
 
-	log.Printf("Team matching: Extracted words from '%s': %d words", sanitizeForLogging(normalized), len(result))
+	LogDebug("Team matching: Extracted words from '%s': %d words", sanitizeForLogging(normalized), len(result))
 	return result
 }
 

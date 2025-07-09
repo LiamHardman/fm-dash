@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"runtime"
 	"sync/atomic"
 	"time"
@@ -81,7 +80,7 @@ func (pt *ParseTimer) Finish(rowsProcessed, errors int64) {
 		atomic.StoreInt64(&globalMetrics.AverageParseTimePerRow, avgTime)
 	}
 
-	log.Printf("Parse operation '%s' completed: %d rows in %v (avg: %v/row, errors: %d)",
+	LogInfo("Parse operation '%s' completed: %d rows in %v (avg: %v/row, errors: %d)",
 		pt.operation, rowsProcessed, duration,
 		time.Duration(duration.Nanoseconds()/maxInt64(rowsProcessed, 1)), errors)
 }
@@ -190,24 +189,24 @@ func GetMetricsSnapshot() PerformanceMetrics {
 func LogPerformanceReport() {
 	metrics := GetMetricsSnapshot()
 
-	log.Printf("=== PERFORMANCE REPORT ===")
-	log.Printf("Parsing: %d rows, %d players, %d errors",
+	LogInfo("=== PERFORMANCE REPORT ===")
+	LogInfo("Parsing: %d rows, %d players, %d errors",
 		metrics.TotalRowsParsed, metrics.TotalPlayersProcessed, metrics.TotalParseErrors)
-	log.Printf("Average parse time per row: %v", time.Duration(metrics.AverageParseTimePerRow))
-	log.Printf("Memory: Current=%s, Peak=%s, GC=%d",
+	LogInfo("Average parse time per row: %v", time.Duration(metrics.AverageParseTimePerRow))
+	LogInfo("Memory: Current=%s, Peak=%s, GC=%d",
 		formatBytes(metrics.CurrentMemoryUsage),
 		formatBytes(metrics.PeakMemoryUsage),
 		metrics.GCCollections)
-	log.Printf("Workers: Active=%d, Goroutines=%d",
+	LogInfo("Workers: Active=%d, Goroutines=%d",
 		metrics.ActiveWorkers, metrics.CurrentGoroutines)
-	log.Printf("JSON: Marshal=%d ops (%v avg), Unmarshal=%d ops (%v avg)",
+	LogInfo("JSON: Marshal=%d ops (%v avg), Unmarshal=%d ops (%v avg)",
 		metrics.JSONMarshalOperations,
 		time.Duration(metrics.JSONMarshalTime/maxInt64(metrics.JSONMarshalOperations, 1)),
 		metrics.JSONUnmarshalOperations,
 		time.Duration(metrics.JSONUnmarshalTime/maxInt64(metrics.JSONUnmarshalOperations, 1)))
-	log.Printf("Channels: Backpressure=%d, Timeouts=%d",
+	LogInfo("Channels: Backpressure=%d, Timeouts=%d",
 		metrics.ChannelBackpressureEvents, metrics.ChannelTimeouts)
-	log.Printf("=========================")
+	LogInfo("=========================")
 }
 
 // formatBytes formats byte counts for human reading
@@ -243,7 +242,7 @@ func StartPerformanceMonitoring(interval time.Duration) {
 			// Log summary every interval
 			metrics := GetMetricsSnapshot()
 			if metrics.TotalRowsParsed > 0 {
-				log.Printf("Performance: %d rows parsed, %s memory, %d goroutines, %d workers",
+				LogInfo("Performance: %d rows parsed, %s memory, %d goroutines, %d workers",
 					metrics.TotalRowsParsed,
 					formatBytes(metrics.CurrentMemoryUsage),
 					metrics.CurrentGoroutines,

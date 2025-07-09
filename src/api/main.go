@@ -75,7 +75,7 @@ func main() {
 		}
 		defer func() {
 			if err := cleanup(context.Background()); err != nil {
-				log.Printf("Warning: Error during OpenTelemetry cleanup: %v", err)
+				LogWarn("Warning: Error during OpenTelemetry cleanup: %v", err)
 			}
 		}()
 		slog.Info("OpenTelemetry initialized", "logs_streaming", true)
