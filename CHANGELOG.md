@@ -1,3 +1,10 @@
+## [1.2.6](https://github.com/LiamHardman/fm-dash/compare/v1.2.5...v1.2.6) (2025-07-09)
+
+
+### Bug Fixes
+
+* migration to levelled logging ([69756dc](https://github.com/LiamHardman/fm-dash/commit/69756dce8e80230498757c3e78460d17038821e4))
+
 ## [1.2.5](https://github.com/LiamHardman/fm-dash/compare/v1.2.4...v1.2.5) (2025-07-09)
 
 
