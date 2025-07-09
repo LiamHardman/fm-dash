@@ -1,3 +1,10 @@
+## [1.2.9](https://github.com/LiamHardman/fm-dash/compare/v1.2.8...v1.2.9) (2025-07-09)
+
+
+### Bug Fixes
+
+* resolving spurious logs in prod deploy mode ([69659b7](https://github.com/LiamHardman/fm-dash/commit/69659b78cf3131bef85fcf7375370f55cc777185))
+
 ## [1.2.8](https://github.com/LiamHardman/fm-dash/compare/v1.2.7...v1.2.8) (2025-07-09)
 
 
