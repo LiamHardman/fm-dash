@@ -242,11 +242,19 @@ func StartPerformanceMonitoring(interval time.Duration) {
 			// Log summary every interval
 			metrics := GetMetricsSnapshot()
 			if metrics.TotalRowsParsed > 0 {
-				LogInfo("Performance: %d rows parsed, %s memory, %d goroutines, %d workers",
+				totalTimeSeconds := float64(metrics.TotalParseTime) / 1e9 // Convert nanoseconds to seconds
+				var rowsPerSecond float64
+				if totalTimeSeconds > 0 {
+					rowsPerSecond = float64(metrics.TotalRowsParsed) / totalTimeSeconds
+				}
+
+				LogInfo("Performance: %d rows parsed, %s memory, %d goroutines, %d workers, %.1fs total time, %.0f rows/sec",
 					metrics.TotalRowsParsed,
 					formatBytes(metrics.CurrentMemoryUsage),
 					metrics.CurrentGoroutines,
-					metrics.ActiveWorkers)
+					metrics.ActiveWorkers,
+					totalTimeSeconds,
+					rowsPerSecond)
 			}
 		}
 	}()
