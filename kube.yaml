@@ -56,7 +56,7 @@ spec:
             - name: OTEL_ENABLED
               value: "true"
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: "http://signoz-otel-collector.signoz-helm:4317"
+              value: "signoz-otel-collector.signoz-helm:4317"
             - name: OTEL_EXPORTER_OTLP_INSECURE
               value: "true"
 

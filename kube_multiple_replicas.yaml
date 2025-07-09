@@ -50,10 +50,12 @@ spec:
             - name: BUILD_TIMESTAMP
               value: ""
             
-            # OpenTelemetry - enable and configure for internal K8s communication
+            # OpenTelemetry Configuration
             - name: OTEL_ENABLED
               value: "true"
-            - name: INSECURE_MODE
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "signoz-otel-collector.signoz-helm:4317"
+            - name: OTEL_EXPORTER_OTLP_INSECURE
               value: "true"
             
             # S3-Compatible Storage Configuration (from secrets)
