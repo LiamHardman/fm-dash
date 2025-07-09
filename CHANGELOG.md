@@ -1,3 +1,10 @@
+## [1.1.8](https://github.com/LiamHardman/fm-dash/compare/v1.1.7...v1.1.8) (2025-07-09)
+
+
+### Bug Fixes
+
+* stop dupe release ([93b6ba5](https://github.com/LiamHardman/fm-dash/commit/93b6ba5169eb75113eca3f76a9ecab136d177bc7))
+
 ## [1.1.7](https://github.com/LiamHardman/fm-dash/compare/v1.1.6...v1.1.7) (2025-07-09)
 
 
