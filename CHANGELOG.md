@@ -1,3 +1,10 @@
+## [1.1.7](https://github.com/LiamHardman/fm-dash/compare/v1.1.6...v1.1.7) (2025-07-09)
+
+
+### Bug Fixes
+
+* releasing all 3 types of images now ([1320c1b](https://github.com/LiamHardman/fm-dash/commit/1320c1bc9e7ab7e888e342b004fc8d5849b20106))
+
 ## [1.1.6](https://github.com/LiamHardman/fm-dash/compare/v1.1.5...v1.1.6) (2025-07-08)
 
 
