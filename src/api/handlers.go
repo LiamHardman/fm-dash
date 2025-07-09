@@ -142,6 +142,10 @@ func calculateOptimalBufferSize(numWorkers int, fileSize int64) int {
 }
 
 // Structured logging helpers with trace context
+func logDebug(ctx context.Context, msg string, args ...any) {
+	slog.DebugContext(ctx, msg, args...)
+}
+
 func logInfo(ctx context.Context, msg string, args ...any) {
 	slog.InfoContext(ctx, msg, args...)
 }
@@ -285,7 +289,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		attribute.Int64("file.size_from_header", handler.Size),
 	)
 
-	logInfo(ctx, "File uploaded",
+	logDebug(ctx, "File uploaded",
 		"filename", handler.Filename,
 		"size_bytes", actualFileSize)
 
@@ -401,7 +405,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 				log.Printf("Skipping row due to error from worker: %v", result.Err)
 			}
 		}
-		log.Println("Finished collecting results from resultsChan.")
+		LogDebug("Finished collecting results from resultsChan.")
 	}()
 
 	// Start performance timer for parsing
@@ -415,7 +419,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	processingError = err
 
 	// Note: rowCellsChan is now closed by ParseHTMLPlayerTable function to prevent race conditions
-	log.Println("HTML parsing attempt finished - channel closed by parser.")
+	LogDebug("HTML parsing attempt finished - channel closed by parser.")
 
 	if processingError != nil {
 		RecordError(ctx, processingError, "HTML parsing failed")
@@ -440,16 +444,16 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	AddSpanEvent(ctx, "workers.waiting_for_completion")
-	log.Println("Waiting for all player data parser workers to finish...")
+	LogDebug("Waiting for all player data parser workers to finish...")
 	wg.Wait()
 	AddSpanEvent(ctx, "workers.completed")
-	log.Println("All workers have completed (wg.Wait() returned).")
+	LogDebug("All workers have completed (wg.Wait() returned).")
 
 	close(resultsChan)
-	log.Println("ResultsChan closed after all workers finished.")
+	LogDebug("ResultsChan closed after all workers finished.")
 
 	<-doneConsumingResults
-	log.Println("Results consumer goroutine finished processing all items.")
+	LogDebug("Results consumer goroutine finished processing all items.")
 
 	// Finish performance timing
 	parseTimer.Finish(int64(len(playersList)), 0) // No errors counted here since workers handle errors
@@ -481,7 +485,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Calculate percentiles before storing to prevent race conditions
 	ctx, percentileSpan := StartSpan(ctx, "percentiles.calculate_upload")
-	logInfo(ctx, "Calculating percentiles during upload to prevent race conditions",
+	logDebug(ctx, "Calculating percentiles during upload to prevent race conditions",
 		"dataset_id", datasetID,
 		"player_count", len(playersList))
 
@@ -505,11 +509,11 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	// Store the file hash mapping for duplicate detection
 	storeDuplicateMapping(fileHash, datasetID)
 
-	logInfo(ctx, "Duplicate detection mapping stored",
+	logDebug(ctx, "Duplicate detection mapping stored",
 		"dataset_id", datasetID,
 		"file_hash", fileHash[:16]+"...")
 
-	logInfo(ctx, "Player data stored successfully",
+	logDebug(ctx, "Player data stored successfully",
 		"dataset_id", datasetID,
 		"player_count", len(playersList),
 		"detected_currency", finalDatasetCurrencySymbol)
@@ -563,7 +567,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	)
 
 	// Log performance metrics with trace context
-	logInfo(ctx, "Upload processing completed",
+	logDebug(ctx, "Upload processing completed",
 		"filename", handler.Filename,
 		"file_size_kb", actualFileSize/1024,
 		"total_duration_ms", totalDuration.Milliseconds(),
@@ -629,7 +633,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 	targetDivision := queryValues.Get("targetDivision")
 	positionCompare := queryValues.Get("positionCompare") // "all", "broad", "detailed"
 
-	logInfo(ctx, "Processing player data request",
+	logDebug(ctx, "Processing player data request",
 		"dataset_id", datasetID,
 		"position_filter", filterPosition,
 		"role_filter", filterRole,
@@ -669,7 +673,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 			players = cachedResult.Players
 			currencySymbol = cachedResult.CurrencySymbol
 			found = true
-			logInfo(ctx, "Using cached percentile data", "dataset_id", datasetID, "division_filter", divisionFilterStr)
+			logDebug(ctx, "Using cached percentile data", "dataset_id", datasetID, "division_filter", divisionFilterStr)
 			SetSpanAttributes(ctx, attribute.Bool("percentile_cache.hit", true))
 		}
 	}
@@ -727,7 +731,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		setInMemCache(percentileCacheKey, cacheData, 10*time.Minute) // Cache for 10 minutes
 
-		logInfo(ctx, "Calculated and cached percentiles",
+		logDebug(ctx, "Calculated and cached percentiles",
 			"dataset_id", datasetID,
 			"division_filter", divisionFilterStr,
 			"player_count", len(players))
@@ -741,7 +745,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 	// Check cache for final filtered result
 	if cachedFiltered, cacheFound := getFromMemCache(finalCacheKey); cacheFound {
 		if jsonData, ok := cachedFiltered.([]byte); ok {
-			logInfo(ctx, "Serving filtered player data from cache", "dataset_id", datasetID)
+			logDebug(ctx, "Serving filtered player data from cache", "dataset_id", datasetID)
 
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("Cache-Control", "public, max-age=180") // Cache for 3 minutes
@@ -839,7 +843,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 		processedPlayers = append(processedPlayers, playerCopy)
 	}
 
-	logInfo(ctx, "Returning processed players", "dataset_id", datasetID, "player_count", len(processedPlayers))
+	logDebug(ctx, "Returning processed players", "dataset_id", datasetID, "player_count", len(processedPlayers))
 
 	response := PlayerDataWithCurrency{Players: processedPlayers, CurrencySymbol: currencySymbol}
 	w.Header().Set("Content-Type", "application/json")
@@ -863,7 +867,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error writing response: %v", err)
 	}
 
-	logInfo(ctx, "Player data processed and cached",
+	logDebug(ctx, "Player data processed and cached",
 		"dataset_id", datasetID,
 		"processed_count", len(processedPlayers),
 		"original_count", len(data.Players),

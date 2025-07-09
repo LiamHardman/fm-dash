@@ -240,7 +240,7 @@ tokenLoop:
 						localHeadersForWorker = make([]string, len(currentHeaders))
 						copy(localHeadersForWorker, currentHeaders)
 						*headersSnapshot = localHeadersForWorker
-						log.Printf("Headers found (tbody start), launching %d workers with %d headers", numWorkers, len(localHeadersForWorker))
+						LogDebug("Headers found (tbody start), launching %d workers with %d headers", numWorkers, len(localHeadersForWorker))
 						wg.Add(numWorkers)
 						for i := 0; i < numWorkers; i++ {
 							go PlayerParserWorker(i, rowCellsChan, resultsChan, wg, localHeadersForWorker)
@@ -310,7 +310,7 @@ tokenLoop:
 						localHeadersForWorker = make([]string, len(currentHeaders))
 						copy(localHeadersForWorker, currentHeaders)
 						*headersSnapshot = localHeadersForWorker
-						log.Printf("Headers found (tr end), launching %d workers with %d headers", numWorkers, len(localHeadersForWorker))
+						LogDebug("Headers found (tr end), launching %d workers with %d headers", numWorkers, len(localHeadersForWorker))
 						wg.Add(numWorkers)
 						for i := 0; i < numWorkers; i++ {
 							go PlayerParserWorker(i, rowCellsChan, resultsChan, wg, localHeadersForWorker)
@@ -331,7 +331,7 @@ tokenLoop:
 					localHeadersForWorker = make([]string, len(currentHeaders))
 					copy(localHeadersForWorker, currentHeaders)
 					*headersSnapshot = localHeadersForWorker
-					log.Printf("Headers found (table end), launching %d workers with %d headers", numWorkers, len(localHeadersForWorker))
+					LogDebug("Headers found (table end), launching %d workers with %d headers", numWorkers, len(localHeadersForWorker))
 					wg.Add(numWorkers)
 					for i := 0; i < numWorkers; i++ {
 						go PlayerParserWorker(i, rowCellsChan, resultsChan, wg, localHeadersForWorker)
@@ -348,7 +348,7 @@ tokenLoop:
 
 	// Final cleanup and worker notification
 	if workersStarted {
-		log.Printf("HTML parsing finished, closing rowCellsChan to signal %d workers", numWorkers)
+		LogDebug("HTML parsing finished, closing rowCellsChan to signal %d workers", numWorkers)
 		closeChannelOnce() // Safe channel close
 	} else {
 		log.Printf("Warning: No workers were started during HTML parsing. Headers found: %v", len(currentHeaders) > 0)

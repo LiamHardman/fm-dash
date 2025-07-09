@@ -358,7 +358,7 @@ func (s *S3Storage) storeSync(datasetID string, data DatasetData) error {
 	}
 
 	RecordDBOperation(ctx, "store", "s3_datasets", time.Since(start), 1)
-	log.Printf("Stored dataset %s to S3", sanitizeForLogging(datasetID))
+	LogDebug("Stored dataset %s to S3", sanitizeForLogging(datasetID))
 	return nil
 }
 

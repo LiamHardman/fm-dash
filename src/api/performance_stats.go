@@ -89,7 +89,7 @@ func CalculatePlayerPerformancePercentiles(players []Player) {
 	}
 
 	startTime := time.Now()
-	log.Printf("🔄 Calculating global percentiles for %d players", len(players))
+	LogDebug("🔄 Calculating global percentiles for %d players", len(players))
 
 	// Initialize PerformancePercentiles maps for all players if not already done
 	for i := range players {
@@ -255,7 +255,7 @@ func CalculatePlayerPerformancePercentiles(players []Player) {
 	}
 
 	duration := time.Since(startTime)
-	log.Printf("⚡ Optimized global percentile calculation completed in %v for %d players", duration, len(players))
+	LogDebug("⚡ Optimized global percentile calculation completed in %v for %d players", duration, len(players))
 }
 
 // CalculatePlayerPerformancePercentilesWithDivisionFilter computes and populates percentile ranks with division filtering

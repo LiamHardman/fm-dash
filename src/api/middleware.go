@@ -225,7 +225,7 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 		shouldLog := wrapped.statusCode != http.StatusOK || logAllRequests
 
 		if shouldLog {
-			slog.InfoContext(ctx, "HTTP request completed",
+			slog.DebugContext(ctx, "HTTP request completed",
 				"method", r.Method,
 				"path", r.URL.Path,
 				"status", wrapped.statusCode,
