@@ -50,8 +50,10 @@ spec:
             - name: BUILD_TIMESTAMP
               value: ""
             
-            # OpenTelemetry - just enable it, config file has all the details
+            # OpenTelemetry - enable and configure for internal K8s communication
             - name: OTEL_ENABLED
+              value: "true"
+            - name: INSECURE_MODE
               value: "true"
             
             # S3-Compatible Storage Configuration (from secrets)
