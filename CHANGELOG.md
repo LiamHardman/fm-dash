@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/LiamHardman/fm-dash/compare/v1.1.9...v1.2.0) (2025-07-09)
+
+
+### Features
+
+* implement configurable log levels system ([7bfd899](https://github.com/LiamHardman/fm-dash/commit/7bfd899e502b024a5e685f6f8cd748aa226c20ca))
+
 ## [1.1.9](https://github.com/LiamHardman/fm-dash/compare/v1.1.8...v1.1.9) (2025-07-09)
 
 
