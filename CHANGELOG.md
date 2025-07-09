@@ -1,3 +1,10 @@
+## [1.2.3](https://github.com/LiamHardman/fm-dash/compare/v1.2.2...v1.2.3) (2025-07-09)
+
+
+### Bug Fixes
+
+* otel logging debugging ([e3ad1e7](https://github.com/LiamHardman/fm-dash/commit/e3ad1e7cb8174e2621b349b1723ea042fc0ad42c))
+
 ## [1.2.2](https://github.com/LiamHardman/fm-dash/compare/v1.2.1...v1.2.2) (2025-07-09)
 
 
