@@ -50,6 +50,10 @@ spec:
             - name: BUILD_TIMESTAMP
               value: ""
             
+            # OpenTelemetry - just enable it, config file has all the details
+            - name: OTEL_ENABLED
+              value: "true"
+            
             # S3-Compatible Storage Configuration (from secrets)
             - name: S3_ENDPOINT
               valueFrom:
