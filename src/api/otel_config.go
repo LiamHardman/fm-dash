@@ -43,7 +43,7 @@ func LoadOTelConfig() *OTelConfig {
 		ServiceName:              getEnvWithDefault("SERVICE_NAME", "v2fmdash-api"),
 		ServiceVersion:           getEnvWithDefault("SERVICE_VERSION", "v1.0.0"),
 		Environment:              getEnvWithDefault("ENVIRONMENT", "development"),
-		CollectorURL:             getEnvWithDefault("OTEL_EXPORTER_OTLP_ENDPOINT", "signoz.signoz:4317"),
+		CollectorURL:             getEnvWithDefault("OTEL_EXPORTER_OTLP_ENDPOINT", "signoz-otel-collector.signoz-helm:4317"),
 		InsecureMode:             getEnvBool("INSECURE_MODE", false),
 		TraceSampleRate:          getEnvFloat("OTEL_TRACE_SAMPLE_RATE", -1.0),      // -1 means use adaptive
 		MetricExportInterval:     getEnvDuration("OTEL_METRIC_EXPORT_INTERVAL", 0), // 0 means use adaptive

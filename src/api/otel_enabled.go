@@ -8,6 +8,7 @@ import (
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
@@ -35,18 +36,17 @@ func initOTel() func(context.Context) error {
 
 	ctx := context.Background()
 
-	// Create trace exporter
-	traceExporter, err := createTraceExporter(ctx, cfg)
-	if err != nil {
-		log.Printf("Warning: Failed to create trace exporter: %v. OTEL tracing disabled.", err)
-		return func(ctx context.Context) error { return nil }
-	}
-
 	// Create enhanced resources
 	resources, err := cfg.CreateEnhancedResource()
 	if err != nil {
-		log.Printf("Warning: Could not set resources: %v. OTEL disabled.", err)
-		return func(ctx context.Context) error { return nil }
+		log.Printf("Warning: Could not set resources: %v. Using minimal resources.", err)
+		// Create a minimal resource instead of failing completely
+		resources, _ = resource.New(ctx,
+			resource.WithAttributes(
+				attribute.String("service.name", cfg.ServiceName),
+				attribute.String("service.version", cfg.ServiceVersion),
+			),
+		)
 	}
 
 	// Set up composite propagator
@@ -55,53 +55,67 @@ func initOTel() func(context.Context) error {
 		propagation.Baggage{},
 	))
 
-	// Initialize tracing
+	// Initialize tracing (independent of other components)
+	var traceExporter *otlptrace.Exporter
 	if cfg.EnableTracing {
-		bsp := sdktrace.NewBatchSpanProcessor(traceExporter, cfg.GetSpanProcessorOptions()...)
-		tracerProvider := sdktrace.NewTracerProvider(
-			sdktrace.WithSampler(cfg.GetSampler()),
-			sdktrace.WithSpanProcessor(bsp),
-			sdktrace.WithResource(resources),
-		)
-		otel.SetTracerProvider(tracerProvider)
+		traceExporter, err = createTraceExporter(ctx, cfg)
+		if err != nil {
+			log.Printf("Warning: Failed to create trace exporter: %v. OTEL tracing disabled.", err)
+		} else {
+			bsp := sdktrace.NewBatchSpanProcessor(traceExporter, cfg.GetSpanProcessorOptions()...)
+			tracerProvider := sdktrace.NewTracerProvider(
+				sdktrace.WithSampler(cfg.GetSampler()),
+				sdktrace.WithSpanProcessor(bsp),
+				sdktrace.WithResource(resources),
+			)
+			otel.SetTracerProvider(tracerProvider)
+			log.Printf("✓ OTEL tracing initialized")
+		}
 	}
 
-	// Initialize metrics
-	meterProvider, err := createMeterProvider(ctx, cfg, resources)
-	if err != nil {
-		log.Printf("Warning: Failed to create meter provider: %v. OTEL metrics disabled.", err)
-	} else if cfg.EnableMetrics {
-		otel.SetMeterProvider(meterProvider)
-	}
-
-	// Initialize logs
-	loggerProvider, err := createLoggerProvider(ctx, cfg, resources)
-	if err != nil {
-		log.Printf("Warning: Failed to create logger provider: %v. OTEL logs disabled.", err)
-	} else if cfg.EnableLogging {
-		slog.SetDefault(slog.New(NewOTLPHandler(loggerProvider)))
-	}
-
-	// Initialize metrics and runtime monitoring
+	// Initialize metrics (independent of tracing)
+	var meterProvider *sdkmetric.MeterProvider
 	if cfg.EnableMetrics {
-		initMetrics()
+		meterProvider, err = createMeterProvider(ctx, cfg, resources)
+		if err != nil {
+			log.Printf("Warning: Failed to create meter provider: %v. OTEL metrics disabled.", err)
+		} else {
+			otel.SetMeterProvider(meterProvider)
+			initMetrics()
+			log.Printf("✓ OTEL metrics initialized")
+		}
 	}
+
+	// Initialize runtime metrics (independent of other components)
 	if cfg.EnableRuntimeMetrics {
 		initRuntimeMetrics()
+		log.Printf("✓ OTEL runtime metrics initialized")
+	}
+
+	// Initialize logs (independent of tracing and metrics)
+	var loggerProvider *sdklog.LoggerProvider
+	if cfg.EnableLogging {
+		loggerProvider, err = createLoggerProvider(ctx, cfg, resources)
+		if err != nil {
+			log.Printf("Warning: Failed to create logger provider: %v. OTEL logs disabled.", err)
+		} else {
+			slog.SetDefault(slog.New(NewOTLPHandler(loggerProvider)))
+			log.Printf("✓ OTEL logging initialized - logs will be sent to SignOz")
+		}
 	}
 
 	return func(ctx context.Context) error {
-		if cfg.EnableTracing {
+		if traceExporter != nil {
 			if err := traceExporter.Shutdown(ctx); err != nil {
 				log.Printf("Error shutting down trace exporter: %v", err)
 			}
 		}
-		if meterProvider != nil && cfg.EnableMetrics {
+		if meterProvider != nil {
 			if err := meterProvider.Shutdown(ctx); err != nil {
 				log.Printf("Error shutting down meter provider: %v", err)
 			}
 		}
-		if loggerProvider != nil && cfg.EnableLogging {
+		if loggerProvider != nil {
 			if err := loggerProvider.Shutdown(ctx); err != nil {
 				log.Printf("Error shutting down log provider: %v", err)
 			}
