@@ -51,12 +51,17 @@ func parseLogLevel(level string) int {
 }
 
 const (
-	// Default capacity constants for better performance
-	defaultPlayerCapacity    = 2048            // Increased from 1024 for better pre-allocation
-	defaultAttributeCapacity = 80              // Increased from 64 for FM attributes
-	defaultCellCapacity      = 80              // Increased from 64 for table cells
-	overallScalingFactor     = 5.85            // Used for scaling role-specific attribute averages (1-20) to 0-99
-	maxTokenBufferSize       = 4 * 1024 * 1024 // Increased from 2MB to 4MB for larger files
+	// Default capacity constants for better performance - OPTIMIZED
+	defaultPlayerCapacity    = 4096             // Increased from 2048 for better pre-allocation
+	defaultAttributeCapacity = 120              // Increased from 80 for FM attributes + extras
+	defaultCellCapacity      = 120              // Increased from 80 for table cells + extras
+	overallScalingFactor     = 5.85             // Used for scaling role-specific attribute averages (1-20) to 0-99
+	maxTokenBufferSize       = 16 * 1024 * 1024 // Increased from 4MB to 16MB for larger files
+
+	// Optimized processing constants
+	optimalChunkSize      = 8192      // Optimal chunk size for byte processing
+	stringBuilderInitSize = 1024      // Initial size for string builders
+	maxStringBuilderSize  = 32 * 1024 // Max size before builder is discarded from pool
 
 	// General limits
 	// maxFileSize           = 50 * 1024 * 1024 // 50MB file size limit

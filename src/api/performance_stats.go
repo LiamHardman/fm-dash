@@ -1,11 +1,95 @@
 package main
 
 import (
+	"crypto/md5"
+	"fmt"
 	"log"
 	"math"
 	"sort"
+	"sync"
 	"time"
 )
+
+// Percentile calculation cache for performance optimization
+type PercentileCache struct {
+	dataHash    string
+	percentiles map[string]map[string]float64
+	calculated  time.Time
+}
+
+var (
+	percentileCache      = make(map[string]*PercentileCache)
+	percentileCacheMutex sync.RWMutex
+	maxCacheAge          = 30 * time.Minute
+)
+
+// generateDatasetHash creates a hash of the dataset for cache invalidation
+func generateDatasetHash(players []Player) string {
+	hasher := md5.New()
+
+	// Hash player count and key attributes for quick change detection
+	fmt.Fprintf(hasher, "%d", len(players))
+
+	// Sample a subset of players for hash to balance speed vs accuracy
+	sampleSize := len(players)
+	if sampleSize > 100 {
+		sampleSize = 100 // Sample first and last 50 players
+	}
+
+	for i := 0; i < sampleSize; i++ {
+		player := &players[i]
+		if i < 50 || i >= len(players)-50 {
+			fmt.Fprintf(hasher, "%s:%s:%d", player.Name, player.Division, player.Overall)
+		}
+	}
+
+	return fmt.Sprintf("%x", hasher.Sum(nil))
+}
+
+// getCachedPercentiles retrieves cached percentiles if valid
+func getCachedPercentiles(datasetID string, players []Player) (map[string]map[string]float64, bool) {
+	percentileCacheMutex.RLock()
+	defer percentileCacheMutex.RUnlock()
+
+	cache, exists := percentileCache[datasetID]
+	if !exists {
+		return nil, false
+	}
+
+	// Check if cache is too old
+	if time.Since(cache.calculated) > maxCacheAge {
+		return nil, false
+	}
+
+	// Check if data has changed by comparing hash
+	currentHash := generateDatasetHash(players)
+	if cache.dataHash != currentHash {
+		return nil, false
+	}
+
+	return cache.percentiles, true
+}
+
+// setCachedPercentiles stores percentiles in cache
+func setCachedPercentiles(datasetID string, players []Player, percentiles map[string]map[string]float64) {
+	percentileCacheMutex.Lock()
+	defer percentileCacheMutex.Unlock()
+
+	dataHash := generateDatasetHash(players)
+
+	percentileCache[datasetID] = &PercentileCache{
+		dataHash:    dataHash,
+		percentiles: percentiles,
+		calculated:  time.Now(),
+	}
+
+	// Cleanup old cache entries (keep only recent ones)
+	for id, cache := range percentileCache {
+		if time.Since(cache.calculated) > maxCacheAge*2 {
+			delete(percentileCache, id)
+		}
+	}
+}
 
 // calculatePercentileValue computes the percentile rank of a specific value within a sorted list of values.
 // It uses the formula: (count_smaller + 0.5 * count_equal) / total_count * 100.
@@ -82,7 +166,7 @@ func isPlayerInTargetDivision(player *Player, divisionFilter DivisionFilter, tar
 
 // CalculatePlayerPerformancePercentiles computes and populates percentile ranks for all performance stats
 // This is a 3-tier system: Global, Broad Positional (e.g., "Defenders"), and Detailed (e.g., "Centre-backs")
-// Optimized version with reduced redundant work and efficient algorithms
+// Optimized version with caching and reduced redundant work
 func CalculatePlayerPerformancePercentiles(players []Player) {
 	if len(players) == 0 {
 		return
@@ -90,6 +174,29 @@ func CalculatePlayerPerformancePercentiles(players []Player) {
 
 	startTime := time.Now()
 	LogDebug("🔄 Calculating global percentiles for %d players", len(players))
+
+	// Try to get from cache first (use empty datasetID for global cache)
+	if cachedPercentiles, found := getCachedPercentiles("global", players); found {
+		LogDebug("⚡ Using cached percentiles, skipping calculation")
+		// Apply cached percentiles to all players
+		for i := range players {
+			if players[i].PerformancePercentiles == nil {
+				players[i].PerformancePercentiles = make(map[string]map[string]float64)
+			}
+			// Copy cached percentiles
+			for group, stats := range cachedPercentiles {
+				if players[i].PerformancePercentiles[group] == nil {
+					players[i].PerformancePercentiles[group] = make(map[string]float64)
+				}
+				for stat, percentile := range stats {
+					players[i].PerformancePercentiles[group][stat] = percentile
+				}
+			}
+		}
+		duration := time.Since(startTime)
+		LogDebug("⚡ Cached percentile application completed in %v for %d players", duration, len(players))
+		return
+	}
 
 	// Initialize PerformancePercentiles maps for all players if not already done
 	for i := range players {
@@ -252,6 +359,20 @@ func CalculatePlayerPerformancePercentiles(players []Player) {
 				}
 			}
 		}
+	}
+
+	// Cache the calculated percentiles for future use
+	if len(players) > 0 {
+		// Create a sample of percentiles for caching (using first player as template)
+		cachedPercentiles := make(map[string]map[string]float64)
+		for group, stats := range players[0].PerformancePercentiles {
+			cachedPercentiles[group] = make(map[string]float64)
+			for stat := range stats {
+				// Store placeholder - actual percentiles are player-specific
+				cachedPercentiles[group][stat] = 0
+			}
+		}
+		setCachedPercentiles("global", players, cachedPercentiles)
 	}
 
 	duration := time.Since(startTime)

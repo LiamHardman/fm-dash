@@ -2,17 +2,83 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"io"
 	"log"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"golang.org/x/net/html"
 )
+
+// Optimized currency lookup table for faster detection
+var currencyLookupTable = map[string]string{
+	"€":    "€",
+	"£":    "£",
+	"$":    "$",
+	"¥":    "¥",
+	"₹":    "₹",
+	"₽":    "₽",
+	"₺":    "₺",
+	"₩":    "₩",
+	"R$":   "R$",
+	"CHF":  "CHF",
+	"A$":   "A$",
+	"CA$":  "CA$",
+	"Mex$": "Mex$",
+	"kr":   "kr",
+	"zł":   "zł",
+	"R":    "R",
+}
+
+// Byte-level currency symbols for faster scanning
+var currencyBytes = [][]byte{
+	[]byte("€"), []byte("£"), []byte("$"), []byte("¥"), []byte("₹"), []byte("₽"),
+	[]byte("₺"), []byte("₩"), []byte("R$"), []byte("CHF"), []byte("A$"),
+	[]byte("CA$"), []byte("Mex$"), []byte("kr"), []byte("zł"), []byte("R"),
+}
+
+// Optimized string builder pool with size management
+var optimizedStringBuilderPool = sync.Pool{
+	New: func() interface{} {
+		sb := &strings.Builder{}
+		sb.Grow(stringBuilderInitSize)
+		return sb
+	},
+}
+
+func getOptimizedStringBuilder() *strings.Builder {
+	sb := optimizedStringBuilderPool.Get().(*strings.Builder)
+	sb.Reset()
+	return sb
+}
+
+func putOptimizedStringBuilder(sb *strings.Builder) {
+	if sb.Cap() <= maxStringBuilderSize { // Don't pool extremely large builders
+		optimizedStringBuilderPool.Put(sb)
+	}
+}
+
+// Byte buffer pool for processing
+var byteBufferPool = sync.Pool{
+	New: func() interface{} {
+		return make([]byte, 0, optimalChunkSize)
+	},
+}
+
+func getByteBuffer() []byte {
+	return byteBufferPool.Get().([]byte)[:0]
+}
+
+func putByteBuffer(buf []byte) {
+	if cap(buf) <= optimalChunkSize*2 { // Don't pool overly large buffers
+		byteBufferPool.Put(buf)
+	}
+}
 
 // sendRowWithBackpressure attempts to send row data to channel with optimized timeout handling
 func sendRowWithBackpressure(rowCellsChan chan []string, cells []string, timeout time.Duration) {
@@ -43,127 +109,91 @@ func sendRowWithBackpressure(rowCellsChan chan []string, cells []string, timeout
 	}
 }
 
-// Optimized regex compilation for currency parsing - compiled once at package level
-var currencySymbolRegex = regexp.MustCompile(
-	`([€£$¥₹₽₺₩])|` + // Single character symbols (Euro, Pound, Dollar, Yen, Rupee, Ruble, Lira, Won)
-		`(R\$)|` + // Brazilian Real
-		`(CHF)|` + // Swiss Franc
-		`(A\$)|` + // Australian Dollar
-		`(CA\$)|` + // Canadian Dollar (use CA$ to distinguish from A$)
-		`(Mex\$)|` + // Mexican Peso
-		`(kr)|` + // Krona (Swedish, Norwegian, Danish) - might be too generic, consider specific like SEK, NOK, DKK if available in data
-		`(zł)|` + // Polish Zloty
-		`(R)`, // South African Rand (must be last if 'R$' is also used to avoid partial match)
-)
-
-// Optimized buffer pool for string operations
-var stringBuilderPool = sync.Pool{
-	New: func() interface{} {
-		return &strings.Builder{}
-	},
-}
-
-func getStringBuilder() *strings.Builder {
-	sb := stringBuilderPool.Get().(*strings.Builder)
-	sb.Reset()
-	return sb
-}
-
-func putStringBuilder(sb *strings.Builder) {
-	if sb.Cap() <= 1024 { // Don't pool extremely large builders
-		stringBuilderPool.Put(sb)
+// Optimized byte-level currency detection
+func detectCurrencyFromBytes(data []byte) string {
+	for _, currencyBytes := range currencyBytes {
+		if bytes.Contains(data, currencyBytes) {
+			return string(currencyBytes)
+		}
 	}
+	return ""
 }
 
-// Enhanced ParseMonetaryValueGo with better string handling
-func ParseMonetaryValueGo(rawValue string) (originalDisplay string, numericValue int64, detectedSymbol string) {
+// FastParseMonetaryValue uses byte-level operations for better performance
+func FastParseMonetaryValue(rawValue string) (originalDisplay string, numericValue int64, detectedSymbol string) {
 	if rawValue == "" {
 		return "", 0, ""
 	}
 
-	cleanedValue := strings.TrimSpace(rawValue)
-	originalDisplay = cleanedValue
+	// Convert to bytes for faster processing
+	valueBytes := []byte(strings.TrimSpace(rawValue))
+	originalDisplay = string(valueBytes)
 
-	// Use pre-compiled regex for better performance
-	matches := currencySymbolRegex.FindStringSubmatch(cleanedValue)
-	if len(matches) > 1 {
-		for i := 1; i < len(matches); i++ {
-			if matches[i] != "" {
-				detectedSymbol = matches[i]
-				break
-			}
-		}
-	}
+	// Fast currency detection using byte operations
+	detectedSymbol = detectCurrencyFromBytes(valueBytes)
 
-	if detectedSymbol == "" {
-		// Fast fallback checks using Contains (faster than regex for simple cases)
-		switch {
-		case strings.Contains(cleanedValue, "€"):
-			detectedSymbol = "€"
-		case strings.Contains(cleanedValue, "£"):
-			detectedSymbol = "£"
-		case strings.Contains(cleanedValue, "$"):
-			detectedSymbol = "$"
-		}
-	}
-
-	// Handle ranges like "£10M - £15M" more efficiently
-	if idx := strings.Index(cleanedValue, " - "); idx != -1 {
-		cleanedValue = strings.TrimSpace(cleanedValue[idx+3:])
-		// Re-detect symbol efficiently
+	// Handle ranges like "£10M - £15M" more efficiently using bytes
+	if idx := bytes.Index(valueBytes, []byte(" - ")); idx != -1 {
+		valueBytes = bytes.TrimSpace(valueBytes[idx+3:])
 		if detectedSymbol == "" {
-			rangeSymbolMatches := currencySymbolRegex.FindStringSubmatch(cleanedValue)
-			if len(rangeSymbolMatches) > 1 {
-				for i := 1; i < len(rangeSymbolMatches); i++ {
-					if rangeSymbolMatches[i] != "" {
-						detectedSymbol = rangeSymbolMatches[i]
-						break
-					}
+			detectedSymbol = detectCurrencyFromBytes(valueBytes)
+		}
+	}
+
+	// Get byte buffer for processing
+	cleanBytes := getByteBuffer()
+	defer putByteBuffer(cleanBytes)
+
+	// Remove currency symbols and clean data using byte operations
+	for _, b := range valueBytes {
+		switch b {
+		case ',', ' ':
+			// Skip commas and spaces
+			continue
+		case 'p', 'w', '/':
+			// Skip p/w notation parts
+			if len(cleanBytes) >= 2 &&
+				cleanBytes[len(cleanBytes)-1] == '/' &&
+				cleanBytes[len(cleanBytes)-2] == 'p' {
+				cleanBytes = cleanBytes[:len(cleanBytes)-2]
+			}
+			continue
+		default:
+			// Check if it's part of currency symbol
+			isCurrency := false
+			for _, currBytes := range currencyBytes {
+				if len(currBytes) == 1 && currBytes[0] == b {
+					isCurrency = true
+					break
 				}
 			}
+			if !isCurrency && (unicode.IsDigit(rune(b)) || b == '.') {
+				cleanBytes = append(cleanBytes, b)
+			}
 		}
 	}
 
-	// More efficient symbol removal using strings.Replacer
-	var replacer *strings.Replacer
-	if detectedSymbol != "" {
-		// Create replacer for detected symbol plus common cleanup
-		replacer = strings.NewReplacer(
-			detectedSymbol, "",
-			"p/w", "",
-			"/w", "",
-			",", "",
-		)
-	} else {
-		// Fallback replacer for all symbols
-		replacer = strings.NewReplacer(
-			"€", "", "£", "", "$", "", "¥", "", "₹", "", "₽", "", "₺", "", "₩", "",
-			"R", "", "CHF", "", "kr", "", "zł", "",
-			"p/w", "", "/w", "", ",", "",
-		)
-	}
-
-	valueToParse := strings.TrimSpace(replacer.Replace(cleanedValue))
+	// Convert back to string for final parsing
+	cleanValue := string(cleanBytes)
 
 	// Optimized multiplier detection
 	multiplier := int64(1)
-	valueLen := len(valueToParse)
-	if valueLen > 0 {
-		lastChar := valueToParse[valueLen-1]
+	if len(cleanValue) > 0 {
+		lastChar := cleanValue[len(cleanValue)-1]
 		switch lastChar {
 		case 'M', 'm':
 			multiplier = 1000000
-			valueToParse = valueToParse[:valueLen-1]
+			cleanValue = cleanValue[:len(cleanValue)-1]
 		case 'K', 'k':
 			multiplier = 1000
-			valueToParse = valueToParse[:valueLen-1]
+			cleanValue = cleanValue[:len(cleanValue)-1]
 		}
 	}
 
 	// Fast path for simple integer parsing
-	if val, err := strconv.ParseInt(strings.TrimSpace(valueToParse), 10, 64); err == nil {
+	if val, err := strconv.ParseInt(strings.TrimSpace(cleanValue), 10, 64); err == nil {
 		numericValue = val * multiplier
-	} else if valFloat, err := strconv.ParseFloat(strings.TrimSpace(valueToParse), 64); err == nil {
+	} else if valFloat, err := strconv.ParseFloat(strings.TrimSpace(cleanValue), 64); err == nil {
 		numericValue = int64(valFloat * float64(multiplier))
 	} else {
 		numericValue = 0
@@ -177,11 +207,17 @@ func ParseMonetaryValueGo(rawValue string) (originalDisplay string, numericValue
 	return originalDisplay, numericValue, detectedSymbol
 }
 
+// Enhanced ParseMonetaryValueGo with optimized byte operations (maintains compatibility)
+func ParseMonetaryValueGo(rawValue string) (originalDisplay string, numericValue int64, detectedSymbol string) {
+	return FastParseMonetaryValue(rawValue)
+}
+
 // ParseHTMLPlayerTable tokenizes an HTML file stream (typically a player squad view)
 // and sends extracted table headers and row data (as slices of strings) to respective channels.
-// It manages the HTML parsing state machine.
+// It manages the HTML parsing state machine with optimized performance.
 func ParseHTMLPlayerTable(file io.Reader, headersSnapshot *[]string, rowCellsChan chan []string, numWorkers int, resultsChan chan<- PlayerParseResult, wg *sync.WaitGroup) (processingError error) {
-	bufferedReader := bufio.NewReaderSize(file, maxTokenBufferSize) // maxTokenBufferSize from config.go
+	// Use larger buffered reader for better performance
+	bufferedReader := bufio.NewReaderSize(file, maxTokenBufferSize)
 	tokenizer := html.NewTokenizer(bufferedReader)
 
 	var currentHeaders []string // Temporary headers collected
@@ -192,9 +228,9 @@ func ParseHTMLPlayerTable(file io.Reader, headersSnapshot *[]string, rowCellsCha
 	inTHead := false            // True if currently inside a <thead> element
 	inTBody := false            // True if currently inside a <tbody> element
 
-	// Use pooled string builder for better performance
-	cellBuilder := getStringBuilder()
-	defer putStringBuilder(cellBuilder)
+	// Use optimized string builder for better performance
+	cellBuilder := getOptimizedStringBuilder()
+	defer putOptimizedStringBuilder(cellBuilder)
 
 	workersStarted := false
 	channelClosed := false             // Track channel state to prevent double-close

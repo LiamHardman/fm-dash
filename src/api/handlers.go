@@ -24,6 +24,29 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 )
 
+// Note: gzip compression middleware already exists in middleware.go
+
+// Pre-allocation helper for better memory efficiency
+func calculateOptimalSliceCapacity(expectedSize int) int {
+	// Use power of 2 growth with reasonable limits
+	if expectedSize <= 0 {
+		return defaultPlayerCapacity
+	}
+
+	// Round up to next power of 2 for better memory allocation
+	capacity := 1
+	for capacity < expectedSize {
+		capacity <<= 1
+	}
+
+	// Cap at reasonable maximum
+	if capacity > defaultPlayerCapacity*4 {
+		capacity = defaultPlayerCapacity * 4
+	}
+
+	return capacity
+}
+
 // FileHashToDatasetMap stores the mapping of file content hashes to dataset IDs
 var fileHashToDatasetMap = make(map[string]string)
 var hashMapMutex sync.RWMutex
@@ -378,7 +401,13 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	duplicateSpan.End()
 
 	parseStartTime := time.Now()
-	playersList := make([]Player, 0, defaultPlayerCapacity) // Assumes defaultPlayerCapacity is defined in config.go
+	// Optimized pre-allocation based on file size estimation
+	estimatedPlayerCount := int(actualFileSize / 2048) // Rough estimation: ~2KB per player row
+	if estimatedPlayerCount == 0 {
+		estimatedPlayerCount = 100 // Minimum reasonable estimate
+	}
+	optimalCapacity := calculateOptimalSliceCapacity(estimatedPlayerCount)
+	playersList := make([]Player, 0, optimalCapacity)
 	var processingError error
 
 	// Ensure configuration is initialized before processing players to avoid slow fallback path
@@ -491,17 +520,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	parseDuration := time.Since(parseStartTime)
 	datasetID := uuid.New().String()
 
-	// Calculate percentiles before storing to prevent race conditions
-	ctx, percentileSpan := StartSpan(ctx, "percentiles.calculate_upload")
-	logDebug(ctx, "Calculating percentiles during upload to prevent race conditions",
-		"dataset_id", datasetID,
-		"player_count", len(playersList))
-
-	// Calculate percentiles for all division filters to ensure stability
-	CalculatePlayerPerformancePercentiles(playersList)
-	percentileSpan.End()
-
-	// Store using async storage for performance (data available immediately in memory, persistent storage in background)
+	// Store data immediately in memory for fast access (without percentiles initially)
 	ctx, storageSpan := StartSpan(ctx, "storage.save_dataset_async")
 	SetSpanAttributes(ctx,
 		attribute.String("dataset.id", datasetID),
@@ -510,7 +529,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		attribute.String("storage.method", "async"),
 	)
 
-	// Use async storage for performance - data available immediately in memory with pre-calculated percentiles
+	// Use async storage for performance - data available immediately in memory
 	SetPlayerDataAsync(datasetID, playersList, finalDatasetCurrencySymbol)
 	storageSpan.End()
 
@@ -526,6 +545,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		"player_count", len(playersList),
 		"detected_currency", finalDatasetCurrencySymbol)
 
+	// Send response immediately - percentiles will be calculated asynchronously
 	response := UploadResponse{DatasetID: datasetID, Message: "File uploaded and parsed successfully.", DetectedCurrencySymbol: finalDatasetCurrencySymbol}
 	w.Header().Set("Content-Type", "application/json")
 	setCORSHeaders(w, r)
@@ -538,6 +558,48 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	responseSpan.End()
+
+	// Calculate percentiles asynchronously after response is sent
+	go func() {
+		percentileCtx := context.Background()
+		percentileCtx, percentileSpan := StartSpan(percentileCtx, "percentiles.calculate_upload_async")
+		defer percentileSpan.End()
+
+		SetSpanAttributes(percentileCtx,
+			attribute.String("dataset.id", datasetID),
+			attribute.Int("dataset.player_count", len(playersList)),
+			attribute.String("operation.type", "async_percentile_calculation"),
+		)
+
+		startTime := time.Now()
+		logDebug(percentileCtx, "Starting async percentile calculation after response sent",
+			"dataset_id", datasetID,
+			"player_count", len(playersList))
+
+		// Get the stored data and calculate percentiles
+		storedPlayers, storedCurrency, found := GetPlayerData(datasetID)
+		if !found {
+			LogWarn("Could not retrieve stored dataset %s for percentile calculation", sanitizeForLogging(datasetID))
+			return
+		}
+
+		// Make a deep copy to avoid race conditions during calculation
+		playersCopyForPercentiles := deepCopyPlayers(storedPlayers)
+
+		// Calculate percentiles for all division filters to ensure stability
+		CalculatePlayerPerformancePercentiles(playersCopyForPercentiles)
+
+		// Update the stored data with calculated percentiles (use sync SetPlayerData to avoid additional async operations)
+		SetPlayerData(datasetID, playersCopyForPercentiles, storedCurrency)
+
+		duration := time.Since(startTime)
+		SetSpanAttributes(percentileCtx,
+			attribute.Int64("percentile_calculation.duration_ms", duration.Milliseconds()),
+			attribute.String("percentile_calculation.status", "success"),
+		)
+
+		LogInfo("Completed async percentile calculation for dataset %s in %v", sanitizeForLogging(datasetID), duration)
+	}()
 
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
@@ -714,9 +776,8 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 
 		// Calculate percentiles with appropriate filtering using optimized algorithm
 		ctx, percentileSpan := StartSpan(ctx, "percentiles.calculate")
-		// Make a copy of players to avoid modifying the stored data
-		playersCopy := make([]Player, len(players))
-		copy(playersCopy, players)
+		// Make a deep copy of players to avoid modifying the stored data and prevent race conditions
+		playersCopy := deepCopyPlayers(players)
 
 		if divisionFilter != DivisionFilterAll {
 			// Recalculate percentiles with division filter
@@ -737,7 +798,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 			Players:        players,
 			CurrencySymbol: currencySymbol,
 		}
-		setInMemCache(percentileCacheKey, cacheData, 10*time.Minute) // Cache for 10 minutes
+		setInMemCacheForDataset(percentileCacheKey, cacheData, 10*time.Minute) // Cache for 10 minutes
 
 		logDebug(ctx, "Calculated and cached percentiles",
 			"dataset_id", datasetID,
@@ -868,7 +929,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Cache the final filtered response
 	jsonData := buf.Bytes()
-	setInMemCache(finalCacheKey, jsonData, 3*time.Minute) // Cache for 3 minutes
+	setInMemCacheForDataset(finalCacheKey, jsonData, 3*time.Minute) // Cache for 3 minutes
 
 	// Write response
 	if _, err := w.Write(jsonData); err != nil {
@@ -2197,4 +2258,75 @@ func teamMatchHandler(w http.ResponseWriter, r *http.Request) {
 		logError(ctx, "Error encoding team match response", "error", err, "teamName", teamName)
 		http.Error(w, "Error encoding response", http.StatusInternalServerError)
 	}
+}
+
+// deepCopyPlayers creates a deep copy of the players slice including all nested maps
+func deepCopyPlayers(players []Player) []Player {
+	if players == nil {
+		return nil
+	}
+
+	playersCopy := make([]Player, len(players))
+	for i, player := range players {
+		playersCopy[i] = player
+
+		// Deep copy PerformancePercentiles map
+		if player.PerformancePercentiles != nil {
+			playersCopy[i].PerformancePercentiles = make(map[string]map[string]float64)
+			for group, stats := range player.PerformancePercentiles {
+				playersCopy[i].PerformancePercentiles[group] = make(map[string]float64)
+				for stat, value := range stats {
+					playersCopy[i].PerformancePercentiles[group][stat] = value
+				}
+			}
+		}
+
+		// Deep copy PerformanceStatsNumeric map
+		if player.PerformanceStatsNumeric != nil {
+			playersCopy[i].PerformanceStatsNumeric = make(map[string]float64)
+			for key, value := range player.PerformanceStatsNumeric {
+				playersCopy[i].PerformanceStatsNumeric[key] = value
+			}
+		}
+
+		// Deep copy StringSlice fields (these are safe but let's be thorough)
+		if player.ParsedPositions != nil {
+			playersCopy[i].ParsedPositions = make([]string, len(player.ParsedPositions))
+			copy(playersCopy[i].ParsedPositions, player.ParsedPositions)
+		}
+
+		if player.ShortPositions != nil {
+			playersCopy[i].ShortPositions = make([]string, len(player.ShortPositions))
+			copy(playersCopy[i].ShortPositions, player.ShortPositions)
+		}
+
+		if player.PositionGroups != nil {
+			playersCopy[i].PositionGroups = make([]string, len(player.PositionGroups))
+			copy(playersCopy[i].PositionGroups, player.PositionGroups)
+		}
+
+		// Deep copy RoleSpecificOveralls slice
+		if player.RoleSpecificOveralls != nil {
+			playersCopy[i].RoleSpecificOveralls = make([]RoleOverallScore, len(player.RoleSpecificOveralls))
+			copy(playersCopy[i].RoleSpecificOveralls, player.RoleSpecificOveralls)
+		}
+
+		// Deep copy Attributes map
+		if player.Attributes != nil {
+			playersCopy[i].Attributes = make(map[string]string)
+			for key, value := range player.Attributes {
+				playersCopy[i].Attributes[key] = value
+			}
+		}
+
+		// Deep copy NumericAttributes map
+		if player.NumericAttributes != nil {
+			playersCopy[i].NumericAttributes = make(map[string]int)
+			for key, value := range player.NumericAttributes {
+				playersCopy[i].NumericAttributes[key] = value
+			}
+		}
+	}
+
+	return playersCopy
 }
