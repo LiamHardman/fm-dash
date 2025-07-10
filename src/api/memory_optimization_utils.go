@@ -51,7 +51,6 @@ type MemoryStats struct {
 
 var (
 	memoryOptConfig = DefaultMemoryOptimizationConfig()
-	lastMemStats    runtime.MemStats
 )
 
 // SetMemoryOptimizationConfig updates the global configuration
@@ -339,7 +338,8 @@ func startMemoryMonitoring() {
 		}
 
 		// Enhanced memory pressure levels with automatic responses
-		if stats.TotalAllocMB > 4096 { // Critical level - increased to 4096MB
+		switch {
+		case stats.TotalAllocMB > 4096: // Critical level - increased to 4096MB
 			log.Printf("CRITICAL: Memory usage at %.1fMB - triggering aggressive cleanup", stats.TotalAllocMB)
 
 			// Force garbage collection multiple times for more aggressive cleanup
@@ -365,7 +365,7 @@ func startMemoryMonitoring() {
 
 			// Adjust GOGC for more aggressive collection
 			debug.SetGCPercent(25) // Much more aggressive GC
-		} else if stats.TotalAllocMB > 1024 { // Warning level - increased to 1024MB
+		case stats.TotalAllocMB > 1024: // Warning level - increased to 1024MB
 			log.Printf("WARNING: High memory usage at %.1fMB - triggering cache cleanup", stats.TotalAllocMB)
 
 			// Trigger cache cleanup - clear 50% of cache
@@ -386,7 +386,7 @@ func startMemoryMonitoring() {
 			// Double GC for warning level
 			runtime.GC()
 			runtime.GC()
-		} else if stats.TotalAllocMB < 1024 {
+		case stats.TotalAllocMB < 1024:
 			// Memory usage is low, relax GC pressure
 			debug.SetGCPercent(100) // Default GC behavior
 		}

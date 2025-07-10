@@ -71,7 +71,6 @@ func parseMemoryLimit(limit string) int64 {
 
 	// Simple parser for common formats
 	var multiplier int64 = 1
-	limit = limit[:len(limit)] // Copy to avoid modifying original
 
 	if len(limit) >= 2 {
 		suffix := limit[len(limit)-2:]

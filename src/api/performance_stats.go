@@ -1,7 +1,7 @@
 package main
 
 import (
-	"crypto/md5"
+	"crypto/sha256"
 	"fmt"
 	"log"
 	"math"
@@ -25,7 +25,7 @@ var (
 
 // generateDatasetHash creates a hash of the dataset for cache invalidation
 func generateDatasetHash(players []Player) string {
-	hasher := md5.New()
+	hasher := sha256.New()
 
 	// Hash player count and key attributes for quick change detection
 	fmt.Fprintf(hasher, "%d", len(players))

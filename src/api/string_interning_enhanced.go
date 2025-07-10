@@ -22,9 +22,8 @@ type CompressedStringInterning struct {
 
 // Enhanced global string intern pools with compression
 var (
-	enhancedClubInterning        = NewCompressedStringInterning(50)  // Club names can be long
-	enhancedPersonalityInterning = NewCompressedStringInterning(30)  // Personality descriptions
-	enhancedDescriptionInterning = NewCompressedStringInterning(100) // For long descriptions
+	enhancedClubInterning        = NewCompressedStringInterning(50) // Club names can be long
+	enhancedPersonalityInterning = NewCompressedStringInterning(30) // Personality descriptions
 )
 
 // NewCompressedStringInterning creates a new compressed string interning instance

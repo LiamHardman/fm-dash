@@ -18,10 +18,21 @@ type OptimizedPlayer struct {
 	Age     int32 `json:"age"` // Changed from string to int
 
 	// FIFA stats as int16 (range 0-99, saves 2 bytes per field)
-	PAC, SHO, PAS, DRI, DEF, PHY int16 `json:"pac,sho,pas,dri,def,phy"`
+	PAC int16 `json:"pac"`
+	SHO int16 `json:"sho"`
+	PAS int16 `json:"pas"`
+	DRI int16 `json:"dri"`
+	DEF int16 `json:"def"`
+	PHY int16 `json:"phy"`
 
 	// Goalkeeper stats (often zero, packed together)
-	GK, DIV, HAN, REF, KIC, SPD, POS int16 `json:"gk,div,han,ref,kic,spd,pos,omitempty"`
+	GK  int16 `json:"gk"`
+	DIV int16 `json:"div"`
+	HAN int16 `json:"han"`
+	REF int16 `json:"ref"`
+	KIC int16 `json:"kic"`
+	SPD int16 `json:"spd"`
+	POS int16 `json:"pos"`
 
 	// Identifiers and core strings (interned)
 	UID                 string `json:"uid"`
@@ -109,7 +120,7 @@ func ConvertToOptimized(player *Player) *OptimizedPlayer {
 	opt := &OptimizedPlayer{
 		TransferValueAmount:  player.TransferValueAmount,
 		WageAmount:           player.WageAmount,
-		Overall:              int32(player.Overall),
+		Overall:              int32(clampInt32(player.Overall)),
 		UID:                  player.UID,
 		Name:                 player.Name,
 		Club:                 safeClubInterning.SafeIntern(player.Club),
@@ -119,26 +130,26 @@ func ConvertToOptimized(player *Player) *OptimizedPlayer {
 		NationalityISO:       safeNationalityInterning.SafeIntern(player.NationalityISO),
 		NationalityFIFACode:  safeNationalityInterning.SafeIntern(player.NationalityFIFACode),
 		BestRoleOverall:      safePositionInterning.SafeIntern(player.BestRoleOverall),
-		PAC:                  int16(player.PAC),
-		SHO:                  int16(player.SHO),
-		PAS:                  int16(player.PAS),
-		DRI:                  int16(player.DRI),
-		DEF:                  int16(player.DEF),
-		PHY:                  int16(player.PHY),
-		GK:                   int16(player.GK),
-		DIV:                  int16(player.DIV),
-		HAN:                  int16(player.HAN),
-		REF:                  int16(player.REF),
-		KIC:                  int16(player.KIC),
-		SPD:                  int16(player.SPD),
-		POS:                  int16(player.POS),
+		PAC:                  int16(clampInt16(player.PAC)),
+		SHO:                  int16(clampInt16(player.SHO)),
+		PAS:                  int16(clampInt16(player.PAS)),
+		DRI:                  int16(clampInt16(player.DRI)),
+		DEF:                  int16(clampInt16(player.DEF)),
+		PHY:                  int16(clampInt16(player.PHY)),
+		GK:                   int16(clampInt16(player.GK)),
+		DIV:                  int16(clampInt16(player.DIV)),
+		HAN:                  int16(clampInt16(player.HAN)),
+		REF:                  int16(clampInt16(player.REF)),
+		KIC:                  int16(clampInt16(player.KIC)),
+		SPD:                  int16(clampInt16(player.SPD)),
+		POS:                  int16(clampInt16(player.POS)),
 		AttributeMasked:      player.AttributeMasked,
 		RoleSpecificOveralls: player.RoleSpecificOveralls,
 	}
 
 	// Parse age from string to int
 	if age, err := strconv.Atoi(player.Age); err == nil {
-		opt.Age = int32(age)
+		opt.Age = int32(clampInt32(age))
 	}
 
 	// Check if goalkeeper
@@ -178,7 +189,7 @@ func ConvertToOptimized(player *Player) *OptimizedPlayer {
 }
 
 // Helper method to copy positions with length tracking
-func (op *OptimizedPlayer) copyPositions(src []string, dst []string, count *int8) {
+func (op *OptimizedPlayer) copyPositions(src, dst []string, count *int8) {
 	*count = 0
 	for i, pos := range src {
 		if i >= len(dst) {
@@ -192,7 +203,7 @@ func (op *OptimizedPlayer) copyPositions(src []string, dst []string, count *int8
 // Helper method to convert attributes from map to arrays
 func (op *OptimizedPlayer) convertAttributes(attrs map[string]int) {
 	for name, value := range attrs {
-		val := int8(value) // FM attributes are 1-20
+		val := int8(clampInt8(value)) // FM attributes are 1-20
 
 		if idx, exists := TechnicalAttrIndices[name]; exists {
 			op.TechnicalAttributes[idx] = val
@@ -284,7 +295,7 @@ func (op *OptimizedPlayer) MemoryUsage() int {
 }
 
 // EstimateMemorySavings compares memory usage with original Player struct
-func EstimateMemorySavings(originalCount int) (originalMB, optimizedMB float64, savingsPercent float64) {
+func EstimateMemorySavings(originalCount int) (originalMB, optimizedMB, savingsPercent float64) {
 	// Rough estimates based on analysis
 	originalBytesPerPlayer := 1800
 	optimizedBytesPerPlayer := 600 // Estimated with optimizations
@@ -392,4 +403,35 @@ func (op *OptimizedPlayer) convertArraysToMaps(attrs map[string]int) {
 			attrs[name] = int(op.GoalkeeperAttributes[idx])
 		}
 	}
+}
+
+// Helper functions to clamp integer values to prevent overflow
+func clampInt8(val int) int8 {
+	if val > 127 {
+		return 127
+	}
+	if val < -128 {
+		return -128
+	}
+	return int8(val)
+}
+
+func clampInt16(val int) int16 {
+	if val > 32767 {
+		return 32767
+	}
+	if val < -32768 {
+		return -32768
+	}
+	return int16(val)
+}
+
+func clampInt32(val int) int32 {
+	if val > 2147483647 {
+		return 2147483647
+	}
+	if val < -2147483648 {
+		return -2147483648
+	}
+	return int32(val)
 }
