@@ -1,3 +1,10 @@
+## [1.2.13](https://github.com/LiamHardman/fm-dash/compare/v1.2.12...v1.2.13) (2025-07-10)
+
+
+### Bug Fixes
+
+* half ram usage ([4a683bf](https://github.com/LiamHardman/fm-dash/commit/4a683bf54311de19656f50d2bd1b6ccd30f27f6b))
+
 ## [1.2.12](https://github.com/LiamHardman/fm-dash/compare/v1.2.11...v1.2.12) (2025-07-10)
 
 
