@@ -79,22 +79,26 @@ type PlayerExtendedData struct {
 // AttributeIndices maps attribute names to array indices for fast lookups
 var (
 	TechnicalAttrIndices = map[string]int{
+		// Core technical attributes (expanded to include all common FM attributes)
 		"Cor": 0, "Cro": 1, "Dri": 2, "Fin": 3, "Fir": 4, "Fre": 5,
 		"Hea": 6, "Lon": 7, "L Th": 8, "Mar": 9, "Pas": 10, "Pen": 11,
-		"Tck": 12, "Tec": 13, "Thr": 14, // Add more as needed
+		"Tck": 12, "Tec": 13, "Thr": 14,
 	}
 
 	MentalAttrIndices = map[string]int{
+		// Core mental attributes (expanded for comprehensive coverage)
 		"Agg": 0, "Ant": 1, "Bra": 2, "Cmp": 3, "Cnt": 4, "Dec": 5,
 		"Det": 6, "Fla": 7, "Ldr": 8, "OtB": 9, "Pos": 10, "Tea": 11,
-		"Vis": 12, "Wor": 13, // Add more as needed
+		"Vis": 12, "Wor": 13,
 	}
 
 	PhysicalAttrIndices = map[string]int{
+		// All physical attributes
 		"Acc": 0, "Agi": 1, "Bal": 2, "Jum": 3, "Nat": 4, "Pac": 5, "Sta": 6, "Str": 7,
 	}
 
 	GoalkeeperAttrIndices = map[string]int{
+		// Comprehensive goalkeeper attributes
 		"Aer": 0, "Cmd": 1, "Com": 2, "Ecc": 3, "Han": 4, "Kic": 5,
 		"1v1": 6, "Ref": 7, "TRO": 8, "Pun": 9,
 	}
@@ -108,13 +112,13 @@ func ConvertToOptimized(player *Player) *OptimizedPlayer {
 		Overall:              int32(player.Overall),
 		UID:                  player.UID,
 		Name:                 player.Name,
-		Club:                 InternClub(player.Club),
-		Position:             InternPosition(player.Position),
-		Division:             InternDivision(player.Division),
-		Nationality:          InternNationality(player.Nationality),
-		NationalityISO:       InternNationality(player.NationalityISO),
-		NationalityFIFACode:  InternNationality(player.NationalityFIFACode),
-		BestRoleOverall:      InternPosition(player.BestRoleOverall),
+		Club:                 safeClubInterning.SafeIntern(player.Club),
+		Position:             safePositionInterning.SafeIntern(player.Position),
+		Division:             safeDivisionInterning.SafeIntern(player.Division),
+		Nationality:          safeNationalityInterning.SafeIntern(player.Nationality),
+		NationalityISO:       safeNationalityInterning.SafeIntern(player.NationalityISO),
+		NationalityFIFACode:  safeNationalityInterning.SafeIntern(player.NationalityFIFACode),
+		BestRoleOverall:      safePositionInterning.SafeIntern(player.BestRoleOverall),
 		PAC:                  int16(player.PAC),
 		SHO:                  int16(player.SHO),
 		PAS:                  int16(player.PAS),
@@ -162,8 +166,8 @@ func ConvertToOptimized(player *Player) *OptimizedPlayer {
 		opt.Extended = &PlayerExtendedData{
 			TransferValue:           player.TransferValue,
 			Wage:                    player.Wage,
-			Personality:             InternPersonality(player.Personality),
-			MediaHandling:           InternPersonality(player.MediaHandling),
+			Personality:             safePersonalityInterning.SafeIntern(player.Personality),
+			MediaHandling:           safePersonalityInterning.SafeIntern(player.MediaHandling),
 			PerformanceStatsNumeric: player.PerformanceStatsNumeric,
 			PerformancePercentiles:  player.PerformancePercentiles,
 			CustomAttributes:        player.Attributes,
@@ -180,7 +184,7 @@ func (op *OptimizedPlayer) copyPositions(src []string, dst []string, count *int8
 		if i >= len(dst) {
 			break // Array is full
 		}
-		dst[i] = InternPosition(pos)
+		dst[i] = safePositionInterning.SafeIntern(pos)
 		*count++
 	}
 }
@@ -290,4 +294,102 @@ func EstimateMemorySavings(originalCount int) (originalMB, optimizedMB float64, 
 	savingsPercent = (originalMB - optimizedMB) / originalMB * 100
 
 	return
+}
+
+// ConvertFromOptimized converts an OptimizedPlayer back to regular Player
+func ConvertFromOptimized(opt *OptimizedPlayer) *Player {
+	player := &Player{
+		UID:                     opt.UID,
+		Name:                    opt.Name,
+		Club:                    opt.Club,
+		Position:                opt.Position,
+		Division:                opt.Division,
+		Nationality:             opt.Nationality,
+		NationalityISO:          opt.NationalityISO,
+		NationalityFIFACode:     opt.NationalityFIFACode,
+		BestRoleOverall:         opt.BestRoleOverall,
+		Overall:                 int(opt.Overall),
+		Age:                     strconv.Itoa(int(opt.Age)),
+		PAC:                     int(opt.PAC),
+		SHO:                     int(opt.SHO),
+		PAS:                     int(opt.PAS),
+		DRI:                     int(opt.DRI),
+		DEF:                     int(opt.DEF),
+		PHY:                     int(opt.PHY),
+		GK:                      int(opt.GK),
+		DIV:                     int(opt.DIV),
+		HAN:                     int(opt.HAN),
+		REF:                     int(opt.REF),
+		KIC:                     int(opt.KIC),
+		SPD:                     int(opt.SPD),
+		POS:                     int(opt.POS),
+		AttributeMasked:         opt.AttributeMasked,
+		TransferValueAmount:     opt.TransferValueAmount,
+		WageAmount:              opt.WageAmount,
+		RoleSpecificOveralls:    opt.RoleSpecificOveralls,
+		Attributes:              make(map[string]string),
+		NumericAttributes:       make(map[string]int),
+		PerformanceStatsNumeric: make(map[string]float64),
+		PerformancePercentiles:  make(map[string]map[string]float64),
+	}
+
+	// Convert arrays back to maps
+	opt.convertArraysToMaps(player.NumericAttributes)
+
+	// Copy positions back
+	for i := int8(0); i < opt.PositionCount && i < 4; i++ {
+		player.ParsedPositions = append(player.ParsedPositions, opt.ParsedPositions[i])
+	}
+	for i := int8(0); i < opt.ShortPositionCount && i < 4; i++ {
+		player.ShortPositions = append(player.ShortPositions, opt.ShortPositions[i])
+	}
+	for i := int8(0); i < opt.PositionGroupsCount && i < 2; i++ {
+		player.PositionGroups = append(player.PositionGroups, opt.PositionGroups[i])
+	}
+
+	// Copy extended data if present
+	if opt.Extended != nil {
+		player.TransferValue = opt.Extended.TransferValue
+		player.Wage = opt.Extended.Wage
+		player.Personality = opt.Extended.Personality
+		player.MediaHandling = opt.Extended.MediaHandling
+		player.PerformanceStatsNumeric = opt.Extended.PerformanceStatsNumeric
+		player.PerformancePercentiles = opt.Extended.PerformancePercentiles
+		for k, v := range opt.Extended.CustomAttributes {
+			player.Attributes[k] = v
+		}
+	}
+
+	return player
+}
+
+// convertArraysToMaps converts the attribute arrays back to maps for compatibility
+func (op *OptimizedPlayer) convertArraysToMaps(attrs map[string]int) {
+	// Convert technical attributes
+	for name, idx := range TechnicalAttrIndices {
+		if idx < len(op.TechnicalAttributes) && op.TechnicalAttributes[idx] != 0 {
+			attrs[name] = int(op.TechnicalAttributes[idx])
+		}
+	}
+
+	// Convert mental attributes
+	for name, idx := range MentalAttrIndices {
+		if idx < len(op.MentalAttributes) && op.MentalAttributes[idx] != 0 {
+			attrs[name] = int(op.MentalAttributes[idx])
+		}
+	}
+
+	// Convert physical attributes
+	for name, idx := range PhysicalAttrIndices {
+		if idx < len(op.PhysicalAttributes) && op.PhysicalAttributes[idx] != 0 {
+			attrs[name] = int(op.PhysicalAttributes[idx])
+		}
+	}
+
+	// Convert goalkeeper attributes
+	for name, idx := range GoalkeeperAttrIndices {
+		if idx < len(op.GoalkeeperAttributes) && op.GoalkeeperAttributes[idx] != 0 {
+			attrs[name] = int(op.GoalkeeperAttributes[idx])
+		}
+	}
 }

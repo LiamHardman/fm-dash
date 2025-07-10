@@ -242,9 +242,17 @@ func EnhancePlayerWithCalculations(player *Player) {
 	}
 
 	// Apply string interning optimization for memory efficiency (after all map operations)
-	// Use safe version to avoid race conditions during concurrent access
+	// Use enhanced version with compression for better memory savings
 	if memOptConfig.UseStringInterning {
-		SafeOptimizePlayerStrings(player)
+		EnhancedOptimizePlayerStrings(player)
+	}
+
+	// Note: OptimizedPlayer conversion disabled here as it's inefficient to convert back immediately
+	// OptimizedPlayer should be used in storage and processing layers, not during enhancement
+	// The conversion happens in storage layers where memory benefits are actually realized
+	if memOptConfig.UseOptimizedStructs {
+		// This optimization is handled at the storage level for maximum memory benefit
+		// Converting here and back would negate the memory savings
 	}
 
 	// Convert string attributes to numeric and parse performance stats

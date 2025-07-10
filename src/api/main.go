@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -22,6 +24,111 @@ func getEnvWithDefault(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
+}
+
+// configureRuntimeMemory optimizes Go runtime settings for better memory management
+func configureRuntimeMemory() {
+	// Set GOGC for more aggressive garbage collection under memory pressure
+	// Lower values mean more frequent GC but lower memory usage
+	gogc := os.Getenv("GOGC")
+	if gogc == "" {
+		// Default to more aggressive GC for memory-constrained environments
+		debug.SetGCPercent(50) // More aggressive than default for better memory control
+		log.Println("Set GOGC to 50 for aggressive memory management")
+	} else {
+		if val, err := strconv.Atoi(gogc); err == nil {
+			debug.SetGCPercent(val)
+			log.Printf("Set GOGC to %d from environment", val)
+		}
+	}
+
+	// Start dynamic GOGC tuning based on memory pressure
+	go startDynamicGOGCTuning()
+
+	// Set memory limit if specified
+	if memLimit := os.Getenv("GOMEMLIMIT"); memLimit != "" {
+		debug.SetMemoryLimit(parseMemoryLimit(memLimit))
+		log.Printf("Set memory limit to %s", memLimit)
+	}
+
+	// Configure maximum number of OS threads
+	maxProcs := runtime.GOMAXPROCS(0)
+	if maxProcs > 8 {
+		// Limit to 8 for better resource management in high-CPU environments
+		runtime.GOMAXPROCS(8)
+		log.Printf("Limited GOMAXPROCS to 8 (was %d)", maxProcs)
+	}
+
+	log.Printf("Runtime configured: GOMAXPROCS=%d, NumCPU=%d",
+		runtime.GOMAXPROCS(0), runtime.NumCPU())
+}
+
+// parseMemoryLimit parses memory limit strings like "1GB", "512MB"
+func parseMemoryLimit(limit string) int64 {
+	if limit == "" {
+		return -1
+	}
+
+	// Simple parser for common formats
+	var multiplier int64 = 1
+	limit = limit[:len(limit)] // Copy to avoid modifying original
+
+	if len(limit) >= 2 {
+		suffix := limit[len(limit)-2:]
+		switch suffix {
+		case "KB", "kb":
+			multiplier = 1024
+			limit = limit[:len(limit)-2]
+		case "MB", "mb":
+			multiplier = 1024 * 1024
+			limit = limit[:len(limit)-2]
+		case "GB", "gb":
+			multiplier = 1024 * 1024 * 1024
+			limit = limit[:len(limit)-2]
+		}
+	}
+
+	if val, err := strconv.ParseInt(limit, 10, 64); err == nil {
+		return val * multiplier
+	}
+
+	return -1 // Invalid format
+}
+
+// startDynamicGOGCTuning adjusts GOGC based on memory pressure
+func startDynamicGOGCTuning() {
+	ticker := time.NewTicker(60 * time.Second) // Check every minute
+	defer ticker.Stop()
+
+	for range ticker.C {
+		var m runtime.MemStats
+		runtime.ReadMemStats(&m)
+
+		currentMemMB := float64(m.Alloc) / 1024 / 1024
+
+		var newGOGC int
+		switch {
+		case currentMemMB > 512: // Very high memory usage
+			newGOGC = 25 // Very aggressive GC
+		case currentMemMB > 256: // High memory usage
+			newGOGC = 50 // Aggressive GC
+		case currentMemMB > 128: // Moderate memory usage
+			newGOGC = 75 // Moderate GC
+		case currentMemMB > 64: // Low-moderate memory usage
+			newGOGC = 100 // Standard GC
+		default: // Low memory usage
+			newGOGC = 150 // Less frequent GC for better performance
+		}
+
+		// Only change if it's different from current setting
+		currentGOGC := debug.SetGCPercent(-1) // Get current setting
+		debug.SetGCPercent(currentGOGC)       // Restore it
+
+		if newGOGC != currentGOGC {
+			debug.SetGCPercent(newGOGC)
+			log.Printf("Dynamic GOGC adjustment: %d -> %d (memory: %.1fMB)", currentGOGC, newGOGC, currentMemMB)
+		}
+	}
 }
 
 func validateEnvironmentVariables() error {
@@ -54,6 +161,9 @@ func main() {
 	if err := validateEnvironmentVariables(); err != nil {
 		log.Fatalf("Environment validation failed: %v", err)
 	}
+
+	// Configure Go runtime for better memory management
+	configureRuntimeMemory()
 
 	// Determine port for HTTP server with validation
 	port := os.Getenv("PORT")

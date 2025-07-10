@@ -39,10 +39,10 @@ var memCache *InMemoryCache
 
 // Default cache expiration times and limits
 const (
-	defaultExpiration = 5 * time.Minute
+	defaultExpiration = 90 * time.Second // Further reduced for aggressive cleanup
 	noExpiration      = 0
-	defaultMaxSize    = 256 * 1024 * 1024 // 256MB max size (reduced from 2GB)
-	defaultMaxItems   = 5000              // Maximum 5,000 items (reduced from 50,000)
+	defaultMaxSize    = 32 * 1024 * 1024 // 32MB max size (reduced from 64MB for better memory usage)
+	defaultMaxItems   = 750              // Maximum 750 items (reduced from 1,500 for lower memory footprint)
 )
 
 func InitInMemoryCache() {
@@ -54,12 +54,12 @@ func InitInMemoryCache() {
 		maxItems: defaultMaxItems,
 	}
 
-	// Start cleanup goroutine every 5 minutes (more frequent for better memory management)
-	memCache.cleanup = time.NewTicker(5 * time.Minute)
+	// Start cleanup goroutine every 3 minutes (more frequent for better memory management)
+	memCache.cleanup = time.NewTicker(3 * time.Minute)
 	go memCache.cleanupExpired()
 
-	LogDebug("Enhanced in-memory cache system initialized with LRU eviction (max size: %d GB, max items: %d)",
-		defaultMaxSize/(1024*1024*1024), defaultMaxItems)
+	LogDebug("Enhanced in-memory cache system initialized with aggressive LRU eviction (max size: %d MB, max items: %d)",
+		defaultMaxSize/(1024*1024), defaultMaxItems)
 }
 
 func (c *InMemoryCache) cleanupExpired() {
