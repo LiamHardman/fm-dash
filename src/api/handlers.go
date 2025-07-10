@@ -584,7 +584,55 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Make a deep copy to avoid race conditions during calculation
-		playersCopyForPercentiles := deepCopyPlayers(storedPlayers)
+		// Use the original deep copy to avoid any concurrency issues with optimizations
+		playersCopyForPercentiles := make([]Player, len(storedPlayers))
+		for i, player := range storedPlayers {
+			playersCopyForPercentiles[i] = player
+			// Deep copy all the maps to prevent race conditions
+			if player.Attributes != nil {
+				playersCopyForPercentiles[i].Attributes = make(map[string]string)
+				for k, v := range player.Attributes {
+					playersCopyForPercentiles[i].Attributes[k] = v
+				}
+			}
+			if player.NumericAttributes != nil {
+				playersCopyForPercentiles[i].NumericAttributes = make(map[string]int)
+				for k, v := range player.NumericAttributes {
+					playersCopyForPercentiles[i].NumericAttributes[k] = v
+				}
+			}
+			if player.PerformanceStatsNumeric != nil {
+				playersCopyForPercentiles[i].PerformanceStatsNumeric = make(map[string]float64)
+				for k, v := range player.PerformanceStatsNumeric {
+					playersCopyForPercentiles[i].PerformanceStatsNumeric[k] = v
+				}
+			}
+			if player.PerformancePercentiles != nil {
+				playersCopyForPercentiles[i].PerformancePercentiles = make(map[string]map[string]float64)
+				for group, stats := range player.PerformancePercentiles {
+					playersCopyForPercentiles[i].PerformancePercentiles[group] = make(map[string]float64)
+					for stat, value := range stats {
+						playersCopyForPercentiles[i].PerformancePercentiles[group][stat] = value
+					}
+				}
+			}
+			if player.RoleSpecificOveralls != nil {
+				playersCopyForPercentiles[i].RoleSpecificOveralls = make([]RoleOverallScore, len(player.RoleSpecificOveralls))
+				copy(playersCopyForPercentiles[i].RoleSpecificOveralls, player.RoleSpecificOveralls)
+			}
+			if player.ShortPositions != nil {
+				playersCopyForPercentiles[i].ShortPositions = make([]string, len(player.ShortPositions))
+				copy(playersCopyForPercentiles[i].ShortPositions, player.ShortPositions)
+			}
+			if player.ParsedPositions != nil {
+				playersCopyForPercentiles[i].ParsedPositions = make([]string, len(player.ParsedPositions))
+				copy(playersCopyForPercentiles[i].ParsedPositions, player.ParsedPositions)
+			}
+			if player.PositionGroups != nil {
+				playersCopyForPercentiles[i].PositionGroups = make([]string, len(player.PositionGroups))
+				copy(playersCopyForPercentiles[i].PositionGroups, player.PositionGroups)
+			}
+		}
 
 		// Calculate percentiles for all division filters to ensure stability
 		CalculatePlayerPerformancePercentiles(playersCopyForPercentiles)
@@ -777,7 +825,8 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 		// Calculate percentiles with appropriate filtering using optimized algorithm
 		ctx, percentileSpan := StartSpan(ctx, "percentiles.calculate")
 		// Make a deep copy of players to avoid modifying the stored data and prevent race conditions
-		playersCopy := deepCopyPlayers(players)
+		// Use optimized deep copy for better memory efficiency
+		playersCopy := OptimizedDeepCopyPlayers(players)
 
 		if divisionFilter != DivisionFilterAll {
 			// Recalculate percentiles with division filter
@@ -2266,6 +2315,12 @@ func deepCopyPlayers(players []Player) []Player {
 		return nil
 	}
 
+	// Use optimized deep copy if memory optimizations are enabled
+	if memOptConfig.UseCopyOnWrite {
+		return OptimizedDeepCopyPlayers(players)
+	}
+
+	// Fallback to original implementation for compatibility
 	playersCopy := make([]Player, len(players))
 	for i, player := range players {
 		playersCopy[i] = player

@@ -41,8 +41,8 @@ var memCache *InMemoryCache
 const (
 	defaultExpiration = 5 * time.Minute
 	noExpiration      = 0
-	defaultMaxSize    = 2 * 1024 * 1024 * 1024 // 2GB default max size (increased from 256MB)
-	defaultMaxItems   = 50000                  // Maximum 50,000 items (increased from 10,000)
+	defaultMaxSize    = 256 * 1024 * 1024 // 256MB max size (reduced from 2GB)
+	defaultMaxItems   = 5000              // Maximum 5,000 items (reduced from 50,000)
 )
 
 func InitInMemoryCache() {

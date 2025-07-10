@@ -241,6 +241,12 @@ func EnhancePlayerWithCalculations(player *Player) {
 		player.PerformanceStatsNumeric = make(map[string]float64, len(PerformanceStatKeys))
 	}
 
+	// Apply string interning optimization for memory efficiency (after all map operations)
+	// Use safe version to avoid race conditions during concurrent access
+	if memOptConfig.UseStringInterning {
+		SafeOptimizePlayerStrings(player)
+	}
+
 	// Convert string attributes to numeric and parse performance stats
 	for key, valStr := range player.Attributes {
 		// Check if it's a known attribute that should be numeric (1-20)

@@ -93,6 +93,9 @@ func main() {
 	// Initialize cache storage system
 	InitCacheStorage()
 
+	// Initialize memory optimizations
+	InitializeMemoryOptimizations()
+
 	// Start automatic cleanup scheduler for old datasets
 	StartCleanupScheduler()
 
@@ -176,6 +179,9 @@ func main() {
 	// API endpoint for cache status and monitoring
 	http.Handle("/api/cache-status", wrapHandler(http.HandlerFunc(cacheStatusHandler), "cache-status"))
 
+	// API endpoint for memory optimization reports
+	http.Handle("/api/memory-optimization", wrapHandler(http.HandlerFunc(GetMemoryOptimizationHandler()), "memory-optimization"))
+
 	// Create HTTP server with timeouts and middleware
 	mux := http.NewServeMux()
 
@@ -220,6 +226,9 @@ func main() {
 
 	// API endpoint for cache status and monitoring
 	mux.Handle("/api/cache-status", wrapHandler(http.HandlerFunc(cacheStatusHandler), "cache-status"))
+
+	// API endpoint for memory optimization reports
+	mux.Handle("/api/memory-optimization", wrapHandler(http.HandlerFunc(GetMemoryOptimizationHandler()), "memory-optimization"))
 
 	// Create server with proper timeouts
 	server := &http.Server{
