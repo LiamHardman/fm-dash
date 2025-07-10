@@ -86,7 +86,7 @@ func (c *CacheStorageWrapper) DeleteCacheData(cacheKey string) error {
 }
 
 func InitCacheStorage() {
-	log.Println("Cache storage system initialized")
+	LogDebug("Cache storage system initialized")
 }
 
 // cacheHandler handles cache operations for various cache types

@@ -78,7 +78,7 @@ func main() {
 				LogWarn("Warning: Error during OpenTelemetry cleanup: %v", err)
 			}
 		}()
-		slog.Info("OpenTelemetry initialized", "logs_streaming", true)
+		slog.Debug("OpenTelemetry initialized", "logs_streaming", true)
 
 	} else {
 		slog.Info("OpenTelemetry disabled", "logs_streaming", false)
@@ -231,7 +231,7 @@ func main() {
 		ReadHeaderTimeout: 5 * time.Second,  // Time to read request headers
 	}
 
-	slog.Info("Server starting",
+	slog.Debug("Server starting",
 		"port", port,
 		"url", "http://localhost:"+port,
 		"read_timeout", "15s",

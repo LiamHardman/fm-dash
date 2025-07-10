@@ -186,7 +186,7 @@ func StartCleanupScheduler() {
 			runCleanup()
 		}
 	}()
-	LogInfo("Started automatic dataset cleanup scheduler (runs daily)")
+	LogDebug("Started automatic dataset cleanup scheduler (runs daily)")
 }
 
 // getRetentionPeriod returns the configured retention period for datasets
@@ -211,20 +211,20 @@ func getRetentionPeriod() time.Duration {
 }
 
 func runCleanup() {
-	LogInfo("Starting automatic cleanup of old datasets...")
+	LogDebug("Starting automatic cleanup of old datasets...")
 
 	// Define datasets to exclude from cleanup
 	excludeDatasets := []string{"demo", "1e0c8dcd-f6b8-4874-a72e-a2a3bdf20038"}
 
 	// Get configured retention period
 	maxAge := getRetentionPeriod()
-	LogInfo("Using retention period of %.0f days", maxAge.Hours()/24)
+	LogDebug("Using retention period of %.0f days", maxAge.Hours()/24)
 
 	err := CleanupOldDatasets(maxAge, excludeDatasets)
 	if err != nil {
 		LogWarn("Error during automatic cleanup: %v", err)
 	} else {
-		LogInfo("Automatic cleanup completed successfully")
+		LogDebug("Automatic cleanup completed successfully")
 	}
 
 	// Clean up stale duplicate mappings

@@ -189,7 +189,7 @@ func NewS3Storage(endpoint, accessKey, secretKey, bucketName string, useSSL bool
 	ctx := context.Background()
 
 	// Check if bucket exists (this tests authentication)
-	log.Printf("Testing S3 connection by checking bucket existence: %s", bucketName)
+	LogDebug("Testing S3 connection by checking bucket existence: %s", bucketName)
 	exists, err := client.BucketExists(ctx, bucketName)
 	if err != nil {
 		log.Printf("Warning: S3 bucket check failed - %v. Using fallback storage.", err)
@@ -204,10 +204,10 @@ func NewS3Storage(endpoint, accessKey, secretKey, bucketName string, useSSL bool
 		}
 		log.Printf("Created S3 bucket: %s", bucketName)
 	} else {
-		log.Printf("S3 bucket %s already exists", bucketName)
+		LogDebug("S3 bucket %s already exists", bucketName)
 	}
 
-	log.Printf("Successfully connected to S3 at %s with bucket %s", endpoint, bucketName)
+	LogDebug("Successfully connected to S3 at %s with bucket %s", endpoint, bucketName)
 
 	s3Storage := &S3Storage{
 		client:         client,
@@ -223,7 +223,7 @@ func NewS3Storage(endpoint, accessKey, secretKey, bucketName string, useSSL bool
 		go s3Storage.asyncWorker()
 	}
 
-	log.Printf("S3 storage initialized with %d workers and %d operation buffer", workerPoolSize, operationsBuffer)
+	LogDebug("S3 storage initialized with %d workers and %d operation buffer", workerPoolSize, operationsBuffer)
 	return s3Storage
 }
 
@@ -560,7 +560,7 @@ func (s *S3Storage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets []s
 		}
 	}
 
-	log.Printf("Cleanup completed: deleted %d old datasets from S3", deletedCount)
+	LogDebug("Cleanup completed: deleted %d old datasets from S3", deletedCount)
 	return nil
 }
 
@@ -1071,7 +1071,7 @@ func InitializeStorage() StorageInterface {
 
 	// Debug logging (only show first few chars for security)
 	// Log configuration without sensitive credentials
-	log.Printf("S3 Config: endpoint=%s, useSSL=%v, credentials_provided=%t",
+	LogDebug("S3 Config: endpoint=%s, useSSL=%v, credentials_provided=%t",
 		s3Endpoint,
 		useSSL,
 		accessKey != "" && secretKey != "")
@@ -1082,6 +1082,6 @@ func InitializeStorage() StorageInterface {
 	}
 	s3Storage := NewS3Storage(s3Endpoint, accessKey, secretKey, bucketName, useSSL, inMemory)
 
-	log.Println("Initialized S3 storage with in-memory fallback")
+	LogDebug("Initialized S3 storage with in-memory fallback")
 	return s3Storage
 }

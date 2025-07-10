@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"sync"
 	"time"
 )
@@ -40,7 +39,7 @@ func InitInMemoryCache() {
 	memCache.cleanup = time.NewTicker(10 * time.Minute)
 	go memCache.cleanupExpired()
 
-	log.Println("In-memory cache system initialized")
+	LogDebug("In-memory cache system initialized")
 }
 
 func (c *InMemoryCache) cleanupExpired() {

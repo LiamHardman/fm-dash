@@ -125,14 +125,14 @@ func initOTel() func(context.Context) error {
 			logger := slog.New(handler)
 			slog.SetDefault(logger)
 
-			LogInfo("🟢 OTEL: slog configured with OTLP handler")
-			slog.Info("✓ OTEL logging initialized - logs will be sent to SignOz")
+			LogDebug("🟢 OTEL: slog configured with OTLP handler")
+			slog.Debug("✓ OTEL logging initialized - logs will be sent to SignOz")
 		}
 	} else {
 		LogInfo("🟡 OTEL: Logging disabled by configuration")
 	}
 
-	LogInfo("🟢 OTEL: OpenTelemetry initialization completed!")
+	LogDebug("🟢 OTEL: OpenTelemetry initialization completed!")
 
 	// Return cleanup function
 	return func(ctx context.Context) error {

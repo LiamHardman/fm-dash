@@ -222,7 +222,7 @@ func loadJSONWeights(filePath string, defaultWeights map[string]map[string]int) 
 		return copiedDefault, errors.New("loaded weights file is empty")
 	}
 
-	LogInfo("Successfully loaded weights from %s with %d entries.", filePath, len(weights))
+	LogDebug("Successfully loaded weights from %s with %d entries.", filePath, len(weights))
 	return weights, nil
 }
 
@@ -265,7 +265,7 @@ func initializeConfigAsync() {
 		if configInitError != nil {
 			LogWarn("Configuration initialization completed with errors: %v", configInitError)
 		} else {
-			LogInfo("Configuration initialization completed successfully")
+			LogDebug("Configuration initialization completed successfully")
 		}
 	}()
 
@@ -360,7 +360,7 @@ func precomputeRoleWeights() {
 			}{RoleName: roleFullName, Weights: copiedWeights})
 		}
 	}
-	LogInfo("Precomputed %d base position keys for role weights.", len(precomputedRoleWeights))
+	LogDebug("Precomputed %d base position keys for role weights.", len(precomputedRoleWeights))
 }
 
 // EnsureConfigInitialized waits for configuration to be loaded (with timeout)
