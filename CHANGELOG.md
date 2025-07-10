@@ -1,3 +1,10 @@
+## [1.2.11](https://github.com/LiamHardman/fm-dash/compare/v1.2.10...v1.2.11) (2025-07-10)
+
+
+### Bug Fixes
+
+* some more logging set to debug ([cb491a3](https://github.com/LiamHardman/fm-dash/commit/cb491a3352899575088f23ad71aa8c19bfb867f2))
+
 ## [1.2.10](https://github.com/LiamHardman/fm-dash/compare/v1.2.9...v1.2.10) (2025-07-09)
 
 
