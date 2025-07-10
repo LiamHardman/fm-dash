@@ -1,3 +1,10 @@
+## [1.2.12](https://github.com/LiamHardman/fm-dash/compare/v1.2.11...v1.2.12) (2025-07-10)
+
+
+### Bug Fixes
+
+* performance optimizations ([50e5c20](https://github.com/LiamHardman/fm-dash/commit/50e5c201c920ae4504bb000fadabe2cf3ecdeab6))
+
 ## [1.2.11](https://github.com/LiamHardman/fm-dash/compare/v1.2.10...v1.2.11) (2025-07-10)
 
 
