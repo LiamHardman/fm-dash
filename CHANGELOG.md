@@ -1,3 +1,10 @@
+## [1.2.18](https://github.com/LiamHardman/fm-dash/compare/v1.2.17...v1.2.18) (2025-07-11)
+
+
+### Bug Fixes
+
+* more concise weighted average calculation ([c9ab2e9](https://github.com/LiamHardman/fm-dash/commit/c9ab2e982ad14b130ee8264394ec79c63204db7e))
+
 ## [1.2.17](https://github.com/LiamHardman/fm-dash/compare/v1.2.16...v1.2.17) (2025-07-11)
 
 
