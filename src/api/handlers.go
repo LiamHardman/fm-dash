@@ -586,51 +586,51 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		// Make a deep copy to avoid race conditions during calculation
 		// Use the original deep copy to avoid any concurrency issues with optimizations
 		playersCopyForPercentiles := make([]Player, len(storedPlayers))
-		for i, player := range storedPlayers {
-			playersCopyForPercentiles[i] = player
+		for i := range storedPlayers {
+			playersCopyForPercentiles[i] = storedPlayers[i]
 			// Deep copy all the maps to prevent race conditions
-			if player.Attributes != nil {
+			if storedPlayers[i].Attributes != nil {
 				playersCopyForPercentiles[i].Attributes = make(map[string]string)
-				for k, v := range player.Attributes {
+				for k, v := range storedPlayers[i].Attributes {
 					playersCopyForPercentiles[i].Attributes[k] = v
 				}
 			}
-			if player.NumericAttributes != nil {
+			if storedPlayers[i].NumericAttributes != nil {
 				playersCopyForPercentiles[i].NumericAttributes = make(map[string]int)
-				for k, v := range player.NumericAttributes {
+				for k, v := range storedPlayers[i].NumericAttributes {
 					playersCopyForPercentiles[i].NumericAttributes[k] = v
 				}
 			}
-			if player.PerformanceStatsNumeric != nil {
+			if storedPlayers[i].PerformanceStatsNumeric != nil {
 				playersCopyForPercentiles[i].PerformanceStatsNumeric = make(map[string]float64)
-				for k, v := range player.PerformanceStatsNumeric {
+				for k, v := range storedPlayers[i].PerformanceStatsNumeric {
 					playersCopyForPercentiles[i].PerformanceStatsNumeric[k] = v
 				}
 			}
-			if player.PerformancePercentiles != nil {
+			if storedPlayers[i].PerformancePercentiles != nil {
 				playersCopyForPercentiles[i].PerformancePercentiles = make(map[string]map[string]float64)
-				for group, stats := range player.PerformancePercentiles {
+				for group, stats := range storedPlayers[i].PerformancePercentiles {
 					playersCopyForPercentiles[i].PerformancePercentiles[group] = make(map[string]float64)
 					for stat, value := range stats {
 						playersCopyForPercentiles[i].PerformancePercentiles[group][stat] = value
 					}
 				}
 			}
-			if player.RoleSpecificOveralls != nil {
-				playersCopyForPercentiles[i].RoleSpecificOveralls = make([]RoleOverallScore, len(player.RoleSpecificOveralls))
-				copy(playersCopyForPercentiles[i].RoleSpecificOveralls, player.RoleSpecificOveralls)
+			if storedPlayers[i].RoleSpecificOveralls != nil {
+				playersCopyForPercentiles[i].RoleSpecificOveralls = make([]RoleOverallScore, len(storedPlayers[i].RoleSpecificOveralls))
+				copy(playersCopyForPercentiles[i].RoleSpecificOveralls, storedPlayers[i].RoleSpecificOveralls)
 			}
-			if player.ShortPositions != nil {
-				playersCopyForPercentiles[i].ShortPositions = make([]string, len(player.ShortPositions))
-				copy(playersCopyForPercentiles[i].ShortPositions, player.ShortPositions)
+			if storedPlayers[i].ShortPositions != nil {
+				playersCopyForPercentiles[i].ShortPositions = make([]string, len(storedPlayers[i].ShortPositions))
+				copy(playersCopyForPercentiles[i].ShortPositions, storedPlayers[i].ShortPositions)
 			}
-			if player.ParsedPositions != nil {
-				playersCopyForPercentiles[i].ParsedPositions = make([]string, len(player.ParsedPositions))
-				copy(playersCopyForPercentiles[i].ParsedPositions, player.ParsedPositions)
+			if storedPlayers[i].ParsedPositions != nil {
+				playersCopyForPercentiles[i].ParsedPositions = make([]string, len(storedPlayers[i].ParsedPositions))
+				copy(playersCopyForPercentiles[i].ParsedPositions, storedPlayers[i].ParsedPositions)
 			}
-			if player.PositionGroups != nil {
-				playersCopyForPercentiles[i].PositionGroups = make([]string, len(player.PositionGroups))
-				copy(playersCopyForPercentiles[i].PositionGroups, player.PositionGroups)
+			if storedPlayers[i].PositionGroups != nil {
+				playersCopyForPercentiles[i].PositionGroups = make([]string, len(storedPlayers[i].PositionGroups))
+				copy(playersCopyForPercentiles[i].PositionGroups, storedPlayers[i].PositionGroups)
 			}
 		}
 
@@ -2322,13 +2322,13 @@ func deepCopyPlayers(players []Player) []Player {
 
 	// Fallback to original implementation for compatibility
 	playersCopy := make([]Player, len(players))
-	for i, player := range players {
-		playersCopy[i] = player
+	for i := range players {
+		playersCopy[i] = players[i]
 
 		// Deep copy PerformancePercentiles map
-		if player.PerformancePercentiles != nil {
+		if players[i].PerformancePercentiles != nil {
 			playersCopy[i].PerformancePercentiles = make(map[string]map[string]float64)
-			for group, stats := range player.PerformancePercentiles {
+			for group, stats := range players[i].PerformancePercentiles {
 				playersCopy[i].PerformancePercentiles[group] = make(map[string]float64)
 				for stat, value := range stats {
 					playersCopy[i].PerformancePercentiles[group][stat] = value
@@ -2337,47 +2337,47 @@ func deepCopyPlayers(players []Player) []Player {
 		}
 
 		// Deep copy PerformanceStatsNumeric map
-		if player.PerformanceStatsNumeric != nil {
+		if players[i].PerformanceStatsNumeric != nil {
 			playersCopy[i].PerformanceStatsNumeric = make(map[string]float64)
-			for key, value := range player.PerformanceStatsNumeric {
+			for key, value := range players[i].PerformanceStatsNumeric {
 				playersCopy[i].PerformanceStatsNumeric[key] = value
 			}
 		}
 
 		// Deep copy StringSlice fields (these are safe but let's be thorough)
-		if player.ParsedPositions != nil {
-			playersCopy[i].ParsedPositions = make([]string, len(player.ParsedPositions))
-			copy(playersCopy[i].ParsedPositions, player.ParsedPositions)
+		if players[i].ParsedPositions != nil {
+			playersCopy[i].ParsedPositions = make([]string, len(players[i].ParsedPositions))
+			copy(playersCopy[i].ParsedPositions, players[i].ParsedPositions)
 		}
 
-		if player.ShortPositions != nil {
-			playersCopy[i].ShortPositions = make([]string, len(player.ShortPositions))
-			copy(playersCopy[i].ShortPositions, player.ShortPositions)
+		if players[i].ShortPositions != nil {
+			playersCopy[i].ShortPositions = make([]string, len(players[i].ShortPositions))
+			copy(playersCopy[i].ShortPositions, players[i].ShortPositions)
 		}
 
-		if player.PositionGroups != nil {
-			playersCopy[i].PositionGroups = make([]string, len(player.PositionGroups))
-			copy(playersCopy[i].PositionGroups, player.PositionGroups)
+		if players[i].PositionGroups != nil {
+			playersCopy[i].PositionGroups = make([]string, len(players[i].PositionGroups))
+			copy(playersCopy[i].PositionGroups, players[i].PositionGroups)
 		}
 
 		// Deep copy RoleSpecificOveralls slice
-		if player.RoleSpecificOveralls != nil {
-			playersCopy[i].RoleSpecificOveralls = make([]RoleOverallScore, len(player.RoleSpecificOveralls))
-			copy(playersCopy[i].RoleSpecificOveralls, player.RoleSpecificOveralls)
+		if players[i].RoleSpecificOveralls != nil {
+			playersCopy[i].RoleSpecificOveralls = make([]RoleOverallScore, len(players[i].RoleSpecificOveralls))
+			copy(playersCopy[i].RoleSpecificOveralls, players[i].RoleSpecificOveralls)
 		}
 
 		// Deep copy Attributes map
-		if player.Attributes != nil {
+		if players[i].Attributes != nil {
 			playersCopy[i].Attributes = make(map[string]string)
-			for key, value := range player.Attributes {
+			for key, value := range players[i].Attributes {
 				playersCopy[i].Attributes[key] = value
 			}
 		}
 
 		// Deep copy NumericAttributes map
-		if player.NumericAttributes != nil {
+		if players[i].NumericAttributes != nil {
 			playersCopy[i].NumericAttributes = make(map[string]int)
-			for key, value := range player.NumericAttributes {
+			for key, value := range players[i].NumericAttributes {
 				playersCopy[i].NumericAttributes[key] = value
 			}
 		}
