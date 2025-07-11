@@ -361,6 +361,17 @@ func CalculatePlayerPerformancePercentiles(players []Player) {
 		}
 	}
 
+	// Final cleanup: remove empty percentile groups
+	for i := range players {
+		if players[i].PerformancePercentiles != nil {
+			for group, stats := range players[i].PerformancePercentiles {
+				if len(stats) == 0 {
+					delete(players[i].PerformancePercentiles, group)
+				}
+			}
+		}
+	}
+
 	// Cache the calculated percentiles for future use
 	if len(players) > 0 {
 		// Create a sample of percentiles for caching (using first player as template)
@@ -556,6 +567,17 @@ func CalculatePlayerPerformancePercentilesWithDivisionFilter(players []Player, d
 					players[idx].PerformancePercentiles[detailedGroupName][statKey] = calculatePercentileValue(val, sortedValues)
 				} else {
 					players[idx].PerformancePercentiles[detailedGroupName][statKey] = -1
+				}
+			}
+		}
+	}
+
+	// Final cleanup: remove empty percentile groups
+	for i := range players {
+		if players[i].PerformancePercentiles != nil {
+			for group, stats := range players[i].PerformancePercentiles {
+				if len(stats) == 0 {
+					delete(players[i].PerformancePercentiles, group)
 				}
 			}
 		}
