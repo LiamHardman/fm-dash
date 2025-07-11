@@ -196,7 +196,7 @@ func getPlayerFromPool() *Player {
 	player := playerPool.Get().(*Player)
 
 	// Reset the player to clean state
-	player.UID = ""
+	player.UID = 0
 	player.Name = ""
 	// ... reset other fields as needed
 

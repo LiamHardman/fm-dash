@@ -195,7 +195,7 @@ func estimateSinglePlayerMemory(player *Player) int {
 	size := int(unsafe.Sizeof(*player))
 
 	// Add string lengths
-	size += len(player.UID) + len(player.Name) + len(player.Position) + len(player.Age) +
+	size += len(player.Name) + len(player.Position) + len(player.Age) +
 		len(player.Club) + len(player.Division) + len(player.TransferValue) + len(player.Wage) +
 		len(player.Personality) + len(player.MediaHandling) + len(player.Nationality) +
 		len(player.NationalityISO) + len(player.NationalityFIFACode) + len(player.BestRoleOverall)
@@ -282,7 +282,7 @@ func GetMemoryOptimizationHandler() func(w http.ResponseWriter, r *http.Request)
 		if totalPlayers == 0 {
 			// Create a representative sample for estimation
 			samplePlayers = []Player{{
-				UID: "sample", Name: "Sample Player", Position: "Centre Back",
+				UID: 123456789, Name: "Sample Player", Position: "Centre Back",
 				Age: "25", Club: "Sample FC", Division: "Premier League",
 				Nationality: "England", Attributes: make(map[string]string, 100),
 				NumericAttributes: make(map[string]int, 100),

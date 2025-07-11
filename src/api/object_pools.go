@@ -73,7 +73,7 @@ func ReturnPlayer(player *Player) {
 // resetPlayer clears all data from a Player struct for reuse
 func resetPlayer(player *Player) {
 	// Reset string fields
-	player.UID = ""
+	player.UID = 0
 	player.Name = ""
 	player.Position = ""
 	player.Age = ""

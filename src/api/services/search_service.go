@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -89,8 +90,8 @@ func (s *SearchService) searchPlayers(players []Player, query string) []SearchRe
 		relevance := s.calculatePlayerRelevance(&players[i], lowerQuery)
 		if relevance > 0 {
 			// Use the player's UID as the ID since it's the unique identifier
-			playerID := players[i].UID
-			if playerID == "" {
+			playerID := strconv.FormatInt(players[i].UID, 10)
+			if players[i].UID == 0 {
 				// Fallback to composite ID if UID is somehow missing
 				playerID = fmt.Sprintf("player_%s_%s_%d_%s",
 					strings.ReplaceAll(players[i].Name, " ", "_"),
@@ -250,26 +251,21 @@ func (s *SearchService) calculatePlayerRelevance(player *Player, lowerQuery stri
 		relevance += 10.0
 	}
 
-	// Boost score for higher-rated players
-	if relevance > 0 {
-		relevance += float64(player.Overall) * 0.1
-	}
-
 	return relevance
 }
 
-// calculateStringRelevance calculates relevance for simple string matching
+// calculateStringRelevance calculates how relevant a string is to the search query
 func (s *SearchService) calculateStringRelevance(text, query string) float64 {
 	lowerText := strings.ToLower(text)
 
-	switch {
-	case lowerText == query:
+	if lowerText == query {
 		return 100.0
-	case strings.HasPrefix(lowerText, query):
-		return 80.0
-	case strings.Contains(lowerText, query):
-		return 60.0
-	default:
-		return 0.0
 	}
+	if strings.HasPrefix(lowerText, query) {
+		return 80.0
+	}
+	if strings.Contains(lowerText, query) {
+		return 50.0
+	}
+	return 0
 }

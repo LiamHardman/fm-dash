@@ -35,7 +35,7 @@ type OptimizedPlayer struct {
 	POS int16 `json:"pos"`
 
 	// Identifiers and core strings (interned)
-	UID                 string `json:"uid"`
+	UID                 int64  `json:"uid"`
 	Name                string `json:"name"`
 	Club                string `json:"club"`                  // Interned
 	Position            string `json:"position"`              // Interned
@@ -261,7 +261,7 @@ func (op *OptimizedPlayer) MemoryUsage() int {
 	size := int(unsafe.Sizeof(*op))
 
 	// Add string lengths
-	size += len(op.UID) + len(op.Name) + len(op.Club) + len(op.Position) +
+	size += len(op.Name) + len(op.Club) + len(op.Position) +
 		len(op.Division) + len(op.Nationality) + len(op.NationalityISO) +
 		len(op.NationalityFIFACode) + len(op.BestRoleOverall)
 

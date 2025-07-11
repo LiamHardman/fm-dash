@@ -16,7 +16,7 @@ import (
 // Player represents a football player with all their attributes
 type Player struct {
 	ID                      string                        `json:"id"`
-	UID                     string                        `json:"uid"` // Unique identifier for the player
+	UID                     int64                         `json:"uid"` // Unique identifier for the player
 	Name                    string                        `json:"name"`
 	Age                     int                           `json:"age"`
 	Club                    string                        `json:"club"`

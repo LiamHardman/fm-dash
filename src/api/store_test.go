@@ -67,12 +67,12 @@ func TestStoreDataset(t *testing.T) {
 			datasetID: "test-dataset-1",
 			players: []Player{
 				{
-					UID:  "player1",
+					UID:  1,
 					Name: "Test Player 1",
 					Age:  "25",
 				},
 				{
-					UID:  "player2",
+					UID:  2,
 					Name: "Test Player 2",
 					Age:  "28",
 				},
@@ -92,7 +92,7 @@ func TestStoreDataset(t *testing.T) {
 			datasetID: "no-currency",
 			players: []Player{
 				{
-					UID:  "player3",
+					UID:  3,
 					Name: "Test Player 3",
 					Age:  "30",
 				},
@@ -143,7 +143,7 @@ func TestRetrieveDataset(t *testing.T) {
 
 	// Pre-populate with test data
 	testPlayers := []Player{
-		{UID: "player1", Name: "Test Player", Age: "25"},
+		{UID: 1, Name: "Test Player", Age: "25"},
 	}
 	testCurrency := "€"
 	testDatasetID := "test-retrieve"
@@ -208,7 +208,7 @@ func TestDeleteDataset(t *testing.T) {
 
 	// Store test data
 	testDatasetID := "test-delete"
-	testPlayers := []Player{{UID: "player1", Name: "Test Player"}}
+	testPlayers := []Player{{UID: 1, Name: "Test Player"}}
 
 	err := StoreDataset(testDatasetID, testPlayers, "$")
 	if err != nil {
@@ -244,7 +244,7 @@ func TestListDatasets(t *testing.T) {
 	// Store multiple datasets
 	datasets := []string{"dataset1", "dataset2", "dataset3"}
 	for _, id := range datasets {
-		err := StoreDataset(id, []Player{{UID: "test"}}, "$")
+		err := StoreDataset(id, []Player{{UID: 123}}, "$")
 		if err != nil {
 			t.Fatalf("Failed to store test dataset %s: %v", id, err)
 		}
@@ -281,7 +281,7 @@ func TestStoreDatasetAsync(t *testing.T) {
 	storage = NewMockStorage()
 
 	testDatasetID := "test-async"
-	testPlayers := []Player{{UID: "player1", Name: "Async Test Player"}}
+	testPlayers := []Player{{UID: 1, Name: "Async Test Player"}}
 	testCurrency := "£"
 
 	// Store dataset asynchronously
@@ -339,7 +339,7 @@ func TestStoreDatasetValidation(t *testing.T) {
 		{
 			name:      "valid dataset with special characters in currency",
 			datasetID: "special-currency",
-			players:   []Player{{UID: "player1"}},
+			players:   []Player{{UID: 1}},
 			currency:  "₹", // Indian Rupee
 		},
 		{
@@ -352,9 +352,9 @@ func TestStoreDatasetValidation(t *testing.T) {
 			name:      "dataset with unicode player names",
 			datasetID: "unicode-names",
 			players: []Player{
-				{UID: "player1", Name: "José María"},
-				{UID: "player2", Name: "Müller"},
-				{UID: "player3", Name: "Žižek"},
+				{UID: 1, Name: "José María"},
+				{UID: 2, Name: "Müller"},
+				{UID: 3, Name: "Žižek"},
 			},
 			currency: "€",
 		},
