@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -28,39 +27,22 @@ func getEnvWithDefault(key, defaultValue string) string {
 
 // configureRuntimeMemory optimizes Go runtime settings for better memory management
 func configureRuntimeMemory() {
-	// Set GOGC for more aggressive garbage collection under memory pressure
-	// Lower values mean more frequent GC but lower memory usage
-	gogc := os.Getenv("GOGC")
-	if gogc == "" {
-		// Default to more aggressive GC for memory-constrained environments
-		debug.SetGCPercent(50) // More aggressive than default for better memory control
-		log.Println("Set GOGC to 50 for aggressive memory management")
-	} else {
-		if val, err := strconv.Atoi(gogc); err == nil {
-			debug.SetGCPercent(val)
-			log.Printf("Set GOGC to %d from environment", val)
-		}
-	}
-
-	// Start dynamic GOGC tuning based on memory pressure
-	go startDynamicGOGCTuning()
+	// Statically set GOGC to 150 for consistent performance
+	debug.SetGCPercent(150)
+	slog.Debug("Statically set GOGC to 150")
 
 	// Set memory limit if specified
 	if memLimit := os.Getenv("GOMEMLIMIT"); memLimit != "" {
 		debug.SetMemoryLimit(parseMemoryLimit(memLimit))
-		log.Printf("Set memory limit to %s", memLimit)
+		slog.Debug("Set memory limit", "limit", memLimit)
 	}
 
 	// Configure maximum number of OS threads
-	maxProcs := runtime.GOMAXPROCS(0)
-	if maxProcs > 8 {
-		// Limit to 8 for better resource management in high-CPU environments
-		runtime.GOMAXPROCS(8)
-		log.Printf("Limited GOMAXPROCS to 8 (was %d)", maxProcs)
-	}
+	runtime.GOMAXPROCS(runtime.NumCPU())
 
-	log.Printf("Runtime configured: GOMAXPROCS=%d, NumCPU=%d",
-		runtime.GOMAXPROCS(0), runtime.NumCPU())
+	slog.Debug("Runtime configured",
+		"GOMAXPROCS", runtime.GOMAXPROCS(0),
+		"NumCPU", runtime.NumCPU())
 }
 
 // parseMemoryLimit parses memory limit strings like "1GB", "512MB"
@@ -94,42 +76,6 @@ func parseMemoryLimit(limit string) int64 {
 	return -1 // Invalid format
 }
 
-// startDynamicGOGCTuning adjusts GOGC based on memory pressure
-func startDynamicGOGCTuning() {
-	ticker := time.NewTicker(60 * time.Second) // Check every minute
-	defer ticker.Stop()
-
-	for range ticker.C {
-		var m runtime.MemStats
-		runtime.ReadMemStats(&m)
-
-		currentMemMB := float64(m.Alloc) / 1024 / 1024
-
-		var newGOGC int
-		switch {
-		case currentMemMB > 512: // Very high memory usage
-			newGOGC = 25 // Very aggressive GC
-		case currentMemMB > 256: // High memory usage
-			newGOGC = 50 // Aggressive GC
-		case currentMemMB > 128: // Moderate memory usage
-			newGOGC = 75 // Moderate GC
-		case currentMemMB > 64: // Low-moderate memory usage
-			newGOGC = 100 // Standard GC
-		default: // Low memory usage
-			newGOGC = 150 // Less frequent GC for better performance
-		}
-
-		// Only change if it's different from current setting
-		currentGOGC := debug.SetGCPercent(-1) // Get current setting
-		debug.SetGCPercent(currentGOGC)       // Restore it
-
-		if newGOGC != currentGOGC {
-			debug.SetGCPercent(newGOGC)
-			log.Printf("Dynamic GOGC adjustment: %d -> %d (memory: %.1fMB)", currentGOGC, newGOGC, currentMemMB)
-		}
-	}
-}
-
 func validateEnvironmentVariables() error {
 	// Validate OTEL_EXPORTER_OTLP_ENDPOINT if set
 	if endpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"); endpoint != "" {
@@ -158,7 +104,8 @@ func validateEnvironmentVariables() error {
 func main() {
 	// Validate environment variables first
 	if err := validateEnvironmentVariables(); err != nil {
-		log.Fatalf("Environment validation failed: %v", err)
+		slog.Error("Environment validation failed", "error", err)
+		os.Exit(1)
 	}
 
 	// Configure Go runtime for better memory management
@@ -171,7 +118,8 @@ func main() {
 	} else {
 		// Validate port is a valid number and in reasonable range
 		if portNum, err := strconv.Atoi(port); err != nil || portNum <= 0 || portNum > 65535 {
-			log.Fatalf("Invalid PORT environment variable: %s. Must be a number between 1-65535", port)
+			slog.Error("Invalid PORT environment variable. Must be a number between 1-65535", "port", port)
+			os.Exit(1)
 		}
 	}
 
@@ -180,7 +128,8 @@ func main() {
 	if otelEnabled {
 		cleanup = initOTel()
 		if cleanup == nil {
-			log.Fatal("Failed to initialize OpenTelemetry: initOTel returned nil cleanup function")
+			slog.Error("Failed to initialize OpenTelemetry: initOTel returned nil cleanup function")
+			os.Exit(1)
 		}
 		defer func() {
 			if err := cleanup(context.Background()); err != nil {
