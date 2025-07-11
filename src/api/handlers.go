@@ -1342,6 +1342,106 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// percentilesStatusHandler handles GET requests to check if percentiles are ready for a dataset
+func percentilesStatusHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if r.Method != http.MethodGet {
+		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/percentiles-status/"), "/")
+	if len(pathParts) == 0 || pathParts[0] == "" {
+		http.Error(w, "Dataset ID is missing in the request path", http.StatusBadRequest)
+		return
+	}
+	datasetID := pathParts[0]
+
+	logInfo(ctx, "Checking percentiles status", "dataset_id", datasetID)
+
+	// Get the dataset
+	players, _, found := GetPlayerData(datasetID)
+	if !found {
+		logWarn(ctx, "Player data not found", "dataset_id", datasetID)
+		http.Error(w, "Player data not found for the given ID.", http.StatusNotFound)
+		return
+	}
+
+	// Check percentile readiness
+	totalPlayers := len(players)
+	playersWithPercentiles := 0
+	playersWithValidPercentiles := 0
+
+	for i := range players {
+		if players[i].PerformancePercentiles != nil {
+			playersWithPercentiles++
+
+			// Check if the player has valid percentiles (not all -1 or 0)
+			globalPercentiles := players[i].PerformancePercentiles["Global"]
+			if globalPercentiles != nil {
+				validCount := 0
+				for _, percentile := range globalPercentiles {
+					if percentile >= 0 {
+						validCount++
+					}
+				}
+				if validCount > 0 {
+					playersWithValidPercentiles++
+				}
+			}
+		}
+	}
+
+	// Calculate readiness percentages
+	percentileInitialized := float64(playersWithPercentiles) / float64(totalPlayers) * 100
+	percentileValid := float64(playersWithValidPercentiles) / float64(totalPlayers) * 100
+
+	// Determine overall status
+	var status string
+	switch {
+	case percentileValid >= 90:
+		status = "ready"
+	case percentileValid >= 50:
+		status = "partial"
+	case percentileInitialized >= 50:
+		status = "calculating"
+	default:
+		status = "not_ready"
+	}
+
+	statusResponse := map[string]interface{}{
+		"dataset_id":                     datasetID,
+		"status":                         status,
+		"total_players":                  totalPlayers,
+		"players_with_percentiles":       playersWithPercentiles,
+		"players_with_valid_percentiles": playersWithValidPercentiles,
+		"percentile_initialized_percent": percentileInitialized,
+		"percentile_valid_percent":       percentileValid,
+		"message":                        getStatusMessage(status, percentileValid),
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	setCORSHeaders(w, r)
+	if err := json.NewEncoder(w).Encode(statusResponse); err != nil {
+		log.Printf("Error encoding JSON response for percentiles status (DatasetID: %s): %v", sanitizeForLogging(datasetID), err)
+		http.Error(w, "Error encoding response", http.StatusInternalServerError)
+	}
+}
+
+// getStatusMessage returns a human-readable message for the percentile status
+func getStatusMessage(status string, validPercent float64) string {
+	switch status {
+	case "ready":
+		return "Performance percentiles are ready"
+	case "partial":
+		return fmt.Sprintf("Performance percentiles are %.1f%% ready", validPercent)
+	case "calculating":
+		return "Performance percentiles are being calculated"
+	default:
+		return "Performance percentiles are not available"
+	}
+}
+
 // TeamRatings holds the calculated ratings for a team
 type TeamRatings struct {
 	BestOverall int
