@@ -122,7 +122,18 @@ var (
 var defaultAttributeWeightsGo = map[string]map[string]int{
 	"PAC": {"Acc": 12, "Pac": 12, "Agi": 5},
 	"SHO": {"Fin": 8, "Lon": 6, "Pen": 4, "Hea": 5, "Cmp": 6, "Tec": 5, "Ant": 4, "Dec": 4, "Fla": 3},
-	"PAS": {"Pas": 8, "Cro": 6, "Fre": 4, "Vis": 7, "Tec": 5, "Tea": 4, "Dec": 4, "Cor": 3, "Fir": 4, "OtB": 3},
+	"PAS_standard": {
+		"Pas": 8, "Cro": 6, "Fre": 4, "Vis": 7, "Tec": 5,
+		"Tea": 4, "Dec": 4, "Cor": 3, "Fir": 4, "OtB": 3,
+	},
+	"PAS_no_set_pieces": {
+		"Pas": 8, "Vis": 7, "Tec": 5, "Tea": 4,
+		"Dec": 4, "Fir": 4, "OtB": 3,
+	},
+	"PAS_no_off_ball": {
+		"Pas": 8, "Cro": 6, "Fre": 4, "Vis": 7, "Tec": 5,
+		"Tea": 4, "Dec": 4, "Fir": 4,
+	},
 	"DRI": {"Dri": 8, "Fir": 7, "Tec": 6, "Fla": 5, "Cmp": 4, "OtB": 3},
 	"DEF": {"Mar": 8, "Tck": 8, "Hea": 6, "Ant": 7, "Cnt": 6, "Pos": 7, "Dec": 5, "Cmp": 4, "Bra": 5, "Agg": 4, "Wor": 4},
 	"PHY": {"Str": 8, "Sta": 7, "Nat": 6, "Jum": 5, "Bal": 4, "Agg": 5, "Bra": 4, "Wor": 4},

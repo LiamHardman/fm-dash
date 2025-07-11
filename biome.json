@@ -30,7 +30,6 @@
       "*.md",
       "docs/**/*.md",
       "testdata.html",
-      "src/api/**",
       "src/utils/teams_data.json",
       "package-lock.json"
     ]
