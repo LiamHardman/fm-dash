@@ -1,3 +1,10 @@
+## [1.2.19](https://github.com/LiamHardman/fm-dash/compare/v1.2.18...v1.2.19) (2025-07-11)
+
+
+### Bug Fixes
+
+* removed dynamic gogc ([ad2c0b6](https://github.com/LiamHardman/fm-dash/commit/ad2c0b6d335665fe617022d95186be04455cf027))
+
 ## [1.2.18](https://github.com/LiamHardman/fm-dash/compare/v1.2.17...v1.2.18) (2025-07-11)
 
 
