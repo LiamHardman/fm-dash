@@ -105,7 +105,7 @@ func cacheHandler(w http.ResponseWriter, r *http.Request) {
 	cacheType := pathParts[0]
 	cacheKey := pathParts[1]
 
-	logInfo(ctx, "Processing cache request",
+	logDebug(ctx, "Processing cache request",
 		"cache_type", cacheType,
 		"cache_key", cacheKey,
 		"method", r.Method)

@@ -586,51 +586,51 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		// Make a deep copy to avoid race conditions during calculation
 		// Use the original deep copy to avoid any concurrency issues with optimizations
 		playersCopyForPercentiles := make([]Player, len(storedPlayers))
-		for i := range storedPlayers {
-			playersCopyForPercentiles[i] = storedPlayers[i]
+		for i, player := range storedPlayers {
+			playersCopyForPercentiles[i] = player
 			// Deep copy all the maps to prevent race conditions
-			if storedPlayers[i].Attributes != nil {
+			if player.Attributes != nil {
 				playersCopyForPercentiles[i].Attributes = make(map[string]string)
-				for k, v := range storedPlayers[i].Attributes {
+				for k, v := range player.Attributes {
 					playersCopyForPercentiles[i].Attributes[k] = v
 				}
 			}
-			if storedPlayers[i].NumericAttributes != nil {
+			if player.NumericAttributes != nil {
 				playersCopyForPercentiles[i].NumericAttributes = make(map[string]int)
-				for k, v := range storedPlayers[i].NumericAttributes {
+				for k, v := range player.NumericAttributes {
 					playersCopyForPercentiles[i].NumericAttributes[k] = v
 				}
 			}
-			if storedPlayers[i].PerformanceStatsNumeric != nil {
+			if player.PerformanceStatsNumeric != nil {
 				playersCopyForPercentiles[i].PerformanceStatsNumeric = make(map[string]float64)
-				for k, v := range storedPlayers[i].PerformanceStatsNumeric {
+				for k, v := range player.PerformanceStatsNumeric {
 					playersCopyForPercentiles[i].PerformanceStatsNumeric[k] = v
 				}
 			}
-			if storedPlayers[i].PerformancePercentiles != nil {
+			if player.PerformancePercentiles != nil {
 				playersCopyForPercentiles[i].PerformancePercentiles = make(map[string]map[string]float64)
-				for group, stats := range storedPlayers[i].PerformancePercentiles {
+				for group, stats := range player.PerformancePercentiles {
 					playersCopyForPercentiles[i].PerformancePercentiles[group] = make(map[string]float64)
 					for stat, value := range stats {
 						playersCopyForPercentiles[i].PerformancePercentiles[group][stat] = value
 					}
 				}
 			}
-			if storedPlayers[i].RoleSpecificOveralls != nil {
-				playersCopyForPercentiles[i].RoleSpecificOveralls = make([]RoleOverallScore, len(storedPlayers[i].RoleSpecificOveralls))
-				copy(playersCopyForPercentiles[i].RoleSpecificOveralls, storedPlayers[i].RoleSpecificOveralls)
+			if player.RoleSpecificOveralls != nil {
+				playersCopyForPercentiles[i].RoleSpecificOveralls = make([]RoleOverallScore, len(player.RoleSpecificOveralls))
+				copy(playersCopyForPercentiles[i].RoleSpecificOveralls, player.RoleSpecificOveralls)
 			}
-			if storedPlayers[i].ShortPositions != nil {
-				playersCopyForPercentiles[i].ShortPositions = make([]string, len(storedPlayers[i].ShortPositions))
-				copy(playersCopyForPercentiles[i].ShortPositions, storedPlayers[i].ShortPositions)
+			if player.ShortPositions != nil {
+				playersCopyForPercentiles[i].ShortPositions = make([]string, len(player.ShortPositions))
+				copy(playersCopyForPercentiles[i].ShortPositions, player.ShortPositions)
 			}
-			if storedPlayers[i].ParsedPositions != nil {
-				playersCopyForPercentiles[i].ParsedPositions = make([]string, len(storedPlayers[i].ParsedPositions))
-				copy(playersCopyForPercentiles[i].ParsedPositions, storedPlayers[i].ParsedPositions)
+			if player.ParsedPositions != nil {
+				playersCopyForPercentiles[i].ParsedPositions = make([]string, len(player.ParsedPositions))
+				copy(playersCopyForPercentiles[i].ParsedPositions, player.ParsedPositions)
 			}
-			if storedPlayers[i].PositionGroups != nil {
-				playersCopyForPercentiles[i].PositionGroups = make([]string, len(storedPlayers[i].PositionGroups))
-				copy(playersCopyForPercentiles[i].PositionGroups, storedPlayers[i].PositionGroups)
+			if player.PositionGroups != nil {
+				playersCopyForPercentiles[i].PositionGroups = make([]string, len(player.PositionGroups))
+				copy(playersCopyForPercentiles[i].PositionGroups, player.PositionGroups)
 			}
 		}
 
@@ -2031,7 +2031,7 @@ func facesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logInfo(ctx, "Processing face image request", "uid", sanitizeForLogging(uid))
+	logDebug(ctx, "Processing face image request", "uid", sanitizeForLogging(uid))
 
 	// Check if IMAGE_API_URL is configured - if so, redirect to external API
 	if imageAPIURL := os.Getenv("IMAGE_API_URL"); imageAPIURL != "" {
@@ -2054,7 +2054,7 @@ func facesHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Try S3 first if configured
 	if s3Storage, ok := storage.(*S3Storage); ok && s3Storage.client != nil {
-		logInfo(ctx, "Attempting to retrieve face from S3", "filename", sanitizeForLogging(faceFileName))
+		logDebug(ctx, "Attempting to retrieve face from S3", "filename", sanitizeForLogging(faceFileName))
 
 		// Get face image from S3
 		if err := s3Storage.getFaceImage(ctx, faceFileName, w); err != nil {
@@ -2077,7 +2077,7 @@ func facesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logInfo(ctx, "Attempting to retrieve face from local storage", "path", sanitizeForLogging(faceFilePath))
+	logDebug(ctx, "Attempting to retrieve face from local storage", "path", sanitizeForLogging(faceFilePath))
 
 	// Check if file exists
 	if _, err := os.Stat(faceFilePath); os.IsNotExist(err) {
@@ -2127,7 +2127,7 @@ func logosHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logInfo(ctx, "Processing team logo request", "teamId", sanitizeForLogging(teamID))
+	logDebug(ctx, "Processing team logo request", "teamId", sanitizeForLogging(teamID))
 
 	// Check if IMAGE_API_URL is configured - if so, redirect to external API
 	if imageAPIURL := os.Getenv("IMAGE_API_URL"); imageAPIURL != "" {
@@ -2150,14 +2150,14 @@ func logosHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Try S3 first if configured
 	if s3Storage, ok := storage.(*S3Storage); ok && s3Storage.client != nil {
-		logInfo(ctx, "Attempting to retrieve logo from S3", "filename", sanitizeForLogging(logoFileName))
+		logDebug(ctx, "Attempting to retrieve logo from S3", "filename", sanitizeForLogging(logoFileName))
 
 		// Get logo image from S3
 		if err := s3Storage.getTeamLogo(ctx, logoFileName, w); err != nil {
 			logWarn(ctx, "Failed to retrieve logo from S3", "filename", sanitizeForLogging(logoFileName), "error", err)
 			// Fall through to local storage
 		} else {
-			logInfo(ctx, "Successfully served logo from S3", "filename", sanitizeForLogging(logoFileName))
+			logDebug(ctx, "Successfully served logo from S3", "filename", sanitizeForLogging(logoFileName))
 			return
 		}
 	}
@@ -2269,7 +2269,7 @@ func teamMatchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logInfo(ctx, "Processing team match request", "teamName", teamName, "originalLength", len(teamName))
+	logDebug(ctx, "Processing team match request", "teamName", teamName, "originalLength", len(teamName))
 
 	// Get team match results
 	matches := findTeamMatches(teamName)
@@ -2278,7 +2278,7 @@ func teamMatchHandler(w http.ResponseWriter, r *http.Request) {
 	if len(matches) == 0 {
 		logWarn(ctx, "No team matches found", "teamName", teamName)
 	} else {
-		logInfo(ctx, "Team matches found",
+		logDebug(ctx, "Team matches found",
 			"teamName", teamName,
 			"matchCount", len(matches),
 			"bestMatch", matches[0].Name,
@@ -2290,7 +2290,7 @@ func teamMatchHandler(w http.ResponseWriter, r *http.Request) {
 			if i >= 3 {
 				break
 			}
-			logInfo(ctx, "Match result",
+			logDebug(ctx, "Match result",
 				"rank", i+1,
 				"teamName", teamName,
 				"matchName", match.Name,
@@ -2322,13 +2322,13 @@ func deepCopyPlayers(players []Player) []Player {
 
 	// Fallback to original implementation for compatibility
 	playersCopy := make([]Player, len(players))
-	for i := range players {
-		playersCopy[i] = players[i]
+	for i, player := range players {
+		playersCopy[i] = player
 
 		// Deep copy PerformancePercentiles map
-		if players[i].PerformancePercentiles != nil {
+		if player.PerformancePercentiles != nil {
 			playersCopy[i].PerformancePercentiles = make(map[string]map[string]float64)
-			for group, stats := range players[i].PerformancePercentiles {
+			for group, stats := range player.PerformancePercentiles {
 				playersCopy[i].PerformancePercentiles[group] = make(map[string]float64)
 				for stat, value := range stats {
 					playersCopy[i].PerformancePercentiles[group][stat] = value
@@ -2337,47 +2337,47 @@ func deepCopyPlayers(players []Player) []Player {
 		}
 
 		// Deep copy PerformanceStatsNumeric map
-		if players[i].PerformanceStatsNumeric != nil {
+		if player.PerformanceStatsNumeric != nil {
 			playersCopy[i].PerformanceStatsNumeric = make(map[string]float64)
-			for key, value := range players[i].PerformanceStatsNumeric {
+			for key, value := range player.PerformanceStatsNumeric {
 				playersCopy[i].PerformanceStatsNumeric[key] = value
 			}
 		}
 
 		// Deep copy StringSlice fields (these are safe but let's be thorough)
-		if players[i].ParsedPositions != nil {
-			playersCopy[i].ParsedPositions = make([]string, len(players[i].ParsedPositions))
-			copy(playersCopy[i].ParsedPositions, players[i].ParsedPositions)
+		if player.ParsedPositions != nil {
+			playersCopy[i].ParsedPositions = make([]string, len(player.ParsedPositions))
+			copy(playersCopy[i].ParsedPositions, player.ParsedPositions)
 		}
 
-		if players[i].ShortPositions != nil {
-			playersCopy[i].ShortPositions = make([]string, len(players[i].ShortPositions))
-			copy(playersCopy[i].ShortPositions, players[i].ShortPositions)
+		if player.ShortPositions != nil {
+			playersCopy[i].ShortPositions = make([]string, len(player.ShortPositions))
+			copy(playersCopy[i].ShortPositions, player.ShortPositions)
 		}
 
-		if players[i].PositionGroups != nil {
-			playersCopy[i].PositionGroups = make([]string, len(players[i].PositionGroups))
-			copy(playersCopy[i].PositionGroups, players[i].PositionGroups)
+		if player.PositionGroups != nil {
+			playersCopy[i].PositionGroups = make([]string, len(player.PositionGroups))
+			copy(playersCopy[i].PositionGroups, player.PositionGroups)
 		}
 
 		// Deep copy RoleSpecificOveralls slice
-		if players[i].RoleSpecificOveralls != nil {
-			playersCopy[i].RoleSpecificOveralls = make([]RoleOverallScore, len(players[i].RoleSpecificOveralls))
-			copy(playersCopy[i].RoleSpecificOveralls, players[i].RoleSpecificOveralls)
+		if player.RoleSpecificOveralls != nil {
+			playersCopy[i].RoleSpecificOveralls = make([]RoleOverallScore, len(player.RoleSpecificOveralls))
+			copy(playersCopy[i].RoleSpecificOveralls, player.RoleSpecificOveralls)
 		}
 
 		// Deep copy Attributes map
-		if players[i].Attributes != nil {
+		if player.Attributes != nil {
 			playersCopy[i].Attributes = make(map[string]string)
-			for key, value := range players[i].Attributes {
+			for key, value := range player.Attributes {
 				playersCopy[i].Attributes[key] = value
 			}
 		}
 
 		// Deep copy NumericAttributes map
-		if players[i].NumericAttributes != nil {
+		if player.NumericAttributes != nil {
 			playersCopy[i].NumericAttributes = make(map[string]int)
-			for key, value := range players[i].NumericAttributes {
+			for key, value := range player.NumericAttributes {
 				playersCopy[i].NumericAttributes[key] = value
 			}
 		}
