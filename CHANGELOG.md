@@ -1,3 +1,10 @@
+## [1.2.22](https://github.com/LiamHardman/fm-dash/compare/v1.2.21...v1.2.22) (2025-07-11)
+
+
+### Bug Fixes
+
+* performance percentile loading state ([e1a89da](https://github.com/LiamHardman/fm-dash/commit/e1a89dab66865d7a9d53658285365a11e1072597))
+
 ## [1.2.21](https://github.com/LiamHardman/fm-dash/compare/v1.2.20...v1.2.21) (2025-07-11)
 
 

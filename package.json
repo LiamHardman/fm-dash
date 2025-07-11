@@ -1,6 +1,6 @@
 {
   "name": "fm-dash",
-  "version": "1.2.21",
+  "version": "1.2.22",
   "type": "module",
   "private": true,
   "description": "A comprehensive platform for analyzing Football Manager player data",
@@ -80,7 +80,7 @@
     "lint-staged": "^16.1.0",
     "rollup-plugin-visualizer": "^6.0.3",
     "sass": "^1.71.1",
-    "semantic-release": "^24.2.6",
+    "semantic-release": "^24.2.7",
     "terser": "^5.43.1",
     "vite": "^7.0.2",
     "vitest": "^3.2.0"
