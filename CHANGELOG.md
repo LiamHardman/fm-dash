@@ -1,3 +1,10 @@
+## [1.2.20](https://github.com/LiamHardman/fm-dash/compare/v1.2.19...v1.2.20) (2025-07-11)
+
+
+### Bug Fixes
+
+* making UID stored as int ([fe49305](https://github.com/LiamHardman/fm-dash/commit/fe49305dd16305ecdcd3cac38a7b2d1bdbc12cbb))
+
 ## [1.2.19](https://github.com/LiamHardman/fm-dash/compare/v1.2.18...v1.2.19) (2025-07-11)
 
 
