@@ -1,3 +1,10 @@
+## [1.2.25](https://github.com/LiamHardman/fm-dash/compare/v1.2.24...v1.2.25) (2025-07-11)
+
+
+### Bug Fixes
+
+* fixed semantic release ([73b8800](https://github.com/LiamHardman/fm-dash/commit/73b88007d171fcc74df05c314bffb7f72e124df0))
+
 ## [1.2.24](https://github.com/LiamHardman/fm-dash/compare/v1.2.23...v1.2.24) (2025-07-11)
 
 
