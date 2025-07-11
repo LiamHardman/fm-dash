@@ -1,28 +1,27 @@
-name: "CodeQL Security Analysis"
+name: "Scheduled Security Scan"
+run-name: Weekly security scan across all branches 🔒
 
 on:
-  push:
-    branches: [ "develop" ]
-  pull_request:
-    branches: [ "develop" ]
+  schedule:
+    - cron: '30 1 * * 0'  # Weekly scan on Sundays at 1:30 AM UTC
+  workflow_dispatch: # Allow manual trigger
 
 jobs:
   analyze:
-    name: Analyze (${{ matrix.language }})
+    name: Analyze ${{ matrix.language }} on ${{ matrix.branch }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     permissions:
-      # required for all workflows
       security-events: write
-      # required to fetch internal or private CodeQL packs
       packages: read
-      # only required for workflows in private repositories
       actions: read
       contents: read
 
     strategy:
       fail-fast: false
       matrix:
+        branch: [develop, gh-release]
+        language: [go, javascript-typescript]
         include:
         - language: go
           build-mode: autobuild
@@ -32,6 +31,8 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        ref: ${{ matrix.branch }}
 
     - name: Setup Go (for Go analysis)
       if: matrix.language == 'go'
@@ -56,16 +57,12 @@ jobs:
       with:
         languages: ${{ matrix.language }}
         build-mode: ${{ matrix.build-mode }}
-        # If you wish to specify custom queries, you can do so here or in a config file.
-        # By default, queries listed here will override any specified in a config file.
-        # Prefix the list here with "+" to use these queries and those in the config file.
         queries: +security-and-quality
-  schedule:
-    - cron: '30 1 * * 0'  # Weekly security scan on Sundays at 1:30 AM UTC
+
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
       with:
-        category: "/language:${{matrix.language}}"
+        category: "/language:${{matrix.language}}/branch:${{matrix.branch}}"
         upload: true
 
   security-summary:
@@ -77,17 +74,17 @@ jobs:
     steps:
       - name: Security scan summary
         run: |
-          echo "🔒 CodeQL Security Analysis Summary"
-          echo "=================================="
+          echo "🔒 Scheduled Security Analysis Summary"
+          echo "====================================="
           echo ""
-          echo "Go Backend Analysis: ${{ needs.analyze.result }}"
-          echo "JavaScript Frontend Analysis: ${{ needs.analyze.result }}"
+          echo "📅 Weekly scan completed for both branches"
+          echo "🔍 Branches scanned: develop, gh-release"
+          echo "🔧 Languages analyzed: Go, JavaScript/TypeScript"
           echo ""
-          echo "📋 Analysis Details:"
-          echo "  • Go: Scans backend API code in src/api/"
-          echo "  • JavaScript: Scans frontend Vue.js code in src/"
-          echo "  • Queries: Security and quality rule sets"
-          echo "  • Schedule: Weekly scans + PR/push triggers"
+          echo "📊 Analysis Results: ${{ needs.analyze.result }}"
           echo ""
-          echo "🔍 View detailed results in the Security tab of your repository"
-          echo "📊 Results are uploaded to GitHub Advanced Security Dashboard" 
+          echo "🔍 View detailed results in the Security tab"
+          echo "📋 Results uploaded to GitHub Advanced Security Dashboard"
+          echo ""
+          echo "ℹ️  This scheduled scan complements the branch-specific scans"
+          echo "   that run on push/PR events to ensure comprehensive coverage" 

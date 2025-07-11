@@ -2,8 +2,10 @@ name: GitHub Release
 run-name: ${{ github.actor }} is creating a GitHub release 🚀
 
 on:
+  # This workflow is now integrated into gh-release-pipeline.yml
+  # Disabled for gh-release branch to prevent multiple pipelines
   push:
-    branches: [ gh-release ]
+    branches: [ ]  # No branches - effectively disabled
 
 jobs:
   semantic-release:

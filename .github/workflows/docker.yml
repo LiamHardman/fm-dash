@@ -3,7 +3,7 @@ run-name: ${{ github.actor }} is building Docker images 🐳
 
 on:
   pull_request:
-    branches: [ main, gh-release ]
+    branches: [ main ]
   workflow_dispatch: # Allow manual trigger
 
 jobs:

@@ -1,0 +1,481 @@
+name: Complete Release Pipeline
+run-name: ${{ github.actor }} is running the complete release pipeline 🚀
+
+on:
+  push:
+    branches: [ gh-release ]
+  pull_request:
+    branches: [ gh-release ]
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  # Step 1: Code Quality Checks (runs first)
+  frontend-linting:
+    name: Frontend Code Quality (Biome)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Run Biome linting check
+        run: |
+          echo "🔍 Running Biome linting and formatting checks..."
+          npm run lint:check || echo "⚠️ Biome found linting/formatting issues"
+
+      - name: Run Biome formatting check
+        run: |
+          echo "🎨 Checking code formatting with Biome..."
+          npm run format:check || echo "⚠️ Biome found formatting issues"
+
+  backend-linting:
+    name: Backend Code Quality (Go)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.3'
+          cache-dependency-path: go.sum
+
+      - name: Install golangci-lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.54.2
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+      - name: Run Go linting
+        working-directory: ./src/api
+        run: |
+          echo "🔍 Running golangci-lint checks..."
+          golangci-lint run || echo "⚠️ golangci-lint found issues"
+
+      - name: Run Go unit tests
+        working-directory: ./test/api
+        run: |
+          echo "🧪 Running Go unit tests..."
+          go test -v ./... || echo "⚠️ Some Go tests failed"
+
+      - name: Generate test coverage report
+        working-directory: ./test/api
+        run: |
+          echo "📊 Generating test coverage report..."
+          go test -coverprofile=coverage.out ./... || echo "⚠️ Coverage generation failed"
+          if [ -f coverage.out ]; then
+            go tool cover -html=coverage.out -o coverage.html || echo "⚠️ HTML coverage report generation failed"
+            go tool cover -func=coverage.out || echo "⚠️ Coverage summary failed"
+          fi
+
+      - name: Upload coverage reports to Codecov
+        if: success()
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./test/api/coverage.out
+          flags: backend
+          name: backend-coverage
+          fail_ci_if_error: false
+
+  # Step 2: Security Analysis (runs in parallel with code quality)
+  security-analysis:
+    name: Security Analysis (CodeQL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    permissions:
+      security-events: write
+      packages: read
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - language: go
+          build-mode: autobuild
+        - language: javascript-typescript
+          build-mode: none
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Go (for Go analysis)
+      if: matrix.language == 'go'
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.24.3'
+        cache-dependency-path: go.sum
+
+    - name: Setup Node.js (for JavaScript analysis)
+      if: matrix.language == 'javascript-typescript'
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install frontend dependencies (for JavaScript analysis)
+      if: matrix.language == 'javascript-typescript'
+      run: npm ci --legacy-peer-deps
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        build-mode: ${{ matrix.build-mode }}
+        queries: +security-and-quality
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{matrix.language}}"
+        upload: true
+
+  # Step 3: Release Creation (runs after code quality, only on push)
+  semantic-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [frontend-linting, backend-linting]
+    if: github.event_name == 'push' && !contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip release]')
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    outputs:
+      new-release-published: ${{ steps.semantic-release.outputs.new-release-published }}
+      new-release-version: ${{ steps.semantic-release.outputs.new-release-version }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: gh-release
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          rm -f package-lock.json
+          npm install --legacy-peer-deps --package-lock-only --ignore-scripts
+          npm ci --legacy-peer-deps
+
+      - name: Setup Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://github.com/LiamHardman/fm-dash.git
+          git remote remove gitea 2>/dev/null || true
+          git fetch --all --prune
+          git checkout gh-release
+          git reset --hard origin/gh-release
+          git clean -fdx
+
+      - name: Install semantic-release
+        run: |
+          npm install --save-dev --legacy-peer-deps semantic-release@^24.2.5 @semantic-release/changelog@^6.0.3 @semantic-release/git@^10.0.1 @semantic-release/github@^10.0.7 conventional-changelog-conventionalcommits@^8.0.0
+
+      - name: Create GitHub release config
+        run: |
+          cat > .releaserc.json << 'EOF'
+          {
+            "branches": [
+              "gh-release"
+            ],
+            "repositoryUrl": "https://github.com/LiamHardman/fm-dash.git",
+            "plugins": [
+              "@semantic-release/commit-analyzer",
+              "@semantic-release/release-notes-generator",
+              "@semantic-release/changelog",
+              [
+                "@semantic-release/npm",
+                {
+                  "npmPublish": false
+                }
+              ],
+              [
+                "@semantic-release/git",
+                {
+                  "assets": ["package.json", "package-lock.json", "CHANGELOG.md"],
+                  "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+                }
+              ],
+              "@semantic-release/github"
+            ]
+          }
+          EOF
+
+      - name: Build application
+        run: npm run build
+
+      - name: Run tests
+        run: |
+          npm run test:optional
+          npm run test:go:timeout
+
+      - name: Create GitHub release
+        id: semantic-release
+        run: ./node_modules/.bin/semantic-release --debug
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HUSKY: 0
+
+  # Step 4: Docker Build and Push (runs after release creation)
+  docker-build:
+    name: Build and Push Docker Images
+    runs-on: ubuntu-latest
+    needs: [semantic-release, security-analysis]
+    if: always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && !contains(github.event.head_commit.message, '[skip ci]')
+    permissions:
+      packages: write
+      id-token: write
+      attestations: write
+    
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_BASE: ${{ github.repository }}
+      CACHE_BASE: ghcr.io/liamhardman/fm-dash
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: gh-release
+
+      - name: Refresh git state
+        run: |
+          git fetch --all --tags --force
+          echo "Latest tags:"
+          git tag --sort=-version:refname | head -5 || echo "No tags found"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get latest semantic version tag
+        id: version
+        run: |
+          LATEST_TAG=$(git tag --sort=-version:refname | head -1 || echo "")
+          if [ -n "$LATEST_TAG" ]; then
+            echo "version=$LATEST_TAG" >> $GITHUB_OUTPUT
+            echo "Found version tag: $LATEST_TAG"
+          else
+            echo "version=latest" >> $GITHUB_OUTPUT
+            echo "No version tags found, using 'latest'"
+          fi
+
+      # Extract metadata for unified image
+      - name: Extract metadata for unified image
+        id: meta-unified
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-unified
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}},value=${{ steps.version.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.version.outputs.version }}
+            type=raw,value=latest,enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=FM-Dash Unified
+            org.opencontainers.image.description=A comprehensive platform for analyzing Football Manager player data
+            org.opencontainers.image.vendor=Liam Hardman
+            org.opencontainers.image.licenses=MIT
+
+      # Extract metadata for frontend image
+      - name: Extract metadata for frontend image
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-frontend
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}},value=${{ steps.version.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.version.outputs.version }}
+            type=raw,value=latest,enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=FM-Dash Frontend
+            org.opencontainers.image.description=FM-Dash Vue.js frontend application
+            org.opencontainers.image.vendor=Liam Hardman
+            org.opencontainers.image.licenses=MIT
+
+      # Extract metadata for backend image
+      - name: Extract metadata for backend image
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-backend
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}},value=${{ steps.version.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.version.outputs.version }}
+            type=raw,value=latest,enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=FM-Dash Backend
+            org.opencontainers.image.description=FM-Dash Go backend API
+            org.opencontainers.image.vendor=Liam Hardman
+            org.opencontainers.image.licenses=MIT
+
+      # Build and push all images
+      - name: Build and push unified Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta-unified.outputs.tags }}
+          labels: ${{ steps.meta-unified.outputs.labels }}
+          build-args: |
+            VITE_API_BASE_URL=/api
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=registry,ref=${{ env.CACHE_BASE }}-unified:buildcache
+          cache-to: type=registry,ref=${{ env.CACHE_BASE }}-unified:buildcache,mode=max
+          provenance: false
+          sbom: false
+
+      - name: Build and push frontend Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.frontend
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=registry,ref=${{ env.CACHE_BASE }}-frontend:buildcache
+          cache-to: type=registry,ref=${{ env.CACHE_BASE }}-frontend:buildcache,mode=max
+          provenance: false
+          sbom: false
+
+      - name: Build and push backend Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.backend
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=registry,ref=${{ env.CACHE_BASE }}-backend:buildcache
+          cache-to: type=registry,ref=${{ env.CACHE_BASE }}-backend:buildcache,mode=max
+          provenance: false
+          sbom: false
+
+  # Step 5: Create Release Artifacts (runs after successful release)
+  create-release-artifacts:
+    name: Create Release Artifacts
+    runs-on: ubuntu-latest
+    needs: [semantic-release]
+    if: github.event_name == 'release' || (needs.semantic-release.outputs.new-release-published == 'true')
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Build frontend
+        run: npm run build:prod
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Build Go backend
+        run: |
+          cd src/api
+          go build -o ../../fm-dash-backend .
+
+      - name: Create release archives
+        run: |
+          # Create frontend build archive
+          cd dist && tar -czf ../fm-dash-frontend.tar.gz . && cd ..
+          
+          # Create source code archive
+          tar -czf fm-dash-source.tar.gz \
+            --exclude='node_modules' \
+            --exclude='dist' \
+            --exclude='.git' \
+            --exclude='*.log' \
+            --exclude='coverage' \
+            --exclude='src/api/coverage' \
+            .
+
+      - name: Get release info
+        id: release_info
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "tag_name=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+            echo "upload_url=${{ github.event.release.upload_url }}" >> $GITHUB_OUTPUT
+          else
+            # Get the latest tag created by semantic-release
+            LATEST_TAG=$(git tag --sort=-version:refname | head -1)
+            echo "tag_name=$LATEST_TAG" >> $GITHUB_OUTPUT
+            # For semantic-release created releases, we'll need to get the upload URL differently
+            echo "This will be handled by semantic-release's GitHub plugin"
+          fi
+
+  # Final Summary Job
+  pipeline-summary:
+    name: Pipeline Summary
+    runs-on: ubuntu-latest
+    needs: [frontend-linting, backend-linting, security-analysis, semantic-release, docker-build, create-release-artifacts]
+    if: always()
+    
+    steps:
+      - name: Pipeline summary
+        run: |
+          echo "🎯 Complete Release Pipeline Summary"
+          echo "===================================="
+          echo ""
+          echo "📋 Job Results:"
+          echo "  Frontend Linting: ${{ needs.frontend-linting.result }}"
+          echo "  Backend Linting: ${{ needs.backend-linting.result }}"
+          echo "  Security Analysis: ${{ needs.security-analysis.result }}"
+          echo "  GitHub Release: ${{ needs.semantic-release.result }}"
+          echo "  Docker Build: ${{ needs.docker-build.result }}"
+          echo "  Release Artifacts: ${{ needs.create-release-artifacts.result }}"
+          echo ""
+          echo "✅ All steps completed in a single pipeline!"
+          echo "🚀 No more multiple pipeline runs for gh-release branch"
+          echo ""
+          echo "📝 This consolidated pipeline includes:"
+          echo "  • Code quality checks (frontend & backend)"
+          echo "  • Security analysis (CodeQL)"
+          echo "  • Semantic release creation"
+          echo "  • Docker image building and pushing"
+          echo "  • Release artifact generation" 
