@@ -281,13 +281,29 @@ jobs:
       - name: Get latest semantic version tag
         id: version
         run: |
-          LATEST_TAG=$(git tag --sort=-version:refname | head -1 || echo "")
-          if [ -n "$LATEST_TAG" ]; then
-            echo "version=$LATEST_TAG" >> $GITHUB_OUTPUT
-            echo "Found version tag: $LATEST_TAG"
+          # Get the latest semantic version tag that points to HEAD or recent commits
+          LATEST_TAG=$(git tag --sort=-version:refname --merged HEAD | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "")
+          
+          echo "🔍 Found latest semver tag: ${LATEST_TAG}"
+          echo "latest_tag=${LATEST_TAG}" >> $GITHUB_OUTPUT
+          
+          if [[ -n "$LATEST_TAG" ]]; then
+            VERSION=${LATEST_TAG#v}  # Remove 'v' prefix
+            echo "version=${VERSION}" >> $GITHUB_OUTPUT
+            
+            # Extract major.minor
+            MAJOR_MINOR=$(echo "$VERSION" | cut -d. -f1-2)
+            echo "major_minor=v${MAJOR_MINOR}" >> $GITHUB_OUTPUT
+            
+            # Extract major
+            MAJOR=$(echo "$VERSION" | cut -d. -f1)
+            echo "major=v${MAJOR}" >> $GITHUB_OUTPUT
+            
+            echo "has_semver=true" >> $GITHUB_OUTPUT
+            echo "✅ Parsed version: $VERSION (major: $MAJOR, major.minor: $MAJOR_MINOR)"
           else
-            echo "version=latest" >> $GITHUB_OUTPUT
-            echo "No version tags found, using 'latest'"
+            echo "has_semver=false" >> $GITHUB_OUTPUT
+            echo "❌ No semantic version tag found for current commit"
           fi
 
       # Extract metadata for unified image
@@ -298,9 +314,12 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-unified
           tags: |
             type=ref,event=branch
-            type=semver,pattern={{version}},value=${{ steps.version.outputs.version }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ steps.version.outputs.version }}
             type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ steps.version.outputs.latest_tag }},enable=${{ steps.version.outputs.has_semver }}
+            type=raw,value=${{ steps.version.outputs.major_minor }},enable=${{ steps.version.outputs.has_semver }}
+            type=raw,value=${{ steps.version.outputs.major }},enable=${{ steps.version.outputs.has_semver }}
+          flavor: |
+            latest=auto
           labels: |
             org.opencontainers.image.title=FM-Dash Unified
             org.opencontainers.image.description=A comprehensive platform for analyzing Football Manager player data
@@ -315,9 +334,12 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-frontend
           tags: |
             type=ref,event=branch
-            type=semver,pattern={{version}},value=${{ steps.version.outputs.version }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ steps.version.outputs.version }}
             type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ steps.version.outputs.latest_tag }},enable=${{ steps.version.outputs.has_semver }}
+            type=raw,value=${{ steps.version.outputs.major_minor }},enable=${{ steps.version.outputs.has_semver }}
+            type=raw,value=${{ steps.version.outputs.major }},enable=${{ steps.version.outputs.has_semver }}
+          flavor: |
+            latest=auto
           labels: |
             org.opencontainers.image.title=FM-Dash Frontend
             org.opencontainers.image.description=FM-Dash Vue.js frontend application
@@ -332,9 +354,12 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-backend
           tags: |
             type=ref,event=branch
-            type=semver,pattern={{version}},value=${{ steps.version.outputs.version }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ steps.version.outputs.version }}
             type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ steps.version.outputs.latest_tag }},enable=${{ steps.version.outputs.has_semver }}
+            type=raw,value=${{ steps.version.outputs.major_minor }},enable=${{ steps.version.outputs.has_semver }}
+            type=raw,value=${{ steps.version.outputs.major }},enable=${{ steps.version.outputs.has_semver }}
+          flavor: |
+            latest=auto
           labels: |
             org.opencontainers.image.title=FM-Dash Backend
             org.opencontainers.image.description=FM-Dash Go backend API
