@@ -3,15 +3,19 @@ run-name: ${{ github.actor }} is creating a GitHub release 🚀
 
 on:
   # This workflow is now integrated into gh-release-pipeline.yml
-  # Disabled for gh-release branch to prevent multiple pipelines
-  push:
-    branches: [ ]  # No branches - effectively disabled
+  # Completely disabled to prevent multiple pipelines
+  workflow_dispatch:
+    inputs:
+      force_run:
+        description: 'This workflow is disabled - use gh-release-pipeline.yml instead'
+        required: false
+        default: 'disabled'
 
 jobs:
   semantic-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    if: "!contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip release]')"
+    if: false  # Workflow completely disabled - use gh-release-pipeline.yml instead
     permissions:
       contents: write
       issues: write
