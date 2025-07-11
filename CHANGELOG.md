@@ -1,3 +1,10 @@
+## [1.2.21](https://github.com/LiamHardman/fm-dash/compare/v1.2.20...v1.2.21) (2025-07-11)
+
+
+### Bug Fixes
+
+* cleaning up stored data to remove empty performance percentiles for positions players dont play ([8415b14](https://github.com/LiamHardman/fm-dash/commit/8415b149cebbb66237e9841d8fd3e9306928ba6a))
+
 ## [1.2.20](https://github.com/LiamHardman/fm-dash/compare/v1.2.19...v1.2.20) (2025-07-11)
 
 
