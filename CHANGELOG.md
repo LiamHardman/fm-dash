@@ -1,3 +1,10 @@
+## [1.2.17](https://github.com/LiamHardman/fm-dash/compare/v1.2.16...v1.2.17) (2025-07-11)
+
+
+### Bug Fixes
+
+* using indexing for players imstead of copying player value ([380c9aa](https://github.com/LiamHardman/fm-dash/commit/380c9aa123f98db140f3125c5f01f3868665ede4))
+
 ## [1.2.16](https://github.com/LiamHardman/fm-dash/compare/v1.2.15...v1.2.16) (2025-07-11)
 
 
