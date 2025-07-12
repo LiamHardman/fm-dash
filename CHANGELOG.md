@@ -1,3 +1,10 @@
+## [1.2.30](https://github.com/LiamHardman/fm-dash/compare/v1.2.29...v1.2.30) (2025-07-12)
+
+
+### Bug Fixes
+
+* troubleshooting pipeline ([2a042d6](https://github.com/LiamHardman/fm-dash/commit/2a042d605feaf9adbc6c0b8709307591e46a701a))
+
 ## [1.2.29](https://github.com/LiamHardman/fm-dash/compare/v1.2.28...v1.2.29) (2025-07-12)
 
 
