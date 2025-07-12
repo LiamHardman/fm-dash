@@ -303,7 +303,16 @@ func checkAbbreviationBonus(word, teamName string) bool {
 	word = strings.ToLower(strings.TrimSpace(word))
 	teamName = strings.ToLower(strings.TrimSpace(teamName))
 
-	// Check common football abbreviations
+	// Check enhanced abbreviations first
+	if expansions, exists := enhancedAbbreviations[word]; exists {
+		for _, expansion := range expansions {
+			if strings.Contains(teamName, expansion) {
+				return true
+			}
+		}
+	}
+
+	// Fallback to original mappings
 	abbreviationMappings := map[string][]string{
 		"sg":  {"saint-germain", "saint germain", "st-germain", "st germain"},
 		"utd": {"united"},
@@ -329,6 +338,12 @@ func checkAbbreviationBonus(word, teamName string) bool {
 func getAbbreviationExpansions(word string) []string {
 	word = strings.ToLower(strings.TrimSpace(word))
 
+	// Check enhanced abbreviations first
+	if expansions, exists := enhancedAbbreviations[word]; exists {
+		return expansions
+	}
+
+	// Fallback to original mappings
 	abbreviationMappings := map[string][]string{
 		"sg":  {"saint-germain", "saint germain", "st-germain", "st germain"},
 		"utd": {"united"},
@@ -471,6 +486,12 @@ func findTeamMatches(teamName string) []TeamMatch {
 
 	LogDebug("Team matching: Starting search for '%s'", sanitizeForLogging(teamName))
 
+	// Check for common team name mappings first
+	if mappedName, found := checkCommonTeamName(teamName); found {
+		LogDebug("Team matching: Found common team name mapping '%s' -> '%s'", sanitizeForLogging(teamName), sanitizeForLogging(mappedName))
+		teamName = mappedName
+	}
+
 	normalized := normalizeTeamName(teamName)
 	words := extractWords(normalized)
 
@@ -517,6 +538,9 @@ func findTeamMatches(teamName string) []TeamMatch {
 						LogDebug("Team matching: Applied abbreviation bonus for word in team '%s'", sanitizeForLogging(entry.NormalizedName))
 					}
 
+					// Apply disambiguation scoring to penalize partial matches
+					score = calculateDisambiguationScore(teamName, entry.Name, score)
+
 					if score > 0.3 { // Only include reasonably similar matches
 						candidates[entry.ID] = &TeamMatch{
 							ID:    entry.ID,
@@ -546,12 +570,45 @@ func findTeamMatches(teamName string) []TeamMatch {
 						} else {
 							// High score for abbreviation matches
 							score := 0.85 // High base score for abbreviation matches
+							// Apply disambiguation scoring
+							score = calculateDisambiguationScore(teamName, entry.Name, score)
 							candidates[entry.ID] = &TeamMatch{
 								ID:    entry.ID,
 								Name:  entry.Name,
 								Score: score,
 							}
 							LogDebug("Team matching: Abbreviation match - ID: %s, Name: '%s', Score: %.3f",
+								entry.ID, sanitizeForLogging(entry.Name), score)
+							wordMatchCount++
+						}
+					}
+				}
+			}
+		}
+
+		// Check enhanced abbreviation mappings
+		if enhancedExpansions, exists := enhancedAbbreviations[word]; exists {
+			for _, expansion := range enhancedExpansions {
+				if entries, exists := teamsIndex[expansion]; exists {
+					LogDebug("Team matching: Found %d entries for enhanced abbreviation expansion", len(entries))
+					for _, entry := range entries {
+						if existing, found := candidates[entry.ID]; found {
+							// Boost existing scores for enhanced abbreviation matches
+							oldScore := existing.Score
+							existing.Score = math.Min(1.0, existing.Score+0.4) // Higher boost for enhanced mappings
+							LogDebug("Team matching: Boosted score for enhanced abbreviation match ID %s from %.3f to %.3f",
+								entry.ID, oldScore, existing.Score)
+						} else {
+							// Very high score for enhanced abbreviation matches
+							score := 0.9 // Very high base score for enhanced abbreviation matches
+							// Apply disambiguation scoring
+							score = calculateDisambiguationScore(teamName, entry.Name, score)
+							candidates[entry.ID] = &TeamMatch{
+								ID:    entry.ID,
+								Name:  entry.Name,
+								Score: score,
+							}
+							LogDebug("Team matching: Enhanced abbreviation match - ID: %s, Name: '%s', Score: %.3f",
 								entry.ID, sanitizeForLogging(entry.Name), score)
 							wordMatchCount++
 						}
@@ -572,6 +629,8 @@ func findTeamMatches(teamName string) []TeamMatch {
 				for _, entry := range entries {
 					if _, found := candidates[entry.ID]; !found {
 						score := calculateSimilarity(normalized, entry.NormalizedName)
+						// Apply disambiguation scoring to penalize prefix-only matches
+						score = calculateDisambiguationScore(teamName, entry.Name, score)
 						if score > 0.4 { // Slightly higher threshold for prefix matches
 							candidates[entry.ID] = &TeamMatch{
 								ID:    entry.ID,
@@ -605,6 +664,8 @@ func findTeamMatches(teamName string) []TeamMatch {
 			if _, found := candidates[id]; !found {
 				entryNormalized := normalizeTeamName(name)
 				score := calculateSimilarity(normalized, entryNormalized)
+				// Apply disambiguation scoring
+				score = calculateDisambiguationScore(teamName, name, score)
 				if score > 0.6 { // Higher threshold for fallback search
 					candidates[id] = &TeamMatch{
 						ID:    id,
@@ -668,4 +729,119 @@ func findTeamMatches(teamName string) []TeamMatch {
 	}
 
 	return matches
+}
+
+// Common team name mappings for better disambiguation
+var teamNameMappings = map[string]string{
+	"man utd":           "man utd",                   // Maps to existing "Man Utd" (ID 680)
+	"man united":        "man utd",                   // Maps to existing "Man Utd" (ID 680)
+	"manchester united": "man utd",                   // Maps to existing "Man Utd" (ID 680)
+	"a. madrid":         "atletico madrid",           // Will need to be added to data
+	"atletico":          "atletico madrid",           // Will need to be added to data
+	"paris sg":          "paris saint germain (psg)", // Maps to existing "Paris Saint-Germain (PSG)" (ID 868)
+	"psg":               "paris saint germain (psg)", // Maps to existing "Paris Saint-Germain (PSG)" (ID 868)
+	"real madrid":       "real madrid",               // Maps to existing "Real Madrid" (ID 1736)
+	"barcelona":         "barcelona",
+	"bayern":            "bayern munich",
+	"bayern mun":        "bayern munich",
+	"arsenal":           "arsenal",
+	"chelsea":           "chelsea",
+	"liverpool":         "liverpool",
+	"tottenham":         "tottenham hotspur",
+	"spurs":             "tottenham hotspur",
+	"ac milan":          "milan",
+	"inter":             "inter milan",
+	"juventus":          "juventus",
+	"roma":              "as roma",
+	"lazio":             "lazio",
+	"napoli":            "napoli",
+	"ajax":              "ajax",
+	"psv":               "psv eindhoven",
+	"feyenoord":         "feyenoord",
+	"porto":             "fc porto",
+	"benfica":           "sl benfica",
+	"sporting":          "sporting cp",
+	"celtic":            "celtic",
+	"rangers":           "rangers",
+	"dortmund":          "borussia dortmund",
+	"schalke":           "schalke 04",
+	"leipzig":           "rb leipzig",
+	"leverkusen":        "bayer leverkusen",
+	"monaco":            "as monaco",
+	"lyon":              "olympique lyonnais",
+	"marseille":         "olympique marseille",
+	"sevilla":           "sevilla",
+	"valencia":          "valencia",
+	"villarreal":        "villarreal",
+	"athletic":          "athletic bilbao",
+	"atletico bilbao":   "athletic bilbao",
+}
+
+// Enhanced abbreviation mappings
+var enhancedAbbreviations = map[string][]string{
+	"sg":     {"saint germain", "saint-germain", "st germain", "st-germain"},
+	"utd":    {"united"},
+	"fc":     {"football club", "futbol club"},
+	"ac":     {"athletic club", "atletico club"},
+	"rc":     {"racing club", "real club"},
+	"cf":     {"club de futbol"},
+	"sc":     {"sport club", "sporting club"},
+	"a.":     {"atletico"},
+	"madrid": {"madrid"},
+	"psg":    {"paris saint germain"},
+	"man":    {"manchester"},
+	"city":   {"city"},
+	"united": {"united"},
+}
+
+// calculateDisambiguationScore calculates a score that penalizes partial matches
+// when the query contains more specific information
+func calculateDisambiguationScore(query, candidate string, baseScore float64) float64 {
+	queryWords := strings.Fields(strings.ToLower(query))
+	candidateWords := strings.Fields(strings.ToLower(candidate))
+
+	// Count how many query words are found in candidate
+	matchedWords := 0
+	totalQueryWords := len(queryWords)
+
+	for _, queryWord := range queryWords {
+		for _, candidateWord := range candidateWords {
+			if strings.Contains(candidateWord, queryWord) || strings.Contains(queryWord, candidateWord) {
+				matchedWords++
+				break
+			}
+		}
+	}
+
+	// If we matched all query words, boost the score
+	if matchedWords == totalQueryWords && totalQueryWords > 0 {
+		return math.Min(1.0, baseScore+0.2)
+	}
+
+	// If we only matched some words, penalize the score
+	if matchedWords < totalQueryWords && totalQueryWords > 1 {
+		penalty := float64(totalQueryWords-matchedWords) * 0.1
+		return math.Max(0.0, baseScore-penalty)
+	}
+
+	return baseScore
+}
+
+// checkCommonTeamName checks if the query matches a common team name pattern
+func checkCommonTeamName(query string) (string, bool) {
+	normalizedQuery := strings.ToLower(strings.TrimSpace(query))
+
+	// Check direct mappings
+	if mapped, exists := teamNameMappings[normalizedQuery]; exists {
+		return mapped, true
+	}
+
+	// Check for partial matches in mappings
+	for pattern, mapped := range teamNameMappings {
+		if strings.Contains(normalizedQuery, pattern) || strings.Contains(pattern, normalizedQuery) {
+			return mapped, true
+		}
+	}
+
+	return "", false
 }
