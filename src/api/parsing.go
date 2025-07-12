@@ -10,10 +10,29 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode"
 
 	"golang.org/x/net/html"
 )
+
+// Optimized currency lookup table for faster detection
+var currencyLookupTable = map[string]string{
+	"€":    "€",
+	"£":    "£",
+	"$":    "$",
+	"¥":    "¥",
+	"₹":    "₹",
+	"₽":    "₽",
+	"₺":    "₺",
+	"₩":    "₩",
+	"R$":   "R$",
+	"CHF":  "CHF",
+	"A$":   "A$",
+	"CA$":  "CA$",
+	"Mex$": "Mex$",
+	"kr":   "kr",
+	"zł":   "zł",
+	"R":    "R",
+}
 
 // Byte-level currency symbols for faster scanning
 var currencyBytes = [][]byte{
@@ -56,7 +75,6 @@ func getByteBuffer() []byte {
 
 func putByteBuffer(buf []byte) {
 	if cap(buf) <= optimalChunkSize*2 { // Don't pool overly large buffers
-		//nolint:staticcheck // SA6002: Slices should be stored as values, not pointers in sync.Pool
 		byteBufferPool.Put(buf)
 	}
 }
@@ -100,66 +118,38 @@ func detectCurrencyFromBytes(data []byte) string {
 	return ""
 }
 
-// FastParseMonetaryValue uses byte-level operations for better performance
+// FastParseMonetaryValue parses monetary values, handling ranges and decimals correctly.
 func FastParseMonetaryValue(rawValue string) (originalDisplay string, numericValue int64, detectedSymbol string) {
-	if rawValue == "" {
-		return "", 0, ""
-	}
+	originalDisplay = rawValue
+	cleanValue := rawValue
+	currencySymbols := []string{"£", "$", "€"}
+	detectedSymbol = ""
 
-	// Convert to bytes for faster processing
-	valueBytes := []byte(strings.TrimSpace(rawValue))
-	originalDisplay = string(valueBytes)
-
-	// Fast currency detection using byte operations
-	detectedSymbol = detectCurrencyFromBytes(valueBytes)
-
-	// Handle ranges like "£10M - £15M" more efficiently using bytes
-	if idx := bytes.Index(valueBytes, []byte(" - ")); idx != -1 {
-		valueBytes = bytes.TrimSpace(valueBytes[idx+3:])
-		if detectedSymbol == "" {
-			detectedSymbol = detectCurrencyFromBytes(valueBytes)
+	// Detect currency symbol from the original input
+	for _, sym := range currencySymbols {
+		if strings.Contains(rawValue, sym) {
+			detectedSymbol = sym
+			break
 		}
 	}
 
-	// Get byte buffer for processing
-	cleanBytes := getByteBuffer()
-	defer putByteBuffer(cleanBytes)
+	// Remove currency symbols and whitespace
+	for _, sym := range currencySymbols {
+		cleanValue = strings.ReplaceAll(cleanValue, sym, "")
+	}
+	cleanValue = strings.TrimSpace(cleanValue)
 
-	// Remove currency symbols and clean data using byte operations
-	for _, b := range valueBytes {
-		switch b {
-		case ',', ' ':
-			// Skip commas and spaces
-			continue
-		case 'p', 'w', '/':
-			// Skip p/w notation parts
-			if len(cleanBytes) >= 2 &&
-				cleanBytes[len(cleanBytes)-1] == '/' &&
-				cleanBytes[len(cleanBytes)-2] == 'p' {
-				cleanBytes = cleanBytes[:len(cleanBytes)-2]
-			}
-			continue
-		default:
-			// Check if it's part of currency symbol
-			isCurrency := false
-			for _, currBytes := range currencyBytes {
-				if len(currBytes) == 1 && currBytes[0] == b {
-					isCurrency = true
-					break
-				}
-			}
-			if !isCurrency && (unicode.IsDigit(rune(b)) || b == '.') {
-				cleanBytes = append(cleanBytes, b)
-			}
+	// If it's a range (e.g., '£140M - £183M'), extract the upper bound
+	if strings.Contains(cleanValue, "-") {
+		parts := strings.Split(cleanValue, "-")
+		if len(parts) > 1 {
+			cleanValue = strings.TrimSpace(parts[len(parts)-1])
 		}
 	}
 
-	// Convert back to string for final parsing
-	cleanValue := string(cleanBytes)
-
-	// Optimized multiplier detection
-	multiplier := int64(1)
-	if cleanValue != "" {
+	// Detect multiplier
+	multiplier := float64(1)
+	if len(cleanValue) > 0 {
 		lastChar := cleanValue[len(cleanValue)-1]
 		switch lastChar {
 		case 'M', 'm':
@@ -171,11 +161,10 @@ func FastParseMonetaryValue(rawValue string) (originalDisplay string, numericVal
 		}
 	}
 
-	// Fast path for simple integer parsing
-	if val, err := strconv.ParseInt(strings.TrimSpace(cleanValue), 10, 64); err == nil {
-		numericValue = val * multiplier
-	} else if valFloat, err := strconv.ParseFloat(strings.TrimSpace(cleanValue), 64); err == nil {
-		numericValue = int64(valFloat * float64(multiplier))
+	// Parse as float to handle decimals
+	valFloat, err := strconv.ParseFloat(strings.TrimSpace(cleanValue), 64)
+	if err == nil {
+		numericValue = int64(valFloat * multiplier)
 	} else {
 		numericValue = 0
 	}

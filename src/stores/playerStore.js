@@ -69,34 +69,54 @@ export const usePlayerStore = defineStore('player', () => {
   })
 
   const currentDatasetTransferValueRange = computed(() => {
+    console.log('🔍 [PlayerStore] Computing currentDatasetTransferValueRange')
+    console.log('🔍 [PlayerStore] allPlayers.value:', allPlayers.value)
+    console.log('🔍 [PlayerStore] allPlayers.length:', allPlayers.value?.length)
+    
     if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) {
+      console.log('🔍 [PlayerStore] No players data, returning default range')
       return { min: 0, max: 100000000 } // Default
     }
 
     let min = Number.MAX_SAFE_INTEGER
     let max = Number.MIN_SAFE_INTEGER
     let hasValidValue = false
+    let validCount = 0
 
+    console.log('🔍 [PlayerStore] Scanning players for transfer values...')
     for (const player of allPlayers.value) {
+      console.log('🔍 [PlayerStore] Player transferValueAmount:', player.transferValueAmount, 'Type:', typeof player.transferValueAmount)
       if (typeof player.transferValueAmount === 'number') {
         hasValidValue = true
+        validCount++
         if (player.transferValueAmount < min) min = player.transferValueAmount
         if (player.transferValueAmount > max) max = player.transferValueAmount
       }
     }
 
+    console.log('🔍 [PlayerStore] Scan results:')
+    console.log('  - hasValidValue:', hasValidValue)
+    console.log('  - validCount:', validCount)
+    console.log('  - raw min:', min)
+    console.log('  - raw max:', max)
+
     if (!hasValidValue) {
+      console.log('🔍 [PlayerStore] No valid values found, returning default range')
       return { min: 0, max: 100000000 }
     }
 
     min = Math.max(0, min) // Ensure min is not negative
+    console.log('🔍 [PlayerStore] After ensuring min >= 0:', min)
 
     if (min >= max) {
       // Handles cases where all values are same, or only one value
       max = min + 50000 // Ensure max is greater for range slider
+      console.log('🔍 [PlayerStore] Min >= max, adjusted max to:', max)
     }
 
-    return { min, max }
+    const result = { min, max }
+    console.log('🔍 [PlayerStore] Final range result:', result)
+    return result
   })
 
   const initialDatasetTransferValueRange = computed(() => {
@@ -212,6 +232,13 @@ export const usePlayerStore = defineStore('player', () => {
       )
       tracker.checkpoint('API call completed')
 
+      console.log('🔍 [PlayerStore] Raw API response:', response)
+      console.log('🔍 [PlayerStore] Response structure:', {
+        players: response.players?.length,
+        currencySymbol: response.currencySymbol,
+        hasPlayers: !!response.players
+      })
+
       allPlayers.value = processPlayersFromAPI(response.players)
       tracker.checkpoint('Players processed')
 
@@ -244,11 +271,42 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   function processPlayersFromAPI(playersData) {
-    if (!Array.isArray(playersData)) return []
-    return playersData.map(p => ({
+    console.log('🔍 [PlayerStore] processPlayersFromAPI called with:', playersData?.length, 'players')
+    if (!Array.isArray(playersData)) {
+      console.log('🔍 [PlayerStore] playersData is not an array:', playersData)
+      return []
+    }
+    
+    // Log the raw API response structure
+    if (playersData.length > 0) {
+      console.log('🔍 [PlayerStore] Raw API response structure:')
+      console.log('  - First player keys:', Object.keys(playersData[0]))
+      console.log('  - Sample player raw data:', playersData[0])
+    }
+    
+    const processed = playersData.map(p => ({
       ...p,
       age: Number.parseInt(p.age, 10) || 0
     }))
+    
+    // Log a few sample players to see their transfer value structure
+    if (processed.length > 0) {
+      console.log('🔍 [PlayerStore] Sample player data:')
+      for (let i = 0; i < Math.min(5, processed.length); i++) {
+        const player = processed[i]
+        console.log(`  Player ${i + 1}:`, {
+          name: player.name,
+          transferValueAmount: player.transferValueAmount,
+          transferValueAmountType: typeof player.transferValueAmount,
+          transferValue: player.transferValue,
+          wageAmount: player.wageAmount,
+          wageAmountType: typeof player.wageAmount,
+          wage: player.wage
+        })
+      }
+    }
+    
+    return processed
   }
 
   function resetState() {

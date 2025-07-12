@@ -248,6 +248,11 @@
                     <div class="text-caption q-mb-xs slider-label">
                         Transfer Value ({{ currencySymbol }})
                     </div>
+                    <div style="font-size: 10px; color: #666; margin-bottom: 4px;">
+                        Debug: min={{ currentSliderMin }}, max={{ currentSliderMax }}, 
+                        local={{ filters.transferValueRangeLocal.min }}-{{ filters.transferValueRangeLocal.max }},
+                        step={{ transferValueSliderStep }}
+                    </div>
                     <q-range
                         v-model="filters.transferValueRangeLocal"
                         :min="currentSliderMin"
@@ -274,6 +279,7 @@
                         "
                         color="primary"
                         class="q-px-sm"
+                        @mounted="() => console.log('🔍 [PlayerFilters] q-range mounted with:', { min: currentSliderMin, max: currentSliderMax, step: transferValueSliderStep, model: filters.transferValueRangeLocal })"
                     />
                 </div>
 
@@ -1163,8 +1169,16 @@ export default defineComponent({
 
     const clubOptions = ref([])
     const nationalityOptions = ref([])
-    const currentSliderMin = computed(() => props.transferValueRange.min)
-    const currentSliderMax = computed(() => props.transferValueRange.max)
+    const currentSliderMin = computed(() => {
+      const result = props.transferValueRange.min
+      console.log('🔍 [PlayerFilters] currentSliderMin computed:', result)
+      return result
+    })
+    const currentSliderMax = computed(() => {
+      const result = props.transferValueRange.max
+      console.log('🔍 [PlayerFilters] currentSliderMax computed:', result)
+      return result
+    })
     const isDataAvailable = computed(
       () => playerStore.allPlayers && playerStore.allPlayers.length > 0
     )
@@ -1256,17 +1270,61 @@ export default defineComponent({
 
     const transferValueSliderStep = computed(() => {
       const range = currentSliderMax.value - currentSliderMin.value
-      if (range <= 0) return 10000
-      if (range < 50000) return 1000
-      if (range < 250000) return 5000
-      if (range < 1000000) return 10000
-      if (range < 10000000) return 50000
-      if (range < 50000000) return 100000
-      return 250000
+      console.log('🔍 [PlayerFilters] transferValueSliderStep calculation:')
+      console.log('  - currentSliderMin:', currentSliderMin.value)
+      console.log('  - currentSliderMax:', currentSliderMax.value)
+      console.log('  - range:', range)
+      
+      let step
+      if (range <= 0) {
+        step = 10000
+        console.log('  - range <= 0, using step:', step)
+      } else if (range < 100) {
+        step = 1
+        console.log('  - range < 100, using step:', step)
+      } else if (range < 1000) {
+        step = 10
+        console.log('  - range < 1000, using step:', step)
+      } else if (range < 10000) {
+        step = 100
+        console.log('  - range < 10000, using step:', step)
+      } else if (range < 50000) {
+        step = 1000
+        console.log('  - range < 50000, using step:', step)
+      } else if (range < 250000) {
+        step = 5000
+        console.log('  - range < 250000, using step:', step)
+      } else if (range < 1000000) {
+        step = 10000
+        console.log('  - range < 1000000, using step:', step)
+      } else if (range < 10000000) {
+        step = 50000
+        console.log('  - range < 10000000, using step:', step)
+      } else if (range < 50000000) {
+        step = 100000
+        console.log('  - range < 50000000, using step:', step)
+      } else {
+        step = 250000
+        console.log('  - range >= 50000000, using step:', step)
+      }
+      
+      console.log('🔍 [PlayerFilters] Final step size:', step)
+      return step
     })
 
     const formatRangeLabel = (value, isMaxBoundary = false) => {
       if (value === null || value === undefined) return 'N/A'
+      
+      // Check if the value appears to be in millions (common range for transfer values)
+      // If the max value in the dataset is around 700, it's likely in millions
+      const isLikelyInMillions = currentSliderMax.value < 10000 && currentSliderMax.value > 100
+      
+      let displayValue = value
+      if (isLikelyInMillions) {
+        // Convert from millions to full amount for display
+        displayValue = value * 1000000
+      }
+      
       if (isMaxBoundary) {
         if (
           props.initialDatasetRange &&
@@ -1281,10 +1339,10 @@ export default defineComponent({
           typeof props.initialDatasetRange.min === 'number' &&
           value === props.initialDatasetRange.min
         ) {
-          return formatCurrency(value, props.currencySymbol) || '0'
+          return formatCurrency(displayValue, props.currencySymbol) || '0'
         }
       }
-      return formatCurrency(value, props.currencySymbol)
+      return formatCurrency(displayValue, props.currencySymbol)
     }
 
     watch(
@@ -1304,17 +1362,25 @@ export default defineComponent({
     watch(
       () => props.transferValueRange,
       newDynamicRange => {
+        console.log('🔍 [PlayerFilters] transferValueRange prop changed:', newDynamicRange)
+        console.log('🔍 [PlayerFilters] Current filters.transferValueRangeLocal:', filters.value.transferValueRangeLocal)
+        
         if (
           newDynamicRange &&
           typeof newDynamicRange.min === 'number' &&
           typeof newDynamicRange.max === 'number'
         ) {
+          console.log('🔍 [PlayerFilters] Valid new range detected')
           // Only update if we don't have valid values yet or if the new range is different
           const currentMin = filters.value.transferValueRangeLocal.min
           const currentMax = filters.value.transferValueRangeLocal.max
 
+          console.log('🔍 [PlayerFilters] Current min/max:', currentMin, currentMax)
+          console.log('🔍 [PlayerFilters] New min/max:', newDynamicRange.min, newDynamicRange.max)
+
           if (currentMin === 0 && currentMax === 100000000) {
             // We still have default values, so update with real data
+            console.log('🔍 [PlayerFilters] Updating from default values to real data')
             filters.value.transferValueRangeLocal = {
               min: newDynamicRange.min,
               max: newDynamicRange.max
@@ -1323,14 +1389,19 @@ export default defineComponent({
             // Clamp existing values to new valid range
             let _changed = false
             if (currentMin < newDynamicRange.min) {
+              console.log('🔍 [PlayerFilters] Clamping min from', currentMin, 'to', newDynamicRange.min)
               filters.value.transferValueRangeLocal.min = newDynamicRange.min
               _changed = true
             }
             if (currentMax > newDynamicRange.max) {
+              console.log('🔍 [PlayerFilters] Clamping max from', currentMax, 'to', newDynamicRange.max)
               filters.value.transferValueRangeLocal.max = newDynamicRange.max
               _changed = true
             }
+            console.log('🔍 [PlayerFilters] Clamping changed:', _changed)
           }
+        } else {
+          console.log('🔍 [PlayerFilters] Invalid new range, not updating')
         }
       },
       { deep: true, immediate: true }
@@ -1338,21 +1409,33 @@ export default defineComponent({
     watch(
       () => props.initialDatasetRange,
       newInitialRange => {
+        console.log('🔍 [PlayerFilters] initialDatasetRange prop changed:', newInitialRange)
+        console.log('🔍 [PlayerFilters] Current filters.transferValueRangeLocal:', filters.value.transferValueRangeLocal)
+        
         if (
           newInitialRange &&
           typeof newInitialRange.min === 'number' &&
           typeof newInitialRange.max === 'number'
         ) {
+          console.log('🔍 [PlayerFilters] Valid initial range detected')
           // Only update if we still have default values
           const currentMin = filters.value.transferValueRangeLocal.min
           const currentMax = filters.value.transferValueRangeLocal.max
 
+          console.log('🔍 [PlayerFilters] Current min/max:', currentMin, currentMax)
+          console.log('🔍 [PlayerFilters] Initial min/max:', newInitialRange.min, newInitialRange.max)
+
           if (currentMin === 0 && currentMax === 100000000) {
+            console.log('🔍 [PlayerFilters] Updating from default values to initial range')
             filters.value.transferValueRangeLocal = {
               min: newInitialRange.min,
               max: newInitialRange.max
             }
+          } else {
+            console.log('🔍 [PlayerFilters] Not updating - already have non-default values')
           }
+        } else {
+          console.log('🔍 [PlayerFilters] Invalid initial range, not updating')
         }
       },
       { deep: true, immediate: true }
@@ -1442,6 +1525,12 @@ export default defineComponent({
     }
 
     onMounted(async () => {
+      console.log('🔍 [PlayerFilters] onMounted - Starting initialization')
+      console.log('🔍 [PlayerFilters] Props received:')
+      console.log('  - transferValueRange:', props.transferValueRange)
+      console.log('  - initialDatasetRange:', props.initialDatasetRange)
+      console.log('  - salaryRange:', props.salaryRange)
+      
       if (playerStore.allAvailableRoles.length === 0 && playerStore.currentDatasetId) {
         await playerStore.fetchAllAvailableRoles()
       }
@@ -1452,6 +1541,7 @@ export default defineComponent({
         typeof props.initialDatasetRange.min === 'number' &&
         typeof props.initialDatasetRange.max === 'number'
       ) {
+        console.log('🔍 [PlayerFilters] Using initialDatasetRange for initialization')
         filters.value.transferValueRangeLocal = {
           min: props.initialDatasetRange.min,
           max: props.initialDatasetRange.max
@@ -1461,11 +1551,16 @@ export default defineComponent({
         typeof props.transferValueRange.min === 'number' &&
         typeof props.transferValueRange.max === 'number'
       ) {
+        console.log('🔍 [PlayerFilters] Using transferValueRange for initialization')
         filters.value.transferValueRangeLocal = {
           min: props.transferValueRange.min,
           max: props.transferValueRange.max
         }
+      } else {
+        console.log('🔍 [PlayerFilters] No valid ranges provided, keeping defaults')
       }
+
+      console.log('🔍 [PlayerFilters] Final transferValueRangeLocal after init:', filters.value.transferValueRangeLocal)
 
       // Initialize max salary from salary range prop
       if (props.salaryRange?.max && typeof props.salaryRange.max === 'number') {
@@ -1476,6 +1571,8 @@ export default defineComponent({
         min: AGE_SLIDER_MIN,
         max: AGE_SLIDER_MAX
       }
+      
+      console.log('🔍 [PlayerFilters] onMounted - Initialization complete')
     })
 
     watch(
