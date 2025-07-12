@@ -51,12 +51,20 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.24.3'
-          cache-dependency-path: go.sum
+          cache-dependency-path: src/api/go.sum
 
       - name: Install golangci-lint
         run: |
           curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.54.2
           echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+      - name: Download Go dependencies
+        working-directory: ./src/api
+        run: |
+          echo "📦 Downloading Go dependencies..."
+          go mod download
+          go mod verify
+          go mod tidy
 
       - name: Run Go linting
         working-directory: ./src/api
@@ -65,13 +73,13 @@ jobs:
           golangci-lint run || echo "⚠️ golangci-lint found issues"
 
       - name: Run Go unit tests
-        working-directory: ./test/api
+        working-directory: ./src/api
         run: |
           echo "🧪 Running Go unit tests..."
           go test -v ./... || echo "⚠️ Some Go tests failed"
 
       - name: Generate test coverage report
-        working-directory: ./test/api
+        working-directory: ./src/api
         run: |
           echo "📊 Generating test coverage report..."
           go test -coverprofile=coverage.out ./... || echo "⚠️ Coverage generation failed"
@@ -81,13 +89,14 @@ jobs:
           fi
 
       - name: Upload coverage reports to Codecov
-        if: success()
+        if: success() && hashFiles('src/api/coverage.out') == 'true'
         uses: codecov/codecov-action@v4
         with:
-          files: ./test/api/coverage.out
+          files: ./src/api/coverage.out
           flags: backend
           name: backend-coverage
           fail_ci_if_error: false
+          verbose: true
 
   # Step 2: Security Analysis (runs in parallel with code quality)
   security-analysis:
@@ -118,7 +127,7 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: '1.24.3'
-        cache-dependency-path: go.sum
+        cache-dependency-path: src/api/go.sum
 
     - name: Setup Node.js (for JavaScript analysis)
       if: matrix.language == 'javascript-typescript'
@@ -130,6 +139,15 @@ jobs:
     - name: Install frontend dependencies (for JavaScript analysis)
       if: matrix.language == 'javascript-typescript'
       run: npm ci --legacy-peer-deps
+
+    - name: Download Go dependencies (for Go analysis)
+      if: matrix.language == 'go'
+      working-directory: ./src/api
+      run: |
+        echo "📦 Downloading Go dependencies for CodeQL analysis..."
+        go mod download
+        go mod verify
+        go mod tidy
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
