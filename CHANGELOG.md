@@ -1,3 +1,10 @@
+## [1.2.26](https://github.com/LiamHardman/fm-dash/compare/v1.2.25...v1.2.26) (2025-07-12)
+
+
+### Bug Fixes
+
+* fixed currency related parsing issues (previously wasnt differentiating thousands from millions properly for example) ([52d9d2e](https://github.com/LiamHardman/fm-dash/commit/52d9d2e1b605e7899fcf87909b61984a53f7d161))
+
 ## [1.2.25](https://github.com/LiamHardman/fm-dash/compare/v1.2.24...v1.2.25) (2025-07-11)
 
 
