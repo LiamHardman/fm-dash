@@ -132,11 +132,9 @@ func parseCellsToPlayer(cells, headers []string) (Player, error) {
 			player.Division = cellValue
 			isAnAttributeField = false
 		case "Transfer Value":
-			originalDisplay, numericValue, detectedSymbol := ParseMonetaryValueGo(cellValue)
+			originalDisplay, numericValue, _ := ParseMonetaryValueGo(cellValue)
 			player.TransferValue = originalDisplay
 			player.TransferValueAmount = numericValue
-			log.Printf("🔍 [Backend] Parsed Transfer Value: '%s' -> TransferValueAmount: %d (originalDisplay: '%s', detectedSymbol: '%s')",
-				cellValue, player.TransferValueAmount, originalDisplay, detectedSymbol)
 			isAnAttributeField = false
 		case "Wage":
 			player.Wage, player.WageAmount, _ = ParseMonetaryValueGo(cellValue)

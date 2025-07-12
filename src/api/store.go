@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -331,16 +330,6 @@ func SetPlayerDataAsync(datasetID string, players []Player, currencySymbol strin
 		CurrencySymbol: currencySymbol,
 	}
 	storeMutex.Unlock()
-
-	// Log sample transfer values for debugging
-	if len(players) > 0 {
-		log.Printf("🔍 [Backend] Sample transfer values being stored:")
-		for i := 0; i < min(5, len(players)); i++ {
-			player := players[i]
-			log.Printf("  Player %d: %s - transferValueAmount: %d, transferValue: %s",
-				i+1, player.Name, player.TransferValueAmount, player.TransferValue)
-		}
-	}
 
 	// Store in new storage system asynchronously (potentially slow S3/disk operation)
 	AddSpanEvent(ctx, "store.new_storage_async_queued")

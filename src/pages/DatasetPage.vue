@@ -398,7 +398,6 @@ export default {
         min: 0,
         max: 100000000
       }
-      console.log('🔍 [DatasetPage] transferValueRangeForFilters computed:', range)
       return range
     })
     const initialDatasetTransferValueRangeForFilters = computed(() => {
@@ -406,7 +405,6 @@ export default {
         min: 0,
         max: 100000000
       }
-      console.log('🔍 [DatasetPage] initialDatasetTransferValueRangeForFilters computed:', range)
       return range
     })
     const salaryRangeForFilters = computed(() => {

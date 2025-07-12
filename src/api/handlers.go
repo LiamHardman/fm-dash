@@ -963,16 +963,6 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	logDebug(ctx, "Returning processed players", "dataset_id", datasetID, "player_count", len(processedPlayers))
 
-	// Log sample transfer values for debugging
-	if len(processedPlayers) > 0 {
-		log.Printf("🔍 [Backend] Sample transfer values being sent:")
-		for i := 0; i < min(5, len(processedPlayers)); i++ {
-			player := processedPlayers[i]
-			log.Printf("  Player %d: %s - transferValueAmount: %d, transferValue: %s",
-				i+1, player.Name, player.TransferValueAmount, player.TransferValue)
-		}
-	}
-
 	response := PlayerDataWithCurrency{Players: processedPlayers, CurrencySymbol: currencySymbol}
 	w.Header().Set("Content-Type", "application/json")
 	setCORSHeaders(w, r)
