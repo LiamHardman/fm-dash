@@ -76,7 +76,6 @@ func ErrorHandlerMiddleware(next http.Handler) http.Handler {
 				// Send internal server error
 				SendErrorResponse(wrapped, r, NewInternalError(
 					"An unexpected error occurred",
-					nil,
 				))
 			}
 		}()
@@ -97,9 +96,13 @@ func ErrorHandlerMiddleware(next http.Handler) http.Handler {
 // SendErrorResponse sends a standardized error response
 func SendErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
 	// Check if it's an AppError, otherwise create a generic one
-	appErr, ok := IsAppError(err)
+	if !IsAppError(err) {
+		err = NewInternalError("An error occurred")
+	}
+
+	appErr, ok := err.(*AppError)
 	if !ok {
-		appErr = NewInternalError("An error occurred", err)
+		appErr = NewInternalError("An error occurred")
 	}
 
 	// Get request ID from context if available
@@ -147,8 +150,7 @@ func ValidateRequest(r *http.Request, allowedMethods []string) error {
 
 	if !methodAllowed {
 		return NewBadRequestError(
-			"Method not allowed",
-			"Allowed methods: "+joinStrings(allowedMethods, ", "),
+			"Method not allowed. Allowed methods: " + joinStrings(allowedMethods, ", "),
 		)
 	}
 
@@ -157,8 +159,7 @@ func ValidateRequest(r *http.Request, allowedMethods []string) error {
 		contentType := r.Header.Get("Content-Type")
 		if contentType == "" {
 			return NewBadRequestError(
-				"Content-Type header required",
-				"Specify appropriate Content-Type for request body",
+				"Content-Type header required. Specify appropriate Content-Type for request body",
 			)
 		}
 	}

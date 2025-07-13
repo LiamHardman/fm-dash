@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -10,6 +9,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	apperrors "api/errors"
 )
 
 // Log level constants
@@ -235,7 +236,7 @@ func loadJSONWeights(filePath string, defaultWeights map[string]map[string]int) 
 			}
 			copiedDefault[k] = innerCopy
 		}
-		return copiedDefault, errors.New("loaded weights file is empty")
+		return copiedDefault, apperrors.ErrEmptyWeightsFile
 	}
 
 	LogDebug("Successfully loaded weights from %s with %d entries.", filePath, len(weights))
@@ -332,7 +333,7 @@ func initializeConfigAsync() {
 
 	// Set overall error status
 	if attrErr != nil || roleErr != nil {
-		configInitError = fmt.Errorf("attribute error: %v, role error: %v", attrErr, roleErr)
+		configInitError = apperrors.WrapErrAttributeAndRoleError(attrErr, roleErr)
 	}
 }
 
@@ -387,7 +388,7 @@ func EnsureConfigInitialized(timeout time.Duration) error {
 	}
 
 	if !configInitialized {
-		return fmt.Errorf("configuration initialization timed out after %v", timeout)
+		return apperrors.WrapErrConfigInitTimeout(timeout)
 	}
 
 	return configInitError

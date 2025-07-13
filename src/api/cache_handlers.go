@@ -1,6 +1,7 @@
 package main
 
 import (
+	"api/errors"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -69,7 +70,7 @@ func (c *CacheStorageWrapper) RetrieveCacheData(cacheKey string) (NationRatingsC
 
 	// Extract cache data from the dummy player
 	if len(data.Players) == 0 || data.Players[0].Name != "__CACHE_DATA__" {
-		return NationRatingsCache{}, fmt.Errorf("invalid cache data format")
+		return NationRatingsCache{}, errors.ErrInvalidCacheDataFormat
 	}
 
 	var cacheData NationRatingsCache
