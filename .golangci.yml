@@ -13,7 +13,6 @@ linters:
     - ineffassign
     - staticcheck
     - unused
-    - goimports
     - gosec
     - gocritic
     - misspell
@@ -23,8 +22,6 @@ linters:
     # - typecheck (removed, not a linter in v2)
 
 linters-settings:
-  goimports:
-    local-prefixes: fm24golang
   gocritic:
     enabled-tags:
       - diagnostic
