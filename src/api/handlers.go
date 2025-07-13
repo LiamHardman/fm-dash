@@ -22,6 +22,8 @@ import (
 
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
+
+	apperrors "api/errors"
 )
 
 // Note: gzip compression middleware already exists in middleware.go
@@ -2126,7 +2128,7 @@ func facesHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Validate UID format for security (prevent path injection)
 	if err := validateID(uid, 100); err != nil {
-		RecordError(ctx, fmt.Errorf("invalid UID: %s, error: %v", sanitizeForLogging(uid), err), "Invalid UID format")
+		RecordError(ctx, apperrors.WrapErrInvalidUID(sanitizeForLogging(uid), err), "Invalid UID format")
 		http.Error(w, "Invalid UID format", http.StatusBadRequest)
 		return
 	}
@@ -2172,7 +2174,7 @@ func facesHandler(w http.ResponseWriter, r *http.Request) {
 	// Safely construct the file path to prevent path injection
 	faceFilePath, err := validateAndJoinPath(facesDir, faceFileName)
 	if err != nil {
-		RecordError(ctx, fmt.Errorf("invalid file path for UID %s: %v", sanitizeForLogging(uid), err), "Path validation failed")
+		RecordError(ctx, apperrors.WrapErrInvalidFilePath(sanitizeForLogging(uid), err), "Path validation failed")
 		http.Error(w, "Invalid file path", http.StatusBadRequest)
 		return
 	}
@@ -2222,7 +2224,7 @@ func logosHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Validate team ID format for security (prevent path injection)
 	if err := validateID(teamID, 100); err != nil {
-		RecordError(ctx, fmt.Errorf("invalid team ID: %s, error: %v", sanitizeForLogging(teamID), err), "Invalid team ID format")
+		RecordError(ctx, apperrors.WrapErrInvalidTeamID(sanitizeForLogging(teamID), err), "Invalid team ID format")
 		http.Error(w, "Invalid team ID format", http.StatusBadRequest)
 		return
 	}
@@ -2269,28 +2271,28 @@ func logosHandler(w http.ResponseWriter, r *http.Request) {
 	// Build the nested path: logosDir/Clubs/Normal/Normal/logoFileName
 	clubsDir, err := validateAndJoinPath(logosDir, "Clubs")
 	if err != nil {
-		RecordError(ctx, fmt.Errorf("invalid clubs directory path: %v", err), "Path validation failed")
+		RecordError(ctx, apperrors.WrapErrInvalidClubsDirPath(err), "Path validation failed")
 		http.Error(w, "Invalid file path", http.StatusBadRequest)
 		return
 	}
 
 	normalDir1, err := validateAndJoinPath(clubsDir, "Normal")
 	if err != nil {
-		RecordError(ctx, fmt.Errorf("invalid normal directory path: %v", err), "Path validation failed")
+		RecordError(ctx, apperrors.WrapErrInvalidNormalDirPath(err), "Path validation failed")
 		http.Error(w, "Invalid file path", http.StatusBadRequest)
 		return
 	}
 
 	normalDir2, err := validateAndJoinPath(normalDir1, "Normal")
 	if err != nil {
-		RecordError(ctx, fmt.Errorf("invalid normal directory path: %v", err), "Path validation failed")
+		RecordError(ctx, apperrors.WrapErrInvalidNormalDirPath(err), "Path validation failed")
 		http.Error(w, "Invalid file path", http.StatusBadRequest)
 		return
 	}
 
 	logoFilePath, err := validateAndJoinPath(normalDir2, logoFileName)
 	if err != nil {
-		RecordError(ctx, fmt.Errorf("invalid file path for team ID %s: %v", sanitizeForLogging(teamID), err), "Path validation failed")
+		RecordError(ctx, apperrors.WrapErrInvalidFilePathForTeamID(sanitizeForLogging(teamID), err), "Path validation failed")
 		http.Error(w, "Invalid file path", http.StatusBadRequest)
 		return
 	}

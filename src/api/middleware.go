@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -9,6 +10,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	apperrors "api/errors"
 
 	"github.com/google/uuid"
 	"github.com/klauspost/compress/gzip"
@@ -83,7 +86,7 @@ func RequestTimeoutMiddleware(timeout time.Duration) func(http.Handler) http.Han
 			case <-done:
 				// Check if handler panicked
 				if handlerPanic != nil {
-					span.RecordError(fmt.Errorf("handler panic: %v", handlerPanic))
+					span.RecordError(apperrors.WrapErrHandlerPanic(handlerPanic))
 					span.SetStatus(codes.Error, "Handler panicked")
 					panic(handlerPanic) // Re-panic to let other middleware handle it
 				}
@@ -91,7 +94,7 @@ func RequestTimeoutMiddleware(timeout time.Duration) func(http.Handler) http.Han
 				return
 			case <-timeoutCtx.Done():
 				// Request timed out
-				if timeoutCtx.Err() == context.DeadlineExceeded {
+				if errors.Is(timeoutCtx.Err(), context.DeadlineExceeded) {
 					span.SetStatus(codes.Error, "Request timeout")
 					span.AddEvent("request.timeout", trace.WithAttributes(
 						attribute.Float64("timeout_seconds", timeout.Seconds()),
@@ -287,51 +290,9 @@ func PanicRecoveryMiddleware(next http.Handler) http.Handler {
 
 		defer func() {
 			if err := recover(); err != nil {
-				// Record the panic in OpenTelemetry
-				panicErr := fmt.Errorf("panic recovered: %v", err)
-				span.RecordError(panicErr)
-				span.SetStatus(codes.Error, "Handler panicked")
-
-				// Add detailed panic information
-				span.SetAttributes(
-					attribute.String("panic.value", fmt.Sprintf("%v", err)),
-					attribute.String("http.method", r.Method),
-					attribute.String("http.path", r.URL.Path),
-				)
-
-				// Log the panic with trace correlation
-				if GetMinLogLevel() <= LogLevelWarn {
-					slog.ErrorContext(ctx, "Handler panic recovered",
-						"panic", err,
-						"method", r.Method,
-						"path", r.URL.Path,
-						"trace_id", GetTraceID(ctx),
-						"span_id", GetSpanID(ctx),
-					)
-				}
-
-				// Record error metric
-				RecordError(ctx, panicErr, "Handler panic")
-
-				// Respond with internal server error
-				if w.Header().Get("Content-Type") == "" {
-					w.Header().Set("Content-Type", "application/json")
-				}
-				w.WriteHeader(http.StatusInternalServerError)
-
-				response := map[string]interface{}{
-					"error":    "Internal server error",
-					"trace_id": GetTraceID(ctx),
-				}
-
-				// Only include panic details in development mode
-				if getEnvWithDefault("ENVIRONMENT", "production") != "production" {
-					response["details"] = fmt.Sprintf("%v", err)
-				}
-
-				// Write JSON response (simplified - in production you might want proper JSON encoding)
-				fmt.Fprintf(w, `{"error": "%s", "trace_id": "%s"}`,
-					response["error"], response["trace_id"])
+				panicErr := apperrors.WrapErrPanicRecovered(fmt.Errorf("%v", err))
+				RecordError(ctx, panicErr, "Panic recovered in middleware")
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
 			}
 		}()
 

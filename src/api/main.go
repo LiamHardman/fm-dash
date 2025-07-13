@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -12,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	apperrors "api/errors"
 )
 
 var (
@@ -80,21 +81,21 @@ func validateEnvironmentVariables() error {
 	// Validate OTEL_EXPORTER_OTLP_ENDPOINT if set
 	if endpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"); endpoint != "" {
 		if !strings.Contains(endpoint, ":") {
-			return fmt.Errorf("invalid OTEL_EXPORTER_OTLP_ENDPOINT: %s (must include port)", endpoint)
+			return apperrors.WrapErrInvalidOtelEndpoint(endpoint)
 		}
 	}
 
 	// Validate S3_ENDPOINT format if set
 	if endpoint := os.Getenv("S3_ENDPOINT"); endpoint != "" {
 		if !strings.Contains(endpoint, ":") && !strings.HasPrefix(endpoint, "http") {
-			return fmt.Errorf("invalid S3_ENDPOINT format: %s (should include port or be full URL)", endpoint)
+			return apperrors.WrapErrInvalidS3Endpoint(endpoint)
 		}
 	}
 
 	// Validate SERVICE_NAME doesn't contain dangerous characters
 	if serviceName := os.Getenv("SERVICE_NAME"); serviceName != "" {
 		if strings.ContainsAny(serviceName, " \t\n\r;|&$`") {
-			return fmt.Errorf("invalid SERVICE_NAME: contains unsafe characters")
+			return apperrors.ErrInvalidServiceName
 		}
 	}
 

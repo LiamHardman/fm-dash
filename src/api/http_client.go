@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"time"
 
+	apperrors "api/errors"
+
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -107,7 +109,7 @@ func (c *HTTPClient) Do(req *http.Request) (*http.Response, error) {
 		if err != nil {
 			lastErr = err
 		} else {
-			lastErr = fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+			lastErr = apperrors.WrapErrHTTPStatus(resp.StatusCode, resp.Status)
 			resp.Body.Close() // Close body before retry
 		}
 

@@ -47,6 +47,17 @@ var (
 	ErrCacheStoreFailed       = errors.New("failed to store cache")
 	ErrCacheDeleteFailed      = errors.New("failed to delete cache")
 
+	// Processing errors
+	ErrProcessingFailed                 = errors.New("processing failed")
+	ErrInvalidDataFormat                = errors.New("invalid data format")
+	ErrWorkerPanic                      = errors.New("worker panic")
+	ErrHTMLTokenization                 = errors.New("HTML tokenization error")
+	ErrNoTableHeadersFound              = errors.New("no table headers found in HTML file")
+	ErrHeadersFoundButWorkersNotStarted = errors.New("headers found but workers were not started")
+	ErrTokenizingHTML                   = errors.New("error tokenizing HTML")
+	ErrFailedToParseAppearances         = errors.New("failed to parse appearances")
+	ErrInvalidAppearancesFormat         = errors.New("invalid appearances format")
+
 	// Configuration errors
 	ErrEmptyWeightsFile       = errors.New("loaded weights file is empty")
 	ErrConfigInitTimeout      = errors.New("configuration initialization timed out")
@@ -55,21 +66,9 @@ var (
 	ErrInvalidServiceName     = errors.New("invalid SERVICE_NAME: contains unsafe characters")
 	ErrServiceNameEmpty       = errors.New("service name cannot be empty")
 	ErrCollectorURLEmpty      = errors.New("collector URL cannot be empty")
-	ErrInvalidTraceSampleRate = errors.New("trace sample rate must be between -1.0 and 1.0")
-	ErrInvalidBatchSize       = errors.New("batch size must be positive")
-	ErrInvalidMaxQueueSize    = errors.New("max queue size must be positive")
-
-	// Processing errors
-	ErrEmptyString              = errors.New("empty string")
-	ErrInvalidCharacter         = errors.New("invalid character")
-	ErrEmptyHeaders             = errors.New("headers found but workers were not started")
-	ErrNoTableHeaders           = errors.New("no table headers found in HTML file")
-	ErrTokenizingHTML           = errors.New("error tokenizing HTML")
-	ErrFailedToParseAppearances = errors.New("failed to parse appearances")
-	ErrInvalidAppearancesFormat = errors.New("invalid appearances format")
-	ErrCannotProcessRow         = errors.New("cannot process row: headers are empty")
-	ErrSkippedRowNameMissing    = errors.New("skipped row: 'Name' field is missing or empty, but other data present")
-	ErrSkippedRowEmpty          = errors.New("skipped row: 'Name' field missing and row appears empty or is likely a non-player row")
+	ErrInvalidTraceSampleRate = errors.New("invalid trace sample rate")
+	ErrInvalidBatchSize       = errors.New("invalid batch size")
+	ErrInvalidMaxQueueSize    = errors.New("invalid max queue size")
 
 	// Security errors
 	ErrFilenameEmpty               = errors.New("filename cannot be empty")
@@ -103,7 +102,7 @@ var (
 	ErrJSONMarshalPanic     = errors.New("panic during JSON marshal")
 
 	// HTTP errors
-	ErrHTTPStatus     = errors.New("HTTP error")
+	ErrHTTPStatus     = errors.New("HTTP status error")
 	ErrHandlerPanic   = errors.New("handler panic")
 	ErrPanicRecovered = errors.New("panic recovered")
 
