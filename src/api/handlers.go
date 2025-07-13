@@ -891,7 +891,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	processedPlayers := make([]Player, 0, len(data.Players))
 
-	var minAge, maxAge int = -1, -1
+	var minAge, maxAge = -1, -1
 	var minTransferValue, maxTransferValue int64 = -1, -1
 	var maxSalary int64 = -1
 

@@ -667,7 +667,7 @@ type LocalFileStorage struct {
 
 func NewLocalFileStorage(datasetDir string) (*LocalFileStorage, error) {
 	// Create datasets directory if it doesn't exist
-	if err := os.MkdirAll(datasetDir, 0o755); err != nil {
+	if err := os.MkdirAll(datasetDir, 0o750); err != nil {
 		return nil, fmt.Errorf("failed to create datasets directory %s: %w", datasetDir, err)
 	}
 

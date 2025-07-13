@@ -197,19 +197,17 @@ var DetailedPositionGroupsForPercentiles = map[string][]string{
 // loadJSONWeights attempts to load weights from a JSON file.
 // If loading fails, it falls back to the provided default weights.
 func loadJSONWeights(filePath string, defaultWeights map[string]map[string]int) (map[string]map[string]int, error) {
+	// Validate file path to prevent directory traversal
+	if strings.Contains(filePath, "..") || filepath.IsAbs(filePath) {
+		LogWarn("Invalid file path %s: contains path traversal or is absolute. Using default weights.", filePath)
+		return deepCopyWeights(defaultWeights), apperrors.ErrFilenamePathTraversal
+	}
+
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		LogWarn("Could not read %s: %v. Using default weights.", filePath, err)
 		// Return a deep copy of default weights
-		copiedDefault := make(map[string]map[string]int, len(defaultWeights))
-		for k, v := range defaultWeights {
-			innerCopy := make(map[string]int, len(v))
-			for ik, iv := range v {
-				innerCopy[ik] = iv
-			}
-			copiedDefault[k] = innerCopy
-		}
-		return copiedDefault, err
+		return deepCopyWeights(defaultWeights), err
 	}
 
 	var weights map[string]map[string]int
