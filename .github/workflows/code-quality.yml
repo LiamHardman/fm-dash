@@ -11,7 +11,6 @@ jobs:
   frontend-linting:
     name: Frontend Code Quality (Biome)
     runs-on: ubuntu-latest
-    continue-on-error: true # Don't fail the pipeline if linting fails
     
     steps:
       - name: Checkout code
@@ -26,28 +25,14 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
-      - name: Run Biome linting check
+      - name: Run Biome linting and formatting checks
         run: |
           echo "🔍 Running Biome linting and formatting checks..."
-          npm run lint:check || echo "⚠️ Biome found linting/formatting issues"
+          npm run lint:check
 
-      - name: Run Biome formatting check
-        run: |
-          echo "🎨 Checking code formatting with Biome..."
-          npm run format:check || echo "⚠️ Biome found formatting issues"
-
-      - name: Frontend linting summary
-        if: always()
-        run: |
-          echo "📋 Frontend Code Quality Summary:"
-          echo "================================="
-          echo "✅ Biome linting and formatting checks completed"
-          echo "💡 To fix issues locally, run: npm run fix"
-
-  backend-linting:
+  backend-code-quality:
     name: Backend Code Quality (Go)
     runs-on: ubuntu-latest
-    continue-on-error: true # Don't fail the pipeline if linting fails
     
     steps:
       - name: Checkout code
@@ -56,75 +41,44 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24.3'
-          cache-dependency-path: go.sum
+          go-version: '1.22'
+          cache-dependency-path: src/api/go.sum
 
-      - name: Install golangci-lint
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.54.2
-          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.59
+          working-directory: src/api
+          args: --timeout=5m
 
-      - name: Run Go linting
+      - name: Run Go unit tests and generate coverage
         working-directory: ./src/api
         run: |
-          echo "🔍 Running golangci-lint checks..."
-          golangci-lint run || echo "⚠️ golangci-lint found issues"
-
-      - name: Run Go unit tests
-        working-directory: ./test/api
-        run: |
-          echo "🧪 Running Go unit tests..."
-          go test -v ./... || echo "⚠️ Some Go tests failed"
-
-      - name: Generate test coverage report
-        working-directory: ./test/api
-        run: |
-          echo "📊 Generating test coverage report..."
-          go test -coverprofile=coverage.out ./... || echo "⚠️ Coverage generation failed"
-          if [ -f coverage.out ]; then
-            go tool cover -html=coverage.out -o coverage.html || echo "⚠️ HTML coverage report generation failed"
-            go tool cover -func=coverage.out || echo "⚠️ Coverage summary failed"
-          fi
+          echo "🧪 Running Go unit tests and generating coverage report..."
+          go test -v -coverprofile=coverage.out ./...
 
       - name: Upload coverage reports to Codecov
-        if: success()
         uses: codecov/codecov-action@v4
         with:
-          files: ./test/api/coverage.out
+          files: ./src/api/coverage.out
           flags: backend
           name: backend-coverage
           fail_ci_if_error: false
-
-      - name: Backend linting summary
-        if: always()
-        run: |
-          echo "📋 Backend Code Quality Summary:"
-          echo "==============================="
-          echo "✅ Go linting and testing checks completed"
-          echo "🧪 Unit tests help ensure code reliability"
-          echo "📊 Coverage reports help identify untested code"
-          echo "💡 To fix issues locally, run: npm run lint:go:fix"
-          echo "🔧 To run tests locally, run: cd test/api && go test -v ./..."
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   code-quality-summary:
     name: Code Quality Summary
     runs-on: ubuntu-latest
-    needs: [frontend-linting, backend-linting]
+    needs: [frontend-linting, backend-code-quality]
     if: always()
     
     steps:
-      - name: Overall summary
+      - name: Display job statuses
         run: |
-          echo "🎯 Code Quality Pipeline Summary"
-          echo "==============================="
+          echo "## Code Quality Pipeline Summary"
+          echo "---"
+          echo "Frontend (Biome): **${{ needs.frontend-linting.result }}**"
+          echo "Backend (Go): **${{ needs.backend-code-quality.result }}**"
           echo ""
-          echo "Frontend (Biome): ${{ needs.frontend-linting.result }}"
-          echo "Backend (Go): ${{ needs.backend-linting.result }}"
-          echo ""
-          echo "📝 Note: Code quality checks are informational only"
-          echo "🚀 Deployment pipeline runs independently"
-          echo ""
-          echo "🛠️  Local development commands:"
-          echo "   npm run check     - Run all checks"
-          echo "   npm run fix       - Fix auto-fixable issues"
-          echo "   npm run lint:go   - Check Go code" 
+          echo "*Note: A failure in this pipeline may block merging to 'develop'.*"
+          echo "For more details, check the logs of the failed job."
