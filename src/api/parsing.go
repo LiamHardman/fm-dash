@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"errors"
 	"io"
 	"log"
@@ -13,33 +12,6 @@ import (
 
 	"golang.org/x/net/html"
 )
-
-// Optimized currency lookup table for faster detection
-var currencyLookupTable = map[string]string{
-	"€":    "€",
-	"£":    "£",
-	"$":    "$",
-	"¥":    "¥",
-	"₹":    "₹",
-	"₽":    "₽",
-	"₺":    "₺",
-	"₩":    "₩",
-	"R$":   "R$",
-	"CHF":  "CHF",
-	"A$":   "A$",
-	"CA$":  "CA$",
-	"Mex$": "Mex$",
-	"kr":   "kr",
-	"zł":   "zł",
-	"R":    "R",
-}
-
-// Byte-level currency symbols for faster scanning
-var currencyBytes = [][]byte{
-	[]byte("€"), []byte("£"), []byte("$"), []byte("¥"), []byte("₹"), []byte("₽"),
-	[]byte("₺"), []byte("₩"), []byte("R$"), []byte("CHF"), []byte("A$"),
-	[]byte("CA$"), []byte("Mex$"), []byte("kr"), []byte("zł"), []byte("R"),
-}
 
 // Optimized string builder pool with size management
 var optimizedStringBuilderPool = sync.Pool{
@@ -59,23 +31,6 @@ func getOptimizedStringBuilder() *strings.Builder {
 func putOptimizedStringBuilder(sb *strings.Builder) {
 	if sb.Cap() <= maxStringBuilderSize { // Don't pool extremely large builders
 		optimizedStringBuilderPool.Put(sb)
-	}
-}
-
-// Byte buffer pool for processing
-var byteBufferPool = sync.Pool{
-	New: func() interface{} {
-		return make([]byte, 0, optimalChunkSize)
-	},
-}
-
-func getByteBuffer() []byte {
-	return byteBufferPool.Get().([]byte)[:0]
-}
-
-func putByteBuffer(buf []byte) {
-	if cap(buf) <= optimalChunkSize*2 { // Don't pool overly large buffers
-		byteBufferPool.Put(buf)
 	}
 }
 
@@ -106,16 +61,6 @@ func sendRowWithBackpressure(rowCellsChan chan []string, cells []string, timeout
 		RecordChannelTimeout() // Record timeout event
 		log.Printf("Warning: Channel send timeout after %v, dropping row with %d cells", timeout, len(cells))
 	}
-}
-
-// Optimized byte-level currency detection
-func detectCurrencyFromBytes(data []byte) string {
-	for _, currencyBytes := range currencyBytes {
-		if bytes.Contains(data, currencyBytes) {
-			return string(currencyBytes)
-		}
-	}
-	return ""
 }
 
 // FastParseMonetaryValue parses monetary values, handling ranges and decimals correctly.
@@ -149,7 +94,7 @@ func FastParseMonetaryValue(rawValue string) (originalDisplay string, numericVal
 
 	// Detect multiplier
 	multiplier := float64(1)
-	if len(cleanValue) > 0 {
+	if cleanValue != "" {
 		lastChar := cleanValue[len(cleanValue)-1]
 		switch lastChar {
 		case 'M', 'm':
