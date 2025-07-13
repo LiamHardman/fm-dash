@@ -92,15 +92,21 @@ jobs:
         run: |
           echo "🔍 Running golangci-lint manually..."
           
-          # Install golangci-lint
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.59.1
+          # Install golangci-lint with a more recent version
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.60.0
           
           # Set environment variables
           export GO111MODULE=on
           export GOPROXY=https://proxy.golang.org,direct
+          export GOSUMDB=sum.golang.org
           
-          # Run the linter
-          $(go env GOPATH)/bin/golangci-lint run --timeout=5m --allow-parallel-runners
+          # Clear module cache and re-download
+          go clean -modcache
+          go mod download
+          go mod verify
+          
+          # Run the linter with explicit module path
+          $(go env GOPATH)/bin/golangci-lint run --timeout=5m --allow-parallel-runners --modules-download-mode=readonly
           
           echo "✅ golangci-lint completed successfully"
           
