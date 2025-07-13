@@ -1,6 +1,8 @@
 run:
   timeout: 5m
   go: "1.24.3"
+  modules-download-mode: readonly
+  allow-parallel-runners: true
 
 linters:
   enable:
