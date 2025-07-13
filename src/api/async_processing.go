@@ -1,3 +1,4 @@
+// Package main provides async processing functionality for the FM24 API
 package main
 
 import (

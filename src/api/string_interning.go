@@ -85,23 +85,27 @@ func (si *StringInterning) Size() int {
 	return len(si.strings)
 }
 
-// Convenience functions for common string types
+// InternClub interns a club string for memory efficiency
 func InternClub(club string) string {
 	return clubInterning.Intern(club)
 }
 
+// InternPosition interns a position string for memory efficiency
 func InternPosition(position string) string {
 	return positionInterning.Intern(position)
 }
 
+// InternNationality interns a nationality string for memory efficiency
 func InternNationality(nationality string) string {
 	return nationalityInterning.Intern(nationality)
 }
 
+// InternDivision interns a division string for memory efficiency
 func InternDivision(division string) string {
 	return divisionInterning.Intern(division)
 }
 
+// InternPersonality interns a personality string for memory efficiency
 func InternPersonality(personality string) string {
 	return personalityInterning.Intern(personality)
 }

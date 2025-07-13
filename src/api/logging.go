@@ -115,19 +115,22 @@ func (l *Logger) LogSlowOperation(ctx context.Context, operation string, thresho
 // Global enhanced logger instance
 var enhancedLogger = NewLogger()
 
-// Convenient global functions that use the enhanced logger
+// LogInfoContext logs an info message with context
 func LogInfoContext(ctx context.Context, msg string, attrs ...any) {
 	enhancedLogger.InfoContext(ctx, msg, attrs...)
 }
 
+// LogWarnContext logs a warning message with context
 func LogWarnContext(ctx context.Context, msg string, attrs ...any) {
 	enhancedLogger.WarnContext(ctx, msg, attrs...)
 }
 
+// LogErrorContext logs an error message with context
 func LogErrorContext(ctx context.Context, msg string, attrs ...any) {
 	enhancedLogger.ErrorContext(ctx, msg, attrs...)
 }
 
+// LogDebugContext logs a debug message with context
 func LogDebugContext(ctx context.Context, msg string, attrs ...any) {
 	enhancedLogger.DebugContext(ctx, msg, attrs...)
 }

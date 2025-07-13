@@ -106,7 +106,9 @@ func getEnvDuration(key string, defaultValue time.Duration) time.Duration {
 	return defaultValue
 }
 
-// GetSampler returns the appropriate sampler based on configuration
+// GetSampler returns the configured OpenTelemetry sampler
+//
+//nolint:ireturn // OpenTelemetry API requires interface return
 func (c *OTelConfig) GetSampler() sdktrace.Sampler {
 	// Use explicit sample rate if provided
 	if c.TraceSampleRate >= 0 {

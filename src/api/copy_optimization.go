@@ -304,7 +304,7 @@ func (cows *CopyOnWritePlayerSlice) ToPlayers() []Player {
 	return result
 }
 
-// Optimized replacement for deepCopyPlayers function
+// OptimizedDeepCopyPlayers creates a deep copy of a slice of players with optimized memory usage
 func OptimizedDeepCopyPlayers(players []Player) []Player {
 	if players == nil {
 		return nil

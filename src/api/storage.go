@@ -57,6 +57,7 @@ func decompressData(data []byte) ([]byte, error) {
 	return io.ReadAll(reader)
 }
 
+// StorageInterface defines the interface for data storage operations
 type StorageInterface interface {
 	Store(datasetID string, data DatasetData) error
 	Retrieve(datasetID string) (DatasetData, error)
@@ -65,22 +66,26 @@ type StorageInterface interface {
 	CleanupOldDatasets(maxAge time.Duration, excludeDatasets []string) error
 }
 
+// DatasetData represents a dataset containing player information
 type DatasetData struct {
 	Players        []Player `json:"players"`
 	CurrencySymbol string   `json:"currency_symbol"`
 }
 
+// InMemoryStorage provides in-memory storage for datasets
 type InMemoryStorage struct {
 	data  map[string]DatasetData
 	mutex sync.RWMutex
 }
 
+// NewInMemoryStorage creates a new in-memory storage instance
 func NewInMemoryStorage() *InMemoryStorage {
 	return &InMemoryStorage{
 		data: make(map[string]DatasetData),
 	}
 }
 
+// Store saves a dataset to in-memory storage
 func (s *InMemoryStorage) Store(datasetID string, data DatasetData) error {
 	ctx := context.Background()
 	ctx, span := StartSpan(ctx, "storage.memory.store")
@@ -100,6 +105,7 @@ func (s *InMemoryStorage) Store(datasetID string, data DatasetData) error {
 	return nil
 }
 
+// Retrieve retrieves a dataset from in-memory storage
 func (s *InMemoryStorage) Retrieve(datasetID string) (DatasetData, error) {
 	ctx := context.Background()
 	ctx, span := StartSpan(ctx, "storage.memory.retrieve")
@@ -126,6 +132,7 @@ func (s *InMemoryStorage) Retrieve(datasetID string) (DatasetData, error) {
 	return data, nil
 }
 
+// Delete removes a dataset from in-memory storage
 func (s *InMemoryStorage) Delete(datasetID string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -133,6 +140,7 @@ func (s *InMemoryStorage) Delete(datasetID string) error {
 	return nil
 }
 
+// List returns all dataset IDs stored in memory
 func (s *InMemoryStorage) List() ([]string, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
@@ -143,12 +151,14 @@ func (s *InMemoryStorage) List() ([]string, error) {
 	return ids, nil
 }
 
-func (s *InMemoryStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets []string) error {
+// CleanupOldDatasets removes datasets older than the specified duration
+func (s *InMemoryStorage) CleanupOldDatasets(_ time.Duration, _ []string) error {
 	// In-memory storage doesn't persist data, so no cleanup needed
 	log.Println("CleanupOldDatasets called on in-memory storage - no action needed")
 	return nil
 }
 
+// S3Storage provides S3-based storage for datasets
 type S3Storage struct {
 	client     *minio.Client
 	bucketName string
@@ -494,6 +504,7 @@ func (s *S3Storage) deleteSync(datasetID string) error {
 	return nil
 }
 
+// List returns all dataset IDs stored in S3
 func (s *S3Storage) List() ([]string, error) {
 	if s.client == nil {
 		return s.fallback.List()
@@ -523,6 +534,7 @@ func (s *S3Storage) List() ([]string, error) {
 	return ids, nil
 }
 
+// CleanupOldDatasets removes datasets older than the specified duration from S3
 func (s *S3Storage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets []string) error {
 	if s.client == nil {
 		return s.fallback.CleanupOldDatasets(maxAge, excludeDatasets)
@@ -665,6 +677,7 @@ type LocalFileStorage struct {
 	mutex      sync.RWMutex
 }
 
+// NewLocalFileStorage creates a new local file storage instance
 func NewLocalFileStorage(datasetDir string) (*LocalFileStorage, error) {
 	// Create datasets directory if it doesn't exist
 	if err := os.MkdirAll(datasetDir, 0o750); err != nil {
@@ -677,6 +690,7 @@ func NewLocalFileStorage(datasetDir string) (*LocalFileStorage, error) {
 	}, nil
 }
 
+// Store saves a dataset to local file storage
 func (s *LocalFileStorage) Store(datasetID string, data DatasetData) error {
 	ctx := context.Background()
 	ctx, span := StartSpan(ctx, "storage.local_file.store")
@@ -736,6 +750,7 @@ func (s *LocalFileStorage) Store(datasetID string, data DatasetData) error {
 	return nil
 }
 
+// Retrieve retrieves a dataset from local file storage
 func (s *LocalFileStorage) Retrieve(datasetID string) (DatasetData, error) {
 	ctx := context.Background()
 	ctx, span := StartSpan(ctx, "storage.local_file.retrieve")
@@ -773,6 +788,7 @@ func (s *LocalFileStorage) Retrieve(datasetID string) (DatasetData, error) {
 	}
 
 	// Read and decompress the file
+	//nolint:gosec // filename is validated by validateAndJoinPath
 	data, err := os.ReadFile(filename)
 	if err != nil {
 		err := apperrors.WrapErrInvalidFilePathForDataset(sanitizeForLogging(datasetID), err)
@@ -810,6 +826,7 @@ func (s *LocalFileStorage) Retrieve(datasetID string) (DatasetData, error) {
 	return dataset, nil
 }
 
+// Delete removes a dataset from local file storage
 func (s *LocalFileStorage) Delete(datasetID string) error {
 	// Validate dataset ID format
 	if err := validateID(datasetID, 100); err != nil {
@@ -842,6 +859,7 @@ func (s *LocalFileStorage) Delete(datasetID string) error {
 	return nil
 }
 
+// List returns all dataset IDs stored in local files
 func (s *LocalFileStorage) List() ([]string, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
@@ -881,6 +899,7 @@ func (s *LocalFileStorage) List() ([]string, error) {
 	return ids, nil
 }
 
+// CleanupOldDatasets removes datasets older than the specified duration from local files
 func (s *LocalFileStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets []string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -957,6 +976,7 @@ type HybridStorage struct {
 	local  StorageInterface
 }
 
+// NewHybridStorage creates a new hybrid storage instance
 func NewHybridStorage(datasetDir string) (*HybridStorage, error) {
 	memory := NewInMemoryStorage()
 	local, err := NewLocalFileStorage(datasetDir)
@@ -971,6 +991,7 @@ func NewHybridStorage(datasetDir string) (*HybridStorage, error) {
 	}, nil
 }
 
+// Store saves a dataset using hybrid storage (memory + local file)
 func (s *HybridStorage) Store(datasetID string, data DatasetData) error {
 	// Store in both memory and local file
 	if err := s.memory.Store(datasetID, data); err != nil {
@@ -980,6 +1001,7 @@ func (s *HybridStorage) Store(datasetID string, data DatasetData) error {
 	return s.local.Store(datasetID, data)
 }
 
+// Retrieve retrieves a dataset from hybrid storage
 func (s *HybridStorage) Retrieve(datasetID string) (DatasetData, error) {
 	// Try memory first for fastest access
 	data, err := s.memory.Retrieve(datasetID)
@@ -1008,6 +1030,7 @@ func (s *HybridStorage) Retrieve(datasetID string) (DatasetData, error) {
 	return data, nil
 }
 
+// Delete removes a dataset from hybrid storage
 func (s *HybridStorage) Delete(datasetID string) error {
 	// Delete from both memory and local file
 	if err := s.memory.Delete(datasetID); err != nil {
@@ -1017,6 +1040,7 @@ func (s *HybridStorage) Delete(datasetID string) error {
 	return s.local.Delete(datasetID)
 }
 
+// List returns all dataset IDs from hybrid storage
 func (s *HybridStorage) List() ([]string, error) {
 	// Get datasets from both memory and local storage, then merge
 	memoryIDs, _ := s.memory.List() // Ignore error since memory might be empty
@@ -1042,6 +1066,7 @@ func (s *HybridStorage) List() ([]string, error) {
 	return allIDs, nil
 }
 
+// CleanupOldDatasets removes datasets older than the specified duration from hybrid storage
 func (s *HybridStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets []string) error {
 	// Cleanup both memory and local storage
 	if err := s.memory.CleanupOldDatasets(maxAge, excludeDatasets); err != nil {
@@ -1051,6 +1076,9 @@ func (s *HybridStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets
 	return s.local.CleanupOldDatasets(maxAge, excludeDatasets)
 }
 
+// InitializeStorage creates and returns the appropriate storage implementation
+//
+//nolint:ireturn // StorageInterface is the intended return type for this factory function
 func InitializeStorage() StorageInterface {
 	inMemory := NewInMemoryStorage()
 

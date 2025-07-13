@@ -23,7 +23,7 @@ import (
 func initOTel() func(context.Context) error {
 	if !otelEnabled {
 		LogInfo("🔴 OTEL: OpenTelemetry is disabled (OTEL_ENABLED=false)")
-		return func(ctx context.Context) error { return nil }
+		return func(_ context.Context) error { return nil }
 	}
 
 	LogInfo("🟡 OTEL: Starting OpenTelemetry initialization...")
@@ -31,7 +31,7 @@ func initOTel() func(context.Context) error {
 	cfg := LoadOTelConfig()
 	if err := cfg.Validate(); err != nil {
 		LogWarn("🔴 OTEL: Invalid OpenTelemetry configuration: %v. OTEL disabled.", err)
-		return func(ctx context.Context) error { return nil }
+		return func(_ context.Context) error { return nil }
 	}
 
 	LogInfo("🟢 OTEL: Configuration validated successfully")

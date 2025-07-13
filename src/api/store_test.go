@@ -44,7 +44,7 @@ func (m *MockStorage) List() ([]string, error) {
 	return ids, nil
 }
 
-func (m *MockStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets []string) error {
+func (m *MockStorage) CleanupOldDatasets(_ time.Duration, _ []string) error {
 	// Mock implementation - just return nil for testing
 	return nil
 }

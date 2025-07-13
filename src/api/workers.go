@@ -32,8 +32,10 @@ func PlayerParserWorker(workerID int, rowCellsChan <-chan []string, resultsChan 
 	if len(headers) == 0 {
 		LogWarn("Worker %d started with NO headers. Draining rowCellsChan and exiting.", workerID)
 		// Consume any rows sent before this worker realized headers were missing.
+		// revive:disable:empty-block
 		for range rowCellsChan {
 		}
+		// revive:enable:empty-block
 		return
 	}
 
@@ -75,8 +77,10 @@ func OptimizedPlayerParserWorker(workerID int, rowCellsChan <-chan []string, res
 	if len(headers) == 0 {
 		LogWarn("Worker %d started with NO headers. Draining rowCellsChan and exiting.", workerID)
 		// Consume any rows sent before this worker realized headers were missing.
+		// revive:disable:empty-block
 		for range rowCellsChan {
 		}
+		// revive:enable:empty-block
 		return
 	}
 

@@ -1,4 +1,4 @@
-// src/api/services/processing_service.go
+// Package services provides processing-related service functionality
 package services
 
 import (
@@ -117,7 +117,7 @@ func (s *ProcessingService) validateFileFormat(filename string, content []byte) 
 }
 
 // parsePlayerData parses the HTML content and extracts player data
-func (s *ProcessingService) parsePlayerData(_ctx context.Context, _content []byte, _options ProcessingOptions) (players []Player, currencySymbol string) {
+func (s *ProcessingService) parsePlayerData(_ context.Context, _ []byte, _ ProcessingOptions) (players []Player, currencySymbol string) {
 	// TODO: Integrate with existing parsing logic
 	// This would call the existing ParseHTMLPlayerTable function
 	players = []Player{}
@@ -181,7 +181,7 @@ func (s *ProcessingService) generateDatasetID() string {
 }
 
 // GetProcessingStats returns statistics about processing performance
-func (s *ProcessingService) GetProcessingStats(ctx context.Context) map[string]interface{} {
+func (s *ProcessingService) GetProcessingStats(_ context.Context) map[string]interface{} {
 	stats := map[string]interface{}{
 		"available_workers": runtime.NumCPU(),
 		"max_buffer_size":   1000,

@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// Percentile calculation cache for performance optimization
+// PercentileCache provides caching for percentile calculations
 type PercentileCache struct {
 	dataHash    string
 	percentiles map[string]map[string]float64
@@ -133,6 +133,7 @@ func calculatePercentileValue(value float64, sortedValues []float64) float64 {
 // DivisionFilter represents the different division filtering options
 type DivisionFilter int
 
+// DivisionFilter constants define different filtering options for divisions
 const (
 	DivisionFilterAll DivisionFilter = iota
 	DivisionFilterSame

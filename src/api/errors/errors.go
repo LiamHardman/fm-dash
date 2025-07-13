@@ -125,74 +125,89 @@ var (
 	ErrInvalidDatasetID     = errors.New("invalid dataset ID")
 )
 
-// Error wrapper functions that maintain context while using static errors
+// WrapErrInvalidCacheDataFormat wraps an error with context about invalid cache data format
 func WrapErrInvalidCacheDataFormat(err error) error {
 	return fmt.Errorf("%w: %v", ErrInvalidCacheDataFormat, err)
 }
 
+// WrapErrConfigInitTimeout wraps a config initialization timeout error with context
 func WrapErrConfigInitTimeout(timeout interface{}) error {
 	return fmt.Errorf("%w after %v", ErrConfigInitTimeout, timeout)
 }
 
+// WrapErrInvalidOtelEndpoint wraps an invalid OpenTelemetry endpoint error with context
 func WrapErrInvalidOtelEndpoint(endpoint string) error {
 	return fmt.Errorf("%w: %s (must include port)", ErrInvalidOtelEndpoint, endpoint)
 }
 
+// WrapErrInvalidS3Endpoint wraps an invalid S3 endpoint error with context
 func WrapErrInvalidS3Endpoint(endpoint string) error {
 	return fmt.Errorf("%w: %s (should include port or be full URL)", ErrInvalidS3Endpoint, endpoint)
 }
 
+// WrapErrInvalidTraceSampleRate wraps an invalid trace sample rate error with context
 func WrapErrInvalidTraceSampleRate(rate float64) error {
 	return fmt.Errorf("%w, got %f", ErrInvalidTraceSampleRate, rate)
 }
 
+// WrapErrInvalidBatchSize wraps an invalid batch size error with context
 func WrapErrInvalidBatchSize(size int) error {
 	return fmt.Errorf("%w, got %d", ErrInvalidBatchSize, size)
 }
 
+// WrapErrInvalidMaxQueueSize wraps an invalid max queue size error with context
 func WrapErrInvalidMaxQueueSize(size int) error {
 	return fmt.Errorf("%w, got %d", ErrInvalidMaxQueueSize, size)
 }
 
+// WrapErrInvalidUID wraps an invalid UID error with context
 func WrapErrInvalidUID(uid string, err error) error {
 	return fmt.Errorf("%w: %s, error: %v", ErrInvalidUID, uid, err)
 }
 
+// WrapErrInvalidFilePath wraps an invalid file path error with context
 func WrapErrInvalidFilePath(uid string, err error) error {
 	return fmt.Errorf("%w for UID %s: %v", ErrInvalidFilePath, uid, err)
 }
 
+// WrapErrInvalidTeamID wraps an invalid team ID error with context
 func WrapErrInvalidTeamID(teamID string, err error) error {
 	return fmt.Errorf("%w: %s, error: %v", ErrInvalidTeamID, teamID, err)
 }
 
+// WrapErrInvalidClubsDirPath wraps an invalid clubs directory path error with context
 func WrapErrInvalidClubsDirPath(err error) error {
 	return fmt.Errorf("%w: %v", ErrInvalidClubsDirPath, err)
 }
 
+// WrapErrInvalidNormalDirPath wraps an invalid normal directory path error with context
 func WrapErrInvalidNormalDirPath(err error) error {
 	return fmt.Errorf("%w: %v", ErrInvalidNormalDirPath, err)
 }
 
+// WrapErrInvalidFilePathForTeamID wraps an invalid file path for team ID error with context
 func WrapErrInvalidFilePathForTeamID(teamID string, err error) error {
 	return fmt.Errorf("%w for team ID %s: %v", ErrInvalidFilePath, teamID, err)
 }
 
+// WrapErrHTTPStatus wraps an HTTP status error with context
 func WrapErrHTTPStatus(statusCode int, status string) error {
 	return fmt.Errorf("%w %d: %s", ErrHTTPStatus, statusCode, status)
 }
 
-func WrapErrHandlerPanic(panic interface{}) error {
-	return fmt.Errorf("%w: %v", ErrHandlerPanic, panic)
+// WrapErrHandlerPanic wraps a handler panic error with context
+func WrapErrHandlerPanic(panicValue interface{}) error {
+	return fmt.Errorf("%w: %v", ErrHandlerPanic, panicValue)
 }
 
+// WrapErrPanicRecovered wraps a panic recovered error with context
 func WrapErrPanicRecovered(err error) error {
 	return fmt.Errorf("%w: %v", ErrPanicRecovered, err)
 }
 
 // WrapErrWorkerPanic wraps a worker panic error with context.
-func WrapErrWorkerPanic(workerID int, panic interface{}) error {
-	return fmt.Errorf("%w: worker %d panicked: %v", ErrHandlerPanic, workerID, panic)
+func WrapErrWorkerPanic(workerID int, panicValue interface{}) error {
+	return fmt.Errorf("%w: worker %d panicked: %v", ErrHandlerPanic, workerID, panicValue)
 }
 
 // WrapErrInvalidFilename wraps an invalid filename error with context.
@@ -210,38 +225,47 @@ func WrapErrDatasetNotFound(datasetID string) error {
 	return fmt.Errorf("%w: %s", ErrDatasetNotFound, datasetID)
 }
 
-func WrapErrJSONMarshalPanic(panic interface{}) error {
-	return fmt.Errorf("%w: %v", ErrJSONMarshalPanic, panic)
+// WrapErrJSONMarshalPanic wraps a JSON marshal panic error with context
+func WrapErrJSONMarshalPanic(panicValue interface{}) error {
+	return fmt.Errorf("%w: %v", ErrJSONMarshalPanic, panicValue)
 }
 
+// WrapErrInvalidDatasetID wraps an invalid dataset ID error with context
 func WrapErrInvalidDatasetID(datasetID string, err error) error {
 	return fmt.Errorf("%w: %s, error: %v", ErrInvalidDatasetID, datasetID, err)
 }
 
+// WrapErrInvalidFilePathForDataset wraps an invalid file path for dataset error with context
 func WrapErrInvalidFilePathForDataset(datasetID string, err error) error {
 	return fmt.Errorf("%w for dataset %s: %v", ErrInvalidFilePath, datasetID, err)
 }
 
+// WrapErrPlayerNoName wraps a player no name error with context
 func WrapErrPlayerNoName(index int) error {
 	return fmt.Errorf("%w at index %d", ErrPlayerNoName, index)
 }
 
+// WrapErrValidationFailed wraps a validation failed error with context
 func WrapErrValidationFailed(errors interface{}) error {
 	return fmt.Errorf("%w: %v", ErrValidationFailed, errors)
 }
 
+// WrapErrAttributeAndRoleError wraps attribute and role errors with context
 func WrapErrAttributeAndRoleError(attrErr, roleErr error) error {
 	return fmt.Errorf("attribute error: %w, role error: %w", attrErr, roleErr)
 }
 
+// WrapErrTokenizingHTML wraps a tokenizing HTML error with context
 func WrapErrTokenizingHTML(err error) error {
 	return fmt.Errorf("%w: %v", ErrTokenizingHTML, err)
 }
 
+// WrapErrFailedToParseAppearances wraps a failed to parse appearances error with context
 func WrapErrFailedToParseAppearances() error {
 	return fmt.Errorf("%w", ErrFailedToParseAppearances)
 }
 
+// WrapErrInvalidAppearancesFormat wraps an invalid appearances format error with context
 func WrapErrInvalidAppearancesFormat() error {
 	return fmt.Errorf("%w", ErrInvalidAppearancesFormat)
 }
@@ -256,7 +280,7 @@ func WrapErrIDTooLong(maxLength int) error {
 	return fmt.Errorf("%w (max %d characters)", ErrIDTooLong, maxLength)
 }
 
-// Validation errors
+// NewValidationError creates a new validation error
 func NewValidationError(message string) *AppError {
 	return &AppError{
 		Code:       CodeValidationFailed,
@@ -265,7 +289,7 @@ func NewValidationError(message string) *AppError {
 	}
 }
 
-// Not found errors
+// NewNotFoundError creates a new not found error
 func NewNotFoundError(message string) *AppError {
 	return &AppError{
 		Code:       CodeNotFound,
@@ -274,7 +298,7 @@ func NewNotFoundError(message string) *AppError {
 	}
 }
 
-// File upload errors
+// NewFileTooLargeError creates a new file too large error
 func NewFileTooLargeError(maxSize int64) *AppError {
 	return &AppError{
 		Code:       CodeFileTooLarge,
@@ -283,7 +307,7 @@ func NewFileTooLargeError(maxSize int64) *AppError {
 	}
 }
 
-// Unsupported format errors
+// NewUnsupportedFormatError creates a new unsupported format error
 func NewUnsupportedFormatError(format string, supported []string) *AppError {
 	return &AppError{
 		Code:       CodeUnsupportedFormat,
@@ -292,7 +316,7 @@ func NewUnsupportedFormatError(format string, supported []string) *AppError {
 	}
 }
 
-// Processing errors
+// NewProcessingError creates a new processing error
 func NewProcessingError(message string) *AppError {
 	return &AppError{
 		Code:       CodeProcessingFailed,
@@ -301,7 +325,7 @@ func NewProcessingError(message string) *AppError {
 	}
 }
 
-// Storage errors
+// NewStorageError creates a new storage error
 func NewStorageError(message string) *AppError {
 	return &AppError{
 		Code:       CodeStorageError,
@@ -310,7 +334,7 @@ func NewStorageError(message string) *AppError {
 	}
 }
 
-// Internal server errors
+// NewInternalError creates a new internal error
 func NewInternalError(message string) *AppError {
 	return &AppError{
 		Code:       CodeInternalError,
@@ -319,7 +343,7 @@ func NewInternalError(message string) *AppError {
 	}
 }
 
-// Bad request errors
+// NewBadRequestError creates a new bad request error
 func NewBadRequestError(message string) *AppError {
 	return &AppError{
 		Code:       CodeBadRequest,
@@ -328,12 +352,13 @@ func NewBadRequestError(message string) *AppError {
 	}
 }
 
-// Helper function to check if error is of specific type
+// IsAppError checks if an error is an AppError
 func IsAppError(err error) bool {
 	_, ok := err.(*AppError)
 	return ok
 }
 
+// WrapErrPanicRecoveredNonError wraps a panic recovered non-error value with context
 func WrapErrPanicRecoveredNonError(value interface{}) error {
 	return fmt.Errorf("%w: %v", ErrPanicRecoveredNonError, value)
 }

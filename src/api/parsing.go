@@ -162,7 +162,7 @@ func FastParseMonetaryValue(rawValue string) (originalDisplay string, numericVal
 	return originalDisplay, numericValue, detectedSymbol
 }
 
-// Enhanced ParseMonetaryValueGo with optimized byte operations (maintains compatibility)
+// ParseMonetaryValueGo parses monetary values with optimized byte operations
 func ParseMonetaryValueGo(rawValue string) (originalDisplay string, numericValue int64, detectedSymbol string) {
 	return FastParseMonetaryValue(rawValue)
 }

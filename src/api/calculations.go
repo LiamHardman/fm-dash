@@ -33,27 +33,27 @@ func computeNonLinearScaling(linearRating float64) int {
 		// Use a gentle curve that preserves most of the original rating
 		scaledRating := inflectionPoint + (linearRating-inflectionPoint)*0.95
 		return int(math.Round(scaledRating))
-	} else {
-		// For ratings below 75, apply progressive compression
-		// Use a power curve that becomes more aggressive as ratings get lower
-
-		// Normalize to 0-1 scale relative to inflection point
-		normalizedRating := linearRating / inflectionPoint
-
-		// Apply power curve: higher exponent = more compression for low values
-		// Using exponent 1.8 creates good separation
-		compressedNormalized := math.Pow(normalizedRating, 1.8)
-
-		// Scale back to final rating
-		scaledRating := compressedNormalized * inflectionPoint
-
-		// Ensure minimum rating progression (avoid clustering too much at bottom)
-		if scaledRating < 10 && linearRating > 20 {
-			scaledRating = 10 + (linearRating-20)*0.15
-		}
-
-		return int(math.Round(scaledRating))
 	}
+
+	// For ratings below 75, apply progressive compression
+	// Use a power curve that becomes more aggressive as ratings get lower
+
+	// Normalize to 0-1 scale relative to inflection point
+	normalizedRating := linearRating / inflectionPoint
+
+	// Apply power curve: higher exponent = more compression for low values
+	// Using exponent 1.8 creates good separation
+	compressedNormalized := math.Pow(normalizedRating, 1.8)
+
+	// Scale back to final rating
+	scaledRating := compressedNormalized * inflectionPoint
+
+	// Ensure minimum rating progression (avoid clustering too much at bottom)
+	if scaledRating < 10 && linearRating > 20 {
+		scaledRating = 10 + (linearRating-20)*0.15
+	}
+
+	return int(math.Round(scaledRating))
 }
 
 // applyNonLinearScaling applies a non-linear scaling curve to compress lower ratings

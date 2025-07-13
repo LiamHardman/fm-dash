@@ -1,4 +1,4 @@
-// src/api/errors/middleware.go
+// Package errors provides error handling and middleware functionality
 package errors
 
 import (

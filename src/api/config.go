@@ -110,12 +110,12 @@ var (
 	metricsEnabled bool
 
 	// Rating calculation method toggle
-	useScaledRatings   bool = true // Default to new scaled ratings
+	useScaledRatings   = true // Default to new scaled ratings
 	muUseScaledRatings sync.RWMutex
 
 	// Logging configuration
-	logAllRequests bool = false        // Default to only logging non-200 responses
-	minLogLevel    int  = LogLevelInfo // Default to info level
+	logAllRequests = false        // Default to only logging non-200 responses
+	minLogLevel    = LogLevelInfo // Default to info level
 	muLogLevel     sync.RWMutex
 )
 
@@ -203,6 +203,21 @@ func loadJSONWeights(filePath string, defaultWeights map[string]map[string]int) 
 		return deepCopyWeights(defaultWeights), apperrors.ErrFilenamePathTraversal
 	}
 
+	// Additional validation: ensure path is within allowed directories
+	allowedDirs := []string{"public"}
+	pathIsAllowed := false
+	for _, allowedDir := range allowedDirs {
+		if strings.HasPrefix(filePath, allowedDir+"/") || filePath == allowedDir {
+			pathIsAllowed = true
+			break
+		}
+	}
+	if !pathIsAllowed {
+		LogWarn("Invalid file path %s: not in allowed directories. Using default weights.", filePath)
+		return deepCopyWeights(defaultWeights), apperrors.ErrFilenamePathTraversal
+	}
+
+	//nolint:gosec // filePath is validated above to be within allowed directories
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		LogWarn("Could not read %s: %v. Using default weights.", filePath, err)
@@ -426,7 +441,7 @@ func shouldLog(level int) bool {
 	return level >= GetMinLogLevel()
 }
 
-// Log helper functions that respect the minimum log level and use slog for SignOz integration
+// LogDebug logs a debug message if debug logging is enabled
 func LogDebug(format string, args ...interface{}) {
 	if shouldLog(LogLevelDebug) {
 		// Use slog so logs go to SignOz via OTLP handler
@@ -434,6 +449,7 @@ func LogDebug(format string, args ...interface{}) {
 	}
 }
 
+// LogInfo logs an info message if info logging is enabled
 func LogInfo(format string, args ...interface{}) {
 	if shouldLog(LogLevelInfo) {
 		// Use slog so logs go to SignOz via OTLP handler
@@ -441,6 +457,7 @@ func LogInfo(format string, args ...interface{}) {
 	}
 }
 
+// LogWarn logs a warning message if warning logging is enabled
 func LogWarn(format string, args ...interface{}) {
 	if shouldLog(LogLevelWarn) {
 		// Use slog so logs go to SignOz via OTLP handler
@@ -448,6 +465,7 @@ func LogWarn(format string, args ...interface{}) {
 	}
 }
 
+// LogCritical logs a critical message if critical logging is enabled
 func LogCritical(format string, args ...interface{}) {
 	if shouldLog(LogLevelCritical) {
 		// Use slog so logs go to SignOz via OTLP handler

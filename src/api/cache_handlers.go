@@ -38,6 +38,7 @@ type CacheStorageWrapper struct {
 	storage StorageInterface
 }
 
+// NewCacheStorageWrapper creates a new cache storage wrapper
 func NewCacheStorageWrapper(storage StorageInterface) *CacheStorageWrapper {
 	return &CacheStorageWrapper{storage: storage}
 }
@@ -86,6 +87,7 @@ func (c *CacheStorageWrapper) DeleteCacheData(cacheKey string) error {
 	return c.storage.Delete(cacheKey)
 }
 
+// InitCacheStorage initializes the cache storage system
 func InitCacheStorage() {
 	LogDebug("Cache storage system initialized")
 }

@@ -85,6 +85,7 @@ func initTeamsData() error {
 		return apperrors.ErrFilenamePathTraversal
 	}
 
+	//nolint:gosec // teamsFilePath is validated above and constructed from safe components
 	data, err := os.ReadFile(teamsFilePath)
 	if err != nil {
 		LogWarn("Team data initialization: Error reading teams data file: %v", err)

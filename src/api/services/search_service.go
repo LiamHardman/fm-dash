@@ -1,4 +1,4 @@
-// src/api/services/search_service.go
+// Package services provides search-related service functionality
 package services
 
 import (
@@ -166,7 +166,7 @@ func (s *SearchService) searchTeams(players []Player, query string) []SearchResu
 }
 
 // searchLeagues searches for leagues (if available in data)
-func (s *SearchService) searchLeagues(players []Player, query string) []SearchResult {
+func (s *SearchService) searchLeagues(_ []Player, _ string) []SearchResult {
 	// This is a placeholder - leagues would need to be extracted from player data
 	// or stored separately. For now, we'll return empty results.
 	return []SearchResult{}

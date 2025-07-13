@@ -1,4 +1,4 @@
-// src/api/services/player_service.go
+// Package services provides player-related service functionality
 package services
 
 import (

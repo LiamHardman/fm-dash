@@ -122,7 +122,7 @@ func RequestTimeoutMiddleware(timeout time.Duration) func(http.Handler) http.Han
 	}
 }
 
-// RetryMiddleware provides automatic retry for failed requests (mainly for outbound calls)
+// RetryConfig defines configuration for retry middleware
 type RetryConfig struct {
 	MaxRetries int
 	BaseDelay  time.Duration

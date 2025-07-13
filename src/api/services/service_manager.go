@@ -1,4 +1,4 @@
-// src/api/services/service_manager.go
+// Package services provides service management functionality
 package services
 
 import (
@@ -63,7 +63,7 @@ func (sm *ServiceManager) HealthCheck(ctx context.Context) map[string]string {
 }
 
 // Shutdown gracefully shuts down all services
-func (sm *ServiceManager) Shutdown(ctx context.Context) error {
+func (sm *ServiceManager) Shutdown(_ context.Context) error {
 	log.Println("Shutting down service manager...")
 
 	// Services don't currently need explicit shutdown,

@@ -492,9 +492,11 @@ func BenchmarkProcessPlayersAsync(b *testing.B) {
 		resultCh := processor.ProcessPlayersAsync(players)
 
 		// Consume all results
+		// revive:disable:empty-block
 		for range resultCh {
-			// Just consume the results
+			// Benchmark: consume results
 		}
+		// revive:enable:empty-block
 
 		processor.Shutdown()
 	}

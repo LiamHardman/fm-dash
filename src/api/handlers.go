@@ -260,10 +260,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		status := http.StatusOK
 		//nolint:staticcheck // SA9003: empty branch is intentional for future use
-		if span.SpanContext().IsValid() {
-			// Check if there was an error by inspecting span status
-			// We'll update this in error cases below
-		}
+		// TODO: Add span status checking logic here when needed
 		RecordAPIOperation(ctx, r.Method, "/upload", status, time.Since(startTime))
 	}()
 
@@ -394,13 +391,13 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			})
 
 			return
-		} else {
-			// Dataset no longer exists, remove the stale mapping and continue processing
-			logWarn(ctx, "Stale duplicate mapping found, dataset no longer exists",
-				"filename", handler.Filename,
-				"stale_dataset_id", existingDatasetID)
-			removeDuplicateMapping(existingDatasetID)
 		}
+
+		// Dataset no longer exists, remove the stale mapping and continue processing
+		logWarn(ctx, "Stale duplicate mapping found, dataset no longer exists",
+			"filename", handler.Filename,
+			"stale_dataset_id", existingDatasetID)
+		removeDuplicateMapping(existingDatasetID)
 	}
 
 	AddSpanEvent(ctx, "duplicate.check.completed", attribute.Bool("is_duplicate", isDuplicate))
@@ -455,7 +452,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	parseTimer := NewParseTimerWithContext(ctx, "html_parsing")
 
 	// Wrap file parsing in a child span using the already-read content
-	err = TraceFileProcessing(ctx, handler.Filename, actualFileSize, func(spanCtx context.Context) error {
+	err = TraceFileProcessing(ctx, handler.Filename, actualFileSize, func(_ context.Context) error {
 		contentReader := strings.NewReader(string(fileContent))
 		return ParseHTMLPlayerTable(contentReader, &headersSnapshot, rowCellsChan, numWorkers, resultsChan, &wg)
 	})
@@ -774,7 +771,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 	percentileCacheKey := fmt.Sprintf("percentiles:%s:%s:%s", datasetID, divisionFilterStr, targetDivision)
 
 	// Parse division filter early
-	var divisionFilter DivisionFilter = DivisionFilterAll
+	var divisionFilter = DivisionFilterAll
 	switch divisionFilterStr {
 	case "same":
 		divisionFilter = DivisionFilterSame
@@ -1277,7 +1274,7 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Parse division filter
-	var divisionFilter DivisionFilter = DivisionFilterAll
+	var divisionFilter = DivisionFilterAll
 	switch req.DivisionFilter {
 	case "same":
 		divisionFilter = DivisionFilterSame

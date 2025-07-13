@@ -12,7 +12,7 @@ const (
 	configLoadTimeout = 5 * time.Second
 )
 
-func cachedRolesHandler(w http.ResponseWriter, r *http.Request) {
+func cachedRolesHandler(w http.ResponseWriter, _ *http.Request) {
 	const cacheKey = "roles_data"
 
 	if cached, found := getFromMemCache(cacheKey); found {

@@ -228,9 +228,9 @@ func parseCellsToPlayer(cells, headers []string) (Player, error) {
 		}
 		if isPotentiallyMeaningfulRow {
 			return Player{}, apperrors.WrapErrSkippedRowNameMissing(strings.Join(GetFirstNCells(cells, 5), ", "))
-		} else {
-			return Player{}, apperrors.ErrSkippedRowEmpty
 		}
+
+		return Player{}, apperrors.ErrSkippedRowEmpty
 	}
 
 	return player, nil

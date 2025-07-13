@@ -18,7 +18,9 @@ import (
 
 var tracer = otel.Tracer("v2fmdash-api")
 
-// StartSpan creates a new span with standard attributes
+// StartSpan creates a new span with the given operation name
+//
+//nolint:ireturn // OpenTelemetry API requires interface return
 func StartSpan(ctx context.Context, operationName string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
 	if !otelEnabled {
 		return ctx, trace.SpanFromContext(ctx)
@@ -38,7 +40,9 @@ func StartSpan(ctx context.Context, operationName string, opts ...trace.SpanStar
 	return tracer.Start(ctx, operationName, opts...)
 }
 
-// StartSpanWithAttributes creates a span with custom attributes
+// StartSpanWithAttributes creates a new span with the given operation name and attributes
+//
+//nolint:ireturn // OpenTelemetry API requires interface return
 func StartSpanWithAttributes(ctx context.Context, operationName string, attrs []attribute.KeyValue, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
 	if !otelEnabled {
 		return ctx, trace.SpanFromContext(ctx)
