@@ -110,7 +110,9 @@ func (c *HTTPClient) Do(req *http.Request) (*http.Response, error) {
 			lastErr = err
 		} else {
 			lastErr = apperrors.WrapErrHTTPStatus(resp.StatusCode, resp.Status)
-			resp.Body.Close() // Close body before retry
+			if closeErr := resp.Body.Close(); closeErr != nil {
+				log.Printf("Failed to close response body: %v", closeErr)
+			}
 		}
 
 		// Don't sleep after last attempt

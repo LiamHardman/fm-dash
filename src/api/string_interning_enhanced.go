@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"compress/gzip"
+	"log"
 	"strings"
 	"sync"
 )
@@ -105,7 +106,9 @@ func (csi *CompressedStringInterning) compressString(s string) (string, error) {
 	gz := gzip.NewWriter(&buf)
 
 	if _, err := gz.Write([]byte(s)); err != nil {
-		gz.Close()
+		if closeErr := gz.Close(); closeErr != nil {
+			log.Printf("Failed to close gzip writer: %v", closeErr)
+		}
 		return "", err
 	}
 
@@ -129,7 +132,11 @@ func (csi *CompressedStringInterning) decompressIfNeeded(stored string) string {
 	if err != nil {
 		return stored // Return as-is on error
 	}
-	defer reader.Close()
+	defer func() {
+		if closeErr := reader.Close(); closeErr != nil {
+			log.Printf("Failed to close gzip reader: %v", closeErr)
+		}
+	}()
 
 	var buf bytes.Buffer
 	if _, err := buf.ReadFrom(reader); err != nil {

@@ -25,7 +25,11 @@ import (
 func compressData(data []byte) ([]byte, error) {
 	var buf bytes.Buffer
 	gz := gzip.NewWriter(&buf)
-	defer gz.Close()
+	defer func() {
+		if closeErr := gz.Close(); closeErr != nil {
+			log.Printf("Failed to close gzip writer: %v", closeErr)
+		}
+	}()
 
 	if _, err := gz.Write(data); err != nil {
 		return nil, err
@@ -44,7 +48,11 @@ func decompressData(data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer reader.Close()
+	defer func() {
+		if closeErr := reader.Close(); closeErr != nil {
+			log.Printf("Failed to close gzip reader: %v", closeErr)
+		}
+	}()
 
 	return io.ReadAll(reader)
 }
@@ -410,7 +418,11 @@ func (s *S3Storage) retrieveSync(datasetID string) (DatasetData, error) {
 			return s.fallback.Retrieve(datasetID)
 		}
 	}
-	defer object.Close()
+	defer func() {
+		if closeErr := object.Close(); closeErr != nil {
+			log.Printf("Failed to close S3 object: %v", closeErr)
+		}
+	}()
 
 	data, err := io.ReadAll(object)
 	if err != nil {
@@ -592,7 +604,11 @@ func (s *S3Storage) getFaceImage(ctx context.Context, filename string, w http.Re
 	if err != nil {
 		return fmt.Errorf("failed to get face image from S3: %w", err)
 	}
-	defer reader.Close()
+	defer func() {
+		if closeErr := reader.Close(); closeErr != nil {
+			log.Printf("Failed to close S3 reader: %v", closeErr)
+		}
+	}()
 
 	// Copy the image data to the response writer
 	_, err = io.Copy(w, reader)
@@ -628,7 +644,11 @@ func (s *S3Storage) getTeamLogo(ctx context.Context, filename string, w http.Res
 	if err != nil {
 		return fmt.Errorf("failed to get team logo from S3: %w", err)
 	}
-	defer reader.Close()
+	defer func() {
+		if closeErr := reader.Close(); closeErr != nil {
+			log.Printf("Failed to close S3 reader: %v", closeErr)
+		}
+	}()
 
 	// Copy the image data to the response writer
 	_, err = io.Copy(w, reader)
@@ -811,8 +831,12 @@ func (s *LocalFileStorage) Delete(datasetID string) error {
 	}
 
 	// Don't treat "file not found" as an error
-	os.Remove(compressedFile)
-	os.Remove(uncompressedFile)
+	if err := os.Remove(compressedFile); err != nil && !os.IsNotExist(err) {
+		log.Printf("Warning: Failed to remove compressed file %s: %v", sanitizeForLogging(compressedFile), err)
+	}
+	if err := os.Remove(uncompressedFile); err != nil && !os.IsNotExist(err) {
+		log.Printf("Warning: Failed to remove uncompressed file %s: %v", sanitizeForLogging(uncompressedFile), err)
+	}
 
 	log.Printf("Deleted dataset %s from local storage", sanitizeForLogging(datasetID))
 	return nil

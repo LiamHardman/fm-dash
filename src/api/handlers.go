@@ -300,7 +300,11 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error retrieving the file: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	defer file.Close()
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			RecordError(ctx, closeErr, "Failed to close uploaded file")
+		}
+	}()
 
 	// Validate actual file size by reading content (more secure than relying on headers)
 	limitedReader := http.MaxBytesReader(w, file, getMaxUploadSize())
