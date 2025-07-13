@@ -56,6 +56,10 @@ jobs:
         working-directory: ./src/api
         run: go mod download
 
+      - name: Download Go dependencies
+        working-directory: ./src/api
+        run: go mod download
+
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
