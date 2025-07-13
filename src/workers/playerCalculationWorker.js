@@ -346,7 +346,7 @@ function batchProcess(players, operations) {
     // Validate operation.id to prevent remote property injection
     if (!isValidOperationId(operation.id)) {
       // Use a safe fallback key for invalid IDs
-      const safeKey = 'invalid_' + Math.random().toString(36).substr(2, 9)
+      const safeKey = `invalid_${Math.random().toString(36).substr(2, 9)}`
       results[safeKey] = { error: 'Invalid operation ID' }
       continue
     }

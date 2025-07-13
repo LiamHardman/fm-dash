@@ -1260,7 +1260,7 @@ export default defineComponent({
 
     const transferValueSliderStep = computed(() => {
       const range = currentSliderMax.value - currentSliderMin.value
-      
+
       let step
       if (range <= 0) {
         step = 10000
@@ -1283,23 +1283,23 @@ export default defineComponent({
       } else {
         step = 250000
       }
-      
+
       return step
     })
 
     const formatRangeLabel = (value, isMaxBoundary = false) => {
       if (value === null || value === undefined) return 'N/A'
-      
+
       // Check if the value appears to be in millions (common range for transfer values)
       // If the max value in the dataset is around 700, it's likely in millions
       const isLikelyInMillions = currentSliderMax.value < 10000 && currentSliderMax.value > 100
-      
+
       let displayValue = value
       if (isLikelyInMillions) {
         // Convert from millions to full amount for display
         displayValue = value * 1000000
       }
-      
+
       if (isMaxBoundary) {
         if (
           props.initialDatasetRange &&
@@ -1337,7 +1337,6 @@ export default defineComponent({
     watch(
       () => props.transferValueRange,
       newDynamicRange => {
-        
         if (
           newDynamicRange &&
           typeof newDynamicRange.min === 'number' &&
@@ -1372,7 +1371,6 @@ export default defineComponent({
     watch(
       () => props.initialDatasetRange,
       newInitialRange => {
-        
         if (
           newInitialRange &&
           typeof newInitialRange.min === 'number' &&
@@ -1477,7 +1475,6 @@ export default defineComponent({
     }
 
     onMounted(async () => {
-      
       if (playerStore.allAvailableRoles.length === 0 && playerStore.currentDatasetId) {
         await playerStore.fetchAllAvailableRoles()
       }
@@ -1513,7 +1510,6 @@ export default defineComponent({
         min: AGE_SLIDER_MIN,
         max: AGE_SLIDER_MAX
       }
-      
     })
 
     watch(

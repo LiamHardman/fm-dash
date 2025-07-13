@@ -90,16 +90,11 @@ export function usePercentileRetry(player, datasetId, selectedComparisonGroup) {
           player.value.performancePercentiles = updatedPercentiles
         }
 
-        console.log(
-          `📊 Percentiles updated for ${player.value.name} (retry ${percentilesRetryCount.value + 1})`
-        )
         return true
       } else {
-        console.warn(`Failed to fetch percentiles for ${player.value.name}:`, response.status)
         return false
       }
     } catch (error) {
-      console.error(`Error fetching percentiles for ${player.value.name}:`, error)
       return false
     } finally {
       isLoadingPercentiles.value = false
@@ -111,10 +106,6 @@ export function usePercentileRetry(player, datasetId, selectedComparisonGroup) {
   const startPercentileRetry = () => {
     if (percentilesNeedRetry.value && percentilesRetryCount.value < maxRetries) {
       const delay = retryDelays[Math.min(percentilesRetryCount.value, retryDelays.length - 1)]
-
-      console.log(
-        `🔄 Scheduling percentile retry for ${player?.value?.name} in ${delay}ms (attempt ${percentilesRetryCount.value + 1}/${maxRetries})`
-      )
 
       retryTimeout = setTimeout(async () => {
         const success = await retryPercentiles()

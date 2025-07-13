@@ -76,12 +76,9 @@ export const usePlayerStore = defineStore('player', () => {
     let min = Number.MAX_SAFE_INTEGER
     let max = Number.MIN_SAFE_INTEGER
     let hasValidValue = false
-    let validCount = 0
-
     for (const player of allPlayers.value) {
       if (typeof player.transferValueAmount === 'number') {
         hasValidValue = true
-        validCount++
         if (player.transferValueAmount < min) min = player.transferValueAmount
         if (player.transferValueAmount > max) max = player.transferValueAmount
       }
@@ -250,12 +247,12 @@ export const usePlayerStore = defineStore('player', () => {
     if (!Array.isArray(playersData)) {
       return []
     }
-    
+
     const processed = playersData.map(p => ({
       ...p,
       age: Number.parseInt(p.age, 10) || 0
     }))
-    
+
     return processed
   }
 
