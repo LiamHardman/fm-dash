@@ -22,7 +22,7 @@ linters:
     - revive
     - unparam
   disable:
-    - typecheck
+    # - typecheck (removed, not a linter in v2)
 
 linters-settings:
   gofmt:
