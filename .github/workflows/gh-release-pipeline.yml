@@ -60,10 +60,14 @@ jobs:
         working-directory: ./src/api
         run: go mod download
 
+      - name: Tidy go.mod and go.sum
+        working-directory: ./src/api
+        run: go mod tidy
+
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
-          version: v1.59
+          version: v1.59.1
           working-directory: src/api
           args: --timeout=5m
 
@@ -443,7 +447,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: '1.24.3'
 
       - name: Build Go backend
         run: |
