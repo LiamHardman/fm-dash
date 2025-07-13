@@ -8,7 +8,7 @@ run:
 
 linters:
   enable:
-    - gosimple
+    - errcheck
     - govet
     - ineffassign
     - staticcheck
