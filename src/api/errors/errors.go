@@ -57,6 +57,11 @@ var (
 	ErrTokenizingHTML                   = errors.New("error tokenizing HTML")
 	ErrFailedToParseAppearances         = errors.New("failed to parse appearances")
 	ErrInvalidAppearancesFormat         = errors.New("invalid appearances format")
+	ErrEmptyString                      = errors.New("empty string")
+	ErrInvalidCharacter                 = errors.New("invalid character")
+	ErrCannotProcessRow                 = errors.New("cannot process row: headers are empty")
+	ErrSkippedRowEmpty                  = errors.New("skipped row: 'Name' field missing and row appears empty or is likely a non-player row (e.g., header repetition, spacer)")
+	ErrSkippedRowNameMissing            = errors.New("skipped row: 'Name' field is missing or empty, but other data present")
 
 	// Configuration errors
 	ErrEmptyWeightsFile       = errors.New("loaded weights file is empty")
@@ -77,29 +82,33 @@ var (
 	ErrFilenameDirectorySeparators = errors.New("filename contains directory separators")
 	ErrFilenameNullBytes           = errors.New("filename contains null bytes")
 	ErrFilenameInvalidChars        = errors.New("filename contains invalid characters")
-	ErrIDEmpty                     = errors.New("ID cannot be empty")
-	ErrIDTooLong                   = errors.New("ID too long")
-	ErrIDPathTraversal             = errors.New("ID contains path traversal sequence")
-	ErrIDDirectorySeparators       = errors.New("ID contains directory separators")
-	ErrIDNullBytes                 = errors.New("ID contains null bytes")
-	ErrIDInvalidChars              = errors.New("ID contains invalid characters")
-	ErrPathEscapesBase             = errors.New("path escapes base directory")
+
+	// ID validation errors
+	ErrIDEmpty               = errors.New("ID cannot be empty")
+	ErrIDTooLong             = errors.New("ID too long")
+	ErrIDPathTraversal       = errors.New("ID contains path traversal sequence")
+	ErrIDDirectorySeparators = errors.New("ID contains directory separators")
+	ErrIDNullBytes           = errors.New("ID contains null bytes")
+	ErrIDInvalidChars        = errors.New("ID contains invalid characters")
+
+	// Panic and recovery errors
+	ErrPathEscapesBase = errors.New("path escapes base directory")
 
 	// Service errors
 	ErrDatasetIDEmpty         = errors.New("dataset ID cannot be empty")
 	ErrDatasetNotFound        = errors.New("dataset not found")
 	ErrNoPlayersToStore       = errors.New("no players to store")
-	ErrPlayerNoName           = errors.New("player has no name")
 	ErrNoPlayersToProcess     = errors.New("no players to process")
 	ErrNoPlayersForValidation = errors.New("no players provided for validation")
+	ErrPlayerNoName           = errors.New("player has no name")
 	ErrValidationFailed       = errors.New("validation failed")
 	ErrFileContentEmpty       = errors.New("file content is empty")
 	ErrUnsupportedFileFormat  = errors.New("unsupported file format, expected .html file")
 	ErrInvalidHTML            = errors.New("file does not appear to be valid HTML")
+	ErrS3ClientNotAvailable   = errors.New("S3 client not available")
 
 	// Storage errors
-	ErrS3ClientNotAvailable = errors.New("S3 client not available")
-	ErrJSONMarshalPanic     = errors.New("panic during JSON marshal")
+	ErrJSONMarshalPanic = errors.New("panic during JSON marshal")
 
 	// HTTP errors
 	ErrHTTPStatus     = errors.New("HTTP status error")
@@ -221,7 +230,7 @@ func WrapErrValidationFailed(errors interface{}) error {
 }
 
 func WrapErrAttributeAndRoleError(attrErr, roleErr error) error {
-	return fmt.Errorf("attribute error: %v, role error: %v", attrErr, roleErr)
+	return fmt.Errorf("attribute error: %w, role error: %w", attrErr, roleErr)
 }
 
 func WrapErrTokenizingHTML(err error) error {
@@ -234,6 +243,16 @@ func WrapErrFailedToParseAppearances() error {
 
 func WrapErrInvalidAppearancesFormat() error {
 	return fmt.Errorf("%w", ErrInvalidAppearancesFormat)
+}
+
+// WrapErrSkippedRowNameMissing wraps a skipped row name missing error with context.
+func WrapErrSkippedRowNameMissing(cells string) error {
+	return fmt.Errorf("%w. First few cells: %s", ErrSkippedRowNameMissing, cells)
+}
+
+// WrapErrIDTooLong wraps an ID too long error with context.
+func WrapErrIDTooLong(maxLength int) error {
+	return fmt.Errorf("%w (max %d characters)", ErrIDTooLong, maxLength)
 }
 
 // Validation errors

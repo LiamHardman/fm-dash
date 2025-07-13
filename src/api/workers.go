@@ -1,9 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"sync"
 	"sync/atomic"
+
+	apperrors "api/errors"
 )
 
 // WorkerStats tracks performance metrics for worker pools
@@ -60,7 +61,7 @@ func OptimizedPlayerParserWorker(workerID int, rowCellsChan <-chan []string, res
 			LogCritical("Worker %d PANICKED: %v", workerID, r)
 			// Send error result to prevent deadlock
 			select {
-			case resultsChan <- PlayerParseResult{Err: fmt.Errorf("worker %d panicked: %v", workerID, r)}:
+			case resultsChan <- PlayerParseResult{Err: apperrors.WrapErrWorkerPanic(workerID, r)}:
 			default:
 				// Channel might be full, log the issue
 				LogWarn("Worker %d: couldn't send panic error, channel full", workerID)

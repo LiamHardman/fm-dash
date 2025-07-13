@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	apperrors "api/errors"
 )
 
 // SearchResult represents a search result item
@@ -36,7 +38,7 @@ func NewSearchService(playerService *PlayerService) *SearchService {
 // SearchAll performs a comprehensive search across all data types
 func (s *SearchService) SearchAll(ctx context.Context, datasetID, query string, maxResults int) ([]SearchResult, error) {
 	if datasetID == "" {
-		return nil, fmt.Errorf("dataset ID cannot be empty")
+		return nil, apperrors.ErrDatasetIDEmpty
 	}
 
 	if query == "" {

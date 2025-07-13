@@ -14,6 +14,8 @@ import (
 	"sync"
 	"time"
 
+	apperrors "api/errors"
+
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"go.opentelemetry.io/otel/attribute"
@@ -106,8 +108,9 @@ func (s *InMemoryStorage) Retrieve(datasetID string) (DatasetData, error) {
 
 	data, exists := s.data[datasetID]
 	if !exists {
-		RecordError(ctx, fmt.Errorf("dataset %s not found", datasetID), "Dataset not found in memory storage")
-		return DatasetData{}, fmt.Errorf("dataset %s not found", datasetID)
+		err := apperrors.WrapErrDatasetNotFound(datasetID)
+		RecordError(ctx, err, "Dataset not found in memory storage")
+		return DatasetData{}, err
 	}
 
 	SetSpanAttributes(ctx, attribute.Int("dataset.player_count", len(data.Players)))
@@ -313,7 +316,7 @@ func (s *S3Storage) storeSync(datasetID string, data DatasetData) error {
 	// Add defensive programming for JSON marshaling to catch race conditions
 	defer func() {
 		if r := recover(); r != nil {
-			RecordError(ctx, fmt.Errorf("panic during JSON marshal: %v", r), "JSON marshal panic recovered")
+			RecordError(ctx, apperrors.WrapErrJSONMarshalPanic(r), "JSON marshal panic recovered")
 			log.Printf("PANIC during JSON marshaling for dataset %s: %v", sanitizeForLogging(datasetID), r)
 		}
 	}()
@@ -659,10 +662,11 @@ func (s *LocalFileStorage) Store(datasetID string, data DatasetData) error {
 	ctx, span := StartSpan(ctx, "storage.local_file.store")
 	defer span.End()
 
-	// Validate datasetID to prevent path injection
-	if err := validateID(datasetID, 255); err != nil {
-		RecordError(ctx, fmt.Errorf("invalid dataset ID: %s, error: %v", sanitizeForLogging(datasetID), err), "Invalid dataset ID format")
-		return fmt.Errorf("invalid dataset ID: %w", err)
+	// Validate dataset ID format
+	if err := validateID(datasetID, 100); err != nil {
+		err := apperrors.WrapErrInvalidDatasetID(sanitizeForLogging(datasetID), err)
+		RecordError(ctx, err, "Invalid dataset ID format")
+		return err
 	}
 
 	SetSpanAttributes(ctx,
@@ -677,8 +681,9 @@ func (s *LocalFileStorage) Store(datasetID string, data DatasetData) error {
 	// Safely construct the filename to prevent path injection
 	filename, err := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s.json.gz", datasetID))
 	if err != nil {
-		RecordError(ctx, fmt.Errorf("invalid file path for dataset %s: %v", sanitizeForLogging(datasetID), err), "Path validation failed")
-		return fmt.Errorf("invalid file path: %w", err)
+		err := apperrors.WrapErrInvalidFilePathForDataset(sanitizeForLogging(datasetID), err)
+		RecordError(ctx, err, "Path validation failed")
+		return err
 	}
 
 	// Marshal to JSON
@@ -716,10 +721,11 @@ func (s *LocalFileStorage) Retrieve(datasetID string) (DatasetData, error) {
 	ctx, span := StartSpan(ctx, "storage.local_file.retrieve")
 	defer span.End()
 
-	// Validate datasetID to prevent path injection
-	if err := validateID(datasetID, 255); err != nil {
-		RecordError(ctx, fmt.Errorf("invalid dataset ID: %s, error: %v", sanitizeForLogging(datasetID), err), "Invalid dataset ID format")
-		return DatasetData{}, fmt.Errorf("invalid dataset ID: %w", err)
+	// Validate dataset ID format
+	if err := validateID(datasetID, 100); err != nil {
+		err := apperrors.WrapErrInvalidDatasetID(sanitizeForLogging(datasetID), err)
+		RecordError(ctx, err, "Invalid dataset ID format")
+		return DatasetData{}, err
 	}
 
 	SetSpanAttributes(ctx,
@@ -733,29 +739,25 @@ func (s *LocalFileStorage) Retrieve(datasetID string) (DatasetData, error) {
 	// Try compressed file first - safely construct the filename
 	filename, err := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s.json.gz", datasetID))
 	if err != nil {
-		RecordError(ctx, fmt.Errorf("invalid file path for dataset %s: %v", sanitizeForLogging(datasetID), err), "Path validation failed")
-		return DatasetData{}, fmt.Errorf("invalid file path: %w", err)
+		err := apperrors.WrapErrInvalidFilePathForDataset(sanitizeForLogging(datasetID), err)
+		RecordError(ctx, err, "Path validation failed")
+		return DatasetData{}, err
 	}
 	isCompressed := true
 
+	// Check if file exists
+	if _, err := os.Stat(filename); os.IsNotExist(err) {
+		err := apperrors.WrapErrDatasetNotFound(sanitizeForLogging(datasetID))
+		RecordError(ctx, err, "Path validation failed")
+		return DatasetData{}, err
+	}
+
+	// Read and decompress the file
 	data, err := os.ReadFile(filename)
 	if err != nil {
-		// Try uncompressed file - safely construct the filename
-		filename, err = validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s.json", datasetID))
-		if err != nil {
-			RecordError(ctx, fmt.Errorf("invalid file path for dataset %s: %v", sanitizeForLogging(datasetID), err), "Path validation failed")
-			return DatasetData{}, fmt.Errorf("invalid file path: %w", err)
-		}
-		isCompressed = false
-		data, err = os.ReadFile(filename)
-		if err != nil {
-			if os.IsNotExist(err) {
-				RecordError(ctx, fmt.Errorf("dataset %s not found", sanitizeForLogging(datasetID)), "Dataset not found in local storage")
-				return DatasetData{}, fmt.Errorf("dataset %s not found", sanitizeForLogging(datasetID))
-			}
-			RecordError(ctx, err, "Failed to read dataset file")
-			return DatasetData{}, fmt.Errorf("failed to read dataset file: %w", err)
-		}
+		err := apperrors.WrapErrInvalidFilePathForDataset(sanitizeForLogging(datasetID), err)
+		RecordError(ctx, err, "Path validation failed")
+		return DatasetData{}, err
 	}
 
 	SetSpanAttributes(ctx,
@@ -789,8 +791,8 @@ func (s *LocalFileStorage) Retrieve(datasetID string) (DatasetData, error) {
 }
 
 func (s *LocalFileStorage) Delete(datasetID string) error {
-	// Validate datasetID to prevent path injection
-	if err := validateID(datasetID, 255); err != nil {
+	// Validate dataset ID format
+	if err := validateID(datasetID, 100); err != nil {
 		return fmt.Errorf("invalid dataset ID: %w", err)
 	}
 

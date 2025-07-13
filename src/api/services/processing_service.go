@@ -8,6 +8,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	apperrors "api/errors"
 )
 
 // ProcessingService handles file processing and data transformation
@@ -44,7 +46,7 @@ func (s *ProcessingService) ProcessPlayerFile(ctx context.Context, fileContent [
 	startTime := time.Now()
 
 	if len(fileContent) == 0 {
-		return nil, fmt.Errorf("file content is empty")
+		return nil, apperrors.ErrFileContentEmpty
 	}
 
 	// Validate file format
@@ -101,14 +103,14 @@ func (s *ProcessingService) ProcessPlayerFile(ctx context.Context, fileContent [
 func (s *ProcessingService) validateFileFormat(filename string, content []byte) error {
 	// Check file extension
 	if !strings.HasSuffix(strings.ToLower(filename), ".html") {
-		return fmt.Errorf("unsupported file format, expected .html file")
+		return apperrors.ErrUnsupportedFileFormat
 	}
 
 	// Check content starts with HTML
 	contentStr := string(content[:minInt(100, len(content))])
 	if !strings.Contains(strings.ToLower(contentStr), "<html") &&
 		!strings.Contains(strings.ToLower(contentStr), "<!doctype") {
-		return fmt.Errorf("file does not appear to be valid HTML")
+		return apperrors.ErrInvalidHTML
 	}
 
 	return nil

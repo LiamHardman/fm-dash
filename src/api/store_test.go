@@ -1,9 +1,10 @@
 package main
 
 import (
-	"errors"
 	"testing"
 	"time"
+
+	apperrors "api/errors"
 )
 
 // Mock storage implementation for testing
@@ -25,7 +26,7 @@ func (m *MockStorage) Store(datasetID string, data DatasetData) error {
 func (m *MockStorage) Retrieve(datasetID string) (DatasetData, error) {
 	data, exists := m.data[datasetID]
 	if !exists {
-		return DatasetData{}, errors.New("dataset not found")
+		return DatasetData{}, apperrors.ErrDatasetNotFound
 	}
 	return data, nil
 }
