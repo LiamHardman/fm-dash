@@ -48,8 +48,8 @@ type ParseTimer struct {
 	context   context.Context
 }
 
-// NewParseTimer creates a new timer for tracking parsing performance
-func NewParseTimer(operation string) *ParseTimer {
+// CreateParseTimer creates a new timer for tracking parsing performance
+func CreateParseTimer(operation string) *ParseTimer {
 	return &ParseTimer{
 		startTime: time.Now(),
 		operation: operation,
@@ -57,8 +57,8 @@ func NewParseTimer(operation string) *ParseTimer {
 	}
 }
 
-// NewParseTimerWithContext creates a timer with context
-func NewParseTimerWithContext(ctx context.Context, operation string) *ParseTimer {
+// CreateParseTimerWithContext creates a timer with context
+func CreateParseTimerWithContext(ctx context.Context, operation string) *ParseTimer {
 	return &ParseTimer{
 		startTime: time.Now(),
 		operation: operation,
@@ -91,8 +91,8 @@ type JSONTimer struct {
 	isUnmarshal bool
 }
 
-// NewJSONTimer creates a timer for JSON operations
-func NewJSONTimer(isUnmarshal bool) *JSONTimer {
+// CreateJSONTimer creates a new timer for tracking JSON operations
+func CreateJSONTimer(isUnmarshal bool) *JSONTimer {
 	return &JSONTimer{
 		startTime:   time.Now(),
 		isUnmarshal: isUnmarshal,

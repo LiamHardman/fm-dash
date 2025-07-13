@@ -1,4 +1,4 @@
-// src/api/services/service_manager.go
+// Package services provides service management functionality
 package services
 
 import (
@@ -13,12 +13,12 @@ type ServiceManager struct {
 	ProcessingService *ProcessingService
 }
 
-// NewServiceManager creates a new service manager with all services
-func NewServiceManager(storage StorageInterface) *ServiceManager {
+// CreateServiceManager creates a new service manager with all services
+func CreateServiceManager(storage StorageInterface) *ServiceManager {
 	// Initialize services in dependency order
-	playerService := NewPlayerService(storage)
-	searchService := NewSearchService(playerService)
-	processingService := NewProcessingService(playerService)
+	playerService := CreatePlayerService(storage)
+	searchService := CreateSearchService(playerService)
+	processingService := CreateProcessingService(playerService)
 
 	manager := &ServiceManager{
 		PlayerService:     playerService,
@@ -63,7 +63,7 @@ func (sm *ServiceManager) HealthCheck(ctx context.Context) map[string]string {
 }
 
 // Shutdown gracefully shuts down all services
-func (sm *ServiceManager) Shutdown(ctx context.Context) error {
+func (sm *ServiceManager) Shutdown(_ context.Context) error {
 	log.Println("Shutting down service manager...")
 
 	// Services don't currently need explicit shutdown,

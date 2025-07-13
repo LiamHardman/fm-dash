@@ -49,17 +49,25 @@ func TestGetEnvWithDefault(t *testing.T) {
 			originalValue := os.Getenv(tt.key)
 			defer func() {
 				if originalValue != "" {
-					os.Setenv(tt.key, originalValue)
+					if err := os.Setenv(tt.key, originalValue); err != nil {
+						t.Logf("Failed to restore environment variable %s: %v", tt.key, err)
+					}
 				} else {
-					os.Unsetenv(tt.key)
+					if err := os.Unsetenv(tt.key); err != nil {
+						t.Logf("Failed to unset environment variable %s: %v", tt.key, err)
+					}
 				}
 			}()
 
 			// Set up test environment
 			if tt.envValue != "" {
-				os.Setenv(tt.key, tt.envValue)
+				if err := os.Setenv(tt.key, tt.envValue); err != nil {
+					t.Logf("Failed to set environment variable %s: %v", tt.key, err)
+				}
 			} else {
-				os.Unsetenv(tt.key)
+				if err := os.Unsetenv(tt.key); err != nil {
+					t.Logf("Failed to unset environment variable %s: %v", tt.key, err)
+				}
 			}
 
 			result := getEnvWithDefault(tt.key, tt.defaultValue)
@@ -204,22 +212,30 @@ func TestValidateEnvironmentVariables(t *testing.T) {
 			defer func() {
 				for key, originalValue := range originalEnvVars {
 					if originalValue != "" {
-						os.Setenv(key, originalValue)
+						if err := os.Setenv(key, originalValue); err != nil {
+							t.Logf("Failed to restore environment variable %s: %v", key, err)
+						}
 					} else {
-						os.Unsetenv(key)
+						if err := os.Unsetenv(key); err != nil {
+							t.Logf("Failed to unset environment variable %s: %v", key, err)
+						}
 					}
 				}
 				// Clean up any test env vars not in original
 				for key := range tt.envVars {
 					if _, exists := originalEnvVars[key]; !exists {
-						os.Unsetenv(key)
+						if err := os.Unsetenv(key); err != nil {
+							t.Logf("Failed to unset environment variable %s: %v", key, err)
+						}
 					}
 				}
 			}()
 
 			// Set up test environment variables
 			for key, value := range tt.envVars {
-				os.Setenv(key, value)
+				if err := os.Setenv(key, value); err != nil {
+					t.Logf("Failed to set environment variable %s: %v", key, err)
+				}
 			}
 
 			err := validateEnvironmentVariables()

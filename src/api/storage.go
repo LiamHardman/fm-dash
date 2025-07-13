@@ -14,6 +14,8 @@ import (
 	"sync"
 	"time"
 
+	apperrors "api/errors"
+
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"go.opentelemetry.io/otel/attribute"
@@ -23,7 +25,11 @@ import (
 func compressData(data []byte) ([]byte, error) {
 	var buf bytes.Buffer
 	gz := gzip.NewWriter(&buf)
-	defer gz.Close()
+	defer func() {
+		if closeErr := gz.Close(); closeErr != nil {
+			log.Printf("Failed to close gzip writer: %v", closeErr)
+		}
+	}()
 
 	if _, err := gz.Write(data); err != nil {
 		return nil, err
@@ -42,11 +48,16 @@ func decompressData(data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer reader.Close()
+	defer func() {
+		if closeErr := reader.Close(); closeErr != nil {
+			log.Printf("Failed to close gzip reader: %v", closeErr)
+		}
+	}()
 
 	return io.ReadAll(reader)
 }
 
+// StorageInterface defines the interface for data storage operations
 type StorageInterface interface {
 	Store(datasetID string, data DatasetData) error
 	Retrieve(datasetID string) (DatasetData, error)
@@ -55,22 +66,26 @@ type StorageInterface interface {
 	CleanupOldDatasets(maxAge time.Duration, excludeDatasets []string) error
 }
 
+// DatasetData represents a dataset containing player information
 type DatasetData struct {
 	Players        []Player `json:"players"`
 	CurrencySymbol string   `json:"currency_symbol"`
 }
 
+// InMemoryStorage provides in-memory storage for datasets
 type InMemoryStorage struct {
 	data  map[string]DatasetData
 	mutex sync.RWMutex
 }
 
-func NewInMemoryStorage() *InMemoryStorage {
+// CreateInMemoryStorage creates a new in-memory storage instance
+func CreateInMemoryStorage() *InMemoryStorage {
 	return &InMemoryStorage{
 		data: make(map[string]DatasetData),
 	}
 }
 
+// Store saves a dataset to in-memory storage
 func (s *InMemoryStorage) Store(datasetID string, data DatasetData) error {
 	ctx := context.Background()
 	ctx, span := StartSpan(ctx, "storage.memory.store")
@@ -90,6 +105,7 @@ func (s *InMemoryStorage) Store(datasetID string, data DatasetData) error {
 	return nil
 }
 
+// Retrieve retrieves a dataset from in-memory storage
 func (s *InMemoryStorage) Retrieve(datasetID string) (DatasetData, error) {
 	ctx := context.Background()
 	ctx, span := StartSpan(ctx, "storage.memory.retrieve")
@@ -106,8 +122,9 @@ func (s *InMemoryStorage) Retrieve(datasetID string) (DatasetData, error) {
 
 	data, exists := s.data[datasetID]
 	if !exists {
-		RecordError(ctx, fmt.Errorf("dataset %s not found", datasetID), "Dataset not found in memory storage")
-		return DatasetData{}, fmt.Errorf("dataset %s not found", datasetID)
+		err := apperrors.WrapErrDatasetNotFound(datasetID)
+		RecordError(ctx, err, "Dataset not found in memory storage")
+		return DatasetData{}, err
 	}
 
 	SetSpanAttributes(ctx, attribute.Int("dataset.player_count", len(data.Players)))
@@ -115,6 +132,7 @@ func (s *InMemoryStorage) Retrieve(datasetID string) (DatasetData, error) {
 	return data, nil
 }
 
+// Delete removes a dataset from in-memory storage
 func (s *InMemoryStorage) Delete(datasetID string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -122,6 +140,7 @@ func (s *InMemoryStorage) Delete(datasetID string) error {
 	return nil
 }
 
+// List returns all dataset IDs stored in memory
 func (s *InMemoryStorage) List() ([]string, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
@@ -132,12 +151,14 @@ func (s *InMemoryStorage) List() ([]string, error) {
 	return ids, nil
 }
 
-func (s *InMemoryStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets []string) error {
+// CleanupOldDatasets removes datasets older than the specified duration
+func (s *InMemoryStorage) CleanupOldDatasets(_ time.Duration, _ []string) error {
 	// In-memory storage doesn't persist data, so no cleanup needed
 	log.Println("CleanupOldDatasets called on in-memory storage - no action needed")
 	return nil
 }
 
+// S3Storage provides S3-based storage for datasets
 type S3Storage struct {
 	client     *minio.Client
 	bucketName string
@@ -160,8 +181,8 @@ type storageResult struct {
 	err  error
 }
 
-// NewS3Storage creates a new S3 storage instance with fallback
-func NewS3Storage(endpoint, accessKey, secretKey, bucketName string, useSSL bool, fallback StorageInterface) *S3Storage {
+// CreateS3Storage creates a new S3 storage instance with fallback
+func CreateS3Storage(endpoint, accessKey, secretKey, bucketName string, useSSL bool, fallback StorageInterface) *S3Storage {
 	const workerPoolSize = 10    // Increased worker pool size
 	const operationsBuffer = 200 // Increased buffer size
 
@@ -313,7 +334,7 @@ func (s *S3Storage) storeSync(datasetID string, data DatasetData) error {
 	// Add defensive programming for JSON marshaling to catch race conditions
 	defer func() {
 		if r := recover(); r != nil {
-			RecordError(ctx, fmt.Errorf("panic during JSON marshal: %v", r), "JSON marshal panic recovered")
+			RecordError(ctx, apperrors.WrapErrJSONMarshalPanic(r), "JSON marshal panic recovered")
 			log.Printf("PANIC during JSON marshaling for dataset %s: %v", sanitizeForLogging(datasetID), r)
 		}
 	}()
@@ -407,7 +428,11 @@ func (s *S3Storage) retrieveSync(datasetID string) (DatasetData, error) {
 			return s.fallback.Retrieve(datasetID)
 		}
 	}
-	defer object.Close()
+	defer func() {
+		if closeErr := object.Close(); closeErr != nil {
+			log.Printf("Failed to close S3 object: %v", closeErr)
+		}
+	}()
 
 	data, err := io.ReadAll(object)
 	if err != nil {
@@ -479,6 +504,7 @@ func (s *S3Storage) deleteSync(datasetID string) error {
 	return nil
 }
 
+// List returns all dataset IDs stored in S3
 func (s *S3Storage) List() ([]string, error) {
 	if s.client == nil {
 		return s.fallback.List()
@@ -508,6 +534,7 @@ func (s *S3Storage) List() ([]string, error) {
 	return ids, nil
 }
 
+// CleanupOldDatasets removes datasets older than the specified duration from S3
 func (s *S3Storage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets []string) error {
 	if s.client == nil {
 		return s.fallback.CleanupOldDatasets(maxAge, excludeDatasets)
@@ -567,7 +594,7 @@ func (s *S3Storage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets []s
 // getFaceImage retrieves a face image from S3 and writes it to the response writer
 func (s *S3Storage) getFaceImage(ctx context.Context, filename string, w http.ResponseWriter) error {
 	if s.client == nil {
-		return fmt.Errorf("S3 client not available")
+		return apperrors.ErrS3ClientNotAvailable
 	}
 
 	// Get the faces bucket name from environment, default to the main bucket + "/faces" prefix
@@ -589,7 +616,11 @@ func (s *S3Storage) getFaceImage(ctx context.Context, filename string, w http.Re
 	if err != nil {
 		return fmt.Errorf("failed to get face image from S3: %w", err)
 	}
-	defer reader.Close()
+	defer func() {
+		if closeErr := reader.Close(); closeErr != nil {
+			log.Printf("Failed to close S3 reader: %v", closeErr)
+		}
+	}()
 
 	// Copy the image data to the response writer
 	_, err = io.Copy(w, reader)
@@ -603,7 +634,7 @@ func (s *S3Storage) getFaceImage(ctx context.Context, filename string, w http.Re
 // getTeamLogo retrieves a team logo image from S3 and writes it to the response writer
 func (s *S3Storage) getTeamLogo(ctx context.Context, filename string, w http.ResponseWriter) error {
 	if s.client == nil {
-		return fmt.Errorf("S3 client not available")
+		return apperrors.ErrS3ClientNotAvailable
 	}
 
 	// Get the logos bucket name from environment, default to the main bucket + "/logos/clubs" prefix
@@ -625,7 +656,11 @@ func (s *S3Storage) getTeamLogo(ctx context.Context, filename string, w http.Res
 	if err != nil {
 		return fmt.Errorf("failed to get team logo from S3: %w", err)
 	}
-	defer reader.Close()
+	defer func() {
+		if closeErr := reader.Close(); closeErr != nil {
+			log.Printf("Failed to close S3 reader: %v", closeErr)
+		}
+	}()
 
 	// Copy the image data to the response writer
 	_, err = io.Copy(w, reader)
@@ -642,9 +677,10 @@ type LocalFileStorage struct {
 	mutex      sync.RWMutex
 }
 
-func NewLocalFileStorage(datasetDir string) (*LocalFileStorage, error) {
+// CreateLocalFileStorage creates a new local file storage instance
+func CreateLocalFileStorage(datasetDir string) (*LocalFileStorage, error) {
 	// Create datasets directory if it doesn't exist
-	if err := os.MkdirAll(datasetDir, 0o755); err != nil {
+	if err := os.MkdirAll(datasetDir, 0o750); err != nil {
 		return nil, fmt.Errorf("failed to create datasets directory %s: %w", datasetDir, err)
 	}
 
@@ -654,15 +690,17 @@ func NewLocalFileStorage(datasetDir string) (*LocalFileStorage, error) {
 	}, nil
 }
 
+// Store saves a dataset to local file storage
 func (s *LocalFileStorage) Store(datasetID string, data DatasetData) error {
 	ctx := context.Background()
 	ctx, span := StartSpan(ctx, "storage.local_file.store")
 	defer span.End()
 
-	// Validate datasetID to prevent path injection
-	if err := validateID(datasetID, 255); err != nil {
-		RecordError(ctx, fmt.Errorf("invalid dataset ID: %s, error: %v", sanitizeForLogging(datasetID), err), "Invalid dataset ID format")
-		return fmt.Errorf("invalid dataset ID: %w", err)
+	// Validate dataset ID format
+	if err := validateID(datasetID, 100); err != nil {
+		err := apperrors.WrapErrInvalidDatasetID(sanitizeForLogging(datasetID), err)
+		RecordError(ctx, err, "Invalid dataset ID format")
+		return err
 	}
 
 	SetSpanAttributes(ctx,
@@ -677,8 +715,9 @@ func (s *LocalFileStorage) Store(datasetID string, data DatasetData) error {
 	// Safely construct the filename to prevent path injection
 	filename, err := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s.json.gz", datasetID))
 	if err != nil {
-		RecordError(ctx, fmt.Errorf("invalid file path for dataset %s: %v", sanitizeForLogging(datasetID), err), "Path validation failed")
-		return fmt.Errorf("invalid file path: %w", err)
+		err := apperrors.WrapErrInvalidFilePathForDataset(sanitizeForLogging(datasetID), err)
+		RecordError(ctx, err, "Path validation failed")
+		return err
 	}
 
 	// Marshal to JSON
@@ -711,15 +750,17 @@ func (s *LocalFileStorage) Store(datasetID string, data DatasetData) error {
 	return nil
 }
 
+// Retrieve retrieves a dataset from local file storage
 func (s *LocalFileStorage) Retrieve(datasetID string) (DatasetData, error) {
 	ctx := context.Background()
 	ctx, span := StartSpan(ctx, "storage.local_file.retrieve")
 	defer span.End()
 
-	// Validate datasetID to prevent path injection
-	if err := validateID(datasetID, 255); err != nil {
-		RecordError(ctx, fmt.Errorf("invalid dataset ID: %s, error: %v", sanitizeForLogging(datasetID), err), "Invalid dataset ID format")
-		return DatasetData{}, fmt.Errorf("invalid dataset ID: %w", err)
+	// Validate dataset ID format
+	if err := validateID(datasetID, 100); err != nil {
+		err := apperrors.WrapErrInvalidDatasetID(sanitizeForLogging(datasetID), err)
+		RecordError(ctx, err, "Invalid dataset ID format")
+		return DatasetData{}, err
 	}
 
 	SetSpanAttributes(ctx,
@@ -733,29 +774,26 @@ func (s *LocalFileStorage) Retrieve(datasetID string) (DatasetData, error) {
 	// Try compressed file first - safely construct the filename
 	filename, err := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s.json.gz", datasetID))
 	if err != nil {
-		RecordError(ctx, fmt.Errorf("invalid file path for dataset %s: %v", sanitizeForLogging(datasetID), err), "Path validation failed")
-		return DatasetData{}, fmt.Errorf("invalid file path: %w", err)
+		err := apperrors.WrapErrInvalidFilePathForDataset(sanitizeForLogging(datasetID), err)
+		RecordError(ctx, err, "Path validation failed")
+		return DatasetData{}, err
 	}
 	isCompressed := true
 
+	// Check if file exists
+	if _, err := os.Stat(filename); os.IsNotExist(err) {
+		err := apperrors.WrapErrDatasetNotFound(sanitizeForLogging(datasetID))
+		RecordError(ctx, err, "Path validation failed")
+		return DatasetData{}, err
+	}
+
+	// Read and decompress the file
+	//nolint:gosec // filename is validated by validateAndJoinPath
 	data, err := os.ReadFile(filename)
 	if err != nil {
-		// Try uncompressed file - safely construct the filename
-		filename, err = validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s.json", datasetID))
-		if err != nil {
-			RecordError(ctx, fmt.Errorf("invalid file path for dataset %s: %v", sanitizeForLogging(datasetID), err), "Path validation failed")
-			return DatasetData{}, fmt.Errorf("invalid file path: %w", err)
-		}
-		isCompressed = false
-		data, err = os.ReadFile(filename)
-		if err != nil {
-			if os.IsNotExist(err) {
-				RecordError(ctx, fmt.Errorf("dataset %s not found", sanitizeForLogging(datasetID)), "Dataset not found in local storage")
-				return DatasetData{}, fmt.Errorf("dataset %s not found", sanitizeForLogging(datasetID))
-			}
-			RecordError(ctx, err, "Failed to read dataset file")
-			return DatasetData{}, fmt.Errorf("failed to read dataset file: %w", err)
-		}
+		err := apperrors.WrapErrInvalidFilePathForDataset(sanitizeForLogging(datasetID), err)
+		RecordError(ctx, err, "Path validation failed")
+		return DatasetData{}, err
 	}
 
 	SetSpanAttributes(ctx,
@@ -788,9 +826,10 @@ func (s *LocalFileStorage) Retrieve(datasetID string) (DatasetData, error) {
 	return dataset, nil
 }
 
+// Delete removes a dataset from local file storage
 func (s *LocalFileStorage) Delete(datasetID string) error {
-	// Validate datasetID to prevent path injection
-	if err := validateID(datasetID, 255); err != nil {
+	// Validate dataset ID format
+	if err := validateID(datasetID, 100); err != nil {
 		return fmt.Errorf("invalid dataset ID: %w", err)
 	}
 
@@ -809,13 +848,18 @@ func (s *LocalFileStorage) Delete(datasetID string) error {
 	}
 
 	// Don't treat "file not found" as an error
-	os.Remove(compressedFile)
-	os.Remove(uncompressedFile)
+	if err := os.Remove(compressedFile); err != nil && !os.IsNotExist(err) {
+		log.Printf("Warning: Failed to remove compressed file %s: %v", sanitizeForLogging(compressedFile), err)
+	}
+	if err := os.Remove(uncompressedFile); err != nil && !os.IsNotExist(err) {
+		log.Printf("Warning: Failed to remove uncompressed file %s: %v", sanitizeForLogging(uncompressedFile), err)
+	}
 
 	log.Printf("Deleted dataset %s from local storage", sanitizeForLogging(datasetID))
 	return nil
 }
 
+// List returns all dataset IDs stored in local files
 func (s *LocalFileStorage) List() ([]string, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
@@ -855,6 +899,7 @@ func (s *LocalFileStorage) List() ([]string, error) {
 	return ids, nil
 }
 
+// CleanupOldDatasets removes datasets older than the specified duration from local files
 func (s *LocalFileStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets []string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -931,9 +976,10 @@ type HybridStorage struct {
 	local  StorageInterface
 }
 
-func NewHybridStorage(datasetDir string) (*HybridStorage, error) {
-	memory := NewInMemoryStorage()
-	local, err := NewLocalFileStorage(datasetDir)
+// CreateHybridStorage creates a new hybrid storage instance
+func CreateHybridStorage(datasetDir string) (*HybridStorage, error) {
+	memory := CreateInMemoryStorage()
+	local, err := CreateLocalFileStorage(datasetDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create local file storage: %w", err)
 	}
@@ -945,6 +991,7 @@ func NewHybridStorage(datasetDir string) (*HybridStorage, error) {
 	}, nil
 }
 
+// Store saves a dataset using hybrid storage (memory + local file)
 func (s *HybridStorage) Store(datasetID string, data DatasetData) error {
 	// Store in both memory and local file
 	if err := s.memory.Store(datasetID, data); err != nil {
@@ -954,6 +1001,7 @@ func (s *HybridStorage) Store(datasetID string, data DatasetData) error {
 	return s.local.Store(datasetID, data)
 }
 
+// Retrieve retrieves a dataset from hybrid storage
 func (s *HybridStorage) Retrieve(datasetID string) (DatasetData, error) {
 	// Try memory first for fastest access
 	data, err := s.memory.Retrieve(datasetID)
@@ -982,6 +1030,7 @@ func (s *HybridStorage) Retrieve(datasetID string) (DatasetData, error) {
 	return data, nil
 }
 
+// Delete removes a dataset from hybrid storage
 func (s *HybridStorage) Delete(datasetID string) error {
 	// Delete from both memory and local file
 	if err := s.memory.Delete(datasetID); err != nil {
@@ -991,6 +1040,7 @@ func (s *HybridStorage) Delete(datasetID string) error {
 	return s.local.Delete(datasetID)
 }
 
+// List returns all dataset IDs from hybrid storage
 func (s *HybridStorage) List() ([]string, error) {
 	// Get datasets from both memory and local storage, then merge
 	memoryIDs, _ := s.memory.List() // Ignore error since memory might be empty
@@ -1016,6 +1066,7 @@ func (s *HybridStorage) List() ([]string, error) {
 	return allIDs, nil
 }
 
+// CleanupOldDatasets removes datasets older than the specified duration from hybrid storage
 func (s *HybridStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets []string) error {
 	// Cleanup both memory and local storage
 	if err := s.memory.CleanupOldDatasets(maxAge, excludeDatasets); err != nil {
@@ -1025,8 +1076,11 @@ func (s *HybridStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets
 	return s.local.CleanupOldDatasets(maxAge, excludeDatasets)
 }
 
+// InitializeStorage creates and returns the appropriate storage implementation
+//
+//nolint:ireturn // StorageInterface is the intended return type for this factory function
 func InitializeStorage() StorageInterface {
-	inMemory := NewInMemoryStorage()
+	inMemory := CreateInMemoryStorage()
 
 	s3Endpoint := os.Getenv("S3_ENDPOINT")
 	if s3Endpoint == "" {
@@ -1038,7 +1092,7 @@ func InitializeStorage() StorageInterface {
 			datasetDir = "./datasets"
 		}
 
-		hybrid, err := NewHybridStorage(datasetDir)
+		hybrid, err := CreateHybridStorage(datasetDir)
 		if err != nil {
 			log.Printf("Failed to initialize hybrid storage: %v. Falling back to in-memory only.", err)
 			return inMemory
@@ -1060,7 +1114,7 @@ func InitializeStorage() StorageInterface {
 			datasetDir = "./datasets"
 		}
 
-		hybrid, err := NewHybridStorage(datasetDir)
+		hybrid, err := CreateHybridStorage(datasetDir)
 		if err != nil {
 			log.Printf("Failed to initialize hybrid storage: %v. Falling back to in-memory only.", err)
 			return inMemory
@@ -1080,7 +1134,7 @@ func InitializeStorage() StorageInterface {
 	if bucketName == "" {
 		bucketName = "v2fmdash"
 	}
-	s3Storage := NewS3Storage(s3Endpoint, accessKey, secretKey, bucketName, useSSL, inMemory)
+	s3Storage := CreateS3Storage(s3Endpoint, accessKey, secretKey, bucketName, useSSL, inMemory)
 
 	LogDebug("Initialized S3 storage with in-memory fallback")
 	return s3Storage

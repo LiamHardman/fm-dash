@@ -51,25 +51,79 @@ jobs:
         with:
           go-version: '1.24.3'
           cache-dependency-path: src/api/go.sum
+          check-latest: true
 
-      - name: Download Go dependencies
+      - name: Download and verify Go dependencies
         working-directory: ./src/api
-        run: go mod download
-
-      - name: Download Go dependencies
+        run: |
+          echo "📦 Downloading Go dependencies..."
+          go mod download
+          go mod verify
+          go mod tidy
+          echo "✅ Dependencies downloaded and verified"
+          
+      - name: Verify Go module setup
         working-directory: ./src/api
-        run: go mod download
-
-      - name: Tidy go.mod and go.sum
+        run: |
+          echo "🔍 Verifying Go module setup..."
+          go list -m all
+          echo "📋 Go environment:"
+          go env
+          echo "📁 Current directory contents:"
+          ls -la
+          echo "✅ Go module setup verified"
+          
+      - name: Build Go module to verify dependencies
         working-directory: ./src/api
-        run: go mod tidy
+        run: |
+          echo "🔨 Building Go module to verify all dependencies..."
+          go build -o /dev/null .
+          echo "✅ Go module builds successfully"
+          
+      - name: Pre-populate Go module cache
+        working-directory: ./src/api
+        run: |
+          echo "📦 Pre-populating Go module cache..."
+          go mod download -x
+          echo "✅ Go module cache populated"
 
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: v1.59.1
-          working-directory: src/api
-          args: --timeout=5m
+      - name: Run golangci-lint manually
+        working-directory: ./src/api
+        run: |
+          echo "🔍 Running golangci-lint manually..."
+          
+          # Install golangci-lint with a more recent version
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.2.2
+          
+          # Set environment variables
+          export GO111MODULE=on
+          export GOPROXY=https://proxy.golang.org,direct
+          export GOSUMDB=sum.golang.org
+          
+          # Clear module cache and re-download
+          go clean -modcache
+          go mod download
+          go mod verify
+          
+          # Run the linter with explicit module path
+          $(go env GOPATH)/bin/golangci-lint run --timeout=5m --allow-parallel-runners --modules-download-mode=readonly
+          
+          echo "✅ golangci-lint completed successfully"
+          
+      - name: Debug Go module state (if linter fails)
+        if: failure()
+        working-directory: ./src/api
+        run: |
+          echo "🔍 Debugging Go module state..."
+          echo "📋 Go environment:"
+          go env
+          echo "📦 Module dependencies:"
+          go list -m all
+          echo "📁 Current directory:"
+          pwd
+          ls -la
+          echo "📁 Parent directory:"
+          ls -la ..
 
       - name: Run Go unit tests and generate coverage
         id: coverage
@@ -498,7 +552,7 @@ jobs:
           echo ""
           echo "📋 Job Results:"
           echo "  Frontend Linting: ${{ needs.frontend-linting.result }}"
-          echo "  Backend Linting: ${{ needs.backend-linting.result }}"
+          echo "  Backend Code Quality: ${{ needs.backend-code-quality.result }}"
           echo "  Security Analysis: ${{ needs.security-analysis.result }}"
           echo "  GitHub Release: ${{ needs.semantic-release.result }}"
           echo "  Docker Build: ${{ needs.docker-build.result }}"

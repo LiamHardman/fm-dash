@@ -45,6 +45,7 @@ const (
 	defaultMaxItems   = 750              // Maximum 750 items (reduced from 1,500 for lower memory footprint)
 )
 
+// InitInMemoryCache initializes the in-memory cache system
 func InitInMemoryCache() {
 	memCache = &InMemoryCache{
 		items:    make(map[string]*LRUNode),
@@ -314,6 +315,7 @@ func GetMemCacheDetailedStats() map[string]interface{} {
 	}
 }
 
+// StopMemCache stops the in-memory cache system
 func StopMemCache() {
 	if memCache != nil && memCache.cleanup != nil {
 		memCache.cleanup.Stop()

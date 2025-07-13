@@ -2,13 +2,14 @@ package main
 
 import (
 	"bufio"
-	"errors"
 	"io"
 	"log"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	apperrors "api/errors"
 
 	"golang.org/x/net/html"
 )
@@ -161,7 +162,7 @@ func FastParseMonetaryValue(rawValue string) (originalDisplay string, numericVal
 	return originalDisplay, numericValue, detectedSymbol
 }
 
-// Enhanced ParseMonetaryValueGo with optimized byte operations (maintains compatibility)
+// ParseMonetaryValueGo parses monetary values with optimized byte operations
 func ParseMonetaryValueGo(rawValue string) (originalDisplay string, numericValue int64, detectedSymbol string) {
 	return FastParseMonetaryValue(rawValue)
 }
@@ -213,7 +214,7 @@ tokenLoop:
 				break tokenLoop
 			}
 			log.Printf("HTML tokenization error occurred during parsing")
-			processingError = errors.New("Error tokenizing HTML: " + err.Error())
+			processingError = apperrors.WrapErrTokenizingHTML(err)
 			break tokenLoop
 		case html.StartTagToken:
 			switch token.Data {
@@ -343,9 +344,9 @@ tokenLoop:
 	} else {
 		log.Printf("Warning: No workers were started during HTML parsing. Headers found: %v", len(currentHeaders) > 0)
 		if len(currentHeaders) == 0 {
-			processingError = errors.New("no table headers found in HTML file")
+			processingError = apperrors.ErrNoTableHeadersFound
 		} else {
-			processingError = errors.New("headers found but workers were not started")
+			processingError = apperrors.ErrHeadersFoundButWorkersNotStarted
 		}
 		closeChannelOnce() // Ensure channel is closed even on error
 	}

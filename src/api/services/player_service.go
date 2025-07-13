@@ -1,4 +1,4 @@
-// src/api/services/player_service.go
+// Package services provides player-related service functionality
 package services
 
 import (
@@ -11,6 +11,8 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
+
+	apperrors "api/errors"
 )
 
 // Player represents a football player with all their attributes
@@ -60,8 +62,8 @@ var (
 	tracer = otel.Tracer("v2fmdash-player-service")
 )
 
-// NewPlayerService creates a new player service
-func NewPlayerService(storage StorageInterface) *PlayerService {
+// CreatePlayerService creates a new player service
+func CreatePlayerService(storage StorageInterface) *PlayerService {
 	return &PlayerService{
 		storage: storage,
 	}
@@ -76,7 +78,7 @@ func (s *PlayerService) GetPlayersByDatasetID(ctx context.Context, datasetID str
 	defer span.End()
 
 	if datasetID == "" {
-		err := fmt.Errorf("dataset ID cannot be empty")
+		err := apperrors.ErrDatasetIDEmpty
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "invalid dataset ID")
 		return nil, "", err
@@ -84,7 +86,7 @@ func (s *PlayerService) GetPlayersByDatasetID(ctx context.Context, datasetID str
 
 	players, currencySymbol, found := s.storage.GetPlayerData(datasetID)
 	if !found {
-		err := fmt.Errorf("dataset not found: %s", datasetID)
+		err := apperrors.WrapErrDatasetNotFound(datasetID)
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "dataset not found")
 		return nil, "", err
@@ -111,14 +113,14 @@ func (s *PlayerService) StorePlayerData(ctx context.Context, datasetID string, p
 	defer span.End()
 
 	if datasetID == "" {
-		err := fmt.Errorf("dataset ID cannot be empty")
+		err := apperrors.ErrDatasetIDEmpty
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "invalid dataset ID")
 		return err
 	}
 
 	if len(players) == 0 {
-		err := fmt.Errorf("no players to store")
+		err := apperrors.ErrNoPlayersToStore
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "no players provided")
 		return err
@@ -128,7 +130,7 @@ func (s *PlayerService) StorePlayerData(ctx context.Context, datasetID string, p
 	span.AddEvent("validation.start")
 	for i := range players {
 		if players[i].Name == "" {
-			err := fmt.Errorf("player at index %d has no name", i)
+			err := apperrors.WrapErrPlayerNoName(i)
 			span.RecordError(err)
 			span.SetStatus(codes.Error, "player validation failed")
 			return err
@@ -159,7 +161,7 @@ func (s *PlayerService) DeleteDataset(ctx context.Context, datasetID string) err
 	defer span.End()
 
 	if datasetID == "" {
-		err := fmt.Errorf("dataset ID cannot be empty")
+		err := apperrors.ErrDatasetIDEmpty
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "invalid dataset ID")
 		return err
@@ -202,7 +204,7 @@ func (s *PlayerService) ProcessPlayerPercentiles(ctx context.Context, players []
 	defer span.End()
 
 	if len(players) == 0 {
-		err := fmt.Errorf("no players to process")
+		err := apperrors.ErrNoPlayersToProcess
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "no players provided")
 		return err
@@ -228,7 +230,7 @@ func (s *PlayerService) ValidatePlayerData(ctx context.Context, players []Player
 	defer span.End()
 
 	if len(players) == 0 {
-		err := fmt.Errorf("no players provided for validation")
+		err := apperrors.ErrNoPlayersForValidation
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "no players provided")
 		return err
@@ -260,7 +262,7 @@ func (s *PlayerService) ValidatePlayerData(ctx context.Context, players []Player
 	}
 
 	if len(errors) > 0 {
-		err := fmt.Errorf("validation failed: %v", errors)
+		err := apperrors.WrapErrValidationFailed(errors)
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "validation failed")
 		span.SetAttributes(

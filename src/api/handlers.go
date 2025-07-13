@@ -22,6 +22,8 @@ import (
 
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
+
+	apperrors "api/errors"
 )
 
 // Note: gzip compression middleware already exists in middleware.go
@@ -258,10 +260,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		status := http.StatusOK
 		//nolint:staticcheck // SA9003: empty branch is intentional for future use
-		if span.SpanContext().IsValid() {
-			// Check if there was an error by inspecting span status
-			// We'll update this in error cases below
-		}
+		// TODO: Add span status checking logic here when needed
 		RecordAPIOperation(ctx, r.Method, "/upload", status, time.Since(startTime))
 	}()
 
@@ -298,7 +297,11 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error retrieving the file: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	defer file.Close()
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			RecordError(ctx, closeErr, "Failed to close uploaded file")
+		}
+	}()
 
 	// Validate actual file size by reading content (more secure than relying on headers)
 	limitedReader := http.MaxBytesReader(w, file, getMaxUploadSize())
@@ -388,13 +391,13 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			})
 
 			return
-		} else {
-			// Dataset no longer exists, remove the stale mapping and continue processing
-			logWarn(ctx, "Stale duplicate mapping found, dataset no longer exists",
-				"filename", handler.Filename,
-				"stale_dataset_id", existingDatasetID)
-			removeDuplicateMapping(existingDatasetID)
 		}
+
+		// Dataset no longer exists, remove the stale mapping and continue processing
+		logWarn(ctx, "Stale duplicate mapping found, dataset no longer exists",
+			"filename", handler.Filename,
+			"stale_dataset_id", existingDatasetID)
+		removeDuplicateMapping(existingDatasetID)
 	}
 
 	AddSpanEvent(ctx, "duplicate.check.completed", attribute.Bool("is_duplicate", isDuplicate))
@@ -446,10 +449,10 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	// Start performance timer for parsing
-	parseTimer := NewParseTimerWithContext(ctx, "html_parsing")
+	parseTimer := CreateParseTimerWithContext(ctx, "html_parsing")
 
 	// Wrap file parsing in a child span using the already-read content
-	err = TraceFileProcessing(ctx, handler.Filename, actualFileSize, func(spanCtx context.Context) error {
+	err = TraceFileProcessing(ctx, handler.Filename, actualFileSize, func(_ context.Context) error {
 		contentReader := strings.NewReader(string(fileContent))
 		return ParseHTMLPlayerTable(contentReader, &headersSnapshot, rowCellsChan, numWorkers, resultsChan, &wg)
 	})
@@ -768,7 +771,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 	percentileCacheKey := fmt.Sprintf("percentiles:%s:%s:%s", datasetID, divisionFilterStr, targetDivision)
 
 	// Parse division filter early
-	var divisionFilter DivisionFilter = DivisionFilterAll
+	var divisionFilter = DivisionFilterAll
 	switch divisionFilterStr {
 	case "same":
 		divisionFilter = DivisionFilterSame
@@ -885,7 +888,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	processedPlayers := make([]Player, 0, len(data.Players))
 
-	var minAge, maxAge int = -1, -1
+	var minAge, maxAge = -1, -1
 	var minTransferValue, maxTransferValue int64 = -1, -1
 	var maxSalary int64 = -1
 
@@ -1080,7 +1083,7 @@ func leaguesHandler(w http.ResponseWriter, r *http.Request) {
 	players = RecalculateAllPlayersRatings(players)
 
 	// Process leagues data with concurrent processing
-	processor := NewConcurrentLeagueProcessor(runtime.NumCPU())
+	processor := CreateConcurrentLeagueProcessor(runtime.NumCPU())
 	leaguesData := processor.ProcessLeaguesAsync(ctx, players)
 
 	// Cache the result for 5 minutes
@@ -1271,7 +1274,7 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Parse division filter
-	var divisionFilter DivisionFilter = DivisionFilterAll
+	var divisionFilter = DivisionFilterAll
 	switch req.DivisionFilter {
 	case "same":
 		divisionFilter = DivisionFilterSame
@@ -2126,7 +2129,7 @@ func facesHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Validate UID format for security (prevent path injection)
 	if err := validateID(uid, 100); err != nil {
-		RecordError(ctx, fmt.Errorf("invalid UID: %s, error: %v", sanitizeForLogging(uid), err), "Invalid UID format")
+		RecordError(ctx, apperrors.WrapErrInvalidUID(sanitizeForLogging(uid), err), "Invalid UID format")
 		http.Error(w, "Invalid UID format", http.StatusBadRequest)
 		return
 	}
@@ -2172,7 +2175,7 @@ func facesHandler(w http.ResponseWriter, r *http.Request) {
 	// Safely construct the file path to prevent path injection
 	faceFilePath, err := validateAndJoinPath(facesDir, faceFileName)
 	if err != nil {
-		RecordError(ctx, fmt.Errorf("invalid file path for UID %s: %v", sanitizeForLogging(uid), err), "Path validation failed")
+		RecordError(ctx, apperrors.WrapErrInvalidFilePath(sanitizeForLogging(uid), err), "Path validation failed")
 		http.Error(w, "Invalid file path", http.StatusBadRequest)
 		return
 	}
@@ -2222,7 +2225,7 @@ func logosHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Validate team ID format for security (prevent path injection)
 	if err := validateID(teamID, 100); err != nil {
-		RecordError(ctx, fmt.Errorf("invalid team ID: %s, error: %v", sanitizeForLogging(teamID), err), "Invalid team ID format")
+		RecordError(ctx, apperrors.WrapErrInvalidTeamID(sanitizeForLogging(teamID), err), "Invalid team ID format")
 		http.Error(w, "Invalid team ID format", http.StatusBadRequest)
 		return
 	}
@@ -2269,28 +2272,28 @@ func logosHandler(w http.ResponseWriter, r *http.Request) {
 	// Build the nested path: logosDir/Clubs/Normal/Normal/logoFileName
 	clubsDir, err := validateAndJoinPath(logosDir, "Clubs")
 	if err != nil {
-		RecordError(ctx, fmt.Errorf("invalid clubs directory path: %v", err), "Path validation failed")
+		RecordError(ctx, apperrors.WrapErrInvalidClubsDirPath(err), "Path validation failed")
 		http.Error(w, "Invalid file path", http.StatusBadRequest)
 		return
 	}
 
 	normalDir1, err := validateAndJoinPath(clubsDir, "Normal")
 	if err != nil {
-		RecordError(ctx, fmt.Errorf("invalid normal directory path: %v", err), "Path validation failed")
+		RecordError(ctx, apperrors.WrapErrInvalidNormalDirPath(err), "Path validation failed")
 		http.Error(w, "Invalid file path", http.StatusBadRequest)
 		return
 	}
 
 	normalDir2, err := validateAndJoinPath(normalDir1, "Normal")
 	if err != nil {
-		RecordError(ctx, fmt.Errorf("invalid normal directory path: %v", err), "Path validation failed")
+		RecordError(ctx, apperrors.WrapErrInvalidNormalDirPath(err), "Path validation failed")
 		http.Error(w, "Invalid file path", http.StatusBadRequest)
 		return
 	}
 
 	logoFilePath, err := validateAndJoinPath(normalDir2, logoFileName)
 	if err != nil {
-		RecordError(ctx, fmt.Errorf("invalid file path for team ID %s: %v", sanitizeForLogging(teamID), err), "Path validation failed")
+		RecordError(ctx, apperrors.WrapErrInvalidFilePathForTeamID(sanitizeForLogging(teamID), err), "Path validation failed")
 		http.Error(w, "Invalid file path", http.StatusBadRequest)
 		return
 	}

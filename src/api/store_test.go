@@ -1,9 +1,10 @@
 package main
 
 import (
-	"errors"
 	"testing"
 	"time"
+
+	apperrors "api/errors"
 )
 
 // Mock storage implementation for testing
@@ -11,7 +12,8 @@ type MockStorage struct {
 	data map[string]DatasetData
 }
 
-func NewMockStorage() *MockStorage {
+// CreateMockStorage creates a new mock storage for testing
+func CreateMockStorage() *MockStorage {
 	return &MockStorage{
 		data: make(map[string]DatasetData),
 	}
@@ -25,7 +27,7 @@ func (m *MockStorage) Store(datasetID string, data DatasetData) error {
 func (m *MockStorage) Retrieve(datasetID string) (DatasetData, error) {
 	data, exists := m.data[datasetID]
 	if !exists {
-		return DatasetData{}, errors.New("dataset not found")
+		return DatasetData{}, apperrors.ErrDatasetNotFound
 	}
 	return data, nil
 }
@@ -43,7 +45,7 @@ func (m *MockStorage) List() ([]string, error) {
 	return ids, nil
 }
 
-func (m *MockStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets []string) error {
+func (m *MockStorage) CleanupOldDatasets(_ time.Duration, _ []string) error {
 	// Mock implementation - just return nil for testing
 	return nil
 }
@@ -53,7 +55,7 @@ func TestStoreDataset(t *testing.T) {
 	originalStorage := storage
 	defer func() { storage = originalStorage }()
 
-	storage = NewMockStorage()
+	storage = CreateMockStorage()
 
 	tests := []struct {
 		name           string
@@ -138,7 +140,7 @@ func TestRetrieveDataset(t *testing.T) {
 	originalStorage := storage
 	defer func() { storage = originalStorage }()
 
-	mockStorage := NewMockStorage()
+	mockStorage := CreateMockStorage()
 	storage = mockStorage
 
 	// Pre-populate with test data
@@ -204,7 +206,7 @@ func TestDeleteDataset(t *testing.T) {
 	originalStorage := storage
 	defer func() { storage = originalStorage }()
 
-	storage = NewMockStorage()
+	storage = CreateMockStorage()
 
 	// Store test data
 	testDatasetID := "test-delete"
@@ -239,7 +241,7 @@ func TestListDatasets(t *testing.T) {
 	originalStorage := storage
 	defer func() { storage = originalStorage }()
 
-	storage = NewMockStorage()
+	storage = CreateMockStorage()
 
 	// Store multiple datasets
 	datasets := []string{"dataset1", "dataset2", "dataset3"}
@@ -278,7 +280,7 @@ func TestStoreDatasetAsync(t *testing.T) {
 	originalStorage := storage
 	defer func() { storage = originalStorage }()
 
-	storage = NewMockStorage()
+	storage = CreateMockStorage()
 
 	testDatasetID := "test-async"
 	testPlayers := []Player{{UID: 1, Name: "Async Test Player"}}
@@ -310,7 +312,7 @@ func TestCleanupOldDatasets(t *testing.T) {
 	originalStorage := storage
 	defer func() { storage = originalStorage }()
 
-	storage = NewMockStorage()
+	storage = CreateMockStorage()
 
 	// Test cleanup function (mock implementation just returns nil)
 	maxAge := 24 * time.Hour
@@ -328,7 +330,7 @@ func TestStoreDatasetValidation(t *testing.T) {
 	originalStorage := storage
 	defer func() { storage = originalStorage }()
 
-	storage = NewMockStorage()
+	storage = CreateMockStorage()
 
 	tests := []struct {
 		name      string

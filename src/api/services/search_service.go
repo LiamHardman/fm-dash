@@ -1,4 +1,4 @@
-// src/api/services/search_service.go
+// Package services provides search-related service functionality
 package services
 
 import (
@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	apperrors "api/errors"
 )
 
 // SearchResult represents a search result item
@@ -26,8 +28,8 @@ type SearchService struct {
 	playerService *PlayerService
 }
 
-// NewSearchService creates a new search service
-func NewSearchService(playerService *PlayerService) *SearchService {
+// CreateSearchService creates a new search service
+func CreateSearchService(playerService *PlayerService) *SearchService {
 	return &SearchService{
 		playerService: playerService,
 	}
@@ -36,7 +38,7 @@ func NewSearchService(playerService *PlayerService) *SearchService {
 // SearchAll performs a comprehensive search across all data types
 func (s *SearchService) SearchAll(ctx context.Context, datasetID, query string, maxResults int) ([]SearchResult, error) {
 	if datasetID == "" {
-		return nil, fmt.Errorf("dataset ID cannot be empty")
+		return nil, apperrors.ErrDatasetIDEmpty
 	}
 
 	if query == "" {
@@ -164,7 +166,7 @@ func (s *SearchService) searchTeams(players []Player, query string) []SearchResu
 }
 
 // searchLeagues searches for leagues (if available in data)
-func (s *SearchService) searchLeagues(players []Player, query string) []SearchResult {
+func (s *SearchService) searchLeagues(_ []Player, _ string) []SearchResult {
 	// This is a placeholder - leagues would need to be extracted from player data
 	// or stored separately. For now, we'll return empty results.
 	return []SearchResult{}

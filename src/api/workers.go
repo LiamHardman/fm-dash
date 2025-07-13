@@ -1,9 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"sync"
 	"sync/atomic"
+
+	apperrors "api/errors"
 )
 
 // WorkerStats tracks performance metrics for worker pools
@@ -31,8 +32,10 @@ func PlayerParserWorker(workerID int, rowCellsChan <-chan []string, resultsChan 
 	if len(headers) == 0 {
 		LogWarn("Worker %d started with NO headers. Draining rowCellsChan and exiting.", workerID)
 		// Consume any rows sent before this worker realized headers were missing.
+		// revive:disable:empty-block
 		for range rowCellsChan {
 		}
+		// revive:enable:empty-block
 		return
 	}
 
@@ -60,7 +63,7 @@ func OptimizedPlayerParserWorker(workerID int, rowCellsChan <-chan []string, res
 			LogCritical("Worker %d PANICKED: %v", workerID, r)
 			// Send error result to prevent deadlock
 			select {
-			case resultsChan <- PlayerParseResult{Err: fmt.Errorf("worker %d panicked: %v", workerID, r)}:
+			case resultsChan <- PlayerParseResult{Err: apperrors.WrapErrWorkerPanic(workerID, r)}:
 			default:
 				// Channel might be full, log the issue
 				LogWarn("Worker %d: couldn't send panic error, channel full", workerID)
@@ -74,8 +77,10 @@ func OptimizedPlayerParserWorker(workerID int, rowCellsChan <-chan []string, res
 	if len(headers) == 0 {
 		LogWarn("Worker %d started with NO headers. Draining rowCellsChan and exiting.", workerID)
 		// Consume any rows sent before this worker realized headers were missing.
+		// revive:disable:empty-block
 		for range rowCellsChan {
 		}
+		// revive:enable:empty-block
 		return
 	}
 

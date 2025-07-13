@@ -1,3 +1,4 @@
+// Package main provides async processing functionality for the FM24 API
 package main
 
 import (
@@ -73,8 +74,8 @@ type PlayerProcessor struct {
 	cancel   context.CancelFunc
 }
 
-// NewPlayerProcessor creates a new concurrent player processor
-func NewPlayerProcessor(config ProcessingConfig) *PlayerProcessor {
+// CreatePlayerProcessor creates a new player processor
+func CreatePlayerProcessor(config ProcessingConfig) *PlayerProcessor {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	processor := &PlayerProcessor{
@@ -201,7 +202,7 @@ func ProcessPlayersBatch(ctx context.Context, players []Player, batchSize int) (
 		}
 
 		batch := players[i:end]
-		processor := NewPlayerProcessor(config)
+		processor := CreatePlayerProcessor(config)
 
 		resultCh := processor.ProcessPlayersAsync(batch)
 
@@ -277,8 +278,8 @@ type ConcurrentLeagueProcessor struct {
 	semaphore   chan struct{}
 }
 
-// NewConcurrentLeagueProcessor creates a new league processor
-func NewConcurrentLeagueProcessor(workerCount int) *ConcurrentLeagueProcessor {
+// CreateConcurrentLeagueProcessor creates a new concurrent league processor
+func CreateConcurrentLeagueProcessor(workerCount int) *ConcurrentLeagueProcessor {
 	if workerCount <= 0 {
 		workerCount = runtime.NumCPU()
 	}
@@ -454,8 +455,8 @@ type AsyncPlayerFilter struct {
 	chunkSize   int
 }
 
-// NewAsyncPlayerFilter creates a new async player filter
-func NewAsyncPlayerFilter(workerCount, chunkSize int) *AsyncPlayerFilter {
+// CreateAsyncPlayerFilter creates a new async player filter
+func CreateAsyncPlayerFilter(workerCount, chunkSize int) *AsyncPlayerFilter {
 	if workerCount <= 0 {
 		workerCount = runtime.NumCPU()
 	}
@@ -620,8 +621,8 @@ type ConcurrentPercentileProcessor struct {
 	workerCount int
 }
 
-// NewConcurrentPercentileProcessor creates a new percentile processor
-func NewConcurrentPercentileProcessor(workerCount int) *ConcurrentPercentileProcessor {
+// CreateConcurrentPercentileProcessor creates a new concurrent percentile processor
+func CreateConcurrentPercentileProcessor(workerCount int) *ConcurrentPercentileProcessor {
 	if workerCount <= 0 {
 		workerCount = runtime.NumCPU()
 	}

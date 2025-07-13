@@ -16,8 +16,8 @@ type OTLPHandler struct {
 	fallbackHandler slog.Handler
 }
 
-// NewOTLPHandler creates a new OTLP handler
-func NewOTLPHandler(loggerProvider *sdklog.LoggerProvider) *OTLPHandler {
+// CreateOTLPHandler creates a new OTLP handler
+func CreateOTLPHandler(loggerProvider *sdklog.LoggerProvider) *OTLPHandler {
 	if !otelEnabled {
 		// Return a standard text handler when OTEL is disabled
 		handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{

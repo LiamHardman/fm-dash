@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"unicode"
+
+	apperrors "api/errors"
 )
 
 // TeamMatch represents a team matching result
@@ -77,6 +79,13 @@ func initTeamsData() error {
 		LogInfo("Team data initialization: Found teams data at primary path: %s", teamsFilePath)
 	}
 
+	// Validate file path to prevent directory traversal
+	if strings.Contains(teamsFilePath, "..") || strings.ContainsAny(teamsFilePath, "/\\") {
+		LogWarn("Team data initialization: Invalid file path %s: contains path traversal or unsafe characters", teamsFilePath)
+		return apperrors.ErrFilenamePathTraversal
+	}
+
+	//nolint:gosec // teamsFilePath is validated above and constructed from safe components
 	data, err := os.ReadFile(teamsFilePath)
 	if err != nil {
 		LogWarn("Team data initialization: Error reading teams data file: %v", err)

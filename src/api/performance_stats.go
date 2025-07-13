@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// Percentile calculation cache for performance optimization
+// PercentileCache provides caching for percentile calculations
 type PercentileCache struct {
 	dataHash    string
 	percentiles map[string]map[string]float64
@@ -28,7 +28,9 @@ func generateDatasetHash(players []Player) string {
 	hasher := sha256.New()
 
 	// Hash player count and key attributes for quick change detection
-	fmt.Fprintf(hasher, "%d", len(players))
+	if _, err := fmt.Fprintf(hasher, "%d", len(players)); err != nil {
+		log.Printf("Failed to write player count to hash: %v", err)
+	}
 
 	// Sample a subset of players for hash to balance speed vs accuracy
 	sampleSize := len(players)
@@ -39,7 +41,9 @@ func generateDatasetHash(players []Player) string {
 	for i := 0; i < sampleSize; i++ {
 		player := &players[i]
 		if i < 50 || i >= len(players)-50 {
-			fmt.Fprintf(hasher, "%s:%s:%d", player.Name, player.Division, player.Overall)
+			if _, err := fmt.Fprintf(hasher, "%s:%s:%d", player.Name, player.Division, player.Overall); err != nil {
+				log.Printf("Failed to write player data to hash: %v", err)
+			}
 		}
 	}
 
@@ -129,6 +133,7 @@ func calculatePercentileValue(value float64, sortedValues []float64) float64 {
 // DivisionFilter represents the different division filtering options
 type DivisionFilter int
 
+// DivisionFilter constants define different filtering options for divisions
 const (
 	DivisionFilterAll DivisionFilter = iota
 	DivisionFilterSame

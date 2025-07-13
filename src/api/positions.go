@@ -192,17 +192,14 @@ func ParsePlayerPositionsGo(positionStr string) []string {
 				}
 				// Ensure we use the correct keys for positionRoleMapGo
 				// e.g. D C -> DC, M R -> MR
-				switch {
-				case mapLookupKey == "AMC" || mapLookupKey == "AMR" || mapLookupKey == "AML":
-					// Fine
-				case mapLookupKey == "STC": // ST (C) becomes ST
+				switch mapLookupKey {
+				case "STC": // ST (C) becomes ST
 					mapLookupKey = "ST"
-				case mapLookupKey == "DMC": // DM (C) becomes DM
+				case "DMC": // DM (C) becomes DM
 					mapLookupKey = "DM"
-				default:
-					// Valid keys like DR, DL, DC, MR, ML, MC, AR, AL, AC (though AR/AL/AC not in map)
-					// mapLookupKey is already properly set above
 				}
+				// Valid keys like DR, DL, DC, MR, ML, MC, AR, AL, AC (though AR/AL/AC not in map)
+				// mapLookupKey is already properly set above
 
 				roleFullName, roleExists := positionRoleMapGo[mapLookupKey]
 				if roleExists {

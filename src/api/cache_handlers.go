@@ -1,6 +1,7 @@
 package main
 
 import (
+	"api/errors"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -37,7 +38,8 @@ type CacheStorageWrapper struct {
 	storage StorageInterface
 }
 
-func NewCacheStorageWrapper(storage StorageInterface) *CacheStorageWrapper {
+// CreateCacheStorageWrapper creates a new cache storage wrapper
+func CreateCacheStorageWrapper(storage StorageInterface) *CacheStorageWrapper {
 	return &CacheStorageWrapper{storage: storage}
 }
 
@@ -69,7 +71,7 @@ func (c *CacheStorageWrapper) RetrieveCacheData(cacheKey string) (NationRatingsC
 
 	// Extract cache data from the dummy player
 	if len(data.Players) == 0 || data.Players[0].Name != "__CACHE_DATA__" {
-		return NationRatingsCache{}, fmt.Errorf("invalid cache data format")
+		return NationRatingsCache{}, errors.ErrInvalidCacheDataFormat
 	}
 
 	var cacheData NationRatingsCache
@@ -85,6 +87,7 @@ func (c *CacheStorageWrapper) DeleteCacheData(cacheKey string) error {
 	return c.storage.Delete(cacheKey)
 }
 
+// InitCacheStorage initializes the cache storage system
 func InitCacheStorage() {
 	LogDebug("Cache storage system initialized")
 }
