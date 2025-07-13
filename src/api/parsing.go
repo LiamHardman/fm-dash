@@ -13,6 +13,33 @@ import (
 	"golang.org/x/net/html"
 )
 
+// Comprehensive list of world currencies used in Football Manager
+var worldCurrencies = []string{
+	// Major currencies (most common in FM)
+	"$", "€", "£", "¥", "₹", "₽", "₺", "₩", "R$", "CHF", "A$", "CA$", "Mex$", "kr", "zł", "R",
+
+	// European currencies
+	"SEK", "NOK", "DKK", "ISK", "CZK", "PLN", "HUF", "RON", "BGN", "HRK", "RSD", "MKD", "ALL", "BAM", "MDL", "UAH", "BYN", "GEL", "AMD", "AZN", "KZT", "KGS", "TJS", "TMT", "UZS", "TND", "MAD", "EGP", "LYD", "DZD", "TND", "MAD", "EGP", "LYD", "DZD",
+
+	// Asian currencies
+	"CNY", "HKD", "TWD", "SGD", "MYR", "THB", "IDR", "PHP", "VND", "KHR", "LAK", "MMK", "BDT", "LKR", "NPR", "PKR", "AFN", "IRR", "IQD", "JOD", "KWD", "LBP", "OMR", "QAR", "SAR", "SYP", "AED", "YER", "BHD", "KWD", "OMR", "QAR", "SAR", "AED", "BHD",
+
+	// African currencies
+	"ZAR", "NGN", "KES", "GHS", "UGX", "TZS", "MWK", "ZMW", "BWP", "NAD", "SZL", "LSL", "MUR", "SCR", "KMF", "DJF", "ETB", "SDG", "SSP", "SOS", "TND", "MAD", "EGP", "LYD", "DZD", "MAD", "EGP", "LYD", "DZD",
+
+	// American currencies
+	"ARS", "BRL", "CLP", "COP", "PEN", "UYU", "PYG", "BOB", "GTQ", "HNL", "NIO", "CRC", "PAB", "BBD", "BZD", "GYD", "SRD", "TTD", "XCD", "ANG", "AWG", "BMD", "KYD", "JMD", "HTG", "DOP", "CUC", "CUP",
+
+	// Oceanian currencies
+	"FJD", "PGK", "SBD", "VUV", "WST", "TOP", "TVD", "NZD", "AUD",
+
+	// Middle Eastern currencies
+	"ILS", "TRY", "IRR", "IQD", "JOD", "KWD", "LBP", "OMR", "QAR", "SAR", "SYP", "AED", "YER", "BHD",
+
+	// Other major currencies
+	"INR", "RUB", "KRW", "JPY", "CNY", "HKD", "TWD", "SGD", "MYR", "THB", "IDR", "PHP", "VND", "KHR", "LAK", "MMK", "BDT", "LKR", "NPR", "PKR", "AFN", "IRR", "IQD", "JOD", "KWD", "LBP", "OMR", "QAR", "SAR", "SYP", "AED", "YER", "BHD",
+}
+
 // Optimized string builder pool with size management
 var optimizedStringBuilderPool = sync.Pool{
 	New: func() interface{} {
@@ -63,23 +90,35 @@ func sendRowWithBackpressure(rowCellsChan chan []string, cells []string, timeout
 	}
 }
 
+// Enhanced currency detection with comprehensive world currency support
+func detectCurrencySymbol(rawValue string) string {
+	// First check for the most common currencies (faster path)
+	commonCurrencies := []string{"$", "€", "£", "¥", "₹", "₽", "₺", "₩", "R$", "CHF", "A$", "CA$", "Mex$", "kr", "zł", "R"}
+
+	for _, sym := range commonCurrencies {
+		if strings.Contains(rawValue, sym) {
+			return sym
+		}
+	}
+
+	// If no common currency found, check the full world currency list
+	for _, sym := range worldCurrencies {
+		if strings.Contains(rawValue, sym) {
+			return sym
+		}
+	}
+
+	return ""
+}
+
 // FastParseMonetaryValue parses monetary values, handling ranges and decimals correctly.
 func FastParseMonetaryValue(rawValue string) (originalDisplay string, numericValue int64, detectedSymbol string) {
 	originalDisplay = rawValue
 	cleanValue := rawValue
-	currencySymbols := []string{"£", "$", "€"}
-	detectedSymbol = ""
+	detectedSymbol = detectCurrencySymbol(rawValue)
 
-	// Detect currency symbol from the original input
-	for _, sym := range currencySymbols {
-		if strings.Contains(rawValue, sym) {
-			detectedSymbol = sym
-			break
-		}
-	}
-
-	// Remove currency symbols and whitespace
-	for _, sym := range currencySymbols {
+	// Remove all currency symbols and whitespace
+	for _, sym := range worldCurrencies {
 		cleanValue = strings.ReplaceAll(cleanValue, sym, "")
 	}
 	cleanValue = strings.TrimSpace(cleanValue)
