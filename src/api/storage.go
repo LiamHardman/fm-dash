@@ -570,7 +570,7 @@ func (s *S3Storage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets []s
 // getFaceImage retrieves a face image from S3 and writes it to the response writer
 func (s *S3Storage) getFaceImage(ctx context.Context, filename string, w http.ResponseWriter) error {
 	if s.client == nil {
-		return fmt.Errorf("S3 client not available")
+		return apperrors.ErrS3ClientNotAvailable
 	}
 
 	// Get the faces bucket name from environment, default to the main bucket + "/faces" prefix
@@ -606,7 +606,7 @@ func (s *S3Storage) getFaceImage(ctx context.Context, filename string, w http.Re
 // getTeamLogo retrieves a team logo image from S3 and writes it to the response writer
 func (s *S3Storage) getTeamLogo(ctx context.Context, filename string, w http.ResponseWriter) error {
 	if s.client == nil {
-		return fmt.Errorf("S3 client not available")
+		return apperrors.ErrS3ClientNotAvailable
 	}
 
 	// Get the logos bucket name from environment, default to the main bucket + "/logos/clubs" prefix

@@ -291,11 +291,8 @@ func PanicRecoveryMiddleware(next http.Handler) http.Handler {
 		defer func() {
 			if err := recover(); err != nil {
 				var panicErr error
-				if errAsError, ok := err.(error); ok {
-					panicErr = apperrors.WrapErrPanicRecovered(errAsError)
-				} else {
-					panicErr = apperrors.WrapErrPanicRecovered(fmt.Errorf("%v", err))
-				}
+				// Convert interface{} to error without using fmt.Errorf or errors.New
+				panicErr = apperrors.WrapErrPanicRecoveredNonError(err)
 				RecordError(ctx, panicErr, "Panic recovered in middleware")
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 			}

@@ -92,7 +92,8 @@ var (
 	ErrIDInvalidChars        = errors.New("ID contains invalid characters")
 
 	// Panic and recovery errors
-	ErrPathEscapesBase = errors.New("path escapes base directory")
+	ErrPathEscapesBase        = errors.New("path escapes base directory")
+	ErrPanicRecoveredNonError = errors.New("panic recovered (non-error value)")
 
 	// Service errors
 	ErrDatasetIDEmpty         = errors.New("dataset ID cannot be empty")
@@ -331,4 +332,8 @@ func NewBadRequestError(message string) *AppError {
 func IsAppError(err error) bool {
 	_, ok := err.(*AppError)
 	return ok
+}
+
+func WrapErrPanicRecoveredNonError(value interface{}) error {
+	return fmt.Errorf("%w: %v", ErrPanicRecoveredNonError, value)
 }
