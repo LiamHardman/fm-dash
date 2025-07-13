@@ -181,28 +181,24 @@ func WrapErrPanicRecovered(err error) error {
 	return fmt.Errorf("%w: %v", ErrPanicRecovered, err)
 }
 
+// WrapErrWorkerPanic wraps a worker panic error with context.
 func WrapErrWorkerPanic(workerID int, panic interface{}) error {
-	return fmt.Errorf("worker %d panicked: %v", workerID, panic)
+	return fmt.Errorf("%w: worker %d panicked: %v", ErrHandlerPanic, workerID, panic)
 }
 
-func WrapErrSkippedRowNameMissing(cells []string) error {
-	return fmt.Errorf("%w. First few cells: %s", ErrSkippedRowNameMissing, cells)
-}
-
-func WrapErrIDTooLong(maxLength int) error {
-	return fmt.Errorf("%w (max %d characters)", ErrIDTooLong, maxLength)
-}
-
+// WrapErrInvalidFilename wraps an invalid filename error with context.
 func WrapErrInvalidFilename(err error) error {
-	return fmt.Errorf("invalid filename: %v", err)
+	return fmt.Errorf("%w: %v", ErrFilenameInvalidChars, err)
 }
 
+// WrapErrFailedToGetAbsPath wraps a failed absolute path error with context.
 func WrapErrFailedToGetAbsPath(err error) error {
-	return fmt.Errorf("failed to get absolute path: %v", err)
+	return fmt.Errorf("%w: %v", ErrPathEscapesBase, err)
 }
 
+// WrapErrDatasetNotFound wraps a dataset not found error with context.
 func WrapErrDatasetNotFound(datasetID string) error {
-	return fmt.Errorf("dataset %s not found", datasetID)
+	return fmt.Errorf("%w: %s", ErrDatasetNotFound, datasetID)
 }
 
 func WrapErrJSONMarshalPanic(panic interface{}) error {
