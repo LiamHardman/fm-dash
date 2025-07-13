@@ -7,40 +7,23 @@ run:
   allow-parallel-runners: true
 
 linters:
+  # Default set of linters.
+  # The value can be:
+  # - `standard`: https://golangci-lint.run/usage/linters/#enabled-by-default
+  # - `all`: enables all linters by default.
+  # - `none`: disables all linters by default.
+  # - `fast`: enables only linters considered as "fast" (`golangci-lint help linters --json | jq '[ .[] | select(.fast==true) ] | map(.name)'`).
+  # Default: standard
+  default: standard
+  # Enable specific linter.
   enable:
-    - errcheck
-    - govet
-    - ineffassign
-    - staticcheck
-    - unused
-    - gosec
-    - gocritic
-    - misspell
+    - ireturn
+    - err113
     - revive
-    - unparam
-  disable:
-    # - typecheck (removed, not a linter in v2)
-
-linters-settings:
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - experimental
-      - opinionated
-      - performance
-      - style
-  revive:
-    rules:
-      - name: exported
-        disabled: false
-      - name: package-comments
-        disabled: true
-      - name: var-naming
-        disabled: false
-  gosec:
-    excludes:
-      - G104 # Audit errors not checked - we handle errors appropriately
-      - G204 # Subprocess launched with variable - we validate inputs
+    - gosec
+    - errcheck
+    - nilnil
+    - nilerr
 
 issues:
   exclude-rules:
