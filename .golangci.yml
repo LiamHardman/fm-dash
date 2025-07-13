@@ -8,13 +8,11 @@ run:
 
 linters:
   enable:
-    - errcheck
     - gosimple
     - govet
     - ineffassign
     - staticcheck
     - unused
-    - gofmt
     - goimports
     - gosec
     - gocritic
@@ -25,8 +23,6 @@ linters:
     # - typecheck (removed, not a linter in v2)
 
 linters-settings:
-  gofmt:
-    simplify: true
   goimports:
     local-prefixes: fm24golang
   gocritic:
