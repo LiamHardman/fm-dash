@@ -1,10 +1,10 @@
 package main
 
 import (
-	"fmt"
-	"log"
 	"sync"
 	"sync/atomic"
+
+	apperrors "api/errors"
 )
 
 // WorkerStats tracks performance metrics for worker pools
@@ -22,7 +22,7 @@ func PlayerParserWorker(workerID int, rowCellsChan <-chan []string, resultsChan 
 		RecordWorkerEnd() // Update global metrics
 		if r := recover(); r != nil {
 			// Log panic from worker to avoid silent failures
-			log.Printf("Worker %d PANICKED: %v", workerID, r)
+			LogCritical("Worker %d PANICKED: %v", workerID, r)
 		}
 		wg.Done() // Signal completion to the WaitGroup
 	}()
@@ -30,10 +30,12 @@ func PlayerParserWorker(workerID int, rowCellsChan <-chan []string, resultsChan 
 	RecordWorkerStart() // Update global metrics
 
 	if len(headers) == 0 {
-		log.Printf("Worker %d started with NO headers. Draining rowCellsChan and exiting.", workerID)
+		LogWarn("Worker %d started with NO headers. Draining rowCellsChan and exiting.", workerID)
 		// Consume any rows sent before this worker realized headers were missing.
+		// revive:disable:empty-block
 		for range rowCellsChan {
 		}
+		// revive:enable:empty-block
 		return
 	}
 
@@ -49,7 +51,7 @@ func PlayerParserWorker(workerID int, rowCellsChan <-chan []string, resultsChan 
 		resultsChan <- PlayerParseResult{Player: player, Err: err}
 	}
 
-	log.Printf("Worker %d finished: processed %d rows", workerID, processedRows)
+	LogDebug("Worker %d finished: processed %d rows", workerID, processedRows)
 }
 
 // OptimizedPlayerParserWorker is an enhanced version with better error handling and metrics
@@ -58,13 +60,13 @@ func OptimizedPlayerParserWorker(workerID int, rowCellsChan <-chan []string, res
 		RecordWorkerEnd() // Update global metrics
 		if r := recover(); r != nil {
 			// Log panic from worker to avoid silent failures
-			log.Printf("Worker %d PANICKED: %v", workerID, r)
+			LogCritical("Worker %d PANICKED: %v", workerID, r)
 			// Send error result to prevent deadlock
 			select {
-			case resultsChan <- PlayerParseResult{Err: fmt.Errorf("worker %d panicked: %v", workerID, r)}:
+			case resultsChan <- PlayerParseResult{Err: apperrors.WrapErrWorkerPanic(workerID, r)}:
 			default:
 				// Channel might be full, log the issue
-				log.Printf("Worker %d: couldn't send panic error, channel full", workerID)
+				LogWarn("Worker %d: couldn't send panic error, channel full", workerID)
 			}
 		}
 		wg.Done() // Signal completion to the WaitGroup
@@ -73,10 +75,12 @@ func OptimizedPlayerParserWorker(workerID int, rowCellsChan <-chan []string, res
 	RecordWorkerStart() // Update global metrics
 
 	if len(headers) == 0 {
-		log.Printf("Worker %d started with NO headers. Draining rowCellsChan and exiting.", workerID)
+		LogWarn("Worker %d started with NO headers. Draining rowCellsChan and exiting.", workerID)
 		// Consume any rows sent before this worker realized headers were missing.
+		// revive:disable:empty-block
 		for range rowCellsChan {
 		}
+		// revive:enable:empty-block
 		return
 	}
 
@@ -133,7 +137,7 @@ func OptimizedPlayerParserWorker(workerID int, rowCellsChan <-chan []string, res
 			default:
 				// Channel full, record backpressure and try blocking send
 				RecordBackpressure()
-				log.Printf("Worker %d: result channel full, potential backpressure", workerID)
+				LogWarn("Worker %d: result channel full, potential backpressure", workerID)
 				// Try one more time with blocking send
 				resultsChan <- PlayerParseResult{Player: player, Err: err}
 			}
@@ -151,5 +155,5 @@ func OptimizedPlayerParserWorker(workerID int, rowCellsChan <-chan []string, res
 		atomic.AddInt64(&stats.ErrorCount, int64(localErrorCount))
 	}
 
-	log.Printf("Worker %d finished: processed %d rows, %d errors", workerID, processedRows, localErrorCount)
+	LogDebug("Worker %d finished: processed %d rows, %d errors", workerID, processedRows, localErrorCount)
 }

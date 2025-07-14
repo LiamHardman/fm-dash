@@ -1,10 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	apperrors "api/errors"
 )
 
 // Security validation patterns
@@ -20,32 +21,32 @@ var (
 // and doesn't contain path traversal sequences
 func validateFileName(filename string) error {
 	if filename == "" {
-		return fmt.Errorf("filename cannot be empty")
+		return apperrors.ErrFilenameEmpty
 	}
 
 	// Check length limit
 	if len(filename) > 255 {
-		return fmt.Errorf("filename too long (max 255 characters)")
+		return apperrors.ErrFilenameTooLong
 	}
 
 	// Check for path traversal attempts
 	if strings.Contains(filename, "..") {
-		return fmt.Errorf("filename contains path traversal sequence")
+		return apperrors.ErrFilenamePathTraversal
 	}
 
 	// Check for directory separators
 	if strings.ContainsAny(filename, "/\\") {
-		return fmt.Errorf("filename contains directory separators")
+		return apperrors.ErrFilenameDirectorySeparators
 	}
 
 	// Check for null bytes
 	if strings.Contains(filename, "\x00") {
-		return fmt.Errorf("filename contains null bytes")
+		return apperrors.ErrFilenameNullBytes
 	}
 
 	// Check against safe pattern
 	if !safeFileNamePattern.MatchString(filename) {
-		return fmt.Errorf("filename contains invalid characters")
+		return apperrors.ErrFilenameInvalidChars
 	}
 
 	return nil
@@ -54,31 +55,31 @@ func validateFileName(filename string) error {
 // validateID validates user IDs (UIDs, team IDs) for safety
 func validateID(id string, maxLength int) error {
 	if id == "" {
-		return fmt.Errorf("ID cannot be empty")
+		return apperrors.ErrIDEmpty
 	}
 
 	if len(id) > maxLength {
-		return fmt.Errorf("ID too long (max %d characters)", maxLength)
+		return apperrors.WrapErrIDTooLong(maxLength)
 	}
 
 	// Check for path traversal attempts
 	if strings.Contains(id, "..") {
-		return fmt.Errorf("ID contains path traversal sequence")
+		return apperrors.ErrIDPathTraversal
 	}
 
 	// Check for directory separators
 	if strings.ContainsAny(id, "/\\") {
-		return fmt.Errorf("ID contains directory separators")
+		return apperrors.ErrIDDirectorySeparators
 	}
 
 	// Check for null bytes
 	if strings.Contains(id, "\x00") {
-		return fmt.Errorf("ID contains null bytes")
+		return apperrors.ErrIDNullBytes
 	}
 
 	// Check against safe pattern
 	if !safeIDPattern.MatchString(id) {
-		return fmt.Errorf("ID contains invalid characters")
+		return apperrors.ErrIDInvalidChars
 	}
 
 	return nil
@@ -89,7 +90,7 @@ func validateID(id string, maxLength int) error {
 func validateAndJoinPath(baseDir, filename string) (string, error) {
 	// Validate the filename first
 	if err := validateFileName(filename); err != nil {
-		return "", fmt.Errorf("invalid filename: %v", err)
+		return "", apperrors.WrapErrInvalidFilename(err)
 	}
 
 	// Clean the base directory path
@@ -105,18 +106,18 @@ func validateAndJoinPath(baseDir, filename string) (string, error) {
 	// Convert to absolute paths for comparison
 	absBaseDir, err := filepath.Abs(cleanBaseDir)
 	if err != nil {
-		return "", fmt.Errorf("failed to get absolute path for base directory: %v", err)
+		return "", apperrors.WrapErrFailedToGetAbsPath(err)
 	}
 
 	absFullPath, err := filepath.Abs(cleanFullPath)
 	if err != nil {
-		return "", fmt.Errorf("failed to get absolute path for full path: %v", err)
+		return "", apperrors.WrapErrFailedToGetAbsPath(err)
 	}
 
 	// Check if the full path is within the base directory
 	if !strings.HasPrefix(absFullPath, absBaseDir+string(filepath.Separator)) &&
 		absFullPath != absBaseDir {
-		return "", fmt.Errorf("path escapes base directory")
+		return "", apperrors.ErrPathEscapesBase
 	}
 
 	return cleanFullPath, nil

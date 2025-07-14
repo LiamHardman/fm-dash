@@ -2,22 +2,67 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
+
+	apperrors "api/errors"
 )
 
+// Log level constants
+//
+// Usage:
+//   - Set LOG_LEVEL environment variable to: DEBUG, INFO, WARN, or CRITICAL
+//   - Default is INFO level
+//   - Use LogDebug(), LogInfo(), LogWarn(), LogCritical() functions for leveled logging
+//   - Messages below the minimum log level will be filtered out
 const (
-	// Default capacity constants for better performance
-	defaultPlayerCapacity    = 2048            // Increased from 1024 for better pre-allocation
-	defaultAttributeCapacity = 80              // Increased from 64 for FM attributes
-	defaultCellCapacity      = 80              // Increased from 64 for table cells
-	overallScalingFactor     = 5.85            // Used for scaling role-specific attribute averages (1-20) to 0-99
-	maxTokenBufferSize       = 4 * 1024 * 1024 // Increased from 2MB to 4MB for larger files
+	LogLevelDebug    = 0
+	LogLevelInfo     = 1
+	LogLevelWarn     = 2
+	LogLevelCritical = 3
+)
+
+// logLevelNames maps log levels to their string representations
+var logLevelNames = map[int]string{
+	LogLevelDebug:    "DEBUG",
+	LogLevelInfo:     "INFO",
+	LogLevelWarn:     "WARN",
+	LogLevelCritical: "CRITICAL",
+}
+
+// parseLogLevel converts a string log level to its integer constant
+func parseLogLevel(level string) int {
+	switch strings.ToUpper(level) {
+	case "DEBUG":
+		return LogLevelDebug
+	case "INFO":
+		return LogLevelInfo
+	case "WARN", "WARNING":
+		return LogLevelWarn
+	case "CRITICAL", "CRIT", "ERROR":
+		return LogLevelCritical
+	default:
+		return LogLevelInfo // Default to info if unrecognized
+	}
+}
+
+const (
+	// Default capacity constants for better performance - OPTIMIZED
+	defaultPlayerCapacity    = 4096             // Increased from 2048 for better pre-allocation
+	defaultAttributeCapacity = 120              // Increased from 80 for FM attributes + extras
+	defaultCellCapacity      = 120              // Increased from 80 for table cells + extras
+	overallScalingFactor     = 5.85             // Used for scaling role-specific attribute averages (1-20) to 0-99
+	maxTokenBufferSize       = 16 * 1024 * 1024 // Increased from 4MB to 16MB for larger files
+
+	// Optimized processing constants
+	optimalChunkSize      = 8192      // Optimal chunk size for byte processing
+	stringBuilderInitSize = 1024      // Initial size for string builders
+	maxStringBuilderSize  = 32 * 1024 // Max size before builder is discarded from pool
 
 	// General limits
 	// maxFileSize           = 50 * 1024 * 1024 // 50MB file size limit
@@ -65,18 +110,31 @@ var (
 	metricsEnabled bool
 
 	// Rating calculation method toggle
-	useScaledRatings   bool = true // Default to new scaled ratings
+	useScaledRatings   = true // Default to new scaled ratings
 	muUseScaledRatings sync.RWMutex
 
 	// Logging configuration
-	logAllRequests bool = false // Default to only logging non-200 responses
+	logAllRequests = false        // Default to only logging non-200 responses
+	minLogLevel    = LogLevelInfo // Default to info level
+	muLogLevel     sync.RWMutex
 )
 
 // Default attribute weights if JSON loading fails or file is missing.
 var defaultAttributeWeightsGo = map[string]map[string]int{
 	"PAC": {"Acc": 12, "Pac": 12, "Agi": 5},
 	"SHO": {"Fin": 8, "Lon": 6, "Pen": 4, "Hea": 5, "Cmp": 6, "Tec": 5, "Ant": 4, "Dec": 4, "Fla": 3},
-	"PAS": {"Pas": 8, "Cro": 6, "Fre": 4, "Vis": 7, "Tec": 5, "Tea": 4, "Dec": 4, "Cor": 3, "Fir": 4, "OtB": 3},
+	"PAS_standard": {
+		"Pas": 8, "Cro": 6, "Fre": 4, "Vis": 7, "Tec": 5,
+		"Tea": 4, "Dec": 4, "Cor": 3, "Fir": 4, "OtB": 3,
+	},
+	"PAS_no_set_pieces": {
+		"Pas": 8, "Vis": 7, "Tec": 5, "Tea": 4,
+		"Dec": 4, "Fir": 4, "OtB": 3,
+	},
+	"PAS_no_off_ball": {
+		"Pas": 8, "Cro": 6, "Fre": 4, "Vis": 7, "Tec": 5,
+		"Tea": 4, "Dec": 4, "Fir": 4,
+	},
 	"DRI": {"Dri": 8, "Fir": 7, "Tec": 6, "Fla": 5, "Cmp": 4, "OtB": 3},
 	"DEF": {"Mar": 8, "Tck": 8, "Hea": 6, "Ant": 7, "Cnt": 6, "Pos": 7, "Dec": 5, "Cmp": 4, "Bra": 5, "Agg": 4, "Wor": 4},
 	"PHY": {"Str": 8, "Sta": 7, "Nat": 6, "Jum": 5, "Bal": 4, "Agg": 5, "Bra": 4, "Wor": 4},
@@ -139,24 +197,37 @@ var DetailedPositionGroupsForPercentiles = map[string][]string{
 // loadJSONWeights attempts to load weights from a JSON file.
 // If loading fails, it falls back to the provided default weights.
 func loadJSONWeights(filePath string, defaultWeights map[string]map[string]int) (map[string]map[string]int, error) {
+	// Validate file path to prevent directory traversal
+	if strings.Contains(filePath, "..") || filepath.IsAbs(filePath) {
+		LogWarn("Invalid file path %s: contains path traversal or is absolute. Using default weights.", filePath)
+		return deepCopyWeights(defaultWeights), apperrors.ErrFilenamePathTraversal
+	}
+
+	// Additional validation: ensure path is within allowed directories
+	allowedDirs := []string{"public"}
+	pathIsAllowed := false
+	for _, allowedDir := range allowedDirs {
+		if strings.HasPrefix(filePath, allowedDir+"/") || filePath == allowedDir {
+			pathIsAllowed = true
+			break
+		}
+	}
+	if !pathIsAllowed {
+		LogWarn("Invalid file path %s: not in allowed directories. Using default weights.", filePath)
+		return deepCopyWeights(defaultWeights), apperrors.ErrFilenamePathTraversal
+	}
+
+	//nolint:gosec // filePath is validated above to be within allowed directories
 	data, err := os.ReadFile(filePath)
 	if err != nil {
-		log.Printf("Warning: Could not read %s: %v. Using default weights.", filePath, err)
+		LogWarn("Could not read %s: %v. Using default weights.", filePath, err)
 		// Return a deep copy of default weights
-		copiedDefault := make(map[string]map[string]int, len(defaultWeights))
-		for k, v := range defaultWeights {
-			innerCopy := make(map[string]int, len(v))
-			for ik, iv := range v {
-				innerCopy[ik] = iv
-			}
-			copiedDefault[k] = innerCopy
-		}
-		return copiedDefault, err
+		return deepCopyWeights(defaultWeights), err
 	}
 
 	var weights map[string]map[string]int
 	if err := json.Unmarshal(data, &weights); err != nil {
-		log.Printf("Warning: Could not unmarshal %s: %v. Using default weights.", filePath, err)
+		LogWarn("Could not unmarshal %s: %v. Using default weights.", filePath, err)
 		copiedDefault := make(map[string]map[string]int, len(defaultWeights))
 		for k, v := range defaultWeights {
 			innerCopy := make(map[string]int, len(v))
@@ -169,7 +240,7 @@ func loadJSONWeights(filePath string, defaultWeights map[string]map[string]int) 
 	}
 
 	if len(weights) == 0 {
-		log.Printf("Warning: Weights file %s was loaded but is empty. Using default weights.", filePath)
+		LogWarn("Weights file %s was loaded but is empty. Using default weights.", filePath)
 		copiedDefault := make(map[string]map[string]int, len(defaultWeights))
 		for k, v := range defaultWeights {
 			innerCopy := make(map[string]int, len(v))
@@ -178,10 +249,10 @@ func loadJSONWeights(filePath string, defaultWeights map[string]map[string]int) 
 			}
 			copiedDefault[k] = innerCopy
 		}
-		return copiedDefault, errors.New("loaded weights file is empty")
+		return copiedDefault, apperrors.ErrEmptyWeightsFile
 	}
 
-	log.Printf("Successfully loaded weights from %s with %d entries.", filePath, len(weights))
+	LogDebug("Successfully loaded weights from %s with %d entries.", filePath, len(weights))
 	return weights, nil
 }
 
@@ -196,11 +267,19 @@ var (
 func init() {
 	// Only initialize metrics toggle from environment variable
 	metricsEnabled = os.Getenv("ENABLE_METRICS") == "true"
-	log.Printf("Metrics collection enabled: %v", metricsEnabled)
+	LogInfo("Metrics collection enabled: %v", metricsEnabled)
 
 	// Initialize logging configuration from environment variable
 	logAllRequests = os.Getenv("LOG_ALL_REQUESTS") == "true"
-	log.Printf("Log all requests enabled: %v", logAllRequests)
+	LogInfo("Log all requests enabled: %v", logAllRequests)
+
+	// Initialize log level from environment variable
+	logLevelStr := os.Getenv("LOG_LEVEL")
+	if logLevelStr == "" {
+		logLevelStr = "INFO" // Default to INFO
+	}
+	SetMinLogLevel(parseLogLevel(logLevelStr))
+	LogInfo("Log level set to: %s", logLevelNames[GetMinLogLevel()])
 
 	// Initialize OpenTelemetry metrics if enabled (lightweight operation)
 	if metricsEnabled {
@@ -214,9 +293,9 @@ func initializeConfigAsync() {
 	defer func() {
 		configInitialized = true
 		if configInitError != nil {
-			log.Printf("Configuration initialization completed with errors: %v", configInitError)
+			LogWarn("Configuration initialization completed with errors: %v", configInitError)
 		} else {
-			log.Printf("Configuration initialization completed successfully")
+			LogDebug("Configuration initialization completed successfully")
 		}
 	}()
 
@@ -233,7 +312,7 @@ func initializeConfigAsync() {
 		defer muAttributeWeights.Unlock()
 
 		if err != nil {
-			log.Printf("Using default attribute_weights due to error: %v. Default attribute_weights has %d entries.", err, len(defaultAttributeWeightsGo))
+			LogWarn("Using default attribute_weights due to error: %v. Default attribute_weights has %d entries.", err, len(defaultAttributeWeightsGo))
 			attributeWeights = deepCopyWeights(defaultAttributeWeightsGo)
 			attrErr = err
 		} else {
@@ -251,7 +330,7 @@ func initializeConfigAsync() {
 		defer muRoleSpecificOverallWeights.Unlock()
 
 		if err != nil {
-			log.Printf("Using default role_specific_overall_weights due to error: %v. Default role_specific_overall_weights has %d entries.", err, len(defaultRoleSpecificOverallWeightsGo))
+			LogWarn("Using default role_specific_overall_weights due to error: %v. Default role_specific_overall_weights has %d entries.", err, len(defaultRoleSpecificOverallWeightsGo))
 			roleSpecificOverallWeights = deepCopyWeights(defaultRoleSpecificOverallWeightsGo)
 			roleErr = err
 		} else {
@@ -267,7 +346,7 @@ func initializeConfigAsync() {
 
 	// Set overall error status
 	if attrErr != nil || roleErr != nil {
-		configInitError = fmt.Errorf("attribute error: %v, role error: %v", attrErr, roleErr)
+		configInitError = apperrors.WrapErrAttributeAndRoleError(attrErr, roleErr)
 	}
 }
 
@@ -311,7 +390,7 @@ func precomputeRoleWeights() {
 			}{RoleName: roleFullName, Weights: copiedWeights})
 		}
 	}
-	log.Printf("Precomputed %d base position keys for role weights.", len(precomputedRoleWeights))
+	LogDebug("Precomputed %d base position keys for role weights.", len(precomputedRoleWeights))
 }
 
 // EnsureConfigInitialized waits for configuration to be loaded (with timeout)
@@ -322,7 +401,7 @@ func EnsureConfigInitialized(timeout time.Duration) error {
 	}
 
 	if !configInitialized {
-		return fmt.Errorf("configuration initialization timed out after %v", timeout)
+		return apperrors.WrapErrConfigInitTimeout(timeout)
 	}
 
 	return configInitError
@@ -340,5 +419,56 @@ func SetUseScaledRatings(useScaled bool) {
 	muUseScaledRatings.Lock()
 	defer muUseScaledRatings.Unlock()
 	useScaledRatings = useScaled
-	log.Printf("Rating calculation method changed to: %s", map[bool]string{true: "scaled", false: "linear"}[useScaled])
+	LogInfo("Rating calculation method changed to: %s", map[bool]string{true: "scaled", false: "linear"}[useScaled])
+}
+
+// GetMinLogLevel returns the current minimum log level
+func GetMinLogLevel() int {
+	muLogLevel.RLock()
+	defer muLogLevel.RUnlock()
+	return minLogLevel
+}
+
+// SetMinLogLevel sets the minimum log level
+func SetMinLogLevel(level int) {
+	muLogLevel.Lock()
+	defer muLogLevel.Unlock()
+	minLogLevel = level
+}
+
+// shouldLog checks if a message at the given level should be logged
+func shouldLog(level int) bool {
+	return level >= GetMinLogLevel()
+}
+
+// LogDebug logs a debug message if debug logging is enabled
+func LogDebug(format string, args ...interface{}) {
+	if shouldLog(LogLevelDebug) {
+		// Use slog so logs go to SignOz via OTLP handler
+		slog.Debug("[DEBUG] " + fmt.Sprintf(format, args...))
+	}
+}
+
+// LogInfo logs an info message if info logging is enabled
+func LogInfo(format string, args ...interface{}) {
+	if shouldLog(LogLevelInfo) {
+		// Use slog so logs go to SignOz via OTLP handler
+		slog.Info("[INFO] " + fmt.Sprintf(format, args...))
+	}
+}
+
+// LogWarn logs a warning message if warning logging is enabled
+func LogWarn(format string, args ...interface{}) {
+	if shouldLog(LogLevelWarn) {
+		// Use slog so logs go to SignOz via OTLP handler
+		slog.Warn("[WARN] " + fmt.Sprintf(format, args...))
+	}
+}
+
+// LogCritical logs a critical message if critical logging is enabled
+func LogCritical(format string, args ...interface{}) {
+	if shouldLog(LogLevelCritical) {
+		// Use slog so logs go to SignOz via OTLP handler
+		slog.Error("[CRITICAL] " + fmt.Sprintf(format, args...))
+	}
 }

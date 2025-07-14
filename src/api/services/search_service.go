@@ -1,4 +1,4 @@
-// src/api/services/search_service.go
+// Package services provides search-related service functionality
 package services
 
 import (
@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"strconv"
 	"strings"
+
+	apperrors "api/errors"
 )
 
 // SearchResult represents a search result item
@@ -25,8 +28,8 @@ type SearchService struct {
 	playerService *PlayerService
 }
 
-// NewSearchService creates a new search service
-func NewSearchService(playerService *PlayerService) *SearchService {
+// CreateSearchService creates a new search service
+func CreateSearchService(playerService *PlayerService) *SearchService {
 	return &SearchService{
 		playerService: playerService,
 	}
@@ -35,7 +38,7 @@ func NewSearchService(playerService *PlayerService) *SearchService {
 // SearchAll performs a comprehensive search across all data types
 func (s *SearchService) SearchAll(ctx context.Context, datasetID, query string, maxResults int) ([]SearchResult, error) {
 	if datasetID == "" {
-		return nil, fmt.Errorf("dataset ID cannot be empty")
+		return nil, apperrors.ErrDatasetIDEmpty
 	}
 
 	if query == "" {
@@ -89,8 +92,8 @@ func (s *SearchService) searchPlayers(players []Player, query string) []SearchRe
 		relevance := s.calculatePlayerRelevance(&players[i], lowerQuery)
 		if relevance > 0 {
 			// Use the player's UID as the ID since it's the unique identifier
-			playerID := players[i].UID
-			if playerID == "" {
+			playerID := strconv.FormatInt(players[i].UID, 10)
+			if players[i].UID == 0 {
 				// Fallback to composite ID if UID is somehow missing
 				playerID = fmt.Sprintf("player_%s_%s_%d_%s",
 					strings.ReplaceAll(players[i].Name, " ", "_"),
@@ -163,7 +166,7 @@ func (s *SearchService) searchTeams(players []Player, query string) []SearchResu
 }
 
 // searchLeagues searches for leagues (if available in data)
-func (s *SearchService) searchLeagues(players []Player, query string) []SearchResult {
+func (s *SearchService) searchLeagues(_ []Player, _ string) []SearchResult {
 	// This is a placeholder - leagues would need to be extracted from player data
 	// or stored separately. For now, we'll return empty results.
 	return []SearchResult{}
@@ -250,26 +253,21 @@ func (s *SearchService) calculatePlayerRelevance(player *Player, lowerQuery stri
 		relevance += 10.0
 	}
 
-	// Boost score for higher-rated players
-	if relevance > 0 {
-		relevance += float64(player.Overall) * 0.1
-	}
-
 	return relevance
 }
 
-// calculateStringRelevance calculates relevance for simple string matching
+// calculateStringRelevance calculates how relevant a string is to the search query
 func (s *SearchService) calculateStringRelevance(text, query string) float64 {
 	lowerText := strings.ToLower(text)
 
-	switch {
-	case lowerText == query:
+	if lowerText == query {
 		return 100.0
-	case strings.HasPrefix(lowerText, query):
-		return 80.0
-	case strings.Contains(lowerText, query):
-		return 60.0
-	default:
-		return 0.0
 	}
+	if strings.HasPrefix(lowerText, query) {
+		return 80.0
+	}
+	if strings.Contains(lowerText, query) {
+		return 50.0
+	}
+	return 0
 }

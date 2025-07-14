@@ -1,8 +1,11 @@
+// Package main provides configuration management for the FM24 application.
+// It handles loading configuration from files and environment variables,
+// with support for YAML configuration files and comprehensive validation.
 package main
 
 import (
+	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"strconv"
@@ -27,6 +30,7 @@ type Config struct {
 	Performance   PerformanceConfig   `yaml:"performance"`
 }
 
+// ServerConfig defines server-related configuration settings
 type ServerConfig struct {
 	Port         int    `yaml:"port"`
 	PortNginx    int    `yaml:"port_nginx"`
@@ -36,16 +40,19 @@ type ServerConfig struct {
 	IdleTimeout  string `yaml:"idle_timeout"`
 }
 
+// FeaturesConfig defines feature flags and toggles
 type FeaturesConfig struct {
 	MetricsEnabled bool `yaml:"metrics_enabled"`
 	UploadEnabled  bool `yaml:"upload_enabled"`
 	ExportEnabled  bool `yaml:"export_enabled"`
 }
 
+// ObservabilityConfig defines observability and monitoring settings
 type ObservabilityConfig struct {
 	Otel OtelConfig `yaml:"otel"`
 }
 
+// OtelConfig defines OpenTelemetry configuration
 type OtelConfig struct {
 	Enabled           bool           `yaml:"enabled"`
 	InsecureMode      bool           `yaml:"insecure_mode"`
@@ -62,16 +69,19 @@ type OtelConfig struct {
 	Resource          ResourceConfig `yaml:"resource"`
 }
 
+// ExporterConfig defines OpenTelemetry exporter settings
 type ExporterConfig struct {
 	Endpoint string `yaml:"endpoint"`
 	Timeout  string `yaml:"timeout"`
 }
 
+// TracingConfig defines OpenTelemetry tracing configuration
 type TracingConfig struct {
 	Enabled    bool    `yaml:"enabled"`
 	SampleRate float64 `yaml:"sample_rate"`
 }
 
+// MetricsConfig defines OpenTelemetry metrics configuration
 type MetricsConfig struct {
 	Enabled               bool   `yaml:"enabled"`
 	ExportInterval        string `yaml:"export_interval"`
@@ -79,11 +89,13 @@ type MetricsConfig struct {
 	CustomMetricsEnabled  bool   `yaml:"custom_metrics_enabled"`
 }
 
+// LoggingConfig defines OpenTelemetry logging configuration
 type LoggingConfig struct {
 	Enabled  bool   `yaml:"enabled"`
 	LogLevel string `yaml:"log_level"`
 }
 
+// BatchConfig defines OpenTelemetry batch processing settings
 type BatchConfig struct {
 	ScheduleDelay      string `yaml:"schedule_delay"`
 	MaxExportBatchSize int    `yaml:"max_export_batch_size"`
@@ -91,10 +103,12 @@ type BatchConfig struct {
 	ExportTimeout      string `yaml:"export_timeout"`
 }
 
+// ResourceConfig defines OpenTelemetry resource detection settings
 type ResourceConfig struct {
 	DetectionTimeout string `yaml:"detection_timeout"`
 }
 
+// UploadConfig defines file upload settings and constraints
 type UploadConfig struct {
 	MaxSizeMB         int      `yaml:"max_size_mb"`
 	AllowedExtensions []string `yaml:"allowed_extensions"`
@@ -102,11 +116,13 @@ type UploadConfig struct {
 	Timeout           string   `yaml:"timeout"`
 }
 
+// StorageConfig defines data storage and retention settings
 type StorageConfig struct {
 	DatasetRetentionDays int      `yaml:"dataset_retention_days"`
 	S3                   S3Config `yaml:"s3"`
 }
 
+// S3Config defines S3 storage configuration
 type S3Config struct {
 	Endpoint  string `yaml:"endpoint"`
 	AccessKey string `yaml:"access_key"`
@@ -116,17 +132,20 @@ type S3Config struct {
 	Region    string `yaml:"region"`
 }
 
+// ImagesConfig defines image-related configuration settings
 type ImagesConfig struct {
-	ApiURL         string `yaml:"api_url"`
+	APIURL         string `yaml:"api_url"`
 	FacesDirectory string `yaml:"faces_directory"`
 	LogosDirectory string `yaml:"logos_directory"`
 }
 
+// FrontendConfig defines frontend application settings
 type FrontendConfig struct {
-	ApiEndpoint  string `yaml:"api_endpoint"`
+	APIEndpoint  string `yaml:"api_endpoint"`
 	GATrackingID string `yaml:"ga_tracking_id"`
 }
 
+// BuildConfig defines build and deployment information
 type BuildConfig struct {
 	RepositoryURL  string `yaml:"repository_url"`
 	Branch         string `yaml:"branch"`
@@ -136,6 +155,7 @@ type BuildConfig struct {
 	DeploymentEnv  string `yaml:"deployment_env"`
 }
 
+// SecurityConfig defines security and CORS settings
 type SecurityConfig struct {
 	EnableCors     bool     `yaml:"enable_cors"`
 	AllowedOrigins []string `yaml:"allowed_origins"`
@@ -144,6 +164,7 @@ type SecurityConfig struct {
 	MaxAge         int      `yaml:"max_age"`
 }
 
+// RateLimitingConfig defines rate limiting settings
 type RateLimitingConfig struct {
 	Enabled           bool `yaml:"enabled"`
 	RequestsPerMinute int  `yaml:"requests_per_minute"`
@@ -151,12 +172,14 @@ type RateLimitingConfig struct {
 	ExportPerHour     int  `yaml:"export_per_hour"`
 }
 
+// CacheConfig defines caching settings
 type CacheConfig struct {
 	Enabled    bool `yaml:"enabled"`
 	TTLSeconds int  `yaml:"ttl_seconds"`
 	MaxSizeMB  int  `yaml:"max_size_mb"`
 }
 
+// PerformanceConfig defines performance and processing settings
 type PerformanceConfig struct {
 	WorkerCount       int    `yaml:"worker_count"`
 	BatchSize         int    `yaml:"batch_size"`
@@ -230,7 +253,12 @@ func setDefaults(config *Config) {
 }
 
 func loadFromFile(config *Config, path string) error {
-	data, err := ioutil.ReadFile(path)
+	// Only allow config files in /app/config/ or ./config/
+	if !strings.HasPrefix(path, "/app/config/") && !strings.HasPrefix(path, "./config/") {
+		return ErrInvalidConfigPath
+	}
+
+	data, err := os.ReadFile(path) // #nosec G304 -- path is validated above
 	if err != nil {
 		return fmt.Errorf("failed to read config file: %w", err)
 	}
@@ -269,7 +297,7 @@ func applyEnvironmentOverrides(config *Config) {
 	if enabled := os.Getenv("OTEL_ENABLED"); enabled != "" {
 		config.Observability.Otel.Enabled = enabled == "true"
 	}
-	if insecureMode := os.Getenv("INSECURE_MODE"); insecureMode != "" {
+	if insecureMode := os.Getenv("OTEL_EXPORTER_OTLP_INSECURE"); insecureMode != "" {
 		config.Observability.Otel.InsecureMode = insecureMode == "true"
 	}
 	if telemetryDisabled := os.Getenv("OTEL_TELEMETRY_DISABLED"); telemetryDisabled != "" {
@@ -359,8 +387,8 @@ func applyEnvironmentOverrides(config *Config) {
 	}
 
 	// Images configuration
-	if imageApiURL := os.Getenv("IMAGE_API_URL"); imageApiURL != "" {
-		config.Images.ApiURL = imageApiURL
+	if imageAPIURL := os.Getenv("IMAGE_API_URL"); imageAPIURL != "" {
+		config.Images.APIURL = imageAPIURL
 	}
 
 	// Frontend Analytics configuration
@@ -411,25 +439,34 @@ func applyEnvironmentOverrides(config *Config) {
 
 	// Frontend configuration
 	if apiEndpoint := os.Getenv("API_ENDPOINT"); apiEndpoint != "" {
-		config.Frontend.ApiEndpoint = apiEndpoint
+		config.Frontend.APIEndpoint = apiEndpoint
 	}
 }
 
+// Define static errors for validation
+var (
+	ErrInvalidServerPort    = errors.New("invalid server port")
+	ErrInvalidNginxPort     = errors.New("invalid nginx port")
+	ErrInvalidUploadSize    = errors.New("invalid upload max size")
+	ErrInvalidRetentionDays = errors.New("invalid dataset retention days")
+	ErrInvalidConfigPath    = errors.New("invalid config file path")
+)
+
 func validateConfig(config *Config) error {
 	if config.Server.Port <= 0 || config.Server.Port > 65535 {
-		return fmt.Errorf("invalid server port: %d", config.Server.Port)
+		return fmt.Errorf("%w: %d", ErrInvalidServerPort, config.Server.Port)
 	}
 
 	if config.Server.PortNginx <= 0 || config.Server.PortNginx > 65535 {
-		return fmt.Errorf("invalid nginx port: %d", config.Server.PortNginx)
+		return fmt.Errorf("%w: %d", ErrInvalidNginxPort, config.Server.PortNginx)
 	}
 
 	if config.Upload.MaxSizeMB <= 0 {
-		return fmt.Errorf("invalid upload max size: %d", config.Upload.MaxSizeMB)
+		return fmt.Errorf("%w: %d", ErrInvalidUploadSize, config.Upload.MaxSizeMB)
 	}
 
 	if config.Storage.DatasetRetentionDays <= 0 {
-		return fmt.Errorf("invalid dataset retention days: %d", config.Storage.DatasetRetentionDays)
+		return fmt.Errorf("%w: %d", ErrInvalidRetentionDays, config.Storage.DatasetRetentionDays)
 	}
 
 	return nil
@@ -447,7 +484,7 @@ func InitConfig() error {
 	return err
 }
 
-// Helper functions to get specific configuration values
+// GetServerPort returns the server port from configuration or environment
 func GetServerPort() int {
 	if appConfig != nil {
 		return appConfig.Server.Port
@@ -461,6 +498,7 @@ func GetServerPort() int {
 	return 8091
 }
 
+// GetNginxPort returns the nginx port from configuration or environment
 func GetNginxPort() int {
 	if appConfig != nil {
 		return appConfig.Server.PortNginx
@@ -474,6 +512,7 @@ func GetNginxPort() int {
 	return 8080
 }
 
+// IsMetricsEnabled returns whether metrics are enabled
 func IsMetricsEnabled() bool {
 	if appConfig != nil {
 		return appConfig.Features.MetricsEnabled
@@ -481,6 +520,7 @@ func IsMetricsEnabled() bool {
 	return os.Getenv("ENABLE_METRICS") == "true"
 }
 
+// IsOTelEnabled returns whether OpenTelemetry is enabled
 func IsOTelEnabled() bool {
 	if appConfig != nil {
 		return appConfig.Observability.Otel.Enabled

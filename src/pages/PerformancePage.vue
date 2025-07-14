@@ -422,8 +422,11 @@
 import { debounce, useQuasar } from 'quasar'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+// biome-ignore lint/correctness/noUnusedImports: used in template
 import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
+// biome-ignore lint/correctness/noUnusedImports: used in template
 import ScatterPlotCard from '../components/ScatterPlotCard.vue'
+// biome-ignore lint/correctness/noUnusedImports: used in template
 import StatCard from '../components/StatCard.vue'
 import { usePlayerStore } from '../stores/playerStore'
 
@@ -437,6 +440,7 @@ const pageLoadingError = ref('')
 const showPlayerDetailDialog = ref(false)
 const playerForDetailView = ref(null)
 const topPlayersByStat = ref({})
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const currentTab = ref('attacking')
 const pageLoading = ref(true)
 
@@ -452,13 +456,16 @@ const positionOptions = ref([])
 
 // --- Computed Properties from Store ---
 const allPlayersData = computed(() => playerStore.allPlayers)
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol)
 const currentDatasetId = computed(() => playerStore.currentDatasetId)
 
 // --- Computed Properties for Filtering ---
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const maxMinutes = computed(() =>
   Math.max(2000, ...allPlayersData.value.map(p => getNumericValue(p.attributes?.Mins) || 0))
 )
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const maxOverall = computed(() => Math.max(100, ...allPlayersData.value.map(p => p.Overall || 0)))
 
 // Function to calculate thresholds for ~100 players
@@ -652,6 +659,7 @@ const filteredPlayers = computed(() => {
 })
 
 // Computed property for custom display text in division filter
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const selectedDivisionsDisplayText = computed(() => {
   const count = selectedDivisions.value.length
   const allAvailableDivisions = [
@@ -668,6 +676,7 @@ const selectedDivisionsDisplayText = computed(() => {
 })
 
 // Computed property for custom display text in position filter
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const selectedPositionsDisplayText = computed(() => {
   const count = selectedPositions.value.length
   if (count === 0) {
@@ -1010,28 +1019,37 @@ const goalkeepingCharts = computed(() =>
 )
 
 // Add computed properties for each subcategory
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const attackingShootingCharts = computed(() =>
   attackingCharts.value.filter(c => c.group === 'shooting')
 )
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const passingCreativeCharts = computed(() =>
   passingCharts.value.filter(c => c.group === 'creative')
 )
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const passingProgressionCharts = computed(() =>
   passingCharts.value.filter(c => c.group === 'progression')
 )
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const passingCrossingCharts = computed(() =>
   passingCharts.value.filter(c => c.group === 'crossing')
 )
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const defendingDuelsCharts = computed(() => defendingCharts.value.filter(c => c.group === 'duels'))
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const defendingPressingCharts = computed(() =>
   defendingCharts.value.filter(c => c.group === 'pressing')
 )
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const defendingAerialCharts = computed(() =>
   defendingCharts.value.filter(c => c.group === 'aerial')
 )
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const defendingWorkrateCharts = computed(() =>
   defendingCharts.value.filter(c => c.group === 'workrate')
 )
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const goalkeepingShotstoppingCharts = computed(() =>
   goalkeepingCharts.value.filter(c => c.group === 'shotstopping')
 )
@@ -1049,7 +1067,6 @@ const allStatsForCalculation = computed(() => [
 ])
 
 // --- Helper Methods ---
-const getPlayerName = player => player.name || player.Name || player.Player || 'Unknown Player'
 const getPlayerDivision = player => player.division || player.Division || 'N/A'
 const getNumericValue = val => {
   if (val === undefined || val === null || val === '-' || val === '') return null
@@ -1082,7 +1099,9 @@ const calculateTopPerformers = () => {
   topPlayersByStat.value = results
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const formatNumber = num => new Intl.NumberFormat().format(num)
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const openPlayerDetail = player => {
   // Find the full player object from allPlayersData
   const fullPlayer =
@@ -1092,6 +1111,7 @@ const openPlayerDetail = player => {
   showPlayerDetailDialog.value = true
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const shareDataset = () => {
   if (!currentDatasetId.value) return
   const shareUrl = `${window.location.origin}/performance/${currentDatasetId.value}`
@@ -1152,6 +1172,7 @@ const initializeData = async () => {
   }
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const filterDivisionsFn = (val, update) => {
   update(() => {
     const needle = val.toLowerCase()
@@ -1162,14 +1183,17 @@ const filterDivisionsFn = (val, update) => {
 }
 
 // Functions to handle select all and clear all divisions
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const selectAllDivisions = () => {
   selectedDivisions.value = [...availableDivisions.value]
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const clearAllDivisions = () => {
   selectedDivisions.value = []
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const filterPositionsFn = (val, update) => {
   update(() => {
     const needle = val.toLowerCase()
@@ -1180,12 +1204,14 @@ const filterPositionsFn = (val, update) => {
 }
 
 // Functions to handle select all and clear all positions
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const selectAllPositions = () => {
   selectedPositions.value = availablePositions.value
     .filter(option => option.value !== null && !option.disable)
     .map(option => option.value)
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const clearAllPositions = () => {
   selectedPositions.value = []
 }
@@ -1251,9 +1277,13 @@ watch(
 )
 
 // Add these refs after the existing refs
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const attackingPlotTab = ref('shooting')
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const passingPlotTab = ref('creative')
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const defendingPlotTab = ref('duels')
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const goalkeepingPlotTab = ref('shotstopping')
 
 onMounted(() => {

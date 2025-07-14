@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"math"
 	"os"
 	"path/filepath"
@@ -11,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"unicode"
+
+	apperrors "api/errors"
 )
 
 // TeamMatch represents a team matching result
@@ -45,13 +46,13 @@ func initTeamsData() error {
 		return nil
 	}
 
-	log.Printf("Team data initialization: Starting teams data loading process")
+	LogInfo("Team data initialization: Starting teams data loading process")
 
 	// Load teams data from JSON file
 	// In containerized environment, the file is at utils/teams_data.json relative to working directory
 	teamsFilePath := filepath.Join("utils", "teams_data.json")
 	if _, err := os.Stat(teamsFilePath); os.IsNotExist(err) {
-		log.Printf("Team data initialization: Primary path not found: %s", teamsFilePath)
+		LogDebug("Team data initialization: Primary path not found: %s", teamsFilePath)
 		// Try alternative paths (for different deployment scenarios)
 		alternativePaths := []string{
 			filepath.Join("src", "api", "utils", "teams_data.json"), // Local development
@@ -61,37 +62,44 @@ func initTeamsData() error {
 
 		found := false
 		for _, altPath := range alternativePaths {
-			log.Printf("Team data initialization: Trying alternative path: %s", altPath)
+			LogDebug("Team data initialization: Trying alternative path: %s", altPath)
 			if _, err := os.Stat(altPath); err == nil {
 				teamsFilePath = altPath
 				found = true
-				log.Printf("Team data initialization: Found teams data at: %s", altPath)
+				LogInfo("Team data initialization: Found teams data at: %s", altPath)
 				break
 			}
 		}
 
 		if !found {
-			log.Printf("Team data initialization: Teams data file not found at any location: %v", err)
+			LogWarn("Team data initialization: Teams data file not found at any location: %v", err)
 			return err
 		}
 	} else {
-		log.Printf("Team data initialization: Found teams data at primary path: %s", teamsFilePath)
+		LogInfo("Team data initialization: Found teams data at primary path: %s", teamsFilePath)
 	}
 
+	// Validate file path to prevent directory traversal
+	if strings.Contains(teamsFilePath, "..") || strings.ContainsAny(teamsFilePath, "/\\") {
+		LogWarn("Team data initialization: Invalid file path %s: contains path traversal or unsafe characters", teamsFilePath)
+		return apperrors.ErrFilenamePathTraversal
+	}
+
+	//nolint:gosec // teamsFilePath is validated above and constructed from safe components
 	data, err := os.ReadFile(teamsFilePath)
 	if err != nil {
-		log.Printf("Team data initialization: Error reading teams data file: %v", err)
+		LogWarn("Team data initialization: Error reading teams data file: %v", err)
 		return err
 	}
 
-	log.Printf("Team data initialization: Successfully read teams data file (%d bytes)", len(data))
+	LogDebug("Team data initialization: Successfully read teams data file (%d bytes)", len(data))
 
 	if err := json.Unmarshal(data, &teamsData); err != nil {
-		log.Printf("Team data initialization: Error parsing teams data JSON: %v", err)
+		LogWarn("Team data initialization: Error parsing teams data JSON: %v", err)
 		return err
 	}
 
-	log.Printf("Team data initialization: Successfully parsed JSON, found %d teams", len(teamsData))
+	LogInfo("Team data initialization: Successfully parsed JSON, found %d teams", len(teamsData))
 
 	// Build search index
 	teamsIndex = make(map[string][]TeamIndexEntry)
@@ -131,14 +139,14 @@ func initTeamsData() error {
 	}
 
 	teamsLoaded = true
-	log.Printf("Team data initialization: Loaded %d teams and built search index with %d total index entries", len(teamsData), indexEntries)
-	log.Printf("Team data initialization: Index has %d unique keys", len(teamsIndex))
+	LogInfo("Team data initialization: Loaded %d teams and built search index with %d total index entries", len(teamsData), indexEntries)
+	LogDebug("Team data initialization: Index has %d unique keys", len(teamsIndex))
 
 	// Log some sample teams for verification
 	sampleCount := 0
 	for id, name := range teamsData {
 		if sampleCount < 5 {
-			log.Printf("Team data initialization: Sample team - ID: %s, Name: '%s'", id, name)
+			LogDebug("Team data initialization: Sample team - ID: %s, Name: '%s'", id, name)
 			sampleCount++
 		} else {
 			break
@@ -192,9 +200,9 @@ func normalizeTeamName(name string) string {
 
 	// Log normalization steps if there were significant changes
 	if original != normalized {
-		log.Printf("Team normalization: '%s' -> '%s'", sanitizeForLogging(original), sanitizeForLogging(normalized))
+		LogDebug("Team normalization: '%s' -> '%s'", sanitizeForLogging(original), sanitizeForLogging(normalized))
 		if beforePatterns != normalized {
-			log.Printf("Team normalization: Removed patterns: '%s' -> '%s'", sanitizeForLogging(beforePatterns), sanitizeForLogging(normalized))
+			LogDebug("Team normalization: Removed patterns: '%s' -> '%s'", sanitizeForLogging(beforePatterns), sanitizeForLogging(normalized))
 		}
 	}
 
@@ -221,7 +229,7 @@ func extractWords(normalized string) []string {
 		}
 	}
 
-	log.Printf("Team matching: Extracted words from '%s': %d words", sanitizeForLogging(normalized), len(result))
+	LogDebug("Team matching: Extracted words from '%s': %d words", sanitizeForLogging(normalized), len(result))
 	return result
 }
 
@@ -458,7 +466,7 @@ func minInt(a, b int) int {
 func findTeamMatches(teamName string) []TeamMatch {
 	// Ensure teams data is loaded
 	if err := initTeamsData(); err != nil {
-		log.Printf("Error initializing teams data: %v", err)
+		LogWarn("Error initializing teams data: %v", err)
 		return []TeamMatch{}
 	}
 
@@ -466,47 +474,47 @@ func findTeamMatches(teamName string) []TeamMatch {
 	defer teamsMutex.RUnlock()
 
 	if len(teamsData) == 0 {
-		log.Printf("Team matching: No teams data available")
+		LogWarn("Team matching: No teams data available")
 		return []TeamMatch{}
 	}
 
-	log.Printf("Team matching: Starting search for '%s'", sanitizeForLogging(teamName))
+	LogDebug("Team matching: Starting search for '%s'", sanitizeForLogging(teamName))
 
 	normalized := normalizeTeamName(teamName)
 	words := extractWords(normalized)
 
-	log.Printf("Team matching: Normalized '%s' -> '%s'", sanitizeForLogging(teamName), sanitizeForLogging(normalized))
-	log.Printf("Team matching: Extracted %d words", len(words))
+	LogDebug("Team matching: Normalized '%s' -> '%s'", sanitizeForLogging(teamName), sanitizeForLogging(normalized))
+	LogDebug("Team matching: Extracted %d words", len(words))
 
 	// Track candidates and their scores
 	candidates := make(map[string]*TeamMatch)
 
 	// 1. Exact match on normalized name
 	if entries, exists := teamsIndex[normalized]; exists {
-		log.Printf("Team matching: Found %d exact matches for normalized name", len(entries))
+		LogDebug("Team matching: Found %d exact matches for normalized name", len(entries))
 		for _, entry := range entries {
 			candidates[entry.ID] = &TeamMatch{
 				ID:    entry.ID,
 				Name:  entry.Name,
 				Score: 1.0,
 			}
-			log.Printf("Team matching: Exact match - ID: %s, Name: '%s', Score: 1.0", entry.ID, sanitizeForLogging(entry.Name))
+			LogDebug("Team matching: Exact match - ID: %s, Name: '%s', Score: 1.0", entry.ID, sanitizeForLogging(entry.Name))
 		}
 	} else {
-		log.Printf("Team matching: No exact matches found for normalized name")
+		LogDebug("Team matching: No exact matches found for normalized name")
 	}
 
 	// 2. Partial word matches
 	wordMatchCount := 0
 	for _, word := range words {
 		if entries, exists := teamsIndex[word]; exists {
-			log.Printf("Team matching: Found %d entries for word", len(entries))
+			LogDebug("Team matching: Found %d entries for word", len(entries))
 			for _, entry := range entries {
 				if existing, found := candidates[entry.ID]; found {
 					// Boost score for multiple word matches
 					oldScore := existing.Score
 					existing.Score = math.Min(1.0, existing.Score+0.2)
-					log.Printf("Team matching: Boosted score for ID %s from %.3f to %.3f",
+					LogDebug("Team matching: Boosted score for ID %s from %.3f to %.3f",
 						entry.ID, oldScore, existing.Score)
 				} else {
 					// Calculate similarity for partial matches
@@ -515,7 +523,7 @@ func findTeamMatches(teamName string) []TeamMatch {
 					// Special bonus for abbreviation matches
 					if checkAbbreviationBonus(word, entry.NormalizedName) {
 						score = math.Min(1.0, score+0.3)
-						log.Printf("Team matching: Applied abbreviation bonus for word in team '%s'", sanitizeForLogging(entry.NormalizedName))
+						LogDebug("Team matching: Applied abbreviation bonus for word in team '%s'", sanitizeForLogging(entry.NormalizedName))
 					}
 
 					if score > 0.3 { // Only include reasonably similar matches
@@ -524,7 +532,7 @@ func findTeamMatches(teamName string) []TeamMatch {
 							Name:  entry.Name,
 							Score: score,
 						}
-						log.Printf("Team matching: Word match - ID: %s, Name: '%s', Score: %.3f",
+						LogDebug("Team matching: Word match - ID: %s, Name: '%s', Score: %.3f",
 							entry.ID, sanitizeForLogging(entry.Name), score)
 						wordMatchCount++
 					}
@@ -536,13 +544,13 @@ func findTeamMatches(teamName string) []TeamMatch {
 		if expansions := getAbbreviationExpansions(word); len(expansions) > 0 {
 			for _, expansion := range expansions {
 				if entries, exists := teamsIndex[expansion]; exists {
-					log.Printf("Team matching: Found %d entries for abbreviation expansion", len(entries))
+					LogDebug("Team matching: Found %d entries for abbreviation expansion", len(entries))
 					for _, entry := range entries {
 						if existing, found := candidates[entry.ID]; found {
 							// Boost existing scores for abbreviation matches
 							oldScore := existing.Score
 							existing.Score = math.Min(1.0, existing.Score+0.3)
-							log.Printf("Team matching: Boosted score for abbreviation match ID %s from %.3f to %.3f",
+							LogDebug("Team matching: Boosted score for abbreviation match ID %s from %.3f to %.3f",
 								entry.ID, oldScore, existing.Score)
 						} else {
 							// High score for abbreviation matches
@@ -552,7 +560,7 @@ func findTeamMatches(teamName string) []TeamMatch {
 								Name:  entry.Name,
 								Score: score,
 							}
-							log.Printf("Team matching: Abbreviation match - ID: %s, Name: '%s', Score: %.3f",
+							LogDebug("Team matching: Abbreviation match - ID: %s, Name: '%s', Score: %.3f",
 								entry.ID, sanitizeForLogging(entry.Name), score)
 							wordMatchCount++
 						}
@@ -561,7 +569,7 @@ func findTeamMatches(teamName string) []TeamMatch {
 			}
 		}
 	}
-	log.Printf("Team matching: Added %d new candidates from word matching", wordMatchCount)
+	LogDebug("Team matching: Added %d new candidates from word matching", wordMatchCount)
 
 	// 3. Prefix matches for auto-complete style matching
 	prefixMatchCount := 0
@@ -569,7 +577,7 @@ func findTeamMatches(teamName string) []TeamMatch {
 		for i := 3; i <= len(normalized) && i <= 8; i++ {
 			prefix := normalized[:i]
 			if entries, exists := teamsIndex[prefix]; exists {
-				log.Printf("Team matching: Found %d entries for prefix", len(entries))
+				LogDebug("Team matching: Found %d entries for prefix", len(entries))
 				for _, entry := range entries {
 					if _, found := candidates[entry.ID]; !found {
 						score := calculateSimilarity(normalized, entry.NormalizedName)
@@ -579,7 +587,7 @@ func findTeamMatches(teamName string) []TeamMatch {
 								Name:  entry.Name,
 								Score: score,
 							}
-							log.Printf("Team matching: Prefix match - ID: %s, Name: '%s', Score: %.3f",
+							LogDebug("Team matching: Prefix match - ID: %s, Name: '%s', Score: %.3f",
 								entry.ID, sanitizeForLogging(entry.Name), score)
 							prefixMatchCount++
 						}
@@ -588,18 +596,18 @@ func findTeamMatches(teamName string) []TeamMatch {
 			}
 		}
 	}
-	log.Printf("Team matching: Added %d new candidates from prefix matching", prefixMatchCount)
+	LogDebug("Team matching: Added %d new candidates from prefix matching", prefixMatchCount)
 
 	// 4. Fallback: similarity search against all teams (limited to prevent performance issues)
 	fallbackMatchCount := 0
 	if len(candidates) < 5 {
-		log.Printf("Team matching: Only %d candidates so far, performing fallback similarity search", len(candidates))
+		LogDebug("Team matching: Only %d candidates so far, performing fallback similarity search", len(candidates))
 		searchCount := 0
 		maxSearches := 1000 // Limit to prevent performance issues
 
 		for id, name := range teamsData {
 			if searchCount >= maxSearches {
-				log.Printf("Team matching: Reached maximum searches limit (%d), stopping fallback search", maxSearches)
+				LogDebug("Team matching: Reached maximum searches limit (%d), stopping fallback search", maxSearches)
 				break
 			}
 
@@ -612,16 +620,16 @@ func findTeamMatches(teamName string) []TeamMatch {
 						Name:  name,
 						Score: score,
 					}
-					log.Printf("Team matching: Fallback match - ID: %s, Name: '%s', Score: %.3f",
+					LogDebug("Team matching: Fallback match - ID: %s, Name: '%s', Score: %.3f",
 						id, sanitizeForLogging(name), score)
 					fallbackMatchCount++
 				}
 			}
 			searchCount++
 		}
-		log.Printf("Team matching: Searched %d teams in fallback, added %d new candidates", searchCount, fallbackMatchCount)
+		LogDebug("Team matching: Searched %d teams in fallback, added %d new candidates", searchCount, fallbackMatchCount)
 	} else {
-		log.Printf("Team matching: Skipping fallback search, already have %d candidates", len(candidates))
+		LogDebug("Team matching: Skipping fallback search, already have %d candidates", len(candidates))
 	}
 
 	// Convert to slice and sort by score
@@ -630,7 +638,7 @@ func findTeamMatches(teamName string) []TeamMatch {
 		matches = append(matches, *match)
 	}
 
-	log.Printf("Team matching: Total candidates found: %d", len(matches))
+	LogDebug("Team matching: Total candidates found: %d", len(matches))
 
 	// Sort by score descending, then by ID numerically (lower IDs preferred) for consistency
 	sort.Slice(matches, func(i, j int) bool {
@@ -654,18 +662,18 @@ func findTeamMatches(teamName string) []TeamMatch {
 	originalCount := len(matches)
 	if len(matches) > 10 {
 		matches = matches[:10]
-		log.Printf("Team matching: Limited results from %d to 10 matches", originalCount)
+		LogDebug("Team matching: Limited results from %d to 10 matches", originalCount)
 	}
 
 	// Log final results summary
 	if len(matches) > 0 {
-		log.Printf("Team matching: Final results for '%s' (%d matches):", sanitizeForLogging(teamName), len(matches))
+		LogDebug("Team matching: Final results for '%s' (%d matches):", sanitizeForLogging(teamName), len(matches))
 		for i, match := range matches {
-			log.Printf("Team matching: Result %d - ID: %s, Name: '%s', Score: %.3f",
+			LogDebug("Team matching: Result %d - ID: %s, Name: '%s', Score: %.3f",
 				i+1, match.ID, sanitizeForLogging(match.Name), match.Score)
 		}
 	} else {
-		log.Printf("Team matching: No matches found for '%s'", sanitizeForLogging(teamName))
+		LogDebug("Team matching: No matches found for '%s'", sanitizeForLogging(teamName))
 	}
 
 	return matches

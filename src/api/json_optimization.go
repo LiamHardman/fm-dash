@@ -71,8 +71,8 @@ type PlayerJSONOptimizer struct {
 	encoder *json.Encoder
 }
 
-// NewPlayerJSONOptimizer creates a new optimizer instance
-func NewPlayerJSONOptimizer() *PlayerJSONOptimizer {
+// CreatePlayerJSONOptimizer creates a new optimizer instance
+func CreatePlayerJSONOptimizer() *PlayerJSONOptimizer {
 	buf := getJSONBuffer()
 	encoder := json.NewEncoder(buf)
 	encoder.SetEscapeHTML(false)
@@ -127,7 +127,7 @@ func (opt *PlayerJSONOptimizer) Close() {
 }
 
 // Global optimizer instance for reuse
-var globalPlayerJSONOptimizer = NewPlayerJSONOptimizer()
+var globalPlayerJSONOptimizer = CreatePlayerJSONOptimizer()
 
 // OptimizedPlayerMarshal is a convenience function using the global optimizer
 func OptimizedPlayerMarshal(player *Player) ([]byte, error) {

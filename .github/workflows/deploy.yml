@@ -2,8 +2,8 @@ name: FM-Dash Release Pipeline
 run-name: ${{ github.actor }} is creating FM-Dash release artifacts 🚀
 
 on:
-  push:
-    branches: [ gh-release ]
+  # This workflow is now integrated into gh-release-pipeline.yml
+  # Only runs on manual release events, not on gh-release branch pushes
   release:
     types: [published]
 

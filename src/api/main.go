@@ -2,15 +2,17 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"log"
 	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
+
+	apperrors "api/errors"
 )
 
 var (
@@ -24,25 +26,76 @@ func getEnvWithDefault(key, defaultValue string) string {
 	return defaultValue
 }
 
+// configureRuntimeMemory optimizes Go runtime settings for better memory management
+func configureRuntimeMemory() {
+	// Statically set GOGC to 150 for consistent performance
+	debug.SetGCPercent(150)
+	slog.Debug("Statically set GOGC to 150")
+
+	// Set memory limit if specified
+	if memLimit := os.Getenv("GOMEMLIMIT"); memLimit != "" {
+		debug.SetMemoryLimit(parseMemoryLimit(memLimit))
+		slog.Debug("Set memory limit", "limit", memLimit)
+	}
+
+	// Configure maximum number of OS threads
+	runtime.GOMAXPROCS(runtime.NumCPU())
+
+	slog.Debug("Runtime configured",
+		"GOMAXPROCS", runtime.GOMAXPROCS(0),
+		"NumCPU", runtime.NumCPU())
+}
+
+// parseMemoryLimit parses memory limit strings like "1GB", "512MB"
+func parseMemoryLimit(limit string) int64 {
+	if limit == "" {
+		return -1
+	}
+
+	// Simple parser for common formats
+	var multiplier int64 = 1
+
+	if len(limit) >= 2 {
+		suffix := limit[len(limit)-2:]
+		switch suffix {
+		case "KB", "kb":
+			multiplier = 1024
+			limit = limit[:len(limit)-2]
+		case "MB", "mb":
+			multiplier = 1024 * 1024
+			limit = limit[:len(limit)-2]
+		case "GB", "gb":
+			multiplier = 1024 * 1024 * 1024
+			limit = limit[:len(limit)-2]
+		}
+	}
+
+	if val, err := strconv.ParseInt(limit, 10, 64); err == nil {
+		return val * multiplier
+	}
+
+	return -1 // Invalid format
+}
+
 func validateEnvironmentVariables() error {
 	// Validate OTEL_EXPORTER_OTLP_ENDPOINT if set
 	if endpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"); endpoint != "" {
 		if !strings.Contains(endpoint, ":") {
-			return fmt.Errorf("invalid OTEL_EXPORTER_OTLP_ENDPOINT: %s (must include port)", endpoint)
+			return apperrors.WrapErrInvalidOtelEndpoint(endpoint)
 		}
 	}
 
 	// Validate S3_ENDPOINT format if set
 	if endpoint := os.Getenv("S3_ENDPOINT"); endpoint != "" {
 		if !strings.Contains(endpoint, ":") && !strings.HasPrefix(endpoint, "http") {
-			return fmt.Errorf("invalid S3_ENDPOINT format: %s (should include port or be full URL)", endpoint)
+			return apperrors.WrapErrInvalidS3Endpoint(endpoint)
 		}
 	}
 
 	// Validate SERVICE_NAME doesn't contain dangerous characters
 	if serviceName := os.Getenv("SERVICE_NAME"); serviceName != "" {
 		if strings.ContainsAny(serviceName, " \t\n\r;|&$`") {
-			return fmt.Errorf("invalid SERVICE_NAME: contains unsafe characters")
+			return apperrors.ErrInvalidServiceName
 		}
 	}
 
@@ -52,8 +105,12 @@ func validateEnvironmentVariables() error {
 func main() {
 	// Validate environment variables first
 	if err := validateEnvironmentVariables(); err != nil {
-		log.Fatalf("Environment validation failed: %v", err)
+		slog.Error("Environment validation failed", "error", err)
+		os.Exit(1)
 	}
+
+	// Configure Go runtime for better memory management
+	configureRuntimeMemory()
 
 	// Determine port for HTTP server with validation
 	port := os.Getenv("PORT")
@@ -62,7 +119,8 @@ func main() {
 	} else {
 		// Validate port is a valid number and in reasonable range
 		if portNum, err := strconv.Atoi(port); err != nil || portNum <= 0 || portNum > 65535 {
-			log.Fatalf("Invalid PORT environment variable: %s. Must be a number between 1-65535", port)
+			slog.Error("Invalid PORT environment variable. Must be a number between 1-65535", "port", port)
+			os.Exit(1)
 		}
 	}
 
@@ -71,14 +129,15 @@ func main() {
 	if otelEnabled {
 		cleanup = initOTel()
 		if cleanup == nil {
-			log.Fatal("Failed to initialize OpenTelemetry: initOTel returned nil cleanup function")
+			slog.Error("Failed to initialize OpenTelemetry: initOTel returned nil cleanup function")
+			os.Exit(1)
 		}
 		defer func() {
 			if err := cleanup(context.Background()); err != nil {
-				log.Printf("Warning: Error during OpenTelemetry cleanup: %v", err)
+				LogWarn("Warning: Error during OpenTelemetry cleanup: %v", err)
 			}
 		}()
-		slog.Info("OpenTelemetry initialized", "logs_streaming", true)
+		slog.Debug("OpenTelemetry initialized", "logs_streaming", true)
 
 	} else {
 		slog.Info("OpenTelemetry disabled", "logs_streaming", false)
@@ -92,6 +151,9 @@ func main() {
 
 	// Initialize cache storage system
 	InitCacheStorage()
+
+	// Initialize memory optimizations
+	InitializeMemoryOptimizations()
 
 	// Start automatic cleanup scheduler for old datasets
 	StartCleanupScheduler()
@@ -152,6 +214,9 @@ func main() {
 	// API endpoint for updating player percentiles with division filtering
 	http.Handle("/api/percentiles/", wrapHandler(http.HandlerFunc(percentilesHandler), "percentiles"))
 
+	// API endpoint for checking percentile status
+	http.Handle("/api/percentiles-status/", wrapHandler(http.HandlerFunc(percentilesStatusHandler), "percentiles-status"))
+
 	// API endpoint for universal search (players, teams, leagues, nations)
 	http.Handle("/api/search/", wrapHandler(http.HandlerFunc(searchHandler), "search"))
 
@@ -175,6 +240,9 @@ func main() {
 
 	// API endpoint for cache status and monitoring
 	http.Handle("/api/cache-status", wrapHandler(http.HandlerFunc(cacheStatusHandler), "cache-status"))
+
+	// API endpoint for memory optimization reports
+	http.Handle("/api/memory-optimization", wrapHandler(http.HandlerFunc(GetMemoryOptimizationHandler()), "memory-optimization"))
 
 	// Create HTTP server with timeouts and middleware
 	mux := http.NewServeMux()
@@ -202,6 +270,7 @@ func main() {
 	mux.Handle("/api/leagues/", wrapHandler(http.HandlerFunc(leaguesHandler), "leagues"))
 	mux.Handle("/api/teams/", wrapHandler(http.HandlerFunc(teamsHandler), "teams"))
 	mux.Handle("/api/percentiles/", wrapHandler(http.HandlerFunc(percentilesHandler), "percentiles"))
+	mux.Handle("/api/percentiles-status/", wrapHandler(http.HandlerFunc(percentilesStatusHandler), "percentiles-status"))
 	mux.Handle("/api/search/", wrapHandler(http.HandlerFunc(searchHandler), "search"))
 	mux.Handle("/api/config", wrapHandler(http.HandlerFunc(cachedConfigHandler), "config"))
 	mux.Handle("/api/bargain-hunter/", wrapHandler(http.HandlerFunc(bargainHunterHandler), "bargain-hunter"))
@@ -221,6 +290,9 @@ func main() {
 	// API endpoint for cache status and monitoring
 	mux.Handle("/api/cache-status", wrapHandler(http.HandlerFunc(cacheStatusHandler), "cache-status"))
 
+	// API endpoint for memory optimization reports
+	mux.Handle("/api/memory-optimization", wrapHandler(http.HandlerFunc(GetMemoryOptimizationHandler()), "memory-optimization"))
+
 	// Create server with proper timeouts
 	server := &http.Server{
 		Addr:              ":" + port,
@@ -231,7 +303,7 @@ func main() {
 		ReadHeaderTimeout: 5 * time.Second,  // Time to read request headers
 	}
 
-	slog.Info("Server starting",
+	slog.Debug("Server starting",
 		"port", port,
 		"url", "http://localhost:"+port,
 		"read_timeout", "15s",

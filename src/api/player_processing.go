@@ -1,13 +1,13 @@
 package main
 
 import (
-	"errors"
-	"fmt"
 	"log"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
+
+	apperrors "api/errors"
 )
 
 // Memory pools for reducing allocations during role calculations
@@ -31,7 +31,7 @@ var (
 // fastParseInt provides optimized integer parsing with fast paths
 func fastParseInt(s string) (int, error) {
 	if s == "" {
-		return 0, errors.New("empty string")
+		return 0, apperrors.ErrEmptyString
 	}
 
 	// Fast path for single digit numbers (common for FM attributes 1-20)
@@ -39,7 +39,7 @@ func fastParseInt(s string) (int, error) {
 		if s[0] >= '0' && s[0] <= '9' {
 			return int(s[0] - '0'), nil
 		}
-		return 0, errors.New("invalid character")
+		return 0, apperrors.ErrInvalidCharacter
 	}
 
 	// Fast path for two digit numbers (also common for FM attributes)
@@ -56,7 +56,7 @@ func fastParseInt(s string) (int, error) {
 // fastParseFloat provides optimized float parsing for performance stats
 func fastParseFloat(s string) (float64, error) {
 	if s == "" {
-		return 0, errors.New("empty string")
+		return 0, apperrors.ErrEmptyString
 	}
 
 	// Fast path for simple integers that don't need float parsing
@@ -73,7 +73,7 @@ func fastParseFloat(s string) (float64, error) {
 // into a Player struct, based on the provided headers.
 func parseCellsToPlayer(cells, headers []string) (Player, error) {
 	if len(headers) == 0 {
-		return Player{}, errors.New("cannot process row: headers are empty")
+		return Player{}, apperrors.ErrCannotProcessRow
 	}
 
 	// Ensure cells slice is at least as long as headers, padding with empty strings if necessary.
@@ -106,7 +106,12 @@ func parseCellsToPlayer(cells, headers []string) (Player, error) {
 
 		switch headerNameClean {
 		case "UID", "uid", "Uid", "ID", "id", "Id", "Player ID", "PlayerId", "player_id", "unique_id", "UniqueId":
-			player.UID = cellValue
+			uid, err := strconv.ParseInt(cellValue, 10, 64)
+			if err != nil {
+				// Log the error or handle it as needed. For now, we'll default to 0.
+				uid = 0
+			}
+			player.UID = uid
 			isAnAttributeField = false
 		case "Name":
 			player.Name = cellValue
@@ -127,7 +132,9 @@ func parseCellsToPlayer(cells, headers []string) (Player, error) {
 			player.Division = cellValue
 			isAnAttributeField = false
 		case "Transfer Value":
-			player.TransferValue, player.TransferValueAmount, _ = ParseMonetaryValueGo(cellValue) // Currency symbol detection handled by caller if needed globally
+			originalDisplay, numericValue, _ := ParseMonetaryValueGo(cellValue)
+			player.TransferValue = originalDisplay
+			player.TransferValueAmount = numericValue
 			isAnAttributeField = false
 		case "Wage":
 			player.Wage, player.WageAmount, _ = ParseMonetaryValueGo(cellValue)
@@ -220,10 +227,10 @@ func parseCellsToPlayer(cells, headers []string) (Player, error) {
 			}
 		}
 		if isPotentiallyMeaningfulRow {
-			// Log first few cells for debugging if a non-empty row lacks a name
-			return Player{}, errors.New("skipped row: 'Name' field is missing or empty, but other data present. First few cells: " + strings.Join(GetFirstNCells(cells, 5), ", "))
+			return Player{}, apperrors.WrapErrSkippedRowNameMissing(strings.Join(GetFirstNCells(cells, 5), ", "))
 		}
-		return Player{}, errors.New("skipped row: 'Name' field missing and row appears empty or is likely a non-player row (e.g., header repetition, spacer)")
+
+		return Player{}, apperrors.ErrSkippedRowEmpty
 	}
 
 	return player, nil
@@ -240,6 +247,18 @@ func EnhancePlayerWithCalculations(player *Player) {
 	if player.PerformanceStatsNumeric == nil {
 		player.PerformanceStatsNumeric = make(map[string]float64, len(PerformanceStatKeys))
 	}
+
+	// Apply string interning optimization for memory efficiency (after all map operations)
+	// Use enhanced version with compression for better memory savings
+	if memOptConfig.UseStringInterning {
+		EnhancedOptimizePlayerStrings(player)
+	}
+
+	// Note: OptimizedPlayer conversion disabled here as it's inefficient to convert back immediately
+	// OptimizedPlayer should be used in storage and processing layers, not during enhancement
+	// The conversion happens in storage layers where memory benefits are actually realized
+	// This optimization is handled at the storage level for maximum memory benefit
+	// Converting here and back would negate the memory savings
 
 	// Convert string attributes to numeric and parse performance stats
 	for key, valStr := range player.Attributes {
@@ -326,10 +345,10 @@ func EnhancePlayerWithCalculations(player *Player) {
 									parsedValue = mainApps + subApps
 									err = nil
 								} else {
-									err = fmt.Errorf("failed to parse appearances")
+									err = apperrors.ErrFailedToParseAppearances
 								}
 							} else {
-								err = fmt.Errorf("invalid appearances format")
+								err = apperrors.ErrInvalidAppearancesFormat
 							}
 						} else {
 							// Simple number

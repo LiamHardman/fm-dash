@@ -2,17 +2,65 @@ package main
 
 import (
 	"bufio"
-	"errors"
 	"io"
 	"log"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	apperrors "api/errors"
+
 	"golang.org/x/net/html"
 )
+
+// Comprehensive list of world currencies used in Football Manager
+var worldCurrencies = []string{
+	// Major currencies (most common in FM)
+	"$", "€", "£", "¥", "₹", "₽", "₺", "₩", "R$", "CHF", "A$", "CA$", "Mex$", "kr", "zł", "R",
+
+	// European currencies
+	"SEK", "NOK", "DKK", "ISK", "CZK", "PLN", "HUF", "RON", "BGN", "HRK", "RSD", "MKD", "ALL", "BAM", "MDL", "UAH", "BYN", "GEL", "AMD", "AZN", "KZT", "KGS", "TJS", "TMT", "UZS", "TND", "MAD", "EGP", "LYD", "DZD", "TND", "MAD", "EGP", "LYD", "DZD",
+
+	// Asian currencies
+	"CNY", "HKD", "TWD", "SGD", "MYR", "THB", "IDR", "PHP", "VND", "KHR", "LAK", "MMK", "BDT", "LKR", "NPR", "PKR", "AFN", "IRR", "IQD", "JOD", "KWD", "LBP", "OMR", "QAR", "SAR", "SYP", "AED", "YER", "BHD", "KWD", "OMR", "QAR", "SAR", "AED", "BHD",
+
+	// African currencies
+	"ZAR", "NGN", "KES", "GHS", "UGX", "TZS", "MWK", "ZMW", "BWP", "NAD", "SZL", "LSL", "MUR", "SCR", "KMF", "DJF", "ETB", "SDG", "SSP", "SOS", "TND", "MAD", "EGP", "LYD", "DZD", "MAD", "EGP", "LYD", "DZD",
+
+	// American currencies
+	"ARS", "BRL", "CLP", "COP", "PEN", "UYU", "PYG", "BOB", "GTQ", "HNL", "NIO", "CRC", "PAB", "BBD", "BZD", "GYD", "SRD", "TTD", "XCD", "ANG", "AWG", "BMD", "KYD", "JMD", "HTG", "DOP", "CUC", "CUP",
+
+	// Oceanian currencies
+	"FJD", "PGK", "SBD", "VUV", "WST", "TOP", "TVD", "NZD", "AUD",
+
+	// Middle Eastern currencies
+	"ILS", "TRY", "IRR", "IQD", "JOD", "KWD", "LBP", "OMR", "QAR", "SAR", "SYP", "AED", "YER", "BHD",
+
+	// Other major currencies
+	"INR", "RUB", "KRW", "JPY", "CNY", "HKD", "TWD", "SGD", "MYR", "THB", "IDR", "PHP", "VND", "KHR", "LAK", "MMK", "BDT", "LKR", "NPR", "PKR", "AFN", "IRR", "IQD", "JOD", "KWD", "LBP", "OMR", "QAR", "SAR", "SYP", "AED", "YER", "BHD",
+}
+
+// Optimized string builder pool with size management
+var optimizedStringBuilderPool = sync.Pool{
+	New: func() interface{} {
+		sb := &strings.Builder{}
+		sb.Grow(stringBuilderInitSize)
+		return sb
+	},
+}
+
+func getOptimizedStringBuilder() *strings.Builder {
+	sb := optimizedStringBuilderPool.Get().(*strings.Builder)
+	sb.Reset()
+	return sb
+}
+
+func putOptimizedStringBuilder(sb *strings.Builder) {
+	if sb.Cap() <= maxStringBuilderSize { // Don't pool extremely large builders
+		optimizedStringBuilderPool.Put(sb)
+	}
+}
 
 // sendRowWithBackpressure attempts to send row data to channel with optimized timeout handling
 func sendRowWithBackpressure(rowCellsChan chan []string, cells []string, timeout time.Duration) {
@@ -43,128 +91,65 @@ func sendRowWithBackpressure(rowCellsChan chan []string, cells []string, timeout
 	}
 }
 
-// Optimized regex compilation for currency parsing - compiled once at package level
-var currencySymbolRegex = regexp.MustCompile(
-	`([€£$¥₹₽₺₩])|` + // Single character symbols (Euro, Pound, Dollar, Yen, Rupee, Ruble, Lira, Won)
-		`(R\$)|` + // Brazilian Real
-		`(CHF)|` + // Swiss Franc
-		`(A\$)|` + // Australian Dollar
-		`(CA\$)|` + // Canadian Dollar (use CA$ to distinguish from A$)
-		`(Mex\$)|` + // Mexican Peso
-		`(kr)|` + // Krona (Swedish, Norwegian, Danish) - might be too generic, consider specific like SEK, NOK, DKK if available in data
-		`(zł)|` + // Polish Zloty
-		`(R)`, // South African Rand (must be last if 'R$' is also used to avoid partial match)
-)
+// Enhanced currency detection with comprehensive world currency support
+func detectCurrencySymbol(rawValue string) string {
+	// First check for the most common currencies (faster path)
+	commonCurrencies := []string{"$", "€", "£", "¥", "₹", "₽", "₺", "₩", "R$", "CHF", "A$", "CA$", "Mex$", "kr", "zł", "R"}
 
-// Optimized buffer pool for string operations
-var stringBuilderPool = sync.Pool{
-	New: func() interface{} {
-		return &strings.Builder{}
-	},
-}
-
-func getStringBuilder() *strings.Builder {
-	sb := stringBuilderPool.Get().(*strings.Builder)
-	sb.Reset()
-	return sb
-}
-
-func putStringBuilder(sb *strings.Builder) {
-	if sb.Cap() <= 1024 { // Don't pool extremely large builders
-		stringBuilderPool.Put(sb)
-	}
-}
-
-// Enhanced ParseMonetaryValueGo with better string handling
-func ParseMonetaryValueGo(rawValue string) (originalDisplay string, numericValue int64, detectedSymbol string) {
-	if rawValue == "" {
-		return "", 0, ""
-	}
-
-	cleanedValue := strings.TrimSpace(rawValue)
-	originalDisplay = cleanedValue
-
-	// Use pre-compiled regex for better performance
-	matches := currencySymbolRegex.FindStringSubmatch(cleanedValue)
-	if len(matches) > 1 {
-		for i := 1; i < len(matches); i++ {
-			if matches[i] != "" {
-				detectedSymbol = matches[i]
-				break
-			}
+	for _, sym := range commonCurrencies {
+		if strings.Contains(rawValue, sym) {
+			return sym
 		}
 	}
 
-	if detectedSymbol == "" {
-		// Fast fallback checks using Contains (faster than regex for simple cases)
-		switch {
-		case strings.Contains(cleanedValue, "€"):
-			detectedSymbol = "€"
-		case strings.Contains(cleanedValue, "£"):
-			detectedSymbol = "£"
-		case strings.Contains(cleanedValue, "$"):
-			detectedSymbol = "$"
+	// If no common currency found, check the full world currency list
+	for _, sym := range worldCurrencies {
+		if strings.Contains(rawValue, sym) {
+			return sym
 		}
 	}
 
-	// Handle ranges like "£10M - £15M" more efficiently
-	if idx := strings.Index(cleanedValue, " - "); idx != -1 {
-		cleanedValue = strings.TrimSpace(cleanedValue[idx+3:])
-		// Re-detect symbol efficiently
-		if detectedSymbol == "" {
-			rangeSymbolMatches := currencySymbolRegex.FindStringSubmatch(cleanedValue)
-			if len(rangeSymbolMatches) > 1 {
-				for i := 1; i < len(rangeSymbolMatches); i++ {
-					if rangeSymbolMatches[i] != "" {
-						detectedSymbol = rangeSymbolMatches[i]
-						break
-					}
-				}
-			}
+	return ""
+}
+
+// FastParseMonetaryValue parses monetary values, handling ranges and decimals correctly.
+func FastParseMonetaryValue(rawValue string) (originalDisplay string, numericValue int64, detectedSymbol string) {
+	originalDisplay = rawValue
+	cleanValue := rawValue
+	detectedSymbol = detectCurrencySymbol(rawValue)
+
+	// Remove all currency symbols and whitespace
+	for _, sym := range worldCurrencies {
+		cleanValue = strings.ReplaceAll(cleanValue, sym, "")
+	}
+	cleanValue = strings.TrimSpace(cleanValue)
+
+	// If it's a range (e.g., '£140M - £183M'), extract the upper bound
+	if strings.Contains(cleanValue, "-") {
+		parts := strings.Split(cleanValue, "-")
+		if len(parts) > 1 {
+			cleanValue = strings.TrimSpace(parts[len(parts)-1])
 		}
 	}
 
-	// More efficient symbol removal using strings.Replacer
-	var replacer *strings.Replacer
-	if detectedSymbol != "" {
-		// Create replacer for detected symbol plus common cleanup
-		replacer = strings.NewReplacer(
-			detectedSymbol, "",
-			"p/w", "",
-			"/w", "",
-			",", "",
-		)
-	} else {
-		// Fallback replacer for all symbols
-		replacer = strings.NewReplacer(
-			"€", "", "£", "", "$", "", "¥", "", "₹", "", "₽", "", "₺", "", "₩", "",
-			"R", "", "CHF", "", "kr", "", "zł", "",
-			"p/w", "", "/w", "", ",", "",
-		)
-	}
-
-	valueToParse := strings.TrimSpace(replacer.Replace(cleanedValue))
-
-	// Optimized multiplier detection
-	multiplier := int64(1)
-	valueLen := len(valueToParse)
-	if valueLen > 0 {
-		lastChar := valueToParse[valueLen-1]
+	// Detect multiplier
+	multiplier := float64(1)
+	if cleanValue != "" {
+		lastChar := cleanValue[len(cleanValue)-1]
 		switch lastChar {
 		case 'M', 'm':
 			multiplier = 1000000
-			valueToParse = valueToParse[:valueLen-1]
+			cleanValue = cleanValue[:len(cleanValue)-1]
 		case 'K', 'k':
 			multiplier = 1000
-			valueToParse = valueToParse[:valueLen-1]
+			cleanValue = cleanValue[:len(cleanValue)-1]
 		}
 	}
 
-	// Fast path for simple integer parsing
-	if val, err := strconv.ParseInt(strings.TrimSpace(valueToParse), 10, 64); err == nil {
-		numericValue = val * multiplier
-	} else if valFloat, err := strconv.ParseFloat(strings.TrimSpace(valueToParse), 64); err == nil {
-		numericValue = int64(valFloat * float64(multiplier))
+	// Parse as float to handle decimals
+	valFloat, err := strconv.ParseFloat(strings.TrimSpace(cleanValue), 64)
+	if err == nil {
+		numericValue = int64(valFloat * multiplier)
 	} else {
 		numericValue = 0
 	}
@@ -177,11 +162,17 @@ func ParseMonetaryValueGo(rawValue string) (originalDisplay string, numericValue
 	return originalDisplay, numericValue, detectedSymbol
 }
 
+// ParseMonetaryValueGo parses monetary values with optimized byte operations
+func ParseMonetaryValueGo(rawValue string) (originalDisplay string, numericValue int64, detectedSymbol string) {
+	return FastParseMonetaryValue(rawValue)
+}
+
 // ParseHTMLPlayerTable tokenizes an HTML file stream (typically a player squad view)
 // and sends extracted table headers and row data (as slices of strings) to respective channels.
-// It manages the HTML parsing state machine.
+// It manages the HTML parsing state machine with optimized performance.
 func ParseHTMLPlayerTable(file io.Reader, headersSnapshot *[]string, rowCellsChan chan []string, numWorkers int, resultsChan chan<- PlayerParseResult, wg *sync.WaitGroup) (processingError error) {
-	bufferedReader := bufio.NewReaderSize(file, maxTokenBufferSize) // maxTokenBufferSize from config.go
+	// Use larger buffered reader for better performance
+	bufferedReader := bufio.NewReaderSize(file, maxTokenBufferSize)
 	tokenizer := html.NewTokenizer(bufferedReader)
 
 	var currentHeaders []string // Temporary headers collected
@@ -192,9 +183,9 @@ func ParseHTMLPlayerTable(file io.Reader, headersSnapshot *[]string, rowCellsCha
 	inTHead := false            // True if currently inside a <thead> element
 	inTBody := false            // True if currently inside a <tbody> element
 
-	// Use pooled string builder for better performance
-	cellBuilder := getStringBuilder()
-	defer putStringBuilder(cellBuilder)
+	// Use optimized string builder for better performance
+	cellBuilder := getOptimizedStringBuilder()
+	defer putOptimizedStringBuilder(cellBuilder)
 
 	workersStarted := false
 	channelClosed := false             // Track channel state to prevent double-close
@@ -223,7 +214,7 @@ tokenLoop:
 				break tokenLoop
 			}
 			log.Printf("HTML tokenization error occurred during parsing")
-			processingError = errors.New("Error tokenizing HTML: " + err.Error())
+			processingError = apperrors.WrapErrTokenizingHTML(err)
 			break tokenLoop
 		case html.StartTagToken:
 			switch token.Data {
@@ -240,7 +231,7 @@ tokenLoop:
 						localHeadersForWorker = make([]string, len(currentHeaders))
 						copy(localHeadersForWorker, currentHeaders)
 						*headersSnapshot = localHeadersForWorker
-						log.Printf("Headers found (tbody start), launching %d workers with %d headers", numWorkers, len(localHeadersForWorker))
+						LogDebug("Headers found (tbody start), launching %d workers with %d headers", numWorkers, len(localHeadersForWorker))
 						wg.Add(numWorkers)
 						for i := 0; i < numWorkers; i++ {
 							go PlayerParserWorker(i, rowCellsChan, resultsChan, wg, localHeadersForWorker)
@@ -310,7 +301,7 @@ tokenLoop:
 						localHeadersForWorker = make([]string, len(currentHeaders))
 						copy(localHeadersForWorker, currentHeaders)
 						*headersSnapshot = localHeadersForWorker
-						log.Printf("Headers found (tr end), launching %d workers with %d headers", numWorkers, len(localHeadersForWorker))
+						LogDebug("Headers found (tr end), launching %d workers with %d headers", numWorkers, len(localHeadersForWorker))
 						wg.Add(numWorkers)
 						for i := 0; i < numWorkers; i++ {
 							go PlayerParserWorker(i, rowCellsChan, resultsChan, wg, localHeadersForWorker)
@@ -331,7 +322,7 @@ tokenLoop:
 					localHeadersForWorker = make([]string, len(currentHeaders))
 					copy(localHeadersForWorker, currentHeaders)
 					*headersSnapshot = localHeadersForWorker
-					log.Printf("Headers found (table end), launching %d workers with %d headers", numWorkers, len(localHeadersForWorker))
+					LogDebug("Headers found (table end), launching %d workers with %d headers", numWorkers, len(localHeadersForWorker))
 					wg.Add(numWorkers)
 					for i := 0; i < numWorkers; i++ {
 						go PlayerParserWorker(i, rowCellsChan, resultsChan, wg, localHeadersForWorker)
@@ -348,14 +339,14 @@ tokenLoop:
 
 	// Final cleanup and worker notification
 	if workersStarted {
-		log.Printf("HTML parsing finished, closing rowCellsChan to signal %d workers", numWorkers)
+		LogDebug("HTML parsing finished, closing rowCellsChan to signal %d workers", numWorkers)
 		closeChannelOnce() // Safe channel close
 	} else {
 		log.Printf("Warning: No workers were started during HTML parsing. Headers found: %v", len(currentHeaders) > 0)
 		if len(currentHeaders) == 0 {
-			processingError = errors.New("no table headers found in HTML file")
+			processingError = apperrors.ErrNoTableHeadersFound
 		} else {
-			processingError = errors.New("headers found but workers were not started")
+			processingError = apperrors.ErrHeadersFoundButWorkersNotStarted
 		}
 		closeChannelOnce() // Ensure channel is closed even on error
 	}

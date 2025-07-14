@@ -1,3 +1,4 @@
+// Package main provides async processing functionality for the FM24 API
 package main
 
 import (
@@ -22,10 +23,10 @@ type ProcessingConfig struct {
 func DefaultProcessingConfig() ProcessingConfig {
 	numCPU := runtime.NumCPU()
 	return ProcessingConfig{
-		WorkerCount:   numCPU * 2,  // Increase worker count for better CPU utilization
-		BatchSize:     500,         // Larger batch size for better throughput
-		BufferSize:    numCPU * 20, // Larger buffer for better concurrency
-		MaxGoroutines: numCPU * 4,  // Allow more concurrent goroutines
+		WorkerCount:   numCPU * 3,  // Increased worker count for better CPU utilization
+		BatchSize:     1000,        // Larger batch size for better throughput
+		BufferSize:    numCPU * 32, // Larger buffer for better concurrency
+		MaxGoroutines: numCPU * 6,  // Allow more concurrent goroutines
 	}
 }
 
@@ -33,25 +34,32 @@ func DefaultProcessingConfig() ProcessingConfig {
 func OptimizedProcessingConfig(datasetSize int) ProcessingConfig {
 	numCPU := runtime.NumCPU()
 
-	// Adjust configuration based on dataset size
-	var batchSize, bufferSize int
+	// Adjust configuration based on dataset size with more aggressive scaling
+	var batchSize, bufferSize, workerMultiplier int
 	switch {
+	case datasetSize > 20000:
+		batchSize = 2000
+		bufferSize = numCPU * 80
+		workerMultiplier = 4
 	case datasetSize > 10000:
-		batchSize = 1000
-		bufferSize = numCPU * 50
+		batchSize = 1500
+		bufferSize = numCPU * 60
+		workerMultiplier = 3
 	case datasetSize > 5000:
-		batchSize = 500
-		bufferSize = numCPU * 30
+		batchSize = 1000
+		bufferSize = numCPU * 40
+		workerMultiplier = 3
 	default:
-		batchSize = 250
-		bufferSize = numCPU * 20
+		batchSize = 500
+		bufferSize = numCPU * 32
+		workerMultiplier = 2
 	}
 
 	return ProcessingConfig{
-		WorkerCount:   numCPU * 2,
+		WorkerCount:   numCPU * workerMultiplier,
 		BatchSize:     batchSize,
 		BufferSize:    bufferSize,
-		MaxGoroutines: numCPU * 4,
+		MaxGoroutines: numCPU * (workerMultiplier + 2),
 	}
 }
 
@@ -66,8 +74,8 @@ type PlayerProcessor struct {
 	cancel   context.CancelFunc
 }
 
-// NewPlayerProcessor creates a new concurrent player processor
-func NewPlayerProcessor(config ProcessingConfig) *PlayerProcessor {
+// CreatePlayerProcessor creates a new player processor
+func CreatePlayerProcessor(config ProcessingConfig) *PlayerProcessor {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	processor := &PlayerProcessor{
@@ -194,7 +202,7 @@ func ProcessPlayersBatch(ctx context.Context, players []Player, batchSize int) (
 		}
 
 		batch := players[i:end]
-		processor := NewPlayerProcessor(config)
+		processor := CreatePlayerProcessor(config)
 
 		resultCh := processor.ProcessPlayersAsync(batch)
 
@@ -270,8 +278,8 @@ type ConcurrentLeagueProcessor struct {
 	semaphore   chan struct{}
 }
 
-// NewConcurrentLeagueProcessor creates a new league processor
-func NewConcurrentLeagueProcessor(workerCount int) *ConcurrentLeagueProcessor {
+// CreateConcurrentLeagueProcessor creates a new concurrent league processor
+func CreateConcurrentLeagueProcessor(workerCount int) *ConcurrentLeagueProcessor {
 	if workerCount <= 0 {
 		workerCount = runtime.NumCPU()
 	}
@@ -447,8 +455,8 @@ type AsyncPlayerFilter struct {
 	chunkSize   int
 }
 
-// NewAsyncPlayerFilter creates a new async player filter
-func NewAsyncPlayerFilter(workerCount, chunkSize int) *AsyncPlayerFilter {
+// CreateAsyncPlayerFilter creates a new async player filter
+func CreateAsyncPlayerFilter(workerCount, chunkSize int) *AsyncPlayerFilter {
 	if workerCount <= 0 {
 		workerCount = runtime.NumCPU()
 	}
@@ -613,8 +621,8 @@ type ConcurrentPercentileProcessor struct {
 	workerCount int
 }
 
-// NewConcurrentPercentileProcessor creates a new percentile processor
-func NewConcurrentPercentileProcessor(workerCount int) *ConcurrentPercentileProcessor {
+// CreateConcurrentPercentileProcessor creates a new concurrent percentile processor
+func CreateConcurrentPercentileProcessor(workerCount int) *ConcurrentPercentileProcessor {
 	if workerCount <= 0 {
 		workerCount = runtime.NumCPU()
 	}

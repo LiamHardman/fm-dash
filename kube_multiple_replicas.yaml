@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
         - name: v2fmdash-backend-container
-          image: git.liamhardman.com/liam/v2fmdash-backend:main
+          image: ghcr.io/liamhardman/fm-dash-backend:latest
           imagePullPolicy: Always
           ports:
             - name: http-api
@@ -39,6 +39,8 @@ spec:
               value: "production"
             - name: DEPLOYMENT_ENV
               value: "kubernetes"
+            - name: LOG_LEVEL
+              value: "INFO"
             
             # CI/CD populated values (will be set by your CI/CD pipeline)
             - name: GIT_COMMIT_SHA
@@ -47,6 +49,14 @@ spec:
               value: ""
             - name: BUILD_TIMESTAMP
               value: ""
+            
+            # OpenTelemetry Configuration
+            - name: OTEL_ENABLED
+              value: "true"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "signoz-otel-collector.signoz-helm:4317"
+            - name: OTEL_EXPORTER_OTLP_INSECURE
+              value: "true"
             
             # S3-Compatible Storage Configuration (from secrets)
             - name: S3_ENDPOINT
@@ -117,7 +127,7 @@ spec:
     spec:
       containers:
         - name: v2fmdash-frontend-container
-          image: git.liamhardman.com/liam/v2fmdash-frontend:main
+          image: ghcr.io/liamhardman/fm-dash-frontend:latest
           imagePullPolicy: Always
           ports:
             - name: http-nginx

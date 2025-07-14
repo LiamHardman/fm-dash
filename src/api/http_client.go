@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"time"
 
+	apperrors "api/errors"
+
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -19,8 +21,8 @@ type HTTPClient struct {
 	retryConfig RetryConfig
 }
 
-// NewHTTPClient creates a new HTTP client with timeout and retry configuration
-func NewHTTPClient(timeout time.Duration, retryConfig RetryConfig) *HTTPClient {
+// CreateHTTPClient creates a new HTTP client with timeout and retry configuration
+func CreateHTTPClient(timeout time.Duration, retryConfig RetryConfig) *HTTPClient {
 	// Create base transport with OpenTelemetry instrumentation
 	var transport http.RoundTripper = &http.Transport{
 		MaxIdleConns:        100,
@@ -43,7 +45,7 @@ func NewHTTPClient(timeout time.Duration, retryConfig RetryConfig) *HTTPClient {
 }
 
 // DefaultHTTPClient provides a preconfigured HTTP client with sensible defaults
-var DefaultHTTPClient = NewHTTPClient(30*time.Second, DefaultRetryConfig)
+var DefaultHTTPClient = CreateHTTPClient(30*time.Second, DefaultRetryConfig)
 
 // Do executes an HTTP request with automatic retry on failures
 func (c *HTTPClient) Do(req *http.Request) (*http.Response, error) {
@@ -107,8 +109,10 @@ func (c *HTTPClient) Do(req *http.Request) (*http.Response, error) {
 		if err != nil {
 			lastErr = err
 		} else {
-			lastErr = fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
-			resp.Body.Close() // Close body before retry
+			lastErr = apperrors.WrapErrHTTPStatus(resp.StatusCode, resp.Status)
+			if closeErr := resp.Body.Close(); closeErr != nil {
+				log.Printf("Failed to close response body: %v", closeErr)
+			}
 		}
 
 		// Don't sleep after last attempt
@@ -194,5 +198,5 @@ func (c *HTTPClient) WithRetryConfig(config RetryConfig) *HTTPClient {
 
 // GetInstrumented creates an instrumented HTTP client for making external API calls
 func GetInstrumented() *HTTPClient {
-	return NewHTTPClient(30*time.Second, DefaultRetryConfig)
+	return CreateHTTPClient(30*time.Second, DefaultRetryConfig)
 }

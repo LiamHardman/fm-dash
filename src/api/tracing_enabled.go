@@ -18,7 +18,9 @@ import (
 
 var tracer = otel.Tracer("v2fmdash-api")
 
-// StartSpan creates a new span with standard attributes
+// StartSpan creates a new span with the given operation name
+//
+//nolint:ireturn // OpenTelemetry API requires interface return
 func StartSpan(ctx context.Context, operationName string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
 	if !otelEnabled {
 		return ctx, trace.SpanFromContext(ctx)
@@ -38,7 +40,9 @@ func StartSpan(ctx context.Context, operationName string, opts ...trace.SpanStar
 	return tracer.Start(ctx, operationName, opts...)
 }
 
-// StartSpanWithAttributes creates a span with custom attributes
+// StartSpanWithAttributes creates a new span with the given operation name and attributes
+//
+//nolint:ireturn // OpenTelemetry API requires interface return
 func StartSpanWithAttributes(ctx context.Context, operationName string, attrs []attribute.KeyValue, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
 	if !otelEnabled {
 		return ctx, trace.SpanFromContext(ctx)
@@ -135,7 +139,9 @@ func RecordError(ctx context.Context, err error, description string, opts ...Err
 		logAttrs = append(logAttrs, "error_severity", errorInfo.Severity)
 	}
 
-	slog.ErrorContext(ctx, "Operation failed", logAttrs...)
+	if GetMinLogLevel() <= LogLevelCritical {
+		slog.ErrorContext(ctx, "Operation failed", logAttrs...)
+	}
 }
 
 // ErrorInfo holds enhanced error context
@@ -376,11 +382,13 @@ func TraceSlowQuery(ctx context.Context, operation string, threshold time.Durati
 		))
 
 		// Log slow query warning
-		slog.WarnContext(ctx, "Slow query detected",
-			"operation", operation,
-			"duration_ms", float64(duration.Nanoseconds())/1e6,
-			"threshold_ms", float64(threshold.Nanoseconds())/1e6,
-		)
+		if GetMinLogLevel() <= LogLevelWarn {
+			slog.WarnContext(ctx, "Slow query detected",
+				"operation", operation,
+				"duration_ms", float64(duration.Nanoseconds())/1e6,
+				"threshold_ms", float64(threshold.Nanoseconds())/1e6,
+			)
+		}
 	}
 
 	if err != nil {

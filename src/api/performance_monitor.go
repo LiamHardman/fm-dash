@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"runtime"
 	"sync/atomic"
 	"time"
@@ -49,8 +48,8 @@ type ParseTimer struct {
 	context   context.Context
 }
 
-// NewParseTimer creates a new timer for tracking parsing performance
-func NewParseTimer(operation string) *ParseTimer {
+// CreateParseTimer creates a new timer for tracking parsing performance
+func CreateParseTimer(operation string) *ParseTimer {
 	return &ParseTimer{
 		startTime: time.Now(),
 		operation: operation,
@@ -58,8 +57,8 @@ func NewParseTimer(operation string) *ParseTimer {
 	}
 }
 
-// NewParseTimerWithContext creates a timer with context
-func NewParseTimerWithContext(ctx context.Context, operation string) *ParseTimer {
+// CreateParseTimerWithContext creates a timer with context
+func CreateParseTimerWithContext(ctx context.Context, operation string) *ParseTimer {
 	return &ParseTimer{
 		startTime: time.Now(),
 		operation: operation,
@@ -81,7 +80,7 @@ func (pt *ParseTimer) Finish(rowsProcessed, errors int64) {
 		atomic.StoreInt64(&globalMetrics.AverageParseTimePerRow, avgTime)
 	}
 
-	log.Printf("Parse operation '%s' completed: %d rows in %v (avg: %v/row, errors: %d)",
+	LogInfo("Parse operation '%s' completed: %d rows in %v (avg: %v/row, errors: %d)",
 		pt.operation, rowsProcessed, duration,
 		time.Duration(duration.Nanoseconds()/maxInt64(rowsProcessed, 1)), errors)
 }
@@ -92,8 +91,8 @@ type JSONTimer struct {
 	isUnmarshal bool
 }
 
-// NewJSONTimer creates a timer for JSON operations
-func NewJSONTimer(isUnmarshal bool) *JSONTimer {
+// CreateJSONTimer creates a new timer for tracking JSON operations
+func CreateJSONTimer(isUnmarshal bool) *JSONTimer {
 	return &JSONTimer{
 		startTime:   time.Now(),
 		isUnmarshal: isUnmarshal,
@@ -190,24 +189,24 @@ func GetMetricsSnapshot() PerformanceMetrics {
 func LogPerformanceReport() {
 	metrics := GetMetricsSnapshot()
 
-	log.Printf("=== PERFORMANCE REPORT ===")
-	log.Printf("Parsing: %d rows, %d players, %d errors",
+	LogInfo("=== PERFORMANCE REPORT ===")
+	LogInfo("Parsing: %d rows, %d players, %d errors",
 		metrics.TotalRowsParsed, metrics.TotalPlayersProcessed, metrics.TotalParseErrors)
-	log.Printf("Average parse time per row: %v", time.Duration(metrics.AverageParseTimePerRow))
-	log.Printf("Memory: Current=%s, Peak=%s, GC=%d",
+	LogInfo("Average parse time per row: %v", time.Duration(metrics.AverageParseTimePerRow))
+	LogInfo("Memory: Current=%s, Peak=%s, GC=%d",
 		formatBytes(metrics.CurrentMemoryUsage),
 		formatBytes(metrics.PeakMemoryUsage),
 		metrics.GCCollections)
-	log.Printf("Workers: Active=%d, Goroutines=%d",
+	LogInfo("Workers: Active=%d, Goroutines=%d",
 		metrics.ActiveWorkers, metrics.CurrentGoroutines)
-	log.Printf("JSON: Marshal=%d ops (%v avg), Unmarshal=%d ops (%v avg)",
+	LogInfo("JSON: Marshal=%d ops (%v avg), Unmarshal=%d ops (%v avg)",
 		metrics.JSONMarshalOperations,
 		time.Duration(metrics.JSONMarshalTime/maxInt64(metrics.JSONMarshalOperations, 1)),
 		metrics.JSONUnmarshalOperations,
 		time.Duration(metrics.JSONUnmarshalTime/maxInt64(metrics.JSONUnmarshalOperations, 1)))
-	log.Printf("Channels: Backpressure=%d, Timeouts=%d",
+	LogInfo("Channels: Backpressure=%d, Timeouts=%d",
 		metrics.ChannelBackpressureEvents, metrics.ChannelTimeouts)
-	log.Printf("=========================")
+	LogInfo("=========================")
 }
 
 // formatBytes formats byte counts for human reading
@@ -243,11 +242,19 @@ func StartPerformanceMonitoring(interval time.Duration) {
 			// Log summary every interval
 			metrics := GetMetricsSnapshot()
 			if metrics.TotalRowsParsed > 0 {
-				log.Printf("Performance: %d rows parsed, %s memory, %d goroutines, %d workers",
+				totalTimeSeconds := float64(metrics.TotalParseTime) / 1e9 // Convert nanoseconds to seconds
+				var rowsPerSecond float64
+				if totalTimeSeconds > 0 {
+					rowsPerSecond = float64(metrics.TotalRowsParsed) / totalTimeSeconds
+				}
+
+				LogInfo("Performance: %d rows parsed, %s memory, %d goroutines, %d workers, %.1fs total time, %.0f rows/sec",
 					metrics.TotalRowsParsed,
 					formatBytes(metrics.CurrentMemoryUsage),
 					metrics.CurrentGoroutines,
-					metrics.ActiveWorkers)
+					metrics.ActiveWorkers,
+					totalTimeSeconds,
+					rowsPerSecond)
 			}
 		}
 	}()

@@ -108,7 +108,30 @@
                             </q-card-section>
                             
                             <q-card-section class="q-pa-md">
-                                <div v-if="hasAnyPerformanceData" class="percentile-content-area">
+                                <!-- Loading State for Percentiles -->
+                                <div v-if="showLoadingState" class="percentile-loading-area">
+                                    <div class="loading-content">
+                                        <q-spinner-dots color="primary" size="2em" />
+                                        <div class="loading-text">
+                                            <div class="text-subtitle2">Calculating Performance Percentiles...</div>
+                                            <div class="text-caption text-grey-6">
+                                                {{ isLoadingPercentiles ? 'Fetching data...' : `Retry ${percentilesRetryCount + 1}/${maxRetries}` }}
+                                            </div>
+                                        </div>
+                                        <q-btn 
+                                            v-if="percentilesRetryCount > 0" 
+                                            flat 
+                                            size="sm" 
+                                            color="primary" 
+                                            label="Retry Now" 
+                                            @click="manualRetry"
+                                            class="q-mt-sm"
+                                        />
+                                    </div>
+                                </div>
+
+                                <!-- Percentile Content -->
+                                <div v-else-if="hasAnyPerformanceData" class="percentile-content-area">
                                     <div
                                         v-for="(stats, category, index) in categorizedPerformanceStats"
                                         :key="`perf-${category}-${selectedComparisonGroup}`"
@@ -172,12 +195,22 @@
                                     </div>
                                 </div>
                                 
-                                <div
-                                    v-else
-                                    class="no-performance-data"
-                                >
-                                    <q-icon name="info_outline" size="sm" class="q-mr-sm" />
-                                    <span>No performance data available for the selected comparison group or this player.</span>
+                                <!-- No Data State -->
+                                <div v-else class="no-performance-data">
+                                    <q-icon name="analytics" size="3em" class="text-grey-4 q-mb-md" />
+                                    <div class="text-subtitle1 text-grey-6">Performance data unavailable</div>
+                                    <div class="text-caption text-grey-6 q-mb-md">
+                                        {{ percentilesRetryCount >= maxRetries 
+                                            ? 'Could not load performance percentiles after multiple attempts.' 
+                                            : 'Performance percentiles are not available for this player.' }}
+                                    </div>
+                                    <q-btn 
+                                        v-if="percentilesRetryCount >= maxRetries" 
+                                        flat 
+                                        color="primary" 
+                                        label="Try Again" 
+                                        @click="manualRetry"
+                                    />
                                 </div>
                             </q-card-section>
                         </q-card>
@@ -705,8 +738,10 @@ import {
   onMounted,
   onUnmounted,
   ref,
+  toRef,
   watch
 } from 'vue'
+import { usePercentileRetry } from '../composables/usePercentileRetry'
 import { usePlayerStore } from '../stores/playerStore'
 import { useUiStore } from '../stores/uiStore'
 import { formatCurrency } from '../utils/currencyUtils'
@@ -1065,6 +1100,21 @@ export default defineComponent({
     const selectedComparisonGroup = ref('Global')
     const flagLoadError = ref(false)
     const divisionFilter = ref('all')
+
+    // Convert props to refs for the percentile retry composable
+    const playerRef = toRef(props, 'player')
+    const datasetIdRef = toRef(props, 'datasetId')
+
+    // Use the percentile retry composable
+    const {
+      isLoadingPercentiles,
+      hasValidPercentiles,
+      percentilesNeedRetry,
+      showLoadingState,
+      percentilesRetryCount,
+      maxRetries,
+      manualRetry
+    } = usePercentileRetry(playerRef, datasetIdRef, selectedComparisonGroup)
 
     // Face image handling
     const faceImageLoadError = ref(false)
@@ -1736,7 +1786,16 @@ export default defineComponent({
       playerFaceImageUrl,
       showFaces: computed(() => uiStore.showFaces),
       getDisplayAttribute,
-      shouldShowTeamLogo
+      shouldShowTeamLogo,
+
+      // Percentile retry functionality
+      isLoadingPercentiles,
+      hasValidPercentiles,
+      percentilesNeedRetry,
+      showLoadingState,
+      percentilesRetryCount,
+      maxRetries,
+      manualRetry
     }
   }
 })
@@ -1993,13 +2052,37 @@ $breakpoint-xs-max: 599px !default;
     }
 }
 
+.percentile-loading-area {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 3rem 2rem;
+}
+
+.loading-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1rem;
+}
+
+.loading-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
 .no-performance-data {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     padding: 24px;
     color: #64748b;
     font-size: 0.9rem;
+    gap: 0.5rem;
+    text-align: center;
     
     .body--dark & {
         color: rgba(255, 255, 255, 0.6);

@@ -12,12 +12,12 @@ const (
 	configLoadTimeout = 5 * time.Second
 )
 
-func cachedRolesHandler(w http.ResponseWriter, r *http.Request) {
+func cachedRolesHandler(w http.ResponseWriter, _ *http.Request) {
 	const cacheKey = "roles_data"
 
 	if cached, found := getFromMemCache(cacheKey); found {
 		if roles, ok := cached.([]string); ok {
-			log.Printf("Retrieved roles data from memory cache")
+			LogDebug("Retrieved roles data from memory cache")
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("X-Cache-Source", "memory")
 			w.Header().Set("Cache-Control", "public, max-age=86400")
@@ -57,7 +57,7 @@ func cachedConfigHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		if cached, found := getFromMemCache(cacheKey); found {
 			if config, ok := cached.(map[string]interface{}); ok {
-				log.Printf("Retrieved config data from memory cache")
+				LogDebug("Retrieved config data from memory cache")
 				w.Header().Set("Content-Type", "application/json")
 				w.Header().Set("X-Cache-Source", "memory")
 				w.Header().Set("Cache-Control", "public, max-age=3600")

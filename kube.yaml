@@ -26,7 +26,7 @@ spec:
       #   runAsUser: 0 # Supervisord needs to run as root
       containers:
         - name: v2fmdash-container # Container name
-          image: git.liamhardman.com/liam/v2fmdash:main # Corrected image name and tag
+          image: ghcr.io/liamhardman/fm-dash-unified:latest # GitHub Container Registry unified image
           imagePullPolicy: Always
           ports:
             - name: http-nginx # Port Nginx listens on inside the container
@@ -41,6 +41,8 @@ spec:
               value: "production"
             - name: DEPLOYMENT_ENV
               value: "kubernetes"
+            - name: LOG_LEVEL
+              value: "INFO"
             
             # CI/CD populated values (will be set by your CI/CD pipeline)
             - name: GIT_COMMIT_SHA
@@ -49,6 +51,14 @@ spec:
               value: ""  # Set by CI/CD pipeline
             - name: BUILD_TIMESTAMP
               value: ""  # Set by CI/CD pipeline
+
+            # OpenTelemetry Configuration
+            - name: OTEL_ENABLED
+              value: "true"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "signoz-otel-collector.signoz-helm:4317"
+            - name: OTEL_EXPORTER_OTLP_INSECURE
+              value: "true"
 
             # S3-Compatible Storage Configuration (from secrets)
             - name: S3_ENDPOINT

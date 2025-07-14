@@ -76,7 +76,6 @@ export const usePlayerStore = defineStore('player', () => {
     let min = Number.MAX_SAFE_INTEGER
     let max = Number.MIN_SAFE_INTEGER
     let hasValidValue = false
-
     for (const player of allPlayers.value) {
       if (typeof player.transferValueAmount === 'number') {
         hasValidValue = true
@@ -96,7 +95,8 @@ export const usePlayerStore = defineStore('player', () => {
       max = min + 50000 // Ensure max is greater for range slider
     }
 
-    return { min, max }
+    const result = { min, max }
+    return result
   })
 
   const initialDatasetTransferValueRange = computed(() => {
@@ -244,11 +244,16 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   function processPlayersFromAPI(playersData) {
-    if (!Array.isArray(playersData)) return []
-    return playersData.map(p => ({
+    if (!Array.isArray(playersData)) {
+      return []
+    }
+
+    const processed = playersData.map(p => ({
       ...p,
       age: Number.parseInt(p.age, 10) || 0
     }))
+
+    return processed
   }
 
   function resetState() {

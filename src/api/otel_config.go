@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"time"
 
+	apperrors "api/errors"
+
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -43,8 +45,8 @@ func LoadOTelConfig() *OTelConfig {
 		ServiceName:              getEnvWithDefault("SERVICE_NAME", "v2fmdash-api"),
 		ServiceVersion:           getEnvWithDefault("SERVICE_VERSION", "v1.0.0"),
 		Environment:              getEnvWithDefault("ENVIRONMENT", "development"),
-		CollectorURL:             getEnvWithDefault("OTEL_EXPORTER_OTLP_ENDPOINT", "signoz.signoz:4317"),
-		InsecureMode:             getEnvBool("INSECURE_MODE", false),
+		CollectorURL:             getEnvWithDefault("OTEL_EXPORTER_OTLP_ENDPOINT", "signoz-otel-collector.signoz-helm:4317"),
+		InsecureMode:             getEnvBool("OTEL_EXPORTER_OTLP_INSECURE", false),
 		TraceSampleRate:          getEnvFloat("OTEL_TRACE_SAMPLE_RATE", -1.0),      // -1 means use adaptive
 		MetricExportInterval:     getEnvDuration("OTEL_METRIC_EXPORT_INTERVAL", 0), // 0 means use adaptive
 		ResourceDetectionTimeout: getEnvDuration("OTEL_RESOURCE_DETECTION_TIMEOUT", 5*time.Second),
@@ -104,7 +106,9 @@ func getEnvDuration(key string, defaultValue time.Duration) time.Duration {
 	return defaultValue
 }
 
-// GetSampler returns the appropriate sampler based on configuration
+// GetSampler returns the configured OpenTelemetry sampler
+//
+//nolint:ireturn // OpenTelemetry API requires interface return
 func (c *OTelConfig) GetSampler() sdktrace.Sampler {
 	// Use explicit sample rate if provided
 	if c.TraceSampleRate >= 0 {
@@ -232,19 +236,19 @@ func (c *OTelConfig) CreateEnhancedResource() (*resource.Resource, error) {
 // Validate checks if the configuration is valid
 func (c *OTelConfig) Validate() error {
 	if c.ServiceName == "" {
-		return fmt.Errorf("service name cannot be empty")
+		return apperrors.ErrServiceNameEmpty
 	}
 	if c.CollectorURL == "" {
-		return fmt.Errorf("collector URL cannot be empty")
+		return apperrors.ErrCollectorURLEmpty
 	}
 	if c.TraceSampleRate < -1.0 || c.TraceSampleRate > 1.0 {
-		return fmt.Errorf("trace sample rate must be between -1.0 and 1.0, got %f", c.TraceSampleRate)
+		return apperrors.WrapErrInvalidTraceSampleRate(c.TraceSampleRate)
 	}
 	if c.BatchSize <= 0 {
-		return fmt.Errorf("batch size must be positive, got %d", c.BatchSize)
+		return apperrors.WrapErrInvalidBatchSize(c.BatchSize)
 	}
 	if c.MaxQueueSize <= 0 {
-		return fmt.Errorf("max queue size must be positive, got %d", c.MaxQueueSize)
+		return apperrors.WrapErrInvalidMaxQueueSize(c.MaxQueueSize)
 	}
 	return nil
 }

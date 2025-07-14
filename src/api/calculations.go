@@ -33,27 +33,27 @@ func computeNonLinearScaling(linearRating float64) int {
 		// Use a gentle curve that preserves most of the original rating
 		scaledRating := inflectionPoint + (linearRating-inflectionPoint)*0.95
 		return int(math.Round(scaledRating))
-	} else {
-		// For ratings below 75, apply progressive compression
-		// Use a power curve that becomes more aggressive as ratings get lower
-
-		// Normalize to 0-1 scale relative to inflection point
-		normalizedRating := linearRating / inflectionPoint
-
-		// Apply power curve: higher exponent = more compression for low values
-		// Using exponent 1.8 creates good separation
-		compressedNormalized := math.Pow(normalizedRating, 1.8)
-
-		// Scale back to final rating
-		scaledRating := compressedNormalized * inflectionPoint
-
-		// Ensure minimum rating progression (avoid clustering too much at bottom)
-		if scaledRating < 10 && linearRating > 20 {
-			scaledRating = 10 + (linearRating-20)*0.15
-		}
-
-		return int(math.Round(scaledRating))
 	}
+
+	// For ratings below 75, apply progressive compression
+	// Use a power curve that becomes more aggressive as ratings get lower
+
+	// Normalize to 0-1 scale relative to inflection point
+	normalizedRating := linearRating / inflectionPoint
+
+	// Apply power curve: higher exponent = more compression for low values
+	// Using exponent 1.8 creates good separation
+	compressedNormalized := math.Pow(normalizedRating, 1.8)
+
+	// Scale back to final rating
+	scaledRating := compressedNormalized * inflectionPoint
+
+	// Ensure minimum rating progression (avoid clustering too much at bottom)
+	if scaledRating < 10 && linearRating > 20 {
+		scaledRating = 10 + (linearRating-20)*0.15
+	}
+
+	return int(math.Round(scaledRating))
 }
 
 // applyNonLinearScaling applies a non-linear scaling curve to compress lower ratings
@@ -83,6 +83,26 @@ func FastClamp(value, minVal, maxVal int) int {
 	return value
 }
 
+// calculateWeightedAverage calculates the weighted average for a set of player attributes.
+func calculateWeightedAverage(playerNumericAttributes, categoryAttributeWeights map[string]int) float64 {
+	var weightedSum, totalWeightOfPresentAttributes int64
+
+	for attrName, attrWeight := range categoryAttributeWeights {
+		attrValue, exists := playerNumericAttributes[attrName]
+		if exists && attrValue >= 1 && attrValue <= 20 {
+			// Use int64 for calculations to prevent overflow.
+			weightedSum += int64(attrValue * attrWeight)
+			totalWeightOfPresentAttributes += int64(attrWeight)
+		}
+	}
+
+	if totalWeightOfPresentAttributes == 0 {
+		return 0.0 // Avoid division by zero.
+	}
+
+	return float64(weightedSum) / float64(totalWeightOfPresentAttributes)
+}
+
 // CalculateFifaStatGo calculates a FIFA-style category stat (e.g., PHY, SHO) from individual attributes.
 // The playerNumericAttributes map should contain attributes on a 1-20 scale.
 // The result is scaled using non-linear scaling and clamped at 99.
@@ -98,6 +118,43 @@ func CalculateFifaStatGo(playerNumericAttributes map[string]int, categoryName st
 	}
 	muAttributeWeights.RUnlock()
 
+	// Special handling for "PAS" category to calculate based on three methods and take the highest.
+	if categoryName == "PAS" {
+		// Method 1: Standard
+		weights1, ok1 := currentCategoryWeightsSource["PAS_standard"]
+		score1 := 0
+		if ok1 {
+			avg1 := calculateWeightedAverage(playerNumericAttributes, weights1)
+			score1 = applyNonLinearScaling(avg1 * 5.3)
+		}
+
+		// Method 2: No Set Pieces
+		weights2, ok2 := currentCategoryWeightsSource["PAS_no_set_pieces"]
+		score2 := 0
+		if ok2 {
+			avg2 := calculateWeightedAverage(playerNumericAttributes, weights2)
+			score2 = applyNonLinearScaling(avg2 * 5.3)
+		}
+
+		// Method 3: No Off The Ball
+		weights3, ok3 := currentCategoryWeightsSource["PAS_no_off_ball"]
+		score3 := 0
+		if ok3 {
+			avg3 := calculateWeightedAverage(playerNumericAttributes, weights3)
+			score3 = applyNonLinearScaling(avg3 * 5.3)
+		}
+
+		// Determine the maximum score from the three methods.
+		maxScore := score1
+		if score2 > maxScore {
+			maxScore = score2
+		}
+		if score3 > maxScore {
+			maxScore = score3
+		}
+		return FastClamp(maxScore, 0, 99)
+	}
+
 	categoryAttributeWeights, ok := currentCategoryWeightsSource[categoryName]
 	if !ok {
 		// If category not in primary source, try the compiled-in default as a further fallback
@@ -109,23 +166,11 @@ func CalculateFifaStatGo(playerNumericAttributes map[string]int, categoryName st
 		log.Printf("Warning: Category '%s' not found in loaded attribute weights, using compiled-in default.", categoryName)
 	}
 
-	var weightedSum, totalWeightOfPresentAttributes int64 // Use int64 to avoid overflow
-
-	for attrName, attrWeight := range categoryAttributeWeights {
-		attrValue, exists := playerNumericAttributes[attrName]
-		if exists && attrValue >= 1 && attrValue <= 20 {
-			// Use int64 arithmetic to prevent overflow
-			weightedSum += int64(attrValue * attrWeight)
-			totalWeightOfPresentAttributes += int64(attrWeight)
-		}
+	// Default calculation for all other categories.
+	weightedAverage := calculateWeightedAverage(playerNumericAttributes, categoryAttributeWeights)
+	if weightedAverage == 0 {
+		return 0
 	}
-
-	if totalWeightOfPresentAttributes == 0 {
-		return 0 // Avoid division by zero; no relevant attributes found or all had zero weight
-	}
-
-	// Calculate weighted average (faster than float division)
-	weightedAverage := float64(weightedSum) / float64(totalWeightOfPresentAttributes)
 
 	// Apply original linear scaling first to get to ~0-100 scale
 	linearScore := weightedAverage * 5.3
@@ -149,6 +194,43 @@ func CalculateFifaStatGoLinear(playerNumericAttributes map[string]int, categoryN
 	}
 	muAttributeWeights.RUnlock()
 
+	// Special handling for "PAS" category to calculate based on three methods and take the highest.
+	if categoryName == "PAS" {
+		// Method 1: Standard
+		weights1, ok1 := currentCategoryWeightsSource["PAS_standard"]
+		score1 := 0
+		if ok1 {
+			avg1 := calculateWeightedAverage(playerNumericAttributes, weights1)
+			score1 = int(math.Round(avg1 * 5.3))
+		}
+
+		// Method 2: No Set Pieces
+		weights2, ok2 := currentCategoryWeightsSource["PAS_no_set_pieces"]
+		score2 := 0
+		if ok2 {
+			avg2 := calculateWeightedAverage(playerNumericAttributes, weights2)
+			score2 = int(math.Round(avg2 * 5.3))
+		}
+
+		// Method 3: No Off The Ball
+		weights3, ok3 := currentCategoryWeightsSource["PAS_no_off_ball"]
+		score3 := 0
+		if ok3 {
+			avg3 := calculateWeightedAverage(playerNumericAttributes, weights3)
+			score3 = int(math.Round(avg3 * 5.3))
+		}
+
+		// Determine the maximum score from the three methods.
+		maxScore := score1
+		if score2 > maxScore {
+			maxScore = score2
+		}
+		if score3 > maxScore {
+			maxScore = score3
+		}
+		return Clamp(maxScore, 0, 99)
+	}
+
 	categoryAttributeWeights, ok := currentCategoryWeightsSource[categoryName]
 	if !ok {
 		// If category not in primary source, try the compiled-in default as a further fallback
@@ -160,26 +242,11 @@ func CalculateFifaStatGoLinear(playerNumericAttributes map[string]int, categoryN
 		log.Printf("Warning: Category '%s' not found in loaded attribute weights, using compiled-in default.", categoryName)
 	}
 
-	var weightedSum float64
-	var totalWeightOfPresentAttributes float64
-
-	for attrName, attrWeight := range categoryAttributeWeights {
-		attrValue, exists := playerNumericAttributes[attrName]
-		if exists {
-			// Ensure attribute values are within the expected 1-20 range for calculation
-			if attrValue >= 1 && attrValue <= 20 {
-				weightedSum += float64(attrValue * attrWeight)
-				totalWeightOfPresentAttributes += float64(attrWeight)
-			}
-			// Values outside 1-20 (e.g., 0 if parsing failed) are ignored for this attribute's contribution
-		}
+	// Default calculation for all other categories.
+	weightedAverage := calculateWeightedAverage(playerNumericAttributes, categoryAttributeWeights)
+	if weightedAverage == 0 {
+		return 0
 	}
-
-	if totalWeightOfPresentAttributes == 0 {
-		return 0 // Avoid division by zero; no relevant attributes found or all had zero weight
-	}
-
-	weightedAverage := weightedSum / totalWeightOfPresentAttributes // This average is on a 1-20 scale
 
 	// Apply original linear scaling method: Scale to approx 0-100 using factor 5.3
 	finalScore := int(math.Round(weightedAverage * 5.3))

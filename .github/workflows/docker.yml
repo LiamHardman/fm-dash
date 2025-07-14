@@ -1,19 +1,14 @@
 name: Docker Build and Push
-run-name: ${{ github.actor }} is building Docker image 🐳
+run-name: ${{ github.actor }} is building Docker images 🐳
 
 on:
-  push:
-    branches: [ main, gh-release ]
-    tags: [ 'v*' ]
   pull_request:
-    branches: [ main, gh-release ]
-  release:
-    types: [published]
+    branches: [ main ]
   workflow_dispatch: # Allow manual trigger
 
 jobs:
   docker-build:
-    name: Build and Push Docker Image
+    name: Build and Push Docker Images
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -23,9 +18,9 @@ jobs:
     
     env:
       REGISTRY: ghcr.io
-      IMAGE_NAME: ${{ github.repository }}
-      # Lowercase version for cache refs (required by GitHub Container Registry)
-      CACHE_IMAGE: ghcr.io/liamhardman/fm-dash
+      IMAGE_BASE: ${{ github.repository }}
+      # Lowercase versions for cache refs (required by GitHub Container Registry)
+      CACHE_BASE: ghcr.io/liamhardman/fm-dash
 
     steps:
       - name: Checkout code
@@ -53,91 +48,136 @@ jobs:
           # Test registry access
           docker pull hello-world || echo "Docker pull test failed, continuing..."
 
-      - name: Extract metadata
-        id: meta
+      # Extract metadata for fm-dash-unified
+      - name: Extract metadata for unified image
+        id: meta-unified
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-unified
           tags: |
             type=ref,event=branch
             type=ref,event=pr
-            type=semver,pattern=v{{version}}
-            type=semver,pattern=v{{major}}.{{minor}}
-            type=semver,pattern=v{{major}}
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=test,enable={{is_default_branch}}
           flavor: |
-            latest=auto
+            latest=false
           labels: |
-            org.opencontainers.image.title=FM-Dash
-            org.opencontainers.image.description=A comprehensive platform for analyzing Football Manager player data
+            org.opencontainers.image.title=FM-Dash Unified (Test)
+            org.opencontainers.image.description=A comprehensive platform for analyzing Football Manager player data (Frontend + Backend) - Test Build
             org.opencontainers.image.vendor=Liam Hardman
             org.opencontainers.image.licenses=MIT
 
-      - name: Build and push Docker image
+      # Extract metadata for fm-dash-frontend
+      - name: Extract metadata for frontend image
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-frontend
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=raw,value=test,enable={{is_default_branch}}
+          flavor: |
+            latest=false
+          labels: |
+            org.opencontainers.image.title=FM-Dash Frontend (Test)
+            org.opencontainers.image.description=FM-Dash Vue.js frontend application - Test Build
+            org.opencontainers.image.vendor=Liam Hardman
+            org.opencontainers.image.licenses=MIT
+
+      # Extract metadata for fm-dash-backend
+      - name: Extract metadata for backend image
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-backend
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=raw,value=test,enable={{is_default_branch}}
+          flavor: |
+            latest=false
+          labels: |
+            org.opencontainers.image.title=FM-Dash Backend (Test)
+            org.opencontainers.image.description=FM-Dash Go backend API - Test Build
+            org.opencontainers.image.vendor=Liam Hardman
+            org.opencontainers.image.licenses=MIT
+
+      # Build and push unified image
+      - name: Build and push unified Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          push: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+          tags: ${{ steps.meta-unified.outputs.tags }}
+          labels: ${{ steps.meta-unified.outputs.labels }}
           build-args: |
             VITE_API_BASE_URL=/api
           platforms: linux/amd64,linux/arm64
-          # Using registry cache to avoid GitHub Actions cache artifacts
-          cache-from: type=registry,ref=${{ env.CACHE_IMAGE }}:buildcache
-          cache-to: type=registry,ref=${{ env.CACHE_IMAGE }}:buildcache,mode=max
+          cache-from: type=registry,ref=${{ env.CACHE_BASE }}-unified:buildcache
+          cache-to: type=registry,ref=${{ env.CACHE_BASE }}-unified:buildcache,mode=max
+          provenance: false
+          sbom: false
+
+      # Build and push frontend image
+      - name: Build and push frontend Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.frontend
+          push: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=registry,ref=${{ env.CACHE_BASE }}-frontend:buildcache
+          cache-to: type=registry,ref=${{ env.CACHE_BASE }}-frontend:buildcache,mode=max
+          provenance: false
+          sbom: false
+
+      # Build and push backend image
+      - name: Build and push backend Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.backend
+          push: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=registry,ref=${{ env.CACHE_BASE }}-backend:buildcache
+          cache-to: type=registry,ref=${{ env.CACHE_BASE }}-backend:buildcache,mode=max
           provenance: false
           sbom: false
 
       - name: Docker build summary
         run: |
-          echo "🐳 Docker Build Summary"
-          echo "======================="
+          echo "🐳 Docker Build Summary (Test/PR)"
+          echo "================================="
           echo ""
-          echo "✅ Docker image built and pushed successfully"
-          echo "🏷️ Image tags: ${{ steps.meta.outputs.tags }}"
-          echo "📦 Registry: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "🔍 PR Test Build - Images built but not pushed to registry"
+            echo "📝 This is a test build for pull request validation"
+          else
+            echo "✅ Manual trigger - Images built and pushed"
+          fi
+          echo ""
+          echo "🏷️ Unified Image Tags:"
+          echo "${{ steps.meta-unified.outputs.tags }}"
+          echo ""
+          echo "🏷️ Frontend Image Tags:"
+          echo "${{ steps.meta-frontend.outputs.tags }}"
+          echo ""
+          echo "🏷️ Backend Image Tags:"
+          echo "${{ steps.meta-backend.outputs.tags }}"
+          echo ""
+          echo "📦 Registry: ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}"
           echo "🏗️ Platforms: linux/amd64, linux/arm64"
           echo ""
-          echo "🚀 To use this image:"
-          echo "   docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
-          echo "   docker run -p 8080:8080 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          echo "ℹ️  Note: For production images with semantic version tags,"
+          echo "   create a release on the gh-release branch which will"
+          echo "   trigger the release workflow with proper versioning."
           echo ""
-          echo "📋 For Kubernetes deployment:"
-          echo "   kubectl apply -f kube.yaml"
-          echo ""
-          echo "🔗 Container Registry: https://github.com/${{ github.repository }}/pkgs/container/fm-dash"
+          echo "🔗 Container Registry: https://github.com/${{ github.repository }}/pkgs"
 
-  security-scan:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    needs: docker-build
-    if: github.event_name != 'pull_request'
-    permissions:
-      contents: read
-      security-events: write
-    
-    steps:
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ghcr.io/liamhardman/fm-dash:latest
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-
-      - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        continue-on-error: true
-        with:
-          sarif_file: 'trivy-results.sarif'
-
-      - name: Security scan summary
-        run: |
-          echo "🔒 Security Scan Summary"
-          echo "========================"
-          echo ""
-          echo "✅ Container vulnerability scan completed"
-          echo "📋 Results uploaded to GitHub Security tab"
-          echo "🔍 Check the Security tab for detailed results" 
+  # Security scans are now handled in the release workflow for production images
+  # This workflow is only for PR testing and manual triggers 

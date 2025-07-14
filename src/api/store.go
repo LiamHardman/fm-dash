@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -98,7 +97,7 @@ func StoreDatasetAsync(datasetID string, players []Player, currencySymbol string
 
 		if err != nil {
 			RecordError(ctx, err, "Failed to store dataset asynchronously")
-			log.Printf("Error storing dataset %s asynchronously: %v", sanitizeForLogging(datasetID), err)
+			LogWarn("Error storing dataset %s asynchronously: %v", sanitizeForLogging(datasetID), err)
 			return
 		}
 
@@ -118,7 +117,7 @@ func StoreDatasetAsync(datasetID string, players []Player, currencySymbol string
 			"operation_type": "async",
 		})
 
-		log.Printf("Successfully stored dataset %s asynchronously in %v", sanitizeForLogging(datasetID), duration)
+		LogInfo("Successfully stored dataset %s asynchronously in %v", sanitizeForLogging(datasetID), duration)
 	}()
 }
 
@@ -187,7 +186,7 @@ func StartCleanupScheduler() {
 			runCleanup()
 		}
 	}()
-	log.Println("Started automatic dataset cleanup scheduler (runs daily)")
+	LogDebug("Started automatic dataset cleanup scheduler (runs daily)")
 }
 
 // getRetentionPeriod returns the configured retention period for datasets
@@ -204,7 +203,7 @@ func getRetentionPeriod() time.Duration {
 	// Parse the retention period
 	days, err := strconv.Atoi(retentionDays)
 	if err != nil || days <= 0 {
-		log.Printf("Invalid DATASET_RETENTION_DAYS value: %s. Using default of 30 days.", retentionDays)
+		LogWarn("Invalid DATASET_RETENTION_DAYS value: %s. Using default of 30 days.", retentionDays)
 		return defaultRetention
 	}
 
@@ -212,20 +211,20 @@ func getRetentionPeriod() time.Duration {
 }
 
 func runCleanup() {
-	log.Println("Starting automatic cleanup of old datasets...")
+	LogDebug("Starting automatic cleanup of old datasets...")
 
 	// Define datasets to exclude from cleanup
 	excludeDatasets := []string{"demo", "1e0c8dcd-f6b8-4874-a72e-a2a3bdf20038"}
 
 	// Get configured retention period
 	maxAge := getRetentionPeriod()
-	log.Printf("Using retention period of %.0f days", maxAge.Hours()/24)
+	LogDebug("Using retention period of %.0f days", maxAge.Hours()/24)
 
 	err := CleanupOldDatasets(maxAge, excludeDatasets)
 	if err != nil {
-		log.Printf("Error during automatic cleanup: %v", err)
+		LogWarn("Error during automatic cleanup: %v", err)
 	} else {
-		log.Println("Automatic cleanup completed successfully")
+		LogDebug("Automatic cleanup completed successfully")
 	}
 
 	// Clean up stale duplicate mappings
@@ -345,7 +344,7 @@ func SetPlayerDataAsync(datasetID string, players []Player, currencySymbol strin
 	serializedData, err := json.Marshal(data)
 	if err != nil {
 		RecordError(ctx, err, "Failed to serialize data for async storage")
-		log.Printf("Error serializing dataset %s for async storage: %v", sanitizeForLogging(datasetID), err)
+		LogWarn("Error serializing dataset %s for async storage: %v", sanitizeForLogging(datasetID), err)
 		return
 	}
 
@@ -366,13 +365,13 @@ func SetPlayerDataAsync(datasetID string, players []Player, currencySymbol strin
 		var deserializedData DatasetData
 		if err := json.Unmarshal(serializedData, &deserializedData); err != nil {
 			RecordError(asyncCtx, err, "Failed to deserialize data for async storage")
-			log.Printf("Error deserializing dataset %s for async storage: %v", sanitizeForLogging(datasetID), err)
+			LogWarn("Error deserializing dataset %s for async storage: %v", sanitizeForLogging(datasetID), err)
 			return
 		}
 
 		if err := StoreDataset(datasetID, deserializedData.Players, deserializedData.CurrencySymbol); err != nil {
 			RecordError(asyncCtx, err, "Failed to store in new storage system asynchronously")
-			log.Printf("Error storing dataset %s to persistent storage asynchronously: %v", sanitizeForLogging(datasetID), err)
+			LogWarn("Error storing dataset %s to persistent storage asynchronously: %v", sanitizeForLogging(datasetID), err)
 			return
 		}
 
@@ -382,7 +381,7 @@ func SetPlayerDataAsync(datasetID string, players []Player, currencySymbol strin
 			attribute.String("async_storage.status", "success"),
 		)
 
-		log.Printf("Successfully stored dataset %s to persistent storage asynchronously in %v", sanitizeForLogging(datasetID), duration)
+		LogInfo("Successfully stored dataset %s to persistent storage asynchronously in %v", sanitizeForLogging(datasetID), duration)
 	}()
 }
 
@@ -403,11 +402,11 @@ func invalidateDatasetCache(datasetID string) {
 			invalidatePatternCache(pattern)
 		} else {
 			deleteFromMemCache(pattern)
-			log.Printf("Invalidated cache key: %s", pattern)
+			LogDebug("Invalidated cache key: %s", pattern)
 		}
 	}
 
-	log.Printf("Invalidated all cache entries for dataset: %s", sanitizeForLogging(datasetID))
+	LogDebug("Invalidated all cache entries for dataset: %s", sanitizeForLogging(datasetID))
 }
 
 // invalidatePatternCache removes cache entries matching a pattern
@@ -432,6 +431,6 @@ func invalidatePatternCache(pattern string) {
 	// Delete matching keys
 	for _, key := range keysToDelete {
 		deleteFromMemCache(key)
-		log.Printf("Invalidated cache key (pattern): %s", sanitizeForLogging(key))
+		LogDebug("Invalidated cache key (pattern): %s", sanitizeForLogging(key))
 	}
 }

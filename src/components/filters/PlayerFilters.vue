@@ -1163,8 +1163,12 @@ export default defineComponent({
 
     const clubOptions = ref([])
     const nationalityOptions = ref([])
-    const currentSliderMin = computed(() => props.transferValueRange.min)
-    const currentSliderMax = computed(() => props.transferValueRange.max)
+    const currentSliderMin = computed(() => {
+      return props.transferValueRange.min
+    })
+    const currentSliderMax = computed(() => {
+      return props.transferValueRange.max
+    })
     const isDataAvailable = computed(
       () => playerStore.allPlayers && playerStore.allPlayers.length > 0
     )
@@ -1256,17 +1260,46 @@ export default defineComponent({
 
     const transferValueSliderStep = computed(() => {
       const range = currentSliderMax.value - currentSliderMin.value
-      if (range <= 0) return 10000
-      if (range < 50000) return 1000
-      if (range < 250000) return 5000
-      if (range < 1000000) return 10000
-      if (range < 10000000) return 50000
-      if (range < 50000000) return 100000
-      return 250000
+
+      let step
+      if (range <= 0) {
+        step = 10000
+      } else if (range < 100) {
+        step = 1
+      } else if (range < 1000) {
+        step = 10
+      } else if (range < 10000) {
+        step = 100
+      } else if (range < 50000) {
+        step = 1000
+      } else if (range < 250000) {
+        step = 5000
+      } else if (range < 1000000) {
+        step = 10000
+      } else if (range < 10000000) {
+        step = 50000
+      } else if (range < 50000000) {
+        step = 100000
+      } else {
+        step = 250000
+      }
+
+      return step
     })
 
     const formatRangeLabel = (value, isMaxBoundary = false) => {
       if (value === null || value === undefined) return 'N/A'
+
+      // Check if the value appears to be in millions (common range for transfer values)
+      // If the max value in the dataset is around 700, it's likely in millions
+      const isLikelyInMillions = currentSliderMax.value < 10000 && currentSliderMax.value > 100
+
+      let displayValue = value
+      if (isLikelyInMillions) {
+        // Convert from millions to full amount for display
+        displayValue = value * 1000000
+      }
+
       if (isMaxBoundary) {
         if (
           props.initialDatasetRange &&
@@ -1281,10 +1314,10 @@ export default defineComponent({
           typeof props.initialDatasetRange.min === 'number' &&
           value === props.initialDatasetRange.min
         ) {
-          return formatCurrency(value, props.currencySymbol) || '0'
+          return formatCurrency(displayValue, props.currencySymbol) || '0'
         }
       }
-      return formatCurrency(value, props.currencySymbol)
+      return formatCurrency(displayValue, props.currencySymbol)
     }
 
     watch(
@@ -1465,6 +1498,7 @@ export default defineComponent({
           min: props.transferValueRange.min,
           max: props.transferValueRange.max
         }
+      } else {
       }
 
       // Initialize max salary from salary range prop

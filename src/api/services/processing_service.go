@@ -1,4 +1,4 @@
-// src/api/services/processing_service.go
+// Package services provides processing-related service functionality
 package services
 
 import (
@@ -8,6 +8,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	apperrors "api/errors"
 )
 
 // ProcessingService handles file processing and data transformation
@@ -32,8 +34,8 @@ type ProcessingOptions struct {
 	EnableTracing bool
 }
 
-// NewProcessingService creates a new processing service
-func NewProcessingService(playerService *PlayerService) *ProcessingService {
+// CreateProcessingService creates a new processing service
+func CreateProcessingService(playerService *PlayerService) *ProcessingService {
 	return &ProcessingService{
 		playerService: playerService,
 	}
@@ -44,7 +46,7 @@ func (s *ProcessingService) ProcessPlayerFile(ctx context.Context, fileContent [
 	startTime := time.Now()
 
 	if len(fileContent) == 0 {
-		return nil, fmt.Errorf("file content is empty")
+		return nil, apperrors.ErrFileContentEmpty
 	}
 
 	// Validate file format
@@ -101,21 +103,21 @@ func (s *ProcessingService) ProcessPlayerFile(ctx context.Context, fileContent [
 func (s *ProcessingService) validateFileFormat(filename string, content []byte) error {
 	// Check file extension
 	if !strings.HasSuffix(strings.ToLower(filename), ".html") {
-		return fmt.Errorf("unsupported file format, expected .html file")
+		return apperrors.ErrUnsupportedFileFormat
 	}
 
 	// Check content starts with HTML
 	contentStr := string(content[:minInt(100, len(content))])
 	if !strings.Contains(strings.ToLower(contentStr), "<html") &&
 		!strings.Contains(strings.ToLower(contentStr), "<!doctype") {
-		return fmt.Errorf("file does not appear to be valid HTML")
+		return apperrors.ErrInvalidHTML
 	}
 
 	return nil
 }
 
 // parsePlayerData parses the HTML content and extracts player data
-func (s *ProcessingService) parsePlayerData(_ctx context.Context, _content []byte, _options ProcessingOptions) (players []Player, currencySymbol string) {
+func (s *ProcessingService) parsePlayerData(_ context.Context, _ []byte, _ ProcessingOptions) (players []Player, currencySymbol string) {
 	// TODO: Integrate with existing parsing logic
 	// This would call the existing ParseHTMLPlayerTable function
 	players = []Player{}
@@ -179,7 +181,7 @@ func (s *ProcessingService) generateDatasetID() string {
 }
 
 // GetProcessingStats returns statistics about processing performance
-func (s *ProcessingService) GetProcessingStats(ctx context.Context) map[string]interface{} {
+func (s *ProcessingService) GetProcessingStats(_ context.Context) map[string]interface{} {
 	stats := map[string]interface{}{
 		"available_workers": runtime.NumCPU(),
 		"max_buffer_size":   1000,

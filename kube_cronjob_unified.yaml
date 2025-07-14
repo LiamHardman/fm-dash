@@ -1,0 +1,95 @@
+# kubernetes_v2fmdash_unified_cronjob.yaml
+# CronJob to restart the unified deployment every 8 hours
+
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: v2fmdash-restart-cronjob
+  namespace: default
+  labels:
+    app: v2fmdash-restart
+spec:
+  schedule: "0 */8 * * *"  # Every 8 hours at minute 0
+  concurrencyPolicy: Forbid  # Don't run multiple jobs simultaneously
+  successfulJobsHistoryLimit: 3  # Keep last 3 successful job records
+  failedJobsHistoryLimit: 3      # Keep last 3 failed job records
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: v2fmdash-restart
+        spec:
+          serviceAccountName: v2fmdash-restart-sa  # Service account for RBAC
+          restartPolicy: OnFailure
+          containers:
+            - name: kubectl
+              image: bitnami/kubectl:latest
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  echo "Starting deployment restart at $(date)"
+                  
+                  # Restart the unified deployment by patching it with a timestamp annotation
+                  kubectl patch deployment v2fmdash -p '{"spec":{"template":{"metadata":{"annotations":{"kubectl.kubernetes.io/restartedAt":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}}}}}'
+                  
+                  # Wait for the rollout to complete
+                  kubectl rollout status deployment/v2fmdash --timeout=300s
+                  
+                  if [ $? -eq 0 ]; then
+                    echo "Deployment restart completed successfully at $(date)"
+                  else
+                    echo "Deployment restart failed at $(date)"
+                    exit 1
+                  fi
+              env:
+                - name: NAMESPACE
+                  value: "default"
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            fsGroup: 1000
+
+---
+# ServiceAccount for the CronJob
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: v2fmdash-restart-sa
+  namespace: default
+  labels:
+    app: v2fmdash-restart
+
+---
+# ClusterRole for deployment management
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: v2fmdash-restart-role
+  labels:
+    app: v2fmdash-restart
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "patch", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+
+---
+# ClusterRoleBinding to bind the role to the service account
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: v2fmdash-restart-rolebinding
+  labels:
+    app: v2fmdash-restart
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: v2fmdash-restart-role
+subjects:
+  - kind: ServiceAccount
+    name: v2fmdash-restart-sa
+    namespace: default 

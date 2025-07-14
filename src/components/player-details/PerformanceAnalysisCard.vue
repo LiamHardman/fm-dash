@@ -52,7 +52,30 @@
         </div>
       </div>
 
-      <div v-if="hasAnyPerformanceData" class="percentile-content-area">
+      <!-- Loading State for Percentiles -->
+      <div v-if="showLoadingState" class="percentile-loading-area">
+        <div class="loading-content">
+          <q-spinner-dots color="primary" size="2em" />
+          <div class="loading-text">
+            <div class="text-subtitle2">Calculating Performance Percentiles...</div>
+            <div class="text-caption text-grey-6">
+              {{ isLoadingPercentiles ? 'Fetching data...' : `Retry ${percentilesRetryCount + 1}/${maxRetries}` }}
+            </div>
+          </div>
+          <q-btn 
+            v-if="percentilesRetryCount > 0" 
+            flat 
+            size="sm" 
+            color="primary" 
+            label="Retry Now" 
+            @click="manualRetry"
+            class="q-mt-sm"
+          />
+        </div>
+      </div>
+
+      <!-- Percentile Content -->
+      <div v-else-if="hasAnyPerformanceData" class="percentile-content-area">
         <div
           v-for="(stats, category, index) in categorizedPerformanceStats"
           :key="`perf-${category}-${selectedComparisonGroup}`"
@@ -114,16 +137,30 @@
         </div>
       </div>
       
+      <!-- No Data State -->
       <div v-else class="no-performance-data">
-        <q-icon name="info_outline" size="sm" class="q-mr-sm" />
-        <span>No performance data available for the selected comparison group or this player.</span>
+        <q-icon name="analytics" size="3em" class="text-grey-4 q-mb-md" />
+        <div class="text-subtitle1 text-grey-6">Performance data unavailable</div>
+        <div class="text-caption text-grey-6 q-mb-md">
+          {{ percentilesRetryCount >= maxRetries 
+            ? 'Could not load performance percentiles after multiple attempts.' 
+            : 'Performance percentiles are not available for this player.' }}
+        </div>
+        <q-btn 
+          v-if="percentilesRetryCount >= maxRetries" 
+          flat 
+          color="primary" 
+          label="Try Again" 
+          @click="manualRetry"
+        />
       </div>
     </q-card-section>
   </q-card>
 </template>
 
 <script>
-import { computed, defineComponent } from 'vue'
+import { computed, defineComponent, toRef } from 'vue'
+import { usePercentileRetry } from '../../composables/usePercentileRetry'
 
 export default defineComponent({
   name: 'PerformanceAnalysisCard',
@@ -148,9 +185,28 @@ export default defineComponent({
     divisionFilterOptions: {
       type: Array,
       default: () => []
+    },
+    datasetId: {
+      type: String,
+      required: false
     }
   },
   setup(props) {
+    // Convert props to refs for the composable
+    const playerRef = toRef(props, 'player')
+    const datasetIdRef = toRef(props, 'datasetId')
+    const selectedComparisonGroupRef = toRef(props, 'selectedComparisonGroup')
+
+    // Use the percentile retry composable
+    const {
+      isLoadingPercentiles,
+      hasValidPercentiles,
+      percentilesNeedRetry,
+      showLoadingState,
+      percentilesRetryCount,
+      maxRetries,
+      manualRetry
+    } = usePercentileRetry(playerRef, datasetIdRef, selectedComparisonGroupRef)
     // Check if player has any performance data
     const hasAnyPerformanceData = computed(() => {
       if (!props.player?.performancePercentiles) return false
@@ -265,9 +321,19 @@ export default defineComponent({
     }
 
     return {
+      // Existing functionality
       hasAnyPerformanceData,
       categorizedPerformanceStats,
-      getBarFillStyle
+      getBarFillStyle,
+
+      // Percentile retry functionality
+      isLoadingPercentiles,
+      hasValidPercentiles,
+      percentilesNeedRetry,
+      showLoadingState,
+      percentilesRetryCount,
+      maxRetries,
+      manualRetry
     }
   }
 })
@@ -378,10 +444,35 @@ export default defineComponent({
   }
 }
 
+.percentile-loading-area {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 3rem 2rem;
+}
+
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1rem;
+}
+
+.loading-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
 .no-performance-data {
   text-align: center;
   padding: 2rem;
   color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
   
   .body--dark & {
     color: rgba(255, 255, 255, 0.6);

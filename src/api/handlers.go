@@ -22,7 +22,32 @@ import (
 
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
+
+	apperrors "api/errors"
 )
+
+// Note: gzip compression middleware already exists in middleware.go
+
+// Pre-allocation helper for better memory efficiency
+func calculateOptimalSliceCapacity(expectedSize int) int {
+	// Use power of 2 growth with reasonable limits
+	if expectedSize <= 0 {
+		return defaultPlayerCapacity
+	}
+
+	// Round up to next power of 2 for better memory allocation
+	capacity := 1
+	for capacity < expectedSize {
+		capacity <<= 1
+	}
+
+	// Cap at reasonable maximum
+	if capacity > defaultPlayerCapacity*4 {
+		capacity = defaultPlayerCapacity * 4
+	}
+
+	return capacity
+}
 
 // FileHashToDatasetMap stores the mapping of file content hashes to dataset IDs
 var fileHashToDatasetMap = make(map[string]string)
@@ -141,17 +166,29 @@ func calculateOptimalBufferSize(numWorkers int, fileSize int64) int {
 	return adjustedSize
 }
 
-// Structured logging helpers with trace context
+// Structured logging helpers with trace context that respect LOG_LEVEL
+func logDebug(ctx context.Context, msg string, args ...any) {
+	if shouldLog(LogLevelDebug) {
+		slog.DebugContext(ctx, msg, args...)
+	}
+}
+
 func logInfo(ctx context.Context, msg string, args ...any) {
-	slog.InfoContext(ctx, msg, args...)
+	if shouldLog(LogLevelInfo) {
+		slog.InfoContext(ctx, msg, args...)
+	}
 }
 
 func logWarn(ctx context.Context, msg string, args ...any) {
-	slog.WarnContext(ctx, msg, args...)
+	if shouldLog(LogLevelWarn) {
+		slog.WarnContext(ctx, msg, args...)
+	}
 }
 
 func logError(ctx context.Context, msg string, args ...any) {
-	slog.ErrorContext(ctx, msg, args...)
+	if shouldLog(LogLevelCritical) {
+		slog.ErrorContext(ctx, msg, args...)
+	}
 }
 
 // League represents a division/league with its teams
@@ -223,10 +260,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		status := http.StatusOK
 		//nolint:staticcheck // SA9003: empty branch is intentional for future use
-		if span.SpanContext().IsValid() {
-			// Check if there was an error by inspecting span status
-			// We'll update this in error cases below
-		}
+		// TODO: Add span status checking logic here when needed
 		RecordAPIOperation(ctx, r.Method, "/upload", status, time.Since(startTime))
 	}()
 
@@ -263,7 +297,11 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error retrieving the file: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	defer file.Close()
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			RecordError(ctx, closeErr, "Failed to close uploaded file")
+		}
+	}()
 
 	// Validate actual file size by reading content (more secure than relying on headers)
 	limitedReader := http.MaxBytesReader(w, file, getMaxUploadSize())
@@ -285,7 +323,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		attribute.Int64("file.size_from_header", handler.Size),
 	)
 
-	logInfo(ctx, "File uploaded",
+	logDebug(ctx, "File uploaded",
 		"filename", handler.Filename,
 		"size_bytes", actualFileSize)
 
@@ -353,20 +391,26 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			})
 
 			return
-		} else {
-			// Dataset no longer exists, remove the stale mapping and continue processing
-			logWarn(ctx, "Stale duplicate mapping found, dataset no longer exists",
-				"filename", handler.Filename,
-				"stale_dataset_id", existingDatasetID)
-			removeDuplicateMapping(existingDatasetID)
 		}
+
+		// Dataset no longer exists, remove the stale mapping and continue processing
+		logWarn(ctx, "Stale duplicate mapping found, dataset no longer exists",
+			"filename", handler.Filename,
+			"stale_dataset_id", existingDatasetID)
+		removeDuplicateMapping(existingDatasetID)
 	}
 
 	AddSpanEvent(ctx, "duplicate.check.completed", attribute.Bool("is_duplicate", isDuplicate))
 	duplicateSpan.End()
 
 	parseStartTime := time.Now()
-	playersList := make([]Player, 0, defaultPlayerCapacity) // Assumes defaultPlayerCapacity is defined in config.go
+	// Optimized pre-allocation based on file size estimation
+	estimatedPlayerCount := int(actualFileSize / 2048) // Rough estimation: ~2KB per player row
+	if estimatedPlayerCount == 0 {
+		estimatedPlayerCount = 100 // Minimum reasonable estimate
+	}
+	optimalCapacity := calculateOptimalSliceCapacity(estimatedPlayerCount)
+	playersList := make([]Player, 0, optimalCapacity)
 	var processingError error
 
 	// Ensure configuration is initialized before processing players to avoid slow fallback path
@@ -401,21 +445,21 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 				log.Printf("Skipping row due to error from worker: %v", result.Err)
 			}
 		}
-		log.Println("Finished collecting results from resultsChan.")
+		LogDebug("Finished collecting results from resultsChan.")
 	}()
 
 	// Start performance timer for parsing
-	parseTimer := NewParseTimerWithContext(ctx, "html_parsing")
+	parseTimer := CreateParseTimerWithContext(ctx, "html_parsing")
 
 	// Wrap file parsing in a child span using the already-read content
-	err = TraceFileProcessing(ctx, handler.Filename, actualFileSize, func(spanCtx context.Context) error {
+	err = TraceFileProcessing(ctx, handler.Filename, actualFileSize, func(_ context.Context) error {
 		contentReader := strings.NewReader(string(fileContent))
 		return ParseHTMLPlayerTable(contentReader, &headersSnapshot, rowCellsChan, numWorkers, resultsChan, &wg)
 	})
 	processingError = err
 
 	// Note: rowCellsChan is now closed by ParseHTMLPlayerTable function to prevent race conditions
-	log.Println("HTML parsing attempt finished - channel closed by parser.")
+	LogDebug("HTML parsing attempt finished - channel closed by parser.")
 
 	if processingError != nil {
 		RecordError(ctx, processingError, "HTML parsing failed")
@@ -440,16 +484,16 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	AddSpanEvent(ctx, "workers.waiting_for_completion")
-	log.Println("Waiting for all player data parser workers to finish...")
+	LogDebug("Waiting for all player data parser workers to finish...")
 	wg.Wait()
 	AddSpanEvent(ctx, "workers.completed")
-	log.Println("All workers have completed (wg.Wait() returned).")
+	LogDebug("All workers have completed (wg.Wait() returned).")
 
 	close(resultsChan)
-	log.Println("ResultsChan closed after all workers finished.")
+	LogDebug("ResultsChan closed after all workers finished.")
 
 	<-doneConsumingResults
-	log.Println("Results consumer goroutine finished processing all items.")
+	LogDebug("Results consumer goroutine finished processing all items.")
 
 	// Finish performance timing
 	parseTimer.Finish(int64(len(playersList)), 0) // No errors counted here since workers handle errors
@@ -479,17 +523,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	parseDuration := time.Since(parseStartTime)
 	datasetID := uuid.New().String()
 
-	// Calculate percentiles before storing to prevent race conditions
-	ctx, percentileSpan := StartSpan(ctx, "percentiles.calculate_upload")
-	logInfo(ctx, "Calculating percentiles during upload to prevent race conditions",
-		"dataset_id", datasetID,
-		"player_count", len(playersList))
-
-	// Calculate percentiles for all division filters to ensure stability
-	CalculatePlayerPerformancePercentiles(playersList)
-	percentileSpan.End()
-
-	// Store using async storage for performance (data available immediately in memory, persistent storage in background)
+	// Store data immediately in memory for fast access (without percentiles initially)
 	ctx, storageSpan := StartSpan(ctx, "storage.save_dataset_async")
 	SetSpanAttributes(ctx,
 		attribute.String("dataset.id", datasetID),
@@ -498,22 +532,23 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		attribute.String("storage.method", "async"),
 	)
 
-	// Use async storage for performance - data available immediately in memory with pre-calculated percentiles
+	// Use async storage for performance - data available immediately in memory
 	SetPlayerDataAsync(datasetID, playersList, finalDatasetCurrencySymbol)
 	storageSpan.End()
 
 	// Store the file hash mapping for duplicate detection
 	storeDuplicateMapping(fileHash, datasetID)
 
-	logInfo(ctx, "Duplicate detection mapping stored",
+	logDebug(ctx, "Duplicate detection mapping stored",
 		"dataset_id", datasetID,
 		"file_hash", fileHash[:16]+"...")
 
-	logInfo(ctx, "Player data stored successfully",
+	logDebug(ctx, "Player data stored successfully",
 		"dataset_id", datasetID,
 		"player_count", len(playersList),
 		"detected_currency", finalDatasetCurrencySymbol)
 
+	// Send response immediately - percentiles will be calculated asynchronously
 	response := UploadResponse{DatasetID: datasetID, Message: "File uploaded and parsed successfully.", DetectedCurrencySymbol: finalDatasetCurrencySymbol}
 	w.Header().Set("Content-Type", "application/json")
 	setCORSHeaders(w, r)
@@ -526,6 +561,96 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	responseSpan.End()
+
+	// Calculate percentiles asynchronously after response is sent
+	go func() {
+		percentileCtx := context.Background()
+		percentileCtx, percentileSpan := StartSpan(percentileCtx, "percentiles.calculate_upload_async")
+		defer percentileSpan.End()
+
+		SetSpanAttributes(percentileCtx,
+			attribute.String("dataset.id", datasetID),
+			attribute.Int("dataset.player_count", len(playersList)),
+			attribute.String("operation.type", "async_percentile_calculation"),
+		)
+
+		startTime := time.Now()
+		logDebug(percentileCtx, "Starting async percentile calculation after response sent",
+			"dataset_id", datasetID,
+			"player_count", len(playersList))
+
+		// Get the stored data and calculate percentiles
+		storedPlayers, storedCurrency, found := GetPlayerData(datasetID)
+		if !found {
+			LogWarn("Could not retrieve stored dataset %s for percentile calculation", sanitizeForLogging(datasetID))
+			return
+		}
+
+		// Make a deep copy to avoid race conditions during calculation
+		// Use the original deep copy to avoid any concurrency issues with optimizations
+		playersCopyForPercentiles := make([]Player, len(storedPlayers))
+		for i := range storedPlayers {
+			playersCopyForPercentiles[i] = storedPlayers[i]
+			// Deep copy all the maps to prevent race conditions
+			if storedPlayers[i].Attributes != nil {
+				playersCopyForPercentiles[i].Attributes = make(map[string]string)
+				for k, v := range storedPlayers[i].Attributes {
+					playersCopyForPercentiles[i].Attributes[k] = v
+				}
+			}
+			if storedPlayers[i].NumericAttributes != nil {
+				playersCopyForPercentiles[i].NumericAttributes = make(map[string]int)
+				for k, v := range storedPlayers[i].NumericAttributes {
+					playersCopyForPercentiles[i].NumericAttributes[k] = v
+				}
+			}
+			if storedPlayers[i].PerformanceStatsNumeric != nil {
+				playersCopyForPercentiles[i].PerformanceStatsNumeric = make(map[string]float64)
+				for k, v := range storedPlayers[i].PerformanceStatsNumeric {
+					playersCopyForPercentiles[i].PerformanceStatsNumeric[k] = v
+				}
+			}
+			if storedPlayers[i].PerformancePercentiles != nil {
+				playersCopyForPercentiles[i].PerformancePercentiles = make(map[string]map[string]float64)
+				for group, stats := range storedPlayers[i].PerformancePercentiles {
+					playersCopyForPercentiles[i].PerformancePercentiles[group] = make(map[string]float64)
+					for stat, value := range stats {
+						playersCopyForPercentiles[i].PerformancePercentiles[group][stat] = value
+					}
+				}
+			}
+			if storedPlayers[i].RoleSpecificOveralls != nil {
+				playersCopyForPercentiles[i].RoleSpecificOveralls = make([]RoleOverallScore, len(storedPlayers[i].RoleSpecificOveralls))
+				copy(playersCopyForPercentiles[i].RoleSpecificOveralls, storedPlayers[i].RoleSpecificOveralls)
+			}
+			if storedPlayers[i].ShortPositions != nil {
+				playersCopyForPercentiles[i].ShortPositions = make([]string, len(storedPlayers[i].ShortPositions))
+				copy(playersCopyForPercentiles[i].ShortPositions, storedPlayers[i].ShortPositions)
+			}
+			if storedPlayers[i].ParsedPositions != nil {
+				playersCopyForPercentiles[i].ParsedPositions = make([]string, len(storedPlayers[i].ParsedPositions))
+				copy(playersCopyForPercentiles[i].ParsedPositions, storedPlayers[i].ParsedPositions)
+			}
+			if storedPlayers[i].PositionGroups != nil {
+				playersCopyForPercentiles[i].PositionGroups = make([]string, len(storedPlayers[i].PositionGroups))
+				copy(playersCopyForPercentiles[i].PositionGroups, storedPlayers[i].PositionGroups)
+			}
+		}
+
+		// Calculate percentiles for all division filters to ensure stability
+		CalculatePlayerPerformancePercentiles(playersCopyForPercentiles)
+
+		// Update the stored data with calculated percentiles (use sync SetPlayerData to avoid additional async operations)
+		SetPlayerData(datasetID, playersCopyForPercentiles, storedCurrency)
+
+		duration := time.Since(startTime)
+		SetSpanAttributes(percentileCtx,
+			attribute.Int64("percentile_calculation.duration_ms", duration.Milliseconds()),
+			attribute.String("percentile_calculation.status", "success"),
+		)
+
+		LogInfo("Completed async percentile calculation for dataset %s in %v", sanitizeForLogging(datasetID), duration)
+	}()
 
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
@@ -563,7 +688,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	)
 
 	// Log performance metrics with trace context
-	logInfo(ctx, "Upload processing completed",
+	logDebug(ctx, "Upload processing completed",
 		"filename", handler.Filename,
 		"file_size_kb", actualFileSize/1024,
 		"total_duration_ms", totalDuration.Milliseconds(),
@@ -629,7 +754,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 	targetDivision := queryValues.Get("targetDivision")
 	positionCompare := queryValues.Get("positionCompare") // "all", "broad", "detailed"
 
-	logInfo(ctx, "Processing player data request",
+	logDebug(ctx, "Processing player data request",
 		"dataset_id", datasetID,
 		"position_filter", filterPosition,
 		"role_filter", filterRole,
@@ -646,7 +771,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 	percentileCacheKey := fmt.Sprintf("percentiles:%s:%s:%s", datasetID, divisionFilterStr, targetDivision)
 
 	// Parse division filter early
-	var divisionFilter DivisionFilter = DivisionFilterAll
+	var divisionFilter = DivisionFilterAll
 	switch divisionFilterStr {
 	case "same":
 		divisionFilter = DivisionFilterSame
@@ -669,7 +794,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 			players = cachedResult.Players
 			currencySymbol = cachedResult.CurrencySymbol
 			found = true
-			logInfo(ctx, "Using cached percentile data", "dataset_id", datasetID, "division_filter", divisionFilterStr)
+			logDebug(ctx, "Using cached percentile data", "dataset_id", datasetID, "division_filter", divisionFilterStr)
 			SetSpanAttributes(ctx, attribute.Bool("percentile_cache.hit", true))
 		}
 	}
@@ -702,9 +827,9 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 
 		// Calculate percentiles with appropriate filtering using optimized algorithm
 		ctx, percentileSpan := StartSpan(ctx, "percentiles.calculate")
-		// Make a copy of players to avoid modifying the stored data
-		playersCopy := make([]Player, len(players))
-		copy(playersCopy, players)
+		// Make a deep copy of players to avoid modifying the stored data and prevent race conditions
+		// Use optimized deep copy for better memory efficiency
+		playersCopy := OptimizedDeepCopyPlayers(players)
 
 		if divisionFilter != DivisionFilterAll {
 			// Recalculate percentiles with division filter
@@ -725,9 +850,9 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 			Players:        players,
 			CurrencySymbol: currencySymbol,
 		}
-		setInMemCache(percentileCacheKey, cacheData, 10*time.Minute) // Cache for 10 minutes
+		setInMemCacheForDataset(percentileCacheKey, cacheData, 10*time.Minute) // Cache for 10 minutes
 
-		logInfo(ctx, "Calculated and cached percentiles",
+		logDebug(ctx, "Calculated and cached percentiles",
 			"dataset_id", datasetID,
 			"division_filter", divisionFilterStr,
 			"player_count", len(players))
@@ -741,7 +866,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 	// Check cache for final filtered result
 	if cachedFiltered, cacheFound := getFromMemCache(finalCacheKey); cacheFound {
 		if jsonData, ok := cachedFiltered.([]byte); ok {
-			logInfo(ctx, "Serving filtered player data from cache", "dataset_id", datasetID)
+			logDebug(ctx, "Serving filtered player data from cache", "dataset_id", datasetID)
 
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("Cache-Control", "public, max-age=180") // Cache for 3 minutes
@@ -763,7 +888,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	processedPlayers := make([]Player, 0, len(data.Players))
 
-	var minAge, maxAge int = -1, -1
+	var minAge, maxAge = -1, -1
 	var minTransferValue, maxTransferValue int64 = -1, -1
 	var maxSalary int64 = -1
 
@@ -839,7 +964,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 		processedPlayers = append(processedPlayers, playerCopy)
 	}
 
-	logInfo(ctx, "Returning processed players", "dataset_id", datasetID, "player_count", len(processedPlayers))
+	logDebug(ctx, "Returning processed players", "dataset_id", datasetID, "player_count", len(processedPlayers))
 
 	response := PlayerDataWithCurrency{Players: processedPlayers, CurrencySymbol: currencySymbol}
 	w.Header().Set("Content-Type", "application/json")
@@ -856,14 +981,14 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Cache the final filtered response
 	jsonData := buf.Bytes()
-	setInMemCache(finalCacheKey, jsonData, 3*time.Minute) // Cache for 3 minutes
+	setInMemCacheForDataset(finalCacheKey, jsonData, 3*time.Minute) // Cache for 3 minutes
 
 	// Write response
 	if _, err := w.Write(jsonData); err != nil {
 		log.Printf("Error writing response: %v", err)
 	}
 
-	logInfo(ctx, "Player data processed and cached",
+	logDebug(ctx, "Player data processed and cached",
 		"dataset_id", datasetID,
 		"processed_count", len(processedPlayers),
 		"original_count", len(data.Players),
@@ -958,7 +1083,7 @@ func leaguesHandler(w http.ResponseWriter, r *http.Request) {
 	players = RecalculateAllPlayersRatings(players)
 
 	// Process leagues data with concurrent processing
-	processor := NewConcurrentLeagueProcessor(runtime.NumCPU())
+	processor := CreateConcurrentLeagueProcessor(runtime.NumCPU())
 	leaguesData := processor.ProcessLeaguesAsync(ctx, players)
 
 	// Cache the result for 5 minutes
@@ -1149,7 +1274,7 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Parse division filter
-	var divisionFilter DivisionFilter = DivisionFilterAll
+	var divisionFilter = DivisionFilterAll
 	switch req.DivisionFilter {
 	case "same":
 		divisionFilter = DivisionFilterSame
@@ -1162,7 +1287,7 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 	// NEW: Generate cache key and try to load from cache first
 	cacheKey := generatePercentilesCacheKey(datasetID, req.PlayerName, req.DivisionFilter, req.TargetDivision, players)
 
-	logInfo(ctx, "Generated cache key for percentiles request",
+	logDebug(ctx, "Generated cache key for percentiles request",
 		"dataset_id", datasetID,
 		"player_name", req.PlayerName,
 		"division_filter", req.DivisionFilter,
@@ -1172,7 +1297,7 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Try to load from cache
 	if cachedPercentiles, found := loadPercentilesFromCache(cacheKey, datasetID, req.PlayerName, req.DivisionFilter, req.TargetDivision, players); found {
-		logInfo(ctx, "🎯 CACHE HIT - Returning cached percentiles",
+		logDebug(ctx, "🎯 CACHE HIT - Returning cached percentiles",
 			"dataset_id", datasetID,
 			"player_name", req.PlayerName,
 			"division_filter", req.DivisionFilter,
@@ -1190,7 +1315,7 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Cache miss - perform calculation
-	logInfo(ctx, "💫 CACHE MISS - calculating percentiles",
+	logDebug(ctx, "💫 CACHE MISS - calculating percentiles",
 		"dataset_id", datasetID,
 		"player_name", req.PlayerName,
 		"division_filter", req.DivisionFilter,
@@ -1217,6 +1342,106 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(updatedPercentiles); err != nil {
 		log.Printf("Error encoding JSON response for percentiles (DatasetID: %s): %v", sanitizeForLogging(datasetID), err)
 		http.Error(w, "Error encoding response", http.StatusInternalServerError)
+	}
+}
+
+// percentilesStatusHandler handles GET requests to check if percentiles are ready for a dataset
+func percentilesStatusHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if r.Method != http.MethodGet {
+		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/percentiles-status/"), "/")
+	if len(pathParts) == 0 || pathParts[0] == "" {
+		http.Error(w, "Dataset ID is missing in the request path", http.StatusBadRequest)
+		return
+	}
+	datasetID := pathParts[0]
+
+	logInfo(ctx, "Checking percentiles status", "dataset_id", datasetID)
+
+	// Get the dataset
+	players, _, found := GetPlayerData(datasetID)
+	if !found {
+		logWarn(ctx, "Player data not found", "dataset_id", datasetID)
+		http.Error(w, "Player data not found for the given ID.", http.StatusNotFound)
+		return
+	}
+
+	// Check percentile readiness
+	totalPlayers := len(players)
+	playersWithPercentiles := 0
+	playersWithValidPercentiles := 0
+
+	for i := range players {
+		if players[i].PerformancePercentiles != nil {
+			playersWithPercentiles++
+
+			// Check if the player has valid percentiles (not all -1 or 0)
+			globalPercentiles := players[i].PerformancePercentiles["Global"]
+			if globalPercentiles != nil {
+				validCount := 0
+				for _, percentile := range globalPercentiles {
+					if percentile >= 0 {
+						validCount++
+					}
+				}
+				if validCount > 0 {
+					playersWithValidPercentiles++
+				}
+			}
+		}
+	}
+
+	// Calculate readiness percentages
+	percentileInitialized := float64(playersWithPercentiles) / float64(totalPlayers) * 100
+	percentileValid := float64(playersWithValidPercentiles) / float64(totalPlayers) * 100
+
+	// Determine overall status
+	var status string
+	switch {
+	case percentileValid >= 90:
+		status = "ready"
+	case percentileValid >= 50:
+		status = "partial"
+	case percentileInitialized >= 50:
+		status = "calculating"
+	default:
+		status = "not_ready"
+	}
+
+	statusResponse := map[string]interface{}{
+		"dataset_id":                     datasetID,
+		"status":                         status,
+		"total_players":                  totalPlayers,
+		"players_with_percentiles":       playersWithPercentiles,
+		"players_with_valid_percentiles": playersWithValidPercentiles,
+		"percentile_initialized_percent": percentileInitialized,
+		"percentile_valid_percent":       percentileValid,
+		"message":                        getStatusMessage(status, percentileValid),
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	setCORSHeaders(w, r)
+	if err := json.NewEncoder(w).Encode(statusResponse); err != nil {
+		log.Printf("Error encoding JSON response for percentiles status (DatasetID: %s): %v", sanitizeForLogging(datasetID), err)
+		http.Error(w, "Error encoding response", http.StatusInternalServerError)
+	}
+}
+
+// getStatusMessage returns a human-readable message for the percentile status
+func getStatusMessage(status string, validPercent float64) string {
+	switch status {
+	case "ready":
+		return "Performance percentiles are ready"
+	case "partial":
+		return fmt.Sprintf("Performance percentiles are %.1f%% ready", validPercent)
+	case "calculating":
+		return "Performance percentiles are being calculated"
+	default:
+		return "Performance percentiles are not available"
 	}
 }
 
@@ -1400,7 +1625,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	// Recalculate all player ratings based on the current calculation method setting
 	players = RecalculateAllPlayersRatings(players)
 
-	logInfo(ctx, "Performing search", "dataset_id", datasetID, "query", query, "player_count", len(players))
+	logDebug(ctx, "Performing search", "dataset_id", datasetID, "query", query, "player_count", len(players))
 
 	// NEW: Generate cache key and try to load from cache first
 	cacheKey := generateSearchCacheKey(datasetID, query, players)
@@ -1904,12 +2129,12 @@ func facesHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Validate UID format for security (prevent path injection)
 	if err := validateID(uid, 100); err != nil {
-		RecordError(ctx, fmt.Errorf("invalid UID: %s, error: %v", sanitizeForLogging(uid), err), "Invalid UID format")
+		RecordError(ctx, apperrors.WrapErrInvalidUID(sanitizeForLogging(uid), err), "Invalid UID format")
 		http.Error(w, "Invalid UID format", http.StatusBadRequest)
 		return
 	}
 
-	logInfo(ctx, "Processing face image request", "uid", sanitizeForLogging(uid))
+	logDebug(ctx, "Processing face image request", "uid", sanitizeForLogging(uid))
 
 	// Check if IMAGE_API_URL is configured - if so, redirect to external API
 	if imageAPIURL := os.Getenv("IMAGE_API_URL"); imageAPIURL != "" {
@@ -1932,7 +2157,7 @@ func facesHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Try S3 first if configured
 	if s3Storage, ok := storage.(*S3Storage); ok && s3Storage.client != nil {
-		logInfo(ctx, "Attempting to retrieve face from S3", "filename", sanitizeForLogging(faceFileName))
+		logDebug(ctx, "Attempting to retrieve face from S3", "filename", sanitizeForLogging(faceFileName))
 
 		// Get face image from S3
 		if err := s3Storage.getFaceImage(ctx, faceFileName, w); err != nil {
@@ -1950,12 +2175,12 @@ func facesHandler(w http.ResponseWriter, r *http.Request) {
 	// Safely construct the file path to prevent path injection
 	faceFilePath, err := validateAndJoinPath(facesDir, faceFileName)
 	if err != nil {
-		RecordError(ctx, fmt.Errorf("invalid file path for UID %s: %v", sanitizeForLogging(uid), err), "Path validation failed")
+		RecordError(ctx, apperrors.WrapErrInvalidFilePath(sanitizeForLogging(uid), err), "Path validation failed")
 		http.Error(w, "Invalid file path", http.StatusBadRequest)
 		return
 	}
 
-	logInfo(ctx, "Attempting to retrieve face from local storage", "path", sanitizeForLogging(faceFilePath))
+	logDebug(ctx, "Attempting to retrieve face from local storage", "path", sanitizeForLogging(faceFilePath))
 
 	// Check if file exists
 	if _, err := os.Stat(faceFilePath); os.IsNotExist(err) {
@@ -2000,12 +2225,12 @@ func logosHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Validate team ID format for security (prevent path injection)
 	if err := validateID(teamID, 100); err != nil {
-		RecordError(ctx, fmt.Errorf("invalid team ID: %s, error: %v", sanitizeForLogging(teamID), err), "Invalid team ID format")
+		RecordError(ctx, apperrors.WrapErrInvalidTeamID(sanitizeForLogging(teamID), err), "Invalid team ID format")
 		http.Error(w, "Invalid team ID format", http.StatusBadRequest)
 		return
 	}
 
-	logInfo(ctx, "Processing team logo request", "teamId", sanitizeForLogging(teamID))
+	logDebug(ctx, "Processing team logo request", "teamId", sanitizeForLogging(teamID))
 
 	// Check if IMAGE_API_URL is configured - if so, redirect to external API
 	if imageAPIURL := os.Getenv("IMAGE_API_URL"); imageAPIURL != "" {
@@ -2028,14 +2253,14 @@ func logosHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Try S3 first if configured
 	if s3Storage, ok := storage.(*S3Storage); ok && s3Storage.client != nil {
-		logInfo(ctx, "Attempting to retrieve logo from S3", "filename", sanitizeForLogging(logoFileName))
+		logDebug(ctx, "Attempting to retrieve logo from S3", "filename", sanitizeForLogging(logoFileName))
 
 		// Get logo image from S3
 		if err := s3Storage.getTeamLogo(ctx, logoFileName, w); err != nil {
 			logWarn(ctx, "Failed to retrieve logo from S3", "filename", sanitizeForLogging(logoFileName), "error", err)
 			// Fall through to local storage
 		} else {
-			logInfo(ctx, "Successfully served logo from S3", "filename", sanitizeForLogging(logoFileName))
+			logDebug(ctx, "Successfully served logo from S3", "filename", sanitizeForLogging(logoFileName))
 			return
 		}
 	}
@@ -2047,28 +2272,28 @@ func logosHandler(w http.ResponseWriter, r *http.Request) {
 	// Build the nested path: logosDir/Clubs/Normal/Normal/logoFileName
 	clubsDir, err := validateAndJoinPath(logosDir, "Clubs")
 	if err != nil {
-		RecordError(ctx, fmt.Errorf("invalid clubs directory path: %v", err), "Path validation failed")
+		RecordError(ctx, apperrors.WrapErrInvalidClubsDirPath(err), "Path validation failed")
 		http.Error(w, "Invalid file path", http.StatusBadRequest)
 		return
 	}
 
 	normalDir1, err := validateAndJoinPath(clubsDir, "Normal")
 	if err != nil {
-		RecordError(ctx, fmt.Errorf("invalid normal directory path: %v", err), "Path validation failed")
+		RecordError(ctx, apperrors.WrapErrInvalidNormalDirPath(err), "Path validation failed")
 		http.Error(w, "Invalid file path", http.StatusBadRequest)
 		return
 	}
 
 	normalDir2, err := validateAndJoinPath(normalDir1, "Normal")
 	if err != nil {
-		RecordError(ctx, fmt.Errorf("invalid normal directory path: %v", err), "Path validation failed")
+		RecordError(ctx, apperrors.WrapErrInvalidNormalDirPath(err), "Path validation failed")
 		http.Error(w, "Invalid file path", http.StatusBadRequest)
 		return
 	}
 
 	logoFilePath, err := validateAndJoinPath(normalDir2, logoFileName)
 	if err != nil {
-		RecordError(ctx, fmt.Errorf("invalid file path for team ID %s: %v", sanitizeForLogging(teamID), err), "Path validation failed")
+		RecordError(ctx, apperrors.WrapErrInvalidFilePathForTeamID(sanitizeForLogging(teamID), err), "Path validation failed")
 		http.Error(w, "Invalid file path", http.StatusBadRequest)
 		return
 	}
@@ -2147,7 +2372,7 @@ func teamMatchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logInfo(ctx, "Processing team match request", "teamName", teamName, "originalLength", len(teamName))
+	logDebug(ctx, "Processing team match request", "teamName", teamName, "originalLength", len(teamName))
 
 	// Get team match results
 	matches := findTeamMatches(teamName)
@@ -2156,7 +2381,7 @@ func teamMatchHandler(w http.ResponseWriter, r *http.Request) {
 	if len(matches) == 0 {
 		logWarn(ctx, "No team matches found", "teamName", teamName)
 	} else {
-		logInfo(ctx, "Team matches found",
+		logDebug(ctx, "Team matches found",
 			"teamName", teamName,
 			"matchCount", len(matches),
 			"bestMatch", matches[0].Name,
@@ -2168,7 +2393,7 @@ func teamMatchHandler(w http.ResponseWriter, r *http.Request) {
 			if i >= 3 {
 				break
 			}
-			logInfo(ctx, "Match result",
+			logDebug(ctx, "Match result",
 				"rank", i+1,
 				"teamName", teamName,
 				"matchName", match.Name,
@@ -2185,4 +2410,81 @@ func teamMatchHandler(w http.ResponseWriter, r *http.Request) {
 		logError(ctx, "Error encoding team match response", "error", err, "teamName", teamName)
 		http.Error(w, "Error encoding response", http.StatusInternalServerError)
 	}
+}
+
+// deepCopyPlayers creates a deep copy of the players slice including all nested maps
+func deepCopyPlayers(players []Player) []Player {
+	if players == nil {
+		return nil
+	}
+
+	// Use optimized deep copy if memory optimizations are enabled
+	if memOptConfig.UseCopyOnWrite {
+		return OptimizedDeepCopyPlayers(players)
+	}
+
+	// Fallback to original implementation for compatibility
+	playersCopy := make([]Player, len(players))
+	for i := range players {
+		playersCopy[i] = players[i]
+
+		// Deep copy PerformancePercentiles map
+		if players[i].PerformancePercentiles != nil {
+			playersCopy[i].PerformancePercentiles = make(map[string]map[string]float64)
+			for group, stats := range players[i].PerformancePercentiles {
+				playersCopy[i].PerformancePercentiles[group] = make(map[string]float64)
+				for stat, value := range stats {
+					playersCopy[i].PerformancePercentiles[group][stat] = value
+				}
+			}
+		}
+
+		// Deep copy PerformanceStatsNumeric map
+		if players[i].PerformanceStatsNumeric != nil {
+			playersCopy[i].PerformanceStatsNumeric = make(map[string]float64)
+			for key, value := range players[i].PerformanceStatsNumeric {
+				playersCopy[i].PerformanceStatsNumeric[key] = value
+			}
+		}
+
+		// Deep copy StringSlice fields (these are safe but let's be thorough)
+		if players[i].ParsedPositions != nil {
+			playersCopy[i].ParsedPositions = make([]string, len(players[i].ParsedPositions))
+			copy(playersCopy[i].ParsedPositions, players[i].ParsedPositions)
+		}
+
+		if players[i].ShortPositions != nil {
+			playersCopy[i].ShortPositions = make([]string, len(players[i].ShortPositions))
+			copy(playersCopy[i].ShortPositions, players[i].ShortPositions)
+		}
+
+		if players[i].PositionGroups != nil {
+			playersCopy[i].PositionGroups = make([]string, len(players[i].PositionGroups))
+			copy(playersCopy[i].PositionGroups, players[i].PositionGroups)
+		}
+
+		// Deep copy RoleSpecificOveralls slice
+		if players[i].RoleSpecificOveralls != nil {
+			playersCopy[i].RoleSpecificOveralls = make([]RoleOverallScore, len(players[i].RoleSpecificOveralls))
+			copy(playersCopy[i].RoleSpecificOveralls, players[i].RoleSpecificOveralls)
+		}
+
+		// Deep copy Attributes map
+		if players[i].Attributes != nil {
+			playersCopy[i].Attributes = make(map[string]string)
+			for key, value := range players[i].Attributes {
+				playersCopy[i].Attributes[key] = value
+			}
+		}
+
+		// Deep copy NumericAttributes map
+		if players[i].NumericAttributes != nil {
+			playersCopy[i].NumericAttributes = make(map[string]int)
+			for key, value := range players[i].NumericAttributes {
+				playersCopy[i].NumericAttributes[key] = value
+			}
+		}
+	}
+
+	return playersCopy
 }
