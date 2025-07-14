@@ -25,7 +25,7 @@ observability:
     insecure_mode: true
     telemetry_disabled: false
     service_name: "v2fmdash-api"
-    service_version: "v0.1.0"
+    service_version: "v1.0.0"
     service_namespace: "fmdash"
     environment: "production"
     
