@@ -1,0 +1,123 @@
+# kubernetes_v2fmdash_multiple_replicas_cronjob.yaml
+# CronJob to restart both frontend and backend deployments every 8 hours
+
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: v2fmdash-multi-restart-cronjob
+  namespace: default
+  labels:
+    app: v2fmdash-multi-restart
+spec:
+  schedule: "0 */8 * * *"  # Every 8 hours at minute 0
+  concurrencyPolicy: Forbid  # Don't run multiple jobs simultaneously
+  successfulJobsHistoryLimit: 3  # Keep last 3 successful job records
+  failedJobsHistoryLimit: 3      # Keep last 3 failed job records
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: v2fmdash-multi-restart
+        spec:
+          serviceAccountName: v2fmdash-multi-restart-sa  # Service account for RBAC
+          restartPolicy: OnFailure
+          containers:
+            - name: kubectl
+              image: bitnami/kubectl:latest
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  echo "Starting multi-deployment restart at $(date)"
+                  
+                  # Function to restart a deployment
+                  restart_deployment() {
+                    local deployment_name=$1
+                    echo "Restarting deployment: $deployment_name"
+                    
+                    # Restart the deployment by patching it with a timestamp annotation
+                    kubectl patch deployment $deployment_name -p '{"spec":{"template":{"metadata":{"annotations":{"kubectl.kubernetes.io/restartedAt":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}}}}}'
+                    
+                    # Wait for the rollout to complete
+                    kubectl rollout status deployment/$deployment_name --timeout=300s
+                    
+                    if [ $? -eq 0 ]; then
+                      echo "Deployment $deployment_name restart completed successfully"
+                      return 0
+                    else
+                      echo "Deployment $deployment_name restart failed"
+                      return 1
+                    fi
+                  }
+                  
+                  # Restart backend deployment first
+                  if restart_deployment "v2fmdash-backend"; then
+                    echo "Backend deployment restart successful"
+                  else
+                    echo "Backend deployment restart failed"
+                    exit 1
+                  fi
+                  
+                  # Wait a bit before restarting frontend
+                  sleep 30
+                  
+                  # Restart frontend deployment
+                  if restart_deployment "v2fmdash-frontend"; then
+                    echo "Frontend deployment restart successful"
+                  else
+                    echo "Frontend deployment restart failed"
+                    exit 1
+                  fi
+                  
+                  echo "All deployments restarted successfully at $(date)"
+              env:
+                - name: NAMESPACE
+                  value: "default"
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            fsGroup: 1000
+
+---
+# ServiceAccount for the CronJob
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: v2fmdash-multi-restart-sa
+  namespace: default
+  labels:
+    app: v2fmdash-multi-restart
+
+---
+# ClusterRole for deployment management
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: v2fmdash-multi-restart-role
+  labels:
+    app: v2fmdash-multi-restart
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "patch", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+
+---
+# ClusterRoleBinding to bind the role to the service account
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: v2fmdash-multi-restart-rolebinding
+  labels:
+    app: v2fmdash-multi-restart
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: v2fmdash-multi-restart-role
+subjects:
+  - kind: ServiceAccount
+    name: v2fmdash-multi-restart-sa
+    namespace: default 

@@ -1,0 +1,35 @@
+version: 2
+
+run:
+  timeout: 5m
+  go: "1.24.3"
+  modules-download-mode: readonly
+  allow-parallel-runners: true
+
+linters:
+  # Default set of linters.
+  # The value can be:
+  # - `standard`: https://golangci-lint.run/usage/linters/#enabled-by-default
+  # - `all`: enables all linters by default.
+  # - `none`: disables all linters by default.
+  # - `fast`: enables only linters considered as "fast" (`golangci-lint help linters --json | jq '[ .[] | select(.fast==true) ] | map(.name)'`).
+  # Default: standard
+  default: standard
+  # Enable specific linter.
+  enable:
+    - ireturn
+    - err113
+    - revive
+    - gosec
+    - errcheck
+    - nilnil
+    - nilerr
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gosec
+        - gocritic
+  max-issues-per-linter: 0
+  max-same-issues: 0

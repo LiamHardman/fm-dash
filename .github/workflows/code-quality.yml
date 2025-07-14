@@ -1,0 +1,84 @@
+name: Code Quality Checks
+run-name: ${{ github.actor }} is running code quality checks 🔍
+
+on:
+  push:
+    branches: [ develop ]
+  pull_request:
+    branches: [ develop ]
+
+jobs:
+  frontend-linting:
+    name: Frontend Code Quality (Biome)
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Run Biome linting and formatting checks
+        run: |
+          echo "🔍 Running Biome linting and formatting checks..."
+          npm run lint:check
+
+  backend-code-quality:
+    name: Backend Code Quality (Go)
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.3'
+          cache-dependency-path: src/api/go.sum
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v2.2.2
+          working-directory: src/api
+          args: --timeout=5m
+
+      - name: Run Go unit tests and generate coverage
+        working-directory: ./src/api
+        run: |
+          echo "🧪 Running Go unit tests and generating coverage report..."
+          go test -v -coverprofile=coverage.out ./...
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./src/api/coverage.out
+          flags: backend
+          name: backend-coverage
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  code-quality-summary:
+    name: Code Quality Summary
+    runs-on: ubuntu-latest
+    needs: [frontend-linting, backend-code-quality]
+    if: always()
+    
+    steps:
+      - name: Display job statuses
+        run: |
+          echo "## Code Quality Pipeline Summary"
+          echo "---"
+          echo "Frontend (Biome): **${{ needs.frontend-linting.result }}**"
+          echo "Backend (Go): **${{ needs.backend-code-quality.result }}**"
+          echo ""
+          echo "*Note: A failure in this pipeline may block merging to 'develop'.*"
+          echo "For more details, check the logs of the failed job."

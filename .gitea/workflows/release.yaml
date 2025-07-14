@@ -1,0 +1,105 @@
+name: Conventional Commit Release
+run-name: ${{ gitea.actor }} is creating a release 🚀
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip release]')"
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch full history for changelog generation
+          token: ${{ secrets.RELEASE_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Git
+        run: |
+          git config --global user.name "gitea-actions[bot]"
+          git config --global user.email "gitea-actions[bot]@users.noreply.gitea.com"
+
+      - name: Debug - Check semantic-release configuration
+        run: |
+          echo "🔍 Checking semantic-release configuration..."
+          echo "Current working directory: $(pwd)"
+          echo "Repository remotes:"
+          git remote -v
+          echo "Current branch:"
+          git branch --show-current
+          echo "Remote branches:"
+          git branch -r
+          echo "Checking for semantic-release config in package.json:"
+          if grep -q '"release"' package.json; then
+            echo "✅ Found release config in package.json"
+            grep -A 3 '"release"' package.json
+          else
+            echo "❌ No release config found in package.json"
+          fi
+          echo "Contents of current directory:"
+          ls -la
+          
+      - name: Install semantic-release
+        run: |
+          npm install -g semantic-release @semantic-release/changelog @semantic-release/git conventional-changelog-conventionalcommits
+
+      - name: Build application
+        run: |
+          echo "🏗️ Building application for release..."
+          npm run build
+
+      - name: Run tests
+        run: |
+          echo "🧪 Running tests before release..."
+          npm run test:optional
+          npm run test:go:timeout
+
+      - name: Run semantic-release (dry-run)
+        run: |
+          echo "🔍 Analyzing commits for release..."
+          npx semantic-release --dry-run
+        env:
+          GITEA_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          HUSKY: 0
+
+      - name: Create release
+        run: |
+          echo "🚀 Creating release..."
+          npx semantic-release
+        env:
+          GITEA_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          HUSKY: 0
+
+      - name: Release summary
+        if: always()
+        run: |
+          echo "📋 Release Pipeline Summary"
+          echo "=========================="
+          echo ""
+          echo "✅ Conventional commit analysis completed"
+          echo "📦 Package version updated (if applicable)"
+          echo "📝 Changelog generated/updated"
+          echo "🏷️ Git tag created (if new version)"
+          echo "📋 Release created (if new version)"
+          echo ""
+          echo "ℹ️  Commit format guide:"
+          echo "   feat: new feature (minor version bump)"
+          echo "   fix: bug fix (patch version bump)"
+          echo "   feat!: breaking change (major version bump)"
+          echo "   docs: documentation changes (no version bump)"
+          echo "   chore: maintenance tasks (no version bump)"
+          echo ""
+          echo "🚫 To skip release: Add '[skip release]' to commit message" 

@@ -1,0 +1,432 @@
+name: GitHub Release
+run-name: ${{ github.actor }} is creating a GitHub release 🚀
+
+on:
+  # This workflow is now integrated into gh-release-pipeline.yml
+  # Completely disabled to prevent multiple pipelines
+  workflow_dispatch:
+    inputs:
+      force_run:
+        description: 'This workflow is disabled - use gh-release-pipeline.yml instead'
+        required: false
+        default: 'disabled'
+
+jobs:
+  semantic-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    if: false  # Workflow completely disabled - use gh-release-pipeline.yml instead
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    outputs:
+      new-release-published: ${{ steps.semantic-release.outputs.new-release-published }}
+      new-release-version: ${{ steps.semantic-release.outputs.new-release-version }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch full history for changelog generation
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: gh-release
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          # Regenerate package-lock.json in Linux environment to fix Rollup optional dependencies
+          rm -f package-lock.json
+          npm install --legacy-peer-deps --package-lock-only --ignore-scripts
+          npm ci --legacy-peer-deps
+
+      - name: Setup Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          
+          # Set the origin remote to GitHub for this workflow
+          git remote set-url origin https://github.com/LiamHardman/fm-dash.git
+          
+          # Remove any other remotes to avoid confusion
+          git remote remove gitea 2>/dev/null || true
+          
+          # Ensure we have a completely clean state
+          echo "🔄 Ensuring clean git state..."
+          git fetch --all --prune
+          git checkout gh-release
+          git reset --hard origin/gh-release
+          git clean -fdx
+          
+          echo "📍 Final git state:"
+          echo "Branch: $(git branch --show-current)"
+          echo "Latest commit: $(git log -1 --oneline)"
+          echo "Status: $(git status --porcelain)"
+          echo "Remote comparison: $(git rev-list --left-right --count HEAD...origin/gh-release)"
+
+      - name: Install semantic-release locally (preserving existing package.json)
+        run: |
+          # Install semantic-release packages locally without modifying existing package.json
+          npm install --save-dev --legacy-peer-deps semantic-release@^24.2.5 @semantic-release/changelog@^6.0.3 @semantic-release/git@^10.0.1 @semantic-release/github@^10.0.7 conventional-changelog-conventionalcommits@^8.0.0
+
+      - name: Verify installed packages
+        run: |
+          echo "🔍 Installed semantic-release packages:"
+          npm list --depth=0 | grep semantic-release || echo "No semantic-release packages found"
+          echo ""
+          echo "🔍 Checking for Gitea plugin:"
+          npm list @saithodev/semantic-release-gitea 2>/dev/null || echo "✅ Gitea plugin not installed"
+
+      - name: Verify Git configuration and clean up
+        run: |
+          echo "🔍 Git remotes:"
+          git remote -v
+          echo ""
+          echo "🔍 Current repository URL:"
+          git config --get remote.origin.url
+          echo ""
+          echo "🔍 Current working directory:"
+          pwd
+          echo ""
+          echo "🔍 Backing up original package.json and removing semantic-release config:"
+          cp package.json package.json.backup
+          
+          # Remove the "release" section from package.json using jq
+          if command -v jq >/dev/null 2>&1; then
+            jq 'del(.release)' package.json > package.json.tmp && mv package.json.tmp package.json
+            echo "✅ Removed release configuration from package.json"
+          else
+            echo "⚠️ jq not available, will rely on .releaserc.json to override"
+          fi
+          
+          echo "🔍 Removing any existing semantic-release config files:"
+          rm -f .releaserc .releaserc.js .releaserc.yaml .releaserc.yml
+          rm -f release.config.js release.config.json
+          echo "✅ Cleanup complete"
+
+      - name: Create GitHub release config
+        run: |
+          cat > .releaserc.json << 'EOF'
+          {
+            "branches": [
+              "gh-release"
+            ],
+            "repositoryUrl": "https://github.com/LiamHardman/fm-dash.git",
+            "plugins": [
+              "@semantic-release/commit-analyzer",
+              "@semantic-release/release-notes-generator",
+              "@semantic-release/changelog",
+              [
+                "@semantic-release/npm",
+                {
+                  "npmPublish": false
+                }
+              ],
+              [
+                "@semantic-release/git",
+                {
+                  "assets": ["package.json", "package-lock.json", "CHANGELOG.md"],
+                  "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+                }
+              ],
+              "@semantic-release/github"
+            ]
+          }
+          EOF
+          
+          echo "🔍 Verifying .releaserc.json was created correctly:"
+          cat .releaserc.json
+
+      - name: Build application
+        run: |
+          echo "🏗️ Building application for release..."
+          npm run build
+
+      - name: Run tests
+        run: |
+          echo "🧪 Running tests before release..."
+          npm run test:optional
+          npm run test:go:timeout
+
+      - name: Run semantic-release (dry-run) - GitHub
+        run: |
+          echo "🔍 Analyzing commits for GitHub release..."
+          echo "📍 Pre-release git state check:"
+          git status
+          git log --oneline -5
+          echo "📍 Running semantic-release dry-run..."
+          ./node_modules/.bin/semantic-release --dry-run --debug
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HUSKY: 0
+
+      - name: Create GitHub release
+        id: semantic-release
+        run: |
+          echo "🚀 Creating GitHub release..."
+          echo "📍 Final git state before release:"
+          git status
+          git log --oneline -3
+          echo "📍 Running semantic-release..."
+          ./node_modules/.bin/semantic-release --debug
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HUSKY: 0
+
+      - name: Restore original package.json
+        if: always()
+        run: |
+          if [ -f package.json.backup ]; then
+            mv package.json.backup package.json
+            echo "✅ Restored original package.json"
+          fi
+
+      - name: GitHub release summary
+        run: |
+          echo "📋 GitHub Release Pipeline Summary"
+          echo "================================="
+          echo ""
+          echo "✅ Conventional commit analysis completed"
+          echo "📦 Package version updated (if applicable)"
+          echo "📝 Changelog generated/updated"
+          echo "🏷️ Git tag created (if new version)"
+          echo "📋 GitHub release created (if new version)"
+          echo ""
+          echo "ℹ️  Commit format guide:"
+          echo "   feat: new feature (minor version bump)"
+          echo "   fix: bug fix (patch version bump)"
+          echo "   feat!: breaking change (major version bump)"
+          echo "   docs: documentation changes (no version bump)"
+          echo "   chore: maintenance tasks (no version bump)"
+          echo ""
+          echo "🚫 To skip release: Add '[skip release]' to commit message"
+
+  docker-build:
+    name: Build and Push Docker Images
+    runs-on: ubuntu-latest
+    needs: semantic-release
+    if: always() && !contains(github.event.head_commit.message, '[skip ci]')
+    permissions:
+      packages: write
+      id-token: write
+      attestations: write
+    
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_BASE: ${{ github.repository }}
+      CACHE_BASE: ghcr.io/liamhardman/fm-dash
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: gh-release
+
+      - name: Refresh git state to detect new tags
+        run: |
+          echo "🔄 Refreshing git state to detect new tags..."
+          git fetch --all --tags --force
+          
+          echo "📍 Git state after semantic-release:"
+          echo "Latest tags:"
+          git tag --sort=-version:refname | head -5 || echo "No tags found"
+          echo ""
+          echo "Latest commit:"
+          git log -1 --oneline
+          echo ""
+          echo "Current branch: $(git branch --show-current)"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get latest semantic version tag
+        id: version
+        run: |
+          # Get the latest semantic version tag that points to HEAD or recent commits
+          LATEST_TAG=$(git tag --sort=-version:refname --merged HEAD | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "")
+          
+          echo "🔍 Found latest semver tag: ${LATEST_TAG}"
+          echo "latest_tag=${LATEST_TAG}" >> $GITHUB_OUTPUT
+          
+          if [[ -n "$LATEST_TAG" ]]; then
+            VERSION=${LATEST_TAG#v}  # Remove 'v' prefix
+            echo "version=${VERSION}" >> $GITHUB_OUTPUT
+            
+            # Extract major.minor
+            MAJOR_MINOR=$(echo "$VERSION" | cut -d. -f1-2)
+            echo "major_minor=v${MAJOR_MINOR}" >> $GITHUB_OUTPUT
+            
+            # Extract major
+            MAJOR=$(echo "$VERSION" | cut -d. -f1)
+            echo "major=v${MAJOR}" >> $GITHUB_OUTPUT
+            
+            echo "has_semver=true" >> $GITHUB_OUTPUT
+            echo "✅ Parsed version: $VERSION (major: $MAJOR, major.minor: $MAJOR_MINOR)"
+          else
+            echo "has_semver=false" >> $GITHUB_OUTPUT
+            echo "❌ No semantic version tag found for current commit"
+          fi
+
+      # Extract metadata for fm-dash-unified
+      - name: Extract metadata for unified image
+        id: meta-unified
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-unified
+          tags: |
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ steps.version.outputs.latest_tag }},enable=${{ steps.version.outputs.has_semver }}
+            type=raw,value=${{ steps.version.outputs.major_minor }},enable=${{ steps.version.outputs.has_semver }}
+            type=raw,value=${{ steps.version.outputs.major }},enable=${{ steps.version.outputs.has_semver }}
+          flavor: |
+            latest=auto
+          labels: |
+            org.opencontainers.image.title=FM-Dash Unified
+            org.opencontainers.image.description=A comprehensive platform for analyzing Football Manager player data (Frontend + Backend)
+            org.opencontainers.image.vendor=Liam Hardman
+            org.opencontainers.image.licenses=MIT
+
+      # Extract metadata for fm-dash-frontend
+      - name: Extract metadata for frontend image
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-frontend
+          tags: |
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ steps.version.outputs.latest_tag }},enable=${{ steps.version.outputs.has_semver }}
+            type=raw,value=${{ steps.version.outputs.major_minor }},enable=${{ steps.version.outputs.has_semver }}
+            type=raw,value=${{ steps.version.outputs.major }},enable=${{ steps.version.outputs.has_semver }}
+          flavor: |
+            latest=auto
+          labels: |
+            org.opencontainers.image.title=FM-Dash Frontend
+            org.opencontainers.image.description=FM-Dash Vue.js frontend application
+            org.opencontainers.image.vendor=Liam Hardman
+            org.opencontainers.image.licenses=MIT
+
+      # Extract metadata for fm-dash-backend
+      - name: Extract metadata for backend image
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-backend
+          tags: |
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ steps.version.outputs.latest_tag }},enable=${{ steps.version.outputs.has_semver }}
+            type=raw,value=${{ steps.version.outputs.major_minor }},enable=${{ steps.version.outputs.has_semver }}
+            type=raw,value=${{ steps.version.outputs.major }},enable=${{ steps.version.outputs.has_semver }}
+          flavor: |
+            latest=auto
+          labels: |
+            org.opencontainers.image.title=FM-Dash Backend
+            org.opencontainers.image.description=FM-Dash Go backend API
+            org.opencontainers.image.vendor=Liam Hardman
+            org.opencontainers.image.licenses=MIT
+
+      # Build and push unified image
+      - name: Build and push unified Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta-unified.outputs.tags }}
+          labels: ${{ steps.meta-unified.outputs.labels }}
+          build-args: |
+            VITE_API_BASE_URL=/api
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=registry,ref=${{ env.CACHE_BASE }}-unified:buildcache
+          cache-to: type=registry,ref=${{ env.CACHE_BASE }}-unified:buildcache,mode=max
+          provenance: false
+          sbom: false
+
+      # Build and push frontend image
+      - name: Build and push frontend Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.frontend
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=registry,ref=${{ env.CACHE_BASE }}-frontend:buildcache
+          cache-to: type=registry,ref=${{ env.CACHE_BASE }}-frontend:buildcache,mode=max
+          provenance: false
+          sbom: false
+
+      # Build and push backend image
+      - name: Build and push backend Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.backend
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=registry,ref=${{ env.CACHE_BASE }}-backend:buildcache
+          cache-to: type=registry,ref=${{ env.CACHE_BASE }}-backend:buildcache,mode=max
+          provenance: false
+          sbom: false
+
+      - name: Docker images summary
+        run: |
+          echo "🐳 Docker Images Summary"
+          echo "========================"
+          echo ""
+          echo "✅ All Docker images built and pushed with semantic version tags"
+          echo ""
+          echo "🏷️ Unified Image Tags:"
+          echo "${{ steps.meta-unified.outputs.tags }}" | sed 's/,/\n/g' | sed 's/^/   /'
+          echo ""
+          echo "🏷️ Frontend Image Tags:"
+          echo "${{ steps.meta-frontend.outputs.tags }}" | sed 's/,/\n/g' | sed 's/^/   /'
+          echo ""
+          echo "🏷️ Backend Image Tags:"
+          echo "${{ steps.meta-backend.outputs.tags }}" | sed 's/,/\n/g' | sed 's/^/   /'
+          echo ""
+          echo "📦 Registry: ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}"
+          echo "🏗️ Platforms: linux/amd64, linux/arm64"
+          echo ""
+          echo "🚀 To use these images:"
+          echo "   # Unified (frontend + backend):"
+          if [[ "${{ steps.version.outputs.has_semver }}" == "true" ]]; then
+            echo "   docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-unified:${{ steps.version.outputs.latest_tag }}"
+          else
+            echo "   docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-unified:latest"
+          fi
+          echo ""
+          echo "   # Frontend only:"
+          if [[ "${{ steps.version.outputs.has_semver }}" == "true" ]]; then
+            echo "   docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-frontend:${{ steps.version.outputs.latest_tag }}"
+          else
+            echo "   docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-frontend:latest"
+          fi
+          echo ""
+          echo "   # Backend only:"
+          if [[ "${{ steps.version.outputs.has_semver }}" == "true" ]]; then
+            echo "   docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-backend:${{ steps.version.outputs.latest_tag }}"
+          else
+            echo "   docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-backend:latest"
+          fi
+          echo ""
+          echo "🔗 Container Registry: https://github.com/${{ github.repository }}/pkgs" 

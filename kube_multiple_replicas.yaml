@@ -1,0 +1,241 @@
+# kubernetes_v2fmdash_multiple_replicas.yaml
+# Separate frontend and backend deployments with 3 replicas each
+
+# --- Backend Deployment ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: v2fmdash-backend
+  namespace: default
+  labels:
+    app: v2fmdash-backend
+    component: backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: v2fmdash-backend
+      component: backend
+  template:
+    metadata:
+      labels:
+        app: v2fmdash-backend
+        component: backend
+    spec:
+      containers:
+        - name: v2fmdash-backend-container
+          image: ghcr.io/liamhardman/fm-dash-backend:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http-api
+              containerPort: 8091
+          env:
+            # Runtime Configuration Path
+            - name: CONFIG_FILE_PATH
+              value: "/app/config/app-config.yaml"
+            
+            # Environment-specific overrides
+            - name: ENVIRONMENT
+              value: "production"
+            - name: DEPLOYMENT_ENV
+              value: "kubernetes"
+            - name: LOG_LEVEL
+              value: "INFO"
+            
+            # CI/CD populated values (will be set by your CI/CD pipeline)
+            - name: GIT_COMMIT_SHA
+              value: "main"
+            - name: BUILD_ID
+              value: ""
+            - name: BUILD_TIMESTAMP
+              value: ""
+            
+            # OpenTelemetry Configuration
+            - name: OTEL_ENABLED
+              value: "true"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "signoz-otel-collector.signoz-helm:4317"
+            - name: OTEL_EXPORTER_OTLP_INSECURE
+              value: "true"
+            
+            # S3-Compatible Storage Configuration (from secrets)
+            - name: S3_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: v2fmdash-minio-secret
+                  key: endpoint
+            - name: S3_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: v2fmdash-minio-secret
+                  key: access-key
+            - name: S3_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: v2fmdash-minio-secret
+                  key: secret-key
+            - name: S3_USE_SSL
+              valueFrom:
+                secretKeyRef:
+                  name: v2fmdash-minio-secret
+                  key: use-ssl
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "2Gi"
+          readinessProbe:
+            httpGet:
+              path: /api/config
+              port: http-api
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /api/config
+              port: http-api
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+---
+# --- Frontend Deployment ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: v2fmdash-frontend
+  namespace: default
+  labels:
+    app: v2fmdash-frontend
+    component: frontend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: v2fmdash-frontend
+      component: frontend
+  template:
+    metadata:
+      labels:
+        app: v2fmdash-frontend
+        component: frontend
+    spec:
+      containers:
+        - name: v2fmdash-frontend-container
+          image: ghcr.io/liamhardman/fm-dash-frontend:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http-nginx
+              containerPort: 8080
+          env:
+            # Runtime Configuration Path
+            - name: CONFIG_FILE_PATH
+              value: "/app/config/app-config.yaml"
+            
+            # Runtime Configuration (injected at container startup)
+            # Use "" for relative paths (default). Set to a full URL for an external backend.
+            - name: API_ENDPOINT
+              value: ""
+            
+            # Environment-specific overrides
+            - name: ENVIRONMENT
+              value: "production"
+            - name: DEPLOYMENT_ENV
+              value: "kubernetes"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http-nginx
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http-nginx
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+---
+# --- Backend Service ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: v2fmdash-backend
+  namespace: default
+  labels:
+    app: v2fmdash-backend
+    component: backend
+spec:
+  type: ClusterIP
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 3600
+  selector:
+    app: v2fmdash-backend
+    component: backend
+  ports:
+    - name: http-api
+      protocol: TCP
+      port: 8091
+      targetPort: http-api
+
+---
+# --- Frontend Service ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: v2fmdash-frontend
+  namespace: default
+  labels:
+    app: v2fmdash-frontend
+    component: frontend
+spec:
+  type: ClusterIP
+  selector:
+    app: v2fmdash-frontend
+    component: frontend
+  ports:
+    - name: http-frontend
+      protocol: TCP
+      port: 80
+      targetPort: http-nginx
+
+---
+# --- Ingress (Optional - for external access) ---
+# Uncomment and configure if you need external access
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: v2fmdash-ingress
+#   namespace: default
+#   annotations:
+#     nginx.ingress.kubernetes.io/rewrite-target: /
+# spec:
+#   rules:
+#     - host: v2fmdash.yourdomain.com
+#       http:
+#         paths:
+#           - path: /
+#             pathType: Prefix
+#             backend:
+#               service:
+#                 name: v2fmdash-frontend
+#                 port:
+#                   number: 80 

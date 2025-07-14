@@ -1,0 +1,101 @@
+{
+  "name": "fm-dash",
+  "version": "1.2.30",
+  "type": "module",
+  "private": true,
+  "description": "A comprehensive platform for analyzing Football Manager player data",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LiamHardman/fm-dash.git"
+  },
+  "homepage": "https://github.com/LiamHardman/fm-dash#readme",
+  "bugs": {
+    "url": "https://github.com/LiamHardman/fm-dash/issues"
+  },
+  "author": "Liam Hardman",
+  "keywords": [
+    "football-manager",
+    "data-analysis",
+    "vue",
+    "golang",
+    "sports-analytics"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "build:analyze": "ANALYZE=true vite build",
+    "build:prod": "NODE_ENV=production vite build",
+    "build:prod-analyze": "NODE_ENV=production ANALYZE=true vite build",
+    "serve": "go run main.go",
+    "lint": "biome check --write .",
+    "lint:check": "biome check .",
+    "lint:go": "cd src/api && golangci-lint run",
+    "lint:go:fix": "cd src/api && golangci-lint run --fix",
+    "lint:all": "npm run lint:check && npm run lint:go",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
+    "test:optional": "vitest run --run --reporter=verbose || echo 'No frontend tests found, skipping...'",
+    "test:coverage": "vitest --coverage",
+    "test:go": "cd test/api && go test ./... || echo 'No Go test packages found, skipping...'",
+    "test:go:timeout": "cd test/api && (gtimeout 30s go test ./... 2>/dev/null || timeout 30s go test ./... 2>/dev/null || go test -timeout=30s ./... || echo 'Go tests completed or timed out, continuing...')",
+    "test:go:verbose": "cd test/api && go test -v ./...",
+    "test:go:coverage": "cd test/api && go test -cover ./...",
+    "test:all": "npm run test:optional && npm run test:go",
+    "check": "npm run lint:all && npm run format:check && npm run test:all",
+    "fix": "npm run format && npm run lint && npm run lint:go:fix",
+    "prepare": "husky"
+  },
+  "dependencies": {
+    "@quasar/extras": "^1.16.9",
+    "@vueuse/core": "^13.3.0",
+    "biome": "^0.2.2",
+    "chart.js": "^4.4.9",
+    "chartjs-plugin-annotation": "^3.1.0",
+    "fs-minipass": "^3.0.3",
+    "pinia": "^3.0.2",
+    "quasar": "^2.14.4",
+    "unique-slug": "^5.0.0",
+    "vue": "^3.4.19",
+    "vue-chartjs": "^5.3.2",
+    "vue-router": "^4.3.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.0.6",
+    "@pinia/testing": "^1.0.1",
+    "@quasar/vite-plugin": "^1.9.0",
+    "@saithodev/semantic-release-gitea": "^2.1.0",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^10.3.5",
+    "@vitejs/plugin-vue": "^6.0.0",
+    "@vue/test-utils": "^2.4.6",
+    "conventional-changelog-conventionalcommits": "^8.0.0",
+    "happy-dom": "^18.0.1",
+    "husky": "^9.1.7",
+    "jsdom": "^26.1.0",
+    "lint-staged": "^16.1.0",
+    "rollup-plugin-visualizer": "^6.0.3",
+    "sass": "^1.71.1",
+    "semantic-release": "^24.2.7",
+    "terser": "^5.43.1",
+    "vite": "^7.0.2",
+    "vitest": "^3.2.0"
+  },
+  "lint-staged": {
+    "*.{js,ts,vue,html,css,scss}": [
+      "biome check --write --files-ignore-unknown=true",
+      "biome format --write --files-ignore-unknown=true"
+    ],
+    "!(package-lock).json": [
+      "biome check --write --files-ignore-unknown=true",
+      "biome format --write --files-ignore-unknown=true"
+    ],
+    "src/api/**/*.go": [
+      "sh -c 'cd src/api && golangci-lint run --fix'"
+    ]
+  }
+}

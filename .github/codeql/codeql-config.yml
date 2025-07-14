@@ -1,0 +1,89 @@
+name: "CodeQL Security Configuration"
+
+# Disable low-priority and false positive queries
+disable-default-queries: false
+
+# Only run security-related queries
+queries:
+  - uses: security-extended
+  - uses: security-and-quality
+
+# Filter out specific false positives and low-priority issues
+query-filters:
+  # Filter out common false positives in Go
+  - exclude:
+      id: go/incomplete-url-substring-sanitization
+      reason: "Often false positive in URL validation code"
+  
+  - exclude:
+      id: go/log-injection
+      reason: "False positive when logging structured data"
+  
+  - exclude:
+      id: go/missing-rate-limiting
+      reason: "Rate limiting implemented via middleware"
+  
+  - exclude:
+      id: go/zip-slip
+      reason: "No file extraction in this codebase"
+  
+  # Filter out standard library alerts for recent Go versions
+  - exclude:
+      id: go/stdlib/net/http
+      reason: "Using Go 1.24.3 with latest security patches"
+  
+  # Focus on high-severity issues only for HTTP/2
+  - include:
+      id: go/http2-rapid-reset
+      severity: ["high", "critical"]
+  
+  - include:
+      id: go/http2-continuation-flood
+      severity: ["high", "critical"]
+
+# Paths to exclude from analysis
+paths-ignore:
+  - "test/**"
+  - "tests/**"
+  - "**/test.go"
+  - "**/testdata/**"
+  - "node_modules/**"
+  - "vendor/**"
+  - "*.min.js"
+  - "dist/**"
+  - "build/**"
+
+# Paths to specifically include
+paths:
+  - "src/api/**/*.go"
+  - "src/**/*.js"
+  - "src/**/*.vue"
+  - "src/**/*.ts"
+
+# Language-specific configurations
+go:
+  # Only analyze main packages and security-critical paths
+  build-command: |
+    go mod tidy
+    go build -v ./...
+  
+  # Focus on security-relevant packages
+  include-packages:
+    - "main"
+    - "api"
+    - "handlers"
+    - "middleware"
+    - "security"
+
+javascript:
+  # Focus on security-relevant frontend code
+  include-extensions:
+    - ".js"
+    - ".vue"
+    - ".ts"
+  
+  # Exclude minified and generated files
+  exclude-patterns:
+    - "*.min.js"
+    - "*.bundle.js"
+    - "node_modules/**" 

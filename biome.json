@@ -1,0 +1,75 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.1.1/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "ignoreUnknown": false,
+    "maxSize": 3145728,
+    "includes": [
+      "src/**/*.js",
+      "src/**/*.ts",
+      "src/**/*.vue",
+      "src/**/*.jsx",
+      "src/**/*.tsx",
+      "*.js",
+      "*.ts",
+      "*.vue",
+      "*.json"
+    ],
+    "experimentalScannerIgnores": [
+      "dist/**",
+      "node_modules/**",
+      "build/**",
+      "coverage/**",
+      ".git/**",
+      "*.min.js",
+      "*.min.css",
+      "*.md",
+      "docs/**/*.md",
+      "testdata.html",
+      "src/utils/teams_data.json",
+      "package-lock.json"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100,
+    "lineEnding": "lf"
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "suspicious": {
+        "noConsole": "warn",
+        "noDebugger": "warn"
+      },
+      "style": {
+        "useConst": "error"
+      },
+      "correctness": {
+        "noUnusedVariables": "warn"
+      }
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "semicolons": "asNeeded",
+      "trailingCommas": "none",
+      "bracketSpacing": true,
+      "arrowParentheses": "asNeeded"
+    }
+  },
+  "json": {
+    "formatter": {
+      "indentStyle": "space",
+      "indentWidth": 2
+    }
+  }
+}

@@ -1,0 +1,145 @@
+name: v2fmdash Deployment (Separate Frontend & Backend)
+run-name: ${{ gitea.actor }} is deploying v2fmdash (Separate Containers) to Portainer. 🚀
+on:
+  push:
+    branches:
+      - main # Target branch for deployment
+
+jobs:
+  # Quick code quality check (informational only)
+  code-quality-check:
+    name: Quick Code Quality Check
+    runs-on: ubuntu-latest
+    continue-on-error: true # Don't block deployment if this fails
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Quick Biome check
+        run: |
+          echo "🔍 Quick code quality check with Biome..."
+          npm run lint:check || echo "⚠️ Code quality issues found (not blocking deployment)"
+
+      - name: Code quality notice
+        if: always()
+        run: |
+          echo "📝 Code quality check completed (informational only)"
+          echo "🚀 Deployment will proceed regardless of code quality results"
+          echo "💡 For detailed checks, see the 'Code Quality Checks' workflow"
+
+  build-and-deploy:
+    needs: [code-quality-check]
+    runs-on: ubuntu-latest
+    if: always() # Always run deployment regardless of code quality results
+    env:
+      REGISTRY: git.liamhardman.com # Your Gitea container registry
+      IMAGE_NAMESPACE: liam # Your preferred namespace on the registry
+      FRONTEND_IMAGE_NAME: v2fmdash-frontend # Name for the frontend Docker image
+      BACKEND_IMAGE_NAME: v2fmdash-backend # Name for the backend Docker image
+      APP_NAME_K8S_FRONTEND: v2fmdash-frontend # Kubernetes Frontend Deployment name
+      APP_NAME_K8S_BACKEND: v2fmdash-backend # Kubernetes Backend Deployment name
+      KUBE_MANIFEST_FILE: kube_multiple_replicas.yaml # Name of your Kubernetes manifest file
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install docker for ubuntu-latest runner
+        uses: papodaca/install-docker-action@main
+
+      - name: Log in to Container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ gitea.actor }}
+          password: ${{ secrets.RELEASE_TOKEN }} # Gitea personal access token
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Build and push the Frontend Docker image
+      - name: Build and push Frontend Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./
+          file: ./Dockerfile.frontend
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.FRONTEND_IMAGE_NAME }}:main
+
+      # Build and push the Backend Docker image
+      - name: Build and push Backend Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./
+          file: ./Dockerfile.backend
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.BACKEND_IMAGE_NAME }}:main
+
+      - name: Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          mv kubectl /usr/local/bin/
+
+      - name: Configure kubectl
+        env:
+          KUBECONFIG_YAML: ${{ secrets.KUBECONFIG_YAML }} # Your kubeconfig as a secret
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${KUBECONFIG_YAML}" > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+          echo "kubectl config loaded. Current context:"
+          kubectl config current-context
+          echo "Attempting to get pods in default namespace (test connection):"
+          kubectl get pods --namespace default --request-timeout=10s || echo "kubectl get pods failed, but continuing."
+
+      - name: Apply or Restart deployments
+        run: |
+          # Check if the backend deployment exists
+          if kubectl get deployment ${{ env.APP_NAME_K8S_BACKEND }} --namespace default --ignore-not-found -o name | grep -q "${{ env.APP_NAME_K8S_BACKEND }}"; then
+            echo "Backend deployment ${{ env.APP_NAME_K8S_BACKEND }} exists. Restarting..."
+            kubectl rollout restart deployment/${{ env.APP_NAME_K8S_BACKEND }} --namespace default
+          else
+            echo "Backend deployment ${{ env.APP_NAME_K8S_BACKEND }} does not exist. Applying manifest..."
+          fi
+          
+          # Check if the frontend deployment exists
+          if kubectl get deployment ${{ env.APP_NAME_K8S_FRONTEND }} --namespace default --ignore-not-found -o name | grep -q "${{ env.APP_NAME_K8S_FRONTEND }}"; then
+            echo "Frontend deployment ${{ env.APP_NAME_K8S_FRONTEND }} exists. Restarting..."
+            kubectl rollout restart deployment/${{ env.APP_NAME_K8S_FRONTEND }} --namespace default
+          else
+            echo "Frontend deployment ${{ env.APP_NAME_K8S_FRONTEND }} does not exist. Applying manifest..."
+          fi
+          
+          # If either deployment doesn't exist, apply the full manifest
+          if ! (kubectl get deployment ${{ env.APP_NAME_K8S_BACKEND }} --namespace default --ignore-not-found -o name | grep -q "${{ env.APP_NAME_K8S_BACKEND }}") || \
+             ! (kubectl get deployment ${{ env.APP_NAME_K8S_FRONTEND }} --namespace default --ignore-not-found -o name | grep -q "${{ env.APP_NAME_K8S_FRONTEND }}"); then
+            echo "Applying full manifest from ${{ env.KUBE_MANIFEST_FILE }}..."
+            kubectl apply -f ${{ env.KUBE_MANIFEST_FILE }} --namespace default
+          fi
+          
+          echo "Waiting for deployments to be ready..."
+          kubectl rollout status deployment/${{ env.APP_NAME_K8S_BACKEND }} --namespace default --timeout=5m
+          kubectl rollout status deployment/${{ env.APP_NAME_K8S_FRONTEND }} --namespace default --timeout=5m
+          
+          echo "Deployment process complete."
+
+      - name: Verify deployments
+        run: |
+          echo "Verifying deployments..."
+          kubectl get deployments --namespace default -l component=backend
+          kubectl get deployments --namespace default -l component=frontend
+          kubectl get services --namespace default -l app=v2fmdash-backend
+          kubectl get services --namespace default -l app=v2fmdash-frontend
+          kubectl get pods --namespace default -l component=backend
+          kubectl get pods --namespace default -l component=frontend 

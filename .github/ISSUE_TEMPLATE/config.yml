@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📚 Documentation
+    url: https://github.com/LiamHardman/fm-dash/blob/main/readme.md
+    about: Read the documentation for setup and usage instructions
+  - name: 💬 Discussions
+    url: https://github.com/LiamHardman/fm-dash/discussions
+    about: Ask questions and discuss ideas with the community
+  - name: 🛡️ Security Vulnerability
+    url: https://github.com/LiamHardman/fm-dash/security/advisories/new
+    about: Report security vulnerabilities privately 

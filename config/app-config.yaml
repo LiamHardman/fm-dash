@@ -1,0 +1,145 @@
+# Application Configuration for v2fmdash
+# This file contains all configurable settings for the application
+# Environment-specific values can be overridden via environment variables
+# This config works for all deployment types: local development, Docker, and Kubernetes
+
+# Server Configuration
+server:
+  port: 8091
+  port_nginx: 8080  # For unified deployments with nginx
+  host: "0.0.0.0"
+  read_timeout: "30s"
+  write_timeout: "30s"
+  idle_timeout: "120s"
+
+# Feature Flags
+features:
+  metrics_enabled: true
+  upload_enabled: true
+  export_enabled: true
+
+# OpenTelemetry Configuration
+observability:
+  otel:
+    enabled: true
+    insecure_mode: true
+    telemetry_disabled: false
+    service_name: "v2fmdash-api"
+    service_version: "v0.1.0"
+    service_namespace: "fmdash"
+    environment: "production"
+    
+    # Collector Configuration
+    exporter:
+      endpoint: "signoz-otel-collector.signoz-helm:4317"
+      timeout: "30s"
+    
+    # Tracing Configuration
+    tracing:
+      enabled: true
+      sample_rate: 0.05
+      
+    # Metrics Configuration
+    metrics:
+      enabled: true
+      export_interval: "30s"  # 30000ms converted to duration
+      runtime_metrics_enabled: true
+      custom_metrics_enabled: true
+      
+    # Logging Configuration  
+    logging:
+      enabled: true
+      log_level: "info"
+      
+    # Batch Processing Configuration
+    batch:
+      schedule_delay: "5s"
+      max_export_batch_size: 512
+      max_queue_size: 2048
+      export_timeout: "30s"
+      
+    # Resource Detection
+    resource:
+      detection_timeout: "5s"
+
+# File Upload Configuration
+upload:
+  max_size_mb: 50
+  allowed_extensions:
+    - ".html"
+    - ".htm"
+  temp_directory: "/tmp/uploads"
+  timeout: "300s"
+
+# Storage Configuration
+storage:
+  # Dataset retention in days
+  dataset_retention_days: 30
+  
+  # S3/MinIO Configuration (values from secrets/environment)
+  s3:
+    # These will be populated from environment variables/secrets
+    endpoint: "" # S3_ENDPOINT
+    access_key: "" # S3_ACCESS_KEY  
+    secret_key: "" # S3_SECRET_KEY
+    use_ssl: false # S3_USE_SSL
+    bucket: "v2fmdash-data"
+    region: "us-east-1"
+
+# External Image API Configuration
+images:
+  api_url: "https://sortitoutsi.b-cdn.net/uploads"
+  faces_directory: "./faces"
+  logos_directory: "./logos"
+
+# Frontend Configuration
+frontend:
+  api_endpoint: ""  # Empty for relative paths, set to full URL for external backend
+  ga_tracking_id: "G-QYG3QS5C5Y"
+
+# Build and Deployment Information
+build:
+  repository_url: "git.liamhardman.com/liam/v2fmdash"
+  branch: "main"
+  commit_sha: "main" # Will be overridden by CI/CD
+  build_id: "" # Will be set by CI/CD
+  build_timestamp: "" # Will be set by CI/CD
+  deployment_env: "kubernetes"
+
+# Security Configuration
+security:
+  enable_cors: true
+  allowed_origins:
+    - "http://localhost:3000"
+    - "https://fm-dash.com"
+  allowed_methods:
+    - "GET"
+    - "POST" 
+    - "PUT"
+    - "DELETE"
+    - "OPTIONS"
+  allowed_headers:
+    - "Content-Type"
+    - "Authorization"
+    - "X-Requested-With"
+  max_age: 3600
+
+# Rate Limiting
+rate_limiting:
+  enabled: true
+  requests_per_minute: 100
+  upload_per_hour: 5
+  export_per_hour: 10
+
+# Cache Configuration
+cache:
+  enabled: true
+  ttl_seconds: 3600
+  max_size_mb: 100
+  
+# Performance Tuning
+performance:
+  worker_count: 4
+  batch_size: 100
+  processing_timeout: "600s"
+  memory_limit_mb: 512 
