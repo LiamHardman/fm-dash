@@ -13,12 +13,12 @@ type ServiceManager struct {
 	ProcessingService *ProcessingService
 }
 
-// NewServiceManager creates a new service manager with all services
-func NewServiceManager(storage StorageInterface) *ServiceManager {
+// CreateServiceManager creates a new service manager with all services
+func CreateServiceManager(storage StorageInterface) *ServiceManager {
 	// Initialize services in dependency order
-	playerService := NewPlayerService(storage)
-	searchService := NewSearchService(playerService)
-	processingService := NewProcessingService(playerService)
+	playerService := CreatePlayerService(storage)
+	searchService := CreateSearchService(playerService)
+	processingService := CreateProcessingService(playerService)
 
 	manager := &ServiceManager{
 		PlayerService:     playerService,

@@ -13,8 +13,8 @@ type Logger struct {
 	baseLogger *slog.Logger
 }
 
-// NewLogger creates a new enhanced logger
-func NewLogger() *Logger {
+// CreateLogger creates a new enhanced logger
+func CreateLogger() *Logger {
 	return &Logger{
 		baseLogger: slog.Default(),
 	}
@@ -113,7 +113,7 @@ func (l *Logger) LogSlowOperation(ctx context.Context, operation string, thresho
 }
 
 // Global enhanced logger instance
-var enhancedLogger = NewLogger()
+var enhancedLogger = CreateLogger()
 
 // LogInfoContext logs an info message with context
 func LogInfoContext(ctx context.Context, msg string, attrs ...any) {

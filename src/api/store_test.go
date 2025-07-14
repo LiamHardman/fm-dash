@@ -12,7 +12,8 @@ type MockStorage struct {
 	data map[string]DatasetData
 }
 
-func NewMockStorage() *MockStorage {
+// CreateMockStorage creates a new mock storage for testing
+func CreateMockStorage() *MockStorage {
 	return &MockStorage{
 		data: make(map[string]DatasetData),
 	}
@@ -54,7 +55,7 @@ func TestStoreDataset(t *testing.T) {
 	originalStorage := storage
 	defer func() { storage = originalStorage }()
 
-	storage = NewMockStorage()
+	storage = CreateMockStorage()
 
 	tests := []struct {
 		name           string
@@ -139,7 +140,7 @@ func TestRetrieveDataset(t *testing.T) {
 	originalStorage := storage
 	defer func() { storage = originalStorage }()
 
-	mockStorage := NewMockStorage()
+	mockStorage := CreateMockStorage()
 	storage = mockStorage
 
 	// Pre-populate with test data
@@ -205,7 +206,7 @@ func TestDeleteDataset(t *testing.T) {
 	originalStorage := storage
 	defer func() { storage = originalStorage }()
 
-	storage = NewMockStorage()
+	storage = CreateMockStorage()
 
 	// Store test data
 	testDatasetID := "test-delete"
@@ -240,7 +241,7 @@ func TestListDatasets(t *testing.T) {
 	originalStorage := storage
 	defer func() { storage = originalStorage }()
 
-	storage = NewMockStorage()
+	storage = CreateMockStorage()
 
 	// Store multiple datasets
 	datasets := []string{"dataset1", "dataset2", "dataset3"}
@@ -279,7 +280,7 @@ func TestStoreDatasetAsync(t *testing.T) {
 	originalStorage := storage
 	defer func() { storage = originalStorage }()
 
-	storage = NewMockStorage()
+	storage = CreateMockStorage()
 
 	testDatasetID := "test-async"
 	testPlayers := []Player{{UID: 1, Name: "Async Test Player"}}
@@ -311,7 +312,7 @@ func TestCleanupOldDatasets(t *testing.T) {
 	originalStorage := storage
 	defer func() { storage = originalStorage }()
 
-	storage = NewMockStorage()
+	storage = CreateMockStorage()
 
 	// Test cleanup function (mock implementation just returns nil)
 	maxAge := 24 * time.Hour
@@ -329,7 +330,7 @@ func TestStoreDatasetValidation(t *testing.T) {
 	originalStorage := storage
 	defer func() { storage = originalStorage }()
 
-	storage = NewMockStorage()
+	storage = CreateMockStorage()
 
 	tests := []struct {
 		name      string

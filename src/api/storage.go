@@ -78,8 +78,8 @@ type InMemoryStorage struct {
 	mutex sync.RWMutex
 }
 
-// NewInMemoryStorage creates a new in-memory storage instance
-func NewInMemoryStorage() *InMemoryStorage {
+// CreateInMemoryStorage creates a new in-memory storage instance
+func CreateInMemoryStorage() *InMemoryStorage {
 	return &InMemoryStorage{
 		data: make(map[string]DatasetData),
 	}
@@ -181,8 +181,8 @@ type storageResult struct {
 	err  error
 }
 
-// NewS3Storage creates a new S3 storage instance with fallback
-func NewS3Storage(endpoint, accessKey, secretKey, bucketName string, useSSL bool, fallback StorageInterface) *S3Storage {
+// CreateS3Storage creates a new S3 storage instance with fallback
+func CreateS3Storage(endpoint, accessKey, secretKey, bucketName string, useSSL bool, fallback StorageInterface) *S3Storage {
 	const workerPoolSize = 10    // Increased worker pool size
 	const operationsBuffer = 200 // Increased buffer size
 
@@ -677,8 +677,8 @@ type LocalFileStorage struct {
 	mutex      sync.RWMutex
 }
 
-// NewLocalFileStorage creates a new local file storage instance
-func NewLocalFileStorage(datasetDir string) (*LocalFileStorage, error) {
+// CreateLocalFileStorage creates a new local file storage instance
+func CreateLocalFileStorage(datasetDir string) (*LocalFileStorage, error) {
 	// Create datasets directory if it doesn't exist
 	if err := os.MkdirAll(datasetDir, 0o750); err != nil {
 		return nil, fmt.Errorf("failed to create datasets directory %s: %w", datasetDir, err)
@@ -976,10 +976,10 @@ type HybridStorage struct {
 	local  StorageInterface
 }
 
-// NewHybridStorage creates a new hybrid storage instance
-func NewHybridStorage(datasetDir string) (*HybridStorage, error) {
-	memory := NewInMemoryStorage()
-	local, err := NewLocalFileStorage(datasetDir)
+// CreateHybridStorage creates a new hybrid storage instance
+func CreateHybridStorage(datasetDir string) (*HybridStorage, error) {
+	memory := CreateInMemoryStorage()
+	local, err := CreateLocalFileStorage(datasetDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create local file storage: %w", err)
 	}
@@ -1080,7 +1080,7 @@ func (s *HybridStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets
 //
 //nolint:ireturn // StorageInterface is the intended return type for this factory function
 func InitializeStorage() StorageInterface {
-	inMemory := NewInMemoryStorage()
+	inMemory := CreateInMemoryStorage()
 
 	s3Endpoint := os.Getenv("S3_ENDPOINT")
 	if s3Endpoint == "" {
@@ -1092,7 +1092,7 @@ func InitializeStorage() StorageInterface {
 			datasetDir = "./datasets"
 		}
 
-		hybrid, err := NewHybridStorage(datasetDir)
+		hybrid, err := CreateHybridStorage(datasetDir)
 		if err != nil {
 			log.Printf("Failed to initialize hybrid storage: %v. Falling back to in-memory only.", err)
 			return inMemory
@@ -1114,7 +1114,7 @@ func InitializeStorage() StorageInterface {
 			datasetDir = "./datasets"
 		}
 
-		hybrid, err := NewHybridStorage(datasetDir)
+		hybrid, err := CreateHybridStorage(datasetDir)
 		if err != nil {
 			log.Printf("Failed to initialize hybrid storage: %v. Falling back to in-memory only.", err)
 			return inMemory
@@ -1134,7 +1134,7 @@ func InitializeStorage() StorageInterface {
 	if bucketName == "" {
 		bucketName = "v2fmdash"
 	}
-	s3Storage := NewS3Storage(s3Endpoint, accessKey, secretKey, bucketName, useSSL, inMemory)
+	s3Storage := CreateS3Storage(s3Endpoint, accessKey, secretKey, bucketName, useSSL, inMemory)
 
 	LogDebug("Initialized S3 storage with in-memory fallback")
 	return s3Storage

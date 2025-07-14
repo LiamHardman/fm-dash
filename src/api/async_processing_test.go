@@ -34,12 +34,12 @@ func TestDefaultProcessingConfig(t *testing.T) {
 	}
 }
 
-func TestNewPlayerProcessor(t *testing.T) {
-	config := DefaultProcessingConfig()
-	processor := NewPlayerProcessor(config)
+func TestCreatePlayerProcessor(t *testing.T) {
+	config := ProcessingConfig{WorkerCount: 2, BufferSize: 100}
+	processor := CreatePlayerProcessor(config)
 
 	if processor == nil {
-		t.Fatal("NewPlayerProcessor returned nil")
+		t.Fatal("CreatePlayerProcessor returned nil")
 	}
 
 	// Test that processor has the expected configuration
@@ -73,7 +73,7 @@ func TestProcessPlayersAsync(t *testing.T) {
 	config := DefaultProcessingConfig()
 	config.WorkerCount = 2 // Use fewer workers for testing
 	config.BatchSize = 1   // Small batch size for testing
-	processor := NewPlayerProcessor(config)
+	processor := CreatePlayerProcessor(config)
 	defer processor.Shutdown()
 
 	testPlayers := []Player{
@@ -109,7 +109,7 @@ func TestProcessPlayersAsync(t *testing.T) {
 
 func TestProcessPlayersAsyncEmpty(t *testing.T) {
 	config := DefaultProcessingConfig()
-	processor := NewPlayerProcessor(config)
+	processor := CreatePlayerProcessor(config)
 	defer processor.Shutdown()
 
 	emptyPlayers := []Player{}
@@ -193,12 +193,12 @@ func TestProcessPercentilesAsync(t *testing.T) {
 	}
 }
 
-func TestNewConcurrentLeagueProcessor(t *testing.T) {
+func TestCreateConcurrentLeagueProcessor(t *testing.T) {
 	numWorkers := 4
-	processor := NewConcurrentLeagueProcessor(numWorkers)
+	processor := CreateConcurrentLeagueProcessor(numWorkers)
 
 	if processor == nil {
-		t.Fatal("NewConcurrentLeagueProcessor returned nil")
+		t.Fatal("CreateConcurrentLeagueProcessor returned nil")
 	}
 
 	// Test functionality with sample data
@@ -222,7 +222,7 @@ func TestNewConcurrentLeagueProcessor(t *testing.T) {
 }
 
 func TestProcessLeaguesAsync(t *testing.T) {
-	processor := NewConcurrentLeagueProcessor(2)
+	processor := CreateConcurrentLeagueProcessor(2)
 	ctx := context.Background()
 
 	// Create test players with enough players per team (11+ for each team)
@@ -279,18 +279,18 @@ func TestProcessLeaguesAsync(t *testing.T) {
 	}
 }
 
-func TestNewAsyncPlayerFilter(t *testing.T) {
+func TestCreateAsyncPlayerFilter(t *testing.T) {
 	numWorkers := 3
 	chunkSize := 10
-	filter := NewAsyncPlayerFilter(numWorkers, chunkSize)
+	filter := CreateAsyncPlayerFilter(numWorkers, chunkSize)
 
 	if filter == nil {
-		t.Fatal("NewAsyncPlayerFilter returned nil")
+		t.Fatal("CreateAsyncPlayerFilter returned nil")
 	}
 }
 
 func TestFilterPlayersAsync(t *testing.T) {
-	filter := NewAsyncPlayerFilter(2, 10)
+	filter := CreateAsyncPlayerFilter(2, 10)
 	ctx := context.Background()
 
 	testPlayers := []Player{
@@ -324,7 +324,7 @@ func TestFilterPlayersAsync(t *testing.T) {
 }
 
 func TestFilterPlayersAsyncEmptyResult(t *testing.T) {
-	filter := NewAsyncPlayerFilter(2, 10)
+	filter := CreateAsyncPlayerFilter(2, 10)
 	ctx := context.Background()
 
 	testPlayers := []Player{
@@ -344,17 +344,17 @@ func TestFilterPlayersAsyncEmptyResult(t *testing.T) {
 	}
 }
 
-func TestNewConcurrentPercentileProcessor(t *testing.T) {
+func TestCreateConcurrentPercentileProcessor(t *testing.T) {
 	numWorkers := 4
-	processor := NewConcurrentPercentileProcessor(numWorkers)
+	processor := CreateConcurrentPercentileProcessor(numWorkers)
 
 	if processor == nil {
-		t.Fatal("NewConcurrentPercentileProcessor returned nil")
+		t.Fatal("CreateConcurrentPercentileProcessor returned nil")
 	}
 }
 
 func TestProcessPercentilesWithDivisionFilterAsync(t *testing.T) {
-	processor := NewConcurrentPercentileProcessor(2)
+	processor := CreateConcurrentPercentileProcessor(2)
 	ctx := context.Background()
 
 	testPlayers := []Player{
@@ -390,8 +390,8 @@ func TestProcessPercentilesWithDivisionFilterAsync(t *testing.T) {
 
 // Test concurrent access and race conditions
 func TestConcurrentProcessing(t *testing.T) {
-	processor := NewConcurrentLeagueProcessor(4)
-	filter := NewAsyncPlayerFilter(4, 10)
+	processor := CreateConcurrentLeagueProcessor(4)
+	filter := CreateAsyncPlayerFilter(4, 10)
 	ctx := context.Background()
 
 	// Create test players with enough players per team
@@ -488,22 +488,20 @@ func BenchmarkProcessPlayersAsync(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		processor := NewPlayerProcessor(config)
+		processor := CreatePlayerProcessor(config)
 		resultCh := processor.ProcessPlayersAsync(players)
 
 		// Consume all results
-		// revive:disable:empty-block
 		for range resultCh {
-			// Benchmark: consume results
+			// Just consume the results
 		}
-		// revive:enable:empty-block
 
 		processor.Shutdown()
 	}
 }
 
 func BenchmarkFilterPlayersAsync(b *testing.B) {
-	filter := NewAsyncPlayerFilter(4, 25)
+	filter := CreateAsyncPlayerFilter(4, 25)
 	ctx := context.Background()
 
 	// Create test data

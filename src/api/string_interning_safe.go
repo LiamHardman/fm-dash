@@ -22,15 +22,15 @@ type SafeStringInterning struct {
 
 // Global safe string intern pools with size limits
 var (
-	safeClubInterning        = NewSafeStringInterning(5000) // Max 5000 clubs
-	safePositionInterning    = NewSafeStringInterning(50)   // Max 50 positions
-	safeNationalityInterning = NewSafeStringInterning(300)  // Max 300 nationalities
-	safeDivisionInterning    = NewSafeStringInterning(100)  // Max 100 divisions
-	safePersonalityInterning = NewSafeStringInterning(100)  // Max 100 personalities
+	safeClubInterning        = CreateSafeStringInterning(5000) // Max 5000 clubs
+	safePositionInterning    = CreateSafeStringInterning(50)   // Max 50 positions
+	safeNationalityInterning = CreateSafeStringInterning(300)  // Max 300 nationalities
+	safeDivisionInterning    = CreateSafeStringInterning(100)  // Max 100 divisions
+	safePersonalityInterning = CreateSafeStringInterning(100)  // Max 100 personalities
 )
 
-// NewSafeStringInterning creates a new safe string interning instance with size limit
-func NewSafeStringInterning(maxSize int) *SafeStringInterning {
+// CreateSafeStringInterning creates a new safe string interning instance with size limit
+func CreateSafeStringInterning(maxSize int) *SafeStringInterning {
 	return &SafeStringInterning{
 		strings:     make(map[string]string),
 		maxSize:     maxSize,

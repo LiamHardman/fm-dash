@@ -21,8 +21,8 @@ type HTTPClient struct {
 	retryConfig RetryConfig
 }
 
-// NewHTTPClient creates a new HTTP client with timeout and retry configuration
-func NewHTTPClient(timeout time.Duration, retryConfig RetryConfig) *HTTPClient {
+// CreateHTTPClient creates a new HTTP client with timeout and retry configuration
+func CreateHTTPClient(timeout time.Duration, retryConfig RetryConfig) *HTTPClient {
 	// Create base transport with OpenTelemetry instrumentation
 	var transport http.RoundTripper = &http.Transport{
 		MaxIdleConns:        100,
@@ -45,7 +45,7 @@ func NewHTTPClient(timeout time.Duration, retryConfig RetryConfig) *HTTPClient {
 }
 
 // DefaultHTTPClient provides a preconfigured HTTP client with sensible defaults
-var DefaultHTTPClient = NewHTTPClient(30*time.Second, DefaultRetryConfig)
+var DefaultHTTPClient = CreateHTTPClient(30*time.Second, DefaultRetryConfig)
 
 // Do executes an HTTP request with automatic retry on failures
 func (c *HTTPClient) Do(req *http.Request) (*http.Response, error) {
@@ -198,5 +198,5 @@ func (c *HTTPClient) WithRetryConfig(config RetryConfig) *HTTPClient {
 
 // GetInstrumented creates an instrumented HTTP client for making external API calls
 func GetInstrumented() *HTTPClient {
-	return NewHTTPClient(30*time.Second, DefaultRetryConfig)
+	return CreateHTTPClient(30*time.Second, DefaultRetryConfig)
 }

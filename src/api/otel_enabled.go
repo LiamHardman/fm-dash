@@ -121,7 +121,7 @@ func initOTel() func(context.Context) error {
 			LogInfo("🟢 OTEL: Logger provider created successfully")
 
 			// Set up slog with OTLP handler
-			handler := NewOTLPHandler(loggerProvider)
+			handler := CreateOTLPHandler(loggerProvider)
 			logger := slog.New(handler)
 			slog.SetDefault(logger)
 

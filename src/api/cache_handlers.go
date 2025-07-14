@@ -38,8 +38,8 @@ type CacheStorageWrapper struct {
 	storage StorageInterface
 }
 
-// NewCacheStorageWrapper creates a new cache storage wrapper
-func NewCacheStorageWrapper(storage StorageInterface) *CacheStorageWrapper {
+// CreateCacheStorageWrapper creates a new cache storage wrapper
+func CreateCacheStorageWrapper(storage StorageInterface) *CacheStorageWrapper {
 	return &CacheStorageWrapper{storage: storage}
 }
 

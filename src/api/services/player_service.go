@@ -62,8 +62,8 @@ var (
 	tracer = otel.Tracer("v2fmdash-player-service")
 )
 
-// NewPlayerService creates a new player service
-func NewPlayerService(storage StorageInterface) *PlayerService {
+// CreatePlayerService creates a new player service
+func CreatePlayerService(storage StorageInterface) *PlayerService {
 	return &PlayerService{
 		storage: storage,
 	}

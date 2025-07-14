@@ -34,8 +34,8 @@ type ProcessingOptions struct {
 	EnableTracing bool
 }
 
-// NewProcessingService creates a new processing service
-func NewProcessingService(playerService *PlayerService) *ProcessingService {
+// CreateProcessingService creates a new processing service
+func CreateProcessingService(playerService *PlayerService) *ProcessingService {
 	return &ProcessingService{
 		playerService: playerService,
 	}

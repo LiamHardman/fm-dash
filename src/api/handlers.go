@@ -449,7 +449,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	// Start performance timer for parsing
-	parseTimer := NewParseTimerWithContext(ctx, "html_parsing")
+	parseTimer := CreateParseTimerWithContext(ctx, "html_parsing")
 
 	// Wrap file parsing in a child span using the already-read content
 	err = TraceFileProcessing(ctx, handler.Filename, actualFileSize, func(_ context.Context) error {
@@ -1083,7 +1083,7 @@ func leaguesHandler(w http.ResponseWriter, r *http.Request) {
 	players = RecalculateAllPlayersRatings(players)
 
 	// Process leagues data with concurrent processing
-	processor := NewConcurrentLeagueProcessor(runtime.NumCPU())
+	processor := CreateConcurrentLeagueProcessor(runtime.NumCPU())
 	leaguesData := processor.ProcessLeaguesAsync(ctx, players)
 
 	// Cache the result for 5 minutes

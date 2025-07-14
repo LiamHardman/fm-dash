@@ -28,8 +28,8 @@ type SearchService struct {
 	playerService *PlayerService
 }
 
-// NewSearchService creates a new search service
-func NewSearchService(playerService *PlayerService) *SearchService {
+// CreateSearchService creates a new search service
+func CreateSearchService(playerService *PlayerService) *SearchService {
 	return &SearchService{
 		playerService: playerService,
 	}

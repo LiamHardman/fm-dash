@@ -21,8 +21,8 @@ type CopyOnWritePlayerSlice struct {
 	shared  bool // True if this slice is shared
 }
 
-// NewCopyOnWritePlayer creates a new copy-on-write player
-func NewCopyOnWritePlayer(player *Player) *CopyOnWritePlayer {
+// CreateCopyOnWritePlayer creates a new copy-on-write player
+func CreateCopyOnWritePlayer(player *Player) *CopyOnWritePlayer {
 	refCount := int64(1)
 	return &CopyOnWritePlayer{
 		core:     player,
@@ -33,11 +33,11 @@ func NewCopyOnWritePlayer(player *Player) *CopyOnWritePlayer {
 	}
 }
 
-// NewCopyOnWritePlayerSlice creates a copy-on-write slice from regular players
-func NewCopyOnWritePlayerSlice(players []Player) *CopyOnWritePlayerSlice {
+// CreateCopyOnWritePlayerSlice creates a copy-on-write slice from regular players
+func CreateCopyOnWritePlayerSlice(players []Player) *CopyOnWritePlayerSlice {
 	cowPlayers := make([]*CopyOnWritePlayer, len(players))
 	for i := range players {
-		cowPlayers[i] = NewCopyOnWritePlayer(&players[i])
+		cowPlayers[i] = CreateCopyOnWritePlayer(&players[i])
 	}
 
 	return &CopyOnWritePlayerSlice{
@@ -311,7 +311,7 @@ func OptimizedDeepCopyPlayers(players []Player) []Player {
 	}
 
 	// Create copy-on-write slice
-	cowSlice := NewCopyOnWritePlayerSlice(players)
+	cowSlice := CreateCopyOnWritePlayerSlice(players)
 
 	// For deep copy, we actually need to force copying, but this is still
 	// more efficient due to the optimized copying logic and object pooling

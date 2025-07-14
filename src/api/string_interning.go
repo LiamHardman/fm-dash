@@ -17,15 +17,15 @@ type StringInterning struct {
 
 // Global string intern pools for different categories
 var (
-	clubInterning        = NewStringInterning()
-	positionInterning    = NewStringInterning()
-	nationalityInterning = NewStringInterning()
-	divisionInterning    = NewStringInterning()
-	personalityInterning = NewStringInterning()
+	clubInterning        = CreateStringInterning()
+	positionInterning    = CreateStringInterning()
+	nationalityInterning = CreateStringInterning()
+	divisionInterning    = CreateStringInterning()
+	personalityInterning = CreateStringInterning()
 )
 
-// NewStringInterning creates a new string interning instance
-func NewStringInterning() *StringInterning {
+// CreateStringInterning creates a new string interning instance
+func CreateStringInterning() *StringInterning {
 	return &StringInterning{
 		strings: make(map[string]string),
 	}

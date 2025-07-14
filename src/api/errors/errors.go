@@ -280,8 +280,8 @@ func WrapErrIDTooLong(maxLength int) error {
 	return fmt.Errorf("%w (max %d characters)", ErrIDTooLong, maxLength)
 }
 
-// NewValidationError creates a new validation error
-func NewValidationError(message string) *AppError {
+// CreateValidationError creates a new validation error
+func CreateValidationError(message string) *AppError {
 	return &AppError{
 		Code:       CodeValidationFailed,
 		Message:    message,
@@ -289,8 +289,8 @@ func NewValidationError(message string) *AppError {
 	}
 }
 
-// NewNotFoundError creates a new not found error
-func NewNotFoundError(message string) *AppError {
+// CreateNotFoundError creates a new not found error
+func CreateNotFoundError(message string) *AppError {
 	return &AppError{
 		Code:       CodeNotFound,
 		Message:    message,
@@ -298,8 +298,8 @@ func NewNotFoundError(message string) *AppError {
 	}
 }
 
-// NewFileTooLargeError creates a new file too large error
-func NewFileTooLargeError(maxSize int64) *AppError {
+// CreateFileTooLargeError creates a new file too large error
+func CreateFileTooLargeError(maxSize int64) *AppError {
 	return &AppError{
 		Code:       CodeFileTooLarge,
 		Message:    fmt.Sprintf("File size exceeds maximum allowed size of %d bytes", maxSize),
@@ -307,26 +307,26 @@ func NewFileTooLargeError(maxSize int64) *AppError {
 	}
 }
 
-// NewUnsupportedFormatError creates a new unsupported format error
-func NewUnsupportedFormatError(format string, supported []string) *AppError {
+// CreateUnsupportedFormatError creates a new unsupported format error
+func CreateUnsupportedFormatError(format string, supported []string) *AppError {
 	return &AppError{
 		Code:       CodeUnsupportedFormat,
-		Message:    fmt.Sprintf("Unsupported file format: %s. Supported formats: %v", format, supported),
-		HTTPStatus: 415,
+		Message:    fmt.Sprintf("Unsupported format: %s. Supported formats: %v", format, supported),
+		HTTPStatus: 400,
 	}
 }
 
-// NewProcessingError creates a new processing error
-func NewProcessingError(message string) *AppError {
+// CreateProcessingError creates a new processing error
+func CreateProcessingError(message string) *AppError {
 	return &AppError{
 		Code:       CodeProcessingFailed,
 		Message:    message,
-		HTTPStatus: 422,
+		HTTPStatus: 500,
 	}
 }
 
-// NewStorageError creates a new storage error
-func NewStorageError(message string) *AppError {
+// CreateStorageError creates a new storage error
+func CreateStorageError(message string) *AppError {
 	return &AppError{
 		Code:       CodeStorageError,
 		Message:    message,
@@ -334,8 +334,8 @@ func NewStorageError(message string) *AppError {
 	}
 }
 
-// NewInternalError creates a new internal error
-func NewInternalError(message string) *AppError {
+// CreateInternalError creates a new internal error
+func CreateInternalError(message string) *AppError {
 	return &AppError{
 		Code:       CodeInternalError,
 		Message:    message,
@@ -343,8 +343,8 @@ func NewInternalError(message string) *AppError {
 	}
 }
 
-// NewBadRequestError creates a new bad request error
-func NewBadRequestError(message string) *AppError {
+// CreateBadRequestError creates a new bad request error
+func CreateBadRequestError(message string) *AppError {
 	return &AppError{
 		Code:       CodeBadRequest,
 		Message:    message,
