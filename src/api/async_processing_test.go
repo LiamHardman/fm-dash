@@ -486,16 +486,19 @@ func BenchmarkProcessPlayersAsync(b *testing.B) {
 		}
 	}
 
+	// Helper to drain a channel
+	drain := func(ch <-chan Player) {
+		for v := range ch {
+			_ = v
+		}
+	}
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		processor := CreatePlayerProcessor(config)
 		resultCh := processor.ProcessPlayersAsync(players)
 
-		// Consume all results
-		for range resultCh {
-			// Just consume the results
-		}
-
+		drain(resultCh)
 		processor.Shutdown()
 	}
 }
