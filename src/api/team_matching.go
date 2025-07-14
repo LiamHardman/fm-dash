@@ -2,16 +2,14 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"math"
 	"os"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"unicode"
-
-	apperrors "api/errors"
 )
 
 // TeamMatch represents a team matching result
@@ -48,44 +46,51 @@ func initTeamsData() error {
 
 	LogInfo("Team data initialization: Starting teams data loading process")
 
-	// Load teams data from JSON file
-	// In containerized environment, the file is at utils/teams_data.json relative to working directory
-	teamsFilePath := filepath.Join("utils", "teams_data.json")
-	if _, err := os.Stat(teamsFilePath); os.IsNotExist(err) {
-		LogDebug("Team data initialization: Primary path not found: %s", teamsFilePath)
-		// Try alternative paths (for different deployment scenarios)
-		alternativePaths := []string{
-			filepath.Join("src", "api", "utils", "teams_data.json"), // Local development
-			filepath.Join("src", "utils", "teams_data.json"),        // Alternative local path
-			"teams_data.json", // Root fallback
-		}
+	// Load teams data from JSON file using secure path validation
+	// Try multiple possible locations for the teams data file
+	possiblePaths := []string{
+		"utils/teams_data.json",         // Containerized environment
+		"src/api/utils/teams_data.json", // Local development
+		"src/utils/teams_data.json",     // Alternative local path
+		"teams_data.json",               // Root fallback
+	}
 
-		found := false
-		for _, altPath := range alternativePaths {
-			LogDebug("Team data initialization: Trying alternative path: %s", altPath)
-			if _, err := os.Stat(altPath); err == nil {
-				teamsFilePath = altPath
-				found = true
-				LogInfo("Team data initialization: Found teams data at: %s", altPath)
+	var teamsFilePath string
+	var found bool
+
+	for _, path := range possiblePaths {
+		// Validate the path components for security
+		pathParts := strings.Split(path, "/")
+		isValidPath := true
+
+		for _, part := range pathParts {
+			if err := validateFileName(part); err != nil {
+				LogWarn("Team data initialization: Invalid path component '%s' in path '%s': %v", sanitizeForLogging(part), sanitizeForLogging(path), err)
+				isValidPath = false
 				break
 			}
 		}
 
-		if !found {
-			LogWarn("Team data initialization: Teams data file not found at any location: %v", err)
-			return err
+		if !isValidPath {
+			continue
 		}
-	} else {
-		LogInfo("Team data initialization: Found teams data at primary path: %s", teamsFilePath)
+
+		if _, err := os.Stat(path); err == nil {
+			teamsFilePath = path
+			found = true
+			LogInfo("Team data initialization: Found teams data at: %s", sanitizeForLogging(path))
+			break
+		} else {
+			LogDebug("Team data initialization: Path not found: %s", sanitizeForLogging(path))
+		}
 	}
 
-	// Validate file path to prevent directory traversal
-	if strings.Contains(teamsFilePath, "..") || strings.ContainsAny(teamsFilePath, "/\\") {
-		LogWarn("Team data initialization: Invalid file path %s: contains path traversal or unsafe characters", teamsFilePath)
-		return apperrors.ErrFilenamePathTraversal
+	if !found {
+		LogWarn("Team data initialization: Teams data file not found at any valid location")
+		return fmt.Errorf("teams data file not found")
 	}
 
-	//nolint:gosec // teamsFilePath is validated above and constructed from safe components
+	// Use secure file reading with additional validation
 	data, err := os.ReadFile(teamsFilePath)
 	if err != nil {
 		LogWarn("Team data initialization: Error reading teams data file: %v", err)
@@ -146,7 +151,7 @@ func initTeamsData() error {
 	sampleCount := 0
 	for id, name := range teamsData {
 		if sampleCount < 5 {
-			LogDebug("Team data initialization: Sample team - ID: %s, Name: '%s'", id, name)
+			LogDebug("Team data initialization: Sample team - ID: %s, Name: '%s'", id, sanitizeForLogging(name))
 			sampleCount++
 		} else {
 			break
