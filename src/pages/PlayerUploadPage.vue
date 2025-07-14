@@ -3,33 +3,24 @@
         <div class="upload-container">
             <!-- Hero Section -->
             <div class="hero-section">
-                <div class="hero-content">
-                    <h1 class="hero-title">Upload Your FM24 Data</h1>
-                </div>
-                <div class="hero-stats">
-                    <div class="stat-item">
-                        <q-icon name="speed" size="1.5rem" color="primary" />
-                        <div class="stat-text">Fast Processing</div>
-                    </div>
-                    <div class="stat-item">
-                        <q-icon
-                            name="security"
-                            size="1.5rem"
-                            color="secondary"
-                        />
-                        <div class="stat-text">Secure Upload</div>
-                    </div>
-                    <div class="stat-item">
-                        <q-icon name="analytics" size="1.5rem" color="accent" />
-                        <div class="stat-text">Detailed Analysis</div>
-                    </div>
-                </div>
             </div>
 
             <!-- Upload Section -->
             <div class="upload-section">
                 <q-card class="upload-card" flat bordered>
                     <q-card-section>
+                        <!-- Help Section -->
+                        <div class="help-section">
+                            <q-btn
+                                flat
+                                color="info"
+                                size="md"
+                                label="First Time?"
+                                icon="help_outline"
+                                class="help-btn"
+                            />
+                        </div>
+                        
                         <div class="upload-header">
                             <q-icon
                                 name="cloud_upload"
@@ -170,27 +161,7 @@
                 </q-card>
             </div>
 
-            <!-- Help Section -->
-            <div class="help-section">
-                <q-card flat class="help-card">
-                    <q-card-section class="text-center">
-                        <q-icon
-                            name="help_outline"
-                            size="1.5rem"
-                            color="info"
-                            class="q-mb-sm"
-                        />
-                        <div class="help-text">Need help getting started?</div>
-                        <q-btn
-                            unelevated
-                            color="info"
-                            label="View Documentation"
-                            @click="$router.push('/docs')"
-                            class="q-mt-sm"
-                        />
-                    </q-card-section>
-                </q-card>
-            </div>
+
 
             <!-- Notification Preferences - Subtle -->
             <div class="notification-preferences" v-if="notificationSupported">
@@ -575,6 +546,34 @@ export default {
 
 // Help Section
 .help-section {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: rgba(26, 35, 126, 0.02);
+    border-radius: 8px;
+    border: 1px solid rgba(26, 35, 126, 0.05);
+
+    .body--dark & {
+        background: rgba(33, 150, 243, 0.05);
+        border-color: rgba(33, 150, 243, 0.1);
+    }
+
+    .help-btn {
+        font-weight: 500;
+        transition: all 0.3s ease;
+        border-radius: 6px;
+        padding: 0.5rem 1.5rem;
+        min-width: 140px;
+        
+        &:hover {
+            background: rgba(33, 150, 243, 0.1);
+            transform: translateY(-1px);
+        }
+    }
+}
+
+// Help Section
+.help-section {
     margin-bottom: 2rem;
 
     .help-card {
@@ -648,6 +647,7 @@ export default {
     margin-bottom: 2rem;
 
     .upload-card {
+        position: relative;
         border-radius: 16px;
         border: 1px solid rgba(26, 35, 126, 0.1);
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
