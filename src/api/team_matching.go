@@ -2,14 +2,16 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"math"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"unicode"
+
+	apperrors "api/errors"
 )
 
 // TeamMatch represents a team matching result
@@ -80,14 +82,32 @@ func initTeamsData() error {
 			found = true
 			LogInfo("Team data initialization: Found teams data at: %s", sanitizeForLogging(path))
 			break
-		} else {
-			LogDebug("Team data initialization: Path not found: %s", sanitizeForLogging(path))
 		}
+		LogDebug("Team data initialization: Path not found: %s", sanitizeForLogging(path))
 	}
 
 	if !found {
 		LogWarn("Team data initialization: Teams data file not found at any valid location")
-		return fmt.Errorf("teams data file not found")
+		return apperrors.ErrDatasetNotFound
+	}
+
+	// Validate the file path for security before reading
+	if err := validateFileName(filepath.Base(teamsFilePath)); err != nil {
+		LogWarn("Team data initialization: Invalid file path for security: %v", err)
+		return apperrors.ErrInvalidFilePath
+	}
+
+	// Additional security validation: ensure path is within allowed directories
+	cleanPath := filepath.Clean(teamsFilePath)
+	if strings.Contains(cleanPath, "..") || strings.Contains(cleanPath, "\\") {
+		LogWarn("Team data initialization: Path contains unsafe characters: %s", sanitizeForLogging(cleanPath))
+		return apperrors.ErrInvalidFilePath
+	}
+
+	// Only allow specific file extensions
+	if !strings.HasSuffix(cleanPath, ".json") {
+		LogWarn("Team data initialization: Invalid file extension: %s", sanitizeForLogging(cleanPath))
+		return apperrors.ErrInvalidFilePath
 	}
 
 	// Use secure file reading with additional validation

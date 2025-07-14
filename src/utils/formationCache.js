@@ -17,7 +17,8 @@ class FormationCache {
           if (!id || id === '') {
             id = `${p.name || 'unknown'}-${p.club || 'unknown'}-${p.age || 'unknown'}-${p.position || 'unknown'}`
           }
-          return id
+          // Ensure id is always a string for localeCompare
+          return String(id)
         }
         return getUniqueId(a).localeCompare(getUniqueId(b))
       })
@@ -26,7 +27,8 @@ class FormationCache {
         if (!playerUID || playerUID === '') {
           playerUID = `${p.name || 'unknown'}-${p.club || 'unknown'}-${p.age || 'unknown'}-${p.position || 'unknown'}`
         }
-        return `${playerUID}-${p.Overall || 0}-${(p.shortPositions || []).join(',')}`
+        // Ensure playerUID is always a string
+        return `${String(playerUID)}-${p.Overall || 0}-${(p.shortPositions || []).join(',')}`
       })
       .join('|')
 
