@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/LiamHardman/fm-dash/compare/v1.1.0...v1.2.0) (2025-07-15)
+
+
+### Features
+
+* implement advanced bundle optimization and dynamic component loading ([6ac08c8](https://github.com/LiamHardman/fm-dash/commit/6ac08c8b0687cc25bc85fe553c2c692076220b19))
+
 # [1.1.0](https://github.com/LiamHardman/fm-dash/compare/v1.0.0...v1.1.0) (2025-07-15)
 
 
