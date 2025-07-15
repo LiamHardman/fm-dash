@@ -1,12 +1,35 @@
-import { computed, ref } from 'vue'
+import { computed, ref, onUnmounted } from 'vue'
+import VirtualScrollManager from '../utils/VirtualScrollManager.js'
 
 export function useVirtualScrolling(options = {}) {
   const { itemHeight = 30, bufferSize = 10, containerHeight = 400, visibleRange = null } = options
+
+  // Create advanced virtual scroll manager
+  const scrollManager = new VirtualScrollManager({
+    itemHeight,
+    bufferSize,
+    containerHeight,
+    enableVariableHeight: options.enableVariableHeight || false,
+    enableMomentum: options.enableMomentum !== false,
+    overscan: options.overscan || 5,
+    recycleThreshold: options.recycleThreshold || 100
+  })
 
   // State
   const scrollTop = ref(0)
   const isScrolling = ref(false)
   const scrollTimeout = ref(null)
+  const visibleRangeRef = ref({ startIndex: 0, endIndex: 0, visibleStartIndex: 0, visibleEndIndex: 0 })
+
+  // Setup callbacks
+  scrollManager.onScroll = (scrollInfo) => {
+    scrollTop.value = scrollInfo.scrollTop
+    isScrolling.value = scrollInfo.isScrolling
+  }
+
+  scrollManager.onVisibleRangeChange = (range) => {
+    visibleRangeRef.value = range
+  }
 
   // Computed properties for virtual scrolling
   const visibleItemCount = computed(() => Math.ceil(containerHeight / itemHeight))
@@ -15,34 +38,38 @@ export function useVirtualScrolling(options = {}) {
     if (visibleRange?.value) {
       return Math.max(0, visibleRange.value.from - bufferSize)
     }
-    return Math.max(0, Math.floor(scrollTop.value / itemHeight) - bufferSize)
+    return visibleRangeRef.value.startIndex
   })
 
   const endIndex = computed(() => {
     if (visibleRange?.value) {
       return Math.min(visibleRange.value.to + bufferSize)
     }
-    return startIndex.value + visibleItemCount.value + bufferSize * 2
+    return visibleRangeRef.value.endIndex
   })
 
-  // Optimized rendering function
+  // Enhanced rendering function with recycling
   const getVisibleItems = items => {
     if (!items || items.length === 0) return []
 
-    const start = startIndex.value
-    const end = Math.min(endIndex.value, items.length)
+    const range = scrollManager.calculateVisibleRange(items.length)
+    const recycledItems = scrollManager.recycleItems(items, range)
 
-    return items.slice(start, end).map((item, index) => ({
-      ...item,
-      virtualIndex: start + index,
-      actualIndex: start + index
+    return recycledItems.map(recycledItem => ({
+      ...recycledItem.data,
+      virtualIndex: recycledItem.virtualIndex,
+      actualIndex: recycledItem.index,
+      offset: recycledItem.offset,
+      height: recycledItem.height,
+      _recycled: true,
+      _id: recycledItem.id
     }))
   }
 
-  // Scroll handler with debouncing
+  // Enhanced scroll handler with momentum
   const handleScroll = scrollInfo => {
-    scrollTop.value = scrollInfo.verticalPosition
-    isScrolling.value = true
+    const scrollPosition = scrollInfo.verticalPosition || scrollInfo.scrollTop || scrollInfo
+    scrollManager.handleScroll(scrollPosition, performance.now())
 
     if (scrollTimeout.value) {
       clearTimeout(scrollTimeout.value)
@@ -54,10 +81,26 @@ export function useVirtualScrolling(options = {}) {
   }
 
   // Calculate total height for virtual scrolling
-  const getTotalHeight = itemCount => itemCount * itemHeight
+  const getTotalHeight = itemCount => scrollManager.getTotalHeight(itemCount)
 
   // Get offset for virtual positioning
-  const getOffset = () => startIndex.value * itemHeight
+  const getOffset = () => scrollManager.getOffsetForIndex(startIndex.value)
+
+  // Set item height for variable height support
+  const setItemHeight = (index, height) => {
+    scrollManager.setItemHeight(index, height)
+  }
+
+  // Get performance statistics
+  const getStats = () => scrollManager.getStats()
+
+  // Optimize memory usage
+  const optimizeMemory = () => scrollManager.optimizeMemoryUsage()
+
+  // Cleanup
+  onUnmounted(() => {
+    scrollManager.destroy()
+  })
 
   return {
     scrollTop,
@@ -65,11 +108,16 @@ export function useVirtualScrolling(options = {}) {
     startIndex,
     endIndex,
     visibleItemCount,
+    visibleRange: visibleRangeRef,
 
     getVisibleItems,
     handleScroll,
     getTotalHeight,
-    getOffset
+    getOffset,
+    setItemHeight,
+    getStats,
+    optimizeMemory,
+    scrollManager
   }
 }
 

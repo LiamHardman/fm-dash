@@ -1,211 +1,255 @@
 /**
- * Third-Party Library Optimization Utilities
- * Provides optimized imports and conditional loading for better performance
+ * Library Optimizer
+ * Handles dynamic loading and optimization of libraries for better performance
  */
 
-// Chart.js optimization - only import what we need
-export const optimizedChartImports = {
-  // Core Chart.js components used across the app
-  core: () =>
-    import('chart.js').then(module => ({
-      Chart: module.Chart,
-      LinearScale: module.LinearScale,
-      PointElement: module.PointElement,
-      Title: module.Title,
-      Tooltip: module.Tooltip,
-      Legend: module.Legend
-    })),
+// Critical libraries that should be preloaded
+const CRITICAL_LIBRARIES = [
+  // Add any critical libraries that need to be preloaded here
+]
 
-  // Scatter plot specific components
-  scatter: () =>
-    import('chart.js').then(module => ({
-      Chart: module.Chart,
-      LinearScale: module.LinearScale,
-      PointElement: module.PointElement,
-      Title: module.Title,
-      Tooltip: module.Tooltip,
-      Legend: module.Legend
-    })),
+// Development-only libraries
+const DEV_LIBRARIES = [
+  // Add development tools here if needed
+]
 
-  // Annotation plugin - only load when needed
-  annotation: () => import('chartjs-plugin-annotation')
-}
+/**
+ * Preload critical libraries for better performance
+ */
+export async function preloadCriticalLibraries() {
+  const loadPromises = []
 
-// VueUse optimization - only import specific composables
-export const optimizedVueUseImports = {
-  // Web notification - only used in upload page
-  webNotification: () =>
-    import('@vueuse/core').then(module => ({
-      useWebNotification: module.useWebNotification
-    })),
-
-  // Other commonly used VueUse composables
-  storage: () =>
-    import('@vueuse/core').then(module => ({
-      useLocalStorage: module.useLocalStorage,
-      useSessionStorage: module.useSessionStorage
-    })),
-
-  // DOM utilities
-  dom: () =>
-    import('@vueuse/core').then(module => ({
-      useElementSize: module.useElementSize,
-      useWindowSize: module.useWindowSize,
-      useIntersectionObserver: module.useIntersectionObserver
-    }))
-}
-
-// Quasar optimization - conditional component loading
-export const optimizedQuasarImports = {
-  // Core Quasar utilities that are always needed
-  core: () =>
-    import('quasar').then(module => ({
-      useQuasar: module.useQuasar,
-      Notify: module.Notify
-    })),
-
-  // Dialog components - only load when needed
-  dialogs: () =>
-    import('quasar').then(module => ({
-      Dialog: module.Dialog
-    })),
-
-  // Loading components
-  loading: () =>
-    import('quasar').then(module => ({
-      Loading: module.Loading,
-      LoadingBar: module.LoadingBar
-    }))
-}
-
-// Development-only library loader
-export const loadDevLibraries = async () => {
-  if (process.env.NODE_ENV === 'development') {
-    // Only load development tools in dev mode
-    const devTools = await Promise.allSettled([
-      // Bundle analyzer
-      import('rollup-plugin-visualizer').catch(() => null),
-      // Performance monitoring tools
-      import('@vue/devtools-api').catch(() => null)
-    ])
-
-    return devTools.filter(result => result.status === 'fulfilled').map(result => result.value)
-  }
-  return []
-}
-
-// Conditional library loader based on feature flags or user preferences
-export const conditionalLibraryLoader = {
-  // Load analytics only if user consents
-  analytics: async (userConsent = false) => {
-    if (userConsent && typeof window !== 'undefined') {
-      return import('../services/analytics.js').catch(() => null)
-    }
-    return null
-  },
-
-  // Load export utilities only when needed
-  export: async () => {
-    return Promise.all([import('../utils/csvExport.js'), import('../utils/security.js')]).catch(
-      () => null
-    )
-  },
-
-  // Load performance monitoring only in production
-  performance: async () => {
-    if (process.env.NODE_ENV === 'production') {
-      return import('../utils/performance.js').catch(() => null)
-    }
-    return null
-  }
-}
-
-// Bundle size analyzer for development
-export const analyzeBundleSize = async () => {
-  if (process.env.NODE_ENV === 'development') {
+  for (const library of CRITICAL_LIBRARIES) {
     try {
-      const { visualizer } = await import('rollup-plugin-visualizer')
-      console.log('📊 Bundle analyzer available - run "npm run build:analyze" to generate report')
-      return visualizer
+      // For now, we'll just resolve immediately since no critical libraries are defined
+      // In the future, you can add dynamic imports here like:
+      // loadPromises.push(import(library))
     } catch (error) {
-      console.warn('Bundle analyzer not available:', error.message)
-      return null
+      console.warn(`Failed to preload critical library: ${library}`, error)
     }
   }
-  return null
-}
-
-// Preload critical third-party libraries
-export const preloadCriticalLibraries = async () => {
-  const criticalLibraries = [
-    // Vue ecosystem - highest priority
-    import('vue'),
-    import('vue-router'),
-    import('pinia'),
-
-    // UI framework - high priority
-    import('quasar').then(module => ({
-      useQuasar: module.useQuasar,
-      Notify: module.Notify
-    }))
-  ]
 
   try {
-    await Promise.all(criticalLibraries)
-    console.log('✅ Critical libraries preloaded')
+    await Promise.all(loadPromises)
+    console.log('✅ Critical libraries preloaded successfully')
   } catch (error) {
-    console.warn('⚠️ Some critical libraries failed to preload:', error.message)
+    console.warn('⚠️ Some critical libraries failed to preload:', error)
   }
 }
 
-// Library usage tracker for optimization insights
-export const libraryUsageTracker = {
-  usage: new Map(),
+/**
+ * Load development-only libraries conditionally
+ */
+export async function loadDevLibraries() {
+  if (process.env.NODE_ENV !== 'development') {
+    return []
+  }
 
-  track(libraryName, feature) {
-    const key = `${libraryName}:${feature}`
-    const current = this.usage.get(key) || 0
-    this.usage.set(key, current + 1)
-  },
+  const loadedLibraries = []
+  const loadPromises = []
 
-  getReport() {
-    const report = {}
-    for (const [key, count] of this.usage.entries()) {
-      const [library, feature] = key.split(':')
-      if (!report[library]) {
-        report[library] = {}
-      }
-      report[library][feature] = count
+  for (const library of DEV_LIBRARIES) {
+    try {
+      // For now, we'll just resolve immediately since no dev libraries are defined
+      // In the future, you can add dynamic imports here like:
+      // loadPromises.push(import(library).then(lib => {
+      //   loadedLibraries.push(library)
+      //   return lib
+      // }))
+    } catch (error) {
+      console.warn(`Failed to load dev library: ${library}`, error)
     }
-    return report
-  },
+  }
 
-  getUnusedFeatures(threshold = 0) {
-    const report = this.getReport()
-    const unused = {}
+  try {
+    await Promise.all(loadPromises)
+    console.log('🛠️ Development libraries loaded successfully')
+  } catch (error) {
+    console.warn('⚠️ Some development libraries failed to load:', error)
+  }
 
-    for (const [library, features] of Object.entries(report)) {
-      const unusedFeatures = Object.entries(features)
-        .filter(([, count]) => count <= threshold)
-        .map(([feature]) => feature)
+  return loadedLibraries
+}
 
-      if (unusedFeatures.length > 0) {
-        unused[library] = unusedFeatures
+/**
+ * Dynamically load a library with error handling
+ */
+export async function loadLibrary(libraryPath, options = {}) {
+  const { 
+    timeout = 10000,
+    retries = 3,
+    fallback = null 
+  } = options
+
+  let attempt = 0
+  
+  while (attempt < retries) {
+    try {
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Library load timeout')), timeout)
+      })
+
+      const loadPromise = import(libraryPath)
+      
+      const library = await Promise.race([loadPromise, timeoutPromise])
+      return library
+      
+    } catch (error) {
+      attempt++
+      console.warn(`Library load attempt ${attempt} failed for ${libraryPath}:`, error.message)
+      
+      if (attempt >= retries) {
+        if (fallback) {
+          console.log(`Using fallback for ${libraryPath}`)
+          return fallback
+        }
+        throw error
       }
+      
+      // Wait before retry
+      await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
     }
-
-    return unused
   }
 }
 
-// Export optimization utilities
+/**
+ * Check if a library is available
+ */
+export function isLibraryAvailable(libraryName) {
+  try {
+    // Check if library is available in window object
+    if (typeof window !== 'undefined' && window[libraryName]) {
+      return true
+    }
+    
+    // Check if it's a module that can be imported
+    // This is a basic check - in practice you might want more sophisticated detection
+    return false
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Lazy load a library only when needed
+ */
+export function createLazyLoader(libraryPath, options = {}) {
+  let loadPromise = null
+  let loadedLibrary = null
+
+  return async function lazyLoad() {
+    if (loadedLibrary) {
+      return loadedLibrary
+    }
+
+    if (!loadPromise) {
+      loadPromise = loadLibrary(libraryPath, options)
+        .then(lib => {
+          loadedLibrary = lib
+          return lib
+        })
+        .catch(error => {
+          // Reset promise so we can retry
+          loadPromise = null
+          throw error
+        })
+    }
+
+    return loadPromise
+  }
+}
+
+/**
+ * Preload libraries based on user interaction hints
+ */
+export function preloadOnInteraction(libraryPath, options = {}) {
+  const { 
+    events = ['mouseenter', 'touchstart', 'focus'],
+    element = document,
+    once = true 
+  } = options
+
+  let loaded = false
+  const loader = createLazyLoader(libraryPath, options)
+
+  const handleInteraction = async () => {
+    if (loaded) return
+    
+    loaded = true
+    
+    try {
+      await loader()
+      console.log(`📦 Preloaded library on interaction: ${libraryPath}`)
+    } catch (error) {
+      console.warn(`Failed to preload library on interaction: ${libraryPath}`, error)
+      loaded = false // Allow retry
+    }
+
+    if (once) {
+      events.forEach(event => {
+        element.removeEventListener(event, handleInteraction)
+      })
+    }
+  }
+
+  events.forEach(event => {
+    element.addEventListener(event, handleInteraction, { passive: true })
+  })
+
+  return () => {
+    events.forEach(event => {
+      element.removeEventListener(event, handleInteraction)
+    })
+  }
+}
+
+/**
+ * Bundle analyzer helper for development
+ */
+export function analyzeBundleSize() {
+  if (process.env.NODE_ENV !== 'development') {
+    return
+  }
+
+  // Basic bundle size analysis
+  const scripts = document.querySelectorAll('script[src]')
+  const styles = document.querySelectorAll('link[rel="stylesheet"]')
+  
+  console.group('📊 Bundle Analysis')
+  console.log(`Scripts loaded: ${scripts.length}`)
+  console.log(`Stylesheets loaded: ${styles.length}`)
+  
+  if ('performance' in window) {
+    const resources = performance.getEntriesByType('resource')
+    const jsResources = resources.filter(r => r.name.includes('.js'))
+    const cssResources = resources.filter(r => r.name.includes('.css'))
+    
+    console.log(`JS resources: ${jsResources.length}`)
+    console.log(`CSS resources: ${cssResources.length}`)
+    
+    const totalSize = resources.reduce((sum, resource) => {
+      return sum + (resource.transferSize || 0)
+    }, 0)
+    
+    console.log(`Total transfer size: ${(totalSize / 1024).toFixed(2)} KB`)
+  }
+  
+  console.groupEnd()
+}
+
+// Auto-analyze bundle size in development
+if (process.env.NODE_ENV === 'development') {
+  window.addEventListener('load', () => {
+    setTimeout(analyzeBundleSize, 1000)
+  })
+}
+
 export default {
-  optimizedChartImports,
-  optimizedVueUseImports,
-  optimizedQuasarImports,
-  loadDevLibraries,
-  conditionalLibraryLoader,
-  analyzeBundleSize,
   preloadCriticalLibraries,
-  libraryUsageTracker
+  loadDevLibraries,
+  loadLibrary,
+  isLibraryAvailable,
+  createLazyLoader,
+  preloadOnInteraction,
+  analyzeBundleSize
 }
