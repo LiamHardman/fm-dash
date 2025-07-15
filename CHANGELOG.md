@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/LiamHardman/fm-dash/compare/v1.2.0...v1.3.0) (2025-07-15)
+
+
+### Features
+
+* implement enhanced virtual scrolling and data processing optimizations ([be54d8b](https://github.com/LiamHardman/fm-dash/commit/be54d8b1adaa24eaa58adc79810f0c44141963bb))
+
 # [1.2.0](https://github.com/LiamHardman/fm-dash/compare/v1.1.0...v1.2.0) (2025-07-15)
 
 
