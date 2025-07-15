@@ -274,7 +274,7 @@ cache:
 
 ### Bundle Optimization and Code Splitting
 
-FM-Dash implements advanced bundle optimization strategies to achieve fast initial load times and efficient caching.
+FM-Dash implements advanced bundle optimization strategies to achieve fast initial load times and efficient caching. The application is currently undergoing comprehensive frontend performance optimizations, with several key improvements in progress.
 
 #### Current Bundle Configuration
 
@@ -401,6 +401,62 @@ export default {
 }
 ```
 
+#### Third-Party Library Optimization (In Progress)
+
+The application is currently undergoing optimization of third-party library imports to reduce bundle size and improve loading performance:
+
+**Current Optimizations:**
+- Tree-shakeable Chart.js imports instead of full library
+- Dynamic imports for non-critical Quasar components
+- Conditional loading for development-only libraries
+- Bundle analysis tooling for identifying unused code
+
+**Implementation Status:**
+```javascript
+// Before: Full Chart.js import (large bundle)
+import Chart from 'chart.js/auto'
+
+// After: Tree-shakeable individual components (in progress)
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js'
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+)
+```
+
+**Quasar Component Optimization:**
+```javascript
+// Dynamic imports for heavy Quasar components
+const QTable = () => import('quasar/src/components/table/QTable.js')
+const QVirtualScroll = () => import('quasar/src/components/virtual-scroll/QVirtualScroll.js')
+
+// Conditional loading for development tools
+if (process.env.NODE_ENV === 'development') {
+  import('quasar/src/components/debug/QDebug.js')
+}
+```
+
+**Expected Benefits:**
+- 20-30% reduction in initial bundle size
+- Faster initial page load times
+- Better caching efficiency through smaller, focused chunks
+- Reduced memory usage in production
+
 #### Build Optimization
 
 ```javascript
@@ -439,9 +495,39 @@ export default defineConfig({
   // Asset optimization
   assetsInclude: ['**/*.woff2'],
   
-  // Dependency optimization
+  // Enhanced dependency optimization
   optimizeDeps: {
-    include: ['vue', 'vue-router', 'pinia', 'quasar']
+    include: [
+      'vue',
+      'vue-router',
+      'pinia',
+      'quasar',
+      '@vueuse/core',
+      // Pre-bundle commonly used utilities with specific imports
+      'chart.js/helpers',
+      'chart.js/auto',
+      'vue-chartjs',
+      'chartjs-plugin-annotation'
+    ],
+    exclude: [
+      '@vitejs/plugin-vue',
+      // Exclude development-only dependencies
+      'rollup-plugin-visualizer',
+      '@vue/devtools-api'
+    ],
+    esbuildOptions: {
+      target: 'es2020',
+      format: 'esm',
+      treeShaking: true,
+      // Optimize for production builds
+      minify: process.env.NODE_ENV === 'production',
+      // Define globals for better optimization
+      define: {
+        'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
+      }
+    },
+    // Force optimization of specific packages
+    force: process.env.NODE_ENV === 'production'
   }
 })
 ```

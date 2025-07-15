@@ -27,6 +27,8 @@
     "build:analyze": "ANALYZE=true vite build",
     "build:prod": "NODE_ENV=production vite build",
     "build:prod-analyze": "NODE_ENV=production ANALYZE=true vite build",
+    "analyze:bundle": "node scripts/analyze-bundle.js",
+    "build:analyze:full": "npm run build && npm run analyze:bundle",
     "serve": "go run main.go",
     "lint": "biome check --write .",
     "lint:check": "biome check .",

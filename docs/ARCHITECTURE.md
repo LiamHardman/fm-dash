@@ -155,6 +155,17 @@ Build Pipeline:
 │ • Assets        │    │ • Compression   │    │ • charts.js     │
 └─────────────────┘    └─────────────────┘    │ • utils.js      │
                                               └─────────────────┘
+
+Dependency Optimization:
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│ Third-Party     │───►│ Pre-bundled     │───►│ Optimized       │
+│ Libraries       │    │ Dependencies    │    │ Loading         │
+│                 │    │                 │    │                 │
+│ • Chart.js      │    │ • chart.js/     │    │ • Faster dev    │
+│ • VueUse        │    │   helpers       │    │   server        │
+│ • Quasar        │    │ • Specific      │    │ • Better        │
+│ • Dev Tools     │    │   imports       │    │   caching       │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
 #### Virtual Scrolling Architecture

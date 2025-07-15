@@ -118,28 +118,65 @@ export default defineConfig({
 
           // Vendor chunk splitting
           if (id.includes('node_modules')) {
-            // Core Vue framework - highest priority
-            if (id.includes('vue/') || id.includes('vue-router') || id.includes('pinia')) {
+            // Core Vue framework - highest priority, keep small
+            if (
+              id.includes('vue/dist/vue.esm') ||
+              id.includes('vue-router/dist') ||
+              id.includes('pinia/dist')
+            ) {
               return 'vendor-vue-core'
             }
-            // UI framework - separate chunk for better caching
-            if (id.includes('quasar') || id.includes('@quasar')) {
-              return 'vendor-ui-framework'
-            }
-            // Charts and visualization - large libraries
+
+            // Quasar UI framework - split into smaller chunks to avoid large bundle
             if (
-              id.includes('chart.js') ||
-              id.includes('vue-chartjs') ||
-              id.includes('chartjs-plugin')
+              id.includes('quasar/dist/quasar.esm.prod.js') ||
+              id.includes('quasar/dist/quasar.common.js')
             ) {
-              return 'vendor-charts'
+              return 'vendor-quasar-core'
             }
-            // VueUse utilities - commonly used across components
-            if (id.includes('@vueuse')) {
-              return 'vendor-utils'
+            if (id.includes('quasar/src/components') || id.includes('quasar/dist/icon-set')) {
+              return 'vendor-quasar-components'
             }
-            // Other vendor libraries
+            if (id.includes('@quasar/extras')) {
+              return 'vendor-quasar-extras'
+            }
+
+            // Charts and visualization - separate by library to reduce size
+            if (id.includes('chart.js/dist') || id.includes('chart.js/auto')) {
+              return 'vendor-chartjs-core'
+            }
+            if (id.includes('vue-chartjs')) {
+              return 'vendor-vue-chartjs'
+            }
+            if (id.includes('chartjs-plugin')) {
+              return 'vendor-chartjs-plugins'
+            }
+
+            // VueUse utilities - split by feature
+            if (id.includes('@vueuse/core')) {
+              return 'vendor-vueuse'
+            }
+
+            // CSS processing libraries
+            if (id.includes('sass') || id.includes('postcss') || id.includes('autoprefixer')) {
+              return 'vendor-css-processors'
+            }
+
+            // Development tools (should be excluded in production)
+            if (id.includes('rollup-plugin-visualizer') || id.includes('@vue/devtools')) {
+              return 'vendor-dev-tools'
+            }
+
+            // Other smaller vendor libraries
             if (id.includes('node_modules')) {
+              // Group small utilities together
+              if (
+                id.includes('unique-slug') ||
+                id.includes('fs-minipass') ||
+                id.includes('biome')
+              ) {
+                return 'vendor-utils-small'
+              }
               return 'vendor-misc'
             }
           }
@@ -254,16 +291,29 @@ export default defineConfig({
       'pinia',
       'quasar',
       '@vueuse/core',
-      // Pre-bundle commonly used utilities
+      // Pre-bundle commonly used utilities with specific imports
+      'chart.js/helpers',
       'chart.js/auto',
-      'vue-chartjs'
+      'vue-chartjs',
+      'chartjs-plugin-annotation'
     ],
-    exclude: ['@vitejs/plugin-vue'],
+    exclude: [
+      '@vitejs/plugin-vue',
+      // Exclude development-only dependencies
+      'rollup-plugin-visualizer',
+      '@vue/devtools-api'
+    ],
     esbuildOptions: {
       target: 'es2020',
       format: 'esm',
       // Optimize for production builds
-      treeShaking: true
+      treeShaking: true,
+      // Enable more aggressive optimization
+      minify: process.env.NODE_ENV === 'production',
+      // Define globals for better optimization
+      define: {
+        'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
+      }
     },
     // Force optimization of specific packages
     force: process.env.NODE_ENV === 'production'

@@ -129,12 +129,13 @@ VITE_SENTRY_DSN=https://your-sentry-dsn  # Error tracking
 #### Performance Configuration
 
 ```bash
-# Bundle Optimization
+# Bundle Optimization (In Progress)
 VITE_BUNDLE_ANALYZER=false          # Enable bundle analysis
 VITE_CODE_SPLITTING=true            # Enable code splitting
 VITE_TREE_SHAKING=true              # Enable tree shaking
 VITE_MINIFY=true                    # Enable minification
-VITE_CHUNK_SIZE_WARNING=800         # Chunk size warning threshold (KB)
+VITE_CHUNK_SIZE_WARNING=500         # Chunk size warning threshold (KB) - reduced for better optimization
+VITE_THIRD_PARTY_OPTIMIZATION=true  # Enable third-party library optimization (in progress)
 
 # Memory Management
 VITE_VIRTUAL_SCROLL_BUFFER=5        # Virtual scroll buffer size
@@ -367,17 +368,35 @@ export default defineConfig({
   optimizeDeps: {
     include: [
       'vue',
-      'vue-router', 
+      'vue-router',
       'pinia',
       'quasar',
       '@vueuse/core',
+      // Pre-bundle commonly used utilities with specific imports
+      'chart.js/helpers',
       'chart.js/auto',
-      'vue-chartjs'
+      'vue-chartjs',
+      'chartjs-plugin-annotation'
+    ],
+    exclude: [
+      '@vitejs/plugin-vue',
+      // Exclude development-only dependencies
+      'rollup-plugin-visualizer',
+      '@vue/devtools-api'
     ],
     esbuildOptions: {
       target: 'es2020',
-      treeShaking: true
-    }
+      format: 'esm',
+      treeShaking: true,
+      // Optimize for production builds
+      minify: process.env.NODE_ENV === 'production',
+      // Define globals for better optimization
+      define: {
+        'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
+      }
+    },
+    // Force optimization of specific packages
+    force: process.env.NODE_ENV === 'production'
   },
 
   // Development server with performance monitoring
