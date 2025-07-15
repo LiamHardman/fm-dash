@@ -20,20 +20,29 @@ export async function preloadCriticalLibraries() {
   const loadPromises = []
 
   for (const library of CRITICAL_LIBRARIES) {
-    try {
-      // For now, we'll just resolve immediately since no critical libraries are defined
-      // In the future, you can add dynamic imports here like:
-      // loadPromises.push(import(library))
-    } catch (error) {
-      console.warn(`Failed to preload critical library: ${library}`, error)
-    }
+    // For now, we'll just resolve immediately since no critical libraries are defined
+    // In the future, you can add dynamic imports here like:
+    // loadPromises.push(import(library).catch(error => {
+    //   // Handle library loading errors silently in production
+    //   if (process.env.NODE_ENV === 'development') {
+    //     console.warn(`Failed to preload critical library: ${library}`, error)
+    //   }
+    // }))
   }
 
   try {
     await Promise.all(loadPromises)
-    console.log('✅ Critical libraries preloaded successfully')
+    // Libraries preloaded successfully (silent in production)
+    if (process.env.NODE_ENV === 'development') {
+      // eslint-disable-next-line no-console
+      console.log('✅ Critical libraries preloaded successfully')
+    }
   } catch (error) {
-    console.warn('⚠️ Some critical libraries failed to preload:', error)
+    // Handle preload errors silently in production
+    if (process.env.NODE_ENV === 'development') {
+      // eslint-disable-next-line no-console
+      console.warn('⚠️ Some critical libraries failed to preload:', error)
+    }
   }
 }
 
@@ -49,22 +58,22 @@ export async function loadDevLibraries() {
   const loadPromises = []
 
   for (const library of DEV_LIBRARIES) {
-    try {
-      // For now, we'll just resolve immediately since no dev libraries are defined
-      // In the future, you can add dynamic imports here like:
-      // loadPromises.push(import(library).then(lib => {
-      //   loadedLibraries.push(library)
-      //   return lib
-      // }))
-    } catch (error) {
-      console.warn(`Failed to load dev library: ${library}`, error)
-    }
+    // For now, we'll just resolve immediately since no dev libraries are defined
+    // In the future, you can add dynamic imports here like:
+    // loadPromises.push(import(library).then(lib => {
+    //   loadedLibraries.push(library)
+    //   return lib
+    // }).catch(error => {
+    //   console.warn(`Failed to load dev library: ${library}`, error)
+    // }))
   }
 
   try {
     await Promise.all(loadPromises)
+    // eslint-disable-next-line no-console
     console.log('🛠️ Development libraries loaded successfully')
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.warn('⚠️ Some development libraries failed to load:', error)
   }
 
@@ -75,14 +84,10 @@ export async function loadDevLibraries() {
  * Dynamically load a library with error handling
  */
 export async function loadLibrary(libraryPath, options = {}) {
-  const { 
-    timeout = 10000,
-    retries = 3,
-    fallback = null 
-  } = options
+  const { timeout = 10000, retries = 3, fallback = null } = options
 
   let attempt = 0
-  
+
   while (attempt < retries) {
     try {
       const timeoutPromise = new Promise((_, reject) => {
@@ -90,22 +95,27 @@ export async function loadLibrary(libraryPath, options = {}) {
       })
 
       const loadPromise = import(libraryPath)
-      
+
       const library = await Promise.race([loadPromise, timeoutPromise])
       return library
-      
     } catch (error) {
       attempt++
-      console.warn(`Library load attempt ${attempt} failed for ${libraryPath}:`, error.message)
-      
+      if (process.env.NODE_ENV === 'development') {
+        // eslint-disable-next-line no-console
+        console.warn(`Library load attempt ${attempt} failed for ${libraryPath}:`, error.message)
+      }
+
       if (attempt >= retries) {
         if (fallback) {
-          console.log(`Using fallback for ${libraryPath}`)
+          if (process.env.NODE_ENV === 'development') {
+            // eslint-disable-next-line no-console
+            console.log(`Using fallback for ${libraryPath}`)
+          }
           return fallback
         }
         throw error
       }
-      
+
       // Wait before retry
       await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
     }
@@ -121,7 +131,7 @@ export function isLibraryAvailable(libraryName) {
     if (typeof window !== 'undefined' && window[libraryName]) {
       return true
     }
-    
+
     // Check if it's a module that can be imported
     // This is a basic check - in practice you might want more sophisticated detection
     return false
@@ -163,10 +173,10 @@ export function createLazyLoader(libraryPath, options = {}) {
  * Preload libraries based on user interaction hints
  */
 export function preloadOnInteraction(libraryPath, options = {}) {
-  const { 
+  const {
     events = ['mouseenter', 'touchstart', 'focus'],
     element = document,
-    once = true 
+    once = true
   } = options
 
   let loaded = false
@@ -174,14 +184,20 @@ export function preloadOnInteraction(libraryPath, options = {}) {
 
   const handleInteraction = async () => {
     if (loaded) return
-    
+
     loaded = true
-    
+
     try {
       await loader()
-      console.log(`📦 Preloaded library on interaction: ${libraryPath}`)
+      if (process.env.NODE_ENV === 'development') {
+        // eslint-disable-next-line no-console
+        console.log(`📦 Preloaded library on interaction: ${libraryPath}`)
+      }
     } catch (error) {
-      console.warn(`Failed to preload library on interaction: ${libraryPath}`, error)
+      if (process.env.NODE_ENV === 'development') {
+        // eslint-disable-next-line no-console
+        console.warn(`Failed to preload library on interaction: ${libraryPath}`, error)
+      }
       loaded = false // Allow retry
     }
 
@@ -214,26 +230,33 @@ export function analyzeBundleSize() {
   // Basic bundle size analysis
   const scripts = document.querySelectorAll('script[src]')
   const styles = document.querySelectorAll('link[rel="stylesheet"]')
-  
+
+  // eslint-disable-next-line no-console
   console.group('📊 Bundle Analysis')
+  // eslint-disable-next-line no-console
   console.log(`Scripts loaded: ${scripts.length}`)
+  // eslint-disable-next-line no-console
   console.log(`Stylesheets loaded: ${styles.length}`)
-  
+
   if ('performance' in window) {
     const resources = performance.getEntriesByType('resource')
     const jsResources = resources.filter(r => r.name.includes('.js'))
     const cssResources = resources.filter(r => r.name.includes('.css'))
-    
+
+    // eslint-disable-next-line no-console
     console.log(`JS resources: ${jsResources.length}`)
+    // eslint-disable-next-line no-console
     console.log(`CSS resources: ${cssResources.length}`)
-    
+
     const totalSize = resources.reduce((sum, resource) => {
       return sum + (resource.transferSize || 0)
     }, 0)
-    
+
+    // eslint-disable-next-line no-console
     console.log(`Total transfer size: ${(totalSize / 1024).toFixed(2)} KB`)
   }
-  
+
+  // eslint-disable-next-line no-console
   console.groupEnd()
 }
 

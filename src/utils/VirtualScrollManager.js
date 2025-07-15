@@ -13,7 +13,7 @@ export class VirtualScrollManager {
     this.recycleThreshold = options.recycleThreshold || 100
     this.enableVariableHeight = options.enableVariableHeight || false
     this.enableMomentum = options.enableMomentum || true
-    
+
     // State
     this.scrollTop = 0
     this.isScrolling = false
@@ -21,22 +21,22 @@ export class VirtualScrollManager {
     this.lastScrollTime = 0
     this.lastScrollTop = 0
     this.momentumAnimationId = null
-    
+
     // Item recycling pools
     this.itemPool = new Map()
     this.recycledItems = []
     this.activeItems = new Map()
-    
+
     // Variable height support
     this.itemHeights = new Map()
     this.estimatedItemHeight = this.itemHeight
     this.totalHeight = 0
-    
+
     // Performance tracking
     this.renderCount = 0
     this.recycleCount = 0
     this.poolHits = 0
-    
+
     // Callbacks
     this.onScroll = null
     this.onVisibleRangeChange = null
@@ -62,7 +62,7 @@ export class VirtualScrollManager {
       // Fixed height calculation (optimized)
       const visibleItemCount = Math.ceil(this.containerHeight / this.itemHeight)
       const scrollIndex = Math.floor(this.scrollTop / this.itemHeight)
-      
+
       startIndex = Math.max(0, scrollIndex - this.bufferSize)
       endIndex = Math.min(totalItems, scrollIndex + visibleItemCount + this.bufferSize)
     }
@@ -98,7 +98,10 @@ export class VirtualScrollManager {
     // Find start index
     for (let i = 0; i < totalItems; i++) {
       const itemHeight = this.getItemHeight(i)
-      if (accumulatedHeight + itemHeight > this.scrollTop - this.bufferSize * this.estimatedItemHeight) {
+      if (
+        accumulatedHeight + itemHeight >
+        this.scrollTop - this.bufferSize * this.estimatedItemHeight
+      ) {
         startIndex = Math.max(0, i - this.bufferSize)
         break
       }
@@ -106,9 +109,10 @@ export class VirtualScrollManager {
     }
 
     // Find end index
-    const targetHeight = this.scrollTop + this.containerHeight + this.bufferSize * this.estimatedItemHeight
+    const targetHeight =
+      this.scrollTop + this.containerHeight + this.bufferSize * this.estimatedItemHeight
     accumulatedHeight = this.getOffsetForIndex(startIndex)
-    
+
     for (let i = startIndex; i < totalItems; i++) {
       if (accumulatedHeight > targetHeight) {
         endIndex = Math.min(totalItems, i + this.bufferSize)
@@ -162,7 +166,7 @@ export class VirtualScrollManager {
     if (!this.enableVariableHeight) return
 
     this.totalHeight = 0
-    for (const [index, height] of this.itemHeights) {
+    for (const [index, _height] of this.itemHeights) {
       this.totalHeight = Math.max(this.totalHeight, (index + 1) * this.estimatedItemHeight)
     }
   }
@@ -325,7 +329,7 @@ export class VirtualScrollManager {
 
       // Apply friction
       this.scrollVelocity *= 0.95
-      
+
       // Continue momentum
       this.momentumAnimationId = requestAnimationFrame(applyInertia)
     }
@@ -358,7 +362,7 @@ export class VirtualScrollManager {
     if (this.itemHeights.size > 10000) {
       const entries = Array.from(this.itemHeights.entries())
       entries.sort((a, b) => b[0] - a[0]) // Sort by index descending
-      
+
       // Keep only recent measurements
       this.itemHeights.clear()
       for (let i = 0; i < Math.min(5000, entries.length); i++) {
@@ -397,7 +401,7 @@ export class VirtualScrollManager {
     this.renderCount = 0
     this.recycleCount = 0
     this.poolHits = 0
-    
+
     if (this.momentumAnimationId) {
       cancelAnimationFrame(this.momentumAnimationId)
       this.momentumAnimationId = null
@@ -411,7 +415,7 @@ export class VirtualScrollManager {
     this.reset()
     this.itemPool.clear()
     this.recycledItems.length = 0
-    
+
     // Clear callbacks
     this.onScroll = null
     this.onVisibleRangeChange = null
