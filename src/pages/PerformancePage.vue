@@ -211,7 +211,7 @@
                             <q-tab-panels v-model="attackingPlotTab" animated>
                                 <q-tab-panel name="shooting">
                                     <div class="charts-grid">
-                                        <ScatterPlotCard 
+                                        <DynamicScatterPlotCard 
                                             v-for="config in attackingShootingCharts" 
                                             :key="config.title" 
                                             v-bind="config" 
@@ -247,7 +247,7 @@
                             <q-tab-panels v-model="passingPlotTab" animated>
                                 <q-tab-panel name="creative">
                                     <div class="charts-grid">
-                                        <ScatterPlotCard 
+                                        <DynamicScatterPlotCard 
                                             v-for="config in passingCreativeCharts" 
                                             :key="config.title" 
                                             v-bind="config" 
@@ -262,7 +262,7 @@
                                 </q-tab-panel>
                                 <q-tab-panel name="progression">
                                     <div class="charts-grid">
-                                        <ScatterPlotCard 
+                                        <DynamicScatterPlotCard 
                                             v-for="config in passingProgressionCharts" 
                                             :key="config.title" 
                                             v-bind="config" 
@@ -277,7 +277,7 @@
                                 </q-tab-panel>
                                 <q-tab-panel name="crossing">
                                     <div class="charts-grid">
-                                        <ScatterPlotCard 
+                                        <DynamicScatterPlotCard 
                                             v-for="config in passingCrossingCharts" 
                                             :key="config.title" 
                                             v-bind="config" 
@@ -314,7 +314,7 @@
                             <q-tab-panels v-model="defendingPlotTab" animated>
                                 <q-tab-panel name="duels">
                                     <div class="charts-grid">
-                                        <ScatterPlotCard 
+                                        <DynamicScatterPlotCard 
                                             v-for="config in defendingDuelsCharts" 
                                             :key="config.title" 
                                             v-bind="config" 
@@ -329,7 +329,7 @@
                                 </q-tab-panel>
                                 <q-tab-panel name="pressing">
                                     <div class="charts-grid">
-                                        <ScatterPlotCard 
+                                        <DynamicScatterPlotCard 
                                             v-for="config in defendingPressingCharts" 
                                             :key="config.title" 
                                             v-bind="config" 
@@ -344,7 +344,7 @@
                                 </q-tab-panel>
                                 <q-tab-panel name="aerial">
                                     <div class="charts-grid">
-                                        <ScatterPlotCard 
+                                        <DynamicScatterPlotCard 
                                             v-for="config in defendingAerialCharts" 
                                             :key="config.title" 
                                             v-bind="config" 
@@ -359,7 +359,7 @@
                                 </q-tab-panel>
                                 <q-tab-panel name="workrate">
                                     <div class="charts-grid">
-                                        <ScatterPlotCard 
+                                        <DynamicScatterPlotCard 
                                             v-for="config in defendingWorkrateCharts" 
                                             :key="config.title" 
                                             v-bind="config" 
@@ -393,7 +393,7 @@
                             <q-tab-panels v-model="goalkeepingPlotTab" animated>
                                 <q-tab-panel name="shotstopping">
                                     <div class="charts-grid">
-                                        <ScatterPlotCard 
+                                        <DynamicScatterPlotCard 
                                             v-for="config in goalkeepingShotstoppingCharts" 
                                             :key="config.title" 
                                             v-bind="config" 
@@ -414,7 +414,7 @@
         </div>
 
         <!-- Player Detail Dialog -->
-        <PlayerDetailDialog :player="playerForDetailView" :show="showPlayerDetailDialog" @close="showPlayerDetailDialog = false" :currency-symbol="detectedCurrencySymbol" :dataset-id="currentDatasetId" />
+        <DynamicPlayerDetailDialog :player="playerForDetailView" :show="showPlayerDetailDialog" @close="showPlayerDetailDialog = false" :currency-symbol="detectedCurrencySymbol" :dataset-id="currentDatasetId" />
     </q-page>
 </template>
 
@@ -423,17 +423,22 @@ import { debounce, useQuasar } from 'quasar'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 // biome-ignore lint/correctness/noUnusedImports: used in template
-import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
-// biome-ignore lint/correctness/noUnusedImports: used in template
-import ScatterPlotCard from '../components/ScatterPlotCard.vue'
-// biome-ignore lint/correctness/noUnusedImports: used in template
 import StatCard from '../components/StatCard.vue'
+// Dynamic imports for better performance
+import { useDynamicComponents } from '../composables/useDynamicComponents.js'
 import { usePlayerStore } from '../stores/playerStore'
 
 const router = useRouter()
 const route = useRoute()
 const $q = useQuasar()
 const playerStore = usePlayerStore()
+
+// Initialize dynamic components
+const { DynamicPlayerDetailDialog, DynamicScatterPlotCard, initializePreloading } =
+  useDynamicComponents()
+
+// Initialize preloading for performance page
+initializePreloading(route)
 
 // --- Reactive Data ---
 const pageLoadingError = ref('')

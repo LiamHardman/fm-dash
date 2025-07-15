@@ -112,6 +112,7 @@ VITE_API_URL=http://localhost:8091  # Backend API URL
 VITE_APP_TITLE=FM-Dash                 # Application title
 VITE_APP_VERSION=1.0.0              # Application version
 VITE_DEBUG=true                     # Enable debug mode
+VITE_HOT_RELOAD=true                # Enable hot module replacement
 ```
 
 #### Production Settings
@@ -125,6 +126,42 @@ VITE_DEBUG=false
 VITE_SENTRY_DSN=https://your-sentry-dsn  # Error tracking
 ```
 
+#### Performance Configuration
+
+```bash
+# Bundle Optimization
+VITE_BUNDLE_ANALYZER=false          # Enable bundle analysis
+VITE_CODE_SPLITTING=true            # Enable code splitting
+VITE_TREE_SHAKING=true              # Enable tree shaking
+VITE_MINIFY=true                    # Enable minification
+VITE_CHUNK_SIZE_WARNING=800         # Chunk size warning threshold (KB)
+
+# Memory Management
+VITE_VIRTUAL_SCROLL_BUFFER=5        # Virtual scroll buffer size
+VITE_OBJECT_POOL_SIZE=50            # Object pool initial size
+VITE_LRU_CACHE_SIZE=100             # LRU cache maximum size
+VITE_MEMORY_THRESHOLD=200           # Memory threshold in MB
+
+# Image Optimization
+VITE_LAZY_LOADING=true              # Enable lazy loading
+VITE_WEBP_SUPPORT=true              # Enable WebP format support
+VITE_AVIF_SUPPORT=true              # Enable AVIF format support
+VITE_IMAGE_PRELOAD_COUNT=5          # Number of images to preload
+VITE_IMAGE_CACHE_SIZE=50            # Image cache size (MB)
+
+# Mobile Optimization
+VITE_MOBILE_OPTIMIZATIONS=true      # Enable mobile optimizations
+VITE_TOUCH_OPTIMIZATION=true        # Optimize touch interactions
+VITE_REDUCED_MOTION_SUPPORT=true    # Support reduced motion preferences
+VITE_BATTERY_OPTIMIZATION=true      # Enable battery-aware optimizations
+
+# Performance Monitoring
+VITE_PERFORMANCE_TRACKING=true      # Enable performance tracking
+VITE_CORE_WEB_VITALS=true          # Track Core Web Vitals
+VITE_MEMORY_MONITORING=true         # Monitor memory usage
+VITE_BUNDLE_MONITORING=true         # Monitor bundle loading
+```
+
 #### Feature Flags
 
 ```bash
@@ -134,6 +171,32 @@ VITE_ENABLE_EXPORT=true             # Enable data export
 VITE_ENABLE_COMPARISON=true         # Enable player comparison
 VITE_ENABLE_SHARING=false           # Enable data sharing features
 VITE_MAX_PLAYERS_DISPLAY=1000       # Maximum players to display at once
+
+# Performance Features
+VITE_ENABLE_WEB_WORKERS=true        # Enable web workers for calculations
+VITE_ENABLE_SERVICE_WORKER=true     # Enable service worker for caching
+VITE_ENABLE_VIRTUAL_SCROLLING=true  # Enable virtual scrolling
+VITE_ENABLE_PROGRESSIVE_LOADING=true # Enable progressive image loading
+```
+
+#### Advanced Performance Settings
+
+```bash
+# Network Optimization
+VITE_REQUEST_TIMEOUT=30000          # API request timeout (ms)
+VITE_RETRY_ATTEMPTS=3               # Number of retry attempts
+VITE_RETRY_DELAY=1000               # Retry delay (ms)
+VITE_CONCURRENT_REQUESTS=6          # Maximum concurrent requests
+
+# Animation Configuration
+VITE_ANIMATION_DURATION=300         # Default animation duration (ms)
+VITE_ANIMATION_EASING=ease-out      # Default animation easing
+VITE_DISABLE_ANIMATIONS_LOW_BATTERY=true # Disable animations on low battery
+
+# Development Performance
+VITE_DEV_OVERLAY=true               # Show performance overlay in development
+VITE_DEV_MEMORY_WARNINGS=true       # Show memory warnings in development
+VITE_DEV_BUNDLE_WARNINGS=true       # Show bundle size warnings
 ```
 
 ## Configuration Files
@@ -217,34 +280,160 @@ upload:
   temp_dir: "/tmp/uploads"
 ```
 
-### Frontend Configuration (`quasar.config.js`)
+### Frontend Configuration (`vite.config.js`)
 
 ```javascript
+// Enhanced Vite configuration with performance optimizations
+export default defineConfig({
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src')
+    }
+  },
+
+  plugins: [
+    vue({
+      template: { transformAssetUrls }
+    }),
+    quasar({
+      sassVariables: '@/quasar-variables.scss'
+    }),
+    // Bundle analyzer for performance monitoring
+    (process.env.ANALYZE === 'true' || process.env.NODE_ENV === 'development') &&
+      visualizer({
+        filename: 'dist/stats.html',
+        open: process.env.ANALYZE === 'true',
+        gzipSize: true,
+        brotliSize: true,
+        template: 'treemap'
+      })
+  ].filter(Boolean),
+
+  build: {
+    // Advanced code splitting and optimization
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Core framework chunks
+          'vue-core': ['vue', 'vue-router', 'pinia'],
+          'ui-framework': ['quasar'],
+          
+          // Feature-based chunks
+          'charts': ['chart.js', 'vue-chartjs', 'chartjs-plugin-annotation'],
+          'utils': ['@vueuse/core'],
+          
+          // Page-based chunks for better caching
+          'pages-main': [
+            './src/pages/LandingPage.vue',
+            './src/pages/DatasetPage.vue'
+          ],
+          'pages-secondary': [
+            './src/pages/PerformancePage.vue',
+            './src/pages/TeamViewPage.vue'
+          ]
+        },
+        
+        // Optimized file naming for better caching
+        chunkFileNames: (chunkInfo) => {
+          const facadeModuleId = chunkInfo.facadeModuleId
+            ? chunkInfo.facadeModuleId.split('/').pop().replace('.vue', '')
+            : 'chunk'
+          return `js/${facadeModuleId}-[hash].js`
+        }
+      }
+    },
+
+    // Performance optimization settings
+    chunkSizeWarningLimit: parseInt(process.env.VITE_CHUNK_SIZE_WARNING) || 800,
+    sourcemap: process.env.NODE_ENV === 'development',
+    cssCodeSplit: true,
+    assetsInlineLimit: 2048,
+    
+    // Advanced minification
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: process.env.NODE_ENV === 'production',
+        drop_debugger: true,
+        passes: 2
+      }
+    },
+    
+    // Target modern browsers for smaller bundles
+    target: ['es2020', 'chrome80', 'firefox78', 'safari14']
+  },
+
+  // Enhanced dependency optimization
+  optimizeDeps: {
+    include: [
+      'vue',
+      'vue-router', 
+      'pinia',
+      'quasar',
+      '@vueuse/core',
+      'chart.js/auto',
+      'vue-chartjs'
+    ],
+    esbuildOptions: {
+      target: 'es2020',
+      treeShaking: true
+    }
+  },
+
+  // Development server with performance monitoring
+  server: {
+    port: 3000,
+    proxy: {
+      '/upload': {
+        target: 'http://localhost:8091',
+        changeOrigin: true
+      },
+      '/api': {
+        target: 'http://localhost:8091',
+        changeOrigin: true
+      }
+    }
+  },
+
+  // Performance monitoring definitions
+  define: {
+    __PERFORMANCE_TRACKING__: JSON.stringify(
+      process.env.VITE_PERFORMANCE_TRACKING === 'true'
+    ),
+    __CORE_WEB_VITALS__: JSON.stringify(
+      process.env.VITE_CORE_WEB_VITALS === 'true'
+    ),
+    __MEMORY_MONITORING__: JSON.stringify(
+      process.env.VITE_MEMORY_MONITORING === 'true'
+    )
+  }
+})
+```
+
+### Performance-Optimized Quasar Configuration
+
+```javascript
+// quasar.config.js with performance enhancements
 module.exports = function (ctx) {
   return {
-    // Boot files
+    // Optimized boot files loading
     boot: [
-      'axios',
-      'pinia'
+      { path: 'axios', server: false },
+      { path: 'pinia', server: false },
+      { path: 'performance', server: false } // Performance monitoring
     ],
 
-    // CSS framework
+    // CSS framework with tree-shaking
     css: [
       'app.scss'
     ],
 
-    // Quasar plugins
+    // Quasar plugins (only load what's needed)
     framework: {
       config: {
         brand: {
           primary: '#1976D2',
-          secondary: '#26A69A',
-          accent: '#9C27B0',
-          dark: '#1d1d1d',
-          positive: '#21BA45',
-          negative: '#C10015',
-          info: '#31CCEC',
-          warning: '#F2C037'
+          secondary: '#26A69A'
         }
       },
       plugins: [
@@ -252,27 +441,69 @@ module.exports = function (ctx) {
         'Dialog',
         'Loading',
         'LoadingBar'
+      ],
+      // Tree-shake Quasar components
+      components: [
+        'QLayout',
+        'QHeader',
+        'QDrawer',
+        'QPageContainer',
+        'QPage',
+        'QBtn',
+        'QTable',
+        'QVirtualScroll'
+      ],
+      directives: [
+        'Ripple',
+        'ClosePopup'
       ]
     },
 
-    // Build configuration
+    // Build configuration with performance optimizations
     build: {
       vueRouterMode: 'hash',
       publicPath: '/',
       
+      // Environment variables
       env: {
         API_URL: process.env.VITE_API_URL || 'http://localhost:8091',
-        APP_TITLE: process.env.VITE_APP_TITLE || 'FM-Dash',
-        DEBUG: process.env.VITE_DEBUG === 'true',
-        VERSION: process.env.VITE_APP_VERSION || '1.0.0'
+        PERFORMANCE_TRACKING: process.env.VITE_PERFORMANCE_TRACKING || 'false',
+        MEMORY_MONITORING: process.env.VITE_MEMORY_MONITORING || 'false'
       },
 
-      // Vite configuration
-      vitePlugins: [
-        ['@intlify/vite-plugin-vue-i18n', {
-          include: path.resolve(__dirname, './src/i18n/**')
-        }]
-      ]
+      // Advanced build optimizations
+      minify: true,
+      sourcemap: ctx.dev,
+      
+      // Webpack optimizations (if using webpack mode)
+      chainWebpack(chain) {
+        // Optimize chunks
+        chain.optimization.splitChunks({
+          chunks: 'all',
+          cacheGroups: {
+            vendor: {
+              test: /[\\/]node_modules[\\/]/,
+              name: 'vendors',
+              chunks: 'all'
+            },
+            quasar: {
+              test: /[\\/]node_modules[\\/]quasar[\\/]/,
+              name: 'quasar',
+              chunks: 'all'
+            }
+          }
+        })
+
+        // Preload important chunks
+        chain.plugin('preload').tap(options => {
+          options[0] = {
+            rel: 'preload',
+            include: 'initial',
+            fileBlacklist: [/\.map$/, /hot-update\.js$/]
+          }
+          return options
+        })
+      }
     },
 
     // Development server
@@ -285,6 +516,25 @@ module.exports = function (ctx) {
           changeOrigin: true,
           secure: false
         }
+      }
+    },
+
+    // PWA configuration for performance
+    pwa: {
+      workboxPluginMode: 'InjectManifest',
+      workboxOptions: {
+        maximumFileSizeToCacheInBytes: 5000000,
+        skipWaiting: true,
+        clientsClaim: true
+      },
+      manifest: {
+        name: 'FM-Dash',
+        short_name: 'FM-Dash',
+        description: 'Football Manager Data Analysis Platform',
+        display: 'standalone',
+        orientation: 'portrait',
+        background_color: '#ffffff',
+        theme_color: '#1976D2'
       }
     }
   }

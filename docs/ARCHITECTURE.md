@@ -33,11 +33,12 @@ FM-Dash is a modern, cloud-native web application designed for processing and an
 
 ### Technology Stack
 
-- **Vue.js 3**: Progressive framework with Composition API
-- **Quasar Framework**: Material Design component library
-- **Vite**: Modern build tool for fast development
-- **Pinia**: State management with TypeScript support
-- **Vitest**: Unit testing framework
+- **Vue.js 3**: Progressive framework with Composition API and performance optimizations
+- **Quasar Framework**: Material Design component library with tree-shaking support
+- **Vite**: Modern build tool with advanced code splitting and optimization
+- **Pinia**: State management with memory-efficient patterns and caching
+- **Vitest**: Unit testing framework with performance testing capabilities
+- **Performance Tools**: Core Web Vitals monitoring, bundle analysis, and memory profiling
 
 ### Component Structure
 
@@ -47,58 +48,85 @@ src/
 │   ├── layout/         # Layout components (header, sidebar, etc.)
 │   ├── data/           # Data display components (tables, charts)
 │   ├── forms/          # Form components (upload, search, filters)
-│   └── common/         # Common UI elements (buttons, modals)
-├── pages/              # Page-level components
-│   ├── Home.vue        # Landing page with upload
-│   ├── Players.vue     # Player browser and search
-│   ├── Analytics.vue   # Data visualization
-│   └── Compare.vue     # Player comparison
+│   ├── common/         # Common UI elements (buttons, modals)
+│   ├── filters/        # Advanced filtering components
+│   └── player-details/ # Player detail components
+├── pages/              # Page-level components (lazy-loaded)
+│   ├── LandingPage.vue      # Landing page with upload
+│   ├── DatasetPage.vue      # Player browser and search
+│   ├── PerformancePage.vue  # Performance monitoring
+│   ├── TeamViewPage.vue     # Team analysis
+│   └── PlayerUploadPage.vue # File upload interface
 ├── composables/        # Reusable composition functions
-│   ├── useApi.js       # API client logic
-│   ├── useSearch.js    # Search functionality
-│   └── useFilters.js   # Filter management
+│   ├── useApi.js            # API client logic
+│   ├── usePlayerFilters.js  # Advanced filtering
+│   ├── useVirtualScrolling.js # Virtual scrolling optimization
+│   ├── usePerformanceOptimizations.js # Performance utilities
+│   ├── useMemoization.js    # Caching and memoization
+│   └── useWebWorkers.js     # Web worker management
 ├── stores/             # Pinia state stores
-│   ├── players.js      # Player data management
-│   ├── ui.js           # UI state (modals, loading, etc.)
-│   └── search.js       # Search state and history
+│   ├── playerStore.js  # Player data with memory optimization
+│   ├── uiStore.js      # UI state management
+│   └── wishlistStore.js # Wishlist functionality
 ├── services/           # Business logic services
 │   ├── api.js          # HTTP client configuration
-│   ├── upload.js       # File upload handling
-│   └── export.js       # Data export functionality
-└── utils/              # Utility functions
-    ├── formatters.js   # Data formatting
-    ├── validators.js   # Input validation
-    └── constants.js    # Application constants
+│   ├── playerService.js # Player data operations
+│   ├── wishlistService.js # Wishlist management
+│   └── analytics.js    # Performance analytics
+├── utils/              # Utility functions
+│   ├── performance.js  # Performance monitoring utilities
+│   ├── imageOptimization.js # Image loading optimization
+│   ├── formationCache.js # Formation caching
+│   └── security.js     # Security utilities
+└── workers/            # Web workers for background processing
+    └── playerCalculationWorker.js # Player calculations
 ```
 
-### State Management Pattern
+### Performance-Optimized State Management
 
-FM-Dash uses Pinia for centralized state management with a clear data flow:
+FM-Dash uses Pinia with advanced performance optimizations for handling large datasets:
 
 ```javascript
-// Example: Player Store Pattern
+// Performance-optimized Player Store Pattern
 export const usePlayersStore = defineStore('players', () => {
-  // State
-  const players = ref([])
+  // State - using shallowRef for large arrays to avoid deep reactivity overhead
+  const players = shallowRef([])
   const loading = ref(false)
   const filters = ref({})
   
-  // Getters
+  // LRU Cache for filtered results
+  const filterCache = new LRUCache(100)
+  
+  // Memory-efficient getters with caching
   const filteredPlayers = computed(() => {
-    return players.value.filter(player => 
+    const cacheKey = JSON.stringify(filters.value)
+    
+    const cached = filterCache.get(cacheKey)
+    if (cached) return cached
+    
+    const filtered = players.value.filter(player => 
       applyFilters(player, filters.value)
     )
+    
+    filterCache.set(cacheKey, filtered)
+    return filtered
   })
   
-  // Actions
+  // Batch operations to minimize reactivity triggers
   async function fetchPlayers(params = {}) {
     loading.value = true
     try {
       const response = await api.get('/players', { params })
+      // Single assignment to trigger reactivity once
       players.value = response.data.players
     } finally {
       loading.value = false
     }
+  }
+  
+  // Memory cleanup for component unmounting
+  const cleanup = () => {
+    filterCache.clear()
   }
   
   return {
@@ -106,9 +134,192 @@ export const usePlayersStore = defineStore('players', () => {
     loading: readonly(loading),
     filteredPlayers,
     fetchPlayers,
-    setFilters
+    setFilters,
+    cleanup
   }
 })
+```
+
+### Frontend Performance Architecture
+
+#### Bundle Optimization Strategy
+
+```
+Build Pipeline:
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Source Code   │───►│   Vite Build    │───►│  Optimized      │
+│                 │    │                 │    │  Bundles        │
+│ • Vue SFCs      │    │ • Code Splitting│    │                 │
+│ • TypeScript    │    │ • Tree Shaking  │    │ • vue-core.js   │
+│ • SCSS          │    │ • Minification  │    │ • ui-framework  │
+│ • Assets        │    │ • Compression   │    │ • charts.js     │
+└─────────────────┘    └─────────────────┘    │ • utils.js      │
+                                              └─────────────────┘
+```
+
+#### Virtual Scrolling Architecture
+
+```javascript
+// Advanced Virtual Scrolling Implementation
+class VirtualScrollManager {
+  constructor(container, itemHeight, bufferSize = 5) {
+    this.container = container
+    this.itemHeight = itemHeight
+    this.bufferSize = bufferSize
+    this.viewportHeight = container.clientHeight
+    this.visibleCount = Math.ceil(this.viewportHeight / itemHeight)
+    
+    // Object pool for DOM elements
+    this.elementPool = new ObjectPool(() => this.createElement())
+    
+    // Intersection Observer for efficient visibility detection
+    this.observer = new IntersectionObserver(this.handleIntersection.bind(this))
+  }
+
+  updateVisibleItems(items, scrollTop) {
+    const startIndex = Math.floor(scrollTop / this.itemHeight)
+    const endIndex = Math.min(
+      startIndex + this.visibleCount + this.bufferSize,
+      items.length
+    )
+    
+    // Efficiently update only changed items
+    this.renderVisibleRange(items.slice(startIndex, endIndex), startIndex)
+  }
+
+  renderVisibleRange(items, startIndex) {
+    // Use document fragment for efficient DOM updates
+    const fragment = document.createDocumentFragment()
+    
+    items.forEach((item, index) => {
+      const element = this.elementPool.acquire()
+      this.updateElement(element, item, startIndex + index)
+      fragment.appendChild(element)
+    })
+    
+    // Single DOM update
+    this.container.appendChild(fragment)
+  }
+}
+```
+
+#### Memory Management Architecture
+
+```javascript
+// Memory Management System
+class MemoryManager {
+  constructor() {
+    this.objectPools = new Map()
+    this.caches = new Map()
+    this.memoryThreshold = 200 * 1024 * 1024 // 200MB
+    this.monitoringInterval = null
+  }
+
+  createObjectPool(name, factory, resetFn, initialSize = 10) {
+    const pool = new ObjectPool(factory, resetFn, initialSize)
+    this.objectPools.set(name, pool)
+    return pool
+  }
+
+  createLRUCache(name, maxSize, ttl) {
+    const cache = new LRUCache(maxSize, ttl)
+    this.caches.set(name, cache)
+    return cache
+  }
+
+  startMemoryMonitoring() {
+    this.monitoringInterval = setInterval(() => {
+      if (performance.memory) {
+        const used = performance.memory.usedJSHeapSize
+        
+        if (used > this.memoryThreshold) {
+          this.performCleanup()
+        }
+      }
+    }, 30000) // Check every 30 seconds
+  }
+
+  performCleanup() {
+    // Clear caches
+    this.caches.forEach(cache => cache.clear())
+    
+    // Return objects to pools
+    this.objectPools.forEach(pool => pool.releaseAll())
+    
+    // Force garbage collection if available
+    if (window.gc) {
+      window.gc()
+    }
+  }
+}
+```
+
+#### Image Loading Architecture
+
+```javascript
+// Progressive Image Loading System
+class ImageLoadingSystem {
+  constructor() {
+    this.loadingQueue = new PriorityQueue()
+    this.cache = new Map()
+    this.observers = new Map()
+    this.maxConcurrent = 6
+    this.currentLoading = 0
+  }
+
+  loadImage(src, options = {}) {
+    const {
+      priority = 'normal',
+      formats = ['avif', 'webp', 'jpg'],
+      progressive = true,
+      lazy = true
+    } = options
+
+    if (this.cache.has(src)) {
+      return Promise.resolve(this.cache.get(src))
+    }
+
+    const loadPromise = new Promise((resolve, reject) => {
+      const task = {
+        src,
+        formats,
+        progressive,
+        priority: this.getPriorityValue(priority),
+        resolve,
+        reject
+      }
+
+      if (lazy) {
+        this.queueForLazyLoading(task)
+      } else {
+        this.loadingQueue.enqueue(task)
+        this.processQueue()
+      }
+    })
+
+    this.cache.set(src, loadPromise)
+    return loadPromise
+  }
+
+  async processQueue() {
+    if (this.currentLoading >= this.maxConcurrent || this.loadingQueue.isEmpty()) {
+      return
+    }
+
+    this.currentLoading++
+    const task = this.loadingQueue.dequeue()
+
+    try {
+      const result = await this.loadSingleImage(task)
+      task.resolve(result)
+    } catch (error) {
+      task.reject(error)
+    } finally {
+      this.currentLoading--
+      this.processQueue() // Process next task
+    }
+  }
+}
 ```
 
 ## Backend Architecture

@@ -624,5 +624,3 @@ export default defineComponent({
   }
 }
 </style>
-</code_block_to_apply_changes_from>
-</rewritten_file>

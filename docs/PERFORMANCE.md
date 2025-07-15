@@ -11,6 +11,9 @@ FM-Dash is designed to handle large Football Manager datasets efficiently while 
 - **Search Performance**: Fast filtering and search across large datasets
 - **UI Responsiveness**: Smooth interactions with large data tables
 - **Network Optimization**: Efficient API responses and caching
+- **Frontend Bundle Optimization**: Minimal initial load times and efficient code splitting
+- **Mobile Performance**: Optimized touch interactions and battery usage
+- **Image Loading**: Modern formats with lazy loading and caching strategies
 
 ## Backend Performance
 
@@ -269,39 +272,131 @@ cache:
 
 ## Frontend Performance
 
-### Bundle Optimization
+### Bundle Optimization and Code Splitting
 
-#### Code Splitting
+FM-Dash implements advanced bundle optimization strategies to achieve fast initial load times and efficient caching.
+
+#### Current Bundle Configuration
+
+The application uses Vite with optimized chunking strategy:
 
 ```javascript
-// Route-level code splitting
+// vite.config.js - Current optimized configuration
+export default defineConfig({
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Core Vue framework
+          'vue-core': ['vue', 'vue-router', 'pinia'],
+          // UI framework
+          'ui-framework': ['quasar'],
+          // Charts and visualization
+          charts: ['chart.js', 'vue-chartjs', 'chartjs-plugin-annotation'],
+          // Utilities and composables
+          utils: ['@vueuse/core']
+        }
+      }
+    },
+    chunkSizeWarningLimit: 800, // Encourage smaller chunks
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: process.env.NODE_ENV === 'production',
+        drop_debugger: true,
+        passes: 2 // Multiple compression passes
+      }
+    }
+  }
+})
+```
+
+#### Route-Level Code Splitting
+
+```javascript
+// Router configuration with lazy loading
 const router = createRouter({
   routes: [
     {
       path: '/',
-      component: () => import('../pages/Home.vue')
+      component: () => import('../pages/LandingPage.vue')
     },
     {
-      path: '/players',
-      component: () => import('../pages/Players.vue')
+      path: '/upload',
+      component: () => import('../pages/PlayerUploadPage.vue')
     },
     {
-      path: '/analytics',
-      component: () => import('../pages/Analytics.vue')
+      path: '/dataset/:id',
+      component: () => import('../pages/DatasetPage.vue')
     },
     {
-      path: '/compare',
-      component: () => import('../pages/Compare.vue')
+      path: '/performance',
+      component: () => import('../pages/PerformancePage.vue')
+    },
+    {
+      path: '/teams/:id',
+      component: () => import('../pages/TeamViewPage.vue')
     }
   ]
 })
 
-// Component-level code splitting
+// Component-level code splitting for heavy components
 export default {
   components: {
-    PlayerTable: () => import('./PlayerTable.vue'),
-    PlayerCard: () => import('./PlayerCard.vue'),
-    PlayerFilters: () => import('./PlayerFilters.vue')
+    PlayerDataTable: () => import('./PlayerDataTable.vue'),
+    PlayerDetailDialog: () => import('./PlayerDetailDialog.vue'),
+    ScatterPlotCard: () => import('./ScatterPlotCard.vue'),
+    ExportOptionsDialog: () => import('./ExportOptionsDialog.vue')
+  }
+}
+```
+
+#### Dynamic Component Loading
+
+```javascript
+// Dynamic component loader utility
+export class DynamicComponentLoader {
+  constructor() {
+    this.loadingComponents = new Map()
+    this.loadedComponents = new Map()
+  }
+
+  async loadComponent(componentName, importFn) {
+    if (this.loadedComponents.has(componentName)) {
+      return this.loadedComponents.get(componentName)
+    }
+
+    if (this.loadingComponents.has(componentName)) {
+      return this.loadingComponents.get(componentName)
+    }
+
+    const loadPromise = importFn().then(module => {
+      const component = module.default || module
+      this.loadedComponents.set(componentName, component)
+      this.loadingComponents.delete(componentName)
+      return component
+    })
+
+    this.loadingComponents.set(componentName, loadPromise)
+    return loadPromise
+  }
+
+  preloadComponent(componentName, importFn) {
+    // Preload without blocking
+    requestIdleCallback(() => {
+      this.loadComponent(componentName, importFn)
+    })
+  }
+}
+
+// Usage in components
+const componentLoader = new DynamicComponentLoader()
+
+export default {
+  async created() {
+    // Preload likely-to-be-used components
+    componentLoader.preloadComponent('PlayerDetailDialog', 
+      () => import('./PlayerDetailDialog.vue'))
   }
 }
 ```
@@ -446,36 +541,62 @@ export const usePlayerSearch = () => {
 #### State Management Optimization
 
 ```javascript
-// Optimized Pinia store
+// Optimized Pinia store with advanced caching and memory management
 export const usePlayersStore = defineStore('players', () => {
-  // State
-  const players = ref([])
+  // State - using shallowRef for large arrays to avoid deep reactivity
+  const players = shallowRef([])
   const searchCache = new Map()
   const filterCache = new Map()
+  const maxCacheSize = 100
   
-  // Getters with caching
+  // LRU Cache implementation for filtered results
+  class LRUCache {
+    constructor(maxSize) {
+      this.maxSize = maxSize
+      this.cache = new Map()
+    }
+    
+    get(key) {
+      if (this.cache.has(key)) {
+        const value = this.cache.get(key)
+        this.cache.delete(key)
+        this.cache.set(key, value) // Move to end
+        return value
+      }
+      return null
+    }
+    
+    set(key, value) {
+      if (this.cache.has(key)) {
+        this.cache.delete(key)
+      } else if (this.cache.size >= this.maxSize) {
+        const firstKey = this.cache.keys().next().value
+        this.cache.delete(firstKey)
+      }
+      this.cache.set(key, value)
+    }
+  }
+  
+  const lruCache = new LRUCache(maxCacheSize)
+  
+  // Getters with advanced caching
   const filteredPlayers = computed(() => {
     const cacheKey = JSON.stringify(filters.value)
     
-    if (filterCache.has(cacheKey)) {
-      return filterCache.get(cacheKey)
+    const cached = lruCache.get(cacheKey)
+    if (cached) {
+      return cached
     }
     
     const filtered = players.value.filter(player => 
       applyFilters(player, filters.value)
     )
     
-    // Cache results (with size limit)
-    if (filterCache.size > 100) {
-      const firstKey = filterCache.keys().next().value
-      filterCache.delete(firstKey)
-    }
-    filterCache.set(cacheKey, filtered)
-    
+    lruCache.set(cacheKey, filtered)
     return filtered
   })
   
-  // Batch operations
+  // Batch operations with minimal reactivity triggers
   const updateMultiplePlayers = (updates) => {
     const newPlayers = [...players.value]
     
@@ -486,15 +607,528 @@ export const usePlayersStore = defineStore('players', () => {
       }
     })
     
+    // Single reactivity trigger for all updates
     players.value = newPlayers
+    
+    // Clear related caches
+    lruCache.cache.clear()
+  }
+  
+  // Memory cleanup on component unmount
+  const cleanup = () => {
+    searchCache.clear()
+    filterCache.clear()
+    lruCache.cache.clear()
   }
   
   return {
     players: readonly(players),
     filteredPlayers,
-    updateMultiplePlayers
+    updateMultiplePlayers,
+    cleanup
   }
 })
+```
+
+### Memory Management and Object Pooling
+
+#### Object Pool Implementation
+
+```javascript
+// Object pool manager for frequently created objects
+export class ObjectPoolManager {
+  constructor() {
+    this.pools = new Map()
+    this.stats = new Map()
+  }
+
+  createPool(name, factory, resetFn, initialSize = 10) {
+    const pool = {
+      objects: [],
+      factory,
+      resetFn,
+      created: 0,
+      reused: 0
+    }
+
+    // Pre-populate pool
+    for (let i = 0; i < initialSize; i++) {
+      pool.objects.push(factory())
+      pool.created++
+    }
+
+    this.pools.set(name, pool)
+    this.stats.set(name, { created: pool.created, reused: 0 })
+  }
+
+  acquire(poolName) {
+    const pool = this.pools.get(poolName)
+    if (!pool) {
+      throw new Error(`Pool ${poolName} not found`)
+    }
+
+    let obj
+    if (pool.objects.length > 0) {
+      obj = pool.objects.pop()
+      pool.reused++
+      this.stats.get(poolName).reused++
+    } else {
+      obj = pool.factory()
+      pool.created++
+      this.stats.get(poolName).created++
+    }
+
+    return obj
+  }
+
+  release(poolName, obj) {
+    const pool = this.pools.get(poolName)
+    if (!pool) return
+
+    if (pool.resetFn) {
+      pool.resetFn(obj)
+    }
+
+    pool.objects.push(obj)
+  }
+
+  getStats() {
+    return Object.fromEntries(this.stats)
+  }
+}
+
+// Usage example for player table rows
+const objectPool = new ObjectPoolManager()
+
+// Create pool for table row objects
+objectPool.createPool('tableRow', 
+  () => ({ 
+    id: null, 
+    name: '', 
+    position: '', 
+    club: '', 
+    overall: 0,
+    selected: false 
+  }),
+  (obj) => {
+    obj.id = null
+    obj.name = ''
+    obj.position = ''
+    obj.club = ''
+    obj.overall = 0
+    obj.selected = false
+  },
+  50 // Initial pool size
+)
+
+// In component
+export default {
+  setup() {
+    const tableRows = ref([])
+    
+    const createTableRow = (player) => {
+      const row = objectPool.acquire('tableRow')
+      row.id = player.id
+      row.name = player.name
+      row.position = player.position
+      row.club = player.club
+      row.overall = player.overall
+      return row
+    }
+    
+    const releaseTableRow = (row) => {
+      objectPool.release('tableRow', row)
+    }
+    
+    onUnmounted(() => {
+      // Release all objects back to pool
+      tableRows.value.forEach(releaseTableRow)
+    })
+    
+    return { createTableRow, releaseTableRow }
+  }
+}
+```
+
+### Image Optimization and Asset Management
+
+#### Advanced Image Loading System
+
+```javascript
+// Modern image loader with WebP/AVIF support and progressive loading
+export class AdvancedImageLoader {
+  constructor() {
+    this.cache = new Map()
+    this.loadingQueue = []
+    this.preloadQueue = []
+    this.maxConcurrent = 6
+    this.currentLoading = 0
+  }
+
+  async loadImage(src, options = {}) {
+    const {
+      formats = ['avif', 'webp', 'jpg'],
+      sizes = [],
+      priority = 'normal',
+      placeholder = true,
+      progressive = true
+    } = options
+
+    // Check cache first
+    if (this.cache.has(src)) {
+      return this.cache.get(src)
+    }
+
+    // Create loading promise
+    const loadPromise = this.createLoadPromise(src, formats, sizes, {
+      placeholder,
+      progressive,
+      priority
+    })
+
+    this.cache.set(src, loadPromise)
+    return loadPromise
+  }
+
+  async createLoadPromise(src, formats, sizes, options) {
+    // Try modern formats first
+    for (const format of formats) {
+      const modernSrc = this.getModernSrc(src, format)
+      if (await this.canLoadFormat(format)) {
+        try {
+          return await this.loadSingleImage(modernSrc, options)
+        } catch (error) {
+          console.warn(`Failed to load ${format} format, trying next...`)
+        }
+      }
+    }
+
+    // Fallback to original
+    return this.loadSingleImage(src, options)
+  }
+
+  async loadSingleImage(src, options) {
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      
+      if (options.progressive) {
+        // Load low-quality placeholder first
+        const placeholderSrc = this.getPlaceholderSrc(src)
+        const placeholder = new Image()
+        
+        placeholder.onload = () => {
+          resolve({
+            element: placeholder,
+            src: placeholderSrc,
+            isPlaceholder: true,
+            upgrade: () => this.upgradeImage(img, src)
+          })
+        }
+        
+        placeholder.src = placeholderSrc
+      }
+
+      img.onload = () => {
+        resolve({
+          element: img,
+          src,
+          isPlaceholder: false
+        })
+      }
+
+      img.onerror = reject
+      img.src = src
+    })
+  }
+
+  getModernSrc(src, format) {
+    const ext = src.split('.').pop()
+    return src.replace(`.${ext}`, `.${format}`)
+  }
+
+  getPlaceholderSrc(src) {
+    // Generate low-quality placeholder URL
+    return src.replace(/\.(jpg|jpeg|png|webp)$/i, '_placeholder.$1')
+  }
+
+  async canLoadFormat(format) {
+    if (format === 'avif') {
+      return this.supportsAVIF()
+    }
+    if (format === 'webp') {
+      return this.supportsWebP()
+    }
+    return true
+  }
+
+  supportsWebP() {
+    const canvas = document.createElement('canvas')
+    canvas.width = 1
+    canvas.height = 1
+    return canvas.toDataURL('image/webp').indexOf('data:image/webp') === 0
+  }
+
+  supportsAVIF() {
+    const canvas = document.createElement('canvas')
+    canvas.width = 1
+    canvas.height = 1
+    return canvas.toDataURL('image/avif').indexOf('data:image/avif') === 0
+  }
+}
+
+// Lazy loading composable with Intersection Observer
+export function useLazyLoading(options = {}) {
+  const {
+    rootMargin = '50px',
+    threshold = 0.1,
+    unobserveOnLoad = true
+  } = options
+
+  const imageLoader = new AdvancedImageLoader()
+  const observedElements = new WeakMap()
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(async (entry) => {
+      if (entry.isIntersecting) {
+        const element = entry.target
+        const src = element.dataset.src
+        const options = JSON.parse(element.dataset.options || '{}')
+
+        try {
+          const result = await imageLoader.loadImage(src, options)
+          
+          if (result.isPlaceholder) {
+            element.src = result.src
+            element.classList.add('placeholder')
+            
+            // Upgrade to full quality
+            const fullImage = await result.upgrade()
+            element.src = fullImage.src
+            element.classList.remove('placeholder')
+            element.classList.add('loaded')
+          } else {
+            element.src = result.src
+            element.classList.add('loaded')
+          }
+
+          if (unobserveOnLoad) {
+            observer.unobserve(element)
+          }
+        } catch (error) {
+          element.classList.add('error')
+          console.error('Failed to load image:', error)
+        }
+      }
+    })
+  }, { rootMargin, threshold })
+
+  const observe = (element, src, loadOptions = {}) => {
+    element.dataset.src = src
+    element.dataset.options = JSON.stringify(loadOptions)
+    observer.observe(element)
+    observedElements.set(element, { src, options: loadOptions })
+  }
+
+  const unobserve = (element) => {
+    observer.unobserve(element)
+    observedElements.delete(element)
+  }
+
+  const cleanup = () => {
+    observer.disconnect()
+  }
+
+  return {
+    observe,
+    unobserve,
+    cleanup
+  }
+}
+```
+
+### Mobile Performance Optimization
+
+#### Touch Optimization and Battery Efficiency
+
+```javascript
+// Mobile-optimized touch handling
+export class MobileOptimizer {
+  constructor() {
+    this.isLowEndDevice = this.detectLowEndDevice()
+    this.reducedMotion = this.prefersReducedMotion()
+    this.touchHandlers = new Map()
+  }
+
+  detectLowEndDevice() {
+    // Detect low-end devices based on various factors
+    const memory = navigator.deviceMemory || 4
+    const cores = navigator.hardwareConcurrency || 4
+    const connection = navigator.connection
+    
+    return memory <= 2 || cores <= 2 || 
+           (connection && connection.effectiveType === 'slow-2g')
+  }
+
+  prefersReducedMotion() {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  }
+
+  optimizeTouchEvents(element, handlers) {
+    const optimizedHandlers = {}
+
+    // Use passive listeners for better scroll performance
+    if (handlers.touchstart) {
+      optimizedHandlers.touchstart = this.debounce(handlers.touchstart, 16)
+      element.addEventListener('touchstart', optimizedHandlers.touchstart, { passive: true })
+    }
+
+    if (handlers.touchmove) {
+      optimizedHandlers.touchmove = this.throttle(handlers.touchmove, 16)
+      element.addEventListener('touchmove', optimizedHandlers.touchmove, { passive: true })
+    }
+
+    if (handlers.touchend) {
+      optimizedHandlers.touchend = handlers.touchend
+      element.addEventListener('touchend', optimizedHandlers.touchend, { passive: true })
+    }
+
+    this.touchHandlers.set(element, optimizedHandlers)
+    return optimizedHandlers
+  }
+
+  createMobileVirtualScroll(container, items, itemHeight) {
+    const viewportHeight = container.clientHeight
+    const visibleCount = Math.ceil(viewportHeight / itemHeight) + 2 // Buffer
+    const totalHeight = items.length * itemHeight
+
+    let scrollTop = 0
+    let startIndex = 0
+    let endIndex = Math.min(visibleCount, items.length)
+
+    const updateVisibleItems = () => {
+      startIndex = Math.floor(scrollTop / itemHeight)
+      endIndex = Math.min(startIndex + visibleCount, items.length)
+      
+      // Update DOM efficiently
+      this.updateVirtualScrollDOM(container, items.slice(startIndex, endIndex), 
+                                  startIndex, itemHeight, totalHeight)
+    }
+
+    // Optimized scroll handler for mobile
+    const scrollHandler = this.throttle((e) => {
+      scrollTop = e.target.scrollTop
+      
+      // Use requestAnimationFrame for smooth updates
+      requestAnimationFrame(updateVisibleItems)
+    }, 16)
+
+    container.addEventListener('scroll', scrollHandler, { passive: true })
+    
+    // Initial render
+    updateVisibleItems()
+
+    return {
+      updateItems: (newItems) => {
+        items = newItems
+        updateVisibleItems()
+      },
+      destroy: () => {
+        container.removeEventListener('scroll', scrollHandler)
+      }
+    }
+  }
+
+  throttle(func, limit) {
+    let inThrottle
+    return function() {
+      const args = arguments
+      const context = this
+      if (!inThrottle) {
+        func.apply(context, args)
+        inThrottle = true
+        setTimeout(() => inThrottle = false, limit)
+      }
+    }
+  }
+
+  debounce(func, wait) {
+    let timeout
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout)
+        func(...args)
+      }
+      clearTimeout(timeout)
+      timeout = setTimeout(later, wait)
+    }
+  }
+}
+
+// Battery-efficient animation manager
+export class BatteryEfficientAnimations {
+  constructor() {
+    this.animationQueue = []
+    this.isAnimating = false
+    this.batteryLevel = this.getBatteryLevel()
+    this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  }
+
+  async getBatteryLevel() {
+    if ('getBattery' in navigator) {
+      const battery = await navigator.getBattery()
+      return battery.level
+    }
+    return 1 // Assume full battery if API not available
+  }
+
+  shouldReduceAnimations() {
+    return this.reducedMotion || this.batteryLevel < 0.2
+  }
+
+  queueAnimation(element, keyframes, options = {}) {
+    if (this.shouldReduceAnimations()) {
+      // Skip animation, apply final state immediately
+      const finalFrame = keyframes[keyframes.length - 1]
+      Object.assign(element.style, finalFrame)
+      return Promise.resolve()
+    }
+
+    return new Promise((resolve) => {
+      this.animationQueue.push({
+        element,
+        keyframes,
+        options: {
+          duration: 300,
+          easing: 'ease-out',
+          ...options
+        },
+        resolve
+      })
+
+      this.processQueue()
+    })
+  }
+
+  processQueue() {
+    if (this.isAnimating || this.animationQueue.length === 0) {
+      return
+    }
+
+    this.isAnimating = true
+    const animation = this.animationQueue.shift()
+
+    const animationInstance = animation.element.animate(
+      animation.keyframes,
+      animation.options
+    )
+
+    animationInstance.addEventListener('finish', () => {
+      animation.resolve()
+      this.isAnimating = false
+      this.processQueue() // Process next animation
+    })
+  }
+}
 ```
 
 ## Database/Search Performance
@@ -906,9 +1540,342 @@ func BenchmarkSearchIndex(b *testing.B) {
 }
 ```
 
+### Performance Monitoring and Core Web Vitals
+
+#### Frontend Performance Tracking
+
+```javascript
+// Core Web Vitals monitoring implementation
+export class PerformanceTracker {
+  constructor() {
+    this.metrics = new Map()
+    this.observers = []
+    this.initializeTracking()
+  }
+
+  initializeTracking() {
+    // Largest Contentful Paint (LCP)
+    this.trackLCP()
+    
+    // First Input Delay (FID)
+    this.trackFID()
+    
+    // Cumulative Layout Shift (CLS)
+    this.trackCLS()
+    
+    // First Contentful Paint (FCP)
+    this.trackFCP()
+    
+    // Time to First Byte (TTFB)
+    this.trackTTFB()
+  }
+
+  trackLCP() {
+    const observer = new PerformanceObserver((list) => {
+      const entries = list.getEntries()
+      const lastEntry = entries[entries.length - 1]
+      
+      this.recordMetric('LCP', lastEntry.startTime, {
+        element: lastEntry.element?.tagName,
+        url: lastEntry.url
+      })
+    })
+    
+    observer.observe({ entryTypes: ['largest-contentful-paint'] })
+    this.observers.push(observer)
+  }
+
+  trackFID() {
+    const observer = new PerformanceObserver((list) => {
+      const entries = list.getEntries()
+      entries.forEach(entry => {
+        this.recordMetric('FID', entry.processingStart - entry.startTime, {
+          eventType: entry.name
+        })
+      })
+    })
+    
+    observer.observe({ entryTypes: ['first-input'] })
+    this.observers.push(observer)
+  }
+
+  trackCLS() {
+    let clsValue = 0
+    const observer = new PerformanceObserver((list) => {
+      const entries = list.getEntries()
+      entries.forEach(entry => {
+        if (!entry.hadRecentInput) {
+          clsValue += entry.value
+        }
+      })
+      
+      this.recordMetric('CLS', clsValue)
+    })
+    
+    observer.observe({ entryTypes: ['layout-shift'] })
+    this.observers.push(observer)
+  }
+
+  trackCustomMetrics() {
+    // Table rendering time
+    this.measureTableRender = (playerCount) => {
+      const start = performance.now()
+      return () => {
+        const duration = performance.now() - start
+        this.recordMetric('table_render_time', duration, { playerCount })
+      }
+    }
+
+    // Memory usage tracking
+    this.trackMemoryUsage = () => {
+      if ('memory' in performance) {
+        const memory = performance.memory
+        this.recordMetric('memory_usage', {
+          used: memory.usedJSHeapSize,
+          total: memory.totalJSHeapSize,
+          limit: memory.jsHeapSizeLimit
+        })
+      }
+    }
+
+    // Bundle loading time
+    this.trackBundleLoad = (chunkName) => {
+      const start = performance.now()
+      return () => {
+        const duration = performance.now() - start
+        this.recordMetric('bundle_load_time', duration, { chunkName })
+      }
+    }
+  }
+
+  recordMetric(name, value, metadata = {}) {
+    const metric = {
+      name,
+      value,
+      timestamp: Date.now(),
+      url: window.location.href,
+      userAgent: navigator.userAgent,
+      ...metadata
+    }
+
+    this.metrics.set(`${name}_${Date.now()}`, metric)
+    
+    // Send to analytics service
+    this.sendToAnalytics(metric)
+    
+    // Check thresholds and alert if needed
+    this.checkThresholds(name, value)
+  }
+
+  checkThresholds(metricName, value) {
+    const thresholds = {
+      LCP: 2500, // 2.5 seconds
+      FID: 100,  // 100ms
+      CLS: 0.1,  // 0.1
+      FCP: 1800, // 1.8 seconds
+      TTFB: 800, // 800ms
+      table_render_time: 500, // 500ms
+      bundle_load_time: 3000  // 3 seconds
+    }
+
+    if (thresholds[metricName] && value > thresholds[metricName]) {
+      console.warn(`Performance threshold exceeded for ${metricName}: ${value}`)
+      
+      // Send alert to monitoring service
+      this.sendAlert(metricName, value, thresholds[metricName])
+    }
+  }
+
+  async sendToAnalytics(metric) {
+    try {
+      await fetch('/api/analytics/performance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(metric)
+      })
+    } catch (error) {
+      console.error('Failed to send performance metric:', error)
+    }
+  }
+
+  getMetricsSummary() {
+    const summary = {}
+    
+    for (const [key, metric] of this.metrics) {
+      if (!summary[metric.name]) {
+        summary[metric.name] = {
+          count: 0,
+          total: 0,
+          min: Infinity,
+          max: -Infinity,
+          values: []
+        }
+      }
+      
+      const stat = summary[metric.name]
+      stat.count++
+      stat.total += metric.value
+      stat.min = Math.min(stat.min, metric.value)
+      stat.max = Math.max(stat.max, metric.value)
+      stat.values.push(metric.value)
+    }
+    
+    // Calculate percentiles
+    for (const stat of Object.values(summary)) {
+      stat.average = stat.total / stat.count
+      stat.values.sort((a, b) => a - b)
+      stat.p50 = this.percentile(stat.values, 50)
+      stat.p75 = this.percentile(stat.values, 75)
+      stat.p95 = this.percentile(stat.values, 95)
+    }
+    
+    return summary
+  }
+
+  percentile(values, p) {
+    const index = Math.ceil((p / 100) * values.length) - 1
+    return values[index]
+  }
+
+  cleanup() {
+    this.observers.forEach(observer => observer.disconnect())
+    this.metrics.clear()
+  }
+}
+
+// Usage in main application
+const performanceTracker = new PerformanceTracker()
+
+// Track custom events
+export const trackTableRender = performanceTracker.measureTableRender
+export const trackBundleLoad = performanceTracker.trackBundleLoad
+export const trackMemoryUsage = performanceTracker.trackMemoryUsage
+```
+
+#### Bundle Analysis and Monitoring
+
+```javascript
+// Bundle analysis utilities
+export class BundleAnalyzer {
+  constructor() {
+    this.chunkSizes = new Map()
+    this.loadTimes = new Map()
+    this.dependencies = new Map()
+  }
+
+  trackChunkLoad(chunkName, size) {
+    const start = performance.now()
+    
+    return () => {
+      const loadTime = performance.now() - start
+      this.chunkSizes.set(chunkName, size)
+      this.loadTimes.set(chunkName, loadTime)
+      
+      // Alert if chunk is too large
+      if (size > 800 * 1024) { // 800KB threshold
+        console.warn(`Large chunk detected: ${chunkName} (${(size / 1024).toFixed(1)}KB)`)
+      }
+      
+      // Alert if load time is too slow
+      if (loadTime > 3000) { // 3 second threshold
+        console.warn(`Slow chunk load: ${chunkName} (${loadTime.toFixed(0)}ms)`)
+      }
+    }
+  }
+
+  analyzeBundleComposition() {
+    const analysis = {
+      totalSize: 0,
+      chunkCount: this.chunkSizes.size,
+      largestChunk: { name: '', size: 0 },
+      slowestChunk: { name: '', time: 0 },
+      recommendations: []
+    }
+
+    // Analyze chunk sizes
+    for (const [name, size] of this.chunkSizes) {
+      analysis.totalSize += size
+      
+      if (size > analysis.largestChunk.size) {
+        analysis.largestChunk = { name, size }
+      }
+    }
+
+    // Analyze load times
+    for (const [name, time] of this.loadTimes) {
+      if (time > analysis.slowestChunk.time) {
+        analysis.slowestChunk = { name, time }
+      }
+    }
+
+    // Generate recommendations
+    if (analysis.largestChunk.size > 1024 * 1024) { // 1MB
+      analysis.recommendations.push(
+        `Consider splitting ${analysis.largestChunk.name} chunk (${(analysis.largestChunk.size / 1024 / 1024).toFixed(1)}MB)`
+      )
+    }
+
+    if (analysis.slowestChunk.time > 5000) { // 5 seconds
+      analysis.recommendations.push(
+        `Optimize loading for ${analysis.slowestChunk.name} chunk (${(analysis.slowestChunk.time / 1000).toFixed(1)}s)`
+      )
+    }
+
+    return analysis
+  }
+
+  generateReport() {
+    const analysis = this.analyzeBundleComposition()
+    
+    return {
+      timestamp: new Date().toISOString(),
+      bundleAnalysis: analysis,
+      chunkDetails: Array.from(this.chunkSizes.entries()).map(([name, size]) => ({
+        name,
+        size,
+        sizeFormatted: `${(size / 1024).toFixed(1)}KB`,
+        loadTime: this.loadTimes.get(name) || 0
+      })).sort((a, b) => b.size - a.size)
+    }
+  }
+}
+```
+
 ## Performance Best Practices
 
-### Development Best Practices
+### Frontend Performance Best Practices
+
+1. **Bundle Optimization**
+   - Keep initial bundle under 200KB gzipped
+   - Use route-based code splitting for major features
+   - Implement dynamic imports for heavy components
+   - Monitor bundle size in CI/CD pipeline
+
+2. **Memory Management**
+   - Use `shallowRef` for large arrays to avoid deep reactivity
+   - Implement object pooling for frequently created objects
+   - Clear caches and event listeners on component unmount
+   - Monitor memory usage and detect leaks early
+
+3. **Image and Asset Optimization**
+   - Use modern image formats (WebP/AVIF) with fallbacks
+   - Implement lazy loading for off-screen images
+   - Optimize image sizes and use responsive images
+   - Cache images aggressively with proper invalidation
+
+4. **Mobile Performance**
+   - Use passive event listeners for touch events
+   - Implement reduced motion preferences
+   - Optimize for low-end devices and slow networks
+   - Monitor battery usage and adapt accordingly
+
+5. **Performance Monitoring**
+   - Track Core Web Vitals continuously
+   - Monitor custom metrics relevant to your application
+   - Set up performance budgets and alerts
+   - Analyze performance regressions in CI/CD
+
+### Backend Performance Best Practices
 
 1. **Use Profiling Early**: Profile during development, not just in production
 2. **Measure Everything**: Don't optimize without measuring
@@ -932,6 +1899,86 @@ func BenchmarkSearchIndex(b *testing.B) {
 4. **Load Balancing**: Distribute load across multiple instances
 5. **Auto-scaling**: Scale resources based on demand
 
+## Performance Testing and Validation
+
+### Automated Performance Testing
+
+```bash
+# Lighthouse CI for automated performance testing
+npm install -g @lhci/cli
+
+# Run Lighthouse CI
+lhci autorun --config=.lighthouserc.js
+
+# Performance budget configuration
+# .lighthouserc.js
+module.exports = {
+  ci: {
+    collect: {
+      url: ['http://localhost:3000'],
+      numberOfRuns: 3
+    },
+    assert: {
+      assertions: {
+        'categories:performance': ['error', { minScore: 0.9 }],
+        'categories:accessibility': ['error', { minScore: 0.9 }],
+        'first-contentful-paint': ['error', { maxNumericValue: 2000 }],
+        'largest-contentful-paint': ['error', { maxNumericValue: 2500 }],
+        'cumulative-layout-shift': ['error', { maxNumericValue: 0.1 }]
+      }
+    }
+  }
+}
+```
+
+### Load Testing for Frontend
+
+```javascript
+// Frontend load testing with realistic user scenarios
+import { test, expect } from '@playwright/test'
+
+test.describe('Performance Tests', () => {
+  test('Large dataset rendering performance', async ({ page }) => {
+    await page.goto('/dataset/large-test-dataset')
+    
+    // Measure table rendering time
+    const startTime = Date.now()
+    await page.waitForSelector('[data-testid="player-table"]')
+    const renderTime = Date.now() - startTime
+    
+    expect(renderTime).toBeLessThan(2000) // 2 second threshold
+    
+    // Check for memory leaks
+    const initialMemory = await page.evaluate(() => performance.memory?.usedJSHeapSize || 0)
+    
+    // Simulate user interactions
+    await page.click('[data-testid="filter-position"]')
+    await page.selectOption('[data-testid="position-select"]', 'ST')
+    await page.waitForTimeout(1000)
+    
+    const finalMemory = await page.evaluate(() => performance.memory?.usedJSHeapSize || 0)
+    const memoryIncrease = finalMemory - initialMemory
+    
+    // Memory increase should be reasonable
+    expect(memoryIncrease).toBeLessThan(50 * 1024 * 1024) // 50MB threshold
+  })
+
+  test('Mobile performance', async ({ page, browserName }) => {
+    // Simulate mobile device
+    await page.setViewportSize({ width: 375, height: 667 })
+    await page.goto('/dataset/test-dataset')
+    
+    // Measure touch interaction responsiveness
+    const startTime = Date.now()
+    await page.tap('[data-testid="player-row-1"]')
+    await page.waitForSelector('[data-testid="player-detail-dialog"]')
+    const interactionTime = Date.now() - startTime
+    
+    expect(interactionTime).toBeLessThan(300) // 300ms threshold for mobile
+  })
+})
+```
+
 ---
 
-Regular performance monitoring and optimization ensure FM-Dash remains fast and responsive as datasets grow and user load increases. 
+Regular performance monitoring and optimization ensure FM-Dash remains fast and responsive as datasets grow and user load increases. The comprehensive performance optimization strategy covers both frontend and backend concerns, with particular emphasis on the new frontend performance requirements including bundle optimization, memory management, image loading, mobile performance, and continuous monitoring. 
