@@ -1,0 +1,204 @@
+{
+  "version": 1,
+  "schema": {
+    "fields": [
+      {
+        "name": "uid",
+        "type": "int64",
+        "nullable": false
+      },
+      {
+        "name": "name",
+        "type": "utf8",
+        "nullable": false
+      },
+      {
+        "name": "position",
+        "type": "utf8",
+        "nullable": false
+      },
+      {
+        "name": "age",
+        "type": "utf8",
+        "nullable": false
+      },
+      {
+        "name": "club",
+        "type": "utf8",
+        "nullable": false
+      },
+      {
+        "name": "division",
+        "type": "utf8",
+        "nullable": false
+      },
+      {
+        "name": "nationality",
+        "type": "utf8",
+        "nullable": false
+      },
+      {
+        "name": "nationality_iso",
+        "type": "utf8",
+        "nullable": false
+      },
+      {
+        "name": "nationality_fifa_code",
+        "type": "utf8",
+        "nullable": false
+      },
+      {
+        "name": "transfer_value",
+        "type": "utf8",
+        "nullable": false
+      },
+      {
+        "name": "wage",
+        "type": "utf8",
+        "nullable": false
+      },
+      {
+        "name": "transfer_value_amount",
+        "type": "int64",
+        "nullable": false
+      },
+      {
+        "name": "wage_amount",
+        "type": "int64",
+        "nullable": false
+      },
+      {
+        "name": "personality",
+        "type": "utf8",
+        "nullable": true
+      },
+      {
+        "name": "media_handling",
+        "type": "utf8",
+        "nullable": true
+      },
+      {
+        "name": "attribute_masked",
+        "type": "bool",
+        "nullable": true
+      },
+      {
+        "name": "pac",
+        "type": "int32",
+        "nullable": false
+      },
+      {
+        "name": "sho",
+        "type": "int32",
+        "nullable": false
+      },
+      {
+        "name": "pas",
+        "type": "int32",
+        "nullable": false
+      },
+      {
+        "name": "dri",
+        "type": "int32",
+        "nullable": false
+      },
+      {
+        "name": "def",
+        "type": "int32",
+        "nullable": false
+      },
+      {
+        "name": "phy",
+        "type": "int32",
+        "nullable": false
+      },
+      {
+        "name": "overall",
+        "type": "int32",
+        "nullable": false
+      },
+      {
+        "name": "gk",
+        "type": "int32",
+        "nullable": true
+      },
+      {
+        "name": "div",
+        "type": "int32",
+        "nullable": true
+      },
+      {
+        "name": "han",
+        "type": "int32",
+        "nullable": true
+      },
+      {
+        "name": "ref",
+        "type": "int32",
+        "nullable": true
+      },
+      {
+        "name": "kic",
+        "type": "int32",
+        "nullable": true
+      },
+      {
+        "name": "spd",
+        "type": "int32",
+        "nullable": true
+      },
+      {
+        "name": "pos",
+        "type": "int32",
+        "nullable": true
+      },
+      {
+        "name": "best_role_overall",
+        "type": "utf8",
+        "nullable": false
+      },
+      {
+        "name": "attributes",
+        "type": "utf8",
+        "nullable": false
+      },
+      {
+        "name": "numeric_attributes",
+        "type": "utf8",
+        "nullable": false
+      },
+      {
+        "name": "performance_stats_numeric",
+        "type": "utf8",
+        "nullable": false
+      },
+      {
+        "name": "performance_percentiles",
+        "type": "utf8",
+        "nullable": false
+      },
+      {
+        "name": "parsed_positions",
+        "type": "utf8",
+        "nullable": false
+      },
+      {
+        "name": "short_positions",
+        "type": "utf8",
+        "nullable": false
+      },
+      {
+        "name": "position_groups",
+        "type": "utf8",
+        "nullable": false
+      },
+      {
+        "name": "role_specific_overalls",
+        "type": "utf8",
+        "nullable": false
+      }
+    ]
+  },
+  "created_at": "2025-07-16T00:01:44.829446+01:00",
+  "description": "Schema version 1"
+}
