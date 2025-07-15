@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/LiamHardman/fm-dash/compare/v1.0.0...v1.1.0) (2025-07-15)
+
+
+### Features
+
+* implement advanced code splitting and dynamic component loading ([cad7e68](https://github.com/LiamHardman/fm-dash/commit/cad7e68a3e94089efe33c8d836f123afedb3481d))
+
 # 1.0.0 (2025-07-14)
 
 
