@@ -23,6 +23,8 @@ require (
 )
 
 require (
+	github.com/andybalholm/brotli v1.1.0 // indirect
+	github.com/apache/arrow/go/v18 v18.0.0-20241007013041-ab95a4d25142 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.2 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
@@ -34,7 +36,9 @@ require (
 	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
 	github.com/minio/crc64nvme v1.0.1 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
+	github.com/parquet-go/parquet-go v0.25.1 // indirect
 	github.com/philhofer/fwd v1.1.3-0.20240916144458-20a13a1f6b7c // indirect
+	github.com/pierrec/lz4/v4 v4.1.21 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/tinylib/msgp v1.3.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect

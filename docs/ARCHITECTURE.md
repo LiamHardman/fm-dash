@@ -392,10 +392,13 @@ class ImageLoadingSystem {
 
 ### Technology Stack
 
-- **Go 1.21+**: High-performance, concurrent language
+- **Go 1.24+**: High-performance, concurrent language with latest optimizations
 - **Standard Library**: Minimal dependencies, native HTTP server
 - **HTML Parser**: golang.org/x/net/html for Football Manager data
+- **Apache Arrow**: Columnar data processing for high-performance analytics
+- **Parquet**: Efficient columnar storage format for large datasets
 - **S3 Storage**: AWS S3 or MinIO for file storage
+- **Compression**: klauspost/compress for optimized data compression
 - **OpenTelemetry**: Observability and monitoring
 
 ### Service Layer Architecture
