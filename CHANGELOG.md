@@ -1,3 +1,10 @@
+## [1.3.1](https://github.com/LiamHardman/fm-dash/compare/v1.3.0...v1.3.1) (2025-07-15)
+
+
+### Bug Fixes
+
+* resolved issues pre-commit flagged ([fdd4fe2](https://github.com/LiamHardman/fm-dash/commit/fdd4fe2e63fde594b841c39460fc47a1eb77e280))
+
 # [1.3.0](https://github.com/LiamHardman/fm-dash/compare/v1.2.0...v1.3.0) (2025-07-15)
 
 
