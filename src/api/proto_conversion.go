@@ -6,54 +6,99 @@ import (
 	"time"
 
 	"api/proto"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 // --- RoleOverallScore Conversion Functions ---
 
 // ToProto converts a RoleOverallScore struct to protobuf format
 func (r *RoleOverallScore) ToProto(ctx context.Context) (*proto.RoleOverallScore, error) {
+	ctx, span := StartSpanWithAttributes(ctx, "protobuf.conversion.role_to_proto", []attribute.KeyValue{
+		attribute.String("conversion.type", "role_overall_score"),
+		attribute.String("conversion.direction", "to_protobuf"),
+	})
+	defer span.End()
+
 	start := time.Now()
 
 	if r == nil {
-		logError(ctx, "Cannot convert nil RoleOverallScore to protobuf", "error", "nil_input")
+		RecordError(ctx, fmt.Errorf("nil RoleOverallScore"), "Cannot convert nil RoleOverallScore to protobuf",
+			WithErrorCategory("validation"),
+			WithSeverity("medium"))
 		return nil, fmt.Errorf("cannot convert nil RoleOverallScore to protobuf")
 	}
 
-	logDebug(ctx, "Converting RoleOverallScore to protobuf", "role_name", r.RoleName)
+	SetSpanAttributes(ctx,
+		attribute.String("role.name", r.RoleName),
+		attribute.Int("role.score", r.Score),
+	)
+
+	logDebug(ctx, "Converting RoleOverallScore to protobuf", 
+		"role_name", r.RoleName,
+		"conversion_type", "role_overall_score",
+		"conversion_direction", "to_protobuf")
 
 	protoRole := &proto.RoleOverallScore{
 		RoleName: r.RoleName,
 		Score:    int32(r.Score),
 	}
 
+	duration := time.Since(start)
+	SetSpanAttributes(ctx,
+		attribute.Float64("conversion.duration_ms", float64(duration.Nanoseconds())/1e6),
+		attribute.Bool("conversion.success", true),
+	)
+
 	logDebug(ctx, "RoleOverallScore conversion completed", 
 		"role_name", r.RoleName, 
 		"score", r.Score,
-		"duration_ms", time.Since(start).Milliseconds())
+		"duration_ms", duration.Milliseconds())
 
 	return protoRole, nil
 }
 
 // FromProto converts a protobuf RoleOverallScore to the native struct
 func RoleOverallScoreFromProto(ctx context.Context, protoRole *proto.RoleOverallScore) (*RoleOverallScore, error) {
+	ctx, span := StartSpanWithAttributes(ctx, "protobuf.conversion.role_from_proto", []attribute.KeyValue{
+		attribute.String("conversion.type", "role_overall_score"),
+		attribute.String("conversion.direction", "from_protobuf"),
+	})
+	defer span.End()
+
 	start := time.Now()
 
 	if protoRole == nil {
-		logError(ctx, "Cannot convert nil protobuf RoleOverallScore", "error", "nil_input")
+		RecordError(ctx, fmt.Errorf("nil protobuf RoleOverallScore"), "Cannot convert nil protobuf RoleOverallScore",
+			WithErrorCategory("validation"),
+			WithSeverity("medium"))
 		return nil, fmt.Errorf("cannot convert nil protobuf RoleOverallScore")
 	}
 
-	logDebug(ctx, "Converting protobuf to RoleOverallScore", "role_name", protoRole.GetRoleName())
+	SetSpanAttributes(ctx,
+		attribute.String("role.name", protoRole.GetRoleName()),
+		attribute.Int("role.score", int(protoRole.GetScore())),
+	)
+
+	logDebug(ctx, "Converting protobuf to RoleOverallScore", 
+		"role_name", protoRole.GetRoleName(),
+		"conversion_type", "role_overall_score",
+		"conversion_direction", "from_protobuf")
 
 	role := &RoleOverallScore{
 		RoleName: protoRole.GetRoleName(),
 		Score:    int(protoRole.GetScore()),
 	}
 
+	duration := time.Since(start)
+	SetSpanAttributes(ctx,
+		attribute.Float64("conversion.duration_ms", float64(duration.Nanoseconds())/1e6),
+		attribute.Bool("conversion.success", true),
+	)
+
 	logDebug(ctx, "Protobuf RoleOverallScore conversion completed", 
 		"role_name", role.RoleName, 
 		"score", role.Score,
-		"duration_ms", time.Since(start).Milliseconds())
+		"duration_ms", duration.Milliseconds())
 
 	return role, nil
 }
@@ -62,14 +107,38 @@ func RoleOverallScoreFromProto(ctx context.Context, protoRole *proto.RoleOverall
 
 // ToProto converts a Player struct to protobuf format
 func (p *Player) ToProto(ctx context.Context) (*proto.Player, error) {
+	ctx, span := StartSpanWithAttributes(ctx, "protobuf.conversion.player_to_proto", []attribute.KeyValue{
+		attribute.String("conversion.type", "player"),
+		attribute.String("conversion.direction", "to_protobuf"),
+	})
+	defer span.End()
+
 	start := time.Now()
 
 	if p == nil {
-		logError(ctx, "Cannot convert nil Player to protobuf", "error", "nil_input")
+		RecordError(ctx, fmt.Errorf("nil Player"), "Cannot convert nil Player to protobuf",
+			WithErrorCategory("validation"),
+			WithSeverity("medium"))
 		return nil, fmt.Errorf("cannot convert nil Player to protobuf")
 	}
 
-	logDebug(ctx, "Converting Player to protobuf", "player_uid", p.UID, "player_name", p.Name)
+	SetSpanAttributes(ctx,
+		attribute.Int64("player.uid", p.UID),
+		attribute.String("player.name", p.Name),
+		attribute.String("player.position", p.Position),
+		attribute.String("player.club", p.Club),
+		attribute.Int("player.role_count", len(p.RoleSpecificOveralls)),
+	)
+
+	logDebug(ctx, "Converting Player to protobuf", 
+		"player_uid", p.UID, 
+		"player_name", p.Name,
+		"conversion_type", "player",
+		"conversion_direction", "to_protobuf",
+		"attributes_count", len(p.Attributes),
+		"numeric_attributes_count", len(p.NumericAttributes),
+		"performance_stats_count", len(p.PerformanceStatsNumeric),
+		"role_count", len(p.RoleSpecificOveralls))
 
 	// Convert RoleSpecificOveralls
 	var protoRoles []*proto.RoleOverallScore
@@ -141,25 +210,58 @@ func (p *Player) ToProto(ctx context.Context) (*proto.Player, error) {
 		WageAmount:              p.WageAmount,
 	}
 
+	duration := time.Since(start)
+	SetSpanAttributes(ctx,
+		attribute.Float64("conversion.duration_ms", float64(duration.Nanoseconds())/1e6),
+		attribute.Bool("conversion.success", true),
+		attribute.Int("conversion.attributes_count", len(p.Attributes)),
+		attribute.Int("conversion.numeric_attributes_count", len(p.NumericAttributes)),
+		attribute.Int("conversion.performance_stats_count", len(p.PerformanceStatsNumeric)),
+	)
+
 	logDebug(ctx, "Player conversion to protobuf completed", 
 		"player_uid", p.UID, 
 		"player_name", p.Name,
 		"role_count", len(protoRoles),
-		"duration_ms", time.Since(start).Milliseconds())
+		"duration_ms", duration.Milliseconds())
 
 	return protoPlayer, nil
 }
 
 // FromProto converts a protobuf Player to the native struct
 func PlayerFromProto(ctx context.Context, protoPlayer *proto.Player) (*Player, error) {
+	ctx, span := StartSpanWithAttributes(ctx, "protobuf.conversion.player_from_proto", []attribute.KeyValue{
+		attribute.String("conversion.type", "player"),
+		attribute.String("conversion.direction", "from_protobuf"),
+	})
+	defer span.End()
+
 	start := time.Now()
 
 	if protoPlayer == nil {
-		logError(ctx, "Cannot convert nil protobuf Player", "error", "nil_input")
+		RecordError(ctx, fmt.Errorf("nil protobuf Player"), "Cannot convert nil protobuf Player",
+			WithErrorCategory("validation"),
+			WithSeverity("medium"))
 		return nil, fmt.Errorf("cannot convert nil protobuf Player")
 	}
 
-	logDebug(ctx, "Converting protobuf to Player", "player_uid", protoPlayer.GetUid(), "player_name", protoPlayer.GetName())
+	SetSpanAttributes(ctx,
+		attribute.Int64("player.uid", protoPlayer.GetUid()),
+		attribute.String("player.name", protoPlayer.GetName()),
+		attribute.String("player.position", protoPlayer.GetPosition()),
+		attribute.String("player.club", protoPlayer.GetClub()),
+		attribute.Int("player.role_count", len(protoPlayer.GetRoleSpecificOveralls())),
+	)
+
+	logDebug(ctx, "Converting protobuf to Player", 
+		"player_uid", protoPlayer.GetUid(), 
+		"player_name", protoPlayer.GetName(),
+		"conversion_type", "player",
+		"conversion_direction", "from_protobuf",
+		"attributes_count", len(protoPlayer.GetAttributes()),
+		"numeric_attributes_count", len(protoPlayer.GetNumericAttributes()),
+		"performance_stats_count", len(protoPlayer.GetPerformanceStatsNumeric()),
+		"role_count", len(protoPlayer.GetRoleSpecificOveralls()))
 
 	// Convert RoleSpecificOveralls
 	var roles []RoleOverallScore
@@ -229,11 +331,20 @@ func PlayerFromProto(ctx context.Context, protoPlayer *proto.Player) (*Player, e
 		WageAmount:              protoPlayer.GetWageAmount(),
 	}
 
+	duration := time.Since(start)
+	SetSpanAttributes(ctx,
+		attribute.Float64("conversion.duration_ms", float64(duration.Nanoseconds())/1e6),
+		attribute.Bool("conversion.success", true),
+		attribute.Int("conversion.attributes_count", len(player.Attributes)),
+		attribute.Int("conversion.numeric_attributes_count", len(player.NumericAttributes)),
+		attribute.Int("conversion.performance_stats_count", len(player.PerformanceStatsNumeric)),
+	)
+
 	logDebug(ctx, "Protobuf Player conversion completed", 
 		"player_uid", player.UID, 
 		"player_name", player.Name,
 		"role_count", len(roles),
-		"duration_ms", time.Since(start).Milliseconds())
+		"duration_ms", duration.Milliseconds())
 
 	return player, nil
 }
@@ -242,14 +353,31 @@ func PlayerFromProto(ctx context.Context, protoPlayer *proto.Player) (*Player, e
 
 // ToProto converts a PlayerDataWithCurrency struct to protobuf format
 func (d *PlayerDataWithCurrency) ToProto(ctx context.Context) (*proto.DatasetData, error) {
+	ctx, span := StartSpanWithAttributes(ctx, "protobuf.conversion.dataset_to_proto", []attribute.KeyValue{
+		attribute.String("conversion.type", "dataset_data"),
+		attribute.String("conversion.direction", "to_protobuf"),
+	})
+	defer span.End()
+
 	start := time.Now()
 
 	if d == nil {
-		logError(ctx, "Cannot convert nil DatasetData to protobuf", "error", "nil_input")
+		RecordError(ctx, fmt.Errorf("nil DatasetData"), "Cannot convert nil DatasetData to protobuf",
+			WithErrorCategory("validation"),
+			WithSeverity("high"))
 		return nil, fmt.Errorf("cannot convert nil DatasetData to protobuf")
 	}
 
-	logDebug(ctx, "Converting DatasetData to protobuf", "player_count", len(d.Players))
+	SetSpanAttributes(ctx,
+		attribute.Int("dataset.player_count", len(d.Players)),
+		attribute.String("dataset.currency_symbol", d.CurrencySymbol),
+	)
+
+	logDebug(ctx, "Converting DatasetData to protobuf", 
+		"player_count", len(d.Players),
+		"conversion_type", "dataset_data",
+		"conversion_direction", "to_protobuf",
+		"currency_symbol", d.CurrencySymbol)
 
 	var protoPlayers []*proto.Player
 	for i, player := range d.Players {
@@ -269,24 +397,48 @@ func (d *PlayerDataWithCurrency) ToProto(ctx context.Context) (*proto.DatasetDat
 		CurrencySymbol: d.CurrencySymbol,
 	}
 
+	duration := time.Since(start)
+	SetSpanAttributes(ctx,
+		attribute.Float64("conversion.duration_ms", float64(duration.Nanoseconds())/1e6),
+		attribute.Bool("conversion.success", true),
+		attribute.Int("conversion.players_converted", len(protoPlayers)),
+	)
+
 	logDebug(ctx, "DatasetData conversion to protobuf completed", 
 		"player_count", len(protoPlayers),
 		"currency_symbol", d.CurrencySymbol,
-		"duration_ms", time.Since(start).Milliseconds())
+		"duration_ms", duration.Milliseconds())
 
 	return protoDataset, nil
 }
 
 // FromProto converts a protobuf DatasetData to the native struct
 func DatasetDataFromProto(ctx context.Context, protoDataset *proto.DatasetData) (*PlayerDataWithCurrency, error) {
+	ctx, span := StartSpanWithAttributes(ctx, "protobuf.conversion.dataset_from_proto", []attribute.KeyValue{
+		attribute.String("conversion.type", "dataset_data"),
+		attribute.String("conversion.direction", "from_protobuf"),
+	})
+	defer span.End()
+
 	start := time.Now()
 
 	if protoDataset == nil {
-		logError(ctx, "Cannot convert nil protobuf DatasetData", "error", "nil_input")
+		RecordError(ctx, fmt.Errorf("nil protobuf DatasetData"), "Cannot convert nil protobuf DatasetData",
+			WithErrorCategory("validation"),
+			WithSeverity("high"))
 		return nil, fmt.Errorf("cannot convert nil protobuf DatasetData")
 	}
 
-	logDebug(ctx, "Converting protobuf to DatasetData", "player_count", len(protoDataset.GetPlayers()))
+	SetSpanAttributes(ctx,
+		attribute.Int("dataset.player_count", len(protoDataset.GetPlayers())),
+		attribute.String("dataset.currency_symbol", protoDataset.GetCurrencySymbol()),
+	)
+
+	logDebug(ctx, "Converting protobuf to DatasetData", 
+		"player_count", len(protoDataset.GetPlayers()),
+		"conversion_type", "dataset_data",
+		"conversion_direction", "from_protobuf",
+		"currency_symbol", protoDataset.GetCurrencySymbol())
 
 	var players []Player
 	for i, protoPlayer := range protoDataset.GetPlayers() {
@@ -306,10 +458,17 @@ func DatasetDataFromProto(ctx context.Context, protoDataset *proto.DatasetData) 
 		CurrencySymbol: protoDataset.GetCurrencySymbol(),
 	}
 
+	duration := time.Since(start)
+	SetSpanAttributes(ctx,
+		attribute.Float64("conversion.duration_ms", float64(duration.Nanoseconds())/1e6),
+		attribute.Bool("conversion.success", true),
+		attribute.Int("conversion.players_converted", len(players)),
+	)
+
 	logDebug(ctx, "Protobuf DatasetData conversion completed", 
 		"player_count", len(players),
 		"currency_symbol", dataset.CurrencySymbol,
-		"duration_ms", time.Since(start).Milliseconds())
+		"duration_ms", duration.Milliseconds())
 
 	return dataset, nil
 }

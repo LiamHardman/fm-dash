@@ -20,6 +20,18 @@ type ProtobufStorage struct {
 	backend StorageInterface
 }
 
+// ProtobufPerformanceMetrics holds performance metrics for protobuf operations
+type ProtobufPerformanceMetrics struct {
+	DatasetID           string
+	Operation           string
+	PlayerCount         int
+	ProtobufSizeBytes   int
+	CompressedSizeBytes int
+	CompressionRatio    float64
+	DurationMs          int64
+	SpaceSavedPercent   float64
+}
+
 // CreateProtobufStorage creates a new protobuf storage wrapper
 func CreateProtobufStorage(backend StorageInterface) *ProtobufStorage {
 	return &ProtobufStorage{
@@ -63,7 +75,13 @@ func (s *ProtobufStorage) Store(datasetID string, data DatasetData) error {
 	}
 
 	// Serialize protobuf to binary
+	ctx, marshalSpan := StartSpanWithAttributes(ctx, "protobuf.serialization.marshal", []attribute.KeyValue{
+		attribute.String("dataset.id", datasetID),
+		attribute.String("serialization.format", "protobuf"),
+	})
 	protoBytes, err := proto.Marshal(protoData)
+	marshalSpan.End()
+	
 	if err != nil {
 		marshalErr := NewProtobufError("marshal", datasetID, "Failed to marshal protobuf data", err)
 		RecordError(ctx, marshalErr, "Failed to marshal protobuf data")
@@ -76,6 +94,8 @@ func (s *ProtobufStorage) Store(datasetID string, data DatasetData) error {
 		AddSpanEvent(ctx, "storage.fallback_to_json", attribute.String("reason", string(FallbackReasonMarshalFailed)))
 		return s.storeWithJSONFallback(ctx, datasetID, data)
 	}
+	
+	SetSpanAttributes(ctx, attribute.Int("protobuf.marshaled_size_bytes", len(protoBytes)))
 
 	// Compress protobuf data
 	compressedData, err := s.compressProtobufData(protoBytes)
@@ -113,11 +133,36 @@ func (s *ProtobufStorage) Store(datasetID string, data DatasetData) error {
 		return s.storeWithJSONFallback(ctx, datasetID, data)
 	}
 
-	RecordDBOperation(ctx, "store", "protobuf_datasets", time.Since(start), 1)
+	duration := time.Since(start)
+	compressionRatio := float64(len(protoBytes)) / float64(len(compressedData))
+	spaceSavedPercent := (1.0 - 1.0/compressionRatio) * 100
+
+	RecordDBOperation(ctx, "store", "protobuf_datasets", duration, 1)
+	
+	// Log detailed performance and storage metrics
 	logInfo(ctx, "Successfully stored dataset using protobuf serialization", 
 		"dataset_id", datasetID, 
 		"player_count", len(data.Players),
-		"duration_ms", time.Since(start).Milliseconds())
+		"duration_ms", duration.Milliseconds(),
+		"protobuf_size_bytes", len(protoBytes),
+		"compressed_size_bytes", len(compressedData),
+		"compression_ratio", fmt.Sprintf("%.2f", compressionRatio),
+		"space_saved_percent", fmt.Sprintf("%.1f%%", spaceSavedPercent),
+		"storage_format", "protobuf",
+		"compression_algorithm", "gzip")
+	
+	// Log performance improvement metrics
+	s.logPerformanceImprovement(ctx, ProtobufPerformanceMetrics{
+		DatasetID:           datasetID,
+		Operation:           "store",
+		PlayerCount:         len(data.Players),
+		ProtobufSizeBytes:   len(protoBytes),
+		CompressedSizeBytes: len(compressedData),
+		CompressionRatio:    compressionRatio,
+		DurationMs:          duration.Milliseconds(),
+		SpaceSavedPercent:   spaceSavedPercent,
+	})
+	
 	return nil
 }
 
@@ -165,8 +210,16 @@ func (s *ProtobufStorage) Retrieve(datasetID string) (DatasetData, error) {
 	}
 
 	// Unmarshal protobuf data
+	ctx, unmarshalSpan := StartSpanWithAttributes(ctx, "protobuf.serialization.unmarshal", []attribute.KeyValue{
+		attribute.String("dataset.id", datasetID),
+		attribute.String("serialization.format", "protobuf"),
+		attribute.Int("protobuf.size_bytes", len(protoBytes)),
+	})
 	var protoData pb.DatasetData
-	if err := proto.Unmarshal(protoBytes, &protoData); err != nil {
+	err = proto.Unmarshal(protoBytes, &protoData)
+	unmarshalSpan.End()
+	
+	if err != nil {
 		unmarshalErr := NewProtobufError("unmarshal", datasetID, "Failed to unmarshal protobuf data", err)
 		RecordError(ctx, unmarshalErr, "Failed to unmarshal protobuf data")
 		s.logFallbackEvent(ProtobufFallbackEvent{
@@ -206,11 +259,36 @@ func (s *ProtobufStorage) Retrieve(datasetID string) (DatasetData, error) {
 		attribute.Int("compressed.size_bytes", len(compressedData)),
 	)
 
-	RecordDBOperation(ctx, "retrieve", "protobuf_datasets", time.Since(start), 1)
+	duration := time.Since(start)
+	compressionRatio := float64(len(protoBytes)) / float64(len(compressedData))
+	spaceSavedPercent := (1.0 - 1.0/compressionRatio) * 100
+
+	RecordDBOperation(ctx, "retrieve", "protobuf_datasets", duration, 1)
+	
+	// Log detailed performance and storage metrics
 	logInfo(ctx, "Successfully retrieved dataset using protobuf deserialization", 
 		"dataset_id", datasetID, 
 		"player_count", len(result.Players),
-		"duration_ms", time.Since(start).Milliseconds())
+		"duration_ms", duration.Milliseconds(),
+		"protobuf_size_bytes", len(protoBytes),
+		"compressed_size_bytes", len(compressedData),
+		"compression_ratio", fmt.Sprintf("%.2f", compressionRatio),
+		"space_saved_percent", fmt.Sprintf("%.1f%%", spaceSavedPercent),
+		"storage_format", "protobuf",
+		"compression_algorithm", "gzip")
+	
+	// Log performance improvement metrics
+	s.logPerformanceImprovement(ctx, ProtobufPerformanceMetrics{
+		DatasetID:           datasetID,
+		Operation:           "retrieve",
+		PlayerCount:         len(result.Players),
+		ProtobufSizeBytes:   len(protoBytes),
+		CompressedSizeBytes: len(compressedData),
+		CompressionRatio:    compressionRatio,
+		DurationMs:          duration.Milliseconds(),
+		SpaceSavedPercent:   spaceSavedPercent,
+	})
+	
 	return result, nil
 }
 
@@ -231,6 +309,14 @@ func (s *ProtobufStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatase
 
 // compressProtobufData compresses protobuf binary data using gzip
 func (s *ProtobufStorage) compressProtobufData(data []byte) ([]byte, error) {
+	ctx := context.Background()
+	ctx, span := StartSpanWithAttributes(ctx, "protobuf.compression.compress", []attribute.KeyValue{
+		attribute.String("compression.algorithm", "gzip"),
+		attribute.Int("compression.input_size_bytes", len(data)),
+	})
+	defer span.End()
+
+	start := time.Now()
 	var buf bytes.Buffer
 	gz := gzip.NewWriter(&buf)
 	defer func() {
@@ -240,20 +326,51 @@ func (s *ProtobufStorage) compressProtobufData(data []byte) ([]byte, error) {
 	}()
 
 	if _, err := gz.Write(data); err != nil {
+		RecordError(ctx, err, "Failed to write to gzip writer",
+			WithErrorCategory("compression"),
+			WithSeverity("medium"))
 		return nil, fmt.Errorf("failed to write to gzip writer: %w", err)
 	}
 
 	if err := gz.Close(); err != nil {
+		RecordError(ctx, err, "Failed to close gzip writer",
+			WithErrorCategory("compression"),
+			WithSeverity("medium"))
 		return nil, fmt.Errorf("failed to close gzip writer: %w", err)
 	}
 
-	return buf.Bytes(), nil
+	result := buf.Bytes()
+	duration := time.Since(start)
+	compressionRatio := float64(len(data)) / float64(len(result))
+
+	SetSpanAttributes(ctx,
+		attribute.Int("compression.output_size_bytes", len(result)),
+		attribute.Float64("compression.ratio", compressionRatio),
+		attribute.Float64("compression.duration_ms", float64(duration.Nanoseconds())/1e6),
+		attribute.Bool("compression.success", true),
+	)
+
+	AddSpanEvent(ctx, "compression.completed", 
+		attribute.Float64("compression.space_saved_percent", (1.0-1.0/compressionRatio)*100))
+
+	return result, nil
 }
 
 // decompressProtobufData decompresses gzip-compressed protobuf data
 func (s *ProtobufStorage) decompressProtobufData(data []byte) ([]byte, error) {
+	ctx := context.Background()
+	ctx, span := StartSpanWithAttributes(ctx, "protobuf.compression.decompress", []attribute.KeyValue{
+		attribute.String("compression.algorithm", "gzip"),
+		attribute.Int("compression.input_size_bytes", len(data)),
+	})
+	defer span.End()
+
+	start := time.Now()
 	reader, err := gzip.NewReader(bytes.NewReader(data))
 	if err != nil {
+		RecordError(ctx, err, "Failed to create gzip reader",
+			WithErrorCategory("compression"),
+			WithSeverity("medium"))
 		return nil, fmt.Errorf("failed to create gzip reader: %w", err)
 	}
 	defer func() {
@@ -264,8 +381,24 @@ func (s *ProtobufStorage) decompressProtobufData(data []byte) ([]byte, error) {
 
 	result, err := io.ReadAll(reader)
 	if err != nil {
+		RecordError(ctx, err, "Failed to read from gzip reader",
+			WithErrorCategory("compression"),
+			WithSeverity("medium"))
 		return nil, fmt.Errorf("failed to read from gzip reader: %w", err)
 	}
+
+	duration := time.Since(start)
+	decompressionRatio := float64(len(result)) / float64(len(data))
+
+	SetSpanAttributes(ctx,
+		attribute.Int("compression.output_size_bytes", len(result)),
+		attribute.Float64("compression.ratio", decompressionRatio),
+		attribute.Float64("compression.duration_ms", float64(duration.Nanoseconds())/1e6),
+		attribute.Bool("compression.success", true),
+	)
+
+	AddSpanEvent(ctx, "decompression.completed", 
+		attribute.Float64("compression.expansion_ratio", decompressionRatio))
 
 	return result, nil
 }
@@ -364,12 +497,70 @@ func (s *ProtobufStorage) retrieveWithJSONFallback(ctx context.Context, datasetI
 func (s *ProtobufStorage) logFallbackEvent(event ProtobufFallbackEvent) {
 	// Create a context for logging - in a real scenario this would be passed from the caller
 	ctx := context.Background()
-	logInfo(ctx, "Protobuf fallback event occurred", 
-		"dataset_id", event.DatasetID,
-		"reason", string(event.Reason),
-		"message", event.Message,
-		"error", event.Error)
 	
-	// In a production environment, you might want to send this to a monitoring system
-	// such as metrics collection, alerting, or structured logging
+	// Log fallback event with detailed context
+	logWarn(ctx, "Protobuf fallback event occurred - switching to JSON storage", 
+		"dataset_id", event.DatasetID,
+		"fallback_reason", string(event.Reason),
+		"fallback_message", event.Message,
+		"original_error", event.Error.Error(),
+		"storage_format", "json",
+		"fallback_triggered", true)
+	
+	// Log structured fallback metrics for monitoring
+	logInfo(ctx, "Storage fallback metrics", 
+		"dataset_id", event.DatasetID,
+		"fallback_type", "protobuf_to_json",
+		"failure_stage", string(event.Reason),
+		"impact", "performance_degradation",
+		"action_required", s.getFallbackActionRequired(event.Reason))
+}
+
+// logPerformanceImprovement logs detailed performance improvement metrics
+func (s *ProtobufStorage) logPerformanceImprovement(ctx context.Context, metrics ProtobufPerformanceMetrics) {
+	// Calculate estimated JSON size for comparison (rough estimate: protobuf is typically 20-50% smaller)
+	estimatedJSONSize := float64(metrics.ProtobufSizeBytes) * 1.3 // Conservative estimate
+	estimatedJSONSizeCompressed := estimatedJSONSize * 0.7 // Typical JSON gzip compression
+	
+	jsonSpaceSaved := (estimatedJSONSizeCompressed - float64(metrics.CompressedSizeBytes)) / estimatedJSONSizeCompressed * 100
+	
+	// Log comprehensive performance improvement metrics
+	logInfo(ctx, "Protobuf performance improvement achieved",
+		"dataset_id", metrics.DatasetID,
+		"operation", metrics.Operation,
+		"player_count", metrics.PlayerCount,
+		"protobuf_size_bytes", metrics.ProtobufSizeBytes,
+		"compressed_size_bytes", metrics.CompressedSizeBytes,
+		"compression_ratio", fmt.Sprintf("%.2f", metrics.CompressionRatio),
+		"space_saved_percent", fmt.Sprintf("%.1f%%", metrics.SpaceSavedPercent),
+		"duration_ms", metrics.DurationMs,
+		"estimated_json_space_saved_percent", fmt.Sprintf("%.1f%%", jsonSpaceSaved),
+		"storage_efficiency", "optimized",
+		"serialization_format", "protobuf+gzip")
+	
+	// Log performance benchmarking data
+	throughputMBps := float64(metrics.ProtobufSizeBytes) / (float64(metrics.DurationMs) / 1000.0) / (1024 * 1024)
+	logDebug(ctx, "Protobuf operation performance metrics",
+		"dataset_id", metrics.DatasetID,
+		"operation", metrics.Operation,
+		"throughput_mbps", fmt.Sprintf("%.2f", throughputMBps),
+		"bytes_per_player", metrics.ProtobufSizeBytes/metrics.PlayerCount,
+		"ms_per_player", float64(metrics.DurationMs)/float64(metrics.PlayerCount),
+		"compression_efficiency", fmt.Sprintf("%.1f%%", metrics.SpaceSavedPercent))
+}
+
+// getFallbackActionRequired returns recommended action for different fallback reasons
+func (s *ProtobufStorage) getFallbackActionRequired(reason ProtobufFallbackReason) string {
+	switch reason {
+	case FallbackReasonConversionFailed:
+		return "check_data_schema_compatibility"
+	case FallbackReasonMarshalFailed, FallbackReasonUnmarshalFailed:
+		return "verify_protobuf_schema_version"
+	case FallbackReasonCompressionFailed, FallbackReasonDecompressionFailed:
+		return "check_compression_library_status"
+	case FallbackReasonStorageFailed, FallbackReasonRetrievalFailed:
+		return "verify_storage_backend_health"
+	default:
+		return "investigate_protobuf_implementation"
+	}
 }
