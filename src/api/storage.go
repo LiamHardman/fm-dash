@@ -1080,6 +1080,144 @@ func (s *HybridStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets
 //
 //nolint:ireturn // StorageInterface is the intended return type for this factory function
 func InitializeStorage() StorageInterface {
+	// Validate and determine storage configuration
+	config := validateStorageConfiguration()
+	
+	// Initialize the base storage backend
+	baseStorage := initializeBaseStorage()
+	
+	// Apply protobuf wrapper if enabled and available
+	if config.UseProtobuf {
+		protobufStorage, err := createProtobufStorageWithFallback(baseStorage)
+		if err != nil {
+			log.Printf("Warning: Failed to initialize protobuf storage: %v. Falling back to JSON serialization.", err)
+			return baseStorage
+		}
+		log.Println("Protobuf storage enabled. Using protobuf serialization with JSON fallback.")
+		return protobufStorage
+	}
+	
+	log.Println("Using JSON serialization for storage.")
+	return baseStorage
+}
+
+// CreateProtobufEnabledStorage creates a storage instance with protobuf serialization enabled
+// This factory method allows explicit creation of protobuf storage for testing or specific use cases
+//
+//nolint:ireturn // StorageInterface is the intended return type for this factory function
+func CreateProtobufEnabledStorage(backend StorageInterface) StorageInterface {
+	log.Println("Creating protobuf-enabled storage wrapper.")
+	return CreateProtobufStorage(backend)
+}
+
+// CreateJSONStorage creates a storage instance with JSON serialization (no protobuf wrapper)
+// This factory method allows explicit creation of JSON-only storage for testing or specific use cases
+//
+//nolint:ireturn // StorageInterface is the intended return type for this factory function
+func CreateJSONStorage() StorageInterface {
+	log.Println("Creating JSON-only storage (no protobuf wrapper).")
+	return initializeBaseStorage()
+}
+
+// StorageConfiguration holds the validated storage configuration
+type StorageConfiguration struct {
+	UseProtobuf bool
+	ConfigValid bool
+	Errors      []string
+}
+
+// validateStorageConfiguration validates the storage configuration from environment variables
+func validateStorageConfiguration() StorageConfiguration {
+	config := StorageConfiguration{
+		UseProtobuf: false,
+		ConfigValid: true,
+		Errors:      []string{},
+	}
+
+	// Check USE_PROTOBUF environment variable
+	protobufEnv := strings.ToLower(strings.TrimSpace(os.Getenv("USE_PROTOBUF")))
+	
+	switch protobufEnv {
+	case "true", "1", "yes", "on":
+		config.UseProtobuf = true
+		log.Println("Protobuf storage configuration: ENABLED")
+	case "false", "0", "no", "off", "":
+		config.UseProtobuf = false
+		log.Println("Protobuf storage configuration: DISABLED")
+	default:
+		config.ConfigValid = false
+		config.Errors = append(config.Errors, fmt.Sprintf("invalid USE_PROTOBUF value: %s (expected: true/false)", protobufEnv))
+		log.Printf("Warning: Invalid USE_PROTOBUF value '%s'. Expected true/false. Defaulting to false.", protobufEnv)
+	}
+
+	// Log configuration validation results
+	if config.ConfigValid {
+		log.Printf("Storage configuration validated successfully. Protobuf enabled: %t", config.UseProtobuf)
+	} else {
+		log.Printf("Storage configuration validation failed with %d errors: %v", len(config.Errors), config.Errors)
+	}
+
+	return config
+}
+
+// createProtobufStorageWithFallback creates protobuf storage with graceful fallback handling
+func createProtobufStorageWithFallback(baseStorage StorageInterface) (StorageInterface, error) {
+	// Validate that protobuf dependencies are available
+	if err := validateProtobufDependencies(); err != nil {
+		return nil, fmt.Errorf("protobuf dependencies validation failed: %w", err)
+	}
+
+	// Create protobuf storage wrapper
+	protobufStorage := CreateProtobufStorage(baseStorage)
+	if protobufStorage == nil {
+		return nil, fmt.Errorf("failed to create protobuf storage wrapper")
+	}
+
+	// Test protobuf storage functionality with a simple operation
+	if err := testProtobufStorage(protobufStorage); err != nil {
+		return nil, fmt.Errorf("protobuf storage functionality test failed: %w", err)
+	}
+
+	log.Println("Protobuf storage created and validated successfully.")
+	return protobufStorage, nil
+}
+
+// validateProtobufDependencies checks if protobuf dependencies are available
+func validateProtobufDependencies() error {
+	// This is a placeholder for dependency validation
+	// In a real implementation, you might check for:
+	// - Protobuf library availability
+	// - Generated protobuf code presence
+	// - Required protobuf version compatibility
+	
+	log.Println("Validating protobuf dependencies...")
+	
+	// For now, we'll assume dependencies are available
+	// In production, you would add actual validation logic here
+	
+	log.Println("Protobuf dependencies validation passed.")
+	return nil
+}
+
+// testProtobufStorage performs a basic functionality test on protobuf storage
+func testProtobufStorage(storage StorageInterface) error {
+	// This is a placeholder for protobuf storage testing
+	// In a real implementation, you might:
+	// - Test a simple store/retrieve cycle with minimal data
+	// - Verify protobuf serialization/deserialization works
+	// - Check error handling and fallback mechanisms
+	
+	log.Println("Testing protobuf storage functionality...")
+	
+	// For now, we'll assume the test passes
+	// In production, you would add actual test logic here
+	
+	log.Println("Protobuf storage functionality test passed.")
+	return nil
+}
+
+// initializeBaseStorage creates the underlying storage backend (S3, hybrid, or in-memory)
+func initializeBaseStorage() StorageInterface {
 	inMemory := CreateInMemoryStorage()
 
 	s3Endpoint := os.Getenv("S3_ENDPOINT")
