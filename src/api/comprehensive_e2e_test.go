@@ -20,7 +20,7 @@ func TestComprehensiveEndToEndFunctionality(t *testing.T) {
 	// Initialize test environment
 	InitStore()
 	InitInMemoryCache()
-	InitCacheStorage()
+	InitCacheStorage(context.Background())
 	InitializeMemoryOptimizations()
 
 	// Test with both storage backends
@@ -323,7 +323,7 @@ func testE2EAPIEndpoints(t *testing.T, datasetID, backendName string) {
 
 		// Allow some endpoints to fail gracefully during tests
 		if w.Code != http.StatusOK && w.Code != http.StatusServiceUnavailable {
-			t.Logf("%s endpoint returned %d with %s backend (may be expected)", 
+			t.Logf("%s endpoint returned %d with %s backend (may be expected)",
 				endpoint.name, w.Code, backendName)
 		}
 	}
@@ -433,4 +433,3 @@ func testE2EMixedOperations(t *testing.T, datasetID, backendName string) {
 
 	t.Logf("Mixed operations test completed with %s backend", backendName)
 }
-

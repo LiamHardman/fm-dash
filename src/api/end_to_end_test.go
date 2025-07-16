@@ -21,24 +21,24 @@ func TestEndToEndSystemFunctionality(t *testing.T) {
 	// Initialize test environment
 	InitStore()
 	InitInMemoryCache()
-	InitCacheStorage()
+	InitCacheStorage(context.Background())
 	InitializeMemoryOptimizations()
 
 	// Test with both storage backends
 	testCases := []struct {
-		name           string
-		useProtobuf    bool
-		envVarValue    string
+		name        string
+		useProtobuf bool
+		envVarValue string
 	}{
 		{
-			name:           "JSON Storage Backend",
-			useProtobuf:    false,
-			envVarValue:    "false",
+			name:        "JSON Storage Backend",
+			useProtobuf: false,
+			envVarValue: "false",
 		},
 		{
-			name:           "Protobuf Storage Backend",
-			useProtobuf:    true,
-			envVarValue:    "true",
+			name:        "Protobuf Storage Backend",
+			useProtobuf: true,
+			envVarValue: "true",
 		},
 	}
 

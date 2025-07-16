@@ -71,7 +71,7 @@ func TestImmediateRollbackCapability(t *testing.T) {
 			// Check if this is protobuf-encoded data (indicated by special marker)
 			if retrievedDataJSON.CurrencySymbol == "__PROTOBUF_MARKER__" {
 				t.Log("Data is stored in protobuf format - testing protobuf storage can still handle retrieval")
-				
+
 				// Test that protobuf storage can still retrieve and convert the data
 				retrievedDataProtobuf, err := protobufStorage.Retrieve(datasetID)
 				require.NoError(t, err, "Protobuf storage should handle retrieval of protobuf data")
@@ -211,7 +211,7 @@ func TestDataIntegrityDuringRollback(t *testing.T) {
 		retrievedData, err := jsonStorage.Retrieve(datasetID)
 		if err != nil {
 			t.Logf("Direct JSON retrieval failed for %s (expected if stored as protobuf): %v", datasetID, err)
-			
+
 			// Verify that protobuf storage can still handle the retrieval
 			retrievedDataProtobuf, err := protobufStorage.Retrieve(datasetID)
 			require.NoError(t, err, "Protobuf storage should handle retrieval for %s", datasetID)
@@ -277,17 +277,17 @@ func TestEnvironmentVariableRollback(t *testing.T) {
 	// Test 1: Enable protobuf via environment variable
 	t.Run("Enable_Protobuf", func(t *testing.T) {
 		os.Setenv("USE_PROTOBUF", "true")
-		
+
 		// Initialize storage (this would normally happen at app startup)
 		localStorage, err := CreateLocalFileStorage(tempDir)
 		require.NoError(t, err)
-		
+
 		storage := initializeStorageForTest(localStorage)
-		
+
 		// Store and retrieve data
 		err = storage.Store(datasetID, testData)
 		require.NoError(t, err, "Should store data with protobuf enabled")
-		
+
 		retrievedData, err := storage.Retrieve(datasetID)
 		require.NoError(t, err, "Should retrieve data with protobuf enabled")
 		assertDatasetEqual(t, testData, retrievedData)
@@ -296,13 +296,13 @@ func TestEnvironmentVariableRollback(t *testing.T) {
 	// Test 2: Disable protobuf via environment variable (rollback)
 	t.Run("Disable_Protobuf_Rollback", func(t *testing.T) {
 		os.Setenv("USE_PROTOBUF", "false")
-		
+
 		// Initialize storage again (simulating app restart after config change)
 		localStorage, err := CreateLocalFileStorage(tempDir)
 		require.NoError(t, err)
-		
+
 		storage := initializeStorageForTest(localStorage)
-		
+
 		// Should still be able to retrieve existing data
 		retrievedData, err := storage.Retrieve(datasetID)
 		if err != nil {
@@ -310,18 +310,18 @@ func TestEnvironmentVariableRollback(t *testing.T) {
 		} else {
 			assertDatasetEqual(t, testData, retrievedData)
 		}
-		
+
 		// Should be able to store new data using JSON
 		newDatasetID := "env-rollback-new"
 		newTestData := createTestDataset("env-rollback-new", 25)
-		
+
 		err = storage.Store(newDatasetID, newTestData)
 		require.NoError(t, err, "Should store new data after rollback")
-		
+
 		retrievedNewData, err := storage.Retrieve(newDatasetID)
 		require.NoError(t, err, "Should retrieve new data after rollback")
 		assertDatasetEqual(t, newTestData, retrievedNewData)
-		
+
 		// Cleanup
 		_ = storage.Delete(newDatasetID)
 	})
@@ -344,7 +344,7 @@ func TestRollbackPerformanceImpact(t *testing.T) {
 
 	// Measure protobuf performance
 	protobufStorage := CreateProtobufStorage(localStorage)
-	
+
 	start := time.Now()
 	err = protobufStorage.Store(datasetID, testData)
 	require.NoError(t, err)
@@ -379,13 +379,13 @@ func TestRollbackPerformanceImpact(t *testing.T) {
 	// Verify that rollback performance is acceptable (within reasonable bounds)
 	// JSON should be slower but not excessively so
 	maxAcceptableSlowdown := 5.0 // 5x slower is still acceptable for rollback
-	
+
 	storeSlowdown := float64(jsonStoreTime) / float64(protobufStoreTime)
 	retrieveSlowdown := float64(jsonRetrieveTime) / float64(protobufRetrieveTime)
-	
-	assert.Less(t, storeSlowdown, maxAcceptableSlowdown, 
+
+	assert.Less(t, storeSlowdown, maxAcceptableSlowdown,
 		"JSON store performance should be within acceptable bounds during rollback")
-	assert.Less(t, retrieveSlowdown, maxAcceptableSlowdown, 
+	assert.Less(t, retrieveSlowdown, maxAcceptableSlowdown,
 		"JSON retrieve performance should be within acceptable bounds during rollback")
 
 	// Cleanup
@@ -398,7 +398,7 @@ func TestRollbackPerformanceImpact(t *testing.T) {
 // createTestDataset creates a test dataset with the specified name prefix and player count
 func createTestDataset(namePrefix string, playerCount int) DatasetData {
 	players := make([]Player, playerCount)
-	
+
 	for i := 0; i < playerCount; i++ {
 		players[i] = Player{
 			UID:                     int64(i + 1),
@@ -434,7 +434,7 @@ func createTestDataset(namePrefix string, playerCount int) DatasetData {
 			WageAmount:          int64((i%100 + 10) * 1000),
 		}
 	}
-	
+
 	return DatasetData{
 		Players:        players,
 		CurrencySymbol: "£",
@@ -489,25 +489,25 @@ func createTestDatasetWithSpecialChars() DatasetData {
 	return DatasetData{
 		Players: []Player{
 			{
-				UID:                 1,
-				Name:                "José María Ñoño",
-				Position:            "GK/CB",
-				Age:                 "25",
-				Club:                "Real Madrid C.F.",
-				Division:            "La Liga™",
-				TransferValue:       "€50M",
-				Wage:                "£100K",
-				Nationality:         "España",
-				NationalityISO:      "ES",
-				NationalityFIFACode: "ESP",
-				Attributes:          map[string]string{"special": "ñáéíóú"},
-				NumericAttributes:   map[string]int{"test": 100},
+				UID:                     1,
+				Name:                    "José María Ñoño",
+				Position:                "GK/CB",
+				Age:                     "25",
+				Club:                    "Real Madrid C.F.",
+				Division:                "La Liga™",
+				TransferValue:           "€50M",
+				Wage:                    "£100K",
+				Nationality:             "España",
+				NationalityISO:          "ES",
+				NationalityFIFACode:     "ESP",
+				Attributes:              map[string]string{"special": "ñáéíóú"},
+				NumericAttributes:       map[string]int{"test": 100},
 				PerformanceStatsNumeric: map[string]float64{"rating": 8.5},
 				PerformancePercentiles:  map[string]map[string]float64{"overall": {"percentile": 95.0}},
-				ParsedPositions:     []string{"GK", "CB"},
-				ShortPositions:      []string{"GK", "CB"},
-				PositionGroups:      []string{"Defence"},
-				RoleSpecificOveralls: []RoleOverallScore{{RoleName: "Goalkeeper", Score: 85}},
+				ParsedPositions:         []string{"GK", "CB"},
+				ShortPositions:          []string{"GK", "CB"},
+				PositionGroups:          []string{"Defence"},
+				RoleSpecificOveralls:    []RoleOverallScore{{RoleName: "Goalkeeper", Score: 85}},
 			},
 		},
 		CurrencySymbol: "€",
@@ -518,7 +518,7 @@ func createTestDatasetWithSpecialChars() DatasetData {
 func assertDatasetEqual(t *testing.T, expected, actual DatasetData) {
 	assert.Equal(t, expected.CurrencySymbol, actual.CurrencySymbol, "Currency symbols should match")
 	assert.Equal(t, len(expected.Players), len(actual.Players), "Player count should match")
-	
+
 	for i, expectedPlayer := range expected.Players {
 		if i < len(actual.Players) {
 			actualPlayer := actual.Players[i]

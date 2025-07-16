@@ -33,7 +33,7 @@ func (r *RoleOverallScore) ToProto(ctx context.Context) (*proto.RoleOverallScore
 		attribute.Int("role.score", r.Score),
 	)
 
-	logInfo(ctx, "Starting RoleOverallScore conversion to protobuf", 
+	logInfo(ctx, "Starting RoleOverallScore conversion to protobuf",
 		"role_name", r.RoleName,
 		"conversion_type", "role_overall_score",
 		"conversion_direction", "to_protobuf")
@@ -49,8 +49,8 @@ func (r *RoleOverallScore) ToProto(ctx context.Context) (*proto.RoleOverallScore
 		attribute.Bool("conversion.success", true),
 	)
 
-	logDebug(ctx, "RoleOverallScore conversion completed", 
-		"role_name", r.RoleName, 
+	logDebug(ctx, "RoleOverallScore conversion completed",
+		"role_name", r.RoleName,
 		"score", r.Score,
 		"duration_ms", duration.Milliseconds())
 
@@ -79,7 +79,7 @@ func RoleOverallScoreFromProto(ctx context.Context, protoRole *proto.RoleOverall
 		attribute.Int("role.score", int(protoRole.GetScore())),
 	)
 
-	logDebug(ctx, "Converting protobuf to RoleOverallScore", 
+	logDebug(ctx, "Converting protobuf to RoleOverallScore",
 		"role_name", protoRole.GetRoleName(),
 		"conversion_type", "role_overall_score",
 		"conversion_direction", "from_protobuf")
@@ -95,8 +95,8 @@ func RoleOverallScoreFromProto(ctx context.Context, protoRole *proto.RoleOverall
 		attribute.Bool("conversion.success", true),
 	)
 
-	logDebug(ctx, "Protobuf RoleOverallScore conversion completed", 
-		"role_name", role.RoleName, 
+	logDebug(ctx, "Protobuf RoleOverallScore conversion completed",
+		"role_name", role.RoleName,
 		"score", role.Score,
 		"duration_ms", duration.Milliseconds())
 
@@ -130,8 +130,8 @@ func (p *Player) ToProto(ctx context.Context) (*proto.Player, error) {
 		attribute.Int("player.role_count", len(p.RoleSpecificOveralls)),
 	)
 
-	logDebug(ctx, "Converting Player to protobuf", 
-		"player_uid", p.UID, 
+	logDebug(ctx, "Converting Player to protobuf",
+		"player_uid", p.UID,
 		"player_name", p.Name,
 		"conversion_type", "player",
 		"conversion_direction", "to_protobuf",
@@ -145,9 +145,9 @@ func (p *Player) ToProto(ctx context.Context) (*proto.Player, error) {
 	for _, role := range p.RoleSpecificOveralls {
 		protoRole, err := role.ToProto(ctx)
 		if err != nil {
-			logError(ctx, "Failed to convert role to protobuf", 
-				"error", err, 
-				"player_uid", p.UID, 
+			logError(ctx, "Failed to convert role to protobuf",
+				"error", err,
+				"player_uid", p.UID,
 				"role_name", role.RoleName)
 			return nil, fmt.Errorf("failed to convert role %s to protobuf: %w", role.RoleName, err)
 		}
@@ -219,8 +219,8 @@ func (p *Player) ToProto(ctx context.Context) (*proto.Player, error) {
 		attribute.Int("conversion.performance_stats_count", len(p.PerformanceStatsNumeric)),
 	)
 
-	logDebug(ctx, "Player conversion to protobuf completed", 
-		"player_uid", p.UID, 
+	logDebug(ctx, "Player conversion to protobuf completed",
+		"player_uid", p.UID,
 		"player_name", p.Name,
 		"role_count", len(protoRoles),
 		"duration_ms", duration.Milliseconds())
@@ -253,8 +253,8 @@ func PlayerFromProto(ctx context.Context, protoPlayer *proto.Player) (*Player, e
 		attribute.Int("player.role_count", len(protoPlayer.GetRoleSpecificOveralls())),
 	)
 
-	logDebug(ctx, "Converting protobuf to Player", 
-		"player_uid", protoPlayer.GetUid(), 
+	logDebug(ctx, "Converting protobuf to Player",
+		"player_uid", protoPlayer.GetUid(),
 		"player_name", protoPlayer.GetName(),
 		"conversion_type", "player",
 		"conversion_direction", "from_protobuf",
@@ -268,9 +268,9 @@ func PlayerFromProto(ctx context.Context, protoPlayer *proto.Player) (*Player, e
 	for _, protoRole := range protoPlayer.GetRoleSpecificOveralls() {
 		role, err := RoleOverallScoreFromProto(ctx, protoRole)
 		if err != nil {
-			logError(ctx, "Failed to convert protobuf role", 
-				"error", err, 
-				"player_uid", protoPlayer.GetUid(), 
+			logError(ctx, "Failed to convert protobuf role",
+				"error", err,
+				"player_uid", protoPlayer.GetUid(),
 				"role_name", protoRole.GetRoleName())
 			return nil, fmt.Errorf("failed to convert protobuf role %s: %w", protoRole.GetRoleName(), err)
 		}
@@ -340,8 +340,8 @@ func PlayerFromProto(ctx context.Context, protoPlayer *proto.Player) (*Player, e
 		attribute.Int("conversion.performance_stats_count", len(player.PerformanceStatsNumeric)),
 	)
 
-	logDebug(ctx, "Protobuf Player conversion completed", 
-		"player_uid", player.UID, 
+	logDebug(ctx, "Protobuf Player conversion completed",
+		"player_uid", player.UID,
 		"player_name", player.Name,
 		"role_count", len(roles),
 		"duration_ms", duration.Milliseconds())
@@ -373,7 +373,7 @@ func (d *PlayerDataWithCurrency) ToProto(ctx context.Context) (*proto.DatasetDat
 		attribute.String("dataset.currency_symbol", d.CurrencySymbol),
 	)
 
-	logDebug(ctx, "Converting DatasetData to protobuf", 
+	logDebug(ctx, "Converting DatasetData to protobuf",
 		"player_count", len(d.Players),
 		"conversion_type", "dataset_data",
 		"conversion_direction", "to_protobuf",
@@ -383,9 +383,9 @@ func (d *PlayerDataWithCurrency) ToProto(ctx context.Context) (*proto.DatasetDat
 	for i, player := range d.Players {
 		protoPlayer, err := player.ToProto(ctx)
 		if err != nil {
-			logError(ctx, "Failed to convert player to protobuf", 
-				"error", err, 
-				"player_index", i, 
+			logError(ctx, "Failed to convert player to protobuf",
+				"error", err,
+				"player_index", i,
 				"player_uid", player.UID)
 			return nil, fmt.Errorf("failed to convert player %d (UID: %d) to protobuf: %w", i, player.UID, err)
 		}
@@ -404,7 +404,7 @@ func (d *PlayerDataWithCurrency) ToProto(ctx context.Context) (*proto.DatasetDat
 		attribute.Int("conversion.players_converted", len(protoPlayers)),
 	)
 
-	logDebug(ctx, "DatasetData conversion to protobuf completed", 
+	logDebug(ctx, "DatasetData conversion to protobuf completed",
 		"player_count", len(protoPlayers),
 		"currency_symbol", d.CurrencySymbol,
 		"duration_ms", duration.Milliseconds())
@@ -434,7 +434,7 @@ func DatasetDataFromProto(ctx context.Context, protoDataset *proto.DatasetData) 
 		attribute.String("dataset.currency_symbol", protoDataset.GetCurrencySymbol()),
 	)
 
-	logDebug(ctx, "Converting protobuf to DatasetData", 
+	logDebug(ctx, "Converting protobuf to DatasetData",
 		"player_count", len(protoDataset.GetPlayers()),
 		"conversion_type", "dataset_data",
 		"conversion_direction", "from_protobuf",
@@ -444,9 +444,9 @@ func DatasetDataFromProto(ctx context.Context, protoDataset *proto.DatasetData) 
 	for i, protoPlayer := range protoDataset.GetPlayers() {
 		player, err := PlayerFromProto(ctx, protoPlayer)
 		if err != nil {
-			logError(ctx, "Failed to convert protobuf player", 
-				"error", err, 
-				"player_index", i, 
+			logError(ctx, "Failed to convert protobuf player",
+				"error", err,
+				"player_index", i,
 				"player_uid", protoPlayer.GetUid())
 			return nil, fmt.Errorf("failed to convert protobuf player %d (UID: %d): %w", i, protoPlayer.GetUid(), err)
 		}
@@ -465,7 +465,7 @@ func DatasetDataFromProto(ctx context.Context, protoDataset *proto.DatasetData) 
 		attribute.Int("conversion.players_converted", len(players)),
 	)
 
-	logDebug(ctx, "Protobuf DatasetData conversion completed", 
+	logDebug(ctx, "Protobuf DatasetData conversion completed",
 		"player_count", len(players),
 		"currency_symbol", dataset.CurrencySymbol,
 		"duration_ms", duration.Milliseconds())

@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.6
 // 	protoc        v5.29.3
-// source: proto/player.proto
+// source: src/api/proto/player.proto
 
 package proto
 
@@ -32,7 +32,7 @@ type RoleOverallScore struct {
 
 func (x *RoleOverallScore) Reset() {
 	*x = RoleOverallScore{}
-	mi := &file_proto_player_proto_msgTypes[0]
+	mi := &file_src_api_proto_player_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -44,7 +44,7 @@ func (x *RoleOverallScore) String() string {
 func (*RoleOverallScore) ProtoMessage() {}
 
 func (x *RoleOverallScore) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_player_proto_msgTypes[0]
+	mi := &file_src_api_proto_player_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -57,7 +57,7 @@ func (x *RoleOverallScore) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RoleOverallScore.ProtoReflect.Descriptor instead.
 func (*RoleOverallScore) Descriptor() ([]byte, []int) {
-	return file_proto_player_proto_rawDescGZIP(), []int{0}
+	return file_src_api_proto_player_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *RoleOverallScore) GetRoleName() string {
@@ -84,7 +84,7 @@ type PerformancePercentileMap struct {
 
 func (x *PerformancePercentileMap) Reset() {
 	*x = PerformancePercentileMap{}
-	mi := &file_proto_player_proto_msgTypes[1]
+	mi := &file_src_api_proto_player_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -96,7 +96,7 @@ func (x *PerformancePercentileMap) String() string {
 func (*PerformancePercentileMap) ProtoMessage() {}
 
 func (x *PerformancePercentileMap) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_player_proto_msgTypes[1]
+	mi := &file_src_api_proto_player_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -109,7 +109,7 @@ func (x *PerformancePercentileMap) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PerformancePercentileMap.ProtoReflect.Descriptor instead.
 func (*PerformancePercentileMap) Descriptor() ([]byte, []int) {
-	return file_proto_player_proto_rawDescGZIP(), []int{1}
+	return file_src_api_proto_player_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *PerformancePercentileMap) GetPercentiles() map[string]float64 {
@@ -167,7 +167,7 @@ type Player struct {
 
 func (x *Player) Reset() {
 	*x = Player{}
-	mi := &file_proto_player_proto_msgTypes[2]
+	mi := &file_src_api_proto_player_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -179,7 +179,7 @@ func (x *Player) String() string {
 func (*Player) ProtoMessage() {}
 
 func (x *Player) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_player_proto_msgTypes[2]
+	mi := &file_src_api_proto_player_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -192,7 +192,7 @@ func (x *Player) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Player.ProtoReflect.Descriptor instead.
 func (*Player) Descriptor() ([]byte, []int) {
-	return file_proto_player_proto_rawDescGZIP(), []int{2}
+	return file_src_api_proto_player_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *Player) GetUid() int64 {
@@ -473,13 +473,14 @@ type DatasetData struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	Players        []*Player              `protobuf:"bytes,1,rep,name=players,proto3" json:"players,omitempty"`
 	CurrencySymbol string                 `protobuf:"bytes,2,opt,name=currency_symbol,json=currencySymbol,proto3" json:"currency_symbol,omitempty"`
+	CacheData      string                 `protobuf:"bytes,3,opt,name=cache_data,json=cacheData,proto3" json:"cache_data,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
 
 func (x *DatasetData) Reset() {
 	*x = DatasetData{}
-	mi := &file_proto_player_proto_msgTypes[3]
+	mi := &file_src_api_proto_player_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -491,7 +492,7 @@ func (x *DatasetData) String() string {
 func (*DatasetData) ProtoMessage() {}
 
 func (x *DatasetData) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_player_proto_msgTypes[3]
+	mi := &file_src_api_proto_player_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -504,7 +505,7 @@ func (x *DatasetData) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DatasetData.ProtoReflect.Descriptor instead.
 func (*DatasetData) Descriptor() ([]byte, []int) {
-	return file_proto_player_proto_rawDescGZIP(), []int{3}
+	return file_src_api_proto_player_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *DatasetData) GetPlayers() []*Player {
@@ -521,11 +522,18 @@ func (x *DatasetData) GetCurrencySymbol() string {
 	return ""
 }
 
-var File_proto_player_proto protoreflect.FileDescriptor
+func (x *DatasetData) GetCacheData() string {
+	if x != nil {
+		return x.CacheData
+	}
+	return ""
+}
 
-const file_proto_player_proto_rawDesc = "" +
+var File_src_api_proto_player_proto protoreflect.FileDescriptor
+
+const file_src_api_proto_player_proto_rawDesc = "" +
 	"\n" +
-	"\x12proto/player.proto\x12\x06player\"E\n" +
+	"\x1asrc/api/proto/player.proto\x12\x06player\"E\n" +
 	"\x10RoleOverallScore\x12\x1b\n" +
 	"\trole_name\x18\x01 \x01(\tR\broleName\x12\x14\n" +
 	"\x05score\x18\x02 \x01(\x05R\x05score\"\xaf\x01\n" +
@@ -589,25 +597,27 @@ const file_proto_player_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\x01R\x05value:\x028\x01\x1ak\n" +
 	"\x1bPerformancePercentilesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x126\n" +
-	"\x05value\x18\x02 \x01(\v2 .player.PerformancePercentileMapR\x05value:\x028\x01\"`\n" +
+	"\x05value\x18\x02 \x01(\v2 .player.PerformancePercentileMapR\x05value:\x028\x01\"\x7f\n" +
 	"\vDatasetData\x12(\n" +
 	"\aplayers\x18\x01 \x03(\v2\x0e.player.PlayerR\aplayers\x12'\n" +
-	"\x0fcurrency_symbol\x18\x02 \x01(\tR\x0ecurrencySymbolB\vZ\tapi/protob\x06proto3"
+	"\x0fcurrency_symbol\x18\x02 \x01(\tR\x0ecurrencySymbol\x12\x1d\n" +
+	"\n" +
+	"cache_data\x18\x03 \x01(\tR\tcacheDataB\vZ\tapi/protob\x06proto3"
 
 var (
-	file_proto_player_proto_rawDescOnce sync.Once
-	file_proto_player_proto_rawDescData []byte
+	file_src_api_proto_player_proto_rawDescOnce sync.Once
+	file_src_api_proto_player_proto_rawDescData []byte
 )
 
-func file_proto_player_proto_rawDescGZIP() []byte {
-	file_proto_player_proto_rawDescOnce.Do(func() {
-		file_proto_player_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_proto_player_proto_rawDesc), len(file_proto_player_proto_rawDesc)))
+func file_src_api_proto_player_proto_rawDescGZIP() []byte {
+	file_src_api_proto_player_proto_rawDescOnce.Do(func() {
+		file_src_api_proto_player_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_src_api_proto_player_proto_rawDesc), len(file_src_api_proto_player_proto_rawDesc)))
 	})
-	return file_proto_player_proto_rawDescData
+	return file_src_api_proto_player_proto_rawDescData
 }
 
-var file_proto_player_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
-var file_proto_player_proto_goTypes = []any{
+var file_src_api_proto_player_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_src_api_proto_player_proto_goTypes = []any{
 	(*RoleOverallScore)(nil),         // 0: player.RoleOverallScore
 	(*PerformancePercentileMap)(nil), // 1: player.PerformancePercentileMap
 	(*Player)(nil),                   // 2: player.Player
@@ -618,7 +628,7 @@ var file_proto_player_proto_goTypes = []any{
 	nil,                              // 7: player.Player.PerformanceStatsNumericEntry
 	nil,                              // 8: player.Player.PerformancePercentilesEntry
 }
-var file_proto_player_proto_depIdxs = []int32{
+var file_src_api_proto_player_proto_depIdxs = []int32{
 	4, // 0: player.PerformancePercentileMap.percentiles:type_name -> player.PerformancePercentileMap.PercentilesEntry
 	5, // 1: player.Player.attributes:type_name -> player.Player.AttributesEntry
 	6, // 2: player.Player.numeric_attributes:type_name -> player.Player.NumericAttributesEntry
@@ -634,26 +644,26 @@ var file_proto_player_proto_depIdxs = []int32{
 	0, // [0:8] is the sub-list for field type_name
 }
 
-func init() { file_proto_player_proto_init() }
-func file_proto_player_proto_init() {
-	if File_proto_player_proto != nil {
+func init() { file_src_api_proto_player_proto_init() }
+func file_src_api_proto_player_proto_init() {
+	if File_src_api_proto_player_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_player_proto_rawDesc), len(file_proto_player_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_src_api_proto_player_proto_rawDesc), len(file_src_api_proto_player_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_proto_player_proto_goTypes,
-		DependencyIndexes: file_proto_player_proto_depIdxs,
-		MessageInfos:      file_proto_player_proto_msgTypes,
+		GoTypes:           file_src_api_proto_player_proto_goTypes,
+		DependencyIndexes: file_src_api_proto_player_proto_depIdxs,
+		MessageInfos:      file_src_api_proto_player_proto_msgTypes,
 	}.Build()
-	File_proto_player_proto = out.File
-	file_proto_player_proto_goTypes = nil
-	file_proto_player_proto_depIdxs = nil
+	File_src_api_proto_player_proto = out.File
+	file_src_api_proto_player_proto_goTypes = nil
+	file_src_api_proto_player_proto_depIdxs = nil
 }

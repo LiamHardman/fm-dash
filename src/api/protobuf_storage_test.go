@@ -652,7 +652,7 @@ func TestProtobufStorage_LogFallbackEvent(t *testing.T) {
 func TestProtobufStorage_ErrorWrapping(t *testing.T) {
 	// Test that custom errors properly wrap underlying errors
 	underlyingErr := fmt.Errorf("underlying error")
-	
+
 	protobufErr := NewProtobufError("test", "dataset", "message", underlyingErr)
 	if protobufErr.Unwrap() != underlyingErr {
 		t.Error("ProtobufError should properly wrap underlying error")
@@ -747,12 +747,12 @@ func TestProtobufStorage_AllStorageBackends(t *testing.T) {
 
 			// Verify data integrity
 			if len(retrievedData.Players) != len(testData.Players) {
-				t.Errorf("Player count mismatch with %s backend: expected %d, got %d", 
+				t.Errorf("Player count mismatch with %s backend: expected %d, got %d",
 					tc.name, len(testData.Players), len(retrievedData.Players))
 			}
 
 			if retrievedData.CurrencySymbol != testData.CurrencySymbol {
-				t.Errorf("Currency symbol mismatch with %s backend: expected %s, got %s", 
+				t.Errorf("Currency symbol mismatch with %s backend: expected %s, got %s",
 					tc.name, testData.CurrencySymbol, retrievedData.CurrencySymbol)
 			}
 
@@ -812,25 +812,25 @@ func TestProtobufStorage_DataPersistenceAccuracy(t *testing.T) {
 				NationalityFIFACode: "BRA",
 				AttributeMasked:     true,
 				Attributes: map[string]string{
-					"Pace":        "19",
-					"Dribbling":   "18",
-					"Crossing":    "16",
-					"Finishing":   "15",
-					"Technique":   "17",
+					"Pace":      "19",
+					"Dribbling": "18",
+					"Crossing":  "16",
+					"Finishing": "15",
+					"Technique": "17",
 				},
 				NumericAttributes: map[string]int{
-					"Pace":        19,
-					"Dribbling":   18,
-					"Crossing":    16,
-					"Finishing":   15,
-					"Technique":   17,
+					"Pace":      19,
+					"Dribbling": 18,
+					"Crossing":  16,
+					"Finishing": 15,
+					"Technique": 17,
 				},
 				PerformanceStatsNumeric: map[string]float64{
-					"Goals":              8.5,
-					"Assists":            14.2,
-					"KeyPasses":          2.8,
-					"DribblesPerGame":    4.3,
-					"CrossAccuracy":      78.5,
+					"Goals":           8.5,
+					"Assists":         14.2,
+					"KeyPasses":       2.8,
+					"DribblesPerGame": 4.3,
+					"CrossAccuracy":   78.5,
 				},
 				PerformancePercentiles: map[string]map[string]float64{
 					"Attacking": {
@@ -892,12 +892,12 @@ func TestProtobufStorage_DataPersistenceAccuracy(t *testing.T) {
 
 	// Perform comprehensive data accuracy checks
 	if len(retrievedData.Players) != len(originalData.Players) {
-		t.Fatalf("Player count mismatch: expected %d, got %d", 
+		t.Fatalf("Player count mismatch: expected %d, got %d",
 			len(originalData.Players), len(retrievedData.Players))
 	}
 
 	if retrievedData.CurrencySymbol != originalData.CurrencySymbol {
-		t.Errorf("Currency symbol mismatch: expected %s, got %s", 
+		t.Errorf("Currency symbol mismatch: expected %s, got %s",
 			originalData.CurrencySymbol, retrievedData.CurrencySymbol)
 	}
 
@@ -918,7 +918,7 @@ func TestProtobufStorage_DataPersistenceAccuracy(t *testing.T) {
 
 	// Maps
 	if len(retrieved.Attributes) != len(original.Attributes) {
-		t.Errorf("Attributes map length mismatch: expected %d, got %d", 
+		t.Errorf("Attributes map length mismatch: expected %d, got %d",
 			len(original.Attributes), len(retrieved.Attributes))
 	}
 	for key, value := range original.Attributes {
@@ -928,7 +928,7 @@ func TestProtobufStorage_DataPersistenceAccuracy(t *testing.T) {
 	}
 
 	if len(retrieved.NumericAttributes) != len(original.NumericAttributes) {
-		t.Errorf("NumericAttributes map length mismatch: expected %d, got %d", 
+		t.Errorf("NumericAttributes map length mismatch: expected %d, got %d",
 			len(original.NumericAttributes), len(retrieved.NumericAttributes))
 	}
 	for key, value := range original.NumericAttributes {
@@ -939,19 +939,19 @@ func TestProtobufStorage_DataPersistenceAccuracy(t *testing.T) {
 
 	// Performance stats
 	if len(retrieved.PerformanceStatsNumeric) != len(original.PerformanceStatsNumeric) {
-		t.Errorf("PerformanceStatsNumeric map length mismatch: expected %d, got %d", 
+		t.Errorf("PerformanceStatsNumeric map length mismatch: expected %d, got %d",
 			len(original.PerformanceStatsNumeric), len(retrieved.PerformanceStatsNumeric))
 	}
 	for key, value := range original.PerformanceStatsNumeric {
 		if retrieved.PerformanceStatsNumeric[key] != value {
-			t.Errorf("PerformanceStatsNumeric[%s] mismatch: expected %f, got %f", 
+			t.Errorf("PerformanceStatsNumeric[%s] mismatch: expected %f, got %f",
 				key, value, retrieved.PerformanceStatsNumeric[key])
 		}
 	}
 
 	// Nested performance percentiles
 	if len(retrieved.PerformancePercentiles) != len(original.PerformancePercentiles) {
-		t.Errorf("PerformancePercentiles map length mismatch: expected %d, got %d", 
+		t.Errorf("PerformancePercentiles map length mismatch: expected %d, got %d",
 			len(original.PerformancePercentiles), len(retrieved.PerformancePercentiles))
 	}
 	for category, percentiles := range original.PerformancePercentiles {
@@ -962,7 +962,7 @@ func TestProtobufStorage_DataPersistenceAccuracy(t *testing.T) {
 		}
 		for stat, value := range percentiles {
 			if retrievedPercentiles[stat] != value {
-				t.Errorf("PerformancePercentiles[%s][%s] mismatch: expected %f, got %f", 
+				t.Errorf("PerformancePercentiles[%s][%s] mismatch: expected %f, got %f",
 					category, stat, value, retrievedPercentiles[stat])
 			}
 		}
@@ -970,7 +970,7 @@ func TestProtobufStorage_DataPersistenceAccuracy(t *testing.T) {
 
 	// Slices
 	if len(retrieved.ParsedPositions) != len(original.ParsedPositions) {
-		t.Errorf("ParsedPositions length mismatch: expected %d, got %d", 
+		t.Errorf("ParsedPositions length mismatch: expected %d, got %d",
 			len(original.ParsedPositions), len(retrieved.ParsedPositions))
 	}
 	for i, pos := range original.ParsedPositions {
@@ -981,18 +981,18 @@ func TestProtobufStorage_DataPersistenceAccuracy(t *testing.T) {
 
 	// Role-specific overalls
 	if len(retrieved.RoleSpecificOveralls) != len(original.RoleSpecificOveralls) {
-		t.Errorf("RoleSpecificOveralls length mismatch: expected %d, got %d", 
+		t.Errorf("RoleSpecificOveralls length mismatch: expected %d, got %d",
 			len(original.RoleSpecificOveralls), len(retrieved.RoleSpecificOveralls))
 	}
 	for i, role := range original.RoleSpecificOveralls {
 		if i < len(retrieved.RoleSpecificOveralls) {
 			retrievedRole := retrieved.RoleSpecificOveralls[i]
 			if retrievedRole.RoleName != role.RoleName {
-				t.Errorf("RoleSpecificOveralls[%d].RoleName mismatch: expected %s, got %s", 
+				t.Errorf("RoleSpecificOveralls[%d].RoleName mismatch: expected %s, got %s",
 					i, role.RoleName, retrievedRole.RoleName)
 			}
 			if retrievedRole.Score != role.Score {
-				t.Errorf("RoleSpecificOveralls[%d].Score mismatch: expected %d, got %d", 
+				t.Errorf("RoleSpecificOveralls[%d].Score mismatch: expected %d, got %d",
 					i, role.Score, retrievedRole.Score)
 			}
 		}
@@ -1000,8 +1000,8 @@ func TestProtobufStorage_DataPersistenceAccuracy(t *testing.T) {
 
 	// Individual stats
 	statsToCheck := []struct {
-		name     string
-		original int
+		name      string
+		original  int
 		retrieved int
 	}{
 		{"PAC", original.PAC, retrieved.PAC},
@@ -1021,11 +1021,11 @@ func TestProtobufStorage_DataPersistenceAccuracy(t *testing.T) {
 
 	// Amount fields
 	if retrieved.TransferValueAmount != original.TransferValueAmount {
-		t.Errorf("TransferValueAmount mismatch: expected %d, got %d", 
+		t.Errorf("TransferValueAmount mismatch: expected %d, got %d",
 			original.TransferValueAmount, retrieved.TransferValueAmount)
 	}
 	if retrieved.WageAmount != original.WageAmount {
-		t.Errorf("WageAmount mismatch: expected %d, got %d", 
+		t.Errorf("WageAmount mismatch: expected %d, got %d",
 			original.WageAmount, retrieved.WageAmount)
 	}
 }
@@ -1104,12 +1104,12 @@ func TestProtobufStorage_APIResponseCompatibility(t *testing.T) {
 
 	// Compare the retrieved data - they should be identical for API compatibility
 	if len(jsonData.Players) != len(protobufData.Players) {
-		t.Errorf("Player count mismatch: JSON %d vs Protobuf %d", 
+		t.Errorf("Player count mismatch: JSON %d vs Protobuf %d",
 			len(jsonData.Players), len(protobufData.Players))
 	}
 
 	if jsonData.CurrencySymbol != protobufData.CurrencySymbol {
-		t.Errorf("Currency symbol mismatch: JSON %s vs Protobuf %s", 
+		t.Errorf("Currency symbol mismatch: JSON %s vs Protobuf %s",
 			jsonData.CurrencySymbol, protobufData.CurrencySymbol)
 	}
 
@@ -1132,14 +1132,14 @@ func TestProtobufStorage_APIResponseCompatibility(t *testing.T) {
 		// Maps should be identical
 		for key, value := range jsonPlayer.Attributes {
 			if protobufPlayer.Attributes[key] != value {
-				t.Errorf("Attributes[%s] mismatch: JSON %s vs Protobuf %s", 
+				t.Errorf("Attributes[%s] mismatch: JSON %s vs Protobuf %s",
 					key, value, protobufPlayer.Attributes[key])
 			}
 		}
 
 		// Role-specific overalls
 		if len(jsonPlayer.RoleSpecificOveralls) != len(protobufPlayer.RoleSpecificOveralls) {
-			t.Errorf("RoleSpecificOveralls length mismatch: JSON %d vs Protobuf %d", 
+			t.Errorf("RoleSpecificOveralls length mismatch: JSON %d vs Protobuf %d",
 				len(jsonPlayer.RoleSpecificOveralls), len(protobufPlayer.RoleSpecificOveralls))
 		}
 	}
@@ -1251,18 +1251,18 @@ func TestProtobufStorage_LargeDatasetIntegration(t *testing.T) {
 
 	for i := 0; i < numPlayers; i++ {
 		players[i] = Player{
-			UID:                     int64(i + 1),
-			Name:                    fmt.Sprintf("Large Dataset Player %d", i+1),
-			Position:                []string{"ST", "CM", "CB", "GK", "RW", "LW", "CAM", "CDM"}[i%8],
-			Age:                     fmt.Sprintf("%d", 18+(i%15)),
-			Club:                    fmt.Sprintf("Large Club %d", (i%100)+1),
-			Division:                []string{"Premier League", "Championship", "League One", "League Two"}[i%4],
-			TransferValue:           fmt.Sprintf("£%dM", (i%50)+1),
-			Wage:                    fmt.Sprintf("£%dK", (i%100)+10),
-			Nationality:             []string{"England", "Spain", "Germany", "France", "Italy", "Brazil", "Argentina"}[i%7],
-			NationalityISO:          []string{"ENG", "ESP", "GER", "FRA", "ITA", "BRA", "ARG"}[i%7],
-			NationalityFIFACode:     []string{"ENG", "ESP", "GER", "FRA", "ITA", "BRA", "ARG"}[i%7],
-			AttributeMasked:         i%2 == 0,
+			UID:                 int64(i + 1),
+			Name:                fmt.Sprintf("Large Dataset Player %d", i+1),
+			Position:            []string{"ST", "CM", "CB", "GK", "RW", "LW", "CAM", "CDM"}[i%8],
+			Age:                 fmt.Sprintf("%d", 18+(i%15)),
+			Club:                fmt.Sprintf("Large Club %d", (i%100)+1),
+			Division:            []string{"Premier League", "Championship", "League One", "League Two"}[i%4],
+			TransferValue:       fmt.Sprintf("£%dM", (i%50)+1),
+			Wage:                fmt.Sprintf("£%dK", (i%100)+10),
+			Nationality:         []string{"England", "Spain", "Germany", "France", "Italy", "Brazil", "Argentina"}[i%7],
+			NationalityISO:      []string{"ENG", "ESP", "GER", "FRA", "ITA", "BRA", "ARG"}[i%7],
+			NationalityFIFACode: []string{"ENG", "ESP", "GER", "FRA", "ITA", "BRA", "ARG"}[i%7],
+			AttributeMasked:     i%2 == 0,
 			Attributes: map[string]string{
 				"Pace":      fmt.Sprintf("%d", 10+(i%11)),
 				"Shooting":  fmt.Sprintf("%d", 8+(i%13)),
@@ -1314,8 +1314,8 @@ func TestProtobufStorage_LargeDatasetIntegration(t *testing.T) {
 				{RoleName: fmt.Sprintf("Role A %d", i%5), Score: 60 + (i % 30)},
 				{RoleName: fmt.Sprintf("Role B %d", i%5), Score: 55 + (i % 35)},
 			},
-			TransferValueAmount: int64((i%50+1) * 1000000),
-			WageAmount:          int64((i%100+10) * 1000),
+			TransferValueAmount: int64((i%50 + 1) * 1000000),
+			WageAmount:          int64((i%100 + 10) * 1000),
 		}
 	}
 
@@ -1342,12 +1342,12 @@ func TestProtobufStorage_LargeDatasetIntegration(t *testing.T) {
 
 	// Verify data integrity
 	if len(retrievedDataset.Players) != len(largeDataset.Players) {
-		t.Errorf("Player count mismatch: expected %d, got %d", 
+		t.Errorf("Player count mismatch: expected %d, got %d",
 			len(largeDataset.Players), len(retrievedDataset.Players))
 	}
 
 	if retrievedDataset.CurrencySymbol != largeDataset.CurrencySymbol {
-		t.Errorf("Currency symbol mismatch: expected %s, got %s", 
+		t.Errorf("Currency symbol mismatch: expected %s, got %s",
 			largeDataset.CurrencySymbol, retrievedDataset.CurrencySymbol)
 	}
 
@@ -1414,7 +1414,7 @@ func TestProtobufStorage_ErrorRecoveryIntegration(t *testing.T) {
 
 	// Basic data should be preserved
 	if len(retrievedData.Players) != len(problematicData.Players) {
-		t.Errorf("Player count mismatch after error recovery: expected %d, got %d", 
+		t.Errorf("Player count mismatch after error recovery: expected %d, got %d",
 			len(problematicData.Players), len(retrievedData.Players))
 	}
 

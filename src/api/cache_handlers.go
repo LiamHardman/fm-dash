@@ -2,9 +2,9 @@ package main
 
 import (
 	"api/errors"
+	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -44,52 +44,87 @@ func CreateCacheStorageWrapper(storage StorageInterface) *CacheStorageWrapper {
 }
 
 // StoreCacheData stores cache data using the existing storage interface
-func (c *CacheStorageWrapper) StoreCacheData(cacheKey string, data *NationRatingsCache) error {
+func (c *CacheStorageWrapper) StoreCacheData(ctx context.Context, cacheKey string, data *NationRatingsCache) error {
+	logInfo(ctx, "Starting cache data storage", "cache_key", cacheKey, "player_count", data.PlayerCount)
+	start := time.Now()
+
 	// Convert cache data to JSON
 	jsonData, err := json.Marshal(data)
 	if err != nil {
+		logError(ctx, "Failed to marshal cache data", "error", err, "cache_key", cacheKey)
 		return fmt.Errorf("failed to marshal cache data: %w", err)
 	}
 
 	// Store using existing storage interface
-	dummyData := DatasetData{
-		Players:        []Player{},
-		CurrencySymbol: string(jsonData), // Store JSON data in currency symbol field
+	cacheDataset := DatasetData{
+		Players:   []Player{},
+		CacheData: string(jsonData), // Store JSON data in cache data field
 	}
 
-	return c.storage.Store(cacheKey, dummyData)
+	err = c.storage.Store(cacheKey, cacheDataset)
+	if err != nil {
+		logError(ctx, "Failed to store cache data", "error", err, "cache_key", cacheKey)
+		return err
+	}
+
+	logDebug(ctx, "Cache data stored successfully", "cache_key", cacheKey, "duration_ms", time.Since(start).Milliseconds())
+	return nil
 }
 
 // RetrieveCacheData retrieves cache data using the existing storage interface
-func (c *CacheStorageWrapper) RetrieveCacheData(cacheKey string) (NationRatingsCache, error) {
+func (c *CacheStorageWrapper) RetrieveCacheData(ctx context.Context, cacheKey string) (NationRatingsCache, error) {
+	logInfo(ctx, "Starting cache data retrieval", "cache_key", cacheKey)
+	start := time.Now()
+
 	cacheDatasetID := fmt.Sprintf("cache_%s", cacheKey)
 
 	data, err := c.storage.Retrieve(cacheDatasetID)
 	if err != nil {
+		logError(ctx, "Failed to retrieve cache data", "error", err, "cache_key", cacheKey, "cache_dataset_id", cacheDatasetID)
 		return NationRatingsCache{}, err
 	}
 
 	// Extract cache data from the dummy player
 	if len(data.Players) == 0 || data.Players[0].Name != "__CACHE_DATA__" {
+		logError(ctx, "Invalid cache data format", "cache_key", cacheKey, "player_count", len(data.Players))
 		return NationRatingsCache{}, errors.ErrInvalidCacheDataFormat
 	}
 
 	var cacheData NationRatingsCache
 	if err := json.Unmarshal([]byte(data.Players[0].Personality), &cacheData); err != nil {
+		logError(ctx, "Failed to unmarshal cache data", "error", err, "cache_key", cacheKey)
 		return NationRatingsCache{}, fmt.Errorf("failed to unmarshal cache data: %w", err)
 	}
 
+	logDebug(ctx, "Cache data retrieved successfully", "cache_key", cacheKey, "player_count", cacheData.PlayerCount, "duration_ms", time.Since(start).Milliseconds())
 	return cacheData, nil
 }
 
 // DeleteCacheData deletes cache data
-func (c *CacheStorageWrapper) DeleteCacheData(cacheKey string) error {
-	return c.storage.Delete(cacheKey)
+func (c *CacheStorageWrapper) DeleteCacheData(ctx context.Context, cacheKey string) error {
+	logInfo(ctx, "Starting cache data deletion", "cache_key", cacheKey)
+	start := time.Now()
+
+	err := c.storage.Delete(cacheKey)
+	if err != nil {
+		logError(ctx, "Failed to delete cache data", "error", err, "cache_key", cacheKey)
+		return err
+	}
+
+	logDebug(ctx, "Cache data deleted successfully", "cache_key", cacheKey, "duration_ms", time.Since(start).Milliseconds())
+	return nil
 }
 
 // InitCacheStorage initializes the cache storage system
-func InitCacheStorage() {
-	LogDebug("Cache storage system initialized")
+func InitCacheStorage(ctx context.Context) {
+	logInfo(ctx, "Initializing cache storage system", "cache_version", cacheVersion)
+	start := time.Now()
+
+	// Cache storage initialization logic would go here
+
+	logDebug(ctx, "Cache storage system initialized successfully",
+		"cache_version", cacheVersion,
+		"duration_ms", time.Since(start).Milliseconds())
 }
 
 // cacheHandler handles cache operations for various cache types
@@ -129,55 +164,107 @@ func cacheHandler(w http.ResponseWriter, r *http.Request) {
 
 // handleNationRatingsCache handles nation ratings cache operations
 func handleNationRatingsCache(w http.ResponseWriter, r *http.Request, cacheKey string) {
+	ctx := r.Context()
 	cacheDatasetID := fmt.Sprintf("cache_nation_ratings_%s", cacheKey)
+
+	logInfo(ctx, "Handling nation ratings cache operation",
+		"method", r.Method,
+		"cache_key", cacheKey,
+		"cache_dataset_id", cacheDatasetID)
 
 	switch r.Method {
 	case http.MethodGet:
+		start := time.Now()
 		data, err := storage.Retrieve(cacheDatasetID)
 		if err != nil {
+			logError(ctx, "Cache retrieval failed",
+				"error", err,
+				"cache_dataset_id", cacheDatasetID,
+				"cache_key", cacheKey)
 			http.Error(w, "Cache not found", http.StatusNotFound)
 			return
 		}
 
+		logDebug(ctx, "Cache hit for nation ratings",
+			"cache_key", cacheKey,
+			"retrieval_duration_ms", time.Since(start).Milliseconds())
+
 		w.Header().Set("Content-Type", "application/json")
 		setCORSHeaders(w, r)
-		if _, err := w.Write([]byte(data.CurrencySymbol)); err != nil {
-			log.Printf("Error writing response: %v", err)
+
+		// Use CacheData field, fallback to CurrencySymbol for backward compatibility
+		cacheContent := data.CacheData
+		if cacheContent == "" {
+			cacheContent = data.CurrencySymbol
+			logDebug(ctx, "Using fallback CurrencySymbol for cache content", "cache_key", cacheKey)
+		}
+
+		if _, err := w.Write([]byte(cacheContent)); err != nil {
+			logError(ctx, "Error writing cache response",
+				"error", err,
+				"cache_key", cacheKey)
 		}
 
 	case http.MethodPost:
+		start := time.Now()
 		var cacheData json.RawMessage
 		if err := json.NewDecoder(r.Body).Decode(&cacheData); err != nil {
+			logError(ctx, "Invalid JSON body in cache POST request",
+				"error", err,
+				"cache_key", cacheKey)
 			http.Error(w, "Invalid JSON body", http.StatusBadRequest)
 			return
 		}
 
-		dummyData := DatasetData{
-			Players:        []Player{},
-			CurrencySymbol: string(cacheData),
+		logInfo(ctx, "Storing nation ratings cache",
+			"cache_key", cacheKey,
+			"data_size_bytes", len(cacheData))
+
+		cacheDataset := DatasetData{
+			Players:   []Player{},
+			CacheData: string(cacheData),
 		}
 
-		if err := storage.Store(cacheDatasetID, dummyData); err != nil {
-			LogWarn("Error storing nation ratings cache: %v", err)
+		if err := storage.Store(cacheDatasetID, cacheDataset); err != nil {
+			logError(ctx, "Error storing nation ratings cache",
+				"error", err,
+				"cache_dataset_id", cacheDatasetID,
+				"cache_key", cacheKey)
 			http.Error(w, "Failed to store cache", http.StatusInternalServerError)
 			return
 		}
 
+		logDebug(ctx, "Nation ratings cache stored successfully",
+			"cache_key", cacheKey,
+			"storage_duration_ms", time.Since(start).Milliseconds())
+
 		w.Header().Set("Content-Type", "application/json")
 		setCORSHeaders(w, r)
 		if err := json.NewEncoder(w).Encode(map[string]string{"status": "cached"}); err != nil {
-			LogWarn("Error encoding response: %v", err)
+			logError(ctx, "Error encoding cache response",
+				"error", err,
+				"cache_key", cacheKey)
 		}
 
 	case http.MethodDelete:
+		start := time.Now()
 		if err := storage.Delete(cacheDatasetID); err != nil {
-			LogWarn("Error deleting cache: %v", err)
+			logError(ctx, "Error deleting nation ratings cache",
+				"error", err,
+				"cache_dataset_id", cacheDatasetID,
+				"cache_key", cacheKey)
+		} else {
+			logDebug(ctx, "Nation ratings cache deleted successfully",
+				"cache_key", cacheKey,
+				"deletion_duration_ms", time.Since(start).Milliseconds())
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		setCORSHeaders(w, r)
 		if err := json.NewEncoder(w).Encode(map[string]string{"status": "deleted"}); err != nil {
-			LogWarn("Error encoding response: %v", err)
+			logError(ctx, "Error encoding cache deletion response",
+				"error", err,
+				"cache_key", cacheKey)
 		}
 
 	default:
@@ -187,31 +274,66 @@ func handleNationRatingsCache(w http.ResponseWriter, r *http.Request, cacheKey s
 
 // handlePercentilesCache handles percentiles cache operations
 func handlePercentilesCache(w http.ResponseWriter, r *http.Request, cacheKey string) {
+	ctx := r.Context()
 	cacheDatasetID := fmt.Sprintf("cache_percentiles_%s", cacheKey)
+
+	logInfo(ctx, "Handling percentiles cache operation",
+		"method", r.Method,
+		"cache_key", cacheKey,
+		"cache_dataset_id", cacheDatasetID)
 
 	switch r.Method {
 	case http.MethodGet:
+		start := time.Now()
 		data, err := storage.Retrieve(cacheDatasetID)
 		if err != nil {
+			logError(ctx, "Percentiles cache retrieval failed",
+				"error", err,
+				"cache_dataset_id", cacheDatasetID,
+				"cache_key", cacheKey)
 			http.Error(w, "Cache not found", http.StatusNotFound)
 			return
 		}
 
+		logDebug(ctx, "Cache hit for percentiles",
+			"cache_key", cacheKey,
+			"retrieval_duration_ms", time.Since(start).Milliseconds())
+
 		w.Header().Set("Content-Type", "application/json")
 		setCORSHeaders(w, r)
-		if _, err := w.Write([]byte(data.CurrencySymbol)); err != nil {
-			LogWarn("Error writing response: %v", err)
+
+		// Use CacheData field, fallback to CurrencySymbol for backward compatibility
+		cacheContent := data.CacheData
+		if cacheContent == "" {
+			cacheContent = data.CurrencySymbol
+			logDebug(ctx, "Using fallback CurrencySymbol for percentiles cache content", "cache_key", cacheKey)
+		}
+
+		if _, err := w.Write([]byte(cacheContent)); err != nil {
+			logError(ctx, "Error writing percentiles cache response",
+				"error", err,
+				"cache_key", cacheKey)
 		}
 
 	case http.MethodDelete:
+		start := time.Now()
 		if err := storage.Delete(cacheDatasetID); err != nil {
-			LogWarn("Error deleting percentiles cache: %v", err)
+			logError(ctx, "Error deleting percentiles cache",
+				"error", err,
+				"cache_dataset_id", cacheDatasetID,
+				"cache_key", cacheKey)
+		} else {
+			logDebug(ctx, "Percentiles cache deleted successfully",
+				"cache_key", cacheKey,
+				"deletion_duration_ms", time.Since(start).Milliseconds())
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		setCORSHeaders(w, r)
 		if err := json.NewEncoder(w).Encode(map[string]string{"status": "deleted"}); err != nil {
-			LogWarn("Error encoding response: %v", err)
+			logError(ctx, "Error encoding percentiles cache deletion response",
+				"error", err,
+				"cache_key", cacheKey)
 		}
 
 	default:
@@ -221,31 +343,66 @@ func handlePercentilesCache(w http.ResponseWriter, r *http.Request, cacheKey str
 
 // handleBargainHunterCache handles bargain hunter cache operations
 func handleBargainHunterCache(w http.ResponseWriter, r *http.Request, cacheKey string) {
+	ctx := r.Context()
 	cacheDatasetID := fmt.Sprintf("cache_bargain_hunter_%s", cacheKey)
+
+	logInfo(ctx, "Handling bargain hunter cache operation",
+		"method", r.Method,
+		"cache_key", cacheKey,
+		"cache_dataset_id", cacheDatasetID)
 
 	switch r.Method {
 	case http.MethodGet:
+		start := time.Now()
 		data, err := storage.Retrieve(cacheDatasetID)
 		if err != nil {
+			logError(ctx, "Bargain hunter cache retrieval failed",
+				"error", err,
+				"cache_dataset_id", cacheDatasetID,
+				"cache_key", cacheKey)
 			http.Error(w, "Cache not found", http.StatusNotFound)
 			return
 		}
 
+		logDebug(ctx, "Cache hit for bargain hunter",
+			"cache_key", cacheKey,
+			"retrieval_duration_ms", time.Since(start).Milliseconds())
+
 		w.Header().Set("Content-Type", "application/json")
 		setCORSHeaders(w, r)
-		if _, err := w.Write([]byte(data.CurrencySymbol)); err != nil {
-			LogWarn("Error writing response: %v", err)
+
+		// Use CacheData field, fallback to CurrencySymbol for backward compatibility
+		cacheContent := data.CacheData
+		if cacheContent == "" {
+			cacheContent = data.CurrencySymbol
+			logDebug(ctx, "Using fallback CurrencySymbol for bargain hunter cache content", "cache_key", cacheKey)
+		}
+
+		if _, err := w.Write([]byte(cacheContent)); err != nil {
+			logError(ctx, "Error writing bargain hunter cache response",
+				"error", err,
+				"cache_key", cacheKey)
 		}
 
 	case http.MethodDelete:
+		start := time.Now()
 		if err := storage.Delete(cacheDatasetID); err != nil {
-			LogWarn("Error deleting bargain hunter cache: %v", err)
+			logError(ctx, "Error deleting bargain hunter cache",
+				"error", err,
+				"cache_dataset_id", cacheDatasetID,
+				"cache_key", cacheKey)
+		} else {
+			logDebug(ctx, "Bargain hunter cache deleted successfully",
+				"cache_key", cacheKey,
+				"deletion_duration_ms", time.Since(start).Milliseconds())
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		setCORSHeaders(w, r)
 		if err := json.NewEncoder(w).Encode(map[string]string{"status": "deleted"}); err != nil {
-			LogWarn("Error encoding response: %v", err)
+			logError(ctx, "Error encoding bargain hunter cache deletion response",
+				"error", err,
+				"cache_key", cacheKey)
 		}
 
 	default:
@@ -255,31 +412,66 @@ func handleBargainHunterCache(w http.ResponseWriter, r *http.Request, cacheKey s
 
 // handleSearchCache handles search cache operations
 func handleSearchCache(w http.ResponseWriter, r *http.Request, cacheKey string) {
+	ctx := r.Context()
 	cacheDatasetID := fmt.Sprintf("cache_search_%s", cacheKey)
+
+	logInfo(ctx, "Handling search cache operation",
+		"method", r.Method,
+		"cache_key", cacheKey,
+		"cache_dataset_id", cacheDatasetID)
 
 	switch r.Method {
 	case http.MethodGet:
+		start := time.Now()
 		data, err := storage.Retrieve(cacheDatasetID)
 		if err != nil {
+			logError(ctx, "Search cache retrieval failed",
+				"error", err,
+				"cache_dataset_id", cacheDatasetID,
+				"cache_key", cacheKey)
 			http.Error(w, "Cache not found", http.StatusNotFound)
 			return
 		}
 
+		logDebug(ctx, "Cache hit for search",
+			"cache_key", cacheKey,
+			"retrieval_duration_ms", time.Since(start).Milliseconds())
+
 		w.Header().Set("Content-Type", "application/json")
 		setCORSHeaders(w, r)
-		if _, err := w.Write([]byte(data.CurrencySymbol)); err != nil {
-			LogWarn("Error writing response: %v", err)
+
+		// Use CacheData field, fallback to CurrencySymbol for backward compatibility
+		cacheContent := data.CacheData
+		if cacheContent == "" {
+			cacheContent = data.CurrencySymbol
+			logDebug(ctx, "Using fallback CurrencySymbol for search cache content", "cache_key", cacheKey)
+		}
+
+		if _, err := w.Write([]byte(cacheContent)); err != nil {
+			logError(ctx, "Error writing search cache response",
+				"error", err,
+				"cache_key", cacheKey)
 		}
 
 	case http.MethodDelete:
+		start := time.Now()
 		if err := storage.Delete(cacheDatasetID); err != nil {
-			LogWarn("Error deleting search cache: %v", err)
+			logError(ctx, "Error deleting search cache",
+				"error", err,
+				"cache_dataset_id", cacheDatasetID,
+				"cache_key", cacheKey)
+		} else {
+			logDebug(ctx, "Search cache deleted successfully",
+				"cache_key", cacheKey,
+				"deletion_duration_ms", time.Since(start).Milliseconds())
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		setCORSHeaders(w, r)
 		if err := json.NewEncoder(w).Encode(map[string]string{"status": "deleted"}); err != nil {
-			LogWarn("Error encoding response: %v", err)
+			logError(ctx, "Error encoding search cache deletion response",
+				"error", err,
+				"cache_key", cacheKey)
 		}
 
 	default:
@@ -306,7 +498,10 @@ type PercentilesCacheData struct {
 }
 
 // generatePercentilesCacheKey generates a cache key for percentiles calculation
-func generatePercentilesCacheKey(datasetID, playerName, divisionFilter, targetDivision string, players []Player) string {
+func generatePercentilesCacheKey(ctx context.Context, datasetID, playerName, divisionFilter, targetDivision string, players []Player) string {
+	logDebug(ctx, "Generating percentiles cache key", "dataset_id", datasetID, "player_name", playerName, "player_count", len(players))
+	start := time.Now()
+
 	// Create a simple hash based on key parameters and dataset state
 	playerCount := len(players)
 
@@ -336,11 +531,15 @@ func generatePercentilesCacheKey(datasetID, playerName, divisionFilter, targetDi
 
 	cacheKey := fmt.Sprintf("percentiles_%s", fmt.Sprintf("%x", hash)[:12])
 
+	logDebug(ctx, "Generated percentiles cache key", "cache_key", cacheKey, "duration_ms", time.Since(start).Milliseconds())
 	return cacheKey
 }
 
 // savePercentilesToCache saves percentiles calculation to cache
-func savePercentilesToCache(cacheKey, datasetID, playerName, divisionFilter, targetDivision string, players []Player, percentiles map[string]map[string]float64) {
+func savePercentilesToCache(ctx context.Context, cacheKey, datasetID, playerName, divisionFilter, targetDivision string, players []Player, percentiles map[string]map[string]float64) {
+	logInfo(ctx, "Starting percentiles cache save", "cache_key", cacheKey, "dataset_id", datasetID, "player_count", len(players))
+	start := time.Now()
+
 	cacheData := PercentilesCacheData{
 		Version:     cacheVersion,
 		GeneratedAt: time.Now(),
@@ -350,7 +549,7 @@ func savePercentilesToCache(cacheKey, datasetID, playerName, divisionFilter, tar
 			DivisionFilter: divisionFilter,
 			TargetDivision: targetDivision,
 			PlayerCount:    len(players),
-			DataHash:       generateDataHash(players),
+			DataHash:       generateDataHash(ctx, players),
 		},
 		Percentiles: percentiles,
 	}
@@ -359,48 +558,57 @@ func savePercentilesToCache(cacheKey, datasetID, playerName, divisionFilter, tar
 	// We'll create a separate cache dataset ID for this
 	cacheDatasetID := fmt.Sprintf("cache_percentiles_%s", cacheKey)
 
-	// Create a dummy DatasetData to work with existing storage interface
-	dummyData := DatasetData{
-		Players:        []Player{}, // Empty since we're storing cache data in CurrencySymbol
-		CurrencySymbol: "",         // We'll encode our cache data here as JSON
+	// Create a cache DatasetData using the dedicated cache field
+	cacheDataset := DatasetData{
+		Players:   []Player{}, // Empty since we're storing cache data separately
+		CacheData: "",         // We'll encode our cache data here as JSON
 	}
 
-	// Encode our cache data as JSON and store it in the currency symbol field
+	// Encode our cache data as JSON and store it in the cache data field
 	cacheJSON, err := json.Marshal(cacheData)
 	if err != nil {
-		LogWarn("⚠️ Error marshaling percentiles cache data: %v", err)
+		logError(ctx, "Error marshaling percentiles cache data", "error", err, "cache_key", cacheKey)
 		return
 	}
 
-	dummyData.CurrencySymbol = string(cacheJSON)
+	cacheDataset.CacheData = string(cacheJSON)
 
-	if err := storage.Store(cacheDatasetID, dummyData); err != nil {
-		LogWarn("⚠️ Error storing percentiles cache: %v", err)
+	if err := storage.Store(cacheDatasetID, cacheDataset); err != nil {
+		logError(ctx, "Error storing percentiles cache", "error", err, "cache_key", cacheKey, "cache_dataset_id", cacheDatasetID)
 		return
 	}
 
-	LogDebug("✅ Percentiles cached successfully as %s", cacheKey)
+	logDebug(ctx, "Percentiles cached successfully", "cache_key", cacheKey, "duration_ms", time.Since(start).Milliseconds())
 }
 
 // loadPercentilesFromCache loads percentiles calculation from cache
-func loadPercentilesFromCache(cacheKey, datasetID, playerName, divisionFilter, targetDivision string, players []Player) (map[string]map[string]float64, bool) {
+func loadPercentilesFromCache(ctx context.Context, cacheKey, datasetID, playerName, divisionFilter, targetDivision string, players []Player) (map[string]map[string]float64, bool) {
+	logInfo(ctx, "Starting percentiles cache load", "cache_key", cacheKey, "dataset_id", datasetID, "player_count", len(players))
+	start := time.Now()
+
 	cacheDatasetID := fmt.Sprintf("cache_percentiles_%s", cacheKey)
 
 	dummyData, err := storage.Retrieve(cacheDatasetID)
 	if err != nil {
+		logDebug(ctx, "Percentiles cache miss", "cache_key", cacheKey, "error", err.Error())
 		return nil, false
 	}
 
-	// Decode our cache data from the currency symbol field
+	// Decode our cache data from the cache data field
 	var cacheData PercentilesCacheData
-	if err := json.Unmarshal([]byte(dummyData.CurrencySymbol), &cacheData); err != nil {
-		LogWarn("⚠️ Error unmarshaling percentiles cache data: %v", err)
+	cacheSource := dummyData.CacheData
+	if cacheSource == "" {
+		// Fallback to currency symbol for backward compatibility
+		cacheSource = dummyData.CurrencySymbol
+	}
+	if err := json.Unmarshal([]byte(cacheSource), &cacheData); err != nil {
+		logError(ctx, "Error unmarshaling percentiles cache data", "error", err, "cache_key", cacheKey)
 		return nil, false
 	}
 
 	// Validate cache data
 	if cacheData.Version != cacheVersion {
-		LogDebug("♻️ Percentiles cache version mismatch, recalculating...")
+		logDebug(ctx, "Percentiles cache version mismatch, recalculating", "cache_version", cacheData.Version, "expected_version", cacheVersion)
 		return nil, false
 	}
 
@@ -408,28 +616,36 @@ func loadPercentilesFromCache(cacheKey, datasetID, playerName, divisionFilter, t
 		cacheData.CacheKey.PlayerName != playerName ||
 		cacheData.CacheKey.DivisionFilter != divisionFilter ||
 		cacheData.CacheKey.TargetDivision != targetDivision {
-		LogDebug("♻️ Percentiles cache key mismatch, recalculating...")
+		logDebug(ctx, "Percentiles cache key mismatch, recalculating", "cache_key", cacheKey)
 		return nil, false
 	}
 
 	if cacheData.CacheKey.PlayerCount != len(players) {
-		LogDebug("♻️ Player count changed (%d vs %d), recalculating percentiles...",
-			cacheData.CacheKey.PlayerCount, len(players))
+		logDebug(ctx, "Player count changed, recalculating percentiles",
+			"cached_count", cacheData.CacheKey.PlayerCount,
+			"current_count", len(players))
 		return nil, false
 	}
 
-	if cacheData.CacheKey.DataHash != generateDataHash(players) {
-		LogDebug("♻️ Dataset hash changed, recalculating percentiles...")
+	if cacheData.CacheKey.DataHash != generateDataHash(ctx, players) {
+		logDebug(ctx, "Dataset hash changed, recalculating percentiles", "cache_key", cacheKey)
 		return nil, false
 	}
 
-	LogDebug("✅ Loaded percentiles from cache (generated %s)", cacheData.GeneratedAt.Format(time.RFC3339))
+	logDebug(ctx, "Loaded percentiles from cache",
+		"cache_key", cacheKey,
+		"generated_at", cacheData.GeneratedAt.Format(time.RFC3339),
+		"duration_ms", time.Since(start).Milliseconds())
 	return cacheData.Percentiles, true
 }
 
 // generateDataHash creates a simple hash from player data to detect changes
-func generateDataHash(players []Player) string {
+func generateDataHash(ctx context.Context, players []Player) string {
+	logDebug(ctx, "Generating data hash", "player_count", len(players))
+	start := time.Now()
+
 	if len(players) == 0 {
+		logDebug(ctx, "Empty player list, returning empty hash", "duration_ms", time.Since(start).Milliseconds())
 		return ""
 	}
 
@@ -457,7 +673,9 @@ func generateDataHash(players []Player) string {
 		hash &= hash
 	}
 
-	return fmt.Sprintf("%x", hash)[:8]
+	hashResult := fmt.Sprintf("%x", hash)[:8]
+	logDebug(ctx, "Generated data hash", "hash", hashResult, "duration_ms", time.Since(start).Milliseconds())
+	return hashResult
 }
 
 // BargainHunterCacheKey represents the cache key for bargain hunter calculation
@@ -481,9 +699,12 @@ type BargainHunterCacheData struct {
 }
 
 // generateBargainHunterCacheKey generates a cache key for bargain hunter calculation
-func generateBargainHunterCacheKey(datasetID string, maxBudget, maxSalary int64, minAge, maxAge, minOverall int, players []Player) string {
+func generateBargainHunterCacheKey(ctx context.Context, datasetID string, maxBudget, maxSalary int64, minAge, maxAge, minOverall int, players []Player) string {
+	logDebug(ctx, "Generating bargain hunter cache key", "dataset_id", datasetID, "player_count", len(players), "max_budget", maxBudget)
+	start := time.Now()
+
 	playerCount := len(players)
-	dataHash := generateDataHash(players)
+	dataHash := generateDataHash(ctx, players)
 
 	// Simple hash function
 	cacheInput := fmt.Sprintf("%s:%d:%d:%d:%d:%d:%d:%s",
@@ -496,11 +717,17 @@ func generateBargainHunterCacheKey(datasetID string, maxBudget, maxSalary int64,
 		hash &= hash
 	}
 
-	return fmt.Sprintf("bargain_hunter_%s", fmt.Sprintf("%x", hash)[:12])
+	cacheKey := fmt.Sprintf("bargain_hunter_%s", fmt.Sprintf("%x", hash)[:12])
+
+	logDebug(ctx, "Generated bargain hunter cache key", "cache_key", cacheKey, "duration_ms", time.Since(start).Milliseconds())
+	return cacheKey
 }
 
 // saveBargainHunterToCache saves bargain hunter calculation to cache
-func saveBargainHunterToCache(cacheKey, datasetID string, maxBudget, maxSalary int64, minAge, maxAge, minOverall int, players []Player, results []BargainHunterResponse) {
+func saveBargainHunterToCache(ctx context.Context, cacheKey, datasetID string, maxBudget, maxSalary int64, minAge, maxAge, minOverall int, players []Player, results []BargainHunterResponse) {
+	logInfo(ctx, "Starting bargain hunter cache save", "cache_key", cacheKey, "dataset_id", datasetID, "player_count", len(players), "results_count", len(results))
+	start := time.Now()
+
 	cacheData := BargainHunterCacheData{
 		Version:     cacheVersion,
 		GeneratedAt: time.Now(),
@@ -512,52 +739,61 @@ func saveBargainHunterToCache(cacheKey, datasetID string, maxBudget, maxSalary i
 			MaxAge:      maxAge,
 			MinOverall:  minOverall,
 			PlayerCount: len(players),
-			DataHash:    generateDataHash(players),
+			DataHash:    generateDataHash(ctx, players),
 		},
 		Results: results,
 	}
 
 	cacheDatasetID := fmt.Sprintf("cache_bargain_hunter_%s", cacheKey)
 
-	dummyData := DatasetData{
-		Players:        []Player{},
-		CurrencySymbol: "",
+	cacheDataset := DatasetData{
+		Players:   []Player{},
+		CacheData: "",
 	}
 
 	cacheJSON, err := json.Marshal(cacheData)
 	if err != nil {
-		LogWarn("⚠️ Error marshaling bargain hunter cache data: %v", err)
+		logError(ctx, "Error marshaling bargain hunter cache data", "error", err, "cache_key", cacheKey)
 		return
 	}
 
-	dummyData.CurrencySymbol = string(cacheJSON)
+	cacheDataset.CacheData = string(cacheJSON)
 
-	if err := storage.Store(cacheDatasetID, dummyData); err != nil {
-		LogWarn("⚠️ Error storing bargain hunter cache: %v", err)
+	if err := storage.Store(cacheDatasetID, cacheDataset); err != nil {
+		logError(ctx, "Error storing bargain hunter cache", "error", err, "cache_key", cacheKey, "cache_dataset_id", cacheDatasetID)
 		return
 	}
 
-	LogDebug("✅ Bargain hunter results cached successfully as %s", cacheKey)
+	logDebug(ctx, "Bargain hunter results cached successfully", "cache_key", cacheKey, "duration_ms", time.Since(start).Milliseconds())
 }
 
 // loadBargainHunterFromCache loads bargain hunter calculation from cache
-func loadBargainHunterFromCache(cacheKey, datasetID string, maxBudget, maxSalary int64, minAge, maxAge, minOverall int, players []Player) ([]BargainHunterResponse, bool) {
+func loadBargainHunterFromCache(ctx context.Context, cacheKey, datasetID string, maxBudget, maxSalary int64, minAge, maxAge, minOverall int, players []Player) ([]BargainHunterResponse, bool) {
+	logInfo(ctx, "Starting bargain hunter cache load", "cache_key", cacheKey, "dataset_id", datasetID, "player_count", len(players))
+	start := time.Now()
+
 	cacheDatasetID := fmt.Sprintf("cache_bargain_hunter_%s", cacheKey)
 
 	dummyData, err := storage.Retrieve(cacheDatasetID)
 	if err != nil {
+		logDebug(ctx, "Bargain hunter cache miss", "cache_key", cacheKey, "error", err.Error())
 		return nil, false
 	}
 
 	var cacheData BargainHunterCacheData
-	if err := json.Unmarshal([]byte(dummyData.CurrencySymbol), &cacheData); err != nil {
-		LogWarn("⚠️ Error unmarshaling bargain hunter cache data: %v", err)
+	cacheSource := dummyData.CacheData
+	if cacheSource == "" {
+		// Fallback to currency symbol for backward compatibility
+		cacheSource = dummyData.CurrencySymbol
+	}
+	if err := json.Unmarshal([]byte(cacheSource), &cacheData); err != nil {
+		logError(ctx, "Error unmarshaling bargain hunter cache data", "error", err, "cache_key", cacheKey)
 		return nil, false
 	}
 
 	// Validate cache data
 	if cacheData.Version != cacheVersion {
-		LogDebug("♻️ Bargain hunter cache version mismatch, recalculating...")
+		logDebug(ctx, "Bargain hunter cache version mismatch, recalculating", "cache_version", cacheData.Version, "expected_version", cacheVersion)
 		return nil, false
 	}
 
@@ -567,22 +803,26 @@ func loadBargainHunterFromCache(cacheKey, datasetID string, maxBudget, maxSalary
 		cacheData.CacheKey.MinAge != minAge ||
 		cacheData.CacheKey.MaxAge != maxAge ||
 		cacheData.CacheKey.MinOverall != minOverall {
-		LogDebug("♻️ Bargain hunter cache key mismatch, recalculating...")
+		logDebug(ctx, "Bargain hunter cache key mismatch, recalculating", "cache_key", cacheKey)
 		return nil, false
 	}
 
 	if cacheData.CacheKey.PlayerCount != len(players) {
-		LogDebug("♻️ Player count changed (%d vs %d), recalculating bargain hunter...",
-			cacheData.CacheKey.PlayerCount, len(players))
+		logDebug(ctx, "Player count changed, recalculating bargain hunter",
+			"cached_count", cacheData.CacheKey.PlayerCount,
+			"current_count", len(players))
 		return nil, false
 	}
 
-	if cacheData.CacheKey.DataHash != generateDataHash(players) {
-		LogDebug("♻️ Dataset hash changed, recalculating bargain hunter...")
+	if cacheData.CacheKey.DataHash != generateDataHash(ctx, players) {
+		logDebug(ctx, "Dataset hash changed, recalculating bargain hunter", "cache_key", cacheKey)
 		return nil, false
 	}
 
-	LogDebug("✅ Loaded bargain hunter results from cache (generated %s)", cacheData.GeneratedAt.Format(time.RFC3339))
+	logDebug(ctx, "Loaded bargain hunter results from cache",
+		"cache_key", cacheKey,
+		"generated_at", cacheData.GeneratedAt.Format(time.RFC3339),
+		"duration_ms", time.Since(start).Milliseconds())
 	return cacheData.Results, true
 }
 
@@ -603,9 +843,12 @@ type SearchCacheData struct {
 }
 
 // generateSearchCacheKey generates a cache key for search calculation
-func generateSearchCacheKey(datasetID, query string, players []Player) string {
+func generateSearchCacheKey(ctx context.Context, datasetID, query string, players []Player) string {
+	logDebug(ctx, "Generating search cache key", "dataset_id", datasetID, "query", query, "player_count", len(players))
+	start := time.Now()
+
 	playerCount := len(players)
-	dataHash := generateDataHash(players)
+	dataHash := generateDataHash(ctx, players)
 
 	// Simple hash function
 	cacheInput := fmt.Sprintf("%s:%s:%d:%s",
@@ -618,11 +861,17 @@ func generateSearchCacheKey(datasetID, query string, players []Player) string {
 		hash &= hash
 	}
 
-	return fmt.Sprintf("search_%s", fmt.Sprintf("%x", hash)[:12])
+	cacheKey := fmt.Sprintf("search_%s", fmt.Sprintf("%x", hash)[:12])
+
+	logDebug(ctx, "Generated search cache key", "cache_key", cacheKey, "duration_ms", time.Since(start).Milliseconds())
+	return cacheKey
 }
 
 // saveSearchToCache saves search results to cache
-func saveSearchToCache(cacheKey, datasetID, query string, players []Player, results []SearchResult) {
+func saveSearchToCache(ctx context.Context, cacheKey, datasetID, query string, players []Player, results []SearchResult) {
+	logInfo(ctx, "Starting search cache save", "cache_key", cacheKey, "dataset_id", datasetID, "query", query, "player_count", len(players), "results_count", len(results))
+	start := time.Now()
+
 	cacheData := SearchCacheData{
 		Version:     cacheVersion,
 		GeneratedAt: time.Now(),
@@ -630,72 +879,85 @@ func saveSearchToCache(cacheKey, datasetID, query string, players []Player, resu
 			DatasetID:   datasetID,
 			Query:       query,
 			PlayerCount: len(players),
-			DataHash:    generateDataHash(players),
+			DataHash:    generateDataHash(ctx, players),
 		},
 		Results: results,
 	}
 
 	cacheDatasetID := fmt.Sprintf("cache_search_%s", cacheKey)
 
-	dummyData := DatasetData{
-		Players:        []Player{},
-		CurrencySymbol: "",
+	cacheDataset := DatasetData{
+		Players:   []Player{},
+		CacheData: "",
 	}
 
 	cacheJSON, err := json.Marshal(cacheData)
 	if err != nil {
-		LogWarn("⚠️ Error marshaling search cache data: %v", err)
+		logError(ctx, "Error marshaling search cache data", "error", err, "cache_key", cacheKey)
 		return
 	}
 
-	dummyData.CurrencySymbol = string(cacheJSON)
+	cacheDataset.CacheData = string(cacheJSON)
 
-	if err := storage.Store(cacheDatasetID, dummyData); err != nil {
-		LogWarn("⚠️ Error storing search cache: %v", err)
+	if err := storage.Store(cacheDatasetID, cacheDataset); err != nil {
+		logError(ctx, "Error storing search cache", "error", err, "cache_key", cacheKey, "cache_dataset_id", cacheDatasetID)
 		return
 	}
 
-	LogDebug("✅ Search results cached successfully as %s", cacheKey)
+	logDebug(ctx, "Search results cached successfully", "cache_key", cacheKey, "duration_ms", time.Since(start).Milliseconds())
 }
 
 // loadSearchFromCache loads search results from cache
-func loadSearchFromCache(cacheKey, datasetID, query string, players []Player) ([]SearchResult, bool) {
+func loadSearchFromCache(ctx context.Context, cacheKey, datasetID, query string, players []Player) ([]SearchResult, bool) {
+	logInfo(ctx, "Starting search cache load", "cache_key", cacheKey, "dataset_id", datasetID, "query", query, "player_count", len(players))
+	start := time.Now()
+
 	cacheDatasetID := fmt.Sprintf("cache_search_%s", cacheKey)
 
 	dummyData, err := storage.Retrieve(cacheDatasetID)
 	if err != nil {
+		logDebug(ctx, "Search cache miss", "cache_key", cacheKey, "error", err.Error())
 		return nil, false
 	}
 
 	var cacheData SearchCacheData
-	if err := json.Unmarshal([]byte(dummyData.CurrencySymbol), &cacheData); err != nil {
-		LogWarn("⚠️ Error unmarshaling search cache data: %v", err)
+	cacheSource := dummyData.CacheData
+	if cacheSource == "" {
+		// Fallback to currency symbol for backward compatibility
+		cacheSource = dummyData.CurrencySymbol
+	}
+	if err := json.Unmarshal([]byte(cacheSource), &cacheData); err != nil {
+		logError(ctx, "Error unmarshaling search cache data", "error", err, "cache_key", cacheKey)
 		return nil, false
 	}
 
 	// Validate cache data
 	if cacheData.Version != cacheVersion {
-		LogDebug("♻️ Search cache version mismatch, recalculating...")
+		logDebug(ctx, "Search cache version mismatch, recalculating", "cache_version", cacheData.Version, "expected_version", cacheVersion)
 		return nil, false
 	}
 
 	if cacheData.CacheKey.DatasetID != datasetID ||
 		cacheData.CacheKey.Query != query {
-		LogDebug("♻️ Search cache key mismatch, recalculating...")
+		logDebug(ctx, "Search cache key mismatch, recalculating", "cache_key", cacheKey)
 		return nil, false
 	}
 
 	if cacheData.CacheKey.PlayerCount != len(players) {
-		LogDebug("♻️ Player count changed (%d vs %d), recalculating search...",
-			cacheData.CacheKey.PlayerCount, len(players))
+		logDebug(ctx, "Player count changed, recalculating search",
+			"cached_count", cacheData.CacheKey.PlayerCount,
+			"current_count", len(players))
 		return nil, false
 	}
 
-	if cacheData.CacheKey.DataHash != generateDataHash(players) {
-		LogDebug("♻️ Dataset hash changed, recalculating search...")
+	if cacheData.CacheKey.DataHash != generateDataHash(ctx, players) {
+		logDebug(ctx, "Dataset hash changed, recalculating search", "cache_key", cacheKey)
 		return nil, false
 	}
 
-	LogDebug("✅ Loaded search results from cache (generated %s)", cacheData.GeneratedAt.Format(time.RFC3339))
+	logDebug(ctx, "Loaded search results from cache",
+		"cache_key", cacheKey,
+		"generated_at", cacheData.GeneratedAt.Format(time.RFC3339),
+		"duration_ms", time.Since(start).Milliseconds())
 	return cacheData.Results, true
 }

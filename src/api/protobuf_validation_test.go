@@ -15,23 +15,23 @@ func TestProtobufStorageValidation(t *testing.T) {
 	// Initialize test environment
 	InitStore()
 	InitInMemoryCache()
-	InitCacheStorage()
+	InitCacheStorage(context.Background())
 	InitializeMemoryOptimizations()
 
 	// Test data integrity between JSON and Protobuf storage
 	testData := []Player{
 		{
-			UID:      12345,
-			Name:     "Test Player",
-			Position: "GK",
-			Age:      "25",
-			Club:     "Test FC",
-			Division: "Test League",
+			UID:           12345,
+			Name:          "Test Player",
+			Position:      "GK",
+			Age:           "25",
+			Club:          "Test FC",
+			Division:      "Test League",
 			TransferValue: "£5M",
-			Wage:     "£50K",
-			Overall:  15,
+			Wage:          "£50K",
+			Overall:       15,
 			Attributes: map[string]string{
-				"Ability": "15",
+				"Ability":   "15",
 				"Potential": "18",
 			},
 			NumericAttributes: map[string]int{
@@ -313,15 +313,15 @@ func TestProtobufSerializationSize(t *testing.T) {
 
 	jsonSize := len(jsonData)
 	protobufSize := len(protobufData)
-	
+
 	t.Logf("Serialization size comparison:")
 	t.Logf("JSON size: %d bytes", jsonSize)
 	t.Logf("Protobuf size: %d bytes", protobufSize)
-	
+
 	if protobufSize > 0 {
 		reduction := float64(jsonSize-protobufSize) / float64(jsonSize) * 100
 		t.Logf("Size reduction: %.2f%%", reduction)
-		
+
 		if reduction < 10 {
 			t.Errorf("Expected at least 10%% size reduction, got %.2f%%", reduction)
 		}

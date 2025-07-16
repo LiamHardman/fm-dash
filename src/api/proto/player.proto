@@ -62,4 +62,5 @@ message Player {
 message DatasetData {
   repeated Player players = 1;
   string currency_symbol = 2;
+  string cache_data = 3;
 }

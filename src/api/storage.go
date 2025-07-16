@@ -70,6 +70,7 @@ type StorageInterface interface {
 type DatasetData struct {
 	Players        []Player `json:"players"`
 	CurrencySymbol string   `json:"currency_symbol"`
+	CacheData      string   `json:"cache_data,omitempty"`
 }
 
 // InMemoryStorage provides in-memory storage for datasets
@@ -1082,29 +1083,29 @@ func (s *HybridStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets
 func InitializeStorage(ctx context.Context) StorageInterface {
 	logInfo(ctx, "Initializing storage system")
 	start := time.Now()
-	
+
 	// Validate and determine storage configuration
 	config := validateStorageConfiguration(ctx)
-	
+
 	// Initialize the base storage backend
 	baseStorage := initializeBaseStorage(ctx)
-	
+
 	// Apply protobuf wrapper if enabled and available
 	if config.UseProtobuf {
 		protobufStorage, err := createProtobufStorageWithFallback(ctx, baseStorage)
 		if err != nil {
-			logError(ctx, "Failed to initialize protobuf storage, falling back to JSON serialization", 
+			logError(ctx, "Failed to initialize protobuf storage, falling back to JSON serialization",
 				"error", err, "duration_ms", time.Since(start).Milliseconds())
 			return baseStorage
 		}
-		logInfo(ctx, "Storage initialization completed", 
-			"storage_type", "protobuf", 
+		logInfo(ctx, "Storage initialization completed",
+			"storage_type", "protobuf",
 			"duration_ms", time.Since(start).Milliseconds())
 		return protobufStorage
 	}
-	
-	logInfo(ctx, "Storage initialization completed", 
-		"storage_type", "json", 
+
+	logInfo(ctx, "Storage initialization completed",
+		"storage_type", "json",
 		"duration_ms", time.Since(start).Milliseconds())
 	return baseStorage
 }
@@ -1138,7 +1139,7 @@ type StorageConfiguration struct {
 func validateStorageConfiguration(ctx context.Context) StorageConfiguration {
 	logInfo(ctx, "Validating storage configuration")
 	start := time.Now()
-	
+
 	config := StorageConfiguration{
 		UseProtobuf: false,
 		ConfigValid: true,
@@ -1147,7 +1148,7 @@ func validateStorageConfiguration(ctx context.Context) StorageConfiguration {
 
 	// Check USE_PROTOBUF environment variable
 	protobufEnv := strings.ToLower(strings.TrimSpace(os.Getenv("USE_PROTOBUF")))
-	
+
 	switch protobufEnv {
 	case "true", "1", "yes", "on":
 		config.UseProtobuf = true
@@ -1158,21 +1159,21 @@ func validateStorageConfiguration(ctx context.Context) StorageConfiguration {
 	default:
 		config.ConfigValid = false
 		config.Errors = append(config.Errors, fmt.Sprintf("invalid USE_PROTOBUF value: %s (expected: true/false)", protobufEnv))
-		logError(ctx, "Invalid USE_PROTOBUF environment variable value", 
-			"error", fmt.Errorf("invalid value: %s", protobufEnv), 
-			"env_value", protobufEnv, 
+		logError(ctx, "Invalid USE_PROTOBUF environment variable value",
+			"error", fmt.Errorf("invalid value: %s", protobufEnv),
+			"env_value", protobufEnv,
 			"expected_values", "true/false")
 	}
 
 	// Log configuration validation results
 	if config.ConfigValid {
-		logInfo(ctx, "Storage configuration validation completed", 
-			"use_protobuf", config.UseProtobuf, 
+		logInfo(ctx, "Storage configuration validation completed",
+			"use_protobuf", config.UseProtobuf,
 			"duration_ms", time.Since(start).Milliseconds())
 	} else {
-		logError(ctx, "Storage configuration validation failed", 
-			"error", fmt.Errorf("validation failed with %d errors", len(config.Errors)), 
-			"error_count", len(config.Errors), 
+		logError(ctx, "Storage configuration validation failed",
+			"error", fmt.Errorf("validation failed with %d errors", len(config.Errors)),
+			"error_count", len(config.Errors),
 			"errors", config.Errors,
 			"duration_ms", time.Since(start).Milliseconds())
 	}
@@ -1205,7 +1206,7 @@ func createProtobufStorageWithFallback(ctx context.Context, baseStorage StorageI
 		return nil, fmt.Errorf("protobuf storage functionality test failed: %w", err)
 	}
 
-	logInfo(ctx, "Protobuf storage created and validated successfully", 
+	logInfo(ctx, "Protobuf storage created and validated successfully",
 		"duration_ms", time.Since(start).Milliseconds())
 	return protobufStorage, nil
 }
@@ -1214,17 +1215,17 @@ func createProtobufStorageWithFallback(ctx context.Context, baseStorage StorageI
 func validateProtobufDependencies(ctx context.Context) error {
 	logInfo(ctx, "Validating protobuf dependencies")
 	start := time.Now()
-	
+
 	// This is a placeholder for dependency validation
 	// In a real implementation, you might check for:
 	// - Protobuf library availability
 	// - Generated protobuf code presence
 	// - Required protobuf version compatibility
-	
+
 	// For now, we'll assume dependencies are available
 	// In production, you would add actual validation logic here
-	
-	logInfo(ctx, "Protobuf dependencies validation completed", 
+
+	logInfo(ctx, "Protobuf dependencies validation completed",
 		"duration_ms", time.Since(start).Milliseconds())
 	return nil
 }
@@ -1233,17 +1234,17 @@ func validateProtobufDependencies(ctx context.Context) error {
 func testProtobufStorage(ctx context.Context, storage StorageInterface) error {
 	logInfo(ctx, "Testing protobuf storage functionality")
 	start := time.Now()
-	
+
 	// This is a placeholder for protobuf storage testing
 	// In a real implementation, you might:
 	// - Test a simple store/retrieve cycle with minimal data
 	// - Verify protobuf serialization/deserialization works
 	// - Check error handling and fallback mechanisms
-	
+
 	// For now, we'll assume the test passes
 	// In production, you would add actual test logic here
-	
-	logInfo(ctx, "Protobuf storage functionality test completed", 
+
+	logInfo(ctx, "Protobuf storage functionality test completed",
 		"duration_ms", time.Since(start).Milliseconds())
 	return nil
 }
@@ -1252,7 +1253,7 @@ func testProtobufStorage(ctx context.Context, storage StorageInterface) error {
 func initializeBaseStorage(ctx context.Context) StorageInterface {
 	logInfo(ctx, "Initializing base storage backend")
 	start := time.Now()
-	
+
 	inMemory := CreateInMemoryStorage()
 
 	s3Endpoint := os.Getenv("S3_ENDPOINT")
@@ -1267,16 +1268,16 @@ func initializeBaseStorage(ctx context.Context) StorageInterface {
 
 		hybrid, err := CreateHybridStorage(datasetDir)
 		if err != nil {
-			logError(ctx, "Failed to initialize hybrid storage, falling back to in-memory only", 
+			logError(ctx, "Failed to initialize hybrid storage, falling back to in-memory only",
 				"error", err, "dataset_dir", datasetDir)
-			logInfo(ctx, "Base storage initialization completed", 
-				"storage_type", "in-memory", 
+			logInfo(ctx, "Base storage initialization completed",
+				"storage_type", "in-memory",
 				"duration_ms", time.Since(start).Milliseconds())
 			return inMemory
 		}
 
-		logInfo(ctx, "Base storage initialization completed", 
-			"storage_type", "hybrid", 
+		logInfo(ctx, "Base storage initialization completed",
+			"storage_type", "hybrid",
 			"dataset_dir", datasetDir,
 			"duration_ms", time.Since(start).Milliseconds())
 		return hybrid
@@ -1297,25 +1298,25 @@ func initializeBaseStorage(ctx context.Context) StorageInterface {
 
 		hybrid, err := CreateHybridStorage(datasetDir)
 		if err != nil {
-			logError(ctx, "Failed to initialize hybrid storage, falling back to in-memory only", 
+			logError(ctx, "Failed to initialize hybrid storage, falling back to in-memory only",
 				"error", err, "dataset_dir", datasetDir)
-			logInfo(ctx, "Base storage initialization completed", 
-				"storage_type", "in-memory", 
+			logInfo(ctx, "Base storage initialization completed",
+				"storage_type", "in-memory",
 				"duration_ms", time.Since(start).Milliseconds())
 			return inMemory
 		}
 
-		logInfo(ctx, "Base storage initialization completed", 
-			"storage_type", "hybrid", 
+		logInfo(ctx, "Base storage initialization completed",
+			"storage_type", "hybrid",
 			"dataset_dir", datasetDir,
 			"duration_ms", time.Since(start).Milliseconds())
 		return hybrid
 	}
 
 	// Log configuration without sensitive credentials
-	logDebug(ctx, "S3 configuration detected", 
-		"endpoint", s3Endpoint, 
-		"use_ssl", useSSL, 
+	logDebug(ctx, "S3 configuration detected",
+		"endpoint", s3Endpoint,
+		"use_ssl", useSSL,
 		"credentials_provided", accessKey != "" && secretKey != "")
 
 	bucketName := os.Getenv("S3_BUCKET_NAME")
@@ -1324,8 +1325,8 @@ func initializeBaseStorage(ctx context.Context) StorageInterface {
 	}
 	s3Storage := CreateS3Storage(s3Endpoint, accessKey, secretKey, bucketName, useSSL, inMemory)
 
-	logInfo(ctx, "Base storage initialization completed", 
-		"storage_type", "s3", 
+	logInfo(ctx, "Base storage initialization completed",
+		"storage_type", "s3",
 		"endpoint", s3Endpoint,
 		"bucket_name", bucketName,
 		"duration_ms", time.Since(start).Milliseconds())

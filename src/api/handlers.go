@@ -1285,7 +1285,7 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// NEW: Generate cache key and try to load from cache first
-	cacheKey := generatePercentilesCacheKey(datasetID, req.PlayerName, req.DivisionFilter, req.TargetDivision, players)
+	cacheKey := generatePercentilesCacheKey(ctx, datasetID, req.PlayerName, req.DivisionFilter, req.TargetDivision, players)
 
 	logDebug(ctx, "Generated cache key for percentiles request",
 		"dataset_id", datasetID,
@@ -1296,7 +1296,7 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 		"player_count", len(players))
 
 	// Try to load from cache
-	if cachedPercentiles, found := loadPercentilesFromCache(cacheKey, datasetID, req.PlayerName, req.DivisionFilter, req.TargetDivision, players); found {
+	if cachedPercentiles, found := loadPercentilesFromCache(ctx, cacheKey, datasetID, req.PlayerName, req.DivisionFilter, req.TargetDivision, players); found {
 		logDebug(ctx, "🎯 CACHE HIT - Returning cached percentiles",
 			"dataset_id", datasetID,
 			"player_name", req.PlayerName,
@@ -1333,7 +1333,7 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 
 	// NEW: Save to cache for future requests
 	go func() {
-		savePercentilesToCache(cacheKey, datasetID, req.PlayerName, req.DivisionFilter, req.TargetDivision, players, updatedPercentiles)
+		savePercentilesToCache(ctx, cacheKey, datasetID, req.PlayerName, req.DivisionFilter, req.TargetDivision, players, updatedPercentiles)
 	}()
 
 	w.Header().Set("Content-Type", "application/json")
@@ -1628,10 +1628,10 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	logDebug(ctx, "Performing search", "dataset_id", datasetID, "query", query, "player_count", len(players))
 
 	// NEW: Generate cache key and try to load from cache first
-	cacheKey := generateSearchCacheKey(datasetID, query, players)
+	cacheKey := generateSearchCacheKey(ctx, datasetID, query, players)
 
 	// Try to load from cache
-	if cachedResults, found := loadSearchFromCache(cacheKey, datasetID, query, players); found {
+	if cachedResults, found := loadSearchFromCache(ctx, cacheKey, datasetID, query, players); found {
 		logInfo(ctx, "Returning cached search results",
 			"dataset_id", datasetID,
 			"query", query,
@@ -1664,7 +1664,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	// NEW: Save to cache for future requests (only cache if results are not too large)
 	if len(results) <= 1000 { // Reasonable limit to avoid caching huge result sets
 		go func() {
-			saveSearchToCache(cacheKey, datasetID, query, players, results)
+			saveSearchToCache(ctx, cacheKey, datasetID, query, players, results)
 		}()
 	}
 
@@ -1905,10 +1905,10 @@ func bargainHunterHandler(w http.ResponseWriter, r *http.Request) {
 	players = RecalculateAllPlayersRatings(players)
 
 	// NEW: Generate cache key and try to load from cache first
-	cacheKey := generateBargainHunterCacheKey(datasetID, req.MaxBudget, req.MaxSalary, req.MinAge, req.MaxAge, req.MinOverall, players)
+	cacheKey := generateBargainHunterCacheKey(ctx, datasetID, req.MaxBudget, req.MaxSalary, req.MinAge, req.MaxAge, req.MinOverall, players)
 
 	// Try to load from cache
-	if cachedResults, found := loadBargainHunterFromCache(cacheKey, datasetID, req.MaxBudget, req.MaxSalary, req.MinAge, req.MaxAge, req.MinOverall, players); found {
+	if cachedResults, found := loadBargainHunterFromCache(ctx, cacheKey, datasetID, req.MaxBudget, req.MaxSalary, req.MinAge, req.MaxAge, req.MinOverall, players); found {
 		logInfo(ctx, "Returning cached bargain hunter results",
 			"dataset_id", datasetID,
 			"cache_key", cacheKey,
@@ -1934,7 +1934,7 @@ func bargainHunterHandler(w http.ResponseWriter, r *http.Request) {
 
 	// NEW: Save to cache for future requests
 	go func() {
-		saveBargainHunterToCache(cacheKey, datasetID, req.MaxBudget, req.MaxSalary, req.MinAge, req.MaxAge, req.MinOverall, players, bargainPlayers)
+		saveBargainHunterToCache(ctx, cacheKey, datasetID, req.MaxBudget, req.MaxSalary, req.MinAge, req.MaxAge, req.MinOverall, players, bargainPlayers)
 	}()
 
 	w.Header().Set("Content-Type", "application/json")

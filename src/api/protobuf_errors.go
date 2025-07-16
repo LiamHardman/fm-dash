@@ -87,13 +87,13 @@ func NewProtobufCompressionError(operation, datasetID string, cause error) *Prot
 type ProtobufFallbackReason string
 
 const (
-	FallbackReasonConversionFailed   ProtobufFallbackReason = "protobuf_conversion_failed"
-	FallbackReasonMarshalFailed      ProtobufFallbackReason = "protobuf_marshal_failed"
-	FallbackReasonUnmarshalFailed    ProtobufFallbackReason = "protobuf_unmarshal_failed"
-	FallbackReasonCompressionFailed  ProtobufFallbackReason = "protobuf_compression_failed"
+	FallbackReasonConversionFailed    ProtobufFallbackReason = "protobuf_conversion_failed"
+	FallbackReasonMarshalFailed       ProtobufFallbackReason = "protobuf_marshal_failed"
+	FallbackReasonUnmarshalFailed     ProtobufFallbackReason = "protobuf_unmarshal_failed"
+	FallbackReasonCompressionFailed   ProtobufFallbackReason = "protobuf_compression_failed"
 	FallbackReasonDecompressionFailed ProtobufFallbackReason = "protobuf_decompression_failed"
-	FallbackReasonStorageFailed      ProtobufFallbackReason = "protobuf_storage_failed"
-	FallbackReasonRetrievalFailed    ProtobufFallbackReason = "protobuf_retrieval_failed"
+	FallbackReasonStorageFailed       ProtobufFallbackReason = "protobuf_storage_failed"
+	FallbackReasonRetrievalFailed     ProtobufFallbackReason = "protobuf_retrieval_failed"
 )
 
 // ProtobufFallbackEvent represents a fallback event for logging and monitoring
@@ -105,6 +105,6 @@ type ProtobufFallbackEvent struct {
 }
 
 func (e *ProtobufFallbackEvent) String() string {
-	return fmt.Sprintf("Protobuf fallback for dataset %s: %s - %s (error: %v)", 
+	return fmt.Sprintf("Protobuf fallback for dataset %s: %s - %s (error: %v)",
 		e.DatasetID, e.Reason, e.Message, e.Error)
 }

@@ -8,7 +8,7 @@ import (
 	"os"
 	"runtime"
 	"testing"
-	
+
 	"google.golang.org/protobuf/proto"
 )
 
@@ -17,7 +17,7 @@ func setLogLevelForBenchmarks() func() {
 	// Set LOG_LEVEL environment variable to INFO to suppress DEBUG messages
 	originalLogLevel := os.Getenv("LOG_LEVEL")
 	os.Setenv("LOG_LEVEL", "INFO")
-	
+
 	// Also set slog level to INFO
 	opts := &slog.HandlerOptions{
 		Level: slog.LevelInfo,
@@ -25,7 +25,7 @@ func setLogLevelForBenchmarks() func() {
 	handler := slog.NewTextHandler(os.Stderr, opts)
 	originalLogger := slog.Default()
 	slog.SetDefault(slog.New(handler))
-	
+
 	// Return a function to restore original settings
 	return func() {
 		if originalLogLevel == "" {
@@ -188,7 +188,7 @@ func BenchmarkProtobufVsJSON_StorageSize(b *testing.B) {
 		protoSize := len(protoData)
 		compressionRatio := float64(jsonSize) / float64(protoSize)
 
-		b.Logf("%s - JSON: %d bytes, Protobuf: %d bytes, Compression: %.2fx", 
+		b.Logf("%s - JSON: %d bytes, Protobuf: %d bytes, Compression: %.2fx",
 			tc.name, jsonSize, protoSize, compressionRatio)
 
 		// Benchmark is just for logging - no actual operations needed
@@ -227,14 +227,14 @@ func BenchmarkProtobufVsJSON_MemoryUsage(b *testing.B) {
 			var m1, m2 runtime.MemStats
 			runtime.GC()
 			runtime.ReadMemStats(&m1)
-			
+
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				jsonData, err := json.Marshal(dataset)
 				if err != nil {
 					b.Fatal(err)
 				}
-				
+
 				var result PlayerDataWithCurrency
 				err = json.Unmarshal(jsonData, &result)
 				if err != nil {
@@ -242,7 +242,7 @@ func BenchmarkProtobufVsJSON_MemoryUsage(b *testing.B) {
 				}
 			}
 			b.StopTimer()
-			
+
 			runtime.ReadMemStats(&m2)
 			b.ReportMetric(float64(m2.TotalAlloc-m1.TotalAlloc)/float64(b.N), "bytes_per_op")
 		})
@@ -251,7 +251,7 @@ func BenchmarkProtobufVsJSON_MemoryUsage(b *testing.B) {
 			var m1, m2 runtime.MemStats
 			runtime.GC()
 			runtime.ReadMemStats(&m1)
-			
+
 			ctx := context.Background()
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
@@ -259,14 +259,14 @@ func BenchmarkProtobufVsJSON_MemoryUsage(b *testing.B) {
 				if err != nil {
 					b.Fatal(err)
 				}
-				
+
 				_, err = DatasetDataFromProto(ctx, protoDataset)
 				if err != nil {
 					b.Fatal(err)
 				}
 			}
 			b.StopTimer()
-			
+
 			runtime.ReadMemStats(&m2)
 			b.ReportMetric(float64(m2.TotalAlloc-m1.TotalAlloc)/float64(b.N), "bytes_per_op")
 		})
@@ -298,23 +298,23 @@ func BenchmarkProtobufStorage_Operations(b *testing.B) {
 		// JSON Storage Benchmark
 		b.Run(fmt.Sprintf("JSON_Storage_%s", tc.name), func(b *testing.B) {
 			jsonStorage := CreateInMemoryStorage()
-			
+
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				datasetID := fmt.Sprintf("benchmark-json-%d", i)
-				
+
 				// Store
 				err := jsonStorage.Store(datasetID, dataset)
 				if err != nil {
 					b.Fatal(err)
 				}
-				
+
 				// Retrieve
 				_, err = jsonStorage.Retrieve(datasetID)
 				if err != nil {
 					b.Fatal(err)
 				}
-				
+
 				// Clean up
 				err = jsonStorage.Delete(datasetID)
 				if err != nil {
@@ -327,23 +327,23 @@ func BenchmarkProtobufStorage_Operations(b *testing.B) {
 		b.Run(fmt.Sprintf("Protobuf_Storage_%s", tc.name), func(b *testing.B) {
 			backend := CreateInMemoryStorage()
 			protobufStorage := CreateProtobufStorage(backend)
-			
+
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				datasetID := fmt.Sprintf("benchmark-protobuf-%d", i)
-				
+
 				// Store
 				err := protobufStorage.Store(datasetID, dataset)
 				if err != nil {
 					b.Fatal(err)
 				}
-				
+
 				// Retrieve
 				_, err = protobufStorage.Retrieve(datasetID)
 				if err != nil {
 					b.Fatal(err)
 				}
-				
+
 				// Clean up
 				err = protobufStorage.Delete(datasetID)
 				if err != nil {
@@ -384,7 +384,7 @@ func BenchmarkProtobufVsJSON_RoundTrip(b *testing.B) {
 				if err != nil {
 					b.Fatal(err)
 				}
-				
+
 				// Deserialize
 				var result PlayerDataWithCurrency
 				err = json.Unmarshal(jsonData, &result)
@@ -403,7 +403,7 @@ func BenchmarkProtobufVsJSON_RoundTrip(b *testing.B) {
 				if err != nil {
 					b.Fatal(err)
 				}
-				
+
 				// Deserialize
 				_, err = DatasetDataFromProto(ctx, protoDataset)
 				if err != nil {
@@ -417,23 +417,23 @@ func BenchmarkProtobufVsJSON_RoundTrip(b *testing.B) {
 // createBenchmarkPlayers creates test players for benchmarking
 func createBenchmarkPlayers(count int) []Player {
 	players := make([]Player, count)
-	
+
 	for i := 0; i < count; i++ {
 		players[i] = Player{
-			UID:                     int64(i + 1),
-			Name:                    fmt.Sprintf("Benchmark Player %d", i+1),
-			Position:                []string{"ST", "CM", "CB", "GK", "RW", "LW", "CAM", "CDM"}[i%8],
-			Age:                     fmt.Sprintf("%d", 18+(i%15)),
-			Club:                    fmt.Sprintf("Benchmark Club %d", (i%50)+1),
-			Division:                []string{"Premier League", "Championship", "League One", "League Two"}[i%4],
-			TransferValue:           fmt.Sprintf("£%dM", (i%50)+1),
-			Wage:                    fmt.Sprintf("£%dK", (i%100)+10),
-			Personality:             []string{"Determined", "Ambitious", "Professional", "Casual"}[i%4],
-			MediaHandling:           []string{"Confident", "Evasive", "Outspoken", "Reserved"}[i%4],
-			Nationality:             []string{"England", "Spain", "Germany", "France", "Italy", "Brazil", "Argentina"}[i%7],
-			NationalityISO:          []string{"ENG", "ESP", "GER", "FRA", "ITA", "BRA", "ARG"}[i%7],
-			NationalityFIFACode:     []string{"ENG", "ESP", "GER", "FRA", "ITA", "BRA", "ARG"}[i%7],
-			AttributeMasked:         i%2 == 0,
+			UID:                 int64(i + 1),
+			Name:                fmt.Sprintf("Benchmark Player %d", i+1),
+			Position:            []string{"ST", "CM", "CB", "GK", "RW", "LW", "CAM", "CDM"}[i%8],
+			Age:                 fmt.Sprintf("%d", 18+(i%15)),
+			Club:                fmt.Sprintf("Benchmark Club %d", (i%50)+1),
+			Division:            []string{"Premier League", "Championship", "League One", "League Two"}[i%4],
+			TransferValue:       fmt.Sprintf("£%dM", (i%50)+1),
+			Wage:                fmt.Sprintf("£%dK", (i%100)+10),
+			Personality:         []string{"Determined", "Ambitious", "Professional", "Casual"}[i%4],
+			MediaHandling:       []string{"Confident", "Evasive", "Outspoken", "Reserved"}[i%4],
+			Nationality:         []string{"England", "Spain", "Germany", "France", "Italy", "Brazil", "Argentina"}[i%7],
+			NationalityISO:      []string{"ENG", "ESP", "GER", "FRA", "ITA", "BRA", "ARG"}[i%7],
+			NationalityFIFACode: []string{"ENG", "ESP", "GER", "FRA", "ITA", "BRA", "ARG"}[i%7],
+			AttributeMasked:     i%2 == 0,
 			Attributes: map[string]string{
 				"Pace":      fmt.Sprintf("%d", 10+(i%11)),
 				"Shooting":  fmt.Sprintf("%d", 8+(i%13)),
@@ -481,10 +481,10 @@ func createBenchmarkPlayers(count int) []Player {
 					"Blocks":        float64((i*31)%100) + 0.8,
 				},
 				"Passing": {
-					"PassAccuracy":     float64((i*37)%100) + 0.9,
-					"LongPasses":       float64((i*41)%100) + 0.1,
-					"ThroughBalls":     float64((i*43)%100) + 0.2,
-					"CrossAccuracy":    float64((i*47)%100) + 0.3,
+					"PassAccuracy":  float64((i*37)%100) + 0.9,
+					"LongPasses":    float64((i*41)%100) + 0.1,
+					"ThroughBalls":  float64((i*43)%100) + 0.2,
+					"CrossAccuracy": float64((i*47)%100) + 0.3,
 				},
 				"Goalkeeping": {
 					"Saves":        float64((i*53)%100) + 0.4,
@@ -515,11 +515,11 @@ func createBenchmarkPlayers(count int) []Player {
 				{RoleName: fmt.Sprintf("Secondary Role %d", i%5), Score: 55 + (i % 35)},
 				{RoleName: fmt.Sprintf("Tertiary Role %d", i%3), Score: 50 + (i % 40)},
 			},
-			TransferValueAmount: int64((i%50+1) * 1000000),
-			WageAmount:          int64((i%100+10) * 1000),
+			TransferValueAmount: int64((i%50 + 1) * 1000000),
+			WageAmount:          int64((i%100 + 10) * 1000),
 		}
 	}
-	
+
 	return players
 }
 
@@ -528,7 +528,7 @@ func BenchmarkProtobufVsJSON_CompressionEfficiency(b *testing.B) {
 	// Set log level to INFO to reduce benchmark noise
 	restoreLogging := setLogLevelForBenchmarks()
 	defer restoreLogging()
-	
+
 	testCases := []struct {
 		name        string
 		playerCount int
@@ -620,7 +620,7 @@ func BenchmarkProtobufVsJSON_DetailedMemoryProfile(b *testing.B) {
 	// Set log level to INFO to reduce benchmark noise
 	restoreLogging := setLogLevelForBenchmarks()
 	defer restoreLogging()
-	
+
 	testCases := []struct {
 		name        string
 		playerCount int
@@ -640,12 +640,12 @@ func BenchmarkProtobufVsJSON_DetailedMemoryProfile(b *testing.B) {
 
 		b.Run(fmt.Sprintf("JSON_DetailedMemory_%s", tc.name), func(b *testing.B) {
 			var m1, m2 runtime.MemStats
-			
+
 			// Force garbage collection and get baseline
 			runtime.GC()
 			runtime.GC() // Call twice to ensure clean state
 			runtime.ReadMemStats(&m1)
-			
+
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				// Serialize
@@ -653,23 +653,23 @@ func BenchmarkProtobufVsJSON_DetailedMemoryProfile(b *testing.B) {
 				if err != nil {
 					b.Fatal(err)
 				}
-				
+
 				// Deserialize
 				var result PlayerDataWithCurrency
 				err = json.Unmarshal(jsonData, &result)
 				if err != nil {
 					b.Fatal(err)
 				}
-				
+
 				// Force intermediate cleanup to measure peak usage
 				if i%100 == 0 {
 					runtime.GC()
 				}
 			}
 			b.StopTimer()
-			
+
 			runtime.ReadMemStats(&m2)
-			
+
 			// Report detailed memory metrics
 			b.ReportMetric(float64(m2.TotalAlloc-m1.TotalAlloc)/float64(b.N), "bytes_per_op")
 			b.ReportMetric(float64(m2.Mallocs-m1.Mallocs)/float64(b.N), "mallocs_per_op")
@@ -679,12 +679,12 @@ func BenchmarkProtobufVsJSON_DetailedMemoryProfile(b *testing.B) {
 
 		b.Run(fmt.Sprintf("Protobuf_DetailedMemory_%s", tc.name), func(b *testing.B) {
 			var m1, m2 runtime.MemStats
-			
+
 			// Force garbage collection and get baseline
 			runtime.GC()
 			runtime.GC() // Call twice to ensure clean state
 			runtime.ReadMemStats(&m1)
-			
+
 			ctx := context.Background()
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
@@ -693,22 +693,22 @@ func BenchmarkProtobufVsJSON_DetailedMemoryProfile(b *testing.B) {
 				if err != nil {
 					b.Fatal(err)
 				}
-				
+
 				// Deserialize
 				_, err = DatasetDataFromProto(ctx, protoDataset)
 				if err != nil {
 					b.Fatal(err)
 				}
-				
+
 				// Force intermediate cleanup to measure peak usage
 				if i%100 == 0 {
 					runtime.GC()
 				}
 			}
 			b.StopTimer()
-			
+
 			runtime.ReadMemStats(&m2)
-			
+
 			// Report detailed memory metrics
 			b.ReportMetric(float64(m2.TotalAlloc-m1.TotalAlloc)/float64(b.N), "bytes_per_op")
 			b.ReportMetric(float64(m2.Mallocs-m1.Mallocs)/float64(b.N), "mallocs_per_op")
@@ -723,7 +723,7 @@ func BenchmarkProtobufVsJSON_ConcurrentOperations(b *testing.B) {
 	// Set log level to INFO to reduce benchmark noise
 	restoreLogging := setLogLevelForBenchmarks()
 	defer restoreLogging()
-	
+
 	// Create test dataset
 	players := createBenchmarkPlayers(100)
 	dataset := PlayerDataWithCurrency{
@@ -739,7 +739,7 @@ func BenchmarkProtobufVsJSON_ConcurrentOperations(b *testing.B) {
 				if err != nil {
 					b.Fatal(err)
 				}
-				
+
 				// Deserialize
 				var result PlayerDataWithCurrency
 				err = json.Unmarshal(jsonData, &result)
@@ -759,7 +759,7 @@ func BenchmarkProtobufVsJSON_ConcurrentOperations(b *testing.B) {
 				if err != nil {
 					b.Fatal(err)
 				}
-				
+
 				// Deserialize
 				_, err = DatasetDataFromProto(ctx, protoDataset)
 				if err != nil {
@@ -775,7 +775,7 @@ func BenchmarkProtobufVsJSON_LargeDatasetScaling(b *testing.B) {
 	// Set log level to INFO to reduce benchmark noise
 	restoreLogging := setLogLevelForBenchmarks()
 	defer restoreLogging()
-	
+
 	testCases := []struct {
 		name        string
 		playerCount int
@@ -803,7 +803,7 @@ func BenchmarkProtobufVsJSON_LargeDatasetScaling(b *testing.B) {
 				if err != nil {
 					b.Fatal(err)
 				}
-				
+
 				var result PlayerDataWithCurrency
 				err = json.Unmarshal(jsonData, &result)
 				if err != nil {
@@ -821,7 +821,7 @@ func BenchmarkProtobufVsJSON_LargeDatasetScaling(b *testing.B) {
 				if err != nil {
 					b.Fatal(err)
 				}
-				
+
 				_, err = DatasetDataFromProto(ctx, protoDataset)
 				if err != nil {
 					b.Fatal(err)

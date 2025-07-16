@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"mime/multipart"
@@ -17,7 +18,7 @@ func TestHTMLUploadCompatibility(t *testing.T) {
 	// Initialize test environment
 	InitStore()
 	InitInMemoryCache()
-	InitCacheStorage()
+	InitCacheStorage(context.Background())
 	InitializeMemoryOptimizations()
 
 	// Check if testdata.html exists
@@ -39,19 +40,19 @@ func TestHTMLUploadCompatibility(t *testing.T) {
 
 	// Test with both storage backends
 	testCases := []struct {
-		name           string
-		useProtobuf    bool
-		envVarValue    string
+		name        string
+		useProtobuf bool
+		envVarValue string
 	}{
 		{
-			name:           "JSON Storage Backend",
-			useProtobuf:    false,
-			envVarValue:    "false",
+			name:        "JSON Storage Backend",
+			useProtobuf: false,
+			envVarValue: "false",
 		},
 		{
-			name:           "Protobuf Storage Backend",
-			useProtobuf:    true,
-			envVarValue:    "true",
+			name:        "Protobuf Storage Backend",
+			useProtobuf: true,
+			envVarValue: "true",
 		},
 	}
 
@@ -416,23 +417,23 @@ func TestErrorResponseCompatibility(t *testing.T) {
 	// Initialize test environment
 	InitStore()
 	InitInMemoryCache()
-	InitCacheStorage()
+	InitCacheStorage(context.Background())
 	InitializeMemoryOptimizations()
 
 	testCases := []struct {
-		name           string
-		useProtobuf    bool
-		envVarValue    string
+		name        string
+		useProtobuf bool
+		envVarValue string
 	}{
 		{
-			name:           "JSON Storage Backend",
-			useProtobuf:    false,
-			envVarValue:    "false",
+			name:        "JSON Storage Backend",
+			useProtobuf: false,
+			envVarValue: "false",
 		},
 		{
-			name:           "Protobuf Storage Backend",
-			useProtobuf:    true,
-			envVarValue:    "true",
+			name:        "Protobuf Storage Backend",
+			useProtobuf: true,
+			envVarValue: "true",
 		},
 	}
 

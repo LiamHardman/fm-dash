@@ -86,9 +86,9 @@ func TestRoleOverallScoreToProto(t *testing.T) {
 				}
 				return
 			}
-			
+
 			result, err := tt.role.ToProto(ctx)
-			
+
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("ToProto() expected error but got none")
@@ -143,7 +143,7 @@ func TestRoleOverallScoreFromProto(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := RoleOverallScoreFromProto(ctx, tt.protoRole)
-			
+
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("RoleOverallScoreFromProto() expected error but got none")
@@ -171,9 +171,9 @@ func TestPlayerToProto(t *testing.T) {
 	ctx := context.Background()
 
 	tests := []struct {
-		name     string
-		player   *Player
-		wantErr  bool
+		name    string
+		player  *Player
+		wantErr bool
 	}{
 		{
 			name: "valid player conversion",
@@ -226,7 +226,7 @@ func TestPlayerToProto(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := tt.player.ToProto(ctx)
-			
+
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("ToProto() expected error but got none")
@@ -250,7 +250,7 @@ func TestPlayerToProto(t *testing.T) {
 
 			// Verify role conversions
 			if len(result.RoleSpecificOveralls) != len(tt.player.RoleSpecificOveralls) {
-				t.Errorf("ToProto() RoleSpecificOveralls length = %v, want %v", 
+				t.Errorf("ToProto() RoleSpecificOveralls length = %v, want %v",
 					len(result.RoleSpecificOveralls), len(tt.player.RoleSpecificOveralls))
 			}
 		})
@@ -309,7 +309,7 @@ func TestPlayerFromProto(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := PlayerFromProto(ctx, tt.protoPlayer)
-			
+
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("PlayerFromProto() expected error but got none")
@@ -333,7 +333,7 @@ func TestPlayerFromProto(t *testing.T) {
 
 			// Verify numeric attributes conversion
 			if len(result.NumericAttributes) != len(tt.protoPlayer.NumericAttributes) {
-				t.Errorf("PlayerFromProto() NumericAttributes length = %v, want %v", 
+				t.Errorf("PlayerFromProto() NumericAttributes length = %v, want %v",
 					len(result.NumericAttributes), len(tt.protoPlayer.NumericAttributes))
 			}
 		})
@@ -344,9 +344,9 @@ func TestDatasetDataToProto(t *testing.T) {
 	ctx := context.Background()
 
 	tests := []struct {
-		name     string
-		dataset  *PlayerDataWithCurrency
-		wantErr  bool
+		name    string
+		dataset *PlayerDataWithCurrency
+		wantErr bool
 	}{
 		{
 			name: "valid dataset conversion",
@@ -398,9 +398,9 @@ func TestDatasetDataToProto(t *testing.T) {
 				}
 				return
 			}
-			
+
 			result, err := tt.dataset.ToProto(ctx)
-			
+
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("ToProto() expected error but got none")
@@ -414,12 +414,12 @@ func TestDatasetDataToProto(t *testing.T) {
 			}
 
 			if len(result.Players) != len(tt.dataset.Players) {
-				t.Errorf("ToProto() Players length = %v, want %v", 
+				t.Errorf("ToProto() Players length = %v, want %v",
 					len(result.Players), len(tt.dataset.Players))
 			}
 
 			if result.CurrencySymbol != tt.dataset.CurrencySymbol {
-				t.Errorf("ToProto() CurrencySymbol = %v, want %v", 
+				t.Errorf("ToProto() CurrencySymbol = %v, want %v",
 					result.CurrencySymbol, tt.dataset.CurrencySymbol)
 			}
 		})
@@ -459,7 +459,7 @@ func TestDatasetDataFromProto(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := DatasetDataFromProto(ctx, tt.protoDataset)
-			
+
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("DatasetDataFromProto() expected error but got none")
@@ -473,12 +473,12 @@ func TestDatasetDataFromProto(t *testing.T) {
 			}
 
 			if len(result.Players) != len(tt.protoDataset.Players) {
-				t.Errorf("DatasetDataFromProto() Players length = %v, want %v", 
+				t.Errorf("DatasetDataFromProto() Players length = %v, want %v",
 					len(result.Players), len(tt.protoDataset.Players))
 			}
 
 			if result.CurrencySymbol != tt.protoDataset.CurrencySymbol {
-				t.Errorf("DatasetDataFromProto() CurrencySymbol = %v, want %v", 
+				t.Errorf("DatasetDataFromProto() CurrencySymbol = %v, want %v",
 					result.CurrencySymbol, tt.protoDataset.CurrencySymbol)
 			}
 		})
@@ -546,18 +546,18 @@ func TestRoundTripConversion(t *testing.T) {
 	}
 
 	if len(converted.RoleSpecificOveralls) != len(original.RoleSpecificOveralls) {
-		t.Errorf("Round trip RoleSpecificOveralls length mismatch: got %v, want %v", 
+		t.Errorf("Round trip RoleSpecificOveralls length mismatch: got %v, want %v",
 			len(converted.RoleSpecificOveralls), len(original.RoleSpecificOveralls))
 	}
 
 	// Verify role data integrity
 	for i, role := range converted.RoleSpecificOveralls {
 		if role.RoleName != original.RoleSpecificOveralls[i].RoleName {
-			t.Errorf("Round trip role name mismatch at index %d: got %v, want %v", 
+			t.Errorf("Round trip role name mismatch at index %d: got %v, want %v",
 				i, role.RoleName, original.RoleSpecificOveralls[i].RoleName)
 		}
 		if role.Score != original.RoleSpecificOveralls[i].Score {
-			t.Errorf("Round trip role score mismatch at index %d: got %v, want %v", 
+			t.Errorf("Round trip role score mismatch at index %d: got %v, want %v",
 				i, role.Score, original.RoleSpecificOveralls[i].Score)
 		}
 	}
@@ -568,9 +568,9 @@ func TestRoleOverallScoreEdgeCases(t *testing.T) {
 	ctx := context.Background()
 
 	tests := []struct {
-		name     string
-		role     *RoleOverallScore
-		wantErr  bool
+		name    string
+		role    *RoleOverallScore
+		wantErr bool
 	}{
 		{
 			name: "negative score",
@@ -644,9 +644,9 @@ func TestPlayerEdgeCases(t *testing.T) {
 	ctx := context.Background()
 
 	tests := []struct {
-		name     string
-		player   *Player
-		wantErr  bool
+		name    string
+		player  *Player
+		wantErr bool
 	}{
 		{
 			name: "player with nil maps",
@@ -697,8 +697,8 @@ func TestPlayerEdgeCases(t *testing.T) {
 				Club:        "FC Zürich-München",
 				Nationality: "España/Deutschland",
 				Attributes: map[string]string{
-					"Técnica":     "18",
-					"Velocità":    "16",
+					"Técnica":    "18",
+					"Velocità":   "16",
 					"力量":         "14",
 					"🏃‍♂️ Speed": "20",
 				},
@@ -726,8 +726,8 @@ func TestPlayerEdgeCases(t *testing.T) {
 						"Blocks":        74.2,
 					},
 					"Passing": {
-						"ShortPasses":  94.7,
-						"LongPasses":   87.3,
+						"ShortPasses":   94.7,
+						"LongPasses":    87.3,
 						"CrossAccuracy": 85.9,
 					},
 				},
@@ -775,11 +775,11 @@ func TestPlayerEdgeCases(t *testing.T) {
 
 			// Verify map lengths
 			if len(converted.Attributes) != len(tt.player.Attributes) {
-				t.Errorf("Round trip Attributes length mismatch: got %v, want %v", 
+				t.Errorf("Round trip Attributes length mismatch: got %v, want %v",
 					len(converted.Attributes), len(tt.player.Attributes))
 			}
 			if len(converted.NumericAttributes) != len(tt.player.NumericAttributes) {
-				t.Errorf("Round trip NumericAttributes length mismatch: got %v, want %v", 
+				t.Errorf("Round trip NumericAttributes length mismatch: got %v, want %v",
 					len(converted.NumericAttributes), len(tt.player.NumericAttributes))
 			}
 		})
@@ -791,9 +791,9 @@ func TestDatasetDataEdgeCases(t *testing.T) {
 	ctx := context.Background()
 
 	tests := []struct {
-		name     string
-		dataset  *PlayerDataWithCurrency
-		wantErr  bool
+		name    string
+		dataset *PlayerDataWithCurrency
+		wantErr bool
 	}{
 		{
 			name: "dataset with unicode currency",
@@ -847,11 +847,11 @@ func TestDatasetDataEdgeCases(t *testing.T) {
 
 			// Verify data integrity
 			if converted.CurrencySymbol != tt.dataset.CurrencySymbol {
-				t.Errorf("Round trip CurrencySymbol mismatch: got %v, want %v", 
+				t.Errorf("Round trip CurrencySymbol mismatch: got %v, want %v",
 					converted.CurrencySymbol, tt.dataset.CurrencySymbol)
 			}
 			if len(converted.Players) != len(tt.dataset.Players) {
-				t.Errorf("Round trip Players length mismatch: got %v, want %v", 
+				t.Errorf("Round trip Players length mismatch: got %v, want %v",
 					len(converted.Players), len(tt.dataset.Players))
 			}
 		})
@@ -916,7 +916,7 @@ func TestLargeDatasetConversion(t *testing.T) {
 
 	// Verify protobuf dataset structure
 	if len(protoDataset.Players) != len(dataset.Players) {
-		t.Errorf("Large dataset protobuf conversion: Players length = %v, want %v", 
+		t.Errorf("Large dataset protobuf conversion: Players length = %v, want %v",
 			len(protoDataset.Players), len(dataset.Players))
 	}
 
@@ -928,7 +928,7 @@ func TestLargeDatasetConversion(t *testing.T) {
 
 	// Verify converted dataset structure
 	if len(converted.Players) != len(dataset.Players) {
-		t.Errorf("Large dataset round trip: Players length = %v, want %v", 
+		t.Errorf("Large dataset round trip: Players length = %v, want %v",
 			len(converted.Players), len(dataset.Players))
 	}
 
@@ -939,15 +939,15 @@ func TestLargeDatasetConversion(t *testing.T) {
 		convertedPlayer := &converted.Players[idx]
 
 		if convertedPlayer.UID != original.UID {
-			t.Errorf("Large dataset player %d UID mismatch: got %v, want %v", 
+			t.Errorf("Large dataset player %d UID mismatch: got %v, want %v",
 				idx, convertedPlayer.UID, original.UID)
 		}
 		if convertedPlayer.Name != original.Name {
-			t.Errorf("Large dataset player %d Name mismatch: got %v, want %v", 
+			t.Errorf("Large dataset player %d Name mismatch: got %v, want %v",
 				idx, convertedPlayer.Name, original.Name)
 		}
 		if len(convertedPlayer.RoleSpecificOveralls) != len(original.RoleSpecificOveralls) {
-			t.Errorf("Large dataset player %d RoleSpecificOveralls length mismatch: got %v, want %v", 
+			t.Errorf("Large dataset player %d RoleSpecificOveralls length mismatch: got %v, want %v",
 				idx, len(convertedPlayer.RoleSpecificOveralls), len(original.RoleSpecificOveralls))
 		}
 	}
@@ -974,55 +974,55 @@ func TestCompleteRoundTripIntegrity(t *testing.T) {
 		NationalityFIFACode: "ENG",
 		AttributeMasked:     true,
 		Attributes: map[string]string{
-			"Corners":           "15",
-			"Crossing":          "14",
-			"Dribbling":         "18",
-			"Finishing":         "16",
-			"First Touch":       "17",
-			"Free Kick Taking":  "13",
-			"Heading":           "12",
-			"Long Shots":        "15",
-			"Long Throws":       "8",
-			"Marking":           "10",
-			"Passing":           "19",
-			"Penalty Taking":    "14",
-			"Tackling":          "9",
-			"Technique":         "18",
+			"Corners":          "15",
+			"Crossing":         "14",
+			"Dribbling":        "18",
+			"Finishing":        "16",
+			"First Touch":      "17",
+			"Free Kick Taking": "13",
+			"Heading":          "12",
+			"Long Shots":       "15",
+			"Long Throws":      "8",
+			"Marking":          "10",
+			"Passing":          "19",
+			"Penalty Taking":   "14",
+			"Tackling":         "9",
+			"Technique":        "18",
 		},
 		NumericAttributes: map[string]int{
-			"Corners":           15,
-			"Crossing":          14,
-			"Dribbling":         18,
-			"Finishing":         16,
-			"First Touch":       17,
-			"Free Kick Taking":  13,
-			"Heading":           12,
-			"Long Shots":        15,
-			"Long Throws":       8,
-			"Marking":           10,
-			"Passing":           19,
-			"Penalty Taking":    14,
-			"Tackling":          9,
-			"Technique":         18,
+			"Corners":          15,
+			"Crossing":         14,
+			"Dribbling":        18,
+			"Finishing":        16,
+			"First Touch":      17,
+			"Free Kick Taking": 13,
+			"Heading":          12,
+			"Long Shots":       15,
+			"Long Throws":      8,
+			"Marking":          10,
+			"Passing":          19,
+			"Penalty Taking":   14,
+			"Tackling":         9,
+			"Technique":        18,
 		},
 		PerformanceStatsNumeric: map[string]float64{
-			"Goals":              12.0,
-			"Assists":            18.0,
-			"Key Passes":         3.2,
-			"Shots per Game":     2.8,
-			"Pass Completion":    89.5,
-			"Dribbles per Game":  4.1,
-			"Tackles per Game":   1.2,
-			"Interceptions":      0.8,
+			"Goals":             12.0,
+			"Assists":           18.0,
+			"Key Passes":        3.2,
+			"Shots per Game":    2.8,
+			"Pass Completion":   89.5,
+			"Dribbles per Game": 4.1,
+			"Tackles per Game":  1.2,
+			"Interceptions":     0.8,
 		},
 		PerformancePercentiles: map[string]map[string]float64{
 			"Attacking": {
-				"Goals":              85.2,
-				"Assists":            92.7,
-				"Key Passes":         88.1,
-				"Shots per Game":     79.3,
-				"Expected Goals":     82.6,
-				"Expected Assists":   90.4,
+				"Goals":            85.2,
+				"Assists":          92.7,
+				"Key Passes":       88.1,
+				"Shots per Game":   79.3,
+				"Expected Goals":   82.6,
+				"Expected Assists": 90.4,
 			},
 			"Passing": {
 				"Pass Completion":    94.1,
@@ -1031,14 +1031,14 @@ func TestCompleteRoundTripIntegrity(t *testing.T) {
 				"Crosses":            76.2,
 			},
 			"Dribbling": {
-				"Dribbles per Game":     89.7,
+				"Dribbles per Game":    89.7,
 				"Dribble Success Rate": 85.4,
 				"Take-ons":             88.2,
 			},
 			"Defending": {
-				"Tackles per Game":   45.2,
-				"Interceptions":      38.7,
-				"Clearances":         25.1,
+				"Tackles per Game": 45.2,
+				"Interceptions":    38.7,
+				"Clearances":       25.1,
 			},
 		},
 		ParsedPositions: []string{"CAM", "CM", "AMR", "AML"},
@@ -1122,7 +1122,7 @@ func TestCompleteRoundTripIntegrity(t *testing.T) {
 
 	// Verify all individual stats
 	statsToCheck := []struct {
-		name     string
+		name      string
 		got, want int
 	}{
 		{"PAC", converted.PAC, original.PAC},
@@ -1142,7 +1142,7 @@ func TestCompleteRoundTripIntegrity(t *testing.T) {
 
 	// Verify role-specific overalls
 	if len(converted.RoleSpecificOveralls) != len(original.RoleSpecificOveralls) {
-		t.Errorf("RoleSpecificOveralls length mismatch: got %v, want %v", 
+		t.Errorf("RoleSpecificOveralls length mismatch: got %v, want %v",
 			len(converted.RoleSpecificOveralls), len(original.RoleSpecificOveralls))
 	}
 
