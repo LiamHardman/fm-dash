@@ -9,18 +9,7 @@ import (
 	"api/proto"
 )
 
-// Mock logging functions for testing
-func logDebug(ctx context.Context, msg string, args ...any) {
-	slog.DebugContext(ctx, msg, args...)
-}
-
-func logInfo(ctx context.Context, msg string, args ...any) {
-	slog.InfoContext(ctx, msg, args...)
-}
-
-func logError(ctx context.Context, msg string, args ...any) {
-	slog.ErrorContext(ctx, msg, args...)
-}
+// Logging functions are already defined in handlers.go
 
 func init() {
 	// Set up basic logging for tests
