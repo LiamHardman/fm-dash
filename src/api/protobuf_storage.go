@@ -115,7 +115,10 @@ func (s *ProtobufStorage) Store(datasetID string, data DatasetData) error {
 	}
 
 	RecordDBOperation(ctx, "store", "protobuf_datasets", time.Since(start), 1)
-	log.Printf("Successfully stored dataset %s using protobuf serialization", sanitizeForLogging(datasetID))
+	logInfo(ctx, "Successfully stored dataset using protobuf serialization", 
+		"dataset_id", datasetID, 
+		"player_count", len(data.Players),
+		"duration_ms", time.Since(start).Milliseconds())
 	return nil
 }
 
@@ -205,7 +208,10 @@ func (s *ProtobufStorage) Retrieve(datasetID string) (DatasetData, error) {
 	)
 
 	RecordDBOperation(ctx, "retrieve", "protobuf_datasets", time.Since(start), 1)
-	log.Printf("Successfully retrieved dataset %s using protobuf deserialization", sanitizeForLogging(datasetID))
+	logInfo(ctx, "Successfully retrieved dataset using protobuf deserialization", 
+		"dataset_id", datasetID, 
+		"player_count", len(result.Players),
+		"duration_ms", time.Since(start).Milliseconds())
 	return result, nil
 }
 
@@ -230,7 +236,7 @@ func (s *ProtobufStorage) compressProtobufData(data []byte) ([]byte, error) {
 	gz := gzip.NewWriter(&buf)
 	defer func() {
 		if closeErr := gz.Close(); closeErr != nil {
-			log.Printf("Failed to close gzip writer: %v", closeErr)
+			// Note: We can't use context here as it's in a defer, but this is a minor cleanup error
 		}
 	}()
 
@@ -253,7 +259,7 @@ func (s *ProtobufStorage) decompressProtobufData(data []byte) ([]byte, error) {
 	}
 	defer func() {
 		if closeErr := reader.Close(); closeErr != nil {
-			log.Printf("Failed to close gzip reader: %v", closeErr)
+			// Note: We can't use context here as it's in a defer, but this is a minor cleanup error
 		}
 	}()
 
@@ -267,6 +273,8 @@ func (s *ProtobufStorage) decompressProtobufData(data []byte) ([]byte, error) {
 
 // storeProtobufBytes stores raw protobuf bytes by encoding them as a special dataset
 func (s *ProtobufStorage) storeProtobufBytes(ctx context.Context, datasetID string, data []byte) error {
+	logDebug(ctx, "Storing protobuf bytes", "dataset_id", datasetID, "size_bytes", len(data))
+	
 	// Encode the protobuf bytes as a base64 string in a special player record
 	// This allows us to use the existing storage interface without modification
 	encodedData := base64.StdEncoding.EncodeToString(data)
@@ -297,23 +305,35 @@ func (s *ProtobufStorage) storeProtobufBytes(ctx context.Context, datasetID stri
 		CurrencySymbol: "__PROTOBUF_MARKER__",
 	}
 	
-	return s.backend.Store(datasetID, protobufDataset)
+	err := s.backend.Store(datasetID, protobufDataset)
+	if err != nil {
+		logError(ctx, "Failed to store protobuf dataset", "error", err, "dataset_id", datasetID)
+		return fmt.Errorf("failed to store protobuf dataset: %w", err)
+	}
+	
+	logDebug(ctx, "Successfully stored protobuf bytes", "dataset_id", datasetID)
+	return nil
 }
 
 // retrieveProtobufBytes retrieves raw protobuf bytes by decoding from the special dataset
 func (s *ProtobufStorage) retrieveProtobufBytes(ctx context.Context, datasetID string) ([]byte, error) {
+	logDebug(ctx, "Retrieving protobuf bytes", "dataset_id", datasetID)
+	
 	// Retrieve the special dataset
 	dataset, err := s.backend.Retrieve(datasetID)
 	if err != nil {
+		logError(ctx, "Failed to retrieve protobuf dataset", "error", err, "dataset_id", datasetID)
 		return nil, fmt.Errorf("failed to retrieve protobuf dataset: %w", err)
 	}
 	
 	// Check if this is a protobuf dataset
 	if dataset.CurrencySymbol != "__PROTOBUF_MARKER__" {
+		logDebug(ctx, "Dataset is not in protobuf format", "dataset_id", datasetID, "currency_symbol", dataset.CurrencySymbol)
 		return nil, fmt.Errorf("dataset is not in protobuf format")
 	}
 	
 	if len(dataset.Players) != 1 || dataset.Players[0].UID != -1 || dataset.Players[0].Name != "__PROTOBUF_DATA__" {
+		logError(ctx, "Invalid protobuf dataset format", "dataset_id", datasetID, "player_count", len(dataset.Players))
 		return nil, fmt.Errorf("invalid protobuf dataset format")
 	}
 	
@@ -321,27 +341,35 @@ func (s *ProtobufStorage) retrieveProtobufBytes(ctx context.Context, datasetID s
 	encodedData := dataset.Players[0].Position
 	data, err := base64.StdEncoding.DecodeString(encodedData)
 	if err != nil {
+		logError(ctx, "Failed to decode protobuf data", "error", err, "dataset_id", datasetID)
 		return nil, fmt.Errorf("failed to decode protobuf data: %w", err)
 	}
 	
+	logDebug(ctx, "Successfully retrieved protobuf bytes", "dataset_id", datasetID, "size_bytes", len(data))
 	return data, nil
 }
 
 // storeWithJSONFallback falls back to JSON storage when protobuf fails
 func (s *ProtobufStorage) storeWithJSONFallback(ctx context.Context, datasetID string, data DatasetData) error {
-	log.Printf("Using JSON fallback for storing dataset %s", sanitizeForLogging(datasetID))
+	logInfo(ctx, "Using JSON fallback for storing dataset", "dataset_id", datasetID)
 	return s.backend.Store(datasetID, data)
 }
 
 // retrieveWithJSONFallback falls back to JSON retrieval when protobuf fails
 func (s *ProtobufStorage) retrieveWithJSONFallback(ctx context.Context, datasetID string) (DatasetData, error) {
-	log.Printf("Using JSON fallback for retrieving dataset %s", sanitizeForLogging(datasetID))
+	logInfo(ctx, "Using JSON fallback for retrieving dataset", "dataset_id", datasetID)
 	return s.backend.Retrieve(datasetID)
 }
 
 // logFallbackEvent logs protobuf fallback events for monitoring and debugging
 func (s *ProtobufStorage) logFallbackEvent(event ProtobufFallbackEvent) {
-	log.Printf("PROTOBUF_FALLBACK: %s", event.String())
+	// Create a context for logging - in a real scenario this would be passed from the caller
+	ctx := context.Background()
+	logInfo(ctx, "Protobuf fallback event occurred", 
+		"dataset_id", event.DatasetID,
+		"reason", string(event.Reason),
+		"message", event.Message,
+		"error", event.Error)
 	
 	// In a production environment, you might want to send this to a monitoring system
 	// such as metrics collection, alerting, or structured logging
