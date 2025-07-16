@@ -1079,25 +1079,33 @@ func (s *HybridStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets
 // InitializeStorage creates and returns the appropriate storage implementation
 //
 //nolint:ireturn // StorageInterface is the intended return type for this factory function
-func InitializeStorage() StorageInterface {
+func InitializeStorage(ctx context.Context) StorageInterface {
+	logInfo(ctx, "Initializing storage system")
+	start := time.Now()
+	
 	// Validate and determine storage configuration
-	config := validateStorageConfiguration()
+	config := validateStorageConfiguration(ctx)
 	
 	// Initialize the base storage backend
-	baseStorage := initializeBaseStorage()
+	baseStorage := initializeBaseStorage(ctx)
 	
 	// Apply protobuf wrapper if enabled and available
 	if config.UseProtobuf {
-		protobufStorage, err := createProtobufStorageWithFallback(baseStorage)
+		protobufStorage, err := createProtobufStorageWithFallback(ctx, baseStorage)
 		if err != nil {
-			log.Printf("Warning: Failed to initialize protobuf storage: %v. Falling back to JSON serialization.", err)
+			logError(ctx, "Failed to initialize protobuf storage, falling back to JSON serialization", 
+				"error", err, "duration_ms", time.Since(start).Milliseconds())
 			return baseStorage
 		}
-		log.Println("Protobuf storage enabled. Using protobuf serialization with JSON fallback.")
+		logInfo(ctx, "Storage initialization completed", 
+			"storage_type", "protobuf", 
+			"duration_ms", time.Since(start).Milliseconds())
 		return protobufStorage
 	}
 	
-	log.Println("Using JSON serialization for storage.")
+	logInfo(ctx, "Storage initialization completed", 
+		"storage_type", "json", 
+		"duration_ms", time.Since(start).Milliseconds())
 	return baseStorage
 }
 
@@ -1105,8 +1113,8 @@ func InitializeStorage() StorageInterface {
 // This factory method allows explicit creation of protobuf storage for testing or specific use cases
 //
 //nolint:ireturn // StorageInterface is the intended return type for this factory function
-func CreateProtobufEnabledStorage(backend StorageInterface) StorageInterface {
-	log.Println("Creating protobuf-enabled storage wrapper.")
+func CreateProtobufEnabledStorage(ctx context.Context, backend StorageInterface) StorageInterface {
+	logInfo(ctx, "Creating protobuf-enabled storage wrapper")
 	return CreateProtobufStorage(backend)
 }
 
@@ -1114,9 +1122,9 @@ func CreateProtobufEnabledStorage(backend StorageInterface) StorageInterface {
 // This factory method allows explicit creation of JSON-only storage for testing or specific use cases
 //
 //nolint:ireturn // StorageInterface is the intended return type for this factory function
-func CreateJSONStorage() StorageInterface {
-	log.Println("Creating JSON-only storage (no protobuf wrapper).")
-	return initializeBaseStorage()
+func CreateJSONStorage(ctx context.Context) StorageInterface {
+	logInfo(ctx, "Creating JSON-only storage without protobuf wrapper")
+	return initializeBaseStorage(ctx)
 }
 
 // StorageConfiguration holds the validated storage configuration
@@ -1127,7 +1135,10 @@ type StorageConfiguration struct {
 }
 
 // validateStorageConfiguration validates the storage configuration from environment variables
-func validateStorageConfiguration() StorageConfiguration {
+func validateStorageConfiguration(ctx context.Context) StorageConfiguration {
+	logInfo(ctx, "Validating storage configuration")
+	start := time.Now()
+	
 	config := StorageConfiguration{
 		UseProtobuf: false,
 		ConfigValid: true,
@@ -1140,89 +1151,113 @@ func validateStorageConfiguration() StorageConfiguration {
 	switch protobufEnv {
 	case "true", "1", "yes", "on":
 		config.UseProtobuf = true
-		log.Println("Protobuf storage configuration: ENABLED")
+		logInfo(ctx, "Protobuf storage configuration enabled", "env_value", protobufEnv)
 	case "false", "0", "no", "off", "":
 		config.UseProtobuf = false
-		log.Println("Protobuf storage configuration: DISABLED")
+		logInfo(ctx, "Protobuf storage configuration disabled", "env_value", protobufEnv)
 	default:
 		config.ConfigValid = false
 		config.Errors = append(config.Errors, fmt.Sprintf("invalid USE_PROTOBUF value: %s (expected: true/false)", protobufEnv))
-		log.Printf("Warning: Invalid USE_PROTOBUF value '%s'. Expected true/false. Defaulting to false.", protobufEnv)
+		logError(ctx, "Invalid USE_PROTOBUF environment variable value", 
+			"error", fmt.Errorf("invalid value: %s", protobufEnv), 
+			"env_value", protobufEnv, 
+			"expected_values", "true/false")
 	}
 
 	// Log configuration validation results
 	if config.ConfigValid {
-		log.Printf("Storage configuration validated successfully. Protobuf enabled: %t", config.UseProtobuf)
+		logInfo(ctx, "Storage configuration validation completed", 
+			"use_protobuf", config.UseProtobuf, 
+			"duration_ms", time.Since(start).Milliseconds())
 	} else {
-		log.Printf("Storage configuration validation failed with %d errors: %v", len(config.Errors), config.Errors)
+		logError(ctx, "Storage configuration validation failed", 
+			"error", fmt.Errorf("validation failed with %d errors", len(config.Errors)), 
+			"error_count", len(config.Errors), 
+			"errors", config.Errors,
+			"duration_ms", time.Since(start).Milliseconds())
 	}
 
 	return config
 }
 
 // createProtobufStorageWithFallback creates protobuf storage with graceful fallback handling
-func createProtobufStorageWithFallback(baseStorage StorageInterface) (StorageInterface, error) {
+func createProtobufStorageWithFallback(ctx context.Context, baseStorage StorageInterface) (StorageInterface, error) {
+	logInfo(ctx, "Creating protobuf storage with fallback handling")
+	start := time.Now()
+
 	// Validate that protobuf dependencies are available
-	if err := validateProtobufDependencies(); err != nil {
+	if err := validateProtobufDependencies(ctx); err != nil {
+		logError(ctx, "Protobuf dependencies validation failed", "error", err)
 		return nil, fmt.Errorf("protobuf dependencies validation failed: %w", err)
 	}
 
 	// Create protobuf storage wrapper
 	protobufStorage := CreateProtobufStorage(baseStorage)
 	if protobufStorage == nil {
-		return nil, fmt.Errorf("failed to create protobuf storage wrapper")
+		err := fmt.Errorf("failed to create protobuf storage wrapper")
+		logError(ctx, "Failed to create protobuf storage wrapper", "error", err)
+		return nil, err
 	}
 
 	// Test protobuf storage functionality with a simple operation
-	if err := testProtobufStorage(protobufStorage); err != nil {
+	if err := testProtobufStorage(ctx, protobufStorage); err != nil {
+		logError(ctx, "Protobuf storage functionality test failed", "error", err)
 		return nil, fmt.Errorf("protobuf storage functionality test failed: %w", err)
 	}
 
-	log.Println("Protobuf storage created and validated successfully.")
+	logInfo(ctx, "Protobuf storage created and validated successfully", 
+		"duration_ms", time.Since(start).Milliseconds())
 	return protobufStorage, nil
 }
 
 // validateProtobufDependencies checks if protobuf dependencies are available
-func validateProtobufDependencies() error {
+func validateProtobufDependencies(ctx context.Context) error {
+	logInfo(ctx, "Validating protobuf dependencies")
+	start := time.Now()
+	
 	// This is a placeholder for dependency validation
 	// In a real implementation, you might check for:
 	// - Protobuf library availability
 	// - Generated protobuf code presence
 	// - Required protobuf version compatibility
 	
-	log.Println("Validating protobuf dependencies...")
-	
 	// For now, we'll assume dependencies are available
 	// In production, you would add actual validation logic here
 	
-	log.Println("Protobuf dependencies validation passed.")
+	logInfo(ctx, "Protobuf dependencies validation completed", 
+		"duration_ms", time.Since(start).Milliseconds())
 	return nil
 }
 
 // testProtobufStorage performs a basic functionality test on protobuf storage
-func testProtobufStorage(storage StorageInterface) error {
+func testProtobufStorage(ctx context.Context, storage StorageInterface) error {
+	logInfo(ctx, "Testing protobuf storage functionality")
+	start := time.Now()
+	
 	// This is a placeholder for protobuf storage testing
 	// In a real implementation, you might:
 	// - Test a simple store/retrieve cycle with minimal data
 	// - Verify protobuf serialization/deserialization works
 	// - Check error handling and fallback mechanisms
 	
-	log.Println("Testing protobuf storage functionality...")
-	
 	// For now, we'll assume the test passes
 	// In production, you would add actual test logic here
 	
-	log.Println("Protobuf storage functionality test passed.")
+	logInfo(ctx, "Protobuf storage functionality test completed", 
+		"duration_ms", time.Since(start).Milliseconds())
 	return nil
 }
 
 // initializeBaseStorage creates the underlying storage backend (S3, hybrid, or in-memory)
-func initializeBaseStorage() StorageInterface {
+func initializeBaseStorage(ctx context.Context) StorageInterface {
+	logInfo(ctx, "Initializing base storage backend")
+	start := time.Now()
+	
 	inMemory := CreateInMemoryStorage()
 
 	s3Endpoint := os.Getenv("S3_ENDPOINT")
 	if s3Endpoint == "" {
-		log.Println("No S3 endpoint configured. Using hybrid storage (in-memory + local file fallback).")
+		logInfo(ctx, "No S3 endpoint configured, using hybrid storage", "storage_type", "hybrid")
 
 		// Use configurable datasets directory, default to "./datasets"
 		datasetDir := os.Getenv("DATASETS_DIR")
@@ -1232,10 +1267,18 @@ func initializeBaseStorage() StorageInterface {
 
 		hybrid, err := CreateHybridStorage(datasetDir)
 		if err != nil {
-			log.Printf("Failed to initialize hybrid storage: %v. Falling back to in-memory only.", err)
+			logError(ctx, "Failed to initialize hybrid storage, falling back to in-memory only", 
+				"error", err, "dataset_dir", datasetDir)
+			logInfo(ctx, "Base storage initialization completed", 
+				"storage_type", "in-memory", 
+				"duration_ms", time.Since(start).Milliseconds())
 			return inMemory
 		}
 
+		logInfo(ctx, "Base storage initialization completed", 
+			"storage_type", "hybrid", 
+			"dataset_dir", datasetDir,
+			"duration_ms", time.Since(start).Milliseconds())
 		return hybrid
 	}
 
@@ -1244,7 +1287,7 @@ func initializeBaseStorage() StorageInterface {
 	useSSL := strings.ToLower(os.Getenv("S3_USE_SSL")) == "true"
 
 	if accessKey == "" || secretKey == "" {
-		log.Println("S3 credentials not provided. Using hybrid storage (in-memory + local file fallback).")
+		logInfo(ctx, "S3 credentials not provided, using hybrid storage", "storage_type", "hybrid")
 
 		// Use configurable datasets directory, default to "./datasets"
 		datasetDir := os.Getenv("DATASETS_DIR")
@@ -1254,19 +1297,26 @@ func initializeBaseStorage() StorageInterface {
 
 		hybrid, err := CreateHybridStorage(datasetDir)
 		if err != nil {
-			log.Printf("Failed to initialize hybrid storage: %v. Falling back to in-memory only.", err)
+			logError(ctx, "Failed to initialize hybrid storage, falling back to in-memory only", 
+				"error", err, "dataset_dir", datasetDir)
+			logInfo(ctx, "Base storage initialization completed", 
+				"storage_type", "in-memory", 
+				"duration_ms", time.Since(start).Milliseconds())
 			return inMemory
 		}
 
+		logInfo(ctx, "Base storage initialization completed", 
+			"storage_type", "hybrid", 
+			"dataset_dir", datasetDir,
+			"duration_ms", time.Since(start).Milliseconds())
 		return hybrid
 	}
 
-	// Debug logging (only show first few chars for security)
 	// Log configuration without sensitive credentials
-	LogDebug("S3 Config: endpoint=%s, useSSL=%v, credentials_provided=%t",
-		s3Endpoint,
-		useSSL,
-		accessKey != "" && secretKey != "")
+	logDebug(ctx, "S3 configuration detected", 
+		"endpoint", s3Endpoint, 
+		"use_ssl", useSSL, 
+		"credentials_provided", accessKey != "" && secretKey != "")
 
 	bucketName := os.Getenv("S3_BUCKET_NAME")
 	if bucketName == "" {
@@ -1274,6 +1324,10 @@ func initializeBaseStorage() StorageInterface {
 	}
 	s3Storage := CreateS3Storage(s3Endpoint, accessKey, secretKey, bucketName, useSSL, inMemory)
 
-	LogDebug("Initialized S3 storage with in-memory fallback")
+	logInfo(ctx, "Base storage initialization completed", 
+		"storage_type", "s3", 
+		"endpoint", s3Endpoint,
+		"bucket_name", bucketName,
+		"duration_ms", time.Since(start).Milliseconds())
 	return s3Storage
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"testing"
 )
@@ -121,7 +122,8 @@ func TestValidateStorageConfiguration(t *testing.T) {
 			os.Setenv("USE_PROTOBUF", tt.envValue)
 
 			// Test the validation function
-			config := validateStorageConfiguration()
+			ctx := context.Background()
+			config := validateStorageConfiguration(ctx)
 
 			if config.UseProtobuf != tt.expectedUse {
 				t.Errorf("Expected UseProtobuf=%v, got %v", tt.expectedUse, config.UseProtobuf)
@@ -143,7 +145,8 @@ func TestCreateProtobufEnabledStorage(t *testing.T) {
 	baseStorage := CreateInMemoryStorage()
 
 	// Test creating protobuf-enabled storage
-	protobufStorage := CreateProtobufEnabledStorage(baseStorage)
+	ctx := context.Background()
+	protobufStorage := CreateProtobufEnabledStorage(ctx, baseStorage)
 
 	if protobufStorage == nil {
 		t.Fatal("Expected protobuf storage to be created, got nil")
@@ -157,7 +160,8 @@ func TestCreateProtobufEnabledStorage(t *testing.T) {
 
 func TestCreateJSONStorage(t *testing.T) {
 	// Test creating JSON-only storage
-	jsonStorage := CreateJSONStorage()
+	ctx := context.Background()
+	jsonStorage := CreateJSONStorage(ctx)
 
 	if jsonStorage == nil {
 		t.Fatal("Expected JSON storage to be created, got nil")
@@ -183,7 +187,8 @@ func TestInitializeStorageWithProtobufEnabled(t *testing.T) {
 	// Test with protobuf enabled
 	os.Setenv("USE_PROTOBUF", "true")
 
-	storage := InitializeStorage()
+	ctx := context.Background()
+	storage := InitializeStorage(ctx)
 
 	if storage == nil {
 		t.Fatal("Expected storage to be initialized, got nil")
@@ -209,7 +214,8 @@ func TestInitializeStorageWithProtobufDisabled(t *testing.T) {
 	// Test with protobuf disabled
 	os.Setenv("USE_PROTOBUF", "false")
 
-	storage := InitializeStorage()
+	ctx := context.Background()
+	storage := InitializeStorage(ctx)
 
 	if storage == nil {
 		t.Fatal("Expected storage to be initialized, got nil")
@@ -235,7 +241,8 @@ func TestInitializeStorageWithInvalidProtobufValue(t *testing.T) {
 	// Test with invalid protobuf value
 	os.Setenv("USE_PROTOBUF", "invalid")
 
-	storage := InitializeStorage()
+	ctx := context.Background()
+	storage := InitializeStorage(ctx)
 
 	if storage == nil {
 		t.Fatal("Expected storage to be initialized, got nil")
@@ -269,7 +276,8 @@ func TestStorageFactoryFallbackBehavior(t *testing.T) {
 				os.Setenv("USE_PROTOBUF", testCase)
 			}
 
-			storage := InitializeStorage()
+			ctx := context.Background()
+			storage := InitializeStorage(ctx)
 
 			if storage == nil {
 				t.Fatal("Expected storage to be initialized, got nil")

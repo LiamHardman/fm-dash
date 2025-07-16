@@ -29,7 +29,8 @@ var storeMutex sync.RWMutex
 
 // InitStore initializes the global storage instance
 func InitStore() {
-	storage = InitializeStorage()
+	ctx := context.Background()
+	storage = InitializeStorage(ctx)
 }
 
 // StoreDataset stores player data using the storage interface

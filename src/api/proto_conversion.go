@@ -69,7 +69,7 @@ func (p *Player) ToProto(ctx context.Context) (*proto.Player, error) {
 		return nil, fmt.Errorf("cannot convert nil Player to protobuf")
 	}
 
-	logInfo(ctx, "Converting Player to protobuf", "player_uid", p.UID, "player_name", p.Name)
+	logDebug(ctx, "Converting Player to protobuf", "player_uid", p.UID, "player_name", p.Name)
 
 	// Convert RoleSpecificOveralls
 	var protoRoles []*proto.RoleOverallScore
@@ -141,7 +141,7 @@ func (p *Player) ToProto(ctx context.Context) (*proto.Player, error) {
 		WageAmount:              p.WageAmount,
 	}
 
-	logInfo(ctx, "Player conversion to protobuf completed", 
+	logDebug(ctx, "Player conversion to protobuf completed", 
 		"player_uid", p.UID, 
 		"player_name", p.Name,
 		"role_count", len(protoRoles),
@@ -159,7 +159,7 @@ func PlayerFromProto(ctx context.Context, protoPlayer *proto.Player) (*Player, e
 		return nil, fmt.Errorf("cannot convert nil protobuf Player")
 	}
 
-	logInfo(ctx, "Converting protobuf to Player", "player_uid", protoPlayer.GetUid(), "player_name", protoPlayer.GetName())
+	logDebug(ctx, "Converting protobuf to Player", "player_uid", protoPlayer.GetUid(), "player_name", protoPlayer.GetName())
 
 	// Convert RoleSpecificOveralls
 	var roles []RoleOverallScore
@@ -229,7 +229,7 @@ func PlayerFromProto(ctx context.Context, protoPlayer *proto.Player) (*Player, e
 		WageAmount:              protoPlayer.GetWageAmount(),
 	}
 
-	logInfo(ctx, "Protobuf Player conversion completed", 
+	logDebug(ctx, "Protobuf Player conversion completed", 
 		"player_uid", player.UID, 
 		"player_name", player.Name,
 		"role_count", len(roles),
@@ -249,7 +249,7 @@ func (d *PlayerDataWithCurrency) ToProto(ctx context.Context) (*proto.DatasetDat
 		return nil, fmt.Errorf("cannot convert nil DatasetData to protobuf")
 	}
 
-	logInfo(ctx, "Converting DatasetData to protobuf", "player_count", len(d.Players))
+	logDebug(ctx, "Converting DatasetData to protobuf", "player_count", len(d.Players))
 
 	var protoPlayers []*proto.Player
 	for i, player := range d.Players {
@@ -269,7 +269,7 @@ func (d *PlayerDataWithCurrency) ToProto(ctx context.Context) (*proto.DatasetDat
 		CurrencySymbol: d.CurrencySymbol,
 	}
 
-	logInfo(ctx, "DatasetData conversion to protobuf completed", 
+	logDebug(ctx, "DatasetData conversion to protobuf completed", 
 		"player_count", len(protoPlayers),
 		"currency_symbol", d.CurrencySymbol,
 		"duration_ms", time.Since(start).Milliseconds())
@@ -286,7 +286,7 @@ func DatasetDataFromProto(ctx context.Context, protoDataset *proto.DatasetData) 
 		return nil, fmt.Errorf("cannot convert nil protobuf DatasetData")
 	}
 
-	logInfo(ctx, "Converting protobuf to DatasetData", "player_count", len(protoDataset.GetPlayers()))
+	logDebug(ctx, "Converting protobuf to DatasetData", "player_count", len(protoDataset.GetPlayers()))
 
 	var players []Player
 	for i, protoPlayer := range protoDataset.GetPlayers() {
@@ -306,7 +306,7 @@ func DatasetDataFromProto(ctx context.Context, protoDataset *proto.DatasetData) 
 		CurrencySymbol: protoDataset.GetCurrencySymbol(),
 	}
 
-	logInfo(ctx, "Protobuf DatasetData conversion completed", 
+	logDebug(ctx, "Protobuf DatasetData conversion completed", 
 		"player_count", len(players),
 		"currency_symbol", dataset.CurrencySymbol,
 		"duration_ms", time.Since(start).Milliseconds())
