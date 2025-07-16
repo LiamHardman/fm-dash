@@ -46,8 +46,14 @@ func TestEndToEndSystemFunctionality(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Set environment variable for storage backend
 			originalValue := os.Getenv("USE_PROTOBUF")
-			os.Setenv("USE_PROTOBUF", tc.envVarValue)
-			defer os.Setenv("USE_PROTOBUF", originalValue)
+			if err := os.Setenv("USE_PROTOBUF", tc.envVarValue); err != nil {
+				t.Fatalf("Failed to set USE_PROTOBUF environment variable: %v", err)
+			}
+			defer func() {
+				if err := os.Setenv("USE_PROTOBUF", originalValue); err != nil {
+					t.Logf("Warning: Failed to restore USE_PROTOBUF environment variable: %v", err)
+				}
+			}()
 
 			// Re-initialize storage with new setting
 			InitStore()
@@ -60,9 +66,16 @@ func TestEndToEndSystemFunctionality(t *testing.T) {
 
 // testCompleteDataFlow tests the complete data flow from upload to API response
 func testCompleteDataFlow(t *testing.T, useProtobuf bool) {
+	ctx := context.Background()
+	start := time.Now()
+	
+	logInfo(ctx, "Starting complete data flow test", 
+		"backend_type", getBackendName(useProtobuf),
+		"use_protobuf", useProtobuf)
+	
 	// Step 1: Upload HTML file
 	t.Logf("Step 1: Testing HTML upload with %s backend", getBackendName(useProtobuf))
-	datasetID := testHTMLUploadFlow(t, useProtobuf)
+	datasetID := testHTMLUploadFlow(ctx, t, useProtobuf)
 	if datasetID == "" {
 		t.Fatal("Failed to upload HTML file")
 		return
@@ -70,23 +83,24 @@ func testCompleteDataFlow(t *testing.T, useProtobuf bool) {
 
 	// Step 2: Wait for async processing to complete
 	t.Logf("Step 2: Waiting for async processing to complete")
-	waitForAsyncProcessing(t, datasetID, 30*time.Second)
+	waitForAsyncProcessing(ctx, t, datasetID, 30*time.Second)
 
 	// Step 3: Test data retrieval
 	t.Logf("Step 3: Testing data retrieval")
-	players := testDataRetrievalFlow(t, datasetID, useProtobuf)
+	players := testDataRetrievalFlow(ctx, t, datasetID, useProtobuf)
 	if len(players) == 0 {
+		logError(ctx, "No players retrieved from data retrieval flow", "dataset_id", datasetID)
 		t.Fatal("No players retrieved")
 		return
 	}
 
 	// Step 4: Test data integrity
 	t.Logf("Step 4: Testing data integrity")
-	testDataIntegrityFlow(t, players, useProtobuf)
+	testDataIntegrityFlow(ctx, t, players, useProtobuf)
 
 	// Step 5: Test API endpoints with real data
 	t.Logf("Step 5: Testing API endpoints")
-	testAPIEndpointsFlow(t, datasetID, useProtobuf)
+	testAPIEndpointsFlow(ctx, t, datasetID, useProtobuf)
 
 	// Step 6: Test filtering and search functionality
 	t.Logf("Step 6: Testing filtering and search")
@@ -94,17 +108,28 @@ func testCompleteDataFlow(t *testing.T, useProtobuf bool) {
 
 	// Step 7: Test performance under load
 	t.Logf("Step 7: Testing performance under load")
-	testPerformanceUnderLoad(t, datasetID, useProtobuf)
+	testPerformanceUnderLoad(ctx, t, datasetID, useProtobuf)
 
 	// Step 8: Test monitoring and logging
 	t.Logf("Step 8: Testing monitoring and logging")
-	testMonitoringAndLogging(t, datasetID, useProtobuf)
+	testMonitoringAndLogging(ctx, t, datasetID, useProtobuf)
+
+	duration := time.Since(start)
+	logInfo(ctx, "End-to-end test completed successfully",
+		"backend_type", getBackendName(useProtobuf),
+		"dataset_id", datasetID,
+		"total_duration_ms", duration.Milliseconds())
 
 	t.Logf("End-to-end test completed successfully with %s backend", getBackendName(useProtobuf))
 }
 
 // testHTMLUploadFlow tests the HTML upload process
-func testHTMLUploadFlow(t *testing.T, useProtobuf bool) string {
+func testHTMLUploadFlow(ctx context.Context, t *testing.T, useProtobuf bool) string {
+	start := time.Now()
+	
+	logInfo(ctx, "Starting HTML upload flow test",
+		"backend_type", getBackendName(useProtobuf),
+		"use_protobuf", useProtobuf)
 	// Create comprehensive test HTML content
 	testHTML := createComprehensiveTestHTML()
 
@@ -122,7 +147,9 @@ func testHTMLUploadFlow(t *testing.T, useProtobuf bool) string {
 		t.Fatalf("Failed to write test HTML: %v", err)
 	}
 
-	writer.Close()
+	if err := writer.Close(); err != nil {
+		t.Fatalf("Failed to close multipart writer: %v", err)
+	}
 
 	// Create HTTP request
 	req := httptest.NewRequest("POST", "/api/upload", &buf)
@@ -146,8 +173,15 @@ func testHTMLUploadFlow(t *testing.T, useProtobuf bool) string {
 	}
 
 	if response.DatasetID == "" {
+		logError(ctx, "Upload response missing dataset ID", "error", "empty_dataset_id")
 		t.Fatal("DatasetID is empty")
 	}
+
+	duration := time.Since(start)
+	logInfo(ctx, "HTML upload flow completed successfully",
+		"dataset_id", response.DatasetID,
+		"currency_symbol", response.DetectedCurrencySymbol,
+		"duration_ms", duration.Milliseconds())
 
 	t.Logf("Upload successful. DatasetID: %s, Currency: %s",
 		response.DatasetID, response.DetectedCurrencySymbol)
@@ -156,8 +190,14 @@ func testHTMLUploadFlow(t *testing.T, useProtobuf bool) string {
 }
 
 // waitForAsyncProcessing waits for async processing to complete
-func waitForAsyncProcessing(t *testing.T, datasetID string, timeout time.Duration) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+func waitForAsyncProcessing(ctx context.Context, t *testing.T, datasetID string, timeout time.Duration) {
+	start := time.Now()
+	
+	logInfo(ctx, "Starting async processing wait",
+		"dataset_id", datasetID,
+		"timeout_seconds", timeout.Seconds())
+	
+	timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	ticker := time.NewTicker(1 * time.Second)
@@ -165,7 +205,12 @@ func waitForAsyncProcessing(t *testing.T, datasetID string, timeout time.Duratio
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <-timeoutCtx.Done():
+			duration := time.Since(start)
+			logInfo(ctx, "Async processing timeout reached",
+				"dataset_id", datasetID,
+				"timeout_seconds", timeout.Seconds(),
+				"duration_ms", duration.Milliseconds())
 			t.Logf("Async processing timeout reached, continuing with test")
 			return
 		case <-ticker.C:
@@ -179,6 +224,10 @@ func waitForAsyncProcessing(t *testing.T, datasetID string, timeout time.Duratio
 				var status map[string]interface{}
 				if err := json.Unmarshal(w.Body.Bytes(), &status); err == nil {
 					if ready, ok := status["ready"].(bool); ok && ready {
+						duration := time.Since(start)
+						logInfo(ctx, "Async processing completed successfully",
+							"dataset_id", datasetID,
+							"duration_ms", duration.Milliseconds())
 						t.Logf("Async processing completed")
 						return
 					}
@@ -189,7 +238,12 @@ func waitForAsyncProcessing(t *testing.T, datasetID string, timeout time.Duratio
 }
 
 // testDataRetrievalFlow tests data retrieval functionality
-func testDataRetrievalFlow(t *testing.T, datasetID string, useProtobuf bool) []Player {
+func testDataRetrievalFlow(ctx context.Context, t *testing.T, datasetID string, useProtobuf bool) []Player {
+	start := time.Now()
+	
+	logInfo(ctx, "Starting data retrieval flow test",
+		"dataset_id", datasetID,
+		"backend_type", getBackendName(useProtobuf))
 	req := httptest.NewRequest("GET", fmt.Sprintf("/api/players/%s", datasetID), nil)
 	w := httptest.NewRecorder()
 
@@ -210,8 +264,16 @@ func testDataRetrievalFlow(t *testing.T, datasetID string, useProtobuf bool) []P
 	}
 
 	if len(response.Players) == 0 {
+		logError(ctx, "No players in data retrieval response", "dataset_id", datasetID)
 		t.Fatal("No players in response")
 	}
+
+	duration := time.Since(start)
+	logInfo(ctx, "Data retrieval flow completed successfully",
+		"dataset_id", datasetID,
+		"player_count", len(response.Players),
+		"currency_symbol", response.CurrencySymbol,
+		"duration_ms", duration.Milliseconds())
 
 	t.Logf("Retrieved %d players with currency %s",
 		len(response.Players), response.CurrencySymbol)
@@ -220,7 +282,11 @@ func testDataRetrievalFlow(t *testing.T, datasetID string, useProtobuf bool) []P
 }
 
 // testDataIntegrityFlow validates data integrity throughout the system
-func testDataIntegrityFlow(t *testing.T, players []Player, useProtobuf bool) {
+func testDataIntegrityFlow(ctx context.Context, t *testing.T, players []Player, _ bool) {
+	start := time.Now()
+	
+	logInfo(ctx, "Starting data integrity validation",
+		"player_count", len(players))
 	// Check that all players have required fields
 	for i, player := range players {
 		if player.UID == 0 {
@@ -273,11 +339,20 @@ func testDataIntegrityFlow(t *testing.T, players []Player, useProtobuf bool) {
 		}
 	}
 
+	duration := time.Since(start)
+	logInfo(ctx, "Data integrity validation completed",
+		"player_count", len(players),
+		"duration_ms", duration.Milliseconds())
+
 	t.Logf("Data integrity validated for %d players", len(players))
 }
 
 // testAPIEndpointsFlow tests all API endpoints with real data
-func testAPIEndpointsFlow(t *testing.T, datasetID string, useProtobuf bool) {
+func testAPIEndpointsFlow(ctx context.Context, t *testing.T, datasetID string, _ bool) {
+	start := time.Now()
+	
+	logInfo(ctx, "Starting API endpoints flow test",
+		"dataset_id", datasetID)
 	// Test roles endpoint
 	req := httptest.NewRequest("GET", "/api/roles", nil)
 	w := httptest.NewRecorder()
@@ -328,11 +403,21 @@ func testAPIEndpointsFlow(t *testing.T, datasetID string, useProtobuf bool) {
 		t.Errorf("Cache status endpoint failed: %d", w.Code)
 	}
 
+	duration := time.Since(start)
+	logInfo(ctx, "API endpoints flow test completed",
+		"dataset_id", datasetID,
+		"duration_ms", duration.Milliseconds())
+
 	t.Logf("All API endpoints tested successfully")
 }
 
 // testFilteringAndSearchFlow tests filtering and search functionality
-func testFilteringAndSearchFlow(t *testing.T, datasetID string, useProtobuf bool) {
+func testFilteringAndSearchFlow(t *testing.T, datasetID string, _ bool) {
+	ctx := context.Background()
+	start := time.Now()
+	
+	logInfo(ctx, "Starting filtering and search flow test",
+		"dataset_id", datasetID)
 	// Test various filters
 	filters := []string{
 		"?position=GK",
@@ -395,11 +480,22 @@ func testFilteringAndSearchFlow(t *testing.T, datasetID string, useProtobuf bool
 		}
 	}
 
+	duration := time.Since(start)
+	logInfo(ctx, "Filtering and search flow test completed",
+		"dataset_id", datasetID,
+		"filters_tested", len(filters),
+		"search_queries_tested", len(searchQueries),
+		"duration_ms", duration.Milliseconds())
+
 	t.Logf("Filtering and search functionality tested successfully")
 }
 
 // testPerformanceUnderLoad tests system behavior under various load conditions
-func testPerformanceUnderLoad(t *testing.T, datasetID string, useProtobuf bool) {
+func testPerformanceUnderLoad(ctx context.Context, t *testing.T, datasetID string, _ bool) {
+	start := time.Now()
+	
+	logInfo(ctx, "Starting performance under load test",
+		"dataset_id", datasetID)
 	// Test concurrent requests
 	concurrency := 10
 	requestsPerWorker := 5
@@ -438,7 +534,7 @@ func testPerformanceUnderLoad(t *testing.T, datasetID string, useProtobuf bool) 
 				}
 
 				if w.Code != http.StatusOK {
-					errors <- fmt.Errorf("worker %d request %d failed: %d", workerID, j, w.Code)
+					errors <- WrapErrorf(ErrWorkerRequestFailed, "worker %d request %d failed: %d", workerID, j, w.Code)
 				}
 			}
 		}(i)
@@ -455,17 +551,35 @@ func testPerformanceUnderLoad(t *testing.T, datasetID string, useProtobuf bool) 
 		errorCount++
 	}
 
+	duration := time.Since(start)
+	totalRequests := concurrency * requestsPerWorker
+	
 	if errorCount > 0 {
+		logError(ctx, "Performance test failed with errors",
+			"error_count", errorCount,
+			"total_requests", totalRequests,
+			"dataset_id", datasetID,
+			"duration_ms", duration.Milliseconds())
 		t.Errorf("Performance test failed with %d errors out of %d requests",
-			errorCount, concurrency*requestsPerWorker)
+			errorCount, totalRequests)
 	} else {
+		logInfo(ctx, "Performance test completed successfully",
+			"dataset_id", datasetID,
+			"total_requests", totalRequests,
+			"concurrency", concurrency,
+			"requests_per_worker", requestsPerWorker,
+			"duration_ms", duration.Milliseconds())
 		t.Logf("Performance test passed: %d concurrent requests completed successfully",
-			concurrency*requestsPerWorker)
+			totalRequests)
 	}
 }
 
 // testMonitoringAndLogging verifies monitoring and logging work correctly
-func testMonitoringAndLogging(t *testing.T, datasetID string, useProtobuf bool) {
+func testMonitoringAndLogging(ctx context.Context, t *testing.T, datasetID string, _ bool) {
+	start := time.Now()
+	
+	logInfo(ctx, "Starting monitoring and logging test",
+		"dataset_id", datasetID)
 	// Test that requests generate appropriate logs and metrics
 	// This is a basic test - in a real environment you'd check actual log output
 
@@ -474,9 +588,9 @@ func testMonitoringAndLogging(t *testing.T, datasetID string, useProtobuf bool) 
 	w := httptest.NewRecorder()
 
 	// Add request context for tracing
-	ctx := req.Context()
-	ctx, span := StartSpan(ctx, "test.monitoring")
-	req = req.WithContext(ctx)
+	reqCtx := req.Context()
+	reqCtx, span := StartSpan(reqCtx, "test.monitoring")
+	req = req.WithContext(reqCtx)
 
 	playerDataHandler(w, req)
 	span.End()
@@ -501,8 +615,14 @@ func testMonitoringAndLogging(t *testing.T, datasetID string, useProtobuf bool) 
 		t.Errorf("Expected 404 for invalid dataset, got %d", w.Code)
 	}
 
+	duration := time.Since(start)
+	logInfo(ctx, "Monitoring and logging test completed",
+		"dataset_id", datasetID,
+		"duration_ms", duration.Milliseconds())
+
 	t.Logf("Monitoring and logging test completed")
 }
+
 
 // createComprehensiveTestHTML creates comprehensive test HTML with various player types
 func createComprehensiveTestHTML() string {

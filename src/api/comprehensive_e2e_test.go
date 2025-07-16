@@ -37,8 +37,14 @@ func TestComprehensiveEndToEndFunctionality(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Set environment variable
 			originalValue := os.Getenv("USE_PROTOBUF")
-			os.Setenv("USE_PROTOBUF", tc.envValue)
-			defer os.Setenv("USE_PROTOBUF", originalValue)
+			if err := os.Setenv("USE_PROTOBUF", tc.envValue); err != nil {
+				t.Fatalf("Failed to set USE_PROTOBUF environment variable: %v", err)
+			}
+			defer func() {
+				if err := os.Setenv("USE_PROTOBUF", originalValue); err != nil {
+					t.Logf("Warning: Failed to restore USE_PROTOBUF environment variable: %v", err)
+				}
+			}()
 
 			// Re-initialize storage
 			InitStore()
@@ -249,7 +255,9 @@ func uploadE2ETestData(t *testing.T, testHTML, backendName string) string {
 		t.Fatalf("Failed to write test HTML: %v", err)
 	}
 
-	writer.Close()
+	if err := writer.Close(); err != nil {
+		t.Fatalf("Failed to close multipart writer: %v", err)
+	}
 
 	req := httptest.NewRequest("POST", "/api/upload", &buf)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
@@ -373,7 +381,7 @@ func testE2EConcurrentRequests(t *testing.T, datasetID, backendName string) {
 				playerDataHandler(w, req)
 
 				if w.Code != http.StatusOK {
-					errors <- fmt.Errorf("worker %d request %d failed: %d", workerID, j, w.Code)
+					errors <- WrapErrorf(ErrWorkerRequestFailed, "worker %d request %d failed: %d", workerID, j, w.Code)
 				}
 			}
 		}(i)
@@ -401,7 +409,7 @@ func testE2EMixedOperations(t *testing.T, datasetID, backendName string) {
 			w := httptest.NewRecorder()
 			playerDataHandler(w, req)
 			if w.Code != http.StatusOK {
-				return fmt.Errorf("players request failed: %d", w.Code)
+				return WrapErrorf(ErrPlayersRequestFailed, "players request failed: %d", w.Code)
 			}
 			return nil
 		},
@@ -410,7 +418,7 @@ func testE2EMixedOperations(t *testing.T, datasetID, backendName string) {
 			w := httptest.NewRecorder()
 			leaguesHandler(w, req)
 			if w.Code != http.StatusOK {
-				return fmt.Errorf("leagues request failed: %d", w.Code)
+				return WrapErrorf(ErrLeaguesRequestFailed, "leagues request failed: %d", w.Code)
 			}
 			return nil
 		},
@@ -419,7 +427,7 @@ func testE2EMixedOperations(t *testing.T, datasetID, backendName string) {
 			w := httptest.NewRecorder()
 			playerDataHandler(w, req)
 			if w.Code != http.StatusOK {
-				return fmt.Errorf("filtered request failed: %d", w.Code)
+				return WrapErrorf(ErrFilteredRequestFailed, "filtered request failed: %d", w.Code)
 			}
 			return nil
 		},

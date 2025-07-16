@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -518,21 +519,21 @@ func TestProtobufStorage_ErrorHandling(t *testing.T) {
 
 func TestProtobufStorage_CustomErrors(t *testing.T) {
 	// Test ProtobufError
-	err := NewProtobufError("marshal", "test-dataset", "test message", fmt.Errorf("underlying error"))
+	err := NewProtobufErrorLegacy("marshal", "test-dataset", "test message", ErrUnderlyingError)
 	expectedMsg := "protobuf marshal failed for dataset test-dataset: test message"
 	if err.Error() != expectedMsg {
 		t.Errorf("Expected error message %s, got %s", expectedMsg, err.Error())
 	}
 
 	// Test ProtobufConversionError
-	convErr := NewProtobufConversionError("to_protobuf", "Player", "test-dataset", fmt.Errorf("conversion failed"))
+	convErr := NewProtobufConversionErrorLegacy("to_protobuf", "Player", "test-dataset", ErrConversionFailed)
 	expectedConvMsg := "protobuf conversion error (to_protobuf Player) for dataset test-dataset: conversion failed"
 	if convErr.Error() != expectedConvMsg {
 		t.Errorf("Expected conversion error message %s, got %s", expectedConvMsg, convErr.Error())
 	}
 
 	// Test ProtobufCompressionError
-	compErr := NewProtobufCompressionError("compress", "test-dataset", fmt.Errorf("compression failed"))
+	compErr := NewProtobufCompressionErrorLegacy("compress", "test-dataset", ErrCompressionFailed)
 	expectedCompMsg := "protobuf compress error for dataset test-dataset: compression failed"
 	if compErr.Error() != expectedCompMsg {
 		t.Errorf("Expected compression error message %s, got %s", expectedCompMsg, compErr.Error())
@@ -543,7 +544,7 @@ func TestProtobufStorage_FallbackEvent(t *testing.T) {
 	event := ProtobufFallbackEvent{
 		DatasetID: "test-dataset",
 		Reason:    FallbackReasonConversionFailed,
-		Error:     fmt.Errorf("test error"),
+		Error:     ErrTestError,
 		Message:   "test message",
 	}
 
@@ -634,14 +635,14 @@ func TestProtobufStorage_InvalidProtobufData(t *testing.T) {
 	}
 }
 
-func TestProtobufStorage_LogFallbackEvent(t *testing.T) {
+func TestProtobufStorage_LogFallbackEvent(_ *testing.T) {
 	storage := CreateProtobufStorage(CreateInMemoryStorage())
 
 	// Test that logFallbackEvent doesn't panic
 	event := ProtobufFallbackEvent{
 		DatasetID: "test-dataset",
 		Reason:    FallbackReasonMarshalFailed,
-		Error:     fmt.Errorf("test error"),
+		Error:     ErrTestError,
 		Message:   "test message",
 	}
 
@@ -651,20 +652,20 @@ func TestProtobufStorage_LogFallbackEvent(t *testing.T) {
 
 func TestProtobufStorage_ErrorWrapping(t *testing.T) {
 	// Test that custom errors properly wrap underlying errors
-	underlyingErr := fmt.Errorf("underlying error")
+	underlyingErr := ErrUnderlyingError
 
-	protobufErr := NewProtobufError("test", "dataset", "message", underlyingErr)
-	if protobufErr.Unwrap() != underlyingErr {
+	protobufErr := NewProtobufErrorLegacy("test", "dataset", "message", underlyingErr)
+	if !errors.Is(protobufErr.Unwrap(), underlyingErr) {
 		t.Error("ProtobufError should properly wrap underlying error")
 	}
 
-	convErr := NewProtobufConversionError("to_protobuf", "Player", "dataset", underlyingErr)
-	if convErr.Unwrap() != underlyingErr {
+	convErr := NewProtobufConversionErrorLegacy("to_protobuf", "Player", "dataset", underlyingErr)
+	if !errors.Is(convErr.Unwrap(), underlyingErr) {
 		t.Error("ProtobufConversionError should properly wrap underlying error")
 	}
 
-	compErr := NewProtobufCompressionError("compress", "dataset", underlyingErr)
-	if compErr.Unwrap() != underlyingErr {
+	compErr := NewProtobufCompressionErrorLegacy("compress", "dataset", underlyingErr)
+	if !errors.Is(compErr.Unwrap(), underlyingErr) {
 		t.Error("ProtobufCompressionError should properly wrap underlying error")
 	}
 }

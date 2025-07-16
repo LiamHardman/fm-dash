@@ -129,7 +129,9 @@ func testHTMLUpload(t *testing.T, testHTML []byte, useProtobuf bool) (UploadResp
 		t.Fatalf("Failed to write test HTML: %v", err)
 	}
 
-	writer.Close()
+	if err := writer.Close(); err != nil {
+		t.Fatalf("Failed to close multipart writer: %v", err)
+	}
 
 	// Create HTTP request
 	req := httptest.NewRequest("POST", "/api/upload", &buf)
@@ -308,7 +310,9 @@ func comparePlayerDataResponses(t *testing.T, jsonDatasetID, protobufDatasetID s
 	w := httptest.NewRecorder()
 
 	// Set to JSON backend
-	os.Setenv("USE_PROTOBUF", "false")
+	if err := os.Setenv("USE_PROTOBUF", "false"); err != nil {
+		t.Fatalf("Failed to set USE_PROTOBUF to false: %v", err)
+	}
 	InitStore()
 	playerDataHandler(w, req)
 
@@ -331,7 +335,9 @@ func comparePlayerDataResponses(t *testing.T, jsonDatasetID, protobufDatasetID s
 	w = httptest.NewRecorder()
 
 	// Set to Protobuf backend
-	os.Setenv("USE_PROTOBUF", "true")
+	if err := os.Setenv("USE_PROTOBUF", "true"); err != nil {
+		t.Fatalf("Failed to set USE_PROTOBUF to true: %v", err)
+	}
 	InitStore()
 	playerDataHandler(w, req)
 

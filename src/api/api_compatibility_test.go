@@ -11,15 +11,20 @@ import (
 	"net/url"
 	"os"
 	"testing"
+	"time"
 )
 
 // TestAPICompatibility tests all API endpoints to ensure they return identical JSON responses
 // with both JSON and protobuf storage backends
 func TestAPICompatibility(t *testing.T) {
+	ctx := context.Background()
+	logInfo(ctx, "Starting API compatibility test suite")
+	start := time.Now()
+	
 	// Initialize test environment
 	InitStore()
 	InitInMemoryCache()
-	InitCacheStorage(context.Background())
+	InitCacheStorage(ctx)
 	InitializeMemoryOptimizations()
 
 	// Test with both storage backends
@@ -44,50 +49,61 @@ func TestAPICompatibility(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Set environment variable for storage backend
 			originalValue := os.Getenv("USE_PROTOBUF")
-			os.Setenv("USE_PROTOBUF", tc.envVarValue)
-			defer os.Setenv("USE_PROTOBUF", originalValue)
+			if err := os.Setenv("USE_PROTOBUF", tc.envVarValue); err != nil {
+				t.Fatalf("Failed to set USE_PROTOBUF environment variable: %v", err)
+			}
+			defer func() {
+				if err := os.Setenv("USE_PROTOBUF", originalValue); err != nil {
+					t.Logf("Warning: Failed to restore USE_PROTOBUF environment variable: %v", err)
+				}
+			}()
 
 			// Re-initialize storage with new setting
 			InitStore()
 
 			// Run all endpoint tests
 			t.Run("Upload Endpoint", func(t *testing.T) {
-				testUploadEndpoint(t, tc.useProtobuf)
+				testUploadEndpoint(ctx, t, tc.useProtobuf)
 			})
 
 			t.Run("Player Data Endpoint", func(t *testing.T) {
-				testPlayerDataEndpoint(t, tc.useProtobuf)
+				testPlayerDataEndpoint(ctx, t, tc.useProtobuf)
 			})
 
 			t.Run("Roles Endpoint", func(t *testing.T) {
-				testRolesEndpoint(t, tc.useProtobuf)
+				testRolesEndpoint(ctx, t, tc.useProtobuf)
 			})
 
 			t.Run("Leagues Endpoint", func(t *testing.T) {
-				testLeaguesEndpoint(t, tc.useProtobuf)
+				testLeaguesEndpoint(ctx, t, tc.useProtobuf)
 			})
 
 			t.Run("Teams Endpoint", func(t *testing.T) {
-				testTeamsEndpoint(t, tc.useProtobuf)
+				testTeamsEndpoint(ctx, t, tc.useProtobuf)
 			})
 
 			t.Run("Search Endpoint", func(t *testing.T) {
-				testSearchEndpoint(t, tc.useProtobuf)
+				testSearchEndpoint(ctx, t, tc.useProtobuf)
 			})
 
 			t.Run("Config Endpoint", func(t *testing.T) {
-				testConfigEndpoint(t, tc.useProtobuf)
+				testConfigEndpoint(ctx, t, tc.useProtobuf)
 			})
 
 			t.Run("Cache Status Endpoint", func(t *testing.T) {
-				testCacheStatusEndpoint(t, tc.useProtobuf)
+				testCacheStatusEndpoint(ctx, t, tc.useProtobuf)
 			})
 		})
 	}
+	
+	logInfo(ctx, "API compatibility test suite completed", "duration_ms", time.Since(start).Milliseconds())
 }
 
 // testUploadEndpoint tests the HTML upload processing with both storage backends
-func testUploadEndpoint(t *testing.T, useProtobuf bool) {
+func testUploadEndpoint(ctx context.Context, t *testing.T, useProtobuf bool) {
+	logInfo(ctx, "Starting upload endpoint test", "backend", getBackendName(useProtobuf))
+	start := time.Now()
+	
 	// Create test HTML file content
 	testHTML := createTestHTMLContent()
 
@@ -106,7 +122,9 @@ func testUploadEndpoint(t *testing.T, useProtobuf bool) {
 		t.Fatalf("Failed to write test HTML: %v", err)
 	}
 
-	writer.Close()
+	if err := writer.Close(); err != nil {
+		t.Fatalf("Failed to close multipart writer: %v", err)
+	}
 
 	// Create HTTP request
 	req := httptest.NewRequest("POST", "/api/upload", &buf)
@@ -147,18 +165,27 @@ func testUploadEndpoint(t *testing.T, useProtobuf bool) {
 	// Store dataset ID for subsequent tests
 	if useProtobuf {
 		// Store for protobuf tests
-		os.Setenv("TEST_DATASET_ID_PROTOBUF", response.DatasetID)
+		if err := os.Setenv("TEST_DATASET_ID_PROTOBUF", response.DatasetID); err != nil {
+			logError(ctx, "Failed to set protobuf dataset ID", "error", err, "dataset_id", response.DatasetID)
+		}
 	} else {
 		// Store for JSON tests
-		os.Setenv("TEST_DATASET_ID_JSON", response.DatasetID)
+		if err := os.Setenv("TEST_DATASET_ID_JSON", response.DatasetID); err != nil {
+			logError(ctx, "Failed to set JSON dataset ID", "error", err, "dataset_id", response.DatasetID)
+		}
 	}
 
-	t.Logf("Upload successful with %s backend. DatasetID: %s",
-		getBackendName(useProtobuf), response.DatasetID)
+	logInfo(ctx, "Upload endpoint test completed", 
+		"backend", getBackendName(useProtobuf), 
+		"dataset_id", response.DatasetID,
+		"duration_ms", time.Since(start).Milliseconds())
 }
 
 // testPlayerDataEndpoint tests player data retrieval
-func testPlayerDataEndpoint(t *testing.T, useProtobuf bool) {
+func testPlayerDataEndpoint(ctx context.Context, t *testing.T, useProtobuf bool) {
+	logInfo(ctx, "Starting player data endpoint test", "backend", getBackendName(useProtobuf))
+	start := time.Now()
+	
 	// Get dataset ID from upload test
 	var datasetID string
 	if useProtobuf {
@@ -208,14 +235,18 @@ func testPlayerDataEndpoint(t *testing.T, useProtobuf bool) {
 	validatePlayerStructure(t, player)
 
 	// Test with filters
-	testPlayerDataWithFilters(t, datasetID, useProtobuf)
+	testPlayerDataWithFilters(ctx, t, datasetID, useProtobuf)
 
-	t.Logf("Player data retrieval successful with %s backend. Players: %d",
-		getBackendName(useProtobuf), len(response.Players))
+	logInfo(ctx, "Player data endpoint test completed",
+		"backend", getBackendName(useProtobuf),
+		"player_count", len(response.Players),
+		"duration_ms", time.Since(start).Milliseconds())
 }
 
 // testPlayerDataWithFilters tests player data retrieval with various filters
-func testPlayerDataWithFilters(t *testing.T, datasetID string, useProtobuf bool) {
+func testPlayerDataWithFilters(ctx context.Context, t *testing.T, datasetID string, _ bool) {
+	logInfo(ctx, "Starting player data filters test", "dataset_id", datasetID)
+	start := time.Now()
 	testCases := []struct {
 		name   string
 		params string
@@ -249,10 +280,15 @@ func testPlayerDataWithFilters(t *testing.T, datasetID string, useProtobuf bool)
 			}
 		})
 	}
+	
+	logInfo(ctx, "Player data filters test completed", "duration_ms", time.Since(start).Milliseconds())
 }
 
 // testRolesEndpoint tests the roles API endpoint
-func testRolesEndpoint(t *testing.T, useProtobuf bool) {
+func testRolesEndpoint(ctx context.Context, t *testing.T, useProtobuf bool) {
+	logInfo(ctx, "Starting roles endpoint test", "backend", getBackendName(useProtobuf))
+	start := time.Now()
+	
 	req := httptest.NewRequest("GET", "/api/roles", nil)
 	w := httptest.NewRecorder()
 
@@ -290,12 +326,17 @@ func testRolesEndpoint(t *testing.T, useProtobuf bool) {
 		}
 	}
 
-	t.Logf("Roles endpoint successful with %s backend. Roles: %d",
-		getBackendName(useProtobuf), len(roles))
+	logInfo(ctx, "Roles endpoint test completed",
+		"backend", getBackendName(useProtobuf),
+		"role_count", len(roles),
+		"duration_ms", time.Since(start).Milliseconds())
 }
 
 // testLeaguesEndpoint tests the leagues API endpoint
-func testLeaguesEndpoint(t *testing.T, useProtobuf bool) {
+func testLeaguesEndpoint(ctx context.Context, t *testing.T, useProtobuf bool) {
+	logInfo(ctx, "Starting leagues endpoint test", "backend", getBackendName(useProtobuf))
+	start := time.Now()
+	
 	// Get dataset ID
 	var datasetID string
 	if useProtobuf {
@@ -345,12 +386,17 @@ func testLeaguesEndpoint(t *testing.T, useProtobuf bool) {
 		t.Error("League player count should not be negative")
 	}
 
-	t.Logf("Leagues endpoint successful with %s backend. Leagues: %d",
-		getBackendName(useProtobuf), len(leagues))
+	logInfo(ctx, "Leagues endpoint test completed",
+		"backend", getBackendName(useProtobuf),
+		"league_count", len(leagues),
+		"duration_ms", time.Since(start).Milliseconds())
 }
 
 // testTeamsEndpoint tests the teams API endpoint
-func testTeamsEndpoint(t *testing.T, useProtobuf bool) {
+func testTeamsEndpoint(ctx context.Context, t *testing.T, useProtobuf bool) {
+	logInfo(ctx, "Starting teams endpoint test", "backend", getBackendName(useProtobuf))
+	start := time.Now()
+	
 	// Get dataset ID
 	var datasetID string
 	if useProtobuf {
@@ -420,12 +466,17 @@ func testTeamsEndpoint(t *testing.T, useProtobuf bool) {
 		t.Error("Team player count should not be negative")
 	}
 
-	t.Logf("Teams endpoint successful with %s backend. Teams: %d",
-		getBackendName(useProtobuf), len(teams))
+	logInfo(ctx, "Teams endpoint test completed",
+		"backend", getBackendName(useProtobuf),
+		"team_count", len(teams),
+		"duration_ms", time.Since(start).Milliseconds())
 }
 
 // testSearchEndpoint tests the search API endpoint
-func testSearchEndpoint(t *testing.T, useProtobuf bool) {
+func testSearchEndpoint(ctx context.Context, t *testing.T, useProtobuf bool) {
+	logInfo(ctx, "Starting search endpoint test", "backend", getBackendName(useProtobuf))
+	start := time.Now()
+	
 	// Get dataset ID
 	var datasetID string
 	if useProtobuf {
@@ -471,10 +522,17 @@ func testSearchEndpoint(t *testing.T, useProtobuf bool) {
 			}
 		})
 	}
+	
+	logInfo(ctx, "Search endpoint test completed",
+		"backend", getBackendName(useProtobuf),
+		"duration_ms", time.Since(start).Milliseconds())
 }
 
 // testConfigEndpoint tests the config API endpoint
-func testConfigEndpoint(t *testing.T, useProtobuf bool) {
+func testConfigEndpoint(ctx context.Context, t *testing.T, useProtobuf bool) {
+	logInfo(ctx, "Starting config endpoint test", "backend", getBackendName(useProtobuf))
+	start := time.Now()
+	
 	req := httptest.NewRequest("GET", "/api/config", nil)
 	w := httptest.NewRecorder()
 
@@ -497,12 +555,17 @@ func testConfigEndpoint(t *testing.T, useProtobuf bool) {
 		t.Error("Config should not be empty")
 	}
 
-	t.Logf("Config endpoint successful with %s backend. Config keys: %d",
-		getBackendName(useProtobuf), len(config))
+	logInfo(ctx, "Config endpoint test completed",
+		"backend", getBackendName(useProtobuf),
+		"config_keys", len(config),
+		"duration_ms", time.Since(start).Milliseconds())
 }
 
 // testCacheStatusEndpoint tests the cache status API endpoint
-func testCacheStatusEndpoint(t *testing.T, useProtobuf bool) {
+func testCacheStatusEndpoint(ctx context.Context, t *testing.T, useProtobuf bool) {
+	logInfo(ctx, "Starting cache status endpoint test", "backend", getBackendName(useProtobuf))
+	start := time.Now()
+	
 	req := httptest.NewRequest("GET", "/api/cache-status", nil)
 	w := httptest.NewRecorder()
 
@@ -525,7 +588,9 @@ func testCacheStatusEndpoint(t *testing.T, useProtobuf bool) {
 		t.Error("Cache status should not be empty")
 	}
 
-	t.Logf("Cache status endpoint successful with %s backend", getBackendName(useProtobuf))
+	logInfo(ctx, "Cache status endpoint test completed",
+		"backend", getBackendName(useProtobuf),
+		"duration_ms", time.Since(start).Milliseconds())
 }
 
 // validatePlayerStructure validates that a player has all expected fields

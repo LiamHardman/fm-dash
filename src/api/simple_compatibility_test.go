@@ -100,7 +100,9 @@ func testSimpleUpload(ctx context.Context, t *testing.T, useProtobuf bool) strin
 		t.Fatalf("Failed to write test HTML: %v", err)
 	}
 
-	writer.Close()
+	if err := writer.Close(); err != nil {
+		t.Fatalf("Failed to close multipart writer: %v", err)
+	}
 
 	// Make request
 	req := httptest.NewRequest("POST", "/api/upload", &buf)
@@ -278,7 +280,9 @@ func testHTMLUploadWithData(t *testing.T, testHTML []byte, useProtobuf bool) {
 		t.Fatalf("Failed to write test HTML: %v", err)
 	}
 
-	writer.Close()
+	if err := writer.Close(); err != nil {
+		t.Fatalf("Failed to close multipart writer: %v", err)
+	}
 
 	// Make request
 	req := httptest.NewRequest("POST", "/api/upload", &buf)

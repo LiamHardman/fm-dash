@@ -1160,7 +1160,7 @@ func validateStorageConfiguration(ctx context.Context) StorageConfiguration {
 		config.ConfigValid = false
 		config.Errors = append(config.Errors, fmt.Sprintf("invalid USE_PROTOBUF value: %s (expected: true/false)", protobufEnv))
 		logError(ctx, "Invalid USE_PROTOBUF environment variable value",
-			"error", fmt.Errorf("invalid value: %s", protobufEnv),
+			"error", WrapErrorf(ErrInvalidProtobufEnv, "invalid value: %s", protobufEnv),
 			"env_value", protobufEnv,
 			"expected_values", "true/false")
 	}
@@ -1172,7 +1172,7 @@ func validateStorageConfiguration(ctx context.Context) StorageConfiguration {
 			"duration_ms", time.Since(start).Milliseconds())
 	} else {
 		logError(ctx, "Storage configuration validation failed",
-			"error", fmt.Errorf("validation failed with %d errors", len(config.Errors)),
+			"error", WrapErrorf(ErrConfigValidationFailed, "validation failed with %d errors", len(config.Errors)),
 			"error_count", len(config.Errors),
 			"errors", config.Errors,
 			"duration_ms", time.Since(start).Milliseconds())
@@ -1195,7 +1195,7 @@ func createProtobufStorageWithFallback(ctx context.Context, baseStorage StorageI
 	// Create protobuf storage wrapper
 	protobufStorage := CreateProtobufStorage(baseStorage)
 	if protobufStorage == nil {
-		err := fmt.Errorf("failed to create protobuf storage wrapper")
+		err := ErrProtobufStorageWrapper
 		logError(ctx, "Failed to create protobuf storage wrapper", "error", err)
 		return nil, err
 	}
@@ -1231,7 +1231,7 @@ func validateProtobufDependencies(ctx context.Context) error {
 }
 
 // testProtobufStorage performs a basic functionality test on protobuf storage
-func testProtobufStorage(ctx context.Context, storage StorageInterface) error {
+func testProtobufStorage(ctx context.Context, _ StorageInterface) error {
 	logInfo(ctx, "Testing protobuf storage functionality")
 	start := time.Now()
 

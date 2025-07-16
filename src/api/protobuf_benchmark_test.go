@@ -13,10 +13,15 @@ import (
 )
 
 // setLogLevelForBenchmarks sets the log level to INFO to reduce benchmark noise
-func setLogLevelForBenchmarks() func() {
+func setLogLevelForBenchmarks(ctx context.Context) func() {
+	logInfo(ctx, "Setting log level for benchmarks", "target_level", "INFO")
+	
 	// Set LOG_LEVEL environment variable to INFO to suppress DEBUG messages
 	originalLogLevel := os.Getenv("LOG_LEVEL")
-	os.Setenv("LOG_LEVEL", "INFO")
+	if err := os.Setenv("LOG_LEVEL", "INFO"); err != nil {
+		logError(ctx, "Failed to set LOG_LEVEL environment variable", "error", err)
+		panic(fmt.Sprintf("Failed to set LOG_LEVEL: %v", err))
+	}
 
 	// Also set slog level to INFO
 	opts := &slog.HandlerOptions{
@@ -26,21 +31,34 @@ func setLogLevelForBenchmarks() func() {
 	originalLogger := slog.Default()
 	slog.SetDefault(slog.New(handler))
 
+	logDebug(ctx, "Log level configured for benchmarks", "original_level", originalLogLevel)
+
 	// Return a function to restore original settings
 	return func() {
+		logInfo(ctx, "Restoring original log level", "original_level", originalLogLevel)
+		
 		if originalLogLevel == "" {
-			os.Unsetenv("LOG_LEVEL")
+			if err := os.Unsetenv("LOG_LEVEL"); err != nil {
+				logError(ctx, "Failed to unset LOG_LEVEL environment variable", "error", err)
+				panic(fmt.Sprintf("Failed to unset LOG_LEVEL: %v", err))
+			}
 		} else {
-			os.Setenv("LOG_LEVEL", originalLogLevel)
+			if err := os.Setenv("LOG_LEVEL", originalLogLevel); err != nil {
+				logError(ctx, "Failed to restore LOG_LEVEL environment variable", "error", err, "original_level", originalLogLevel)
+				panic(fmt.Sprintf("Failed to restore LOG_LEVEL: %v", err))
+			}
 		}
 		slog.SetDefault(originalLogger)
+		
+		logDebug(ctx, "Log level restored successfully", "restored_level", originalLogLevel)
 	}
 }
 
 // BenchmarkProtobufVsJSON_Serialization benchmarks serialization performance
 func BenchmarkProtobufVsJSON_Serialization(b *testing.B) {
+	ctx := context.Background()
 	// Set log level to INFO to reduce benchmark noise
-	restoreLogging := setLogLevelForBenchmarks()
+	restoreLogging := setLogLevelForBenchmarks(ctx)
 	defer restoreLogging()
 	// Create test data with varying sizes
 	testCases := []struct {
@@ -86,8 +104,9 @@ func BenchmarkProtobufVsJSON_Serialization(b *testing.B) {
 
 // BenchmarkProtobufVsJSON_Deserialization benchmarks deserialization performance
 func BenchmarkProtobufVsJSON_Deserialization(b *testing.B) {
+	ctx := context.Background()
 	// Set log level to INFO to reduce benchmark noise
-	restoreLogging := setLogLevelForBenchmarks()
+	restoreLogging := setLogLevelForBenchmarks(ctx)
 	defer restoreLogging()
 	testCases := []struct {
 		name        string
@@ -145,8 +164,9 @@ func BenchmarkProtobufVsJSON_Deserialization(b *testing.B) {
 
 // BenchmarkProtobufVsJSON_StorageSize benchmarks storage size comparison
 func BenchmarkProtobufVsJSON_StorageSize(b *testing.B) {
+	ctx := context.Background()
 	// Set log level to INFO to reduce benchmark noise
-	restoreLogging := setLogLevelForBenchmarks()
+	restoreLogging := setLogLevelForBenchmarks(ctx)
 	defer restoreLogging()
 	testCases := []struct {
 		name        string
@@ -203,8 +223,9 @@ func BenchmarkProtobufVsJSON_StorageSize(b *testing.B) {
 
 // BenchmarkProtobufVsJSON_MemoryUsage benchmarks memory usage during operations
 func BenchmarkProtobufVsJSON_MemoryUsage(b *testing.B) {
+	ctx := context.Background()
 	// Set log level to INFO to reduce benchmark noise
-	restoreLogging := setLogLevelForBenchmarks()
+	restoreLogging := setLogLevelForBenchmarks(ctx)
 	defer restoreLogging()
 	testCases := []struct {
 		name        string
@@ -275,8 +296,9 @@ func BenchmarkProtobufVsJSON_MemoryUsage(b *testing.B) {
 
 // BenchmarkProtobufStorage_Operations benchmarks complete storage operations
 func BenchmarkProtobufStorage_Operations(b *testing.B) {
+	ctx := context.Background()
 	// Set log level to INFO to reduce benchmark noise
-	restoreLogging := setLogLevelForBenchmarks()
+	restoreLogging := setLogLevelForBenchmarks(ctx)
 	defer restoreLogging()
 	testCases := []struct {
 		name        string
@@ -356,8 +378,9 @@ func BenchmarkProtobufStorage_Operations(b *testing.B) {
 
 // BenchmarkProtobufVsJSON_RoundTrip benchmarks complete round-trip operations
 func BenchmarkProtobufVsJSON_RoundTrip(b *testing.B) {
+	ctx := context.Background()
 	// Set log level to INFO to reduce benchmark noise
-	restoreLogging := setLogLevelForBenchmarks()
+	restoreLogging := setLogLevelForBenchmarks(ctx)
 	defer restoreLogging()
 	testCases := []struct {
 		name        string
@@ -525,8 +548,9 @@ func createBenchmarkPlayers(count int) []Player {
 
 // BenchmarkProtobufVsJSON_CompressionEfficiency benchmarks compression efficiency
 func BenchmarkProtobufVsJSON_CompressionEfficiency(b *testing.B) {
+	ctx := context.Background()
 	// Set log level to INFO to reduce benchmark noise
-	restoreLogging := setLogLevelForBenchmarks()
+	restoreLogging := setLogLevelForBenchmarks(ctx)
 	defer restoreLogging()
 
 	testCases := []struct {
@@ -617,8 +641,9 @@ func BenchmarkProtobufVsJSON_CompressionEfficiency(b *testing.B) {
 
 // BenchmarkProtobufVsJSON_DetailedMemoryProfile provides detailed memory profiling
 func BenchmarkProtobufVsJSON_DetailedMemoryProfile(b *testing.B) {
+	ctx := context.Background()
 	// Set log level to INFO to reduce benchmark noise
-	restoreLogging := setLogLevelForBenchmarks()
+	restoreLogging := setLogLevelForBenchmarks(ctx)
 	defer restoreLogging()
 
 	testCases := []struct {
@@ -720,8 +745,9 @@ func BenchmarkProtobufVsJSON_DetailedMemoryProfile(b *testing.B) {
 
 // BenchmarkProtobufVsJSON_ConcurrentOperations benchmarks concurrent serialization/deserialization
 func BenchmarkProtobufVsJSON_ConcurrentOperations(b *testing.B) {
+	ctx := context.Background()
 	// Set log level to INFO to reduce benchmark noise
-	restoreLogging := setLogLevelForBenchmarks()
+	restoreLogging := setLogLevelForBenchmarks(ctx)
 	defer restoreLogging()
 
 	// Create test dataset
@@ -772,8 +798,9 @@ func BenchmarkProtobufVsJSON_ConcurrentOperations(b *testing.B) {
 
 // BenchmarkProtobufVsJSON_LargeDatasetScaling tests performance scaling with very large datasets
 func BenchmarkProtobufVsJSON_LargeDatasetScaling(b *testing.B) {
+	ctx := context.Background()
 	// Set log level to INFO to reduce benchmark noise
-	restoreLogging := setLogLevelForBenchmarks()
+	restoreLogging := setLogLevelForBenchmarks(ctx)
 	defer restoreLogging()
 
 	testCases := []struct {

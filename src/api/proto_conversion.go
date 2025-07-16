@@ -3,11 +3,23 @@ package main
 import (
 	"context"
 	"fmt"
+	"math"
 	"time"
 
 	"api/proto"
 	"go.opentelemetry.io/otel/attribute"
 )
+
+// safeIntToInt32 safely converts int to int32, clamping to int32 range
+func safeIntToInt32(value int) int32 {
+	if value > math.MaxInt32 {
+		return math.MaxInt32
+	}
+	if value < math.MinInt32 {
+		return math.MinInt32
+	}
+	return int32(value)
+}
 
 // --- RoleOverallScore Conversion Functions ---
 
@@ -22,10 +34,10 @@ func (r *RoleOverallScore) ToProto(ctx context.Context) (*proto.RoleOverallScore
 	start := time.Now()
 
 	if r == nil {
-		RecordError(ctx, fmt.Errorf("nil RoleOverallScore"), "Cannot convert nil RoleOverallScore to protobuf",
+		RecordError(ctx, ErrNilRoleOverallScore, "Cannot convert nil RoleOverallScore to protobuf",
 			WithErrorCategory("validation"),
 			WithSeverity("medium"))
-		return nil, fmt.Errorf("cannot convert nil RoleOverallScore to protobuf")
+		return nil, ErrNilRoleOverallScore
 	}
 
 	SetSpanAttributes(ctx,
@@ -40,7 +52,7 @@ func (r *RoleOverallScore) ToProto(ctx context.Context) (*proto.RoleOverallScore
 
 	protoRole := &proto.RoleOverallScore{
 		RoleName: r.RoleName,
-		Score:    int32(r.Score),
+		Score:    safeIntToInt32(r.Score),
 	}
 
 	duration := time.Since(start)
@@ -57,7 +69,7 @@ func (r *RoleOverallScore) ToProto(ctx context.Context) (*proto.RoleOverallScore
 	return protoRole, nil
 }
 
-// FromProto converts a protobuf RoleOverallScore to the native struct
+// RoleOverallScoreFromProto converts a protobuf RoleOverallScore to the native struct
 func RoleOverallScoreFromProto(ctx context.Context, protoRole *proto.RoleOverallScore) (*RoleOverallScore, error) {
 	ctx, span := StartSpanWithAttributes(ctx, "protobuf.conversion.role_from_proto", []attribute.KeyValue{
 		attribute.String("conversion.type", "role_overall_score"),
@@ -68,10 +80,10 @@ func RoleOverallScoreFromProto(ctx context.Context, protoRole *proto.RoleOverall
 	start := time.Now()
 
 	if protoRole == nil {
-		RecordError(ctx, fmt.Errorf("nil protobuf RoleOverallScore"), "Cannot convert nil protobuf RoleOverallScore",
+		RecordError(ctx, ErrNilProtobufRoleOverallScore, "Cannot convert nil protobuf RoleOverallScore",
 			WithErrorCategory("validation"),
 			WithSeverity("medium"))
-		return nil, fmt.Errorf("cannot convert nil protobuf RoleOverallScore")
+		return nil, ErrNilProtobufRoleOverallScore
 	}
 
 	SetSpanAttributes(ctx,
@@ -116,10 +128,10 @@ func (p *Player) ToProto(ctx context.Context) (*proto.Player, error) {
 	start := time.Now()
 
 	if p == nil {
-		RecordError(ctx, fmt.Errorf("nil Player"), "Cannot convert nil Player to protobuf",
+		RecordError(ctx, ErrNilPlayer, "Cannot convert nil Player to protobuf",
 			WithErrorCategory("validation"),
 			WithSeverity("medium"))
-		return nil, fmt.Errorf("cannot convert nil Player to protobuf")
+		return nil, ErrNilPlayer
 	}
 
 	SetSpanAttributes(ctx,
@@ -165,7 +177,7 @@ func (p *Player) ToProto(ctx context.Context) (*proto.Player, error) {
 	// Convert numeric attributes to int32
 	protoNumericAttrs := make(map[string]int32)
 	for key, value := range p.NumericAttributes {
-		protoNumericAttrs[key] = int32(value)
+		protoNumericAttrs[key] = safeIntToInt32(value)
 	}
 
 	protoPlayer := &proto.Player{
@@ -190,20 +202,20 @@ func (p *Player) ToProto(ctx context.Context) (*proto.Player, error) {
 		ParsedPositions:         p.ParsedPositions,
 		ShortPositions:          p.ShortPositions,
 		PositionGroups:          p.PositionGroups,
-		Pac:                     int32(p.PAC),
-		Sho:                     int32(p.SHO),
-		Pas:                     int32(p.PAS),
-		Dri:                     int32(p.DRI),
-		Def:                     int32(p.DEF),
-		Phy:                     int32(p.PHY),
-		Gk:                      int32(p.GK),
-		Div:                     int32(p.DIV),
-		Han:                     int32(p.HAN),
-		Ref:                     int32(p.REF),
-		Kic:                     int32(p.KIC),
-		Spd:                     int32(p.SPD),
-		Pos:                     int32(p.POS),
-		Overall:                 int32(p.Overall),
+		Pac:                     safeIntToInt32(p.PAC),
+		Sho:                     safeIntToInt32(p.SHO),
+		Pas:                     safeIntToInt32(p.PAS),
+		Dri:                     safeIntToInt32(p.DRI),
+		Def:                     safeIntToInt32(p.DEF),
+		Phy:                     safeIntToInt32(p.PHY),
+		Gk:                      safeIntToInt32(p.GK),
+		Div:                     safeIntToInt32(p.DIV),
+		Han:                     safeIntToInt32(p.HAN),
+		Ref:                     safeIntToInt32(p.REF),
+		Kic:                     safeIntToInt32(p.KIC),
+		Spd:                     safeIntToInt32(p.SPD),
+		Pos:                     safeIntToInt32(p.POS),
+		Overall:                 safeIntToInt32(p.Overall),
 		BestRoleOverall:         p.BestRoleOverall,
 		RoleSpecificOveralls:    protoRoles,
 		TransferValueAmount:     p.TransferValueAmount,
@@ -228,7 +240,7 @@ func (p *Player) ToProto(ctx context.Context) (*proto.Player, error) {
 	return protoPlayer, nil
 }
 
-// FromProto converts a protobuf Player to the native struct
+// PlayerFromProto converts a protobuf Player to the native struct
 func PlayerFromProto(ctx context.Context, protoPlayer *proto.Player) (*Player, error) {
 	ctx, span := StartSpanWithAttributes(ctx, "protobuf.conversion.player_from_proto", []attribute.KeyValue{
 		attribute.String("conversion.type", "player"),
@@ -239,10 +251,10 @@ func PlayerFromProto(ctx context.Context, protoPlayer *proto.Player) (*Player, e
 	start := time.Now()
 
 	if protoPlayer == nil {
-		RecordError(ctx, fmt.Errorf("nil protobuf Player"), "Cannot convert nil protobuf Player",
+		RecordError(ctx, ErrNilProtobufPlayer, "Cannot convert nil protobuf Player",
 			WithErrorCategory("validation"),
 			WithSeverity("medium"))
-		return nil, fmt.Errorf("cannot convert nil protobuf Player")
+		return nil, ErrNilProtobufPlayer
 	}
 
 	SetSpanAttributes(ctx,
@@ -362,10 +374,10 @@ func (d *PlayerDataWithCurrency) ToProto(ctx context.Context) (*proto.DatasetDat
 	start := time.Now()
 
 	if d == nil {
-		RecordError(ctx, fmt.Errorf("nil DatasetData"), "Cannot convert nil DatasetData to protobuf",
+		RecordError(ctx, ErrNilDatasetData, "Cannot convert nil DatasetData to protobuf",
 			WithErrorCategory("validation"),
 			WithSeverity("high"))
-		return nil, fmt.Errorf("cannot convert nil DatasetData to protobuf")
+		return nil, ErrNilDatasetData
 	}
 
 	SetSpanAttributes(ctx,
@@ -373,7 +385,7 @@ func (d *PlayerDataWithCurrency) ToProto(ctx context.Context) (*proto.DatasetDat
 		attribute.String("dataset.currency_symbol", d.CurrencySymbol),
 	)
 
-	logDebug(ctx, "Converting DatasetData to protobuf",
+	logInfo(ctx, "Converting DatasetData to protobuf",
 		"player_count", len(d.Players),
 		"conversion_type", "dataset_data",
 		"conversion_direction", "to_protobuf",
@@ -412,7 +424,7 @@ func (d *PlayerDataWithCurrency) ToProto(ctx context.Context) (*proto.DatasetDat
 	return protoDataset, nil
 }
 
-// FromProto converts a protobuf DatasetData to the native struct
+// DatasetDataFromProto converts a protobuf DatasetData to the native struct
 func DatasetDataFromProto(ctx context.Context, protoDataset *proto.DatasetData) (*PlayerDataWithCurrency, error) {
 	ctx, span := StartSpanWithAttributes(ctx, "protobuf.conversion.dataset_from_proto", []attribute.KeyValue{
 		attribute.String("conversion.type", "dataset_data"),
@@ -423,10 +435,10 @@ func DatasetDataFromProto(ctx context.Context, protoDataset *proto.DatasetData) 
 	start := time.Now()
 
 	if protoDataset == nil {
-		RecordError(ctx, fmt.Errorf("nil protobuf DatasetData"), "Cannot convert nil protobuf DatasetData",
+		RecordError(ctx, ErrNilProtobufDatasetData, "Cannot convert nil protobuf DatasetData",
 			WithErrorCategory("validation"),
 			WithSeverity("high"))
-		return nil, fmt.Errorf("cannot convert nil protobuf DatasetData")
+		return nil, ErrNilProtobufDatasetData
 	}
 
 	SetSpanAttributes(ctx,

@@ -62,7 +62,7 @@ func (s *ProtobufStorage) Store(datasetID string, data DatasetData) error {
 	// Convert to protobuf
 	protoData, err := playerData.ToProto(ctx)
 	if err != nil {
-		convErr := NewProtobufConversionError("to_protobuf", "DatasetData", datasetID, err)
+		convErr := NewProtobufConversionError(ctx, "to_protobuf", "DatasetData", datasetID, err)
 		RecordError(ctx, convErr, "Failed to convert data to protobuf")
 		s.logFallbackEvent(ProtobufFallbackEvent{
 			DatasetID: datasetID,
@@ -83,7 +83,7 @@ func (s *ProtobufStorage) Store(datasetID string, data DatasetData) error {
 	marshalSpan.End()
 
 	if err != nil {
-		marshalErr := NewProtobufError("marshal", datasetID, "Failed to marshal protobuf data", err)
+		marshalErr := NewProtobufError(ctx, "marshal", datasetID, "Failed to marshal protobuf data", err)
 		RecordError(ctx, marshalErr, "Failed to marshal protobuf data")
 		s.logFallbackEvent(ProtobufFallbackEvent{
 			DatasetID: datasetID,
@@ -100,7 +100,7 @@ func (s *ProtobufStorage) Store(datasetID string, data DatasetData) error {
 	// Compress protobuf data
 	compressedData, err := s.compressProtobufData(protoBytes)
 	if err != nil {
-		compErr := NewProtobufCompressionError("compress", datasetID, err)
+		compErr := NewProtobufCompressionError(ctx, "compress", datasetID, err)
 		RecordError(ctx, compErr, "Failed to compress protobuf data")
 		s.logFallbackEvent(ProtobufFallbackEvent{
 			DatasetID: datasetID,
@@ -121,7 +121,7 @@ func (s *ProtobufStorage) Store(datasetID string, data DatasetData) error {
 	// Store using a custom approach since we need to store raw bytes
 	err = s.storeProtobufBytes(ctx, datasetID, compressedData)
 	if err != nil {
-		storageErr := NewProtobufError("store", datasetID, "Failed to store protobuf data", err)
+		storageErr := NewProtobufError(ctx, "store", datasetID, "Failed to store protobuf data", err)
 		RecordError(ctx, storageErr, "Failed to store protobuf data")
 		s.logFallbackEvent(ProtobufFallbackEvent{
 			DatasetID: datasetID,
@@ -183,7 +183,7 @@ func (s *ProtobufStorage) Retrieve(datasetID string) (DatasetData, error) {
 	compressedData, err := s.retrieveProtobufBytes(ctx, datasetID)
 	if err != nil {
 		// If protobuf retrieval fails, try JSON fallback
-		retrievalErr := NewProtobufError("retrieve", datasetID, "Failed to retrieve protobuf data", err)
+		retrievalErr := NewProtobufError(ctx, "retrieve", datasetID, "Failed to retrieve protobuf data", err)
 		s.logFallbackEvent(ProtobufFallbackEvent{
 			DatasetID: datasetID,
 			Reason:    FallbackReasonRetrievalFailed,
@@ -197,7 +197,7 @@ func (s *ProtobufStorage) Retrieve(datasetID string) (DatasetData, error) {
 	// Decompress protobuf data
 	protoBytes, err := s.decompressProtobufData(compressedData)
 	if err != nil {
-		decompErr := NewProtobufCompressionError("decompress", datasetID, err)
+		decompErr := NewProtobufCompressionError(ctx, "decompress", datasetID, err)
 		RecordError(ctx, decompErr, "Failed to decompress protobuf data")
 		s.logFallbackEvent(ProtobufFallbackEvent{
 			DatasetID: datasetID,
@@ -220,7 +220,7 @@ func (s *ProtobufStorage) Retrieve(datasetID string) (DatasetData, error) {
 	unmarshalSpan.End()
 
 	if err != nil {
-		unmarshalErr := NewProtobufError("unmarshal", datasetID, "Failed to unmarshal protobuf data", err)
+		unmarshalErr := NewProtobufError(ctx, "unmarshal", datasetID, "Failed to unmarshal protobuf data", err)
 		RecordError(ctx, unmarshalErr, "Failed to unmarshal protobuf data")
 		s.logFallbackEvent(ProtobufFallbackEvent{
 			DatasetID: datasetID,
@@ -235,7 +235,7 @@ func (s *ProtobufStorage) Retrieve(datasetID string) (DatasetData, error) {
 	// Convert from protobuf to native structs
 	playerData, err := DatasetDataFromProto(ctx, &protoData)
 	if err != nil {
-		convErr := NewProtobufConversionError("from_protobuf", "DatasetData", datasetID, err)
+		convErr := NewProtobufConversionError(ctx, "from_protobuf", "DatasetData", datasetID, err)
 		RecordError(ctx, convErr, "Failed to convert protobuf to native structs")
 		s.logFallbackEvent(ProtobufFallbackEvent{
 			DatasetID: datasetID,
@@ -321,7 +321,8 @@ func (s *ProtobufStorage) compressProtobufData(data []byte) ([]byte, error) {
 	gz := gzip.NewWriter(&buf)
 	defer func() {
 		if closeErr := gz.Close(); closeErr != nil {
-			// Note: We can't use context here as it's in a defer, but this is a minor cleanup error
+			// Log cleanup error but don't fail the operation
+			LogWarn("Failed to close gzip writer: %v", closeErr)
 		}
 	}()
 
@@ -375,7 +376,8 @@ func (s *ProtobufStorage) decompressProtobufData(data []byte) ([]byte, error) {
 	}
 	defer func() {
 		if closeErr := reader.Close(); closeErr != nil {
-			// Note: We can't use context here as it's in a defer, but this is a minor cleanup error
+			// Log cleanup error but don't fail the operation
+			LogWarn("Failed to close gzip reader: %v", closeErr)
 		}
 	}()
 
@@ -461,12 +463,12 @@ func (s *ProtobufStorage) retrieveProtobufBytes(ctx context.Context, datasetID s
 	// Check if this is a protobuf dataset
 	if dataset.CurrencySymbol != "__PROTOBUF_MARKER__" {
 		logDebug(ctx, "Dataset is not in protobuf format", "dataset_id", datasetID, "currency_symbol", dataset.CurrencySymbol)
-		return nil, fmt.Errorf("dataset is not in protobuf format")
+		return nil, ErrNotProtobufFormat
 	}
 
 	if len(dataset.Players) != 1 || dataset.Players[0].UID != -1 || dataset.Players[0].Name != "__PROTOBUF_DATA__" {
 		logError(ctx, "Invalid protobuf dataset format", "dataset_id", datasetID, "player_count", len(dataset.Players))
-		return nil, fmt.Errorf("invalid protobuf dataset format")
+		return nil, ErrInvalidProtobufFormat
 	}
 
 	// Decode the base64 data
