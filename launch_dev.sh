@@ -36,6 +36,13 @@ cleanup() {
 # Trap SIGINT (Ctrl+C) and SIGTERM to run the cleanup function
 trap cleanup SIGINT SIGTERM
 
+# --- Environment Configuration ---
+# Enable protobuf serialization for improved performance
+export USE_PROTOBUF=true
+echo "Protobuf serialization: ENABLED"
+echo "To disable protobuf, set USE_PROTOBUF=false or comment out the export line above"
+echo ""
+
 # --- Start Frontend Server ---
 echo "Starting Vue.js frontend development server (npm run dev)..."
 # This command assumes 'npm' is in your PATH and 'package.json' is in the current directory.

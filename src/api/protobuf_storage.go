@@ -540,12 +540,21 @@ func (s *ProtobufStorage) logPerformanceImprovement(ctx context.Context, metrics
 	
 	// Log performance benchmarking data
 	throughputMBps := float64(metrics.ProtobufSizeBytes) / (float64(metrics.DurationMs) / 1000.0) / (1024 * 1024)
+	
+	// Calculate per-player metrics only if player count > 0
+	var bytesPerPlayer int
+	var msPerPlayer float64
+	if metrics.PlayerCount > 0 {
+		bytesPerPlayer = metrics.ProtobufSizeBytes / metrics.PlayerCount
+		msPerPlayer = float64(metrics.DurationMs) / float64(metrics.PlayerCount)
+	}
+	
 	logDebug(ctx, "Protobuf operation performance metrics",
 		"dataset_id", metrics.DatasetID,
 		"operation", metrics.Operation,
 		"throughput_mbps", fmt.Sprintf("%.2f", throughputMBps),
-		"bytes_per_player", metrics.ProtobufSizeBytes/metrics.PlayerCount,
-		"ms_per_player", float64(metrics.DurationMs)/float64(metrics.PlayerCount),
+		"bytes_per_player", bytesPerPlayer,
+		"ms_per_player", msPerPlayer,
 		"compression_efficiency", fmt.Sprintf("%.1f%%", metrics.SpaceSavedPercent))
 }
 
