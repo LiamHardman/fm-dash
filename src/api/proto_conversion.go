@@ -33,7 +33,7 @@ func (r *RoleOverallScore) ToProto(ctx context.Context) (*proto.RoleOverallScore
 		attribute.Int("role.score", r.Score),
 	)
 
-	logDebug(ctx, "Converting RoleOverallScore to protobuf", 
+	logInfo(ctx, "Starting RoleOverallScore conversion to protobuf", 
 		"role_name", r.RoleName,
 		"conversion_type", "role_overall_score",
 		"conversion_direction", "to_protobuf")
