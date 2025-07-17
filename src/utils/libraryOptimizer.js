@@ -94,7 +94,7 @@ export async function loadLibrary(libraryPath, options = {}) {
         setTimeout(() => reject(new Error('Library load timeout')), timeout)
       })
 
-      const loadPromise = import(libraryPath)
+      const loadPromise = import(/* @vite-ignore */ libraryPath)
 
       const library = await Promise.race([loadPromise, timeoutPromise])
       return library
