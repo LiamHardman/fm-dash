@@ -1,3 +1,10 @@
+## [1.4.1](https://github.com/LiamHardman/fm-dash/compare/v1.4.0...v1.4.1) (2025-07-17)
+
+
+### Bug Fixes
+
+* minor log level change ([4fd9064](https://github.com/LiamHardman/fm-dash/commit/4fd9064c4ce7320b221cadb6cb8494856570ff49))
+
 # [1.4.0](https://github.com/LiamHardman/fm-dash/compare/v1.3.1...v1.4.0) (2025-07-17)
 
 
