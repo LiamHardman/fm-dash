@@ -41,7 +41,8 @@ spec:
               value: "kubernetes"
             - name: LOG_LEVEL
               value: "INFO"
-            
+            - name: USE_PROTOBUF
+              value: "true"              
             # CI/CD populated values (will be set by your CI/CD pipeline)
             - name: GIT_COMMIT_SHA
               value: "main"
@@ -57,7 +58,7 @@ spec:
               value: "signoz-otel-collector.signoz-helm:4317"
             - name: OTEL_EXPORTER_OTLP_INSECURE
               value: "true"
-            
+
             # S3-Compatible Storage Configuration (from secrets)
             - name: S3_ENDPOINT
               valueFrom:
