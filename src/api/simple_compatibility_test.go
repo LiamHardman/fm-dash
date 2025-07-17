@@ -23,14 +23,18 @@ func TestSimpleAPICompatibility(t *testing.T) {
 
 	// Test with JSON backend first
 	t.Run("JSON Backend", func(t *testing.T) {
-		os.Setenv("USE_PROTOBUF", "false")
+		if err := os.Setenv("USE_PROTOBUF", "false"); err != nil {
+			t.Fatalf("Failed to set USE_PROTOBUF: %v", err)
+		}
 		InitStore()
 		testBasicFlow(t, false)
 	})
 
 	// Test with Protobuf backend
 	t.Run("Protobuf Backend", func(t *testing.T) {
-		os.Setenv("USE_PROTOBUF", "true")
+		if err := os.Setenv("USE_PROTOBUF", "true"); err != nil {
+			t.Fatalf("Failed to set USE_PROTOBUF: %v", err)
+		}
 		InitStore()
 		testBasicFlow(t, true)
 	})
@@ -246,21 +250,24 @@ func TestHTMLUploadWithTestData(t *testing.T) {
 
 	// Test with JSON backend
 	t.Run("JSON Backend with testdata.html", func(t *testing.T) {
-		os.Setenv("USE_PROTOBUF", "false")
+		if err := os.Setenv("USE_PROTOBUF", "false"); err != nil {
+			t.Fatalf("Failed to set USE_PROTOBUF: %v", err)
+		}
 		InitStore()
-		testHTMLUploadWithData(t, testHTML, false)
+		testHTMLUploadWithData(context.Background(), t, testHTML, false)
 	})
 
 	// Test with Protobuf backend
 	t.Run("Protobuf Backend with testdata.html", func(t *testing.T) {
-		os.Setenv("USE_PROTOBUF", "true")
+		if err := os.Setenv("USE_PROTOBUF", "true"); err != nil {
+			t.Fatalf("Failed to set USE_PROTOBUF: %v", err)
+		}
 		InitStore()
-		testHTMLUploadWithData(t, testHTML, true)
+		testHTMLUploadWithData(context.Background(), t, testHTML, true)
 	})
 }
 
-func testHTMLUploadWithData(t *testing.T, testHTML []byte, useProtobuf bool) {
-	ctx := context.Background()
+func testHTMLUploadWithData(ctx context.Context, t *testing.T, testHTML []byte, useProtobuf bool) {
 	logInfo(ctx, "Starting HTML upload test with real data", "backend", getBackendName(useProtobuf), "data_size_bytes", len(testHTML))
 	start := time.Now()
 

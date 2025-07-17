@@ -182,7 +182,7 @@ func TestAutomaticFallbackBehavior(t *testing.T) {
 	})
 
 	// Test 2: Storage failure should trigger fallback
-	t.Run("Storage_Failure_Fallback", func(t *testing.T) {
+	t.Run("Storage_Failure_Fallback", func(_ *testing.T) {
 		logInfo(ctx, "Testing storage failure fallback", "dataset_id", datasetID+"_fail")
 		mockStorage.failureMode = "store"
 		defer func() { mockStorage.failureMode = "" }()
@@ -375,7 +375,9 @@ func TestEnvironmentVariableRollback(t *testing.T) {
 
 	// Test 1: Enable protobuf via environment variable
 	t.Run("Enable_Protobuf", func(t *testing.T) {
-		os.Setenv("USE_PROTOBUF", "true")
+		if err := os.Setenv("USE_PROTOBUF", "true"); err != nil {
+			t.Fatalf("Failed to set USE_PROTOBUF: %v", err)
+		}
 
 		// Initialize storage (this would normally happen at app startup)
 		localStorage, err := CreateLocalFileStorage(tempDir)
@@ -394,7 +396,9 @@ func TestEnvironmentVariableRollback(t *testing.T) {
 
 	// Test 2: Disable protobuf via environment variable (rollback)
 	t.Run("Disable_Protobuf_Rollback", func(t *testing.T) {
-		os.Setenv("USE_PROTOBUF", "false")
+		if err := os.Setenv("USE_PROTOBUF", "false"); err != nil {
+			t.Fatalf("Failed to set USE_PROTOBUF: %v", err)
+		}
 
 		// Initialize storage again (simulating app restart after config change)
 		localStorage, err := CreateLocalFileStorage(tempDir)
@@ -624,6 +628,7 @@ func (m *MockStorageWithFailures) List() ([]string, error) {
 }
 
 // initializeStorageForTest simulates the storage initialization logic
+//nolint:ireturn // This function is designed to return different storage implementations
 func initializeStorageForTest(backend StorageInterface) StorageInterface {
 	useProtobuf := os.Getenv("USE_PROTOBUF") == "true"
 	if useProtobuf {

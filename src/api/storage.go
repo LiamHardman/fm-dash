@@ -1182,6 +1182,7 @@ func validateStorageConfiguration(ctx context.Context) StorageConfiguration {
 }
 
 // createProtobufStorageWithFallback creates protobuf storage with graceful fallback handling
+//nolint:ireturn // This function is designed to return different storage implementations
 func createProtobufStorageWithFallback(ctx context.Context, baseStorage StorageInterface) (StorageInterface, error) {
 	logInfo(ctx, "Creating protobuf storage with fallback handling")
 	start := time.Now()
@@ -1250,6 +1251,7 @@ func testProtobufStorage(ctx context.Context, _ StorageInterface) error {
 }
 
 // initializeBaseStorage creates the underlying storage backend (S3, hybrid, or in-memory)
+//nolint:ireturn // This function is designed to return different storage implementations
 func initializeBaseStorage(ctx context.Context) StorageInterface {
 	logInfo(ctx, "Initializing base storage backend")
 	start := time.Now()

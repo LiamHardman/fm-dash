@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 )
 
 // TestHTMLUploadCompatibility tests HTML upload processing with testdata.html
@@ -63,14 +64,20 @@ func TestHTMLUploadCompatibility(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Set environment variable for storage backend
 			originalValue := os.Getenv("USE_PROTOBUF")
-			os.Setenv("USE_PROTOBUF", tc.envVarValue)
-			defer os.Setenv("USE_PROTOBUF", originalValue)
+			if err := os.Setenv("USE_PROTOBUF", tc.envVarValue); err != nil {
+				t.Fatalf("Failed to set USE_PROTOBUF: %v", err)
+			}
+			defer func() {
+				if err := os.Setenv("USE_PROTOBUF", originalValue); err != nil {
+					t.Logf("Warning: Failed to restore USE_PROTOBUF: %v", err)
+				}
+			}()
 
 			// Re-initialize storage with new setting
 			InitStore()
 
 			// Test HTML upload
-			response, datasetID := testHTMLUpload(t, testHTML, tc.useProtobuf)
+			response, datasetID := testHTMLUpload(context.Background(), t, testHTML, tc.useProtobuf)
 
 			// Store responses for comparison
 			if tc.useProtobuf {
@@ -113,7 +120,12 @@ func TestHTMLUploadCompatibility(t *testing.T) {
 }
 
 // testHTMLUpload tests uploading the HTML file with a specific storage backend
-func testHTMLUpload(t *testing.T, testHTML []byte, useProtobuf bool) (UploadResponse, string) {
+func testHTMLUpload(ctx context.Context, t *testing.T, testHTML []byte, useProtobuf bool) (UploadResponse, string) {
+	start := time.Now()
+	logInfo(ctx, "Starting HTML upload test", 
+		"backend_type", getBackendName(useProtobuf), 
+		"use_protobuf", useProtobuf,
+		"html_size_bytes", len(testHTML))
 	// Create multipart form data
 	var buf bytes.Buffer
 	writer := multipart.NewWriter(&buf)
@@ -169,6 +181,12 @@ func testHTMLUpload(t *testing.T, testHTML []byte, useProtobuf bool) (UploadResp
 		t.Errorf("DetectedCurrencySymbol should not be empty with %s backend", getBackendName(useProtobuf))
 	}
 
+	logInfo(ctx, "HTML upload completed successfully", 
+		"backend_type", getBackendName(useProtobuf), 
+		"dataset_id", response.DatasetID, 
+		"currency", response.DetectedCurrencySymbol,
+		"duration_ms", time.Since(start).Milliseconds())
+	
 	t.Logf("HTML upload successful with %s backend. DatasetID: %s, Currency: %s",
 		getBackendName(useProtobuf), response.DatasetID, response.DetectedCurrencySymbol)
 
@@ -447,8 +465,14 @@ func TestErrorResponseCompatibility(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Set environment variable for storage backend
 			originalValue := os.Getenv("USE_PROTOBUF")
-			os.Setenv("USE_PROTOBUF", tc.envVarValue)
-			defer os.Setenv("USE_PROTOBUF", originalValue)
+			if err := os.Setenv("USE_PROTOBUF", tc.envVarValue); err != nil {
+				t.Fatalf("Failed to set USE_PROTOBUF: %v", err)
+			}
+			defer func() {
+				if err := os.Setenv("USE_PROTOBUF", originalValue); err != nil {
+					t.Logf("Warning: Failed to restore USE_PROTOBUF: %v", err)
+				}
+			}()
 
 			// Re-initialize storage with new setting
 			InitStore()

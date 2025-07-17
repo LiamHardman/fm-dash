@@ -48,7 +48,9 @@ func TestProtobufStorageValidation(t *testing.T) {
 
 	// Test JSON storage
 	t.Run("JSON Storage", func(t *testing.T) {
-		os.Setenv("USE_PROTOBUF", "false")
+		if err := os.Setenv("USE_PROTOBUF", "false"); err != nil {
+			t.Fatalf("Failed to set USE_PROTOBUF: %v", err)
+		}
 		InitStore()
 
 		// Store data
@@ -67,7 +69,9 @@ func TestProtobufStorageValidation(t *testing.T) {
 
 	// Test Protobuf storage
 	t.Run("Protobuf Storage", func(t *testing.T) {
-		os.Setenv("USE_PROTOBUF", "true")
+		if err := os.Setenv("USE_PROTOBUF", "true"); err != nil {
+			t.Fatalf("Failed to set USE_PROTOBUF: %v", err)
+		}
 		InitStore()
 
 		// Store data
@@ -87,14 +91,18 @@ func TestProtobufStorageValidation(t *testing.T) {
 	// Test data consistency between backends
 	t.Run("Cross-Backend Consistency", func(t *testing.T) {
 		// Store with JSON
-		os.Setenv("USE_PROTOBUF", "false")
+		if err := os.Setenv("USE_PROTOBUF", "false"); err != nil {
+			t.Fatalf("Failed to set USE_PROTOBUF: %v", err)
+		}
 		InitStore()
 		jsonDatasetID := "consistency-json"
 		SetPlayerData(jsonDatasetID, testData, currency)
 		jsonPlayers, jsonCurrency, _ := GetPlayerData(jsonDatasetID)
 
 		// Store with Protobuf
-		os.Setenv("USE_PROTOBUF", "true")
+		if err := os.Setenv("USE_PROTOBUF", "true"); err != nil {
+			t.Fatalf("Failed to set USE_PROTOBUF: %v", err)
+		}
 		InitStore()
 		protobufDatasetID := "consistency-protobuf"
 		SetPlayerData(protobufDatasetID, testData, currency)

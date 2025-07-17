@@ -113,13 +113,19 @@ func TestValidateStorageConfiguration(t *testing.T) {
 			oldValue := os.Getenv("USE_PROTOBUF")
 			defer func() {
 				if oldValue == "" {
-					os.Unsetenv("USE_PROTOBUF")
+					if err := os.Unsetenv("USE_PROTOBUF"); err != nil {
+						t.Logf("Warning: Failed to unset USE_PROTOBUF: %v", err)
+					}
 				} else {
-					os.Setenv("USE_PROTOBUF", oldValue)
+					if err := os.Setenv("USE_PROTOBUF", oldValue); err != nil {
+						t.Logf("Warning: Failed to restore USE_PROTOBUF: %v", err)
+					}
 				}
 			}()
 
-			os.Setenv("USE_PROTOBUF", tt.envValue)
+			if err := os.Setenv("USE_PROTOBUF", tt.envValue); err != nil {
+				t.Fatalf("Failed to set USE_PROTOBUF: %v", err)
+			}
 
 			// Test the validation function
 			ctx := context.Background()
@@ -178,14 +184,20 @@ func TestInitializeStorageWithProtobufEnabled(t *testing.T) {
 	oldValue := os.Getenv("USE_PROTOBUF")
 	defer func() {
 		if oldValue == "" {
-			os.Unsetenv("USE_PROTOBUF")
+			if err := os.Unsetenv("USE_PROTOBUF"); err != nil {
+				t.Logf("Warning: Failed to unset USE_PROTOBUF: %v", err)
+			}
 		} else {
-			os.Setenv("USE_PROTOBUF", oldValue)
+			if err := os.Setenv("USE_PROTOBUF", oldValue); err != nil {
+				t.Logf("Warning: Failed to restore USE_PROTOBUF: %v", err)
+			}
 		}
 	}()
 
 	// Test with protobuf enabled
-	os.Setenv("USE_PROTOBUF", "true")
+	if err := os.Setenv("USE_PROTOBUF", "true"); err != nil {
+		t.Fatalf("Failed to set USE_PROTOBUF: %v", err)
+	}
 
 	ctx := context.Background()
 	storage := InitializeStorage(ctx)
@@ -205,14 +217,20 @@ func TestInitializeStorageWithProtobufDisabled(t *testing.T) {
 	oldValue := os.Getenv("USE_PROTOBUF")
 	defer func() {
 		if oldValue == "" {
-			os.Unsetenv("USE_PROTOBUF")
+			if err := os.Unsetenv("USE_PROTOBUF"); err != nil {
+				t.Logf("Warning: Failed to unset USE_PROTOBUF: %v", err)
+			}
 		} else {
-			os.Setenv("USE_PROTOBUF", oldValue)
+			if err := os.Setenv("USE_PROTOBUF", oldValue); err != nil {
+				t.Logf("Warning: Failed to restore USE_PROTOBUF: %v", err)
+			}
 		}
 	}()
 
 	// Test with protobuf disabled
-	os.Setenv("USE_PROTOBUF", "false")
+	if err := os.Setenv("USE_PROTOBUF", "false"); err != nil {
+		t.Fatalf("Failed to set USE_PROTOBUF: %v", err)
+	}
 
 	ctx := context.Background()
 	storage := InitializeStorage(ctx)
@@ -232,14 +250,20 @@ func TestInitializeStorageWithInvalidProtobufValue(t *testing.T) {
 	oldValue := os.Getenv("USE_PROTOBUF")
 	defer func() {
 		if oldValue == "" {
-			os.Unsetenv("USE_PROTOBUF")
+			if err := os.Unsetenv("USE_PROTOBUF"); err != nil {
+				t.Logf("Warning: Failed to unset USE_PROTOBUF: %v", err)
+			}
 		} else {
-			os.Setenv("USE_PROTOBUF", oldValue)
+			if err := os.Setenv("USE_PROTOBUF", oldValue); err != nil {
+				t.Logf("Warning: Failed to restore USE_PROTOBUF: %v", err)
+			}
 		}
 	}()
 
 	// Test with invalid protobuf value
-	os.Setenv("USE_PROTOBUF", "invalid")
+	if err := os.Setenv("USE_PROTOBUF", "invalid"); err != nil {
+		t.Fatalf("Failed to set USE_PROTOBUF: %v", err)
+	}
 
 	ctx := context.Background()
 	storage := InitializeStorage(ctx)
@@ -259,9 +283,13 @@ func TestStorageFactoryFallbackBehavior(t *testing.T) {
 	oldValue := os.Getenv("USE_PROTOBUF")
 	defer func() {
 		if oldValue == "" {
-			os.Unsetenv("USE_PROTOBUF")
+			if err := os.Unsetenv("USE_PROTOBUF"); err != nil {
+				t.Logf("Warning: Failed to unset USE_PROTOBUF: %v", err)
+			}
 		} else {
-			os.Setenv("USE_PROTOBUF", oldValue)
+			if err := os.Setenv("USE_PROTOBUF", oldValue); err != nil {
+				t.Logf("Warning: Failed to restore USE_PROTOBUF: %v", err)
+			}
 		}
 	}()
 
@@ -271,9 +299,13 @@ func TestStorageFactoryFallbackBehavior(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run("USE_PROTOBUF="+testCase, func(t *testing.T) {
 			if testCase == "" {
-				os.Unsetenv("USE_PROTOBUF")
+				if err := os.Unsetenv("USE_PROTOBUF"); err != nil {
+					t.Fatalf("Failed to unset USE_PROTOBUF: %v", err)
+				}
 			} else {
-				os.Setenv("USE_PROTOBUF", testCase)
+				if err := os.Setenv("USE_PROTOBUF", testCase); err != nil {
+					t.Fatalf("Failed to set USE_PROTOBUF: %v", err)
+				}
 			}
 
 			ctx := context.Background()
