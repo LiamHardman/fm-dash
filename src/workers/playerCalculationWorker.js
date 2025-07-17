@@ -336,339 +336,73 @@ function calculateRatingStats(players, statKey) {
 }
 
 /**
- * Enhanced chunked sorting algorithm for large datasets
- * Implements merge sort with progress reporting and memory optimization
+ * Batch process multiple calculations
+ * SECURITY FIX: Added validation to prevent remote property injection
  */
-async function chunkedSort(players, fieldKey, direction, sortField, isGoalkeeperView, chunkSize = 2000, progressCallback = null) {
-  if (players.length <= 5000) {
-    // Use fast sort for smaller datasets
-    return fastSortPlayers([...players], fieldKey, direction, sortField, isGoalkeeperView)
-  }
-
-  const totalItems = players.length
-  let processedItems = 0
-
-  // Report initial progress
-  if (progressCallback) {
-    progressCallback({ processed: 0, total: totalItems, stage: 'chunking' })
-  }
-
-  // Split into chunks and sort each chunk
-  const sortedChunks = []
-  for (let i = 0; i < players.length; i += chunkSize) {
-    const chunk = players.slice(i, i + chunkSize)
-    const sortedChunk = fastSortPlayers(chunk, fieldKey, direction, sortField, isGoalkeeperView)
-    sortedChunks.push(sortedChunk)
-    
-    processedItems += chunk.length
-    
-    // Report progress and yield control
-    if (progressCallback) {
-      progressCallback({ 
-        processed: processedItems, 
-        total: totalItems, 
-        stage: 'sorting_chunks',
-        chunksCompleted: sortedChunks.length
-      })
-    }
-    
-    // Yield control every few chunks to prevent blocking
-    if (sortedChunks.length % 3 === 0) {
-      await new Promise(resolve => setTimeout(resolve, 0))
-    }
-  }
-
-  // Report merge stage
-  if (progressCallback) {
-    progressCallback({ processed: totalItems, total: totalItems, stage: 'merging' })
-  }
-
-  // Merge sorted chunks
-  return await mergeChunks(sortedChunks, fieldKey, direction, sortField, isGoalkeeperView, progressCallback)
-}
-
-/**
- * Merge sorted chunks with progress reporting
- */
-async function mergeChunks(chunks, fieldKey, direction, sortField, isGoalkeeperView, progressCallback = null) {
-  while (chunks.length > 1) {
-    const mergedChunks = []
-    const totalChunks = chunks.length
-
-    for (let i = 0; i < chunks.length; i += 2) {
-      if (i + 1 < chunks.length) {
-        const merged = mergeTwoSortedArrays(
-          chunks[i], 
-          chunks[i + 1], 
-          fieldKey, 
-          direction, 
-          sortField, 
-          isGoalkeeperView
-        )
-        mergedChunks.push(merged)
-      } else {
-        mergedChunks.push(chunks[i])
-      }
-
-      // Report merge progress
-      if (progressCallback) {
-        progressCallback({
-          stage: 'merging',
-          chunksRemaining: totalChunks - (i + 2),
-          totalChunks: totalChunks
-        })
-      }
-    }
-
-    chunks = mergedChunks
-
-    // Yield control between merge iterations
-    if (chunks.length > 1) {
-      await new Promise(resolve => setTimeout(resolve, 0))
-    }
-  }
-
-  return chunks[0] || []
-}
-
-/**
- * Merge two sorted arrays efficiently
- */
-function mergeTwoSortedArrays(arr1, arr2, fieldKey, direction, sortField, isGoalkeeperView) {
-  const result = []
-  let i = 0, j = 0
-
-  while (i < arr1.length && j < arr2.length) {
-    const comparison = comparePlayerValues(
-      arr1[i], arr2[j], fieldKey, direction, sortField, isGoalkeeperView
-    )
-    
-    if (comparison <= 0) {
-      result.push(arr1[i])
-      i++
-    } else {
-      result.push(arr2[j])
-      j++
-    }
-  }
-
-  // Add remaining elements
-  result.push(...arr1.slice(i), ...arr2.slice(j))
-  return result
-}
-
-/**
- * Compare two player values for sorting
- */
-function comparePlayerValues(playerA, playerB, fieldKey, direction, sortField, isGoalkeeperView) {
-  let vA = getPlayerValue(playerA, fieldKey, sortField, isGoalkeeperView)
-  let vB = getPlayerValue(playerB, fieldKey, sortField, isGoalkeeperView)
-  
-  const aIsNull = vA === null || vA === undefined
-  const bIsNull = vB === null || vB === undefined
-
-  if (aIsNull && bIsNull) return 0
-  if (aIsNull) return direction === 'asc' ? 1 : -1
-  if (bIsNull) return direction === 'asc' ? -1 : 1
-
-  if (fieldKey === 'position') {
-    const indexA = getPositionIndex(vA)
-    const indexB = getPositionIndex(vB)
-    return direction === 'asc' ? indexA - indexB : indexB - indexA
-  }
-  
-  if (typeof vA === 'number' && typeof vB === 'number') {
-    return direction === 'asc' ? vA - vB : vB - vA
-  }
-  
-  if (typeof vA === 'string' && typeof vB === 'string') {
-    vA = vA.toLowerCase()
-    vB = vB.toLowerCase()
-    if (vA < vB) return direction === 'asc' ? -1 : 1
-    if (vA > vB) return direction === 'asc' ? 1 : -1
-    return 0
-  }
-  
-  return 0
-}
-
-/**
- * Enhanced batch processing with progress reporting and error recovery
- */
-async function batchProcess(players, operations, progressCallback = null) {
+function batchProcess(players, operations) {
   const results = {}
-  const totalOperations = operations.length
-  let completedOperations = 0
 
   for (const operation of operations) {
-    try {
-      // Validate operation.id to prevent remote property injection
-      if (!isValidOperationId(operation.id)) {
-        const safeKey = `invalid_${Math.random().toString(36).substr(2, 9)}`
-        results[safeKey] = { error: 'Invalid operation ID' }
-        continue
-      }
+    // Validate operation.id to prevent remote property injection
+    if (!isValidOperationId(operation.id)) {
+      // Use a safe fallback key for invalid IDs
+      const safeKey = `invalid_${Math.random().toString(36).substr(2, 9)}`
+      results[safeKey] = { error: 'Invalid operation ID' }
+      continue
+    }
 
-      // Report operation progress
-      if (progressCallback) {
-        progressCallback({
-          operationId: operation.id,
-          completed: completedOperations,
-          total: totalOperations,
-          currentOperation: operation.type
-        })
-      }
-
-      let operationResult
-
-      switch (operation.type) {
-        case 'sort':
-          if (!isValidPlayerProperty(operation.fieldKey)) {
-            operationResult = { error: 'Invalid fieldKey property name' }
-            break
-          }
-          if (operation.sortField && !isValidPlayerProperty(operation.sortField)) {
-            operationResult = { error: 'Invalid sortField property name' }
-            break
-          }
-          
-          // Use chunked sort for large datasets
-          if (players.length > 5000) {
-            operationResult = await chunkedSort(
-              [...players],
-              operation.fieldKey,
-              operation.direction,
-              operation.sortField,
-              operation.isGoalkeeperView,
-              operation.chunkSize || 2000,
-              progressCallback
-            )
-          } else {
-            operationResult = customSortPlayers(
-              [...players],
-              operation.fieldKey,
-              operation.direction,
-              operation.sortField,
-              operation.isGoalkeeperView
-            )
-          }
+    switch (operation.type) {
+      case 'sort':
+        // Validate fieldKey to prevent remote property injection
+        if (!isValidPlayerProperty(operation.fieldKey)) {
+          safeSetProperty(results, operation.id, { error: 'Invalid fieldKey property name' })
           break
-
-        case 'filter':
-          operationResult = filterPlayers(players, operation.filters)
+        }
+        // Validate sortField if provided
+        if (operation.sortField && !isValidPlayerProperty(operation.sortField)) {
+          safeSetProperty(results, operation.id, { error: 'Invalid sortField property name' })
           break
-
-        case 'stats':
-          operationResult = calculateRatingStats(players, operation.statKey)
-          break
-
-        case 'chunked_sort':
-          if (!isValidPlayerProperty(operation.fieldKey)) {
-            operationResult = { error: 'Invalid fieldKey property name' }
-            break
-          }
-          operationResult = await chunkedSort(
+        }
+        safeSetProperty(
+          results,
+          operation.id,
+          customSortPlayers(
             [...players],
             operation.fieldKey,
             operation.direction,
             operation.sortField,
-            operation.isGoalkeeperView,
-            operation.chunkSize || 2000,
-            (progress) => {
-              if (progressCallback) {
-                progressCallback({
-                  ...progress,
-                  operationId: operation.id,
-                  operationType: 'chunked_sort'
-                })
-              }
-            }
+            operation.isGoalkeeperView
           )
-          break
+        )
+        break
 
-        default:
-          operationResult = { error: `Unknown operation type: ${operation.type}` }
-      }
+      case 'filter':
+        safeSetProperty(results, operation.id, filterPlayers(players, operation.filters))
+        break
 
-      safeSetProperty(results, operation.id, operationResult)
-      completedOperations++
+      case 'stats':
+        // Validation is handled inside calculateRatingStats function
+        safeSetProperty(results, operation.id, calculateRatingStats(players, operation.statKey))
+        break
 
-      // Yield control between operations
-      await new Promise(resolve => setTimeout(resolve, 0))
-
-    } catch (error) {
-      // Error recovery - continue with other operations
-      safeSetProperty(results, operation.id, { 
-        error: `Operation failed: ${error.message}`,
-        recoverable: true
-      })
-      completedOperations++
+      default:
+        safeSetProperty(results, operation.id, {
+          error: `Unknown operation type: ${operation.type}`
+        })
     }
-  }
-
-  // Report completion
-  if (progressCallback) {
-    progressCallback({
-      completed: totalOperations,
-      total: totalOperations,
-      stage: 'completed'
-    })
   }
 
   return results
 }
 
-/**
- * Batch filter with chunked processing for large datasets
- */
-async function batchFilter(players, filters, chunkSize = 5000, progressCallback = null) {
-  if (players.length <= chunkSize) {
-    return filterPlayers(players, filters)
-  }
-
-  const results = []
-  let processedItems = 0
-
-  for (let i = 0; i < players.length; i += chunkSize) {
-    const chunk = players.slice(i, i + chunkSize)
-    const filteredChunk = filterPlayers(chunk, filters)
-    results.push(...filteredChunk)
-    
-    processedItems += chunk.length
-
-    if (progressCallback) {
-      progressCallback({
-        processed: processedItems,
-        total: players.length,
-        stage: 'filtering',
-        resultsCount: results.length
-      })
-    }
-
-    // Yield control
-    await new Promise(resolve => setTimeout(resolve, 0))
-  }
-
-  return results
-}
-
-// Handle messages from main thread with enhanced error handling and fallback mechanisms
-self.onmessage = async (e) => {
+// Handle messages from main thread
+self.onmessage = e => {
   // Validate message origin for security
   if (e.origin && e.origin !== self.location.origin) {
     return
   }
 
   const { type, data, id } = e.data
-
-  // Progress reporting helper
-  const reportProgress = (progress) => {
-    self.postMessage({
-      type: 'PROGRESS',
-      id,
-      progress
-    })
-  }
 
   try {
     let result
@@ -710,56 +444,8 @@ self.onmessage = async (e) => {
         )
         break
 
-      case 'CHUNKED_SORT':
-        // Enhanced chunked sorting with progress reporting
-        if (!isValidPlayerProperty(data.fieldKey)) {
-          throw new Error('Invalid fieldKey property name')
-        }
-        if (data.sortField && !isValidPlayerProperty(data.sortField)) {
-          throw new Error('Invalid sortField property name')
-        }
-        
-        try {
-          result = await chunkedSort(
-            data.players,
-            data.fieldKey,
-            data.direction,
-            data.sortField,
-            data.isGoalkeeperView,
-            data.chunkSize || 2000,
-            reportProgress
-          )
-        } catch (error) {
-          // Fallback to regular sort if chunked sort fails
-          console.warn('Chunked sort failed, falling back to regular sort:', error.message)
-          result = customSortPlayers(
-            data.players,
-            data.fieldKey,
-            data.direction,
-            data.sortField,
-            data.isGoalkeeperView
-          )
-        }
-        break
-
       case 'FILTER_PLAYERS':
         result = filterPlayers(data.players, data.filters)
-        break
-
-      case 'BATCH_FILTER':
-        // Enhanced batch filtering with progress reporting
-        try {
-          result = await batchFilter(
-            data.players,
-            data.filters,
-            data.chunkSize || 5000,
-            reportProgress
-          )
-        } catch (error) {
-          // Fallback to regular filter if batch filter fails
-          console.warn('Batch filter failed, falling back to regular filter:', error.message)
-          result = filterPlayers(data.players, data.filters)
-        }
         break
 
       case 'CALCULATE_STATS':
@@ -768,42 +454,7 @@ self.onmessage = async (e) => {
         break
 
       case 'BATCH_PROCESS':
-        // Enhanced batch processing with progress reporting
-        try {
-          result = await batchProcess(data.players, data.operations, reportProgress)
-        } catch (error) {
-          // Fallback to individual operations if batch processing fails
-          console.warn('Batch processing failed, falling back to individual operations:', error.message)
-          const fallbackResults = {}
-          
-          for (const operation of data.operations) {
-            try {
-              switch (operation.type) {
-                case 'sort':
-                  if (isValidPlayerProperty(operation.fieldKey)) {
-                    fallbackResults[operation.id] = customSortPlayers(
-                      [...data.players],
-                      operation.fieldKey,
-                      operation.direction,
-                      operation.sortField,
-                      operation.isGoalkeeperView
-                    )
-                  }
-                  break
-                case 'filter':
-                  fallbackResults[operation.id] = filterPlayers(data.players, operation.filters)
-                  break
-                case 'stats':
-                  fallbackResults[operation.id] = calculateRatingStats(data.players, operation.statKey)
-                  break
-              }
-            } catch (opError) {
-              fallbackResults[operation.id] = { error: opError.message, fallback: true }
-            }
-          }
-          
-          result = fallbackResults
-        }
+        result = batchProcess(data.players, data.operations)
         break
 
       case 'GET_POSITION_INDEX':
@@ -821,20 +472,6 @@ self.onmessage = async (e) => {
         result = getPlayerValue(data.player, data.fieldKey, data.columnName, data.isGoalkeeperView)
         break
 
-      case 'HEALTH_CHECK':
-        // Worker health check for fallback detection
-        result = {
-          status: 'healthy',
-          timestamp: Date.now(),
-          capabilities: {
-            chunkedSort: true,
-            batchFilter: true,
-            batchProcess: true,
-            progressReporting: true
-          }
-        }
-        break
-
       default:
         throw new Error(`Unknown message type: ${type}`)
     }
@@ -845,13 +482,10 @@ self.onmessage = async (e) => {
       result
     })
   } catch (error) {
-    // Enhanced error reporting with fallback suggestions
     self.postMessage({
       type: 'ERROR',
       id,
-      error: error.message,
-      fallbackAvailable: ['SORT_PLAYERS', 'FILTER_PLAYERS', 'CALCULATE_STATS'].includes(type),
-      timestamp: Date.now()
+      error: error.message
     })
   }
 }

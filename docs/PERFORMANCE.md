@@ -401,58 +401,22 @@ export default {
 }
 ```
 
-#### Third-Party Library Optimization (Implemented)
+#### Third-Party Library Optimization (In Progress)
 
-The application now includes a comprehensive Library Optimizer utility (`src/utils/libraryOptimizer.js`) that provides advanced dynamic loading and optimization capabilities:
+The application is currently undergoing optimization of third-party library imports to reduce bundle size and improve loading performance:
 
-**Key Features:**
-- Dynamic library loading with retry mechanisms and fallbacks
-- Preloading strategies based on user interaction hints
-- Development-only library conditional loading
-- Bundle size analysis and monitoring
-- Lazy loading with caching for frequently used libraries
+**Current Optimizations:**
+- Tree-shakeable Chart.js imports instead of full library
+- Dynamic imports for non-critical Quasar components
+- Conditional loading for development-only libraries
+- Bundle analysis tooling for identifying unused code
 
-**Library Optimizer Usage:**
+**Implementation Status:**
 ```javascript
-import { 
-  preloadCriticalLibraries,
-  loadLibrary,
-  createLazyLoader,
-  preloadOnInteraction,
-  analyzeBundleSize 
-} from '@/utils/libraryOptimizer'
+// Before: Full Chart.js import (large bundle)
+import Chart from 'chart.js/auto'
 
-// Preload critical libraries at app startup
-await preloadCriticalLibraries()
-
-// Load library with retry and fallback
-const chartLib = await loadLibrary('chart.js/auto', {
-  timeout: 10000,
-  retries: 3,
-  fallback: () => import('./fallback-chart.js')
-})
-
-// Create lazy loader for heavy components
-const lazyChartLoader = createLazyLoader('vue-chartjs', {
-  timeout: 15000,
-  retries: 2
-})
-
-// Preload on user interaction
-preloadOnInteraction('./components/HeavyComponent.vue', {
-  events: ['mouseenter', 'focus'],
-  element: document.querySelector('.chart-container')
-})
-
-// Development bundle analysis
-if (process.env.NODE_ENV === 'development') {
-  analyzeBundleSize() // Automatically runs on page load
-}
-```
-
-**Tree-Shakeable Chart.js Implementation:**
-```javascript
-// Optimized Chart.js imports with dynamic loading
+// After: Tree-shakeable individual components (in progress)
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -487,13 +451,11 @@ if (process.env.NODE_ENV === 'development') {
 }
 ```
 
-**Achieved Benefits:**
+**Expected Benefits:**
 - 20-30% reduction in initial bundle size
-- Faster initial page load times through strategic preloading
+- Faster initial page load times
 - Better caching efficiency through smaller, focused chunks
 - Reduced memory usage in production
-- Improved error handling with automatic fallbacks
-- Development-time bundle analysis for optimization insights
 
 #### Build Optimization
 
@@ -572,188 +534,23 @@ export default defineConfig({
 
 ### Data Handling Optimization
 
-#### Memoization and Caching Utilities
-
-FM-Dash includes a comprehensive memoization system for optimizing expensive computations and API calls. The system provides both composable and standalone function approaches:
-
-**Standalone Memoize Function:**
-```javascript
-// Direct import for simple use cases
-import { memoize } from '@/composables/useMemoization'
-
-// Memoize expensive calculations
-const expensiveCalculation = memoize(
-  (data, options) => {
-    // Expensive computation here
-    return processLargeDataset(data, options)
-  },
-  (data, options) => `calc_${data.length}_${JSON.stringify(options)}`, // Cache key
-  { ttl: 300000 } // 5 minutes TTL
-)
-
-// Memoize API calls
-const memoizedApiCall = memoize(
-  async (endpoint, params) => {
-    const response = await fetch(`/api/${endpoint}`, {
-      method: 'POST',
-      body: JSON.stringify(params)
-    })
-    return response.json()
-  },
-  (endpoint, params) => `api_${endpoint}_${JSON.stringify(params)}`,
-  { ttl: 60000 } // 1 minute TTL for API calls
-)
-
-// Usage in components
-export default {
-  async setup() {
-    // Cached expensive calculation
-    const result = await expensiveCalculation(largeDataset, { sort: 'name' })
-    
-    // Cached API call
-    const apiData = await memoizedApiCall('players', { limit: 100 })
-    
-    return { result, apiData }
-  }
-}
-```
-
-**Advanced Memoization with Composable:**
-```javascript
-// Full composable for complex scenarios
-import { useMemoization } from '@/composables/useMemoization'
-
-export default {
-  setup() {
-    const memoization = useMemoization({
-      maxCacheSize: 1000,
-      ttl: 300000, // 5 minutes
-      enableStats: true
-    })
-
-    // Memoized computed property with dependencies
-    const expensiveComputed = memoization.memoizedComputed(
-      (players, filters) => {
-        return players.filter(p => applyComplexFilters(p, filters))
-      },
-      (players, filters) => `filtered_${players.length}_${JSON.stringify(filters)}`,
-      {
-        dependencies: [players, filters],
-        ttl: 180000 // 3 minutes
-      }
-    )
-
-    // Lazy computed for on-demand evaluation
-    const lazyStats = memoization.lazyComputed(() => {
-      return calculatePlayerStatistics(players.value)
-    }, [players])
-
-    // Debounced memoized function
-    const debouncedSearch = memoization.debouncedMemoize(
-      (term) => searchPlayers(term),
-      300, // 300ms debounce
-      (term) => `search_${term}`
-    )
-
-    // Batch processing with memoization
-    const batchProcessor = memoization.batchMemoize(
-      (playerBatch) => processPlayerBatch(playerBatch),
-      100, // Batch size
-      (batch) => `batch_${batch.length}_${batch[0]?.id}`
-    )
-
-    return {
-      expensiveComputed,
-      lazyStats,
-      debouncedSearch,
-      batchProcessor,
-      cacheStats: memoization.getStats()
-    }
-  }
-}
-```
-
-**Array-Specific Memoization:**
-```javascript
-import { useArrayMemoization } from '@/composables/useMemoization'
-
-export default {
-  setup() {
-    const arrayMemo = useArrayMemoization({
-      chunkSize: 1000,
-      enableVirtualization: true
-    })
-
-    // Memoized array processing
-    const processedPlayers = computed(() => {
-      return arrayMemo.processArray(
-        players.value,
-        (chunk) => chunk.map(enhancePlayerData),
-        (array) => `enhanced_${array.length}`
-      )
-    })
-
-    // Memoized filtering
-    const filteredPlayers = computed(() => {
-      return arrayMemo.filterArray(
-        players.value,
-        (player) => player.overall >= 80
-      )
-    })
-
-    // Memoized sorting
-    const sortedPlayers = computed(() => {
-      return arrayMemo.sortArray(
-        players.value,
-        (a, b) => b.overall - a.overall
-      )
-    })
-
-    return {
-      processedPlayers,
-      filteredPlayers,
-      sortedPlayers
-    }
-  }
-}
-```
-
-**Performance Benefits:**
-- **Cache Hit Rates**: 70-90% for repeated operations
-- **Memory Efficiency**: LRU eviction prevents memory bloat
-- **TTL Management**: Automatic cache expiration prevents stale data
-- **Statistics Tracking**: Built-in performance monitoring
-- **Cleanup**: Automatic cleanup on component unmount
-
-#### Enhanced Virtual Scrolling (In Progress)
-
-The application is currently implementing advanced virtual scrolling optimizations for handling large datasets efficiently:
-
-**Current Implementation Status:**
-- ✅ Basic virtual scrolling with Quasar QVirtualScroll
-- ✅ Enhanced VirtualScrollManager with optimized viewport calculations
-- ✅ Item recycling and memory pooling for table rows
-- ✅ Variable height support for different row types
-- ✅ Smooth scrolling with momentum and inertia
+#### Virtual Scrolling
 
 ```vue
 <template>
-  <!-- Enhanced virtual scrolling implementation -->
+  <!-- Large dataset handling with virtual scrolling -->
   <q-virtual-scroll
     :items="filteredPlayers"
     :item-size="playerRowHeight"
     v-slot="{ item, index }"
     style="max-height: 600px"
     @virtual-scroll="onVirtualScroll"
-    :buffer-size="virtualScrollBuffer"
-    :overscan="virtualScrollOverscan"
   >
     <PlayerRow 
       :key="item.id"
       :player="item" 
       :index="index"
       @click="selectPlayer(item)"
-      :recycled="isRecycledRow(index)"
     />
   </q-virtual-scroll>
 </template>
@@ -761,124 +558,37 @@ The application is currently implementing advanced virtual scrolling optimizatio
 <script setup>
 import { computed, ref, onMounted } from 'vue'
 import { usePlayersStore } from '../stores/players'
-import { useVirtualScrolling } from '../composables/useVirtualScrolling'
 
 const playersStore = usePlayersStore()
-const { 
-  playerRowHeight, 
-  virtualScrollBuffer, 
-  virtualScrollOverscan,
-  isRecycledRow,
-  optimizeScrollPerformance 
-} = useVirtualScrolling()
+const playerRowHeight = 60
 
-// Enhanced filtering with advanced caching
+// Efficient filtering with memoization
 const filteredPlayers = computed(() => {
-  return playersStore.getFilteredPlayers() // Uses LRU cache internally
+  return playersStore.players.filter(player => {
+    return applyFilters(player, playersStore.filters)
+  })
 })
 
-// Optimized virtual scroll handler
+// Virtual scroll optimization
 const onVirtualScroll = (info) => {
-  optimizeScrollPerformance(info)
-  
-  // Predictive loading for smooth scrolling
-  if (info.index > filteredPlayers.value.length - 100) {
-    playersStore.preloadMorePlayers()
+  // Load more data if needed
+  if (info.index > filteredPlayers.value.length - 50) {
+    playersStore.loadMorePlayers()
   }
 }
-
-onMounted(() => {
-  // Initialize performance optimizations
-  optimizeScrollPerformance.init()
-})
 </script>
 ```
 
-**Advanced Virtual Scrolling Features (In Development):**
+#### Debounced Search
 
 ```javascript
-// VirtualScrollManager class with enhanced capabilities
-export class VirtualScrollManager {
-  constructor(options = {}) {
-    this.itemHeight = options.itemHeight || 60
-    this.bufferSize = options.bufferSize || 5
-    this.overscan = options.overscan || 2
-    this.recycleThreshold = options.recycleThreshold || 50
-    
-    // Object pool for DOM elements
-    this.elementPool = new ObjectPool(() => this.createElement())
-    
-    // Performance monitoring
-    this.performanceMetrics = {
-      renderTime: 0,
-      scrollFPS: 0,
-      memoryUsage: 0
-    }
-  }
-
-  calculateVisibleRange(scrollTop, containerHeight) {
-    const startIndex = Math.floor(scrollTop / this.itemHeight)
-    const visibleCount = Math.ceil(containerHeight / this.itemHeight)
-    
-    return {
-      startIndex: Math.max(0, startIndex - this.bufferSize),
-      endIndex: Math.min(
-        this.totalItems, 
-        startIndex + visibleCount + this.bufferSize + this.overscan
-      ),
-      visibleStartIndex: startIndex,
-      visibleEndIndex: startIndex + visibleCount
-    }
-  }
-
-  recycleItems(items, visibleRange) {
-    // Efficiently recycle DOM elements for better memory usage
-    const recycledItems = []
-    
-    for (let i = visibleRange.startIndex; i < visibleRange.endIndex; i++) {
-      const element = this.elementPool.acquire()
-      this.updateElement(element, items[i], i)
-      recycledItems.push(element)
-    }
-    
-    return recycledItems
-  }
-
-  optimizeMemoryUsage() {
-    // Release unused elements back to pool
-    this.elementPool.releaseUnused()
-    
-    // Monitor memory usage
-    if (performance.memory) {
-      this.performanceMetrics.memoryUsage = performance.memory.usedJSHeapSize
-    }
-  }
-}
-```
-
-#### Debounced Search with Memoization
-
-```javascript
-// Optimized search with debouncing and memoization
+// Optimized search with debouncing
 import { debounce } from 'lodash-es'
-import { memoize } from '@/composables/useMemoization'
 
 export const usePlayerSearch = () => {
   const searchTerm = ref('')
   const searchResults = ref([])
   const isSearching = ref(false)
-  
-  // Memoized search function for caching results
-  const memoizedSearch = memoize(
-    async (term) => {
-      return await api.searchPlayers({
-        search: term,
-        limit: 50
-      })
-    },
-    (term) => `search_${term}`, // Cache key function
-    { ttl: 300000 } // 5 minutes TTL
-  )
   
   // Debounced search function
   const debouncedSearch = debounce(async (term) => {
@@ -889,8 +599,10 @@ export const usePlayerSearch = () => {
     
     isSearching.value = true
     try {
-      // Use memoized search for better performance
-      const results = await memoizedSearch(term)
+      const results = await api.searchPlayers({
+        search: term,
+        limit: 50 // Limit initial results
+      })
       searchResults.value = results
     } catch (error) {
       console.error('Search failed:', error)
@@ -916,8 +628,6 @@ export const usePlayerSearch = () => {
 
 ```javascript
 // Optimized Pinia store with advanced caching and memory management
-import { memoize } from '@/composables/useMemoization'
-
 export const usePlayersStore = defineStore('players', () => {
   // State - using shallowRef for large arrays to avoid deep reactivity
   const players = shallowRef([])
@@ -955,15 +665,6 @@ export const usePlayersStore = defineStore('players', () => {
   
   const lruCache = new LRUCache(maxCacheSize)
   
-  // Memoized filter function for better performance
-  const memoizedFilter = memoize(
-    (playersArray, filtersObj) => {
-      return playersArray.filter(player => applyFilters(player, filtersObj))
-    },
-    (playersArray, filtersObj) => `${playersArray.length}_${JSON.stringify(filtersObj)}`,
-    { ttl: 300000 } // 5 minutes TTL
-  )
-  
   // Getters with advanced caching
   const filteredPlayers = computed(() => {
     const cacheKey = JSON.stringify(filters.value)
@@ -973,24 +674,13 @@ export const usePlayersStore = defineStore('players', () => {
       return cached
     }
     
-    // Use memoized filter function
-    const filtered = memoizedFilter(players.value, filters.value)
+    const filtered = players.value.filter(player => 
+      applyFilters(player, filters.value)
+    )
     
     lruCache.set(cacheKey, filtered)
     return filtered
   })
-  
-  // Memoized search function
-  const memoizedSearch = memoize(
-    (playersArray, searchTerm) => {
-      return playersArray.filter(player => 
-        player.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        player.club.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    },
-    (playersArray, searchTerm) => `search_${playersArray.length}_${searchTerm}`,
-    { ttl: 180000 } // 3 minutes TTL
-  )
   
   // Batch operations with minimal reactivity triggers
   const updateMultiplePlayers = (updates) => {
@@ -1020,7 +710,6 @@ export const usePlayersStore = defineStore('players', () => {
   return {
     players: readonly(players),
     filteredPlayers,
-    memoizedSearch,
     updateMultiplePlayers,
     cleanup
   }

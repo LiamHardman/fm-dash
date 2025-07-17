@@ -1364,10 +1364,12 @@ export default {
     watch(
       () => props.players,
       () => {
-        cacheGeneration.value++
-        // Clear sorted players cache to force recalculation
-        sortedPlayersCache.value = null
-        lastSortKey.value = ''
+        nextTick(() => {
+          cacheGeneration.value++
+          // Clear sorted players cache to force recalculation
+          sortedPlayersCache.value = null
+          lastSortKey.value = ''
+        })
       },
       { deep: false }
     ) // shallow watch to detect reference changes
@@ -1387,8 +1389,10 @@ export default {
       () => props.isGoalkeeperView,
       () => {
         // Clear player value cache when view mode changes and increment generation
-        cacheGeneration.value++
-        getPlayerValueMemoized.clearCache()
+        nextTick(() => {
+          cacheGeneration.value++
+          getPlayerValueMemoized.clearCache()
+        })
       }
     )
 
