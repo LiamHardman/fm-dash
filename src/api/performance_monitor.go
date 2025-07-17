@@ -80,9 +80,12 @@ func (pt *ParseTimer) Finish(rowsProcessed, errors int64) {
 		atomic.StoreInt64(&globalMetrics.AverageParseTimePerRow, avgTime)
 	}
 
-	LogInfo("Parse operation '%s' completed: %d rows in %v (avg: %v/row, errors: %d)",
-		pt.operation, rowsProcessed, duration,
-		time.Duration(duration.Nanoseconds()/maxInt64(rowsProcessed, 1)), errors)
+	logInfo(pt.context, "Parse operation completed",
+		"operation", pt.operation,
+		"rows_processed", rowsProcessed,
+		"duration_ms", duration.Milliseconds(),
+		"avg_time_per_row_ns", duration.Nanoseconds()/maxInt64(rowsProcessed, 1),
+		"errors", errors)
 }
 
 // JSONTimer tracks JSON operation performance
@@ -186,27 +189,63 @@ func GetMetricsSnapshot() PerformanceMetrics {
 }
 
 // LogPerformanceReport logs a detailed performance report
-func LogPerformanceReport() {
+func LogPerformanceReport(ctx context.Context) {
+	logInfo(ctx, "Generating performance report")
+	start := time.Now()
+	
 	metrics := GetMetricsSnapshot()
 
-	LogInfo("=== PERFORMANCE REPORT ===")
-	LogInfo("Parsing: %d rows, %d players, %d errors",
-		metrics.TotalRowsParsed, metrics.TotalPlayersProcessed, metrics.TotalParseErrors)
-	LogInfo("Average parse time per row: %v", time.Duration(metrics.AverageParseTimePerRow))
-	LogInfo("Memory: Current=%s, Peak=%s, GC=%d",
-		formatBytes(metrics.CurrentMemoryUsage),
-		formatBytes(metrics.PeakMemoryUsage),
-		metrics.GCCollections)
-	LogInfo("Workers: Active=%d, Goroutines=%d",
-		metrics.ActiveWorkers, metrics.CurrentGoroutines)
-	LogInfo("JSON: Marshal=%d ops (%v avg), Unmarshal=%d ops (%v avg)",
-		metrics.JSONMarshalOperations,
-		time.Duration(metrics.JSONMarshalTime/maxInt64(metrics.JSONMarshalOperations, 1)),
-		metrics.JSONUnmarshalOperations,
-		time.Duration(metrics.JSONUnmarshalTime/maxInt64(metrics.JSONUnmarshalOperations, 1)))
-	LogInfo("Channels: Backpressure=%d, Timeouts=%d",
-		metrics.ChannelBackpressureEvents, metrics.ChannelTimeouts)
-	LogInfo("=========================")
+	logInfo(ctx, "=== PERFORMANCE REPORT ===")
+	logInfo(ctx, "Parsing metrics",
+		"rows_parsed", metrics.TotalRowsParsed,
+		"players_processed", metrics.TotalPlayersProcessed,
+		"parse_errors", metrics.TotalParseErrors)
+	logInfo(ctx, "Parse timing",
+		"avg_parse_time_per_row_ns", metrics.AverageParseTimePerRow,
+		"avg_parse_time_per_row", time.Duration(metrics.AverageParseTimePerRow).String())
+	logInfo(ctx, "Memory metrics",
+		"current_memory", formatBytes(metrics.CurrentMemoryUsage),
+		"peak_memory", formatBytes(metrics.PeakMemoryUsage),
+		"gc_collections", metrics.GCCollections)
+	logInfo(ctx, "Worker metrics",
+		"active_workers", metrics.ActiveWorkers,
+		"goroutines", metrics.CurrentGoroutines)
+	logInfo(ctx, "JSON operation metrics",
+		"marshal_operations", metrics.JSONMarshalOperations,
+		"marshal_avg_time", time.Duration(metrics.JSONMarshalTime/maxInt64(metrics.JSONMarshalOperations, 1)).String(),
+		"unmarshal_operations", metrics.JSONUnmarshalOperations,
+		"unmarshal_avg_time", time.Duration(metrics.JSONUnmarshalTime/maxInt64(metrics.JSONUnmarshalOperations, 1)).String())
+	logInfo(ctx, "Channel metrics",
+		"backpressure_events", metrics.ChannelBackpressureEvents,
+		"timeouts", metrics.ChannelTimeouts)
+	
+	logDebug(ctx, "Performance report generation completed",
+		"duration_ms", time.Since(start).Milliseconds())
+}
+
+// LogImmediatePerformanceStats logs performance stats immediately (for use after parsing completion)
+func LogImmediatePerformanceStats() {
+	UpdateMemoryMetrics()
+	metrics := GetMetricsSnapshot()
+	
+	if metrics.TotalRowsParsed > 0 {
+		totalTimeSeconds := float64(metrics.TotalParseTime) / 1e9 // Convert nanoseconds to seconds
+		var rowsPerSecond float64
+		if totalTimeSeconds > 0 {
+			rowsPerSecond = float64(metrics.TotalRowsParsed) / totalTimeSeconds
+		}
+
+		LogInfo("Performance: %d rows parsed, %s memory, %d goroutines, %d workers, %.1fs total time, %.0f rows/sec",
+			metrics.TotalRowsParsed,
+			formatBytes(metrics.CurrentMemoryUsage),
+			metrics.CurrentGoroutines,
+			metrics.ActiveWorkers,
+			totalTimeSeconds,
+			rowsPerSecond)
+		
+		// Update the last logged count to prevent duplicate logging
+		lastLoggedParseCount = metrics.TotalRowsParsed
+	}
 }
 
 // formatBytes formats byte counts for human reading
@@ -231,30 +270,47 @@ func maxInt64(a, b int64) int64 {
 	return b
 }
 
+// Global variable to track last logged parse count
+var lastLoggedParseCount int64
+
 // StartPerformanceMonitoring starts a background goroutine to periodically log performance metrics
 func StartPerformanceMonitoring(interval time.Duration) {
+	ctx := context.Background()
+	logInfo(ctx, "Starting performance monitoring", "interval_seconds", interval.Seconds())
+	
 	go func() {
+		// Create a background context for the goroutine
+		monitorCtx := context.Background()
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 
+		logDebug(monitorCtx, "Performance monitoring goroutine started", "interval_seconds", interval.Seconds())
+
 		for range ticker.C {
 			UpdateMemoryMetrics()
-			// Log summary every interval
+			// Only log if there's been new parsing activity since last log
 			metrics := GetMetricsSnapshot()
-			if metrics.TotalRowsParsed > 0 {
+			currentParseCount := metrics.TotalRowsParsed
+			
+			if currentParseCount > 0 && currentParseCount != lastLoggedParseCount {
 				totalTimeSeconds := float64(metrics.TotalParseTime) / 1e9 // Convert nanoseconds to seconds
 				var rowsPerSecond float64
 				if totalTimeSeconds > 0 {
 					rowsPerSecond = float64(metrics.TotalRowsParsed) / totalTimeSeconds
 				}
 
-				LogInfo("Performance: %d rows parsed, %s memory, %d goroutines, %d workers, %.1fs total time, %.0f rows/sec",
-					metrics.TotalRowsParsed,
-					formatBytes(metrics.CurrentMemoryUsage),
-					metrics.CurrentGoroutines,
-					metrics.ActiveWorkers,
-					totalTimeSeconds,
-					rowsPerSecond)
+				logInfo(monitorCtx, "Performance monitoring update",
+					"rows_parsed", metrics.TotalRowsParsed,
+					"memory_usage_mb", fmt.Sprintf("%.1f", float64(metrics.CurrentMemoryUsage)/1024/1024),
+					"memory_usage_formatted", formatBytes(metrics.CurrentMemoryUsage),
+					"goroutines", metrics.CurrentGoroutines,
+					"active_workers", metrics.ActiveWorkers,
+					"total_time_seconds", totalTimeSeconds,
+					"rows_per_second", rowsPerSecond,
+					"gc_collections", metrics.GCCollections)
+				
+				// Update the last logged count
+				lastLoggedParseCount = currentParseCount
 			}
 		}
 	}()

@@ -1104,7 +1104,7 @@ func InitializeStorage(ctx context.Context) StorageInterface {
 		return protobufStorage
 	}
 
-	logInfo(ctx, "Storage initialization completed",
+	logDebug(ctx, "Storage initialization completed",
 		"storage_type", "json",
 		"duration_ms", time.Since(start).Milliseconds())
 	return baseStorage
@@ -1115,7 +1115,7 @@ func InitializeStorage(ctx context.Context) StorageInterface {
 //
 //nolint:ireturn // StorageInterface is the intended return type for this factory function
 func CreateProtobufEnabledStorage(ctx context.Context, backend StorageInterface) StorageInterface {
-	logInfo(ctx, "Creating protobuf-enabled storage wrapper")
+	logDebug(ctx, "Creating protobuf-enabled storage wrapper")
 	return CreateProtobufStorage(backend)
 }
 
@@ -1137,7 +1137,7 @@ type StorageConfiguration struct {
 
 // validateStorageConfiguration validates the storage configuration from environment variables
 func validateStorageConfiguration(ctx context.Context) StorageConfiguration {
-	logInfo(ctx, "Validating storage configuration")
+	logDebug(ctx, "Validating storage configuration")
 	start := time.Now()
 
 	config := StorageConfiguration{
@@ -1167,7 +1167,7 @@ func validateStorageConfiguration(ctx context.Context) StorageConfiguration {
 
 	// Log configuration validation results
 	if config.ConfigValid {
-		logInfo(ctx, "Storage configuration validation completed",
+		logDebug(ctx, "Storage configuration validation completed",
 			"use_protobuf", config.UseProtobuf,
 			"duration_ms", time.Since(start).Milliseconds())
 	} else {
@@ -1184,14 +1184,9 @@ func validateStorageConfiguration(ctx context.Context) StorageConfiguration {
 // createProtobufStorageWithFallback creates protobuf storage with graceful fallback handling
 //nolint:ireturn // This function is designed to return different storage implementations
 func createProtobufStorageWithFallback(ctx context.Context, baseStorage StorageInterface) (StorageInterface, error) {
-	logInfo(ctx, "Creating protobuf storage with fallback handling")
+	logDebug(ctx, "Creating protobuf storage with fallback handling")
 	start := time.Now()
 
-	// Validate that protobuf dependencies are available
-	if err := validateProtobufDependencies(ctx); err != nil {
-		logError(ctx, "Protobuf dependencies validation failed", "error", err)
-		return nil, fmt.Errorf("protobuf dependencies validation failed: %w", err)
-	}
 
 	// Create protobuf storage wrapper
 	protobufStorage := CreateProtobufStorage(baseStorage)
@@ -1207,33 +1202,14 @@ func createProtobufStorageWithFallback(ctx context.Context, baseStorage StorageI
 		return nil, fmt.Errorf("protobuf storage functionality test failed: %w", err)
 	}
 
-	logInfo(ctx, "Protobuf storage created and validated successfully",
+	logDebug(ctx, "Protobuf storage created and validated successfully",
 		"duration_ms", time.Since(start).Milliseconds())
 	return protobufStorage, nil
 }
 
-// validateProtobufDependencies checks if protobuf dependencies are available
-func validateProtobufDependencies(ctx context.Context) error {
-	logInfo(ctx, "Validating protobuf dependencies")
-	start := time.Now()
-
-	// This is a placeholder for dependency validation
-	// In a real implementation, you might check for:
-	// - Protobuf library availability
-	// - Generated protobuf code presence
-	// - Required protobuf version compatibility
-
-	// For now, we'll assume dependencies are available
-	// In production, you would add actual validation logic here
-
-	logInfo(ctx, "Protobuf dependencies validation completed",
-		"duration_ms", time.Since(start).Milliseconds())
-	return nil
-}
-
 // testProtobufStorage performs a basic functionality test on protobuf storage
 func testProtobufStorage(ctx context.Context, _ StorageInterface) error {
-	logInfo(ctx, "Testing protobuf storage functionality")
+	logDebug(ctx, "Testing protobuf storage functionality")
 	start := time.Now()
 
 	// This is a placeholder for protobuf storage testing
@@ -1245,7 +1221,7 @@ func testProtobufStorage(ctx context.Context, _ StorageInterface) error {
 	// For now, we'll assume the test passes
 	// In production, you would add actual test logic here
 
-	logInfo(ctx, "Protobuf storage functionality test completed",
+	logDebug(ctx, "Protobuf storage functionality test completed",
 		"duration_ms", time.Since(start).Milliseconds())
 	return nil
 }
@@ -1253,7 +1229,7 @@ func testProtobufStorage(ctx context.Context, _ StorageInterface) error {
 // initializeBaseStorage creates the underlying storage backend (S3, hybrid, or in-memory)
 //nolint:ireturn // This function is designed to return different storage implementations
 func initializeBaseStorage(ctx context.Context) StorageInterface {
-	logInfo(ctx, "Initializing base storage backend")
+	logDebug(ctx, "Initializing base storage backend")
 	start := time.Now()
 
 	inMemory := CreateInMemoryStorage()

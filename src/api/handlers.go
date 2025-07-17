@@ -700,6 +700,10 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		"goroutines", runtime.NumGoroutine(),
 		"trace_id", GetTraceID(ctx),
 		"span_id", GetSpanID(ctx))
+
+	// Log immediate performance and memory stats after parsing completion
+	LogImmediatePerformanceStats()
+	LogImmediateMemoryStats(ctx)
 }
 
 // playerDataHandler handles GET requests for retrieving player data by dataset ID.

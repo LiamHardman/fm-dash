@@ -45,7 +45,7 @@ func (r *RoleOverallScore) ToProto(ctx context.Context) (*proto.RoleOverallScore
 		attribute.Int("role.score", r.Score),
 	)
 
-	logInfo(ctx, "Starting RoleOverallScore conversion to protobuf",
+	logDebug(ctx, "Starting RoleOverallScore conversion to protobuf",
 		"role_name", r.RoleName,
 		"conversion_type", "role_overall_score",
 		"conversion_direction", "to_protobuf")
@@ -385,7 +385,7 @@ func (d *PlayerDataWithCurrency) ToProto(ctx context.Context) (*proto.DatasetDat
 		attribute.String("dataset.currency_symbol", d.CurrencySymbol),
 	)
 
-	logInfo(ctx, "Converting DatasetData to protobuf",
+	logDebug(ctx, "Converting DatasetData to protobuf",
 		"player_count", len(d.Players),
 		"conversion_type", "dataset_data",
 		"conversion_direction", "to_protobuf",
