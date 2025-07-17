@@ -53,15 +53,15 @@ var (
 
 // SetMemoryOptimizationConfig updates the global configuration
 func SetMemoryOptimizationConfig(ctx context.Context, config MemoryOptimizationConfig) {
-	logInfo(ctx, "Updating memory optimization configuration", 
+	logDebug(ctx, "Updating memory optimization configuration",
 		"string_interning", config.UseStringInterning,
 		"optimized_structs", config.UseOptimizedStructs,
 		"copy_on_write", config.UseCopyOnWrite,
 		"object_pooling", config.UseObjectPooling,
 		"monitor_memory", config.MonitorMemoryUsage)
-	
+
 	memoryOptConfig = config
-	
+
 	logDebug(ctx, "Memory optimization configuration updated successfully")
 }
 
@@ -123,7 +123,7 @@ func OptimizePlayerData(ctx context.Context, players []Player) ([]Player, error)
 	}
 
 	duration := time.Since(startTime)
-	logInfo(ctx, "Player data optimization completed", 
+	logInfo(ctx, "Player data optimization completed",
 		"player_count", len(players),
 		"duration_ms", duration.Milliseconds(),
 		"memory_before_mb", originalMemory.TotalAllocMB,
@@ -274,9 +274,9 @@ func GetMemoryOptimizationHandler() func(w http.ResponseWriter, r *http.Request)
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		start := time.Now()
-		
+
 		logDebug(ctx, "Processing memory optimization report request")
-		
+
 		if r.Method != "GET" {
 			logWarn(ctx, "Invalid HTTP method for memory optimization endpoint", "method", r.Method)
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -375,7 +375,7 @@ func startMemoryMonitoring() {
 	// Create background context for monitoring
 	ctx := context.Background()
 	logDebug(ctx, "Starting memory monitoring background process")
-	
+
 	// More frequent monitoring for better memory management
 	ticker := time.NewTicker(30 * time.Second) // Changed back to 30s for better responsiveness
 	defer ticker.Stop()
@@ -386,14 +386,14 @@ func startMemoryMonitoring() {
 		// Only log memory stats if there's been significant change or new GC activity
 		memoryChanged := abs(stats.TotalAllocMB-lastLoggedMemoryMB) > 10.0 // Log if memory changed by more than 10MB
 		gcActivityChanged := stats.NumGC != lastLoggedGCCount
-		
+
 		if stats.TotalAllocMB > 64 && (memoryChanged || gcActivityChanged) {
 			logInfo(ctx, "Memory stats",
 				"allocated_mb", stats.TotalAllocMB,
 				"system_mb", stats.SysMemoryMB,
 				"gc_count", stats.NumGC,
 				"gc_pause_ms", stats.GCPauseMS)
-			
+
 			// Update last logged values
 			lastLoggedMemoryMB = stats.TotalAllocMB
 			lastLoggedGCCount = stats.NumGC
@@ -402,8 +402,8 @@ func startMemoryMonitoring() {
 		// Enhanced memory pressure levels with automatic responses
 		switch {
 		case stats.TotalAllocMB > 4096: // Critical level - increased to 4096MB
-			logError(ctx, "CRITICAL: Memory usage triggering aggressive cleanup", 
-				"memory_mb", stats.TotalAllocMB, 
+			logError(ctx, "CRITICAL: Memory usage triggering aggressive cleanup",
+				"memory_mb", stats.TotalAllocMB,
 				"action", "aggressive_cleanup")
 
 			// Force garbage collection multiple times for more aggressive cleanup
@@ -430,8 +430,8 @@ func startMemoryMonitoring() {
 			// Adjust GOGC for more aggressive collection
 			debug.SetGCPercent(25) // Much more aggressive GC
 		case stats.TotalAllocMB > 1024: // Warning level - increased to 1024MB
-			logWarn(ctx, "High memory usage triggering cache cleanup", 
-				"memory_mb", stats.TotalAllocMB, 
+			logWarn(ctx, "High memory usage triggering cache cleanup",
+				"memory_mb", stats.TotalAllocMB,
 				"action", "cache_cleanup")
 
 			// Trigger cache cleanup - clear 50% of cache
@@ -463,20 +463,20 @@ func startMemoryMonitoring() {
 func LogImmediateMemoryStats(ctx context.Context) {
 	start := time.Now()
 	logDebug(ctx, "Logging immediate memory stats")
-	
+
 	stats := GetCurrentMemoryStats()
-	
+
 	if stats.TotalAllocMB > 64 {
 		logInfo(ctx, "Memory stats",
 			"allocated_mb", stats.TotalAllocMB,
 			"system_mb", stats.SysMemoryMB,
 			"gc_count", stats.NumGC,
 			"gc_pause_ms", stats.GCPauseMS)
-		
+
 		// Update last logged values to prevent duplicate logging
 		lastLoggedMemoryMB = stats.TotalAllocMB
 		lastLoggedGCCount = stats.NumGC
 	}
-	
+
 	logDebug(ctx, "Memory stats logging completed", "duration_ms", time.Since(start).Milliseconds())
 }

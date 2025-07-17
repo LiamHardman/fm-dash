@@ -192,7 +192,7 @@ func GetMetricsSnapshot() PerformanceMetrics {
 func LogPerformanceReport(ctx context.Context) {
 	logInfo(ctx, "Generating performance report")
 	start := time.Now()
-	
+
 	metrics := GetMetricsSnapshot()
 
 	logInfo(ctx, "=== PERFORMANCE REPORT ===")
@@ -218,7 +218,7 @@ func LogPerformanceReport(ctx context.Context) {
 	logInfo(ctx, "Channel metrics",
 		"backpressure_events", metrics.ChannelBackpressureEvents,
 		"timeouts", metrics.ChannelTimeouts)
-	
+
 	logDebug(ctx, "Performance report generation completed",
 		"duration_ms", time.Since(start).Milliseconds())
 }
@@ -227,7 +227,7 @@ func LogPerformanceReport(ctx context.Context) {
 func LogImmediatePerformanceStats() {
 	UpdateMemoryMetrics()
 	metrics := GetMetricsSnapshot()
-	
+
 	if metrics.TotalRowsParsed > 0 {
 		totalTimeSeconds := float64(metrics.TotalParseTime) / 1e9 // Convert nanoseconds to seconds
 		var rowsPerSecond float64
@@ -242,7 +242,7 @@ func LogImmediatePerformanceStats() {
 			metrics.ActiveWorkers,
 			totalTimeSeconds,
 			rowsPerSecond)
-		
+
 		// Update the last logged count to prevent duplicate logging
 		lastLoggedParseCount = metrics.TotalRowsParsed
 	}
@@ -276,8 +276,8 @@ var lastLoggedParseCount int64
 // StartPerformanceMonitoring starts a background goroutine to periodically log performance metrics
 func StartPerformanceMonitoring(interval time.Duration) {
 	ctx := context.Background()
-	logInfo(ctx, "Starting performance monitoring", "interval_seconds", interval.Seconds())
-	
+	logDebug(ctx, "Starting performance monitoring", "interval_seconds", interval.Seconds())
+
 	go func() {
 		// Create a background context for the goroutine
 		monitorCtx := context.Background()
@@ -291,7 +291,7 @@ func StartPerformanceMonitoring(interval time.Duration) {
 			// Only log if there's been new parsing activity since last log
 			metrics := GetMetricsSnapshot()
 			currentParseCount := metrics.TotalRowsParsed
-			
+
 			if currentParseCount > 0 && currentParseCount != lastLoggedParseCount {
 				totalTimeSeconds := float64(metrics.TotalParseTime) / 1e9 // Convert nanoseconds to seconds
 				var rowsPerSecond float64
@@ -308,7 +308,7 @@ func StartPerformanceMonitoring(interval time.Duration) {
 					"total_time_seconds", totalTimeSeconds,
 					"rows_per_second", rowsPerSecond,
 					"gc_collections", metrics.GCCollections)
-				
+
 				// Update the last logged count
 				lastLoggedParseCount = currentParseCount
 			}

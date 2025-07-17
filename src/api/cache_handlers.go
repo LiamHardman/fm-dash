@@ -117,7 +117,7 @@ func (c *CacheStorageWrapper) DeleteCacheData(ctx context.Context, cacheKey stri
 
 // InitCacheStorage initializes the cache storage system
 func InitCacheStorage(ctx context.Context) {
-	logInfo(ctx, "Initializing cache storage system", "cache_version", cacheVersion)
+	logDebug(ctx, "Initializing cache storage system", "cache_version", cacheVersion)
 	start := time.Now()
 
 	// Cache storage initialization logic would go here
