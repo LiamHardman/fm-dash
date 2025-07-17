@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/LiamHardman/fm-dash/compare/v1.3.1...v1.4.0) (2025-07-17)
+
+
+### Features
+
+* implement comprehensive protobuf storage backend with performance optimizations ([c784806](https://github.com/LiamHardman/fm-dash/commit/c784806bc78022925c69a00d492c270a52e7b625))
+
 ## [1.3.1](https://github.com/LiamHardman/fm-dash/compare/v1.3.0...v1.3.1) (2025-07-15)
 
 
