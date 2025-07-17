@@ -1,3 +1,10 @@
+## [1.4.2](https://github.com/LiamHardman/fm-dash/compare/v1.4.1...v1.4.2) (2025-07-17)
+
+
+### Bug Fixes
+
+* resolved chunk bundling issues leading to white page on frontend ([7405c95](https://github.com/LiamHardman/fm-dash/commit/7405c9567c4fe2f890e3bd791bc4a645ecf4aa6f))
+
 ## [1.4.1](https://github.com/LiamHardman/fm-dash/compare/v1.4.0...v1.4.1) (2025-07-17)
 
 
