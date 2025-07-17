@@ -150,7 +150,7 @@ func main() {
 	InitInMemoryCache()
 
 	// Initialize cache storage system
-	InitCacheStorage()
+	InitCacheStorage(context.Background())
 
 	// Initialize memory optimizations
 	InitializeMemoryOptimizations()
