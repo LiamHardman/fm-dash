@@ -8,6 +8,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -68,11 +69,11 @@ func TestEndToEndSystemFunctionality(t *testing.T) {
 func testCompleteDataFlow(t *testing.T, useProtobuf bool) {
 	ctx := context.Background()
 	start := time.Now()
-	
-	logInfo(ctx, "Starting complete data flow test", 
+
+	logInfo(ctx, "Starting complete data flow test",
 		"backend_type", getBackendName(useProtobuf),
 		"use_protobuf", useProtobuf)
-	
+
 	// Step 1: Upload HTML file
 	t.Logf("Step 1: Testing HTML upload with %s backend", getBackendName(useProtobuf))
 	datasetID := testHTMLUploadFlow(ctx, t, useProtobuf)
@@ -126,7 +127,7 @@ func testCompleteDataFlow(t *testing.T, useProtobuf bool) {
 // testHTMLUploadFlow tests the HTML upload process
 func testHTMLUploadFlow(ctx context.Context, t *testing.T, useProtobuf bool) string {
 	start := time.Now()
-	
+
 	logInfo(ctx, "Starting HTML upload flow test",
 		"backend_type", getBackendName(useProtobuf),
 		"use_protobuf", useProtobuf)
@@ -192,11 +193,11 @@ func testHTMLUploadFlow(ctx context.Context, t *testing.T, useProtobuf bool) str
 // waitForAsyncProcessing waits for async processing to complete
 func waitForAsyncProcessing(ctx context.Context, t *testing.T, datasetID string, timeout time.Duration) {
 	start := time.Now()
-	
+
 	logInfo(ctx, "Starting async processing wait",
 		"dataset_id", datasetID,
 		"timeout_seconds", timeout.Seconds())
-	
+
 	timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
@@ -240,7 +241,7 @@ func waitForAsyncProcessing(ctx context.Context, t *testing.T, datasetID string,
 // testDataRetrievalFlow tests data retrieval functionality
 func testDataRetrievalFlow(ctx context.Context, t *testing.T, datasetID string, useProtobuf bool) []Player {
 	start := time.Now()
-	
+
 	logInfo(ctx, "Starting data retrieval flow test",
 		"dataset_id", datasetID,
 		"backend_type", getBackendName(useProtobuf))
@@ -284,7 +285,7 @@ func testDataRetrievalFlow(ctx context.Context, t *testing.T, datasetID string, 
 // testDataIntegrityFlow validates data integrity throughout the system
 func testDataIntegrityFlow(ctx context.Context, t *testing.T, players []Player, _ bool) {
 	start := time.Now()
-	
+
 	logInfo(ctx, "Starting data integrity validation",
 		"player_count", len(players))
 	// Check that all players have required fields
@@ -350,7 +351,7 @@ func testDataIntegrityFlow(ctx context.Context, t *testing.T, players []Player, 
 // testAPIEndpointsFlow tests all API endpoints with real data
 func testAPIEndpointsFlow(ctx context.Context, t *testing.T, datasetID string, _ bool) {
 	start := time.Now()
-	
+
 	logInfo(ctx, "Starting API endpoints flow test",
 		"dataset_id", datasetID)
 	// Test roles endpoint
@@ -376,7 +377,8 @@ func testAPIEndpointsFlow(ctx context.Context, t *testing.T, datasetID string, _
 	if err := json.Unmarshal(w.Body.Bytes(), &leagues); err == nil && len(leagues) > 0 {
 		// Test teams endpoint
 		leagueName := leagues[0].Name
-		req = httptest.NewRequest("GET", fmt.Sprintf("/api/teams/%s?league=%s", datasetID, leagueName), nil)
+		encodedLeagueName := url.QueryEscape(leagueName)
+		req = httptest.NewRequest("GET", fmt.Sprintf("/api/teams/%s?league=%s", datasetID, encodedLeagueName), nil)
 		w = httptest.NewRecorder()
 		teamsHandler(w, req)
 
@@ -415,7 +417,7 @@ func testAPIEndpointsFlow(ctx context.Context, t *testing.T, datasetID string, _
 func testFilteringAndSearchFlow(t *testing.T, datasetID string, _ bool) {
 	ctx := context.Background()
 	start := time.Now()
-	
+
 	logInfo(ctx, "Starting filtering and search flow test",
 		"dataset_id", datasetID)
 	// Test various filters
@@ -493,7 +495,7 @@ func testFilteringAndSearchFlow(t *testing.T, datasetID string, _ bool) {
 // testPerformanceUnderLoad tests system behavior under various load conditions
 func testPerformanceUnderLoad(ctx context.Context, t *testing.T, datasetID string, _ bool) {
 	start := time.Now()
-	
+
 	logInfo(ctx, "Starting performance under load test",
 		"dataset_id", datasetID)
 	// Test concurrent requests
@@ -553,7 +555,7 @@ func testPerformanceUnderLoad(ctx context.Context, t *testing.T, datasetID strin
 
 	duration := time.Since(start)
 	totalRequests := concurrency * requestsPerWorker
-	
+
 	if errorCount > 0 {
 		logError(ctx, "Performance test failed with errors",
 			"error_count", errorCount,
@@ -577,7 +579,7 @@ func testPerformanceUnderLoad(ctx context.Context, t *testing.T, datasetID strin
 // testMonitoringAndLogging verifies monitoring and logging work correctly
 func testMonitoringAndLogging(ctx context.Context, t *testing.T, datasetID string, _ bool) {
 	start := time.Now()
-	
+
 	logInfo(ctx, "Starting monitoring and logging test",
 		"dataset_id", datasetID)
 	// Test that requests generate appropriate logs and metrics
@@ -622,7 +624,6 @@ func testMonitoringAndLogging(ctx context.Context, t *testing.T, datasetID strin
 
 	t.Logf("Monitoring and logging test completed")
 }
-
 
 // createComprehensiveTestHTML creates comprehensive test HTML with various player types
 func createComprehensiveTestHTML() string {

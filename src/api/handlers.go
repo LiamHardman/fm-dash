@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"math"
 	"net/http"
+	"net/url"
 	"os"
 	"runtime"
 	"sort"
@@ -1769,7 +1770,7 @@ func performSearch(players []Player, query string) []SearchResult {
 				Name:        leagueName,
 				Type:        "league",
 				Description: fmt.Sprintf("%d players", playerCount),
-				URL:         fmt.Sprintf("/leagues?league=%s", leagueName),
+				URL:         fmt.Sprintf("/leagues?league=%s", url.QueryEscape(leagueName)),
 			})
 		}
 	}
@@ -1818,7 +1819,7 @@ func performSearch(players []Player, query string) []SearchResult {
 				Name:        nationName,
 				Type:        "nation",
 				Description: fmt.Sprintf("%d players", playerCount),
-				URL:         fmt.Sprintf("/nations?nation=%s", nationName),
+				URL:         fmt.Sprintf("/nations?nation=%s", url.QueryEscape(nationName)),
 			})
 		}
 	}
