@@ -92,6 +92,23 @@ export default defineConfig({
       output: {
         // Advanced manual chunks for optimal caching and loading
         manualChunks: id => {
+          // Store modules - load early and separately to prevent initialization issues
+          if (id.includes('stores/')) {
+            if (id.includes('optimizedPlayerStore.js')) {
+              return 'store-optimized-player'
+            }
+            if (id.includes('playerStore.js')) {
+              return 'store-player'
+            }
+            if (id.includes('uiStore.js')) {
+              return 'store-ui'
+            }
+            if (id.includes('wishlistStore.js')) {
+              return 'store-wishlist'
+            }
+            return 'store-misc'
+          }
+
           // Route-based chunks for major pages
           if (
             id.includes('pages/PlayerUploadPage.vue') ||
@@ -127,18 +144,9 @@ export default defineConfig({
               return 'vendor-vue-core'
             }
 
-            // Quasar UI framework - split into smaller chunks to avoid large bundle
-            if (
-              id.includes('quasar/dist/quasar.esm.prod.js') ||
-              id.includes('quasar/dist/quasar.common.js')
-            ) {
-              return 'vendor-quasar-core'
-            }
-            if (id.includes('quasar/src/components') || id.includes('quasar/dist/icon-set')) {
-              return 'vendor-quasar-components'
-            }
-            if (id.includes('@quasar/extras')) {
-              return 'vendor-quasar-extras'
+            // Quasar UI framework - keep together to prevent initialization issues
+            if (id.includes('quasar') || id.includes('@quasar/extras')) {
+              return 'vendor-quasar'
             }
 
             // Charts and visualization - separate by library to reduce size
@@ -198,14 +206,9 @@ export default defineConfig({
             return 'component-charts-filters'
           }
 
-          // Composables and utilities
+          // Composables and utilities - separate from stores
           if (id.includes('composables/') || id.includes('utils/') || id.includes('services/')) {
             return 'shared-utilities'
-          }
-
-          // Store modules
-          if (id.includes('stores/')) {
-            return 'shared-stores'
           }
         },
         chunkFileNames: chunkInfo => {

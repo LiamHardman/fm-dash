@@ -1,9 +1,9 @@
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef, triggerRef } from 'vue'
+import { useArrayMemoization, useMemoization } from '../composables/useMemoization.js'
 import playerService from '../services/playerService.js'
-import { PerformanceTracker } from '../utils/performance.js'
 import IndexedMap from '../utils/IndexedMap.js'
-import { useMemoization, useArrayMemoization } from '../composables/useMemoization.js'
+import { PerformanceTracker } from '../utils/performance.js'
 
 export const useOptimizedPlayerStore = defineStore('optimizedPlayer', () => {
   // Use shallowRef for large datasets to avoid deep reactivity overhead
@@ -15,24 +15,48 @@ export const useOptimizedPlayerStore = defineStore('optimizedPlayer', () => {
   const error = ref('')
   const allAvailableRoles = ref([])
 
-  // Initialize memoization for expensive computations
-  const memoization = useMemoization({
-    maxCacheSize: 500,
-    ttl: 600000, // 10 minutes
-    enableStats: true
-  })
+  // Initialize memoization for expensive computations with error handling
+  let memoization = null
+  let arrayMemoization = null
 
-  const arrayMemoization = useArrayMemoization({
-    chunkSize: 2000,
-    enableVirtualization: true
-  })
+  const initializeMemoization = () => {
+    try {
+      if (!memoization) {
+        memoization = useMemoization({
+          maxCacheSize: 500,
+          ttl: 600000, // 10 minutes
+          enableStats: true
+        })
+      }
+
+      if (!arrayMemoization) {
+        arrayMemoization = useArrayMemoization({
+          chunkSize: 2000,
+          enableVirtualization: true
+        })
+      }
+    } catch (error) {
+      console.warn('Failed to initialize memoization:', error)
+      // Fallback to basic computed properties
+      memoization = {
+        lazyComputed: (fn, deps) => computed(fn),
+        memoizedComputed: (fn, keyFn, options) => computed(fn)
+      }
+      arrayMemoization = {
+        processArray: (arr, fn) => [fn(arr)]
+      }
+    }
+  }
+
+  // Initialize memoization immediately
+  initializeMemoization()
 
   // Constants
   const AGE_SLIDER_MIN_DEFAULT = 15
   const AGE_SLIDER_MAX_DEFAULT = 50
 
   // Initialize IndexedMap for O(1) lookups
-  const initializeIndexedMap = (players) => {
+  const initializeIndexedMap = players => {
     if (!Array.isArray(players) || players.length === 0) {
       playersIndexedMap.value = null
       return
@@ -40,13 +64,7 @@ export const useOptimizedPlayerStore = defineStore('optimizedPlayer', () => {
 
     const indexedMap = new IndexedMap({
       primaryKey: 'name',
-      indexes: [
-        'club',
-        'nationality', 
-        'position',
-        'personality',
-        'media_handling'
-      ]
+      indexes: ['club', 'nationality', 'position', 'personality', 'media_handling']
     })
 
     // Add unique ID if not present and bulk insert
@@ -56,93 +74,161 @@ export const useOptimizedPlayerStore = defineStore('optimizedPlayer', () => {
     }))
 
     const bulkResult = indexedMap.bulkSet(playersWithId)
-    console.log(`IndexedMap initialized: ${bulkResult.inserted} players, ${bulkResult.itemsPerSecond} items/sec`)
-    
+    console.log(
+      `IndexedMap initialized: ${bulkResult.inserted} players, ${bulkResult.itemsPerSecond} items/sec`
+    )
+
     playersIndexedMap.value = indexedMap
     triggerRef(playersIndexedMap) // Manually trigger reactivity
   }
 
   // Optimized computed properties with lazy evaluation and memoization
-  const uniqueClubs = memoization.lazyComputed(() => {
+  const uniqueClubs = computed(() => {
+    // Ensure memoization is initialized
+    if (!memoization) {
+      initializeMemoization()
+    }
+
     if (playersIndexedMap.value) {
       return playersIndexedMap.value.getUniqueValues('club').sort()
     }
-    
-    if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) return []
-    
-    return arrayMemoization.processArray(
-      allPlayers.value,
-      (chunk) => {
-        const clubs = new Set()
-        for (const player of chunk) {
-          if (player.club) clubs.add(player.club)
-        }
-        return Array.from(clubs)
-      }
-    ).flat().sort()
-  }, [allPlayers, playersIndexedMap])
 
-  const uniqueNationalities = memoization.lazyComputed(() => {
+    if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) return []
+
+    if (arrayMemoization) {
+      return arrayMemoization
+        .processArray(allPlayers.value, chunk => {
+          const clubs = new Set()
+          for (const player of chunk) {
+            if (player.club) clubs.add(player.club)
+          }
+          return Array.from(clubs)
+        })
+        .flat()
+        .sort()
+    }
+
+    // Fallback implementation
+    const clubs = new Set()
+    for (const player of allPlayers.value) {
+      if (player.club) clubs.add(player.club)
+    }
+    return Array.from(clubs).sort()
+  })
+
+  const uniqueNationalities = computed(() => {
+    // Ensure memoization is initialized
+    if (!memoization) {
+      initializeMemoization()
+    }
+
     if (playersIndexedMap.value) {
       return playersIndexedMap.value.getUniqueValues('nationality').sort()
     }
-    
-    if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) return []
-    
-    return arrayMemoization.processArray(
-      allPlayers.value,
-      (chunk) => {
-        const nationalities = new Set()
-        for (const player of chunk) {
-          if (player.nationality) nationalities.add(player.nationality)
-        }
-        return Array.from(nationalities)
-      }
-    ).flat().sort()
-  }, [allPlayers, playersIndexedMap])
 
-  const uniqueMediaHandlings = memoization.lazyComputed(() => {
     if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) return []
-    
-    return arrayMemoization.processArray(
-      allPlayers.value,
-      (chunk) => {
-        const mediaHandlings = new Set()
-        for (const player of chunk) {
-          if (player.media_handling) {
-            for (const style of player.media_handling.split(',')) {
-              const trimmedStyle = style.trim()
-              if (trimmedStyle) mediaHandlings.add(trimmedStyle)
+
+    if (arrayMemoization) {
+      return arrayMemoization
+        .processArray(allPlayers.value, chunk => {
+          const nationalities = new Set()
+          for (const player of chunk) {
+            if (player.nationality) nationalities.add(player.nationality)
+          }
+          return Array.from(nationalities)
+        })
+        .flat()
+        .sort()
+    }
+
+    // Fallback implementation
+    const nationalities = new Set()
+    for (const player of allPlayers.value) {
+      if (player.nationality) nationalities.add(player.nationality)
+    }
+    return Array.from(nationalities).sort()
+  })
+
+  const uniqueMediaHandlings = computed(() => {
+    // Ensure memoization is initialized
+    if (!memoization) {
+      initializeMemoization()
+    }
+
+    if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) return []
+
+    if (arrayMemoization) {
+      return arrayMemoization
+        .processArray(allPlayers.value, chunk => {
+          const mediaHandlings = new Set()
+          for (const player of chunk) {
+            if (player.media_handling) {
+              for (const style of player.media_handling.split(',')) {
+                const trimmedStyle = style.trim()
+                if (trimmedStyle) mediaHandlings.add(trimmedStyle)
+              }
             }
           }
-        }
-        return Array.from(mediaHandlings)
-      }
-    ).flat().sort()
-  }, [allPlayers])
+          return Array.from(mediaHandlings)
+        })
+        .flat()
+        .sort()
+    }
 
-  const uniquePersonalities = memoization.lazyComputed(() => {
+    // Fallback implementation
+    const mediaHandlings = new Set()
+    for (const player of allPlayers.value) {
+      if (player.media_handling) {
+        for (const style of player.media_handling.split(',')) {
+          const trimmedStyle = style.trim()
+          if (trimmedStyle) mediaHandlings.add(trimmedStyle)
+        }
+      }
+    }
+    return Array.from(mediaHandlings).sort()
+  })
+
+  const uniquePersonalities = computed(() => {
+    // Ensure memoization is initialized
+    if (!memoization) {
+      initializeMemoization()
+    }
+
     if (playersIndexedMap.value) {
       return playersIndexedMap.value.getUniqueValues('personality').sort()
     }
-    
-    if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) return []
-    
-    return arrayMemoization.processArray(
-      allPlayers.value,
-      (chunk) => {
-        const personalities = new Set()
-        for (const player of chunk) {
-          if (player.personality) personalities.add(player.personality)
-        }
-        return Array.from(personalities)
-      }
-    ).flat().sort()
-  }, [allPlayers, playersIndexedMap])
 
-  const uniquePositionsCount = memoization.lazyComputed(() => {
+    if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) return []
+
+    if (arrayMemoization) {
+      return arrayMemoization
+        .processArray(allPlayers.value, chunk => {
+          const personalities = new Set()
+          for (const player of chunk) {
+            if (player.personality) personalities.add(player.personality)
+          }
+          return Array.from(personalities)
+        })
+        .flat()
+        .sort()
+    }
+
+    // Fallback implementation
+    const personalities = new Set()
+    for (const player of allPlayers.value) {
+      if (player.personality) personalities.add(player.personality)
+    }
+    return Array.from(personalities).sort()
+  })
+
+  const uniquePositionsCount = computed(() => {
+    // Ensure memoization is initialized
+    if (!memoization) {
+      initializeMemoization()
+    }
+
     if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) return 0
-    
+
     const positions = new Set()
     for (const player of allPlayers.value) {
       if (player.parsedPositions) {
@@ -152,42 +238,75 @@ export const useOptimizedPlayerStore = defineStore('optimizedPlayer', () => {
       }
     }
     return positions.size
-  }, [allPlayers])
+  })
 
   // Optimized transfer value range calculation with memoization
-  const currentDatasetTransferValueRange = memoization.memoizedComputed(() => {
+  const currentDatasetTransferValueRange = computed(() => {
+    // Ensure memoization is initialized
+    if (!memoization) {
+      initializeMemoization()
+    }
+
     if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) {
       return { min: 0, max: 100000000 }
     }
 
-    return arrayMemoization.processArray(
-      allPlayers.value,
-      (chunk) => {
-        let min = Number.MAX_SAFE_INTEGER
-        let max = Number.MIN_SAFE_INTEGER
-        let hasValidValue = false
+    if (arrayMemoization) {
+      return arrayMemoization
+        .processArray(allPlayers.value, chunk => {
+          let min = Number.MAX_SAFE_INTEGER
+          let max = Number.MIN_SAFE_INTEGER
+          let hasValidValue = false
 
-        for (const player of chunk) {
-          if (typeof player.transferValueAmount === 'number') {
-            hasValidValue = true
-            if (player.transferValueAmount < min) min = player.transferValueAmount
-            if (player.transferValueAmount > max) max = player.transferValueAmount
+          for (const player of chunk) {
+            if (typeof player.transferValueAmount === 'number') {
+              hasValidValue = true
+              if (player.transferValueAmount < min) min = player.transferValueAmount
+              if (player.transferValueAmount > max) max = player.transferValueAmount
+            }
           }
-        }
 
-        return hasValidValue ? { min, max, hasValidValue } : { hasValidValue: false }
+          return hasValidValue ? { min, max, hasValidValue } : { hasValidValue: false }
+        })
+        .reduce(
+          (acc, chunkResult) => {
+            if (!chunkResult.hasValidValue) return acc
+
+            return {
+              min: Math.min(acc.min, chunkResult.min),
+              max: Math.max(acc.max, chunkResult.max),
+              hasValidValue: true
+            }
+          },
+          { min: Number.MAX_SAFE_INTEGER, max: Number.MIN_SAFE_INTEGER, hasValidValue: false }
+        )
+    }
+
+    // Fallback implementation
+    let min = Number.MAX_SAFE_INTEGER
+    let max = Number.MIN_SAFE_INTEGER
+    let hasValidValue = false
+
+    for (const player of allPlayers.value) {
+      if (typeof player.transferValueAmount === 'number') {
+        hasValidValue = true
+        if (player.transferValueAmount < min) min = player.transferValueAmount
+        if (player.transferValueAmount > max) max = player.transferValueAmount
       }
-    ).reduce((acc, chunkResult) => {
-      if (!chunkResult.hasValidValue) return acc
-      
-      return {
-        min: Math.min(acc.min, chunkResult.min),
-        max: Math.max(acc.max, chunkResult.max),
-        hasValidValue: true
-      }
-    }, { min: Number.MAX_SAFE_INTEGER, max: Number.MIN_SAFE_INTEGER, hasValidValue: false })
-  }, () => `transferValueRange_${allPlayers.value.length}`, {
-    dependencies: [allPlayers]
+    }
+
+    if (!hasValidValue) {
+      return { min: 0, max: 100000000 }
+    }
+
+    min = Math.max(0, min) // Ensure min is not negative
+
+    if (min >= max) {
+      // Handles cases where all values are same, or only one value
+      max = min + 50000 // Ensure max is greater for range slider
+    }
+
+    return { min, max }
   })
 
   const initialDatasetTransferValueRange = computed(() => {
@@ -195,64 +314,97 @@ export const useOptimizedPlayerStore = defineStore('optimizedPlayer', () => {
   })
 
   // Optimized salary range calculation
-  const salaryRange = memoization.memoizedComputed(() => {
+  const salaryRange = computed(() => {
+    // Ensure memoization is initialized
+    if (!memoization) {
+      initializeMemoization()
+    }
+
     if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) {
       return { min: 0, max: 1000000 }
     }
 
-    return arrayMemoization.processArray(
-      allPlayers.value,
-      (chunk) => {
-        let min = Number.MAX_SAFE_INTEGER
-        let max = Number.MIN_SAFE_INTEGER
-        let hasValidValue = false
+    if (arrayMemoization) {
+      return arrayMemoization
+        .processArray(allPlayers.value, chunk => {
+          let min = Number.MAX_SAFE_INTEGER
+          let max = Number.MIN_SAFE_INTEGER
+          let hasValidValue = false
 
-        for (const player of chunk) {
-          if (typeof player.wageAmount === 'number') {
-            hasValidValue = true
-            if (player.wageAmount < min) min = player.wageAmount
-            if (player.wageAmount > max) max = player.wageAmount
+          for (const player of chunk) {
+            if (typeof player.wageAmount === 'number') {
+              hasValidValue = true
+              if (player.wageAmount < min) min = player.wageAmount
+              if (player.wageAmount > max) max = player.wageAmount
+            }
           }
-        }
 
-        return hasValidValue ? { min, max, hasValidValue } : { hasValidValue: false }
+          return hasValidValue ? { min, max, hasValidValue } : { hasValidValue: false }
+        })
+        .reduce(
+          (acc, chunkResult) => {
+            if (!chunkResult.hasValidValue) return acc
+
+            return {
+              min: Math.min(acc.min, chunkResult.min),
+              max: Math.max(acc.max, chunkResult.max),
+              hasValidValue: true
+            }
+          },
+          { min: Number.MAX_SAFE_INTEGER, max: Number.MIN_SAFE_INTEGER, hasValidValue: false }
+        )
+    }
+
+    // Fallback implementation
+    let min = Number.MAX_SAFE_INTEGER
+    let max = Number.MIN_SAFE_INTEGER
+    let hasValidValue = false
+
+    for (const player of allPlayers.value) {
+      if (typeof player.wageAmount === 'number') {
+        hasValidValue = true
+        if (player.wageAmount < min) min = player.wageAmount
+        if (player.wageAmount > max) max = player.wageAmount
       }
-    ).reduce((acc, chunkResult) => {
-      if (!chunkResult.hasValidValue) return acc
-      
-      return {
-        min: Math.min(acc.min, chunkResult.min),
-        max: Math.max(acc.max, chunkResult.max),
-        hasValidValue: true
-      }
-    }, { min: Number.MAX_SAFE_INTEGER, max: Number.MIN_SAFE_INTEGER, hasValidValue: false })
-  }, () => `salaryRange_${allPlayers.value.length}`, {
-    dependencies: [allPlayers]
+    }
+
+    if (!hasValidValue) {
+      return { min: 0, max: 1000000 }
+    }
+
+    min = Math.max(0, min) // Ensure min is not negative
+
+    if (min >= max) {
+      // Handles cases where all values are same, or only one value
+      max = min + 10000 // Ensure max is greater for range slider
+    }
+
+    return { min, max }
   })
 
   // Efficient player lookup functions using IndexedMap
-  const findPlayersByClub = (club) => {
+  const findPlayersByClub = club => {
     if (playersIndexedMap.value) {
       return playersIndexedMap.value.findByIndex('club', club)
     }
     return allPlayers.value.filter(player => player.club === club)
   }
 
-  const findPlayersByNationality = (nationality) => {
+  const findPlayersByNationality = nationality => {
     if (playersIndexedMap.value) {
       return playersIndexedMap.value.findByIndex('nationality', nationality)
     }
     return allPlayers.value.filter(player => player.nationality === nationality)
   }
 
-  const findPlayersByPosition = (position) => {
+  const findPlayersByPosition = position => {
     if (playersIndexedMap.value) {
       return playersIndexedMap.value.findByIndex('position', position)
     }
     return allPlayers.value.filter(player => player.position?.includes(position))
   }
 
-  const findPlayersWhere = (criteria) => {
+  const findPlayersWhere = criteria => {
     if (playersIndexedMap.value) {
       return playersIndexedMap.value.findWhere(criteria)
     }
@@ -266,7 +418,7 @@ export const useOptimizedPlayerStore = defineStore('optimizedPlayer', () => {
     const tracker = new PerformanceTracker('Upload Process')
     loading.value = true
     error.value = ''
-    
+
     try {
       tracker.checkpoint('Starting upload')
       const response = await playerService.uploadPlayerFile(formData, maxSizeBytes, onProgress)
@@ -319,11 +471,11 @@ export const useOptimizedPlayerStore = defineStore('optimizedPlayer', () => {
       resetState()
       return
     }
-    
+
     const tracker = new PerformanceTracker('Fetch Players Data')
     loading.value = true
     error.value = ''
-    
+
     try {
       tracker.checkpoint('Starting API call')
       const response = await playerService.getPlayersByDatasetId(
@@ -342,7 +494,7 @@ export const useOptimizedPlayerStore = defineStore('optimizedPlayer', () => {
       const processedPlayers = processPlayersFromAPI(response.players)
       allPlayers.value = processedPlayers
       triggerRef(allPlayers) // Manually trigger reactivity for shallowRef
-      
+
       // Initialize IndexedMap for efficient lookups
       initializeIndexedMap(processedPlayers)
       tracker.checkpoint('Players processed and indexed')
@@ -381,13 +533,14 @@ export const useOptimizedPlayerStore = defineStore('optimizedPlayer', () => {
     }
 
     // Use batch processing for large datasets
-    return arrayMemoization.processArray(
-      playersData,
-      (chunk) => chunk.map(p => ({
-        ...p,
-        age: Number.parseInt(p.age, 10) || 0
-      }))
-    ).flat()
+    return arrayMemoization
+      .processArray(playersData, chunk =>
+        chunk.map(p => ({
+          ...p,
+          age: Number.parseInt(p.age, 10) || 0
+        }))
+      )
+      .flat()
   }
 
   function resetState() {
@@ -398,11 +551,11 @@ export const useOptimizedPlayerStore = defineStore('optimizedPlayer', () => {
     allAvailableRoles.value = []
     sessionStorage.removeItem('currentDatasetId')
     sessionStorage.removeItem('detectedCurrencySymbol')
-    
+
     // Clear memoization cache
     memoization.clearCache()
     arrayMemoization.clearCache()
-    
+
     // Trigger reactivity
     triggerRef(allPlayers)
     triggerRef(playersIndexedMap)
@@ -411,7 +564,7 @@ export const useOptimizedPlayerStore = defineStore('optimizedPlayer', () => {
   async function loadFromSessionStorage() {
     const storedDatasetId = sessionStorage.getItem('currentDatasetId')
     const storedCurrencySymbol = sessionStorage.getItem('detectedCurrencySymbol')
-    
+
     if (storedDatasetId) {
       currentDatasetId.value = storedDatasetId
       if (storedCurrencySymbol) {
@@ -443,14 +596,14 @@ export const useOptimizedPlayerStore = defineStore('optimizedPlayer', () => {
     // Clear expired cache entries
     const expiredMemo = memoization.clearExpired()
     const expiredArray = arrayMemoization.clearExpired()
-    
+
     // Optimize IndexedMap
     let optimizedIndexes = 0
     if (playersIndexedMap.value) {
       const result = playersIndexedMap.value.optimize()
       optimizedIndexes = result.removedEntries
     }
-    
+
     return {
       expiredMemoEntries: expiredMemo,
       expiredArrayEntries: expiredArray,
@@ -467,7 +620,7 @@ export const useOptimizedPlayerStore = defineStore('optimizedPlayer', () => {
     loading,
     error,
     allAvailableRoles,
-    
+
     // Computed properties
     uniqueClubs,
     uniqueNationalities,
@@ -477,24 +630,24 @@ export const useOptimizedPlayerStore = defineStore('optimizedPlayer', () => {
     currentDatasetTransferValueRange,
     initialDatasetTransferValueRange,
     salaryRange,
-    
+
     // Lookup functions
     findPlayersByClub,
     findPlayersByNationality,
     findPlayersByPosition,
     findPlayersWhere,
-    
+
     // Actions
     uploadPlayerFile,
     fetchPlayersByDatasetId,
     fetchAllAvailableRoles,
     resetState,
     loadFromSessionStorage,
-    
+
     // Performance
     getPerformanceStats,
     optimizeMemory,
-    
+
     // Constants
     AGE_SLIDER_MIN_DEFAULT,
     AGE_SLIDER_MAX_DEFAULT

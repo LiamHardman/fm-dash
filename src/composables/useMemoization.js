@@ -1,4 +1,4 @@
-import { ref, computed, shallowRef, triggerRef, watchEffect, onUnmounted } from 'vue'
+import { computed, onUnmounted, ref, shallowRef, triggerRef, watchEffect } from 'vue'
 
 /**
  * Enhanced memoization composable for large datasets
@@ -26,11 +26,7 @@ export function useMemoization(options = {}) {
    * Create a memoized computed property with lazy evaluation
    */
   const memoizedComputed = (fn, keyFn = null, options = {}) => {
-    const {
-      lazy = true,
-      dependencies = [],
-      ttl: computedTtl = ttl
-    } = options
+    const { lazy = true, dependencies = [], ttl: computedTtl = ttl } = options
 
     let cachedValue = null
     let isValid = false
@@ -38,17 +34,20 @@ export function useMemoization(options = {}) {
 
     const computedRef = computed(() => {
       // Check if dependencies have changed
-      const currentDependencyValues = dependencies.map(dep => 
+      const currentDependencyValues = dependencies.map(dep =>
         typeof dep === 'function' ? dep() : dep.value
       )
-      
-      const dependenciesChanged = !isValid || 
+
+      const dependenciesChanged =
+        !isValid ||
         currentDependencyValues.length !== lastDependencyValues.length ||
         currentDependencyValues.some((val, index) => val !== lastDependencyValues[index])
 
       if (dependenciesChanged || !isValid) {
-        const key = keyFn ? keyFn(...currentDependencyValues) : JSON.stringify(currentDependencyValues)
-        
+        const key = keyFn
+          ? keyFn(...currentDependencyValues)
+          : JSON.stringify(currentDependencyValues)
+
         // Check cache first
         if (cache.has(key)) {
           const timestamp = cacheTimestamps.get(key)
@@ -56,11 +55,11 @@ export function useMemoization(options = {}) {
             cachedValue = cache.get(key)
             isValid = true
             lastDependencyValues = currentDependencyValues
-            
+
             if (enableStats) {
               cacheStats.value.hits++
             }
-            
+
             return cachedValue
           } else {
             // Cache expired
@@ -76,7 +75,7 @@ export function useMemoization(options = {}) {
 
         // Store in cache
         _setCache(key, cachedValue)
-        
+
         if (enableStats) {
           cacheStats.value.misses++
         }
@@ -97,11 +96,12 @@ export function useMemoization(options = {}) {
     let lastDependencyValues = []
 
     return computed(() => {
-      const currentDependencyValues = dependencies.map(dep => 
+      const currentDependencyValues = dependencies.map(dep =>
         typeof dep === 'function' ? dep() : dep.value
       )
-      
-      const dependenciesChanged = currentDependencyValues.length !== lastDependencyValues.length ||
+
+      const dependenciesChanged =
+        currentDependencyValues.length !== lastDependencyValues.length ||
         currentDependencyValues.some((val, index) => val !== lastDependencyValues[index])
 
       if (!isComputed || dependenciesChanged) {
@@ -131,14 +131,11 @@ export function useMemoization(options = {}) {
       keyFn = actualOptions.keyGenerator || null
     }
 
-    const {
-      ttl: fnTtl = ttl,
-      maxSize = maxCacheSize
-    } = actualOptions
+    const { ttl: fnTtl = ttl, maxSize = maxCacheSize } = actualOptions
 
     const memoizedFn = (...args) => {
       const key = keyFn ? keyFn(...args) : JSON.stringify(args)
-      
+
       // Check cache
       if (cache.has(key)) {
         const timestamp = cacheTimestamps.get(key)
@@ -156,10 +153,10 @@ export function useMemoization(options = {}) {
 
       // Compute new value
       const result = fn(...args)
-      
+
       // Store in cache
       _setCache(key, result)
-      
+
       if (enableStats) {
         cacheStats.value.misses++
       }
@@ -197,16 +194,16 @@ export function useMemoization(options = {}) {
    */
   const debouncedMemoize = (fn, delay = 300, keyFn = null) => {
     const timeouts = new Map()
-    
+
     return (...args) => {
       const key = keyFn ? keyFn(...args) : JSON.stringify(args)
-      
+
       // Clear existing timeout
       if (timeouts.has(key)) {
         clearTimeout(timeouts.get(key))
       }
 
-      return new Promise((resolve) => {
+      return new Promise(resolve => {
         const timeout = setTimeout(() => {
           // Check cache first
           if (cache.has(key)) {
@@ -223,15 +220,15 @@ export function useMemoization(options = {}) {
           // Compute new value
           const result = fn(...args)
           _setCache(key, result)
-          
+
           if (enableStats) {
             cacheStats.value.misses++
           }
-          
+
           resolve(result)
           timeouts.delete(key)
         }, delay)
-        
+
         timeouts.set(key, timeout)
       })
     }
@@ -242,10 +239,10 @@ export function useMemoization(options = {}) {
    */
   const batchMemoize = (fn, batchSize = 100, keyFn = null) => {
     const batches = new Map()
-    
-    return (items) => {
+
+    return items => {
       const key = keyFn ? keyFn(items) : `batch_${items.length}_${Date.now()}`
-      
+
       // Check if we can use cached batch results
       if (cache.has(key)) {
         const timestamp = cacheTimestamps.get(key)
@@ -266,7 +263,7 @@ export function useMemoization(options = {}) {
       }
 
       _setCache(key, results)
-      
+
       if (enableStats) {
         cacheStats.value.misses++
       }
@@ -286,7 +283,7 @@ export function useMemoization(options = {}) {
 
     cache.set(key, value)
     cacheTimestamps.set(key, Date.now())
-    
+
     if (enableStats) {
       cacheStats.value.size = cache.size
     }
@@ -298,14 +295,14 @@ export function useMemoization(options = {}) {
   const _evictLRU = () => {
     const entries = Array.from(cacheTimestamps.entries())
     entries.sort((a, b) => a[1] - b[1]) // Sort by timestamp
-    
+
     const toEvict = Math.ceil(maxCacheSize * 0.2) // Evict 20%
-    
+
     for (let i = 0; i < toEvict && i < entries.length; i++) {
       const [key] = entries[i]
       cache.delete(key)
       cacheTimestamps.delete(key)
-      
+
       if (enableStats) {
         cacheStats.value.evictions++
       }
@@ -318,22 +315,22 @@ export function useMemoization(options = {}) {
   const clearExpired = () => {
     const now = Date.now()
     const expiredKeys = []
-    
+
     for (const [key, timestamp] of cacheTimestamps) {
       if (now - timestamp > ttl) {
         expiredKeys.push(key)
       }
     }
-    
+
     for (const key of expiredKeys) {
       cache.delete(key)
       cacheTimestamps.delete(key)
     }
-    
+
     if (enableStats) {
       cacheStats.value.size = cache.size
     }
-    
+
     return expiredKeys.length
   }
 
@@ -344,11 +341,11 @@ export function useMemoization(options = {}) {
     const size = cache.size
     cache.clear()
     cacheTimestamps.clear()
-    
+
     if (enableStats) {
       cacheStats.value.size = 0
     }
-    
+
     return size
   }
 
@@ -376,7 +373,7 @@ export function useMemoization(options = {}) {
 
   // Periodic cleanup
   const cleanupInterval = setInterval(clearExpired, ttl)
-  
+
   onUnmounted(() => {
     clearInterval(cleanupInterval)
     clearCache()
@@ -389,12 +386,12 @@ export function useMemoization(options = {}) {
     memoize,
     debouncedMemoize,
     batchMemoize,
-    
+
     // Cache management
     clearCache,
     clearExpired,
     getStats,
-    
+
     // Stats
     cacheStats: cacheStats.value
   }
@@ -404,60 +401,69 @@ export function useMemoization(options = {}) {
  * Specialized memoization for large arrays
  */
 export function useArrayMemoization(options = {}) {
-  const {
-    chunkSize = 1000,
-    enableVirtualization = true
-  } = options
+  const { chunkSize = 1000, enableVirtualization = true } = options
 
   const memoization = useMemoization(options)
 
   /**
    * Memoized array processing with chunking
    */
-  const processArray = memoization.memoize((array, processFn, keyFn = null) => {
-    if (!Array.isArray(array)) return []
-    
-    const key = keyFn ? keyFn(array) : `array_${array.length}_${Date.now()}`
-    
-    if (array.length <= chunkSize) {
-      return processFn(array)
-    }
+  const processArray = memoization.memoize(
+    (array, processFn, keyFn = null) => {
+      if (!Array.isArray(array)) return []
 
-    // Process in chunks
-    const results = []
-    for (let i = 0; i < array.length; i += chunkSize) {
-      const chunk = array.slice(i, i + chunkSize)
-      const chunkResult = processFn(chunk)
-      results.push(...(Array.isArray(chunkResult) ? chunkResult : [chunkResult]))
-    }
+      const key = keyFn ? keyFn(array) : `array_${array.length}_${Date.now()}`
 
-    return results
-  }, (array, processFn) => `processArray_${array.length}_${processFn.name || 'anonymous'}`)
+      if (array.length <= chunkSize) {
+        return processFn(array)
+      }
+
+      // Process in chunks
+      const results = []
+      for (let i = 0; i < array.length; i += chunkSize) {
+        const chunk = array.slice(i, i + chunkSize)
+        const chunkResult = processFn(chunk)
+        results.push(...(Array.isArray(chunkResult) ? chunkResult : [chunkResult]))
+      }
+
+      return results
+    },
+    (array, processFn) => `processArray_${array.length}_${processFn.name || 'anonymous'}`
+  )
 
   /**
    * Memoized array filtering
    */
-  const filterArray = memoization.memoize((array, filterFn) => {
-    return processArray(array, chunk => chunk.filter(filterFn))
-  }, (array, filterFn) => `filter_${array.length}_${filterFn.toString().slice(0, 50)}`)
+  const filterArray = memoization.memoize(
+    (array, filterFn) => {
+      return processArray(array, chunk => chunk.filter(filterFn))
+    },
+    (array, filterFn) => `filter_${array.length}_${filterFn.toString().slice(0, 50)}`
+  )
 
   /**
    * Memoized array mapping
    */
-  const mapArray = memoization.memoize((array, mapFn) => {
-    return processArray(array, chunk => chunk.map(mapFn))
-  }, (array, mapFn) => `map_${array.length}_${mapFn.toString().slice(0, 50)}`)
+  const mapArray = memoization.memoize(
+    (array, mapFn) => {
+      return processArray(array, chunk => chunk.map(mapFn))
+    },
+    (array, mapFn) => `map_${array.length}_${mapFn.toString().slice(0, 50)}`
+  )
 
   /**
    * Memoized array sorting
    */
-  const sortArray = memoization.memoize((array, compareFn) => {
-    // For large arrays, use a more efficient sorting approach
-    if (array.length > 10000) {
-      return [...array].sort(compareFn)
-    }
-    return array.slice().sort(compareFn)
-  }, (array, compareFn) => `sort_${array.length}_${compareFn.toString().slice(0, 50)}`)
+  const sortArray = memoization.memoize(
+    (array, compareFn) => {
+      // For large arrays, use a more efficient sorting approach
+      if (array.length > 10000) {
+        return [...array].sort(compareFn)
+      }
+      return array.slice().sort(compareFn)
+    },
+    (array, compareFn) => `sort_${array.length}_${compareFn.toString().slice(0, 50)}`
+  )
 
   return {
     ...memoization,
@@ -468,15 +474,32 @@ export function useArrayMemoization(options = {}) {
   }
 }
 
-// Create a standalone memoize function for direct import with shared cache
-const globalMemoization = useMemoization({
-  maxCacheSize: 2000,
-  ttl: 600000, // 10 minutes
-  enableStats: true
-})
+// Create a lazy global memoization instance to avoid circular dependencies
+let globalMemoizationInstance = null
+
+const getGlobalMemoization = () => {
+  if (!globalMemoizationInstance) {
+    try {
+      globalMemoizationInstance = useMemoization({
+        maxCacheSize: 2000,
+        ttl: 600000, // 10 minutes
+        enableStats: true
+      })
+    } catch (error) {
+      console.warn('Failed to create global memoization:', error)
+      // Fallback implementation
+      globalMemoizationInstance = {
+        memoize: (fn, keyFnOrOptions = null, options = {}) => {
+          return (...args) => fn(...args)
+        }
+      }
+    }
+  }
+  return globalMemoizationInstance
+}
 
 export const memoize = (fn, keyFnOrOptions = null, options = {}) => {
-  return globalMemoization.memoize(fn, keyFnOrOptions, options)
+  return getGlobalMemoization().memoize(fn, keyFnOrOptions, options)
 }
 
 export default useMemoization
