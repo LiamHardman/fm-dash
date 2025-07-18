@@ -375,12 +375,6 @@ func EnhancePlayerWithCalculations(player *Player) {
 	player.ParsedPositions = ParsePlayerPositionsGo(player.Position)          // from positions.go
 	player.PositionGroups = GetPlayerPositionGroupsGo(player.ParsedPositions) // from positions.go
 
-	// Debug logging for position parsing
-	if player.Name == "Valentino Barreto" {
-		log.Printf("DEBUG Position Parsing - Player: %s, Raw Position: '%s', ParsedPositions: %v, PositionGroups: %v",
-			player.Name, player.Position, player.ParsedPositions, player.PositionGroups)
-	}
-
 	// Derive short positions (e.g., DC, ST)
 	shortPosSet := make(map[string]struct{})
 	for _, pPos := range player.ParsedPositions { // e.g., pPos = "Centre Back"

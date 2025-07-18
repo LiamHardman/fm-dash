@@ -1477,18 +1477,7 @@ export default defineComponent({
         return hasStat
       })
       
-      console.log(`FIFA Stats Debug - isGoalkeeper: ${isGoalkeeper.value}, template: ${isGoalkeeper.value ? 'goalkeeping' : 'outfield'}, filtered: ${filteredStats.length} stats`)
-      
-      // For goalkeepers, if no goalkeeper stats are found, try to show outfield stats
-      if (isGoalkeeper.value && filteredStats.length === 0) {
-        console.log('No goalkeeper stats found, trying outfield stats for goalkeeper')
-        const outfieldFiltered = outfieldStats.filter(stat => {
-          const hasStat = props.player[stat.name] !== undefined && props.player[stat.name] !== null
-          console.log(`Outfield Stat Debug - ${stat.name}: ${props.player[stat.name]} (hasStat: ${hasStat})`)
-          return hasStat
-        })
-        return outfieldFiltered
-      }
+
       
       return filteredStats
     })
