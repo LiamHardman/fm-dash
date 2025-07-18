@@ -1417,11 +1417,13 @@ export default defineComponent({
 
     const isGoalkeeper = computed(() => {
       if (!props.player) return false
-      return (
+      const isGK = (
         props.player.shortPositions?.includes('GK') ||
         props.player.positionGroups?.includes('Goalkeepers') ||
-        props.player.parsedPositions?.includes('Goalkeeper')
+        props.player.parsedPositions?.includes('Goalkeeper') ||
+        props.player.position?.includes('GK')
       )
+      return isGK
     })
 
     // Memoized attribute filtering for better performance
@@ -1469,7 +1471,26 @@ export default defineComponent({
       if (!props.player) return []
 
       const statsTemplate = isGoalkeeper.value ? goalkeepingStats : outfieldStats
-      return statsTemplate.filter(stat => props.player[stat.name] !== undefined)
+      const filteredStats = statsTemplate.filter(stat => {
+        // Show stats if they exist (including 0 values)
+        const hasStat = props.player[stat.name] !== undefined && props.player[stat.name] !== null
+        return hasStat
+      })
+      
+      console.log(`FIFA Stats Debug - isGoalkeeper: ${isGoalkeeper.value}, template: ${isGoalkeeper.value ? 'goalkeeping' : 'outfield'}, filtered: ${filteredStats.length} stats`)
+      
+      // For goalkeepers, if no goalkeeper stats are found, try to show outfield stats
+      if (isGoalkeeper.value && filteredStats.length === 0) {
+        console.log('No goalkeeper stats found, trying outfield stats for goalkeeper')
+        const outfieldFiltered = outfieldStats.filter(stat => {
+          const hasStat = props.player[stat.name] !== undefined && props.player[stat.name] !== null
+          console.log(`Outfield Stat Debug - ${stat.name}: ${props.player[stat.name]} (hasStat: ${hasStat})`)
+          return hasStat
+        })
+        return outfieldFiltered
+      }
+      
+      return filteredStats
     })
 
     const _averageRatingData = computed(() => {

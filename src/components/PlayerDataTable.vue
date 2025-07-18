@@ -1243,19 +1243,36 @@ export default {
 
     // GK stat mapping for both display and sorting consistency
     const gkStatMapping = {
-      PAC: 'DIV', // Diving -> Pace
-      SHO: 'HAN', // Handling -> Shooting
-      PAS: 'KIC', // Kicking -> Passing
-      DRI: 'REF', // Reflexes -> Dribbling
-      DEF: 'SPD', // Speed -> Defending
-      PHY: 'POS' // Positioning -> Physical
+      pac: 'div', // Diving -> Pace
+      sho: 'han', // Handling -> Shooting
+      pas: 'kic', // Kicking -> Passing
+      dri: 'ref', // Reflexes -> Dribbling
+      def: 'spd', // Speed -> Defending
+      phy: 'pos' // Positioning -> Physical
     }
 
     // Memoized player value getter (called frequently during sorting and rendering)
     const getPlayerValue = (player, fieldKey, columnName = null) => {
-      // For non-goalkeeper view, map GK stats to standard FIFA stats if the player is a goalkeeper
+      // For regular view, map GK stats to standard FIFA stats if the player is a goalkeeper
       if (!props.isGoalkeeperView && player.position && player.position.includes('GK')) {
-        const mappedStat = gkStatMapping[columnName || fieldKey]
+        const mappedStat = gkStatMapping[fieldKey]
+        if (mappedStat && player[mappedStat] !== undefined) {
+          return player[mappedStat]
+        }
+      }
+
+      // For goalkeeper view, all players should show goalkeeper stats
+      if (props.isGoalkeeperView) {
+        // Map outfield FIFA stats to goalkeeper stats
+        const gkStatMappingReverse = {
+          pac: 'div', // Pace -> Diving
+          sho: 'han', // Shooting -> Handling
+          pas: 'kic', // Passing -> Kicking
+          dri: 'ref', // Dribbling -> Reflexes
+          def: 'spd', // Defending -> Speed
+          phy: 'pos' // Physical -> Positioning
+        }
+        const mappedStat = gkStatMappingReverse[fieldKey]
         if (mappedStat && player[mappedStat] !== undefined) {
           return player[mappedStat]
         }
