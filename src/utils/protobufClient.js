@@ -4,8 +4,9 @@
 
 import logger from './logger.js'
 
-// Protobuf library reference
-let protobuf = null
+// Remove all dynamic import attempts and fallback paths
+// Only use the standard import
+import protobuf from "protobufjs";
 
 class ProtobufClient {
   constructor() {
@@ -52,28 +53,29 @@ class ProtobufClient {
         
         if (this.protobufSupported) {
           try {
-            const protobufModule = await import('protobufjs/minimal')
-            protobuf = protobufModule.default
-            logger.info('Successfully loaded protobufjs library')
-          } catch (error) {
-            logger.warn('Failed to load protobufjs, using mock implementation:', error)
-            protobuf = {
-              Root: {
-                fromJSON: (json) => ({
-                  lookupType: (type) => ({
-                    decode: (buffer) => ({ decoded: true, type }),
-                    toObject: (decoded) => ({ ...decoded, converted: true })
-                  })
-                })
-              }
-            }
+            logger.info('Attempting to load protobufjs library...')
+            // The protobuf library exports Root directly
+            // The protobuf library exports Root directly
+            
+          } catch (importError) {
+            logger.error('Failed to import protobufjs:', importError)
+            throw importError
           }
-          
-          const definitionsLoaded = await this.loadProtobufDefinitions()
-          if (!definitionsLoaded) {
-            logger.error('Failed to load protobuf definitions, protobuf will not work')
-            this.protobufSupported = false
-          }
+          logger.info('Successfully loaded protobufjs library', {
+            hasRoot: !!protobuf.Root,
+            hasFromJSON: !!protobuf.Root?.fromJSON,
+            protobufType: typeof protobuf,
+            protobufKeys: Object.keys(protobuf || {}),
+            rootType: typeof protobuf.Root
+          })
+        }
+        
+        const definitionsLoaded = await this.loadProtobufDefinitions()
+        if (!definitionsLoaded) {
+          logger.error('Failed to load protobuf definitions, protobuf will not work')
+          this.protobufSupported = false
+        } else {
+          logger.info('Protobuf definitions loaded successfully')
         }
         
         this.initialized = true
@@ -110,24 +112,41 @@ class ProtobufClient {
    */
   async loadProtobufDefinitions() {
     try {
-      this.protoDefinitions = protobuf.Root.fromJSON({
+      // Access the Root constructor
+      const Root = protobuf.Root
+      
+      if (!Root) {
+        logger.error('Protobuf library not available', {
+          hasProtobuf: !!protobuf,
+          hasRoot: !!protobuf?.Root,
+          protobufType: typeof protobuf,
+          protobufKeys: Object.keys(protobuf || {})
+        })
+        this.protoDefinitions = null
+        return false
+      }
+
+      logger.info('Loading protobuf definitions...')
+      
+      this.protoDefinitions = Root.fromJSON({
         nested: {
           api: {
             nested: {
               ResponseMetadata: {
                 fields: {
                   timestamp: { type: "int64", id: 1 },
-                  apiVersion: { type: "string", id: 2 },
-                  fromCache: { type: "bool", id: 3 },
-                  requestId: { type: "string", id: 4 },
-                  totalCount: { type: "int32", id: 5 }
+                  api_version: { type: "string", id: 2 },
+                  from_cache: { type: "bool", id: 3 },
+                  request_id: { type: "string", id: 4 },
+                  total_count: { type: "int32", id: 5 }
                 }
               },
               PlayerDataResponse: {
                 fields: {
                   players: { rule: "repeated", type: "player.Player", id: 1 },
-                  currencySymbol: { type: "string", id: 2 },
-                  metadata: { type: "ResponseMetadata", id: 3 }
+                  currency_symbol: { type: "string", id: 2 },
+                  metadata: { type: "ResponseMetadata", id: 3 },
+                  pagination: { type: "PaginationInfo", id: 4 }
                 }
               },
               RolesResponse: {
@@ -141,6 +160,16 @@ class ProtobufClient {
                   data: { type: "string", id: 1 },
                   metadata: { type: "ResponseMetadata", id: 2 }
                 }
+              },
+              PaginationInfo: {
+                fields: {
+                  page: { type: "int32", id: 1 },
+                  per_page: { type: "int32", id: 2 },
+                  total_pages: { type: "int32", id: 3 },
+                  total_count: { type: "int32", id: 4 },
+                  has_next: { type: "bool", id: 5 },
+                  has_previous: { type: "bool", id: 6 }
+                }
               }
             }
           },
@@ -153,7 +182,51 @@ class ProtobufClient {
                   position: { type: "string", id: 3 },
                   age: { type: "string", id: 4 },
                   club: { type: "string", id: 5 },
-                  overall: { type: "int32", id: 35 }
+                  division: { type: "string", id: 6 },
+                  transfer_value: { type: "string", id: 7 },
+                  wage: { type: "string", id: 8 },
+                  personality: { type: "string", id: 9 },
+                  media_handling: { type: "string", id: 10 },
+                  nationality: { type: "string", id: 11 },
+                  nationality_iso: { type: "string", id: 12 },
+                  nationality_fifa_code: { type: "string", id: 13 },
+                  attribute_masked: { type: "bool", id: 14 },
+                  attributes: { rule: "map", keyType: "string", type: "string", id: 15 },
+                  numeric_attributes: { rule: "map", keyType: "string", type: "int32", id: 16 },
+                  performance_stats_numeric: { rule: "map", keyType: "string", type: "double", id: 17 },
+                  performance_percentiles: { rule: "map", keyType: "string", type: "PerformancePercentileMap", id: 18 },
+                  parsed_positions: { rule: "repeated", type: "string", id: 19 },
+                  short_positions: { rule: "repeated", type: "string", id: 20 },
+                  position_groups: { rule: "repeated", type: "string", id: 21 },
+                  pac: { type: "int32", id: 22 },
+                  sho: { type: "int32", id: 23 },
+                  pas: { type: "int32", id: 24 },
+                  dri: { type: "int32", id: 25 },
+                  def: { type: "int32", id: 26 },
+                  phy: { type: "int32", id: 27 },
+                  gk: { type: "int32", id: 28 },
+                  div: { type: "int32", id: 29 },
+                  han: { type: "int32", id: 30 },
+                  ref: { type: "int32", id: 31 },
+                  kic: { type: "int32", id: 32 },
+                  spd: { type: "int32", id: 33 },
+                  pos: { type: "int32", id: 34 },
+                  overall: { type: "int32", id: 35 },
+                  best_role_overall: { type: "string", id: 36 },
+                  role_specific_overalls: { rule: "repeated", type: "RoleOverallScore", id: 37 },
+                  transfer_value_amount: { type: "int64", id: 38 },
+                  wage_amount: { type: "int64", id: 39 }
+                }
+              },
+              RoleOverallScore: {
+                fields: {
+                  role_name: { type: "string", id: 1 },
+                  score: { type: "int32", id: 2 }
+                }
+              },
+              PerformancePercentileMap: {
+                fields: {
+                  percentiles: { rule: "map", keyType: "string", type: "double", id: 1 }
                 }
               }
             }
@@ -161,9 +234,15 @@ class ProtobufClient {
         }
       })
       
+      logger.info('Successfully loaded protobuf definitions')
       return true
     } catch (error) {
       logger.error('Failed to load protobuf definitions:', error)
+      logger.error('Protobuf library state:', { 
+        protobufAvailable: !!protobuf, 
+        protobufRoot: !!protobuf?.Root,
+        protobufFromJSON: !!protobuf?.Root?.fromJSON 
+      })
       this.protoDefinitions = null
       return false
     }
@@ -218,14 +297,24 @@ class ProtobufClient {
    */
   async decodeProtobufResponse(buffer, messageType) {
     if (!this.protoDefinitions) {
+      logger.error('Protobuf definitions not loaded. Status:', {
+        protobufSupported: this.protobufSupported,
+        protobufEnabled: this.protobufEnabled,
+        initialized: this.initialized,
+        protoDefinitions: !!this.protoDefinitions
+      })
       throw new Error('Protobuf definitions not loaded')
     }
     
     try {
       const MessageType = this.protoDefinitions.lookupType(messageType)
+      if (!MessageType) {
+        throw new Error(`Message type '${messageType}' not found in protobuf definitions`)
+      }
+      
       const message = MessageType.decode(new Uint8Array(buffer))
       
-      return MessageType.toObject(message, {
+      const decodedData = MessageType.toObject(message, {
         longs: String,
         enums: String,
         bytes: String,
@@ -234,9 +323,58 @@ class ProtobufClient {
         objects: true,
         oneofs: true
       })
+      
+      // Debug logging: Print first 5 players' full information
+      if (decodedData.players && Array.isArray(decodedData.players)) {
+        logger.info('=== FIRST 5 PLAYERS FULL DATA ===')
+        decodedData.players.slice(0, 5).forEach((player, index) => {
+          logger.info(`Player ${index + 1}:`, {
+            name: player.name,
+            position: player.position,
+            age: player.age,
+            club: player.club,
+            // FIFA-style stats
+            pac: player.pac,
+            sho: player.sho,
+            pas: player.pas,
+            dri: player.dri,
+            def: player.def,
+            phy: player.phy,
+            gk: player.gk,
+            div: player.div,
+            han: player.han,
+            ref: player.ref,
+            kic: player.kic,
+            spd: player.spd,
+            pos: player.pos,
+            overall: player.overall,
+            // Numeric attributes
+            numeric_attributes: player.numeric_attributes,
+            // Regular attributes
+            attributes: player.attributes,
+            // Performance stats
+            performance_stats_numeric: player.performance_stats_numeric,
+            // Role-specific overalls
+            role_specific_overalls: player.role_specific_overalls,
+            best_role_overall: player.best_role_overall
+          })
+        })
+        logger.info('=== END FIRST 5 PLAYERS ===')
+      }
+      
+      return decodedData
     } catch (error) {
+      logger.error('Protobuf decoding error:', {
+        messageType,
+        bufferSize: buffer?.byteLength,
+        error: error.message,
+        protoDefinitionsAvailable: !!this.protoDefinitions
+      })
+      
       const decodingError = new Error(`Failed to decode protobuf response: ${error.message}`)
       decodingError.name = 'ProtobufDecodingError'
+      decodingError.originalError = error
+      decodingError.bufferSize = buffer?.byteLength
       throw decodingError
     }
   }
@@ -321,6 +459,19 @@ class ProtobufClient {
   }
 
   /**
+   * Force re-initialization of the protobuf client
+   */
+  async reinitialize() {
+    logger.info('Forcing protobuf client re-initialization...')
+    this.initialized = false
+    this.initializationPromise = null
+    this.protoDefinitions = null
+    this.protobufSupported = false
+    
+    return await this.initialize()
+  }
+
+  /**
    * Get client capabilities and status
    */
   getStatus() {
@@ -329,11 +480,14 @@ class ProtobufClient {
       protobufEnabled: this.protobufEnabled,
       initialized: this.initialized,
       serverSupportsProtobuf: this.serverSupportsProtobuf,
-      definitionsLoaded: !!this.protoDefinitions
+      definitionsLoaded: !!this.protoDefinitions,
+      protobufLibraryAvailable: !!protobuf,
+      protobufRootAvailable: !!protobuf?.Root,
+      protobufFromJSONAvailable: !!protobuf?.Root?.fromJSON
     }
   }
 }
 
 // Export a singleton instance
 const protobufClient = new ProtobufClient()
-export default protobufClient
+export default protobufClient 

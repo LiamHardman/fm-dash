@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"sort"
 	"time"
-	
+
 	pb "api/proto"
 )
 
@@ -16,20 +16,20 @@ const (
 
 func cachedRolesHandler(w http.ResponseWriter, r *http.Request) {
 	const baseCacheKey = "roles_data"
-	
+
 	// Determine the appropriate format based on the request
 	format := GetCacheFormatFromRequest(r)
-	
+
 	// Initialize content negotiation
 	negotiator := NewContentNegotiator(r)
 	serializer := negotiator.SelectSerializer()
-	
+
 	// Get request ID for response metadata
 	requestID := r.Header.Get("X-Request-ID")
 	if requestID == "" {
 		requestID = generateRequestID()
 	}
-	
+
 	// Try to get from format-specific cache
 	if cached, found := GetFormatAwareCacheItem(baseCacheKey, format); found {
 		if format == FormatTypeJSON {
@@ -49,7 +49,7 @@ func cachedRolesHandler(w http.ResponseWriter, r *http.Request) {
 			// Protobuf format cache hit
 			if protoResponse, ok := cached.(*pb.RolesResponse); ok {
 				LogDebug("Retrieved roles data from memory cache (Protobuf format)")
-				
+
 				// Serialize the protobuf response
 				responseData, err := serializer.Serialize(protoResponse)
 				if err != nil {
@@ -76,20 +76,20 @@ func cachedRolesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	muRoleSpecificOverallWeights.RUnlock()
 	sort.Strings(roleNames)
-	
+
 	// Store in format-specific caches
 	// For JSON format
 	SetFormatAwareCacheItem(baseCacheKey, FormatTypeJSON, roleNames, noExpiration)
-	
+
 	// For Protobuf format
 	protoResponse := &pb.RolesResponse{
-		Roles: roleNames,
+		Roles:    roleNames,
 		Metadata: CreateResponseMetadata(requestID, int32(len(roleNames)), false),
 	}
 	// Optimize memory usage for protobuf cached data
 	optimizedProtoResponse := OptimizeMemoryForProtobuf(protoResponse)
 	SetFormatAwareCacheItem(baseCacheKey, FormatTypeProtobuf, optimizedProtoResponse, noExpiration)
-	
+
 	// Respond with the appropriate format
 	if format == FormatTypeProtobuf {
 		responseData, err := serializer.Serialize(protoResponse)
@@ -103,7 +103,7 @@ func cachedRolesHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		}
-		
+
 		w.Header().Set("Content-Type", serializer.ContentType())
 		w.Header().Set("Cache-Control", "public, max-age=86400")
 		w.Write(responseData)
@@ -124,14 +124,14 @@ func cachedConfigHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	const baseCacheKey = "config_data"
-	
+
 	// Determine the appropriate format based on the request
 	format := GetCacheFormatFromRequest(r)
-	
+
 	// Initialize content negotiation
 	negotiator := NewContentNegotiator(r)
 	serializer := negotiator.SelectSerializer()
-	
+
 	// Get request ID for response metadata
 	requestID := r.Header.Get("X-Request-ID")
 	if requestID == "" {
@@ -159,7 +159,7 @@ func cachedConfigHandler(w http.ResponseWriter, r *http.Request) {
 				// Protobuf format cache hit
 				if protoResponse, ok := cached.(*pb.GenericResponse); ok {
 					LogDebug("Retrieved config data from memory cache (Protobuf format)")
-					
+
 					// Serialize the protobuf response
 					responseData, err := serializer.Serialize(protoResponse)
 					if err != nil {
@@ -186,30 +186,35 @@ func cachedConfigHandler(w http.ResponseWriter, r *http.Request) {
 			"datasetRetentionDays": int(getRetentionPeriod().Hours() / 24),
 		}
 
+		// Add attribute weights to config response
+		muAttributeWeights.RLock()
+		if attributeWeights != nil {
+			config["attributeWeights"] = attributeWeights
+		}
+		muAttributeWeights.RUnlock()
+
 		// Store in format-specific caches
 		// For JSON format
 		SetFormatAwareCacheItem(baseCacheKey, FormatTypeJSON, config, defaultExpiration)
-		
+
 		// For Protobuf format
 		configJSON, err := json.Marshal(config)
 		if err != nil {
 			log.Printf("Error marshaling config to JSON for protobuf: %v", err)
 		} else {
 			protoConfig := &pb.GenericResponse{
-				Data: string(configJSON),
+				Data:     string(configJSON),
 				Metadata: CreateResponseMetadata(requestID, 1, false),
 			}
 			// Optimize memory usage for protobuf cached data
 			optimizedProtoConfig := OptimizeMemoryForProtobuf(protoConfig)
 			SetFormatAwareCacheItem(baseCacheKey, FormatTypeProtobuf, optimizedProtoConfig, defaultExpiration)
 		}
-		
 
-		
 		// Respond with the appropriate format
 		if format == FormatTypeProtobuf && configJSON != nil {
 			protoConfig := &pb.GenericResponse{
-				Data: string(configJSON),
+				Data:     string(configJSON),
 				Metadata: CreateResponseMetadata(requestID, 1, false),
 			}
 			responseData, err := serializer.Serialize(protoConfig)
@@ -223,7 +228,7 @@ func cachedConfigHandler(w http.ResponseWriter, r *http.Request) {
 				}
 				return
 			}
-			
+
 			w.Header().Set("Content-Type", serializer.ContentType())
 			w.Header().Set("Cache-Control", "public, max-age=3600")
 			w.Write(responseData)
@@ -263,7 +268,14 @@ func cachedConfigHandler(w http.ResponseWriter, r *http.Request) {
 			"useScaledRatings":     GetUseScaledRatings(),
 			"datasetRetentionDays": int(getRetentionPeriod().Hours() / 24),
 		}
-		
+
+		// Add attribute weights to config response
+		muAttributeWeights.RLock()
+		if attributeWeights != nil {
+			config["attributeWeights"] = attributeWeights
+		}
+		muAttributeWeights.RUnlock()
+
 		// Respond with the appropriate format
 		if format == FormatTypeProtobuf {
 			configJSON, err := json.Marshal(config)
@@ -276,12 +288,12 @@ func cachedConfigHandler(w http.ResponseWriter, r *http.Request) {
 				}
 				return
 			}
-			
+
 			protoConfig := &pb.GenericResponse{
-				Data: string(configJSON),
+				Data:     string(configJSON),
 				Metadata: CreateResponseMetadata(requestID, 1, false),
 			}
-			
+
 			responseData, err := serializer.Serialize(protoConfig)
 			if err != nil {
 				// Fallback to JSON on serialization error
@@ -292,7 +304,7 @@ func cachedConfigHandler(w http.ResponseWriter, r *http.Request) {
 				}
 				return
 			}
-			
+
 			w.Header().Set("Content-Type", serializer.ContentType())
 			w.Write(responseData)
 		} else {

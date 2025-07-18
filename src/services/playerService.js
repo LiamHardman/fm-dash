@@ -1,5 +1,6 @@
 import { useApi } from '../composables/useApi.js'
 import { useProtobufApi } from '../composables/useProtobufApi.js'
+import { useErrorHandling } from '../composables/useErrorHandling.js'
 import logger from '../utils/logger.js'
 
 const API_ENDPOINT = import.meta.env.VITE_API_ENDPOINT || ''
@@ -100,7 +101,8 @@ export default {
       }
 
       // Use protobuf-aware API for player data
-      const { getPlayerData, withRetry } = useProtobufApi('')
+      const { getPlayerData } = useProtobufApi('')
+      const { withRetry } = useErrorHandling()
       
       // Use withRetry to handle potential race conditions with exponential backoff
       return await withRetry(

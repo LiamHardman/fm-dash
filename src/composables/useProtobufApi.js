@@ -1,86 +1,73 @@
 /**
  * useProtobufApi - Composable for making API requests with protobuf support
- * 
- * This composable provides:
- * - Enhanced fetch methods with protobuf support
- * - Graceful fallback to JSON for unsupported clients
- * - Performance tracking for API operations
- * - Consistent error handling
  */
 
-import { ref, reactive } from 'vue'
-import { useErrorHandling } from './useErrorHandling'
+import { ref, computed } from 'vue'
 import protobufClient from '../utils/protobufClient'
-import logger from '../utils/logger'
+import logger from '../utils/logger.js'
 
-// Determine the base URL at runtime
+// Performance metrics
+const metrics = {
+  totalRequests: 0,
+  protobufRequests: 0,
+  jsonRequests: 0,
+  failedRequests: 0,
+  averageRequestTime: 0,
+  averagePayloadSize: 0,
+  lastRequestTime: 0,
+  fallbacks: {},
+  errorsByType: {}
+}
+
+// Get base URL from configuration
 const getBaseURL = () => {
-  if (window.APP_CONFIG?.API_ENDPOINT) {
-    return window.APP_CONFIG.API_ENDPOINT
+  try {
+    if (window.APP_CONFIG?.API_BASE_URL) {
+      return window.APP_CONFIG.API_BASE_URL
+    }
+    return '/api'
+  } catch (error) {
+    logger.warn('Error getting API base URL, using default:', error)
+    return '/api'
   }
-  // Fallback for development or when config is not injected
-  return '/api'
 }
 
 export function useProtobufApi(initialBaseURL) {
   const baseURL = ref(initialBaseURL || getBaseURL())
-  const { handleFetchError, withRetry, safeAsync } = useErrorHandling()
   const isLoading = ref(false)
   const abortController = ref(null)
-  
-  // Performance metrics
-  const metrics = reactive({
-    lastRequestTime: 0,
-    averageRequestTime: 0,
-    totalRequests: 0,
-    protobufRequests: 0,
-    jsonRequests: 0,
-    failedRequests: 0,
-    averagePayloadSize: 0,
-    compressionRatio: 0
-  })
+  const errorDetails = ref(null)
 
-  // Default request configuration
-  const defaultConfig = {
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    credentials: 'same-origin'
-  }
-
-  // Create request with abort capability
+  /**
+   * Create a request with proper error handling
+   */
   const createRequest = (url, options = {}) => {
+    // Cancel any existing request
     if (abortController.value) {
       abortController.value.abort()
     }
 
+    // Create new abort controller
     abortController.value = new AbortController()
 
-    const config = {
-      ...defaultConfig,
+    return {
       ...options,
       signal: abortController.value.signal
     }
-
-    return { url: `${baseURL.value}${url}`, config }
   }
 
   /**
-   * Make a protobuf-aware API request
-   * @param {string} url - API endpoint
-   * @param {Object} options - Request options
-   * @param {string} messageType - Protobuf message type to decode
+   * Make a protobuf request with fallback to JSON
    */
   const protobufRequest = async (url, options = {}, messageType) => {
-    const { url: fullUrl, config } = createRequest(url, options)
     const requestStartTime = performance.now()
-    let errorDetails = {}
-
+    const config = createRequest(url, options)
+    
     try {
       isLoading.value = true
       
       // Use protobufClient to make the request
-      const response = await protobufClient.fetchWithProtobuf(fullUrl, config, messageType)
+      const response = await protobufClient.fetchWithProtobuf(url, config, messageType)
       
       // Update metrics
       const endTime = performance.now()
@@ -117,7 +104,7 @@ export function useProtobufApi(initialBaseURL) {
       metrics.failedRequests++
       
       // Collect detailed error information for logging
-      errorDetails = {
+      const errorDetails = {
         url,
         messageType,
         errorType: error.name,
@@ -258,7 +245,7 @@ export function useProtobufApi(initialBaseURL) {
     }
 
     try {
-      const url = `/players/${datasetId}`
+      const url = `/api/players/${datasetId}`
       return await get(url, params, 'api.PlayerDataResponse')
     } catch (error) {
       logger.error('Error fetching player data:', error)
@@ -271,7 +258,7 @@ export function useProtobufApi(initialBaseURL) {
    */
   const getRoles = async () => {
     try {
-      return await get('/roles', {}, 'api.RolesResponse')
+      return await get('/api/roles', {}, 'api.RolesResponse')
     } catch (error) {
       logger.error('Error fetching roles:', error)
       throw error
@@ -283,160 +270,132 @@ export function useProtobufApi(initialBaseURL) {
    */
   const getConfig = async () => {
     try {
-      return await get('/config', {}, 'api.GenericResponse')
+      return await get('/api/config', {}, 'api.GenericResponse')
     } catch (error) {
       logger.error('Error fetching config:', error)
-      // Return default config on error
-      return {
-        maxUploadSizeMB: 15,
-        maxUploadSizeBytes: 15 * 1024 * 1024,
-        useScaledRatings: true,
-        datasetRetentionDays: 30
-      }
+      throw error
     }
   }
 
   /**
-   * Upload player file (always uses JSON as FormData is not protobuf compatible)
-   * @param {FormData} formData - Form data with file
-   * @param {number} maxSizeBytes - Maximum file size
+   * Upload player file with progress tracking
+   * @param {FormData} formData - File data
+   * @param {number} maxSizeBytes - Maximum file size in bytes
    * @param {Function} onProgress - Progress callback
    */
   const uploadPlayerFile = async (formData, maxSizeBytes = 15 * 1024 * 1024, onProgress = null) => {
-    const file = formData.get('playerFile')
-    if (!file) {
-      throw new Error('No file found in form data')
+    if (!formData) {
+      throw new Error('FormData is required for file upload')
     }
 
     try {
-      // File uploads always use JSON
-      const { url: fullUrl, config } = createRequest('/upload', {
+      // Check file size
+      const file = formData.get('file')
+      if (file && file.size > maxSizeBytes) {
+        throw new Error(`File size exceeds maximum allowed size of ${maxSizeBytes / (1024 * 1024)}MB`)
+      }
+
+      const config = {
         method: 'POST',
         body: formData
-      })
-      
-      isLoading.value = true
-      
-      // Use XMLHttpRequest for progress tracking
-      if (onProgress) {
+      }
+
+      // Add progress tracking if callback provided
+      if (onProgress && typeof XMLHttpRequest !== 'undefined') {
         return new Promise((resolve, reject) => {
           const xhr = new XMLHttpRequest()
-
-          xhr.upload.addEventListener('progress', event => {
+          
+          xhr.upload.addEventListener('progress', (event) => {
             if (event.lengthComputable) {
-              const progress = (event.loaded / event.total) * 100
-              onProgress(progress)
+              const percentComplete = (event.loaded / event.total) * 100
+              onProgress(percentComplete)
             }
           })
 
           xhr.addEventListener('load', () => {
-            isLoading.value = false
             if (xhr.status >= 200 && xhr.status < 300) {
               try {
                 const response = JSON.parse(xhr.responseText)
-                metrics.jsonRequests++
-                metrics.totalRequests++
-                resolve(response)
-              } catch (_error) {
-                metrics.jsonRequests++
-                metrics.totalRequests++
-                resolve(xhr.responseText)
+                resolve({
+                  ...response,
+                  _protobuf: {
+                    format: 'json',
+                    fallbackReason: 'file_upload'
+                  }
+                })
+              } catch (error) {
+                reject(new Error('Invalid JSON response from server'))
               }
             } else {
-              metrics.failedRequests++
-              reject(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`))
+              reject(new Error(`Upload failed with status ${xhr.status}`))
             }
           })
 
           xhr.addEventListener('error', () => {
-            isLoading.value = false
-            metrics.failedRequests++
-            reject(new Error('Upload failed'))
+            reject(new Error('Upload failed due to network error'))
           })
 
-          xhr.open('POST', fullUrl)
+          xhr.open('POST', '/api/upload')
           xhr.send(formData)
         })
       }
-      
-      // Use fetch for simple upload
-      const response = await fetch(fullUrl, config)
-      
-      if (!response.ok) {
-        await handleFetchError(response, { url: fullUrl, method: 'POST' })
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-      
-      const jsonResponse = await response.json()
-      metrics.jsonRequests++
-      metrics.totalRequests++
-      return jsonResponse
+
+      // Use standard fetch for uploads without progress tracking
+      return await protobufRequest('/api/upload', config, 'api.GenericResponse')
     } catch (error) {
-      logger.error('Upload error:', error)
-
-      if (error.message?.includes('413') || error.message?.includes('too large')) {
-        const maxSizeMB = Math.round(maxSizeBytes / (1024 * 1024))
-        const newError = new Error(`File too large. Maximum size allowed is ${maxSizeMB}MB.`)
-        newError.status = 413
-        throw newError
-      }
-
+      logger.error('Error uploading player file:', error)
       throw error
-    } finally {
-      isLoading.value = false
-      abortController.value = null
     }
   }
 
   /**
-   * Cancel current request
+   * Cancel the current request
    */
   const cancel = () => {
     if (abortController.value) {
       abortController.value.abort()
-      abortController.value = null
+      logger.info('Request cancelled by user')
     }
   }
 
   /**
-   * Get client status and metrics
+   * Get client status and capabilities
    */
   const getClientStatus = () => {
     return {
       ...protobufClient.getStatus(),
+      baseURL: baseURL.value,
+      isLoading: isLoading.value,
       metrics: { ...metrics }
     }
   }
 
   /**
    * Enable or disable protobuf support
-   * @param {boolean} enabled - Whether protobuf should be enabled
    */
   const setProtobufEnabled = (enabled) => {
     protobufClient.setProtobufEnabled(enabled)
   }
 
   return {
-    isLoading,
-    metrics,
-
-    // Enhanced API methods
+    // State
+    isLoading: computed(() => isLoading.value),
+    baseURL: computed(() => baseURL.value),
+    
+    // Methods
     get,
     post,
     put,
-    delete: del,
+    del,
     getPlayerData,
     getRoles,
     getConfig,
     uploadPlayerFile,
     cancel,
-    
-    // Protobuf specific methods
     getClientStatus,
     setProtobufEnabled,
-
-    // Error handling utilities
-    safeAsync,
-    withRetry
+    
+    // Metrics
+    metrics: computed(() => ({ ...metrics }))
   }
-}
+} 

@@ -565,7 +565,7 @@ export default {
       Overall: {
         name: 'Overall',
         label: 'Overall',
-        field: 'Overall',
+        field: 'overall',
         sortable: true,
         align: 'center',
         isOverallStat: true,
@@ -615,7 +615,7 @@ export default {
       GK: {
         name: 'GK',
         label: 'GK',
-        field: 'GK',
+        field: 'gk',
         sortable: true,
         align: 'center',
         isFifaStat: true,
@@ -625,7 +625,7 @@ export default {
       DIV: {
         name: 'DIV',
         label: 'DIV',
-        field: 'DIV',
+        field: 'div',
         sortable: true,
         align: 'center',
         isFifaStat: true,
@@ -635,7 +635,7 @@ export default {
       HAN: {
         name: 'HAN',
         label: 'HAN',
-        field: 'HAN',
+        field: 'han',
         sortable: true,
         align: 'center',
         isFifaStat: true,
@@ -645,7 +645,7 @@ export default {
       REF: {
         name: 'REF',
         label: 'REF',
-        field: 'REF',
+        field: 'ref',
         sortable: true,
         align: 'center',
         isFifaStat: true,
@@ -655,7 +655,7 @@ export default {
       KIC: {
         name: 'KIC',
         label: 'KIC',
-        field: 'KIC',
+        field: 'kic',
         sortable: true,
         align: 'center',
         isFifaStat: true,
@@ -665,7 +665,7 @@ export default {
       SPD: {
         name: 'SPD',
         label: 'SPD',
-        field: 'SPD',
+        field: 'spd',
         sortable: true,
         align: 'center',
         isFifaStat: true,
@@ -675,7 +675,7 @@ export default {
       POS: {
         name: 'POS',
         label: 'POS',
-        field: 'POS',
+        field: 'pos',
         sortable: true,
         align: 'center',
         isFifaStat: true,
@@ -685,7 +685,7 @@ export default {
       PAC: {
         name: 'PAC',
         label: 'PAC',
-        field: 'PAC',
+        field: 'pac',
         sortable: true,
         align: 'center',
         isFifaStat: true,
@@ -695,7 +695,7 @@ export default {
       SHO: {
         name: 'SHO',
         label: 'SHO',
-        field: 'SHO',
+        field: 'sho',
         sortable: true,
         align: 'center',
         isFifaStat: true,
@@ -705,7 +705,7 @@ export default {
       PAS: {
         name: 'PAS',
         label: 'PAS',
-        field: 'PAS',
+        field: 'pas',
         sortable: true,
         align: 'center',
         isFifaStat: true,
@@ -715,7 +715,7 @@ export default {
       DRI: {
         name: 'DRI',
         label: 'DRI',
-        field: 'DRI',
+        field: 'dri',
         sortable: true,
         align: 'center',
         isFifaStat: true,
@@ -725,7 +725,7 @@ export default {
       DEF: {
         name: 'DEF',
         label: 'DEF',
-        field: 'DEF',
+        field: 'def',
         sortable: true,
         align: 'center',
         isFifaStat: true,
@@ -735,7 +735,7 @@ export default {
       PHY: {
         name: 'PHY',
         label: 'PHY',
-        field: 'PHY',
+        field: 'phy',
         sortable: true,
         align: 'center',
         isFifaStat: true,

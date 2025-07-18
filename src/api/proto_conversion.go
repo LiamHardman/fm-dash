@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"api/proto"
+
 	"go.opentelemetry.io/otel/attribute"
 )
 
@@ -166,19 +167,52 @@ func (p *Player) ToProto(ctx context.Context) (*proto.Player, error) {
 		protoRoles = append(protoRoles, protoRole)
 	}
 
-	// Convert performance percentiles nested map
+	// Convert performance percentiles nested map (create a copy to avoid race conditions)
 	protoPercentiles := make(map[string]*proto.PerformancePercentileMap)
-	for key, innerMap := range p.PerformancePercentiles {
-		protoPercentiles[key] = &proto.PerformancePercentileMap{
-			Percentiles: innerMap,
+	if p.PerformancePercentiles != nil {
+		for key, innerMap := range p.PerformancePercentiles {
+			// Create a copy of the inner map to avoid race conditions
+			innerMapCopy := make(map[string]float64)
+			for k, v := range innerMap {
+				innerMapCopy[k] = v
+			}
+			protoPercentiles[key] = &proto.PerformancePercentileMap{
+				Percentiles: innerMapCopy,
+			}
 		}
 	}
 
-	// Convert numeric attributes to int32
+	// Convert numeric attributes to int32 (create a copy to avoid race conditions)
 	protoNumericAttrs := make(map[string]int32)
-	for key, value := range p.NumericAttributes {
-		protoNumericAttrs[key] = safeIntToInt32(value)
+	if p.NumericAttributes != nil {
+		for key, value := range p.NumericAttributes {
+			protoNumericAttrs[key] = safeIntToInt32(value)
+		}
 	}
+
+	// Create copies of maps to avoid race conditions
+	attributesCopy := make(map[string]string)
+	if p.Attributes != nil {
+		for key, value := range p.Attributes {
+			attributesCopy[key] = value
+		}
+	}
+
+	performanceStatsCopy := make(map[string]float64)
+	if p.PerformanceStatsNumeric != nil {
+		for key, value := range p.PerformanceStatsNumeric {
+			performanceStatsCopy[key] = value
+		}
+	}
+
+	parsedPositionsCopy := make([]string, len(p.ParsedPositions))
+	copy(parsedPositionsCopy, p.ParsedPositions)
+
+	shortPositionsCopy := make([]string, len(p.ShortPositions))
+	copy(shortPositionsCopy, p.ShortPositions)
+
+	positionGroupsCopy := make([]string, len(p.PositionGroups))
+	copy(positionGroupsCopy, p.PositionGroups)
 
 	protoPlayer := &proto.Player{
 		Uid:                     p.UID,
@@ -195,13 +229,13 @@ func (p *Player) ToProto(ctx context.Context) (*proto.Player, error) {
 		NationalityIso:          p.NationalityISO,
 		NationalityFifaCode:     p.NationalityFIFACode,
 		AttributeMasked:         p.AttributeMasked,
-		Attributes:              p.Attributes,
+		Attributes:              attributesCopy,
 		NumericAttributes:       protoNumericAttrs,
-		PerformanceStatsNumeric: p.PerformanceStatsNumeric,
+		PerformanceStatsNumeric: performanceStatsCopy,
 		PerformancePercentiles:  protoPercentiles,
-		ParsedPositions:         p.ParsedPositions,
-		ShortPositions:          p.ShortPositions,
-		PositionGroups:          p.PositionGroups,
+		ParsedPositions:         parsedPositionsCopy,
+		ShortPositions:          shortPositionsCopy,
+		PositionGroups:          positionGroupsCopy,
 		Pac:                     safeIntToInt32(p.PAC),
 		Sho:                     safeIntToInt32(p.SHO),
 		Pas:                     safeIntToInt32(p.PAS),

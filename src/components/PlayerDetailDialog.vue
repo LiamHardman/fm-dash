@@ -1448,21 +1448,21 @@ export default defineComponent({
 
     // Pre-defined stat configurations for better performance
     const goalkeepingStats = [
-      { name: 'DIV', label: 'DIV' },
-      { name: 'HAN', label: 'HAN' },
-      { name: 'REF', label: 'REF' },
-      { name: 'KIC', label: 'KIC' },
-      { name: 'SPD', label: 'SPD' },
-      { name: 'POS', label: 'POS' }
+      { name: 'div', label: 'DIV' },
+      { name: 'han', label: 'HAN' },
+      { name: 'ref', label: 'REF' },
+      { name: 'kic', label: 'KIC' },
+      { name: 'spd', label: 'SPD' },
+      { name: 'pos', label: 'POS' }
     ]
 
     const outfieldStats = [
-      { name: 'PAC', label: 'PAC' },
-      { name: 'SHO', label: 'SHO' },
-      { name: 'PAS', label: 'PAS' },
-      { name: 'DRI', label: 'DRI' },
-      { name: 'DEF', label: 'DEF' },
-      { name: 'PHY', label: 'PHY' }
+      { name: 'pac', label: 'PAC' },
+      { name: 'sho', label: 'SHO' },
+      { name: 'pas', label: 'PAS' },
+      { name: 'dri', label: 'DRI' },
+      { name: 'def', label: 'DEF' },
+      { name: 'phy', label: 'PHY' }
     ]
 
     const fifaStatsToDisplay = computed(() => {

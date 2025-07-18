@@ -689,6 +689,10 @@ func EnhancePlayerWithCalculations(player *Player) {
 
 // RecalculatePlayerRatings recalculates all ratings for a player based on the current calculation method setting
 func RecalculatePlayerRatings(player *Player) {
+	// First, ensure numeric attributes are properly converted from string attributes
+	// This is crucial for FIFA-style calculations
+	EnhancePlayerWithCalculations(player)
+
 	// Determine if player is a goalkeeper first
 	isGoalkeeper := false
 	for _, posGroup := range player.PositionGroups {
@@ -874,12 +878,14 @@ func RecalculatePlayerRatings(player *Player) {
 
 // RecalculateAllPlayersRatings recalculates ratings for all players in a slice
 func RecalculateAllPlayersRatings(players []Player) []Player {
-	recalculatedPlayers := make([]Player, len(players))
-	for i := range players {
+	log.Printf("RecalculateAllPlayersRatings called for %d players", len(players))
+	// Create a new slice to avoid modifying the original
+	result := make([]Player, len(players))
+	copy(result, players)
+	for i := range result {
 		// Make a copy to avoid modifying the original
-		recalculatedPlayers[i] = players[i]
-		RecalculatePlayerRatings(&recalculatedPlayers[i])
+		result[i] = players[i]
+		RecalculatePlayerRatings(&result[i])
 	}
-
-	return recalculatedPlayers
+	return result
 }

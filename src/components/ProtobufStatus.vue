@@ -281,4 +281,4 @@ onMounted(() => {
 .result-format, .result-fallback, .result-timing, .result-size {
   margin-bottom: 5px;
 }
-</style>
+</style> 
