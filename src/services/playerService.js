@@ -185,3 +185,42 @@ export default {
     setProtobufEnabled(enabled)
   }
 }
+
+/**
+ * Fetch detailed player stats for a single player
+ * @param {string} datasetID - The dataset ID
+ * @param {number} playerUID - The player UID (numeric, not UUID)
+ * @returns {Promise<Object>} - Detailed player data
+ */
+export async function fetchFullPlayerStats(datasetID, playerUID) {
+  try {
+    const url = `/api/fullplayerstats/${datasetID}/${playerUID}`
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json, application/x-protobuf',
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    }
+
+    const contentType = response.headers.get('Content-Type')
+    if (contentType && contentType.includes('application/x-protobuf')) {
+      // Handle protobuf response
+      const buffer = await response.arrayBuffer()
+      // For now, return the raw data - we can add protobuf decoding later if needed
+      return { data: buffer, format: 'protobuf' }
+    } else {
+      // Handle JSON response
+      const data = await response.json()
+      return { data, format: 'json' }
+    }
+  } catch (error) {
+    console.error('Error fetching full player stats:', error)
+    throw error
+  }
+}

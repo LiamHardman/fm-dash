@@ -54,9 +54,8 @@ class ProtobufClient {
         if (this.protobufSupported) {
           try {
             logger.info('Attempting to load protobufjs library...')
-            // The protobuf library exports Root directly
-            // The protobuf library exports Root directly
-            
+            // The protobuf library is already imported at the top
+            // No additional import needed here
           } catch (importError) {
             logger.error('Failed to import protobufjs:', importError)
             throw importError
@@ -191,42 +190,37 @@ class ProtobufClient {
                   nationality_iso: { type: "string", id: 12 },
                   nationality_fifa_code: { type: "string", id: 13 },
                   attribute_masked: { type: "bool", id: 14 },
-                  attributes: { rule: "map", keyType: "string", type: "string", id: 15 },
-                  numeric_attributes: { rule: "map", keyType: "string", type: "int32", id: 16 },
-                  performance_stats_numeric: { rule: "map", keyType: "string", type: "double", id: 17 },
-                  performance_percentiles: { rule: "map", keyType: "string", type: "PerformancePercentileMap", id: 18 },
-                  parsed_positions: { rule: "repeated", type: "string", id: 19 },
-                  short_positions: { rule: "repeated", type: "string", id: 20 },
-                  position_groups: { rule: "repeated", type: "string", id: 21 },
-                  pac: { type: "int32", id: 22 },
-                  sho: { type: "int32", id: 23 },
-                  pas: { type: "int32", id: 24 },
-                  dri: { type: "int32", id: 25 },
-                  def: { type: "int32", id: 26 },
-                  phy: { type: "int32", id: 27 },
-                  gk: { type: "int32", id: 28 },
-                  div: { type: "int32", id: 29 },
-                  han: { type: "int32", id: 30 },
-                  ref: { type: "int32", id: 31 },
-                  kic: { type: "int32", id: 32 },
-                  spd: { type: "int32", id: 33 },
-                  pos: { type: "int32", id: 34 },
-                  overall: { type: "int32", id: 35 },
-                  best_role_overall: { type: "string", id: 36 },
-                  role_specific_overalls: { rule: "repeated", type: "RoleOverallScore", id: 37 },
-                  transfer_value_amount: { type: "int64", id: 38 },
-                  wage_amount: { type: "int64", id: 39 }
-                }
-              },
-              RoleOverallScore: {
-                fields: {
-                  role_name: { type: "string", id: 1 },
-                  score: { type: "int32", id: 2 }
-                }
-              },
-              PerformancePercentileMap: {
-                fields: {
-                  percentiles: { rule: "map", keyType: "string", type: "double", id: 1 }
+                  
+                  // Essential FIFA-style stats for display and sorting
+                  pac: { type: "int32", id: 15 },
+                  sho: { type: "int32", id: 16 },
+                  pas: { type: "int32", id: 17 },
+                  dri: { type: "int32", id: 18 },
+                  def: { type: "int32", id: 19 },
+                  phy: { type: "int32", id: 20 },
+                  gk: { type: "int32", id: 21 },
+                  div: { type: "int32", id: 22 },
+                  han: { type: "int32", id: 23 },
+                  ref: { type: "int32", id: 24 },
+                  kic: { type: "int32", id: 25 },
+                  spd: { type: "int32", id: 26 },
+                  pos: { type: "int32", id: 27 },
+                  overall: { type: "int32", id: 28 },
+                  
+                  // Position data for filtering and grouping
+                  parsed_positions: { rule: "repeated", type: "string", id: 29 },
+                  short_positions: { rule: "repeated", type: "string", id: 30 },
+                  position_groups: { rule: "repeated", type: "string", id: 31 },
+                  
+                  // Essential attributes for display (only the most important ones)
+                  essential_attributes: { rule: "map", keyType: "string", type: "string", id: 32 },
+                  
+                  // Best role for display
+                  best_role_overall: { type: "string", id: 33 },
+                  
+                  // Numeric values for sorting
+                  transfer_value_amount: { type: "int64", id: 34 },
+                  wage_amount: { type: "int64", id: 35 }
                 }
               }
             }

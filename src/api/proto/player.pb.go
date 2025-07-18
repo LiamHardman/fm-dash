@@ -21,153 +21,56 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// RoleOverallScore stores the calculated overall score for a player in a specific role.
-type RoleOverallScore struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	RoleName      string                 `protobuf:"bytes,1,opt,name=role_name,json=roleName,proto3" json:"role_name,omitempty"`
-	Score         int32                  `protobuf:"varint,2,opt,name=score,proto3" json:"score,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *RoleOverallScore) Reset() {
-	*x = RoleOverallScore{}
-	mi := &file_proto_player_proto_msgTypes[0]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RoleOverallScore) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RoleOverallScore) ProtoMessage() {}
-
-func (x *RoleOverallScore) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_player_proto_msgTypes[0]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use RoleOverallScore.ProtoReflect.Descriptor instead.
-func (*RoleOverallScore) Descriptor() ([]byte, []int) {
-	return file_proto_player_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *RoleOverallScore) GetRoleName() string {
-	if x != nil {
-		return x.RoleName
-	}
-	return ""
-}
-
-func (x *RoleOverallScore) GetScore() int32 {
-	if x != nil {
-		return x.Score
-	}
-	return 0
-}
-
-// PerformancePercentileMap represents nested map structure for performance percentiles
-type PerformancePercentileMap struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Percentiles   map[string]float64     `protobuf:"bytes,1,rep,name=percentiles,proto3" json:"percentiles,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"fixed64,2,opt,name=value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *PerformancePercentileMap) Reset() {
-	*x = PerformancePercentileMap{}
-	mi := &file_proto_player_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *PerformancePercentileMap) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PerformancePercentileMap) ProtoMessage() {}
-
-func (x *PerformancePercentileMap) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_player_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use PerformancePercentileMap.ProtoReflect.Descriptor instead.
-func (*PerformancePercentileMap) Descriptor() ([]byte, []int) {
-	return file_proto_player_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *PerformancePercentileMap) GetPercentiles() map[string]float64 {
-	if x != nil {
-		return x.Percentiles
-	}
-	return nil
-}
-
-// Player holds all the information and calculated statistics for a football player.
+// Player holds essential information for frontend display and sorting
 type Player struct {
-	state                   protoimpl.MessageState               `protogen:"open.v1"`
-	Uid                     int64                                `protobuf:"varint,1,opt,name=uid,proto3" json:"uid,omitempty"`
-	Name                    string                               `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Position                string                               `protobuf:"bytes,3,opt,name=position,proto3" json:"position,omitempty"`
-	Age                     string                               `protobuf:"bytes,4,opt,name=age,proto3" json:"age,omitempty"`
-	Club                    string                               `protobuf:"bytes,5,opt,name=club,proto3" json:"club,omitempty"`
-	Division                string                               `protobuf:"bytes,6,opt,name=division,proto3" json:"division,omitempty"`
-	TransferValue           string                               `protobuf:"bytes,7,opt,name=transfer_value,json=transferValue,proto3" json:"transfer_value,omitempty"`
-	Wage                    string                               `protobuf:"bytes,8,opt,name=wage,proto3" json:"wage,omitempty"`
-	Personality             string                               `protobuf:"bytes,9,opt,name=personality,proto3" json:"personality,omitempty"`
-	MediaHandling           string                               `protobuf:"bytes,10,opt,name=media_handling,json=mediaHandling,proto3" json:"media_handling,omitempty"`
-	Nationality             string                               `protobuf:"bytes,11,opt,name=nationality,proto3" json:"nationality,omitempty"`
-	NationalityIso          string                               `protobuf:"bytes,12,opt,name=nationality_iso,json=nationalityIso,proto3" json:"nationality_iso,omitempty"`
-	NationalityFifaCode     string                               `protobuf:"bytes,13,opt,name=nationality_fifa_code,json=nationalityFifaCode,proto3" json:"nationality_fifa_code,omitempty"`
-	AttributeMasked         bool                                 `protobuf:"varint,14,opt,name=attribute_masked,json=attributeMasked,proto3" json:"attribute_masked,omitempty"`
-	Attributes              map[string]string                    `protobuf:"bytes,15,rep,name=attributes,proto3" json:"attributes,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	NumericAttributes       map[string]int32                     `protobuf:"bytes,16,rep,name=numeric_attributes,json=numericAttributes,proto3" json:"numeric_attributes,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
-	PerformanceStatsNumeric map[string]float64                   `protobuf:"bytes,17,rep,name=performance_stats_numeric,json=performanceStatsNumeric,proto3" json:"performance_stats_numeric,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"fixed64,2,opt,name=value"`
-	PerformancePercentiles  map[string]*PerformancePercentileMap `protobuf:"bytes,18,rep,name=performance_percentiles,json=performancePercentiles,proto3" json:"performance_percentiles,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	ParsedPositions         []string                             `protobuf:"bytes,19,rep,name=parsed_positions,json=parsedPositions,proto3" json:"parsed_positions,omitempty"`
-	ShortPositions          []string                             `protobuf:"bytes,20,rep,name=short_positions,json=shortPositions,proto3" json:"short_positions,omitempty"`
-	PositionGroups          []string                             `protobuf:"bytes,21,rep,name=position_groups,json=positionGroups,proto3" json:"position_groups,omitempty"`
-	Pac                     int32                                `protobuf:"varint,22,opt,name=pac,proto3" json:"pac,omitempty"`
-	Sho                     int32                                `protobuf:"varint,23,opt,name=sho,proto3" json:"sho,omitempty"`
-	Pas                     int32                                `protobuf:"varint,24,opt,name=pas,proto3" json:"pas,omitempty"`
-	Dri                     int32                                `protobuf:"varint,25,opt,name=dri,proto3" json:"dri,omitempty"`
-	Def                     int32                                `protobuf:"varint,26,opt,name=def,proto3" json:"def,omitempty"`
-	Phy                     int32                                `protobuf:"varint,27,opt,name=phy,proto3" json:"phy,omitempty"`
-	Gk                      int32                                `protobuf:"varint,28,opt,name=gk,proto3" json:"gk,omitempty"`
-	Div                     int32                                `protobuf:"varint,29,opt,name=div,proto3" json:"div,omitempty"`
-	Han                     int32                                `protobuf:"varint,30,opt,name=han,proto3" json:"han,omitempty"`
-	Ref                     int32                                `protobuf:"varint,31,opt,name=ref,proto3" json:"ref,omitempty"`
-	Kic                     int32                                `protobuf:"varint,32,opt,name=kic,proto3" json:"kic,omitempty"`
-	Spd                     int32                                `protobuf:"varint,33,opt,name=spd,proto3" json:"spd,omitempty"`
-	Pos                     int32                                `protobuf:"varint,34,opt,name=pos,proto3" json:"pos,omitempty"`
-	Overall                 int32                                `protobuf:"varint,35,opt,name=overall,proto3" json:"overall,omitempty"`
-	BestRoleOverall         string                               `protobuf:"bytes,36,opt,name=best_role_overall,json=bestRoleOverall,proto3" json:"best_role_overall,omitempty"`
-	RoleSpecificOveralls    []*RoleOverallScore                  `protobuf:"bytes,37,rep,name=role_specific_overalls,json=roleSpecificOveralls,proto3" json:"role_specific_overalls,omitempty"`
-	TransferValueAmount     int64                                `protobuf:"varint,38,opt,name=transfer_value_amount,json=transferValueAmount,proto3" json:"transfer_value_amount,omitempty"`
-	WageAmount              int64                                `protobuf:"varint,39,opt,name=wage_amount,json=wageAmount,proto3" json:"wage_amount,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	Uid                 int64                  `protobuf:"varint,1,opt,name=uid,proto3" json:"uid,omitempty"`
+	Name                string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Position            string                 `protobuf:"bytes,3,opt,name=position,proto3" json:"position,omitempty"`
+	Age                 string                 `protobuf:"bytes,4,opt,name=age,proto3" json:"age,omitempty"`
+	Club                string                 `protobuf:"bytes,5,opt,name=club,proto3" json:"club,omitempty"`
+	Division            string                 `protobuf:"bytes,6,opt,name=division,proto3" json:"division,omitempty"`
+	TransferValue       string                 `protobuf:"bytes,7,opt,name=transfer_value,json=transferValue,proto3" json:"transfer_value,omitempty"`
+	Wage                string                 `protobuf:"bytes,8,opt,name=wage,proto3" json:"wage,omitempty"`
+	Personality         string                 `protobuf:"bytes,9,opt,name=personality,proto3" json:"personality,omitempty"`
+	MediaHandling       string                 `protobuf:"bytes,10,opt,name=media_handling,json=mediaHandling,proto3" json:"media_handling,omitempty"`
+	Nationality         string                 `protobuf:"bytes,11,opt,name=nationality,proto3" json:"nationality,omitempty"`
+	NationalityIso      string                 `protobuf:"bytes,12,opt,name=nationality_iso,json=nationalityIso,proto3" json:"nationality_iso,omitempty"`
+	NationalityFifaCode string                 `protobuf:"bytes,13,opt,name=nationality_fifa_code,json=nationalityFifaCode,proto3" json:"nationality_fifa_code,omitempty"`
+	AttributeMasked     bool                   `protobuf:"varint,14,opt,name=attribute_masked,json=attributeMasked,proto3" json:"attribute_masked,omitempty"`
+	// Essential FIFA-style stats for display and sorting
+	Pac     int32 `protobuf:"varint,15,opt,name=pac,proto3" json:"pac,omitempty"`
+	Sho     int32 `protobuf:"varint,16,opt,name=sho,proto3" json:"sho,omitempty"`
+	Pas     int32 `protobuf:"varint,17,opt,name=pas,proto3" json:"pas,omitempty"`
+	Dri     int32 `protobuf:"varint,18,opt,name=dri,proto3" json:"dri,omitempty"`
+	Def     int32 `protobuf:"varint,19,opt,name=def,proto3" json:"def,omitempty"`
+	Phy     int32 `protobuf:"varint,20,opt,name=phy,proto3" json:"phy,omitempty"`
+	Gk      int32 `protobuf:"varint,21,opt,name=gk,proto3" json:"gk,omitempty"`
+	Div     int32 `protobuf:"varint,22,opt,name=div,proto3" json:"div,omitempty"`
+	Han     int32 `protobuf:"varint,23,opt,name=han,proto3" json:"han,omitempty"`
+	Ref     int32 `protobuf:"varint,24,opt,name=ref,proto3" json:"ref,omitempty"`
+	Kic     int32 `protobuf:"varint,25,opt,name=kic,proto3" json:"kic,omitempty"`
+	Spd     int32 `protobuf:"varint,26,opt,name=spd,proto3" json:"spd,omitempty"`
+	Pos     int32 `protobuf:"varint,27,opt,name=pos,proto3" json:"pos,omitempty"`
+	Overall int32 `protobuf:"varint,28,opt,name=overall,proto3" json:"overall,omitempty"`
+	// Position data for filtering and grouping
+	ParsedPositions []string `protobuf:"bytes,29,rep,name=parsed_positions,json=parsedPositions,proto3" json:"parsed_positions,omitempty"`
+	ShortPositions  []string `protobuf:"bytes,30,rep,name=short_positions,json=shortPositions,proto3" json:"short_positions,omitempty"`
+	PositionGroups  []string `protobuf:"bytes,31,rep,name=position_groups,json=positionGroups,proto3" json:"position_groups,omitempty"`
+	// Essential attributes for display (only the most important ones)
+	EssentialAttributes map[string]string `protobuf:"bytes,32,rep,name=essential_attributes,json=essentialAttributes,proto3" json:"essential_attributes,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Best role for display
+	BestRoleOverall string `protobuf:"bytes,33,opt,name=best_role_overall,json=bestRoleOverall,proto3" json:"best_role_overall,omitempty"`
+	// Numeric values for sorting
+	TransferValueAmount int64 `protobuf:"varint,34,opt,name=transfer_value_amount,json=transferValueAmount,proto3" json:"transfer_value_amount,omitempty"`
+	WageAmount          int64 `protobuf:"varint,35,opt,name=wage_amount,json=wageAmount,proto3" json:"wage_amount,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *Player) Reset() {
 	*x = Player{}
-	mi := &file_proto_player_proto_msgTypes[2]
+	mi := &file_proto_player_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -179,7 +82,7 @@ func (x *Player) String() string {
 func (*Player) ProtoMessage() {}
 
 func (x *Player) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_player_proto_msgTypes[2]
+	mi := &file_proto_player_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -192,7 +95,7 @@ func (x *Player) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Player.ProtoReflect.Descriptor instead.
 func (*Player) Descriptor() ([]byte, []int) {
-	return file_proto_player_proto_rawDescGZIP(), []int{2}
+	return file_proto_player_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Player) GetUid() int64 {
@@ -293,55 +196,6 @@ func (x *Player) GetAttributeMasked() bool {
 	return false
 }
 
-func (x *Player) GetAttributes() map[string]string {
-	if x != nil {
-		return x.Attributes
-	}
-	return nil
-}
-
-func (x *Player) GetNumericAttributes() map[string]int32 {
-	if x != nil {
-		return x.NumericAttributes
-	}
-	return nil
-}
-
-func (x *Player) GetPerformanceStatsNumeric() map[string]float64 {
-	if x != nil {
-		return x.PerformanceStatsNumeric
-	}
-	return nil
-}
-
-func (x *Player) GetPerformancePercentiles() map[string]*PerformancePercentileMap {
-	if x != nil {
-		return x.PerformancePercentiles
-	}
-	return nil
-}
-
-func (x *Player) GetParsedPositions() []string {
-	if x != nil {
-		return x.ParsedPositions
-	}
-	return nil
-}
-
-func (x *Player) GetShortPositions() []string {
-	if x != nil {
-		return x.ShortPositions
-	}
-	return nil
-}
-
-func (x *Player) GetPositionGroups() []string {
-	if x != nil {
-		return x.PositionGroups
-	}
-	return nil
-}
-
 func (x *Player) GetPac() int32 {
 	if x != nil {
 		return x.Pac
@@ -440,18 +294,39 @@ func (x *Player) GetOverall() int32 {
 	return 0
 }
 
+func (x *Player) GetParsedPositions() []string {
+	if x != nil {
+		return x.ParsedPositions
+	}
+	return nil
+}
+
+func (x *Player) GetShortPositions() []string {
+	if x != nil {
+		return x.ShortPositions
+	}
+	return nil
+}
+
+func (x *Player) GetPositionGroups() []string {
+	if x != nil {
+		return x.PositionGroups
+	}
+	return nil
+}
+
+func (x *Player) GetEssentialAttributes() map[string]string {
+	if x != nil {
+		return x.EssentialAttributes
+	}
+	return nil
+}
+
 func (x *Player) GetBestRoleOverall() string {
 	if x != nil {
 		return x.BestRoleOverall
 	}
 	return ""
-}
-
-func (x *Player) GetRoleSpecificOveralls() []*RoleOverallScore {
-	if x != nil {
-		return x.RoleSpecificOveralls
-	}
-	return nil
 }
 
 func (x *Player) GetTransferValueAmount() int64 {
@@ -480,7 +355,7 @@ type DatasetData struct {
 
 func (x *DatasetData) Reset() {
 	*x = DatasetData{}
-	mi := &file_proto_player_proto_msgTypes[3]
+	mi := &file_proto_player_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -492,7 +367,7 @@ func (x *DatasetData) String() string {
 func (*DatasetData) ProtoMessage() {}
 
 func (x *DatasetData) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_player_proto_msgTypes[3]
+	mi := &file_proto_player_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -505,7 +380,7 @@ func (x *DatasetData) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DatasetData.ProtoReflect.Descriptor instead.
 func (*DatasetData) Descriptor() ([]byte, []int) {
-	return file_proto_player_proto_rawDescGZIP(), []int{3}
+	return file_proto_player_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *DatasetData) GetPlayers() []*Player {
@@ -533,15 +408,7 @@ var File_proto_player_proto protoreflect.FileDescriptor
 
 const file_proto_player_proto_rawDesc = "" +
 	"\n" +
-	"\x12proto/player.proto\x12\x06player\"E\n" +
-	"\x10RoleOverallScore\x12\x1b\n" +
-	"\trole_name\x18\x01 \x01(\tR\broleName\x12\x14\n" +
-	"\x05score\x18\x02 \x01(\x05R\x05score\"\xaf\x01\n" +
-	"\x18PerformancePercentileMap\x12S\n" +
-	"\vpercentiles\x18\x01 \x03(\v21.player.PerformancePercentileMap.PercentilesEntryR\vpercentiles\x1a>\n" +
-	"\x10PercentilesEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x01R\x05value:\x028\x01\"\xac\r\n" +
+	"\x12proto/player.proto\x12\x06player\"\xde\b\n" +
 	"\x06Player\x12\x10\n" +
 	"\x03uid\x18\x01 \x01(\x03R\x03uid\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1a\n" +
@@ -557,47 +424,32 @@ const file_proto_player_proto_rawDesc = "" +
 	"\vnationality\x18\v \x01(\tR\vnationality\x12'\n" +
 	"\x0fnationality_iso\x18\f \x01(\tR\x0enationalityIso\x122\n" +
 	"\x15nationality_fifa_code\x18\r \x01(\tR\x13nationalityFifaCode\x12)\n" +
-	"\x10attribute_masked\x18\x0e \x01(\bR\x0fattributeMasked\x12>\n" +
-	"\n" +
-	"attributes\x18\x0f \x03(\v2\x1e.player.Player.AttributesEntryR\n" +
-	"attributes\x12T\n" +
-	"\x12numeric_attributes\x18\x10 \x03(\v2%.player.Player.NumericAttributesEntryR\x11numericAttributes\x12g\n" +
-	"\x19performance_stats_numeric\x18\x11 \x03(\v2+.player.Player.PerformanceStatsNumericEntryR\x17performanceStatsNumeric\x12c\n" +
-	"\x17performance_percentiles\x18\x12 \x03(\v2*.player.Player.PerformancePercentilesEntryR\x16performancePercentiles\x12)\n" +
-	"\x10parsed_positions\x18\x13 \x03(\tR\x0fparsedPositions\x12'\n" +
-	"\x0fshort_positions\x18\x14 \x03(\tR\x0eshortPositions\x12'\n" +
-	"\x0fposition_groups\x18\x15 \x03(\tR\x0epositionGroups\x12\x10\n" +
-	"\x03pac\x18\x16 \x01(\x05R\x03pac\x12\x10\n" +
-	"\x03sho\x18\x17 \x01(\x05R\x03sho\x12\x10\n" +
-	"\x03pas\x18\x18 \x01(\x05R\x03pas\x12\x10\n" +
-	"\x03dri\x18\x19 \x01(\x05R\x03dri\x12\x10\n" +
-	"\x03def\x18\x1a \x01(\x05R\x03def\x12\x10\n" +
-	"\x03phy\x18\x1b \x01(\x05R\x03phy\x12\x0e\n" +
-	"\x02gk\x18\x1c \x01(\x05R\x02gk\x12\x10\n" +
-	"\x03div\x18\x1d \x01(\x05R\x03div\x12\x10\n" +
-	"\x03han\x18\x1e \x01(\x05R\x03han\x12\x10\n" +
-	"\x03ref\x18\x1f \x01(\x05R\x03ref\x12\x10\n" +
-	"\x03kic\x18  \x01(\x05R\x03kic\x12\x10\n" +
-	"\x03spd\x18! \x01(\x05R\x03spd\x12\x10\n" +
-	"\x03pos\x18\" \x01(\x05R\x03pos\x12\x18\n" +
-	"\aoverall\x18# \x01(\x05R\aoverall\x12*\n" +
-	"\x11best_role_overall\x18$ \x01(\tR\x0fbestRoleOverall\x12N\n" +
-	"\x16role_specific_overalls\x18% \x03(\v2\x18.player.RoleOverallScoreR\x14roleSpecificOveralls\x122\n" +
-	"\x15transfer_value_amount\x18& \x01(\x03R\x13transferValueAmount\x12\x1f\n" +
-	"\vwage_amount\x18' \x01(\x03R\n" +
-	"wageAmount\x1a=\n" +
-	"\x0fAttributesEntry\x12\x10\n" +
+	"\x10attribute_masked\x18\x0e \x01(\bR\x0fattributeMasked\x12\x10\n" +
+	"\x03pac\x18\x0f \x01(\x05R\x03pac\x12\x10\n" +
+	"\x03sho\x18\x10 \x01(\x05R\x03sho\x12\x10\n" +
+	"\x03pas\x18\x11 \x01(\x05R\x03pas\x12\x10\n" +
+	"\x03dri\x18\x12 \x01(\x05R\x03dri\x12\x10\n" +
+	"\x03def\x18\x13 \x01(\x05R\x03def\x12\x10\n" +
+	"\x03phy\x18\x14 \x01(\x05R\x03phy\x12\x0e\n" +
+	"\x02gk\x18\x15 \x01(\x05R\x02gk\x12\x10\n" +
+	"\x03div\x18\x16 \x01(\x05R\x03div\x12\x10\n" +
+	"\x03han\x18\x17 \x01(\x05R\x03han\x12\x10\n" +
+	"\x03ref\x18\x18 \x01(\x05R\x03ref\x12\x10\n" +
+	"\x03kic\x18\x19 \x01(\x05R\x03kic\x12\x10\n" +
+	"\x03spd\x18\x1a \x01(\x05R\x03spd\x12\x10\n" +
+	"\x03pos\x18\x1b \x01(\x05R\x03pos\x12\x18\n" +
+	"\aoverall\x18\x1c \x01(\x05R\aoverall\x12)\n" +
+	"\x10parsed_positions\x18\x1d \x03(\tR\x0fparsedPositions\x12'\n" +
+	"\x0fshort_positions\x18\x1e \x03(\tR\x0eshortPositions\x12'\n" +
+	"\x0fposition_groups\x18\x1f \x03(\tR\x0epositionGroups\x12Z\n" +
+	"\x14essential_attributes\x18  \x03(\v2'.player.Player.EssentialAttributesEntryR\x13essentialAttributes\x12*\n" +
+	"\x11best_role_overall\x18! \x01(\tR\x0fbestRoleOverall\x122\n" +
+	"\x15transfer_value_amount\x18\" \x01(\x03R\x13transferValueAmount\x12\x1f\n" +
+	"\vwage_amount\x18# \x01(\x03R\n" +
+	"wageAmount\x1aF\n" +
+	"\x18EssentialAttributesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aD\n" +
-	"\x16NumericAttributesEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\x1aJ\n" +
-	"\x1cPerformanceStatsNumericEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x01R\x05value:\x028\x01\x1ak\n" +
-	"\x1bPerformancePercentilesEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x126\n" +
-	"\x05value\x18\x02 \x01(\v2 .player.PerformancePercentileMapR\x05value:\x028\x01\"\x7f\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x7f\n" +
 	"\vDatasetData\x12(\n" +
 	"\aplayers\x18\x01 \x03(\v2\x0e.player.PlayerR\aplayers\x12'\n" +
 	"\x0fcurrency_symbol\x18\x02 \x01(\tR\x0ecurrencySymbol\x12\x1d\n" +
@@ -616,32 +468,20 @@ func file_proto_player_proto_rawDescGZIP() []byte {
 	return file_proto_player_proto_rawDescData
 }
 
-var file_proto_player_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_proto_player_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_proto_player_proto_goTypes = []any{
-	(*RoleOverallScore)(nil),         // 0: player.RoleOverallScore
-	(*PerformancePercentileMap)(nil), // 1: player.PerformancePercentileMap
-	(*Player)(nil),                   // 2: player.Player
-	(*DatasetData)(nil),              // 3: player.DatasetData
-	nil,                              // 4: player.PerformancePercentileMap.PercentilesEntry
-	nil,                              // 5: player.Player.AttributesEntry
-	nil,                              // 6: player.Player.NumericAttributesEntry
-	nil,                              // 7: player.Player.PerformanceStatsNumericEntry
-	nil,                              // 8: player.Player.PerformancePercentilesEntry
+	(*Player)(nil),      // 0: player.Player
+	(*DatasetData)(nil), // 1: player.DatasetData
+	nil,                 // 2: player.Player.EssentialAttributesEntry
 }
 var file_proto_player_proto_depIdxs = []int32{
-	4, // 0: player.PerformancePercentileMap.percentiles:type_name -> player.PerformancePercentileMap.PercentilesEntry
-	5, // 1: player.Player.attributes:type_name -> player.Player.AttributesEntry
-	6, // 2: player.Player.numeric_attributes:type_name -> player.Player.NumericAttributesEntry
-	7, // 3: player.Player.performance_stats_numeric:type_name -> player.Player.PerformanceStatsNumericEntry
-	8, // 4: player.Player.performance_percentiles:type_name -> player.Player.PerformancePercentilesEntry
-	0, // 5: player.Player.role_specific_overalls:type_name -> player.RoleOverallScore
-	2, // 6: player.DatasetData.players:type_name -> player.Player
-	1, // 7: player.Player.PerformancePercentilesEntry.value:type_name -> player.PerformancePercentileMap
-	8, // [8:8] is the sub-list for method output_type
-	8, // [8:8] is the sub-list for method input_type
-	8, // [8:8] is the sub-list for extension type_name
-	8, // [8:8] is the sub-list for extension extendee
-	0, // [0:8] is the sub-list for field type_name
+	2, // 0: player.Player.essential_attributes:type_name -> player.Player.EssentialAttributesEntry
+	0, // 1: player.DatasetData.players:type_name -> player.Player
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_proto_player_proto_init() }
@@ -655,7 +495,7 @@ func file_proto_player_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_player_proto_rawDesc), len(file_proto_player_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -24,101 +24,9 @@ func safeIntToInt32(value int) int32 {
 
 // --- RoleOverallScore Conversion Functions ---
 
-// ToProto converts a RoleOverallScore struct to protobuf format
-func (r *RoleOverallScore) ToProto(ctx context.Context) (*proto.RoleOverallScore, error) {
-	ctx, span := StartSpanWithAttributes(ctx, "protobuf.conversion.role_to_proto", []attribute.KeyValue{
-		attribute.String("conversion.type", "role_overall_score"),
-		attribute.String("conversion.direction", "to_protobuf"),
-	})
-	defer span.End()
-
-	start := time.Now()
-
-	if r == nil {
-		RecordError(ctx, ErrNilRoleOverallScore, "Cannot convert nil RoleOverallScore to protobuf",
-			WithErrorCategory("validation"),
-			WithSeverity("medium"))
-		return nil, ErrNilRoleOverallScore
-	}
-
-	SetSpanAttributes(ctx,
-		attribute.String("role.name", r.RoleName),
-		attribute.Int("role.score", r.Score),
-	)
-
-	logDebug(ctx, "Starting RoleOverallScore conversion to protobuf",
-		"role_name", r.RoleName,
-		"conversion_type", "role_overall_score",
-		"conversion_direction", "to_protobuf")
-
-	protoRole := &proto.RoleOverallScore{
-		RoleName: r.RoleName,
-		Score:    safeIntToInt32(r.Score),
-	}
-
-	duration := time.Since(start)
-	SetSpanAttributes(ctx,
-		attribute.Float64("conversion.duration_ms", float64(duration.Nanoseconds())/1e6),
-		attribute.Bool("conversion.success", true),
-	)
-
-	logDebug(ctx, "RoleOverallScore conversion completed",
-		"role_name", r.RoleName,
-		"score", r.Score,
-		"duration_ms", duration.Milliseconds())
-
-	return protoRole, nil
-}
-
-// RoleOverallScoreFromProto converts a protobuf RoleOverallScore to the native struct
-func RoleOverallScoreFromProto(ctx context.Context, protoRole *proto.RoleOverallScore) (*RoleOverallScore, error) {
-	ctx, span := StartSpanWithAttributes(ctx, "protobuf.conversion.role_from_proto", []attribute.KeyValue{
-		attribute.String("conversion.type", "role_overall_score"),
-		attribute.String("conversion.direction", "from_protobuf"),
-	})
-	defer span.End()
-
-	start := time.Now()
-
-	if protoRole == nil {
-		RecordError(ctx, ErrNilProtobufRoleOverallScore, "Cannot convert nil protobuf RoleOverallScore",
-			WithErrorCategory("validation"),
-			WithSeverity("medium"))
-		return nil, ErrNilProtobufRoleOverallScore
-	}
-
-	SetSpanAttributes(ctx,
-		attribute.String("role.name", protoRole.GetRoleName()),
-		attribute.Int("role.score", int(protoRole.GetScore())),
-	)
-
-	logDebug(ctx, "Converting protobuf to RoleOverallScore",
-		"role_name", protoRole.GetRoleName(),
-		"conversion_type", "role_overall_score",
-		"conversion_direction", "from_protobuf")
-
-	role := &RoleOverallScore{
-		RoleName: protoRole.GetRoleName(),
-		Score:    int(protoRole.GetScore()),
-	}
-
-	duration := time.Since(start)
-	SetSpanAttributes(ctx,
-		attribute.Float64("conversion.duration_ms", float64(duration.Nanoseconds())/1e6),
-		attribute.Bool("conversion.success", true),
-	)
-
-	logDebug(ctx, "Protobuf RoleOverallScore conversion completed",
-		"role_name", role.RoleName,
-		"score", role.Score,
-		"duration_ms", duration.Milliseconds())
-
-	return role, nil
-}
-
 // --- Player Conversion Functions ---
 
-// ToProto converts a Player struct to protobuf format
+// ToProto converts a Player struct to protobuf format (optimized for frontend)
 func (p *Player) ToProto(ctx context.Context) (*proto.Player, error) {
 	ctx, span := StartSpanWithAttributes(ctx, "protobuf.conversion.player_to_proto", []attribute.KeyValue{
 		attribute.String("conversion.type", "player"),
@@ -140,71 +48,15 @@ func (p *Player) ToProto(ctx context.Context) (*proto.Player, error) {
 		attribute.String("player.name", p.Name),
 		attribute.String("player.position", p.Position),
 		attribute.String("player.club", p.Club),
-		attribute.Int("player.role_count", len(p.RoleSpecificOveralls)),
 	)
 
-	logDebug(ctx, "Converting Player to protobuf",
+	logDebug(ctx, "Converting Player to protobuf (optimized)",
 		"player_uid", p.UID,
 		"player_name", p.Name,
 		"conversion_type", "player",
-		"conversion_direction", "to_protobuf",
-		"attributes_count", len(p.Attributes),
-		"numeric_attributes_count", len(p.NumericAttributes),
-		"performance_stats_count", len(p.PerformanceStatsNumeric),
-		"role_count", len(p.RoleSpecificOveralls))
+		"conversion_direction", "to_protobuf")
 
-	// Convert RoleSpecificOveralls
-	var protoRoles []*proto.RoleOverallScore
-	for _, role := range p.RoleSpecificOveralls {
-		protoRole, err := role.ToProto(ctx)
-		if err != nil {
-			logError(ctx, "Failed to convert role to protobuf",
-				"error", err,
-				"player_uid", p.UID,
-				"role_name", role.RoleName)
-			return nil, fmt.Errorf("failed to convert role %s to protobuf: %w", role.RoleName, err)
-		}
-		protoRoles = append(protoRoles, protoRole)
-	}
-
-	// Convert performance percentiles nested map (create a copy to avoid race conditions)
-	protoPercentiles := make(map[string]*proto.PerformancePercentileMap)
-	if p.PerformancePercentiles != nil {
-		for key, innerMap := range p.PerformancePercentiles {
-			// Create a copy of the inner map to avoid race conditions
-			innerMapCopy := make(map[string]float64)
-			for k, v := range innerMap {
-				innerMapCopy[k] = v
-			}
-			protoPercentiles[key] = &proto.PerformancePercentileMap{
-				Percentiles: innerMapCopy,
-			}
-		}
-	}
-
-	// Convert numeric attributes to int32 (create a copy to avoid race conditions)
-	protoNumericAttrs := make(map[string]int32)
-	if p.NumericAttributes != nil {
-		for key, value := range p.NumericAttributes {
-			protoNumericAttrs[key] = safeIntToInt32(value)
-		}
-	}
-
-	// Create copies of maps to avoid race conditions
-	attributesCopy := make(map[string]string)
-	if p.Attributes != nil {
-		for key, value := range p.Attributes {
-			attributesCopy[key] = value
-		}
-	}
-
-	performanceStatsCopy := make(map[string]float64)
-	if p.PerformanceStatsNumeric != nil {
-		for key, value := range p.PerformanceStatsNumeric {
-			performanceStatsCopy[key] = value
-		}
-	}
-
+	// Create copies of position data to avoid race conditions
 	parsedPositionsCopy := make([]string, len(p.ParsedPositions))
 	copy(parsedPositionsCopy, p.ParsedPositions)
 
@@ -214,61 +66,77 @@ func (p *Player) ToProto(ctx context.Context) (*proto.Player, error) {
 	positionGroupsCopy := make([]string, len(p.PositionGroups))
 	copy(positionGroupsCopy, p.PositionGroups)
 
+	// Only include essential attributes for display
+	essentialAttributes := make(map[string]string)
+	if p.Attributes != nil {
+		// Only include the most important attributes for display
+		importantAttrs := []string{"Av Rat", "Apps", "Mins", "Gls/90", "Asts/90", "Pas %", "Tck/90", "Int/90"}
+		for _, attr := range importantAttrs {
+			if value, exists := p.Attributes[attr]; exists {
+				essentialAttributes[attr] = value
+			}
+		}
+	}
+
 	protoPlayer := &proto.Player{
-		Uid:                     p.UID,
-		Name:                    p.Name,
-		Position:                p.Position,
-		Age:                     p.Age,
-		Club:                    p.Club,
-		Division:                p.Division,
-		TransferValue:           p.TransferValue,
-		Wage:                    p.Wage,
-		Personality:             p.Personality,
-		MediaHandling:           p.MediaHandling,
-		Nationality:             p.Nationality,
-		NationalityIso:          p.NationalityISO,
-		NationalityFifaCode:     p.NationalityFIFACode,
-		AttributeMasked:         p.AttributeMasked,
-		Attributes:              attributesCopy,
-		NumericAttributes:       protoNumericAttrs,
-		PerformanceStatsNumeric: performanceStatsCopy,
-		PerformancePercentiles:  protoPercentiles,
-		ParsedPositions:         parsedPositionsCopy,
-		ShortPositions:          shortPositionsCopy,
-		PositionGroups:          positionGroupsCopy,
-		Pac:                     safeIntToInt32(p.PAC),
-		Sho:                     safeIntToInt32(p.SHO),
-		Pas:                     safeIntToInt32(p.PAS),
-		Dri:                     safeIntToInt32(p.DRI),
-		Def:                     safeIntToInt32(p.DEF),
-		Phy:                     safeIntToInt32(p.PHY),
-		Gk:                      safeIntToInt32(p.GK),
-		Div:                     safeIntToInt32(p.DIV),
-		Han:                     safeIntToInt32(p.HAN),
-		Ref:                     safeIntToInt32(p.REF),
-		Kic:                     safeIntToInt32(p.KIC),
-		Spd:                     safeIntToInt32(p.SPD),
-		Pos:                     safeIntToInt32(p.POS),
-		Overall:                 safeIntToInt32(p.Overall),
-		BestRoleOverall:         p.BestRoleOverall,
-		RoleSpecificOveralls:    protoRoles,
-		TransferValueAmount:     p.TransferValueAmount,
-		WageAmount:              p.WageAmount,
+		Uid:                 p.UID,
+		Name:                p.Name,
+		Position:            p.Position,
+		Age:                 p.Age,
+		Club:                p.Club,
+		Division:            p.Division,
+		TransferValue:       p.TransferValue,
+		Wage:                p.Wage,
+		Personality:         p.Personality,
+		MediaHandling:       p.MediaHandling,
+		Nationality:         p.Nationality,
+		NationalityIso:      p.NationalityISO,
+		NationalityFifaCode: p.NationalityFIFACode,
+		AttributeMasked:     p.AttributeMasked,
+
+		// Essential FIFA-style stats
+		Pac:     safeIntToInt32(p.PAC),
+		Sho:     safeIntToInt32(p.SHO),
+		Pas:     safeIntToInt32(p.PAS),
+		Dri:     safeIntToInt32(p.DRI),
+		Def:     safeIntToInt32(p.DEF),
+		Phy:     safeIntToInt32(p.PHY),
+		Gk:      safeIntToInt32(p.GK),
+		Div:     safeIntToInt32(p.DIV),
+		Han:     safeIntToInt32(p.HAN),
+		Ref:     safeIntToInt32(p.REF),
+		Kic:     safeIntToInt32(p.KIC),
+		Spd:     safeIntToInt32(p.SPD),
+		Pos:     safeIntToInt32(p.POS),
+		Overall: safeIntToInt32(p.Overall),
+
+		// Position data
+		ParsedPositions: parsedPositionsCopy,
+		ShortPositions:  shortPositionsCopy,
+		PositionGroups:  positionGroupsCopy,
+
+		// Essential attributes only
+		EssentialAttributes: essentialAttributes,
+
+		// Best role for display
+		BestRoleOverall: p.BestRoleOverall,
+
+		// Numeric values for sorting
+		TransferValueAmount: p.TransferValueAmount,
+		WageAmount:          p.WageAmount,
 	}
 
 	duration := time.Since(start)
 	SetSpanAttributes(ctx,
 		attribute.Float64("conversion.duration_ms", float64(duration.Nanoseconds())/1e6),
 		attribute.Bool("conversion.success", true),
-		attribute.Int("conversion.attributes_count", len(p.Attributes)),
-		attribute.Int("conversion.numeric_attributes_count", len(p.NumericAttributes)),
-		attribute.Int("conversion.performance_stats_count", len(p.PerformanceStatsNumeric)),
+		attribute.Int("conversion.essential_attributes_count", len(essentialAttributes)),
 	)
 
-	logDebug(ctx, "Player conversion to protobuf completed",
+	logDebug(ctx, "Player conversion to protobuf completed (optimized)",
 		"player_uid", p.UID,
 		"player_name", p.Name,
-		"role_count", len(protoRoles),
+		"essential_attributes_count", len(essentialAttributes),
 		"duration_ms", duration.Milliseconds())
 
 	return protoPlayer, nil
@@ -296,100 +164,70 @@ func PlayerFromProto(ctx context.Context, protoPlayer *proto.Player) (*Player, e
 		attribute.String("player.name", protoPlayer.GetName()),
 		attribute.String("player.position", protoPlayer.GetPosition()),
 		attribute.String("player.club", protoPlayer.GetClub()),
-		attribute.Int("player.role_count", len(protoPlayer.GetRoleSpecificOveralls())),
 	)
 
-	logDebug(ctx, "Converting protobuf to Player",
+	logDebug(ctx, "Converting protobuf to Player (optimized)",
 		"player_uid", protoPlayer.GetUid(),
 		"player_name", protoPlayer.GetName(),
 		"conversion_type", "player",
 		"conversion_direction", "from_protobuf",
-		"attributes_count", len(protoPlayer.GetAttributes()),
-		"numeric_attributes_count", len(protoPlayer.GetNumericAttributes()),
-		"performance_stats_count", len(protoPlayer.GetPerformanceStatsNumeric()),
-		"role_count", len(protoPlayer.GetRoleSpecificOveralls()))
+		"essential_attributes_count", len(protoPlayer.GetEssentialAttributes()))
 
-	// Convert RoleSpecificOveralls
-	var roles []RoleOverallScore
-	for _, protoRole := range protoPlayer.GetRoleSpecificOveralls() {
-		role, err := RoleOverallScoreFromProto(ctx, protoRole)
-		if err != nil {
-			logError(ctx, "Failed to convert protobuf role",
-				"error", err,
-				"player_uid", protoPlayer.GetUid(),
-				"role_name", protoRole.GetRoleName())
-			return nil, fmt.Errorf("failed to convert protobuf role %s: %w", protoRole.GetRoleName(), err)
-		}
-		roles = append(roles, *role)
-	}
-
-	// Convert performance percentiles nested map
-	percentiles := make(map[string]map[string]float64)
-	for key, protoMap := range protoPlayer.GetPerformancePercentiles() {
-		percentiles[key] = protoMap.GetPercentiles()
-	}
-
-	// Convert numeric attributes from int32
-	numericAttrs := make(map[string]int)
-	for key, value := range protoPlayer.GetNumericAttributes() {
-		numericAttrs[key] = int(value)
+	// Convert essential attributes from string
+	attributes := make(map[string]string)
+	for key, value := range protoPlayer.GetEssentialAttributes() {
+		attributes[key] = value
 	}
 
 	player := &Player{
-		UID:                     protoPlayer.GetUid(),
-		Name:                    protoPlayer.GetName(),
-		Position:                protoPlayer.GetPosition(),
-		Age:                     protoPlayer.GetAge(),
-		Club:                    protoPlayer.GetClub(),
-		Division:                protoPlayer.GetDivision(),
-		TransferValue:           protoPlayer.GetTransferValue(),
-		Wage:                    protoPlayer.GetWage(),
-		Personality:             protoPlayer.GetPersonality(),
-		MediaHandling:           protoPlayer.GetMediaHandling(),
-		Nationality:             protoPlayer.GetNationality(),
-		NationalityISO:          protoPlayer.GetNationalityIso(),
-		NationalityFIFACode:     protoPlayer.GetNationalityFifaCode(),
-		AttributeMasked:         protoPlayer.GetAttributeMasked(),
-		Attributes:              protoPlayer.GetAttributes(),
-		NumericAttributes:       numericAttrs,
-		PerformanceStatsNumeric: protoPlayer.GetPerformanceStatsNumeric(),
-		PerformancePercentiles:  percentiles,
-		ParsedPositions:         protoPlayer.GetParsedPositions(),
-		ShortPositions:          protoPlayer.GetShortPositions(),
-		PositionGroups:          protoPlayer.GetPositionGroups(),
-		PAC:                     int(protoPlayer.GetPac()),
-		SHO:                     int(protoPlayer.GetSho()),
-		PAS:                     int(protoPlayer.GetPas()),
-		DRI:                     int(protoPlayer.GetDri()),
-		DEF:                     int(protoPlayer.GetDef()),
-		PHY:                     int(protoPlayer.GetPhy()),
-		GK:                      int(protoPlayer.GetGk()),
-		DIV:                     int(protoPlayer.GetDiv()),
-		HAN:                     int(protoPlayer.GetHan()),
-		REF:                     int(protoPlayer.GetRef()),
-		KIC:                     int(protoPlayer.GetKic()),
-		SPD:                     int(protoPlayer.GetSpd()),
-		POS:                     int(protoPlayer.GetPos()),
-		Overall:                 int(protoPlayer.GetOverall()),
-		BestRoleOverall:         protoPlayer.GetBestRoleOverall(),
-		RoleSpecificOveralls:    roles,
-		TransferValueAmount:     protoPlayer.GetTransferValueAmount(),
-		WageAmount:              protoPlayer.GetWageAmount(),
+		UID:                 protoPlayer.GetUid(),
+		Name:                protoPlayer.GetName(),
+		Position:            protoPlayer.GetPosition(),
+		Age:                 protoPlayer.GetAge(),
+		Club:                protoPlayer.GetClub(),
+		Division:            protoPlayer.GetDivision(),
+		TransferValue:       protoPlayer.GetTransferValue(),
+		Wage:                protoPlayer.GetWage(),
+		Personality:         protoPlayer.GetPersonality(),
+		MediaHandling:       protoPlayer.GetMediaHandling(),
+		Nationality:         protoPlayer.GetNationality(),
+		NationalityISO:      protoPlayer.GetNationalityIso(),
+		NationalityFIFACode: protoPlayer.GetNationalityFifaCode(),
+		AttributeMasked:     protoPlayer.GetAttributeMasked(),
+		Attributes:          attributes,
+		ParsedPositions:     protoPlayer.GetParsedPositions(),
+		ShortPositions:      protoPlayer.GetShortPositions(),
+		PositionGroups:      protoPlayer.GetPositionGroups(),
+		PAC:                 int(protoPlayer.GetPac()),
+		SHO:                 int(protoPlayer.GetSho()),
+		PAS:                 int(protoPlayer.GetPas()),
+		DRI:                 int(protoPlayer.GetDri()),
+		DEF:                 int(protoPlayer.GetDef()),
+		PHY:                 int(protoPlayer.GetPhy()),
+		GK:                  int(protoPlayer.GetGk()),
+		DIV:                 int(protoPlayer.GetDiv()),
+		HAN:                 int(protoPlayer.GetHan()),
+		REF:                 int(protoPlayer.GetRef()),
+		KIC:                 int(protoPlayer.GetKic()),
+		SPD:                 int(protoPlayer.GetSpd()),
+		POS:                 int(protoPlayer.GetPos()),
+		Overall:             int(protoPlayer.GetOverall()),
+		BestRoleOverall:     protoPlayer.GetBestRoleOverall(),
+		TransferValueAmount: protoPlayer.GetTransferValueAmount(),
+		WageAmount:          protoPlayer.GetWageAmount(),
 	}
 
 	duration := time.Since(start)
 	SetSpanAttributes(ctx,
 		attribute.Float64("conversion.duration_ms", float64(duration.Nanoseconds())/1e6),
 		attribute.Bool("conversion.success", true),
-		attribute.Int("conversion.attributes_count", len(player.Attributes)),
-		attribute.Int("conversion.numeric_attributes_count", len(player.NumericAttributes)),
-		attribute.Int("conversion.performance_stats_count", len(player.PerformanceStatsNumeric)),
+		attribute.Int("conversion.essential_attributes_count", len(attributes)),
 	)
 
-	logDebug(ctx, "Protobuf Player conversion completed",
+	logDebug(ctx, "Protobuf Player conversion completed (optimized)",
 		"player_uid", player.UID,
 		"player_name", player.Name,
-		"role_count", len(roles),
+		"essential_attributes_count", len(attributes),
 		"duration_ms", duration.Milliseconds())
 
 	return player, nil

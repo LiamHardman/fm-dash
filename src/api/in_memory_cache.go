@@ -4,7 +4,7 @@ import (
 	"container/list"
 	"sync"
 	"time"
-	
+
 	pb "api/proto"
 )
 
@@ -175,7 +175,7 @@ func estimateSize(value interface{}) int64 {
 				playerSize += int64(len(player.GetPosition())) + 16
 				playerSize += int64(len(player.GetClub())) + 16
 				playerSize += int64(len(player.GetDivision())) + 16
-				playerSize += int64(len(player.GetAttributes())) * 32 // rough estimate for attributes map
+				playerSize += int64(len(player.GetEssentialAttributes())) * 32 // rough estimate for essential attributes map
 				size += playerSize
 			}
 			// Add metadata size

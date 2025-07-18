@@ -2987,3 +2987,71 @@ func deepCopyPlayers(players []Player) []Player {
 
 	return playersCopy
 }
+
+// fullPlayerStatsHandler returns detailed stats for a single player
+func fullPlayerStatsHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// Extract player UID and dataset ID from URL
+	pathParts := strings.Split(r.URL.Path, "/")
+	if len(pathParts) < 5 {
+		http.Error(w, "Invalid URL format. Expected: /api/fullplayerstats/{datasetID}/{playerUID}", http.StatusBadRequest)
+		return
+	}
+
+	datasetID := pathParts[3]
+	playerUIDStr := pathParts[4]
+
+	// Parse player UID
+	playerUID, err := strconv.ParseInt(playerUIDStr, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid player UID", http.StatusBadRequest)
+		return
+	}
+
+	// Get dataset
+	players, currencySymbol, found := GetPlayerData(datasetID)
+	if !found {
+		logError(ctx, "Failed to get dataset for full player stats",
+			"dataset_id", datasetID,
+			"player_uid", playerUID)
+		http.Error(w, "Dataset not found", http.StatusNotFound)
+		return
+	}
+
+	// Find the specific player
+	var targetPlayer *Player
+	for _, player := range players {
+		if player.UID == playerUID {
+			targetPlayer = &player
+			break
+		}
+	}
+
+	if targetPlayer == nil {
+		http.Error(w, "Player not found", http.StatusNotFound)
+		return
+	}
+
+	// Create response with full player data
+	response := map[string]interface{}{
+		"player":          targetPlayer,
+		"dataset_id":      datasetID,
+		"currency_symbol": currencySymbol,
+	}
+
+	// Use content negotiation to determine response format
+	if err := WriteResponse(w, r, response); err != nil {
+		logError(ctx, "Failed to write full player stats response",
+			"error", err,
+			"dataset_id", datasetID,
+			"player_uid", playerUID)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	logInfo(ctx, "Successfully returned full player stats",
+		"dataset_id", datasetID,
+		"player_uid", playerUID,
+		"player_name", targetPlayer.Name)
+}

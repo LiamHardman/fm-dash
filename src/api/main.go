@@ -293,6 +293,9 @@ func main() {
 	// API endpoint for memory optimization reports
 	mux.Handle("/api/memory-optimization", wrapHandler(http.HandlerFunc(GetMemoryOptimizationHandler()), "memory-optimization"))
 
+	// API endpoint for detailed player stats
+	mux.Handle("/api/fullplayerstats/", wrapHandler(http.HandlerFunc(fullPlayerStatsHandler), "full-player-stats"))
+
 	// Create server with proper timeouts
 	server := &http.Server{
 		Addr:              ":" + port,

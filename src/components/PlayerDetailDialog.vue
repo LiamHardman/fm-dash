@@ -36,7 +36,37 @@
                 >
             </q-btn>
 
-            <q-card-section v-if="player" class="scroll main-content-section no-header-section">
+            <!-- Player data not available -->
+            <q-card-section v-if="player && (!displayPlayer || !displayPlayer.name)" class="scroll main-content-section no-header-section">
+                <div class="text-center q-pa-lg">
+                    <q-icon name="person_off" size="4em" class="text-grey-4 q-mb-md" />
+                    <div class="text-h6 text-grey-6">Player data not available</div>
+                    <div class="text-caption text-grey-6 q-mt-sm">Unable to load player information</div>
+                </div>
+            </q-card-section>
+
+            <q-card-section v-if="player && displayPlayer && displayPlayer.name" class="scroll main-content-section no-header-section">
+                <!-- Loading indicator for detailed data -->
+                <div v-if="isLoadingDetailedData" class="loading-indicator q-mb-md">
+                    <div class="text-center">
+                        <q-spinner-dots color="primary" size="2em" />
+                        <div class="text-subtitle2 q-mt-sm">Loading detailed player attributes...</div>
+                    </div>
+                </div>
+
+                <!-- Error message for detailed data -->
+                <div v-if="detailedDataError" class="error-message q-mb-md">
+                    <q-banner class="bg-red-1 text-red-8">
+                        <template v-slot:avatar>
+                            <q-icon name="error" color="red" />
+                        </template>
+                        Failed to load detailed attributes: {{ detailedDataError }}
+                        <template v-slot:action>
+                            <q-btn flat color="red" label="Retry" @click="fetchDetailedPlayerData" />
+                        </template>
+                    </q-banner>
+                </div>
+
                 <div class="row q-col-gutter-lg">
                     <div class="col-12 col-md-4">
                         <div class="row q-col-gutter-sm q-mb-md">
@@ -306,9 +336,9 @@
                                                             :class="
                                                                 qInstance.dark.isActive ? 'text-white' : 'text-dark'
                                                             "
-                                                            :title="player.name"
-                                                        >
-                                                            {{ player.name }}
+                                                                                            :title="displayPlayer?.name || 'Unknown Player'"
+                            >
+                                {{ displayPlayer?.name || 'Unknown Player' }}
                                                             <q-icon
                                                                 v-if="player.attributeMasked"
                                                                 name="warning"
@@ -368,42 +398,42 @@
                                                         <q-badge
                                                             outline
                                                             color="primary"
-                                                            :label="`${player.age || '-'} years`"
+                                                            :label="`${displayPlayer?.age || '-'} years`"
                                                             class="player-age-badge q-mr-sm"
                                                         />
                                                         <q-badge
                                                             outline
                                                             color="secondary"
-                                                            :label="player.nationality || 'Unknown'"
+                                                            :label="displayPlayer?.nationality || 'Unknown'"
                                                             class="player-nationality-badge q-mr-sm"
                                                         />
                                                         <q-badge
-                                                            v-if="player.club"
+                                                            v-if="displayPlayer?.club"
                                                             outline
                                                             color="teal"
-                                                            :label="player.club"
+                                                            :label="displayPlayer?.club"
                                                             class="player-club-badge q-mr-sm"
                                                         />
                                                         <q-badge
-                                                            v-if="player.personality"
+                                                            v-if="displayPlayer?.personality"
                                                             outline
                                                             color="purple"
-                                                            :label="player.personality"
+                                                            :label="displayPlayer?.personality"
                                                             class="player-personality-badge q-mr-sm"
                                                         />
                                                         <q-badge
-                                                            v-if="player.media_handling"
+                                                            v-if="displayPlayer?.media_handling"
                                                             outline
                                                             color="orange"
-                                                            :label="player.media_handling"
+                                                            :label="displayPlayer?.media_handling"
                                                             class="player-media-badge"
                                                         />
                                                     </div>
                                                 </div>
                                                 
-                                                <div class="player-positions-section q-mt-sm" v-if="player.short_positions?.length || player.position">
+                                                <div class="player-positions-section q-mt-sm" v-if="displayPlayer?.short_positions?.length || displayPlayer?.position">
                                                     <q-badge
-                                                        v-for="pos in player.short_positions || [player.position]"
+                                                        v-for="pos in displayPlayer?.short_positions || [displayPlayer?.position]"
                                                         :key="pos"
                                                         outline
                                                         color="indigo-6"
@@ -444,7 +474,7 @@
                                     <div class="fifa-stats-grid">
                                         <div
                                             v-for="stat in fifaStatsToDisplay"
-                                            :key="`fifa-${stat.name}-${player?.UID || player?.uid}`"
+                                            :key="`fifa-${stat.name}-${displayPlayer?.UID || displayPlayer?.uid || 'unknown'}`"
                                             class="fifa-stat-card"
                                         >
                                             <q-card
@@ -452,12 +482,12 @@
                                                 bordered
                                                 :class="[
                                                     'fifa-stat-item text-center',
-                                                    getUnifiedRatingClass(player[stat.name], 100),
+                                                    getUnifiedRatingClass(displayPlayer?.[stat.name], 100),
                                                 ]"
                                             >
                                                 <div class="fifa-stat-label">{{ stat.label }}</div>
                                                 <div class="fifa-stat-value">
-                                                    {{ player[stat.name] !== undefined ? player[stat.name] : "-" }}
+                                                    {{ displayPlayer?.[stat.name] !== undefined ? displayPlayer[stat.name] : "-" }}
                                                 </div>
                                                 <q-tooltip
                                                     :class="
@@ -526,7 +556,7 @@
                                                     <span
                                                         :class="[
                                                             'attribute-value modern-attribute-value',
-                                                            getUnifiedRatingClass(player.attributes[attrKey], 20)
+                                                            getUnifiedRatingClass(displayPlayer?.attributes?.[attrKey], 20)
                                                         ]"
                                                     >
                                                         {{ getDisplayAttribute(attrKey) }}
@@ -590,7 +620,7 @@
                                                     <span
                                                         :class="[
                                                             'attribute-value modern-attribute-value',
-                                                            getUnifiedRatingClass(player.attributes[attrKey], 20)
+                                                            getUnifiedRatingClass(displayPlayer?.attributes?.[attrKey], 20)
                                                         ]"
                                                     >
                                                         {{ getDisplayAttribute(attrKey) }}
@@ -653,7 +683,7 @@
                                                             <span
                                                                 :class="[
                                                                     'attribute-value modern-attribute-value',
-                                                                    getUnifiedRatingClass(player.attributes[attrKey], 20)
+                                                                    getUnifiedRatingClass(displayPlayer?.attributes?.[attrKey], 20)
                                                                 ]"
                                                             >
                                                                 {{ getDisplayAttribute(attrKey) }}
@@ -739,12 +769,15 @@ import {
   onUnmounted,
   ref,
   toRef,
-  watch
+  watch,
+  nextTick
 } from 'vue'
 import { usePercentileRetry } from '../composables/usePercentileRetry'
 import { usePlayerStore } from '../stores/playerStore'
 import { useUiStore } from '../stores/uiStore'
 import { formatCurrency } from '../utils/currencyUtils'
+import { fetchFullPlayerStats } from '../services/playerService.js'
+import logger from '../utils/logger.js'
 
 // Lazy load TeamLogo component to prevent blocking dialog opening
 const TeamLogo = defineAsyncComponent(() => import('../components/TeamLogo.vue'))
@@ -1170,168 +1203,9 @@ export default defineComponent({
       clearAllCaches()
     })
 
-    // Memoized performance comparison options with better caching
-    const performanceComparisonOptionsCache = new Map()
 
-    const performanceComparisonOptions = computed(() => {
-      if (!props.player?.performancePercentiles) {
-        return props.player?.performancePercentiles?.Global
-          ? [{ label: 'Overall Dataset', value: 'Global' }]
-          : []
-      }
 
-      const player = props.player
-      const cacheKey = `${getCacheKey(player, 'options')}-${JSON.stringify(player.short_positions)}-${JSON.stringify(player.position_groups)}`
 
-      if (performanceComparisonOptionsCache.has(cacheKey)) {
-        return performanceComparisonOptionsCache.get(cacheKey)
-      }
-
-      const playerPercentiles = player.performancePercentiles
-      const playerShortPositions = player.short_positions || []
-      const playerBroadGroups = player.position_groups || []
-      const options = []
-
-      // Pre-create sets for faster lookups
-      const broadGroupsSet = new Set(playerBroadGroups)
-      const shortPositionsSet = new Set(playerShortPositions)
-      const addedValues = new Set()
-
-      const preferredOrder = [
-        'Global',
-        'Goalkeepers',
-        'Defenders',
-        'Midfielders',
-        'Attackers',
-        'Full-backs',
-        'Centre-backs',
-        'Wing-backs',
-        'Defensive Midfielders',
-        'Central Midfielders',
-        'Wide Midfielders',
-        'Attacking Midfielders (Central)',
-        'Wingers',
-        'Strikers'
-      ]
-
-      const shouldIncludeGroup = groupKey => {
-        if (groupKey === 'Global') return true
-
-        // Check broad groups
-        if (broadGroupsSet.has(groupKey)) return true
-
-        // Check detailed groups
-        const requiredPositions = detailedGroupToShortPositionsMap[groupKey]
-        if (requiredPositions) {
-          return requiredPositions.some(pos => shortPositionsSet.has(pos))
-        }
-
-        return false
-      }
-
-      // Process preferred order groups
-      for (let i = 0; i < preferredOrder.length; i++) {
-        const groupKey = preferredOrder[i]
-        if (
-          playerPercentiles[groupKey] &&
-          shouldIncludeGroup(groupKey) &&
-          !addedValues.has(groupKey)
-        ) {
-          options.push({
-            label: groupKey === 'Global' ? 'Overall Dataset' : `vs. ${groupKey}`,
-            value: groupKey
-          })
-          addedValues.add(groupKey)
-        }
-      }
-
-      // Clean up cache if it gets too large
-      if (performanceComparisonOptionsCache.size > 20) {
-        performanceComparisonOptionsCache.clear()
-      }
-
-      performanceComparisonOptionsCache.set(cacheKey, options)
-      return options
-    })
-
-    const getPositionGroupForHighestRole = () => {
-      if (!props.player?.roleSpecificOveralls?.length) {
-        return null
-      }
-
-      // Find the role with the highest overall rating
-      const highestRole = props.player.roleSpecificOveralls.reduce((max, role) =>
-        role.score > max.score ? role : max
-      )
-
-      // Extract the short position from the role name (e.g., "DM" from "DM - Defensive Midfielder - Support")
-      const shortPosition = highestRole.roleName.split(' - ')[0]
-
-      // Map short position to detailed group first
-      const detailedGroup = Object.entries(detailedGroupToShortPositionsMap).find(
-        ([_groupName, positions]) => positions.includes(shortPosition)
-      )
-
-      if (detailedGroup) {
-        return detailedGroup[0] // Return the detailed group name
-      }
-
-      // Fallback to broad position group
-      const positionToGroupMap = {
-        GK: 'Goalkeepers',
-        SW: 'Defenders',
-        DR: 'Defenders',
-        DL: 'Defenders',
-        DC: 'Defenders',
-        WBR: 'Defenders',
-        WBL: 'Defenders', // Wing-backs are in defenders for broad groups
-        DM: 'Midfielders',
-        MC: 'Midfielders',
-        MR: 'Midfielders',
-        ML: 'Midfielders',
-        AMC: 'Midfielders',
-        AMR: 'Midfielders',
-        AML: 'Midfielders',
-        ST: 'Attackers'
-      }
-
-      return positionToGroupMap[shortPosition] || null
-    }
-
-    // Optimized player watcher with cache cleanup
-    watch(
-      () => props.player,
-      (newPlayer, oldPlayer) => {
-        // Clear caches when player changes to prevent stale data
-        if (oldPlayer && newPlayer !== oldPlayer) {
-          clearAllCaches()
-        }
-
-        flagLoadError.value = false
-        faceImageLoadError.value = false
-        shouldShowTeamLogo.value = false
-
-        if (!newPlayer?.performancePercentiles) {
-          selectedComparisonGroup.value = 'Global'
-          return
-        }
-
-        const newOptions = performanceComparisonOptions.value
-        const highestRoleGroup = getPositionGroupForHighestRole()
-
-        // Priority-based selection logic
-        if (highestRoleGroup && newOptions.some(opt => opt.value === highestRoleGroup)) {
-          selectedComparisonGroup.value = highestRoleGroup
-        } else if (newOptions.some(opt => opt.value === 'Global')) {
-          selectedComparisonGroup.value = 'Global'
-        } else if (newOptions.length > 0) {
-          selectedComparisonGroup.value = newOptions[0].value
-        } else {
-          selectedComparisonGroup.value = 'Global'
-        }
-      },
-      { immediate: true }
-    )
 
     // Watch dialog visibility to delay team logo loading
     watch(
@@ -1405,6 +1279,11 @@ export default defineComponent({
           if (props.player.performancePercentiles) {
             Object.assign(props.player.performancePercentiles, updatedPercentiles)
 
+            // Also update the detailed player data if it exists
+            if (detailedPlayerData.value && detailedPlayerData.value.performancePercentiles) {
+              Object.assign(detailedPlayerData.value.performancePercentiles, updatedPercentiles)
+            }
+
             // Clear relevant caches to force recomputation
             performanceStatsCache.clear()
             performanceComparisonOptionsCache.clear()
@@ -1416,64 +1295,47 @@ export default defineComponent({
     }
 
     const isGoalkeeper = computed(() => {
-      if (!props.player) return false
+      if (!displayPlayer.value || !displayPlayer.value.name) return false
+      
+      // Use derived position information
+      const derivedShortPositions = deriveShortPositions(displayPlayer.value)
+      const derivedPositionGroups = derivePositionGroups(displayPlayer.value)
+      
       const isGK = (
-        props.player.short_positions?.includes('GK') ||
-        props.player.position_groups?.includes('Goalkeepers') ||
-        props.player.parsed_positions?.includes('Goalkeeper') ||
-        props.player.position?.includes('GK')
+        derivedShortPositions.includes('GK') ||
+        derivedPositionGroups.includes('Goalkeepers') ||
+        displayPlayer.value.parsed_positions?.includes('Goalkeeper') ||
+        displayPlayer.value.position?.includes('GK')
       )
       return isGK
     })
 
-    // Memoized attribute filtering for better performance
-    const attributeCategories = computed(() => {
-      if (!props.player?.attributes) {
-        return {
-          technical: [],
-          mental: [],
-          physical: [],
-          goalkeeping: []
-        }
-      }
-
-      const playerAttributes = props.player.attributes
-      const hasAttribute = key => Object.hasOwn(playerAttributes, key)
-
-      return {
-        technical: technicalAttrsOrdered.filter(hasAttribute),
-        mental: mentalAttrsOrdered.filter(hasAttribute),
-        physical: physicalAttrsOrdered.filter(hasAttribute),
-        goalkeeping: isGoalkeeper.value ? goalkeepingAttrsOrdered.filter(hasAttribute) : []
-      }
-    })
-
     // Pre-defined stat configurations for better performance
     const goalkeepingStats = [
-      { name: 'div', label: 'DIV' },
-      { name: 'han', label: 'HAN' },
-      { name: 'ref', label: 'REF' },
-      { name: 'kic', label: 'KIC' },
-      { name: 'spd', label: 'SPD' },
-      { name: 'pos', label: 'POS' }
+      { name: 'DIV', label: 'DIV' },
+      { name: 'HAN', label: 'HAN' },
+      { name: 'REF', label: 'REF' },
+      { name: 'KIC', label: 'KIC' },
+      { name: 'SPD', label: 'SPD' },
+      { name: 'POS', label: 'POS' }
     ]
 
     const outfieldStats = [
-      { name: 'pac', label: 'PAC' },
-      { name: 'sho', label: 'SHO' },
-      { name: 'pas', label: 'PAS' },
-      { name: 'dri', label: 'DRI' },
-      { name: 'def', label: 'DEF' },
-      { name: 'phy', label: 'PHY' }
+      { name: 'PAC', label: 'PAC' },
+      { name: 'SHO', label: 'SHO' },
+      { name: 'PAS', label: 'PAS' },
+      { name: 'DRI', label: 'DRI' },
+      { name: 'DEF', label: 'DEF' },
+      { name: 'PHY', label: 'PHY' }
     ]
 
     const fifaStatsToDisplay = computed(() => {
-      if (!props.player) return []
+      if (!displayPlayer.value || !displayPlayer.value.name) return []
 
       const statsTemplate = isGoalkeeper.value ? goalkeepingStats : outfieldStats
       const filteredStats = statsTemplate.filter(stat => {
         // Show stats if they exist (including 0 values)
-        const hasStat = props.player[stat.name] !== undefined && props.player[stat.name] !== null
+        const hasStat = displayPlayer.value[stat.name] !== undefined && displayPlayer.value[stat.name] !== null
         return hasStat
       })
       
@@ -1483,24 +1345,24 @@ export default defineComponent({
     })
 
     const _averageRatingData = computed(() => {
-      if (!props.player || !props.player.attributes || !props.player.performancePercentiles)
+      if (!displayPlayer.value || !displayPlayer.value.attributes || !displayPlayer.value.name)
         return null
-      const groupKey = selectedComparisonGroup.value
-      const percentilesForGroup = props.player.performancePercentiles[groupKey]
       if (
-        !percentilesForGroup ||
-        !Object.hasOwn(props.player.attributes, 'Av Rat') ||
-        props.player.attributes['Av Rat'] === '-' ||
-        props.player.attributes['Av Rat'] === '' ||
-        !Object.hasOwn(percentilesForGroup, 'Av Rat')
+        !Object.hasOwn(displayPlayer.value.attributes, 'Av Rat') ||
+        displayPlayer.value.attributes['Av Rat'] === '-' ||
+        displayPlayer.value.attributes['Av Rat'] === ''
       ) {
         return null
       }
+      // Get percentile for average rating from detailed player data
+      const percentilesForGroup = displayPlayer.value.performancePercentiles?.[selectedComparisonGroup.value]
+      const avgRatingPercentile = percentilesForGroup?.['Av Rat'] ?? null
+      
       return {
         key: 'Av Rat',
         name: performanceStatMap['Av Rat'] || 'Average Rating',
-        value: props.player.attributes['Av Rat'],
-        percentile: percentilesForGroup['Av Rat'] >= 0 ? percentilesForGroup['Av Rat'] : null
+        value: displayPlayer.value.attributes['Av Rat'],
+        percentile: avgRatingPercentile
       }
     })
 
@@ -1532,20 +1394,21 @@ export default defineComponent({
       for (let i = 0; i < categoryStats.length; i++) {
         const statKey = categoryStats[i]
         const rawAttributeValue = playerAttributes[statKey]
-        const percentileValue = percentilesForGroup[statKey]
 
         if (
           performanceStatMap[statKey] &&
           rawAttributeValue !== undefined &&
           rawAttributeValue !== '-' &&
-          rawAttributeValue !== '' &&
-          percentileValue !== undefined
+          rawAttributeValue !== ''
         ) {
+          // Get percentile from the detailed player data
+          const percentile = percentilesForGroup?.[statKey] ?? null
+          
           statsInCategory.push({
             key: statKey,
             name: performanceStatMap[statKey],
             value: rawAttributeValue,
-            percentile: percentileValue >= 0 ? percentileValue : null
+            percentile: percentile
           })
         }
       }
@@ -1566,15 +1429,17 @@ export default defineComponent({
     }
 
     const categorizedPerformanceStats = computed(() => {
-      if (!props.player?.attributes || !props.player?.performancePercentiles) {
+      if (!displayPlayer.value?.attributes || !displayPlayer.value.name) {
         return {}
       }
 
-      const groupKey = selectedComparisonGroup.value
-      const percentilesForGroup = props.player.performancePercentiles[groupKey]
-      if (!percentilesForGroup) return {}
+      // Use full attributes from detailed player data
+      const playerAttributes = displayPlayer.value.attributes
+      
+      // Get percentiles from the detailed player data
+      const percentilesForGroup = displayPlayer.value.performancePercentiles?.[selectedComparisonGroup.value]
 
-      const cacheKey = getCacheKey(props.player, groupKey)
+      const cacheKey = `${getCacheKey(displayPlayer.value, 'optimized')}-${selectedComparisonGroup.value}-${divisionFilter.value}`
 
       // Return cached result if available
       if (performanceStatsCache.has(cacheKey)) {
@@ -1592,8 +1457,8 @@ export default defineComponent({
         const categoryName = categoryOrder[i]
         const categoryStats = buildStatsForCategory(
           categoryName,
-          percentilesForGroup,
-          props.player.attributes
+          percentilesForGroup, // Pass percentiles from detailed player data
+          playerAttributes
         )
 
         if (categoryStats.length > 0) {
@@ -1660,7 +1525,7 @@ export default defineComponent({
     let lastSortedRoles = []
 
     const sortedRoleSpecificOveralls = computed(() => {
-      const roleOveralls = props.player?.roleSpecificOveralls
+      const roleOveralls = displayPlayer.value?.roleSpecificOveralls
       if (!roleOveralls || roleOveralls.length === 0) {
         return []
       }
@@ -1737,14 +1602,14 @@ export default defineComponent({
     const attributeDisplayCache = new Map()
 
     const getDisplayAttribute = attrKey => {
-      if (!props.player) return '-'
+      if (!displayPlayer.value) return '-'
 
-      const cacheKey = `${attrKey}-${props.player.UID || props.player.uid}-${showAttributeMasks.value}`
+      const cacheKey = `${attrKey}-${displayPlayer.value.UID || displayPlayer.value.uid}-${showAttributeMasks.value}`
       if (attributeDisplayCache.has(cacheKey)) {
         return attributeDisplayCache.get(cacheKey)
       }
 
-      const rawValue = props.player.attributes?.[attrKey]
+      const rawValue = displayPlayer.value.attributes?.[attrKey]
       if (rawValue === undefined) return '-'
 
       let displayValue
@@ -1753,7 +1618,8 @@ export default defineComponent({
       } else if (showAttributeMasks.value && String(rawValue).includes('-')) {
         displayValue = rawValue
       } else {
-        const numericValue = props.player.numericAttributes?.[attrKey]
+        // Use numericAttributes if available, otherwise use the raw value
+        const numericValue = displayPlayer.value.numericAttributes?.[attrKey]
         displayValue = numericValue !== undefined ? numericValue : rawValue
       }
 
@@ -1765,6 +1631,337 @@ export default defineComponent({
       attributeDisplayCache.set(cacheKey, displayValue)
       return displayValue
     }
+
+    // Add reactive data for detailed player stats
+    const detailedPlayerData = ref(null)
+    const isLoadingDetailedData = ref(false)
+    const detailedDataError = ref(null)
+
+    // Function to fetch detailed player data
+    const fetchDetailedPlayerData = async () => {
+      if (!props.player || !props.datasetId) {
+        return
+      }
+
+      isLoadingDetailedData.value = true
+      detailedDataError.value = null
+
+      try {
+        const result = await fetchFullPlayerStats(props.datasetId, props.player.uid || props.player.UID)
+        
+        if (result.format === 'json' && result.data.player) {
+          detailedPlayerData.value = result.data.player
+          logger.info('Fetched detailed player data', {
+            player_name: result.data.player.name,
+            attributes_count: Object.keys(result.data.player.attributes || {}).length
+          })
+        } else {
+          throw new Error('Invalid response format')
+        }
+      } catch (error) {
+        detailedDataError.value = error.message
+        logger.error('Failed to fetch detailed player data', { error: error.message })
+      } finally {
+        isLoadingDetailedData.value = false
+      }
+    }
+
+    // Watch for player changes to fetch detailed data
+    watch(() => props.player, (newPlayer) => {
+      if (newPlayer && newPlayer.uid) {
+        // Reset detailed data when player changes
+        detailedPlayerData.value = null
+        detailedDataError.value = null
+        
+        // Fetch detailed data if we don't have full attributes
+        if (!newPlayer.attributes || Object.keys(newPlayer.attributes).length < 10) {
+          fetchDetailedPlayerData()
+        } else {
+          // Use existing data if it's already complete
+          detailedPlayerData.value = newPlayer
+        }
+      }
+    }, { immediate: true })
+
+    // Computed property to get the player data to display (detailed or basic)
+    const displayPlayer = computed(() => {
+      if (detailedPlayerData.value && detailedPlayerData.value.name) {
+        return detailedPlayerData.value
+      }
+      if (props.player && props.player.name) {
+        return props.player
+      }
+      return null
+    })
+
+    // Optimized player watcher with cache cleanup - moved after displayPlayer definition
+    watch(
+      () => props.player,
+      (newPlayer, oldPlayer) => {
+        // Clear caches when player changes to prevent stale data
+        if (oldPlayer && newPlayer !== oldPlayer) {
+          clearAllCaches()
+        }
+
+        flagLoadError.value = false
+        faceImageLoadError.value = false
+        shouldShowTeamLogo.value = false
+
+        if (!displayPlayer.value?.performancePercentiles) {
+          selectedComparisonGroup.value = 'Global'
+          return
+        }
+
+        const newOptions = performanceComparisonOptions.value
+        const highestRoleGroup = getPositionGroupForHighestRole()
+
+        // Priority-based selection logic
+        if (highestRoleGroup && newOptions.some(opt => opt.value === highestRoleGroup)) {
+          selectedComparisonGroup.value = highestRoleGroup
+        } else if (newOptions.some(opt => opt.value === 'Global')) {
+          selectedComparisonGroup.value = 'Global'
+        } else if (newOptions.length > 0) {
+          selectedComparisonGroup.value = newOptions[0].value
+        } else {
+          selectedComparisonGroup.value = 'Global'
+        }
+      },
+      { immediate: true }
+    )
+
+    // Watch for comparison group changes to clear performance stats cache
+    watch(
+      () => selectedComparisonGroup.value,
+      () => {
+        // Clear performance stats cache when comparison group changes
+        performanceStatsCache.clear()
+      }
+    )
+
+    // Watch for division filter changes to clear performance stats cache
+    watch(
+      () => divisionFilter.value,
+      () => {
+        // Clear performance stats cache when division filter changes
+        performanceStatsCache.clear()
+      }
+    )
+
+    // Helper functions to derive position information from available data
+    const deriveShortPositions = (player) => {
+      const positions = []
+      
+      // Extract from position field (e.g., "AM (LC), ST (C)" -> ["AM", "ST"])
+      if (player.position) {
+        const positionParts = player.position.split(',').map(p => p.trim())
+        for (const part of positionParts) {
+          const shortPos = part.split(' ')[0] // Extract "AM" from "AM (LC)"
+          if (shortPos && !positions.includes(shortPos)) {
+            positions.push(shortPos)
+          }
+        }
+      }
+      
+      // Extract from role names in roleSpecificOveralls
+      if (player.roleSpecificOveralls) {
+        for (const role of player.roleSpecificOveralls) {
+          const shortPos = role.roleName.split(' - ')[0] // Extract "AMC" from "AMC - Trequartista - Attack"
+          if (shortPos && !positions.includes(shortPos)) {
+            positions.push(shortPos)
+          }
+        }
+      }
+      
+      return positions
+    }
+
+    const derivePositionGroups = (player) => {
+      const shortPositions = deriveShortPositions(player)
+      const groups = []
+      
+      // Map short positions to broad groups
+      const positionToGroupMap = {
+        GK: 'Goalkeepers',
+        SW: 'Defenders',
+        DR: 'Defenders',
+        DL: 'Defenders',
+        DC: 'Defenders',
+        WBR: 'Defenders',
+        WBL: 'Defenders',
+        DM: 'Midfielders',
+        MC: 'Midfielders',
+        MR: 'Midfielders',
+        ML: 'Midfielders',
+        AMC: 'Midfielders',
+        AMR: 'Midfielders',
+        AML: 'Midfielders',
+        ST: 'Attackers'
+      }
+      
+      for (const pos of shortPositions) {
+        const group = positionToGroupMap[pos]
+        if (group && !groups.includes(group)) {
+          groups.push(group)
+        }
+      }
+      
+      return groups
+    }
+
+    // Memoized performance comparison options with better caching - moved after displayPlayer definition
+    const performanceComparisonOptionsCache = new Map()
+
+    const performanceComparisonOptions = computed(() => {
+      if (!displayPlayer.value?.performancePercentiles) {
+        return displayPlayer.value?.performancePercentiles?.Global
+          ? [{ label: 'Overall Dataset', value: 'Global' }]
+          : []
+      }
+
+      const player = displayPlayer.value
+      
+      // Derive position information from available data
+      const derivedShortPositions = deriveShortPositions(player)
+      const derivedPositionGroups = derivePositionGroups(player)
+      
+      const cacheKey = `${getCacheKey(player, 'options')}-${JSON.stringify(derivedShortPositions)}-${JSON.stringify(derivedPositionGroups)}`
+
+      if (performanceComparisonOptionsCache.has(cacheKey)) {
+        return performanceComparisonOptionsCache.get(cacheKey)
+      }
+
+      const playerPercentiles = player.performancePercentiles
+      const playerShortPositions = derivedShortPositions
+      const playerBroadGroups = derivedPositionGroups
+      const options = []
+
+      // Pre-create sets for faster lookups
+      const broadGroupsSet = new Set(playerBroadGroups)
+      const shortPositionsSet = new Set(playerShortPositions)
+      const addedValues = new Set()
+
+      const preferredOrder = [
+        'Global',
+        'Goalkeepers',
+        'Defenders',
+        'Midfielders',
+        'Attackers',
+        'Full-backs',
+        'Centre-backs',
+        'Wing-backs',
+        'Defensive Midfielders',
+        'Central Midfielders',
+        'Wide Midfielders',
+        'Attacking Midfielders (Central)',
+        'Wingers',
+        'Strikers'
+      ]
+
+      const shouldIncludeGroup = groupKey => {
+        if (groupKey === 'Global') return true
+
+        // Check broad groups
+        if (broadGroupsSet.has(groupKey)) return true
+
+        // Check detailed groups
+        const requiredPositions = detailedGroupToShortPositionsMap[groupKey]
+        if (requiredPositions) {
+          return requiredPositions.some(pos => shortPositionsSet.has(pos))
+        }
+
+        return false
+      }
+
+      // Process preferred order groups
+      for (let i = 0; i < preferredOrder.length; i++) {
+        const groupKey = preferredOrder[i]
+        if (
+          playerPercentiles[groupKey] &&
+          shouldIncludeGroup(groupKey) &&
+          !addedValues.has(groupKey)
+        ) {
+          options.push({
+            label: groupKey === 'Global' ? 'Overall Dataset' : `vs. ${groupKey}`,
+            value: groupKey
+          })
+          addedValues.add(groupKey)
+        }
+      }
+
+      // Clean up cache if it gets too large
+      if (performanceComparisonOptionsCache.size > 20) {
+        performanceComparisonOptionsCache.clear()
+      }
+
+      performanceComparisonOptionsCache.set(cacheKey, options)
+      return options
+    })
+
+    const getPositionGroupForHighestRole = () => {
+      if (!displayPlayer.value?.roleSpecificOveralls?.length) {
+        return null
+      }
+
+      // Find the role with the highest overall rating
+      const highestRole = displayPlayer.value.roleSpecificOveralls.reduce((max, role) =>
+        role.score > max.score ? role : max
+      )
+
+      // Extract the short position from the role name (e.g., "DM" from "DM - Defensive Midfielder - Support")
+      const shortPosition = highestRole.roleName.split(' - ')[0]
+
+      // Map short position to detailed group first
+      const detailedGroup = Object.entries(detailedGroupToShortPositionsMap).find(
+        ([_groupName, positions]) => positions.includes(shortPosition)
+      )
+
+      if (detailedGroup) {
+        return detailedGroup[0] // Return the detailed group name
+      }
+
+      // Fallback to broad position group
+      const positionToGroupMap = {
+        GK: 'Goalkeepers',
+        SW: 'Defenders',
+        DR: 'Defenders',
+        DL: 'Defenders',
+        DC: 'Defenders',
+        WBR: 'Defenders',
+        WBL: 'Defenders', // Wing-backs are in defenders for broad groups
+        DM: 'Midfielders',
+        MC: 'Midfielders',
+        MR: 'Midfielders',
+        ML: 'Midfielders',
+        AMC: 'Midfielders',
+        AMR: 'Midfielders',
+        AML: 'Midfielders',
+        ST: 'Attackers'
+      }
+
+      return positionToGroupMap[shortPosition] || null
+    }
+
+    // Updated attribute categories to use displayPlayer
+    const attributeCategories = computed(() => {
+      if (!displayPlayer.value?.attributes || !displayPlayer.value.name) {
+        return {
+          technical: [],
+          mental: [],
+          physical: [],
+          goalkeeping: []
+        }
+      }
+
+      const playerAttributes = displayPlayer.value.attributes
+      const hasAttribute = key => Object.hasOwn(playerAttributes, key)
+
+      return {
+        technical: technicalAttrsOrdered.filter(hasAttribute),
+        mental: mentalAttrsOrdered.filter(hasAttribute),
+        physical: physicalAttrsOrdered.filter(hasAttribute),
+        goalkeeping: isGoalkeeper.value ? goalkeepingAttrsOrdered.filter(hasAttribute) : []
+      }
+    })
 
     return {
       qInstance,
@@ -1805,7 +2002,13 @@ export default defineComponent({
       showLoadingState,
       percentilesRetryCount,
       maxRetries,
-      manualRetry
+      manualRetry,
+
+      // Detailed player data
+      detailedPlayerData,
+      isLoadingDetailedData,
+      detailedDataError,
+      displayPlayer
     }
   }
 })
