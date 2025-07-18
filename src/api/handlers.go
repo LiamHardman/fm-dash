@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -25,6 +24,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 
 	apperrors "api/errors"
+	pb "api/proto"
 )
 
 // Note: gzip compression middleware already exists in middleware.go
@@ -727,20 +727,34 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	if r.Method != http.MethodGet {
-		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
+		WriteErrorResponse(w, r, "method_not_allowed", "Only GET method is allowed", nil, http.StatusMethodNotAllowed)
 		return
+	}
+
+	// Initialize content negotiation
+	negotiator := NewContentNegotiator(r)
+	serializer := negotiator.SelectSerializer()
+	supportsProtobuf := negotiator.SupportsProtobuf()
+
+	// Get request ID for response metadata
+	requestID := r.Header.Get("X-Request-ID")
+	if requestID == "" {
+		requestID = generateRequestID()
 	}
 
 	SetSpanAttributes(ctx,
 		attribute.String("http.method", r.Method),
 		attribute.String("http.route", "/api/players"),
+		attribute.String("response.format", serializer.ContentType()),
+		attribute.Bool("client.supports_protobuf", supportsProtobuf),
+		attribute.String("request.id", requestID),
 	)
 
 	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/players/"), "/")
 	if len(pathParts) == 0 || pathParts[0] == "" {
 		logWarn(ctx, "Dataset ID missing in request path")
 		SetSpanAttributes(ctx, attribute.String("error.type", "missing_dataset_id"))
-		http.Error(w, "Dataset ID is missing in the request path", http.StatusBadRequest)
+		WriteErrorResponse(w, r, "missing_dataset_id", "Dataset ID is missing in the request path", nil, http.StatusBadRequest)
 		return
 	}
 	datasetID := pathParts[0]
@@ -816,7 +830,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 		if !found {
 			logWarn(ctx, "Player data not found", "dataset_id", datasetID)
 			SetSpanAttributes(ctx, attribute.String("error.type", "dataset_not_found"))
-			http.Error(w, "Player data not found for the given ID.", http.StatusNotFound)
+			WriteErrorResponse(w, r, "dataset_not_found", "Player data not found for the given ID.", nil, http.StatusNotFound)
 			return
 		}
 
@@ -971,57 +985,201 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	logDebug(ctx, "Returning processed players", "dataset_id", datasetID, "player_count", len(processedPlayers))
 
-	response := PlayerDataWithCurrency{Players: processedPlayers, CurrencySymbol: currencySymbol}
-	w.Header().Set("Content-Type", "application/json")
+	// Create response data structure
+	responseData := PlayerDataWithCurrency{Players: processedPlayers, CurrencySymbol: currencySymbol}
+	
+	// Set CORS headers
 	setCORSHeaders(w, r)
 
-	// Encode response to JSON and cache it
-	var buf bytes.Buffer
-	encoder := json.NewEncoder(&buf)
-	if err := encoder.Encode(response); err != nil {
-		RecordError(ctx, err, "Failed to encode player data response")
-		http.Error(w, "Error encoding response: "+err.Error(), http.StatusInternalServerError)
-		return
+	// Handle protobuf vs JSON response based on content negotiation
+	var responseBytes []byte
+	var responseSize int
+	var serializationError error
+
+	if supportsProtobuf {
+		// Try protobuf serialization first
+		ctx, protoSpan := StartSpan(ctx, "response.protobuf_serialization")
+		
+		// Generate request ID for metadata
+		requestID := r.Header.Get("X-Request-ID")
+		if requestID == "" {
+			requestID = generateRequestID()
+		}
+		
+		// Create protobuf response with metadata
+		metadata := CreateResponseMetadata(requestID, int32(len(processedPlayers)), found)
+		protoResponse := &pb.PlayerDataResponse{
+			Players:        make([]*pb.Player, len(processedPlayers)),
+			CurrencySymbol: currencySymbol,
+			Metadata:       metadata,
+		}
+		
+		// Convert players to protobuf format
+		for i, player := range processedPlayers {
+			protoPlayer, err := player.ToProto(ctx)
+			if err != nil {
+				logError(ctx, "Failed to convert player to protobuf", 
+					"error", err, 
+					"player_uid", player.UID,
+					"player_name", player.Name)
+				serializationError = fmt.Errorf("protobuf player conversion failed: %w", err)
+				break
+			}
+			protoResponse.Players[i] = protoPlayer
+		}
+		
+		if serializationError == nil {
+			responseBytes, serializationError = serializer.Serialize(protoResponse)
+			if serializationError == nil {
+				responseSize = len(responseBytes)
+				w.Header().Set("Content-Type", serializer.ContentType())
+				if serializer.ShouldCompress() {
+					w.Header().Set("Content-Encoding", "gzip")
+				}
+				
+				SetSpanAttributes(ctx,
+					attribute.String("response.serialization", "protobuf"),
+					attribute.Int("response.size_bytes", responseSize),
+					attribute.Bool("response.compressed", serializer.ShouldCompress()),
+				)
+				
+				logDebug(ctx, "Protobuf serialization successful",
+					"response_size_bytes", responseSize,
+					"player_count", len(processedPlayers))
+			}
+		}
+		
+		protoSpan.End()
 	}
 
-	// Cache the final filtered response
-	jsonData := buf.Bytes()
-	setInMemCacheForDataset(finalCacheKey, jsonData, 3*time.Minute) // Cache for 3 minutes
+	// Fallback to JSON if protobuf failed or not supported
+	if !supportsProtobuf || serializationError != nil {
+		ctx, jsonSpan := StartSpan(ctx, "response.json_serialization")
+		
+		if serializationError != nil {
+			logWarn(ctx, "Protobuf serialization failed, falling back to JSON",
+				"error", serializationError,
+				"dataset_id", datasetID)
+			SetSpanAttributes(ctx, 
+				attribute.String("fallback.reason", "protobuf_serialization_failed"),
+				attribute.String("fallback.error", serializationError.Error()),
+			)
+		}
+		
+		// Use JSON serializer
+		jsonSerializer := &JSONSerializer{}
+		responseBytes, serializationError = jsonSerializer.Serialize(responseData)
+		if serializationError != nil {
+			RecordError(ctx, serializationError, "Both protobuf and JSON serialization failed")
+			WriteErrorResponse(w, r, "SERIALIZATION_ERROR", 
+				"Failed to serialize response data", 
+				[]string{serializationError.Error()}, 
+				http.StatusInternalServerError)
+			return
+		}
+		
+		responseSize = len(responseBytes)
+		w.Header().Set("Content-Type", jsonSerializer.ContentType())
+		
+		SetSpanAttributes(ctx,
+			attribute.String("response.serialization", "json"),
+			attribute.Int("response.size_bytes", responseSize),
+			attribute.Bool("response.fallback", serializationError != nil),
+		)
+		
+		logDebug(ctx, "JSON serialization completed",
+			"response_size_bytes", responseSize,
+			"player_count", len(processedPlayers),
+			"was_fallback", serializationError != nil)
+		
+		jsonSpan.End()
+	}
+
+	// Cache the response (format-specific caching)
+	cacheKey := finalCacheKey
+	if supportsProtobuf && serializationError == nil {
+		cacheKey = finalCacheKey + ":protobuf"
+	} else {
+		cacheKey = finalCacheKey + ":json"
+	}
+	setInMemCacheForDataset(cacheKey, responseBytes, 3*time.Minute)
 
 	// Write response
-	if _, err := w.Write(jsonData); err != nil {
-		log.Printf("Error writing response: %v", err)
+	if _, err := w.Write(responseBytes); err != nil {
+		logError(ctx, "Error writing response", "error", err)
+		RecordError(ctx, err, "Failed to write response to client")
 	}
 
-	logDebug(ctx, "Player data processed and cached",
+	// Calculate compression ratio if applicable
+	var compressionRatio float64
+	if supportsProtobuf && serializationError == nil {
+		// Compare protobuf size to estimated JSON size
+		jsonSize := len(responseData.Players) * 1024 // Rough estimate
+		if jsonSize > 0 {
+			compressionRatio = float64(responseSize) / float64(jsonSize)
+		}
+	}
+
+	logDebug(ctx, "Player data processed and served",
 		"dataset_id", datasetID,
 		"processed_count", len(processedPlayers),
 		"original_count", len(data.Players),
-		"response_size_kb", len(jsonData)/1024,
+		"response_size_kb", responseSize/1024,
+		"response_format", serializer.ContentType(),
+		"compression_ratio", compressionRatio,
 		"processing_time_ms", time.Since(startTime).Milliseconds())
 
 	RecordBusinessOperation(ctx, "player_data_served", true, map[string]interface{}{
 		"dataset_id":           datasetID,
 		"player_count":         len(processedPlayers),
-		"response_size_bytes":  len(jsonData),
+		"response_size_bytes":  responseSize,
+		"response_format":      serializer.ContentType(),
+		"compression_ratio":    compressionRatio,
 		"processing_time_ms":   time.Since(startTime).Milliseconds(),
-		"percentile_cache_hit": found, // Whether percentiles were from cache
+		"percentile_cache_hit": found,
 		"division_filter":      divisionFilterStr,
 		"has_filters":          filterPosition != "" || filterRole != "" || minAgeStr != "" || maxAgeStr != "",
+		"protobuf_fallback":    supportsProtobuf && serializationError != nil,
 	})
 }
 
 // rolesHandler returns a list of all available role names.
 func rolesHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	startTime := time.Now()
+
+	// Start comprehensive tracing
+	ctx, span := StartSpan(ctx, "api.roles.get")
+	defer span.End()
+
+	// Initialize content negotiation
+	negotiator := NewContentNegotiator(r)
+	serializer := negotiator.SelectSerializer()
+	supportsProtobuf := negotiator.SupportsProtobuf()
+
+	// Get request ID for response metadata
+	requestID := r.Header.Get("X-Request-ID")
+	if requestID == "" {
+		requestID = generateRequestID()
+	}
+
+	SetSpanAttributes(ctx,
+		attribute.String("http.method", r.Method),
+		attribute.String("http.route", "/api/roles"),
+		attribute.String("response.format", serializer.ContentType()),
+		attribute.Bool("client.supports_protobuf", supportsProtobuf),
+		attribute.String("request.id", requestID),
+	)
+
 	if r.Method != http.MethodGet {
-		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
+		WriteErrorResponse(w, r, "method_not_allowed", "Only GET method is allowed", nil, http.StatusMethodNotAllowed)
 		return
 	}
 
 	// Ensure config is initialized with timeout
 	if err := EnsureConfigInitialized(5 * time.Second); err != nil {
-		log.Printf("Configuration not ready for roles request: %v", err)
-		http.Error(w, "Configuration loading, please try again", http.StatusServiceUnavailable)
+		logError(ctx, "Configuration not ready for roles request", "error", err)
+		WriteErrorResponse(w, r, "config_not_ready", "Configuration loading, please try again", nil, http.StatusServiceUnavailable)
 		return
 	}
 
@@ -1034,25 +1192,92 @@ func rolesHandler(w http.ResponseWriter, r *http.Request) {
 
 	sort.Strings(roleNames) // Sort for consistent frontend display
 
-	w.Header().Set("Content-Type", "application/json")
+	// Set CORS headers
 	setCORSHeaders(w, r)
-	if err := json.NewEncoder(w).Encode(roleNames); err != nil {
-		log.Printf("Error encoding JSON response for roles: %v", err)
-		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
+
+	// Create response metadata
+	metadata := CreateResponseMetadata(requestID, int32(len(roleNames)), false)
+
+	if supportsProtobuf {
+		// Create protobuf response
+		protoResponse := &pb.RolesResponse{
+			Roles:    roleNames,
+			Metadata: metadata,
+		}
+
+		// Serialize to protobuf
+		responseBytes, err := serializer.Serialize(protoResponse)
+		if err == nil {
+			// Protobuf serialization successful
+			w.Header().Set("Content-Type", serializer.ContentType())
+			if serializer.ShouldCompress() {
+				w.Header().Set("Content-Encoding", "gzip")
+			}
+			
+			if _, writeErr := w.Write(responseBytes); writeErr != nil {
+				logError(ctx, "Error writing protobuf response", "error", writeErr)
+			}
+			
+			logDebug(ctx, "Roles served as protobuf",
+				"role_count", len(roleNames),
+				"response_size_bytes", len(responseBytes),
+				"processing_time_ms", time.Since(startTime).Milliseconds())
+			return
+		}
+		
+		// Log protobuf serialization failure
+		logWarn(ctx, "Protobuf serialization failed for roles, falling back to JSON", "error", err)
 	}
+
+	// Fallback to JSON
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(roleNames); err != nil {
+		logError(ctx, "Error encoding JSON response for roles", "error", err)
+		WriteErrorResponse(w, r, "serialization_error", "Error encoding response", nil, http.StatusInternalServerError)
+		return
+	}
+	
+	logDebug(ctx, "Roles served as JSON",
+		"role_count", len(roleNames),
+		"processing_time_ms", time.Since(startTime).Milliseconds())
 }
 
 // leaguesHandler returns league data with teams and their ratings
 func leaguesHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	startTime := time.Now()
+
+	// Start comprehensive tracing
+	ctx, span := StartSpan(ctx, "api.leagues.get")
+	defer span.End()
+
+	// Initialize content negotiation
+	negotiator := NewContentNegotiator(r)
+	serializer := negotiator.SelectSerializer()
+	supportsProtobuf := negotiator.SupportsProtobuf()
+
+	// Get request ID for response metadata
+	requestID := r.Header.Get("X-Request-ID")
+	if requestID == "" {
+		requestID = generateRequestID()
+	}
+
+	SetSpanAttributes(ctx,
+		attribute.String("http.method", r.Method),
+		attribute.String("http.route", "/api/leagues"),
+		attribute.String("response.format", serializer.ContentType()),
+		attribute.Bool("client.supports_protobuf", supportsProtobuf),
+		attribute.String("request.id", requestID),
+	)
+
 	if r.Method != http.MethodGet {
-		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
+		WriteErrorResponse(w, r, "method_not_allowed", "Only GET method is allowed", nil, http.StatusMethodNotAllowed)
 		return
 	}
 
 	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/leagues/"), "/")
 	if len(pathParts) == 0 || pathParts[0] == "" {
-		http.Error(w, "Dataset ID is missing in the request path", http.StatusBadRequest)
+		WriteErrorResponse(w, r, "missing_dataset_id", "Dataset ID is missing in the request path", nil, http.StatusBadRequest)
 		return
 	}
 	datasetID := pathParts[0]
@@ -1064,13 +1289,61 @@ func leaguesHandler(w http.ResponseWriter, r *http.Request) {
 	if cached, found := getFromMemCache(cacheKey); found {
 		if leaguesData, ok := cached.([]League); ok {
 			logInfo(ctx, "Retrieved leagues data from memory cache", "dataset_id", datasetID)
+			
+			// Set CORS headers
+			setCORSHeaders(w, r)
+			
+			// Create response metadata
+			metadata := CreateResponseMetadata(requestID, int32(len(leaguesData)), true)
+			
+			if supportsProtobuf {
+				// Create protobuf response
+				protoLeagues := make([]string, len(leaguesData))
+				for i, league := range leaguesData {
+					protoLeagues[i] = league.Name
+				}
+				
+				protoResponse := &pb.LeaguesResponse{
+					Leagues:  protoLeagues,
+					Metadata: metadata,
+				}
+				
+				// Serialize to protobuf
+				responseBytes, err := serializer.Serialize(protoResponse)
+				if err == nil {
+					// Protobuf serialization successful
+					w.Header().Set("Content-Type", serializer.ContentType())
+					w.Header().Set("X-Cache-Source", "memory")
+					w.Header().Set("Cache-Control", "public, max-age=300") // 5 minutes
+					if serializer.ShouldCompress() {
+						w.Header().Set("Content-Encoding", "gzip")
+					}
+					
+					if _, writeErr := w.Write(responseBytes); writeErr != nil {
+						logError(ctx, "Error writing protobuf response", "error", writeErr)
+					}
+					
+					logDebug(ctx, "Leagues served as protobuf from cache",
+						"league_count", len(leaguesData),
+						"response_size_bytes", len(responseBytes),
+						"processing_time_ms", time.Since(startTime).Milliseconds())
+					return
+				}
+				
+				// Log protobuf serialization failure
+				logWarn(ctx, "Protobuf serialization failed for cached leagues, falling back to JSON", "error", err)
+			}
+			
+			// Fallback to JSON
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("X-Cache-Source", "memory")
 			w.Header().Set("Cache-Control", "public, max-age=300") // 5 minutes
-			setCORSHeaders(w, r)
 			if err := json.NewEncoder(w).Encode(leaguesData); err != nil {
-				http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
-				log.Printf("Error encoding JSON response for cached leagues (DatasetID: %s): %v", sanitizeForLogging(datasetID), err)
+				WriteErrorResponse(w, r, "serialization_error", "Error encoding response", nil, http.StatusInternalServerError)
+				logError(ctx, "Error encoding JSON response for cached leagues", 
+					"error", err, 
+					"dataset_id", datasetID)
+				return
 			}
 			return
 		}
@@ -1080,7 +1353,7 @@ func leaguesHandler(w http.ResponseWriter, r *http.Request) {
 	players, _, found := GetPlayerData(datasetID)
 	if !found {
 		logWarn(ctx, "Player data not found", "dataset_id", datasetID)
-		http.Error(w, "Player data not found for the given ID.", http.StatusNotFound)
+		WriteErrorResponse(w, r, "dataset_not_found", "Player data not found for the given ID.", nil, http.StatusNotFound)
 		return
 	}
 
@@ -1093,27 +1366,104 @@ func leaguesHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Cache the result for 5 minutes
 	setInMemCache(cacheKey, leaguesData, 5*time.Minute)
-
+	
+	// Set CORS headers
+	setCORSHeaders(w, r)
+	
+	// Create response metadata
+	metadata := CreateResponseMetadata(requestID, int32(len(leaguesData)), false)
+	
+	if supportsProtobuf {
+		// Create protobuf response
+		protoLeagues := make([]string, len(leaguesData))
+		for i, league := range leaguesData {
+			protoLeagues[i] = league.Name
+		}
+		
+		protoResponse := &pb.LeaguesResponse{
+			Leagues:  protoLeagues,
+			Metadata: metadata,
+		}
+		
+		// Serialize to protobuf
+		responseBytes, err := serializer.Serialize(protoResponse)
+		if err == nil {
+			// Protobuf serialization successful
+			w.Header().Set("Content-Type", serializer.ContentType())
+			w.Header().Set("X-Cache-Source", "computed")
+			w.Header().Set("Cache-Control", "public, max-age=300") // 5 minutes
+			if serializer.ShouldCompress() {
+				w.Header().Set("Content-Encoding", "gzip")
+			}
+			
+			if _, writeErr := w.Write(responseBytes); writeErr != nil {
+				logError(ctx, "Error writing protobuf response", "error", writeErr)
+			}
+			
+			logDebug(ctx, "Leagues served as protobuf",
+				"league_count", len(leaguesData),
+				"response_size_bytes", len(responseBytes),
+				"processing_time_ms", time.Since(startTime).Milliseconds())
+			return
+		}
+		
+		// Log protobuf serialization failure
+		logWarn(ctx, "Protobuf serialization failed for leagues, falling back to JSON", "error", err)
+	}
+	
+	// Fallback to JSON
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-Cache-Source", "computed")
-	setCORSHeaders(w, r)
+	w.Header().Set("Cache-Control", "public, max-age=300") // 5 minutes
 	if err := json.NewEncoder(w).Encode(leaguesData); err != nil {
-		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
-		log.Printf("Error encoding JSON response for leagues (DatasetID: %s): %v", sanitizeForLogging(datasetID), err)
+		WriteErrorResponse(w, r, "serialization_error", "Error encoding response", nil, http.StatusInternalServerError)
+		logError(ctx, "Error encoding JSON response for leagues", 
+			"error", err, 
+			"dataset_id", datasetID)
+		return
 	}
+	
+	logDebug(ctx, "Leagues served as JSON",
+		"league_count", len(leaguesData),
+		"processing_time_ms", time.Since(startTime).Milliseconds())
 }
 
 // teamsHandler returns detailed team data for a specific league
 func teamsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	startTime := time.Now()
+
+	// Start comprehensive tracing
+	ctx, span := StartSpan(ctx, "api.teams.get")
+	defer span.End()
+
+	// Initialize content negotiation
+	negotiator := NewContentNegotiator(r)
+	serializer := negotiator.SelectSerializer()
+	supportsProtobuf := negotiator.SupportsProtobuf()
+
+	// Get request ID for response metadata
+	requestID := r.Header.Get("X-Request-ID")
+	if requestID == "" {
+		requestID = generateRequestID()
+	}
+
+	SetSpanAttributes(ctx,
+		attribute.String("http.method", r.Method),
+		attribute.String("http.route", "/api/teams"),
+		attribute.String("response.format", serializer.ContentType()),
+		attribute.Bool("client.supports_protobuf", supportsProtobuf),
+		attribute.String("request.id", requestID),
+	)
+
 	if r.Method != http.MethodGet {
-		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
+		WriteErrorResponse(w, r, "method_not_allowed", "Only GET method is allowed", nil, http.StatusMethodNotAllowed)
 		return
 	}
 
 	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/teams/"), "/")
 	if len(pathParts) < 2 || pathParts[0] == "" || pathParts[1] == "" {
-		http.Error(w, "Dataset ID and Division are required in the request path", http.StatusBadRequest)
+		WriteErrorResponse(w, r, "missing_parameters", "Dataset ID and Division are required in the request path", nil, http.StatusBadRequest)
 		return
 	}
 	datasetID := pathParts[0]
@@ -1126,13 +1476,61 @@ func teamsHandler(w http.ResponseWriter, r *http.Request) {
 	if cached, found := getFromMemCache(cacheKey); found {
 		if teamsData, ok := cached.([]Team); ok {
 			logInfo(ctx, "Retrieved teams data from memory cache", "dataset_id", datasetID, "division", division)
+			
+			// Set CORS headers
+			setCORSHeaders(w, r)
+			
+			// Create response metadata
+			metadata := CreateResponseMetadata(requestID, int32(len(teamsData)), true)
+			
+			if supportsProtobuf {
+				// Create protobuf response
+				protoTeams := make([]string, len(teamsData))
+				for i, team := range teamsData {
+					protoTeams[i] = team.Name
+				}
+				
+				protoResponse := &pb.TeamsResponse{
+					Teams:    protoTeams,
+					Metadata: metadata,
+				}
+				
+				// Serialize to protobuf
+				responseBytes, err := serializer.Serialize(protoResponse)
+				if err == nil {
+					// Protobuf serialization successful
+					w.Header().Set("Content-Type", serializer.ContentType())
+					w.Header().Set("X-Cache-Source", "memory")
+					w.Header().Set("Cache-Control", "public, max-age=300") // 5 minutes
+					if serializer.ShouldCompress() {
+						w.Header().Set("Content-Encoding", "gzip")
+					}
+					
+					if _, writeErr := w.Write(responseBytes); writeErr != nil {
+						logError(ctx, "Error writing protobuf response", "error", writeErr)
+					}
+					
+					logDebug(ctx, "Teams served as protobuf from cache",
+						"team_count", len(teamsData),
+						"response_size_bytes", len(responseBytes),
+						"processing_time_ms", time.Since(startTime).Milliseconds())
+					return
+				}
+				
+				// Log protobuf serialization failure
+				logWarn(ctx, "Protobuf serialization failed for cached teams, falling back to JSON", "error", err)
+			}
+			
+			// Fallback to JSON
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("X-Cache-Source", "memory")
 			w.Header().Set("Cache-Control", "public, max-age=300") // 5 minutes
-			setCORSHeaders(w, r)
 			if err := json.NewEncoder(w).Encode(teamsData); err != nil {
-				http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
-				log.Printf("Error encoding JSON response for cached teams (DatasetID: %s, Division: %s): %v", sanitizeForLogging(datasetID), sanitizeForLogging(division), err)
+				WriteErrorResponse(w, r, "serialization_error", "Error encoding response", nil, http.StatusInternalServerError)
+				logError(ctx, "Error encoding JSON response for cached teams", 
+					"error", err, 
+					"dataset_id", datasetID,
+					"division", division)
 			}
 			return
 		}
@@ -1577,14 +1975,35 @@ type SearchResult struct {
 // searchHandler handles GET requests for searching players, teams, leagues, and nations
 func searchHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	if r.Method != http.MethodGet {
-		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
-		return
-	}
+	startTime := time.Now()
 
 	// Start tracing
 	ctx, span := StartSpan(ctx, "search.handler")
 	defer span.End()
+
+	// Initialize content negotiation
+	negotiator := NewContentNegotiator(r)
+	serializer := negotiator.SelectSerializer()
+	supportsProtobuf := negotiator.SupportsProtobuf()
+
+	// Get request ID for response metadata
+	requestID := r.Header.Get("X-Request-ID")
+	if requestID == "" {
+		requestID = generateRequestID()
+	}
+
+	SetSpanAttributes(ctx,
+		attribute.String("http.method", r.Method),
+		attribute.String("http.route", "/api/search"),
+		attribute.String("response.format", serializer.ContentType()),
+		attribute.Bool("client.supports_protobuf", supportsProtobuf),
+		attribute.String("request.id", requestID),
+	)
+
+	if r.Method != http.MethodGet {
+		WriteErrorResponse(w, r, "method_not_allowed", "Only GET method is allowed", nil, http.StatusMethodNotAllowed)
+		return
+	}
 
 	// Track active requests
 	IncrementActiveRequests(ctx, "/search")
@@ -1593,13 +2012,13 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract dataset ID from URL path
 	pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	if len(pathParts) < 3 || pathParts[0] != "api" || pathParts[1] != "search" {
-		http.Error(w, "Invalid URL format. Expected /api/search/{datasetId}", http.StatusBadRequest)
+		WriteErrorResponse(w, r, "invalid_url", "Invalid URL format. Expected /api/search/{datasetId}", nil, http.StatusBadRequest)
 		return
 	}
 
 	datasetID := pathParts[2]
 	if datasetID == "" {
-		http.Error(w, "Dataset ID is required", http.StatusBadRequest)
+		WriteErrorResponse(w, r, "missing_dataset_id", "Dataset ID is required", nil, http.StatusBadRequest)
 		return
 	}
 
@@ -1607,10 +2026,47 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
 	if query == "" {
 		// Return empty results for empty query
+		setCORSHeaders(w, r)
+		
+		// Create response metadata
+		metadata := CreateResponseMetadata(requestID, 0, false)
+		
+		if supportsProtobuf {
+			// Create empty protobuf response
+			protoResponse := &pb.SearchResponse{
+				Players:  []*pb.Player{},
+				Query:    "",
+				Metadata: metadata,
+			}
+			
+			// Serialize to protobuf
+			responseBytes, err := serializer.Serialize(protoResponse)
+			if err == nil {
+				// Protobuf serialization successful
+				w.Header().Set("Content-Type", serializer.ContentType())
+				if serializer.ShouldCompress() {
+					w.Header().Set("Content-Encoding", "gzip")
+				}
+				
+				if _, writeErr := w.Write(responseBytes); writeErr != nil {
+					logError(ctx, "Error writing protobuf response", "error", writeErr)
+				}
+				
+				logDebug(ctx, "Empty search results served as protobuf",
+					"response_size_bytes", len(responseBytes),
+					"processing_time_ms", time.Since(startTime).Milliseconds())
+				return
+			}
+			
+			// Log protobuf serialization failure
+			logWarn(ctx, "Protobuf serialization failed for empty search results, falling back to JSON", "error", err)
+		}
+		
+		// Fallback to JSON
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode([]SearchResult{}); err != nil {
-			log.Printf("Error encoding empty search results: %v", err)
-			http.Error(w, "Error encoding response", http.StatusInternalServerError)
+			logError(ctx, "Error encoding empty search results", "error", err)
+			WriteErrorResponse(w, r, "serialization_error", "Error encoding response", nil, http.StatusInternalServerError)
 		}
 		return
 	}
@@ -1623,7 +2079,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	// Get player data
 	players, _, found := GetPlayerData(datasetID)
 	if !found {
-		http.Error(w, "Dataset not found", http.StatusNotFound)
+		WriteErrorResponse(w, r, "dataset_not_found", "Dataset not found", nil, http.StatusNotFound)
 		return
 	}
 
@@ -1646,12 +2102,67 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		SetSpanAttributes(ctx,
 			attribute.Int("search.results_count", len(cachedResults)),
 			attribute.String("search.cache_status", "HIT"))
-
+			
+		// Set CORS headers
+		setCORSHeaders(w, r)
+		
+		// Create response metadata
+		metadata := CreateResponseMetadata(requestID, int32(len(cachedResults)), true)
+		
+		if supportsProtobuf {
+			// Create protobuf response
+			// Note: For search results we only include minimal player data in protobuf format
+			protoPlayers := make([]*pb.Player, 0, len(cachedResults))
+			for _, result := range cachedResults {
+				if result.Type == "player" {
+					// Create a minimal player representation for search results
+					protoPlayer := &pb.Player{
+						Uid:      int64(0), // We don't have UID in search results
+						Name:     result.Name,
+						Position: result.Description,
+						Overall:  int32(result.Overall),
+					}
+					protoPlayers = append(protoPlayers, protoPlayer)
+				}
+			}
+			
+			protoResponse := &pb.SearchResponse{
+				Players:  protoPlayers,
+				Query:    query,
+				Metadata: metadata,
+			}
+			
+			// Serialize to protobuf
+			responseBytes, err := serializer.Serialize(protoResponse)
+			if err == nil {
+				// Protobuf serialization successful
+				w.Header().Set("Content-Type", serializer.ContentType())
+				w.Header().Set("X-Cache-Status", "HIT")
+				if serializer.ShouldCompress() {
+					w.Header().Set("Content-Encoding", "gzip")
+				}
+				
+				if _, writeErr := w.Write(responseBytes); writeErr != nil {
+					logError(ctx, "Error writing protobuf response", "error", writeErr)
+				}
+				
+				logDebug(ctx, "Search results served as protobuf from cache",
+					"result_count", len(cachedResults),
+					"response_size_bytes", len(responseBytes),
+					"processing_time_ms", time.Since(startTime).Milliseconds())
+				return
+			}
+			
+			// Log protobuf serialization failure
+			logWarn(ctx, "Protobuf serialization failed for cached search results, falling back to JSON", "error", err)
+		}
+		
+		// Fallback to JSON
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("X-Cache-Status", "HIT")
 		if err := json.NewEncoder(w).Encode(cachedResults); err != nil {
 			RecordError(ctx, err, "Failed to encode cached search results")
-			http.Error(w, "Error encoding response", http.StatusInternalServerError)
+			WriteErrorResponse(w, r, "serialization_error", "Error encoding response", nil, http.StatusInternalServerError)
 			return
 		}
 		return
@@ -1676,15 +2187,70 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	SetSpanAttributes(ctx,
 		attribute.Int("search.results_count", len(results)),
 		attribute.String("search.cache_status", "MISS"))
-
+		
+	// Set CORS headers
+	setCORSHeaders(w, r)
+	
+	// Create response metadata
+	metadata := CreateResponseMetadata(requestID, int32(len(results)), false)
+	
+	if supportsProtobuf {
+		// Create protobuf response
+		// Note: For search results we only include minimal player data in protobuf format
+		protoPlayers := make([]*pb.Player, 0, len(results))
+		for _, result := range results {
+			if result.Type == "player" {
+				// Create a minimal player representation for search results
+				protoPlayer := &pb.Player{
+					Uid:      int64(0), // We don't have UID in search results
+					Name:     result.Name,
+					Position: result.Description,
+					Overall:  int32(result.Overall),
+				}
+				protoPlayers = append(protoPlayers, protoPlayer)
+			}
+		}
+		
+		protoResponse := &pb.SearchResponse{
+			Players:  protoPlayers,
+			Query:    query,
+			Metadata: metadata,
+		}
+		
+		// Serialize to protobuf
+		responseBytes, err := serializer.Serialize(protoResponse)
+		if err == nil {
+			// Protobuf serialization successful
+			w.Header().Set("Content-Type", serializer.ContentType())
+			w.Header().Set("X-Cache-Status", "MISS")
+			if serializer.ShouldCompress() {
+				w.Header().Set("Content-Encoding", "gzip")
+			}
+			
+			if _, writeErr := w.Write(responseBytes); writeErr != nil {
+				logError(ctx, "Error writing protobuf response", "error", writeErr)
+			}
+			
+			logDebug(ctx, "Search results served as protobuf",
+				"result_count", len(results),
+				"response_size_bytes", len(responseBytes),
+				"processing_time_ms", time.Since(startTime).Milliseconds())
+			return
+		}
+		
+		// Log protobuf serialization failure
+		logWarn(ctx, "Protobuf serialization failed for search results, falling back to JSON", "error", err)
+	}
+	
+	// Fallback to JSON
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-Cache-Status", "MISS")
 	if err := json.NewEncoder(w).Encode(results); err != nil {
 		RecordError(ctx, err, "Failed to encode search results")
-		http.Error(w, "Error encoding response", http.StatusInternalServerError)
+		WriteErrorResponse(w, r, "serialization_error", "Error encoding response", nil, http.StatusInternalServerError)
 		return
 	}
-
+	
 	logInfo(ctx, "Search completed", "results_count", len(results))
 }
 

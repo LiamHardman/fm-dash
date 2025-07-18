@@ -26,7 +26,8 @@ export default {
       const response = await fetch(`${API_ENDPOINT}/api/wishlists/${datasetId}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Accept': 'application/x-protobuf'
         },
         body: JSON.stringify(wishlistData)
       })
@@ -44,7 +45,11 @@ export default {
 
   async loadWishlist(datasetId) {
     try {
-      const response = await fetch(`${API_ENDPOINT}/api/wishlists/${datasetId}`)
+      const response = await fetch(`${API_ENDPOINT}/api/wishlists/${datasetId}`, {
+        headers: {
+          'Accept': 'application/x-protobuf'
+        }
+      })
 
       if (response.status === 404) {
         return this.loadFromLocalStorage(datasetId)
@@ -69,7 +74,10 @@ export default {
   async deleteWishlist(datasetId) {
     try {
       const response = await fetch(`${API_ENDPOINT}/api/wishlists/${datasetId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'Accept': 'application/x-protobuf'
+        }
       })
 
       if (!response.ok && response.status !== 404) {

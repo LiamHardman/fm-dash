@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package api;
+
+option go_package = "api/proto";
+
+import "proto/player.proto";
+
+// ResponseMetadata contains common metadata for all API responses
+message ResponseMetadata {
+  int64 timestamp = 1;
+  string api_version = 2;
+  bool from_cache = 3;
+  string request_id = 4;
+  int32 total_count = 5;
+}
+
+// PaginationInfo contains pagination details for paginated responses
+message PaginationInfo {
+  int32 page = 1;
+  int32 per_page = 2;
+  int32 total_pages = 3;
+  int32 total_count = 4;
+  bool has_next = 5;
+  bool has_previous = 6;
+}
+
+// PlayerDataResponse wraps player data with metadata and pagination
+message PlayerDataResponse {
+  repeated player.Player players = 1;
+  string currency_symbol = 2;
+  ResponseMetadata metadata = 3;
+  PaginationInfo pagination = 4;
+}
+
+// RolesResponse wraps role data with metadata
+message RolesResponse {
+  repeated string roles = 1;
+  ResponseMetadata metadata = 2;
+}
+
+// LeaguesResponse wraps league data with metadata
+message LeaguesResponse {
+  repeated string leagues = 1;
+  ResponseMetadata metadata = 2;
+}
+
+// TeamsResponse wraps team data with metadata
+message TeamsResponse {
+  repeated string teams = 1;
+  ResponseMetadata metadata = 2;
+}
+
+// SearchResponse wraps search results with metadata and pagination
+message SearchResponse {
+  repeated player.Player players = 1;
+  string query = 2;
+  ResponseMetadata metadata = 3;
+  PaginationInfo pagination = 4;
+}
+
+// ErrorResponse represents API error responses
+message ErrorResponse {
+  string error_code = 1;
+  string message = 2;
+  repeated string details = 3;
+  ResponseMetadata metadata = 4;
+}
+
+// GenericResponse for simple string responses
+message GenericResponse {
+  string data = 1;
+  ResponseMetadata metadata = 2;
+}

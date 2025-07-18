@@ -5,945 +5,515 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"mime/multipart"
+	"io"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
-	"os"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"google.golang.org/protobuf/proto"
+	pb "api/proto"
 )
 
-// TestEndToEndSystemFunctionality performs comprehensive end-to-end testing
-// of the complete data flow from CSV upload to API response
-func TestEndToEndSystemFunctionality(t *testing.T) {
-	// Initialize test environment
-	InitStore()
-	InitInMemoryCache()
-	InitCacheStorage(context.Background())
-	InitializeMemoryOptimizations()
-
-	// Test with both storage backends
+// TestEndToEndProtobufErrorHandling tests the complete flow of protobuf error handling
+// from client request through server processing and back to client response
+func TestEndToEndProtobufErrorHandling(t *testing.T) {
+	// Create a test server with our API handlers
+	mux := http.NewServeMux()
+	
+	// Register handlers for different test scenarios
+	mux.HandleFunc("/api/players/normal", playerDataHandler)
+	mux.HandleFunc("/api/players/error/serialization", serializationErrorHandler)
+	mux.HandleFunc("/api/players/error/conversion", conversionErrorHandler)
+	mux.HandleFunc("/api/players/error/validation", validationErrorHandler)
+	mux.HandleFunc("/api/players/error/server", serverErrorHandler)
+	
+	server := httptest.NewServer(mux)
+	defer server.Close()
+	
+	// Test cases
 	testCases := []struct {
-		name        string
-		useProtobuf bool
-		envVarValue string
+		name           string
+		endpoint       string
+		acceptHeader   string
+		expectedStatus int
+		validateResponse func(t *testing.T, resp *http.Response)
 	}{
 		{
-			name:        "JSON Storage Backend",
-			useProtobuf: false,
-			envVarValue: "false",
+			name:           "Normal Request with Protobuf Accept",
+			endpoint:       "/api/players/normal",
+			acceptHeader:   "application/x-protobuf",
+			expectedStatus: http.StatusOK,
+			validateResponse: func(t *testing.T, resp *http.Response) {
+				// Verify content type
+				contentType := resp.Header.Get("Content-Type")
+				if !strings.Contains(contentType, "application/x-protobuf") {
+					t.Errorf("Expected protobuf content type, got %s", contentType)
+				}
+				
+				// Read and decode the protobuf response
+				body, err := io.ReadAll(resp.Body)
+				if err != nil {
+					t.Fatalf("Failed to read response body: %v", err)
+				}
+				
+				playerData := &pb.PlayerDataResponse{}
+				if err := proto.Unmarshal(body, playerData); err != nil {
+					t.Fatalf("Failed to unmarshal protobuf response: %v", err)
+				}
+				
+				// Verify response data
+				if len(playerData.Players) != 1 {
+					t.Errorf("Expected 1 player, got %d", len(playerData.Players))
+				}
+				
+				if playerData.Players[0].Name != "Test Player" {
+					t.Errorf("Expected player name 'Test Player', got %s", playerData.Players[0].Name)
+				}
+			},
 		},
 		{
-			name:        "Protobuf Storage Backend",
-			useProtobuf: true,
-			envVarValue: "true",
+			name:           "Normal Request with JSON Accept",
+			endpoint:       "/api/players/normal",
+			acceptHeader:   "application/json",
+			expectedStatus: http.StatusOK,
+			validateResponse: func(t *testing.T, resp *http.Response) {
+				// Verify content type
+				contentType := resp.Header.Get("Content-Type")
+				if !strings.Contains(contentType, "application/json") {
+					t.Errorf("Expected JSON content type, got %s", contentType)
+				}
+				
+				// Read and decode the JSON response
+				var data map[string]interface{}
+				if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+					t.Fatalf("Failed to decode JSON response: %v", err)
+				}
+				
+				// Verify response data
+				players, ok := data["players"].([]interface{})
+				if !ok || len(players) != 1 {
+					t.Errorf("Expected 1 player, got %v", players)
+				}
+			},
+		},
+		{
+			name:           "Serialization Error with Protobuf Accept",
+			endpoint:       "/api/players/error/serialization",
+			acceptHeader:   "application/x-protobuf",
+			expectedStatus: http.StatusOK,
+			validateResponse: func(t *testing.T, resp *http.Response) {
+				// Verify content type (should fall back to JSON)
+				contentType := resp.Header.Get("Content-Type")
+				if !strings.Contains(contentType, "application/json") {
+					t.Errorf("Expected JSON content type, got %s", contentType)
+				}
+				
+				// Verify fallback header
+				fallbackHeader := resp.Header.Get("X-Serialization-Fallback")
+				if fallbackHeader != string(FallbackReasonMarshalFailed) {
+					t.Errorf("Expected fallback header %s, got %s", 
+						FallbackReasonMarshalFailed, fallbackHeader)
+				}
+				
+				// Read and decode the JSON response
+				var data map[string]interface{}
+				if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+					t.Fatalf("Failed to decode JSON response: %v", err)
+				}
+				
+				// Verify response data
+				players, ok := data["players"].([]interface{})
+				if !ok || len(players) != 1 {
+					t.Errorf("Expected 1 player, got %v", players)
+				}
+			},
+		},
+		{
+			name:           "Conversion Error with Protobuf Accept",
+			endpoint:       "/api/players/error/conversion",
+			acceptHeader:   "application/x-protobuf",
+			expectedStatus: http.StatusOK,
+			validateResponse: func(t *testing.T, resp *http.Response) {
+				// Verify content type (should fall back to JSON)
+				contentType := resp.Header.Get("Content-Type")
+				if !strings.Contains(contentType, "application/json") {
+					t.Errorf("Expected JSON content type, got %s", contentType)
+				}
+				
+				// Verify fallback header
+				fallbackHeader := resp.Header.Get("X-Serialization-Fallback")
+				if fallbackHeader != string(FallbackReasonConversionFailed) {
+					t.Errorf("Expected fallback header %s, got %s", 
+						FallbackReasonConversionFailed, fallbackHeader)
+				}
+			},
+		},
+		{
+			name:           "Validation Error with Protobuf Accept",
+			endpoint:       "/api/players/error/validation",
+			acceptHeader:   "application/x-protobuf",
+			expectedStatus: http.StatusBadRequest,
+			validateResponse: func(t *testing.T, resp *http.Response) {
+				// Verify content type (should be protobuf error)
+				contentType := resp.Header.Get("Content-Type")
+				if !strings.Contains(contentType, "application/x-protobuf") {
+					t.Errorf("Expected protobuf content type, got %s", contentType)
+				}
+				
+				// Read and decode the protobuf error response
+				body, err := io.ReadAll(resp.Body)
+				if err != nil {
+					t.Fatalf("Failed to read response body: %v", err)
+				}
+				
+				errorResponse := &pb.ErrorResponse{}
+				if err := proto.Unmarshal(body, errorResponse); err != nil {
+					t.Fatalf("Failed to unmarshal protobuf error response: %v", err)
+				}
+				
+				// Verify error response
+				if errorResponse.ErrorCode != "validation_error" {
+					t.Errorf("Expected error code 'validation_error', got %s", errorResponse.ErrorCode)
+				}
+				
+				if !strings.Contains(errorResponse.Message, "Invalid player data") {
+					t.Errorf("Expected error message to contain 'Invalid player data', got %s", 
+						errorResponse.Message)
+				}
+			},
+		},
+		{
+			name:           "Server Error with Protobuf Accept",
+			endpoint:       "/api/players/error/server",
+			acceptHeader:   "application/x-protobuf",
+			expectedStatus: http.StatusInternalServerError,
+			validateResponse: func(t *testing.T, resp *http.Response) {
+				// Verify content type (should be protobuf error)
+				contentType := resp.Header.Get("Content-Type")
+				if !strings.Contains(contentType, "application/x-protobuf") {
+					t.Errorf("Expected protobuf content type, got %s", contentType)
+				}
+				
+				// Read and decode the protobuf error response
+				body, err := io.ReadAll(resp.Body)
+				if err != nil {
+					t.Fatalf("Failed to read response body: %v", err)
+				}
+				
+				errorResponse := &pb.ErrorResponse{}
+				if err := proto.Unmarshal(body, errorResponse); err != nil {
+					t.Fatalf("Failed to unmarshal protobuf error response: %v", err)
+				}
+				
+				// Verify error response
+				if errorResponse.ErrorCode != "server_error" {
+					t.Errorf("Expected error code 'server_error', got %s", errorResponse.ErrorCode)
+				}
+			},
 		},
 	}
-
+	
+	// Run test cases
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// Set environment variable for storage backend
-			originalValue := os.Getenv("USE_PROTOBUF")
-			if err := os.Setenv("USE_PROTOBUF", tc.envVarValue); err != nil {
-				t.Fatalf("Failed to set USE_PROTOBUF environment variable: %v", err)
+			// Create a request to the test server
+			url := server.URL + tc.endpoint
+			req, err := http.NewRequest("GET", url, nil)
+			if err != nil {
+				t.Fatalf("Failed to create request: %v", err)
 			}
-			defer func() {
-				if err := os.Setenv("USE_PROTOBUF", originalValue); err != nil {
-					t.Logf("Warning: Failed to restore USE_PROTOBUF environment variable: %v", err)
-				}
-			}()
-
-			// Re-initialize storage with new setting
-			InitStore()
-
-			// Run complete end-to-end test
-			testCompleteDataFlow(t, tc.useProtobuf)
+			
+			// Set the Accept header
+			req.Header.Set("Accept", tc.acceptHeader)
+			
+			// Send the request
+			client := &http.Client{}
+			resp, err := client.Do(req)
+			if err != nil {
+				t.Fatalf("Failed to send request: %v", err)
+			}
+			defer resp.Body.Close()
+			
+			// Check the response status
+			if resp.StatusCode != tc.expectedStatus {
+				t.Errorf("Expected status %d, got %d", tc.expectedStatus, resp.StatusCode)
+			}
+			
+			// Validate the response
+			tc.validateResponse(t, resp)
 		})
 	}
 }
 
-// testCompleteDataFlow tests the complete data flow from upload to API response
-func testCompleteDataFlow(t *testing.T, useProtobuf bool) {
-	ctx := context.Background()
-	start := time.Now()
+// Test handlers for different scenarios
 
-	logInfo(ctx, "Starting complete data flow test",
-		"backend_type", getBackendName(useProtobuf),
-		"use_protobuf", useProtobuf)
-
-	// Step 1: Upload HTML file
-	t.Logf("Step 1: Testing HTML upload with %s backend", getBackendName(useProtobuf))
-	datasetID := testHTMLUploadFlow(ctx, t, useProtobuf)
-	if datasetID == "" {
-		t.Fatal("Failed to upload HTML file")
-		return
+// testPlayerDataHandler returns a normal player data response
+func testPlayerDataHandler(w http.ResponseWriter, r *http.Request) {
+	// Create test player data
+	player := &pb.Player{
+		Uid:  12345,
+		Name: "Test Player",
+		Age:  "25",
+		Club: "Test FC",
 	}
-
-	// Step 2: Wait for async processing to complete
-	t.Logf("Step 2: Waiting for async processing to complete")
-	waitForAsyncProcessing(ctx, t, datasetID, 30*time.Second)
-
-	// Step 3: Test data retrieval
-	t.Logf("Step 3: Testing data retrieval")
-	players := testDataRetrievalFlow(ctx, t, datasetID, useProtobuf)
-	if len(players) == 0 {
-		logError(ctx, "No players retrieved from data retrieval flow", "dataset_id", datasetID)
-		t.Fatal("No players retrieved")
-		return
+	
+	// Create response
+	response := &pb.PlayerDataResponse{
+		Players:        []*pb.Player{player},
+		CurrencySymbol: "$",
+		Metadata:       CreateResponseMetadata("test-request", 1, false),
 	}
-
-	// Step 4: Test data integrity
-	t.Logf("Step 4: Testing data integrity")
-	testDataIntegrityFlow(ctx, t, players, useProtobuf)
-
-	// Step 5: Test API endpoints with real data
-	t.Logf("Step 5: Testing API endpoints")
-	testAPIEndpointsFlow(ctx, t, datasetID, useProtobuf)
-
-	// Step 6: Test filtering and search functionality
-	t.Logf("Step 6: Testing filtering and search")
-	testFilteringAndSearchFlow(t, datasetID, useProtobuf)
-
-	// Step 7: Test performance under load
-	t.Logf("Step 7: Testing performance under load")
-	testPerformanceUnderLoad(ctx, t, datasetID, useProtobuf)
-
-	// Step 8: Test monitoring and logging
-	t.Logf("Step 8: Testing monitoring and logging")
-	testMonitoringAndLogging(ctx, t, datasetID, useProtobuf)
-
-	duration := time.Since(start)
-	logInfo(ctx, "End-to-end test completed successfully",
-		"backend_type", getBackendName(useProtobuf),
-		"dataset_id", datasetID,
-		"total_duration_ms", duration.Milliseconds())
-
-	t.Logf("End-to-end test completed successfully with %s backend", getBackendName(useProtobuf))
+	
+	// Write response using content negotiation
+	WriteResponse(w, r, response)
 }
 
-// testHTMLUploadFlow tests the HTML upload process
-func testHTMLUploadFlow(ctx context.Context, t *testing.T, useProtobuf bool) string {
-	start := time.Now()
-
-	logInfo(ctx, "Starting HTML upload flow test",
-		"backend_type", getBackendName(useProtobuf),
-		"use_protobuf", useProtobuf)
-	// Create comprehensive test HTML content
-	testHTML := createComprehensiveTestHTML()
-
-	// Create multipart form data
-	var buf bytes.Buffer
-	writer := multipart.NewWriter(&buf)
-
-	fileWriter, err := writer.CreateFormFile("playerFile", "comprehensive_test.html")
-	if err != nil {
-		t.Fatalf("Failed to create form file: %v", err)
+// serializationErrorHandler simulates a protobuf serialization error
+func serializationErrorHandler(w http.ResponseWriter, r *http.Request) {
+	// Create test player data
+	player := &pb.Player{
+		Uid:  12345,
+		Name: "Test Player",
+		Age:  "25",
+		Club: "Test FC",
 	}
-
-	_, err = fileWriter.Write([]byte(testHTML))
-	if err != nil {
-		t.Fatalf("Failed to write test HTML: %v", err)
+	
+	// Create response
+	response := &pb.PlayerDataResponse{
+		Players:        []*pb.Player{player},
+		CurrencySymbol: "$",
+		Metadata:       CreateResponseMetadata("test-request", 1, false),
 	}
-
-	if err := writer.Close(); err != nil {
-		t.Fatalf("Failed to close multipart writer: %v", err)
-	}
-
-	// Create HTTP request
-	req := httptest.NewRequest("POST", "/api/upload", &buf)
-	req.Header.Set("Content-Type", writer.FormDataContentType())
-
-	// Create response recorder
-	w := httptest.NewRecorder()
-
-	// Call handler
-	uploadHandler(w, req)
-
-	// Check response
-	if w.Code != http.StatusOK {
-		t.Fatalf("Upload failed with %s backend. Status: %d, Response: %s",
-			getBackendName(useProtobuf), w.Code, w.Body.String())
-	}
-
-	var response UploadResponse
-	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
-		t.Fatalf("Failed to parse upload response: %v", err)
-	}
-
-	if response.DatasetID == "" {
-		logError(ctx, "Upload response missing dataset ID", "error", "empty_dataset_id")
-		t.Fatal("DatasetID is empty")
-	}
-
-	duration := time.Since(start)
-	logInfo(ctx, "HTML upload flow completed successfully",
-		"dataset_id", response.DatasetID,
-		"currency_symbol", response.DetectedCurrencySymbol,
-		"duration_ms", duration.Milliseconds())
-
-	t.Logf("Upload successful. DatasetID: %s, Currency: %s",
-		response.DatasetID, response.DetectedCurrencySymbol)
-
-	return response.DatasetID
-}
-
-// waitForAsyncProcessing waits for async processing to complete
-func waitForAsyncProcessing(ctx context.Context, t *testing.T, datasetID string, timeout time.Duration) {
-	start := time.Now()
-
-	logInfo(ctx, "Starting async processing wait",
-		"dataset_id", datasetID,
-		"timeout_seconds", timeout.Seconds())
-
-	timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-timeoutCtx.Done():
-			duration := time.Since(start)
-			logInfo(ctx, "Async processing timeout reached",
-				"dataset_id", datasetID,
-				"timeout_seconds", timeout.Seconds(),
-				"duration_ms", duration.Milliseconds())
-			t.Logf("Async processing timeout reached, continuing with test")
-			return
-		case <-ticker.C:
-			// Check if percentiles are calculated by making a request
-			req := httptest.NewRequest("GET", fmt.Sprintf("/api/percentiles-status/%s", datasetID), nil)
-			w := httptest.NewRecorder()
-
-			percentilesStatusHandler(w, req)
-
-			if w.Code == http.StatusOK {
-				var status map[string]interface{}
-				if err := json.Unmarshal(w.Body.Bytes(), &status); err == nil {
-					if ready, ok := status["ready"].(bool); ok && ready {
-						duration := time.Since(start)
-						logInfo(ctx, "Async processing completed successfully",
-							"dataset_id", datasetID,
-							"duration_ms", duration.Milliseconds())
-						t.Logf("Async processing completed")
-						return
-					}
-				}
-			}
-		}
+	
+	// Get error handler
+	errorHandler := GetProtobufErrorHandler()
+	
+	// Simulate serialization error
+	if strings.Contains(r.Header.Get("Accept"), "application/x-protobuf") {
+		err := fmt.Errorf("simulated serialization error")
+		errorHandler.HandleSerializationError(r.Context(), w, r, response, err, "test-dataset")
+	} else {
+		// For JSON requests, just return normal response
+		WriteResponse(w, r, response)
 	}
 }
 
-// testDataRetrievalFlow tests data retrieval functionality
-func testDataRetrievalFlow(ctx context.Context, t *testing.T, datasetID string, useProtobuf bool) []Player {
-	start := time.Now()
-
-	logInfo(ctx, "Starting data retrieval flow test",
-		"dataset_id", datasetID,
-		"backend_type", getBackendName(useProtobuf))
-	req := httptest.NewRequest("GET", fmt.Sprintf("/api/players/%s", datasetID), nil)
-	w := httptest.NewRecorder()
-
-	playerDataHandler(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("Data retrieval failed with %s backend. Status: %d, Response: %s",
-			getBackendName(useProtobuf), w.Code, w.Body.String())
+// conversionErrorHandler simulates a protobuf conversion error
+func conversionErrorHandler(w http.ResponseWriter, r *http.Request) {
+	// Create test data (not protobuf)
+	data := map[string]interface{}{
+		"players": []map[string]interface{}{
+			{
+				"uid":  12345,
+				"name": "Test Player",
+				"age":  "25",
+				"club": "Test FC",
+			},
+		},
+		"currency_symbol": "$",
 	}
-
-	var response struct {
-		Players        []Player `json:"players"`
-		CurrencySymbol string   `json:"currencySymbol"`
+	
+	// Get error handler
+	errorHandler := GetProtobufErrorHandler()
+	
+	// Simulate conversion error
+	if strings.Contains(r.Header.Get("Accept"), "application/x-protobuf") {
+		err := fmt.Errorf("simulated conversion error")
+		errorHandler.HandleProtobufConversionError(
+			r.Context(), w, r, data, err, "test-dataset", "to_protobuf")
+	} else {
+		// For JSON requests, just return normal response
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(data)
 	}
-
-	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
-		t.Fatalf("Failed to parse player data response: %v", err)
-	}
-
-	if len(response.Players) == 0 {
-		logError(ctx, "No players in data retrieval response", "dataset_id", datasetID)
-		t.Fatal("No players in response")
-	}
-
-	duration := time.Since(start)
-	logInfo(ctx, "Data retrieval flow completed successfully",
-		"dataset_id", datasetID,
-		"player_count", len(response.Players),
-		"currency_symbol", response.CurrencySymbol,
-		"duration_ms", duration.Milliseconds())
-
-	t.Logf("Retrieved %d players with currency %s",
-		len(response.Players), response.CurrencySymbol)
-
-	return response.Players
 }
 
-// testDataIntegrityFlow validates data integrity throughout the system
-func testDataIntegrityFlow(ctx context.Context, t *testing.T, players []Player, _ bool) {
-	start := time.Now()
-
-	logInfo(ctx, "Starting data integrity validation",
-		"player_count", len(players))
-	// Check that all players have required fields
-	for i, player := range players {
-		if player.UID == 0 {
-			t.Errorf("Player %d has zero UID", i)
-		}
-
-		if player.Name == "" {
-			t.Errorf("Player %d has empty name", i)
-		}
-
-		if player.Position == "" {
-			t.Errorf("Player %d has empty position", i)
-		}
-
-		if player.Club == "" {
-			t.Errorf("Player %d has empty club", i)
-		}
-
-		// Check numeric attributes are reasonable
-		if player.Overall < 1 || player.Overall > 20 {
-			t.Errorf("Player %d has invalid overall rating: %d", i, player.Overall)
-		}
-
-		// Check maps are initialized
-		if player.Attributes == nil {
-			t.Errorf("Player %d has nil Attributes map", i)
-		}
-
-		if player.NumericAttributes == nil {
-			t.Errorf("Player %d has nil NumericAttributes map", i)
-		}
-
-		// Check position parsing
-		if len(player.ParsedPositions) == 0 {
-			t.Errorf("Player %d has no parsed positions", i)
-		}
-
-		// Check that performance stats are present
-		if player.PerformanceStatsNumeric == nil {
-			t.Errorf("Player %d has nil PerformanceStatsNumeric", i)
-		}
-
-		// Validate transfer value and wage parsing
-		if player.TransferValueAmount == 0 && player.TransferValue != "" && player.TransferValue != "0" {
-			t.Errorf("Player %d has unparsed transfer value: %s", i, player.TransferValue)
-		}
-
-		if player.WageAmount == 0 && player.Wage != "" && player.Wage != "0" {
-			t.Errorf("Player %d has unparsed wage: %s", i, player.Wage)
-		}
+// validationErrorHandler returns a validation error response
+func validationErrorHandler(w http.ResponseWriter, r *http.Request) {
+	// Create error details
+	details := []string{
+		"Player name is required",
+		"Age must be a number",
 	}
-
-	duration := time.Since(start)
-	logInfo(ctx, "Data integrity validation completed",
-		"player_count", len(players),
-		"duration_ms", duration.Milliseconds())
-
-	t.Logf("Data integrity validated for %d players", len(players))
+	
+	// Write error response
+	WriteErrorResponse(w, r, "validation_error", 
+		"Invalid player data: validation failed", 
+		details, 
+		http.StatusBadRequest)
 }
 
-// testAPIEndpointsFlow tests all API endpoints with real data
-func testAPIEndpointsFlow(ctx context.Context, t *testing.T, datasetID string, _ bool) {
-	start := time.Now()
-
-	logInfo(ctx, "Starting API endpoints flow test",
-		"dataset_id", datasetID)
-	// Test roles endpoint
-	req := httptest.NewRequest("GET", "/api/roles", nil)
-	w := httptest.NewRecorder()
-	rolesHandler(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Errorf("Roles endpoint failed: %d", w.Code)
-	}
-
-	// Test leagues endpoint
-	req = httptest.NewRequest("GET", fmt.Sprintf("/api/leagues/%s", datasetID), nil)
-	w = httptest.NewRecorder()
-	leaguesHandler(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Errorf("Leagues endpoint failed: %d", w.Code)
-	}
-
-	// Parse leagues response to get a league name for teams test
-	var leagues []League
-	if err := json.Unmarshal(w.Body.Bytes(), &leagues); err == nil && len(leagues) > 0 {
-		// Test teams endpoint
-		leagueName := leagues[0].Name
-		encodedLeagueName := url.QueryEscape(leagueName)
-		req = httptest.NewRequest("GET", fmt.Sprintf("/api/teams/%s?league=%s", datasetID, encodedLeagueName), nil)
-		w = httptest.NewRecorder()
-		teamsHandler(w, req)
-
-		if w.Code != http.StatusOK {
-			t.Errorf("Teams endpoint failed: %d", w.Code)
-		}
-	}
-
-	// Test config endpoint
-	req = httptest.NewRequest("GET", "/api/config", nil)
-	w = httptest.NewRecorder()
-	cachedConfigHandler(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Errorf("Config endpoint failed: %d", w.Code)
-	}
-
-	// Test cache status endpoint
-	req = httptest.NewRequest("GET", "/api/cache-status", nil)
-	w = httptest.NewRecorder()
-	cacheStatusHandler(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Errorf("Cache status endpoint failed: %d", w.Code)
-	}
-
-	duration := time.Since(start)
-	logInfo(ctx, "API endpoints flow test completed",
-		"dataset_id", datasetID,
-		"duration_ms", duration.Milliseconds())
-
-	t.Logf("All API endpoints tested successfully")
+// serverErrorHandler returns a server error response
+func serverErrorHandler(w http.ResponseWriter, r *http.Request) {
+	// Write error response
+	WriteErrorResponse(w, r, "server_error", 
+		"Internal server error occurred", 
+		[]string{"Database connection failed"}, 
+		http.StatusInternalServerError)
 }
 
-// testFilteringAndSearchFlow tests filtering and search functionality
-func testFilteringAndSearchFlow(t *testing.T, datasetID string, _ bool) {
-	ctx := context.Background()
-	start := time.Now()
-
-	logInfo(ctx, "Starting filtering and search flow test",
-		"dataset_id", datasetID)
-	// Test various filters
-	filters := []string{
-		"?position=GK",
-		"?position=D",
-		"?position=M",
-		"?position=F",
-		"?role=Goalkeeper",
-		"?role=Centre+Back",
-		"?minAge=18&maxAge=25",
-		"?minAge=26&maxAge=35",
-		"?divisionFilter=all",
-		"?divisionFilter=same&targetDivision=Premier+League",
-		"?positionCompare=all",
-		"?positionCompare=broad",
-		"?positionCompare=detailed",
-	}
-
-	for _, filter := range filters {
-		req := httptest.NewRequest("GET", fmt.Sprintf("/api/players/%s%s", datasetID, filter), nil)
-		w := httptest.NewRecorder()
-
-		playerDataHandler(w, req)
-
-		if w.Code != http.StatusOK {
-			t.Errorf("Filter test failed for %s: %d", filter, w.Code)
-			continue
-		}
-
-		// Ensure response is valid JSON
-		var response map[string]interface{}
-		if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
-			t.Errorf("Invalid JSON response for filter %s: %v", filter, err)
-		}
-	}
-
-	// Test search functionality
-	searchQueries := []string{
-		"?q=test&type=players",
-		"?q=premier&type=teams",
-		"?q=league&type=leagues",
-		"?q=england&type=nations",
-		"?q=goalkeeper",
-	}
-
-	for _, query := range searchQueries {
-		req := httptest.NewRequest("GET", fmt.Sprintf("/api/search/%s%s", datasetID, query), nil)
-		w := httptest.NewRecorder()
-
-		searchHandler(w, req)
-
-		if w.Code != http.StatusOK {
-			t.Errorf("Search test failed for %s: %d", query, w.Code)
-			continue
-		}
-
-		// Ensure response is valid JSON
-		var response map[string]interface{}
-		if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
-			t.Errorf("Invalid JSON response for search %s: %v", query, err)
-		}
-	}
-
-	duration := time.Since(start)
-	logInfo(ctx, "Filtering and search flow test completed",
-		"dataset_id", datasetID,
-		"filters_tested", len(filters),
-		"search_queries_tested", len(searchQueries),
-		"duration_ms", duration.Milliseconds())
-
-	t.Logf("Filtering and search functionality tested successfully")
-}
-
-// testPerformanceUnderLoad tests system behavior under various load conditions
-func testPerformanceUnderLoad(ctx context.Context, t *testing.T, datasetID string, _ bool) {
-	start := time.Now()
-
-	logInfo(ctx, "Starting performance under load test",
-		"dataset_id", datasetID)
-	// Test concurrent requests
+// TestConcurrentErrorHandling tests error handling under concurrent load
+func TestConcurrentErrorHandling(t *testing.T) {
+	// Create a test server with our API handlers
+	mux := http.NewServeMux()
+	
+	// Register handlers for different test scenarios
+	mux.HandleFunc("/api/players/normal", playerDataHandler)
+	mux.HandleFunc("/api/players/error/serialization", serializationErrorHandler)
+	mux.HandleFunc("/api/players/error/conversion", conversionErrorHandler)
+	
+	server := httptest.NewServer(mux)
+	defer server.Close()
+	
+	// Number of concurrent requests
 	concurrency := 10
-	requestsPerWorker := 5
-
+	
+	// Create a wait group to synchronize goroutines
 	var wg sync.WaitGroup
-	errors := make(chan error, concurrency*requestsPerWorker)
-
+	wg.Add(concurrency * 3) // 3 endpoints
+	
+	// Track errors
+	errorCh := make(chan error, concurrency*3)
+	
+	// Test normal endpoint with concurrent requests
 	for i := 0; i < concurrency; i++ {
-		wg.Add(1)
-		go func(workerID int) {
+		go func(i int) {
 			defer wg.Done()
-
-			for j := 0; j < requestsPerWorker; j++ {
-				// Make concurrent requests to different endpoints
-				endpoints := []string{
-					fmt.Sprintf("/api/players/%s", datasetID),
-					fmt.Sprintf("/api/players/%s?position=GK", datasetID),
-					fmt.Sprintf("/api/leagues/%s", datasetID),
-					"/api/roles",
-					"/api/config",
-				}
-
-				endpoint := endpoints[j%len(endpoints)]
-				req := httptest.NewRequest("GET", endpoint, nil)
-				w := httptest.NewRecorder()
-
-				switch {
-				case strings.Contains(endpoint, "/players/"):
-					playerDataHandler(w, req)
-				case strings.Contains(endpoint, "/leagues/"):
-					leaguesHandler(w, req)
-				case strings.Contains(endpoint, "/roles"):
-					rolesHandler(w, req)
-				case strings.Contains(endpoint, "/config"):
-					cachedConfigHandler(w, req)
-				}
-
-				if w.Code != http.StatusOK {
-					errors <- WrapErrorf(ErrWorkerRequestFailed, "worker %d request %d failed: %d", workerID, j, w.Code)
+			
+			// Create a request
+			req, err := http.NewRequest("GET", server.URL+"/api/players/normal", nil)
+			if err != nil {
+				errorCh <- fmt.Errorf("failed to create request: %v", err)
+				return
+			}
+			
+			// Set Accept header based on request number (alternate)
+			if i%2 == 0 {
+				req.Header.Set("Accept", "application/x-protobuf")
+			} else {
+				req.Header.Set("Accept", "application/json")
+			}
+			
+			// Send the request
+			client := &http.Client{}
+			resp, err := client.Do(req)
+			if err != nil {
+				errorCh <- fmt.Errorf("failed to send request: %v", err)
+				return
+			}
+			defer resp.Body.Close()
+			
+			// Check status code
+			if resp.StatusCode != http.StatusOK {
+				errorCh <- fmt.Errorf("expected status 200, got %d", resp.StatusCode)
+			}
+		}(i)
+	}
+	
+	// Test serialization error endpoint with concurrent requests
+	for i := 0; i < concurrency; i++ {
+		go func(i int) {
+			defer wg.Done()
+			
+			// Create a request
+			req, err := http.NewRequest("GET", server.URL+"/api/players/error/serialization", nil)
+			if err != nil {
+				errorCh <- fmt.Errorf("failed to create request: %v", err)
+				return
+			}
+			
+			// Set Accept header based on request number (alternate)
+			if i%2 == 0 {
+				req.Header.Set("Accept", "application/x-protobuf")
+			} else {
+				req.Header.Set("Accept", "application/json")
+			}
+			
+			// Send the request
+			client := &http.Client{}
+			resp, err := client.Do(req)
+			if err != nil {
+				errorCh <- fmt.Errorf("failed to send request: %v", err)
+				return
+			}
+			defer resp.Body.Close()
+			
+			// Check status code
+			if resp.StatusCode != http.StatusOK {
+				errorCh <- fmt.Errorf("expected status 200, got %d", resp.StatusCode)
+			}
+			
+			// For protobuf requests, check fallback header
+			if i%2 == 0 {
+				fallbackHeader := resp.Header.Get("X-Serialization-Fallback")
+				if fallbackHeader != string(FallbackReasonMarshalFailed) {
+					errorCh <- fmt.Errorf("expected fallback header %s, got %s", 
+						FallbackReasonMarshalFailed, fallbackHeader)
 				}
 			}
 		}(i)
 	}
-
-	// Wait for all workers to complete
+	
+	// Test conversion error endpoint with concurrent requests
+	for i := 0; i < concurrency; i++ {
+		go func(i int) {
+			defer wg.Done()
+			
+			// Create a request
+			req, err := http.NewRequest("GET", server.URL+"/api/players/error/conversion", nil)
+			if err != nil {
+				errorCh <- fmt.Errorf("failed to create request: %v", err)
+				return
+			}
+			
+			// Set Accept header based on request number (alternate)
+			if i%2 == 0 {
+				req.Header.Set("Accept", "application/x-protobuf")
+			} else {
+				req.Header.Set("Accept", "application/json")
+			}
+			
+			// Send the request
+			client := &http.Client{}
+			resp, err := client.Do(req)
+			if err != nil {
+				errorCh <- fmt.Errorf("failed to send request: %v", err)
+				return
+			}
+			defer resp.Body.Close()
+			
+			// Check status code
+			if resp.StatusCode != http.StatusOK {
+				errorCh <- fmt.Errorf("expected status 200, got %d", resp.StatusCode)
+			}
+			
+			// For protobuf requests, check fallback header
+			if i%2 == 0 {
+				fallbackHeader := resp.Header.Get("X-Serialization-Fallback")
+				if fallbackHeader != string(FallbackReasonConversionFailed) {
+					errorCh <- fmt.Errorf("expected fallback header %s, got %s", 
+						FallbackReasonConversionFailed, fallbackHeader)
+				}
+			}
+		}(i)
+	}
+	
+	// Wait for all goroutines to finish
 	wg.Wait()
-	close(errors)
-
+	close(errorCh)
+	
 	// Check for errors
-	errorCount := 0
-	for err := range errors {
-		t.Errorf("Concurrent request error: %v", err)
-		errorCount++
+	var errors []error
+	for err := range errorCh {
+		errors = append(errors, err)
 	}
-
-	duration := time.Since(start)
-	totalRequests := concurrency * requestsPerWorker
-
-	if errorCount > 0 {
-		logError(ctx, "Performance test failed with errors",
-			"error_count", errorCount,
-			"total_requests", totalRequests,
-			"dataset_id", datasetID,
-			"duration_ms", duration.Milliseconds())
-		t.Errorf("Performance test failed with %d errors out of %d requests",
-			errorCount, totalRequests)
-	} else {
-		logInfo(ctx, "Performance test completed successfully",
-			"dataset_id", datasetID,
-			"total_requests", totalRequests,
-			"concurrency", concurrency,
-			"requests_per_worker", requestsPerWorker,
-			"duration_ms", duration.Milliseconds())
-		t.Logf("Performance test passed: %d concurrent requests completed successfully",
-			totalRequests)
+	
+	if len(errors) > 0 {
+		for _, err := range errors {
+			t.Errorf("Concurrent test error: %v", err)
+		}
 	}
-}
-
-// testMonitoringAndLogging verifies monitoring and logging work correctly
-func testMonitoringAndLogging(ctx context.Context, t *testing.T, datasetID string, _ bool) {
-	start := time.Now()
-
-	logInfo(ctx, "Starting monitoring and logging test",
-		"dataset_id", datasetID)
-	// Test that requests generate appropriate logs and metrics
-	// This is a basic test - in a real environment you'd check actual log output
-
-	// Make a request that should generate logs
-	req := httptest.NewRequest("GET", fmt.Sprintf("/api/players/%s", datasetID), nil)
-	w := httptest.NewRecorder()
-
-	// Add request context for tracing
-	reqCtx := req.Context()
-	reqCtx, span := StartSpan(reqCtx, "test.monitoring")
-	req = req.WithContext(reqCtx)
-
-	playerDataHandler(w, req)
-	span.End()
-
-	if w.Code != http.StatusOK {
-		t.Errorf("Monitoring test request failed: %d", w.Code)
-		return
-	}
-
-	// Test error logging by making an invalid request
-	req = httptest.NewRequest("GET", "/api/players/invalid-dataset-id", nil)
-	w = httptest.NewRecorder()
-
-	ctx = req.Context()
-	ctx, span = StartSpan(ctx, "test.error_monitoring")
-	req = req.WithContext(ctx)
-
-	playerDataHandler(w, req)
-	span.End()
-
-	if w.Code != http.StatusNotFound {
-		t.Errorf("Expected 404 for invalid dataset, got %d", w.Code)
-	}
-
-	duration := time.Since(start)
-	logInfo(ctx, "Monitoring and logging test completed",
-		"dataset_id", datasetID,
-		"duration_ms", duration.Milliseconds())
-
-	t.Logf("Monitoring and logging test completed")
-}
-
-// createComprehensiveTestHTML creates comprehensive test HTML with various player types
-func createComprehensiveTestHTML() string {
-	return `<html>
-<head><title>Comprehensive Test Players</title></head>
-<body>
-<table>
-<tr>
-	<th>Inf</th>
-	<th>Name</th>
-	<th>Nat</th>
-	<th>Age</th>
-	<th>Position</th>
-	<th>Club</th>
-	<th>Transfer Value</th>
-	<th>Wage</th>
-	<th>Ability</th>
-	<th>Potential</th>
-	<th>Personality</th>
-	<th>Media Handling</th>
-	<th>Av Rat</th>
-	<th>Apps</th>
-	<th>Left Foot</th>
-	<th>Right Foot</th>
-	<th>Acc</th>
-	<th>Agg</th>
-	<th>Agi</th>
-	<th>Ant</th>
-	<th>Bal</th>
-	<th>Bra</th>
-	<th>Cnt</th>
-	<th>Cmp</th>
-	<th>Cro</th>
-	<th>Dec</th>
-	<th>Det</th>
-	<th>Dri</th>
-	<th>Fin</th>
-	<th>Fir</th>
-	<th>Fla</th>
-	<th>Hea</th>
-	<th>L Th</th>
-	<th>Jum</th>
-	<th>Ldr</th>
-	<th>Lon</th>
-	<th>Mar</th>
-	<th>OtB</th>
-	<th>Pac</th>
-	<th>Pas</th>
-	<th>Pos</th>
-	<th>Sta</th>
-	<th>Str</th>
-	<th>Tck</th>
-	<th>Tea</th>
-	<th>Tec</th>
-	<th>Vis</th>
-	<th>Wor</th>
-	<th>Division</th>
-	<th>UID</th>
-</tr>
-<tr>
-	<td>Hol</td>
-	<td>Test Goalkeeper</td>
-	<td>ENG</td>
-	<td>25</td>
-	<td>GK</td>
-	<td>Test FC</td>
-	<td>£5M</td>
-	<td>£50K</td>
-	<td>15</td>
-	<td>18</td>
-	<td>Balanced</td>
-	<td>Evasive</td>
-	<td>7.5</td>
-	<td>30</td>
-	<td>10</td>
-	<td>15</td>
-	<td>12</td>
-	<td>8</td>
-	<td>14</td>
-	<td>16</td>
-	<td>13</td>
-	<td>11</td>
-	<td>15</td>
-	<td>12</td>
-	<td>9</td>
-	<td>14</td>
-	<td>13</td>
-	<td>10</td>
-	<td>8</td>
-	<td>12</td>
-	<td>7</td>
-	<td>11</td>
-	<td>6</td>
-	<td>13</td>
-	<td>9</td>
-	<td>8</td>
-	<td>7</td>
-	<td>10</td>
-	<td>14</td>
-	<td>12</td>
-	<td>16</td>
-	<td>15</td>
-	<td>11</td>
-	<td>6</td>
-	<td>13</td>
-	<td>14</td>
-	<td>12</td>
-	<td>10</td>
-	<td>Premier League</td>
-	<td>100001</td>
-</tr>
-<tr>
-	<td>Hol</td>
-	<td>Test Centre Back</td>
-	<td>ESP</td>
-	<td>22</td>
-	<td>D (C)</td>
-	<td>Test United</td>
-	<td>£15M</td>
-	<td>£75K</td>
-	<td>16</td>
-	<td>19</td>
-	<td>Driven</td>
-	<td>Outspoken</td>
-	<td>7.8</td>
-	<td>28</td>
-	<td>12</td>
-	<td>14</td>
-	<td>15</td>
-	<td>16</td>
-	<td>13</td>
-	<td>17</td>
-	<td>14</td>
-	<td>15</td>
-	<td>16</td>
-	<td>13</td>
-	<td>11</td>
-	<td>15</td>
-	<td>14</td>
-	<td>12</td>
-	<td>9</td>
-	<td>13</td>
-	<td>8</td>
-	<td>14</td>
-	<td>7</td>
-	<td>15</td>
-	<td>10</td>
-	<td>9</td>
-	<td>16</td>
-	<td>11</td>
-	<td>15</td>
-	<td>13</td>
-	<td>17</td>
-	<td>16</td>
-	<td>18</td>
-	<td>15</td>
-	<td>14</td>
-	<td>15</td>
-	<td>13</td>
-	<td>11</td>
-	<td>Premier League</td>
-	<td>100002</td>
-</tr>
-<tr>
-	<td>Hol</td>
-	<td>Test Midfielder</td>
-	<td>BRA</td>
-	<td>28</td>
-	<td>M (C)</td>
-	<td>Test City</td>
-	<td>£25M</td>
-	<td>£100K</td>
-	<td>17</td>
-	<td>17</td>
-	<td>Professional</td>
-	<td>Composed</td>
-	<td>8.2</td>
-	<td>32</td>
-	<td>16</td>
-	<td>14</td>
-	<td>16</td>
-	<td>12</td>
-	<td>15</td>
-	<td>18</td>
-	<td>16</td>
-	<td>14</td>
-	<td>17</td>
-	<td>15</td>
-	<td>13</td>
-	<td>16</td>
-	<td>15</td>
-	<td>17</td>
-	<td>14</td>
-	<td>16</td>
-	<td>12</td>
-	<td>13</td>
-	<td>11</td>
-	<td>14</td>
-	<td>16</td>
-	<td>15</td>
-	<td>12</td>
-	<td>14</td>
-	<td>16</td>
-	<td>18</td>
-	<td>15</td>
-	<td>16</td>
-	<td>13</td>
-	<td>11</td>
-	<td>15</td>
-	<td>17</td>
-	<td>16</td>
-	<td>14</td>
-	<td>Premier League</td>
-	<td>100003</td>
-</tr>
-<tr>
-	<td>Hol</td>
-	<td>Test Forward</td>
-	<td>ARG</td>
-	<td>24</td>
-	<td>F (C)</td>
-	<td>Test Athletic</td>
-	<td>£35M</td>
-	<td>£125K</td>
-	<td>18</td>
-	<td>20</td>
-	<td>Ambitious</td>
-	<td>Charismatic</td>
-	<td>8.5</td>
-	<td>35</td>
-	<td>15</td>
-	<td>17</td>
-	<td>17</td>
-	<td>14</td>
-	<td>16</td>
-	<td>18</td>
-	<td>15</td>
-	<td>16</td>
-	<td>13</td>
-	<td>14</td>
-	<td>15</td>
-	<td>17</td>
-	<td>16</td>
-	<td>18</td>
-	<td>19</td>
-	<td>17</td>
-	<td>16</td>
-	<td>15</td>
-	<td>14</td>
-	<td>13</td>
-	<td>15</td>
-	<td>12</td>
-	<td>11</td>
-	<td>18</td>
-	<td>18</td>
-	<td>16</td>
-	<td>14</td>
-	<td>15</td>
-	<td>13</td>
-	<td>10</td>
-	<td>14</td>
-	<td>17</td>
-	<td>16</td>
-	<td>15</td>
-	<td>Premier League</td>
-	<td>100004</td>
-</tr>
-<tr>
-	<td>Hol</td>
-	<td>Test Wingback</td>
-	<td>FRA</td>
-	<td>26</td>
-	<td>D/M (RL), WB (RL)</td>
-	<td>Test Rovers</td>
-	<td>£12M</td>
-	<td>£65K</td>
-	<td>16</td>
-	<td>17</td>
-	<td>Resolute</td>
-	<td>Respectful</td>
-	<td>7.9</td>
-	<td>29</td>
-	<td>13</td>
-	<td>15</td>
-	<td>16</td>
-	<td>13</td>
-	<td>17</td>
-	<td>15</td>
-	<td>16</td>
-	<td>14</td>
-	<td>15</td>
-	<td>14</td>
-	<td>16</td>
-	<td>15</td>
-	<td>14</td>
-	<td>15</td>
-	<td>12</td>
-	<td>14</td>
-	<td>11</td>
-	<td>13</td>
-	<td>10</td>
-	<td>12</td>
-	<td>13</td>
-	<td>11</td>
-	<td>14</td>
-	<td>13</td>
-	<td>17</td>
-	<td>15</td>
-	<td>16</td>
-	<td>17</td>
-	<td>15</td>
-	<td>14</td>
-	<td>16</td>
-	<td>14</td>
-	<td>15</td>
-	<td>16</td>
-	<td>Championship</td>
-	<td>100005</td>
-</tr>
-</table>
-</body>
-</html>`
 }

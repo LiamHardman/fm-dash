@@ -265,7 +265,7 @@ func main() {
 	mux.Handle("/", wrapHandler(indexHandler, "index"))
 	mux.Handle("/public/", http.StripPrefix("/public/", fsPublic))
 	mux.Handle("/api/upload", wrapHandler(http.HandlerFunc(uploadHandler), "upload"))
-	mux.Handle("/api/players/", wrapHandler(http.HandlerFunc(playerDataHandler), "player-data"))
+	mux.Handle("/api/players/", wrapHandler(http.HandlerFunc(GetFormatAwareCacheHandler()), "player-data"))
 	mux.Handle("/api/roles", wrapHandler(http.HandlerFunc(rolesHandler), "roles"))
 	mux.Handle("/api/leagues/", wrapHandler(http.HandlerFunc(leaguesHandler), "leagues"))
 	mux.Handle("/api/teams/", wrapHandler(http.HandlerFunc(teamsHandler), "teams"))

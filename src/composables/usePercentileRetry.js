@@ -75,7 +75,8 @@ export function usePercentileRetry(player, datasetId, selectedComparisonGroup) {
       const response = await fetch(`/api/percentiles/${datasetId.value}`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Accept': 'application/x-protobuf'
         },
         body: JSON.stringify(requestPayload)
       })

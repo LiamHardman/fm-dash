@@ -4,6 +4,8 @@ import (
 	"container/list"
 	"sync"
 	"time"
+	
+	pb "api/proto"
 )
 
 // CacheItem represents an item in the cache with expiration
@@ -160,6 +162,29 @@ func estimateSize(value interface{}) int64 {
 			size += estimateSize(item)
 		}
 		return size
+	case *pb.PlayerDataResponse:
+		// More accurate size estimation for protobuf player data
+		size := int64(24) // base message overhead
+		if v != nil {
+			// Add size for each player
+			size += int64(len(v.GetPlayers()) * 24) // slice overhead
+			for _, player := range v.GetPlayers() {
+				// Estimate player size based on fields
+				playerSize := int64(200) // base player overhead
+				playerSize += int64(len(player.GetName())) + 16
+				playerSize += int64(len(player.GetPosition())) + 16
+				playerSize += int64(len(player.GetClub())) + 16
+				playerSize += int64(len(player.GetDivision())) + 16
+				playerSize += int64(len(player.GetAttributes())) * 32 // rough estimate for attributes map
+				size += playerSize
+			}
+			// Add metadata size
+			size += 64 // metadata overhead
+		}
+		return size
+	case *pb.RolesResponse, *pb.LeaguesResponse, *pb.TeamsResponse, *pb.SearchResponse, *pb.GenericResponse:
+		// More accurate size estimation for other protobuf responses
+		return int64(128) // base size for small protobuf messages
 	default:
 		return 64 // default estimate for unknown types
 	}

@@ -6,10 +6,16 @@ import { PerformanceTracker } from '../utils/performance.js'
 export const usePlayerStore = defineStore('player', () => {
   const allPlayers = shallowRef([])
   const currentDatasetId = ref(sessionStorage.getItem('currentDatasetId') || null)
-  const detectedCurrencySymbol = ref(sessionStorage.getItem('detectedCurrencySymbol') || '$')
+  const detectedCurrencySymbol = ref(sessionStorage.getItem('detectedCurrencySymbol') || '£')
   const loading = ref(false)
   const error = ref('')
   const allAvailableRoles = ref([])
+  const protobufMetrics = ref({
+    enabled: false,
+    compressionRatio: 0,
+    requestCount: 0,
+    averagePayloadSize: 0
+  })
 
   const AGE_SLIDER_MIN_DEFAULT = 15
   const AGE_SLIDER_MAX_DEFAULT = 50
@@ -145,7 +151,7 @@ export const usePlayerStore = defineStore('player', () => {
       tracker.checkpoint('Upload completed')
 
       currentDatasetId.value = response.datasetId
-      detectedCurrencySymbol.value = response.detectedCurrencySymbol || '$'
+      detectedCurrencySymbol.value = response.detectedCurrencySymbol || '£'
       sessionStorage.setItem('currentDatasetId', currentDatasetId.value)
       sessionStorage.setItem('detectedCurrencySymbol', detectedCurrencySymbol.value)
       tracker.checkpoint('Session storage updated')
@@ -212,11 +218,18 @@ export const usePlayerStore = defineStore('player', () => {
       )
       tracker.checkpoint('API call completed')
 
-      allPlayers.value = processPlayersFromAPI(response.players)
+      // Update protobuf metrics if available
+      if (response._protobuf) {
+        updateProtobufMetrics(response._protobuf)
+      }
+
+      // Extract players from response (handle both protobuf and JSON formats)
+      const players = response.players || []
+      allPlayers.value = processPlayersFromAPI(players)
       tracker.checkpoint('Players processed')
 
       currentDatasetId.value = datasetId
-      detectedCurrencySymbol.value = response.currencySymbol || '$'
+      detectedCurrencySymbol.value = response.currencySymbol || '£'
       sessionStorage.setItem('currentDatasetId', currentDatasetId.value)
       sessionStorage.setItem('detectedCurrencySymbol', detectedCurrencySymbol.value)
       tracker.checkpoint('State updated')
@@ -236,8 +249,16 @@ export const usePlayerStore = defineStore('player', () => {
   async function fetchAllAvailableRoles(force = false) {
     if (allAvailableRoles.value.length > 0 && !force) return
     try {
-      const roles = await playerService.getAvailableRoles()
-      allAvailableRoles.value = roles.sort()
+      const response = await playerService.getAvailableRoles()
+      
+      // Update protobuf metrics if available
+      if (response._protobuf) {
+        updateProtobufMetrics(response._protobuf)
+      }
+      
+      // Extract roles from response (handle both protobuf and JSON formats)
+      const roles = response.roles || response
+      allAvailableRoles.value = Array.isArray(roles) ? roles.sort() : []
     } catch (_e) {
       allAvailableRoles.value = []
     }
@@ -259,7 +280,7 @@ export const usePlayerStore = defineStore('player', () => {
   function resetState() {
     allPlayers.value = []
     currentDatasetId.value = null
-    detectedCurrencySymbol.value = '$'
+    detectedCurrencySymbol.value = '£'
     allAvailableRoles.value = []
     sessionStorage.removeItem('currentDatasetId')
     sessionStorage.removeItem('detectedCurrencySymbol')
@@ -283,6 +304,44 @@ export const usePlayerStore = defineStore('player', () => {
       resetState()
     }
   }
+  
+  /**
+   * Update protobuf metrics based on API response
+   * @param {Object} protobufInfo - Protobuf metadata from response
+   */
+  function updateProtobufMetrics(protobufInfo) {
+    protobufMetrics.value.enabled = protobufInfo.format === 'protobuf'
+    protobufMetrics.value.requestCount++
+    
+    if (protobufInfo.payloadSize) {
+      // Update average payload size
+      protobufMetrics.value.averagePayloadSize = 
+        (protobufMetrics.value.averagePayloadSize * (protobufMetrics.value.requestCount - 1) + 
+         protobufInfo.payloadSize) / protobufMetrics.value.requestCount
+    }
+    
+    if (protobufInfo.compressionRatio) {
+      protobufMetrics.value.compressionRatio = protobufInfo.compressionRatio
+    }
+  }
+  
+  /**
+   * Toggle protobuf support
+   * @param {boolean} enabled - Whether protobuf should be enabled
+   */
+  function setProtobufEnabled(enabled) {
+    playerService.setProtobufEnabled(enabled)
+  }
+  
+  /**
+   * Get protobuf client status
+   */
+  function getProtobufStatus() {
+    return {
+      ...playerService.getClientStatus(),
+      metrics: { ...protobufMetrics.value }
+    }
+  }
 
   return {
     allPlayers,
@@ -299,11 +358,14 @@ export const usePlayerStore = defineStore('player', () => {
     initialDatasetTransferValueRange,
     salaryRange,
     allAvailableRoles,
+    protobufMetrics,
     uploadPlayerFile,
     fetchPlayersByDatasetId,
     fetchAllAvailableRoles,
     resetState,
     loadFromSessionStorage,
+    setProtobufEnabled,
+    getProtobufStatus,
     AGE_SLIDER_MIN_DEFAULT,
     AGE_SLIDER_MAX_DEFAULT
   }
