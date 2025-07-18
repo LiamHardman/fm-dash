@@ -216,7 +216,7 @@
                                                 <div class="player-info">
                                                     <div class="player-name">{{ playerEntry.player.name }}</div>
                                                     <div class="player-positions">
-                                                        {{ playerEntry.player.shortPositions?.slice(0, 2).join(', ') || 'N/A' }}
+                                                        {{ playerEntry.player.short_positions?.slice(0, 2).join(', ') || 'N/A' }}
                                                     </div>
                                                 </div>
                                                 <div class="player-rating" :class="getOverallClass(playerEntry.overallInRole)">
@@ -623,7 +623,7 @@ export default {
       if (teamPlayers.value.length === 0) return false
 
       const goalkeeperCount = teamPlayers.value.filter(p =>
-        p.positionGroups?.includes('Goalkeepers')
+        p.position_groups?.includes('Goalkeepers')
       ).length
 
       // Only show goalkeeper view if more than half the players are goalkeepers
@@ -769,9 +769,9 @@ export default {
       const requiredPositions = positionSideMap[upperSlotRoleOriginal] || []
 
       // 1. STRICT MATCHING: Player must have the EXACT position to play here
-      if (player.shortPositions && player.shortPositions.length > 0) {
+      if (player.short_positions && player.short_positions.length > 0) {
         // Check if player has ANY of the required positions
-        const exactPositionMatches = player.shortPositions.filter(pos =>
+        const exactPositionMatches = player.short_positions.filter(pos =>
           requiredPositions.includes(pos)
         )
 
@@ -823,9 +823,9 @@ export default {
       // 2. FALLBACK MATCHING: If no exact match, try fallback positions
       const fallbackPositions = fallbackPositionMap[upperSlotRoleOriginal] || []
 
-      if (player.shortPositions && player.shortPositions.length > 0) {
+      if (player.short_positions && player.short_positions.length > 0) {
         // Check if player has ANY of the fallback positions
-        const fallbackMatches = player.shortPositions.filter(pos => fallbackPositions.includes(pos))
+        const fallbackMatches = player.short_positions.filter(pos => fallbackPositions.includes(pos))
 
         if (fallbackMatches.length > 0) {
           // Fallback position match - these will be scored lower
@@ -963,7 +963,7 @@ export default {
 
             if (overallInRole >= MIN_SUITABILITY_THRESHOLD) {
               const slotPositions = positionSideMap[slot.role.toUpperCase()] || []
-              const playerPositions = player.shortPositions || []
+              const playerPositions = player.short_positions || []
               const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos))
 
               if (isExactMatch || overallInRole >= MIN_SUITABILITY_THRESHOLD) {
@@ -1095,8 +1095,8 @@ export default {
 
       for (const player of teamPlayers.value) {
         const playablePositions = []
-        if (player.shortPositions && player.shortPositions.length > 0) {
-          playablePositions.push(...player.shortPositions)
+        if (player.short_positions && player.short_positions.length > 0) {
+          playablePositions.push(...player.short_positions)
         }
         playerPositionMap.set(player.name, playablePositions)
       }
@@ -1266,7 +1266,7 @@ export default {
 
           for (const player of teamPlayers.value) {
             if (!assignedPlayersToSlots.has(player.name)) {
-              const playerPositions = player.shortPositions || []
+              const playerPositions = player.short_positions || []
 
               // Check if player can play any fallback position
               const canPlayFallback = playerPositions.some(pos => fallbackPositions.includes(pos))
@@ -1355,7 +1355,7 @@ export default {
       const overallInNewRole = getPlayerOverallForRole(playerToMoveFullData, toSlotRole)
 
       // Check if player is in their natural position in the new slot
-      const playerPositions = playerToMoveFullData.shortPositions || []
+      const playerPositions = playerToMoveFullData.short_positions || []
       const slotPositions = positionSideMap[toSlotRole.toUpperCase()] || []
       const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos))
 
@@ -1384,7 +1384,7 @@ export default {
           )
 
           // Check if player is in their natural position in the original slot
-          const playerPositions = playerCurrentlyInTargetSlotFullData.shortPositions || []
+          const playerPositions = playerCurrentlyInTargetSlotFullData.short_positions || []
           const slotPositions = positionSideMap[originalRoleOfFromSlot.toUpperCase()] || []
           const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos))
 

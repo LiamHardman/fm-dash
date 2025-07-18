@@ -324,43 +324,48 @@ class ProtobufClient {
         oneofs: true
       })
       
-      // Debug logging: Print first 5 players' full information
-      if (decodedData.players && Array.isArray(decodedData.players)) {
-        logger.info('=== FIRST 5 PLAYERS FULL DATA ===')
-        decodedData.players.slice(0, 5).forEach((player, index) => {
-          logger.info(`Player ${index + 1}:`, {
-            name: player.name,
-            position: player.position,
-            age: player.age,
-            club: player.club,
-            // FIFA-style stats
-            pac: player.pac,
-            sho: player.sho,
-            pas: player.pas,
-            dri: player.dri,
-            def: player.def,
-            phy: player.phy,
-            gk: player.gk,
-            div: player.div,
-            han: player.han,
-            ref: player.ref,
-            kic: player.kic,
-            spd: player.spd,
-            pos: player.pos,
-            overall: player.overall,
-            // Numeric attributes
-            numeric_attributes: player.numeric_attributes,
-            // Regular attributes
-            attributes: player.attributes,
-            // Performance stats
-            performance_stats_numeric: player.performance_stats_numeric,
-            // Role-specific overalls
-            role_specific_overalls: player.role_specific_overalls,
-            best_role_overall: player.best_role_overall
-          })
-        })
-        logger.info('=== END FIRST 5 PLAYERS ===')
-      }
+                // Debug logging: Print first 5 players' full information
+                if (decodedData.players && Array.isArray(decodedData.players)) {
+                  logger.info('=== FIRST 5 PLAYERS FULL DATA ===')
+                  decodedData.players.slice(0, 5).forEach((player, index) => {
+                    logger.info(`Player ${index + 1}:`, {
+                      name: player.name,
+                      position: player.position,
+                      age: player.age,
+                      club: player.club,
+                      // Position fields
+                      parsed_positions: player.parsed_positions,
+                      short_positions: player.short_positions,
+                      position_groups: player.position_groups,
+                      positionGroups: player.positionGroups,
+                      // FIFA-style stats
+                      pac: player.pac,
+                      sho: player.sho,
+                      pas: player.pas,
+                      dri: player.dri,
+                      def: player.def,
+                      phy: player.phy,
+                      gk: player.gk,
+                      div: player.div,
+                      han: player.han,
+                      ref: player.ref,
+                      kic: player.kic,
+                      spd: player.spd,
+                      pos: player.pos,
+                      overall: player.overall,
+                      // Numeric attributes
+                      numeric_attributes: player.numeric_attributes,
+                      // Regular attributes
+                      attributes: player.attributes,
+                      // Performance stats
+                      performance_stats_numeric: player.performance_stats_numeric,
+                      // Role-specific overalls
+                      role_specific_overalls: player.role_specific_overalls,
+                      best_role_overall: player.best_role_overall
+                    })
+                  })
+                  logger.info('=== END FIRST 5 PLAYERS ===')
+                }
       
       return decodedData
     } catch (error) {

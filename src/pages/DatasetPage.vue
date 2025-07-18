@@ -433,7 +433,7 @@ export default {
           }
 
           if (currentFilters.value.position) {
-            const hasPosition = player.shortPositions?.includes(currentFilters.value.position)
+            const hasPosition = player.short_positions?.includes(currentFilters.value.position)
             if (!hasPosition) return false
           }
 
@@ -584,8 +584,8 @@ export default {
         const goalkeeperCount = filteredPlayers.value.filter(player => {
           const isGK =
             player.position?.includes('GK') ||
-            player.shortPositions?.includes('GK') ||
-            player.positionGroups?.includes('Goalkeepers')
+                          player.short_positions?.includes('GK') ||
+            player.position_groups?.includes('Goalkeepers')
           return isGK
         }).length
 

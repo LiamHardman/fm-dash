@@ -401,9 +401,9 @@
                                                     </div>
                                                 </div>
                                                 
-                                                <div class="player-positions-section q-mt-sm" v-if="player.shortPositions?.length || player.position">
+                                                <div class="player-positions-section q-mt-sm" v-if="player.short_positions?.length || player.position">
                                                     <q-badge
-                                                        v-for="pos in player.shortPositions || [player.position]"
+                                                        v-for="pos in player.short_positions || [player.position]"
                                                         :key="pos"
                                                         outline
                                                         color="indigo-6"
@@ -1181,15 +1181,15 @@ export default defineComponent({
       }
 
       const player = props.player
-      const cacheKey = `${getCacheKey(player, 'options')}-${JSON.stringify(player.shortPositions)}-${JSON.stringify(player.positionGroups)}`
+      const cacheKey = `${getCacheKey(player, 'options')}-${JSON.stringify(player.short_positions)}-${JSON.stringify(player.position_groups)}`
 
       if (performanceComparisonOptionsCache.has(cacheKey)) {
         return performanceComparisonOptionsCache.get(cacheKey)
       }
 
       const playerPercentiles = player.performancePercentiles
-      const playerShortPositions = player.shortPositions || []
-      const playerBroadGroups = player.positionGroups || []
+      const playerShortPositions = player.short_positions || []
+      const playerBroadGroups = player.position_groups || []
       const options = []
 
       // Pre-create sets for faster lookups
@@ -1418,9 +1418,9 @@ export default defineComponent({
     const isGoalkeeper = computed(() => {
       if (!props.player) return false
       const isGK = (
-        props.player.shortPositions?.includes('GK') ||
-        props.player.positionGroups?.includes('Goalkeepers') ||
-        props.player.parsedPositions?.includes('Goalkeeper') ||
+        props.player.short_positions?.includes('GK') ||
+        props.player.position_groups?.includes('Goalkeepers') ||
+        props.player.parsed_positions?.includes('Goalkeeper') ||
         props.player.position?.includes('GK')
       )
       return isGK

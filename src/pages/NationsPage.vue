@@ -222,7 +222,7 @@
                                                 <div class="player-info">
                                                     <div class="player-name">{{ playerEntry.player.name }}</div>
                                                     <div class="player-positions">
-                                                        {{ playerEntry.player.shortPositions?.slice(0, 2).join(', ') || 'N/A' }}
+                                                        {{ playerEntry.player.short_positions?.slice(0, 2).join(', ') || 'N/A' }}
                                                     </div>
                                                 </div>
                                                 <div class="player-rating" :class="getOverallClass(playerEntry.overallInRole)">
@@ -1410,7 +1410,7 @@ export default {
       if (nationPlayers.value.length === 0) return false
 
       const goalkeeperCount = nationPlayers.value.filter(p =>
-        p.positionGroups?.includes('Goalkeepers')
+        p.position_groups?.includes('Goalkeepers')
       ).length
 
       // Only show goalkeeper view if more than half the players are goalkeepers
