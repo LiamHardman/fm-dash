@@ -194,33 +194,27 @@ export default {
  */
 export async function fetchFullPlayerStats(datasetID, playerUID) {
   try {
+    // Use protobuf-aware API for detailed player stats
+    const { get } = useProtobufApi('')
     const url = `/api/fullplayerstats/${datasetID}/${playerUID}`
     
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json, application/x-protobuf',
-        'Content-Type': 'application/json',
-      },
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    const response = await get(url, {}, 'api.GenericResponse')
+    
+    // Handle protobuf response structure where data is in the data field
+    if (response.data) {
+      try {
+        const parsedData = JSON.parse(response.data)
+        return { data: parsedData, format: 'json' }
+      } catch (parseError) {
+        logger.error('Error parsing detailed player data from protobuf response:', parseError)
+        throw new Error('Invalid detailed player data format')
+      }
     }
-
-    const contentType = response.headers.get('Content-Type')
-    if (contentType && contentType.includes('application/x-protobuf')) {
-      // Handle protobuf response
-      const buffer = await response.arrayBuffer()
-      // For now, return the raw data - we can add protobuf decoding later if needed
-      return { data: buffer, format: 'protobuf' }
-    } else {
-      // Handle JSON response
-      const data = await response.json()
-      return { data, format: 'json' }
-    }
+    
+    // Fallback for JSON responses or direct data objects
+    return { data: response, format: 'json' }
   } catch (error) {
-    console.error('Error fetching full player stats:', error)
+    logger.error('Error fetching full player stats:', error)
     throw error
   }
 }

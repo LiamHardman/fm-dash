@@ -269,10 +269,51 @@ export const usePlayerStore = defineStore('player', () => {
       return []
     }
 
-    const processed = playersData.map(p => ({
-      ...p,
-      age: Number.parseInt(p.age, 10) || 0
-    }))
+    const processed = playersData.map(p => {
+      // Ensure all required fields are present and properly formatted
+      const processedPlayer = {
+        ...p,
+        // Ensure age is a number
+        age: Number.parseInt(p.age, 10) || 0,
+        
+        // Ensure arrays are properly initialized
+        short_positions: Array.isArray(p.short_positions) ? p.short_positions : [],
+        parsedPositions: Array.isArray(p.parsedPositions) ? p.parsedPositions : [],
+        positionGroups: Array.isArray(p.positionGroups) ? p.positionGroups : [],
+        
+        // Ensure role-specific overalls are properly formatted
+        roleSpecificOveralls: Array.isArray(p.roleSpecificOveralls) ? p.roleSpecificOveralls : [],
+        
+        // Ensure FIFA-style stats are numbers
+        PAC: Number.parseInt(p.PAC, 10) || 0,
+        SHO: Number.parseInt(p.SHO, 10) || 0,
+        PAS: Number.parseInt(p.PAS, 10) || 0,
+        DRI: Number.parseInt(p.DRI, 10) || 0,
+        DEF: Number.parseInt(p.DEF, 10) || 0,
+        PHY: Number.parseInt(p.PHY, 10) || 0,
+        
+        // Ensure goalkeeper stats are numbers
+        GK: Number.parseInt(p.GK, 10) || 0,
+        DIV: Number.parseInt(p.DIV, 10) || 0,
+        HAN: Number.parseInt(p.HAN, 10) || 0,
+        REF: Number.parseInt(p.REF, 10) || 0,
+        KIC: Number.parseInt(p.KIC, 10) || 0,
+        SPD: Number.parseInt(p.SPD, 10) || 0,
+        POS: Number.parseInt(p.POS, 10) || 0,
+        
+        // Ensure overall is a number
+        Overall: Number.parseInt(p.Overall, 10) || 0,
+        
+        // Ensure numeric attributes are properly formatted
+        numericAttributes: p.numericAttributes || {},
+        
+        // Ensure performance stats are properly formatted
+        performanceStatsNumeric: p.performanceStatsNumeric || {},
+        performancePercentiles: p.performancePercentiles || {}
+      }
+      
+      return processedPlayer
+    })
 
     return processed
   }

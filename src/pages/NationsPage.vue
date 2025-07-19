@@ -554,6 +554,7 @@ import { usePlayerStore } from '../stores/playerStore'
 import { formationCache } from '../utils/formationCache'
 import { formations, getFormationLayout } from '../utils/formations'
 import { cacheLogger } from '../utils/logger'
+import { fetchFullPlayerStats } from '../services/playerService'
 
 const fmSlotRoleMatcher = {
   GK: ['Goalkeeper'],
@@ -1305,7 +1306,7 @@ export default {
       loadNationPlayers()
     }
 
-    const loadNationPlayers = () => {
+    const loadNationPlayers = async () => {
       if (!selectedNationName.value) {
         nationPlayers.value = []
         squadComposition.value = {}
@@ -1315,16 +1316,44 @@ export default {
         return
       }
       loadingNation.value = true
-      setTimeout(() => {
+      
+      try {
+        // Get basic nation players
+        let basicNationPlayers = []
         if (Array.isArray(allPlayersData.value)) {
-          nationPlayers.value = allPlayersData.value.filter(
+          basicNationPlayers = allPlayersData.value.filter(
             p => p.nationality === selectedNationName.value
           )
-        } else {
-          nationPlayers.value = []
         }
 
-        if (nationPlayers.value.length > 0) {
+        // Fetch detailed player data for each nation player to get roleSpecificOveralls
+        const detailedPlayers = []
+        for (const player of basicNationPlayers) {
+          try {
+            const detailedData = await fetchFullPlayerStats(currentDatasetId.value, player.uid || player.UID)
+            if (detailedData.data && detailedData.data.player) {
+              // Merge the detailed data with the basic player data
+              const detailedPlayer = {
+                ...player,
+                ...detailedData.data.player,
+                // Preserve the original player data as fallback
+                _originalPlayer: player
+              }
+              detailedPlayers.push(detailedPlayer)
+            } else {
+              // If detailed data fetch fails, use the original player data
+              detailedPlayers.push(player)
+            }
+          } catch (error) {
+            console.warn(`Failed to fetch detailed data for player ${player.name}:`, error)
+            // Use the original player data if detailed fetch fails
+            detailedPlayers.push(player)
+          }
+        }
+
+        nationPlayers.value = detailedPlayers
+
+        if (detailedPlayers.length > 0) {
           const bestFormation = calculateBestFormationForNation()
           if (bestFormation) {
             selectedFormationKey.value = bestFormation
@@ -1350,9 +1379,15 @@ export default {
             ? 'text-grey-5'
             : 'text-grey-7'
         }
-
+      } catch (error) {
+        console.error('Error loading nation players:', error)
+        calculationMessage.value = `Failed to load nation players: ${error.message}`
+        calculationMessageClass.value = quasarInstance.dark.isActive
+          ? 'text-red-5'
+          : 'text-red-7'
+      } finally {
         loadingNation.value = false
-      }, 200)
+      }
     }
 
     const clearNationSelection = () => {

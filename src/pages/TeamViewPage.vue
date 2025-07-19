@@ -346,6 +346,7 @@ import { usePlayerStore } from '../stores/playerStore'
 import { debounce } from '../utils/debounce'
 import { formationCache } from '../utils/formationCache'
 import { formations, getFormationLayout } from '../utils/formations'
+import { fetchFullPlayerStats } from '../services/playerService'
 
 // Currency utils are not directly used here for formatting,
 // but PlayerDataTable and PlayerDetailDialog will use them with the passed symbol.
@@ -512,7 +513,7 @@ export default {
       }
     })
 
-    const loadTeamPlayersImmediate = () => {
+    const loadTeamPlayersImmediate = async () => {
       if (!selectedTeamName.value) {
         teamPlayers.value = []
         squadComposition.value = {}
@@ -525,14 +526,62 @@ export default {
       loadingTeam.value = true
 
       // Filter players for the selected team
+      let basicTeamPlayers = []
       if (Array.isArray(allPlayersData.value)) {
-        teamPlayers.value = allPlayersData.value.filter(p => p.club === selectedTeamName.value)
-      } else {
-        teamPlayers.value = []
+        basicTeamPlayers = allPlayersData.value.filter(p => p.club === selectedTeamName.value)
       }
 
+      console.log('Basic team players loaded:', {
+        teamName: selectedTeamName.value,
+        playerCount: basicTeamPlayers.length,
+        samplePlayer: basicTeamPlayers[0] ? {
+          name: basicTeamPlayers[0].name,
+          short_positions: basicTeamPlayers[0].short_positions,
+          roleSpecificOveralls: basicTeamPlayers[0].roleSpecificOveralls?.length || 0,
+          Overall: basicTeamPlayers[0].Overall
+        } : null
+      })
+
+      // Fetch detailed player data for each team player to get roleSpecificOveralls
+      const detailedPlayers = []
+      for (const player of basicTeamPlayers) {
+        try {
+          const detailedData = await fetchFullPlayerStats(currentDatasetId.value, player.uid || player.UID)
+          if (detailedData.data && detailedData.data.player) {
+            // Merge the detailed data with the basic player data
+            const detailedPlayer = {
+              ...player,
+              ...detailedData.data.player,
+              // Preserve the original player data as fallback
+              _originalPlayer: player
+            }
+            detailedPlayers.push(detailedPlayer)
+          } else {
+            // If detailed data fetch fails, use the original player data
+            detailedPlayers.push(player)
+          }
+        } catch (error) {
+          console.warn(`Failed to fetch detailed data for player ${player.name}:`, error)
+          // Use the original player data if detailed fetch fails
+          detailedPlayers.push(player)
+        }
+      }
+
+      teamPlayers.value = detailedPlayers
+
+      console.log('Detailed team players loaded:', {
+        teamName: selectedTeamName.value,
+        playerCount: detailedPlayers.length,
+        samplePlayer: detailedPlayers[0] ? {
+          name: detailedPlayers[0].name,
+          short_positions: detailedPlayers[0].short_positions,
+          roleSpecificOveralls: detailedPlayers[0].roleSpecificOveralls?.length || 0,
+          Overall: detailedPlayers[0].Overall
+        } : null
+      })
+
       // Auto-select the best formation for this team
-      if (teamPlayers.value.length > 0) {
+      if (detailedPlayers.length > 0) {
         const bestFormation = calculateBestFormationForTeam()
         if (bestFormation) {
           selectedFormationKey.value = bestFormation
@@ -561,7 +610,9 @@ export default {
     }
 
     // Debounced version for better performance
-    const loadTeamPlayers = debounce(loadTeamPlayersImmediate, 300)
+    const loadTeamPlayers = debounce(async () => {
+      await loadTeamPlayersImmediate()
+    }, 300)
 
     // Simplified team clearing - now just resets the team name since navigation is handled by URL
     const clearTeamSelection = () => {
@@ -926,13 +977,26 @@ export default {
 
     const calculateBestFormationForTeam = () => {
       if (teamPlayers.value.length === 0) {
+        console.log('No team players available for formation calculation')
         return null
       }
+
+      console.log('Calculating best formation for team:', {
+        teamName: selectedTeamName.value,
+        playerCount: teamPlayers.value.length,
+        samplePlayerData: teamPlayers.value[0] ? {
+          name: teamPlayers.value[0].name,
+          short_positions: teamPlayers.value[0].short_positions,
+          roleSpecificOveralls: teamPlayers.value[0].roleSpecificOveralls?.length || 0,
+          Overall: teamPlayers.value[0].Overall
+        } : null
+      })
 
       // Check cache first
       const cacheKey = formationCache.generateKey(teamPlayers.value, 'team-best')
       const cachedResult = formationCache.get(cacheKey)
       if (cachedResult) {
+        console.log('Using cached formation result:', cachedResult.bestFormationKey)
         return cachedResult.bestFormationKey
       }
 
@@ -1029,6 +1093,12 @@ export default {
           }
         }
       }
+
+      console.log('Formation calculation result:', {
+        bestFormationKey,
+        bestAverageOverall,
+        totalFormationsTested: Object.keys(formations).length
+      })
 
       // Cache the result
       if (bestFormationKey) {
