@@ -3277,3 +3277,111 @@ func fullPlayerStatsHandler(w http.ResponseWriter, r *http.Request) {
 		"player_uid", playerUID,
 		"player_name", targetPlayer.Name)
 }
+
+// teamDataHandler returns detailed stats for all players in a team or nation
+func teamDataHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// Extract dataset ID, team/nation name, and type from URL
+	// Expected format: /api/team_data/{datasetID}/{type}/{name}
+	pathParts := strings.Split(r.URL.Path, "/")
+	if len(pathParts) < 6 {
+		http.Error(w, "Invalid URL format. Expected: /api/team_data/{datasetID}/{type}/{name}", http.StatusBadRequest)
+		return
+	}
+
+	datasetID := pathParts[3]
+	dataType := pathParts[4] // "team" or "nation"
+	teamOrNationName := pathParts[5]
+
+	// Validate data type
+	if dataType != "team" && dataType != "nation" {
+		http.Error(w, "Invalid data type. Must be 'team' or 'nation'", http.StatusBadRequest)
+		return
+	}
+
+	// Get dataset
+	players, currencySymbol, found := GetPlayerData(datasetID)
+	if !found {
+		logError(ctx, "Failed to get dataset for team data",
+			"dataset_id", datasetID,
+			"type", dataType,
+			"name", teamOrNationName)
+		http.Error(w, "Dataset not found", http.StatusNotFound)
+		return
+	}
+
+	// Filter players based on type
+	var filteredPlayers []Player
+	if dataType == "team" {
+		filteredPlayers = make([]Player, 0)
+		for _, player := range players {
+			if player.Club == teamOrNationName {
+				filteredPlayers = append(filteredPlayers, player)
+			}
+		}
+	} else { // nation
+		filteredPlayers = make([]Player, 0)
+		for _, player := range players {
+			if player.Nationality == teamOrNationName {
+				filteredPlayers = append(filteredPlayers, player)
+			}
+		}
+	}
+
+	if len(filteredPlayers) == 0 {
+		http.Error(w, fmt.Sprintf("No players found for %s: %s", dataType, teamOrNationName), http.StatusNotFound)
+		return
+	}
+
+	// Ensure all players have percentile data
+	playersWithPercentiles := make([]Player, len(filteredPlayers))
+	copy(playersWithPercentiles, filteredPlayers)
+
+	// Calculate percentiles for the filtered players
+	CalculatePlayerPerformancePercentiles(playersWithPercentiles)
+
+	// Create response with full team/nation data
+	response := map[string]interface{}{
+		"players":         playersWithPercentiles,
+		"dataset_id":      datasetID,
+		"currency_symbol": currencySymbol,
+		"type":            dataType,
+		"name":            teamOrNationName,
+		"player_count":    len(playersWithPercentiles),
+	}
+
+	// Serialize to JSON string for protobuf compatibility
+	jsonData, err := json.Marshal(response)
+	if err != nil {
+		logError(ctx, "Failed to marshal team data response",
+			"error", err,
+			"dataset_id", datasetID,
+			"type", dataType,
+			"name", teamOrNationName)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Use GenericResponse for protobuf compatibility
+	protoResponse := &pb.GenericResponse{
+		Data: string(jsonData),
+	}
+
+	// Use content negotiation to determine response format
+	if err := WriteResponse(w, r, protoResponse); err != nil {
+		logError(ctx, "Failed to write team data response",
+			"error", err,
+			"dataset_id", datasetID,
+			"type", dataType,
+			"name", teamOrNationName)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	logInfo(ctx, "Successfully returned team data",
+		"dataset_id", datasetID,
+		"type", dataType,
+		"name", teamOrNationName,
+		"player_count", len(playersWithPercentiles))
+}

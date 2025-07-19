@@ -299,6 +299,7 @@ func main() {
 
 	// API endpoint for detailed player stats
 	mux.Handle("/api/fullplayerstats/", wrapHandler(http.HandlerFunc(fullPlayerStatsHandler), "full-player-stats"))
+	mux.Handle("/api/team_data/", wrapHandler(http.HandlerFunc(teamDataHandler), "team-data"))
 
 	// Create server with proper timeouts
 	server := &http.Server{

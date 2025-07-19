@@ -118,7 +118,22 @@ func (cow *CopyOnWritePlayer) deepCopyPlayer(original *Player) *Player {
 	player.KIC = original.KIC
 	player.SPD = original.SPD
 	player.POS = original.POS
+	// Copy lowercase FIFA stats
+	player.Pac = original.Pac
+	player.Sho = original.Sho
+	player.Pas = original.Pas
+	player.Dri = original.Dri
+	player.Def = original.Def
+	player.Phy = original.Phy
+	player.Gk = original.Gk
+	player.Div = original.Div
+	player.Han = original.Han
+	player.Ref = original.Ref
+	player.Kic = original.Kic
+	player.Spd = original.Spd
+	player.Pos = original.Pos
 	player.Overall = original.Overall
+	player.OverallLower = original.OverallLower
 	player.BestRoleOverall = original.BestRoleOverall
 	player.TransferValueAmount = original.TransferValueAmount
 	player.WageAmount = original.WageAmount

@@ -218,3 +218,37 @@ export async function fetchFullPlayerStats(datasetID, playerUID) {
     throw error
   }
 }
+
+/**
+ * Fetch detailed team or nation data
+ * @param {string} datasetID - The dataset ID
+ * @param {string} type - "team" or "nation"
+ * @param {string} name - The team or nation name
+ * @returns {Promise<Object>} - Detailed team/nation data with all players
+ */
+export async function fetchTeamData(datasetID, type, name) {
+  try {
+    // Use protobuf-aware API for team data
+    const { get } = useProtobufApi('')
+    const url = `/api/team_data/${datasetID}/${type}/${encodeURIComponent(name)}`
+    
+    const response = await get(url, {}, 'api.GenericResponse')
+    
+    // Handle protobuf response structure where data is in the data field
+    if (response.data) {
+      try {
+        const parsedData = JSON.parse(response.data)
+        return { data: parsedData, format: 'json' }
+      } catch (parseError) {
+        logger.error('Error parsing team data from protobuf response:', parseError)
+        throw new Error('Invalid team data format')
+      }
+    }
+    
+    // Fallback for JSON responses or direct data objects
+    return { data: response, format: 'json' }
+  } catch (error) {
+    logger.error('Error fetching team data:', error)
+    throw error
+  }
+}

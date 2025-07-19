@@ -44,11 +44,26 @@ type Player struct {
 	KIC                     int                           `json:"KIC,omitempty"`
 	SPD                     int                           `json:"SPD,omitempty"`
 	POS                     int                           `json:"POS,omitempty"`
-	Overall                 int                           `json:"Overall"`
-	BestRoleOverall         string                        `json:"bestRoleOverall"`
-	RoleSpecificOveralls    []RoleOverallScore            `json:"roleSpecificOveralls"`
-	TransferValueAmount     int64                         `json:"transferValueAmount"`
-	WageAmount              int64                         `json:"wageAmount"`
+	// Add lowercase versions for frontend compatibility
+	Pac                  int                `json:"pac,omitempty"`
+	Sho                  int                `json:"sho,omitempty"`
+	Pas                  int                `json:"pas,omitempty"`
+	Dri                  int                `json:"dri,omitempty"`
+	Def                  int                `json:"def,omitempty"`
+	Phy                  int                `json:"phy,omitempty"`
+	Gk                   int                `json:"gk,omitempty"`
+	Div                  int                `json:"div,omitempty"`
+	Han                  int                `json:"han,omitempty"`
+	Ref                  int                `json:"ref,omitempty"`
+	Kic                  int                `json:"kic,omitempty"`
+	Spd                  int                `json:"spd,omitempty"`
+	Pos                  int                `json:"pos,omitempty"`
+	Overall              int                `json:"Overall"`
+	OverallLower         int                `json:"overall"`
+	BestRoleOverall      string             `json:"bestRoleOverall"`
+	RoleSpecificOveralls []RoleOverallScore `json:"roleSpecificOveralls"`
+	TransferValueAmount  int64              `json:"transferValueAmount"`
+	WageAmount           int64              `json:"wageAmount"`
 }
 
 // PlayerParseResult is used by worker goroutines to return a parsed player or an error.

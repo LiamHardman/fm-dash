@@ -346,7 +346,7 @@ import { usePlayerStore } from '../stores/playerStore'
 import { debounce } from '../utils/debounce'
 import { formationCache } from '../utils/formationCache'
 import { formations, getFormationLayout } from '../utils/formations'
-import { fetchFullPlayerStats } from '../services/playerService'
+import { fetchFullPlayerStats, fetchTeamData } from '../services/playerService'
 
 // Currency utils are not directly used here for formatting,
 // but PlayerDataTable and PlayerDetailDialog will use them with the passed symbol.
@@ -525,85 +525,64 @@ export default {
 
       loadingTeam.value = true
 
-      // Filter players for the selected team
-      let basicTeamPlayers = []
-      if (Array.isArray(allPlayersData.value)) {
-        basicTeamPlayers = allPlayersData.value.filter(p => p.club === selectedTeamName.value)
-      }
+      try {
+        // Use the new team data API to get all detailed player data in one request
+        const teamData = await fetchTeamData(currentDatasetId.value, 'team', selectedTeamName.value)
+        
+        if (teamData.data && teamData.data.players) {
+          teamPlayers.value = teamData.data.players
 
-      console.log('Basic team players loaded:', {
-        teamName: selectedTeamName.value,
-        playerCount: basicTeamPlayers.length,
-        samplePlayer: basicTeamPlayers[0] ? {
-          name: basicTeamPlayers[0].name,
-          short_positions: basicTeamPlayers[0].short_positions,
-          roleSpecificOveralls: basicTeamPlayers[0].roleSpecificOveralls?.length || 0,
-          Overall: basicTeamPlayers[0].Overall
-        } : null
-      })
+          console.log('Team players loaded via API:', {
+            teamName: selectedTeamName.value,
+            playerCount: teamData.data.players.length,
+            samplePlayer: teamData.data.players[0] ? {
+              name: teamData.data.players[0].name,
+              short_positions: teamData.data.players[0].short_positions,
+              roleSpecificOveralls: teamData.data.players[0].roleSpecificOveralls?.length || 0,
+              Overall: teamData.data.players[0].Overall
+            } : null
+          })
 
-      // Fetch detailed player data for each team player to get roleSpecificOveralls
-      const detailedPlayers = []
-      for (const player of basicTeamPlayers) {
-        try {
-          const detailedData = await fetchFullPlayerStats(currentDatasetId.value, player.uid || player.UID)
-          if (detailedData.data && detailedData.data.player) {
-            // Merge the detailed data with the basic player data
-            const detailedPlayer = {
-              ...player,
-              ...detailedData.data.player,
-              // Preserve the original player data as fallback
-              _originalPlayer: player
+          // Auto-select the best formation for this team
+          if (teamData.data.players.length > 0) {
+            const bestFormation = calculateBestFormationForTeam()
+            if (bestFormation) {
+              selectedFormationKey.value = bestFormation
+              calculationMessage.value = `Auto-selected best formation: ${formations[bestFormation].name}. Calculating Best XI...`
+              calculationMessageClass.value = quasarInstance.dark.isActive
+                ? 'bg-info text-white'
+                : 'bg-blue-2 text-primary'
+            } else {
+              selectedFormationKey.value = null
+              squadComposition.value = {}
+              bestTeamAverageOverall.value = null
+              calculationMessage.value = 'No suitable formation found for this team.'
+              calculationMessageClass.value = quasarInstance.dark.isActive
+                ? 'text-grey-5'
+                : 'text-grey-7'
             }
-            detailedPlayers.push(detailedPlayer)
           } else {
-            // If detailed data fetch fails, use the original player data
-            detailedPlayers.push(player)
+            selectedFormationKey.value = null
+            squadComposition.value = {}
+            bestTeamAverageOverall.value = null
+            calculationMessage.value = 'No players found for this team.'
+            calculationMessageClass.value = quasarInstance.dark.isActive ? 'text-grey-5' : 'text-grey-7'
           }
-        } catch (error) {
-          console.warn(`Failed to fetch detailed data for player ${player.name}:`, error)
-          // Use the original player data if detailed fetch fails
-          detailedPlayers.push(player)
-        }
-      }
-
-      teamPlayers.value = detailedPlayers
-
-      console.log('Detailed team players loaded:', {
-        teamName: selectedTeamName.value,
-        playerCount: detailedPlayers.length,
-        samplePlayer: detailedPlayers[0] ? {
-          name: detailedPlayers[0].name,
-          short_positions: detailedPlayers[0].short_positions,
-          roleSpecificOveralls: detailedPlayers[0].roleSpecificOveralls?.length || 0,
-          Overall: detailedPlayers[0].Overall
-        } : null
-      })
-
-      // Auto-select the best formation for this team
-      if (detailedPlayers.length > 0) {
-        const bestFormation = calculateBestFormationForTeam()
-        if (bestFormation) {
-          selectedFormationKey.value = bestFormation
-          calculationMessage.value = `Auto-selected best formation: ${formations[bestFormation].name}. Calculating Best XI...`
-          calculationMessageClass.value = quasarInstance.dark.isActive
-            ? 'bg-info text-white'
-            : 'bg-blue-2 text-primary'
         } else {
-          selectedFormationKey.value = null
-          squadComposition.value = {}
-          bestTeamAverageOverall.value = null
-          calculationMessage.value = 'No suitable formation found for this team.'
-          calculationMessageClass.value = quasarInstance.dark.isActive
-            ? 'text-grey-5'
-            : 'text-grey-7'
+          throw new Error('Invalid team data response')
         }
-      } else {
+      } catch (error) {
+        console.error('Error loading team players:', error)
+        calculationMessage.value = `Failed to load team players: ${error.message}`
+        calculationMessageClass.value = quasarInstance.dark.isActive
+          ? 'text-red-5'
+          : 'text-red-7'
+        
+        // Fallback to empty state
+        teamPlayers.value = []
         selectedFormationKey.value = null
         squadComposition.value = {}
         bestTeamAverageOverall.value = null
-        calculationMessage.value = 'No players found for this team.'
-        calculationMessageClass.value = quasarInstance.dark.isActive ? 'text-grey-5' : 'text-grey-7'
       }
 
       loadingTeam.value = false

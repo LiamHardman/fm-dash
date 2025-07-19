@@ -554,7 +554,7 @@ import { usePlayerStore } from '../stores/playerStore'
 import { formationCache } from '../utils/formationCache'
 import { formations, getFormationLayout } from '../utils/formations'
 import { cacheLogger } from '../utils/logger'
-import { fetchFullPlayerStats } from '../services/playerService'
+import { fetchFullPlayerStats, fetchTeamData } from '../services/playerService'
 
 const fmSlotRoleMatcher = {
   GK: ['Goalkeeper'],
@@ -967,11 +967,57 @@ export default {
       // Simulate small delay to prevent UI blocking
       await new Promise(resolve => setTimeout(resolve, 10))
 
-      // NEW: Use pre-filtered top players instead of filtering during calculation
-      const topPlayersByPosition = nation.topPlayersByPosition
+      try {
+        // Use the new team data API to get all detailed player data in one request
+        const nationData = await fetchTeamData(currentDatasetId.value, 'nation', nation.name)
+        
+        if (!nationData.data || !nationData.data.players || nationData.data.players.length === 0) {
+          // Update with zero ratings
+          if (nationIndex !== -1) {
+            nationsData.value[nationIndex] = {
+              ...nationsData.value[nationIndex],
+              bestFormationOverall: 0,
+              attRating: 0,
+              midRating: 0,
+              defRating: 0,
+              isCalculating: false
+            }
+          }
+          return
+        }
 
-      if (!topPlayersByPosition || Object.keys(topPlayersByPosition).length === 0) {
-        // Update with zero ratings
+        const detailedPlayers = nationData.data.players
+
+        // Create topPlayersByPosition from detailed players
+        const topPlayersByPosition = {}
+        for (const player of detailedPlayers) {
+          if (player.shortPositions && player.shortPositions.length > 0) {
+            for (const position of player.shortPositions) {
+              if (!topPlayersByPosition[position]) {
+                topPlayersByPosition[position] = []
+              }
+              topPlayersByPosition[position].push(player)
+            }
+          }
+        }
+
+        if (Object.keys(topPlayersByPosition).length === 0) {
+          // Update with zero ratings
+          if (nationIndex !== -1) {
+            nationsData.value[nationIndex] = {
+              ...nationsData.value[nationIndex],
+              bestFormationOverall: 0,
+              attRating: 0,
+              midRating: 0,
+              defRating: 0,
+              isCalculating: false
+            }
+          }
+          return
+        }
+      } catch (error) {
+        console.error(`Error calculating ratings for nation ${nation.name}:`, error)
+        // Update with zero ratings on error
         if (nationIndex !== -1) {
           nationsData.value[nationIndex] = {
             ...nationsData.value[nationIndex],
@@ -1318,66 +1364,38 @@ export default {
       loadingNation.value = true
       
       try {
-        // Get basic nation players
-        let basicNationPlayers = []
-        if (Array.isArray(allPlayersData.value)) {
-          basicNationPlayers = allPlayersData.value.filter(
-            p => p.nationality === selectedNationName.value
-          )
-        }
+        // Use the new team data API to get all detailed player data in one request
+        const nationData = await fetchTeamData(currentDatasetId.value, 'nation', selectedNationName.value)
+        
+        if (nationData.data && nationData.data.players) {
+          nationPlayers.value = nationData.data.players
 
-        // Fetch detailed player data for each nation player to get roleSpecificOveralls
-        const detailedPlayers = []
-        for (const player of basicNationPlayers) {
-          try {
-            const detailedData = await fetchFullPlayerStats(currentDatasetId.value, player.uid || player.UID)
-            if (detailedData.data && detailedData.data.player) {
-              // Merge the detailed data with the basic player data
-              const detailedPlayer = {
-                ...player,
-                ...detailedData.data.player,
-                // Preserve the original player data as fallback
-                _originalPlayer: player
-              }
-              detailedPlayers.push(detailedPlayer)
+          if (nationData.data.players.length > 0) {
+            const bestFormation = calculateBestFormationForNation()
+            if (bestFormation) {
+              selectedFormationKey.value = bestFormation
+              calculationMessage.value = `Auto-selected best formation: ${formations[bestFormation].name}. Calculating Best XI...`
+              calculationMessageClass.value = quasarInstance.dark.isActive
+                ? 'bg-info text-white'
+                : 'bg-blue-2 text-primary'
             } else {
-              // If detailed data fetch fails, use the original player data
-              detailedPlayers.push(player)
+              selectedFormationKey.value = null
+              squadComposition.value = {}
+              bestNationAverageOverall.value = null
+              calculationMessage.value = 'No suitable formation found for this nation.'
+              calculationMessageClass.value = quasarInstance.dark.isActive
+                ? 'text-grey-5'
+                : 'text-grey-7'
             }
-          } catch (error) {
-            console.warn(`Failed to fetch detailed data for player ${player.name}:`, error)
-            // Use the original player data if detailed fetch fails
-            detailedPlayers.push(player)
-          }
-        }
-
-        nationPlayers.value = detailedPlayers
-
-        if (detailedPlayers.length > 0) {
-          const bestFormation = calculateBestFormationForNation()
-          if (bestFormation) {
-            selectedFormationKey.value = bestFormation
-            calculationMessage.value = `Auto-selected best formation: ${formations[bestFormation].name}. Calculating Best XI...`
-            calculationMessageClass.value = quasarInstance.dark.isActive
-              ? 'bg-info text-white'
-              : 'bg-blue-2 text-primary'
           } else {
             selectedFormationKey.value = null
             squadComposition.value = {}
             bestNationAverageOverall.value = null
-            calculationMessage.value = 'No suitable formation found for this nation.'
-            calculationMessageClass.value = quasarInstance.dark.isActive
-              ? 'text-grey-5'
-              : 'text-grey-7'
+            calculationMessage.value = 'No players found for this nation.'
+            calculationMessageClass.value = quasarInstance.dark.isActive ? 'text-grey-5' : 'text-grey-7'
           }
         } else {
-          selectedFormationKey.value = null
-          squadComposition.value = {}
-          bestNationAverageOverall.value = null
-          calculationMessage.value = 'No players found for this nation.'
-          calculationMessageClass.value = quasarInstance.dark.isActive
-            ? 'text-grey-5'
-            : 'text-grey-7'
+          throw new Error('Invalid nation data response')
         }
       } catch (error) {
         console.error('Error loading nation players:', error)
@@ -1385,6 +1403,12 @@ export default {
         calculationMessageClass.value = quasarInstance.dark.isActive
           ? 'text-red-5'
           : 'text-red-7'
+        
+        // Fallback to empty state
+        nationPlayers.value = []
+        selectedFormationKey.value = null
+        squadComposition.value = {}
+        bestNationAverageOverall.value = null
       } finally {
         loadingNation.value = false
       }

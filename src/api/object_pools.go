@@ -90,6 +90,7 @@ func resetPlayer(player *Player) {
 
 	// Reset numeric fields
 	player.Overall = 0
+	player.OverallLower = 0
 	player.PAC = 0
 	player.SHO = 0
 	player.PAS = 0
@@ -103,6 +104,20 @@ func resetPlayer(player *Player) {
 	player.KIC = 0
 	player.SPD = 0
 	player.POS = 0
+	// Reset lowercase FIFA stats
+	player.Pac = 0
+	player.Sho = 0
+	player.Pas = 0
+	player.Dri = 0
+	player.Def = 0
+	player.Phy = 0
+	player.Gk = 0
+	player.Div = 0
+	player.Han = 0
+	player.Ref = 0
+	player.Kic = 0
+	player.Spd = 0
+	player.Pos = 0
 	player.TransferValueAmount = 0
 	player.WageAmount = 0
 

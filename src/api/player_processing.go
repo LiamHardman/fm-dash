@@ -464,6 +464,20 @@ func EnhancePlayerWithCalculations(player *Player) {
 		player.POS = 0
 	}
 
+	// Set lowercase FIFA stats for frontend compatibility
+	player.Pac = player.PAC
+	player.Sho = player.SHO
+	player.Pas = player.PAS
+	player.Dri = player.DRI
+	player.Def = player.DEF
+	player.Phy = player.PHY
+	player.Gk = player.GK
+	player.Div = player.DIV
+	player.Han = player.HAN
+	player.Ref = player.REF
+	player.Kic = player.KIC
+	player.Spd = player.SPD
+	player.Pos = player.POS
 	// --- START: Overall Calculation (Optimized) ---
 	maxRoleBasedOverall := 0
 	bestRoleName := ""
@@ -634,6 +648,8 @@ func EnhancePlayerWithCalculations(player *Player) {
 	// Set Overall to the mean of the top 7 role-specific scores
 	// This provides a more balanced representation of the player's abilities focused on their best roles
 	player.Overall = meanRoleBasedOverall
+	// Set lowercase Overall for frontend compatibility (after Overall is calculated)
+	player.OverallLower = player.Overall
 
 	// Note: We changed from using the mean of all role-specific overall scores
 	// to using the mean of the top 7 role-specific overall scores
@@ -756,6 +772,21 @@ func RecalculatePlayerRatings(player *Player) {
 		player.POS = 0
 	}
 
+	// Set lowercase FIFA stats for frontend compatibility
+	player.Pac = player.PAC
+	player.Sho = player.SHO
+	player.Pas = player.PAS
+	player.Dri = player.DRI
+	player.Def = player.DEF
+	player.Phy = player.PHY
+	player.Gk = player.GK
+	player.Div = player.DIV
+	player.Han = player.HAN
+	player.Ref = player.REF
+	player.Kic = player.KIC
+	player.Spd = player.SPD
+	player.Pos = player.POS
+
 	// Recalculate role-specific overalls
 	maxRoleBasedOverall := 0
 	bestRoleName := ""
@@ -827,6 +858,8 @@ func RecalculatePlayerRatings(player *Player) {
 	// Update overall and best role
 	player.BestRoleOverall = bestRoleName
 	player.Overall = meanRoleBasedOverall
+	// Set lowercase Overall for frontend compatibility (after Overall is calculated)
+	player.OverallLower = player.Overall
 
 	// Check ALL attributes for masking and set the AttributeMasked flag
 	// This ensures the flag is updated even during recalculations
