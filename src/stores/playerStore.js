@@ -384,6 +384,21 @@ export const usePlayerStore = defineStore('player', () => {
     }
   }
 
+  // New methods for setting data directly
+  function setPlayers(players) {
+    allPlayers.value = processPlayersFromAPI(players)
+  }
+
+  function setCurrencySymbol(symbol) {
+    detectedCurrencySymbol.value = symbol
+    sessionStorage.setItem('detectedCurrencySymbol', symbol)
+  }
+
+  function setCurrentDatasetId(datasetId) {
+    currentDatasetId.value = datasetId
+    sessionStorage.setItem('currentDatasetId', datasetId)
+  }
+
   return {
     allPlayers,
     currentDatasetId,
@@ -407,6 +422,9 @@ export const usePlayerStore = defineStore('player', () => {
     loadFromSessionStorage,
     setProtobufEnabled,
     getProtobufStatus,
+    setPlayers,
+    setCurrencySymbol,
+    setCurrentDatasetId,
     AGE_SLIDER_MIN_DEFAULT,
     AGE_SLIDER_MAX_DEFAULT
   }

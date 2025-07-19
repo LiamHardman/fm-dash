@@ -1785,77 +1785,93 @@ export default defineComponent({
       detailedDataError.value = null
 
       try {
-        const result = await fetchFullPlayerStats(props.datasetId, props.player.uid || props.player.UID)
-        
-        if (result.format === 'json' && result.data.player) {
-          detailedPlayerData.value = result.data.player
-          logger.info('Fetched detailed player data', {
-            player_name: result.data.player.name,
-            attributes_count: Object.keys(result.data.player.attributes || {}).length
+        // Check if the player already has detailed data (from performance API)
+        if (props.player.attributes && props.player.performancePercentiles) {
+          // Use the pre-loaded data from performance API
+          detailedPlayerData.value = props.player
+          logger.info('Using pre-loaded detailed player data', {
+            player_name: props.player.name,
+            attributes_count: Object.keys(props.player.attributes || {}).length,
+            percentile_groups: Object.keys(props.player.performancePercentiles || {}).length
           })
-          
-          // Log percentile data status
-          if (result.data.player.performancePercentiles) {
-            logger.info('Player has percentile data', {
-              percentile_groups: Object.keys(result.data.player.performancePercentiles).length,
-              sample_groups: Object.keys(result.data.player.performancePercentiles).slice(0, 3)
-            })
-          } else {
-            logger.warn('Player missing percentile data', {
-              player_name: result.data.player.name
-            })
-          }
-          
-          // Fetch percentiles for the player
-          logger.info('Fetching percentiles for player', {
-            player_name: result.data.player.name,
-            player_uid: result.data.player.uid
-          })
-          
-          // Fetch percentiles with current filter settings
-          const playerUID = result.data.player.uid || result.data.player.UID
-          
-          // Handle the 'same' division filter by converting it to the player's actual division
-          let effectiveDivision = divisionFilter.value
-          if (divisionFilter.value === 'same') {
-            const targetDivision = result.data.player?.division
-            if (targetDivision) {
-              effectiveDivision = targetDivision
-            } else {
-              // If no target division is available, fall back to 'all'
-              effectiveDivision = 'all'
-            }
-          }
-          
-          const percentiles = await fetchPlayerPercentiles(
-            playerUID,
-            effectiveDivision,
-            selectedComparisonGroup.value
-          )
-          
-          // Update the detailed player data with percentiles
-          if (percentiles && detailedPlayerData.value) {
-            if (!detailedPlayerData.value.performancePercentiles) {
-              detailedPlayerData.value.performancePercentiles = {}
-            }
-            Object.assign(detailedPlayerData.value.performancePercentiles, percentiles)
-            
-            // Force reactivity by incrementing the counters
-            percentileUpdateCounter.value++
-            percentileDataTrigger.value++
-            forceRecompute.value++
-            
-            // Use nextTick to ensure Vue detects the change without causing recursive updates
-            nextTick(() => {
-              // Percentiles updated successfully
-            })
-          }
           
           // Clear caches to force recomputation
           performanceStatsCache.clear()
           performanceComparisonOptionsCache.clear()
         } else {
-          throw new Error('Invalid response format')
+          // Fetch detailed data from API
+          const result = await fetchFullPlayerStats(props.datasetId, props.player.uid || props.player.UID)
+          
+          if (result.format === 'json' && result.data.player) {
+            detailedPlayerData.value = result.data.player
+            logger.info('Fetched detailed player data', {
+              player_name: result.data.player.name,
+              attributes_count: Object.keys(result.data.player.attributes || {}).length
+            })
+            
+            // Log percentile data status
+            if (result.data.player.performancePercentiles) {
+              logger.info('Player has percentile data', {
+                percentile_groups: Object.keys(result.data.player.performancePercentiles).length,
+                sample_groups: Object.keys(result.data.player.performancePercentiles).slice(0, 3)
+              })
+            } else {
+              logger.warn('Player missing percentile data', {
+                player_name: result.data.player.name
+              })
+            }
+            
+            // Fetch percentiles for the player
+            logger.info('Fetching percentiles for player', {
+              player_name: result.data.player.name,
+              player_uid: result.data.player.uid
+            })
+            
+            // Fetch percentiles with current filter settings
+            const playerUID = result.data.player.uid || result.data.player.UID
+            
+            // Handle the 'same' division filter by converting it to the player's actual division
+            let effectiveDivision = divisionFilter.value
+            if (divisionFilter.value === 'same') {
+              const targetDivision = result.data.player?.division
+              if (targetDivision) {
+                effectiveDivision = targetDivision
+              } else {
+                // If no target division is available, fall back to 'all'
+                effectiveDivision = 'all'
+              }
+            }
+            
+            const percentiles = await fetchPlayerPercentiles(
+              playerUID,
+              effectiveDivision,
+              selectedComparisonGroup.value
+            )
+            
+            // Update the detailed player data with percentiles
+            if (percentiles && detailedPlayerData.value) {
+              if (!detailedPlayerData.value.performancePercentiles) {
+                detailedPlayerData.value.performancePercentiles = {}
+              }
+              Object.assign(detailedPlayerData.value.performancePercentiles, percentiles)
+              
+              // Force reactivity by incrementing the counters
+              percentileUpdateCounter.value++
+              percentileDataTrigger.value++
+              forceRecompute.value++
+              
+              // Use nextTick to ensure Vue detects the change without causing recursive updates
+              nextTick(() => {
+                // Percentiles updated successfully
+              })
+            }
+            
+            // Clear caches to force recomputation
+            performanceStatsCache.clear()
+            performanceComparisonOptionsCache.clear()
+          } else {
+            throw new Error('Invalid response format')
+          }
         }
       } catch (error) {
         detailedDataError.value = error.message
@@ -1867,7 +1883,7 @@ export default defineComponent({
 
     // Watch for player changes to fetch detailed data
     watch(() => props.player, (newPlayer) => {
-      if (newPlayer && newPlayer.uid) {
+      if (newPlayer && (newPlayer.uid || newPlayer.UID)) {
         // Reset detailed data when player changes
         detailedPlayerData.value = null
         detailedDataError.value = null

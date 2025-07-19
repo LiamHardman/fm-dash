@@ -252,3 +252,50 @@ export async function fetchTeamData(datasetID, type, name) {
     throw error
   }
 }
+
+/**
+ * Fetch detailed performance data for the performance page
+ * @param {string} datasetID - The dataset ID
+ * @param {Object} filters - Optional filters for the performance data
+ * @returns {Promise<Object>} - Performance data with all players and their detailed attributes
+ */
+export async function fetchPerformanceData(datasetID, filters = {}) {
+  try {
+    // Use protobuf-aware API for performance data
+    const { get } = useProtobufApi('')
+    
+    // Build query parameters
+    const params = new URLSearchParams()
+    if (filters.position) params.append('position', filters.position)
+    if (filters.role) params.append('role', filters.role)
+    if (filters.minAge) params.append('minAge', filters.minAge.toString())
+    if (filters.maxAge) params.append('maxAge', filters.maxAge.toString())
+    if (filters.minTransferValue) params.append('minTransferValue', filters.minTransferValue.toString())
+    if (filters.maxTransferValue) params.append('maxTransferValue', filters.maxTransferValue.toString())
+    if (filters.maxSalary) params.append('maxSalary', filters.maxSalary.toString())
+    if (filters.divisionFilter) params.append('divisionFilter', filters.divisionFilter)
+    if (filters.targetDivision) params.append('targetDivision', filters.targetDivision)
+    if (filters.positionCompare) params.append('positionCompare', filters.positionCompare)
+    
+    const url = `/api/performance/${datasetID}?${params.toString()}`
+    
+    const response = await get(url, {}, 'api.GenericResponse')
+    
+    // Handle protobuf response structure where data is in the data field
+    if (response.data) {
+      try {
+        const parsedData = JSON.parse(response.data)
+        return { data: parsedData, format: 'json' }
+      } catch (parseError) {
+        logger.error('Error parsing performance data from protobuf response:', parseError)
+        throw new Error('Invalid performance data format')
+      }
+    }
+    
+    // Fallback for JSON responses or direct data objects
+    return { data: response, format: 'json' }
+  } catch (error) {
+    logger.error('Error fetching performance data:', error)
+    throw error
+  }
+}

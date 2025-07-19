@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
+	"google.golang.org/protobuf/proto"
 
 	apperrors "api/errors"
 	pb "api/proto"
@@ -3384,4 +3385,378 @@ func teamDataHandler(w http.ResponseWriter, r *http.Request) {
 		"type", dataType,
 		"name", teamOrNationName,
 		"player_count", len(playersWithPercentiles))
+}
+
+// performanceDataHandler handles GET requests for retrieving detailed performance data by dataset ID.
+func performanceDataHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	startTime := time.Now()
+
+	// Start comprehensive tracing
+	ctx, span := StartSpan(ctx, "api.performance.get")
+	defer span.End()
+
+	// Track active requests
+	IncrementActiveRequests(ctx, "/api/performance")
+	defer DecrementActiveRequests(ctx, "/api/performance")
+
+	// Record API operation metrics at the end
+	defer func() {
+		status := http.StatusOK
+		RecordAPIOperation(ctx, r.Method, "/api/performance", status, time.Since(startTime))
+	}()
+
+	if r.Method != http.MethodGet {
+		WriteErrorResponse(w, r, "method_not_allowed", "Only GET method is allowed", nil, http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Initialize content negotiation
+	negotiator := NewContentNegotiator(r)
+	serializer := negotiator.SelectSerializer()
+	supportsProtobuf := negotiator.SupportsProtobuf()
+
+	// Get request ID for response metadata
+	requestID := r.Header.Get("X-Request-ID")
+	if requestID == "" {
+		requestID = generateRequestID()
+	}
+
+	SetSpanAttributes(ctx,
+		attribute.String("http.method", r.Method),
+		attribute.String("http.route", "/api/performance"),
+		attribute.String("response.format", serializer.ContentType()),
+		attribute.Bool("client.supports_protobuf", supportsProtobuf),
+		attribute.String("request.id", requestID),
+	)
+
+	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/performance/"), "/")
+	if len(pathParts) == 0 || pathParts[0] == "" {
+		logWarn(ctx, "Dataset ID missing in request path")
+		SetSpanAttributes(ctx, attribute.String("error.type", "missing_dataset_id"))
+		WriteErrorResponse(w, r, "missing_dataset_id", "Dataset ID is missing in the request path", nil, http.StatusBadRequest)
+		return
+	}
+	datasetID := pathParts[0]
+
+	SetSpanAttributes(ctx, attribute.String("dataset.id", datasetID))
+
+	queryValues := r.URL.Query()
+	filterPosition := queryValues.Get("position")
+	filterRole := queryValues.Get("role")
+	minAgeStr := queryValues.Get("minAge")
+	maxAgeStr := queryValues.Get("maxAge")
+	minTransferValueStr := queryValues.Get("minTransferValue")
+	maxTransferValueStr := queryValues.Get("maxTransferValue")
+	maxSalaryStr := queryValues.Get("maxSalary")
+	divisionFilterStr := queryValues.Get("divisionFilter") // "all", "same", "top5"
+	targetDivision := queryValues.Get("targetDivision")
+	positionCompare := queryValues.Get("positionCompare") // "all", "broad", "detailed"
+
+	logDebug(ctx, "Processing performance data request",
+		"dataset_id", datasetID,
+		"position_filter", filterPosition,
+		"role_filter", filterRole,
+		"min_age", minAgeStr,
+		"max_age", maxAgeStr,
+		"min_transfer_value", minTransferValueStr,
+		"max_transfer_value", maxTransferValueStr,
+		"max_salary", maxSalaryStr,
+		"division_filter", divisionFilterStr,
+		"target_division", targetDivision,
+		"position_compare", positionCompare)
+
+	// Create cache key for performance data
+	performanceCacheKey := fmt.Sprintf("performance:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s",
+		datasetID, filterPosition, filterRole, minAgeStr, maxAgeStr,
+		minTransferValueStr, maxTransferValueStr, maxSalaryStr, divisionFilterStr, targetDivision)
+
+	// Check cache for performance data
+	if cachedPerformance, cacheFound := getFromMemCache(performanceCacheKey); cacheFound {
+		if jsonData, ok := cachedPerformance.([]byte); ok {
+			logDebug(ctx, "Serving performance data from cache", "dataset_id", datasetID)
+
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Cache-Control", "public, max-age=300") // Cache for 5 minutes
+			setCORSHeaders(w, r)
+			if _, err := w.Write(jsonData); err != nil {
+				log.Printf("Error writing cached performance response: %v", err)
+			}
+			SetSpanAttributes(ctx, attribute.Bool("performance_cache.hit", true))
+			return
+		}
+	}
+
+	// Cache miss - need to load and process performance data
+	SetSpanAttributes(ctx, attribute.Bool("performance_cache.hit", false))
+
+	// Use the storage interface to get player data
+	ctx, dataSpan := StartSpan(ctx, "storage.get_dataset")
+	players, currencySymbol, found := GetPlayerData(datasetID)
+	dataSpan.End()
+
+	if !found {
+		logWarn(ctx, "Player data not found", "dataset_id", datasetID)
+		SetSpanAttributes(ctx, attribute.String("error.type", "dataset_not_found"))
+		WriteErrorResponse(w, r, "dataset_not_found", "Player data not found for the given ID.", nil, http.StatusNotFound)
+		return
+	}
+
+	SetSpanAttributes(ctx,
+		attribute.Int("dataset.initial_player_count", len(players)),
+		attribute.String("dataset.currency", currencySymbol),
+	)
+
+	// Recalculate all player ratings based on the current calculation method setting
+	ctx, recalcSpan := StartSpan(ctx, "ratings.recalculate")
+	players = RecalculateAllPlayersRatings(players)
+	recalcSpan.End()
+
+	// Parse filters
+	var minAge, maxAge int
+	var minTransferValue, maxTransferValue, maxSalary int64
+
+	if minAgeStr != "" {
+		if val, err := strconv.Atoi(minAgeStr); err == nil {
+			minAge = val
+		}
+	}
+	if maxAgeStr != "" {
+		if val, err := strconv.Atoi(maxAgeStr); err == nil {
+			maxAge = val
+		}
+	}
+	if minTransferValueStr != "" {
+		if val, err := strconv.ParseInt(minTransferValueStr, 10, 64); err == nil {
+			minTransferValue = val
+		}
+	}
+	if maxTransferValueStr != "" {
+		if val, err := strconv.ParseInt(maxTransferValueStr, 10, 64); err == nil {
+			maxTransferValue = val
+		}
+	}
+	if maxSalaryStr != "" {
+		if val, err := strconv.ParseInt(maxSalaryStr, 10, 64); err == nil {
+			maxSalary = val
+		}
+	}
+
+	// Parse division filter
+	var divisionFilter = DivisionFilterAll
+	switch divisionFilterStr {
+	case "same":
+		divisionFilter = DivisionFilterSame
+	case "top5":
+		divisionFilter = DivisionFilterTop5
+	case "all", "":
+		divisionFilter = DivisionFilterAll
+	}
+
+	// Calculate percentiles with appropriate filtering
+	ctx, percentileSpan := StartSpan(ctx, "percentiles.calculate")
+	// Make a deep copy of players to avoid modifying the stored data
+	playersCopy := OptimizedDeepCopyPlayers(players)
+
+	if divisionFilter != DivisionFilterAll {
+		// Recalculate percentiles with division filter
+		CalculatePlayerPerformancePercentilesWithDivisionFilter(playersCopy, divisionFilter, targetDivision)
+	} else {
+		// Calculate global percentiles using optimized algorithm
+		CalculatePlayerPerformancePercentiles(playersCopy)
+	}
+
+	players = playersCopy
+	percentileSpan.End()
+
+	// Apply filters to get final performance data
+	ctx, filterSpan := StartSpan(ctx, "performance.filter")
+	filteredPlayers := filterPlayersForPerformance(players, filterPosition, filterRole, minAge, maxAge, minTransferValue, maxTransferValue, maxSalary, positionCompare)
+	filterSpan.End()
+
+	SetSpanAttributes(ctx, attribute.Int("performance.filtered_player_count", len(filteredPlayers)))
+
+	// Create response with detailed performance data
+	response := struct {
+		Players        []Player `json:"players"`
+		CurrencySymbol string   `json:"currencySymbol"`
+		TotalCount     int      `json:"totalCount"`
+		FilteredCount  int      `json:"filteredCount"`
+	}{
+		Players:        filteredPlayers,
+		CurrencySymbol: currencySymbol,
+		TotalCount:     len(players),
+		FilteredCount:  len(filteredPlayers),
+	}
+
+	// Serialize response
+	var responseData []byte
+	var err error
+
+	if supportsProtobuf {
+		// For protobuf, we need to convert to JSON first, then wrap in protobuf
+		_, jsonSpan := StartSpan(ctx, "serialization.json")
+		jsonData, jsonErr := json.Marshal(response)
+		jsonSpan.End()
+
+		if jsonErr != nil {
+			logError(ctx, "Failed to marshal performance response to JSON", "error", jsonErr)
+			SetSpanAttributes(ctx, attribute.String("error.type", "json_marshal_failed"))
+			WriteErrorResponse(w, r, "serialization_failed", "Failed to serialize response", nil, http.StatusInternalServerError)
+			return
+		}
+
+		// Create protobuf response wrapper
+		_, protoSpan := StartSpan(ctx, "serialization.protobuf")
+		protoResponse := &pb.GenericResponse{
+			Data: string(jsonData),
+		}
+		responseData, err = proto.Marshal(protoResponse)
+		protoSpan.End()
+	} else {
+		// Use JSON serialization
+		_, jsonSpan := StartSpan(ctx, "serialization.json")
+		responseData, err = json.Marshal(response)
+		jsonSpan.End()
+	}
+
+	if err != nil {
+		logError(ctx, "Failed to serialize performance response", "error", err)
+		SetSpanAttributes(ctx, attribute.String("error.type", "serialization_failed"))
+		WriteErrorResponse(w, r, "serialization_failed", "Failed to serialize response", nil, http.StatusInternalServerError)
+		return
+	}
+
+	// Cache the performance data
+	setInMemCacheForDataset(performanceCacheKey, responseData, 5*time.Minute) // Cache for 5 minutes
+
+	// Set response headers
+	w.Header().Set("Content-Type", serializer.ContentType())
+	w.Header().Set("Cache-Control", "public, max-age=300") // Cache for 5 minutes
+	setCORSHeaders(w, r)
+
+	// Write response
+	if _, err := w.Write(responseData); err != nil {
+		log.Printf("Error writing performance response: %v", err)
+	}
+
+	logDebug(ctx, "Performance data request completed",
+		"dataset_id", datasetID,
+		"total_players", len(players),
+		"filtered_players", len(filteredPlayers),
+		"response_size_bytes", len(responseData))
+}
+
+// filterPlayersForPerformance applies all filters to get performance data
+func filterPlayersForPerformance(players []Player, position, role string, minAge, maxAge int, minTransferValue, maxTransferValue, maxSalary int64, positionCompare string) []Player {
+	filtered := make([]Player, 0, len(players))
+
+	for _, player := range players {
+		// Age filter
+		if minAge > 0 {
+			if age, err := strconv.Atoi(player.Age); err == nil && age < minAge {
+				continue
+			}
+		}
+		if maxAge > 0 {
+			if age, err := strconv.Atoi(player.Age); err == nil && age > maxAge {
+				continue
+			}
+		}
+
+		// Transfer value filter
+		if minTransferValue > 0 {
+			if transferValue, err := strconv.ParseInt(player.TransferValue, 10, 64); err == nil && transferValue < minTransferValue {
+				continue
+			}
+		}
+		if maxTransferValue > 0 {
+			if transferValue, err := strconv.ParseInt(player.TransferValue, 10, 64); err == nil && transferValue > maxTransferValue {
+				continue
+			}
+		}
+
+		// Salary filter
+		if maxSalary > 0 {
+			if wage, err := strconv.ParseInt(player.Wage, 10, 64); err == nil && wage > maxSalary {
+				continue
+			}
+		}
+
+		// Position filter
+		if position != "" && !matchesPosition(player, position, positionCompare) {
+			continue
+		}
+
+		// Role filter
+		if role != "" && !matchesRole(player, role) {
+			continue
+		}
+
+		filtered = append(filtered, player)
+	}
+
+	return filtered
+}
+
+// matchesPosition checks if a player matches the given position filter
+func matchesPosition(player Player, position, compare string) bool {
+	if position == "" {
+		return true
+	}
+
+	// Handle position groups
+	switch position {
+	case "Goalkeeper":
+		return containsPosition(player.ShortPositions, "GK")
+	case "Defender":
+		return containsAnyPosition(player.ShortPositions, []string{"DC", "DR", "DL", "WBR", "WBL"})
+	case "Midfielder":
+		return containsAnyPosition(player.ShortPositions, []string{"DM", "MC", "MR", "ML", "AMR", "AMC", "AML"})
+	case "Forward":
+		return containsPosition(player.ShortPositions, "ST")
+	}
+
+	// Handle specific positions
+	return containsPosition(player.ShortPositions, position)
+}
+
+// matchesRole checks if a player matches the given role filter
+func matchesRole(player Player, role string) bool {
+	if role == "" {
+		return true
+	}
+
+	// Check if player has the specific role in their role-specific overalls
+	if player.RoleSpecificOveralls != nil {
+		for _, rso := range player.RoleSpecificOveralls {
+			if strings.Contains(strings.ToLower(rso.RoleName), strings.ToLower(role)) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// containsPosition checks if a slice contains a specific position
+func containsPosition(positions []string, position string) bool {
+	for _, pos := range positions {
+		if pos == position {
+			return true
+		}
+	}
+	return false
+}
+
+// containsAnyPosition checks if a slice contains any of the given positions
+func containsAnyPosition(positions []string, targetPositions []string) bool {
+	for _, pos := range positions {
+		for _, target := range targetPositions {
+			if pos == target {
+				return true
+			}
+		}
+	}
+	return false
 }

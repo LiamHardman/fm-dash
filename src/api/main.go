@@ -301,6 +301,9 @@ func main() {
 	mux.Handle("/api/fullplayerstats/", wrapHandler(http.HandlerFunc(fullPlayerStatsHandler), "full-player-stats"))
 	mux.Handle("/api/team_data/", wrapHandler(http.HandlerFunc(teamDataHandler), "team-data"))
 
+	// API endpoint for performance data
+	mux.Handle("/api/performance/", wrapHandler(http.HandlerFunc(performanceDataHandler), "performance-data"))
+
 	// Create server with proper timeouts
 	server := &http.Server{
 		Addr:              ":" + port,

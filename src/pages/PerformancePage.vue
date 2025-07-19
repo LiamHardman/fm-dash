@@ -414,7 +414,13 @@
         </div>
 
         <!-- Player Detail Dialog -->
-        <DynamicPlayerDetailDialog :player="playerForDetailView" :show="showPlayerDetailDialog" @close="showPlayerDetailDialog = false" :currency-symbol="detectedCurrencySymbol" :dataset-id="currentDatasetId" />
+        <DynamicPlayerDetailDialog 
+    :player="playerForDetailView" 
+    :show="showPlayerDetailDialog" 
+    @close="showPlayerDetailDialog = false" 
+    :currency-symbol="detectedCurrencySymbol" 
+    :dataset-id="currentDatasetId" 
+/>
     </q-page>
 </template>
 
@@ -427,6 +433,9 @@ import StatCard from '../components/StatCard.vue'
 // Dynamic imports for better performance
 import { useDynamicComponents } from '../composables/useDynamicComponents.js'
 import { usePlayerStore } from '../stores/playerStore'
+import { fetchPerformanceData } from '../services/playerService'
+import { getNumericValue, getPlayerDivision } from '../utils/playerUtils'
+import { formatNumber } from '../utils/currencyUtils'
 
 const router = useRouter()
 const route = useRoute()
@@ -1072,13 +1081,6 @@ const allStatsForCalculation = computed(() => [
 ])
 
 // --- Helper Methods ---
-const getPlayerDivision = player => player.division || player.Division || 'N/A'
-const getNumericValue = val => {
-  if (val === undefined || val === null || val === '-' || val === '') return null
-  const cleaned = String(val).replace(/,/g, '').replace(/%/g, '')
-  const num = parseFloat(cleaned)
-  return Number.isNaN(num) ? null : num
-}
 
 // --- Core Methods ---
 const calculateTopPerformers = () => {
@@ -1104,13 +1106,22 @@ const calculateTopPerformers = () => {
   topPlayersByStat.value = results
 }
 
-// biome-ignore lint/correctness/noUnusedVariables: used in template
-const formatNumber = num => new Intl.NumberFormat().format(num)
+
 // biome-ignore lint/correctness/noUnusedVariables: used in template
 const openPlayerDetail = player => {
   // Find the full player object from allPlayersData
   const fullPlayer =
     allPlayersData.value.find(p => p.name === player.name && p.club === player.club) || player
+
+  // Debug: Log the player data to see what fields are available
+  console.log('Player selected:', {
+    name: fullPlayer.name,
+    uid: fullPlayer.uid,
+    UID: fullPlayer.UID,
+    hasAttributes: !!fullPlayer.attributes,
+    hasPerformancePercentiles: !!fullPlayer.performancePercentiles,
+    attributesCount: Object.keys(fullPlayer.attributes || {}).length
+  })
 
   playerForDetailView.value = fullPlayer
   showPlayerDetailDialog.value = true
@@ -1134,7 +1145,13 @@ const fetchPlayersAndCurrency = async datasetId => {
   pageLoading.value = true
   pageLoadingError.value = ''
   try {
-    await playerStore.fetchPlayersByDatasetId(datasetId)
+    // Use the new performance API to get detailed player data with all attributes
+    const performanceResponse = await fetchPerformanceData(datasetId)
+    
+    // Update the player store with the performance data
+    playerStore.setPlayers(performanceResponse.data.players)
+    playerStore.setCurrencySymbol(performanceResponse.data.currencySymbol)
+    playerStore.setCurrentDatasetId(datasetId)
 
     // Set default to all divisions and all positions for proper threshold calculation
     const allDivisions = [
@@ -1151,7 +1168,7 @@ const fetchPlayersAndCurrency = async datasetId => {
     overallSliderValue.value = thresholds.overall
     selectedOverall.value = thresholds.overall
   } catch (err) {
-    pageLoadingError.value = `Failed to load player data: ${err.message || 'Unknown server error'}. Please try uploading again.`
+    pageLoadingError.value = `Failed to load performance data: ${err.message || 'Unknown server error'}. Please try uploading again.`
   } finally {
     pageLoading.value = false
   }
