@@ -3246,8 +3246,24 @@ func fullPlayerStatsHandler(w http.ResponseWriter, r *http.Request) {
 		"currency_symbol": currencySymbol,
 	}
 
+	// Serialize to JSON string for protobuf compatibility
+	jsonData, err := json.Marshal(response)
+	if err != nil {
+		logError(ctx, "Failed to marshal full player stats response",
+			"error", err,
+			"dataset_id", datasetID,
+			"player_uid", playerUID)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Use GenericResponse for protobuf compatibility
+	protoResponse := &pb.GenericResponse{
+		Data: string(jsonData),
+	}
+
 	// Use content negotiation to determine response format
-	if err := WriteResponse(w, r, response); err != nil {
+	if err := WriteResponse(w, r, protoResponse); err != nil {
 		logError(ctx, "Failed to write full player stats response",
 			"error", err,
 			"dataset_id", datasetID,
