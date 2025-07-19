@@ -303,9 +303,7 @@ export default {
         maxFileSizeBytes.value = config.maxUploadSizeBytes
         maxFileSizeMB.value = config.maxUploadSizeMB
         datasetRetentionDays.value = config.datasetRetentionDays || 30
-      } catch (error) {
-        console.error('Error loading config in upload page:', error)
-      }
+      } catch (_error) {}
       // Initialize UI preferences
       uiStore.initNotifications()
     })

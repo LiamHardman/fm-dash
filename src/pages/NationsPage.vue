@@ -405,8 +405,9 @@
                                 </div>
                                 <!-- NEW: Show ratings when available -->
                                 <div 
-                                    v-else-if="nation.bestFormationOverall !== null && nation.bestFormationOverall > 0"
+                                    v-else-if="nation.bestFormationOverall !== null && nation.bestFormationOverall > 0 && (nation.attRating > 0 || nation.midRating > 0 || nation.defRating > 0)"
                                     class="section-ratings-large"
+                                    :title="`${nation.name} - ATT: ${nation.attRating}, MID: ${nation.midRating}, DEF: ${nation.defRating}`"
                                 >
                                     <div class="section-rating-large att">
                                         <span class="section-label-large">ATT</span>
@@ -460,7 +461,7 @@
                                     </div>
                                 </div>
                                 <!-- NEW: Show ratings when available -->
-                                <div v-else-if="nation.bestFormationOverall !== null" class="nation-rating">
+                                <div v-else-if="nation.bestFormationOverall !== null && nation.bestFormationOverall > 0" class="nation-rating" :title="`${nation.name} - Overall: ${nation.bestFormationOverall}`">
                                     <div 
                                         class="highest-overall-large"
                                         :class="getOverallClass(nation.bestFormationOverall)"
@@ -863,6 +864,18 @@ export default {
         (a, b) => (b.bestFormationOverall || 0) - (a.bestFormationOverall || 0)
       )
 
+      // Debug log for first few nations - commented out to reduce console spam
+      // if (sortedNations.length > 0) {
+      //   console.log('[NationsWithRatings] First 3 nations:', sortedNations.slice(0, 3).map(n => ({
+      //     name: n.name,
+      //     bestFormationOverall: n.bestFormationOverall,
+      //     attRating: n.attRating,
+      //     midRating: n.midRating,
+      //     defRating: n.defRating,
+      //     isCalculating: n.isCalculating
+      //   })))
+      // }
+
       // Limit initial rendering for performance
       if (!showAllNations.value && sortedNations.length > INITIAL_NATIONS_LIMIT) {
         return sortedNations.slice(0, INITIAL_NATIONS_LIMIT)
@@ -891,6 +904,9 @@ export default {
               nationality_iso: player.nationality_iso || null,
               playerCount: 0,
               bestFormationOverall: null, // Will be calculated async
+              attRating: null,
+              midRating: null,
+              defRating: null,
               isCalculating: false,
               players: [],
               topPlayersByPosition: {} // NEW: Pre-filtered top players per position
@@ -954,6 +970,8 @@ export default {
       nationsData.value = Array.from(nationsMap.values()).sort(
         (a, b) => b.playerCount - a.playerCount
       )
+      
+      // console.log('[NationRatings] Initialized', nationsData.value.length, 'nations')
     }
 
     // NEW: Calculate ratings for a single nation
@@ -964,13 +982,18 @@ export default {
         nationsData.value[nationIndex].isCalculating = true
       }
 
+      // Debug log - commented out to reduce console spam
+      // console.log('[NationRatings] Calculating ratings for', nation.name)
+
       // Simulate small delay to prevent UI blocking
       await new Promise(resolve => setTimeout(resolve, 10))
 
+      let topPlayersByPosition = {}
+      
       try {
         // Use the new team data API to get all detailed player data in one request
         const nationData = await fetchTeamData(currentDatasetId.value, 'nation', nation.name)
-        
+        // console.log('[NationRatings] fetchTeamData response for', nation.name, nationData)
         if (!nationData.data || !nationData.data.players || nationData.data.players.length === 0) {
           // Update with zero ratings
           if (nationIndex !== -1) {
@@ -983,15 +1006,18 @@ export default {
               isCalculating: false
             }
           }
+          console.log('[NationRatings] No players found for', nation.name)
           return
         }
 
         const detailedPlayers = nationData.data.players
 
+        // console.log('[NationRatings] Sample player data for', nation.name, ':', detailedPlayers[0])
+
         // Create topPlayersByPosition from detailed players
-        const topPlayersByPosition = {}
         for (const player of detailedPlayers) {
           if (player.shortPositions && player.shortPositions.length > 0) {
+            // console.log('[NationRatings] Player', player.name, 'has positions:', player.shortPositions)
             for (const position of player.shortPositions) {
               if (!topPlayersByPosition[position]) {
                 topPlayersByPosition[position] = []
@@ -1013,10 +1039,11 @@ export default {
               isCalculating: false
             }
           }
+          console.log('[NationRatings] No top players by position for', nation.name)
           return
         }
       } catch (error) {
-        console.error(`Error calculating ratings for nation ${nation.name}:`, error)
+        console.error(`[NationRatings] Error calculating ratings for nation ${nation.name}:`, error)
         // Update with zero ratings on error
         if (nationIndex !== -1) {
           nationsData.value[nationIndex] = {
@@ -1034,11 +1061,18 @@ export default {
       let bestOverall = 0
       let hasMinimumPlayers = false
       let bestSectionRatings = { attRating: 0, midRating: 0, defRating: 0 }
+      
+      // console.log('[NationRatings] Starting calculation for', nation.name, 'with', Object.keys(topPlayersByPosition).length, 'positions')
+      // console.log('[NationRatings] Available positions:', Object.keys(topPlayersByPosition))
 
       // Test each formation to find the best average overall for this nation
+      // console.log('[NationRatings] Testing', Object.keys(formations).length, 'formations for', nation.name)
       for (const formationKey of Object.keys(formations)) {
         const formationLayoutForCalc = getFormationLayout(formationKey)
-        if (!formationLayoutForCalc) continue
+        if (!formationLayoutForCalc) {
+          // console.log('[NationRatings] Skipping formation', formationKey, 'for', nation.name, '- no layout')
+          continue
+        }
 
         const formationSlots = formationLayoutForCalc.flatMap(row => row.positions)
         const tempSquadComposition = {}
@@ -1052,6 +1086,8 @@ export default {
         for (const slot of formationSlots) {
           const slotPositions = positionSideMap[slot.role.toUpperCase()] || []
           const fallbackPositions = fallbackPositionMap[slot.role.toUpperCase()] || []
+
+          // console.log('[NationRatings] Slot', slot.role, 'maps to positions:', slotPositions, 'fallbacks:', fallbackPositions)
 
           // Get relevant players for this slot (exact matches first, then fallbacks)
           let relevantPlayers = []
@@ -1079,7 +1115,8 @@ export default {
             const overallInRole = getPlayerOverallForRole(player, slot.role)
 
             // Lowered threshold to be more inclusive
-            if (overallInRole >= 20) {
+            if (overallInRole >= MIN_SUITABILITY_THRESHOLD) {
+              // console.log('[NationRatings] Player', player.name, 'has overall', overallInRole, 'for role', slot.role, 'in', nation.name)
               const playerPositions = player.shortPositions || []
               const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos))
 
@@ -1128,7 +1165,9 @@ export default {
         const filledPositions = Object.values(tempSquadComposition).filter(
           slotPlayers => slotPlayers.length > 0
         ).length
-        const hasEnoughPlayers = filledPositions >= 7
+        const hasEnoughPlayers = filledPositions >= 5
+        
+                  // console.log('[NationRatings] Formation', formationKey, 'filled positions:', filledPositions, 'for', nation.name)
 
         if (hasEnoughPlayers) {
           hasMinimumPlayers = true
@@ -1145,6 +1184,7 @@ export default {
 
           if (startersCount > 0) {
             const averageOverall = Math.round(sumOfStartersOverall / startersCount)
+            // console.log('[NationRatings] Formation', formationKey, 'average overall:', averageOverall, 'for', nation.name)
             if (averageOverall > bestOverall) {
               bestOverall = averageOverall
               // Calculate section ratings directly for this formation
@@ -1186,7 +1226,6 @@ export default {
             }
           }
         }
-
         // Reduced delay frequency since we're working with much smaller datasets now
         if (Object.keys(formations).indexOf(formationKey) % 5 === 0) {
           await new Promise(resolve => setTimeout(resolve, 1))
@@ -1195,6 +1234,13 @@ export default {
 
       // Update the nation with calculated ratings
       if (nationIndex !== -1) {
+        // console.log('[NationRatings] Before update - nation:', nationsData.value[nationIndex])
+        // console.log('[NationRatings] Calculated values:', {
+        //   hasMinimumPlayers,
+        //   bestOverall,
+        //   bestSectionRatings
+        // })
+        
         nationsData.value[nationIndex] = {
           ...nationsData.value[nationIndex],
           bestFormationOverall: hasMinimumPlayers ? bestOverall : 0,
@@ -1203,6 +1249,12 @@ export default {
           defRating: hasMinimumPlayers ? bestSectionRatings.defRating : 0,
           isCalculating: false
         }
+        // Debug log - commented out to reduce console spam
+        // console.log('[NationRatings] After update - nation:', nationsData.value[nationIndex])
+        
+        // Force reactivity update
+        nationsData.value = [...nationsData.value]
+        // console.log('[NationRatings] Completed calculation for', nation.name, 'with hasMinimumPlayers:', hasMinimumPlayers)
       }
     }
 
@@ -1220,9 +1272,12 @@ export default {
         calculationProgress.value.current =
           calculationProgress.value.total - calculationQueue.value.length
 
+        // console.log('[NationRatings] Processing nation:', nation.name, 'queue remaining:', calculationQueue.value.length)
+
         try {
           await calculateNationRatings(nation)
         } catch (_error) {
+          // console.error('[NationRatings] Error processing nation:', nation.name, _error)
           // Mark as failed and continue
           const nationIndex = nationsData.value.findIndex(n => n.name === nation.name)
           if (nationIndex !== -1) {
@@ -1245,6 +1300,8 @@ export default {
     const startRatingCalculations = () => {
       if (nationsData.value.length === 0) return
 
+      // console.log('[NationRatings] Starting calculations for', nationsData.value.length, 'nations')
+      
       // Queue all nations for calculation
       calculationQueue.value = [...nationsData.value]
       calculationProgress.value = { current: 0, total: nationsData.value.length }
@@ -1291,21 +1348,15 @@ export default {
       if (!pageLoadingError.value && allPlayersData.value.length > 0) {
         populateNationFilterOptions()
 
-        // NEW: Generate cache key and try to load from cache first
-        cacheKey.value = generateCacheKey()
-
-        // Try to load cached nation ratings
-        const cacheLoaded = await loadNationRatingsFromCache()
-
-        if (!cacheLoaded) {
-          initializeNationsData()
-
-          // Start calculating ratings in the background
-          setTimeout(() => {
-            startRatingCalculations()
-          }, 100) // Small delay to let UI render first
-        } else {
-        }
+        // --- DISABLE NATION RATINGS CACHE AND FORCE RECALCULATION ---
+        // const cacheLoaded = await loadNationRatingsFromCache()
+        // if (!cacheLoaded) {
+        initializeNationsData()
+        setTimeout(() => {
+          startRatingCalculations()
+        }, 100) // Small delay to let UI render first
+        // } else {
+        // }
 
         if (nationFromQuery && nationFromQuery.trim() !== '') {
           selectedNationName.value = nationFromQuery
@@ -1573,10 +1624,14 @@ export default {
       if (!player || !slotFormationRole) return 0
 
       let bestScoreForRole = 0
+      
+      // console.log('[getPlayerOverallForRole] Calculating for player', player.name, 'role', slotFormationRole, 'has roleSpecificOveralls:', !!player.roleSpecificOveralls, 'general Overall:', player.Overall)
 
       if (!player.roleSpecificOveralls) {
         // If no role-specific overalls, use player's general Overall as fallback
-        return player.Overall || 0
+        const fallbackOverall = player.Overall || 0
+        // console.log('[getPlayerOverallForRole] Using fallback overall:', fallbackOverall, 'for player', player.name)
+        return fallbackOverall
       }
 
       const hasRoleOveralls = Array.isArray(player.roleSpecificOveralls)
@@ -1696,7 +1751,7 @@ export default {
       return bestScoreForRole
     }
 
-    const MIN_SUITABILITY_THRESHOLD = 20
+    const MIN_SUITABILITY_THRESHOLD = 10
 
     const getSlotDisplayName = (slot, allSlots) => {
       const roleCounts = allSlots.reduce((acc, s) => {
