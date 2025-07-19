@@ -270,7 +270,20 @@ export function useProtobufApi(initialBaseURL) {
    */
   const getConfig = async () => {
     try {
-      return await get('/api/config', {}, 'api.GenericResponse')
+      const response = await get('/api/config', {}, 'api.GenericResponse')
+      
+      // Handle protobuf response structure where config is in the data field
+      if (response.data) {
+        try {
+          return JSON.parse(response.data)
+        } catch (parseError) {
+          logger.error('Error parsing config data from protobuf response:', parseError)
+          throw new Error('Invalid config data format')
+        }
+      }
+      
+      // Fallback for JSON responses or direct config objects
+      return response
     } catch (error) {
       logger.error('Error fetching config:', error)
       throw error
