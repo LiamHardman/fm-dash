@@ -300,15 +300,9 @@ export default {
       // Fetch config first
       try {
         const config = await playerService.getConfig()
-        console.log('Config loaded in upload page:', config)
         maxFileSizeBytes.value = config.maxUploadSizeBytes
         maxFileSizeMB.value = config.maxUploadSizeMB
         datasetRetentionDays.value = config.datasetRetentionDays || 30
-        console.log('Upload page config values set:', {
-          maxFileSizeBytes: maxFileSizeBytes.value,
-          maxFileSizeMB: maxFileSizeMB.value,
-          datasetRetentionDays: datasetRetentionDays.value
-        })
       } catch (error) {
         console.error('Error loading config in upload page:', error)
       }
@@ -451,15 +445,7 @@ export default {
 
       // Round to nearest 5000 for cleaner display
       // For example: 66,666 becomes 65,000
-      const roundedPlayers = Math.floor(exactPlayers / 5000) * 5000
-      
-      console.log('maxPlayersSupported computed:', {
-        maxFileSizeMB: maxFileSizeMB.value,
-        exactPlayers,
-        roundedPlayers
-      })
-      
-      return roundedPlayers
+      return Math.floor(exactPlayers / 5000) * 5000
     })
 
     return {
