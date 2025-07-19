@@ -1740,13 +1740,23 @@ func playerPercentilesHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Parse division filter
 	var divisionFilter = DivisionFilterAll
+	var targetDivision = ""
+
 	switch req.CompareDivision {
 	case "same":
 		divisionFilter = DivisionFilterSame
+		// For 'same', we need to get the target player's division
+		if targetPlayer != nil {
+			targetDivision = targetPlayer.Division
+		}
 	case "top5":
 		divisionFilter = DivisionFilterTop5
 	case "all", "":
 		divisionFilter = DivisionFilterAll
+	default:
+		// If it's not a special filter type, treat it as a specific division
+		divisionFilter = DivisionFilterSame
+		targetDivision = req.CompareDivision
 	}
 
 	// Generate cache key for this specific request
@@ -1791,7 +1801,7 @@ func playerPercentilesHandler(w http.ResponseWriter, r *http.Request) {
 	playersCopy := make([]Player, len(players))
 	copy(playersCopy, players)
 
-	CalculatePlayerPerformancePercentilesWithDivisionFilter(playersCopy, divisionFilter, "")
+	CalculatePlayerPerformancePercentilesWithDivisionFilter(playersCopy, divisionFilter, targetDivision)
 
 	// Find the target player in the copy
 	var updatedPlayer *Player

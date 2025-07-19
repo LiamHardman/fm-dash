@@ -7,7 +7,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
  * @param {String} selectedComparisonGroup - The selected comparison group
  * @returns {Object} - Contains loading states and retry functionality
  */
-export function usePercentileRetry(player, datasetId, selectedComparisonGroup) {
+export function usePercentileRetry(player, datasetId, selectedComparisonGroup, divisionFilter) {
   // Loading states
   const isLoadingPercentiles = ref(false)
   const percentilesRetryCount = ref(0)
@@ -38,7 +38,6 @@ export function usePercentileRetry(player, datasetId, selectedComparisonGroup) {
     (newPlayer, oldPlayer) => {
       // Reset state when player changes
       if (newPlayer !== oldPlayer) {
-        console.log('Player changed in usePercentileRetry, resetting state')
         resetState()
       }
     },
@@ -51,7 +50,6 @@ export function usePercentileRetry(player, datasetId, selectedComparisonGroup) {
     (newUID, oldUID) => {
       // Reset state when player UID changes
       if (newUID !== oldUID) {
-        console.log('Player UID changed in usePercentileRetry, resetting state', { newUID, oldUID })
         resetState()
       }
     },
@@ -60,86 +58,42 @@ export function usePercentileRetry(player, datasetId, selectedComparisonGroup) {
 
   // Check if percentiles are available and valid
   const hasValidPercentiles = computed(() => {
-    if (!player?.value?.performancePercentiles) {
-      console.log('hasValidPercentiles: No performancePercentiles', { playerName: player?.value?.name })
-      return false
-    }
+    if (!player?.value?.performancePercentiles) return false
 
     const percentiles =
       player.value.performancePercentiles[selectedComparisonGroup?.value || 'Global']
-    if (!percentiles) {
-      console.log('hasValidPercentiles: No percentiles for group', { 
-        selectedGroup: selectedComparisonGroup?.value || 'Global',
-        availableGroups: Object.keys(player.value.performancePercentiles),
-        playerName: player?.value?.name
-      })
-      return false
-    }
+    if (!percentiles) return false
 
     // Check if there are any non-negative percentile values (actual data)
-    const validValues = Object.values(percentiles).filter(
+    return Object.values(percentiles).some(
       value => value !== null && value !== undefined && value >= 0
     )
-    const hasValid = validValues.length > 0
-    console.log('hasValidPercentiles:', hasValid, { 
-      totalValues: Object.values(percentiles).length,
-      validValues: validValues.length,
-      sampleValues: validValues.slice(0, 3),
-      playerName: player?.value?.name
-    })
-    return hasValid
   })
 
   // Check if percentiles appear to be empty/not calculated yet
   const percentilesNeedRetry = computed(() => {
-    if (!player?.value?.performancePercentiles) {
-      console.log('percentilesNeedRetry: No performancePercentiles', { playerName: player?.value?.name })
-      return true
-    }
+    if (!player?.value?.performancePercentiles) return true
 
     const percentiles =
       player.value.performancePercentiles[selectedComparisonGroup?.value || 'Global']
-    if (!percentiles) {
-      console.log('percentilesNeedRetry: No percentiles for group', { 
-        selectedGroup: selectedComparisonGroup?.value || 'Global',
-        availableGroups: Object.keys(player.value.performancePercentiles),
-        playerName: player?.value?.name
-      })
-      return true
-    }
+    if (!percentiles) return true
 
     // If all percentiles are -1, 0, null, or undefined, they likely aren't calculated yet
     const values = Object.values(percentiles)
-    if (values.length === 0) {
-      console.log('percentilesNeedRetry: No percentile values', { playerName: player?.value?.name })
-      return true
-    }
+    if (values.length === 0) return true
 
     const validValues = values.filter(value => value !== null && value !== undefined && value >= 0)
 
     // If less than 30% of percentiles are valid, consider retry needed
-    const needsRetry = validValues.length < values.length * 0.3
-    console.log('percentilesNeedRetry:', needsRetry, { 
-      totalValues: values.length,
-      validValues: validValues.length,
-      threshold: values.length * 0.3,
-      playerName: player?.value?.name
-    })
-    return needsRetry
+    return validValues.length < values.length * 0.3
   })
 
   // Show loading state if percentiles need retry or are currently being retried
   const showLoadingState = computed(() => {
-    const shouldShow = isLoadingPercentiles.value ||
+    return (
+      isLoadingPercentiles.value ||
       (percentilesNeedRetry.value && percentilesRetryCount.value < maxRetries)
-    console.log('showLoadingState:', shouldShow, { 
-      isLoading: isLoadingPercentiles.value,
-      needsRetry: percentilesNeedRetry.value,
-      retryCount: percentilesRetryCount.value,
-      maxRetries,
-      playerName: player?.value?.name
-    })
-    return shouldShow
+    )
   })
 
   // Retry percentile calculation
@@ -151,9 +105,21 @@ export function usePercentileRetry(player, datasetId, selectedComparisonGroup) {
     isLoadingPercentiles.value = true
 
     try {
+      // Handle the 'same' division filter by converting it to the player's actual division
+      let effectiveDivision = divisionFilter?.value || 'all'
+      if (effectiveDivision === 'same') {
+        const targetDivision = player.value?.division
+        if (targetDivision) {
+          effectiveDivision = targetDivision
+        } else {
+          // If no target division is available, fall back to 'all'
+          effectiveDivision = 'all'
+        }
+      }
+
       const requestPayload = {
         playerUID: player.value.uid?.toString() || player.value.UID?.toString(),
-        compareDivision: 'all', // Default to global percentiles
+        compareDivision: effectiveDivision,
         comparePosition: selectedComparisonGroup?.value || 'Global'
       }
 

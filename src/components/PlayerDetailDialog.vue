@@ -73,7 +73,7 @@
                             <div class="col-6">
                                 <q-select
                                     v-if="performanceComparisonOptions.length > 0"
-                                    :disable="performanceComparisonOptions.length <= 1"
+                                    :disable="false"
                                     v-model="selectedComparisonGroup"
                                     :options="performanceComparisonOptions"
                                     label="Compare Position"
@@ -92,12 +92,9 @@
                                     "
                                 />
                                 <q-tooltip
-                                    v-if="
-                                        performanceComparisonOptions.length <= 1 &&
-                                        performanceComparisonOptions.length > 0
-                                    "
+                                    v-if="performanceComparisonOptions.length === 1"
                                 >
-                                    Only global comparison available for this player.
+                                    Only one comparison option available for this player and division.
                                 </q-tooltip>
                             </div>
                             <div class="col-6">
@@ -161,7 +158,7 @@
                                 </div>
 
                                 <!-- Percentile Content -->
-                                <div v-else-if="hasAnyPerformanceData" class="percentile-content-area" :key="`${displayPlayer?.uid || displayPlayer?.UID || 'unknown'}-${displayPlayer?.name || 'unknown'}-${forceRecompute}-${Math.random()}`" @vue:mounted="() => console.log('Percentile content mounted, forceRecompute:', forceRecompute, 'player:', displayPlayer?.name, 'categories:', Object.keys(categorizedPerformanceStats), 'key:', `${displayPlayer?.uid || displayPlayer?.UID || 'unknown'}-${displayPlayer?.name || 'unknown'}-${forceRecompute}-${Math.random()}`)" @vue:updated="() => console.log('Percentile content updated, forceRecompute:', forceRecompute, 'player:', displayPlayer?.name, 'categories:', Object.keys(categorizedPerformanceStats), 'key:', `${displayPlayer?.uid || displayPlayer?.UID || 'unknown'}-${displayPlayer?.name || 'unknown'}-${forceRecompute}-${Math.random()}`)">
+                                <div v-else-if="hasAnyPerformanceData" class="percentile-content-area" :key="`${displayPlayer?.uid || displayPlayer?.UID || 'unknown'}-${displayPlayer?.name || 'unknown'}-${divisionFilter}`">
                                     <!-- Debug info -->
                                     <div v-if="false" class="debug-info">
                                         forceRecompute: {{ forceRecompute }}, 
@@ -1154,13 +1151,11 @@ export default defineComponent({
 
     // Computed property to get the player data to display (detailed or basic)
     const displayPlayer = computed(() => {
-      console.log('displayPlayer computed called, detailedPlayerData:', !!detailedPlayerData.value, 'props.player:', !!props.player)
       const result = detailedPlayerData.value && detailedPlayerData.value.name 
         ? detailedPlayerData.value 
         : props.player && props.player.name 
           ? props.player 
           : null
-      console.log('displayPlayer result:', result?.name, 'uid:', result?.uid || result?.UID)
       return result
     })
 
@@ -1173,7 +1168,7 @@ export default defineComponent({
       percentilesRetryCount,
       maxRetries,
       manualRetry
-    } = usePercentileRetry(displayPlayer, datasetIdRef, selectedComparisonGroup)
+    } = usePercentileRetry(displayPlayer, datasetIdRef, selectedComparisonGroup, divisionFilter)
 
     // Face image handling
     const faceImageLoadError = ref(false)
@@ -1402,21 +1397,6 @@ export default defineComponent({
 
     const hasAnyPerformanceData = computed(() => {
       const keys = Object.keys(categorizedPerformanceStats.value)
-      console.log('hasAnyPerformanceData called, keys:', keys, 'length:', keys.length, 'player:', displayPlayer.value?.name, 'uid:', displayPlayer.value?.uid || displayPlayer.value?.UID)
-      
-      // Additional debugging to understand why keys might be empty
-      if (keys.length === 0) {
-        console.log('No performance data keys found. Debug info:', {
-          displayPlayer: !!displayPlayer.value,
-          playerName: displayPlayer.value?.name,
-          playerUID: displayPlayer.value?.uid || displayPlayer.value?.UID,
-          hasAttributes: !!displayPlayer.value?.attributes,
-          hasPercentiles: !!displayPlayer.value?.performancePercentiles,
-          selectedGroup: selectedComparisonGroup.value,
-          percentilesForGroup: displayPlayer.value?.performancePercentiles?.[selectedComparisonGroup.value] ? Object.keys(displayPlayer.value.performancePercentiles[selectedComparisonGroup.value]).slice(0, 3) : [],
-          categorizedPerformanceStats: categorizedPerformanceStats.value
-        })
-      }
       
       return keys.length > 0
     })
@@ -1577,11 +1557,9 @@ export default defineComponent({
     watch(
       () => props.player,
       _newPlayer => {
-        console.log('Player changed, forcing recomputation')
         percentileUpdateCounter.value++
         percentileDataTrigger.value++
         forceRecompute.value++
-        console.log('forceRecompute value after increment:', forceRecompute.value)
       },
       { immediate: true }
     )
@@ -1590,28 +1568,47 @@ export default defineComponent({
 
     // Division filter change handler - moved after reactive variables are declared
     const onDivisionFilterChange = async () => {
-      if (!props.datasetId || !props.player) return
+      if (!props.datasetId || !displayPlayer.value) return
 
       try {
         // Update percentiles for the current player with new division filter
-        const playerUID = props.player.uid || props.player.UID
+        const playerUID = displayPlayer.value.uid || displayPlayer.value.UID
         if (playerUID) {
+          // Preserve the current comparison group
+          const currentComparisonGroup = selectedComparisonGroup.value
+          
+          // Handle the 'same' division filter by converting it to the player's actual division
+          let effectiveDivision = divisionFilter.value
+          if (divisionFilter.value === 'same') {
+            const targetDivision = getTargetDivision()
+            if (targetDivision) {
+              effectiveDivision = targetDivision
+            } else {
+              // If no target division is available, fall back to 'all'
+              effectiveDivision = 'all'
+            }
+          }
+          
           const updatedPercentiles = await fetchPlayerPercentiles(
             playerUID,
-            divisionFilter.value,
-            selectedComparisonGroup.value
+            effectiveDivision,
+            currentComparisonGroup
           )
           
           if (updatedPercentiles) {
-            // Update both the props player and detailed player data
-            if (props.player.performancePercentiles) {
-              Object.assign(props.player.performancePercentiles, updatedPercentiles)
-            }
-            if (detailedPlayerData.value && detailedPlayerData.value.performancePercentiles) {
-              Object.assign(detailedPlayerData.value.performancePercentiles, updatedPercentiles)
-              // Force reactivity by incrementing the counter
+            // Replace the percentiles instead of merging them
+            if (detailedPlayerData.value) {
+              detailedPlayerData.value.performancePercentiles = updatedPercentiles
+              // Force reactivity by incrementing the counters
               percentileUpdateCounter.value++
+              percentileDataTrigger.value++
+              forceRecompute.value++
             }
+            // Also update props.player if it exists
+            if (props.player) {
+              props.player.performancePercentiles = updatedPercentiles
+            }
+            // Clear all caches to force recomputation
             performanceStatsCache.clear()
             performanceComparisonOptionsCache.clear()
           }
@@ -1623,8 +1620,6 @@ export default defineComponent({
 
     // Categorized performance stats computed property - moved after reactive variables are declared
     const categorizedPerformanceStats = computed(() => {
-      console.log('categorizedPerformanceStats computed property called, updateCounter:', percentileUpdateCounter.value, 'player:', displayPlayer.value?.name, 'uid:', displayPlayer.value?.uid || displayPlayer.value?.UID, 'detailedPlayerData:', !!detailedPlayerData.value, 'props.player:', !!props.player, 'forceRecompute:', forceRecompute.value)
-      
       // Force reactivity by accessing the detailed player data and the update counter
       const player = displayPlayer.value
       const playerName = player?.name
@@ -1640,11 +1635,9 @@ export default defineComponent({
       
       // Force reactivity by accessing the actual percentile data structure
       const percentilesHash = performancePercentiles ? JSON.stringify(Object.keys(performancePercentiles).sort()) : ''
-      console.log('Percentiles hash:', percentilesHash, 'Player name:', playerName)
       
       // Force reactivity by accessing the actual percentile values
       const percentileValues = performancePercentiles ? Object.values(performancePercentiles).slice(0, 3) : []
-      console.log('Sample percentile values:', percentileValues)
       
       // Force dependency on performance percentiles by accessing specific values
       const percentilesKeys = performancePercentiles ? Object.keys(performancePercentiles) : []
@@ -1653,10 +1646,8 @@ export default defineComponent({
       // Force reactivity by accessing the specific percentile data for the selected group
       const selectedGroupData = performancePercentiles?.[selectedComparisonGroup.value]
       const selectedGroupKeys = selectedGroupData ? Object.keys(selectedGroupData) : []
-      console.log('Selected group data keys:', selectedGroupKeys)
       
       if (!playerAttributes || !playerName || !playerUID) {
-        console.log('Missing required player data:', { playerName, playerUID, hasAttributes: !!playerAttributes })
         return {}
       }
 
@@ -1668,22 +1659,8 @@ export default defineComponent({
       // Force reactivity by accessing the percentile data structure
       const availableGroups = performancePercentiles ? Object.keys(performancePercentiles) : []
       
-      // Debug logging
-      console.log('categorizedPerformanceStats debug:', {
-        player_name: playerName,
-        player_uid: playerUID,
-        has_display_player: !!player,
-        has_attributes: !!playerAttributes,
-        has_percentiles: !!performancePercentiles,
-        selected_group: selectedComparisonGroup.value,
-        available_groups: availableGroups,
-        percentiles_for_group: percentilesForGroup ? Object.keys(percentilesForGroup).slice(0, 3) : [],
-        percentiles_for_group_count: percentilesForGroup ? Object.keys(percentilesForGroup).length : 0
-      })
-      
       // Check if we have percentile data for the selected group
       if (!percentilesForGroup || Object.keys(percentilesForGroup).length === 0) {
-        console.log('No percentile data for group:', selectedComparisonGroup.value, 'Available groups:', availableGroups)
         return {}
       }
       
@@ -1702,24 +1679,18 @@ export default defineComponent({
       // Force reactivity by accessing the actual percentile values
       // This ensures Vue tracks changes to the specific percentile data
       const sampleValues = samplePercentiles.map(p => p?.toString() || '0')
-      console.log('Sample percentile values:', sampleValues)
 
       // Create a more specific cache key that includes player UID to ensure cache invalidation
       const cacheKey = `${playerUID}-${selectedComparisonGroup.value}-${divisionFilter.value}-${updateCounter}-${dataTrigger}-${recomputeTrigger}-${percentilesHash}-${selectedGroupKeys.length}`
 
-      console.log('Cache key:', cacheKey, 'Cache size:', performanceStatsCache.size)
-
       // Return cached result if available
       if (performanceStatsCache.has(cacheKey)) {
         const cached = performanceStatsCache.get(cacheKey)
-        console.log('Returning cached result for key:', cacheKey)
         // Move to end for LRU behavior
         performanceStatsCache.delete(cacheKey)
         performanceStatsCache.set(cacheKey, cached)
         return cached
       }
-
-      console.log('No cache hit, computing new result for key:', cacheKey)
 
       const result = {}
       const categoryOrder = getCategoryOrder.value
@@ -1744,7 +1715,6 @@ export default defineComponent({
       }
 
       performanceStatsCache.set(cacheKey, result)
-      console.log('Final result for categorizedPerformanceStats:', Object.keys(result), 'Result keys:', Object.keys(result))
       return result
     })
 
@@ -1758,8 +1728,6 @@ export default defineComponent({
             compareDivision: compareDivision,
             comparePosition: comparePosition
           }
-          
-          console.log('Fetching percentiles for player:', playerUID, 'with payload:', requestPayload)
 
           const url = `/api/player-percentiles/${props.datasetId}`
           const response = await fetch(url, {
@@ -1769,8 +1737,6 @@ export default defineComponent({
             },
             body: JSON.stringify(requestPayload)
           })
-          
-          console.log('Response status:', response.status, response.statusText)
 
           if (response.ok) {
             const percentiles = await response.json()
@@ -1848,9 +1814,22 @@ export default defineComponent({
           
           // Fetch percentiles with current filter settings
           const playerUID = result.data.player.uid || result.data.player.UID
+          
+          // Handle the 'same' division filter by converting it to the player's actual division
+          let effectiveDivision = divisionFilter.value
+          if (divisionFilter.value === 'same') {
+            const targetDivision = result.data.player?.division
+            if (targetDivision) {
+              effectiveDivision = targetDivision
+            } else {
+              // If no target division is available, fall back to 'all'
+              effectiveDivision = 'all'
+            }
+          }
+          
           const percentiles = await fetchPlayerPercentiles(
             playerUID,
-            divisionFilter.value,
+            effectiveDivision,
             selectedComparisonGroup.value
           )
           
@@ -1865,11 +1844,10 @@ export default defineComponent({
             percentileUpdateCounter.value++
             percentileDataTrigger.value++
             forceRecompute.value++
-            console.log('Updated percentiles, counters now:', percentileUpdateCounter.value, percentileDataTrigger.value, forceRecompute.value)
             
             // Use nextTick to ensure Vue detects the change without causing recursive updates
             nextTick(() => {
-              console.log('Percentiles updated, counters now:', percentileUpdateCounter.value, percentileDataTrigger.value)
+              // Percentiles updated successfully
             })
           }
           
@@ -1903,11 +1881,9 @@ export default defineComponent({
     watch(
       () => displayPlayer.value,
       (newPlayer, oldPlayer) => {
-        console.log('displayPlayer changed, forcing recomputation', 'from:', oldPlayer?.name, 'to:', newPlayer?.name)
         percentileUpdateCounter.value++
         percentileDataTrigger.value++
         forceRecompute.value++
-        console.log('forceRecompute value after displayPlayer change:', forceRecompute.value)
       }
     )
 
@@ -1915,7 +1891,7 @@ export default defineComponent({
     watch(
       () => forceRecompute.value,
       (newValue, oldValue) => {
-        console.log('forceRecompute changed, forcing categorizedPerformanceStats recomputation', 'from:', oldValue, 'to:', newValue)
+        // Force recomputation when forceRecompute changes
       }
     )
 
@@ -1923,7 +1899,7 @@ export default defineComponent({
     watch(
       () => categorizedPerformanceStats.value,
       (newStats, oldStats) => {
-        console.log('categorizedPerformanceStats changed:', 'from:', oldStats ? Object.keys(oldStats) : 'undefined', 'to:', newStats ? Object.keys(newStats) : 'undefined')
+        // Stats changed
       },
       { deep: true }
     )
@@ -1932,7 +1908,7 @@ export default defineComponent({
     watch(
       () => hasAnyPerformanceData.value,
       (newValue, oldValue) => {
-        console.log('hasAnyPerformanceData changed:', 'from:', oldValue, 'to:', newValue)
+        // Performance data availability changed
       }
     )
 
@@ -1974,43 +1950,64 @@ export default defineComponent({
     // Watch for comparison group changes to clear performance stats cache
     watch(
       () => selectedComparisonGroup.value,
-      () => {
+      async (newGroup, oldGroup) => {
         // Clear performance stats cache when comparison group changes
         performanceStatsCache.clear()
+        
+        // Fetch new percentiles for the new comparison group
+        if (newGroup !== oldGroup && displayPlayer.value && props.datasetId) {
+          const playerUID = displayPlayer.value.uid || displayPlayer.value.UID
+          if (playerUID) {
+            // Handle the 'same' division filter by converting it to the player's actual division
+            let effectiveDivision = divisionFilter.value
+            if (divisionFilter.value === 'same') {
+              const targetDivision = displayPlayer.value?.division
+              if (targetDivision) {
+                effectiveDivision = targetDivision
+              } else {
+                // If no target division is available, fall back to 'all'
+                effectiveDivision = 'all'
+              }
+            }
+            
+            const updatedPercentiles = await fetchPlayerPercentiles(
+              playerUID,
+              effectiveDivision,
+              newGroup
+            )
+            
+            if (updatedPercentiles) {
+              // Replace the percentiles
+              if (detailedPlayerData.value) {
+                detailedPlayerData.value.performancePercentiles = updatedPercentiles
+                // Force reactivity
+                percentileUpdateCounter.value++
+                percentileDataTrigger.value++
+                forceRecompute.value++
+              }
+              if (props.player) {
+                props.player.performancePercentiles = updatedPercentiles
+              }
+              performanceStatsCache.clear()
+              performanceComparisonOptionsCache.clear()
+            }
+          }
+        }
       }
     )
 
     // Watch for division filter changes to clear performance stats cache
     watch(
       () => divisionFilter.value,
-      () => {
+      async (newFilter, oldFilter) => {
         // Clear performance stats cache when division filter changes
         performanceStatsCache.clear()
-      }
-    )
-
-    // Watch for detailed player data changes to clear performance stats cache
-    watch(
-      () => detailedPlayerData.value,
-      () => {
-        // Clear performance stats cache when detailed player data changes
-        performanceStatsCache.clear()
-      }
-    )
-    
-    // Watch for performance percentiles changes to increment counter
-    watch(
-      () => detailedPlayerData.value?.performancePercentiles,
-      (newPercentiles) => {
-        if (newPercentiles) {
-          console.log('Performance percentiles changed, incrementing counters')
-          // Force reactivity by incrementing the counters
-          percentileUpdateCounter.value++
-          percentileDataTrigger.value++
-          forceRecompute.value++
+        
+        // Call the division filter change handler
+        if (newFilter !== oldFilter) {
+          await onDivisionFilterChange()
         }
-      },
-      { deep: true }
+      }
     )
 
     // Watch for detailed player data changes to clear performance stats cache
@@ -2022,13 +2019,26 @@ export default defineComponent({
         
         // Reset loading state when detailed player data changes
         if (newData !== oldData) {
-          console.log('Detailed player data changed, resetting loading state')
           // Force recomputation to ensure loading state updates
           percentileUpdateCounter.value++
           percentileDataTrigger.value++
           forceRecompute.value++
         }
       }
+    )
+    
+    // Watch for performance percentiles changes to increment counter
+    watch(
+      () => detailedPlayerData.value?.performancePercentiles,
+      (newPercentiles) => {
+        if (newPercentiles) {
+          // Force reactivity by incrementing the counters
+          percentileUpdateCounter.value++
+          percentileDataTrigger.value++
+          forceRecompute.value++
+        }
+      },
+      { deep: true }
     )
 
     // Helper functions to derive position information from available data
@@ -2096,7 +2106,7 @@ export default defineComponent({
     const performanceComparisonOptionsCache = new Map()
 
     const performanceComparisonOptions = computed(() => {
-      if (!displayPlayer.value?.performancePercentiles) {
+      if (!displayPlayer.value) {
         return []
       }
 
@@ -2112,7 +2122,6 @@ export default defineComponent({
         return performanceComparisonOptionsCache.get(cacheKey)
       }
 
-      const playerPercentiles = player.performancePercentiles
       const playerShortPositions = derivedShortPositions
       const playerBroadGroups = derivedPositionGroups
       const options = []
@@ -2154,11 +2163,10 @@ export default defineComponent({
         return false
       }
 
-      // Process preferred order groups
+      // Process preferred order groups - don't check if they exist in current percentiles
       for (let i = 0; i < preferredOrder.length; i++) {
         const groupKey = preferredOrder[i]
         if (
-          playerPercentiles[groupKey] &&
           shouldIncludeGroup(groupKey) &&
           !addedValues.has(groupKey)
         ) {
