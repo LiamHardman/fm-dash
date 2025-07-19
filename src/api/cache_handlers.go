@@ -678,6 +678,165 @@ func generateDataHash(ctx context.Context, players []Player) string {
 	return hashResult
 }
 
+// PlayerPercentilesCacheKey represents the cache key for player percentiles calculation
+type PlayerPercentilesCacheKey struct {
+	DatasetID       string `json:"datasetId"`
+	PlayerUID       string `json:"playerUID"`
+	CompareDivision string `json:"compareDivision"`
+	ComparePosition string `json:"comparePosition"`
+	PlayerCount     int    `json:"playerCount"`
+	DataHash        string `json:"dataHash"`
+}
+
+// PlayerPercentilesCacheData represents cached player percentiles data
+type PlayerPercentilesCacheData struct {
+	Version     string                    `json:"version"`
+	GeneratedAt time.Time                 `json:"generatedAt"`
+	CacheKey    PlayerPercentilesCacheKey `json:"cacheKey"`
+	Percentiles map[string]interface{}    `json:"percentiles"`
+}
+
+// generatePlayerPercentilesCacheKey generates a cache key for player percentiles calculation
+func generatePlayerPercentilesCacheKey(ctx context.Context, datasetID, playerUID, compareDivision, comparePosition string, players []Player) string {
+	logDebug(ctx, "Generating player percentiles cache key", "dataset_id", datasetID, "player_uid", playerUID, "player_count", len(players))
+	start := time.Now()
+
+	// Create a simple hash based on key parameters and dataset state
+	playerCount := len(players)
+
+	// Create a small hash from player data to detect changes
+	samplePlayerData := ""
+	if len(players) > 0 {
+		// Sample first 10 players' names and overalls
+		sampleSize := 10
+		if len(players) < sampleSize {
+			sampleSize = len(players)
+		}
+		for i := 0; i < sampleSize; i++ {
+			samplePlayerData += fmt.Sprintf("%s:%d;", players[i].Name, players[i].Overall)
+		}
+	}
+
+	// Simple hash function
+	cacheInput := fmt.Sprintf("%s:%s:%s:%s:%d:%s",
+		datasetID, playerUID, compareDivision, comparePosition, playerCount, samplePlayerData)
+
+	hash := 0
+	for i := 0; i < len(cacheInput); i++ {
+		char := int(cacheInput[i])
+		hash = ((hash << 5) - hash) + char
+		hash &= hash // Convert to 32-bit integer
+	}
+
+	cacheKey := fmt.Sprintf("player_percentiles_%s", fmt.Sprintf("%x", hash)[:12])
+
+	logDebug(ctx, "Generated player percentiles cache key", "cache_key", cacheKey, "duration_ms", time.Since(start).Milliseconds())
+	return cacheKey
+}
+
+// savePlayerPercentilesToCache saves player percentiles calculation to cache
+func savePlayerPercentilesToCache(ctx context.Context, cacheKey, datasetID, playerUID, compareDivision, comparePosition string, players []Player, percentiles map[string]interface{}) {
+	logInfo(ctx, "Starting player percentiles cache save", "cache_key", cacheKey, "dataset_id", datasetID, "player_count", len(players))
+	start := time.Now()
+
+	cacheData := PlayerPercentilesCacheData{
+		Version:     cacheVersion,
+		GeneratedAt: time.Now(),
+		CacheKey: PlayerPercentilesCacheKey{
+			DatasetID:       datasetID,
+			PlayerUID:       playerUID,
+			CompareDivision: compareDivision,
+			ComparePosition: comparePosition,
+			PlayerCount:     len(players),
+			DataHash:        generateDataHash(ctx, players),
+		},
+		Percentiles: percentiles,
+	}
+
+	// Use the existing storage interface through a custom cache storage path
+	cacheDatasetID := fmt.Sprintf("cache_player_percentiles_%s", cacheKey)
+
+	// Create a cache DatasetData using the dedicated cache field
+	cacheDataset := DatasetData{
+		Players:   []Player{}, // Empty since we're storing cache data separately
+		CacheData: "",         // We'll encode our cache data here as JSON
+	}
+
+	// Encode our cache data as JSON and store it in the cache data field
+	cacheJSON, err := json.Marshal(cacheData)
+	if err != nil {
+		logError(ctx, "Error marshaling player percentiles cache data", "error", err, "cache_key", cacheKey)
+		return
+	}
+
+	cacheDataset.CacheData = string(cacheJSON)
+
+	if err := storage.Store(cacheDatasetID, cacheDataset); err != nil {
+		logError(ctx, "Error storing player percentiles cache", "error", err, "cache_key", cacheKey, "cache_dataset_id", cacheDatasetID)
+		return
+	}
+
+	logDebug(ctx, "Player percentiles cached successfully", "cache_key", cacheKey, "duration_ms", time.Since(start).Milliseconds())
+}
+
+// loadPlayerPercentilesFromCache loads player percentiles calculation from cache
+func loadPlayerPercentilesFromCache(ctx context.Context, cacheKey, datasetID, playerUID, compareDivision, comparePosition string, players []Player) (map[string]interface{}, bool) {
+	logInfo(ctx, "Starting player percentiles cache load", "cache_key", cacheKey, "dataset_id", datasetID, "player_count", len(players))
+	start := time.Now()
+
+	cacheDatasetID := fmt.Sprintf("cache_player_percentiles_%s", cacheKey)
+
+	dummyData, err := storage.Retrieve(cacheDatasetID)
+	if err != nil {
+		logDebug(ctx, "Player percentiles cache miss", "cache_key", cacheKey, "error", err.Error())
+		return nil, false
+	}
+
+	// Decode our cache data from the cache data field
+	var cacheData PlayerPercentilesCacheData
+	cacheSource := dummyData.CacheData
+	if cacheSource == "" {
+		// Fallback to currency symbol for backward compatibility
+		cacheSource = dummyData.CurrencySymbol
+	}
+	if err := json.Unmarshal([]byte(cacheSource), &cacheData); err != nil {
+		logError(ctx, "Error unmarshaling player percentiles cache data", "error", err, "cache_key", cacheKey)
+		return nil, false
+	}
+
+	// Validate cache data
+	if cacheData.Version != cacheVersion {
+		logDebug(ctx, "Player percentiles cache version mismatch, recalculating", "cache_version", cacheData.Version, "expected_version", cacheVersion)
+		return nil, false
+	}
+
+	if cacheData.CacheKey.DatasetID != datasetID ||
+		cacheData.CacheKey.PlayerUID != playerUID ||
+		cacheData.CacheKey.CompareDivision != compareDivision ||
+		cacheData.CacheKey.ComparePosition != comparePosition {
+		logDebug(ctx, "Player percentiles cache key mismatch, recalculating", "cache_key", cacheKey)
+		return nil, false
+	}
+
+	if cacheData.CacheKey.PlayerCount != len(players) {
+		logDebug(ctx, "Player count changed, recalculating player percentiles",
+			"cached_count", cacheData.CacheKey.PlayerCount,
+			"current_count", len(players))
+		return nil, false
+	}
+
+	if cacheData.CacheKey.DataHash != generateDataHash(ctx, players) {
+		logDebug(ctx, "Dataset hash changed, recalculating player percentiles", "cache_key", cacheKey)
+		return nil, false
+	}
+
+	logDebug(ctx, "Loaded player percentiles from cache",
+		"cache_key", cacheKey,
+		"generated_at", cacheData.GeneratedAt.Format(time.RFC3339),
+		"duration_ms", time.Since(start).Milliseconds())
+	return cacheData.Percentiles, true
+}
+
 // BargainHunterCacheKey represents the cache key for bargain hunter calculation
 type BargainHunterCacheKey struct {
 	DatasetID   string `json:"datasetId"`

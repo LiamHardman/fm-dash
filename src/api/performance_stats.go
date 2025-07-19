@@ -23,6 +23,9 @@ var (
 	maxCacheAge          = 30 * time.Minute
 )
 
+// Global mutex for protecting concurrent percentile calculations
+var percentileCalculationMutex sync.RWMutex
+
 // generateDatasetHash creates a hash of the dataset for cache invalidation
 func generateDatasetHash(players []Player) string {
 	hasher := sha256.New()
@@ -184,6 +187,9 @@ func CalculatePlayerPerformancePercentiles(players []Player) {
 	if cachedPercentiles, found := getCachedPercentiles("global", players); found {
 		LogDebug("⚡ Using cached percentiles, skipping calculation")
 		// Apply cached percentiles to all players
+		percentileCalculationMutex.Lock()
+		defer percentileCalculationMutex.Unlock()
+
 		for i := range players {
 			if players[i].PerformancePercentiles == nil {
 				players[i].PerformancePercentiles = make(map[string]map[string]float64)
@@ -202,6 +208,10 @@ func CalculatePlayerPerformancePercentiles(players []Player) {
 		LogDebug("⚡ Cached percentile application completed in %v for %d players", duration, len(players))
 		return
 	}
+
+	// Acquire write lock for concurrent map access protection
+	percentileCalculationMutex.Lock()
+	defer percentileCalculationMutex.Unlock()
 
 	// Initialize PerformancePercentiles maps for all players if not already done
 	for i := range players {
@@ -413,6 +423,10 @@ func CalculatePlayerPerformancePercentilesWithDivisionFilter(players []Player, d
 		}
 	}
 	log.Printf("📊 Division filter will include %d out of %d players", len(filteredPlayerIndices), len(players))
+
+	// Acquire write lock for concurrent map access protection
+	percentileCalculationMutex.Lock()
+	defer percentileCalculationMutex.Unlock()
 
 	// Initialize PerformancePercentiles maps for all players if not already done
 	for i := range players {

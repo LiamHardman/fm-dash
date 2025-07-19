@@ -1555,6 +1555,13 @@ type PercentileRequest struct {
 	TargetDivision string `json:"targetDivision"`
 }
 
+// PlayerPercentilesRequest represents a request for player percentiles by UID
+type PlayerPercentilesRequest struct {
+	PlayerUID       string `json:"playerUID"`
+	CompareDivision string `json:"compareDivision"` // "all", "same", "top5"
+	ComparePosition string `json:"comparePosition"` // position group like "Global", "Midfielders", etc.
+}
+
 // percentilesHandler handles POST requests to recalculate percentiles for a specific player with division filtering
 func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -1672,6 +1679,166 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 	setCORSHeaders(w, r)
 	if err := json.NewEncoder(w).Encode(updatedPercentiles); err != nil {
 		log.Printf("Error encoding JSON response for percentiles (DatasetID: %s): %v", sanitizeForLogging(datasetID), err)
+		http.Error(w, "Error encoding response", http.StatusInternalServerError)
+	}
+}
+
+// playerPercentilesHandler handles POST requests to get percentiles for a specific player by UID
+func playerPercentilesHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if r.Method != http.MethodPost {
+		http.Error(w, "Only POST method is allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/player-percentiles/"), "/")
+	if len(pathParts) == 0 || pathParts[0] == "" {
+		http.Error(w, "Dataset ID is missing in the request path", http.StatusBadRequest)
+		return
+	}
+	datasetID := pathParts[0]
+
+	var req PlayerPercentilesRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Error parsing request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	logInfo(ctx, "Processing player percentiles request",
+		"dataset_id", datasetID,
+		"player_uid", req.PlayerUID,
+		"compare_division", req.CompareDivision,
+		"compare_position", req.ComparePosition)
+
+	// Get the full dataset
+	players, _, found := GetPlayerData(datasetID)
+	if !found {
+		logWarn(ctx, "Player data not found", "dataset_id", datasetID)
+		http.Error(w, "Player data not found for the given ID.", http.StatusNotFound)
+		return
+	}
+
+	// Find the specific player by UID
+	var targetPlayer *Player
+	playerUID, err := strconv.ParseInt(req.PlayerUID, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid player UID format", http.StatusBadRequest)
+		return
+	}
+
+	for i := range players {
+		if players[i].UID == playerUID {
+			targetPlayer = &players[i]
+			break
+		}
+	}
+
+	if targetPlayer == nil {
+		http.Error(w, "Player not found in dataset", http.StatusNotFound)
+		return
+	}
+
+	// Parse division filter
+	var divisionFilter = DivisionFilterAll
+	switch req.CompareDivision {
+	case "same":
+		divisionFilter = DivisionFilterSame
+	case "top5":
+		divisionFilter = DivisionFilterTop5
+	case "all", "":
+		divisionFilter = DivisionFilterAll
+	}
+
+	// Generate cache key for this specific request
+	cacheKey := generatePlayerPercentilesCacheKey(ctx, datasetID, req.PlayerUID, req.CompareDivision, req.ComparePosition, players)
+
+	logDebug(ctx, "Generated cache key for player percentiles request",
+		"dataset_id", datasetID,
+		"player_uid", req.PlayerUID,
+		"compare_division", req.CompareDivision,
+		"compare_position", req.ComparePosition,
+		"cache_key", cacheKey,
+		"player_count", len(players))
+
+	// Try to load from cache
+	if cachedPercentiles, found := loadPlayerPercentilesFromCache(ctx, cacheKey, datasetID, req.PlayerUID, req.CompareDivision, req.ComparePosition, players); found {
+		logDebug(ctx, "🎯 CACHE HIT - Returning cached player percentiles",
+			"dataset_id", datasetID,
+			"player_uid", req.PlayerUID,
+			"compare_division", req.CompareDivision,
+			"compare_position", req.ComparePosition,
+			"cache_key", cacheKey)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Cache-Status", "HIT")
+		setCORSHeaders(w, r)
+		if err := json.NewEncoder(w).Encode(cachedPercentiles); err != nil {
+			log.Printf("Error encoding JSON response for cached player percentiles (DatasetID: %s): %v", sanitizeForLogging(datasetID), err)
+			http.Error(w, "Error encoding response", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Cache miss - perform calculation
+	logDebug(ctx, "💫 CACHE MISS - calculating player percentiles",
+		"dataset_id", datasetID,
+		"player_uid", req.PlayerUID,
+		"compare_division", req.CompareDivision,
+		"compare_position", req.ComparePosition,
+		"cache_key", cacheKey)
+
+	// Create a copy of the dataset and recalculate percentiles with division filtering
+	playersCopy := make([]Player, len(players))
+	copy(playersCopy, players)
+
+	CalculatePlayerPerformancePercentilesWithDivisionFilter(playersCopy, divisionFilter, "")
+
+	// Find the target player in the copy
+	var updatedPlayer *Player
+	for i := range playersCopy {
+		if playersCopy[i].UID == playerUID {
+			updatedPlayer = &playersCopy[i]
+			break
+		}
+	}
+
+	if updatedPlayer == nil {
+		http.Error(w, "Player not found after calculation", http.StatusInternalServerError)
+		return
+	}
+
+	// Get the percentiles for the specific position group
+	var resultPercentiles map[string]interface{}
+	if req.ComparePosition == "Global" || req.ComparePosition == "" {
+		// Return all percentiles
+		resultPercentiles = make(map[string]interface{})
+		for group, percentiles := range updatedPlayer.PerformancePercentiles {
+			resultPercentiles[group] = percentiles
+		}
+	} else {
+		// Return only the specific position group
+		if percentiles, exists := updatedPlayer.PerformancePercentiles[req.ComparePosition]; exists {
+			resultPercentiles = map[string]interface{}{
+				req.ComparePosition: percentiles,
+			}
+		} else {
+			// Position group not found, return empty result
+			resultPercentiles = map[string]interface{}{
+				req.ComparePosition: map[string]int{},
+			}
+		}
+	}
+
+	// Save to cache for future requests
+	go func() {
+		savePlayerPercentilesToCache(ctx, cacheKey, datasetID, req.PlayerUID, req.CompareDivision, req.ComparePosition, players, resultPercentiles)
+	}()
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Cache-Status", "MISS")
+	setCORSHeaders(w, r)
+	if err := json.NewEncoder(w).Encode(resultPercentiles); err != nil {
+		log.Printf("Error encoding JSON response for player percentiles (DatasetID: %s): %v", sanitizeForLogging(datasetID), err)
 		http.Error(w, "Error encoding response", http.StatusInternalServerError)
 	}
 }
@@ -3031,6 +3198,35 @@ func fullPlayerStatsHandler(w http.ResponseWriter, r *http.Request) {
 	if targetPlayer == nil {
 		http.Error(w, "Player not found", http.StatusNotFound)
 		return
+	}
+
+	// Ensure the player has percentile data
+	if targetPlayer.PerformancePercentiles == nil || len(targetPlayer.PerformancePercentiles) == 0 {
+		logInfo(ctx, "Player missing percentiles, calculating them",
+			"dataset_id", datasetID,
+			"player_uid", playerUID,
+			"player_name", targetPlayer.Name)
+
+		// Create a copy of the dataset and calculate percentiles
+		playersCopy := make([]Player, len(players))
+		copy(playersCopy, players)
+
+		// Calculate percentiles for the entire dataset
+		CalculatePlayerPerformancePercentiles(playersCopy)
+
+		// Find the updated player with percentiles
+		for _, player := range playersCopy {
+			if player.UID == playerUID {
+				targetPlayer = &player
+				break
+			}
+		}
+
+		logInfo(ctx, "Successfully calculated percentiles for player",
+			"dataset_id", datasetID,
+			"player_uid", playerUID,
+			"player_name", targetPlayer.Name,
+			"percentile_groups", len(targetPlayer.PerformancePercentiles))
 	}
 
 	// Create response with full player data

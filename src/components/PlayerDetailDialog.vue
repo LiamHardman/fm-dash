@@ -161,7 +161,13 @@
                                 </div>
 
                                 <!-- Percentile Content -->
-                                <div v-else-if="hasAnyPerformanceData" class="percentile-content-area">
+                                <div v-else-if="hasAnyPerformanceData" class="percentile-content-area" :key="`${displayPlayer?.uid || displayPlayer?.UID || 'unknown'}-${displayPlayer?.name || 'unknown'}-${forceRecompute}-${Math.random()}`" @vue:mounted="() => console.log('Percentile content mounted, forceRecompute:', forceRecompute, 'player:', displayPlayer?.name, 'categories:', Object.keys(categorizedPerformanceStats), 'key:', `${displayPlayer?.uid || displayPlayer?.UID || 'unknown'}-${displayPlayer?.name || 'unknown'}-${forceRecompute}-${Math.random()}`)" @vue:updated="() => console.log('Percentile content updated, forceRecompute:', forceRecompute, 'player:', displayPlayer?.name, 'categories:', Object.keys(categorizedPerformanceStats), 'key:', `${displayPlayer?.uid || displayPlayer?.UID || 'unknown'}-${displayPlayer?.name || 'unknown'}-${forceRecompute}-${Math.random()}`)">
+                                    <!-- Debug info -->
+                                    <div v-if="false" class="debug-info">
+                                        forceRecompute: {{ forceRecompute }}, 
+                                        hasAnyPerformanceData: {{ hasAnyPerformanceData }}, 
+                                        categorizedPerformanceStats keys: {{ Object.keys(categorizedPerformanceStats) }}
+                                    </div>
                                     <div
                                         v-for="(stats, category, index) in categorizedPerformanceStats"
                                         :key="`perf-${category}-${selectedComparisonGroup}`"
@@ -1138,7 +1144,27 @@ export default defineComponent({
     const playerRef = toRef(props, 'player')
     const datasetIdRef = toRef(props, 'datasetId')
 
-    // Use the percentile retry composable
+    // Add reactive data for detailed player stats
+    const detailedPlayerData = ref(null)
+    const isLoadingDetailedData = ref(false)
+    const detailedDataError = ref(null)
+    const percentileUpdateCounter = ref(0) // Force reactivity when percentiles change
+    const percentileDataTrigger = ref(0) // Additional trigger for percentile data changes
+    const forceRecompute = ref(0) // Force template re-render
+
+    // Computed property to get the player data to display (detailed or basic)
+    const displayPlayer = computed(() => {
+      console.log('displayPlayer computed called, detailedPlayerData:', !!detailedPlayerData.value, 'props.player:', !!props.player)
+      const result = detailedPlayerData.value && detailedPlayerData.value.name 
+        ? detailedPlayerData.value 
+        : props.player && props.player.name 
+          ? props.player 
+          : null
+      console.log('displayPlayer result:', result?.name, 'uid:', result?.uid || result?.UID)
+      return result
+    })
+
+    // Use the percentile retry composable with displayPlayer instead of props.player
     const {
       isLoadingPercentiles,
       hasValidPercentiles,
@@ -1147,7 +1173,7 @@ export default defineComponent({
       percentilesRetryCount,
       maxRetries,
       manualRetry
-    } = usePercentileRetry(playerRef, datasetIdRef, selectedComparisonGroup)
+    } = usePercentileRetry(displayPlayer, datasetIdRef, selectedComparisonGroup)
 
     // Face image handling
     const faceImageLoadError = ref(false)
@@ -1234,65 +1260,7 @@ export default defineComponent({
       return props.player.division
     }
 
-    const onDivisionFilterChange = async () => {
-      if (!props.datasetId || !props.player) return
 
-      try {
-        const targetDivision = getTargetDivision()
-        const requestPayload = {
-          playerName: props.player.name,
-          divisionFilter: divisionFilter.value,
-          targetDivision: targetDivision
-        }
-
-        // Instead of refetching all data, we need to fetch just updated percentiles for this player
-        // For now, let's create a dedicated API call for this
-        const url = `/api/percentiles/${props.datasetId}`
-
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(requestPayload)
-        })
-
-        if (response.ok) {
-          const updatedPercentiles = await response.json()
-
-          // Count non-empty percentile groups for debugging
-          let _nonEmptyGroups = 0
-          let _totalStats = 0
-          for (const [_groupKey, groupPercentiles] of Object.entries(updatedPercentiles)) {
-            const statsInGroup = Object.keys(groupPercentiles).length
-            const nonNegativeStats = Object.values(groupPercentiles).filter(val => val >= 0).length
-            if (nonNegativeStats > 0) {
-              _nonEmptyGroups++
-            }
-            _totalStats += statsInGroup
-          }
-
-          // Log whether this is a cache hit or miss
-          const _cacheStatus = response.headers.get('X-Cache-Status')
-
-          // Update the player's percentiles without affecting the main dataset
-          if (props.player.performancePercentiles) {
-            Object.assign(props.player.performancePercentiles, updatedPercentiles)
-
-            // Also update the detailed player data if it exists
-            if (detailedPlayerData.value && detailedPlayerData.value.performancePercentiles) {
-              Object.assign(detailedPlayerData.value.performancePercentiles, updatedPercentiles)
-            }
-
-            // Clear relevant caches to force recomputation
-            performanceStatsCache.clear()
-            performanceComparisonOptionsCache.clear()
-          }
-        } else {
-          const _errorText = await response.text()
-        }
-      } catch (_error) {}
-    }
 
     const isGoalkeeper = computed(() => {
       if (!displayPlayer.value || !displayPlayer.value.name) return false
@@ -1404,6 +1372,8 @@ export default defineComponent({
           // Get percentile from the detailed player data
           const percentile = percentilesForGroup?.[statKey] ?? null
           
+
+          
           statsInCategory.push({
             key: statKey,
             name: performanceStatMap[statKey],
@@ -1428,57 +1398,28 @@ export default defineComponent({
       return statsInCategory.sort((a, b) => a.name.localeCompare(b.name))
     }
 
-    const categorizedPerformanceStats = computed(() => {
-      if (!displayPlayer.value?.attributes || !displayPlayer.value.name) {
-        return {}
-      }
 
-      // Use full attributes from detailed player data
-      const playerAttributes = displayPlayer.value.attributes
+
+    const hasAnyPerformanceData = computed(() => {
+      const keys = Object.keys(categorizedPerformanceStats.value)
+      console.log('hasAnyPerformanceData called, keys:', keys, 'length:', keys.length, 'player:', displayPlayer.value?.name, 'uid:', displayPlayer.value?.uid || displayPlayer.value?.UID)
       
-      // Get percentiles from the detailed player data
-      const percentilesForGroup = displayPlayer.value.performancePercentiles?.[selectedComparisonGroup.value]
-
-      const cacheKey = `${getCacheKey(displayPlayer.value, 'optimized')}-${selectedComparisonGroup.value}-${divisionFilter.value}`
-
-      // Return cached result if available
-      if (performanceStatsCache.has(cacheKey)) {
-        const cached = performanceStatsCache.get(cacheKey)
-        // Move to end for LRU behavior
-        performanceStatsCache.delete(cacheKey)
-        performanceStatsCache.set(cacheKey, cached)
-        return cached
+      // Additional debugging to understand why keys might be empty
+      if (keys.length === 0) {
+        console.log('No performance data keys found. Debug info:', {
+          displayPlayer: !!displayPlayer.value,
+          playerName: displayPlayer.value?.name,
+          playerUID: displayPlayer.value?.uid || displayPlayer.value?.UID,
+          hasAttributes: !!displayPlayer.value?.attributes,
+          hasPercentiles: !!displayPlayer.value?.performancePercentiles,
+          selectedGroup: selectedComparisonGroup.value,
+          percentilesForGroup: displayPlayer.value?.performancePercentiles?.[selectedComparisonGroup.value] ? Object.keys(displayPlayer.value.performancePercentiles[selectedComparisonGroup.value]).slice(0, 3) : [],
+          categorizedPerformanceStats: categorizedPerformanceStats.value
+        })
       }
-
-      const result = {}
-      const categoryOrder = getCategoryOrder.value
-
-      for (let i = 0; i < categoryOrder.length; i++) {
-        const categoryName = categoryOrder[i]
-        const categoryStats = buildStatsForCategory(
-          categoryName,
-          percentilesForGroup, // Pass percentiles from detailed player data
-          playerAttributes
-        )
-
-        if (categoryStats.length > 0) {
-          result[categoryName] = categoryStats
-        }
-      }
-
-      // Implement LRU cache eviction
-      if (performanceStatsCache.size >= maxCacheSize) {
-        const firstKey = performanceStatsCache.keys().next().value
-        performanceStatsCache.delete(firstKey)
-      }
-
-      performanceStatsCache.set(cacheKey, result)
-      return result
+      
+      return keys.length > 0
     })
-
-    const hasAnyPerformanceData = computed(
-      () => Object.keys(categorizedPerformanceStats.value).length > 0
-    )
 
     const getUnifiedRatingClass = (value, maxScale) => {
       const numValue = Number.parseInt(value, 10)
@@ -1632,10 +1573,241 @@ export default defineComponent({
       return displayValue
     }
 
-    // Add reactive data for detailed player stats
-    const detailedPlayerData = ref(null)
-    const isLoadingDetailedData = ref(false)
-    const detailedDataError = ref(null)
+    // Force recomputation when player changes
+    watch(
+      () => props.player,
+      _newPlayer => {
+        console.log('Player changed, forcing recomputation')
+        percentileUpdateCounter.value++
+        percentileDataTrigger.value++
+        forceRecompute.value++
+        console.log('forceRecompute value after increment:', forceRecompute.value)
+      },
+      { immediate: true }
+    )
+
+
+
+    // Division filter change handler - moved after reactive variables are declared
+    const onDivisionFilterChange = async () => {
+      if (!props.datasetId || !props.player) return
+
+      try {
+        // Update percentiles for the current player with new division filter
+        const playerUID = props.player.uid || props.player.UID
+        if (playerUID) {
+          const updatedPercentiles = await fetchPlayerPercentiles(
+            playerUID,
+            divisionFilter.value,
+            selectedComparisonGroup.value
+          )
+          
+          if (updatedPercentiles) {
+            // Update both the props player and detailed player data
+            if (props.player.performancePercentiles) {
+              Object.assign(props.player.performancePercentiles, updatedPercentiles)
+            }
+            if (detailedPlayerData.value && detailedPlayerData.value.performancePercentiles) {
+              Object.assign(detailedPlayerData.value.performancePercentiles, updatedPercentiles)
+              // Force reactivity by incrementing the counter
+              percentileUpdateCounter.value++
+            }
+            performanceStatsCache.clear()
+            performanceComparisonOptionsCache.clear()
+          }
+        }
+      } catch (error) {
+        logger.error('Failed to update percentiles on division filter change', { error: error.message })
+      }
+    }
+
+    // Categorized performance stats computed property - moved after reactive variables are declared
+    const categorizedPerformanceStats = computed(() => {
+      console.log('categorizedPerformanceStats computed property called, updateCounter:', percentileUpdateCounter.value, 'player:', displayPlayer.value?.name, 'uid:', displayPlayer.value?.uid || displayPlayer.value?.UID, 'detailedPlayerData:', !!detailedPlayerData.value, 'props.player:', !!props.player, 'forceRecompute:', forceRecompute.value)
+      
+      // Force reactivity by accessing the detailed player data and the update counter
+      const player = displayPlayer.value
+      const playerName = player?.name
+      const playerUID = player?.uid || player?.UID
+      const playerAttributes = player?.attributes
+      const performancePercentiles = player?.performancePercentiles
+      const updateCounter = percentileUpdateCounter.value // Force dependency on percentile updates
+      const dataTrigger = percentileDataTrigger.value // Force dependency on data changes
+      const recomputeTrigger = forceRecompute.value // Force dependency on template re-render
+      
+      // Force dependency on forceRecompute to ensure re-evaluation
+      const forceRecomputeValue = forceRecompute.value
+      
+      // Force reactivity by accessing the actual percentile data structure
+      const percentilesHash = performancePercentiles ? JSON.stringify(Object.keys(performancePercentiles).sort()) : ''
+      console.log('Percentiles hash:', percentilesHash, 'Player name:', playerName)
+      
+      // Force reactivity by accessing the actual percentile values
+      const percentileValues = performancePercentiles ? Object.values(performancePercentiles).slice(0, 3) : []
+      console.log('Sample percentile values:', percentileValues)
+      
+      // Force dependency on performance percentiles by accessing specific values
+      const percentilesKeys = performancePercentiles ? Object.keys(performancePercentiles) : []
+      const hasPercentiles = percentilesKeys.length > 0
+      
+      // Force reactivity by accessing the specific percentile data for the selected group
+      const selectedGroupData = performancePercentiles?.[selectedComparisonGroup.value]
+      const selectedGroupKeys = selectedGroupData ? Object.keys(selectedGroupData) : []
+      console.log('Selected group data keys:', selectedGroupKeys)
+      
+      if (!playerAttributes || !playerName || !playerUID) {
+        console.log('Missing required player data:', { playerName, playerUID, hasAttributes: !!playerAttributes })
+        return {}
+      }
+
+      // Use full attributes from detailed player data
+      
+      // Get percentiles from the detailed player data
+      const percentilesForGroup = performancePercentiles?.[selectedComparisonGroup.value]
+      
+      // Force reactivity by accessing the percentile data structure
+      const availableGroups = performancePercentiles ? Object.keys(performancePercentiles) : []
+      
+      // Debug logging
+      console.log('categorizedPerformanceStats debug:', {
+        player_name: playerName,
+        player_uid: playerUID,
+        has_display_player: !!player,
+        has_attributes: !!playerAttributes,
+        has_percentiles: !!performancePercentiles,
+        selected_group: selectedComparisonGroup.value,
+        available_groups: availableGroups,
+        percentiles_for_group: percentilesForGroup ? Object.keys(percentilesForGroup).slice(0, 3) : [],
+        percentiles_for_group_count: percentilesForGroup ? Object.keys(percentilesForGroup).length : 0
+      })
+      
+      // Check if we have percentile data for the selected group
+      if (!percentilesForGroup || Object.keys(percentilesForGroup).length === 0) {
+        console.log('No percentile data for group:', selectedComparisonGroup.value, 'Available groups:', availableGroups)
+        return {}
+      }
+      
+      // Force reactivity by accessing the specific percentile values
+      const percentileKeys = Object.keys(percentilesForGroup)
+      if (percentileKeys.length === 0) {
+        return {}
+      }
+      
+      // Access a few percentile values to ensure Vue tracks the dependency
+      const samplePercentiles = percentileKeys.slice(0, 3).map(key => percentilesForGroup[key])
+      if (samplePercentiles.some(p => p === undefined || p === null)) {
+        return {}
+      }
+      
+      // Force reactivity by accessing the actual percentile values
+      // This ensures Vue tracks changes to the specific percentile data
+      const sampleValues = samplePercentiles.map(p => p?.toString() || '0')
+      console.log('Sample percentile values:', sampleValues)
+
+      // Create a more specific cache key that includes player UID to ensure cache invalidation
+      const cacheKey = `${playerUID}-${selectedComparisonGroup.value}-${divisionFilter.value}-${updateCounter}-${dataTrigger}-${recomputeTrigger}-${percentilesHash}-${selectedGroupKeys.length}`
+
+      console.log('Cache key:', cacheKey, 'Cache size:', performanceStatsCache.size)
+
+      // Return cached result if available
+      if (performanceStatsCache.has(cacheKey)) {
+        const cached = performanceStatsCache.get(cacheKey)
+        console.log('Returning cached result for key:', cacheKey)
+        // Move to end for LRU behavior
+        performanceStatsCache.delete(cacheKey)
+        performanceStatsCache.set(cacheKey, cached)
+        return cached
+      }
+
+      console.log('No cache hit, computing new result for key:', cacheKey)
+
+      const result = {}
+      const categoryOrder = getCategoryOrder.value
+
+      for (let i = 0; i < categoryOrder.length; i++) {
+        const categoryName = categoryOrder[i]
+        const categoryStats = buildStatsForCategory(
+          categoryName,
+          percentilesForGroup, // Pass percentiles from detailed player data
+          playerAttributes
+        )
+
+        if (categoryStats.length > 0) {
+          result[categoryName] = categoryStats
+        }
+      }
+
+      // Implement LRU cache eviction
+      if (performanceStatsCache.size >= maxCacheSize) {
+        const firstKey = performanceStatsCache.keys().next().value
+        performanceStatsCache.delete(firstKey)
+      }
+
+      performanceStatsCache.set(cacheKey, result)
+      console.log('Final result for categorizedPerformanceStats:', Object.keys(result), 'Result keys:', Object.keys(result))
+      return result
+    })
+
+          // Function to fetch percentiles for a specific player using the new API
+      const fetchPlayerPercentiles = async (playerUID, compareDivision = 'all', comparePosition = 'Global') => {
+        if (!props.datasetId || !playerUID) return null
+
+        try {
+          const requestPayload = {
+            playerUID: playerUID.toString(),
+            compareDivision: compareDivision,
+            comparePosition: comparePosition
+          }
+          
+          console.log('Fetching percentiles for player:', playerUID, 'with payload:', requestPayload)
+
+          const url = `/api/player-percentiles/${props.datasetId}`
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestPayload)
+          })
+          
+          console.log('Response status:', response.status, response.statusText)
+
+          if (response.ok) {
+            const percentiles = await response.json()
+            
+            // Validate the response
+            if (!percentiles || typeof percentiles !== 'object') {
+              throw new Error('Invalid percentile response format')
+            }
+            
+            logger.info('Successfully fetched percentiles', {
+              player_uid: playerUID,
+              compare_division: compareDivision,
+              compare_position: comparePosition,
+              percentile_groups: Object.keys(percentiles).length
+            })
+            
+            return percentiles
+          } else {
+            // Log the error response
+            const errorText = await response.text()
+            logger.error('Percentile fetch failed', {
+              status: response.status,
+              statusText: response.statusText,
+              error_text: errorText
+            })
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+          }
+        } catch (error) {
+          logger.error('Failed to fetch percentiles', { 
+            error: error?.message || 'Unknown error',
+            player_uid: playerUID,
+            stack: error?.stack || 'No stack trace',
+            error_type: error?.constructor?.name || 'Unknown'
+          })
+          return null
+        }
+      }
 
     // Function to fetch detailed player data
     const fetchDetailedPlayerData = async () => {
@@ -1655,6 +1827,55 @@ export default defineComponent({
             player_name: result.data.player.name,
             attributes_count: Object.keys(result.data.player.attributes || {}).length
           })
+          
+          // Log percentile data status
+          if (result.data.player.performancePercentiles) {
+            logger.info('Player has percentile data', {
+              percentile_groups: Object.keys(result.data.player.performancePercentiles).length,
+              sample_groups: Object.keys(result.data.player.performancePercentiles).slice(0, 3)
+            })
+          } else {
+            logger.warn('Player missing percentile data', {
+              player_name: result.data.player.name
+            })
+          }
+          
+          // Fetch percentiles for the player
+          logger.info('Fetching percentiles for player', {
+            player_name: result.data.player.name,
+            player_uid: result.data.player.uid
+          })
+          
+          // Fetch percentiles with current filter settings
+          const playerUID = result.data.player.uid || result.data.player.UID
+          const percentiles = await fetchPlayerPercentiles(
+            playerUID,
+            divisionFilter.value,
+            selectedComparisonGroup.value
+          )
+          
+          // Update the detailed player data with percentiles
+          if (percentiles && detailedPlayerData.value) {
+            if (!detailedPlayerData.value.performancePercentiles) {
+              detailedPlayerData.value.performancePercentiles = {}
+            }
+            Object.assign(detailedPlayerData.value.performancePercentiles, percentiles)
+            
+            // Force reactivity by incrementing the counters
+            percentileUpdateCounter.value++
+            percentileDataTrigger.value++
+            forceRecompute.value++
+            console.log('Updated percentiles, counters now:', percentileUpdateCounter.value, percentileDataTrigger.value, forceRecompute.value)
+            
+            // Use nextTick to ensure Vue detects the change without causing recursive updates
+            nextTick(() => {
+              console.log('Percentiles updated, counters now:', percentileUpdateCounter.value, percentileDataTrigger.value)
+            })
+          }
+          
+          // Clear caches to force recomputation
+          performanceStatsCache.clear()
+          performanceComparisonOptionsCache.clear()
         } else {
           throw new Error('Invalid response format')
         }
@@ -1673,26 +1894,47 @@ export default defineComponent({
         detailedPlayerData.value = null
         detailedDataError.value = null
         
-        // Fetch detailed data if we don't have full attributes
-        if (!newPlayer.attributes || Object.keys(newPlayer.attributes).length < 10) {
-          fetchDetailedPlayerData()
-        } else {
-          // Use existing data if it's already complete
-          detailedPlayerData.value = newPlayer
-        }
+        // Always fetch detailed data to ensure we have percentiles
+        fetchDetailedPlayerData()
       }
     }, { immediate: true })
 
-    // Computed property to get the player data to display (detailed or basic)
-    const displayPlayer = computed(() => {
-      if (detailedPlayerData.value && detailedPlayerData.value.name) {
-        return detailedPlayerData.value
+    // Force recomputation when displayPlayer changes
+    watch(
+      () => displayPlayer.value,
+      (newPlayer, oldPlayer) => {
+        console.log('displayPlayer changed, forcing recomputation', 'from:', oldPlayer?.name, 'to:', newPlayer?.name)
+        percentileUpdateCounter.value++
+        percentileDataTrigger.value++
+        forceRecompute.value++
+        console.log('forceRecompute value after displayPlayer change:', forceRecompute.value)
       }
-      if (props.player && props.player.name) {
-        return props.player
+    )
+
+    // Force recomputation when forceRecompute changes
+    watch(
+      () => forceRecompute.value,
+      (newValue, oldValue) => {
+        console.log('forceRecompute changed, forcing categorizedPerformanceStats recomputation', 'from:', oldValue, 'to:', newValue)
       }
-      return null
-    })
+    )
+
+    // Watch for changes in categorizedPerformanceStats
+    watch(
+      () => categorizedPerformanceStats.value,
+      (newStats, oldStats) => {
+        console.log('categorizedPerformanceStats changed:', 'from:', oldStats ? Object.keys(oldStats) : 'undefined', 'to:', newStats ? Object.keys(newStats) : 'undefined')
+      },
+      { deep: true }
+    )
+
+    // Watch for changes in hasAnyPerformanceData
+    watch(
+      () => hasAnyPerformanceData.value,
+      (newValue, oldValue) => {
+        console.log('hasAnyPerformanceData changed:', 'from:', oldValue, 'to:', newValue)
+      }
+    )
 
     // Optimized player watcher with cache cleanup - moved after displayPlayer definition
     watch(
@@ -1744,6 +1986,48 @@ export default defineComponent({
       () => {
         // Clear performance stats cache when division filter changes
         performanceStatsCache.clear()
+      }
+    )
+
+    // Watch for detailed player data changes to clear performance stats cache
+    watch(
+      () => detailedPlayerData.value,
+      () => {
+        // Clear performance stats cache when detailed player data changes
+        performanceStatsCache.clear()
+      }
+    )
+    
+    // Watch for performance percentiles changes to increment counter
+    watch(
+      () => detailedPlayerData.value?.performancePercentiles,
+      (newPercentiles) => {
+        if (newPercentiles) {
+          console.log('Performance percentiles changed, incrementing counters')
+          // Force reactivity by incrementing the counters
+          percentileUpdateCounter.value++
+          percentileDataTrigger.value++
+          forceRecompute.value++
+        }
+      },
+      { deep: true }
+    )
+
+    // Watch for detailed player data changes to clear performance stats cache
+    watch(
+      () => detailedPlayerData.value,
+      (newData, oldData) => {
+        // Clear performance stats cache when detailed player data changes
+        performanceStatsCache.clear()
+        
+        // Reset loading state when detailed player data changes
+        if (newData !== oldData) {
+          console.log('Detailed player data changed, resetting loading state')
+          // Force recomputation to ensure loading state updates
+          percentileUpdateCounter.value++
+          percentileDataTrigger.value++
+          forceRecompute.value++
+        }
       }
     )
 
@@ -1813,9 +2097,7 @@ export default defineComponent({
 
     const performanceComparisonOptions = computed(() => {
       if (!displayPlayer.value?.performancePercentiles) {
-        return displayPlayer.value?.performancePercentiles?.Global
-          ? [{ label: 'Overall Dataset', value: 'Global' }]
-          : []
+        return []
       }
 
       const player = displayPlayer.value
@@ -2008,7 +2290,8 @@ export default defineComponent({
       detailedPlayerData,
       isLoadingDetailedData,
       detailedDataError,
-      displayPlayer
+      displayPlayer,
+      forceRecompute
     }
   }
 })

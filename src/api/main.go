@@ -214,6 +214,9 @@ func main() {
 	// API endpoint for updating player percentiles with division filtering
 	http.Handle("/api/percentiles/", wrapHandler(http.HandlerFunc(percentilesHandler), "percentiles"))
 
+	// API endpoint for player percentiles by UID
+	http.Handle("/api/player-percentiles/", wrapHandler(http.HandlerFunc(playerPercentilesHandler), "player-percentiles"))
+
 	// API endpoint for checking percentile status
 	http.Handle("/api/percentiles-status/", wrapHandler(http.HandlerFunc(percentilesStatusHandler), "percentiles-status"))
 
@@ -270,6 +273,7 @@ func main() {
 	mux.Handle("/api/leagues/", wrapHandler(http.HandlerFunc(leaguesHandler), "leagues"))
 	mux.Handle("/api/teams/", wrapHandler(http.HandlerFunc(teamsHandler), "teams"))
 	mux.Handle("/api/percentiles/", wrapHandler(http.HandlerFunc(percentilesHandler), "percentiles"))
+	mux.Handle("/api/player-percentiles/", wrapHandler(http.HandlerFunc(playerPercentilesHandler), "player-percentiles"))
 	mux.Handle("/api/percentiles-status/", wrapHandler(http.HandlerFunc(percentilesStatusHandler), "percentiles-status"))
 	mux.Handle("/api/search/", wrapHandler(http.HandlerFunc(searchHandler), "search"))
 	mux.Handle("/api/config", wrapHandler(http.HandlerFunc(cachedConfigHandler), "config"))

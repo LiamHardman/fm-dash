@@ -263,6 +263,10 @@ func WriteResponse(w http.ResponseWriter, r *http.Request, data interface{}) err
 	// Debug logging
 	log.Printf("WriteResponse: serializer type = %T, content type = %s", serializer, serializer.ContentType())
 
+	// Acquire read lock for concurrent map access protection during serialization
+	percentileCalculationMutex.RLock()
+	defer percentileCalculationMutex.RUnlock()
+
 	responseData, err := serializer.Serialize(data)
 	if err != nil {
 		// Fallback to JSON on serialization error

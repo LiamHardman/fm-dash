@@ -1,4 +1,4 @@
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
 /**
  * Composable for handling percentile loading states and retry logic
@@ -17,44 +17,129 @@ export function usePercentileRetry(player, datasetId, selectedComparisonGroup) {
   // Retry timeout reference
   let retryTimeout = null
 
+  // Stop retry process - define this before resetState
+  const stopPercentileRetry = () => {
+    if (retryTimeout) {
+      clearTimeout(retryTimeout)
+      retryTimeout = null
+    }
+  }
+
+  // Reset state when player changes
+  const resetState = () => {
+    isLoadingPercentiles.value = false
+    percentilesRetryCount.value = 0
+    stopPercentileRetry()
+  }
+
+  // Watch for player changes and reset state
+  watch(
+    () => player?.value,
+    (newPlayer, oldPlayer) => {
+      // Reset state when player changes
+      if (newPlayer !== oldPlayer) {
+        console.log('Player changed in usePercentileRetry, resetting state')
+        resetState()
+      }
+    },
+    { immediate: true }
+  )
+
+  // Watch for player UID changes specifically to ensure proper reset
+  watch(
+    () => player?.value?.uid || player?.value?.UID,
+    (newUID, oldUID) => {
+      // Reset state when player UID changes
+      if (newUID !== oldUID) {
+        console.log('Player UID changed in usePercentileRetry, resetting state', { newUID, oldUID })
+        resetState()
+      }
+    },
+    { immediate: true }
+  )
+
   // Check if percentiles are available and valid
   const hasValidPercentiles = computed(() => {
-    if (!player?.value?.performancePercentiles) return false
+    if (!player?.value?.performancePercentiles) {
+      console.log('hasValidPercentiles: No performancePercentiles', { playerName: player?.value?.name })
+      return false
+    }
 
     const percentiles =
       player.value.performancePercentiles[selectedComparisonGroup?.value || 'Global']
-    if (!percentiles) return false
+    if (!percentiles) {
+      console.log('hasValidPercentiles: No percentiles for group', { 
+        selectedGroup: selectedComparisonGroup?.value || 'Global',
+        availableGroups: Object.keys(player.value.performancePercentiles),
+        playerName: player?.value?.name
+      })
+      return false
+    }
 
     // Check if there are any non-negative percentile values (actual data)
-    return Object.values(percentiles).some(
+    const validValues = Object.values(percentiles).filter(
       value => value !== null && value !== undefined && value >= 0
     )
+    const hasValid = validValues.length > 0
+    console.log('hasValidPercentiles:', hasValid, { 
+      totalValues: Object.values(percentiles).length,
+      validValues: validValues.length,
+      sampleValues: validValues.slice(0, 3),
+      playerName: player?.value?.name
+    })
+    return hasValid
   })
 
   // Check if percentiles appear to be empty/not calculated yet
   const percentilesNeedRetry = computed(() => {
-    if (!player?.value?.performancePercentiles) return true
+    if (!player?.value?.performancePercentiles) {
+      console.log('percentilesNeedRetry: No performancePercentiles', { playerName: player?.value?.name })
+      return true
+    }
 
     const percentiles =
       player.value.performancePercentiles[selectedComparisonGroup?.value || 'Global']
-    if (!percentiles) return true
+    if (!percentiles) {
+      console.log('percentilesNeedRetry: No percentiles for group', { 
+        selectedGroup: selectedComparisonGroup?.value || 'Global',
+        availableGroups: Object.keys(player.value.performancePercentiles),
+        playerName: player?.value?.name
+      })
+      return true
+    }
 
     // If all percentiles are -1, 0, null, or undefined, they likely aren't calculated yet
     const values = Object.values(percentiles)
-    if (values.length === 0) return true
+    if (values.length === 0) {
+      console.log('percentilesNeedRetry: No percentile values', { playerName: player?.value?.name })
+      return true
+    }
 
     const validValues = values.filter(value => value !== null && value !== undefined && value >= 0)
 
     // If less than 30% of percentiles are valid, consider retry needed
-    return validValues.length < values.length * 0.3
+    const needsRetry = validValues.length < values.length * 0.3
+    console.log('percentilesNeedRetry:', needsRetry, { 
+      totalValues: values.length,
+      validValues: validValues.length,
+      threshold: values.length * 0.3,
+      playerName: player?.value?.name
+    })
+    return needsRetry
   })
 
   // Show loading state if percentiles need retry or are currently being retried
   const showLoadingState = computed(() => {
-    return (
-      isLoadingPercentiles.value ||
+    const shouldShow = isLoadingPercentiles.value ||
       (percentilesNeedRetry.value && percentilesRetryCount.value < maxRetries)
-    )
+    console.log('showLoadingState:', shouldShow, { 
+      isLoading: isLoadingPercentiles.value,
+      needsRetry: percentilesNeedRetry.value,
+      retryCount: percentilesRetryCount.value,
+      maxRetries,
+      playerName: player?.value?.name
+    })
+    return shouldShow
   })
 
   // Retry percentile calculation
@@ -67,16 +152,15 @@ export function usePercentileRetry(player, datasetId, selectedComparisonGroup) {
 
     try {
       const requestPayload = {
-        playerName: player.value.name,
-        divisionFilter: 'all', // Default to global percentiles
-        targetDivision: null
+        playerUID: player.value.uid?.toString() || player.value.UID?.toString(),
+        compareDivision: 'all', // Default to global percentiles
+        comparePosition: selectedComparisonGroup?.value || 'Global'
       }
 
-      const response = await fetch(`/api/percentiles/${datasetId.value}`, {
+      const response = await fetch(`/api/player-percentiles/${datasetId.value}`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/x-protobuf'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(requestPayload)
       })
@@ -119,14 +203,6 @@ export function usePercentileRetry(player, datasetId, selectedComparisonGroup) {
     }
   }
 
-  // Stop retry process
-  const stopPercentileRetry = () => {
-    if (retryTimeout) {
-      clearTimeout(retryTimeout)
-      retryTimeout = null
-    }
-  }
-
   // Manual retry function for user-triggered retries
   const manualRetry = async () => {
     stopPercentileRetry() // Stop any automatic retries
@@ -162,6 +238,7 @@ export function usePercentileRetry(player, datasetId, selectedComparisonGroup) {
     retryPercentiles,
     manualRetry,
     startPercentileRetry,
-    stopPercentileRetry
+    stopPercentileRetry,
+    resetState
   }
 }
