@@ -705,7 +705,7 @@
                                         </q-card>
                                     </div>
                                     
-                                    <div class="col-12" v-if="player.roleSpecificOveralls && player.roleSpecificOveralls.length > 0">
+                                    <div class="col-12" v-if="displayPlayer && displayPlayer.roleSpecificOveralls && displayPlayer.roleSpecificOveralls.length > 0">
                                         <q-card flat bordered class="attribute-card modern-attribute-card role-ratings-card">
                                             <q-card-section class="attribute-card-header">
                                                 <div class="attribute-section-title">
@@ -720,7 +720,7 @@
                                                         v-for="roleOverall in sortedRoleSpecificOveralls"
                                                         :key="`role-${roleOverall.roleName}-${roleOverall.score}`"
                                                         :class="{
-                                                            'best-role-highlight': roleOverall.score === player.Overall,
+                                                            'best-role-highlight': roleOverall.score === displayPlayer.Overall,
                                                         }"
                                                         class="attribute-list-item modern-attribute-item role-item"
                                                     >
