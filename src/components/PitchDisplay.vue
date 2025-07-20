@@ -33,7 +33,9 @@
                 class="player-slot"
                 :style="getPlayerSlotStyle(row.positions.length)"
                 @click="
-                    players[pos.id] && $emit('player-click', players[pos.id])
+                    players[pos.id] && !disablePlayerClicks
+                        ? $emit('player-click', players[pos.id])
+                        : $emit('position-click', { slotId: pos.id, slotRole: pos.role })
                 "
                 :title="getPlayerSlotTitle(players[pos.id], pos.role)"
                 :data-slot-id="pos.id"
@@ -171,9 +173,13 @@ export default {
       // OR bestTeamPlayersForPitch from TeamViewPage (if using squad depth)
       type: Object,
       default: () => ({})
+    },
+    disablePlayerClicks: {
+      type: Boolean,
+      default: false
     }
   },
-  emits: ['player-click', 'player-moved'],
+  emits: ['player-click', 'player-moved', 'position-click'],
   setup(props, { emit }) {
     const quasar = useQuasar()
     const isDragging = ref(false)
