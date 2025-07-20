@@ -2191,27 +2191,75 @@ export default defineComponent({
         faceImageLoadError.value = false
         shouldShowTeamLogo.value = false
 
-        if (!displayPlayer.value?.performancePercentiles) {
-          selectedComparisonGroup.value = 'Global'
-          return
-        }
-
-        const newOptions = performanceComparisonOptions.value
-        const highestRoleGroup = getPositionGroupForHighestRole()
-
-        // Priority-based selection logic
-        if (highestRoleGroup && newOptions.some(opt => opt.value === highestRoleGroup)) {
-          selectedComparisonGroup.value = highestRoleGroup
-        } else if (newOptions.some(opt => opt.value === 'Global')) {
-          selectedComparisonGroup.value = 'Global'
-        } else if (newOptions.length > 0) {
-          selectedComparisonGroup.value = newOptions[0].value
-        } else {
-          selectedComparisonGroup.value = 'Global'
-        }
+        // Reset to Global initially when player changes
+        selectedComparisonGroup.value = 'Global'
       },
       { immediate: true }
     )
+
+    // Watch for detailed player data changes to update comparison group
+    watch(
+      () => detailedPlayerData.value,
+      (newData, oldData) => {
+        // Clear performance stats cache when detailed player data changes
+        performanceStatsCache.clear()
+        
+        // Reset loading state when detailed player data changes
+        if (newData !== oldData) {
+          // Force recomputation to ensure loading state updates
+          percentileUpdateCounter.value++
+          percentileDataTrigger.value++
+          forceRecompute.value++
+        }
+
+        // Update comparison group when detailed data is available
+        if (newData?.performancePercentiles) {
+          updateComparisonGroupForPlayer(newData)
+        }
+      }
+    )
+
+    // Function to update comparison group for a specific player
+    const updateComparisonGroupForPlayer = (player) => {
+      if (!player?.performancePercentiles) {
+        selectedComparisonGroup.value = 'Global'
+        return
+      }
+
+      const newOptions = performanceComparisonOptions.value
+      const highestRoleGroup = getPositionGroupForHighestRole()
+
+      // Get the player's available positions
+      const playerPositions = deriveShortPositions(player)
+      const playerPositionGroups = derivePositionGroups(player)
+
+      // Priority-based selection logic
+      // 1. Try to use the highest-rated role's position group if available
+      if (highestRoleGroup && newOptions.some(opt => opt.value === highestRoleGroup)) {
+        selectedComparisonGroup.value = highestRoleGroup
+      } 
+      // 2. Try to use the first available position group that the player can play
+      else {
+        const availablePlayerGroup = newOptions.find(opt => 
+          playerPositionGroups.includes(opt.value)
+        )
+        if (availablePlayerGroup) {
+          selectedComparisonGroup.value = availablePlayerGroup.value
+        }
+        // 3. Fall back to Global if available
+        else if (newOptions.some(opt => opt.value === 'Global')) {
+          selectedComparisonGroup.value = 'Global'
+        }
+        // 4. Use first available option
+        else if (newOptions.length > 0) {
+          selectedComparisonGroup.value = newOptions[0].value
+        }
+        // 5. Default to Global
+        else {
+          selectedComparisonGroup.value = 'Global'
+        }
+      }
+    }
 
     // Watch for comparison group changes to clear performance stats cache
     watch(
@@ -2573,7 +2621,8 @@ export default defineComponent({
       isLoadingDetailedData,
       detailedDataError,
       displayPlayer,
-      forceRecompute
+      forceRecompute,
+      updateComparisonGroupForPlayer
     }
   }
 })
