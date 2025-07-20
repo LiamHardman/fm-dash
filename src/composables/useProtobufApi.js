@@ -75,15 +75,15 @@ export function useProtobufApi(initialBaseURL) {
       
       // Log successful requests with format information
       if (response._protobuf) {
-        logger.info(`API request succeeded (${response._protobuf.format})`, {
-          url,
-          messageType,
-          format: response._protobuf.format,
-          processingTime: response._protobuf.processingTime,
-          payloadSize: response._protobuf.payloadSize,
-          fallbackReason: response._protobuf.fallbackReason || null,
-          retryCount: response._protobuf.retryCount || 0
-        })
+        // logger.info(`API request succeeded (${response._protobuf.format})`, {
+        //   url,
+        //   messageType,
+        //   format: response._protobuf.format,
+        //   processingTime: response._protobuf.processingTime,
+        //   payloadSize: response._protobuf.payloadSize,
+        //   fallbackReason: response._protobuf.fallbackReason || null,
+        //   retryCount: response._protobuf.retryCount || 0
+        // })
         
         // Track fallbacks for monitoring
         if (response._protobuf.fallbackReason) {

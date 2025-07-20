@@ -193,17 +193,38 @@ export default {
  * @returns {Promise<Object>} - Detailed player data
  */
 export async function fetchFullPlayerStats(datasetID, playerUID) {
+  const startTime = performance.now()
   try {
     // Use protobuf-aware API for detailed player stats
     const { get } = useProtobufApi('')
     const url = `/api/fullplayerstats/${datasetID}/${playerUID}`
     
+    logger.info('Starting fetchFullPlayerStats API call', {
+      dataset_id: datasetID,
+      player_uid: playerUID,
+      url: url
+    })
+    
     const response = await get(url, {}, 'api.GenericResponse')
+    
+    const apiTime = performance.now() - startTime
+    logger.info('fetchFullPlayerStats API call completed', {
+      dataset_id: datasetID,
+      player_uid: playerUID,
+      api_time_ms: Math.round(apiTime)
+    })
     
     // Handle protobuf response structure where data is in the data field
     if (response.data) {
       try {
         const parsedData = JSON.parse(response.data)
+        const totalTime = performance.now() - startTime
+        logger.info('fetchFullPlayerStats parsing completed', {
+          dataset_id: datasetID,
+          player_uid: playerUID,
+          total_time_ms: Math.round(totalTime),
+          parse_time_ms: Math.round(totalTime - apiTime)
+        })
         return { data: parsedData, format: 'json' }
       } catch (parseError) {
         logger.error('Error parsing detailed player data from protobuf response:', parseError)
@@ -212,9 +233,21 @@ export async function fetchFullPlayerStats(datasetID, playerUID) {
     }
     
     // Fallback for JSON responses or direct data objects
+    const totalTime = performance.now() - startTime
+    logger.info('fetchFullPlayerStats completed (fallback)', {
+      dataset_id: datasetID,
+      player_uid: playerUID,
+      total_time_ms: Math.round(totalTime)
+    })
     return { data: response, format: 'json' }
   } catch (error) {
-    logger.error('Error fetching full player stats:', error)
+    const errorTime = performance.now() - startTime
+    logger.error('Error fetching full player stats:', {
+      error: error.message,
+      dataset_id: datasetID,
+      player_uid: playerUID,
+      time_ms: Math.round(errorTime)
+    })
     throw error
   }
 }

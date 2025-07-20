@@ -3168,6 +3168,11 @@ func deepCopyPlayers(players []Player) []Player {
 // fullPlayerStatsHandler returns detailed stats for a single player
 func fullPlayerStatsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	startTime := time.Now()
+
+	// Start comprehensive tracing
+	ctx, span := StartSpan(ctx, "api.fullplayerstats.get")
+	defer span.End()
 
 	// Extract player UID and dataset ID from URL
 	pathParts := strings.Split(r.URL.Path, "/")
@@ -3186,8 +3191,16 @@ func fullPlayerStatsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	SetSpanAttributes(ctx,
+		attribute.String("dataset.id", datasetID),
+		attribute.Int64("player.uid", playerUID),
+	)
+
 	// Get dataset
+	ctx, dataSpan := StartSpan(ctx, "storage.get_dataset")
 	players, currencySymbol, found := GetPlayerData(datasetID)
+	dataSpan.End()
+
 	if !found {
 		logError(ctx, "Failed to get dataset for full player stats",
 			"dataset_id", datasetID,
@@ -3210,33 +3223,39 @@ func fullPlayerStatsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Ensure the player has percentile data
+	// OPTIMIZATION: Only calculate percentiles for this specific player if missing
 	if targetPlayer.PerformancePercentiles == nil || len(targetPlayer.PerformancePercentiles) == 0 {
-		logInfo(ctx, "Player missing percentiles, calculating them",
+		logInfo(ctx, "Player missing percentiles, calculating for this player only",
 			"dataset_id", datasetID,
 			"player_uid", playerUID,
 			"player_name", targetPlayer.Name)
 
-		// Create a copy of the dataset and calculate percentiles
-		playersCopy := make([]Player, len(players))
-		copy(playersCopy, players)
+		// OPTIMIZATION: Create a minimal dataset with just this player and similar players
+		// This avoids calculating percentiles for the entire dataset
+		ctx, percentileSpan := StartSpan(ctx, "percentiles.calculate_single_player")
 
-		// Calculate percentiles for the entire dataset
-		CalculatePlayerPerformancePercentiles(playersCopy)
+		// Get players in the same position/role for comparison
+		similarPlayers := getSimilarPlayersForComparison(players, targetPlayer)
+
+		// Calculate percentiles only for the comparison group
+		CalculatePlayerPerformancePercentiles(similarPlayers)
 
 		// Find the updated player with percentiles
-		for _, player := range playersCopy {
+		for _, player := range similarPlayers {
 			if player.UID == playerUID {
 				targetPlayer = &player
 				break
 			}
 		}
 
+		percentileSpan.End()
+
 		logInfo(ctx, "Successfully calculated percentiles for player",
 			"dataset_id", datasetID,
 			"player_uid", playerUID,
 			"player_name", targetPlayer.Name,
-			"percentile_groups", len(targetPlayer.PerformancePercentiles))
+			"percentile_groups", len(targetPlayer.PerformancePercentiles),
+			"comparison_players", len(similarPlayers))
 	}
 
 	// Create response with full player data
@@ -3275,7 +3294,64 @@ func fullPlayerStatsHandler(w http.ResponseWriter, r *http.Request) {
 	logInfo(ctx, "Successfully returned full player stats",
 		"dataset_id", datasetID,
 		"player_uid", playerUID,
-		"player_name", targetPlayer.Name)
+		"player_name", targetPlayer.Name,
+		"response_time_ms", time.Since(startTime).Milliseconds())
+}
+
+// getSimilarPlayersForComparison returns a subset of players for percentile calculation
+// This avoids calculating percentiles for the entire dataset when only one player is needed
+func getSimilarPlayersForComparison(allPlayers []Player, targetPlayer *Player) []Player {
+	// Start with the target player
+	similarPlayers := []Player{*targetPlayer}
+
+	// Add players in the same position for comparison
+	// This provides enough data for meaningful percentiles without processing the entire dataset
+	position := targetPlayer.Position
+
+	// Collect up to 100 similar players for comparison
+	maxSimilarPlayers := 100
+	count := 0
+
+	for _, player := range allPlayers {
+		if count >= maxSimilarPlayers {
+			break
+		}
+
+		// Skip the target player (already added)
+		if player.UID == targetPlayer.UID {
+			continue
+		}
+
+		// Add players with similar position
+		if position != "" && player.Position == position {
+			similarPlayers = append(similarPlayers, player)
+			count++
+		}
+	}
+
+	// If we don't have enough similar players, add some random players for broader comparison
+	if len(similarPlayers) < 50 {
+		for _, player := range allPlayers {
+			if len(similarPlayers) >= maxSimilarPlayers {
+				break
+			}
+
+			// Skip if already included
+			alreadyIncluded := false
+			for _, included := range similarPlayers {
+				if included.UID == player.UID {
+					alreadyIncluded = true
+					break
+				}
+			}
+
+			if !alreadyIncluded {
+				similarPlayers = append(similarPlayers, player)
+			}
+		}
+	}
+
+	return similarPlayers
 }
 
 // teamDataHandler returns detailed stats for all players in a team or nation

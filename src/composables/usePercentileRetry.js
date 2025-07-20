@@ -102,6 +102,7 @@ export function usePercentileRetry(player, datasetId, selectedComparisonGroup, d
       return false
     }
 
+    const startTime = performance.now()
     isLoadingPercentiles.value = true
 
     try {
@@ -123,6 +124,13 @@ export function usePercentileRetry(player, datasetId, selectedComparisonGroup, d
         comparePosition: selectedComparisonGroup?.value || 'Global'
       }
 
+      console.log('Starting percentile API call', {
+        dataset_id: datasetId.value,
+        player_uid: requestPayload.playerUID,
+        division: effectiveDivision,
+        position: selectedComparisonGroup?.value || 'Global'
+      })
+
       const response = await fetch(`/api/player-percentiles/${datasetId.value}`, {
         method: 'POST',
         headers: {
@@ -131,8 +139,25 @@ export function usePercentileRetry(player, datasetId, selectedComparisonGroup, d
         body: JSON.stringify(requestPayload)
       })
 
+      const apiTime = performance.now() - startTime
+      console.log('Percentile API call completed', {
+        dataset_id: datasetId.value,
+        player_uid: requestPayload.playerUID,
+        status: response.status,
+        api_time_ms: Math.round(apiTime)
+      })
+
       if (response.ok) {
         const updatedPercentiles = await response.json()
+        const totalTime = performance.now() - startTime
+
+        console.log('Percentiles fetched successfully', {
+          dataset_id: datasetId.value,
+          player_uid: requestPayload.playerUID,
+          total_time_ms: Math.round(totalTime),
+          parse_time_ms: Math.round(totalTime - apiTime),
+          percentile_groups: Object.keys(updatedPercentiles).length
+        })
 
         // Update the player's percentiles
         if (player.value.performancePercentiles) {
@@ -143,9 +168,23 @@ export function usePercentileRetry(player, datasetId, selectedComparisonGroup, d
 
         return true
       } else {
+        const errorTime = performance.now() - startTime
+        console.error('Percentile API call failed', {
+          dataset_id: datasetId.value,
+          player_uid: requestPayload.playerUID,
+          status: response.status,
+          time_ms: Math.round(errorTime)
+        })
         return false
       }
     } catch (error) {
+      const errorTime = performance.now() - startTime
+      console.error('Percentile API call error', {
+        dataset_id: datasetId?.value,
+        player_uid: player?.value?.uid || player?.value?.UID,
+        error: error.message,
+        time_ms: Math.round(errorTime)
+      })
       return false
     } finally {
       isLoadingPercentiles.value = false
