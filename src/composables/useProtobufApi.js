@@ -268,9 +268,10 @@ export function useProtobufApi(initialBaseURL) {
   /**
    * Get configuration with protobuf support
    */
-  const getConfig = async () => {
+  const getConfig = async (clearCache = false) => {
     try {
-      const response = await get('/api/config', {}, 'api.GenericResponse')
+      const params = clearCache ? { clear_cache: 'true' } : {}
+      const response = await get('/api/config', params, 'api.GenericResponse')
       
       // Handle protobuf response structure where config is in the data field
       if (response.data) {

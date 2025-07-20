@@ -297,13 +297,15 @@ export default {
     }))
 
     onMounted(async () => {
-      // Fetch config first
+      // Fetch config first with cache clearing
       try {
-        const config = await playerService.getConfig()
+        const config = await playerService.getConfig(true) // Clear cache to get fresh config
         maxFileSizeBytes.value = config.maxUploadSizeBytes
         maxFileSizeMB.value = config.maxUploadSizeMB
         datasetRetentionDays.value = config.datasetRetentionDays || 30
-      } catch (_error) {}
+      } catch (_error) {
+        console.error('Error fetching config:', _error)
+      }
       // Initialize UI preferences
       uiStore.initNotifications()
     })

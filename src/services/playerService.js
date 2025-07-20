@@ -141,11 +141,11 @@ export default {
     }
   },
 
-  async getConfig() {
+  async getConfig(clearCache = false) {
     try {
       // Use protobuf-aware API for config
       const { getConfig } = useProtobufApi('')
-      return await getConfig()
+      return await getConfig(clearCache)
     } catch (error) {
       logger.error('Error fetching config in playerService:', error)
       return {

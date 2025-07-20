@@ -317,6 +317,10 @@ func main() {
 		ReadHeaderTimeout: 5 * time.Second,  // Time to read request headers
 	}
 
+	// Log upload size limit at startup
+	maxUploadSizeMB := getMaxUploadSize() / (1024 * 1024)
+	slog.Info("Upload size limit configured", "max_upload_size_mb", maxUploadSizeMB)
+
 	slog.Debug("Server starting",
 		"port", port,
 		"url", "http://localhost:"+port,

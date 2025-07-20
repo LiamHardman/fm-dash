@@ -139,6 +139,11 @@ func cachedConfigHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodGet:
+		// Check for cache-busting query parameter
+		if r.URL.Query().Get("clear_cache") == "true" {
+			DeleteAllFormatVariants(baseCacheKey)
+			logInfo(r.Context(), "Config cache cleared via query parameter")
+		}
 		// Try to get from format-specific cache
 		if cached, found := GetFormatAwareCacheItem(baseCacheKey, format); found {
 			if format == FormatTypeJSON {
@@ -184,6 +189,10 @@ func cachedConfigHandler(w http.ResponseWriter, r *http.Request) {
 			"useScaledRatings":     GetUseScaledRatings(),
 			"datasetRetentionDays": int(getRetentionPeriod().Hours() / 24),
 		}
+
+		// Log the actual upload size being returned
+		logInfo(r.Context(), "Config endpoint returning upload size: %dMB (%d bytes)",
+			getMaxUploadSize()/(1024*1024), getMaxUploadSize())
 
 		// Add attribute weights to config response
 		muAttributeWeights.RLock()

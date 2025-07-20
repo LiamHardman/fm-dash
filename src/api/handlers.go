@@ -216,21 +216,25 @@ type Team struct {
 }
 
 // getMaxUploadSize reads the MAX_UPLOAD_SIZE environment variable and returns the size in bytes.
-// If not set or invalid, defaults to 15MB.
+// If not set or invalid, defaults to 20MB.
 func getMaxUploadSize() int64 {
 	envValue := os.Getenv("MAX_UPLOAD_SIZE")
+
 	if envValue == "" {
-		return 20 * 1024 * 1024 // Default 15MB
+		logInfo(context.Background(), "MAX_UPLOAD_SIZE not set, using default 20MB")
+		return 20 * 1024 * 1024 // Default 20MB
 	}
 
 	// Parse as integer (expecting value in MB)
 	sizeInMB, err := strconv.Atoi(envValue)
 	if err != nil || sizeInMB <= 0 {
 		logWarn(context.Background(), "Invalid MAX_UPLOAD_SIZE environment variable '%s', defaulting to 20MB", envValue)
-		return 20 * 1024 * 1024 // Default 15MB
+		return 20 * 1024 * 1024 // Default 20MB
 	}
 
-	return int64(sizeInMB) * 1024 * 1024
+	result := int64(sizeInMB) * 1024 * 1024
+	logInfo(context.Background(), "MAX_UPLOAD_SIZE parsed successfully: %dMB (%d bytes)", sizeInMB, result)
+	return result
 }
 
 // getFileSizeLimitErrorMessage returns the user-facing error message with the current upload limit
