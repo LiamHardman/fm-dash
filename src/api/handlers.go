@@ -551,8 +551,23 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		"player_count", len(playersList),
 		"detected_currency", finalDatasetCurrencySymbol)
 
-	// Send response immediately - percentiles will be calculated asynchronously
-	response := UploadResponse{DatasetID: datasetID, Message: "File uploaded and parsed successfully.", DetectedCurrencySymbol: finalDatasetCurrencySymbol}
+	// OPTIMIZATION: Process basic player data and extract roles for immediate response
+	ctx, basicProcessingSpan := StartSpan(ctx, "basic_data_processing")
+	processedPlayers := processBasicPlayerData(playersList)
+	roles := extractRolesFromPlayers(processedPlayers)
+	basicProcessingSpan.End()
+
+	// Send enhanced response with processed data
+	response := UploadResponse{
+		DatasetID:              datasetID,
+		Message:                "File uploaded and processed successfully.",
+		DetectedCurrencySymbol: finalDatasetCurrencySymbol,
+		Players:                processedPlayers,
+		Roles:                  roles,
+		PercentilesReady:       false,
+		ProcessingStatus:       "basic_data_ready",
+		PlayerCount:            len(processedPlayers),
+	}
 	w.Header().Set("Content-Type", "application/json")
 	setCORSHeaders(w, r)
 
@@ -4449,4 +4464,79 @@ func escapeCSVField(field string) string {
 		field = "\"" + field + "\""
 	}
 	return field
+}
+
+// extractRolesFromPlayers extracts unique roles from the player data
+func extractRolesFromPlayers(players []Player) []string {
+	roleSet := make(map[string]bool)
+
+	for _, player := range players {
+		// Extract roles from role-specific overalls
+		for _, roleOverall := range player.RoleSpecificOveralls {
+			if roleOverall.RoleName != "" {
+				roleSet[roleOverall.RoleName] = true
+			}
+		}
+
+		// Extract roles from position groups
+		for _, positionGroup := range player.PositionGroups {
+			if positionGroup != "" {
+				roleSet[positionGroup] = true
+			}
+		}
+	}
+
+	// Convert map to slice
+	roles := make([]string, 0, len(roleSet))
+	for role := range roleSet {
+		roles = append(roles, role)
+	}
+
+	// Sort for consistent output
+	sort.Strings(roles)
+	return roles
+}
+
+// processBasicPlayerData performs basic processing on players without heavy calculations
+func processBasicPlayerData(players []Player) []Player {
+	processedPlayers := make([]Player, len(players))
+
+	for i, player := range players {
+		// Copy the player
+		processedPlayers[i] = player
+
+		// Ensure basic fields are properly set
+		if processedPlayers[i].Attributes == nil {
+			processedPlayers[i].Attributes = make(map[string]string)
+		}
+		if processedPlayers[i].NumericAttributes == nil {
+			processedPlayers[i].NumericAttributes = make(map[string]int)
+		}
+		if processedPlayers[i].PerformanceStatsNumeric == nil {
+			processedPlayers[i].PerformanceStatsNumeric = make(map[string]float64)
+		}
+		if processedPlayers[i].PerformancePercentiles == nil {
+			processedPlayers[i].PerformancePercentiles = make(map[string]map[string]float64)
+		}
+		if processedPlayers[i].ShortPositions == nil {
+			processedPlayers[i].ShortPositions = make([]string, 0)
+		}
+		if processedPlayers[i].ParsedPositions == nil {
+			processedPlayers[i].ParsedPositions = make([]string, 0)
+		}
+		if processedPlayers[i].PositionGroups == nil {
+			processedPlayers[i].PositionGroups = make([]string, 0)
+		}
+		if processedPlayers[i].RoleSpecificOveralls == nil {
+			processedPlayers[i].RoleSpecificOveralls = make([]RoleOverallScore, 0)
+		}
+
+		// Ensure numeric fields are properly set
+		if processedPlayers[i].Overall == 0 {
+			processedPlayers[i].Overall = 50 // Default value
+		}
+		processedPlayers[i].OverallLower = processedPlayers[i].Overall
+	}
+
+	return processedPlayers
 }

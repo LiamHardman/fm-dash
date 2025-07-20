@@ -74,9 +74,14 @@ type PlayerParseResult struct {
 
 // UploadResponse is the JSON response sent after a successful file upload and parse.
 type UploadResponse struct {
-	DatasetID              string `json:"datasetId"`
-	Message                string `json:"message"`
-	DetectedCurrencySymbol string `json:"detectedCurrencySymbol,omitempty"`
+	DatasetID              string   `json:"datasetId"`
+	Message                string   `json:"message"`
+	DetectedCurrencySymbol string   `json:"detectedCurrencySymbol,omitempty"`
+	Players                []Player `json:"players,omitempty"` // NEW: Return processed players
+	Roles                  []string `json:"roles,omitempty"`   // NEW: Return available roles
+	PercentilesReady       bool     `json:"percentilesReady"`  // NEW: Indicate if percentiles are ready
+	ProcessingStatus       string   `json:"processingStatus"`  // NEW: Current processing status
+	PlayerCount            int      `json:"playerCount"`       // NEW: Total player count
 }
 
 // PlayerDataWithCurrency is the JSON response for fetching player data, including the currency.

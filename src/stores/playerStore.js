@@ -144,6 +144,10 @@ export const usePlayerStore = defineStore('player', () => {
     const tracker = new PerformanceTracker('Upload Process')
     loading.value = true
     error.value = ''
+    
+    // Clean up old cache entries before upload
+    cleanupOldCache()
+    
     try {
       // Stage 1: Upload file (onProgress handles this)
       tracker.checkpoint('Starting upload')
@@ -156,21 +160,78 @@ export const usePlayerStore = defineStore('player', () => {
       sessionStorage.setItem('detectedCurrencySymbol', detectedCurrencySymbol.value)
       tracker.checkpoint('Session storage updated')
 
-      // Stage 2 & 3: Fetch processed data and available roles in parallel
-      if (onProgress) onProgress(80)
+      // OPTIMIZATION: Use data from enhanced upload response if available
+      if (response.players && response.roles) {
+        // Store data immediately from upload response
+        allPlayers.value = processPlayersFromAPI(response.players)
+        allAvailableRoles.value = response.roles
+        
+        // Cache the processed data for future use (with size limit)
+        const cacheKey = `dataset_${response.datasetId}`
+        
+        try {
+          // For large datasets, use lightweight cache
+          const isLargeDataset = response.players.length > 100
+          const cacheData = isLargeDataset 
+            ? createLightweightCache(response.players, response.roles, response.detectedCurrencySymbol)
+            : {
+                players: response.players,
+                roles: response.roles,
+                currencySymbol: response.detectedCurrencySymbol,
+                timestamp: Date.now()
+              }
+          
+          const cacheString = JSON.stringify(cacheData)
+          // Check if cache would exceed reasonable size (1MB limit)
+          if (cacheString.length < 1024 * 1024) {
+            sessionStorage.setItem(cacheKey, cacheString)
+            console.log('Data cached successfully', {
+              datasetId: response.datasetId,
+              cacheSize: Math.round(cacheString.length / 1024) + 'KB',
+              cacheType: isLargeDataset ? 'lightweight' : 'full',
+              playerCount: response.players.length
+            })
+          } else {
+            console.warn('Cache size too large, skipping cache', {
+              datasetId: response.datasetId,
+              cacheSize: Math.round(cacheString.length / 1024) + 'KB',
+              playerCount: response.players.length
+            })
+          }
+        } catch (error) {
+          console.warn('Failed to cache data, continuing without cache', {
+            datasetId: response.datasetId,
+            error: error.message
+          })
+        }
+        
+        tracker.checkpoint('Data stored from upload response')
+        
+        // Stage 4: Complete (skip redundant API calls)
+        if (onProgress) onProgress(100)
+        tracker.finish()
+        
+        return response
+      } else {
+        // Fallback to original flow for backward compatibility
+        tracker.checkpoint('Using fallback data fetching')
+        
+        // Stage 2 & 3: Fetch processed data and available roles in parallel
+        if (onProgress) onProgress(80)
 
-      // Run both API calls in parallel to reduce total time
-      const [_playerDataResponse] = await Promise.all([
-        fetchPlayersByDatasetId(currentDatasetId.value),
-        fetchAllAvailableRoles() // This can run in parallel since it doesn't depend on player data
-      ])
-      tracker.checkpoint('Data fetching completed')
+        // Run both API calls in parallel to reduce total time
+        const [_playerDataResponse] = await Promise.all([
+          fetchPlayersByDatasetId(currentDatasetId.value),
+          fetchAllAvailableRoles() // This can run in parallel since it doesn't depend on player data
+        ])
+        tracker.checkpoint('Data fetching completed')
 
-      // Stage 4: Complete
-      if (onProgress) onProgress(100)
-      tracker.finish()
+        // Stage 4: Complete
+        if (onProgress) onProgress(100)
+        tracker.finish()
 
-      return response
+        return response
+      }
     } catch (e) {
       tracker.checkpoint('Error occurred')
       if (e.status === 413 && e.message) {
@@ -328,13 +389,71 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   async function loadFromSessionStorage() {
+    // Clean up old cache entries before loading
+    cleanupOldCache()
+    
     const storedDatasetId = sessionStorage.getItem('currentDatasetId')
     const storedCurrencySymbol = sessionStorage.getItem('detectedCurrencySymbol')
+    
     if (storedDatasetId) {
       currentDatasetId.value = storedDatasetId
       if (storedCurrencySymbol) {
         detectedCurrencySymbol.value = storedCurrencySymbol
       }
+      
+      // OPTIMIZATION: Try to load from cache first
+      const cacheKey = `dataset_${storedDatasetId}`
+      const cachedData = sessionStorage.getItem(cacheKey)
+      
+      if (cachedData) {
+        try {
+          const parsed = JSON.parse(cachedData)
+          const cacheAge = Date.now() - parsed.timestamp
+          const maxCacheAge = 30 * 60 * 1000 // 30 minutes
+          
+          if (cacheAge < maxCacheAge && validateCacheIntegrity(parsed, storedDatasetId)) {
+            // Use cached data
+            if (parsed.players) {
+              // Full cache available
+              allPlayers.value = processPlayersFromAPI(parsed.players)
+              allAvailableRoles.value = parsed.roles
+              detectedCurrencySymbol.value = parsed.currencySymbol || storedCurrencySymbol || '£'
+              
+              console.log('Loaded full data from cache', {
+                datasetId: storedDatasetId,
+                playerCount: parsed.players.length,
+                roleCount: parsed.roles.length,
+                cacheAgeMinutes: Math.round(cacheAge / 60000)
+              })
+              
+              return // Skip API calls if cache is valid
+            } else if (parsed.playerCount && parsed.roles) {
+              // Lightweight cache available - still need to fetch full data
+              allAvailableRoles.value = parsed.roles
+              detectedCurrencySymbol.value = parsed.currencySymbol || storedCurrencySymbol || '£'
+              
+              console.log('Lightweight cache found, fetching full data', {
+                datasetId: storedDatasetId,
+                expectedPlayerCount: parsed.playerCount,
+                roleCount: parsed.roles.length,
+                cacheAgeMinutes: Math.round(cacheAge / 60000)
+              })
+              
+              // Still need to fetch full player data, but we have roles
+              try {
+                await fetchPlayersByDatasetId(storedDatasetId)
+                return
+              } catch (_e) {
+                // Error handled in fetch functions
+              }
+            }
+          }
+        } catch (error) {
+          console.warn('Failed to load from cache, falling back to API', error)
+        }
+      }
+      
+      // Fallback to API calls
       try {
         await fetchPlayersByDatasetId(storedDatasetId)
         await fetchAllAvailableRoles()
@@ -343,6 +462,80 @@ export const usePlayerStore = defineStore('player', () => {
       }
     } else {
       resetState()
+    }
+  }
+
+  // Helper function to create a lightweight cache for large datasets
+  function createLightweightCache(players, roles, currencySymbol) {
+    // For large datasets, only cache essential metadata
+    const essentialData = {
+      playerCount: players.length,
+      roles: roles,
+      currencySymbol: currencySymbol,
+      timestamp: Date.now(),
+      // Only cache first few players as sample for validation
+      samplePlayers: players.slice(0, 5).map(p => ({
+        uid: p.uid,
+        name: p.name,
+        position: p.position,
+        overall: p.Overall
+      }))
+    }
+    
+    return essentialData
+  }
+
+  // Helper function to validate cache integrity
+  function validateCacheIntegrity(cachedData, datasetId) {
+    if (!cachedData || !cachedData.playerCount || !cachedData.roles) {
+      return false
+    }
+    
+    // Check if we have sample players for validation
+    if (cachedData.samplePlayers && cachedData.samplePlayers.length > 0) {
+      console.log('Cache validation passed', {
+        datasetId,
+        playerCount: cachedData.playerCount,
+        roleCount: cachedData.roles.length,
+        samplePlayers: cachedData.samplePlayers.length
+      })
+      return true
+    }
+    
+    return false
+  }
+
+  // Helper function to clean up old cache entries
+  function cleanupOldCache() {
+    try {
+      const keys = Object.keys(sessionStorage)
+      const cacheKeys = keys.filter(key => key.startsWith('dataset_'))
+      const now = Date.now()
+      const maxAge = 30 * 60 * 1000 // 30 minutes
+      
+      let cleanedCount = 0
+      for (const key of cacheKeys) {
+        try {
+          const data = sessionStorage.getItem(key)
+          if (data) {
+            const parsed = JSON.parse(data)
+            if (parsed.timestamp && (now - parsed.timestamp) > maxAge) {
+              sessionStorage.removeItem(key)
+              cleanedCount++
+            }
+          }
+        } catch (error) {
+          // Remove invalid cache entries
+          sessionStorage.removeItem(key)
+          cleanedCount++
+        }
+      }
+      
+      if (cleanedCount > 0) {
+        console.log('Cleaned up old cache entries', { cleanedCount })
+      }
+    } catch (error) {
+      console.warn('Failed to cleanup cache', error)
     }
   }
   
