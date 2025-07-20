@@ -406,9 +406,53 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	AddSpanEvent(ctx, "duplicate.check.completed", attribute.Bool("is_duplicate", isDuplicate))
 	duplicateSpan.End()
 
+	// Determine if this is a large file that needs streaming response
+	isLargeFile := actualFileSize > 10*1024*1024       // 10MB threshold
+	estimatedPlayerCount := int(actualFileSize / 2048) // Rough estimation: ~2KB per player row
+
+	if isLargeFile {
+		// For large files, return immediate response and process in background
+		datasetID := uuid.New().String()
+
+		// Store the file hash mapping for duplicate detection
+		storeDuplicateMapping(fileHash, datasetID)
+
+		// Return immediate response for large files
+		response := UploadResponse{
+			DatasetID:              datasetID,
+			Message:                "Large file detected. Processing in background. Check processing status for updates.",
+			DetectedCurrencySymbol: "$", // Will be updated during processing
+			ProcessingStatus:       "processing",
+			PlayerCount:            estimatedPlayerCount,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		setCORSHeaders(w, r)
+
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			RecordError(ctx, err, "Failed to encode streaming response")
+			http.Error(w, "Error encoding response: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Process the file in background
+		go func() {
+			processLargeFileAsync(ctx, fileContent, handler.Filename, datasetID, fileHash, actualFileSize)
+		}()
+
+		RecordBusinessOperation(ctx, "large_file_upload_started", true, map[string]interface{}{
+			"filename":          handler.Filename,
+			"file_size_bytes":   actualFileSize,
+			"dataset_id":        datasetID,
+			"estimated_players": estimatedPlayerCount,
+		})
+
+		return
+	}
+
+	// For smaller files, use the existing synchronous processing
 	parseStartTime := time.Now()
 	// Optimized pre-allocation based on file size estimation
-	estimatedPlayerCount := int(actualFileSize / 2048) // Rough estimation: ~2KB per player row
 	if estimatedPlayerCount == 0 {
 		estimatedPlayerCount = 100 // Minimum reasonable estimate
 	}
@@ -549,179 +593,71 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	logDebug(ctx, "Player data stored successfully",
 		"dataset_id", datasetID,
 		"player_count", len(playersList),
-		"detected_currency", finalDatasetCurrencySymbol)
+		"parse_duration", parseDuration,
+		"currency_symbol", finalDatasetCurrencySymbol)
 
-	// OPTIMIZATION: Process basic player data and extract roles for immediate response
-	ctx, basicProcessingSpan := StartSpan(ctx, "basic_data_processing")
-	processedPlayers := processBasicPlayerData(playersList)
-	roles := extractRolesFromPlayers(processedPlayers)
-	basicProcessingSpan.End()
+	// Extract roles from processed players for immediate response
+	roles := extractRolesFromPlayers(playersList)
 
-	// Send enhanced response with processed data
+	// Create enhanced response with processed data
 	response := UploadResponse{
 		DatasetID:              datasetID,
 		Message:                "File uploaded and processed successfully.",
 		DetectedCurrencySymbol: finalDatasetCurrencySymbol,
-		Players:                processedPlayers,
-		Roles:                  roles,
-		PercentilesReady:       false,
-		ProcessingStatus:       "basic_data_ready",
-		PlayerCount:            len(processedPlayers),
+		Players:                processBasicPlayerData(playersList), // Return processed players
+		Roles:                  roles,                               // Return available roles
+		PercentilesReady:       false,                               // Percentiles will be calculated asynchronously
+		ProcessingStatus:       "completed",
+		PlayerCount:            len(playersList),
 	}
+
 	w.Header().Set("Content-Type", "application/json")
 	setCORSHeaders(w, r)
 
-	ctx, responseSpan := StartSpan(ctx, "response.encode")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		RecordError(ctx, err, "Failed to encode JSON response")
-		logError(ctx, "Error encoding JSON response for upload", "error", err)
-		http.Error(w, "Error encoding JSON response: "+err.Error(), http.StatusInternalServerError)
+		RecordError(ctx, err, "Failed to encode upload response")
+		http.Error(w, "Error encoding response: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	responseSpan.End()
 
-	// Calculate percentiles asynchronously after response is sent
+	// Start async percentile calculation
 	go func() {
-		percentileCtx := context.Background()
-		percentileCtx, percentileSpan := StartSpan(percentileCtx, "percentiles.calculate_upload_async")
-		defer percentileSpan.End()
+		ctx, asyncSpan := StartSpan(context.Background(), "async.percentile_calculation")
+		defer asyncSpan.End()
 
-		SetSpanAttributes(percentileCtx,
+		SetSpanAttributes(ctx,
 			attribute.String("dataset.id", datasetID),
-			attribute.Int("dataset.player_count", len(playersList)),
-			attribute.String("operation.type", "async_percentile_calculation"),
+			attribute.Int("player_count", len(playersList)),
 		)
 
+		logInfo(ctx, "Starting async percentile calculation for dataset %s", datasetID)
 		startTime := time.Now()
-		logDebug(percentileCtx, "Starting async percentile calculation after response sent",
-			"dataset_id", datasetID,
-			"player_count", len(playersList))
 
-		// Get the stored data and calculate percentiles
-		storedPlayers, storedCurrency, found := GetPlayerData(datasetID)
-		if !found {
-			LogWarn("Could not retrieve stored dataset %s for percentile calculation", sanitizeForLogging(datasetID))
-			return
+		// Calculate percentiles asynchronously
+		if err := CalculatePlayerPercentilesAsync(ctx, datasetID, playersList, finalDatasetCurrencySymbol); err != nil {
+			logError(ctx, "Error calculating percentiles for dataset %s: %v", datasetID, err)
 		}
 
-		// Make a deep copy to avoid race conditions during calculation
-		// Use the original deep copy to avoid any concurrency issues with optimizations
-		playersCopyForPercentiles := make([]Player, len(storedPlayers))
-		for i := range storedPlayers {
-			playersCopyForPercentiles[i] = storedPlayers[i]
-			// Deep copy all the maps to prevent race conditions
-			if storedPlayers[i].Attributes != nil {
-				playersCopyForPercentiles[i].Attributes = make(map[string]string)
-				for k, v := range storedPlayers[i].Attributes {
-					playersCopyForPercentiles[i].Attributes[k] = v
-				}
-			}
-			if storedPlayers[i].NumericAttributes != nil {
-				playersCopyForPercentiles[i].NumericAttributes = make(map[string]int)
-				for k, v := range storedPlayers[i].NumericAttributes {
-					playersCopyForPercentiles[i].NumericAttributes[k] = v
-				}
-			}
-			if storedPlayers[i].PerformanceStatsNumeric != nil {
-				playersCopyForPercentiles[i].PerformanceStatsNumeric = make(map[string]float64)
-				for k, v := range storedPlayers[i].PerformanceStatsNumeric {
-					playersCopyForPercentiles[i].PerformanceStatsNumeric[k] = v
-				}
-			}
-			if storedPlayers[i].PerformancePercentiles != nil {
-				playersCopyForPercentiles[i].PerformancePercentiles = make(map[string]map[string]float64)
-				for group, stats := range storedPlayers[i].PerformancePercentiles {
-					playersCopyForPercentiles[i].PerformancePercentiles[group] = make(map[string]float64)
-					for stat, value := range stats {
-						playersCopyForPercentiles[i].PerformancePercentiles[group][stat] = value
-					}
-				}
-			}
-			if storedPlayers[i].RoleSpecificOveralls != nil {
-				playersCopyForPercentiles[i].RoleSpecificOveralls = make([]RoleOverallScore, len(storedPlayers[i].RoleSpecificOveralls))
-				copy(playersCopyForPercentiles[i].RoleSpecificOveralls, storedPlayers[i].RoleSpecificOveralls)
-			}
-			if storedPlayers[i].ShortPositions != nil {
-				playersCopyForPercentiles[i].ShortPositions = make([]string, len(storedPlayers[i].ShortPositions))
-				copy(playersCopyForPercentiles[i].ShortPositions, storedPlayers[i].ShortPositions)
-			}
-			if storedPlayers[i].ParsedPositions != nil {
-				playersCopyForPercentiles[i].ParsedPositions = make([]string, len(storedPlayers[i].ParsedPositions))
-				copy(playersCopyForPercentiles[i].ParsedPositions, storedPlayers[i].ParsedPositions)
-			}
-			if storedPlayers[i].PositionGroups != nil {
-				playersCopyForPercentiles[i].PositionGroups = make([]string, len(storedPlayers[i].PositionGroups))
-				copy(playersCopyForPercentiles[i].PositionGroups, storedPlayers[i].PositionGroups)
-			}
-		}
+		calculationTime := time.Since(startTime)
+		logInfo(ctx, "Completed async percentile calculation for dataset %s in %v", datasetID, calculationTime)
 
-		// Calculate percentiles for all division filters to ensure stability
-		CalculatePlayerPerformancePercentiles(playersCopyForPercentiles)
-
-		// Update the stored data with calculated percentiles (use sync SetPlayerData to avoid additional async operations)
-		SetPlayerData(datasetID, playersCopyForPercentiles, storedCurrency)
-
-		duration := time.Since(startTime)
-		SetSpanAttributes(percentileCtx,
-			attribute.Int64("percentile_calculation.duration_ms", duration.Milliseconds()),
-			attribute.String("percentile_calculation.status", "success"),
-		)
-
-		LogInfo("Completed async percentile calculation for dataset %s in %v", sanitizeForLogging(datasetID), duration)
+		RecordBusinessOperation(ctx, "async_percentile_calculation_completed", true, map[string]interface{}{
+			"dataset_id":       datasetID,
+			"player_count":     len(playersList),
+			"calculation_time": calculationTime.Milliseconds(),
+		})
 	}()
 
-	var memStats runtime.MemStats
-	runtime.ReadMemStats(&memStats)
-	rowsPerSecond := 0.0
-	if parseDuration.Seconds() > 0 {
-		rowsPerSecond = float64(len(playersList)) / parseDuration.Seconds()
-	}
-	totalDuration := time.Since(startTime)
-	memAllocMB := BToMb(memStats.Alloc) // Assumes BToMb is defined in utils.go
-
-	// Record comprehensive business operation metrics
-	RecordBusinessOperation(ctx, "file_upload", true, map[string]interface{}{
-		"filename":          handler.Filename,
-		"file_size_bytes":   actualFileSize,
-		"players_processed": len(playersList),
-		"workers_used":      numWorkers,
-		"currency_detected": finalDatasetCurrencySymbol,
-		"rows_per_second":   rowsPerSecond,
-		"memory_mb":         memAllocMB,
+	RecordBusinessOperation(ctx, "file_upload_completed", true, map[string]interface{}{
+		"filename":             handler.Filename,
+		"file_size_bytes":      actualFileSize,
+		"dataset_id":           datasetID,
+		"player_count":         len(playersList),
+		"parse_duration_ms":    parseDuration.Milliseconds(),
+		"currency_symbol":      finalDatasetCurrencySymbol,
+		"roles_count":          len(roles),
+		"total_upload_time_ms": time.Since(startTime).Milliseconds(),
 	})
-
-	// Record metrics if enabled
-	recordUploadMetrics(ctx, actualFileSize, totalDuration, parseDuration,
-		len(playersList), memAllocMB, numWorkers)
-
-	// Add final span attributes with performance metrics
-	SetSpanAttributes(ctx,
-		attribute.String("upload.status", "success"),
-		attribute.String("dataset.id", datasetID),
-		attribute.Int("players.processed", len(playersList)),
-		attribute.Float64("performance.rows_per_second", rowsPerSecond),
-		attribute.Float64("performance.memory_mb", memAllocMB),
-		attribute.Int64("performance.total_duration_ms", totalDuration.Milliseconds()),
-		attribute.Int64("performance.parse_duration_ms", parseDuration.Milliseconds()),
-	)
-
-	// Log performance metrics with trace context
-	logDebug(ctx, "Upload processing completed",
-		"filename", handler.Filename,
-		"file_size_kb", actualFileSize/1024,
-		"total_duration_ms", totalDuration.Milliseconds(),
-		"parse_duration_ms", parseDuration.Milliseconds(),
-		"players_parsed", len(playersList),
-		"rows_per_second", rowsPerSecond,
-		"memory_alloc_mb", memAllocMB,
-		"workers", numWorkers,
-		"goroutines", runtime.NumGoroutine(),
-		"trace_id", GetTraceID(ctx),
-		"span_id", GetSpanID(ctx))
-
-	// Log immediate performance and memory stats after parsing completion
-	LogImmediatePerformanceStats()
-	LogImmediateMemoryStats(ctx)
 }
 
 // playerDataHandler handles GET requests for retrieving player data by dataset ID.
@@ -4539,4 +4475,217 @@ func processBasicPlayerData(players []Player) []Player {
 	}
 
 	return processedPlayers
+}
+
+// processLargeFileAsync processes large files in the background
+func processLargeFileAsync(ctx context.Context, fileContent []byte, filename string, datasetID string, fileHash string, actualFileSize int64) {
+	ctx, span := StartSpan(ctx, "large_file_processing")
+	defer span.End()
+
+	SetSpanAttributes(ctx,
+		attribute.String("dataset.id", datasetID),
+		attribute.String("file.name", filename),
+		attribute.Int64("file.size", actualFileSize),
+	)
+
+	logInfo(ctx, "Starting background processing for large file",
+		"dataset_id", datasetID,
+		"filename", filename,
+		"file_size_mb", actualFileSize/(1024*1024))
+
+	startTime := time.Now()
+
+	// Use the same parsing logic as synchronous processing
+	estimatedPlayerCount := int(actualFileSize / 2048)
+	if estimatedPlayerCount == 0 {
+		estimatedPlayerCount = 100
+	}
+	optimalCapacity := calculateOptimalSliceCapacity(estimatedPlayerCount)
+	playersList := make([]Player, 0, optimalCapacity)
+
+	// Ensure configuration is initialized
+	if err := EnsureConfigInitialized(5 * time.Second); err != nil {
+		logWarn(ctx, "Configuration initialization timeout, proceeding with defaults", "error", err)
+	}
+
+	numWorkers := runtime.NumCPU()
+	if numWorkers == 0 {
+		numWorkers = 1
+	}
+
+	// Dynamic buffer sizing
+	bufferSize := calculateOptimalBufferSize(numWorkers, actualFileSize)
+	rowCellsChan := make(chan []string, bufferSize)
+	resultsChan := make(chan PlayerParseResult, bufferSize)
+	var wg sync.WaitGroup
+
+	var headersSnapshot []string
+
+	doneConsumingResults := make(chan struct{})
+	go func() {
+		defer close(doneConsumingResults)
+		for result := range resultsChan {
+			if result.Err == nil {
+				playersList = append(playersList, result.Player)
+			} else {
+				logWarn(ctx, "Skipping row due to error from worker", "error", result.Err)
+			}
+		}
+	}()
+
+	// Parse the HTML content
+	contentReader := strings.NewReader(string(fileContent))
+	err := ParseHTMLPlayerTable(contentReader, &headersSnapshot, rowCellsChan, numWorkers, resultsChan, &wg)
+
+	if err != nil {
+		logError(ctx, "Error during HTML parsing", "error", err)
+		SetSpanAttributes(ctx, attribute.String("processing.status", "failed"))
+		return
+	}
+
+	if len(headersSnapshot) == 0 {
+		logError(ctx, "No headers parsed from HTML file")
+		SetSpanAttributes(ctx, attribute.String("processing.status", "failed"))
+		return
+	}
+
+	wg.Wait()
+	close(resultsChan)
+	<-doneConsumingResults
+
+	// Detect currency symbol
+	finalDatasetCurrencySymbol := "$"
+	if len(playersList) > 0 {
+		for i := range playersList {
+			_, _, tvSymbol := ParseMonetaryValueGo(playersList[i].TransferValue)
+			if tvSymbol != "" {
+				finalDatasetCurrencySymbol = tvSymbol
+				break
+			}
+			_, _, wSymbol := ParseMonetaryValueGo(playersList[i].Wage)
+			if wSymbol != "" {
+				finalDatasetCurrencySymbol = wSymbol
+				break
+			}
+		}
+	}
+
+	// Store the processed data
+	SetPlayerDataAsync(datasetID, playersList, finalDatasetCurrencySymbol)
+
+	processingTime := time.Since(startTime)
+	logInfo(ctx, "Completed background processing for large file",
+		"dataset_id", datasetID,
+		"player_count", len(playersList),
+		"processing_time", processingTime,
+		"currency_symbol", finalDatasetCurrencySymbol)
+
+	// Calculate percentiles asynchronously
+	go func() {
+		if err := CalculatePlayerPercentilesAsync(ctx, datasetID, playersList, finalDatasetCurrencySymbol); err != nil {
+			logError(ctx, "Error calculating percentiles for dataset %s: %v", datasetID, err)
+		}
+	}()
+
+	SetSpanAttributes(ctx,
+		attribute.String("processing.status", "completed"),
+		attribute.Int("player_count", len(playersList)),
+		attribute.String("currency_symbol", finalDatasetCurrencySymbol),
+		attribute.Int64("processing_time_ms", processingTime.Milliseconds()),
+	)
+
+	RecordBusinessOperation(ctx, "large_file_processing_completed", true, map[string]interface{}{
+		"dataset_id":      datasetID,
+		"filename":        filename,
+		"file_size_bytes": actualFileSize,
+		"player_count":    len(playersList),
+		"processing_time": processingTime.Milliseconds(),
+		"currency_symbol": finalDatasetCurrencySymbol,
+	})
+}
+
+// CalculatePlayerPercentilesAsync calculates percentiles for a dataset asynchronously
+func CalculatePlayerPercentilesAsync(ctx context.Context, datasetID string, players []Player, currencySymbol string) error {
+	ctx, span := StartSpan(ctx, "percentile_calculation_async")
+	defer span.End()
+
+	SetSpanAttributes(ctx,
+		attribute.String("dataset.id", datasetID),
+		attribute.Int("player_count", len(players)),
+	)
+
+	logInfo(ctx, "Starting async percentile calculation for dataset %s", datasetID)
+	startTime := time.Now()
+
+	// Make a deep copy to avoid race conditions during calculation
+	playersCopy := make([]Player, len(players))
+	for i := range players {
+		playersCopy[i] = players[i]
+		// Deep copy all the maps to prevent race conditions
+		if players[i].Attributes != nil {
+			playersCopy[i].Attributes = make(map[string]string)
+			for k, v := range players[i].Attributes {
+				playersCopy[i].Attributes[k] = v
+			}
+		}
+		if players[i].NumericAttributes != nil {
+			playersCopy[i].NumericAttributes = make(map[string]int)
+			for k, v := range players[i].NumericAttributes {
+				playersCopy[i].NumericAttributes[k] = v
+			}
+		}
+		if players[i].PerformanceStatsNumeric != nil {
+			playersCopy[i].PerformanceStatsNumeric = make(map[string]float64)
+			for k, v := range players[i].PerformanceStatsNumeric {
+				playersCopy[i].PerformanceStatsNumeric[k] = v
+			}
+		}
+		if players[i].PerformancePercentiles != nil {
+			playersCopy[i].PerformancePercentiles = make(map[string]map[string]float64)
+			for group, stats := range players[i].PerformancePercentiles {
+				playersCopy[i].PerformancePercentiles[group] = make(map[string]float64)
+				for stat, value := range stats {
+					playersCopy[i].PerformancePercentiles[group][stat] = value
+				}
+			}
+		}
+		if players[i].RoleSpecificOveralls != nil {
+			playersCopy[i].RoleSpecificOveralls = make([]RoleOverallScore, len(players[i].RoleSpecificOveralls))
+			copy(playersCopy[i].RoleSpecificOveralls, players[i].RoleSpecificOveralls)
+		}
+		if players[i].ShortPositions != nil {
+			playersCopy[i].ShortPositions = make([]string, len(players[i].ShortPositions))
+			copy(playersCopy[i].ShortPositions, players[i].ShortPositions)
+		}
+		if players[i].ParsedPositions != nil {
+			playersCopy[i].ParsedPositions = make([]string, len(players[i].ParsedPositions))
+			copy(playersCopy[i].ParsedPositions, players[i].ParsedPositions)
+		}
+		if players[i].PositionGroups != nil {
+			playersCopy[i].PositionGroups = make([]string, len(players[i].PositionGroups))
+			copy(playersCopy[i].PositionGroups, players[i].PositionGroups)
+		}
+	}
+
+	// Calculate percentiles for all division filters to ensure stability
+	CalculatePlayerPerformancePercentiles(playersCopy)
+
+	// Update the stored data with calculated percentiles
+	SetPlayerData(datasetID, playersCopy, currencySymbol)
+
+	calculationTime := time.Since(startTime)
+	logInfo(ctx, "Completed async percentile calculation for dataset %s in %v", datasetID, calculationTime)
+
+	SetSpanAttributes(ctx,
+		attribute.Int64("calculation_time_ms", calculationTime.Milliseconds()),
+		attribute.String("calculation.status", "success"),
+	)
+
+	RecordBusinessOperation(ctx, "percentile_calculation_completed", true, map[string]interface{}{
+		"dataset_id":       datasetID,
+		"player_count":     len(players),
+		"calculation_time": calculationTime.Milliseconds(),
+	})
+
+	return nil
 }

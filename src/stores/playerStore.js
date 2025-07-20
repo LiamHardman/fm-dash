@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref, shallowRef } from 'vue'
 import playerService from '../services/playerService.js'
 import { PerformanceTracker } from '../utils/performance.js'
+import uploadFlowProfiler from '../utils/performanceProfiler.js'
 
 export const usePlayerStore = defineStore('player', () => {
   const allPlayers = shallowRef([])
@@ -141,37 +142,62 @@ export const usePlayerStore = defineStore('player', () => {
   })
 
   async function uploadPlayerFile(formData, maxSizeBytes = 15 * 1024 * 1024, onProgress = null) {
+    // Start profiling the upload flow
+    uploadFlowProfiler.startUploadFlow()
+    
     const tracker = new PerformanceTracker('Upload Process')
     loading.value = true
     error.value = ''
     
     // Clean up old cache entries before upload
+    uploadFlowProfiler.markStep('cache_cleanup_start')
     cleanupOldCache()
+    uploadFlowProfiler.markStep('cache_cleanup_end')
     
     try {
       // Stage 1: Upload file (onProgress handles this)
+      uploadFlowProfiler.markStep('file_upload_start')
       tracker.checkpoint('Starting upload')
       const response = await playerService.uploadPlayerFile(formData, maxSizeBytes, onProgress)
+      uploadFlowProfiler.markStep('file_upload_end', { 
+        playerCount: response.playerCount,
+        hasPlayers: !!response.players,
+        hasRoles: !!response.roles
+      })
       tracker.checkpoint('Upload completed')
 
+      uploadFlowProfiler.markStep('session_storage_start')
       currentDatasetId.value = response.datasetId
       detectedCurrencySymbol.value = response.detectedCurrencySymbol || '£'
       sessionStorage.setItem('currentDatasetId', currentDatasetId.value)
       sessionStorage.setItem('detectedCurrencySymbol', detectedCurrencySymbol.value)
+      uploadFlowProfiler.markStep('session_storage_end')
       tracker.checkpoint('Session storage updated')
 
       // OPTIMIZATION: Use data from enhanced upload response if available
       if (response.players && response.roles) {
+        uploadFlowProfiler.markStep('data_processing_start')
+        
         // Store data immediately from upload response
         allPlayers.value = processPlayersFromAPI(response.players)
         allAvailableRoles.value = response.roles
         
+        uploadFlowProfiler.markStep('data_processing_end', {
+          playerCount: response.players.length,
+          roleCount: response.roles.length
+        })
+        
         // Cache the processed data for future use (with size limit)
+        uploadFlowProfiler.markStep('cache_processing_start')
         const cacheKey = `dataset_${response.datasetId}`
+        
+        let cacheSize = 0
+        let cacheType = 'none'
+        let isLargeDataset = false
         
         try {
           // For large datasets, use lightweight cache
-          const isLargeDataset = response.players.length > 100
+          isLargeDataset = response.players.length > 100
           const cacheData = isLargeDataset 
             ? createLightweightCache(response.players, response.roles, response.detectedCurrencySymbol)
             : {
@@ -182,28 +208,38 @@ export const usePlayerStore = defineStore('player', () => {
               }
           
           const cacheString = JSON.stringify(cacheData)
+          cacheSize = Math.round(cacheString.length / 1024)
+          cacheType = isLargeDataset ? 'lightweight' : 'full'
+          
           // Check if cache would exceed reasonable size (1MB limit)
           if (cacheString.length < 1024 * 1024) {
             sessionStorage.setItem(cacheKey, cacheString)
             console.log('Data cached successfully', {
               datasetId: response.datasetId,
-              cacheSize: Math.round(cacheString.length / 1024) + 'KB',
-              cacheType: isLargeDataset ? 'lightweight' : 'full',
+              cacheSize: cacheSize + 'KB',
+              cacheType: cacheType,
               playerCount: response.players.length
             })
           } else {
             console.warn('Cache size too large, skipping cache', {
               datasetId: response.datasetId,
-              cacheSize: Math.round(cacheString.length / 1024) + 'KB',
+              cacheSize: cacheSize + 'KB',
               playerCount: response.players.length
             })
+            cacheType = 'skipped'
           }
         } catch (error) {
           console.warn('Failed to cache data, continuing without cache', {
             datasetId: response.datasetId,
             error: error.message
           })
+          cacheType = 'failed'
         }
+        
+        uploadFlowProfiler.markStep('cache_processing_end', {
+          cacheSize: cacheSize + 'KB',
+          cacheType: cacheType
+        })
         
         tracker.checkpoint('Data stored from upload response')
         
@@ -211,9 +247,31 @@ export const usePlayerStore = defineStore('player', () => {
         if (onProgress) onProgress(100)
         tracker.finish()
         
+        uploadFlowProfiler.endUploadFlow()
+        return response
+      } else if (response.processingStatus === 'processing') {
+        // Handle streaming response for large files
+        uploadFlowProfiler.markStep('streaming_response_handling')
+        console.log('Large file detected, processing in background. Dataset ID:', response.datasetId)
+        
+        // Store the dataset ID for later use
+        currentDatasetId.value = response.datasetId
+        detectedCurrencySymbol.value = response.detectedCurrencySymbol || '£'
+        sessionStorage.setItem('currentDatasetId', currentDatasetId.value)
+        sessionStorage.setItem('detectedCurrencySymbol', detectedCurrencySymbol.value)
+        
+        // Don't try to fetch data immediately - it's not ready yet
+        // The user can navigate to the dataset page and wait for processing to complete
+        tracker.checkpoint('Streaming response handled')
+        
+        if (onProgress) onProgress(100)
+        tracker.finish()
+        
+        uploadFlowProfiler.endUploadFlow()
         return response
       } else {
         // Fallback to original flow for backward compatibility
+        uploadFlowProfiler.markStep('fallback_api_calls_start')
         tracker.checkpoint('Using fallback data fetching')
         
         // Stage 2 & 3: Fetch processed data and available roles in parallel
@@ -224,15 +282,18 @@ export const usePlayerStore = defineStore('player', () => {
           fetchPlayersByDatasetId(currentDatasetId.value),
           fetchAllAvailableRoles() // This can run in parallel since it doesn't depend on player data
         ])
+        uploadFlowProfiler.markStep('fallback_api_calls_end')
         tracker.checkpoint('Data fetching completed')
 
         // Stage 4: Complete
         if (onProgress) onProgress(100)
         tracker.finish()
 
+        uploadFlowProfiler.endUploadFlow()
         return response
       }
     } catch (e) {
+      uploadFlowProfiler.markStep('error_handling', { error: e.message })
       tracker.checkpoint('Error occurred')
       if (e.status === 413 && e.message) {
         error.value = e.message
@@ -240,6 +301,7 @@ export const usePlayerStore = defineStore('player', () => {
         error.value = `Failed to process file: ${e.message || 'Unknown error'}`
       }
       resetState()
+      uploadFlowProfiler.endUploadFlow()
       throw e
     } finally {
       loading.value = false
@@ -261,11 +323,14 @@ export const usePlayerStore = defineStore('player', () => {
       resetState()
       return
     }
+    
+    uploadFlowProfiler.markStep('fetch_players_start', { datasetId })
     const tracker = new PerformanceTracker('Fetch Players Data')
     loading.value = true
     error.value = ''
     try {
       tracker.checkpoint('Starting API call')
+      uploadFlowProfiler.markStep('api_call_start')
       const response = await playerService.getPlayersByDatasetId(
         datasetId,
         positionFilter,
@@ -277,6 +342,10 @@ export const usePlayerStore = defineStore('player', () => {
         targetDivision,
         positionCompare
       )
+      uploadFlowProfiler.markStep('api_call_end', { 
+        playerCount: response.players?.length || 0,
+        hasProtobuf: !!response._protobuf
+      })
       tracker.checkpoint('API call completed')
 
       // Update protobuf metrics if available
@@ -285,21 +354,36 @@ export const usePlayerStore = defineStore('player', () => {
       }
 
       // Extract players from response (handle both protobuf and JSON formats)
+      uploadFlowProfiler.markStep('player_processing_start')
       const players = response.players || []
       allPlayers.value = processPlayersFromAPI(players)
+      uploadFlowProfiler.markStep('player_processing_end', { 
+        processedPlayerCount: allPlayers.value.length 
+      })
       tracker.checkpoint('Players processed')
 
+      uploadFlowProfiler.markStep('state_update_start')
       currentDatasetId.value = datasetId
       detectedCurrencySymbol.value = response.currencySymbol || '£'
       sessionStorage.setItem('currentDatasetId', currentDatasetId.value)
       sessionStorage.setItem('detectedCurrencySymbol', detectedCurrencySymbol.value)
+      uploadFlowProfiler.markStep('state_update_end')
       tracker.checkpoint('State updated')
       tracker.finish()
 
       return response
     } catch (e) {
+      uploadFlowProfiler.markStep('fetch_players_error', { error: e.message })
       tracker.checkpoint('Error occurred')
-      error.value = `Failed to fetch player data: ${e.message || 'Unknown error'}`
+      
+      // Handle 404 errors specially - data might not be ready yet for large files
+      if (e.message && e.message.includes('404')) {
+        console.log('Dataset not ready yet (404), this is expected for large files being processed in background')
+        error.value = 'Dataset is still being processed in the background. Please wait a moment and try again.'
+      } else {
+        error.value = `Failed to fetch player data: ${e.message || 'Unknown error'}`
+      }
+      
       resetState()
       throw e
     } finally {
@@ -330,6 +414,7 @@ export const usePlayerStore = defineStore('player', () => {
       return []
     }
 
+    const startTime = performance.now()
     const processed = playersData.map(p => {
       // Ensure all required fields are present and properly formatted
       const processedPlayer = {
@@ -375,6 +460,11 @@ export const usePlayerStore = defineStore('player', () => {
       
       return processedPlayer
     })
+
+    const processingTime = performance.now() - startTime
+    if (processingTime > 50) { // Log if processing takes more than 50ms
+      console.log(`Player processing took ${processingTime.toFixed(2)}ms for ${playersData.length} players`)
+    }
 
     return processed
   }
