@@ -254,7 +254,8 @@ func GetPlayerData(datasetID string) ([]Player, string, bool) {
 			attribute.Int("dataset.player_count", len(data.Players)),
 			attribute.String("data.source", "memory_fast"),
 		)
-		return data.Players, data.CurrencySymbol, true
+		// Return a deep copy to prevent race conditions
+		return OptimizedDeepCopyPlayers(data.Players), data.CurrencySymbol, true
 	}
 	storeMutex.RUnlock()
 
@@ -266,7 +267,8 @@ func GetPlayerData(datasetID string) ([]Player, string, bool) {
 			attribute.Int("dataset.player_count", len(players)),
 			attribute.String("data.source", "persistent_fallback"),
 		)
-		return players, currency, true
+		// Return a deep copy to prevent race conditions
+		return OptimizedDeepCopyPlayers(players), currency, true
 	}
 
 	SetSpanAttributes(ctx, attribute.String("result", "not_found"))

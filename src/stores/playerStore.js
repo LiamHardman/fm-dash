@@ -423,7 +423,8 @@ export const usePlayerStore = defineStore('player', () => {
         age: Number.parseInt(p.age, 10) || 0,
         
         // Ensure arrays are properly initialized
-        short_positions: Array.isArray(p.short_positions) ? p.short_positions : [],
+        shortPositions: Array.isArray(p.short_positions) ? p.short_positions : [],
+        short_positions: Array.isArray(p.short_positions) ? p.short_positions : [], // Keep both for compatibility
         parsedPositions: Array.isArray(p.parsedPositions) ? p.parsedPositions : [],
         positionGroups: Array.isArray(p.positionGroups) ? p.positionGroups : [],
         
@@ -447,8 +448,8 @@ export const usePlayerStore = defineStore('player', () => {
         SPD: Number.parseInt(p.SPD, 10) || 0,
         POS: Number.parseInt(p.POS, 10) || 0,
         
-        // Ensure overall is a number
-        Overall: Number.parseInt(p.Overall, 10) || 0,
+        // Ensure overall is a number (handle both field names)
+        Overall: Number.parseInt(p.Overall || p.overall, 10) || 0,
         
         // Ensure numeric attributes are properly formatted
         numericAttributes: p.numericAttributes || {},

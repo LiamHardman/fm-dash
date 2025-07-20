@@ -4617,61 +4617,26 @@ func CalculatePlayerPercentilesAsync(ctx context.Context, datasetID string, play
 	logInfo(ctx, "Starting async percentile calculation for dataset %s", datasetID)
 	startTime := time.Now()
 
-	// Make a deep copy to avoid race conditions during calculation
-	playersCopy := make([]Player, len(players))
-	for i := range players {
-		playersCopy[i] = players[i]
-		// Deep copy all the maps to prevent race conditions
-		if players[i].Attributes != nil {
-			playersCopy[i].Attributes = make(map[string]string)
-			for k, v := range players[i].Attributes {
-				playersCopy[i].Attributes[k] = v
-			}
-		}
-		if players[i].NumericAttributes != nil {
-			playersCopy[i].NumericAttributes = make(map[string]int)
-			for k, v := range players[i].NumericAttributes {
-				playersCopy[i].NumericAttributes[k] = v
-			}
-		}
-		if players[i].PerformanceStatsNumeric != nil {
-			playersCopy[i].PerformanceStatsNumeric = make(map[string]float64)
-			for k, v := range players[i].PerformanceStatsNumeric {
-				playersCopy[i].PerformanceStatsNumeric[k] = v
-			}
-		}
-		if players[i].PerformancePercentiles != nil {
-			playersCopy[i].PerformancePercentiles = make(map[string]map[string]float64)
-			for group, stats := range players[i].PerformancePercentiles {
-				playersCopy[i].PerformancePercentiles[group] = make(map[string]float64)
-				for stat, value := range stats {
-					playersCopy[i].PerformancePercentiles[group][stat] = value
-				}
-			}
-		}
-		if players[i].RoleSpecificOveralls != nil {
-			playersCopy[i].RoleSpecificOveralls = make([]RoleOverallScore, len(players[i].RoleSpecificOveralls))
-			copy(playersCopy[i].RoleSpecificOveralls, players[i].RoleSpecificOveralls)
-		}
-		if players[i].ShortPositions != nil {
-			playersCopy[i].ShortPositions = make([]string, len(players[i].ShortPositions))
-			copy(playersCopy[i].ShortPositions, players[i].ShortPositions)
-		}
-		if players[i].ParsedPositions != nil {
-			playersCopy[i].ParsedPositions = make([]string, len(players[i].ParsedPositions))
-			copy(playersCopy[i].ParsedPositions, players[i].ParsedPositions)
-		}
-		if players[i].PositionGroups != nil {
-			playersCopy[i].PositionGroups = make([]string, len(players[i].PositionGroups))
-			copy(playersCopy[i].PositionGroups, players[i].PositionGroups)
-		}
+	// Get a fresh copy of the data from the store to avoid race conditions
+	// This ensures we're working with the most up-to-date data and not a reference
+	// that might be modified by other goroutines
+	storeMutex.RLock()
+	storedData, exists := playerDataStore[datasetID]
+	storeMutex.RUnlock()
+
+	if !exists {
+		logError(ctx, "Dataset %s not found in store for percentile calculation", datasetID)
+		return fmt.Errorf("dataset %s not found in store", datasetID)
 	}
+
+	// Use the existing OptimizedDeepCopyPlayers function which is designed to handle this safely
+	playersCopy := OptimizedDeepCopyPlayers(storedData.Players)
 
 	// Calculate percentiles for all division filters to ensure stability
 	CalculatePlayerPerformancePercentiles(playersCopy)
 
 	// Update the stored data with calculated percentiles
-	SetPlayerData(datasetID, playersCopy, currencySymbol)
+	SetPlayerData(datasetID, playersCopy, storedData.CurrencySymbol)
 
 	calculationTime := time.Since(startTime)
 	logInfo(ctx, "Completed async percentile calculation for dataset %s in %v", datasetID, calculationTime)

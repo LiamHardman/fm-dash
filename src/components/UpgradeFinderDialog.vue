@@ -600,6 +600,7 @@
         :show="showPlayerDetailDialog"
         @close="showPlayerDetailDialog = false"
         :currency-symbol="currencySymbol"
+        :dataset-id="datasetId"
     />
 </template>
 
@@ -837,10 +838,36 @@ export default {
 
     const updateTeamPlayersForSelection = () => {
       if (teamName.value && selectedPosition.value && props.players) {
+        console.log('Updating team players for selection:', {
+          teamName: teamName.value,
+          selectedPosition: selectedPosition.value,
+          totalPlayers: props.players.length,
+          samplePlayer: props.players[0] ? {
+            name: props.players[0].name,
+            club: props.players[0].club,
+            shortPositions: props.players[0].shortPositions,
+            short_positions: props.players[0].short_positions
+          } : null
+        })
+        
         teamPlayersForSelection.value = props.players
           .filter(player => {
             if (player.club !== teamName.value) return false
-            return player.shortPositions?.includes(selectedPosition.value)
+            
+            // Try both field names for compatibility
+            const positions = player.shortPositions || player.short_positions || []
+            const hasPosition = positions.includes(selectedPosition.value)
+            
+            if (hasPosition) {
+              console.log('Found matching player:', {
+                name: player.name,
+                club: player.club,
+                positions: positions,
+                selectedPosition: selectedPosition.value
+              })
+            }
+            
+            return hasPosition
           })
           .sort((a, b) => {
             const overallA = getPlayerOverallForRoleOrPosition(
@@ -855,6 +882,8 @@ export default {
             )
             return (overallB || 0) - (overallA || 0)
           })
+        
+        console.log('Filtered players count:', teamPlayersForSelection.value.length)
       } else {
         teamPlayersForSelection.value = []
       }
@@ -864,24 +893,93 @@ export default {
 
     const getPlayerOverallForRoleOrPosition = (player, role, position) => {
       if (!player) return 0
-      if (role) {
-        const roleData = player.roleSpecificOveralls?.find(r => r.roleName === role)
-        return roleData ? roleData.score : 0
+      
+      // Debug logging for first few calls
+      if (Math.random() < 0.1) { // Only log 10% of calls to avoid spam
+        console.log('getPlayerOverallForRoleOrPosition called:', {
+          playerName: player.name,
+          role,
+          position,
+          hasRoleSpecificOveralls: !!player.roleSpecificOveralls,
+          roleSpecificOverallsType: Array.isArray(player.roleSpecificOveralls) ? 'array' : 'object',
+          roleSpecificOverallsLength: Array.isArray(player.roleSpecificOveralls) 
+            ? player.roleSpecificOveralls?.length 
+            : Object.keys(player.roleSpecificOveralls || {}).length,
+          sampleRoleSpecificOveralls: player.roleSpecificOveralls ? 
+            (Array.isArray(player.roleSpecificOveralls) 
+              ? player.roleSpecificOveralls.slice(0, 2) 
+              : Object.entries(player.roleSpecificOveralls).slice(0, 2)) 
+            : null,
+          playerOverall: player.Overall,
+          playerOverallLowercase: player.overall,
+          // Add more debugging to see the full player structure
+          playerKeys: Object.keys(player),
+          hasOverall: 'Overall' in player,
+          hasOverallLowercase: 'overall' in player,
+          hasOverallLower: 'OverallLower' in player,
+          hasOverallUpper: 'OverallUpper' in player,
+          overallValue: player.Overall,
+          overallLowercaseValue: player.overall,
+          overallLowerValue: player.OverallLower,
+          overallUpperValue: player.OverallUpper
+        })
       }
-      if (position) {
+      
+      // Handle both array and object formats for roleSpecificOveralls
+      const hasRoleOveralls = Array.isArray(player.roleSpecificOveralls)
+        ? player.roleSpecificOveralls.length > 0
+        : Object.keys(player.roleSpecificOveralls || {}).length > 0
+      
+      let result = 0
+      
+      if (role) {
+        if (Array.isArray(player.roleSpecificOveralls)) {
+          const roleData = player.roleSpecificOveralls.find(r => r.roleName === role)
+          result = roleData ? roleData.score : (player.Overall || player.overall || 0)
+        } else if (player.roleSpecificOveralls) {
+          result = player.roleSpecificOveralls[role] || (player.Overall || player.overall || 0)
+        } else {
+          result = player.Overall || player.overall || 0
+        }
+      } else if (position) {
         let maxOverallForPosition = 0
-        if (player.roleSpecificOveralls) {
-          for (const rso of player.roleSpecificOveralls) {
-            if (rso.roleName.startsWith(`${position} - `)) {
-              if (rso.score > maxOverallForPosition) {
-                maxOverallForPosition = rso.score
+        
+        if (hasRoleOveralls) {
+          if (Array.isArray(player.roleSpecificOveralls)) {
+            for (const rso of player.roleSpecificOveralls) {
+              if (rso.roleName.startsWith(`${position} - `)) {
+                if (rso.score > maxOverallForPosition) {
+                  maxOverallForPosition = rso.score
+                }
+              }
+            }
+          } else {
+            for (const [roleName, score] of Object.entries(player.roleSpecificOveralls)) {
+              if (roleName.startsWith(`${position} - `)) {
+                if (score > maxOverallForPosition) {
+                  maxOverallForPosition = score
+                }
               }
             }
           }
         }
-        return maxOverallForPosition > 0 ? maxOverallForPosition : player.Overall || 0
+        
+        result = maxOverallForPosition > 0 ? maxOverallForPosition : (player.Overall || player.overall || 0)
+      } else {
+        result = player.Overall || player.overall || 0
       }
-      return player.Overall || 0
+      
+      // Always log the actual calculation result for debugging
+      console.log(`Overall calculation for ${player.name}:`, {
+        role,
+        position,
+        result,
+        playerOverall: player.Overall,
+        playerOverallLowercase: player.overall,
+        finalResult: result
+      })
+      
+      return result
     }
 
     const getBaseOverallFromSelectedPlayer = () => {

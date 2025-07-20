@@ -1949,7 +1949,15 @@ export default defineComponent({
 
     // Function to fetch detailed player data
     const fetchDetailedPlayerData = async () => {
+      console.log('fetchDetailedPlayerData called with:', {
+        hasPlayer: !!props.player,
+        hasDatasetId: !!props.datasetId,
+        playerName: props.player?.name,
+        playerUID: props.player?.uid || props.player?.UID
+      })
+      
       if (!props.player || !props.datasetId) {
+        console.log('fetchDetailedPlayerData early return - missing player or datasetId')
         return
       }
 
@@ -1959,6 +1967,14 @@ export default defineComponent({
 
       try {
         // Check if the player already has detailed data (from performance API)
+        console.log('Checking player data structure:', {
+          hasAttributes: !!props.player.attributes,
+          hasPerformancePercentiles: !!props.player.performancePercentiles,
+          attributesKeys: props.player.attributes ? Object.keys(props.player.attributes) : [],
+          performancePercentilesKeys: props.player.performancePercentiles ? Object.keys(props.player.performancePercentiles) : [],
+          playerKeys: Object.keys(props.player)
+        })
+        
         if (props.player.attributes && props.player.performancePercentiles) {
           // Use the pre-loaded data from performance API
           detailedPlayerData.value = props.player
@@ -2012,6 +2028,13 @@ export default defineComponent({
           
           // Handle player data result
           if (playerResult.status === 'fulfilled' && playerResult.value.format === 'json' && playerResult.value.data.player) {
+            console.log('API returned player data:', {
+              dataKeys: Object.keys(playerResult.value.data),
+              playerKeys: playerResult.value.data.player ? Object.keys(playerResult.value.data.player) : [],
+              hasAttributes: playerResult.value.data.player?.attributes ? Object.keys(playerResult.value.data.player.attributes).length : 0,
+              hasPerformancePercentiles: playerResult.value.data.player?.performancePercentiles ? Object.keys(playerResult.value.data.player.performancePercentiles).length : 0
+            })
+            
             detailedPlayerData.value = playerResult.value.data.player
             const playerDataTime = performance.now() - apiStartTime
 
@@ -2019,6 +2042,12 @@ export default defineComponent({
             // Cache the player data for future use
             setCachedPlayerData(props.datasetId, playerUID, playerResult.value.data.player)
           } else {
+            console.error('Failed to fetch player data:', {
+              status: playerResult.status,
+              format: playerResult.value?.format,
+              hasData: !!playerResult.value?.data,
+              hasPlayer: !!playerResult.value?.data?.player
+            })
             throw new Error('Failed to fetch player data')
           }
           
@@ -2066,7 +2095,14 @@ export default defineComponent({
     // Watch for player changes to fetch detailed data with debouncing
     let fetchTimeout = null
     watch(() => props.player, (newPlayer) => {
+      console.log('PlayerDetailDialog watch triggered:', {
+        hasNewPlayer: !!newPlayer,
+        playerName: newPlayer?.name,
+        playerUID: newPlayer?.uid || newPlayer?.UID
+      })
+      
       if (newPlayer && (newPlayer.uid || newPlayer.UID)) {
+        console.log('Setting up fetchDetailedPlayerData timeout')
         // Clear any existing timeout to prevent rapid successive calls
         if (fetchTimeout) {
           clearTimeout(fetchTimeout)
@@ -2074,6 +2110,7 @@ export default defineComponent({
         
         // Debounce the fetch to prevent rapid successive API calls
         fetchTimeout = setTimeout(() => {
+          console.log('fetchDetailedPlayerData timeout triggered')
           const dialogOpenStartTime = performance.now()
 
           
