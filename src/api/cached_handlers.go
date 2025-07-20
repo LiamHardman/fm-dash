@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"sort"
 	"time"
@@ -41,7 +40,7 @@ func cachedRolesHandler(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("X-Cache-Format", "json")
 				w.Header().Set("Cache-Control", "public, max-age=86400")
 				if err := json.NewEncoder(w).Encode(roles); err != nil {
-					log.Printf("Error encoding roles response: %v", err)
+					logError(r.Context(), "Error encoding roles response", "error", err)
 				}
 				return
 			}
@@ -54,7 +53,7 @@ func cachedRolesHandler(w http.ResponseWriter, r *http.Request) {
 				responseData, err := serializer.Serialize(protoResponse)
 				if err != nil {
 					// Fallback to JSON on serialization error
-					log.Printf("Error serializing cached protobuf roles: %v, falling back to JSON", err)
+					logWarn(r.Context(), "Error serializing cached protobuf roles, falling back to JSON", "error", err)
 					// Continue to regenerate the data in JSON format
 				} else {
 					w.Header().Set("Content-Type", serializer.ContentType())
@@ -95,11 +94,11 @@ func cachedRolesHandler(w http.ResponseWriter, r *http.Request) {
 		responseData, err := serializer.Serialize(protoResponse)
 		if err != nil {
 			// Fallback to JSON on serialization error
-			log.Printf("Error serializing protobuf roles: %v, falling back to JSON", err)
+			logWarn(r.Context(), "Error serializing protobuf roles, falling back to JSON", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("Cache-Control", "public, max-age=86400")
 			if err := json.NewEncoder(w).Encode(roleNames); err != nil {
-				log.Printf("Error encoding role names response: %v", err)
+				logError(r.Context(), "Error encoding role names response", "error", err)
 			}
 			return
 		}
@@ -112,14 +111,14 @@ func cachedRolesHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "public, max-age=86400")
 		if err := json.NewEncoder(w).Encode(roleNames); err != nil {
-			log.Printf("Error encoding role names response: %v", err)
+			logError(r.Context(), "Error encoding role names response", "error", err)
 		}
 	}
 }
 
 func cachedConfigHandler(w http.ResponseWriter, r *http.Request) {
 	if err := EnsureConfigInitialized(configLoadTimeout); err != nil {
-		log.Printf("Configuration not ready for config request: %v", err)
+		logWarn(r.Context(), "Configuration not ready for config request", "error", err)
 		http.Error(w, "Configuration not ready, please try again later.", http.StatusServiceUnavailable)
 		return
 	}
@@ -151,7 +150,7 @@ func cachedConfigHandler(w http.ResponseWriter, r *http.Request) {
 					w.Header().Set("X-Cache-Format", "json")
 					w.Header().Set("Cache-Control", "public, max-age=3600")
 					if err := json.NewEncoder(w).Encode(config); err != nil {
-						log.Printf("Error encoding config response: %v", err)
+						logError(r.Context(), "Error encoding config response", "error", err)
 					}
 					return
 				}
@@ -164,7 +163,7 @@ func cachedConfigHandler(w http.ResponseWriter, r *http.Request) {
 					responseData, err := serializer.Serialize(protoResponse)
 					if err != nil {
 						// Fallback to JSON on serialization error
-						log.Printf("Error serializing cached protobuf config: %v, falling back to JSON", err)
+						logWarn(r.Context(), "Error serializing cached protobuf config, falling back to JSON", "error", err)
 						// Continue to regenerate the data in JSON format
 					} else {
 						w.Header().Set("Content-Type", serializer.ContentType())
@@ -200,7 +199,7 @@ func cachedConfigHandler(w http.ResponseWriter, r *http.Request) {
 		// For Protobuf format
 		configJSON, err := json.Marshal(config)
 		if err != nil {
-			log.Printf("Error marshaling config to JSON for protobuf: %v", err)
+			logError(r.Context(), "Error marshaling config to JSON for protobuf", "error", err)
 		} else {
 			protoConfig := &pb.GenericResponse{
 				Data:     string(configJSON),
@@ -220,11 +219,11 @@ func cachedConfigHandler(w http.ResponseWriter, r *http.Request) {
 			responseData, err := serializer.Serialize(protoConfig)
 			if err != nil {
 				// Fallback to JSON on serialization error
-				log.Printf("Error serializing protobuf config: %v, falling back to JSON", err)
+				logWarn(r.Context(), "Error serializing protobuf config, falling back to JSON", "error", err)
 				w.Header().Set("Content-Type", "application/json")
 				w.Header().Set("Cache-Control", "public, max-age=3600")
 				if err := json.NewEncoder(w).Encode(config); err != nil {
-					log.Printf("Error encoding config response: %v", err)
+					logError(r.Context(), "Error encoding config response", "error", err)
 				}
 				return
 			}
@@ -237,7 +236,7 @@ func cachedConfigHandler(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("Cache-Control", "public, max-age=3600")
 			if err := json.NewEncoder(w).Encode(config); err != nil {
-				log.Printf("Error encoding config response: %v", err)
+				logError(r.Context(), "Error encoding config response", "error", err)
 			}
 		}
 
@@ -254,9 +253,9 @@ func cachedConfigHandler(w http.ResponseWriter, r *http.Request) {
 		if updateRequest.UseScaledRatings != nil {
 			SetUseScaledRatings(*updateRequest.UseScaledRatings)
 			if *updateRequest.UseScaledRatings {
-				log.Printf("Rating calculation method updated via API: enabled scaled ratings")
+				logInfo(r.Context(), "Rating calculation method updated via API: enabled scaled ratings")
 			} else {
-				log.Printf("Rating calculation method updated via API: disabled scaled ratings")
+				logInfo(r.Context(), "Rating calculation method updated via API: disabled scaled ratings")
 			}
 			// Delete all format variants from cache
 			DeleteAllFormatVariants(baseCacheKey)
@@ -280,11 +279,11 @@ func cachedConfigHandler(w http.ResponseWriter, r *http.Request) {
 		if format == FormatTypeProtobuf {
 			configJSON, err := json.Marshal(config)
 			if err != nil {
-				log.Printf("Error marshaling config to JSON for protobuf: %v", err)
+				logError(r.Context(), "Error marshaling config to JSON for protobuf", "error", err)
 				// Fallback to JSON
 				w.Header().Set("Content-Type", "application/json")
 				if err := json.NewEncoder(w).Encode(config); err != nil {
-					log.Printf("Error encoding config response: %v", err)
+					logError(r.Context(), "Error encoding config response", "error", err)
 				}
 				return
 			}
@@ -297,10 +296,10 @@ func cachedConfigHandler(w http.ResponseWriter, r *http.Request) {
 			responseData, err := serializer.Serialize(protoConfig)
 			if err != nil {
 				// Fallback to JSON on serialization error
-				log.Printf("Error serializing protobuf config: %v, falling back to JSON", err)
+				logWarn(r.Context(), "Error serializing protobuf config, falling back to JSON", "error", err)
 				w.Header().Set("Content-Type", "application/json")
 				if err := json.NewEncoder(w).Encode(config); err != nil {
-					log.Printf("Error encoding config response: %v", err)
+					logError(r.Context(), "Error encoding config response", "error", err)
 				}
 				return
 			}
@@ -311,7 +310,7 @@ func cachedConfigHandler(w http.ResponseWriter, r *http.Request) {
 			// Default JSON response
 			w.Header().Set("Content-Type", "application/json")
 			if err := json.NewEncoder(w).Encode(config); err != nil {
-				log.Printf("Error encoding config response: %v", err)
+				logError(r.Context(), "Error encoding config response", "error", err)
 			}
 		}
 

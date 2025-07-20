@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"log/slog"
 	"math"
 	"net/http"
@@ -103,7 +102,7 @@ func cleanupStaleDuplicateMappings() {
 	}
 
 	if len(staleMappings) > 0 {
-		log.Printf("Cleaned up %d stale duplicate mappings", len(staleMappings))
+		logInfo(context.Background(), "Cleaned up %d stale duplicate mappings", len(staleMappings))
 	}
 }
 
@@ -227,7 +226,7 @@ func getMaxUploadSize() int64 {
 	// Parse as integer (expecting value in MB)
 	sizeInMB, err := strconv.Atoi(envValue)
 	if err != nil || sizeInMB <= 0 {
-		log.Printf("Invalid MAX_UPLOAD_SIZE environment variable '%s', defaulting to 20MB", envValue)
+		logWarn(context.Background(), "Invalid MAX_UPLOAD_SIZE environment variable '%s', defaulting to 20MB", envValue)
 		return 20 * 1024 * 1024 // Default 15MB
 	}
 
@@ -444,7 +443,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			if result.Err == nil {
 				playersList = append(playersList, result.Player)
 			} else {
-				log.Printf("Skipping row due to error from worker: %v", result.Err)
+				logWarn(ctx, "Skipping row due to error from worker", "error", result.Err)
 			}
 		}
 		LogDebug("Finished collecting results from resultsChan.")
@@ -465,9 +464,9 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	if processingError != nil {
 		RecordError(ctx, processingError, "HTML parsing failed")
-		log.Printf("Error during HTML parsing or worker setup: %v", processingError)
+		logError(ctx, "Error during HTML parsing or worker setup", "error", processingError)
 		if len(headersSnapshot) > 0 {
-			log.Println("Waiting for any potentially started workers after parsing error...")
+			logInfo(ctx, "Waiting for any potentially started workers after parsing error...")
 			wg.Wait()
 		}
 		close(resultsChan)
@@ -518,7 +517,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if !foundSymbol {
-			log.Println("No currency symbol detected from parsed player monetary values, using default '$'.")
+			logInfo(ctx, "No currency symbol detected from parsed player monetary values, using default '$'")
 		}
 	}
 
@@ -558,7 +557,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, responseSpan := StartSpan(ctx, "response.encode")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		RecordError(ctx, err, "Failed to encode JSON response")
-		log.Printf("Error encoding JSON response for upload: %v", err)
+		logError(ctx, "Error encoding JSON response for upload", "error", err)
 		http.Error(w, "Error encoding JSON response: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -892,7 +891,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Cache-Control", "public, max-age=180") // Cache for 3 minutes
 			setCORSHeaders(w, r)
 			if _, err := w.Write(jsonData); err != nil {
-				log.Printf("Error writing cached response: %v", err)
+				logError(ctx, "Error writing cached response", "error", err)
 			}
 			SetSpanAttributes(ctx, attribute.Bool("final_cache.hit", true))
 			return
@@ -953,7 +952,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 		} else if minAge != -1 || maxAge != -1 {
-			log.Printf("Skipping player %s due to unparsable age '%s' while age filters are active.", playerCopy.Name, playerCopy.Age)
+			logWarn(ctx, "Skipping player due to unparsable age while age filters are active", "player_name", playerCopy.Name, "age", playerCopy.Age)
 			continue
 		}
 
@@ -1487,7 +1486,7 @@ func teamsHandler(w http.ResponseWriter, r *http.Request) {
 	setCORSHeaders(w, r)
 	if err := json.NewEncoder(w).Encode(teamsData); err != nil {
 		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
-		log.Printf("Error encoding JSON response for teams (DatasetID: %s, Division: %s): %v", sanitizeForLogging(datasetID), sanitizeForLogging(division), err)
+		logError(ctx, "Error encoding JSON response for teams", "dataset_id", sanitizeForLogging(datasetID), "division", sanitizeForLogging(division), "error", err)
 	}
 }
 
@@ -1647,7 +1646,7 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Cache-Status", "HIT")
 		setCORSHeaders(w, r)
 		if err := json.NewEncoder(w).Encode(cachedPercentiles); err != nil {
-			log.Printf("Error encoding JSON response for cached percentiles (DatasetID: %s): %v", sanitizeForLogging(datasetID), err)
+			logError(ctx, "Error encoding JSON response for cached percentiles", "dataset_id", sanitizeForLogging(datasetID), "error", err)
 			http.Error(w, "Error encoding response", http.StatusInternalServerError)
 		}
 		return
@@ -1679,7 +1678,7 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Cache-Status", "MISS")
 	setCORSHeaders(w, r)
 	if err := json.NewEncoder(w).Encode(updatedPercentiles); err != nil {
-		log.Printf("Error encoding JSON response for percentiles (DatasetID: %s): %v", sanitizeForLogging(datasetID), err)
+		logError(ctx, "Error encoding JSON response for percentiles", "dataset_id", sanitizeForLogging(datasetID), "error", err)
 		http.Error(w, "Error encoding response", http.StatusInternalServerError)
 	}
 }
@@ -1784,7 +1783,7 @@ func playerPercentilesHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Cache-Status", "HIT")
 		setCORSHeaders(w, r)
 		if err := json.NewEncoder(w).Encode(cachedPercentiles); err != nil {
-			log.Printf("Error encoding JSON response for cached player percentiles (DatasetID: %s): %v", sanitizeForLogging(datasetID), err)
+			logError(ctx, "Error encoding JSON response for cached player percentiles", "dataset_id", sanitizeForLogging(datasetID), "error", err)
 			http.Error(w, "Error encoding response", http.StatusInternalServerError)
 		}
 		return
@@ -1849,7 +1848,7 @@ func playerPercentilesHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Cache-Status", "MISS")
 	setCORSHeaders(w, r)
 	if err := json.NewEncoder(w).Encode(resultPercentiles); err != nil {
-		log.Printf("Error encoding JSON response for player percentiles (DatasetID: %s): %v", sanitizeForLogging(datasetID), err)
+		logError(ctx, "Error encoding JSON response for player percentiles", "dataset_id", sanitizeForLogging(datasetID), "error", err)
 		http.Error(w, "Error encoding response", http.StatusInternalServerError)
 	}
 }
@@ -1935,7 +1934,7 @@ func percentilesStatusHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	setCORSHeaders(w, r)
 	if err := json.NewEncoder(w).Encode(statusResponse); err != nil {
-		log.Printf("Error encoding JSON response for percentiles status (DatasetID: %s): %v", sanitizeForLogging(datasetID), err)
+		logError(ctx, "Error encoding JSON response for percentiles status", "dataset_id", sanitizeForLogging(datasetID), "error", err)
 		http.Error(w, "Error encoding response", http.StatusInternalServerError)
 	}
 }
@@ -2595,7 +2594,7 @@ func bargainHunterHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Cache-Status", "HIT")
 		setCORSHeaders(w, r)
 		if err := json.NewEncoder(w).Encode(cachedResults); err != nil {
-			log.Printf("Error encoding JSON response for cached bargain hunter (DatasetID: %s): %v", sanitizeForLogging(datasetID), err)
+			logError(ctx, "Error encoding JSON response for cached bargain hunter", "dataset_id", sanitizeForLogging(datasetID), "error", err)
 			http.Error(w, "Error encoding response", http.StatusInternalServerError)
 		}
 		return
@@ -2619,7 +2618,7 @@ func bargainHunterHandler(w http.ResponseWriter, r *http.Request) {
 	setCORSHeaders(w, r)
 	if err := json.NewEncoder(w).Encode(bargainPlayers); err != nil {
 		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
-		log.Printf("Error encoding JSON response for bargain hunter (DatasetID: %s): %v", sanitizeForLogging(datasetID), err)
+		logError(ctx, "Error encoding JSON response for bargain hunter", "dataset_id", sanitizeForLogging(datasetID), "error", err)
 	}
 }
 
@@ -3480,7 +3479,7 @@ func performanceDataHandler(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Cache-Control", "public, max-age=300") // Cache for 5 minutes
 			setCORSHeaders(w, r)
 			if _, err := w.Write(jsonData); err != nil {
-				log.Printf("Error writing cached performance response: %v", err)
+				logError(ctx, "Error writing cached performance response", "error", err)
 			}
 			SetSpanAttributes(ctx, attribute.Bool("performance_cache.hit", true))
 			return
@@ -3509,11 +3508,11 @@ func performanceDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Enhance players with calculations (convert string attributes to numeric)
 	ctx, enhanceSpan := StartSpan(ctx, "players.enhance")
-	log.Printf("Enhancing %d players with calculations", len(players))
+	logInfo(ctx, "Enhancing players with calculations", "player_count", len(players))
 	for i := range players {
 		EnhancePlayerWithCalculations(&players[i])
 	}
-	log.Printf("Enhanced %d players with calculations", len(players))
+	logInfo(ctx, "Enhanced players with calculations", "player_count", len(players))
 	enhanceSpan.End()
 
 	// Recalculate all player ratings based on the current calculation method setting
@@ -3646,7 +3645,7 @@ func performanceDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Write response
 	if _, err := w.Write(responseData); err != nil {
-		log.Printf("Error writing performance response: %v", err)
+		logError(ctx, "Error writing performance response", "error", err)
 	}
 
 	logDebug(ctx, "Performance data request completed",
@@ -3741,11 +3740,11 @@ func exportDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Enhance players with calculations (convert string attributes to numeric)
 	ctx, enhanceSpan := StartSpan(ctx, "players.enhance")
-	log.Printf("Enhancing %d players with calculations for export", len(players))
+	logInfo(ctx, "Enhancing players with calculations for export", "player_count", len(players))
 	for i := range players {
 		EnhancePlayerWithCalculations(&players[i])
 	}
-	log.Printf("Enhanced %d players with calculations for export", len(players))
+	logInfo(ctx, "Enhanced players with calculations for export", "player_count", len(players))
 	enhanceSpan.End()
 
 	// Recalculate all player ratings
@@ -3791,7 +3790,7 @@ func exportDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Write response
 	if _, writeErr := w.Write(responseData); writeErr != nil {
-		log.Printf("Error writing export response: %v", writeErr)
+		logError(ctx, "Error writing export response", "error", writeErr)
 	}
 
 	logDebug(ctx, "Export request completed",
@@ -4254,7 +4253,7 @@ func generateJSONContent(players []Player, currencySymbol, datasetID string) []b
 
 	jsonData, err := json.MarshalIndent(exportData, "", "  ")
 	if err != nil {
-		log.Printf("Error marshaling JSON export: %v", err)
+		logError(context.Background(), "Error marshaling JSON export", "error", err)
 		return []byte("{}")
 	}
 

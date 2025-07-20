@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -349,7 +348,7 @@ func PeriodicPoolMaintenance() {
 
 		stats := GetPlayerPoolStats()
 		if stats["gets"] > 0 {
-			log.Printf("Player pool stats: %d gets, %d hits (%d%% hit rate), %d created",
+			LogInfo("Player pool stats: %d gets, %d hits (%d%% hit rate), %d created",
 				stats["gets"], stats["hits"], stats["hit_rate"], stats["created"])
 		}
 	}
@@ -357,10 +356,10 @@ func PeriodicPoolMaintenance() {
 
 // InitializeObjectPools starts the object pooling system
 func InitializeObjectPools() {
-	log.Println("Initializing enhanced object pooling system...")
+	LogInfo("Initializing enhanced object pooling system...")
 
 	// Start periodic maintenance
 	go PeriodicPoolMaintenance()
 
-	log.Println("Object pooling system initialized with Player, Slice, and Map pools")
+	LogInfo("Object pooling system initialized with Player, Slice, and Map pools")
 }

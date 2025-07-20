@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -249,7 +248,11 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 
 		// Legacy log for backward compatibility (only for non-200 responses)
 		if wrapped.statusCode != http.StatusOK {
-			log.Printf("%s %s %d %v", r.Method, sanitizeForLogging(r.URL.Path), wrapped.statusCode, duration)
+			logWarn(ctx, "HTTP request completed with non-200 status",
+				"method", r.Method,
+				"path", sanitizeForLogging(r.URL.Path),
+				"status", wrapped.statusCode,
+				"duration", duration)
 		}
 	})
 }

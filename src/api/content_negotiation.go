@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -237,7 +236,7 @@ func CreatePaginationInfo(page, perPage, totalCount int32) *pb.PaginationInfo {
 
 // WriteResponse writes the response using the appropriate serializer
 func WriteResponse(w http.ResponseWriter, r *http.Request, data interface{}) error {
-	log.Printf("WriteResponse: called with data type = %T", data)
+	logDebug(r.Context(), "WriteResponse called", "data_type", fmt.Sprintf("%T", data))
 
 	// Defensive: check if headers have already been written (using custom responseWriter)
 	type headerChecker interface {
@@ -246,7 +245,7 @@ func WriteResponse(w http.ResponseWriter, r *http.Request, data interface{}) err
 	if hc, ok := w.(headerChecker); ok {
 		status := hc.Status()
 		if status != 0 && status != 200 {
-			log.Printf("WriteResponse: WARNING - headers already written with status %d, skipping header write", status)
+			logWarn(r.Context(), "WriteResponse: headers already written, skipping header write", "status", status)
 			return nil
 		}
 	}
@@ -261,7 +260,7 @@ func WriteResponse(w http.ResponseWriter, r *http.Request, data interface{}) err
 	serializer := negotiator.SelectSerializer()
 
 	// Debug logging
-	log.Printf("WriteResponse: serializer type = %T, content type = %s", serializer, serializer.ContentType())
+	logDebug(r.Context(), "WriteResponse: serializer selected", "serializer_type", fmt.Sprintf("%T", serializer), "content_type", serializer.ContentType())
 
 	// Acquire read lock for concurrent map access protection during serialization
 	percentileCalculationMutex.RLock()
@@ -270,20 +269,20 @@ func WriteResponse(w http.ResponseWriter, r *http.Request, data interface{}) err
 	responseData, err := serializer.Serialize(data)
 	if err != nil {
 		// Fallback to JSON on serialization error
-		log.Printf("WriteResponse: serialization failed, falling back to JSON: %v", err)
+		logWarn(r.Context(), "WriteResponse: serialization failed, falling back to JSON", "error", err)
 		jsonSerializer := &JSONSerializer{}
 		responseData, jsonErr := jsonSerializer.Serialize(data)
 		if jsonErr != nil {
 			return fmt.Errorf("both protobuf and JSON serialization failed: %v, %v", err, jsonErr)
 		}
 		w.Header().Set("Content-Type", jsonSerializer.ContentType())
-		log.Printf("WriteResponse: setting JSON content type = %s", jsonSerializer.ContentType())
+		logDebug(r.Context(), "WriteResponse: setting JSON content type", "content_type", jsonSerializer.ContentType())
 		w.Write(responseData)
 		return nil
 	}
 
 	w.Header().Set("Content-Type", serializer.ContentType())
-	log.Printf("WriteResponse: setting content type = %s", serializer.ContentType())
+	logDebug(r.Context(), "WriteResponse: setting content type", "content_type", serializer.ContentType())
 	if serializer.ShouldCompress() {
 		w.Header().Set("Content-Encoding", "gzip")
 	}

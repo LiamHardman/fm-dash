@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"time"
 
@@ -111,7 +110,7 @@ func (c *HTTPClient) Do(req *http.Request) (*http.Response, error) {
 		} else {
 			lastErr = apperrors.WrapErrHTTPStatus(resp.StatusCode, resp.Status)
 			if closeErr := resp.Body.Close(); closeErr != nil {
-				log.Printf("Failed to close response body: %v", closeErr)
+				LogWarn("Failed to close response body", "error", closeErr)
 			}
 		}
 
@@ -128,8 +127,7 @@ func (c *HTTPClient) Do(req *http.Request) (*http.Response, error) {
 				)
 			}
 
-			log.Printf("HTTP request failed (attempt %d/%d), retrying in %v: %v",
-				attempt+1, c.retryConfig.MaxRetries+1, delay, lastErr)
+			LogWarn("HTTP request failed, retrying", "attempt", attempt+1, "max_attempts", c.retryConfig.MaxRetries+1, "delay", delay, "error", lastErr)
 
 			select {
 			case <-time.After(delay):

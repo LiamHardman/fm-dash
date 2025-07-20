@@ -2,13 +2,27 @@
 package errors
 
 import (
+	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"runtime/debug"
 	"strings"
 	"time"
 )
+
+// Logging functions for this package
+func logInfo(ctx context.Context, msg string, args ...any) {
+	slog.InfoContext(ctx, msg, args...)
+}
+
+func logWarn(ctx context.Context, msg string, args ...any) {
+	slog.WarnContext(ctx, msg, args...)
+}
+
+func logError(ctx context.Context, msg string, args ...any) {
+	slog.ErrorContext(ctx, msg, args...)
+}
 
 // sanitizeForLogging sanitizes input for safe logging
 func sanitizeForLogging(input string) string {
@@ -71,7 +85,7 @@ func ErrorHandlerMiddleware(next http.Handler) http.Handler {
 		// Add panic recovery
 		defer func() {
 			if err := recover(); err != nil {
-				log.Printf("Panic recovered: %v\n%s", err, debug.Stack())
+				logError(r.Context(), "Panic recovered: %v\n%s", err, debug.Stack())
 
 				// Send internal server error
 				SendErrorResponse(wrapped, r, CreateInternalError(
@@ -84,7 +98,7 @@ func ErrorHandlerMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(wrapped, r)
 
 		// Log the request with sanitized URL path
-		log.Printf("%s %s %d %d bytes",
+		logInfo(r.Context(), "%s %s %d %d bytes",
 			r.Method,
 			sanitizeForLogging(r.URL.Path),
 			wrapped.StatusCode,
@@ -124,16 +138,16 @@ func SendErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
 
 	// Encode and send response
 	if encodeErr := json.NewEncoder(w).Encode(response); encodeErr != nil {
-		log.Printf("Failed to encode error response: %v", encodeErr)
+		logError(r.Context(), "Failed to encode error response: %v", encodeErr)
 		// Fallback to plain text
 		http.Error(w, appErr.Message, appErr.HTTPStatus)
 	}
 
 	// Log error details (but not sensitive info)
 	if appErr.HTTPStatus >= 500 {
-		log.Printf("Internal error [%s]: %s", appErr.Code, appErr.Error())
+		logError(r.Context(), "Internal error [%s]: %s", appErr.Code, appErr.Error())
 	} else {
-		log.Printf("Client error [%s]: %s", appErr.Code, appErr.Message)
+		logWarn(r.Context(), "Client error [%s]: %s", appErr.Code, appErr.Message)
 	}
 }
 

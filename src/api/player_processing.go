@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"sort"
 	"strconv"
 	"strings"
@@ -502,7 +501,7 @@ func EnhancePlayerWithCalculations(player *Player) {
 		muRoleSpecificOverallWeights.RLock()
 		if len(roleSpecificOverallWeights) > 0 { // roleSpecificOverallWeights from config.go
 			// Only log this warning once to avoid spam
-			log.Printf("Warning: precomputedRoleWeights is empty. Falling back to iterating roleSpecificOverallWeights (SLOW PATH). Check init logs.")
+			LogWarn("precomputedRoleWeights is empty. Falling back to iterating roleSpecificOverallWeights (SLOW PATH). Check init logs.")
 		} else {
 			shouldUseFallback = false
 		}
@@ -560,7 +559,7 @@ func EnhancePlayerWithCalculations(player *Player) {
 		}
 
 		if len(calculatedRoleOveralls) == 0 && len(player.ShortPositions) > 0 {
-			log.Printf("Fallback Warning: Player '%s' with ShortPositions %v found no matching roles in fallback roleSpecificOverallWeights. Role-based overall will be 0.", player.Name, player.ShortPositions)
+			LogWarn("Fallback Warning: Player with ShortPositions found no matching roles in fallback roleSpecificOverallWeights. Role-based overall will be 0.", "player_name", player.Name, "short_positions", player.ShortPositions)
 		}
 
 	case len(player.ShortPositions) > 0:
@@ -607,7 +606,7 @@ func EnhancePlayerWithCalculations(player *Player) {
 		}
 
 		if !foundAnyRoleMatch && len(player.ShortPositions) > 0 {
-			log.Printf("Warning: Player '%s' with ShortPositions %v found no matching roles in precomputedRoleWeights. Role-based overall will be 0.", player.Name, player.ShortPositions)
+			LogWarn("Warning: Player with ShortPositions found no matching roles in precomputedRoleWeights. Role-based overall will be 0.", "player_name", player.Name, "short_positions", player.ShortPositions)
 		}
 	default:
 		// This case means player has no short positions, so maxRoleBasedOverall will naturally be 0.
@@ -911,7 +910,7 @@ func RecalculatePlayerRatings(player *Player) {
 
 // RecalculateAllPlayersRatings recalculates ratings for all players in a slice
 func RecalculateAllPlayersRatings(players []Player) []Player {
-	log.Printf("RecalculateAllPlayersRatings called for %d players", len(players))
+	LogInfo("RecalculateAllPlayersRatings called for %d players", len(players))
 	// Create a new slice to avoid modifying the original
 	result := make([]Player, len(players))
 	copy(result, players)

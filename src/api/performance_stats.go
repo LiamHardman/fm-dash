@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/sha256"
 	"fmt"
-	"log"
 	"math"
 	"sort"
 	"sync"
@@ -32,7 +31,7 @@ func generateDatasetHash(players []Player) string {
 
 	// Hash player count and key attributes for quick change detection
 	if _, err := fmt.Fprintf(hasher, "%d", len(players)); err != nil {
-		log.Printf("Failed to write player count to hash: %v", err)
+		LogWarn("Failed to write player count to hash: %v", err)
 	}
 
 	// Sample a subset of players for hash to balance speed vs accuracy
@@ -45,7 +44,7 @@ func generateDatasetHash(players []Player) string {
 		player := &players[i]
 		if i < 50 || i >= len(players)-50 {
 			if _, err := fmt.Fprintf(hasher, "%s:%s:%d", player.Name, player.Division, player.Overall); err != nil {
-				log.Printf("Failed to write player data to hash: %v", err)
+				LogWarn("Failed to write player data to hash: %v", err)
 			}
 		}
 	}
@@ -413,7 +412,7 @@ func CalculatePlayerPerformancePercentilesWithDivisionFilter(players []Player, d
 	}
 
 	startTime := time.Now()
-	log.Printf("🔄 Calculating percentiles with division filter: %d, target: %s, player count: %d", divisionFilter, sanitizeForLogging(targetDivision), len(players))
+	LogInfo("🔄 Calculating percentiles with division filter: %d, target: %s, player count: %d", divisionFilter, sanitizeForLogging(targetDivision), len(players))
 
 	// Pre-filter players once to avoid repeated checks
 	var filteredPlayerIndices []int
@@ -422,7 +421,7 @@ func CalculatePlayerPerformancePercentilesWithDivisionFilter(players []Player, d
 			filteredPlayerIndices = append(filteredPlayerIndices, i)
 		}
 	}
-	log.Printf("📊 Division filter will include %d out of %d players", len(filteredPlayerIndices), len(players))
+	LogInfo("📊 Division filter will include %d out of %d players", len(filteredPlayerIndices), len(players))
 
 	// Acquire write lock for concurrent map access protection
 	percentileCalculationMutex.Lock()
@@ -603,6 +602,6 @@ func CalculatePlayerPerformancePercentilesWithDivisionFilter(players []Player, d
 	}
 
 	duration := time.Since(startTime)
-	log.Printf("⚡ Optimized percentile calculation completed in %v for %d players (%d included by filter)",
+	LogInfo("⚡ Optimized percentile calculation completed in %v for %d players (%d included by filter)",
 		duration, len(players), len(filteredPlayerIndices))
 }
