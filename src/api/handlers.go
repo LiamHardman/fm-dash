@@ -3507,6 +3507,15 @@ func performanceDataHandler(w http.ResponseWriter, r *http.Request) {
 		attribute.String("dataset.currency", currencySymbol),
 	)
 
+	// Enhance players with calculations (convert string attributes to numeric)
+	ctx, enhanceSpan := StartSpan(ctx, "players.enhance")
+	log.Printf("Enhancing %d players with calculations", len(players))
+	for i := range players {
+		EnhancePlayerWithCalculations(&players[i])
+	}
+	log.Printf("Enhanced %d players with calculations", len(players))
+	enhanceSpan.End()
+
 	// Recalculate all player ratings based on the current calculation method setting
 	ctx, recalcSpan := StartSpan(ctx, "ratings.recalculate")
 	players = RecalculateAllPlayersRatings(players)
@@ -3647,6 +3656,151 @@ func performanceDataHandler(w http.ResponseWriter, r *http.Request) {
 		"response_size_bytes", len(responseData))
 }
 
+// exportDataHandler handles GET requests for exporting complete dataset data.
+func exportDataHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	startTime := time.Now()
+
+	// Start comprehensive tracing
+	ctx, span := StartSpan(ctx, "api.export.get")
+	defer span.End()
+
+	// Track active requests
+	IncrementActiveRequests(ctx, "/api/export")
+	defer DecrementActiveRequests(ctx, "/api/export")
+
+	// Record API operation metrics at the end
+	defer func() {
+		status := http.StatusOK
+		RecordAPIOperation(ctx, r.Method, "/api/export", status, time.Since(startTime))
+	}()
+
+	if r.Method != http.MethodGet {
+		WriteErrorResponse(w, r, "method_not_allowed", "Only GET method is allowed", nil, http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get request ID for response metadata
+	requestID := r.Header.Get("X-Request-ID")
+	if requestID == "" {
+		requestID = generateRequestID()
+	}
+
+	SetSpanAttributes(ctx,
+		attribute.String("http.method", r.Method),
+		attribute.String("http.route", "/api/export"),
+		attribute.String("request.id", requestID),
+	)
+
+	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/export/"), "/")
+	if len(pathParts) == 0 || pathParts[0] == "" {
+		logWarn(ctx, "Dataset ID missing in request path")
+		SetSpanAttributes(ctx, attribute.String("error.type", "missing_dataset_id"))
+		WriteErrorResponse(w, r, "missing_dataset_id", "Dataset ID is missing in the request path", nil, http.StatusBadRequest)
+		return
+	}
+	datasetID := pathParts[0]
+
+	SetSpanAttributes(ctx, attribute.String("dataset.id", datasetID))
+
+	// Get format from query parameter
+	format := r.URL.Query().Get("format")
+	if format == "" {
+		format = "json" // Default to JSON
+	}
+
+	if format != "json" && format != "csv" {
+		logWarn(ctx, "Invalid export format", "format", format)
+		SetSpanAttributes(ctx, attribute.String("error.type", "invalid_format"))
+		WriteErrorResponse(w, r, "invalid_format", "Invalid export format. Supported formats: json, csv", nil, http.StatusBadRequest)
+		return
+	}
+
+	SetSpanAttributes(ctx, attribute.String("export.format", format))
+
+	logDebug(ctx, "Processing export request",
+		"dataset_id", datasetID,
+		"format", format)
+
+	// Use the storage interface to get player data
+	ctx, dataSpan := StartSpan(ctx, "storage.get_dataset")
+	players, currencySymbol, found := GetPlayerData(datasetID)
+	dataSpan.End()
+
+	if !found {
+		logWarn(ctx, "Player data not found", "dataset_id", datasetID)
+		SetSpanAttributes(ctx, attribute.String("error.type", "dataset_not_found"))
+		WriteErrorResponse(w, r, "dataset_not_found", "Player data not found for the given ID.", nil, http.StatusNotFound)
+		return
+	}
+
+	SetSpanAttributes(ctx,
+		attribute.Int("dataset.player_count", len(players)),
+		attribute.String("dataset.currency", currencySymbol),
+	)
+
+	// Enhance players with calculations (convert string attributes to numeric)
+	ctx, enhanceSpan := StartSpan(ctx, "players.enhance")
+	log.Printf("Enhancing %d players with calculations for export", len(players))
+	for i := range players {
+		EnhancePlayerWithCalculations(&players[i])
+	}
+	log.Printf("Enhanced %d players with calculations for export", len(players))
+	enhanceSpan.End()
+
+	// Recalculate all player ratings
+	ctx, recalcSpan := StartSpan(ctx, "ratings.recalculate")
+	players = RecalculateAllPlayersRatings(players)
+	recalcSpan.End()
+
+	// Calculate performance percentiles
+	ctx, percentileSpan := StartSpan(ctx, "percentiles.calculate")
+	CalculatePlayerPerformancePercentiles(players)
+	percentileSpan.End()
+
+	SetSpanAttributes(ctx, attribute.Int("export.player_count", len(players)))
+
+	// Export based on format
+	var responseData []byte
+
+	if format == "csv" {
+		// Generate CSV content
+		_, csvSpan := StartSpan(ctx, "export.csv_generate")
+		csvContent := generateCSVContent(players)
+		csvSpan.End()
+
+		// Set response headers for CSV download
+		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=players_export_%s.csv", datasetID))
+		setCORSHeaders(w, r)
+
+		responseData = []byte(csvContent)
+	} else {
+		// Generate JSON content
+		_, jsonSpan := StartSpan(ctx, "export.json_generate")
+		jsonContent := generateJSONContent(players, currencySymbol, datasetID)
+		jsonSpan.End()
+
+		// Set response headers for JSON
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=players_export_%s.json", datasetID))
+		setCORSHeaders(w, r)
+
+		responseData = jsonContent
+	}
+
+	// Write response
+	if _, writeErr := w.Write(responseData); writeErr != nil {
+		log.Printf("Error writing export response: %v", writeErr)
+	}
+
+	logDebug(ctx, "Export request completed",
+		"dataset_id", datasetID,
+		"format", format,
+		"player_count", len(players),
+		"response_size_bytes", len(responseData))
+}
+
 // filterPlayersForPerformance applies all filters to get performance data
 func filterPlayersForPerformance(players []Player, position, role string, minAge, maxAge int, minTransferValue, maxTransferValue, maxSalary int64, positionCompare string) []Player {
 	filtered := make([]Player, 0, len(players))
@@ -3759,4 +3913,303 @@ func containsAnyPosition(positions []string, targetPositions []string) bool {
 		}
 	}
 	return false
+}
+
+// contains checks if a slice contains a specific string
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
+}
+
+// generateCSVContent generates CSV content from player data
+func generateCSVContent(players []Player) string {
+	if len(players) == 0 {
+		return ""
+	}
+
+	// First, collect all unique role names and performance percentile groups
+	roleNames := make(map[string]bool)
+	percentileGroups := make(map[string]bool)
+	attributeNames := make(map[string]bool)
+
+	for _, player := range players {
+		// Collect role names
+		for _, role := range player.RoleSpecificOveralls {
+			roleNames[role.RoleName] = true
+		}
+
+		// Collect performance percentile groups
+		for group := range player.PerformancePercentiles {
+			percentileGroups[group] = true
+		}
+
+		// Collect attribute names
+		for attr := range player.Attributes {
+			attributeNames[attr] = true
+		}
+	}
+
+	// Convert maps to sorted slices for consistent column ordering
+	roleNamesList := make([]string, 0, len(roleNames))
+	for role := range roleNames {
+		roleNamesList = append(roleNamesList, role)
+	}
+	sort.Strings(roleNamesList)
+
+	percentileGroupsList := make([]string, 0, len(percentileGroups))
+	for group := range percentileGroups {
+		percentileGroupsList = append(percentileGroupsList, group)
+	}
+	sort.Strings(percentileGroupsList)
+
+	attributeNamesList := make([]string, 0, len(attributeNames))
+	for attr := range attributeNames {
+		attributeNamesList = append(attributeNamesList, attr)
+	}
+	sort.Strings(attributeNamesList)
+
+	// Define CSV headers
+	headers := []string{
+		"Name", "Age", "Nationality", "Nationality ISO", "Nationality FIFA Code",
+		"Club", "Division", "Position", "Transfer Value", "Wage",
+		"Overall", "PAC", "SHO", "PAS", "DRI", "DEF", "PHY", "GK",
+		"DIV", "HAN", "REF", "KIC", "SPD", "POS", // Individual GK stats
+		"Personality", "Media Handling", "Attributes Masked",
+	}
+
+	// Add role rating columns
+	for _, roleName := range roleNamesList {
+		headers = append(headers, fmt.Sprintf("Role_%s", roleName))
+	}
+
+	// Add performance percentile columns
+	for _, group := range percentileGroupsList {
+		headers = append(headers, fmt.Sprintf("Percentile_%s", group))
+	}
+
+	// Add FM attribute columns in the correct order (Technical -> Mental -> Physical -> Goalkeeper)
+	// Technical attributes
+	technicalAttrs := []string{"Cor", "Cro", "Dri", "Fin", "Fir", "Fre", "Hea", "Lon", "L Th", "Mar", "Pas", "Pen", "Tck", "Tec"}
+	for _, attrName := range technicalAttrs {
+		if attributeNames[attrName] {
+			headers = append(headers, attrName)
+		}
+	}
+
+	// Mental attributes
+	mentalAttrs := []string{"Agg", "Ant", "Bra", "Cmp", "Cnt", "Dec", "Det", "Fla", "Ldr", "OtB", "Pos", "Tea", "Vis", "Wor"}
+	for _, attrName := range mentalAttrs {
+		if attributeNames[attrName] {
+			headers = append(headers, attrName)
+		}
+	}
+
+	// Physical attributes
+	physicalAttrs := []string{"Acc", "Agi", "Bal", "Jum", "Nat", "Pac", "Sta", "Str"}
+	for _, attrName := range physicalAttrs {
+		if attributeNames[attrName] {
+			headers = append(headers, attrName)
+		}
+	}
+
+	// Goalkeeper attributes
+	gkAttrs := []string{"Aer", "Cmd", "Com", "Ecc", "Han", "Kic", "1v1", "Pun", "Ref", "TRO", "Thr"}
+	for _, attrName := range gkAttrs {
+		if attributeNames[attrName] {
+			headers = append(headers, attrName)
+		}
+	}
+
+	// Add any remaining attributes that weren't in the predefined lists
+	for _, attrName := range attributeNamesList {
+		if !contains(technicalAttrs, attrName) && !contains(mentalAttrs, attrName) &&
+			!contains(physicalAttrs, attrName) && !contains(gkAttrs, attrName) {
+			headers = append(headers, attrName)
+		}
+	}
+
+	// Create CSV content
+	var csvLines []string
+	csvLines = append(csvLines, strings.Join(headers, ","))
+
+	for _, player := range players {
+		// Basic info
+		row := []string{
+			escapeCSVField(player.Name),
+			escapeCSVField(player.Age),
+			escapeCSVField(player.Nationality),
+			escapeCSVField(player.NationalityISO),
+			escapeCSVField(player.NationalityFIFACode),
+			escapeCSVField(player.Club),
+			escapeCSVField(player.Division),
+			escapeCSVField(player.Position),
+			escapeCSVField(player.TransferValue),
+			escapeCSVField(player.Wage),
+		}
+
+		// FIFA stats (outfield)
+		row = append(row, []string{
+			fmt.Sprintf("%d", player.Overall),
+			fmt.Sprintf("%d", player.PAC),
+			fmt.Sprintf("%d", player.SHO),
+			fmt.Sprintf("%d", player.PAS),
+			fmt.Sprintf("%d", player.DRI),
+			fmt.Sprintf("%d", player.DEF),
+			fmt.Sprintf("%d", player.PHY),
+			fmt.Sprintf("%d", player.GK),
+		}...)
+
+		// Individual GK stats
+		row = append(row, []string{
+			fmt.Sprintf("%d", player.DIV),
+			fmt.Sprintf("%d", player.HAN),
+			fmt.Sprintf("%d", player.REF),
+			fmt.Sprintf("%d", player.KIC),
+			fmt.Sprintf("%d", player.SPD),
+			fmt.Sprintf("%d", player.POS),
+		}...)
+
+		// Personal info
+		row = append(row, []string{
+			escapeCSVField(player.Personality),
+			escapeCSVField(player.MediaHandling),
+			fmt.Sprintf("%t", player.AttributeMasked),
+		}...)
+
+		// Role ratings (individual columns)
+		roleMap := make(map[string]int)
+		for _, role := range player.RoleSpecificOveralls {
+			roleMap[role.RoleName] = role.Score
+		}
+		for _, roleName := range roleNamesList {
+			if score, exists := roleMap[roleName]; exists {
+				row = append(row, fmt.Sprintf("%d", score))
+			} else {
+				row = append(row, "") // Empty for players without this role
+			}
+		}
+
+		// Performance percentiles (individual columns)
+		for _, group := range percentileGroupsList {
+			if percentiles, exists := player.PerformancePercentiles[group]; exists {
+				percentilesJSON, _ := json.Marshal(percentiles)
+				row = append(row, escapeCSVField(string(percentilesJSON)))
+			} else {
+				row = append(row, "") // Empty for players without this percentile group
+			}
+		}
+
+		// FM Attributes (individual columns) in the same order as headers
+		// Technical attributes
+		technicalAttrs := []string{"Cor", "Cro", "Dri", "Fin", "Fir", "Fre", "Hea", "Lon", "L Th", "Mar", "Pas", "Pen", "Tck", "Tec"}
+		for _, attrName := range technicalAttrs {
+			if attributeNames[attrName] {
+				if value, exists := player.Attributes[attrName]; exists {
+					row = append(row, escapeCSVField(value))
+				} else {
+					row = append(row, "") // Empty for players without this attribute
+				}
+			}
+		}
+
+		// Mental attributes
+		mentalAttrs := []string{"Agg", "Ant", "Bra", "Cmp", "Cnt", "Dec", "Det", "Fla", "Ldr", "OtB", "Pos", "Tea", "Vis", "Wor"}
+		for _, attrName := range mentalAttrs {
+			if attributeNames[attrName] {
+				if value, exists := player.Attributes[attrName]; exists {
+					row = append(row, escapeCSVField(value))
+				} else {
+					row = append(row, "") // Empty for players without this attribute
+				}
+			}
+		}
+
+		// Physical attributes
+		physicalAttrs := []string{"Acc", "Agi", "Bal", "Jum", "Nat", "Pac", "Sta", "Str"}
+		for _, attrName := range physicalAttrs {
+			if attributeNames[attrName] {
+				if value, exists := player.Attributes[attrName]; exists {
+					row = append(row, escapeCSVField(value))
+				} else {
+					row = append(row, "") // Empty for players without this attribute
+				}
+			}
+		}
+
+		// Goalkeeper attributes
+		gkAttrs := []string{"Aer", "Cmd", "Com", "Ecc", "Han", "Kic", "1v1", "Pun", "Ref", "TRO", "Thr"}
+		for _, attrName := range gkAttrs {
+			if attributeNames[attrName] {
+				if value, exists := player.Attributes[attrName]; exists {
+					row = append(row, escapeCSVField(value))
+				} else {
+					row = append(row, "") // Empty for players without this attribute
+				}
+			}
+		}
+
+		// Add any remaining attributes that weren't in the predefined lists
+		for _, attrName := range attributeNamesList {
+			if !contains(technicalAttrs, attrName) && !contains(mentalAttrs, attrName) &&
+				!contains(physicalAttrs, attrName) && !contains(gkAttrs, attrName) {
+				if value, exists := player.Attributes[attrName]; exists {
+					row = append(row, escapeCSVField(value))
+				} else {
+					row = append(row, "") // Empty for players without this attribute
+				}
+			}
+		}
+
+		csvLines = append(csvLines, strings.Join(row, ","))
+	}
+
+	return strings.Join(csvLines, "\n")
+}
+
+// generateJSONContent generates JSON content from player data
+func generateJSONContent(players []Player, currencySymbol, datasetID string) []byte {
+	// Create export metadata
+	exportData := struct {
+		Metadata struct {
+			ExportDate     string `json:"exportDate"`
+			DatasetID      string `json:"datasetId"`
+			TotalPlayers   int    `json:"totalPlayers"`
+			CurrencySymbol string `json:"currencySymbol"`
+			Format         string `json:"format"`
+			Version        string `json:"version"`
+		} `json:"metadata"`
+		Players []Player `json:"players"`
+	}{
+		Players: players,
+	}
+
+	exportData.Metadata.ExportDate = time.Now().Format(time.RFC3339)
+	exportData.Metadata.DatasetID = datasetID
+	exportData.Metadata.TotalPlayers = len(players)
+	exportData.Metadata.CurrencySymbol = currencySymbol
+	exportData.Metadata.Format = "json"
+	exportData.Metadata.Version = "1.0"
+
+	jsonData, err := json.MarshalIndent(exportData, "", "  ")
+	if err != nil {
+		log.Printf("Error marshaling JSON export: %v", err)
+		return []byte("{}")
+	}
+
+	return jsonData
+}
+
+// escapeCSVField escapes a field for CSV format
+func escapeCSVField(field string) string {
+	if strings.Contains(field, ",") || strings.Contains(field, "\"") || strings.Contains(field, "\n") {
+		// Escape quotes by doubling them
+		field = strings.ReplaceAll(field, "\"", "\"\"")
+		// Wrap in quotes
+		field = "\"" + field + "\""
+	}
+	return field
 }

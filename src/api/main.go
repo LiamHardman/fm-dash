@@ -304,6 +304,9 @@ func main() {
 	// API endpoint for performance data
 	mux.Handle("/api/performance/", wrapHandler(http.HandlerFunc(performanceDataHandler), "performance-data"))
 
+	// API endpoint for exporting complete dataset data
+	mux.Handle("/api/export/", wrapHandler(http.HandlerFunc(exportDataHandler), "export-data"))
+
 	// Create server with proper timeouts
 	server := &http.Server{
 		Addr:              ":" + port,

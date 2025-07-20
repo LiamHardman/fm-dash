@@ -43,7 +43,22 @@
                         </p>
                     </div>
                     <div class="hero-right">
-                         <q-btn unelevated icon="share" label="Share" @click="shareDataset" class="share-btn-modern"/>
+                        <q-btn 
+                            unelevated 
+                            icon="download" 
+                            label="Export" 
+                            @click="openExportOptions" 
+                            :disable="filteredPlayers.length === 0"
+                            class="export-btn-modern q-mr-sm"
+                        >
+                            <q-tooltip v-if="filteredPlayers.length > 0">
+                                Export {{ filteredPlayers.length }} filtered players
+                            </q-tooltip>
+                            <q-tooltip v-else>
+                                No players to export
+                            </q-tooltip>
+                        </q-btn>
+                        <q-btn unelevated icon="share" label="Share" @click="shareDataset" class="share-btn-modern"/>
                     </div>
                 </div>
 
@@ -414,13 +429,22 @@
         </div>
 
         <!-- Player Detail Dialog -->
-        <DynamicPlayerDetailDialog 
-    :player="playerForDetailView" 
-    :show="showPlayerDetailDialog" 
-    @close="showPlayerDetailDialog = false" 
-    :currency-symbol="detectedCurrencySymbol" 
-    :dataset-id="currentDatasetId" 
-/>
+                <DynamicPlayerDetailDialog 
+            :player="playerForDetailView" 
+            :show="showPlayerDetailDialog" 
+            @close="showPlayerDetailDialog = false" 
+            :currency-symbol="detectedCurrencySymbol" 
+            :dataset-id="currentDatasetId" 
+        />
+
+        <!-- Export Options Dialog -->
+        <ExportOptionsDialog
+            :show="showExportOptions"
+            :player-count="filteredPlayers.length"
+            :export-type="exportFormat"
+            @close="showExportOptions = false"
+            @export="handleExportWithOptions"
+        />
     </q-page>
 </template>
 
@@ -436,6 +460,8 @@ import { usePlayerStore } from '../stores/playerStore'
 import { fetchPerformanceData } from '../services/playerService'
 import { getNumericValue, getPlayerDivision } from '../utils/playerUtils'
 import { formatNumber } from '../utils/currencyUtils'
+import ExportOptionsDialog from '../components/ExportOptionsDialog.vue'
+import { exportPlayersToCSV } from '../utils/csvExport.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -454,6 +480,10 @@ const pageLoadingError = ref('')
 const showPlayerDetailDialog = ref(false)
 const playerForDetailView = ref(null)
 const topPlayersByStat = ref({})
+
+// Export functionality
+const showExportOptions = ref(false)
+const exportFormat = ref('csv')
 // biome-ignore lint/correctness/noUnusedVariables: used in template
 const currentTab = ref('attacking')
 const pageLoading = ref(true)
@@ -1127,6 +1157,52 @@ const openPlayerDetail = player => {
   showPlayerDetailDialog.value = true
 }
 
+// Export functionality
+const openExportOptions = () => {
+  showExportOptions.value = true
+}
+
+const handleExportWithOptions = async exportOptions => {
+  try {
+    if (!currentDatasetId.value) {
+      $q.notify({
+        type: 'negative',
+        message: 'No dataset available for export',
+        position: 'top'
+      })
+      return
+    }
+
+    console.log(`Exporting dataset ${currentDatasetId.value} with options:`, exportOptions)
+
+    // Export using the backend API
+    await exportPlayersToCSV(currentDatasetId.value, exportOptions.format)
+
+    // Show success message
+    $q.notify({
+      type: 'positive',
+      message: `Successfully exported dataset as ${exportOptions.format.toUpperCase()}`,
+      position: 'top',
+      actions: [
+        {
+          label: 'Dismiss',
+          color: 'white'
+        }
+      ]
+    })
+
+    // Close the dialog
+    showExportOptions.value = false
+  } catch (error) {
+    console.error('Export failed:', error)
+    $q.notify({
+      type: 'negative',
+      message: `Export failed: ${error.message}`,
+      position: 'top'
+    })
+  }
+}
+
 // biome-ignore lint/correctness/noUnusedVariables: used in template
 const shareDataset = () => {
   if (!currentDatasetId.value) return
@@ -1406,6 +1482,19 @@ $border-radius-small: 8px;
             }
         }
         .share-btn-modern {
+            background: rgba(255,255,255,0.15);
+            color: white;
+            font-weight: 600;
+            border-radius: $border-radius-small;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            &:hover {
+                background: rgba(255,255,255,0.25);
+                transform: translateY(-2px);
+            }
+        }
+
+        .export-btn-modern {
             background: rgba(255,255,255,0.15);
             color: white;
             font-weight: 600;

@@ -40,7 +40,10 @@ function getAvailableColumns(players) {
       { key: 'name', label: 'Name' },
       { key: 'age', label: 'Age' },
       { key: 'nationality', label: 'Nationality' },
+      { key: 'nationality_iso', label: 'Nationality ISO' },
+      { key: 'nationality_fifa_code', label: 'Nationality FIFA Code' },
       { key: 'club', label: 'Club' },
+      { key: 'division', label: 'Division' },
       { key: 'position', label: 'Position' },
       { key: 'transferValue', label: 'Transfer Value' },
       { key: 'wage', label: 'Wage' }
@@ -64,7 +67,8 @@ function getAvailableColumns(players) {
       : [],
     personal: [
       { key: 'personality', label: 'Personality' },
-      { key: 'media_handling', label: 'Media Handling' }
+      { key: 'media_handling', label: 'Media Handling' },
+      { key: 'attributeMasked', label: 'Attributes Masked' }
     ]
   }
 
@@ -109,97 +113,64 @@ function getNestedValue(obj, path) {
 }
 
 /**
- * Export players to CSV format
- * @param {Array} players - Array of player objects to export
- * @param {Array} selectedColumns - Array of column keys to include
+ * Export players to CSV format using the backend export API
+ * @param {string} datasetId - Dataset ID to export
+ * @param {string} format - Export format ('csv' or 'json')
  * @param {string} filename - Optional filename (defaults to auto-generated)
  * @returns {Promise<void>} Promise that resolves when download starts
  */
-export async function exportPlayersToCSV(players, selectedColumns = null, filename = null) {
-  if (!players || players.length === 0) {
-    throw new Error('No players to export')
+export async function exportPlayersToCSV(datasetId, format = 'csv', filename = null) {
+  if (!datasetId) {
+    throw new Error('Dataset ID is required for export')
   }
 
-  // Get available columns
-  const availableColumns = getAvailableColumns(players)
+  console.log(`Exporting dataset ${datasetId} in ${format} format`)
 
-  // If no columns specified, use basic + ratings by default
-  if (!selectedColumns) {
-    selectedColumns = [
-      ...availableColumns.basic.map(col => col.key),
-      ...availableColumns.ratings.map(col => col.key)
-    ]
-  }
-
-  // Create column mapping
-  const columnMap = {}
-  Object.values(availableColumns).forEach(category => {
-    category.forEach(col => {
-      columnMap[col.key] = col.label
-    })
-  })
-
-  // Generate header row
-  const headers = selectedColumns.map(key => {
-    if (key.startsWith('performancePercentiles.')) {
-      const parts = key.split('.')
-      if (parts.length === 3) {
-        const [, group, statName] = parts
-        return `${group} ${statName} %ile`
+  try {
+    // Call the backend export API
+    const response = await fetch(`/api/export/${datasetId}?format=${format}`, {
+      method: 'GET',
+      headers: {
+        'Accept': format === 'csv' ? 'text/csv' : 'application/json',
       }
-    } else if (key.startsWith('roleRating.')) {
-      const roleName = key.substring('roleRating.'.length)
-      return `${roleName} Rating`
+    })
+
+    if (!response.ok) {
+      throw new Error(`Export failed: ${response.status} ${response.statusText}`)
     }
-    return columnMap[key] || key
-  })
 
-  // Generate data rows
-  const rows = players.map(player => {
-    return selectedColumns.map(key => {
-      let value = getNestedValue(player, key)
-
-      // Special handling for certain fields
-      if (key === 'transferValue') {
-        value = player.transferValue || `${player.transferValueAmount || 0}`
-      } else if (key === 'wage') {
-        value = player.wage || `${player.wageAmount || 0}`
-      } else if (key === 'position') {
-        value = Array.isArray(player.shortPositions)
-          ? player.shortPositions.join(', ')
-          : player.position || ''
-      } else if (key.startsWith('performancePercentiles.')) {
-        // Special handling for performance percentiles
-        const parts = key.split('.')
-        if (parts.length === 3) {
-          // performancePercentiles.Group.StatName
-          const [, group, statName] = parts
-          value = player.performancePercentiles?.[group]?.[statName] || ''
-        }
-      } else if (key.startsWith('roleRating.')) {
-        // Special handling for role ratings
-        const roleName = key.substring('roleRating.'.length)
-        if (player.roleSpecificOveralls && Array.isArray(player.roleSpecificOveralls)) {
-          const roleData = player.roleSpecificOveralls.find(role => role.roleName === roleName)
-          value = roleData ? roleData.score : ''
+    // Get the filename from the response headers or generate one
+    if (!filename) {
+      const contentDisposition = response.headers.get('Content-Disposition')
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="(.+)"/)
+        if (match) {
+          filename = match[1]
         }
       }
+      
+      if (!filename) {
+        const timestamp = new Date().toISOString().split('T')[0]
+        filename = `fm_players_export_${timestamp}.${format}`
+      }
+    }
 
-      return escapeCSVValue(value)
-    })
-  })
+    // Download the file
+    const blob = await response.blob()
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
 
-  // Combine headers and rows
-  const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n')
-
-  // Generate filename if not provided
-  if (!filename) {
-    const timestamp = new Date().toISOString().split('T')[0]
-    filename = `fm_players_export_${timestamp}.csv`
+    console.log(`Export completed: ${filename}`)
+  } catch (error) {
+    console.error('Export failed:', error)
+    throw error
   }
-
-  // Create and download file
-  downloadCSV(csvContent, filename)
 }
 
 /**
@@ -514,6 +485,33 @@ export async function exportPlayersToJSONWithOptions(players, exportOptions, fil
     filename = `fm_players${presetSuffix}_${timestamp}.json`
   }
 
+  // Debug: Log the first player to see what data is available
+  if (players.length > 0) {
+    const samplePlayer = players[0]
+    console.log('JSON Export sample player data:', {
+      name: samplePlayer.name,
+      club: samplePlayer.club,
+      transferValue: samplePlayer.transfer_value,
+      transferValueAmount: samplePlayer.transferValueAmount,
+      hasAttributes: !!samplePlayer.attributes,
+      attributesCount: Object.keys(samplePlayer.attributes || {}).length,
+      hasPerformancePercentiles: !!samplePlayer.performancePercentiles,
+      percentileGroups: Object.keys(samplePlayer.performancePercentiles || {}),
+      hasRoleSpecificOveralls: !!samplePlayer.roleSpecificOveralls,
+      roleCount: samplePlayer.roleSpecificOveralls?.length || 0,
+      overall: samplePlayer.Overall,
+      fifaStats: {
+        PAC: samplePlayer.PAC,
+        SHO: samplePlayer.SHO,
+        PAS: samplePlayer.PAS,
+        DRI: samplePlayer.DRI,
+        DEF: samplePlayer.DEF,
+        PHY: samplePlayer.PHY,
+        GK: samplePlayer.GK
+      }
+    })
+  }
+
   // Filter players data based on export options
   const filteredPlayers = players.map(player => {
     const filteredPlayer = {}
@@ -524,9 +522,14 @@ export async function exportPlayersToJSONWithOptions(players, exportOptions, fil
         name: player.name,
         age: player.age,
         nationality: player.nationality,
+        nationality_iso: player.nationality_iso,
+        nationality_fifa_code: player.nationality_fifa_code,
         club: player.club,
+        division: player.division,
         position: player.position,
-        shortPositions: player.shortPositions
+        shortPositions: player.shortPositions,
+        parsedPositions: player.parsedPositions,
+        positionGroups: player.positionGroups
       }
       Object.assign(filteredPlayer, safeMerge(filteredPlayer, basicInfo))
     }
@@ -535,13 +538,13 @@ export async function exportPlayersToJSONWithOptions(players, exportOptions, fil
       const fifaStats = {
         Overall: player.Overall,
         Potential: player.Potential,
-        PAC: player.PAC,
-        SHO: player.SHO,
-        PAS: player.PAS,
-        DRI: player.DRI,
-        DEF: player.DEF,
-        PHY: player.PHY,
-        GK: player.GK
+        PAC: player.PAC || player.pac,
+        SHO: player.SHO || player.sho,
+        PAS: player.PAS || player.pas,
+        DRI: player.DRI || player.dri,
+        DEF: player.DEF || player.def,
+        PHY: player.PHY || player.phy,
+        GK: player.GK || player.gk
       }
       Object.assign(filteredPlayer, safeMerge(filteredPlayer, fifaStats))
     }
@@ -560,7 +563,7 @@ export async function exportPlayersToJSONWithOptions(players, exportOptions, fil
 
     if (options.contractInfo) {
       const contractInfo = {
-        transferValue: player.transferValue,
+        transferValue: player.transfer_value || player.transferValue,
         transferValueAmount: player.transferValueAmount,
         wage: player.wage,
         wageAmount: player.wageAmount,
@@ -573,6 +576,7 @@ export async function exportPlayersToJSONWithOptions(players, exportOptions, fil
       const personalInfo = {
         personality: player.personality,
         media_handling: player.media_handling,
+        attributeMasked: player.attributeMasked,
         foot: player.foot,
         height: player.height,
         weight: player.weight

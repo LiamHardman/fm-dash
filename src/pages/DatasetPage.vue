@@ -255,7 +255,7 @@ import WonderkidsDialog from '../components/WonderkidsDialog.vue'
 import { useAnalytics } from '../composables/useAnalytics'
 import { usePlayerStore } from '../stores/playerStore'
 import { useWishlistStore } from '../stores/wishlistStore'
-import { exportPlayersWithOptions, validateExportData } from '../utils/csvExport'
+import { exportPlayersToCSV } from '../utils/csvExport'
 
 const rawTechnicalAttributeKeysConst = [
   'Cor',
@@ -758,36 +758,22 @@ export default {
 
     const handleExportWithOptions = async exportOptions => {
       try {
-        // Validate the export data
-        const validation = validateExportData(filteredPlayers.value)
-
-        if (!validation.valid) {
+        if (!currentDatasetId.value) {
           quasarInstance.notify({
             type: 'negative',
-            message: `Export failed: ${validation.errors.join(', ')}`,
+            message: 'No dataset available for export',
             position: 'top'
           })
           return
         }
 
-        // Show warnings if any
-        if (validation.warnings.length > 0) {
-          validation.warnings.forEach(warning => {
-            quasarInstance.notify({
-              type: 'warning',
-              message: warning,
-              position: 'top'
-            })
-          })
-        }
-
         // Export with options
-        await exportPlayersWithOptions(filteredPlayers.value, exportOptions)
+        await exportPlayersToCSV(currentDatasetId.value, exportOptions.format)
 
         // Show success message
         quasarInstance.notify({
           type: 'positive',
-          message: `Successfully exported ${filteredPlayers.value.length} players as ${exportOptions.format.toUpperCase()}`,
+          message: `Successfully exported dataset as ${exportOptions.format.toUpperCase()}`,
           position: 'top',
           actions: [
             {
@@ -798,10 +784,10 @@ export default {
         })
 
         // Track export event
-        analytics.downloadData('players', exportOptions.format)
+        analytics.downloadData('dataset', exportOptions.format)
         analytics.trackButtonClick(`Export ${exportOptions.format.toUpperCase()}`, {
           feature_type: 'export',
-          player_count: filteredPlayers.value.length,
+          dataset_id: currentDatasetId.value,
           preset: exportOptions.preset
         })
 
