@@ -3925,6 +3925,64 @@ func contains(slice []string, item string) bool {
 	return false
 }
 
+// getAttributeFullName returns the full name for an attribute key
+func getAttributeFullName(attrKey string) string {
+	attributeFullNameMap := map[string]string{
+		"Cor":  "Corners",
+		"Cro":  "Crossing",
+		"Dri":  "Dribbling",
+		"Fin":  "Finishing",
+		"Fir":  "First Touch",
+		"Fre":  "Free Kick Taking",
+		"Hea":  "Heading",
+		"Lon":  "Long Shots",
+		"L Th": "Long Throws",
+		"Mar":  "Marking",
+		"Pas":  "Passing",
+		"Pen":  "Penalty Taking",
+		"Tck":  "Tackling",
+		"Tec":  "Technique",
+		"Agg":  "Aggression",
+		"Ant":  "Anticipation",
+		"Bra":  "Bravery",
+		"Cmp":  "Composure",
+		"Cnt":  "Concentration",
+		"Dec":  "Decisions",
+		"Det":  "Determination",
+		"Fla":  "Flair",
+		"Ldr":  "Leadership",
+		"OtB":  "Off the Ball",
+		"Pos":  "Positioning",
+		"Tea":  "Teamwork",
+		"Vis":  "Vision",
+		"Wor":  "Work Rate",
+		"Acc":  "Acceleration",
+		"Agi":  "Agility",
+		"Bal":  "Balance",
+		"Jum":  "Jumping Reach",
+		"Nat":  "Natural Fitness",
+		"Pac":  "Pace",
+		"Sta":  "Stamina",
+		"Str":  "Strength",
+		"Aer":  "Aerial Reach",
+		"Cmd":  "Command of Area",
+		"Com":  "Communication",
+		"Ecc":  "Eccentricity",
+		"Han":  "Handling",
+		"Kic":  "Kicking",
+		"1v1":  "One on Ones",
+		"Pun":  "Punching (Tendency)",
+		"Ref":  "Reflexes",
+		"TRO":  "Rushing Out (Tendency)",
+		"Thr":  "Throwing",
+	}
+
+	if fullName, exists := attributeFullNameMap[attrKey]; exists {
+		return fullName
+	}
+	return attrKey // Return the original key if no mapping exists
+}
+
 // generateCSVContent generates CSV content from player data
 func generateCSVContent(players []Player) string {
 	if len(players) == 0 {
@@ -3981,6 +4039,47 @@ func generateCSVContent(players []Player) string {
 		"Personality", "Media Handling", "Attributes Masked",
 	}
 
+	// Add FM attribute columns right after Attributes Masked (Technical -> Mental -> Physical -> Goalkeeper)
+	// Technical attributes
+	technicalAttrs := []string{"Cor", "Cro", "Dri", "Fin", "Fir", "Fre", "Hea", "Lon", "L Th", "Mar", "Pas", "Pen", "Tck", "Tec"}
+	for _, attrName := range technicalAttrs {
+		if attributeNames[attrName] {
+			headers = append(headers, getAttributeFullName(attrName))
+		}
+	}
+
+	// Mental attributes
+	mentalAttrs := []string{"Agg", "Ant", "Bra", "Cmp", "Cnt", "Dec", "Det", "Fla", "Ldr", "OtB", "Pos", "Tea", "Vis", "Wor"}
+	for _, attrName := range mentalAttrs {
+		if attributeNames[attrName] {
+			headers = append(headers, getAttributeFullName(attrName))
+		}
+	}
+
+	// Physical attributes
+	physicalAttrs := []string{"Acc", "Agi", "Bal", "Jum", "Nat", "Pac", "Sta", "Str"}
+	for _, attrName := range physicalAttrs {
+		if attributeNames[attrName] {
+			headers = append(headers, getAttributeFullName(attrName))
+		}
+	}
+
+	// Goalkeeper attributes
+	gkAttrs := []string{"Aer", "Cmd", "Com", "Ecc", "Han", "Kic", "1v1", "Pun", "Ref", "TRO", "Thr"}
+	for _, attrName := range gkAttrs {
+		if attributeNames[attrName] {
+			headers = append(headers, getAttributeFullName(attrName))
+		}
+	}
+
+	// Add any remaining attributes that weren't in the predefined lists
+	for _, attrName := range attributeNamesList {
+		if !contains(technicalAttrs, attrName) && !contains(mentalAttrs, attrName) &&
+			!contains(physicalAttrs, attrName) && !contains(gkAttrs, attrName) {
+			headers = append(headers, getAttributeFullName(attrName))
+		}
+	}
+
 	// Add role rating columns
 	for _, roleName := range roleNamesList {
 		headers = append(headers, fmt.Sprintf("Role_%s", roleName))
@@ -3989,47 +4088,6 @@ func generateCSVContent(players []Player) string {
 	// Add performance percentile columns
 	for _, group := range percentileGroupsList {
 		headers = append(headers, fmt.Sprintf("Percentile_%s", group))
-	}
-
-	// Add FM attribute columns in the correct order (Technical -> Mental -> Physical -> Goalkeeper)
-	// Technical attributes
-	technicalAttrs := []string{"Cor", "Cro", "Dri", "Fin", "Fir", "Fre", "Hea", "Lon", "L Th", "Mar", "Pas", "Pen", "Tck", "Tec"}
-	for _, attrName := range technicalAttrs {
-		if attributeNames[attrName] {
-			headers = append(headers, attrName)
-		}
-	}
-
-	// Mental attributes
-	mentalAttrs := []string{"Agg", "Ant", "Bra", "Cmp", "Cnt", "Dec", "Det", "Fla", "Ldr", "OtB", "Pos", "Tea", "Vis", "Wor"}
-	for _, attrName := range mentalAttrs {
-		if attributeNames[attrName] {
-			headers = append(headers, attrName)
-		}
-	}
-
-	// Physical attributes
-	physicalAttrs := []string{"Acc", "Agi", "Bal", "Jum", "Nat", "Pac", "Sta", "Str"}
-	for _, attrName := range physicalAttrs {
-		if attributeNames[attrName] {
-			headers = append(headers, attrName)
-		}
-	}
-
-	// Goalkeeper attributes
-	gkAttrs := []string{"Aer", "Cmd", "Com", "Ecc", "Han", "Kic", "1v1", "Pun", "Ref", "TRO", "Thr"}
-	for _, attrName := range gkAttrs {
-		if attributeNames[attrName] {
-			headers = append(headers, attrName)
-		}
-	}
-
-	// Add any remaining attributes that weren't in the predefined lists
-	for _, attrName := range attributeNamesList {
-		if !contains(technicalAttrs, attrName) && !contains(mentalAttrs, attrName) &&
-			!contains(physicalAttrs, attrName) && !contains(gkAttrs, attrName) {
-			headers = append(headers, attrName)
-		}
 	}
 
 	// Create CSV content
@@ -4080,30 +4138,7 @@ func generateCSVContent(players []Player) string {
 			fmt.Sprintf("%t", player.AttributeMasked),
 		}...)
 
-		// Role ratings (individual columns)
-		roleMap := make(map[string]int)
-		for _, role := range player.RoleSpecificOveralls {
-			roleMap[role.RoleName] = role.Score
-		}
-		for _, roleName := range roleNamesList {
-			if score, exists := roleMap[roleName]; exists {
-				row = append(row, fmt.Sprintf("%d", score))
-			} else {
-				row = append(row, "") // Empty for players without this role
-			}
-		}
-
-		// Performance percentiles (individual columns)
-		for _, group := range percentileGroupsList {
-			if percentiles, exists := player.PerformancePercentiles[group]; exists {
-				percentilesJSON, _ := json.Marshal(percentiles)
-				row = append(row, escapeCSVField(string(percentilesJSON)))
-			} else {
-				row = append(row, "") // Empty for players without this percentile group
-			}
-		}
-
-		// FM Attributes (individual columns) in the same order as headers
+		// FM Attributes (individual columns) right after Attributes Masked (Technical -> Mental -> Physical -> Goalkeeper)
 		// Technical attributes
 		technicalAttrs := []string{"Cor", "Cro", "Dri", "Fin", "Fir", "Fre", "Hea", "Lon", "L Th", "Mar", "Pas", "Pen", "Tck", "Tec"}
 		for _, attrName := range technicalAttrs {
@@ -4161,6 +4196,29 @@ func generateCSVContent(players []Player) string {
 				} else {
 					row = append(row, "") // Empty for players without this attribute
 				}
+			}
+		}
+
+		// Role ratings (individual columns)
+		roleMap := make(map[string]int)
+		for _, role := range player.RoleSpecificOveralls {
+			roleMap[role.RoleName] = role.Score
+		}
+		for _, roleName := range roleNamesList {
+			if score, exists := roleMap[roleName]; exists {
+				row = append(row, fmt.Sprintf("%d", score))
+			} else {
+				row = append(row, "") // Empty for players without this role
+			}
+		}
+
+		// Performance percentiles (individual columns)
+		for _, group := range percentileGroupsList {
+			if percentiles, exists := player.PerformancePercentiles[group]; exists {
+				percentilesJSON, _ := json.Marshal(percentiles)
+				row = append(row, escapeCSVField(string(percentilesJSON)))
+			} else {
+				row = append(row, "") // Empty for players without this percentile group
 			}
 		}
 
