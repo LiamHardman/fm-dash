@@ -282,7 +282,7 @@ export function preloadPlayerData(datasetId, playerUID) {
 /**
  * Preload percentiles for a player
  */
-export function preloadPercentiles(playerUID, division = 'all', position = 'Global') {
+export function preloadPercentiles(playerUID, division = 'same', position = 'Global') {
   setTimeout(async () => {
     try {
       await fetchPercentilesOptimized(playerUID, division, position)
@@ -326,7 +326,7 @@ export function cleanupCaches() {
 /**
  * Optimized data fetcher that combines player data and percentiles
  */
-export async function fetchPlayerDataWithPercentiles(datasetId, playerUID, division = 'all', position = 'Global') {
+export async function fetchPlayerDataWithPercentiles(datasetId, playerUID, division = 'same', position = 'Global') {
   const startTime = performance.now()
 
   try {

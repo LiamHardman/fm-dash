@@ -107,14 +107,14 @@ export function usePercentileRetry(player, datasetId, selectedComparisonGroup, d
 
     try {
       // Handle the 'same' division filter by converting it to the player's actual division
-      let effectiveDivision = divisionFilter?.value || 'all'
+      let effectiveDivision = divisionFilter?.value || 'same'
       if (effectiveDivision === 'same') {
         const targetDivision = player.value?.division
         if (targetDivision) {
           effectiveDivision = targetDivision
         } else {
-          // If no target division is available, fall back to 'all'
-          effectiveDivision = 'all'
+          // If no target division is available, fall back to 'same'
+          effectiveDivision = 'same'
         }
       }
 

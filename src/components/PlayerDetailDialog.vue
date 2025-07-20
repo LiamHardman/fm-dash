@@ -1251,7 +1251,7 @@ export default defineComponent({
     const _playerStore = usePlayerStore()
     const selectedComparisonGroup = ref('Global')
     const flagLoadError = ref(false)
-    const divisionFilter = ref('all')
+    const divisionFilter = ref('same')
 
     // Convert props to refs for the percentile retry composable
     const playerRef = toRef(props, 'player')
@@ -1761,8 +1761,8 @@ export default defineComponent({
             if (targetDivision) {
               effectiveDivision = targetDivision
             } else {
-              // If no target division is available, fall back to 'all'
-              effectiveDivision = 'all'
+              // If no target division is available, fall back to 'same'
+              effectiveDivision = 'same'
             }
           }
           
@@ -1896,7 +1896,7 @@ export default defineComponent({
     })
 
           // Function to fetch percentiles for a specific player using the new API
-      const fetchPlayerPercentiles = async (playerUID, compareDivision = 'all', comparePosition = 'Global') => {
+      const fetchPlayerPercentiles = async (playerUID, compareDivision = 'same', comparePosition = 'Global') => {
         if (!props.datasetId || !playerUID) return null
 
         try {
@@ -1923,12 +1923,7 @@ export default defineComponent({
               throw new Error('Invalid percentile response format')
             }
             
-            logger.info('Successfully fetched percentiles', {
-              player_uid: playerUID,
-              compare_division: compareDivision,
-              compare_position: comparePosition,
-              percentile_groups: Object.keys(percentiles).length
-            })
+
             
             return percentiles
           } else {
@@ -1968,12 +1963,7 @@ export default defineComponent({
           // Use the pre-loaded data from performance API
           detailedPlayerData.value = props.player
           const loadTime = performance.now() - startTime
-          logger.info('Using pre-loaded detailed player data', {
-            player_name: props.player.name,
-            attributes_count: Object.keys(props.player.attributes || {}).length,
-            percentile_groups: Object.keys(props.player.performancePercentiles || {}).length,
-            load_time_ms: Math.round(loadTime)
-          })
+
           
           // Clear caches to force recomputation
           performanceStatsCache.clear()
@@ -1988,12 +1978,7 @@ export default defineComponent({
         if (cachedData) {
           detailedPlayerData.value = cachedData
           const loadTime = performance.now() - startTime
-          logger.info('Using cached player data', {
-            player_name: cachedData.name,
-            attributes_count: Object.keys(cachedData.attributes || {}).length,
-            cache_time_ms: Math.round(cacheTime),
-            total_load_time_ms: Math.round(loadTime)
-          })
+
           
           // Cache hit - no need to fetch from API
           return
@@ -2008,19 +1993,14 @@ export default defineComponent({
               if (targetDivision) {
                 effectiveDivision = targetDivision
               } else {
-                // If no target division is available, fall back to 'all'
-                effectiveDivision = 'all'
+                // If no target division is available, fall back to 'same'
+                effectiveDivision = 'same'
               }
             }
 
             // OPTIMIZATION: Parallel API calls for better performance
             const apiStartTime = performance.now()
-            logger.info('Starting parallel API calls', {
-              player_uid: playerUID,
-              dataset_id: props.datasetId,
-              division: effectiveDivision,
-              position: selectedComparisonGroup.value
-            })
+
 
             const [playerResult, percentileResult] = await Promise.allSettled([
               fetchFullPlayerStats(props.datasetId, playerUID),
@@ -2028,21 +2008,13 @@ export default defineComponent({
             ])
             
             const apiTime = performance.now() - apiStartTime
-            logger.info('API calls completed', {
-              player_result_status: playerResult.status,
-              percentile_result_status: percentileResult.status,
-              api_time_ms: Math.round(apiTime)
-            })
+
           
           // Handle player data result
           if (playerResult.status === 'fulfilled' && playerResult.value.format === 'json' && playerResult.value.data.player) {
             detailedPlayerData.value = playerResult.value.data.player
             const playerDataTime = performance.now() - apiStartTime
-            logger.info('Fetched detailed player data', {
-              player_name: playerResult.value.data.player.name,
-              attributes_count: Object.keys(playerResult.value.data.player.attributes || {}).length,
-              player_data_time_ms: Math.round(playerDataTime)
-            })
+
             
             // Cache the player data for future use
             setCachedPlayerData(props.datasetId, playerUID, playerResult.value.data.player)
@@ -2063,11 +2035,7 @@ export default defineComponent({
             forceRecompute.value++
             
             const percentileTime = performance.now() - apiStartTime
-            logger.info('Percentiles processed', {
-              player_name: detailedPlayerData.value?.name,
-              percentile_groups: Object.keys(detailedPlayerData.value.performancePercentiles).length,
-              percentile_time_ms: Math.round(percentileTime)
-            })
+
           } else {
             logger.warn('Failed to fetch percentiles, will retry', {
               player_name: detailedPlayerData.value?.name,
@@ -2081,12 +2049,7 @@ export default defineComponent({
         }
         
         const totalTime = performance.now() - startTime
-        logger.info('PlayerDetailDialog data loading completed', {
-          player_name: detailedPlayerData.value?.name,
-          total_time_ms: Math.round(totalTime),
-          from_cache: !!cachedData,
-          has_percentiles: !!detailedPlayerData.value?.performancePercentiles
-        })
+
       }
       } catch (error) {
         const errorTime = performance.now() - startTime
@@ -2112,25 +2075,14 @@ export default defineComponent({
         // Debounce the fetch to prevent rapid successive API calls
         fetchTimeout = setTimeout(() => {
           const dialogOpenStartTime = performance.now()
-          console.log('PlayerDetailDialog opening', {
-            player_name: newPlayer.name,
-            player_uid: newPlayer.uid || newPlayer.UID,
-            dataset_id: props.datasetId
-          })
+
           
           // Reset detailed data when player changes
           detailedPlayerData.value = null
           detailedDataError.value = null
           
           // Fetch detailed data with optimized loading
-          fetchDetailedPlayerData().then(() => {
-            const totalDialogTime = performance.now() - dialogOpenStartTime
-            console.log('PlayerDetailDialog fully loaded', {
-              player_name: newPlayer.name,
-              player_uid: newPlayer.uid || newPlayer.UID,
-              total_dialog_time_ms: Math.round(totalDialogTime)
-            })
-          }).catch((error) => {
+          fetchDetailedPlayerData().catch((error) => {
             const errorTime = performance.now() - dialogOpenStartTime
             console.error('PlayerDetailDialog failed to load', {
               player_name: newPlayer.name,
@@ -2279,8 +2231,8 @@ export default defineComponent({
               if (targetDivision) {
                 effectiveDivision = targetDivision
               } else {
-                // If no target division is available, fall back to 'all'
-                effectiveDivision = 'all'
+                // If no target division is available, fall back to 'same'
+                effectiveDivision = 'same'
               }
             }
             

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -11,8 +12,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	apperrors "api/errors"
 )
 
 var (
@@ -81,21 +80,21 @@ func validateEnvironmentVariables() error {
 	// Validate OTEL_EXPORTER_OTLP_ENDPOINT if set
 	if endpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"); endpoint != "" {
 		if !strings.Contains(endpoint, ":") {
-			return apperrors.WrapErrInvalidOtelEndpoint(endpoint)
+			return fmt.Errorf("invalid OTEL_EXPORTER_OTLP_ENDPOINT: %s (must include port)", endpoint)
 		}
 	}
 
 	// Validate S3_ENDPOINT format if set
 	if endpoint := os.Getenv("S3_ENDPOINT"); endpoint != "" {
 		if !strings.Contains(endpoint, ":") && !strings.HasPrefix(endpoint, "http") {
-			return apperrors.WrapErrInvalidS3Endpoint(endpoint)
+			return fmt.Errorf("invalid S3_ENDPOINT: %s (should include port or be full URL)", endpoint)
 		}
 	}
 
 	// Validate SERVICE_NAME doesn't contain dangerous characters
 	if serviceName := os.Getenv("SERVICE_NAME"); serviceName != "" {
 		if strings.ContainsAny(serviceName, " \t\n\r;|&$`") {
-			return apperrors.ErrInvalidServiceName
+			return fmt.Errorf("invalid SERVICE_NAME: contains unsafe characters")
 		}
 	}
 
@@ -316,10 +315,6 @@ func main() {
 		IdleTimeout:       60 * time.Second, // Time to keep connection open
 		ReadHeaderTimeout: 5 * time.Second,  // Time to read request headers
 	}
-
-	// Log upload size limit at startup
-	maxUploadSizeMB := getMaxUploadSize() / (1024 * 1024)
-	slog.Info("Upload size limit configured", "max_upload_size_mb", maxUploadSizeMB)
 
 	slog.Debug("Server starting",
 		"port", port,

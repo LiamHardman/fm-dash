@@ -221,7 +221,6 @@ func getMaxUploadSize() int64 {
 	envValue := os.Getenv("MAX_UPLOAD_SIZE")
 
 	if envValue == "" {
-		logInfo(context.Background(), "MAX_UPLOAD_SIZE not set, using default 20MB")
 		return 20 * 1024 * 1024 // Default 20MB
 	}
 
@@ -233,7 +232,6 @@ func getMaxUploadSize() int64 {
 	}
 
 	result := int64(sizeInMB) * 1024 * 1024
-	logInfo(context.Background(), "MAX_UPLOAD_SIZE parsed successfully: %dMB (%d bytes)", sizeInMB, result)
 	return result
 }
 
@@ -1656,7 +1654,7 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Cache miss - perform calculation
+	// Cache miss - perform optimized calculation
 	logDebug(ctx, "💫 CACHE MISS - calculating percentiles",
 		"dataset_id", datasetID,
 		"player_name", req.PlayerName,
@@ -1664,14 +1662,53 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 		"target_division", req.TargetDivision,
 		"cache_key", cacheKey)
 
-	// Create a copy of the dataset and recalculate percentiles with division filtering
-	playersCopy := make([]Player, len(players))
-	copy(playersCopy, players)
+	// OPTIMIZATION: Filter players first, then only copy the filtered subset
+	var filteredPlayers []Player
+	var targetPlayerInFiltered bool
 
-	CalculatePlayerPerformancePercentilesWithDivisionFilter(playersCopy, divisionFilter, req.TargetDivision)
+	// Filter players based on division criteria
+	for i := range players {
+		if isPlayerInTargetDivision(&players[i], divisionFilter, req.TargetDivision) {
+			filteredPlayers = append(filteredPlayers, players[i])
+			if i == targetPlayerIndex {
+				targetPlayerInFiltered = true
+			}
+		}
+	}
+
+	// If target player is not in filtered set, add them
+	if !targetPlayerInFiltered {
+		filteredPlayers = append(filteredPlayers, players[targetPlayerIndex])
+	}
+
+	logDebug(ctx, "Filtered players for percentile calculation",
+		"total_players", len(players),
+		"filtered_players", len(filteredPlayers),
+		"target_player_included", targetPlayerInFiltered)
+
+	// Create a copy of only the filtered players (much smaller dataset)
+	playersCopy := make([]Player, len(filteredPlayers))
+	copy(playersCopy, filteredPlayers)
+
+	// Calculate percentiles only for the filtered subset
+	CalculatePlayerPerformancePercentilesWithDivisionFilter(playersCopy, DivisionFilterAll, "")
+
+	// Find the target player in the filtered copy
+	var updatedPlayer *Player
+	for i := range playersCopy {
+		if playersCopy[i].Name == req.PlayerName {
+			updatedPlayer = &playersCopy[i]
+			break
+		}
+	}
+
+	if updatedPlayer == nil {
+		http.Error(w, "Player not found after calculation", http.StatusInternalServerError)
+		return
+	}
 
 	// Get the updated percentiles for the target player
-	updatedPercentiles := playersCopy[targetPlayerIndex].PerformancePercentiles
+	updatedPercentiles := updatedPlayer.PerformancePercentiles
 
 	// NEW: Save to cache for future requests
 	go func() {
@@ -1793,7 +1830,7 @@ func playerPercentilesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Cache miss - perform calculation
+	// Cache miss - perform optimized calculation
 	logDebug(ctx, "💫 CACHE MISS - calculating player percentiles",
 		"dataset_id", datasetID,
 		"player_uid", req.PlayerUID,
@@ -1801,13 +1838,38 @@ func playerPercentilesHandler(w http.ResponseWriter, r *http.Request) {
 		"compare_position", req.ComparePosition,
 		"cache_key", cacheKey)
 
-	// Create a copy of the dataset and recalculate percentiles with division filtering
-	playersCopy := make([]Player, len(players))
-	copy(playersCopy, players)
+	// OPTIMIZATION: Filter players first, then only copy the filtered subset
+	var filteredPlayers []Player
+	var targetPlayerInFiltered bool
 
-	CalculatePlayerPerformancePercentilesWithDivisionFilter(playersCopy, divisionFilter, targetDivision)
+	// Filter players based on division criteria
+	for i := range players {
+		if isPlayerInTargetDivision(&players[i], divisionFilter, targetDivision) {
+			filteredPlayers = append(filteredPlayers, players[i])
+			if players[i].UID == playerUID {
+				targetPlayerInFiltered = true
+			}
+		}
+	}
 
-	// Find the target player in the copy
+	// If target player is not in filtered set, add them
+	if !targetPlayerInFiltered {
+		filteredPlayers = append(filteredPlayers, *targetPlayer)
+	}
+
+	logDebug(ctx, "Filtered players for percentile calculation",
+		"total_players", len(players),
+		"filtered_players", len(filteredPlayers),
+		"target_player_included", targetPlayerInFiltered)
+
+	// Create a copy of only the filtered players (much smaller dataset)
+	playersCopy := make([]Player, len(filteredPlayers))
+	copy(playersCopy, filteredPlayers)
+
+	// Calculate percentiles only for the filtered subset
+	CalculatePlayerPerformancePercentilesWithDivisionFilter(playersCopy, DivisionFilterAll, "")
+
+	// Find the target player in the filtered copy
 	var updatedPlayer *Player
 	for i := range playersCopy {
 		if playersCopy[i].UID == playerUID {
@@ -3234,18 +3296,55 @@ func fullPlayerStatsHandler(w http.ResponseWriter, r *http.Request) {
 			"player_uid", playerUID,
 			"player_name", targetPlayer.Name)
 
-		// OPTIMIZATION: Create a minimal dataset with just this player and similar players
-		// This avoids calculating percentiles for the entire dataset
+		// OPTIMIZATION: Use division-based filtering for better performance
+		// Default to "same" division instead of "all" for faster processing
 		ctx, percentileSpan := StartSpan(ctx, "percentiles.calculate_single_player")
 
-		// Get players in the same position/role for comparison
-		similarPlayers := getSimilarPlayersForComparison(players, targetPlayer)
+		// Filter players by the same division as the target player
+		var filteredPlayers []Player
+		targetDivision := targetPlayer.Division
 
-		// Calculate percentiles only for the comparison group
-		CalculatePlayerPerformancePercentiles(similarPlayers)
+		// Add the target player first
+		filteredPlayers = append(filteredPlayers, *targetPlayer)
+
+		// Add players in the same division for comparison
+		for _, player := range players {
+			if player.UID != targetPlayer.UID && player.Division == targetDivision {
+				filteredPlayers = append(filteredPlayers, player)
+				// Limit to 50 players for faster processing
+				if len(filteredPlayers) >= 50 {
+					break
+				}
+			}
+		}
+
+		// If we don't have enough players in the same division, add some from similar positions
+		if len(filteredPlayers) < 20 {
+			for _, player := range players {
+				if len(filteredPlayers) >= 50 {
+					break
+				}
+
+				// Skip if already included
+				alreadyIncluded := false
+				for _, included := range filteredPlayers {
+					if included.UID == player.UID {
+						alreadyIncluded = true
+						break
+					}
+				}
+
+				if !alreadyIncluded && player.Position == targetPlayer.Position {
+					filteredPlayers = append(filteredPlayers, player)
+				}
+			}
+		}
+
+		// Calculate percentiles only for the filtered comparison group
+		CalculatePlayerPerformancePercentiles(filteredPlayers)
 
 		// Find the updated player with percentiles
-		for _, player := range similarPlayers {
+		for _, player := range filteredPlayers {
 			if player.UID == playerUID {
 				targetPlayer = &player
 				break
@@ -3259,7 +3358,8 @@ func fullPlayerStatsHandler(w http.ResponseWriter, r *http.Request) {
 			"player_uid", playerUID,
 			"player_name", targetPlayer.Name,
 			"percentile_groups", len(targetPlayer.PerformancePercentiles),
-			"comparison_players", len(similarPlayers))
+			"comparison_players", len(filteredPlayers),
+			"target_division", targetDivision)
 	}
 
 	// Create response with full player data

@@ -190,10 +190,6 @@ func cachedConfigHandler(w http.ResponseWriter, r *http.Request) {
 			"datasetRetentionDays": int(getRetentionPeriod().Hours() / 24),
 		}
 
-		// Log the actual upload size being returned
-		logInfo(r.Context(), "Config endpoint returning upload size: %dMB (%d bytes)",
-			getMaxUploadSize()/(1024*1024), getMaxUploadSize())
-
 		// Add attribute weights to config response
 		muAttributeWeights.RLock()
 		if attributeWeights != nil {
