@@ -460,6 +460,141 @@
                                 </div>
                             </q-card-section>
                         </q-card>
+                        
+                        <!-- Results Section -->
+                        <div v-if="showResults" class="q-mt-md">
+                            <q-card class="results-card">
+                                <q-card-section>
+                                    <div
+                                        class="text-h6 q-mb-md"
+                                        :class="
+                                            $q.dark.isActive ? 'text-grey-2' : 'text-grey-9'
+                                        "
+                                    >
+                                        Potential upgrades ({{ upgradePlayers.length }} players
+                                        found):
+                                    </div>
+
+                                    <!-- Player Cards Grid -->
+                                    <div v-if="upgradePlayers.length > 0" class="upgrade-players-grid">
+                                        <div 
+                                            v-for="player in processedUpgradePlayers" 
+                                            :key="player.id"
+                                            class="upgrade-player-card-container"
+                                        >
+                                            <q-card 
+                                                class="upgrade-player-card"
+                                                flat 
+                                                bordered
+                                                clickable
+                                                @click="handlePlayerSelectedForDetailView(player)"
+                                            >
+                                                <q-card-section class="player-card-header">
+                                                    <div class="player-basic-info">
+                                                        <!-- Player Face -->
+                                                        <div class="player-face-section">
+                                                            <q-avatar
+                                                                size="60px"
+                                                                :color="$q.dark.isActive ? 'grey-7' : 'grey-4'"
+                                                                :text-color="$q.dark.isActive ? 'grey-4' : 'grey-7'"
+                                                            >
+                                                                <q-icon name="person" size="32px" />
+                                                            </q-avatar>
+                                                        </div>
+                                                        
+                                                        <!-- Player Details -->
+                                                        <div class="player-details">
+                                                            <div class="player-name">{{ player.name }}</div>
+                                                            <div class="player-club">{{ player.club || 'Free Agent' }}</div>
+                                                            <div class="player-position">{{ player.position }}</div>
+                                                        </div>
+                                                        
+                                                        <!-- Overall Rating -->
+                                                        <div class="player-overall">
+                                                            <div class="overall-label">Overall</div>
+                                                            <div class="overall-value">{{ player.overall }}</div>
+                                                        </div>
+                                                    </div>
+                                                </q-card-section>
+                                                
+                                                <q-card-section class="player-attributes-section">
+                                                    <div class="attributes-grid">
+                                                        <!-- Key Attributes -->
+                                                        <div class="key-attributes">
+                                                            <div 
+                                                                v-for="attr in getKeyAttributes(player)" 
+                                                                :key="attr.key"
+                                                                class="attribute-item"
+                                                            >
+                                                                <span class="attribute-name">{{ attr.name }}</span>
+                                                                <span 
+                                                                    class="attribute-value"
+                                                                    :class="getAttributeClass(attr.value)"
+                                                                >
+                                                                    {{ attr.value }}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <!-- Player Stats -->
+                                                        <div class="player-stats">
+                                                            <div class="stat-item">
+                                                                <span class="stat-label">Age:</span>
+                                                                <span class="stat-value">{{ player.age }}</span>
+                                                            </div>
+                                                            <div class="stat-item">
+                                                                <span class="stat-label">Value:</span>
+                                                                <span class="stat-value">{{ player.transfer_value || 'N/A' }}</span>
+                                                            </div>
+                                                            <div class="stat-item">
+                                                                <span class="stat-label">Wage:</span>
+                                                                <span class="stat-value">{{ player.wage || 'N/A' }}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </q-card-section>
+                                            </q-card>
+                                        </div>
+                                    </div>
+
+                                    <q-banner
+                                        v-else-if="showResults && !loading && !initialLoad"
+                                        class="q-mt-md"
+                                        :class="
+                                            $q.dark.isActive
+                                                ? 'bg-blue-grey-8 text-blue-grey-2'
+                                                : 'bg-info text-white'
+                                        "
+                                    >
+                                        <template v-slot:avatar>
+                                            <q-icon name="info" />
+                                        </template>
+                                        No upgrades found matching all criteria. Try adjusting
+                                        filters.
+                                    </q-banner>
+                                    <q-banner
+                                        v-else-if="
+                                            showResults &&
+                                            !loading &&
+                                            initialLoad &&
+                                            !selectedTeamPlayer
+                                        "
+                                        class="q-mt-md"
+                                        :class="
+                                            $q.dark.isActive
+                                                ? 'bg-orange-9 text-white'
+                                                : 'bg-amber text-dark'
+                                        "
+                                    >
+                                        <template v-slot:avatar>
+                                            <q-icon name="warning" />
+                                        </template>
+                                        Please select a team, position, and a player from that team
+                                        to serve as the upgrade baseline.
+                                    </q-banner>
+                                </q-card-section>
+                            </q-card>
+                        </div>
                     </div>
 
                     <!-- Right Side - Team & Formation Display -->
@@ -551,183 +686,6 @@
                 </div>
             </q-card-section>
 
-            <q-card-section v-if="showResults" class="q-mt-md results-section">
-                <q-separator :dark="$q.dark.isActive" class="q-mb-md" />
-                <div
-                    class="text-h6 q-mb-md"
-                    :class="
-                        $q.dark.isActive ? 'text-grey-2' : 'text-grey-9'
-                    "
-                >
-                    Results
-                </div>
-
-                <div v-if="selectedTeamPlayerObject" class="q-mb-lg">
-                    <div
-                        class="text-subtitle1 q-mb-sm"
-                        :class="
-                            $q.dark.isActive
-                                ? 'text-grey-3'
-                                : 'text-grey-8'
-                        "
-                    >
-                        Baseline Player:
-                    </div>
-                    <q-card
-                        flat
-                        bordered
-                        :class="
-                            $q.dark.isActive
-                                ? 'bg-grey-8 text-grey-3'
-                                : 'bg-blue-grey-1 text-blue-grey-10'
-                        "
-                    >
-                        <q-item>
-                            <q-item-section avatar>
-                                <q-avatar>
-                                    <img
-                                        v-if="
-                                            selectedTeamPlayerObject.nationality_iso
-                                        "
-                                        :src="`https://flagcdn.com/w40/${selectedTeamPlayerObject.nationality_iso.toLowerCase()}.png`"
-                                        :alt="
-                                            selectedTeamPlayerObject.nationality ||
-                                            'Flag'
-                                        "
-                                        class="nationality-flag-dialog"
-                                    />
-                                    <q-icon v-else name="person" />
-                                </q-avatar>
-                            </q-item-section>
-                            <q-item-section>
-                                <q-item-label class="text-weight-bold">{{
-                                    selectedTeamPlayerObject.name
-                                }}</q-item-label>
-                                <q-item-label
-                                    caption
-                                    :class="
-                                        $q.dark.isActive
-                                            ? 'text-grey-5'
-                                            : 'text-blue-grey-7'
-                                    "
-                                >
-                                    {{ selectedTeamPlayerObject.position }} |
-                                    Age: {{ selectedTeamPlayerObject.age }} |
-                                    Club: {{ selectedTeamPlayerObject.club }}
-                                </q-item-label>
-                            </q-item-section>
-                            <q-item-section side top>
-                                <q-item-label
-                                    caption
-                                    :class="
-                                        $q.dark.isActive
-                                            ? 'text-grey-5'
-                                            : 'text-blue-grey-7'
-                                    "
-                                    >Overall ({{
-                                        selectedRole
-                                            ? getRoleShortName(selectedRole)
-                                            : getPositionShortName(
-                                                  selectedPosition,
-                                              )
-                                    }})</q-item-label
-                                >
-                                <div
-                                    class="attribute-value fifa-stat-value text-h6"
-                                    :class="
-                                        getUnifiedRatingClass(
-                                            getBaseOverallFromSelectedPlayer(),
-                                            100,
-                                        )
-                                    "
-                                >
-                                    {{ getBaseOverallFromSelectedPlayer() }}
-                                </div>
-                            </q-item-section>
-                        </q-item>
-                        <q-card-section
-                            class="q-pt-none"
-                            :class="
-                                $q.dark.isActive
-                                    ? 'text-grey-4'
-                                    : 'text-blue-grey-8'
-                            "
-                        >
-                            Target Overall for Upgrades:
-                            <span
-                                class="text-weight-bold attribute-value"
-                                :class="
-                                    getUnifiedRatingClass(
-                                        targetOverallForSearch,
-                                        100,
-                                    )
-                                "
-                            >
-                                {{ targetOverallForSearch }}
-                            </span>
-                            (Base {{ getBaseOverallFromSelectedPlayer() }} +
-                            Upgrade By {{ upgradeByValue }})
-                        </q-card-section>
-                    </q-card>
-                </div>
-
-                <div
-                    class="text-subtitle1 q-mb-sm"
-                    v-if="upgradePlayers.length > 0"
-                    :class="
-                        $q.dark.isActive ? 'text-grey-3' : 'text-grey-8'
-                    "
-                >
-                    Potential upgrades ({{ upgradePlayers.length }} players
-                    found):
-                </div>
-
-                <PlayerDataTable
-                    v-if="upgradePlayers.length > 0"
-                    :players="processedUpgradePlayers"
-                    :loading="loading"
-                    @player-selected="handlePlayerSelectedForDetailView"
-                    :is-goalkeeper-view="upgradeFinderIsGoalkeeperView"
-                    :currency-symbol="currencySymbol"
-                    :dataset-id="datasetId"
-                />
-
-                <q-banner
-                    v-else-if="showResults && !loading && !initialLoad"
-                    class="q-mt-md"
-                    :class="
-                        $q.dark.isActive
-                            ? 'bg-blue-grey-8 text-blue-grey-2'
-                            : 'bg-info text-white'
-                    "
-                >
-                    <template v-slot:avatar>
-                        <q-icon name="info" />
-                    </template>
-                    No upgrades found matching all criteria. Try adjusting
-                    filters.
-                </q-banner>
-                <q-banner
-                    v-else-if="
-                        showResults &&
-                        !loading &&
-                        initialLoad &&
-                        !selectedTeamPlayer
-                    "
-                    class="q-mt-md"
-                    :class="
-                        $q.dark.isActive
-                            ? 'bg-orange-9 text-white'
-                            : 'bg-amber text-dark'
-                    "
-                >
-                    <template v-slot:avatar>
-                        <q-icon name="warning" />
-                    </template>
-                    Please select a team, position, and a player from that team
-                    to serve as the upgrade baseline.
-                </q-banner>
-            </q-card-section>
             <q-inner-loading :showing="loading">
                 <q-spinner-gears size="50px" color="primary" />
             </q-inner-loading>
@@ -2046,6 +2004,42 @@ export default {
       return searchablePosition || formationPosition
     }
 
+    // Helper methods for player cards
+    const getKeyAttributes = (player) => {
+      console.log('getKeyAttributes called for player:', player.name, 'Player structure:', player)
+      
+      const keyAttrs = []
+      
+      // Add key attributes based on position
+      if (player.position === 'GK') {
+        keyAttrs.push(
+          { key: 'han', name: 'Handling', value: player.han || 0 },
+          { key: 'ref', name: 'Reflexes', value: player.ref || 0 },
+          { key: 'kic', name: 'Kicking', value: player.kic || 0 },
+          { key: 'pos', name: 'Positioning', value: player.pos || 0 }
+        )
+      } else {
+        keyAttrs.push(
+          { key: 'pac', name: 'Pace', value: player.pac || 0 },
+          { key: 'sho', name: 'Shooting', value: player.sho || 0 },
+          { key: 'pas', name: 'Passing', value: player.pas || 0 },
+          { key: 'dri', name: 'Dribbling', value: player.dri || 0 },
+          { key: 'def', name: 'Defending', value: player.def || 0 },
+          { key: 'phy', name: 'Physical', value: player.phy || 0 }
+        )
+      }
+      
+      console.log('Key attributes found:', keyAttrs)
+      return keyAttrs
+    }
+
+    const getAttributeClass = (value) => {
+      if (value >= 16) return 'attribute-excellent'
+      if (value >= 13) return 'attribute-good'
+      if (value >= 10) return 'attribute-average'
+      return 'attribute-poor'
+    }
+
     const findBestRoleForPlayerInPosition = (player, position) => {
       if (!player || !position) return null
       
@@ -2205,6 +2199,9 @@ export default {
               handlePositionClick,
         findBestRoleForPlayerInPosition,
         translateFormationPositionToSearchable,
+        getKeyAttributes,
+        getAttributeClass,
+        formatCurrency,
       updateTeamPlayersForFormation
     }
   }
@@ -2656,6 +2653,242 @@ export default {
             
             .body--dark & {
                 color: #9ca3af;
+            }
+        }
+    }
+}
+
+// Player cards styling
+.upgrade-players-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.upgrade-player-card-container {
+    .upgrade-player-card {
+        transition: all 0.2s ease;
+        border-radius: 12px;
+        overflow: hidden;
+        
+        &:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            
+            .body--dark & {
+                box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+            }
+        }
+        
+        .player-card-header {
+            padding: 1rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            
+            .body--dark & {
+                background: linear-gradient(135deg, #4c51bf 0%, #553c9a 100%);
+            }
+            
+            .player-basic-info {
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+                
+                .player-face-section {
+                    flex-shrink: 0;
+                }
+                
+                .player-details {
+                    flex: 1;
+                    
+                    .player-name {
+                        font-size: 1.125rem;
+                        font-weight: 600;
+                        margin: 0 0 0.25rem 0;
+                        line-height: 1.2;
+                    }
+                    
+                    .player-club {
+                        font-size: 0.875rem;
+                        opacity: 0.9;
+                        margin: 0 0 0.125rem 0;
+                    }
+                    
+                    .player-position {
+                        font-size: 0.75rem;
+                        opacity: 0.8;
+                        margin: 0;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                    }
+                }
+                
+                .player-overall {
+                    text-align: center;
+                    flex-shrink: 0;
+                    
+                    .overall-label {
+                        font-size: 0.75rem;
+                        opacity: 0.8;
+                        margin: 0 0 0.25rem 0;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                    }
+                    
+                    .overall-value {
+                        font-size: 1.5rem;
+                        font-weight: 700;
+                        margin: 0;
+                        line-height: 1;
+                    }
+                }
+            }
+        }
+        
+        .player-attributes-section {
+            padding: 1rem;
+            
+            .attributes-grid {
+                display: grid;
+                grid-template-columns: 1fr auto;
+                gap: 1rem;
+                align-items: start;
+                
+                .key-attributes {
+                    display: grid;
+                    grid-template-columns: repeat(2, 1fr);
+                    gap: 0.5rem;
+                    
+                    .attribute-item {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        padding: 0.25rem 0;
+                        
+                        .attribute-name {
+                            font-size: 0.75rem;
+                            color: #6b7280;
+                            font-weight: 500;
+                            
+                            .body--dark & {
+                                color: #9ca3af;
+                            }
+                        }
+                        
+                        .attribute-value {
+                            font-size: 0.875rem;
+                            font-weight: 600;
+                            padding: 0.125rem 0.375rem;
+                            border-radius: 4px;
+                            min-width: 2rem;
+                            text-align: center;
+                            
+                            &.attribute-excellent {
+                                background-color: #10b981;
+                                color: white;
+                            }
+                            
+                            &.attribute-good {
+                                background-color: #3b82f6;
+                                color: white;
+                            }
+                            
+                            &.attribute-average {
+                                background-color: #f59e0b;
+                                color: white;
+                            }
+                            
+                            &.attribute-poor {
+                                background-color: #ef4444;
+                                color: white;
+                            }
+                        }
+                    }
+                }
+                
+                .player-stats {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.5rem;
+                    padding-left: 1rem;
+                    border-left: 1px solid #e5e7eb;
+                    
+                    .body--dark & {
+                        border-left-color: #374151;
+                    }
+                    
+                    .stat-item {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        gap: 0.5rem;
+                        
+                        .stat-label {
+                            font-size: 0.75rem;
+                            color: #6b7280;
+                            
+                            .body--dark & {
+                                color: #9ca3af;
+                            }
+                        }
+                        
+                        .stat-value {
+                            font-size: 0.875rem;
+                            font-weight: 600;
+                            color: #374151;
+                            
+                            .body--dark & {
+                                color: #d1d5db;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Responsive design for player cards
+@media (max-width: 768px) {
+    .upgrade-players-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .upgrade-player-card-container {
+        .upgrade-player-card {
+            .player-card-header {
+                .player-basic-info {
+                    .player-details {
+                        .player-name {
+                            font-size: 1rem;
+                        }
+                    }
+                    
+                    .player-overall {
+                        .overall-value {
+                            font-size: 1.25rem;
+                        }
+                    }
+                }
+            }
+            
+            .player-attributes-section {
+                .attributes-grid {
+                    grid-template-columns: 1fr;
+                    gap: 0.75rem;
+                    
+                    .player-stats {
+                        padding-left: 0;
+                        border-left: none;
+                        border-top: 1px solid #e5e7eb;
+                        padding-top: 0.75rem;
+                        
+                        .body--dark & {
+                            border-top-color: #374151;
+                        }
+                    }
+                }
             }
         }
     }
