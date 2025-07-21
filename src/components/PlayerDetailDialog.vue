@@ -2,20 +2,28 @@
     <q-dialog 
         :model-value="show" 
         @hide="$emit('close')"
-        :class="qInstance.dark.isActive ? 'dark-dialog' : 'light-dialog'"
+        :class="isDarkMode ? 'dark-dialog' : 'light-dialog'"
         backdrop-filter="blur(3px)"
-        :backdrop-color="qInstance.dark.isActive ? 'rgba(0, 0, 0, 0.8)' : 'rgba(0, 0, 0, 0.5)'"
+        :backdrop-color="isDarkMode ? 'rgba(0, 0, 0, 0.8)' : 'rgba(0, 0, 0, 0.5)'"
         transition-show="scale"
         transition-hide="scale"
     >
         <q-card
             class="player-detail-dialog-card modern-dialog-card"
             :class="
-                qInstance.dark.isActive
-                    ? 'text-white'
+                isDarkMode
+                    ? 'bg-dark text-white'
                     : 'bg-white text-dark'
             "
-            style="max-width: 1400px; width: 95vw; max-height: 90vh; position: relative;"
+            :style="{
+                'max-width': '1400px',
+                'width': '95vw',
+                'max-height': '90vh',
+                'position': 'relative',
+                'background': isDarkMode ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' : '#fff',
+                'color': isDarkMode ? '#fff' : '#222'
+            }"
+            :data-dark-mode="isDarkMode"
         >
             <!-- Floating Close Button -->
             <q-btn 
@@ -24,11 +32,11 @@
                 icon="close" 
                 @click="$emit('close')" 
                 class="floating-close-btn"
-                :class="qInstance.dark.isActive ? 'text-grey-4' : 'text-grey-7'"
+                :class="isDarkMode ? 'text-grey-4' : 'text-grey-7'"
             >
                 <q-tooltip
                     :class="
-                        qInstance.dark.isActive
+                        isDarkMode
                             ? 'bg-grey-7'
                             : 'bg-white text-primary'
                     "
@@ -85,10 +93,10 @@
                                     map-options
                                     class="modern-select"
                                     :label-color="
-                                        qInstance.dark.isActive ? 'grey-4' : ''
+                                        isDarkMode ? 'grey-4' : ''
                                     "
                                     :popup-content-class="
-                                        qInstance.dark.isActive
+                                        isDarkMode
                                             ? 'bg-grey-8 text-white'
                                             : 'bg-white text-dark'
                                     "
@@ -110,10 +118,10 @@
                                     map-options
                                     class="modern-select"
                                     :label-color="
-                                        qInstance.dark.isActive ? 'grey-4' : ''
+                                        isDarkMode ? 'grey-4' : ''
                                     "
                                     :popup-content-class="
-                                        qInstance.dark.isActive
+                                        isDarkMode
                                             ? 'bg-grey-8 text-white'
                                             : 'bg-white text-dark'
                                     "
@@ -276,8 +284,8 @@
                                                 <q-avatar
                                                     v-else
                                                     size="80px"
-                                                    :color="qInstance.dark.isActive ? 'grey-7' : 'grey-4'"
-                                                    :text-color="qInstance.dark.isActive ? 'grey-4' : 'grey-7'"
+                                                    :color="isDarkMode ? 'grey-7' : 'grey-4'"
+                                                    :text-color="isDarkMode ? 'grey-4' : 'grey-7'"
                                                     class="player-face-placeholder"
                                                 >
                                                     <q-icon name="person" size="32px" />
@@ -297,7 +305,7 @@
                                                 />
                                                 <q-icon
                                                     v-if="!player.nationality_iso || flagLoadError"
-                                                    :color="qInstance.dark.isActive ? 'grey-5' : 'grey-7'"
+                                                    :color="isDarkMode ? 'grey-5' : 'grey-7'"
                                                     name="flag"
                                                     size="2.5em"
                                                     class="player-flag-placeholder"
@@ -339,7 +347,7 @@
                                                         <h5
                                                             class="text-h5 player-name no-margin"
                                                             :class="
-                                                                qInstance.dark.isActive ? 'text-white' : 'text-dark'
+                                                                isDarkMode ? 'text-white' : 'text-dark'
                                                             "
                                                                                             :title="displayPlayer?.name || 'Unknown Player'"
                             >
@@ -353,7 +361,7 @@
                                                             >
                                                                 <q-tooltip
                                                                     :class="
-                                                                        qInstance.dark.isActive
+                                                                        isDarkMode
                                                                             ? 'bg-grey-7 text-white'
                                                                             : 'bg-white text-dark'
                                                                     "
@@ -495,7 +503,7 @@
                                                 </div>
                                                 <q-tooltip
                                                     :class="
-                                                        qInstance.dark.isActive
+                                                        isDarkMode
                                                             ? 'bg-grey-7 text-white'
                                                             : 'bg-white text-dark'
                                                     "
@@ -541,7 +549,7 @@
                                                     </q-item-label>
                                                     <q-tooltip
                                                         :class="
-                                                            qInstance.dark.isActive
+                                                            isDarkMode
                                                                 ? 'bg-grey-7 text-white'
                                                                 : 'bg-white text-dark'
                                                         "
@@ -583,7 +591,7 @@
                                                         </q-item-label>
                                                         <q-tooltip
                                                             :class="
-                                                                qInstance.dark.isActive
+                                                                isDarkMode
                                                                     ? 'bg-grey-7 text-white'
                                                                     : 'bg-white text-dark'
                                                             "
@@ -643,7 +651,7 @@
                                                     </q-item-label>
                                                     <q-tooltip
                                                         :class="
-                                                            qInstance.dark.isActive
+                                                            isDarkMode
                                                                 ? 'bg-grey-7 text-white'
                                                                 : 'bg-white text-dark'
                                                         "
@@ -685,7 +693,7 @@
                                                         </q-item-label>
                                                         <q-tooltip
                                                             :class="
-                                                                qInstance.dark.isActive
+                                                                isDarkMode
                                                                     ? 'bg-grey-7 text-white'
                                                                     : 'bg-white text-dark'
                                                             "
@@ -744,7 +752,7 @@
                                                             </q-item-label>
                                                             <q-tooltip
                                                                 :class="
-                                                                    qInstance.dark.isActive
+                                                                    isDarkMode
                                                                         ? 'bg-grey-7 text-white'
                                                                         : 'bg-white text-dark'
                                                                 "
@@ -786,7 +794,7 @@
                                                                 </q-item-label>
                                                                 <q-tooltip
                                                                     :class="
-                                                                        qInstance.dark.isActive
+                                                                        isDarkMode
                                                                             ? 'bg-grey-7 text-white'
                                                                             : 'bg-white text-dark'
                                                                     "
@@ -1249,6 +1257,46 @@ export default defineComponent({
     const qInstance = useQuasar()
     const uiStore = useUiStore()
     const _playerStore = usePlayerStore()
+    
+    // Create a reactive ref for dark mode state
+    const darkModeState = ref(false)
+    
+    // Function to update dark mode state
+    const updateDarkModeState = () => {
+      const quasarDark = qInstance.dark.isActive
+      const bodyDark = document.body.classList.contains('body--dark')
+      const newState = quasarDark || bodyDark
+      console.log('Updating dark mode state:', newState, 'quasarDark:', quasarDark, 'bodyDark:', bodyDark)
+      darkModeState.value = newState
+    }
+    
+    // Ensure dark mode detection is reactive
+    const isDarkMode = computed(() => {
+      return darkModeState.value
+    })
+
+    // Watch for dark mode changes to trigger reactivity
+    watch(() => qInstance.dark.isActive, () => {
+      console.log('Quasar dark mode changed:', qInstance.dark.isActive)
+      updateDarkModeState()
+    })
+
+    // Also watch for body class changes
+    const observer = new MutationObserver(() => {
+      console.log('Body classes changed:', document.body.className)
+      updateDarkModeState()
+    })
+    
+    onMounted(() => {
+      updateDarkModeState() // Initial state
+      observer.observe(document.body, { attributes: true, attributeFilter: ['class'] })
+    })
+    
+    onUnmounted(() => {
+      observer.disconnect()
+    })
+    
+
     const selectedComparisonGroup = ref('Global')
     const flagLoadError = ref(false)
     const divisionFilter = ref('same')
@@ -2611,7 +2659,8 @@ export default defineComponent({
       detailedDataError,
       displayPlayer,
       forceRecompute,
-      updateComparisonGroupForPlayer
+      updateComparisonGroupForPlayer,
+      isDarkMode // <-- add this line
     }
   }
 })
@@ -4016,6 +4065,32 @@ body.body--dark .q-page {
     background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
 }
 
+/* Dialog card background fix for dark/light mode */
+.dark-dialog .player-detail-dialog-card {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+  color: #fff !important;
+}
+.light-dialog .player-detail-dialog-card {
+  background: #fff !important;
+  color: #222 !important;
+}
+
+/* Force dark background for the main card when it has bg-dark class - HIGH SPECIFICITY */
+.q-dialog .q-card.player-detail-dialog-card.bg-dark,
+.q-dialog .q-card.player-detail-dialog-card.modern-dialog-card.bg-dark,
+.dark-dialog .q-card.player-detail-dialog-card,
+.dark-dialog .q-card.player-detail-dialog-card.modern-dialog-card {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+  color: #fff !important;
+  border: none !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Override Quasar's bg-dark class specifically for our card */
+.q-card.player-detail-dialog-card.bg-dark {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+  color: #fff !important;
+}
 
 </style>
 
