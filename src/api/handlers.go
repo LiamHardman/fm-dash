@@ -792,16 +792,17 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 			attribute.String("dataset.currency", currencySymbol),
 		)
 
+		// Make a deep copy of players to avoid modifying the stored data and prevent race conditions
+		// Use optimized deep copy for better memory efficiency
+		playersCopy := OptimizedDeepCopyPlayers(players)
+
 		// Recalculate all player ratings based on the current calculation method setting
 		ctx, recalcSpan := StartSpan(ctx, "ratings.recalculate")
-		players = RecalculateAllPlayersRatings(players)
+		playersCopy = RecalculateAllPlayersRatings(playersCopy)
 		recalcSpan.End()
 
 		// Calculate percentiles with appropriate filtering using optimized algorithm
 		ctx, percentileSpan := StartSpan(ctx, "percentiles.calculate")
-		// Make a deep copy of players to avoid modifying the stored data and prevent race conditions
-		// Use optimized deep copy for better memory efficiency
-		playersCopy := OptimizedDeepCopyPlayers(players)
 
 		if divisionFilter != DivisionFilterAll {
 			// Recalculate percentiles with division filter
@@ -819,7 +820,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 			Players        []Player
 			CurrencySymbol string
 		}{
-			Players:        players,
+			Players:        playersCopy,
 			CurrencySymbol: currencySymbol,
 		}
 		setInMemCacheForDataset(percentileCacheKey, cacheData, 10*time.Minute) // Cache for 10 minutes

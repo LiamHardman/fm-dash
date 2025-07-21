@@ -9,12 +9,38 @@ class UploadFlowProfiler {
     this.startTime = null
     this.currentStep = null
     this.stepStartTime = null
+    this.enabled = false // Default to disabled
+  }
+
+  /**
+   * Enable the profiler
+   */
+  enable() {
+    this.enabled = true
+    console.log('📊 Performance Profiler enabled')
+  }
+
+  /**
+   * Disable the profiler
+   */
+  disable() {
+    this.enabled = false
+    console.log('📊 Performance Profiler disabled')
+  }
+
+  /**
+   * Check if profiler is enabled
+   */
+  isEnabled() {
+    return this.enabled
   }
 
   /**
    * Start profiling the upload flow
    */
   startUploadFlow() {
+    if (!this.enabled) return
+
     this.metrics = {}
     this.startTime = performance.now()
     this.currentStep = null
@@ -28,6 +54,8 @@ class UploadFlowProfiler {
    * Mark a step in the upload flow
    */
   markStep(stepName, additionalData = {}) {
+    if (!this.enabled) return
+
     const now = performance.now()
     const stepDuration = this.stepStartTime ? now - this.stepStartTime : 0
     const totalDuration = this.startTime ? now - this.startTime : 0
@@ -55,6 +83,8 @@ class UploadFlowProfiler {
    * End the current step
    */
   endStep(additionalData = {}) {
+    if (!this.enabled) return
+    
     if (this.currentStep) {
       this.markStep(this.currentStep, additionalData)
     }
@@ -64,6 +94,8 @@ class UploadFlowProfiler {
    * End the upload flow and generate report
    */
   endUploadFlow() {
+    if (!this.enabled) return
+
     const now = performance.now()
     const totalDuration = this.startTime ? now - this.startTime : 0
 
@@ -82,6 +114,8 @@ class UploadFlowProfiler {
    * Generate a detailed performance report
    */
   generateReport() {
+    if (!this.enabled) return null
+
     console.log('📈 Upload Flow Performance Report')
     console.log('================================')
 
@@ -125,6 +159,11 @@ class UploadFlowProfiler {
    * Measure a specific operation
    */
   async measureOperation(operationName, operation) {
+    if (!this.enabled) {
+      // If profiler is disabled, just run the operation without measuring
+      return await operation()
+    }
+
     this.markStep(`${operationName}_start`)
     const startTime = performance.now()
     

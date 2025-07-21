@@ -2095,11 +2095,11 @@ export default defineComponent({
     // Watch for player changes to fetch detailed data with debouncing
     let fetchTimeout = null
     watch(() => props.player, (newPlayer) => {
-      console.log('PlayerDetailDialog watch triggered:', {
-        hasNewPlayer: !!newPlayer,
-        playerName: newPlayer?.name,
-        playerUID: newPlayer?.uid || newPlayer?.UID
-      })
+    //   console.log('PlayerDetailDialog watch triggered:', {
+    //     hasNewPlayer: !!newPlayer,
+    //     playerName: newPlayer?.name,
+    //     playerUID: newPlayer?.uid || newPlayer?.UID
+    //   })
       
       if (newPlayer && (newPlayer.uid || newPlayer.UID)) {
         console.log('Setting up fetchDetailedPlayerData timeout')

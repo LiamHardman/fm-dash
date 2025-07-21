@@ -908,16 +908,13 @@ func RecalculatePlayerRatings(player *Player) {
 	}
 }
 
-// Global mutex for protecting player rating recalculations
-var playerRatingMutex sync.RWMutex
-
 // RecalculateAllPlayersRatings recalculates ratings for all players in a slice
 func RecalculateAllPlayersRatings(players []Player) []Player {
 	LogInfo("RecalculateAllPlayersRatings called for %d players", len(players))
 
-	// Acquire read lock to prevent concurrent modifications
-	playerRatingMutex.RLock()
-	defer playerRatingMutex.RUnlock()
+	// Acquire write lock to prevent concurrent modifications
+	playersPercentileMutex.Lock()
+	defer playersPercentileMutex.Unlock()
 
 	// Create a new slice to avoid modifying the original
 	result := make([]Player, len(players))

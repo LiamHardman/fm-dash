@@ -310,7 +310,7 @@ export function getPerformanceMetrics() {
  * Clear all caches
  */
 export function clearAllCaches() {
-  playerCache.clear()
+  playerDataCache.clear()
   percentileCache.clear()
   logger.info('All player detail caches cleared')
 }
@@ -319,7 +319,13 @@ export function clearAllCaches() {
  * Cleanup expired cache entries
  */
 export function cleanupCaches() {
-  playerCache.cleanup()
+  // playerDataCache is a simple Map, so we need to manually clean up expired entries
+  const now = Date.now()
+  for (const [key, value] of playerDataCache.entries()) {
+    if (now - value.timestamp > CACHE_TTL) {
+      playerDataCache.delete(key)
+    }
+  }
   percentileCache.cleanup()
 }
 

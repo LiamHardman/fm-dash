@@ -53,20 +53,20 @@ class ProtobufClient {
         
         if (this.protobufSupported) {
           try {
-            logger.info('Attempting to load protobufjs library...')
+            // logger.info('Attempting to load protobufjs library...')
             // The protobuf library is already imported at the top
             // No additional import needed here
           } catch (importError) {
             logger.error('Failed to import protobufjs:', importError)
             throw importError
           }
-          logger.info('Successfully loaded protobufjs library', {
-            hasRoot: !!protobuf.Root,
-            hasFromJSON: !!protobuf.Root?.fromJSON,
-            protobufType: typeof protobuf,
-            protobufKeys: Object.keys(protobuf || {}),
-            rootType: typeof protobuf.Root
-          })
+          // logger.info('Successfully loaded protobufjs library', {
+          //   hasRoot: !!protobuf.Root,
+          //   hasFromJSON: !!protobuf.Root?.fromJSON,
+          //   protobufType: typeof protobuf,
+          //   protobufKeys: Object.keys(protobuf || {}),
+          //   rootType: typeof protobuf.Root
+          // })
         }
         
         const definitionsLoaded = await this.loadProtobufDefinitions()
@@ -74,7 +74,7 @@ class ProtobufClient {
           logger.error('Failed to load protobuf definitions, protobuf will not work')
           this.protobufSupported = false
         } else {
-          logger.info('Protobuf definitions loaded successfully')
+          // logger.info('Protobuf definitions loaded successfully')
         }
         
         this.initialized = true
@@ -125,7 +125,7 @@ class ProtobufClient {
         return false
       }
 
-      logger.info('Loading protobuf definitions...')
+      // logger.info('Loading protobuf definitions...')
       
       this.protoDefinitions = Root.fromJSON({
         nested: {
@@ -228,7 +228,7 @@ class ProtobufClient {
         }
       })
       
-      logger.info('Successfully loaded protobuf definitions')
+      // logger.info('Successfully loaded protobuf definitions')
       return true
     } catch (error) {
       logger.error('Failed to load protobuf definitions:', error)
