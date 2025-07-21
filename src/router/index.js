@@ -9,7 +9,6 @@ const LeaguesPage = () => import('../pages/LeaguesPage.vue')
 const DocsPage = () => import('../pages/DocsPage.vue')
 const WishlistPage = () => import('../pages/WishlistPage.vue')
 const PerformancePage = () => import('../pages/PerformancePage.vue')
-const PerformanceTestPage = () => import('../pages/PerformanceTestPage.vue')
 
 const routes = [
   {
