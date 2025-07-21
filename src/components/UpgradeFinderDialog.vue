@@ -512,7 +512,7 @@
                                                         <!-- Overall Rating -->
                                                         <div class="player-overall">
                                                             <div class="overall-label">Overall</div>
-                                                            <div class="overall-value">{{ player.overall }}</div>
+                                                            <div class="overall-value" :class="getUnifiedRatingClass(player.overall, 100)">{{ player.overall }}</div>
                                                         </div>
                                                     </div>
                                                 </q-card-section>
@@ -527,12 +527,12 @@
                                                                 class="attribute-item"
                                                             >
                                                                 <span class="attribute-name">{{ attr.name }}</span>
-                                                                <span 
-                                                                    class="attribute-value"
-                                                                    :class="getAttributeClass(attr.value)"
-                                                                >
-                                                                    {{ attr.value }}
-                                                                </span>
+                                                                                                                        <span 
+                                                            class="attribute-value"
+                                                            :class="getUnifiedRatingClass(attr.value, 100)"
+                                                        >
+                                                            {{ attr.value }}
+                                                        </span>
                                                             </div>
                                                         </div>
                                                         
@@ -544,11 +544,11 @@
                                                             </div>
                                                             <div class="stat-item">
                                                                 <span class="stat-label">Value:</span>
-                                                                <span class="stat-value">{{ player.transfer_value || 'N/A' }}</span>
+                                                                <span class="stat-value">{{ formatValue(player.transfer_value) }}</span>
                                                             </div>
                                                             <div class="stat-item">
                                                                 <span class="stat-label">Wage:</span>
-                                                                <span class="stat-value">{{ player.wage || 'N/A' }}</span>
+                                                                <span class="stat-value">{{ formatWage(player.wage) }}</span>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -900,9 +900,10 @@ export default {
       let minVal = Number.POSITIVE_INFINITY
       let maxVal = 0
       for (const p of props.players) {
-        if (typeof p.transferValueAmount === 'number') {
-          minVal = Math.min(minVal, p.transferValueAmount)
-          maxVal = Math.max(maxVal, p.transferValueAmount)
+        const transferValue = parseTransferValue(p.transfer_value)
+        if (transferValue > 0) {
+          minVal = Math.min(minVal, transferValue)
+          maxVal = Math.max(maxVal, transferValue)
         }
       }
       dynamicMinTransferValue.value = minVal === Number.POSITIVE_INFINITY ? 0 : Math.max(0, minVal)
@@ -1846,7 +1847,7 @@ export default {
               return false
             if (
               currentMaxTransferValue < computedMaxSliderTransferValue.value &&
-              (player.transferValueAmount || 0) > currentMaxTransferValue
+              parseTransferValue(player.transfer_value) > currentMaxTransferValue
             )
               return false
             if (
@@ -2019,19 +2020,20 @@ export default {
       // Add key attributes based on position
       if (player.position === 'GK') {
         keyAttrs.push(
-          { key: 'han', name: 'Handling', value: player.han || 0 },
-          { key: 'ref', name: 'Reflexes', value: player.ref || 0 },
-          { key: 'kic', name: 'Kicking', value: player.kic || 0 },
-          { key: 'pos', name: 'Positioning', value: player.pos || 0 }
+          { key: 'han', name: 'HAN', value: player.han || 0 },
+          { key: 'ref', name: 'REF', value: player.ref || 0 },
+          { key: 'kic', name: 'KIC', value: player.kic || 0 },
+          { key: 'pos', name: 'POS', value: player.pos || 0 }
         )
       } else {
+        // Use the specified order: PAC DRI, SHO DEF, PAS PHY
         keyAttrs.push(
-          { key: 'pac', name: 'Pace', value: player.pac || 0 },
-          { key: 'sho', name: 'Shooting', value: player.sho || 0 },
-          { key: 'pas', name: 'Passing', value: player.pas || 0 },
-          { key: 'dri', name: 'Dribbling', value: player.dri || 0 },
-          { key: 'def', name: 'Defending', value: player.def || 0 },
-          { key: 'phy', name: 'Physical', value: player.phy || 0 }
+          { key: 'pac', name: 'PAC', value: player.pac || 0 },
+          { key: 'dri', name: 'DRI', value: player.dri || 0 },
+          { key: 'sho', name: 'SHO', value: player.sho || 0 },
+          { key: 'def', name: 'DEF', value: player.def || 0 },
+          { key: 'pas', name: 'PAS', value: player.pas || 0 },
+          { key: 'phy', name: 'PHY', value: player.phy || 0 }
         )
       }
       
@@ -2039,11 +2041,67 @@ export default {
       return keyAttrs
     }
 
-    const getAttributeClass = (value) => {
-      if (value >= 16) return 'attribute-excellent'
-      if (value >= 13) return 'attribute-good'
-      if (value >= 10) return 'attribute-average'
-      return 'attribute-poor'
+
+
+    const formatWage = (wageString) => {
+      if (!wageString) return 'N/A'
+      
+      // Extract the number from strings like "£13,750 p/w"
+      const match = wageString.match(/£([\d,]+)/)
+      if (!match) return wageString
+      
+      const number = parseInt(match[1].replace(/,/g, ''))
+      if (number >= 1000) {
+        return `£${(number / 1000).toFixed(2)}K`
+      }
+      return wageString
+    }
+
+    const parseTransferValue = (valueString) => {
+      if (!valueString) return 0
+      
+      // Extract the upper bound from strings like "£28M - £34M"
+      const match = valueString.match(/£([\d.]+)M/)
+      if (match) {
+        return parseFloat(match[1]) * 1000000
+      }
+      
+      // Handle other formats
+      const upperMatch = valueString.match(/£([\d,]+)/)
+      if (upperMatch) {
+        const number = parseInt(upperMatch[1].replace(/,/g, ''))
+        if (number >= 1000000) {
+          return (number / 1000000) * 1000000
+        } else if (number >= 1000) {
+          return (number / 1000) * 1000
+        }
+        return number
+      }
+      
+      return 0
+    }
+
+    const formatValue = (valueString) => {
+      if (!valueString) return 'N/A'
+      
+      // Extract the upper bound from strings like "£28M - £34M"
+      const match = valueString.match(/£([\d.]+)M/)
+      if (match) {
+        return `£${match[1]}M`
+      }
+      
+      // Handle other formats
+      const upperMatch = valueString.match(/£([\d,]+)/)
+      if (upperMatch) {
+        const number = parseInt(upperMatch[1].replace(/,/g, ''))
+        if (number >= 1000000) {
+          return `£${(number / 1000000).toFixed(1)}M`
+        } else if (number >= 1000) {
+          return `£${(number / 1000).toFixed(0)}k`
+        }
+      }
+      
+      return valueString
     }
 
     const findBestRoleForPlayerInPosition = (player, position) => {
@@ -2098,13 +2156,26 @@ export default {
       const numValue = Number.parseInt(value, 10)
       if (Number.isNaN(numValue) || value === null || value === undefined || value === '-')
         return 'rating-na'
-      const percentage = (numValue / maxScale) * 100
-      if (percentage >= 90) return 'rating-tier-6'
-      if (percentage >= 80) return 'rating-tier-5'
-      if (percentage >= 70) return 'rating-tier-4'
-      if (percentage >= 55) return 'rating-tier-3'
-      if (percentage >= 40) return 'rating-tier-2'
-      return 'rating-tier-1'
+      
+      // For FIFA stats (1-100 scale), calculate percentage correctly
+      if (maxScale === 20) {
+        const percentage = ((numValue - 1) / (maxScale - 1)) * 100
+        if (percentage >= 90) return 'rating-tier-6'
+        if (percentage >= 80) return 'rating-tier-5'
+        if (percentage >= 70) return 'rating-tier-4'
+        if (percentage >= 55) return 'rating-tier-3'
+        if (percentage >= 40) return 'rating-tier-2'
+        return 'rating-tier-1'
+      } else {
+        // For FIFA stats (1-100 scale) and overall ratings (0-100 scale)
+        const percentage = (numValue / maxScale) * 100
+        if (percentage >= 90) return 'rating-tier-6'
+        if (percentage >= 80) return 'rating-tier-5'
+        if (percentage >= 70) return 'rating-tier-4'
+        if (percentage >= 55) return 'rating-tier-3'
+        if (percentage >= 40) return 'rating-tier-2'
+        return 'rating-tier-1'
+      }
     }
 
     const upgradeFinderIsGoalkeeperView = computed(() => selectedPosition.value === 'GK')
@@ -2206,7 +2277,10 @@ export default {
         findBestRoleForPlayerInPosition,
         translateFormationPositionToSearchable,
         getKeyAttributes,
-        getAttributeClass,
+        getUnifiedRatingClass,
+        formatWage,
+        formatValue,
+      parseTransferValue,
         formatCurrency,
       updateTeamPlayersForFormation
     }
@@ -2747,6 +2821,83 @@ export default {
                         font-weight: 700;
                         margin: 0;
                         line-height: 1;
+                        padding: 0.25rem 0.5rem;
+                        border-radius: 6px;
+                        min-width: 3rem;
+                        text-align: center;
+                        
+                        &.rating-tier-6 {
+                            background-color: #7e57c2;
+                            color: white !important;
+                            font-weight: 700;
+                            border: 1px solid #5e35b1;
+                            
+                            .body--dark & {
+                                background-color: #9575cd;
+                                color: white !important;
+                                border-color: #7e57c2;
+                            }
+                        }
+                        
+                        &.rating-tier-5 {
+                            background-color: #26a69a;
+                            color: white !important;
+                            
+                            .body--dark & {
+                                background-color: #00897b;
+                                color: white !important;
+                            }
+                        }
+                        
+                        &.rating-tier-4 {
+                            background-color: #66bb6a;
+                            color: white !important;
+                            
+                            .body--dark & {
+                                background-color: #4caf50;
+                                color: white !important;
+                            }
+                        }
+                        
+                        &.rating-tier-3 {
+                            background-color: #42a5f5;
+                            color: white !important;
+                            
+                            .body--dark & {
+                                background-color: #2196f3;
+                                color: white !important;
+                            }
+                        }
+                        
+                        &.rating-tier-2 {
+                            background-color: #ffa726;
+                            color: #333333 !important;
+                            
+                            .body--dark & {
+                                background-color: #fb8c00;
+                                color: white !important;
+                            }
+                        }
+                        
+                        &.rating-tier-1 {
+                            background-color: #ef5350;
+                            color: white !important;
+                            
+                            .body--dark & {
+                                background-color: #e53935;
+                                color: white !important;
+                            }
+                        }
+                        
+                        &.rating-na {
+                            background-color: #bdbdbd;
+                            color: #424242 !important;
+                            
+                            .body--dark & {
+                                background-color: #424242;
+                                color: #bdbdbd !important;
+                            }
+                        }
                     }
                 }
             }
@@ -2790,24 +2941,77 @@ export default {
                             min-width: 2rem;
                             text-align: center;
                             
-                            &.attribute-excellent {
-                                background-color: #10b981;
-                                color: white;
+                            &.rating-tier-6 {
+                                background-color: #7e57c2;
+                                color: white !important;
+                                font-weight: 700;
+                                border: 1px solid #5e35b1;
+                                
+                                .body--dark & {
+                                    background-color: #9575cd;
+                                    color: white !important;
+                                    border-color: #7e57c2;
+                                }
                             }
                             
-                            &.attribute-good {
-                                background-color: #3b82f6;
-                                color: white;
+                            &.rating-tier-5 {
+                                background-color: #26a69a;
+                                color: white !important;
+                                
+                                .body--dark & {
+                                    background-color: #00897b;
+                                    color: white !important;
+                                }
                             }
                             
-                            &.attribute-average {
-                                background-color: #f59e0b;
-                                color: white;
+                            &.rating-tier-4 {
+                                background-color: #66bb6a;
+                                color: white !important;
+                                
+                                .body--dark & {
+                                    background-color: #4caf50;
+                                    color: white !important;
+                                }
                             }
                             
-                            &.attribute-poor {
-                                background-color: #ef4444;
-                                color: white;
+                            &.rating-tier-3 {
+                                background-color: #42a5f5;
+                                color: white !important;
+                                
+                                .body--dark & {
+                                    background-color: #2196f3;
+                                    color: white !important;
+                                }
+                            }
+                            
+                            &.rating-tier-2 {
+                                background-color: #ffa726;
+                                color: #333333 !important;
+                                
+                                .body--dark & {
+                                    background-color: #fb8c00;
+                                    color: white !important;
+                                }
+                            }
+                            
+                            &.rating-tier-1 {
+                                background-color: #ef5350;
+                                color: white !important;
+                                
+                                .body--dark & {
+                                    background-color: #e53935;
+                                    color: white !important;
+                                }
+                            }
+                            
+                            &.rating-na {
+                                background-color: #bdbdbd;
+                                color: #424242 !important;
+                                
+                                .body--dark & {
+                                    background-color: #424242;
+                                    color: #bdbdbd !important;
+                                }
                             }
                         }
                     }
