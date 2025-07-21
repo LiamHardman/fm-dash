@@ -1,5 +1,4 @@
 import { onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
 import { analytics, trackEvent, trackPageView } from '../services/analytics'
 
 /**
@@ -10,22 +9,15 @@ import { analytics, trackEvent, trackPageView } from '../services/analytics'
  */
 export function useAnalytics(options = {}) {
   const { trackPageViews = true } = options
-  const route = useRoute()
-
-  // Automatically track page views on route changes
+  
+  // Track initial page view on mount
   if (trackPageViews) {
-    // Track initial page view
     onMounted(() => {
-      trackPageView(route.fullPath, route.meta?.title || document.title)
+      // Use window.location for initial page view to avoid router dependency
+      const currentPath = window.location.pathname + window.location.search
+      const currentTitle = document.title
+      trackPageView(currentPath, currentTitle)
     })
-
-    // Track subsequent page views
-    watch(
-      () => route.fullPath,
-      newPath => {
-        trackPageView(newPath, route.meta?.title || document.title)
-      }
-    )
   }
 
   return {
@@ -38,7 +30,9 @@ export function useAnalytics(options = {}) {
 
     // Convenience method to track current page manually
     trackCurrentPage: () => {
-      trackPageView(route.fullPath, route.meta?.title || document.title)
+      const currentPath = window.location.pathname + window.location.search
+      const currentTitle = document.title
+      trackPageView(currentPath, currentTitle)
     },
 
     // Helper to track form submissions

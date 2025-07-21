@@ -1,9 +1,7 @@
 import { defineStore } from 'pinia'
-import { useQuasar } from 'quasar'
 import { ref } from 'vue'
 
 export const useUiStore = defineStore('ui', () => {
-  const $q = useQuasar()
   // Initialize with a default value, initDarkMode will override this.
   // Defaulting to true here to align with the user's intent for dark mode by default.
   const isDarkModeActive = ref(true)
@@ -23,7 +21,23 @@ export const useUiStore = defineStore('ui', () => {
   function toggleDarkMode() {
     // Directly toggle the current state
     isDarkModeActive.value = !isDarkModeActive.value
-    $q.dark.set(isDarkModeActive.value)
+    
+    // Apply dark mode to document body as fallback
+    if (isDarkModeActive.value) {
+      document.body.classList.add('body--dark')
+    } else {
+      document.body.classList.remove('body--dark')
+    }
+    
+    // Try to use Quasar if available
+    try {
+      const { useQuasar } = require('quasar')
+      const $q = useQuasar()
+      $q.dark.set(isDarkModeActive.value)
+    } catch (error) {
+      // Quasar not available, using CSS fallback
+    }
+    
     try {
       localStorage.setItem('darkMode', isDarkModeActive.value ? 'true' : 'false')
     } catch (_e) {}
@@ -104,15 +118,25 @@ export const useUiStore = defineStore('ui', () => {
     } catch (_e) {
       darkModePreference = true
     }
-    // Set the ref and Quasar's dark mode
+    
+    // Set the ref
     isDarkModeActive.value = darkModePreference
-    $q.dark.set(darkModePreference)
+    
+    // Apply dark mode to document body as fallback
+    if (darkModePreference) {
+      document.body.classList.add('body--dark')
+    } else {
+      document.body.classList.remove('body--dark')
+    }
+    
+    // Try to use Quasar if available
     try {
-      const storedPreference = localStorage.getItem('showLogos')
-      if (storedPreference !== null) {
-        showLogos.value = storedPreference === 'true'
-      }
-    } catch (_e) {}
+      const { useQuasar } = require('quasar')
+      const $q = useQuasar()
+      $q.dark.set(darkModePreference)
+    } catch (error) {
+      // Quasar not available, using CSS fallback
+    }
   }
 
   // Initialize notification preferences

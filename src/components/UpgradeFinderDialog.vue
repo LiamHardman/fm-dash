@@ -54,13 +54,13 @@
                                 squadComposition = {};
                             "
                             :label-color="
-                                $q.dark.isActive ? 'grey-4' : ''
+                                quasar.dark.isActive ? 'grey-4' : ''
                             "
                             :input-class="
-                                $q.dark.isActive ? 'text-grey-3' : ''
+                                quasar.dark.isActive ? 'text-grey-3' : ''
                             "
                             :popup-content-class="
-                                $q.dark.isActive
+                                quasar.dark.isActive
                                     ? 'bg-grey-8 text-white'
                                     : 'bg-white text-dark'
                             "
@@ -80,10 +80,10 @@
                             @clear="selectedFormationKey = null"
                             :disable="!teamName"
                             :label-color="
-                                $q.dark.isActive ? 'grey-4' : ''
+                                quasar.dark.isActive ? 'grey-4' : ''
                             "
                             :popup-content-class="
-                                $q.dark.isActive
+                                quasar.dark.isActive
                                     ? 'bg-grey-8 text-white'
                                     : 'bg-white text-dark'
                             "
@@ -95,7 +95,7 @@
                             <div
                                 class="text-caption q-mb-xs slider-label"
                                 :class="
-                                    $q.dark.isActive
+                                    quasar.dark.isActive
                                         ? 'text-grey-4'
                                         : 'text-grey-7'
                                 "
@@ -110,7 +110,7 @@
                                 label
                                 label-always
                                 color="primary"
-                                :dark="$q.dark.isActive"
+                                :dark="quasar.dark.isActive"
                                 class="q-px-sm"
                             />
                         </div>
@@ -150,10 +150,10 @@
                                             "
                                             @update:model-value="onPositionOrTeamChange"
                                             :label-color="
-                                                $q.dark.isActive ? 'grey-4' : ''
+                                                quasar.dark.isActive ? 'grey-4' : ''
                                             "
                                             :popup-content-class="
-                                                $q.dark.isActive
+                                                quasar.dark.isActive
                                                     ? 'bg-grey-8 text-white'
                                                     : 'bg-white text-dark'
                                             "
@@ -183,10 +183,10 @@
                                                       : ''
                                             "
                                             :label-color="
-                                                $q.dark.isActive ? 'grey-4' : ''
+                                                quasar.dark.isActive ? 'grey-4' : ''
                                             "
                                             :popup-content-class="
-                                                $q.dark.isActive
+                                                quasar.dark.isActive
                                                     ? 'bg-grey-8 text-white'
                                                     : 'bg-white text-dark'
                                             "
@@ -228,10 +228,10 @@
                                                     : 'Select a player to set base overall'
                                             "
                                             :label-color="
-                                                $q.dark.isActive ? 'grey-4' : ''
+                                                quasar.dark.isActive ? 'grey-4' : ''
                                             "
                                             :popup-content-class="
-                                                $q.dark.isActive
+                                                quasar.dark.isActive
                                                     ? 'bg-grey-8 text-white'
                                                     : 'bg-white text-dark'
                                             "
@@ -239,7 +239,7 @@
                                             <template v-slot:option="scope">
                                                 <q-item
                                                     v-bind="scope.itemProps"
-                                                    :dark="$q.dark.isActive"
+                                                    :dark="quasar.dark.isActive"
                                                 >
                                                     <q-item-section>
                                                         <q-item-label>{{
@@ -265,7 +265,7 @@
                                                 </q-item>
                                             </template>
                                             <template v-slot:no-option>
-                                                <q-item :dark="$q.dark.isActive">
+                                                <q-item :dark="quasar.dark.isActive">
                                                     <q-item-section class="text-grey">
                                                         {{
                                                             teamName && selectedPosition
@@ -283,7 +283,7 @@
                                             <div
                                                 class="text-caption q-mb-xs slider-label"
                                                 :class="
-                                                    $q.dark.isActive
+                                                    quasar.dark.isActive
                                                         ? 'text-grey-4'
                                                         : 'text-grey-7'
                                                 "
@@ -304,7 +304,7 @@
                                                     class="q-ml-xs"
                                                     round
                                                     :text-color="
-                                                        $q.dark.isActive
+                                                        quasar.dark.isActive
                                                             ? 'grey-5'
                                                             : 'grey-7'
                                                     "
@@ -325,7 +325,7 @@
                                                     ' yrs'
                                                 "
                                                 color="primary"
-                                                :dark="$q.dark.isActive"
+                                                :dark="quasar.dark.isActive"
                                                 class="q-px-sm"
                                             />
                                         </div>
@@ -336,7 +336,7 @@
                                             <div
                                                 class="text-caption q-mb-xs slider-label"
                                                 :class="
-                                                    $q.dark.isActive
+                                                    quasar.dark.isActive
                                                         ? 'text-grey-4'
                                                         : 'text-grey-7'
                                                 "
@@ -360,7 +360,7 @@
                                                     class="q-ml-xs"
                                                     round
                                                     :text-color="
-                                                        $q.dark.isActive
+                                                        quasar.dark.isActive
                                                             ? 'grey-5'
                                                             : 'grey-7'
                                                     "
@@ -377,7 +377,7 @@
                                                 label-always
                                                 :label-value="formattedMaxTransferValueLabel"
                                                 color="primary"
-                                                :dark="$q.dark.isActive"
+                                                :dark="quasar.dark.isActive"
                                                 :disable="
                                                     !props.players || props.players.length === 0
                                                 "
@@ -391,7 +391,7 @@
                                             <div
                                                 class="text-caption q-mb-xs slider-label"
                                                 :class="
-                                                    $q.dark.isActive
+                                                    quasar.dark.isActive
                                                         ? 'text-grey-4'
                                                         : 'text-grey-7'
                                                 "
@@ -413,7 +413,7 @@
                                                     class="q-ml-xs"
                                                     round
                                                     :text-color="
-                                                        $q.dark.isActive
+                                                        quasar.dark.isActive
                                                             ? 'grey-5'
                                                             : 'grey-7'
                                                     "
@@ -430,7 +430,7 @@
                                                 label-always
                                                 :label-value="formattedMaxSalaryLabel"
                                                 color="primary"
-                                                :dark="$q.dark.isActive"
+                                                :dark="quasar.dark.isActive"
                                                 :disable="
                                                     !props.players || props.players.length === 0
                                                 "
@@ -468,7 +468,7 @@
                                     <div
                                         class="text-h6 q-mb-md"
                                         :class="
-                                            $q.dark.isActive ? 'text-grey-2' : 'text-grey-9'
+                                            quasar.dark.isActive ? 'text-grey-2' : 'text-grey-9'
                                         "
                                     >
                                         Potential upgrades ({{ upgradePlayers.length }} players
@@ -495,8 +495,8 @@
                                                         <div class="player-face-section">
                                                             <q-avatar
                                                                 size="60px"
-                                                                :color="$q.dark.isActive ? 'grey-7' : 'grey-4'"
-                                                                :text-color="$q.dark.isActive ? 'grey-4' : 'grey-7'"
+                                                                :color="quasar.dark.isActive ? 'grey-7' : 'grey-4'"
+                                                                :text-color="quasar.dark.isActive ? 'grey-4' : 'grey-7'"
                                                             >
                                                                 <q-icon name="person" size="32px" />
                                                             </q-avatar>
@@ -561,7 +561,7 @@
                                         v-else-if="showResults && !loading && !initialLoad"
                                         class="q-mt-md"
                                         :class="
-                                            $q.dark.isActive
+                                            quasar.dark.isActive
                                                 ? 'bg-blue-grey-8 text-blue-grey-2'
                                                 : 'bg-info text-white'
                                         "
@@ -581,7 +581,7 @@
                                         "
                                         class="q-mt-md"
                                         :class="
-                                            $q.dark.isActive
+                                            quasar.dark.isActive
                                                 ? 'bg-orange-9 text-white'
                                                 : 'bg-amber text-dark'
                                         "
@@ -1187,7 +1187,7 @@ export default {
         squadComposition.value = {}
         bestTeamAverageOverall.value = null
         calculationMessage.value = 'Select a team and formation.'
-        calculationMessageClass.value = $q.dark.isActive ? 'text-grey-5' : 'text-grey-7'
+        calculationMessageClass.value = quasar.dark.isActive ? 'text-grey-5' : 'text-grey-7'
       }
     })
 
@@ -1203,7 +1203,7 @@ export default {
           if (bestFormation) {
             selectedFormationKey.value = bestFormation
             calculationMessage.value = `Auto-selected best formation: ${formations[bestFormation].name}. Calculating Best XI...`
-            calculationMessageClass.value = $q.dark.isActive
+            calculationMessageClass.value = quasar.dark.isActive
               ? 'bg-info text-white'
               : 'bg-blue-2 text-primary'
           }
@@ -1536,14 +1536,14 @@ export default {
         squadComposition.value = cachedResult.squadComposition
         bestTeamAverageOverall.value = cachedResult.bestTeamAverageOverall
         calculationMessage.value = `Best XI & Depth calculated (cached). Average Overall: ${cachedResult.bestTeamAverageOverall}.`
-        calculationMessageClass.value = $q.dark.isActive
+        calculationMessageClass.value = quasar.dark.isActive
           ? 'bg-positive text-white'
           : 'bg-green-2 text-positive'
         return
       }
 
       calculationMessage.value = 'Calculating best team and depth...'
-      calculationMessageClass.value = $q.dark.isActive
+      calculationMessageClass.value = quasar.dark.isActive
         ? 'bg-info text-white'
         : 'bg-blue-2 text-primary'
 
@@ -1695,13 +1695,13 @@ export default {
       if (startersCount > 0) {
         bestTeamAverageOverall.value = Math.round(sumOfStartersOverall / startersCount)
         calculationMessage.value = `Best XI & Depth calculated. Average Overall: ${bestTeamAverageOverall.value}.`
-        calculationMessageClass.value = $q.dark.isActive
+        calculationMessageClass.value = quasar.dark.isActive
           ? 'bg-positive text-white'
           : 'bg-green-2 text-positive'
       } else {
         bestTeamAverageOverall.value = 0
         calculationMessage.value = 'Could not assign any suitable players to form a Best XI.'
-        calculationMessageClass.value = $q.dark.isActive
+        calculationMessageClass.value = quasar.dark.isActive
           ? 'bg-negative text-white'
           : 'bg-red-2 text-negative'
       }
@@ -2100,7 +2100,7 @@ export default {
     )
 
     return {
-      $q,
+      quasar: $q,
       teamName,
       teamOptions,
       filterTeams,
