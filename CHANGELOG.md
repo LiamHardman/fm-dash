@@ -3,6 +3,20 @@
 
 ### Bug Fixes
 
+* removed some extraneous logging and build issue fixes ([b4718bf](https://github.com/LiamHardman/fm-dash/commit/b4718bf1cf6403dc708611e0a24d19b7d2e2d6b7))
+* removing unneeded page import ([a9ab283](https://github.com/LiamHardman/fm-dash/commit/a9ab283047ce2d85904b0df0da527715b625a123))
+* resolved chunk bundling issues leading to white page on frontend ([7405c95](https://github.com/LiamHardman/fm-dash/commit/7405c9567c4fe2f890e3bd791bc4a645ecf4aa6f))
+
+
+### Reverts
+
+* Revert "feat: implement enhanced virtual scrolling and data processing optimizations" ([fce885c](https://github.com/LiamHardman/fm-dash/commit/fce885c9b173dbd308361d3f37149da3ab2425a8))
+
+## [1.4.2](https://github.com/LiamHardman/fm-dash/compare/v1.4.1...v1.4.2) (2025-07-21)
+
+
+### Bug Fixes
+
 * removing unneeded page import ([a9ab283](https://github.com/LiamHardman/fm-dash/commit/a9ab283047ce2d85904b0df0da527715b625a123))
 * resolved chunk bundling issues leading to white page on frontend ([7405c95](https://github.com/LiamHardman/fm-dash/commit/7405c9567c4fe2f890e3bd791bc4a645ecf4aa6f))
 
