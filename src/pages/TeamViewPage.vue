@@ -370,7 +370,12 @@ const fmSlotRoleMatcher = {
 
 export default {
   name: 'TeamViewPage',
-  components: { PlayerDataTable, PlayerDetailDialog, PitchDisplay, TeamLogo },
+  components: { 
+    PlayerDataTable, 
+    PlayerDetailDialog, 
+    PitchDisplay, 
+    TeamLogo 
+  },
   setup() {
     const quasarInstance = useQuasar()
     const router = useRouter()

@@ -45,7 +45,10 @@ export function useDynamicComponents() {
   )
 
   const DynamicPlayerDataTable = createAsyncComponent(
-    () => import('@/components/PlayerDataTable.vue'),
+    () => import('@/components/PlayerDataTable.vue').catch(error => {
+      console.error('Failed to load PlayerDataTable:', error)
+      throw error
+    }),
     {
       loadingComponent: LoadingSpinner,
       errorComponent: ErrorBoundary,

@@ -67,6 +67,21 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src')
     }
   },
+  optimizeDeps: {
+    include: [
+      'vue',
+      'vue-router',
+      'pinia',
+      '@quasar/extras',
+      'quasar'
+    ],
+    // Force include problematic modules to prevent initialization issues
+    force: true,
+    // Ensure proper module resolution
+    esbuildOptions: {
+      target: 'esnext'
+    }
+  },
   plugins: [
     vue({
       template: { transformAssetUrls }
@@ -89,6 +104,16 @@ export default defineConfig({
   build: {
     // Optimize build output with advanced chunking
     rollupOptions: {
+      // Ensure proper module resolution
+      preserveEntrySignatures: 'strict',
+      // Handle ES module initialization issues
+      onwarn(warning, warn) {
+        // Suppress circular dependency warnings for now
+        if (warning.code === 'CIRCULAR_DEPENDENCY') {
+          return
+        }
+        warn(warning)
+      },
       output: {
         // Advanced manual chunks for optimal caching and loading
         manualChunks: id => {
@@ -118,10 +143,13 @@ export default defineConfig({
           }
           if (
             id.includes('pages/DatasetPage.vue') ||
-            id.includes('components/PlayerDataTable.vue') ||
             id.includes('components/PlayerTableRow.vue')
           ) {
             return 'page-player-table'
+          }
+          // Keep PlayerDataTable in a separate chunk to avoid initialization issues
+          if (id.includes('components/PlayerDataTable.vue')) {
+            return 'component-player-data-table'
           }
           if (id.includes('pages/TeamViewPage.vue') || id.includes('components/PitchDisplay.vue')) {
             return 'page-team-view'
@@ -286,41 +314,7 @@ export default defineConfig({
   },
   // Alternative way to expose env vars (prefixed with VITE_)
   envPrefix: ['VITE_'],
-  // Enhanced dependency optimization
-  optimizeDeps: {
-    include: [
-      'vue',
-      'vue-router',
-      'pinia',
-      'quasar',
-      '@vueuse/core',
-      // Pre-bundle commonly used utilities with specific imports
-      'chart.js/helpers',
-      'chart.js/auto',
-      'vue-chartjs',
-      'chartjs-plugin-annotation'
-    ],
-    exclude: [
-      '@vitejs/plugin-vue',
-      // Exclude development-only dependencies
-      'rollup-plugin-visualizer',
-      '@vue/devtools-api'
-    ],
-    esbuildOptions: {
-      target: 'es2020',
-      format: 'esm',
-      // Optimize for production builds
-      treeShaking: true,
-      // Enable more aggressive optimization
-      minify: process.env.NODE_ENV === 'production',
-      // Define globals for better optimization
-      define: {
-        'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
-      }
-    },
-    // Force optimization of specific packages
-    force: process.env.NODE_ENV === 'production'
-  },
+
   // CSS optimization
   css: {
     devSourcemap: process.env.NODE_ENV === 'development'
