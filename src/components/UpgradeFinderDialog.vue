@@ -888,6 +888,67 @@ export default {
       teamOptions.value = allTeamNamesCache.value
     }
 
+    const parseTransferValue = (valueString) => {
+      if (!valueString) return 0
+      
+      // Extract the upper bound from strings like "£28M - £34M"
+      const match = valueString.match(/£([\d.]+)M/)
+      if (match) {
+        return parseFloat(match[1]) * 1000000
+      }
+      
+      // Handle other formats
+      const upperMatch = valueString.match(/£([\d,]+)/)
+      if (upperMatch) {
+        const number = parseInt(upperMatch[1].replace(/,/g, ''))
+        if (number >= 1000000) {
+          return (number / 1000000) * 1000000
+        } else if (number >= 1000) {
+          return (number / 1000) * 1000
+        }
+        return number
+      }
+      
+      return 0
+    }
+
+    const formatWage = (wageString) => {
+      if (!wageString) return 'N/A'
+      
+      // Extract the number from strings like "£13,750 p/w"
+      const match = wageString.match(/£([\d,]+)/)
+      if (!match) return wageString
+      
+      const number = parseInt(match[1].replace(/,/g, ''))
+      if (number >= 1000) {
+        return `£${(number / 1000).toFixed(2)}K`
+      }
+      return wageString
+    }
+
+    const formatValue = (valueString) => {
+      if (!valueString) return 'N/A'
+      
+      // Extract the upper bound from strings like "£28M - £34M"
+      const match = valueString.match(/£([\d.]+)M/)
+      if (match) {
+        return `£${match[1]}M`
+      }
+      
+      // Handle other formats
+      const upperMatch = valueString.match(/£([\d,]+)/)
+      if (upperMatch) {
+        const number = parseInt(upperMatch[1].replace(/,/g, ''))
+        if (number >= 1000000) {
+          return `£${(number / 1000000).toFixed(1)}M`
+        } else if (number >= 1000) {
+          return `£${(number / 1000).toFixed(0)}k`
+        }
+      }
+      
+      return valueString
+    }
+
     const updateTransferValueSliderBounds = () => {
       if (!props.players || props.players.length === 0) {
         dynamicMinTransferValue.value = 0
@@ -1936,67 +1997,6 @@ export default {
     }
 
 
-
-    const formatWage = (wageString) => {
-      if (!wageString) return 'N/A'
-      
-      // Extract the number from strings like "£13,750 p/w"
-      const match = wageString.match(/£([\d,]+)/)
-      if (!match) return wageString
-      
-      const number = parseInt(match[1].replace(/,/g, ''))
-      if (number >= 1000) {
-        return `£${(number / 1000).toFixed(2)}K`
-      }
-      return wageString
-    }
-
-    const parseTransferValue = (valueString) => {
-      if (!valueString) return 0
-      
-      // Extract the upper bound from strings like "£28M - £34M"
-      const match = valueString.match(/£([\d.]+)M/)
-      if (match) {
-        return parseFloat(match[1]) * 1000000
-      }
-      
-      // Handle other formats
-      const upperMatch = valueString.match(/£([\d,]+)/)
-      if (upperMatch) {
-        const number = parseInt(upperMatch[1].replace(/,/g, ''))
-        if (number >= 1000000) {
-          return (number / 1000000) * 1000000
-        } else if (number >= 1000) {
-          return (number / 1000) * 1000
-        }
-        return number
-      }
-      
-      return 0
-    }
-
-    const formatValue = (valueString) => {
-      if (!valueString) return 'N/A'
-      
-      // Extract the upper bound from strings like "£28M - £34M"
-      const match = valueString.match(/£([\d.]+)M/)
-      if (match) {
-        return `£${match[1]}M`
-      }
-      
-      // Handle other formats
-      const upperMatch = valueString.match(/£([\d,]+)/)
-      if (upperMatch) {
-        const number = parseInt(upperMatch[1].replace(/,/g, ''))
-        if (number >= 1000000) {
-          return `£${(number / 1000000).toFixed(1)}M`
-        } else if (number >= 1000) {
-          return `£${(number / 1000).toFixed(0)}k`
-        }
-      }
-      
-      return valueString
-    }
 
     const findBestRoleForPlayerInPosition = (player, position) => {
       if (!player || !position) return null
