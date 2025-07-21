@@ -5,50 +5,67 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"strings"
-	"time"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
 
-// Logging functions for this package
-func logInfo(ctx context.Context, msg string, args ...any) {
-	slog.InfoContext(ctx, msg, args...)
-}
-
-func logWarn(ctx context.Context, msg string, args ...any) {
-	slog.WarnContext(ctx, msg, args...)
-}
-
-func logError(ctx context.Context, msg string, args ...any) {
-	slog.ErrorContext(ctx, msg, args...)
-}
-
 // Player represents a football player with all their attributes
 type Player struct {
-	ID                      string                        `json:"id"`
-	UID                     int64                         `json:"uid"` // Unique identifier for the player
+	UID                     int64                         `json:"uid"`
 	Name                    string                        `json:"name"`
-	Age                     int                           `json:"age"`
-	Club                    string                        `json:"club"`
 	Position                string                        `json:"position"`
-	Overall                 int                           `json:"overall"`
-	Potential               int                           `json:"potential"`
-	TransferValue           string                        `json:"transferValue"`
-	Salary                  string                        `json:"salary"`
+	Age                     string                        `json:"age"`
+	Club                    string                        `json:"club"`
+	Division                string                        `json:"division"`
+	TransferValue           string                        `json:"transfer_value"`
+	Wage                    string                        `json:"wage"`
+	Personality             string                        `json:"personality,omitempty"`
+	MediaHandling           string                        `json:"media_handling,omitempty"`
 	Nationality             string                        `json:"nationality"`
-	Attributes              map[string]interface{}        `json:"attributes"`
+	NationalityISO          string                        `json:"nationality_iso"`
+	NationalityFIFACode     string                        `json:"nationality_fifa_code"`
+	AttributeMasked         bool                          `json:"attributeMasked,omitempty"`
+	Attributes              map[string]string             `json:"attributes"`
 	NumericAttributes       map[string]int                `json:"numericAttributes"`
-	PerformanceStats        map[string]string             `json:"performanceStats"`
 	PerformanceStatsNumeric map[string]float64            `json:"performanceStatsNumeric"`
 	PerformancePercentiles  map[string]map[string]float64 `json:"performancePercentiles"`
-	RoleSpecificOveralls    []RoleSpecificOverall         `json:"roleSpecificOveralls"`
 	ParsedPositions         []string                      `json:"parsedPositions"`
 	ShortPositions          []string                      `json:"shortPositions"`
 	PositionGroups          []string                      `json:"positionGroups"`
+	PAC                     int                           `json:"PAC"`
+	SHO                     int                           `json:"SHO"`
+	PAS                     int                           `json:"PAS"`
+	DRI                     int                           `json:"DRI"`
+	DEF                     int                           `json:"DEF"`
+	PHY                     int                           `json:"PHY"`
+	GK                      int                           `json:"GK,omitempty"`
+	DIV                     int                           `json:"DIV,omitempty"`
+	HAN                     int                           `json:"HAN,omitempty"`
+	REF                     int                           `json:"REF,omitempty"`
+	KIC                     int                           `json:"KIC,omitempty"`
+	SPD                     int                           `json:"SPD,omitempty"`
+	POS                     int                           `json:"POS,omitempty"`
+	Pac                     int                           `json:"pac,omitempty"`
+	Sho                     int                           `json:"sho,omitempty"`
+	Pas                     int                           `json:"pas,omitempty"`
+	Dri                     int                           `json:"dri,omitempty"`
+	Def                     int                           `json:"def,omitempty"`
+	Phy                     int                           `json:"phy,omitempty"`
+	Gk                      int                           `json:"gk,omitempty"`
+	Div                     int                           `json:"div,omitempty"`
+	Han                     int                           `json:"han,omitempty"`
+	Ref                     int                           `json:"ref,omitempty"`
+	Kic                     int                           `json:"kic,omitempty"`
+	Spd                     int                           `json:"spd,omitempty"`
+	Pos                     int                           `json:"pos,omitempty"`
+	Overall                 int                           `json:"Overall"`
+	OverallLower            int                           `json:"overall"`
+	BestRoleOverall         string                        `json:"bestRoleOverall"`
+	RoleSpecificOveralls    []RoleSpecificOverall         `json:"roleSpecificOveralls"`
+	TransferValueAmount     int64                         `json:"transferValueAmount"`
+	WageAmount              int64                         `json:"wageAmount"`
 }
 
 // RoleSpecificOverall represents a player's rating for a specific role
@@ -99,7 +116,9 @@ func (s *PlayerService) GetPlayersByDatasetID(ctx context.Context, datasetID str
 		return nil, "", fmt.Errorf("failed to retrieve dataset: %w", err)
 	}
 
-	logInfo(ctx, "Retrieved %d players for dataset %s", len(dataset.Players), datasetID)
+	slog.InfoContext(ctx, "Retrieved players for dataset",
+		"dataset_id", datasetID,
+		"player_count", len(dataset.Players))
 
 	return dataset.Players, dataset.CurrencySymbol, nil
 }
@@ -125,12 +144,15 @@ func (s *PlayerService) StorePlayerData(ctx context.Context, datasetID string, p
 		return fmt.Errorf("failed to store dataset: %w", err)
 	}
 
-	logInfo(ctx, "Stored %d players for dataset %s with currency %s", len(players), datasetID, currencySymbol)
+	slog.InfoContext(ctx, "Stored players for dataset",
+		"dataset_id", datasetID,
+		"player_count", len(players),
+		"currency", currencySymbol)
 
 	return nil
 }
 
-// DeleteDataset deletes a dataset and all its player data
+// DeleteDataset deletes a dataset
 func (s *PlayerService) DeleteDataset(ctx context.Context, datasetID string) error {
 	if datasetID == "" {
 		return fmt.Errorf("dataset ID is required")
@@ -140,19 +162,19 @@ func (s *PlayerService) DeleteDataset(ctx context.Context, datasetID string) err
 		return fmt.Errorf("failed to delete dataset: %w", err)
 	}
 
-	logInfo(ctx, "Deleted dataset %s", datasetID)
+	slog.InfoContext(ctx, "Deleted dataset", "dataset_id", datasetID)
 
 	return nil
 }
 
-// ListDatasets retrieves all available datasets
+// ListDatasets lists all available datasets
 func (s *PlayerService) ListDatasets(ctx context.Context) ([]string, error) {
 	datasets, err := s.storage.List()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list datasets: %w", err)
 	}
 
-	logInfo(ctx, "Retrieved %d datasets", len(datasets))
+	slog.InfoContext(ctx, "Retrieved datasets", "count", len(datasets))
 
 	return datasets, nil
 }
@@ -163,17 +185,19 @@ func (s *PlayerService) ProcessPlayerPercentiles(ctx context.Context, players []
 		return fmt.Errorf("no players to process")
 	}
 
-	logInfo(ctx, "Processing percentiles for %d players", len(players))
+	_, span := tracer.Start(ctx, "player_service.process_percentiles",
+		trace.WithAttributes(
+			attribute.Int("player_count", len(players)),
+		))
+	defer span.End()
 
 	// Calculate percentiles for each attribute
-	// This is a simplified implementation
-	for i := range players {
-		// Calculate percentiles for various attributes
-		// Implementation would depend on your specific requirements
-		_ = i // Avoid unused variable warning
+	for range players {
+		// TODO: Implement percentile calculation logic
+		// This is a placeholder for the actual implementation
 	}
 
-	logInfo(ctx, "Validated %d players successfully", len(players))
+	slog.InfoContext(ctx, "Processing percentiles", "player_count", len(players))
 
 	return nil
 }
@@ -184,25 +208,23 @@ func (s *PlayerService) ValidatePlayerData(ctx context.Context, players []Player
 		return fmt.Errorf("no players to validate")
 	}
 
-	validationErrors := make([]string, 0)
+	_, span := tracer.Start(ctx, "player_service.validate_player_data",
+		trace.WithAttributes(
+			attribute.Int("player_count", len(players)),
+		))
+	defer span.End()
 
+	// Basic validation
 	for i, player := range players {
 		if player.Name == "" {
-			validationErrors = append(validationErrors, fmt.Sprintf("player %d: missing name", i))
+			return fmt.Errorf("player at index %d has no name", i)
 		}
-		if player.Age == 0 {
-			validationErrors = append(validationErrors, fmt.Sprintf("player %d: missing age", i))
-		}
-		if player.Overall == 0 {
-			validationErrors = append(validationErrors, fmt.Sprintf("player %d: missing overall rating", i))
+		if player.UID == 0 {
+			return fmt.Errorf("player %s has no UID", player.Name)
 		}
 	}
 
-	if len(validationErrors) > 0 {
-		return fmt.Errorf("validation errors: %s", strings.Join(validationErrors, "; "))
-	}
-
-	logInfo(ctx, "Validated %d players successfully", len(players))
+	slog.InfoContext(ctx, "Validated players successfully", "player_count", len(players))
 
 	return nil
 }
@@ -211,49 +233,37 @@ func (s *PlayerService) ValidatePlayerData(ctx context.Context, players []Player
 func (s *PlayerService) GetPlayerStatistics(ctx context.Context, players []Player) map[string]interface{} {
 	_, span := tracer.Start(ctx, "player_service.get_player_statistics",
 		trace.WithAttributes(
-			attribute.Int("players.count", len(players)),
+			attribute.Int("player_count", len(players)),
 		))
 	defer span.End()
 
 	if len(players) == 0 {
-		span.SetStatus(codes.Ok, "no players provided")
 		return map[string]interface{}{
-			"total": 0,
+			"total_players":   0,
+			"average_age":     0,
+			"average_overall": 0,
 		}
 	}
 
-	stats := map[string]interface{}{
-		"total":     len(players),
-		"timestamp": time.Now().Unix(),
+	// Calculate basic statistics
+	totalPlayers := len(players)
+	var totalAge, totalOverall int
+
+	for _, player := range players {
+		if _, err := fmt.Sscanf(player.Age, "%d", &totalAge); err == nil {
+			// Age parsed successfully, totalAge is updated
+		}
+		totalOverall += player.Overall
 	}
 
-	// Calculate basic stats
-	totalOverall := 0
-	maxOverall := 0
-	minOverall := 100
-	positions := make(map[string]int)
-	clubs := make(map[string]int)
+	avgAge := float64(totalAge) / float64(totalPlayers)
+	avgOverall := float64(totalOverall) / float64(totalPlayers)
 
-	for i := range players {
-		totalOverall += players[i].Overall
+	slog.InfoContext(ctx, "Calculated player statistics", "player_count", len(players))
 
-		if players[i].Overall > maxOverall {
-			maxOverall = players[i].Overall
-		}
-
-		if players[i].Overall < minOverall {
-			minOverall = players[i].Overall
-		}
-
-		positions[players[i].Position]++
-		clubs[players[i].Club]++
+	return map[string]interface{}{
+		"total_players":   totalPlayers,
+		"average_age":     avgAge,
+		"average_overall": avgOverall,
 	}
-
-	stats["average_overall"] = totalOverall / len(players)
-	stats["max_overall"] = maxOverall
-	stats["min_overall"] = minOverall
-	stats["unique_positions"] = len(positions)
-	stats["unique_clubs"] = len(clubs)
-
-	return stats
 }

@@ -81,11 +81,6 @@ const routes = [
     name: 'docs',
     component: DocsPage
   },
-  {
-    path: '/performance-test',
-    name: 'performance-test',
-    component: PerformanceTestPage
-  }
 ]
 
 const router = createRouter({

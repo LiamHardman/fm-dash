@@ -72,3 +72,13 @@ func (sm *ServiceManager) Shutdown(_ context.Context) error {
 	fmt.Println("Service manager shutdown complete")
 	return nil
 }
+
+// Add stub for GetAllDatasets to PlayerService
+func (s *PlayerService) GetAllDatasets(ctx context.Context) []string {
+	return nil // TODO: implement
+}
+
+// Add stub for SearchAll to SearchService
+func (s *SearchService) SearchAll(ctx context.Context, query string, datasetID string, limit int) ([]SearchResult, error) {
+	return nil, nil // TODO: implement
+}

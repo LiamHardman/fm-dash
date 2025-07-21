@@ -10,7 +10,7 @@ import (
 	apperrors "api/errors"
 )
 
-// SearchResult represents a search result
+// SearchResult represents a search result item
 type SearchResult struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
