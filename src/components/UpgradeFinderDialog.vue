@@ -1980,9 +1980,11 @@ export default {
       // Map formation positions to searchable positions
       const positionMap = {
         'GK': 'GK',
+        'SW': 'SW',
         'D (L)': 'DL',
         'D (C)': 'DC',
         'D (R)': 'DR',
+        'D (RLC)': 'DR',
         'M (L)': 'ML',
         'M (C)': 'MC',
         'M (R)': 'MR',
@@ -1990,13 +1992,17 @@ export default {
         'AM (C)': 'AMC',
         'AM (R)': 'AMR',
         'ST (L)': 'STL',
-        'ST (C)': 'STC',
+        'ST (C)': 'ST',
         'ST (R)': 'STR',
         'W (L)': 'WL',
         'W (R)': 'WR',
         'DM (L)': 'DML',
         'DM (C)': 'DMC',
-        'DM (R)': 'DMR'
+        'DM (R)': 'DMR',
+        'WB (L)': 'WBL',
+        'WB (C)': 'WBC',
+        'WB (R)': 'WBR',
+        'WB (RL)': 'WBR'
       }
       
       const searchablePosition = positionMap[formationPosition]
