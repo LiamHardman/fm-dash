@@ -4,23 +4,20 @@ package services
 import (
 	"context"
 	"fmt"
-	"log"
-	"sort"
-	"strconv"
 	"strings"
+	"unicode"
 
 	apperrors "api/errors"
 )
 
-// SearchResult represents a search result item
+// SearchResult represents a search result
 type SearchResult struct {
-	Type      string      `json:"type"` // "player", "team", "league", "nation"
-	ID        string      `json:"id"`
-	Name      string      `json:"name"`
-	SubText   string      `json:"subText"` // Additional context (position, league, etc.)
-	Overall   int         `json:"overall,omitempty"`
-	Data      interface{} `json:"data"`      // Full object data
-	Relevance float64     `json:"relevance"` // Search relevance score
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Type        string `json:"type"`        // "player", "team", "league", "nation"
+	Description string `json:"description"` // Additional context
+	URL         string `json:"url"`         // URL to navigate to
+	Overall     int    `json:"overall"`     // Include overall rating for sorting
 }
 
 // SearchService handles search functionality
@@ -35,8 +32,8 @@ func CreateSearchService(playerService *PlayerService) *SearchService {
 	}
 }
 
-// SearchAll performs a comprehensive search across all data types
-func (s *SearchService) SearchAll(ctx context.Context, datasetID, query string, maxResults int) ([]SearchResult, error) {
+// Search performs a search across players, teams, leagues, and nations
+func (s *SearchService) Search(ctx context.Context, query string, datasetID string) ([]SearchResult, error) {
 	if datasetID == "" {
 		return nil, apperrors.ErrDatasetIDEmpty
 	}
@@ -45,229 +42,165 @@ func (s *SearchService) SearchAll(ctx context.Context, datasetID, query string, 
 		return []SearchResult{}, nil
 	}
 
-	// Get player data for the dataset
+	// Get players from the dataset
 	players, _, err := s.playerService.GetPlayersByDatasetID(ctx, datasetID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get players for search: %w", err)
+		return nil, fmt.Errorf("failed to get player data: %w", err)
 	}
 
-	var allResults []SearchResult
+	// Perform search
+	allResults := s.performSearch(players, query)
 
-	// Search players
-	playerResults := s.searchPlayers(players, query)
-	allResults = append(allResults, playerResults...)
+	// Use global logging function
+	fmt.Printf("Search for '%s' in dataset %s returned %d results", query, datasetID, len(allResults))
 
-	// Search teams/clubs
-	teamResults := s.searchTeams(players, query)
-	allResults = append(allResults, teamResults...)
-
-	// Search leagues (extracted from club data if available)
-	leagueResults := s.searchLeagues(players, query)
-	allResults = append(allResults, leagueResults...)
-
-	// Search nationalities
-	nationResults := s.searchNationalities(players, query)
-	allResults = append(allResults, nationResults...)
-
-	// Sort by relevance (highest first)
-	sort.Slice(allResults, func(i, j int) bool {
-		return allResults[i].Relevance > allResults[j].Relevance
-	})
-
-	// Limit results
-	if maxResults > 0 && len(allResults) > maxResults {
-		allResults = allResults[:maxResults]
-	}
-
-	log.Printf("Search for '%s' in dataset %s returned %d results", query, datasetID, len(allResults))
 	return allResults, nil
 }
 
-// searchPlayers searches for players by name
-func (s *SearchService) searchPlayers(players []Player, query string) []SearchResult {
+// performSearch performs the actual search logic
+func (s *SearchService) performSearch(players []Player, query string) []SearchResult {
+	query = strings.ToLower(strings.TrimSpace(query))
+	if query == "" {
+		return []SearchResult{}
+	}
+
 	var results []SearchResult
-	lowerQuery := strings.ToLower(query)
 
-	for i := range players {
-		relevance := s.calculatePlayerRelevance(&players[i], lowerQuery)
-		if relevance > 0 {
-			// Use the player's UID as the ID since it's the unique identifier
-			playerID := strconv.FormatInt(players[i].UID, 10)
-			if players[i].UID == 0 {
-				// Fallback to composite ID if UID is somehow missing
-				playerID = fmt.Sprintf("player_%s_%s_%d_%s",
-					strings.ReplaceAll(players[i].Name, " ", "_"),
-					strings.ReplaceAll(players[i].Club, " ", "_"),
-					players[i].Age,
-					strings.ReplaceAll(players[i].Position, " ", "_"))
-			}
+	// Search through players
+	for _, player := range players {
+		if s.matchesPlayer(player, query) {
+			results = append(results, SearchResult{
+				ID:          fmt.Sprintf("%d", player.UID),
+				Name:        player.Name,
+				Type:        "player",
+				Description: fmt.Sprintf("%s - %s", player.Club, player.Division),
+				URL:         fmt.Sprintf("/player/%d", player.UID),
+				Overall:     player.Overall,
+			})
+		}
+	}
 
-			result := SearchResult{
-				Type:      "player",
-				ID:        playerID,
-				Name:      players[i].Name,
-				SubText:   fmt.Sprintf("%s - %s (%d OVR)", players[i].Position, players[i].Club, players[i].Overall),
-				Overall:   players[i].Overall,
-				Data:      players[i],
-				Relevance: relevance,
-			}
-			results = append(results, result)
+	// Search through teams (extract unique teams from players)
+	teams := make(map[string]bool)
+	for _, player := range players {
+		if player.Club != "" {
+			teams[player.Club] = true
+		}
+	}
+
+	for team := range teams {
+		if s.matchesTeam(team, query) {
+			results = append(results, SearchResult{
+				ID:          team,
+				Name:        team,
+				Type:        "team",
+				Description: "Team",
+				URL:         fmt.Sprintf("/team/%s", team),
+				Overall:     0, // Teams don't have overall ratings
+			})
+		}
+	}
+
+	// Search through divisions/leagues (extract unique divisions from players)
+	divisions := make(map[string]bool)
+	for _, player := range players {
+		if player.Division != "" {
+			divisions[player.Division] = true
+		}
+	}
+
+	for division := range divisions {
+		if s.matchesDivision(division, query) {
+			results = append(results, SearchResult{
+				ID:          division,
+				Name:        division,
+				Type:        "league",
+				Description: "League/Division",
+				URL:         fmt.Sprintf("/league/%s", division),
+				Overall:     0, // Leagues don't have overall ratings
+			})
+		}
+	}
+
+	// Search through nations (extract unique nations from players)
+	nations := make(map[string]bool)
+	for _, player := range players {
+		if player.Nationality != "" {
+			nations[player.Nationality] = true
+		}
+	}
+
+	for nation := range nations {
+		if s.matchesNation(nation, query) {
+			results = append(results, SearchResult{
+				ID:          nation,
+				Name:        nation,
+				Type:        "nation",
+				Description: "Nationality",
+				URL:         fmt.Sprintf("/nation/%s", nation),
+				Overall:     0, // Nations don't have overall ratings
+			})
 		}
 	}
 
 	return results
 }
 
-// searchTeams searches for teams/clubs
-func (s *SearchService) searchTeams(players []Player, query string) []SearchResult {
-	lowerQuery := strings.ToLower(query)
-	teamMap := make(map[string][]Player)
+// matchesPlayer checks if a player matches the search query
+func (s *SearchService) matchesPlayer(player Player, query string) bool {
+	// Check name (case-insensitive)
+	if strings.Contains(strings.ToLower(player.Name), query) {
+		return true
+	}
 
-	// Group players by club
-	for i := range players {
-		if players[i].Club != "" {
-			teamMap[players[i].Club] = append(teamMap[players[i].Club], players[i])
+	// Check club (case-insensitive)
+	if strings.Contains(strings.ToLower(player.Club), query) {
+		return true
+	}
+
+	// Check position (case-insensitive)
+	if strings.Contains(strings.ToLower(player.Position), query) {
+		return true
+	}
+
+	// Check nationality (case-insensitive)
+	if strings.Contains(strings.ToLower(player.Nationality), query) {
+		return true
+	}
+
+	return false
+}
+
+// matchesTeam checks if a team matches the search query
+func (s *SearchService) matchesTeam(team, query string) bool {
+	return strings.Contains(strings.ToLower(team), query)
+}
+
+// matchesDivision checks if a division matches the search query
+func (s *SearchService) matchesDivision(division, query string) bool {
+	return strings.Contains(strings.ToLower(division), query)
+}
+
+// matchesNation checks if a nation matches the search query
+func (s *SearchService) matchesNation(nation, query string) bool {
+	return strings.Contains(strings.ToLower(nation), query)
+}
+
+// normalizeSearchQuery normalizes a search query for better matching
+func (s *SearchService) normalizeSearchQuery(query string) string {
+	// Convert to lowercase
+	query = strings.ToLower(query)
+
+	// Remove extra whitespace
+	query = strings.TrimSpace(query)
+
+	// Remove special characters (keep alphanumeric and spaces)
+	var result strings.Builder
+	for _, r := range query {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) || unicode.IsSpace(r) {
+			result.WriteRune(r)
 		}
 	}
 
-	var results []SearchResult
-	for teamName, teamPlayers := range teamMap {
-		relevance := s.calculateStringRelevance(teamName, lowerQuery)
-		if relevance > 0 {
-			// Calculate team statistics
-			totalOverall := 0
-			bestPlayer := ""
-			maxOverall := 0
-
-			for i := range teamPlayers {
-				totalOverall += teamPlayers[i].Overall
-				if teamPlayers[i].Overall > maxOverall {
-					maxOverall = teamPlayers[i].Overall
-					bestPlayer = teamPlayers[i].Name
-				}
-			}
-
-			avgOverall := totalOverall / len(teamPlayers)
-
-			result := SearchResult{
-				Type:      "team",
-				ID:        fmt.Sprintf("team_%s", strings.ReplaceAll(teamName, " ", "_")),
-				Name:      teamName,
-				SubText:   fmt.Sprintf("%d players, Best: %s (%d)", len(teamPlayers), bestPlayer, maxOverall),
-				Overall:   avgOverall,
-				Data:      teamPlayers,
-				Relevance: relevance,
-			}
-			results = append(results, result)
-		}
-	}
-
-	return results
-}
-
-// searchLeagues searches for leagues (if available in data)
-func (s *SearchService) searchLeagues(_ []Player, _ string) []SearchResult {
-	// This is a placeholder - leagues would need to be extracted from player data
-	// or stored separately. For now, we'll return empty results.
-	return []SearchResult{}
-}
-
-// searchNationalities searches for nationalities
-func (s *SearchService) searchNationalities(players []Player, query string) []SearchResult {
-	lowerQuery := strings.ToLower(query)
-	nationalityMap := make(map[string][]Player)
-
-	// Group players by nationality
-	for i := range players {
-		if players[i].Nationality != "" {
-			nationalityMap[players[i].Nationality] = append(nationalityMap[players[i].Nationality], players[i])
-		}
-	}
-
-	var results []SearchResult
-	for nationality, nationalPlayers := range nationalityMap {
-		relevance := s.calculateStringRelevance(nationality, lowerQuery)
-		if relevance > 0 {
-			// Calculate nationality statistics
-			totalOverall := 0
-			bestPlayer := ""
-			maxOverall := 0
-
-			for i := range nationalPlayers {
-				totalOverall += nationalPlayers[i].Overall
-				if nationalPlayers[i].Overall > maxOverall {
-					maxOverall = nationalPlayers[i].Overall
-					bestPlayer = nationalPlayers[i].Name
-				}
-			}
-
-			avgOverall := totalOverall / len(nationalPlayers)
-
-			result := SearchResult{
-				Type:      "nation",
-				ID:        fmt.Sprintf("nation_%s", strings.ReplaceAll(nationality, " ", "_")),
-				Name:      nationality,
-				SubText:   fmt.Sprintf("%d players, Best: %s (%d)", len(nationalPlayers), bestPlayer, maxOverall),
-				Overall:   avgOverall,
-				Data:      nationalPlayers,
-				Relevance: relevance,
-			}
-			results = append(results, result)
-		}
-	}
-
-	return results
-}
-
-// calculatePlayerRelevance calculates how relevant a player is to the search query
-func (s *SearchService) calculatePlayerRelevance(player *Player, lowerQuery string) float64 {
-	lowerName := strings.ToLower(player.Name)
-	lowerClub := strings.ToLower(player.Club)
-	lowerPosition := strings.ToLower(player.Position)
-	lowerNationality := strings.ToLower(player.Nationality)
-
-	var relevance float64
-
-	// Use switch statement instead of if-else chain
-	switch {
-	case lowerName == lowerQuery:
-		relevance += 100.0
-	case strings.HasPrefix(lowerName, lowerQuery):
-		relevance += 80.0
-	case strings.Contains(lowerName, lowerQuery):
-		relevance += 60.0
-	}
-
-	// Club matches
-	if strings.Contains(lowerClub, lowerQuery) {
-		relevance += 20.0
-	}
-
-	// Position matches
-	if strings.Contains(lowerPosition, lowerQuery) {
-		relevance += 15.0
-	}
-
-	// Nationality matches
-	if strings.Contains(lowerNationality, lowerQuery) {
-		relevance += 10.0
-	}
-
-	return relevance
-}
-
-// calculateStringRelevance calculates how relevant a string is to the search query
-func (s *SearchService) calculateStringRelevance(text, query string) float64 {
-	lowerText := strings.ToLower(text)
-
-	if lowerText == query {
-		return 100.0
-	}
-	if strings.HasPrefix(lowerText, query) {
-		return 80.0
-	}
-	if strings.Contains(lowerText, query) {
-		return 50.0
-	}
-	return 0
+	return result.String()
 }

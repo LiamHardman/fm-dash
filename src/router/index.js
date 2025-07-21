@@ -9,6 +9,7 @@ const LeaguesPage = () => import('../pages/LeaguesPage.vue')
 const DocsPage = () => import('../pages/DocsPage.vue')
 const WishlistPage = () => import('../pages/WishlistPage.vue')
 const PerformancePage = () => import('../pages/PerformancePage.vue')
+const PerformanceTestPage = () => import('../pages/PerformanceTestPage.vue')
 
 const routes = [
   {
@@ -80,6 +81,11 @@ const routes = [
     path: '/docs',
     name: 'docs',
     component: DocsPage
+  },
+  {
+    path: '/performance-test',
+    name: 'performance-test',
+    component: PerformanceTestPage
   }
 ]
 

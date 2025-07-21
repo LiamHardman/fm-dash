@@ -4,13 +4,26 @@ package services
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"runtime"
 	"strings"
 	"time"
 
 	apperrors "api/errors"
 )
+
+// Logging functions for this package
+func logInfo(ctx context.Context, msg string, args ...any) {
+	slog.InfoContext(ctx, msg, args...)
+}
+
+func logWarn(ctx context.Context, msg string, args ...any) {
+	slog.WarnContext(ctx, msg, args...)
+}
+
+func logError(ctx context.Context, msg string, args ...any) {
+	slog.ErrorContext(ctx, msg, args...)
+}
 
 // ProcessingService handles file processing and data transformation
 type ProcessingService struct {
@@ -70,7 +83,7 @@ func (s *ProcessingService) ProcessPlayerFile(ctx context.Context, fileContent [
 
 	// Validate processed data
 	if err := s.playerService.ValidatePlayerData(ctx, players); err != nil {
-		log.Printf("Warning: Player data validation issues: %v", err)
+		logWarn(ctx, "Warning: Player data validation issues: %v", err)
 		// Don't fail processing for validation warnings, just log them
 	}
 
@@ -82,7 +95,7 @@ func (s *ProcessingService) ProcessPlayerFile(ctx context.Context, fileContent [
 	// Process percentiles asynchronously
 	go func() {
 		if err := s.processPercentilesAsync(datasetID, players, currencySymbol); err != nil {
-			log.Printf("Error processing percentiles for dataset %s: %v", datasetID, err)
+			logError(ctx, "Error processing percentiles for dataset %s: %v", datasetID, err)
 		}
 	}()
 
@@ -95,7 +108,7 @@ func (s *ProcessingService) ProcessPlayerFile(ctx context.Context, fileContent [
 		ProcessingTime: processingTime,
 	}
 
-	log.Printf("Successfully processed file %s: %d players in %v", filename, len(players), processingTime)
+	logInfo(ctx, "Successfully processed file %s: %d players in %v", filename, len(players), processingTime)
 	return result, nil
 }
 
@@ -123,7 +136,7 @@ func (s *ProcessingService) parsePlayerData(_ context.Context, _ []byte, _ Proce
 	players = []Player{}
 	currencySymbol = "$"
 
-	log.Printf("Parsed %d players from HTML content", len(players))
+	logInfo(context.Background(), "Parsed %d players from HTML content", len(players))
 	return players, currencySymbol
 }
 
@@ -135,7 +148,7 @@ type PlayerParseResult struct {
 
 // processPercentilesAsync calculates percentiles in the background
 func (s *ProcessingService) processPercentilesAsync(datasetID string, players []Player, currencySymbol string) error {
-	log.Printf("Starting async percentile calculation for dataset %s", datasetID)
+	logInfo(context.Background(), "Starting async percentile calculation for dataset %s", datasetID)
 
 	// Calculate percentiles
 	if err := s.playerService.ProcessPlayerPercentiles(context.Background(), players); err != nil {
@@ -147,7 +160,7 @@ func (s *ProcessingService) processPercentilesAsync(datasetID string, players []
 		return fmt.Errorf("failed to update dataset with percentiles: %w", err)
 	}
 
-	log.Printf("Completed async percentile calculation for dataset %s", datasetID)
+	logInfo(context.Background(), "Completed async percentile calculation for dataset %s", datasetID)
 	return nil
 }
 

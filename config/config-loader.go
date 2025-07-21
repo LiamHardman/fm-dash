@@ -6,7 +6,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -205,12 +204,12 @@ func LoadConfig() (*Config, error) {
 	}
 
 	if _, err := os.Stat(configPath); err == nil {
-		log.Printf("Loading configuration from: %s", configPath)
+		fmt.Printf("Loading configuration from: %s\n", configPath)
 		if err := loadFromFile(config, configPath); err != nil {
-			log.Printf("Warning: Failed to load config file: %v", err)
+			fmt.Printf("Warning: Failed to load config file: %v\n", err)
 		}
 	} else {
-		log.Printf("Config file not found at %s, using defaults and environment variables", configPath)
+		fmt.Printf("Config file not found at %s, using defaults and environment variables\n", configPath)
 	}
 
 	// Override with environment variables
@@ -221,7 +220,7 @@ func LoadConfig() (*Config, error) {
 		return nil, fmt.Errorf("config validation failed: %w", err)
 	}
 
-	log.Printf("Configuration loaded successfully")
+	fmt.Printf("Configuration loaded successfully\n")
 	return config, nil
 }
 

@@ -17,25 +17,31 @@ class Logger {
     return [`${timestamp} ${level} ${prefix}`, ...args]
   }
 
-  log(..._args) {
+  log(...args) {
     if (isDev && !isTest) {
+      console.log(...this._formatMessage('LOG', args))
     }
   }
 
-  info(..._args) {
+  info(...args) {
     if (isDev && !isTest) {
+      console.info(...this._formatMessage('INFO', args))
     }
   }
 
-  warn(..._args) {
+  warn(...args) {
     if (isDev && !isTest) {
+      console.warn(...this._formatMessage('WARN', args))
     }
   }
 
-  error(..._args) {}
+  error(...args) {
+    console.error(...this._formatMessage('ERROR', args))
+  }
 
-  debug(..._args) {
+  debug(...args) {
     if (isDev && !isTest) {
+      console.debug(...this._formatMessage('DEBUG', args))
     }
   }
 

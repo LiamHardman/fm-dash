@@ -4,18 +4,7 @@ package player;
 
 option go_package = "api/proto";
 
-// RoleOverallScore stores the calculated overall score for a player in a specific role.
-message RoleOverallScore {
-  string role_name = 1;
-  int32 score = 2;
-}
-
-// PerformancePercentileMap represents nested map structure for performance percentiles
-message PerformancePercentileMap {
-  map<string, double> percentiles = 1;
-}
-
-// Player holds all the information and calculated statistics for a football player.
+// Player holds essential information for frontend display and sorting
 message Player {
   int64 uid = 1;
   string name = 2;
@@ -31,31 +20,37 @@ message Player {
   string nationality_iso = 12;
   string nationality_fifa_code = 13;
   bool attribute_masked = 14;
-  map<string, string> attributes = 15;
-  map<string, int32> numeric_attributes = 16;
-  map<string, double> performance_stats_numeric = 17;
-  map<string, PerformancePercentileMap> performance_percentiles = 18;
-  repeated string parsed_positions = 19;
-  repeated string short_positions = 20;
-  repeated string position_groups = 21;
-  int32 pac = 22;
-  int32 sho = 23;
-  int32 pas = 24;
-  int32 dri = 25;
-  int32 def = 26;
-  int32 phy = 27;
-  int32 gk = 28;
-  int32 div = 29;
-  int32 han = 30;
-  int32 ref = 31;
-  int32 kic = 32;
-  int32 spd = 33;
-  int32 pos = 34;
-  int32 overall = 35;
-  string best_role_overall = 36;
-  repeated RoleOverallScore role_specific_overalls = 37;
-  int64 transfer_value_amount = 38;
-  int64 wage_amount = 39;
+  
+  // Essential FIFA-style stats for display and sorting
+  int32 pac = 15;
+  int32 sho = 16;
+  int32 pas = 17;
+  int32 dri = 18;
+  int32 def = 19;
+  int32 phy = 20;
+  int32 gk = 21;
+  int32 div = 22;
+  int32 han = 23;
+  int32 ref = 24;
+  int32 kic = 25;
+  int32 spd = 26;
+  int32 pos = 27;
+  int32 overall = 28;
+  
+  // Position data for filtering and grouping
+  repeated string parsed_positions = 29;
+  repeated string short_positions = 30;
+  repeated string position_groups = 31;
+  
+  // Essential attributes for display (only the most important ones)
+  map<string, string> essential_attributes = 32;
+  
+  // Best role for display
+  string best_role_overall = 33;
+  
+  // Numeric values for sorting
+  int64 transfer_value_amount = 34;
+  int64 wage_amount = 35;
 }
 
 // DatasetData represents a dataset containing player information

@@ -1,4 +1,6 @@
 import { useApi } from '../composables/useApi.js'
+import { useProtobufApi } from '../composables/useProtobufApi.js'
+import { useErrorHandling } from '../composables/useErrorHandling.js'
 import logger from '../utils/logger.js'
 
 const API_ENDPOINT = import.meta.env.VITE_API_ENDPOINT || ''
@@ -23,9 +25,9 @@ export default {
     }
 
     try {
-      const { uploadFile } = useApi('')
-
-      const response = await uploadFile('/upload', file, onProgress)
+      // Use protobuf-aware API for uploads (though uploads always use JSON)
+      const { uploadPlayerFile } = useProtobufApi('')
+      const response = await uploadPlayerFile(formData, maxSizeBytes, onProgress)
       return response
     } catch (error) {
       logger.error('Upload error in playerService:', error)
@@ -61,109 +63,89 @@ export default {
     const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
 
     try {
-      let url = `${API_ENDPOINT}/api/players/${datasetId}`
-      const params = new URLSearchParams()
+      // Build query parameters
+      const params = {}
       if (position) {
-        params.append('position', position)
+        params.position = position
       }
       if (role) {
-        params.append('role', role)
+        params.role = role
       }
       if (ageRange) {
         if (ageRange.min !== null && ageRange.min !== undefined) {
-          params.append('minAge', ageRange.min.toString())
+          params.minAge = ageRange.min.toString()
         }
         if (ageRange.max !== null && ageRange.max !== undefined) {
-          params.append('maxAge', ageRange.max.toString())
+          params.maxAge = ageRange.max.toString()
         }
       }
       if (transferValueRange) {
         if (transferValueRange.min !== null && transferValueRange.min !== undefined) {
-          params.append('minTransferValue', transferValueRange.min.toString())
+          params.minTransferValue = transferValueRange.min.toString()
         }
         if (transferValueRange.max !== null && transferValueRange.max !== undefined) {
-          params.append('maxTransferValue', transferValueRange.max.toString())
+          params.maxTransferValue = transferValueRange.max.toString()
         }
       }
       if (maxSalary !== null && maxSalary !== undefined) {
-        params.append('maxSalary', maxSalary.toString())
+        params.maxSalary = maxSalary.toString()
       }
       if (divisionFilter && divisionFilter !== 'all') {
-        params.append('divisionFilter', divisionFilter)
+        params.divisionFilter = divisionFilter
       }
       if (targetDivision) {
-        params.append('targetDivision', targetDivision)
+        params.targetDivision = targetDivision
       }
       if (positionCompare && positionCompare !== 'all') {
-        params.append('positionCompare', positionCompare)
+        params.positionCompare = positionCompare
       }
 
-      const queryString = params.toString()
-      if (queryString) {
-        url += `?${queryString}`
-      }
-
-      const response = await fetch(url)
-      if (!response.ok) {
-        if (response.status === 404) {
-          // Handle potential race condition in multi-replica deployments
-          if (retryCount < maxRetries) {
+      // Use protobuf-aware API for player data
+      const { getPlayerData } = useProtobufApi('')
+      const { withRetry } = useErrorHandling()
+      
+      // Use withRetry to handle potential race conditions with exponential backoff
+      return await withRetry(
+        () => getPlayerData(datasetId, params),
+        {
+          retries: maxRetries,
+          initialDelay: 200,
+          onRetry: (attempt) => {
             logger.warn(
-              `Dataset not found (attempt ${retryCount + 1}/${maxRetries + 1}), retrying in ${200 * 2 ** retryCount}ms...`
+              `Dataset not found (attempt ${attempt + 1}/${maxRetries + 1}), retrying...`
             )
-            await delay(200 * 2 ** retryCount) // Exponential backoff: 200ms, 400ms, 800ms
-            return this.getPlayersByDatasetId(
-              datasetId,
-              position,
-              role,
-              ageRange,
-              transferValueRange,
-              maxSalary,
-              divisionFilter,
-              targetDivision,
-              positionCompare,
-              retryCount + 1,
-              maxRetries
-            )
-          }
-          throw new Error(`Player data not found for ID: ${datasetId}.`)
+          },
+          shouldRetry: (error) => error.message?.includes('404')
         }
-        const errorText = await response.text()
-        throw new Error(`API Error: ${response.status} - ${errorText || response.statusText}`)
-      }
-      return await response.json()
+      )
     } catch (error) {
       logger.error('Error fetching players by dataset ID in playerService:', error)
+      
+      // Provide more specific error messages
+      if (error.message?.includes('404')) {
+        throw new Error(`Player data not found for ID: ${datasetId}.`)
+      }
+      
       throw error
     }
   },
 
   async getAvailableRoles() {
     try {
-      const response = await fetch(`${API_ENDPOINT}/api/roles`)
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(
-          `API Error fetching roles: ${response.status} - ${errorText || response.statusText}`
-        )
-      }
-      return await response.json()
+      // Use protobuf-aware API for roles
+      const { getRoles } = useProtobufApi('')
+      return await getRoles()
     } catch (error) {
       logger.error('Error fetching available roles in playerService:', error)
       throw error
     }
   },
 
-  async getConfig() {
+  async getConfig(clearCache = false) {
     try {
-      const response = await fetch(`${API_ENDPOINT}/api/config`)
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(
-          `API Error fetching config: ${response.status} - ${errorText || response.statusText}`
-        )
-      }
-      return await response.json()
+      // Use protobuf-aware API for config
+      const { getConfig } = useProtobufApi('')
+      return await getConfig(clearCache)
     } catch (error) {
       logger.error('Error fetching config in playerService:', error)
       return {
@@ -177,25 +159,176 @@ export default {
 
   async updateConfig(configUpdate) {
     try {
-      const response = await fetch(`${API_ENDPOINT}/api/config`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(configUpdate)
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(
-          `API Error updating config: ${response.status} - ${errorText || response.statusText}`
-        )
-      }
-
-      return await response.json()
+      // Use protobuf-aware API for config updates
+      const { post } = useProtobufApi('')
+      return await post('/api/config', configUpdate, {}, 'api.GenericResponse')
     } catch (error) {
       logger.error('Error updating config in playerService:', error)
       throw error
     }
+  },
+  
+  /**
+   * Get client status information including protobuf capabilities
+   */
+  getClientStatus() {
+    const { getClientStatus } = useProtobufApi('')
+    return getClientStatus()
+  },
+  
+  /**
+   * Enable or disable protobuf support
+   * @param {boolean} enabled - Whether protobuf should be enabled
+   */
+  setProtobufEnabled(enabled) {
+    const { setProtobufEnabled } = useProtobufApi('')
+    setProtobufEnabled(enabled)
+  }
+}
+
+/**
+ * Fetch detailed player stats for a single player
+ * @param {string} datasetID - The dataset ID
+ * @param {number} playerUID - The player UID (numeric, not UUID)
+ * @returns {Promise<Object>} - Detailed player data
+ */
+export async function fetchFullPlayerStats(datasetID, playerUID) {
+  const startTime = performance.now()
+  try {
+    // Use protobuf-aware API for detailed player stats
+    const { get } = useProtobufApi('')
+    const url = `/api/fullplayerstats/${datasetID}/${playerUID}`
+    
+    logger.info('Starting fetchFullPlayerStats API call', {
+      dataset_id: datasetID,
+      player_uid: playerUID,
+      url: url
+    })
+    
+    const response = await get(url, {}, 'api.GenericResponse')
+    
+    const apiTime = performance.now() - startTime
+    logger.info('fetchFullPlayerStats API call completed', {
+      dataset_id: datasetID,
+      player_uid: playerUID,
+      api_time_ms: Math.round(apiTime)
+    })
+    
+    // Handle protobuf response structure where data is in the data field
+    if (response.data) {
+      try {
+        const parsedData = JSON.parse(response.data)
+        const totalTime = performance.now() - startTime
+        logger.info('fetchFullPlayerStats parsing completed', {
+          dataset_id: datasetID,
+          player_uid: playerUID,
+          total_time_ms: Math.round(totalTime),
+          parse_time_ms: Math.round(totalTime - apiTime)
+        })
+        return { data: parsedData, format: 'json' }
+      } catch (parseError) {
+        logger.error('Error parsing detailed player data from protobuf response:', parseError)
+        throw new Error('Invalid detailed player data format')
+      }
+    }
+    
+    // Fallback for JSON responses or direct data objects
+    const totalTime = performance.now() - startTime
+    logger.info('fetchFullPlayerStats completed (fallback)', {
+      dataset_id: datasetID,
+      player_uid: playerUID,
+      total_time_ms: Math.round(totalTime)
+    })
+    return { data: response, format: 'json' }
+  } catch (error) {
+    const errorTime = performance.now() - startTime
+    logger.error('Error fetching full player stats:', {
+      error: error.message,
+      dataset_id: datasetID,
+      player_uid: playerUID,
+      time_ms: Math.round(errorTime)
+    })
+    throw error
+  }
+}
+
+/**
+ * Fetch detailed team or nation data
+ * @param {string} datasetID - The dataset ID
+ * @param {string} type - "team" or "nation"
+ * @param {string} name - The team or nation name
+ * @returns {Promise<Object>} - Detailed team/nation data with all players
+ */
+export async function fetchTeamData(datasetID, type, name) {
+  try {
+    // Use protobuf-aware API for team data
+    const { get } = useProtobufApi('')
+    const url = `/api/team_data/${datasetID}/${type}/${encodeURIComponent(name)}`
+    
+    const response = await get(url, {}, 'api.GenericResponse')
+    
+    // Handle protobuf response structure where data is in the data field
+    if (response.data) {
+      try {
+        const parsedData = JSON.parse(response.data)
+        return { data: parsedData, format: 'json' }
+      } catch (parseError) {
+        logger.error('Error parsing team data from protobuf response:', parseError)
+        throw new Error('Invalid team data format')
+      }
+    }
+    
+    // Fallback for JSON responses or direct data objects
+    return { data: response, format: 'json' }
+  } catch (error) {
+    logger.error('Error fetching team data:', error)
+    throw error
+  }
+}
+
+/**
+ * Fetch detailed performance data for the performance page
+ * @param {string} datasetID - The dataset ID
+ * @param {Object} filters - Optional filters for the performance data
+ * @returns {Promise<Object>} - Performance data with all players and their detailed attributes
+ */
+export async function fetchPerformanceData(datasetID, filters = {}) {
+  try {
+    // Use protobuf-aware API for performance data
+    const { get } = useProtobufApi('')
+    
+    // Build query parameters
+    const params = new URLSearchParams()
+    if (filters.position) params.append('position', filters.position)
+    if (filters.role) params.append('role', filters.role)
+    if (filters.minAge) params.append('minAge', filters.minAge.toString())
+    if (filters.maxAge) params.append('maxAge', filters.maxAge.toString())
+    if (filters.minTransferValue) params.append('minTransferValue', filters.minTransferValue.toString())
+    if (filters.maxTransferValue) params.append('maxTransferValue', filters.maxTransferValue.toString())
+    if (filters.maxSalary) params.append('maxSalary', filters.maxSalary.toString())
+    if (filters.divisionFilter) params.append('divisionFilter', filters.divisionFilter)
+    if (filters.targetDivision) params.append('targetDivision', filters.targetDivision)
+    if (filters.positionCompare) params.append('positionCompare', filters.positionCompare)
+    
+    const url = `/api/performance/${datasetID}?${params.toString()}`
+    
+    const response = await get(url, {}, 'api.GenericResponse')
+    
+    // Handle protobuf response structure where data is in the data field
+    if (response.data) {
+      try {
+        const parsedData = JSON.parse(response.data)
+        return { data: parsedData, format: 'json' }
+      } catch (parseError) {
+        logger.error('Error parsing performance data from protobuf response:', parseError)
+        throw new Error('Invalid performance data format')
+      }
+    }
+    
+    // Fallback for JSON responses or direct data objects
+    return { data: response, format: 'json' }
+  } catch (error) {
+    logger.error('Error fetching performance data:', error)
+    throw error
   }
 }

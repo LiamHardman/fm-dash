@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"log/slog"
 	"runtime"
 	"runtime/debug"
@@ -310,7 +309,7 @@ func (pm *PerformanceMonitor) RecordMetric(name string, value float64, unit stri
 	pm.span.AddEvent("performance.metric", trace.WithAttributes(pm.attributes...))
 
 	// Log the metric for debugging
-	log.Printf("📊 Performance Metric: %s = %.2f %s", name, value, unit)
+	logInfo(pm.ctx, "Performance metric recorded", "metric_name", name, "metric_value", value, "metric_unit", unit)
 }
 
 // Finish completes the performance monitoring and records final metrics

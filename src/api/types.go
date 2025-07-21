@@ -44,11 +44,26 @@ type Player struct {
 	KIC                     int                           `json:"KIC,omitempty"`
 	SPD                     int                           `json:"SPD,omitempty"`
 	POS                     int                           `json:"POS,omitempty"`
-	Overall                 int                           `json:"Overall"`
-	BestRoleOverall         string                        `json:"bestRoleOverall"`
-	RoleSpecificOveralls    []RoleOverallScore            `json:"roleSpecificOveralls"`
-	TransferValueAmount     int64                         `json:"transferValueAmount"`
-	WageAmount              int64                         `json:"wageAmount"`
+	// Add lowercase versions for frontend compatibility
+	Pac                  int                `json:"pac,omitempty"`
+	Sho                  int                `json:"sho,omitempty"`
+	Pas                  int                `json:"pas,omitempty"`
+	Dri                  int                `json:"dri,omitempty"`
+	Def                  int                `json:"def,omitempty"`
+	Phy                  int                `json:"phy,omitempty"`
+	Gk                   int                `json:"gk,omitempty"`
+	Div                  int                `json:"div,omitempty"`
+	Han                  int                `json:"han,omitempty"`
+	Ref                  int                `json:"ref,omitempty"`
+	Kic                  int                `json:"kic,omitempty"`
+	Spd                  int                `json:"spd,omitempty"`
+	Pos                  int                `json:"pos,omitempty"`
+	Overall              int                `json:"Overall"`
+	OverallLower         int                `json:"overall"`
+	BestRoleOverall      string             `json:"bestRoleOverall"`
+	RoleSpecificOveralls []RoleOverallScore `json:"roleSpecificOveralls"`
+	TransferValueAmount  int64              `json:"transferValueAmount"`
+	WageAmount           int64              `json:"wageAmount"`
 }
 
 // PlayerParseResult is used by worker goroutines to return a parsed player or an error.
@@ -59,9 +74,14 @@ type PlayerParseResult struct {
 
 // UploadResponse is the JSON response sent after a successful file upload and parse.
 type UploadResponse struct {
-	DatasetID              string `json:"datasetId"`
-	Message                string `json:"message"`
-	DetectedCurrencySymbol string `json:"detectedCurrencySymbol,omitempty"`
+	DatasetID              string   `json:"datasetId"`
+	Message                string   `json:"message"`
+	DetectedCurrencySymbol string   `json:"detectedCurrencySymbol,omitempty"`
+	Players                []Player `json:"players,omitempty"` // NEW: Return processed players
+	Roles                  []string `json:"roles,omitempty"`   // NEW: Return available roles
+	PercentilesReady       bool     `json:"percentilesReady"`  // NEW: Indicate if percentiles are ready
+	ProcessingStatus       string   `json:"processingStatus"`  // NEW: Current processing status
+	PlayerCount            int      `json:"playerCount"`       // NEW: Total player count
 }
 
 // PlayerDataWithCurrency is the JSON response for fetching player data, including the currency.

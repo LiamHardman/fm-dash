@@ -565,7 +565,7 @@ export default {
       Overall: {
         name: 'Overall',
         label: 'Overall',
-        field: 'Overall',
+        field: 'overall',
         sortable: true,
         align: 'center',
         isOverallStat: true,
@@ -615,7 +615,7 @@ export default {
       GK: {
         name: 'GK',
         label: 'GK',
-        field: 'GK',
+        field: 'gk',
         sortable: true,
         align: 'center',
         isFifaStat: true,
@@ -625,7 +625,7 @@ export default {
       DIV: {
         name: 'DIV',
         label: 'DIV',
-        field: 'DIV',
+        field: 'div',
         sortable: true,
         align: 'center',
         isFifaStat: true,
@@ -635,7 +635,7 @@ export default {
       HAN: {
         name: 'HAN',
         label: 'HAN',
-        field: 'HAN',
+        field: 'han',
         sortable: true,
         align: 'center',
         isFifaStat: true,
@@ -645,7 +645,7 @@ export default {
       REF: {
         name: 'REF',
         label: 'REF',
-        field: 'REF',
+        field: 'ref',
         sortable: true,
         align: 'center',
         isFifaStat: true,
@@ -655,7 +655,7 @@ export default {
       KIC: {
         name: 'KIC',
         label: 'KIC',
-        field: 'KIC',
+        field: 'kic',
         sortable: true,
         align: 'center',
         isFifaStat: true,
@@ -665,7 +665,7 @@ export default {
       SPD: {
         name: 'SPD',
         label: 'SPD',
-        field: 'SPD',
+        field: 'spd',
         sortable: true,
         align: 'center',
         isFifaStat: true,
@@ -675,7 +675,7 @@ export default {
       POS: {
         name: 'POS',
         label: 'POS',
-        field: 'POS',
+        field: 'pos',
         sortable: true,
         align: 'center',
         isFifaStat: true,
@@ -685,7 +685,7 @@ export default {
       PAC: {
         name: 'PAC',
         label: 'PAC',
-        field: 'PAC',
+        field: 'pac',
         sortable: true,
         align: 'center',
         isFifaStat: true,
@@ -695,7 +695,7 @@ export default {
       SHO: {
         name: 'SHO',
         label: 'SHO',
-        field: 'SHO',
+        field: 'sho',
         sortable: true,
         align: 'center',
         isFifaStat: true,
@@ -705,7 +705,7 @@ export default {
       PAS: {
         name: 'PAS',
         label: 'PAS',
-        field: 'PAS',
+        field: 'pas',
         sortable: true,
         align: 'center',
         isFifaStat: true,
@@ -715,7 +715,7 @@ export default {
       DRI: {
         name: 'DRI',
         label: 'DRI',
-        field: 'DRI',
+        field: 'dri',
         sortable: true,
         align: 'center',
         isFifaStat: true,
@@ -725,7 +725,7 @@ export default {
       DEF: {
         name: 'DEF',
         label: 'DEF',
-        field: 'DEF',
+        field: 'def',
         sortable: true,
         align: 'center',
         isFifaStat: true,
@@ -735,7 +735,7 @@ export default {
       PHY: {
         name: 'PHY',
         label: 'PHY',
-        field: 'PHY',
+        field: 'phy',
         sortable: true,
         align: 'center',
         isFifaStat: true,
@@ -1243,19 +1243,36 @@ export default {
 
     // GK stat mapping for both display and sorting consistency
     const gkStatMapping = {
-      PAC: 'DIV', // Diving -> Pace
-      SHO: 'HAN', // Handling -> Shooting
-      PAS: 'KIC', // Kicking -> Passing
-      DRI: 'REF', // Reflexes -> Dribbling
-      DEF: 'SPD', // Speed -> Defending
-      PHY: 'POS' // Positioning -> Physical
+      pac: 'div', // Diving -> Pace
+      sho: 'han', // Handling -> Shooting
+      pas: 'kic', // Kicking -> Passing
+      dri: 'ref', // Reflexes -> Dribbling
+      def: 'spd', // Speed -> Defending
+      phy: 'pos' // Positioning -> Physical
     }
 
     // Memoized player value getter (called frequently during sorting and rendering)
     const getPlayerValue = (player, fieldKey, columnName = null) => {
-      // For non-goalkeeper view, map GK stats to standard FIFA stats if the player is a goalkeeper
+      // For regular view, map GK stats to standard FIFA stats if the player is a goalkeeper
       if (!props.isGoalkeeperView && player.position && player.position.includes('GK')) {
-        const mappedStat = gkStatMapping[columnName || fieldKey]
+        const mappedStat = gkStatMapping[fieldKey]
+        if (mappedStat && player[mappedStat] !== undefined) {
+          return player[mappedStat]
+        }
+      }
+
+      // For goalkeeper view, all players should show goalkeeper stats
+      if (props.isGoalkeeperView) {
+        // Map outfield FIFA stats to goalkeeper stats
+        const gkStatMappingReverse = {
+          pac: 'div', // Pace -> Diving
+          sho: 'han', // Shooting -> Handling
+          pas: 'kic', // Passing -> Kicking
+          dri: 'ref', // Dribbling -> Reflexes
+          def: 'spd', // Defending -> Speed
+          phy: 'pos' // Physical -> Positioning
+        }
+        const mappedStat = gkStatMappingReverse[fieldKey]
         if (mappedStat && player[mappedStat] !== undefined) {
           return player[mappedStat]
         }

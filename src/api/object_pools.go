@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -90,6 +89,7 @@ func resetPlayer(player *Player) {
 
 	// Reset numeric fields
 	player.Overall = 0
+	player.OverallLower = 0
 	player.PAC = 0
 	player.SHO = 0
 	player.PAS = 0
@@ -103,6 +103,20 @@ func resetPlayer(player *Player) {
 	player.KIC = 0
 	player.SPD = 0
 	player.POS = 0
+	// Reset lowercase FIFA stats
+	player.Pac = 0
+	player.Sho = 0
+	player.Pas = 0
+	player.Dri = 0
+	player.Def = 0
+	player.Phy = 0
+	player.Gk = 0
+	player.Div = 0
+	player.Han = 0
+	player.Ref = 0
+	player.Kic = 0
+	player.Spd = 0
+	player.Pos = 0
 	player.TransferValueAmount = 0
 	player.WageAmount = 0
 
@@ -334,7 +348,7 @@ func PeriodicPoolMaintenance() {
 
 		stats := GetPlayerPoolStats()
 		if stats["gets"] > 0 {
-			log.Printf("Player pool stats: %d gets, %d hits (%d%% hit rate), %d created",
+			LogInfo("Player pool stats: %d gets, %d hits (%d%% hit rate), %d created",
 				stats["gets"], stats["hits"], stats["hit_rate"], stats["created"])
 		}
 	}
@@ -342,10 +356,10 @@ func PeriodicPoolMaintenance() {
 
 // InitializeObjectPools starts the object pooling system
 func InitializeObjectPools() {
-	log.Println("Initializing enhanced object pooling system...")
+	LogInfo("Initializing enhanced object pooling system...")
 
 	// Start periodic maintenance
 	go PeriodicPoolMaintenance()
 
-	log.Println("Object pooling system initialized with Player, Slice, and Map pools")
+	LogInfo("Object pooling system initialized with Player, Slice, and Map pools")
 }

@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { useErrorHandling } from './useErrorHandling'
+import protobufClient from '../utils/protobufClient'
 
 // Determine the base URL at runtime
 const getBaseURL = () => {
@@ -15,6 +16,10 @@ export function useApi(initialBaseURL) {
   const { handleFetchError, withRetry, safeAsync } = useErrorHandling()
   const isLoading = ref(false)
   const abortController = ref(null)
+  
+  // Track if protobuf has been initialized
+  const protobufInitialized = ref(false)
+  const protobufSupported = ref(false)
 
   // Default request configuration
   const defaultConfig = {
@@ -41,12 +46,44 @@ export function useApi(initialBaseURL) {
     return { url: `${baseURL.value}${url}`, config }
   }
 
-  // Generic API request method
-  const request = async (url, options = {}) => {
+  // Initialize protobuf support
+  const initializeProtobuf = async () => {
+    if (protobufInitialized.value) {
+      return protobufSupported.value
+    }
+    
+    try {
+      // Check if protobuf is supported
+      const supported = await protobufClient.initialize()
+      protobufSupported.value = supported
+      protobufInitialized.value = true
+      return supported
+    } catch (error) {
+      protobufSupported.value = false
+      protobufInitialized.value = true
+      return false
+    }
+  }
+
+  // Generic API request method with protobuf support
+  const request = async (url, options = {}, messageType = null) => {
     const { url: fullUrl, config } = createRequest(url, options)
 
     try {
       isLoading.value = true
+      
+      // Check if we should use protobuf
+      if (messageType && await initializeProtobuf()) {
+        try {
+          // Try to use protobuf
+          return await protobufClient.fetchWithProtobuf(fullUrl, config, messageType)
+        } catch (protobufError) {
+          // Fall back to JSON on protobuf error
+          console.warn('Protobuf request failed, falling back to JSON:', protobufError)
+        }
+      }
+      
+      // Standard JSON request
       const response = await fetch(fullUrl, config)
 
       if (!response.ok) {
@@ -57,7 +94,15 @@ export function useApi(initialBaseURL) {
       // Handle different content types
       const contentType = response.headers.get('content-type')
       if (contentType?.includes('application/json')) {
-        return await response.json()
+        const jsonData = await response.json()
+        return {
+          ...jsonData,
+          _protobuf: {
+            format: 'json',
+            payloadSize: JSON.stringify(jsonData).length,
+            fallbackReason: 'json_request'
+          }
+        }
       }
       return await response.text()
     } catch (error) {
@@ -71,18 +116,18 @@ export function useApi(initialBaseURL) {
     }
   }
 
-  // GET request
-  const get = async (url, params = {}) => {
+  // GET request with optional protobuf support
+  const get = async (url, params = {}, messageType = null) => {
     const queryString = new URLSearchParams(params).toString()
     const fullUrl = queryString ? `${url}?${queryString}` : url
 
     return request(fullUrl, {
       method: 'GET'
-    })
+    }, messageType)
   }
 
-  // POST request
-  const post = async (url, data, options = {}) => {
+  // POST request with optional protobuf support
+  const post = async (url, data, options = {}, messageType = null) => {
     const config = {
       method: 'POST',
       ...options
@@ -95,22 +140,22 @@ export function useApi(initialBaseURL) {
       config.body = JSON.stringify(data)
     }
 
-    return request(url, config)
+    return request(url, config, messageType)
   }
 
-  // PUT request
-  const put = async (url, data) => {
+  // PUT request with optional protobuf support
+  const put = async (url, data, messageType = null) => {
     return request(url, {
       method: 'PUT',
       body: JSON.stringify(data)
-    })
+    }, messageType)
   }
 
-  // DELETE request
-  const del = async url => {
+  // DELETE request with optional protobuf support
+  const del = async (url, messageType = null) => {
     return request(url, {
       method: 'DELETE'
-    })
+    }, messageType)
   }
 
   // File upload with progress
@@ -146,7 +191,14 @@ export function useApi(initialBaseURL) {
             if (xhr.status >= 200 && xhr.status < 300) {
               try {
                 const response = JSON.parse(xhr.responseText)
-                resolve(response)
+                resolve({
+                  ...response,
+                  _protobuf: {
+                    format: 'json',
+                    payloadSize: xhr.responseText.length,
+                    fallbackReason: 'form_data_upload'
+                  }
+                })
               } catch (_error) {
                 resolve(xhr.responseText)
               }
@@ -181,7 +233,15 @@ export function useApi(initialBaseURL) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
 
-      return await response.json()
+      const jsonData = await response.json()
+      return {
+        ...jsonData,
+        _protobuf: {
+          format: 'json',
+          payloadSize: JSON.stringify(jsonData).length,
+          fallbackReason: 'form_data_upload'
+        }
+      }
     } finally {
       isLoading.value = false
       abortController.value = null
@@ -197,13 +257,17 @@ export function useApi(initialBaseURL) {
   }
 
   // Batch requests with error handling
-  const batch = async requests => {
+  const batch = async (requests) => {
     const results = []
     const errors = []
 
     for (const req of requests) {
       try {
-        const result = await request(req.url, req.options)
+        const result = await request(
+          req.url, 
+          req.options, 
+          req.messageType // Support for protobuf message type
+        )
         results.push({ success: true, data: result })
       } catch (error) {
         errors.push({ success: false, error })
@@ -217,15 +281,30 @@ export function useApi(initialBaseURL) {
   // Health check endpoint
   const healthCheck = async () => {
     try {
-      const response = await get('/health')
+      const response = await get('/health', {}, 'api.GenericResponse')
       return { healthy: true, data: response }
     } catch (error) {
       return { healthy: false, error }
     }
   }
+  
+  // Get protobuf client status
+  const getProtobufStatus = () => {
+    return {
+      initialized: protobufInitialized.value,
+      supported: protobufSupported.value,
+      clientStatus: protobufClient.getStatus()
+    }
+  }
+  
+  // Enable or disable protobuf support
+  const setProtobufEnabled = (enabled) => {
+    protobufClient.setProtobufEnabled(enabled)
+  }
 
   return {
     isLoading,
+    protobufSupported,
 
     request,
     get,
@@ -236,6 +315,11 @@ export function useApi(initialBaseURL) {
     cancel,
     batch,
     healthCheck,
+    
+    // Protobuf specific methods
+    getProtobufStatus,
+    setProtobufEnabled,
+    initializeProtobuf,
 
     safeAsync,
     withRetry

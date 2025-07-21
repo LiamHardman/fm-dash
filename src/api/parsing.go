@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"io"
-	"log"
 	"strconv"
 	"strings"
 	"sync"
@@ -87,7 +86,7 @@ func sendRowWithBackpressure(rowCellsChan chan []string, cells []string, timeout
 		// Successfully sent with timeout
 	case <-timer.C:
 		RecordChannelTimeout() // Record timeout event
-		log.Printf("Warning: Channel send timeout after %v, dropping row with %d cells", timeout, len(cells))
+		LogWarn("Channel send timeout, dropping row", "timeout", timeout, "cell_count", len(cells))
 	}
 }
 
@@ -213,7 +212,7 @@ tokenLoop:
 				}
 				break tokenLoop
 			}
-			log.Printf("HTML tokenization error occurred during parsing")
+			LogWarn("HTML tokenization error occurred during parsing")
 			processingError = apperrors.WrapErrTokenizingHTML(err)
 			break tokenLoop
 		case html.StartTagToken:
@@ -342,7 +341,7 @@ tokenLoop:
 		LogDebug("HTML parsing finished, closing rowCellsChan to signal %d workers", numWorkers)
 		closeChannelOnce() // Safe channel close
 	} else {
-		log.Printf("Warning: No workers were started during HTML parsing. Headers found: %v", len(currentHeaders) > 0)
+		LogWarn("No workers were started during HTML parsing", "headers_found", len(currentHeaders) > 0)
 		if len(currentHeaders) == 0 {
 			processingError = apperrors.ErrNoTableHeadersFound
 		} else {
