@@ -226,7 +226,7 @@ export default defineComponent({
       const percentiles = props.player.performancePercentiles[props.selectedComparisonGroup]
       if (!percentiles) return {}
 
-      // Define stat categories
+      // Define stat categories with normalized keys
       const categories = {
         Attacking: ['goals', 'assists', 'key_passes', 'shots_per_game', 'shots_on_target_per_game'],
         Defensive: [
@@ -239,17 +239,40 @@ export default defineComponent({
         Physical: ['fouls_per_game', 'was_fouled_per_game', 'cards_per_game', 'distance_covered']
       }
 
+      // Mapping from FM format keys to normalized keys
+      const fmToNormalizedMap = {
+        'Gls/90': 'goals',
+        'Asts/90': 'assists',
+        'K Ps/90': 'key_passes',
+        'Shot/90': 'shots_per_game',
+        'ShT/90': 'shots_on_target_per_game',
+        'Tck/90': 'tackles_per_game',
+        'Int/90': 'interceptions_per_game',
+        'Clr/90': 'clearances_per_game',
+        'Blk/90': 'blocks_per_game',
+        'Ps C/90': 'passes_per_game',
+        'Pas %': 'pass_accuracy',
+        'Cr C/90': 'crosses_per_game',
+        'K Ps/90': 'long_balls_per_game', // Using key passes as proxy for long balls
+        'Fls': 'fouls_per_game',
+        'FA': 'was_fouled_per_game',
+        // Note: 'cards_per_game' and 'distance_covered' don't have direct FM equivalents
+      }
+
       const result = {}
 
       for (const [category, statKeys] of Object.entries(categories)) {
         const categoryStats = []
 
         for (const statKey of statKeys) {
-          if (percentiles[statKey] !== undefined) {
+          // Find the FM key that maps to this normalized key
+          const fmKey = Object.keys(fmToNormalizedMap).find(key => fmToNormalizedMap[key] === statKey)
+          
+          if (fmKey && percentiles[fmKey] !== undefined) {
             categoryStats.push({
               key: statKey,
               name: formatStatName(statKey),
-              percentile: percentiles[statKey],
+              percentile: percentiles[fmKey],
               value: getStatValue(statKey)
             })
           }
@@ -290,8 +313,31 @@ export default defineComponent({
 
     // Get actual stat value from player data
     const getStatValue = statKey => {
-      if (!props.player?.performance) return '-'
-      return props.player.performance[statKey] || '-'
+      if (!props.player?.attributes) return '-'
+      
+      // Mapping from normalized keys to FM format keys
+      const normalizedToFmMap = {
+        'goals': 'Gls/90',
+        'assists': 'Asts/90',
+        'key_passes': 'K Ps/90',
+        'shots_per_game': 'Shot/90',
+        'shots_on_target_per_game': 'ShT/90',
+        'tackles_per_game': 'Tck/90',
+        'interceptions_per_game': 'Int/90',
+        'clearances_per_game': 'Clr/90',
+        'blocks_per_game': 'Blk/90',
+        'passes_per_game': 'Ps C/90',
+        'pass_accuracy': 'Pas %',
+        'crosses_per_game': 'Cr C/90',
+        'long_balls_per_game': 'K Ps/90', // Using key passes as proxy for long balls
+        'fouls_per_game': 'Fls',
+        'was_fouled_per_game': 'FA'
+      }
+      
+      const fmKey = normalizedToFmMap[statKey]
+      if (!fmKey) return '-'
+      
+      return props.player.attributes[fmKey] || '-'
     }
 
     // Generate bar fill style based on percentile
