@@ -1,3 +1,12 @@
+## [1.4.3](https://github.com/LiamHardman/fm-dash/compare/v1.4.2...v1.4.3) (2025-07-22)
+
+
+### Bug Fixes
+
+* attempted gh pipeline issue resolution ([8c755f2](https://github.com/LiamHardman/fm-dash/commit/8c755f28a27a38f2d1dea2a8bcab93de60e0705f))
+* github concurrency ([da3e6d5](https://github.com/LiamHardman/fm-dash/commit/da3e6d5513c3ab4b2eb3f0c20a2416f677add67f))
+* pipeline ([103665c](https://github.com/LiamHardman/fm-dash/commit/103665c50ec84248e559218b9bd6c32c8455c97b))
+
 ## [1.4.2](https://github.com/LiamHardman/fm-dash/compare/v1.4.1...v1.4.2) (2025-07-22)
 
 
