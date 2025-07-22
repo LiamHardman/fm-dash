@@ -385,3 +385,120 @@ func TestStoreDatasetValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestNumericAttributesPopulation(t *testing.T) {
+	// Create a player with string attributes but no numeric attributes
+	player := Player{
+		UID:      123,
+		Name:     "Test Player",
+		Position: "ST",
+		Attributes: map[string]string{
+			"Pac": "15",
+			"Sho": "18",
+			"Pas": "12",
+			"Dri": "16",
+			"Def": "8",
+			"Phy": "14",
+		},
+		NumericAttributes: make(map[string]int), // Empty initially
+	}
+
+	// Verify that NumericAttributes are empty initially
+	if len(player.NumericAttributes) != 0 {
+		t.Errorf("Expected empty NumericAttributes initially, got %d", len(player.NumericAttributes))
+	}
+
+	// Test SetPlayerData ensures NumericAttributes are populated
+	testDatasetID := "test-numeric-attributes"
+	testCurrency := "£"
+
+	SetPlayerData(testDatasetID, []Player{player}, testCurrency)
+
+	// Retrieve the data to verify NumericAttributes were populated
+	players, _, err := RetrieveDataset(testDatasetID)
+	if err != nil {
+		t.Fatalf("Failed to retrieve dataset: %v", err)
+	}
+
+	if len(players) != 1 {
+		t.Fatalf("Expected 1 player, got %d", len(players))
+	}
+
+	retrievedPlayer := players[0]
+	if len(retrievedPlayer.NumericAttributes) == 0 {
+		t.Error("NumericAttributes should be populated after storage")
+	}
+
+	// Verify specific attributes were populated
+	expectedAttributes := []string{"Pac", "Sho", "Pas", "Dri", "Def", "Phy"}
+	for _, attr := range expectedAttributes {
+		if value, exists := retrievedPlayer.NumericAttributes[attr]; !exists {
+			t.Errorf("Expected attribute %s to be populated", attr)
+		} else if value == 0 {
+			t.Errorf("Expected attribute %s to have non-zero value, got %d", attr, value)
+		}
+	}
+
+	// Clean up
+	DeleteDataset(testDatasetID)
+}
+
+func TestSetPlayerDataAsyncNumericAttributes(t *testing.T) {
+	// Create a player with string attributes but no numeric attributes
+	player := Player{
+		UID:      456,
+		Name:     "Async Test Player",
+		Position: "CM",
+		Attributes: map[string]string{
+			"Pac": "12",
+			"Sho": "14",
+			"Pas": "18",
+			"Dri": "15",
+			"Def": "16",
+			"Phy": "13",
+		},
+		NumericAttributes: make(map[string]int), // Empty initially
+	}
+
+	// Verify that NumericAttributes are empty initially
+	if len(player.NumericAttributes) != 0 {
+		t.Errorf("Expected empty NumericAttributes initially, got %d", len(player.NumericAttributes))
+	}
+
+	// Test SetPlayerDataAsync ensures NumericAttributes are populated
+	testDatasetID := "test-async-numeric-attributes"
+	testCurrency := "€"
+
+	SetPlayerDataAsync(testDatasetID, []Player{player}, testCurrency)
+
+	// Wait a bit for async storage to complete
+	time.Sleep(100 * time.Millisecond)
+
+	// Retrieve the data to verify NumericAttributes were populated
+	players, _, err := RetrieveDataset(testDatasetID)
+	if err != nil {
+		t.Fatalf("Failed to retrieve dataset: %v", err)
+	}
+
+	if len(players) != 1 {
+		t.Fatalf("Expected 1 player, got %d", len(players))
+	}
+
+	retrievedPlayer := players[0]
+	if len(retrievedPlayer.NumericAttributes) == 0 {
+		t.Error("NumericAttributes should be populated after async storage")
+	}
+
+	// Verify specific attributes were populated
+	expectedAttributes := []string{"Pac", "Sho", "Pas", "Dri", "Def", "Phy"}
+	for _, attr := range expectedAttributes {
+		if value, exists := retrievedPlayer.NumericAttributes[attr]; !exists {
+			t.Errorf("Expected attribute %s to be populated", attr)
+		} else if value == 0 {
+			t.Errorf("Expected attribute %s to have non-zero value, got %d", attr, value)
+		}
+	}
+
+	// Clean up
+	DeleteDataset(testDatasetID)
+}

@@ -74,6 +74,14 @@ func StoreDatasetAsync(datasetID string, players []Player, currencySymbol string
 	playersCopy := make([]Player, len(players))
 	copy(playersCopy, players)
 
+	// Ensure all players have their NumericAttributes populated before storage
+	// This is critical because the data might be stored before the workers finish enhancement
+	for i := range playersCopy {
+		if playersCopy[i].NumericAttributes == nil || len(playersCopy[i].NumericAttributes) == 0 {
+			EnhancePlayerWithCalculations(&playersCopy[i])
+		}
+	}
+
 	go func() {
 		ctx := context.Background()
 		ctx, span := StartSpan(ctx, "store.dataset_async")
@@ -255,7 +263,23 @@ func GetPlayerData(datasetID string) ([]Player, string, bool) {
 			attribute.String("data.source", "memory_fast"),
 		)
 		// Return a deep copy to prevent race conditions
-		return OptimizedDeepCopyPlayers(data.Players), data.CurrencySymbol, true
+		players := OptimizedDeepCopyPlayers(data.Players)
+		// Ensure NumericAttributes are populated for retrieved data
+		enhancedCount := 0
+		for i := range players {
+			if players[i].NumericAttributes == nil || len(players[i].NumericAttributes) == 0 {
+				LogInfo("Enhancing retrieved player %s (UID: %d) - NumericAttributes count: %d",
+					players[i].Name, players[i].UID, len(players[i].NumericAttributes))
+				EnhancePlayerWithCalculations(&players[i])
+				enhancedCount++
+				LogInfo("Enhanced retrieved player %s (UID: %d) - NumericAttributes count after: %d",
+					players[i].Name, players[i].UID, len(players[i].NumericAttributes))
+			}
+		}
+		if enhancedCount > 0 {
+			LogInfo("Enhanced %d retrieved players for dataset %s", enhancedCount, datasetID)
+		}
+		return players, data.CurrencySymbol, true
 	}
 	storeMutex.RUnlock()
 
@@ -268,7 +292,23 @@ func GetPlayerData(datasetID string) ([]Player, string, bool) {
 			attribute.String("data.source", "persistent_fallback"),
 		)
 		// Return a deep copy to prevent race conditions
-		return OptimizedDeepCopyPlayers(players), currency, true
+		enhancedPlayers := OptimizedDeepCopyPlayers(players)
+		// Ensure NumericAttributes are populated for retrieved data
+		enhancedCount := 0
+		for i := range enhancedPlayers {
+			if enhancedPlayers[i].NumericAttributes == nil || len(enhancedPlayers[i].NumericAttributes) == 0 {
+				LogInfo("Enhancing retrieved player %s (UID: %d) - NumericAttributes count: %d",
+					enhancedPlayers[i].Name, enhancedPlayers[i].UID, len(enhancedPlayers[i].NumericAttributes))
+				EnhancePlayerWithCalculations(&enhancedPlayers[i])
+				enhancedCount++
+				LogInfo("Enhanced retrieved player %s (UID: %d) - NumericAttributes count after: %d",
+					enhancedPlayers[i].Name, enhancedPlayers[i].UID, len(enhancedPlayers[i].NumericAttributes))
+			}
+		}
+		if enhancedCount > 0 {
+			LogInfo("Enhanced %d retrieved players for dataset %s", enhancedCount, datasetID)
+		}
+		return enhancedPlayers, currency, true
 	}
 
 	SetSpanAttributes(ctx, attribute.String("result", "not_found"))
@@ -288,6 +328,27 @@ func SetPlayerData(datasetID string, players []Player, currencySymbol string) {
 		attribute.String("store.type", "legacy_compatible"),
 	)
 
+	// Ensure all players have their NumericAttributes populated before storage
+	// This is critical because the data might be stored before the workers finish enhancement
+	enhancedPlayers := make([]Player, len(players))
+	enhancedCount := 0
+	for i, player := range players {
+		enhancedPlayers[i] = player
+		// Ensure NumericAttributes are populated if they're missing
+		if player.NumericAttributes == nil || len(player.NumericAttributes) == 0 {
+			LogInfo("Enhancing player %s (UID: %d) before legacy storage - NumericAttributes count: %d",
+				player.Name, player.UID, len(player.NumericAttributes))
+			EnhancePlayerWithCalculations(&enhancedPlayers[i])
+			enhancedCount++
+			LogInfo("Enhanced player %s (UID: %d) - NumericAttributes count after: %d",
+				enhancedPlayers[i].Name, enhancedPlayers[i].UID, len(enhancedPlayers[i].NumericAttributes))
+		}
+	}
+
+	if enhancedCount > 0 {
+		LogInfo("Enhanced %d players before legacy storage for dataset %s", enhancedCount, datasetID)
+	}
+
 	// Store in legacy format
 	AddSpanEvent(ctx, "store.legacy_store")
 	storeMutex.Lock()
@@ -295,14 +356,14 @@ func SetPlayerData(datasetID string, players []Player, currencySymbol string) {
 		Players        []Player
 		CurrencySymbol string
 	}{
-		Players:        players,
+		Players:        enhancedPlayers,
 		CurrencySymbol: currencySymbol,
 	}
 	storeMutex.Unlock()
 
 	// Store in new storage system
 	AddSpanEvent(ctx, "store.new_storage_store")
-	if err := StoreDataset(datasetID, players, currencySymbol); err != nil {
+	if err := StoreDataset(datasetID, enhancedPlayers, currencySymbol); err != nil {
 		RecordError(ctx, err, "Failed to store in new storage system")
 		// Log error but don't fail - legacy store still works
 		// (error logging is handled in storage implementation)
@@ -322,6 +383,27 @@ func SetPlayerDataAsync(datasetID string, players []Player, currencySymbol strin
 		attribute.String("store.type", "legacy_compatible_async"),
 	)
 
+	// Ensure all players have their NumericAttributes populated before storage
+	// This is critical because the data is stored before the workers finish enhancement
+	enhancedPlayers := make([]Player, len(players))
+	enhancedCount := 0
+	for i, player := range players {
+		enhancedPlayers[i] = player
+		// Ensure NumericAttributes are populated if they're missing
+		if player.NumericAttributes == nil || len(player.NumericAttributes) == 0 {
+			LogInfo("Enhancing player %s (UID: %d) before storage - NumericAttributes count: %d",
+				player.Name, player.UID, len(player.NumericAttributes))
+			EnhancePlayerWithCalculations(&enhancedPlayers[i])
+			enhancedCount++
+			LogInfo("Enhanced player %s (UID: %d) - NumericAttributes count after: %d",
+				enhancedPlayers[i].Name, enhancedPlayers[i].UID, len(enhancedPlayers[i].NumericAttributes))
+		}
+	}
+
+	if enhancedCount > 0 {
+		LogInfo("Enhanced %d players before storage for dataset %s", enhancedCount, datasetID)
+	}
+
 	// Store in legacy format immediately (fast, in-memory operation)
 	AddSpanEvent(ctx, "store.legacy_store_immediate")
 	storeMutex.Lock()
@@ -329,7 +411,7 @@ func SetPlayerDataAsync(datasetID string, players []Player, currencySymbol strin
 		Players        []Player
 		CurrencySymbol string
 	}{
-		Players:        players,
+		Players:        enhancedPlayers,
 		CurrencySymbol: currencySymbol,
 	}
 	storeMutex.Unlock()
@@ -337,10 +419,10 @@ func SetPlayerDataAsync(datasetID string, players []Player, currencySymbol strin
 	// Store in new storage system asynchronously (potentially slow S3/disk operation)
 	AddSpanEvent(ctx, "store.new_storage_async_queued")
 
-	// Serialize the data immediately to avoid race conditions during async storage
+	// Serialize the enhanced data immediately to avoid race conditions during async storage
 	// This way the goroutine only works with immutable JSON data
 	data := DatasetData{
-		Players:        players,
+		Players:        enhancedPlayers,
 		CurrencySymbol: currencySymbol,
 	}
 

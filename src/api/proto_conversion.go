@@ -66,12 +66,33 @@ func (p *Player) ToProto(ctx context.Context) (*proto.Player, error) {
 	positionGroupsCopy := make([]string, len(p.PositionGroups))
 	copy(positionGroupsCopy, p.PositionGroups)
 
-	// Only include essential attributes for display
+	// Include both FM attributes and performance statistics for calculations
 	essentialAttributes := make(map[string]string)
 	if p.Attributes != nil {
-		// Only include the most important attributes for display
-		importantAttrs := []string{"Av Rat", "Apps", "Mins", "Gls/90", "Asts/90", "Pas %", "Tck/90", "Int/90"}
-		for _, attr := range importantAttrs {
+		// Include FM attributes for FIFA stat calculations
+		fmAttrs := []string{"Acc", "Agg", "Agi", "Ant", "Bal", "Bra", "Cmd", "Cmp", "Cnt", "Com", "Cor", "Cro", "Dec", "Det", "Dri", "Ecc", "Fin", "Fir", "Fla", "Fre", "Han", "Hea", "Jum", "Kic", "L Th", "Ldr", "Lon", "Mar", "Nat", "OtB", "Pac", "Pas", "Pen", "Pos", "Pun", "Ref", "Sta", "Str", "TRO", "Tck", "Tea", "Tec", "Thr", "Vis", "Wor"}
+		// Include all performance statistics for display and calculations
+		perfAttrs := []string{
+			// General stats
+			"Av Rat", "Apps", "Mins", "Clean Sheets",
+			// Offensive stats
+			"Gls/90", "xG/90", "NP-xG/90", "Shot/90", "ShT/90", "Conv %", "Drb/90",
+			// Passing stats
+			"Asts/90", "xA/90", "Ch C/90", "K Ps/90", "Ps C/90", "Ps A/90", "Pas %", "Pr passes/90", "Cr C/90", "CRS A/90", "Cr C/A", "Poss Lost/90",
+			// Defensive stats
+			"Tck/90", "Tck R", "Int/90", "Clr/90", "Blk/90", "Hdrs W/90", "Pres C/90", "Poss Won/90", "Fls", "FA",
+			// Goalkeeping stats
+			"Con/90", "Cln/90", "xGP/90", "Sv %",
+		}
+
+		// Add FM attributes first
+		for _, attr := range fmAttrs {
+			if value, exists := p.Attributes[attr]; exists {
+				essentialAttributes[attr] = value
+			}
+		}
+		// Add performance statistics
+		for _, attr := range perfAttrs {
 			if value, exists := p.Attributes[attr]; exists {
 				essentialAttributes[attr] = value
 			}

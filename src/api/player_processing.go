@@ -256,7 +256,6 @@ func EnhancePlayerWithCalculations(player *Player) {
 	// Note: OptimizedPlayer conversion disabled here as it's inefficient to convert back immediately
 	// OptimizedPlayer should be used in storage and processing layers, not during enhancement
 	// The conversion happens in storage layers where memory benefits are actually realized
-	// This optimization is handled at the storage level for maximum memory benefit
 	// Converting here and back would negate the memory savings
 
 	// Convert string attributes to numeric and parse performance stats
