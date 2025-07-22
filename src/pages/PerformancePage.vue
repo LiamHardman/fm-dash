@@ -230,7 +230,7 @@
                                             v-for="config in attackingShootingCharts" 
                                             :key="config.title" 
                                             v-bind="config" 
-                                            :is-dark-mode="$q.dark.isActive" 
+                                            :is-dark-mode="isDarkMode" 
                                             :all-players-data="filteredPlayers"
                                             @player-click="openPlayerDetail"
                                         />
@@ -266,7 +266,7 @@
                                             v-for="config in passingCreativeCharts" 
                                             :key="config.title" 
                                             v-bind="config" 
-                                            :is-dark-mode="$q.dark.isActive" 
+                                            :is-dark-mode="isDarkMode" 
                                             :all-players-data="filteredPlayers"
                                             @player-click="openPlayerDetail"
                                         />
@@ -281,7 +281,7 @@
                                             v-for="config in passingProgressionCharts" 
                                             :key="config.title" 
                                             v-bind="config" 
-                                            :is-dark-mode="$q.dark.isActive" 
+                                            :is-dark-mode="isDarkMode" 
                                             :all-players-data="filteredPlayers"
                                             @player-click="openPlayerDetail"
                                         />
@@ -296,7 +296,7 @@
                                             v-for="config in passingCrossingCharts" 
                                             :key="config.title" 
                                             v-bind="config" 
-                                            :is-dark-mode="$q.dark.isActive" 
+                                            :is-dark-mode="isDarkMode" 
                                             :all-players-data="filteredPlayers"
                                             @player-click="openPlayerDetail"
                                         />
@@ -333,7 +333,7 @@
                                             v-for="config in defendingDuelsCharts" 
                                             :key="config.title" 
                                             v-bind="config" 
-                                            :is-dark-mode="$q.dark.isActive" 
+                                            :is-dark-mode="isDarkMode" 
                                             :all-players-data="filteredPlayers"
                                             @player-click="openPlayerDetail"
                                         />
@@ -348,7 +348,7 @@
                                             v-for="config in defendingPressingCharts" 
                                             :key="config.title" 
                                             v-bind="config" 
-                                            :is-dark-mode="$q.dark.isActive" 
+                                            :is-dark-mode="isDarkMode" 
                                             :all-players-data="filteredPlayers"
                                             @player-click="openPlayerDetail"
                                         />
@@ -363,7 +363,7 @@
                                             v-for="config in defendingAerialCharts" 
                                             :key="config.title" 
                                             v-bind="config" 
-                                            :is-dark-mode="$q.dark.isActive" 
+                                            :is-dark-mode="isDarkMode" 
                                             :all-players-data="filteredPlayers"
                                             @player-click="openPlayerDetail"
                                         />
@@ -378,7 +378,7 @@
                                             v-for="config in defendingWorkrateCharts" 
                                             :key="config.title" 
                                             v-bind="config" 
-                                            :is-dark-mode="$q.dark.isActive" 
+                                            :is-dark-mode="isDarkMode" 
                                             :all-players-data="filteredPlayers"
                                             @player-click="openPlayerDetail"
                                         />
@@ -412,7 +412,7 @@
                                             v-for="config in goalkeepingShotstoppingCharts" 
                                             :key="config.title" 
                                             v-bind="config" 
-                                            :is-dark-mode="$q.dark.isActive" 
+                                            :is-dark-mode="isDarkMode" 
                                             :all-players-data="filteredPlayers"
                                             @player-click="openPlayerDetail"
                                         />
@@ -457,6 +457,7 @@ import StatCard from '../components/StatCard.vue'
 // Dynamic imports for better performance
 import { useDynamicComponents } from '../composables/useDynamicComponents.js'
 import { usePlayerStore } from '../stores/playerStore'
+import { useUiStore } from '../stores/uiStore'
 import { fetchPerformanceData } from '../services/playerService'
 import { getNumericValue, getPlayerDivision } from '../utils/playerUtils'
 import { formatNumber } from '../utils/currencyUtils'
@@ -467,6 +468,7 @@ const router = useRouter()
 const route = useRoute()
 const $q = useQuasar()
 const playerStore = usePlayerStore()
+const uiStore = useUiStore()
 
 // Initialize dynamic components
 const { DynamicPlayerDetailDialog, DynamicScatterPlotCard, initializePreloading } =
@@ -487,6 +489,9 @@ const exportFormat = ref('csv')
 // biome-ignore lint/correctness/noUnusedVariables: used in template
 const currentTab = ref('attacking')
 const pageLoading = ref(true)
+
+// Add computed property for dark mode detection using UI store
+const isDarkMode = computed(() => uiStore.isDarkModeActive)
 
 // --- Filter State with new defaults ---
 const sliderValue = ref(0)

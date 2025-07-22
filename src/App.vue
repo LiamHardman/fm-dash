@@ -103,6 +103,7 @@
 
 <script>
 import { computed, defineComponent, onMounted, ref } from 'vue'
+import { useQuasar } from 'quasar'
 import SettingsModal from './components/SettingsModal.vue'
 import UniversalSearch from './components/UniversalSearch.vue'
 import { useAnalytics } from './composables/useAnalytics'
@@ -117,6 +118,7 @@ export default defineComponent({
     SettingsModal
   },
   setup() {
+    const $q = useQuasar()
     const uiStore = useUiStore()
     const playerStore = usePlayerStore()
     const wishlistStore = useWishlistStore()
@@ -128,6 +130,9 @@ export default defineComponent({
     const showSettingsModal = ref(false)
 
     onMounted(() => {
+      // Expose Quasar instance globally for the UI store
+      window.$q = $q
+      
       uiStore.initSettings() // Initialize all settings including the new rating calculation setting
     })
 

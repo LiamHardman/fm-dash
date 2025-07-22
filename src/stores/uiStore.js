@@ -29,13 +29,9 @@ export const useUiStore = defineStore('ui', () => {
       document.body.classList.remove('body--dark')
     }
     
-    // Try to use Quasar if available
-    try {
-      const { useQuasar } = require('quasar')
-      const $q = useQuasar()
-      $q.dark.set(isDarkModeActive.value)
-    } catch (error) {
-      // Quasar not available, using CSS fallback
+    // Try to use Quasar if available - use a different approach
+    if (typeof window !== 'undefined' && window.$q) {
+      window.$q.dark.set(isDarkModeActive.value)
     }
     
     try {
@@ -129,13 +125,9 @@ export const useUiStore = defineStore('ui', () => {
       document.body.classList.remove('body--dark')
     }
     
-    // Try to use Quasar if available
-    try {
-      const { useQuasar } = require('quasar')
-      const $q = useQuasar()
-      $q.dark.set(darkModePreference)
-    } catch (error) {
-      // Quasar not available, using CSS fallback
+    // Try to use Quasar if available - use a different approach
+    if (typeof window !== 'undefined' && window.$q) {
+      window.$q.dark.set(darkModePreference)
     }
   }
 
@@ -198,24 +190,6 @@ export const useUiStore = defineStore('ui', () => {
     initLogosDisplay()
     initAttributeMasksDisplay()
   }
-
-  // Watch for changes in Quasar's dark mode state and update the store
-  // This is generally not needed if the store is the single source of truth
-  // and all changes go through toggleDarkMode.
-  // However, if Quasar's dark mode could be changed externally, this would be useful.
-  // For this specific fix, we'll assume the store is the master.
-  // if ($q && $q.dark) {
-  //   watch(
-  //     () => $q.dark.isActive,
-  //     (newValue) => {
-  //       if (isDarkModeActive.value !== newValue) {
-  //         isDarkModeActive.value = newValue;
-  //         // Optionally update localStorage here too if Quasar's state can change independently
-  //         // localStorage.setItem('darkMode', newValue ? 'true' : 'false');
-  //       }
-  //     }
-  //   );
-  // }
 
   return {
     isDarkModeActive,

@@ -29,7 +29,8 @@ app.use(Quasar, {
       negative: '#C10015',
       info: '#31CCEC',
       warning: '#F2C037'
-    }
+    },
+    dark: 'auto' // Enable auto dark mode detection
   }
 })
 
