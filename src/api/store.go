@@ -308,6 +308,19 @@ func GetPlayerData(datasetID string) ([]Player, string, bool) {
 		if enhancedCount > 0 {
 			LogInfo("Enhanced %d retrieved players for dataset %s", enhancedCount, datasetID)
 		}
+
+		// Store the enhanced data in memory cache for future fast access
+		storeMutex.Lock()
+		playerDataStore[datasetID] = struct {
+			Players        []Player
+			CurrencySymbol string
+		}{
+			Players:        enhancedPlayers,
+			CurrencySymbol: currency,
+		}
+		storeMutex.Unlock()
+		LogInfo("Cached %d enhanced players from S3 in memory for dataset %s", len(enhancedPlayers), datasetID)
+
 		return enhancedPlayers, currency, true
 	}
 
