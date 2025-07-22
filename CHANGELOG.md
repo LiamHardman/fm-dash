@@ -28,6 +28,29 @@
 
 * bug fix for proto storage ([46cceee](https://github.com/LiamHardman/fm-dash/commit/46cceee4ea61ac9d8b13b2fd315c96dbcd1de8af))
 * build fixes ([41d6951](https://github.com/LiamHardman/fm-dash/commit/41d695163e746cc60d964745275ae1699ff1d14f))
+* dark mode fixes ([cb7c905](https://github.com/LiamHardman/fm-dash/commit/cb7c9054888a78a19aeec8e0f5894c6539011fe8))
+* protobuf bug fixes ([6e84d57](https://github.com/LiamHardman/fm-dash/commit/6e84d5751e5635a9418606dd3b5dc85c470768a2))
+* reducing unneeded logs, resolved cache not defined error ([838a813](https://github.com/LiamHardman/fm-dash/commit/838a8130a23b21bfab400424b0e428c2a36de82d))
+* removed some extraneous logging and build issue fixes ([b4718bf](https://github.com/LiamHardman/fm-dash/commit/b4718bf1cf6403dc708611e0a24d19b7d2e2d6b7))
+* removing unneeded page import ([a9ab283](https://github.com/LiamHardman/fm-dash/commit/a9ab283047ce2d85904b0df0da527715b625a123))
+* resolved build issue ([d483cfb](https://github.com/LiamHardman/fm-dash/commit/d483cfbe56eb658e829991bcc4376f30685a3e55))
+* resolved build time issues ([74f20ad](https://github.com/LiamHardman/fm-dash/commit/74f20ad2350939b87985f32f1786043fd6f3b73f))
+* resolved Cannot access 'parseTransferValue ([84b76df](https://github.com/LiamHardman/fm-dash/commit/84b76df84c44bdac12bbb82daeb8248cbcc251f6))
+* resolved chunk bundling issues leading to white page on frontend ([7405c95](https://github.com/LiamHardman/fm-dash/commit/7405c9567c4fe2f890e3bd791bc4a645ecf4aa6f))
+* resolved percentile parsing issue ([32427a8](https://github.com/LiamHardman/fm-dash/commit/32427a807d4ada1d2af13db7cb4350e989c9e118))
+
+
+### Reverts
+
+* Revert "feat: implement enhanced virtual scrolling and data processing optimizations" ([fce885c](https://github.com/LiamHardman/fm-dash/commit/fce885c9b173dbd308361d3f37149da3ab2425a8))
+
+## [1.4.2](https://github.com/LiamHardman/fm-dash/compare/v1.4.1...v1.4.2) (2025-07-22)
+
+
+### Bug Fixes
+
+* bug fix for proto storage ([46cceee](https://github.com/LiamHardman/fm-dash/commit/46cceee4ea61ac9d8b13b2fd315c96dbcd1de8af))
+* build fixes ([41d6951](https://github.com/LiamHardman/fm-dash/commit/41d695163e746cc60d964745275ae1699ff1d14f))
 * protobuf bug fixes ([6e84d57](https://github.com/LiamHardman/fm-dash/commit/6e84d5751e5635a9418606dd3b5dc85c470768a2))
 * reducing unneeded logs, resolved cache not defined error ([838a813](https://github.com/LiamHardman/fm-dash/commit/838a8130a23b21bfab400424b0e428c2a36de82d))
 * removed some extraneous logging and build issue fixes ([b4718bf](https://github.com/LiamHardman/fm-dash/commit/b4718bf1cf6403dc708611e0a24d19b7d2e2d6b7))
