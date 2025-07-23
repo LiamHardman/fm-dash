@@ -95,20 +95,104 @@ export default defineComponent({
     const formattedPosition = computed(() => {
       if (!props.player.position) return ''
       
-      // Split by comma and take the first position
-      const positions = props.player.position.split(',').map(pos => pos.trim())
-      const firstPosition = positions[0]
+      // Find the position with the highest role-specific overall
+      let bestPosition = null
+      let bestScore = 0
       
-      // Extract the position type (e.g., "AM", "M", "D") and side (e.g., "R", "C", "L")
-      const match = firstPosition.match(/^([A-Z]+)\s*\(([A-Z]+)\)$/)
-      if (match) {
-        const positionType = match[1]
-        const side = match[2]
-        return positionType + side
+      console.log('PlayerCards formattedPosition - Player:', props.player.name, 'RoleSpecificOveralls:', props.player.roleSpecificOveralls)
+      console.log('PlayerCards - Full player object keys:', Object.keys(props.player))
+      console.log('PlayerCards - Player object:', props.player)
+      
+      if (props.player.roleSpecificOveralls) {
+        if (Array.isArray(props.player.roleSpecificOveralls)) {
+          // Handle array format
+          console.log('PlayerCards - Processing array format roleSpecificOveralls')
+          console.log('PlayerCards - Array length:', props.player.roleSpecificOveralls.length)
+          for (const rso of props.player.roleSpecificOveralls) {
+            console.log('PlayerCards - Checking role:', rso.roleName, 'score:', rso.score)
+            if (rso.score > bestScore) {
+              bestScore = rso.score
+              // Extract position from role name (e.g., "DC - Central Defender - Defend" -> "DC")
+              const positionMatch = rso.roleName.match(/^([A-Z]+)\s*-/)
+              if (positionMatch) {
+                bestPosition = positionMatch[1]
+                console.log('PlayerCards - Found better position:', bestPosition, 'from role:', rso.roleName)
+              }
+            }
+          }
+        } else {
+          // Handle object format
+          console.log('PlayerCards - Processing object format roleSpecificOveralls')
+          for (const [roleName, score] of Object.entries(props.player.roleSpecificOveralls)) {
+            console.log('PlayerCards - Checking role:', roleName, 'score:', score)
+            if (score > bestScore) {
+              bestScore = score
+              // Extract position from role name (e.g., "DC - Central Defender - Defend" -> "DC")
+              const positionMatch = roleName.match(/^([A-Z]+)\s*-/)
+              if (positionMatch) {
+                bestPosition = positionMatch[1]
+                console.log('PlayerCards - Found better position:', bestPosition, 'from role:', roleName)
+              }
+            }
+          }
+        }
       }
       
-      // If no parentheses, just return the first position as is
-      return firstPosition
+      // If no role-specific overalls found, try using best_role_overall
+      if (!bestPosition && props.player.best_role_overall) {
+        console.log('PlayerCards - Using best_role_overall:', props.player.best_role_overall)
+        const positionMatch = props.player.best_role_overall.match(/^([A-Z]+)\s*-/)
+        if (positionMatch) {
+          bestPosition = positionMatch[1]
+          console.log('PlayerCards - Found position from best_role_overall:', bestPosition)
+        }
+      }
+      
+      console.log('PlayerCards - Best position from role-specific overalls:', bestPosition, 'with score:', bestScore)
+      
+      // If no role-specific overalls found, fall back to the original position logic
+      if (!bestPosition) {
+        console.log('PlayerCards - No role-specific overalls found, falling back to position string')
+        // Split by comma and take the first position
+        const positions = props.player.position.split(',').map(pos => pos.trim())
+        const firstPosition = positions[0]
+        
+        // Extract the position type (e.g., "AM", "M", "D") and side (e.g., "R", "C", "L")
+        const match = firstPosition.match(/^([A-Z]+)\s*\(([A-Z]+)\)$/)
+        if (match) {
+          const positionType = match[1]
+          const side = match[2]
+          bestPosition = positionType + side
+          console.log('PlayerCards - Extracted position from parentheses:', bestPosition)
+        } else {
+          bestPosition = firstPosition
+          console.log('PlayerCards - Using first position as-is:', bestPosition)
+        }
+      }
+      
+      // Translate FM positions to FIFA positions
+      const fmToFifaPositionMap = {
+        'GK': 'GK',
+        'SW': 'SW',
+        'DC': 'CB', // Centre Back
+        'DR': 'RB', // Right Back
+        'DL': 'LB', // Left Back
+        'WBR': 'RWB', // Right Wing Back
+        'WBL': 'LWB', // Left Wing Back
+        'DM': 'CDM', // Centre Defensive Midfielder
+        'MC': 'CM', // Centre Midfielder
+        'MR': 'RM', // Right Midfielder
+        'ML': 'LM', // Left Midfielder
+        'AMC': 'CAM', // Centre Attacking Midfielder
+        'AMR': 'RW', // Right Winger
+        'AML': 'LW', // Left Winger
+        'ST': 'ST' // Striker
+      }
+      
+      const fifaPosition = fmToFifaPositionMap[bestPosition] || bestPosition
+      console.log('PlayerCards - Final FIFA position:', fifaPosition, 'from FM position:', bestPosition)
+      
+      return fifaPosition
     })
 
     // Check if we need to fetch detailed data

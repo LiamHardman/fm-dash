@@ -1798,6 +1798,11 @@ export default {
       await new Promise(resolve => setTimeout(resolve, 300))
 
       try {
+        console.log('UpgradeFinderDialog - Original props.players first player:', props.players[0])
+        if (props.players[0]) {
+          console.log('UpgradeFinderDialog - Original props.players first player roleSpecificOveralls:', props.players[0].roleSpecificOveralls)
+        }
+
         upgradePlayers.value = props.players
           .filter(player => {
             if (player.club === teamName.value) return false
@@ -1844,7 +1849,13 @@ export default {
             )
             return (overallB || 0) - (overallA || 0)
           })
+
+        console.log('UpgradeFinderDialog - Filtered upgradePlayers first player:', upgradePlayers.value[0])
+        if (upgradePlayers.value[0]) {
+          console.log('UpgradeFinderDialog - Filtered upgradePlayers first player roleSpecificOveralls:', upgradePlayers.value[0].roleSpecificOveralls)
+        }
       } catch (_error) {
+        upgradePlayers.value = []
       } finally {
         loading.value = false
       }
@@ -1866,12 +1877,16 @@ export default {
 
     const processedUpgradePlayersForCards = computed(() => {
       return upgradePlayers.value.map(player => {
+        console.log('UpgradeFinderDialog - Original player roleSpecificOveralls:', player.roleSpecificOveralls)
+        console.log('UpgradeFinderDialog - Original player name:', player.name)
+        
         const displayOverall = getPlayerOverallForRoleOrPosition(
           player,
           selectedRole.value,
           selectedPosition.value
         )
-        return {
+        
+        const processedPlayer = {
           ...player, // Keep all original player data including nationality_iso
           name: player.name,
           nationality: player.nationality || 'Unknown',
@@ -1886,8 +1901,15 @@ export default {
           dri: player.dri || 0,
           def: player.def || 0,
           phy: player.phy || 0,
-          position: player.position || player.shortPositions?.[0] || 'Unknown'
+          position: player.position || player.shortPositions?.[0] || 'Unknown',
+          // Explicitly preserve roleSpecificOveralls
+          roleSpecificOveralls: player.roleSpecificOveralls || []
         }
+        
+        console.log('UpgradeFinderDialog - Processed player roleSpecificOveralls:', processedPlayer.roleSpecificOveralls)
+        console.log('UpgradeFinderDialog - Processed player name:', processedPlayer.name)
+        
+        return processedPlayer
       })
     })
 
