@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/LiamHardman/fm-dash/compare/v1.4.5...v1.5.0) (2025-07-23)
+
+
+### Features
+
+* PlayerCards ([4de8691](https://github.com/LiamHardman/fm-dash/commit/4de8691509c065851094c0dd7732a723c33a488c))
+
 ## [1.4.5](https://github.com/LiamHardman/fm-dash/compare/v1.4.4...v1.4.5) (2025-07-23)
 
 
