@@ -8,7 +8,7 @@
                     <div class="player-name">{{ player.name }}</div>
                 </div>
                 <!-- Position moved below rating -->
-                <div class="player-position">{{ formattedPosition }}</div>
+                <div class="player-position" :class="{ 'position-2': formattedPosition.length === 2, 'position-3': formattedPosition.length === 3 }">{{ formattedPosition }}</div>
             </div>
 
             <!-- Middle: Photo, Nation, Club -->
@@ -400,7 +400,21 @@ $border-color: #444;
         line-height: 1;
         margin-top: 0.25rem; // Reduced space for tighter alignment
         color: $text-light;
-        margin-left: 0; // Align with the rating
+        text-align: center; // Default center alignment
+        width: 3ch; // Fixed width for consistent spacing
+        display: inline-block;
+        
+        // 2-letter positions: left align with small offset
+        &.position-2 {
+            text-align: left;
+            margin-left: 0.25rem;
+        }
+        
+        // 3-letter positions: center align
+        &.position-3 {
+            text-align: center;
+            margin-left: 0;
+        }
     }
 }
 
