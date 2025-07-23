@@ -290,22 +290,7 @@
                         </q-card>
                     </q-expansion-item>
 
-                    <!-- Protobuf API Section -->
-                    <q-expansion-item
-                        expand-separator
-                        icon="speed"
-                        label="API Performance"
-                        caption="Configure protobuf API support for faster data transfer"
-                        header-class="settings-expansion-header"
-                        class="settings-expansion"
-                        :default-opened="false"
-                    >
-                        <q-card flat class="expansion-content">
-                            <q-card-section>
-                                <ProtobufStatus />
-                            </q-card-section>
-                        </q-card>
-                    </q-expansion-item>
+
 
                     <q-expansion-item
                         expand-separator
@@ -369,12 +354,10 @@ import { computed, defineComponent, onMounted, ref } from 'vue'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useUiStore } from '@/stores/uiStore'
 import playerService from '../services/playerService'
-import ProtobufStatus from './ProtobufStatus.vue'
 
 export default defineComponent({
   name: 'SettingsModal',
   components: {
-    ProtobufStatus
   },
   props: {
     modelValue: {
