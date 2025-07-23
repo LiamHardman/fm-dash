@@ -1,3 +1,10 @@
+## [1.5.4](https://github.com/LiamHardman/fm-dash/compare/v1.5.3...v1.5.4) (2025-07-23)
+
+
+### Bug Fixes
+
+* position alignment workaround ([b08160f](https://github.com/LiamHardman/fm-dash/commit/b08160fb9f03fedf1366979b84e0eb60c95e184a))
+
 ## [1.5.3](https://github.com/LiamHardman/fm-dash/compare/v1.5.2...v1.5.3) (2025-07-23)
 
 
