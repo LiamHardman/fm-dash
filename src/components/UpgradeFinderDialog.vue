@@ -119,9 +119,10 @@
 
                 <!-- Main Content Layout -->
                 <div class="row q-col-gutter-md">
-                    <!-- Left Side - Filters -->
+                    <!-- Left Side - Filters and Results -->
                     <div class="col-12 col-lg-6">
-                        <q-card class="filters-card">
+                        <!-- Filters Card -->
+                        <q-card class="filters-card q-mb-md">
                             <q-card-section>
                                 <div class="card-header">
                                     <h3 class="card-title">
@@ -461,8 +462,8 @@
                             </q-card-section>
                         </q-card>
                         
-                        <!-- Results Section -->
-                        <div v-if="showResults" class="q-mt-md">
+                        <!-- Player Cards Section -->
+                        <div v-if="showResults && upgradePlayers.length > 0" class="q-mt-md">
                             <q-card class="results-card">
                                 <q-card-section>
                                     <div
@@ -471,129 +472,86 @@
                                             $q.dark.isActive ? 'text-grey-2' : 'text-grey-9'
                                         "
                                     >
-                                        Potential upgrades ({{ upgradePlayers.length }} players
-                                        found):
+                                        <q-icon name="sports_soccer" class="q-mr-sm" />
+                                        Potential Upgrades ({{ upgradePlayers.length }} players found)
                                     </div>
-
+                                    
                                     <!-- Player Cards Grid -->
-                                    <div v-if="upgradePlayers.length > 0" class="upgrade-players-grid">
+                                    <div class="player-cards-grid">
                                         <div 
-                                            v-for="player in processedUpgradePlayers" 
-                                            :key="player.id"
-                                            class="upgrade-player-card-container"
+                                            v-for="player in paginatedPlayers" 
+                                            :key="`${player.name}-${player.club}`"
+                                            class="player-card-container"
                                         >
-                                            <q-card 
-                                                class="upgrade-player-card"
-                                                flat 
-                                                bordered
-                                                clickable
-                                                @click="handlePlayerSelectedForDetailView(player)"
-                                            >
-                                                <q-card-section class="player-card-header">
-                                                    <div class="player-basic-info">
-                                                        <!-- Player Face -->
-                                                        <div class="player-face-section">
-                                                            <q-avatar
-                                                                size="60px"
-                                                                :color="$q.dark.isActive ? 'grey-7' : 'grey-4'"
-                                                                :text-color="$q.dark.isActive ? 'grey-4' : 'grey-7'"
-                                                            >
-                                                                <q-icon name="person" size="32px" />
-                                                            </q-avatar>
-                                                        </div>
-                                                        
-                                                        <!-- Player Details -->
-                                                        <div class="player-details">
-                                                            <div class="player-name">{{ player.name }}</div>
-                                                            <div class="player-club">{{ player.club || 'Free Agent' }}</div>
-                                                            <div class="player-position">{{ player.position }}</div>
-                                                        </div>
-                                                        
-                                                        <!-- Overall Rating -->
-                                                        <div class="player-overall">
-                                                            <div class="overall-label">Overall</div>
-                                                            <div class="overall-value" :class="getUnifiedRatingClass(player.overall, 100)">{{ player.overall }}</div>
-                                                        </div>
-                                                    </div>
-                                                </q-card-section>
-                                                
-                                                <q-card-section class="player-attributes-section">
-                                                    <div class="attributes-grid">
-                                                        <!-- Key Attributes -->
-                                                        <div class="key-attributes">
-                                                            <div 
-                                                                v-for="attr in getKeyAttributes(player)" 
-                                                                :key="attr.key"
-                                                                class="attribute-item"
-                                                            >
-                                                                <span class="attribute-name">{{ attr.name }}</span>
-                                                                                                                        <span 
-                                                            class="attribute-value"
-                                                            :class="getUnifiedRatingClass(attr.value, 100)"
-                                                        >
-                                                            {{ attr.value }}
-                                                        </span>
-                                                            </div>
-                                                        </div>
-                                                        
-                                                        <!-- Player Stats -->
-                                                        <div class="player-stats">
-                                                            <div class="stat-item">
-                                                                <span class="stat-label">Age:</span>
-                                                                <span class="stat-value">{{ player.age }}</span>
-                                                            </div>
-                                                            <div class="stat-item">
-                                                                <span class="stat-label">Value:</span>
-                                                                <span class="stat-value">{{ formatValue(player.transfer_value) }}</span>
-                                                            </div>
-                                                            <div class="stat-item">
-                                                                <span class="stat-label">Wage:</span>
-                                                                <span class="stat-value">{{ formatWage(player.wage) }}</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </q-card-section>
-                                            </q-card>
+                                            <PlayerCards 
+                                                :player="player"
+                                                :currency-symbol="currencySymbol"
+                                                @click="handleCardClick(player)"
+                                                class="clickable-card"
+                                            />
                                         </div>
                                     </div>
-
-                                    <q-banner
-                                        v-else-if="showResults && !loading && !initialLoad"
-                                        class="q-mt-md"
-                                        :class="
-                                            $q.dark.isActive
-                                                ? 'bg-blue-grey-8 text-blue-grey-2'
-                                                : 'bg-info text-white'
-                                        "
-                                    >
-                                        <template v-slot:avatar>
-                                            <q-icon name="info" />
-                                        </template>
-                                        No upgrades found matching all criteria. Try adjusting
-                                        filters.
-                                    </q-banner>
-                                    <q-banner
-                                        v-else-if="
-                                            showResults &&
-                                            !loading &&
-                                            initialLoad &&
-                                            !selectedTeamPlayer
-                                        "
-                                        class="q-mt-md"
-                                        :class="
-                                            $q.dark.isActive
-                                                ? 'bg-orange-9 text-white'
-                                                : 'bg-amber text-dark'
-                                        "
-                                    >
-                                        <template v-slot:avatar>
-                                            <q-icon name="warning" />
-                                        </template>
-                                        Please select a team, position, and a player from that team
-                                        to serve as the upgrade baseline.
-                                    </q-banner>
+                                    
+                                    <!-- Pagination Controls if there are more than 6 players -->
+                                    <div v-if="upgradePlayers.length > 6" class="text-center q-mt-md">
+                                        <div class="row justify-center items-center q-gutter-sm">
+                                            <q-btn
+                                                color="primary"
+                                                icon="chevron_left"
+                                                :disable="currentPage === 1"
+                                                @click="previousPage"
+                                                outline
+                                                size="sm"
+                                            />
+                                            <span class="text-caption q-px-md">
+                                                Page {{ currentPage }} of {{ totalPages }}
+                                            </span>
+                                            <q-btn
+                                                color="primary"
+                                                icon="chevron_right"
+                                                :disable="currentPage === totalPages"
+                                                @click="nextPage"
+                                                outline
+                                                size="sm"
+                                            />
+                                        </div>
+                                    </div>
                                 </q-card-section>
                             </q-card>
+                        </div>
+                        
+                        <!-- No Results Banners -->
+                        <div v-if="showResults && upgradePlayers.length === 0" class="q-mt-md">
+                            <q-banner
+                                v-if="!loading && !initialLoad"
+                                class="q-mt-md"
+                                :class="
+                                    $q.dark.isActive
+                                        ? 'bg-blue-grey-8 text-blue-grey-2'
+                                        : 'bg-info text-white'
+                                "
+                            >
+                                <template v-slot:avatar>
+                                    <q-icon name="info" />
+                                </template>
+                                No upgrades found matching all criteria. Try adjusting
+                                filters.
+                            </q-banner>
+                            <q-banner
+                                v-else-if="!loading && initialLoad && !selectedTeamPlayer"
+                                class="q-mt-md"
+                                :class="
+                                    $q.dark.isActive
+                                        ? 'bg-orange-9 text-white'
+                                        : 'bg-amber text-dark'
+                                "
+                            >
+                                <template v-slot:avatar>
+                                    <q-icon name="warning" />
+                                </template>
+                                Please select a team, position, and a player from that team
+                                to serve as the upgrade baseline.
+                            </q-banner>
                         </div>
                     </div>
 
@@ -684,6 +642,26 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- Player Data Table Below Both Columns -->
+                <div v-if="showResults && upgradePlayers.length > 0" class="q-mt-lg">
+                    <q-card class="table-card">
+                        <q-card-section>
+                            <div class="text-h6 q-mb-md">
+                                <q-icon name="table_chart" class="q-mr-sm" />
+                                Detailed Player Comparison
+                            </div>
+                            <PlayerDataTable
+                                :players="processedUpgradePlayers"
+                                :loading="loading"
+                                @player-selected="handlePlayerSelectedForDetailView"
+                                @team-selected="handleTeamSelected"
+                                :currency-symbol="currencySymbol"
+                                :dataset-id="datasetId"
+                            />
+                        </q-card-section>
+                    </q-card>
+                </div>
             </q-card-section>
 
             <q-inner-loading :showing="loading">
@@ -699,6 +677,8 @@
         :currency-symbol="currencySymbol"
         :dataset-id="datasetId"
     />
+    
+
 </template>
 
 <script>
@@ -708,6 +688,7 @@ import { usePlayerStore } from '@/stores/playerStore' // Corrected Import Path
 import { formatCurrency } from '@/utils/currencyUtils'
 import PlayerDataTable from './PlayerDataTable.vue'
 import PlayerDetailDialog from './PlayerDetailDialog.vue'
+import PlayerCards from './PlayerCards.vue'
 import PitchDisplay from './PitchDisplay.vue'
 import TeamLogo from './TeamLogo.vue'
 import { formations, getFormationLayout } from '@/utils/formations'
@@ -823,7 +804,7 @@ const fmMatcherToRoleKeyPrefix = {
 
 export default {
   name: 'UpgradeFinderDialog',
-  components: { PlayerDataTable, PlayerDetailDialog, PitchDisplay, TeamLogo },
+  components: { PlayerDataTable, PlayerDetailDialog, PlayerCards, PitchDisplay, TeamLogo },
   props: {
     show: { type: Boolean, default: false },
     players: { type: Array, required: true },
@@ -871,6 +852,11 @@ export default {
     const upgradePlayers = ref([])
     const playerForDetailView = ref(null)
     const showPlayerDetailDialog = ref(false)
+    const showAllCards = ref(false)
+    
+    // Pagination variables
+    const currentPage = ref(1)
+    const playersPerPage = 6
 
     const populateAllTeamNames = () => {
       if (!props.players) {
@@ -1785,6 +1771,7 @@ export default {
 
       loading.value = true
       showResults.value = true
+      currentPage.value = 1 // Reset to first page when new results are found
       initialLoad.value = false
       const baseOverall = getBaseOverallFromSelectedPlayer()
       if (baseOverall === null) {
@@ -1867,6 +1854,32 @@ export default {
       })
     })
 
+    const processedUpgradePlayersForCards = computed(() => {
+      return upgradePlayers.value.map(player => {
+        const displayOverall = getPlayerOverallForRoleOrPosition(
+          player,
+          selectedRole.value,
+          selectedPosition.value
+        )
+        return {
+          name: player.name,
+          nationality: player.nationality || 'Unknown',
+          division: player.division || 'Unknown',
+          club: player.club || 'Free Agent',
+          upperTransferValue: player.transfer_value ? parseTransferValue(player.transfer_value) : 0,
+          age: player.age,
+          overall: displayOverall || player.overall,
+          pac: player.pac || 0,
+          sho: player.sho || 0,
+          pas: player.pas || 0,
+          dri: player.dri || 0,
+          def: player.def || 0,
+          phy: player.phy || 0,
+          position: player.position || player.shortPositions?.[0] || 'Unknown'
+        }
+      })
+    })
+
     const handlePlayerSelectedForDetailView = player => {
       // Ensure we pass the original player object, not the one with potentially modified 'Overall'
       const originalPlayer = props.players.find(
@@ -1874,6 +1887,11 @@ export default {
       )
       playerForDetailView.value = originalPlayer || player
       showPlayerDetailDialog.value = true
+    }
+
+    const handleTeamSelected = _teamName => {
+      // For upgrade finder, we don't need team selection functionality
+      // but we need to provide the handler for PlayerDataTable compatibility
     }
 
     const handlePlayerSelectedFromTeam = player => {
@@ -2058,7 +2076,27 @@ export default {
       }
     }
 
+    // Get card rarity class based on overall rating
+    const getCardRarityClass = (overall) => {
+      if (overall >= 90) return 'card-rare-gold'
+      if (overall >= 85) return 'card-gold'
+      if (overall >= 80) return 'card-silver'
+      if (overall >= 75) return 'card-bronze'
+      return 'card-common'
+    }
+
     const upgradeFinderIsGoalkeeperView = computed(() => selectedPosition.value === 'GK')
+    
+    // Pagination computed properties
+    const totalPages = computed(() => {
+      return Math.ceil(processedUpgradePlayersForCards.value.length / playersPerPage)
+    })
+    
+    const paginatedPlayers = computed(() => {
+      const startIndex = (currentPage.value - 1) * playersPerPage
+      const endIndex = startIndex + playersPerPage
+      return processedUpgradePlayersForCards.value.slice(startIndex, endIndex)
+    })
 
     watch(
       () => props.show,
@@ -2098,6 +2136,29 @@ export default {
         }
       }
     )
+    
+    // Pagination methods
+    const nextPage = () => {
+      if (currentPage.value < totalPages.value) {
+        currentPage.value++
+      }
+    }
+    
+    const previousPage = () => {
+      if (currentPage.value > 1) {
+        currentPage.value--
+      }
+    }
+    
+    // Card click handler
+    const handleCardClick = (player) => {
+      // Ensure we pass the original player object, not the processed one
+      const originalPlayer = props.players.find(
+        p => p.name === player.name && p.club === player.club
+      )
+      playerForDetailView.value = originalPlayer || player
+      showPlayerDetailDialog.value = true
+    }
 
     return {
       quasar: $q,
@@ -2134,11 +2195,22 @@ export default {
       initialLoad,
       upgradePlayers,
       processedUpgradePlayers,
+      processedUpgradePlayersForCards,
+      // Pagination
+      currentPage,
+      totalPages,
+      paginatedPlayers,
+      nextPage,
+      previousPage,
+      handleCardClick,
+      showAllCards,
       findUpgrades,
       getUnifiedRatingClass,
+      getCardRarityClass,
       playerForDetailView,
       showPlayerDetailDialog,
       handlePlayerSelectedForDetailView,
+      handleTeamSelected,
       props,
       upgradeFinderIsGoalkeeperView,
       onPositionOrTeamChange,
@@ -2618,365 +2690,486 @@ export default {
     }
 }
 
-// Player cards styling
-.upgrade-players-grid {
+// Player cards section styling
+.player-cards-section {
+    .text-subtitle1 {
+        color: #374151;
+        font-weight: 600;
+        
+        .body--dark & {
+            color: #d1d5db;
+        }
+    }
+}
+
+// Embedded Player Cards Grid
+.player-cards-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5rem;
     margin-top: 1rem;
 }
 
-.upgrade-player-card-container {
-    .upgrade-player-card {
-        transition: all 0.2s ease;
+.player-card-container {
+    display: flex;
+    justify-content: center;
+}
+
+// FIFA Ultimate Team Card Design (Authentic Version)
+.fut-card {
+    width: 220px;
+    height: 320px;
+    position: relative;
+    perspective: 1000px;
+    
+    .card-background {
+        width: 100%;
+        height: 100%;
         border-radius: 12px;
+        position: relative;
         overflow: hidden;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        transition: all 0.3s ease;
         
         &:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            transform: translateY(-5px) rotateY(5deg);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+        }
+        
+        // Authentic FIFA card backgrounds
+        &.card-rare-gold {
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 50%, #ffd700 100%);
+            border: 3px solid #b8860b;
             
-            .body--dark & {
-                box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+            &::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.4) 50%, transparent 70%);
+                animation: shimmer 2s infinite;
             }
         }
         
-        .player-card-header {
-            padding: 1rem;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+        &.card-gold {
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 50%, #ffd700 100%);
+            border: 3px solid #b8860b;
+        }
+        
+        &.card-silver {
+            background: linear-gradient(135deg, #c0c0c0 0%, #e5e5e5 50%, #c0c0c0 100%);
+            border: 3px solid #808080;
+        }
+        
+        &.card-bronze {
+            background: linear-gradient(135deg, #cd7f32 0%, #daa520 50%, #cd7f32 100%);
+            border: 3px solid #8b4513;
+        }
+        
+        &.card-common {
+            background: linear-gradient(135deg, #f5f5f5 0%, #ffffff 50%, #f5f5f5 100%);
+            border: 3px solid #d3d3d3;
+        }
+    }
+    
+    // Card Header - FIFA style
+    .card-header {
+        padding: 0.75rem;
+        text-align: center;
+        background: rgba(0, 0, 0, 0.15);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        
+        .player-name {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 0.25rem;
+            text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.9);
+            line-height: 1.2;
+            letter-spacing: 0.5px;
+        }
+        
+        .player-nationality {
+            font-size: 0.7rem;
+            color: #4a4a4a;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+    }
+    
+    // Player Photo Area - FIFA style
+    .player-photo-area {
+        padding: 0.75rem;
+        text-align: center;
+        background: rgba(255, 255, 255, 0.1);
+        
+        .player-photo {
+            margin-bottom: 0.5rem;
+        }
+        
+        .player-position {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #1a1a1a;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: rgba(0, 0, 0, 0.1);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            display: inline-block;
+        }
+    }
+    
+    // Club Info - FIFA style
+    .club-info {
+        padding: 0.5rem 0.75rem;
+        text-align: center;
+        margin-bottom: 0.75rem;
+        background: rgba(255, 255, 255, 0.05);
+        
+        .club-name {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 0.25rem;
+            line-height: 1.2;
+            text-shadow: 1px 1px 1px rgba(255, 255, 255, 0.8);
+        }
+        
+        .division {
+            font-size: 0.65rem;
+            color: #4a4a4a;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+    }
+    
+    // Overall Rating - FIFA style
+    .overall-rating {
+        text-align: center;
+        margin-bottom: 0.75rem;
+        
+        .rating-number {
+            display: inline-block;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            font-size: 1.25rem;
+            font-weight: 800;
+            line-height: 45px;
+            text-align: center;
+            border: 3px solid #1a1a1a;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
             
-            .body--dark & {
-                background: linear-gradient(135deg, #4c51bf 0%, #553c9a 100%);
+            &.rating-tier-6 {
+                background: linear-gradient(135deg, #7e57c2 0%, #9575cd 100%);
+                color: white;
+                border-color: #5e35b1;
             }
             
-            .player-basic-info {
+            &.rating-tier-5 {
+                background: linear-gradient(135deg, #26a69a 0%, #4db6ac 100%);
+                color: white;
+                border-color: #00897b;
+            }
+            
+            &.rating-tier-4 {
+                background: linear-gradient(135deg, #66bb6a 0%, #81c784 100%);
+                color: white;
+                border-color: #4caf50;
+            }
+            
+            &.rating-tier-3 {
+                background: linear-gradient(135deg, #42a5f5 0%, #64b5f6 100%);
+                color: white;
+                border-color: #2196f3;
+            }
+            
+            &.rating-tier-2 {
+                background: linear-gradient(135deg, #ffa726 0%, #ffb74d 100%);
+                color: #333333;
+                border-color: #f57c00;
+            }
+            
+            &.rating-tier-1 {
+                background: linear-gradient(135deg, #ef5350 0%, #e57373 100%);
+                color: white;
+                border-color: #d32f2f;
+            }
+            
+            &.rating-na {
+                background: linear-gradient(135deg, #bdbdbd 0%, #e0e0e0 100%);
+                color: #424242;
+                border-color: #757575;
+            }
+        }
+    }
+    
+    // Player Stats - FIFA style with proper spacing
+    .player-stats {
+        padding: 0.5rem 0.75rem;
+        margin-bottom: 0.75rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 6px;
+        
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            
+            &:last-child {
+                margin-bottom: 0;
+            }
+            
+            .stat-item {
                 display: flex;
+                flex-direction: column;
                 align-items: center;
-                gap: 1rem;
+                flex: 1;
+                margin: 0 0.25rem;
                 
-                .player-face-section {
-                    flex-shrink: 0;
+                &:first-child {
+                    margin-left: 0;
                 }
                 
-                .player-details {
-                    flex: 1;
-                    
-                    .player-name {
-                        font-size: 1.125rem;
-                        font-weight: 600;
-                        margin: 0 0 0.25rem 0;
-                        line-height: 1.2;
-                    }
-                    
-                    .player-club {
-                        font-size: 0.875rem;
-                        opacity: 0.9;
-                        margin: 0 0 0.125rem 0;
-                    }
-                    
-                    .player-position {
-                        font-size: 0.75rem;
-                        opacity: 0.8;
-                        margin: 0;
-                        text-transform: uppercase;
-                        letter-spacing: 0.5px;
-                    }
+                &:last-child {
+                    margin-right: 0;
                 }
                 
-                .player-overall {
+                .stat-label {
+                    font-size: 0.6rem;
+                    font-weight: 700;
+                    color: #1a1a1a;
+                    margin-bottom: 0.25rem;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    text-shadow: 1px 1px 1px rgba(255, 255, 255, 0.8);
+                }
+                
+                .stat-value {
+                    font-size: 0.85rem;
+                    font-weight: 800;
+                    padding: 0.25rem 0.5rem;
+                    border-radius: 4px;
+                    min-width: 2rem;
                     text-align: center;
-                    flex-shrink: 0;
+                    border: 2px solid rgba(0, 0, 0, 0.2);
+                    text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.3);
                     
-                    .overall-label {
-                        font-size: 0.75rem;
-                        opacity: 0.8;
-                        margin: 0 0 0.25rem 0;
-                        text-transform: uppercase;
-                        letter-spacing: 0.5px;
+                    &.rating-tier-6 {
+                        background: linear-gradient(135deg, #7e57c2 0%, #9575cd 100%);
+                        color: white;
+                        border-color: #5e35b1;
                     }
                     
-                    .overall-value {
-                        font-size: 1.5rem;
-                        font-weight: 700;
-                        margin: 0;
-                        line-height: 1;
-                        padding: 0.25rem 0.5rem;
-                        border-radius: 6px;
-                        min-width: 3rem;
-                        text-align: center;
-                        
-                        &.rating-tier-6 {
-                            background-color: #7e57c2;
-                            color: white !important;
-                            font-weight: 700;
-                            border: 1px solid #5e35b1;
-                            
-                            .body--dark & {
-                                background-color: #9575cd;
-                                color: white !important;
-                                border-color: #7e57c2;
-                            }
-                        }
-                        
-                        &.rating-tier-5 {
-                            background-color: #26a69a;
-                            color: white !important;
-                            
-                            .body--dark & {
-                                background-color: #00897b;
-                                color: white !important;
-                            }
-                        }
-                        
-                        &.rating-tier-4 {
-                            background-color: #66bb6a;
-                            color: white !important;
-                            
-                            .body--dark & {
-                                background-color: #4caf50;
-                                color: white !important;
-                            }
-                        }
-                        
-                        &.rating-tier-3 {
-                            background-color: #42a5f5;
-                            color: white !important;
-                            
-                            .body--dark & {
-                                background-color: #2196f3;
-                                color: white !important;
-                            }
-                        }
-                        
-                        &.rating-tier-2 {
-                            background-color: #ffa726;
-                            color: #333333 !important;
-                            
-                            .body--dark & {
-                                background-color: #fb8c00;
-                                color: white !important;
-                            }
-                        }
-                        
-                        &.rating-tier-1 {
-                            background-color: #ef5350;
-                            color: white !important;
-                            
-                            .body--dark & {
-                                background-color: #e53935;
-                                color: white !important;
-                            }
-                        }
-                        
-                        &.rating-na {
-                            background-color: #bdbdbd;
-                            color: #424242 !important;
-                            
-                            .body--dark & {
-                                background-color: #424242;
-                                color: #bdbdbd !important;
-                            }
-                        }
+                    &.rating-tier-5 {
+                        background: linear-gradient(135deg, #26a69a 0%, #4db6ac 100%);
+                        color: white;
+                        border-color: #00897b;
+                    }
+                    
+                    &.rating-tier-4 {
+                        background: linear-gradient(135deg, #66bb6a 0%, #81c784 100%);
+                        color: white;
+                        border-color: #4caf50;
+                    }
+                    
+                    &.rating-tier-3 {
+                        background: linear-gradient(135deg, #42a5f5 0%, #64b5f6 100%);
+                        color: white;
+                        border-color: #2196f3;
+                    }
+                    
+                    &.rating-tier-2 {
+                        background: linear-gradient(135deg, #ffa726 0%, #ffb74d 100%);
+                        color: #333333;
+                        border-color: #f57c00;
+                    }
+                    
+                    &.rating-tier-1 {
+                        background: linear-gradient(135deg, #ef5350 0%, #e57373 100%);
+                        color: white;
+                        border-color: #d32f2f;
+                    }
+                    
+                    &.rating-na {
+                        background: linear-gradient(135deg, #bdbdbd 0%, #e0e0e0 100%);
+                        color: #424242;
+                        border-color: #757575;
                     }
                 }
             }
         }
+    }
+    
+    // Additional Info - FIFA style
+    .additional-info {
+        padding: 0.5rem 0.75rem;
+        background: rgba(0, 0, 0, 0.1);
+        border-radius: 6px;
+        margin: 0 0.75rem;
         
-        .player-attributes-section {
-            padding: 1rem;
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.25rem;
             
-            .attributes-grid {
-                display: grid;
-                grid-template-columns: 1fr auto;
-                gap: 1rem;
-                align-items: start;
-                
-                .key-attributes {
-                    display: grid;
-                    grid-template-columns: repeat(2, 1fr);
-                    gap: 0.5rem;
-                    
-                    .attribute-item {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        padding: 0.25rem 0;
-                        
-                        .attribute-name {
-                            font-size: 0.75rem;
-                            color: #6b7280;
-                            font-weight: 500;
-                            
-                            .body--dark & {
-                                color: #9ca3af;
-                            }
-                        }
-                        
-                        .attribute-value {
-                            font-size: 0.875rem;
-                            font-weight: 600;
-                            padding: 0.125rem 0.375rem;
-                            border-radius: 4px;
-                            min-width: 2rem;
-                            text-align: center;
-                            
-                            &.rating-tier-6 {
-                                background-color: #7e57c2;
-                                color: white !important;
-                                font-weight: 700;
-                                border: 1px solid #5e35b1;
-                                
-                                .body--dark & {
-                                    background-color: #9575cd;
-                                    color: white !important;
-                                    border-color: #7e57c2;
-                                }
-                            }
-                            
-                            &.rating-tier-5 {
-                                background-color: #26a69a;
-                                color: white !important;
-                                
-                                .body--dark & {
-                                    background-color: #00897b;
-                                    color: white !important;
-                                }
-                            }
-                            
-                            &.rating-tier-4 {
-                                background-color: #66bb6a;
-                                color: white !important;
-                                
-                                .body--dark & {
-                                    background-color: #4caf50;
-                                    color: white !important;
-                                }
-                            }
-                            
-                            &.rating-tier-3 {
-                                background-color: #42a5f5;
-                                color: white !important;
-                                
-                                .body--dark & {
-                                    background-color: #2196f3;
-                                    color: white !important;
-                                }
-                            }
-                            
-                            &.rating-tier-2 {
-                                background-color: #ffa726;
-                                color: #333333 !important;
-                                
-                                .body--dark & {
-                                    background-color: #fb8c00;
-                                    color: white !important;
-                                }
-                            }
-                            
-                            &.rating-tier-1 {
-                                background-color: #ef5350;
-                                color: white !important;
-                                
-                                .body--dark & {
-                                    background-color: #e53935;
-                                    color: white !important;
-                                }
-                            }
-                            
-                            &.rating-na {
-                                background-color: #bdbdbd;
-                                color: #424242 !important;
-                                
-                                .body--dark & {
-                                    background-color: #424242;
-                                    color: #bdbdbd !important;
-                                }
-                            }
-                        }
-                    }
+            &:last-child {
+                margin-bottom: 0;
+            }
+            
+            .info-label {
+                font-size: 0.65rem;
+                color: #4a4a4a;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.25px;
+            }
+            
+            .info-value {
+                font-size: 0.65rem;
+                color: #1a1a1a;
+                font-weight: 700;
+                text-shadow: 1px 1px 1px rgba(255, 255, 255, 0.8);
+            }
+        }
+    }
+}
+
+// Shimmer animation for rare gold cards
+@keyframes shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+// Dark mode adjustments for embedded cards
+.body--dark {
+    .fut-card {
+        .card-background {
+            &.card-rare-gold {
+                background: linear-gradient(135deg, #ffd700 0%, #ffed4e 50%, #ffd700 100%);
+            }
+            
+            &.card-gold {
+                background: linear-gradient(135deg, #ffd700 0%, #ffed4e 50%, #ffd700 100%);
+            }
+            
+            &.card-silver {
+                background: linear-gradient(135deg, #c0c0c0 0%, #e5e5e5 50%, #c0c0c0 100%);
+            }
+            
+            &.card-bronze {
+                background: linear-gradient(135deg, #cd7f32 0%, #daa520 50%, #cd7f32 100%);
+            }
+            
+            &.card-common {
+                background: linear-gradient(135deg, #f5f5f5 0%, #ffffff 50%, #f5f5f5 100%);
+            }
+        }
+        
+        .card-header {
+            .player-name {
+                color: #1a1a1a;
+            }
+            
+            .player-nationality {
+                color: #4a4a4a;
+            }
+        }
+        
+        .player-photo-area {
+            .player-position {
+                color: #1a1a1a;
+            }
+        }
+        
+        .club-info {
+            .club-name {
+                color: #1a1a1a;
+            }
+            
+            .division {
+                color: #4a4a4a;
+            }
+        }
+        
+        .player-stats {
+            .stat-item {
+                .stat-label {
+                    color: #1a1a1a;
+                }
+            }
+        }
+        
+        .additional-info {
+            .info-row {
+                .info-label {
+                    color: #4a4a4a;
                 }
                 
-                .player-stats {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 0.5rem;
-                    padding-left: 1rem;
-                    border-left: 1px solid #e5e7eb;
-                    
-                    .body--dark & {
-                        border-left-color: #374151;
-                    }
-                    
-                    .stat-item {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        gap: 0.5rem;
-                        
-                        .stat-label {
-                            font-size: 0.75rem;
-                            color: #6b7280;
-                            
-                            .body--dark & {
-                                color: #9ca3af;
-                            }
-                        }
-                        
-                        .stat-value {
-                            font-size: 0.875rem;
-                            font-weight: 600;
-                            color: #374151;
-                            
-                            .body--dark & {
-                                color: #d1d5db;
-                            }
-                        }
-                    }
+                .info-value {
+                    color: #1a1a1a;
                 }
             }
         }
     }
 }
 
-// Responsive design for player cards
+// Player Cards Grid Styling
+.player-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    padding: 1rem;
+}
+
+.player-card-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+// Responsive design for embedded cards
 @media (max-width: 768px) {
-    .upgrade-players-grid {
-        grid-template-columns: 1fr;
+    .player-cards-grid {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem;
     }
     
-    .upgrade-player-card-container {
-        .upgrade-player-card {
-            .player-card-header {
-                .player-basic-info {
-                    .player-details {
-                        .player-name {
-                            font-size: 1rem;
-                        }
-                    }
-                    
-                    .player-overall {
-                        .overall-value {
-                            font-size: 1.25rem;
-                        }
-                    }
-                }
+    .fut-card {
+        width: 180px;
+        height: 260px;
+        
+        .card-header {
+            .player-name {
+                font-size: 0.9rem;
             }
-            
-            .player-attributes-section {
-                .attributes-grid {
-                    grid-template-columns: 1fr;
-                    gap: 0.75rem;
-                    
-                    .player-stats {
-                        padding-left: 0;
-                        border-left: none;
-                        border-top: 1px solid #e5e7eb;
-                        padding-top: 0.75rem;
-                        
-                        .body--dark & {
-                            border-top-color: #374151;
-                        }
+        }
+        
+        .overall-rating {
+            .rating-number {
+                width: 40px;
+                height: 40px;
+                font-size: 1.1rem;
+                line-height: 40px;
+            }
+        }
+        
+        .player-stats {
+            .stat-row {
+                .stat-item {
+                    .stat-value {
+                        font-size: 0.8rem;
                     }
                 }
             }
