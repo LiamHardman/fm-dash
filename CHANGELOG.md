@@ -1,3 +1,10 @@
+## [1.4.5](https://github.com/LiamHardman/fm-dash/compare/v1.4.4...v1.4.5) (2025-07-23)
+
+
+### Bug Fixes
+
+* removed protobufstatus component ([99e7135](https://github.com/LiamHardman/fm-dash/commit/99e71358e3f0932c5673150cc7046777086eb104))
+
 ## [1.4.4](https://github.com/LiamHardman/fm-dash/compare/v1.4.3...v1.4.4) (2025-07-23)
 
 
