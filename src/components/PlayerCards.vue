@@ -314,8 +314,9 @@ $border-color: #444;
         font-size: 1.25rem;
         font-weight: 700;
         line-height: 1;
-        margin-top: 0.5rem; // Add space below the rating/name row
+        margin-top: 0.25rem; // Reduced space for tighter alignment
         color: $text-light;
+        margin-left: 0; // Align with the rating
     }
 }
 
@@ -352,7 +353,7 @@ $border-color: #444;
     }
 
     .nation-flag {
-        top: 35px;
+        top: 25px; // Moved up to align with rating
         left: 10px;
         width: 50px;
         height: 35px;
@@ -367,7 +368,7 @@ $border-color: #444;
     }
 
     .club-logo {
-        top: 80px;
+        top: 70px; // Moved up to align with position
         left: 10px;
         width: 50px;
         height: 50px;
