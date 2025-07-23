@@ -1,3 +1,10 @@
+## [1.5.3](https://github.com/LiamHardman/fm-dash/compare/v1.5.2...v1.5.3) (2025-07-23)
+
+
+### Bug Fixes
+
+* position logic for player cards ([9599a0c](https://github.com/LiamHardman/fm-dash/commit/9599a0c0c144bb939b7973c0be3712c0e7de21e1))
+
 ## [1.5.2](https://github.com/LiamHardman/fm-dash/compare/v1.5.1...v1.5.2) (2025-07-23)
 
 
