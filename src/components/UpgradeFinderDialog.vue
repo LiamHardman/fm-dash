@@ -486,6 +486,10 @@
                                             <PlayerCards 
                                                 :player="player"
                                                 :currency-symbol="currencySymbol"
+                                                :nation-flag-url="getFlagUrl(player.nationality_iso || player.nationality_fifa_code)"
+                                                :club-image-url="getTeamLogoUrl(player.club)"
+                                                :player-face-url="getPlayerFaceUrl(player.name, player.club)"
+                                                :dataset-id="currentDatasetId"
                                                 @click="handleCardClick(player)"
                                                 class="clickable-card"
                                             />
@@ -693,6 +697,7 @@ import PitchDisplay from './PitchDisplay.vue'
 import TeamLogo from './TeamLogo.vue'
 import { formations, getFormationLayout } from '@/utils/formations'
 import { formationCache } from '@/utils/formationCache'
+import { getFlagUrl, getTeamLogoUrl, getPlayerFaceUrl } from '@/utils/imageOptimization'
 
 // From PlayerFilters.vue for consistency
 const AGE_SLIDER_MIN = 15
@@ -857,6 +862,11 @@ export default {
     // Pagination variables
     const currentPage = ref(1)
     const playersPerPage = 6
+
+    // Computed property for safe access to currentDatasetId
+    const currentDatasetId = computed(() => {
+      return playerStore?.currentDatasetId || null
+    })
 
     const populateAllTeamNames = () => {
       if (!props.players) {
@@ -1862,6 +1872,7 @@ export default {
           selectedPosition.value
         )
         return {
+          ...player, // Keep all original player data including nationality_iso
           name: player.name,
           nationality: player.nationality || 'Unknown',
           division: player.division || 'Unknown',
@@ -2215,6 +2226,10 @@ export default {
       upgradeFinderIsGoalkeeperView,
       onPositionOrTeamChange,
       getPlayerOverallForRoleOrPosition,
+      // Image utility functions
+      getFlagUrl,
+      getTeamLogoUrl,
+      getPlayerFaceUrl,
       // Formation-related returns
       selectedFormationKey,
       formationOptions,

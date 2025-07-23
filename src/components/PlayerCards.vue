@@ -1,30 +1,36 @@
 <template>
     <div class="fifa-card" @click="handleCardClick">
         <div class="card-content">
-            <!-- Header: Rating, Position, Name -->
+            <!-- Header: Rating, Name -->
             <div class="card-top">
                 <div class="player-details">
                     <div class="player-rating">{{ player.overall }}</div>
-                    <div class="player-position">{{ player.position }}</div>
                     <div class="player-name">{{ player.name }}</div>
                 </div>
+                <!-- Position moved below rating -->
+                <div class="player-position">{{ formattedPosition }}</div>
             </div>
 
             <!-- Middle: Photo, Nation, Club -->
             <div class="card-middle">
-                <div class="nation-placeholder">
-                    <!-- Simple box for nation flag -->
+                <div class="nation-flag" v-if="effectiveNationFlagUrl">
+                    <img :src="effectiveNationFlagUrl" alt="Nation Flag" />
                 </div>
-                <div class="club-placeholder">
-                    <!-- Simple circle for club logo -->
+                <div class="club-logo" v-if="player.club && player.club !== '-'">
+                    <TeamLogo 
+                        :team-name="player.club"
+                        :size="32"
+                        class="player-club-logo"
+                    />
                 </div>
                 <div class="player-photo">
                     <q-avatar
-                        size="100px"
-                        :color="$q.dark.isActive ? 'grey-8' : 'grey-5'"
+                        size="150px"
+                        :color="'transparent'"
                         :text-color="$q.dark.isActive ? 'grey-5' : 'grey-8'"
                     >
-                        <q-icon name="person" size="60px" />
+                        <img v-if="effectivePlayerFaceUrl" :src="effectivePlayerFaceUrl" alt="Player Face" />
+                        <q-icon v-else name="person" size="90px" />
                     </q-avatar>
                 </div>
             </div>
@@ -46,10 +52,13 @@
 
 <script>
 import { useQuasar } from 'quasar'
-import { defineComponent } from 'vue'
+import { defineComponent, ref, computed, onMounted } from 'vue'
+import { fetchFullPlayerStats } from '../services/playerService'
+import TeamLogo from './TeamLogo.vue'
 
 export default defineComponent({
   name: 'PlayerCards',
+  components: { TeamLogo },
   props: {
     player: {
       type: Object,
@@ -58,19 +67,150 @@ export default defineComponent({
     currencySymbol: {
       type: String,
       default: '$'
+    },
+    clubImageUrl: {
+      type: String,
+      default: null
+    },
+    nationFlagUrl: {
+      type: String,
+      default: null
+    },
+    playerFaceUrl: {
+      type: String,
+      default: null
+    },
+    datasetId: {
+      type: String,
+      default: null
     }
   },
   emits: ['click'],
   setup(props, { emit }) {
     const qInstance = useQuasar()
+    const detailedPlayerData = ref(null)
+    const isLoadingDetailedData = ref(false)
+
+    // Format position to show only the first position
+    const formattedPosition = computed(() => {
+      if (!props.player.position) return ''
+      
+      // Split by comma and take the first position
+      const positions = props.player.position.split(',').map(pos => pos.trim())
+      const firstPosition = positions[0]
+      
+      // Extract the position type (e.g., "AM", "M", "D") and side (e.g., "R", "C", "L")
+      const match = firstPosition.match(/^([A-Z]+)\s*\(([A-Z]+)\)$/)
+      if (match) {
+        const positionType = match[1]
+        const side = match[2]
+        return positionType + side
+      }
+      
+      // If no parentheses, just return the first position as is
+      return firstPosition
+    })
+
+    // Check if we need to fetch detailed data
+    const needsDetailedData = computed(() => {
+      const needsData = !props.player.nationality_iso && props.datasetId && props.player.uid
+      console.log('PlayerCards needsDetailedData check:', {
+        playerName: props.player.name,
+        hasNationalityIso: !!props.player.nationality_iso,
+        hasDatasetId: !!props.datasetId,
+        hasUid: !!props.player.uid,
+        needsData
+      })
+      return needsData
+    })
+
+    // Fetch detailed player data if nationality_iso is missing
+    const fetchDetailedData = async () => {
+      if (!needsDetailedData.value) return
+      
+      isLoadingDetailedData.value = true
+      try {
+        const result = await fetchFullPlayerStats(props.datasetId, props.player.uid)
+        if (result.data && result.data.player) {
+          detailedPlayerData.value = result.data.player
+        }
+      } catch (error) {
+        console.error('Failed to fetch detailed player data:', error)
+      } finally {
+        isLoadingDetailedData.value = false
+      }
+    }
+
+    // Use detailed data if available, otherwise use props
+    const playerData = computed(() => {
+      return detailedPlayerData.value || props.player
+    })
+
+    // Generate image URLs based on available data
+    const effectiveNationFlagUrl = computed(() => {
+      if (props.nationFlagUrl) {
+        console.log('PlayerCards using props.nationFlagUrl:', props.nationFlagUrl)
+        return props.nationFlagUrl
+      }
+      if (playerData.value.nationality_iso) {
+        const flagUrl = `https://flagcdn.com/w80/${playerData.value.nationality_iso.toLowerCase()}.png`
+        console.log('PlayerCards generated flag URL:', flagUrl)
+        return flagUrl
+      }
+      console.log('PlayerCards no flag URL available')
+      return null
+    })
+
+    const effectiveClubImageUrl = computed(() => {
+      if (props.clubImageUrl) {
+        console.log('PlayerCards using props.clubImageUrl:', props.clubImageUrl, 'for player:', props.player.name)
+        return props.clubImageUrl
+      }
+      // Generate club logo URL using the same approach as TeamLogo component
+      if (props.player.club && props.player.club !== '-') {
+        // The TeamLogo component handles this via useTeamLogosBackend
+        // For now, we'll return null and let the TeamLogo component handle it
+        console.log('PlayerCards: club logo will be handled by TeamLogo component for player:', props.player.name, 'club:', props.player.club)
+        return null
+      }
+      console.log('PlayerCards no club logo URL available for player:', props.player.name, 'club:', props.player.club)
+      return null
+    })
+
+    const effectivePlayerFaceUrl = computed(() => {
+      if (props.playerFaceUrl) {
+        console.log('PlayerCards using props.playerFaceUrl:', props.playerFaceUrl, 'for player:', props.player.name)
+        return props.playerFaceUrl
+      }
+      // Generate player face URL using the same approach as PlayerDetailDialog
+      const playerUID = props.player.UID || props.player.uid
+      if (playerUID) {
+        const faceUrl = `/api/faces?uid=${encodeURIComponent(playerUID)}`
+        console.log('PlayerCards generated face URL:', faceUrl, 'for player:', props.player.name, 'UID:', playerUID)
+        return faceUrl
+      }
+      console.log('PlayerCards no player face URL available for player:', props.player.name, 'UID not found')
+      return null
+    })
 
     const handleCardClick = () => {
       emit('click')
     }
 
+    onMounted(() => {
+      if (needsDetailedData.value) {
+        fetchDetailedData()
+      }
+    })
+
     return {
       qInstance,
-      handleCardClick
+      handleCardClick,
+      effectiveNationFlagUrl,
+      effectiveClubImageUrl,
+      effectivePlayerFaceUrl,
+      isLoadingDetailedData,
+      formattedPosition
     }
   }
 })
@@ -147,6 +287,7 @@ $border-color: #444;
     position: relative;
     z-index: 4;
     padding: 0.5rem 1rem;
+    
     .player-details {
         display: flex;
         align-items: baseline;
@@ -160,12 +301,6 @@ $border-color: #444;
         line-height: 1;
     }
 
-    .player-position {
-        font-size: 1.25rem;
-        font-weight: 700;
-        line-height: 1;
-    }
-
     .player-name {
         font-size: 1.25rem;
         font-weight: 500;
@@ -173,6 +308,14 @@ $border-color: #444;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+    }
+
+    .player-position {
+        font-size: 1.25rem;
+        font-weight: 700;
+        line-height: 1;
+        margin-top: 0.5rem; // Add space below the rating/name row
+        color: $text-light;
     }
 }
 
@@ -186,31 +329,61 @@ $border-color: #444;
     z-index: 2; // Below the gold line but above the bg
 
     .player-photo {
+        position: absolute;
+        right: 10px;
+        top: 35px;
+        
         .q-avatar {
-            border: 3px solid rgba(255,255,255,0.1);
+            border: none;
+            background: transparent;
+            
+            img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
         }
     }
 
-    .nation-placeholder, .club-placeholder {
+    .nation-flag, .club-logo {
         position: absolute;
-        background-color: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        border: none;
+        box-shadow: none;
     }
 
-    .nation-placeholder {
-        top: 25px;
-        left: 15px;
+    .nation-flag {
+        top: 35px;
+        left: 10px;
         width: 50px;
         height: 35px;
         border-radius: 4px;
+        overflow: hidden;
+        
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
     }
 
-    .club-placeholder {
-        top: 70px;
-        left: 15px;
+    .club-logo {
+        top: 80px;
+        left: 10px;
         width: 50px;
         height: 50px;
-        border-radius: 50%;
+        border-radius: 0;
+        overflow: hidden;
+        background: transparent;
+        
+        :deep(.team-logo) {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        
+        :deep(.team-logo-placeholder) {
+            display: none;
+        }
     }
 }
 
