@@ -61,6 +61,10 @@ spec:
             - name: OTEL_EXPORTER_OTLP_INSECURE
               value: "true"
 
+            # Image API Configuration
+            - name: IMAGE_API_URL
+              value: "https://sortitoutsi.b-cdn.net/uploads"
+
             # S3-Compatible Storage Configuration (from secrets)
             - name: S3_ENDPOINT
               valueFrom:
