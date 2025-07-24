@@ -4,8 +4,8 @@
         <div class="card-content">
             <div class="card-header">
                 <div class="player-rating">{{ player.overall }}</div>
-                <div class="player-position">{{ formattedPosition }}</div>
-                <div class="player-name">{{ player.name }}</div>
+                <div class="player-position" :style="positionStyle">{{ formattedPosition }}</div>
+                <div class="player-name">{{ formattedPlayerName }}</div>
                 <div class="player-vitals-container">
                     <div class="player-vitals">{{ playerVitals }}</div>
                 </div>
@@ -53,7 +53,7 @@ import TeamLogo from './TeamLogo.vue'
 // Helper function to format currency
 const formatCurrency = (value, symbol) => {
   if (!value || value === 'N/A') return 'N/A'
-  
+
   // Handle transfer value ranges like "£127M - £381M" - extract upper bound
   if (typeof value === 'string' && value.includes(' - ')) {
     const parts = value.split(' - ')
@@ -61,7 +61,7 @@ const formatCurrency = (value, symbol) => {
       value = parts[parts.length - 1].trim() // Take the upper bound
     }
   }
-  
+
   // Check if the value already has proper formatting (like "£381M" or "£150K")
   if (typeof value === 'string') {
     const hasCurrencySymbol = /[£$€¥]/.test(value)
@@ -71,17 +71,21 @@ const formatCurrency = (value, symbol) => {
       return value
     }
   }
-  
+
   // Remove any existing currency symbols and "p/w" or similar suffixes
   let cleanValue = value
   if (typeof cleanValue === 'string') {
-    cleanValue = cleanValue.replace(/[£$€¥]/g, '').replace(/\s*p\/w\s*$/i, '').replace(/\s*per week\s*$/i, '').replace(/,/g, '')
+    cleanValue = cleanValue
+      .replace(/[£$€¥]/g, '')
+      .replace(/\s*p\/w\s*$/i, '')
+      .replace(/\s*per week\s*$/i, '')
+      .replace(/,/g, '')
   }
-  
+
   // Convert to number
   const numValue = parseFloat(cleanValue)
   if (isNaN(numValue)) return 'N/A'
-  
+
   if (numValue >= 1000000) {
     return `${symbol}${(numValue / 1000000).toFixed(1).replace('.0', '')}M`
   }
@@ -128,67 +132,138 @@ export default defineComponent({
 
     // Format position to show only the first position
     const formattedPosition = computed(() => {
-        if (!props.player.position) return ''
-        let bestPosition = null
-        let bestScore = 0
+      if (!props.player.position) return ''
+      let bestPosition = null
+      let bestScore = 0
 
-        if (props.player.roleSpecificOveralls) {
-            const roles = Array.isArray(props.player.roleSpecificOveralls)
-                ? props.player.roleSpecificOveralls
-                : Object.entries(props.player.roleSpecificOveralls).map(([roleName, score]) => ({ roleName, score }))
+      if (props.player.roleSpecificOveralls) {
+        const roles = Array.isArray(props.player.roleSpecificOveralls)
+          ? props.player.roleSpecificOveralls
+          : Object.entries(props.player.roleSpecificOveralls).map(([roleName, score]) => ({
+              roleName,
+              score
+            }))
 
-            for (const rso of roles) {
-                const score = typeof rso.score === 'number' ? rso.score : rso[1]
-                const roleName = rso.roleName || rso[0]
-                if (score > bestScore) {
-                    bestScore = score
-                    const positionMatch = roleName.match(/^([A-Z]+)\s*-/)
-                    if (positionMatch) {
-                        bestPosition = positionMatch[1]
-                    }
-                }
-            }
-        }
-
-        if (!bestPosition && props.player.best_role_overall) {
-            const positionMatch = props.player.best_role_overall.match(/^([A-Z]+)\s*-/)
+        for (const rso of roles) {
+          const score = typeof rso.score === 'number' ? rso.score : rso[1]
+          const roleName = rso.roleName || rso[0]
+          if (score > bestScore) {
+            bestScore = score
+            const positionMatch = roleName.match(/^([A-Z]+)\s*-/)
             if (positionMatch) {
-                bestPosition = positionMatch[1]
+              bestPosition = positionMatch[1]
             }
+          }
         }
+      }
 
-        if (!bestPosition) {
-            const positions = props.player.position.split(',').map(pos => pos.trim())
-            const firstPosition = positions[0]
-            const match = firstPosition.match(/^([A-Z]+)\s*\(([A-Z]+)\)$/)
-            bestPosition = match ? match[1] + match[2] : firstPosition
+      if (!bestPosition && props.player.best_role_overall) {
+        const positionMatch = props.player.best_role_overall.match(/^([A-Z]+)\s*-/)
+        if (positionMatch) {
+          bestPosition = positionMatch[1]
         }
+      }
 
-        const fmToFifaPositionMap = { GK: 'GK', SW: 'SW', DC: 'CB', DR: 'RB', DL: 'LB', WBR: 'RWB', WBL: 'LWB', DM: 'CDM', MC: 'CM', MR: 'RM', ML: 'LM', AMC: 'CAM', AMR: 'RW', AML: 'LW', ST: 'ST', 'STC': 'ST' }
+      if (!bestPosition) {
+        const positions = props.player.position.split(',').map(pos => pos.trim())
+        const firstPosition = positions[0]
+        const match = firstPosition.match(/^([A-Z]+)\s*\(([A-Z]+)\)$/)
+        bestPosition = match ? match[1] + match[2] : firstPosition
+      }
 
-        // Added CF as a direct mapping for striker roles
-        if (bestPosition.includes('ST')) return 'ST'
-        if (bestPosition.includes('AM')) {
-             if(bestPosition.includes('C')) return 'CF' // Treat central AM as CF
-        }
+      const fmToFifaPositionMap = {
+        GK: 'GK',
+        SW: 'SW',
+        DC: 'CB',
+        DR: 'RB',
+        DL: 'LB',
+        WBR: 'RWB',
+        WBL: 'LWB',
+        DM: 'CDM',
+        MC: 'CM',
+        MR: 'RM',
+        ML: 'LM',
+        AMC: 'CAM',
+        AMR: 'RW',
+        AML: 'LW',
+        ST: 'ST',
+        STC: 'ST'
+      }
 
+      // Added CF as a direct mapping for striker roles
+      if (bestPosition.includes('ST')) return 'ST'
+      if (bestPosition.includes('AM')) {
+        if (bestPosition.includes('C')) return 'CF' // Treat central AM as CF
+      }
 
-        return fmToFifaPositionMap[bestPosition] || bestPosition
+      return fmToFifaPositionMap[bestPosition] || bestPosition
     })
+
+    // Helper function to format player name
+    const formatPlayerName = fullName => {
+      if (!fullName) return ''
+
+      const nameParts = fullName.trim().split(' ')
+
+      // If only one name, return as is (e.g., "Ronaldinho")
+      if (nameParts.length === 1) {
+        return fullName
+      }
+
+      // For multiple names, return the last name
+      // Handle cases like "Frenkie de Jong" -> "De Jong"
+      const lastName = nameParts[nameParts.length - 1]
+
+      // Check if the last name starts with "de", "van", "von", etc. and include the previous part
+      const lowercaseLastName = lastName.toLowerCase()
+      if (
+        nameParts.length >= 2 &&
+        ['de', 'van', 'von', 'del', 'da', 'di', 'du', 'le', 'la'].includes(lowercaseLastName)
+      ) {
+        const secondToLast = nameParts[nameParts.length - 2]
+        return `${secondToLast} ${lastName}`
+      }
+
+      return lastName
+    }
 
     // New computed property for player vitals
     const playerVitals = computed(() => {
-        const age = props.player.age || 'N/A'
-        
-        // Check multiple possible property names for transfer value - prioritize numeric amount
-        const transferValue = props.player.transferValueAmount || props.player.transfer_value || props.player.value || props.player.market_value
-        const formattedValue = transferValue ? formatCurrency(transferValue, props.currencySymbol) : 'N/A'
-        
-        // Check multiple possible property names for salary/wage - prioritize numeric amount
-        const salary = props.player.wageAmount || props.player.wage || props.player.salary || props.player.weekly_wage
-        const formattedSalary = salary ? formatCurrency(salary, props.currencySymbol) : 'N/A'
-        
-        return `${age} | ${formattedValue} | ${formattedSalary}`
+      const age = props.player.age || 'N/A'
+
+      // Check multiple possible property names for transfer value - prioritize numeric amount
+      const transferValue =
+        props.player.transferValueAmount ||
+        props.player.transfer_value ||
+        props.player.value ||
+        props.player.market_value
+      const formattedValue = transferValue
+        ? formatCurrency(transferValue, props.currencySymbol)
+        : 'N/A'
+
+      // Check multiple possible property names for salary/wage - prioritize numeric amount
+      const salary =
+        props.player.wageAmount ||
+        props.player.wage ||
+        props.player.salary ||
+        props.player.weekly_wage
+      const formattedSalary = salary ? formatCurrency(salary, props.currencySymbol) : 'N/A'
+
+      return `${age} | ${formattedValue} | ${formattedSalary}`
+    })
+
+    // Computed property for formatted player name
+    const formattedPlayerName = computed(() => {
+      return formatPlayerName(props.player.name)
+    })
+
+    // Computed property for position styling
+    const positionStyle = computed(() => {
+      const position = formattedPosition.value
+      if (position && position.length === 2) {
+        return { marginLeft: '8px' } // Move 2-letter positions slightly right
+      }
+      return {}
     })
 
     // Use detailed data if available, otherwise use props
@@ -211,23 +286,25 @@ export default defineComponent({
       }
       return null
     })
-    
+
     // Fetch detailed data logic (unchanged)
-    const needsDetailedData = computed(() => !props.player.nationality_iso && props.datasetId && props.player.uid)
+    const needsDetailedData = computed(
+      () => !props.player.nationality_iso && props.datasetId && props.player.uid
+    )
     const fetchDetailedData = async () => {
-       if (!needsDetailedData.value) return
-       isLoadingDetailedData.value = true
-       try {
-         const result = await fetchFullPlayerStats(props.datasetId, props.player.uid)
-         if (result.data && result.data.player) {
-           detailedPlayerData.value = result.data.player
-         }
-       } catch (error) {
-         console.error('Failed to fetch detailed player data:', error)
-       } finally {
-         isLoadingDetailedData.value = false
-       }
-     }
+      if (!needsDetailedData.value) return
+      isLoadingDetailedData.value = true
+      try {
+        const result = await fetchFullPlayerStats(props.datasetId, props.player.uid)
+        if (result.data && result.data.player) {
+          detailedPlayerData.value = result.data.player
+        }
+      } catch (error) {
+        console.error('Failed to fetch detailed player data:', error)
+      } finally {
+        isLoadingDetailedData.value = false
+      }
+    }
 
     const handleCardClick = () => emit('click')
 
@@ -243,7 +320,9 @@ export default defineComponent({
       effectiveNationFlagUrl,
       effectivePlayerFaceUrl,
       formattedPosition,
-      playerVitals
+      playerVitals,
+      formattedPlayerName,
+      positionStyle
     }
   }
 })
@@ -332,26 +411,32 @@ $border-color: #444;
         position: absolute;
         top: 60px;
         left: 20px;
-        font-size: 1.25rem;
-        font-weight: 500;
+        font-size: 1.4rem;
+        font-weight: 600;
         color: $text-light;
-        opacity: 0.8;
+        opacity: 0.9;
+        min-width: 35px; // Reduced to account for 2-letter positions
+        text-align: left;
     }
 
     .player-name {
         position: absolute;
         top: 25px;
-        left: 90px;
+        left: 80px; // Start after the rating area
+        right: 20px; // Leave some space on the right
         font-size: 1.5rem;
         font-weight: 700;
         color: $text-light;
         white-space: nowrap;
+        text-align: center;
+        overflow: hidden;
+        text-overflow: ellipsis; // Handle very long names
     }
 
     .player-vitals-container {
         position: absolute;
         top: 60px;
-        left: 88px;
+        right: 20px;
         background: $gold-accent;
         padding: 4px 8px;
         border-radius: 4px;
