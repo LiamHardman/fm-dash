@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/LiamHardman/fm-dash/compare/v1.6.0...v1.7.0) (2025-07-24)
+
+
+### Features
+
+* gk stats for player cards ([af145a4](https://github.com/LiamHardman/fm-dash/commit/af145a4103231db1dcb7a7ead1540f2787098d13))
+
 # [1.6.0](https://github.com/LiamHardman/fm-dash/compare/v1.5.9...v1.6.0) (2025-07-24)
 
 
