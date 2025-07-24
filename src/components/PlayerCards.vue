@@ -1,11 +1,10 @@
 <template>
     <div class="fifa-card" @click="handleCardClick">
         <div class="card-content">
-            <!-- Header: Rating, Name -->
+            <!-- Header: Rating -->
             <div class="card-top">
                 <div class="player-details">
                     <div class="player-rating">{{ player.overall }}</div>
-                    <div class="player-name">{{ player.name }}</div>
                 </div>
                 <!-- Position moved below rating -->
                 <div class="player-position" :class="{ 'position-2': formattedPosition.length === 2, 'position-3': formattedPosition.length === 3 }">{{ formattedPosition }}</div>
@@ -35,8 +34,9 @@
                 </div>
             </div>
 
-            <!-- Footer: Stats -->
+            <!-- Footer: Name and Stats -->
             <div class="card-bottom">
+                <div class="player-name">{{ formattedName }}</div>
                 <div class="stats-grid">
                     <div class="stat-item"><span>{{ player.pac }}</span> PAC</div>
                     <div class="stat-item"><span>{{ player.dri }}</span> DRI</div>
@@ -52,7 +52,7 @@
 
 <script>
 import { useQuasar } from 'quasar'
-import { defineComponent, ref, computed, onMounted } from 'vue'
+import { computed, defineComponent, onMounted, ref } from 'vue'
 import { fetchFullPlayerStats } from '../services/playerService'
 import TeamLogo from './TeamLogo.vue'
 
@@ -94,15 +94,20 @@ export default defineComponent({
     // Format position to show only the first position
     const formattedPosition = computed(() => {
       if (!props.player.position) return ''
-      
+
       // Find the position with the highest role-specific overall
       let bestPosition = null
       let bestScore = 0
-      
-      console.log('PlayerCards formattedPosition - Player:', props.player.name, 'RoleSpecificOveralls:', props.player.roleSpecificOveralls)
+
+      console.log(
+        'PlayerCards formattedPosition - Player:',
+        props.player.name,
+        'RoleSpecificOveralls:',
+        props.player.roleSpecificOveralls
+      )
       console.log('PlayerCards - Full player object keys:', Object.keys(props.player))
       console.log('PlayerCards - Player object:', props.player)
-      
+
       if (props.player.roleSpecificOveralls) {
         if (Array.isArray(props.player.roleSpecificOveralls)) {
           // Handle array format
@@ -116,7 +121,12 @@ export default defineComponent({
               const positionMatch = rso.roleName.match(/^([A-Z]+)\s*-/)
               if (positionMatch) {
                 bestPosition = positionMatch[1]
-                console.log('PlayerCards - Found better position:', bestPosition, 'from role:', rso.roleName)
+                console.log(
+                  'PlayerCards - Found better position:',
+                  bestPosition,
+                  'from role:',
+                  rso.roleName
+                )
               }
             }
           }
@@ -131,13 +141,18 @@ export default defineComponent({
               const positionMatch = roleName.match(/^([A-Z]+)\s*-/)
               if (positionMatch) {
                 bestPosition = positionMatch[1]
-                console.log('PlayerCards - Found better position:', bestPosition, 'from role:', roleName)
+                console.log(
+                  'PlayerCards - Found better position:',
+                  bestPosition,
+                  'from role:',
+                  roleName
+                )
               }
             }
           }
         }
       }
-      
+
       // If no role-specific overalls found, try using best_role_overall
       if (!bestPosition && props.player.best_role_overall) {
         console.log('PlayerCards - Using best_role_overall:', props.player.best_role_overall)
@@ -147,16 +162,23 @@ export default defineComponent({
           console.log('PlayerCards - Found position from best_role_overall:', bestPosition)
         }
       }
-      
-      console.log('PlayerCards - Best position from role-specific overalls:', bestPosition, 'with score:', bestScore)
-      
+
+      console.log(
+        'PlayerCards - Best position from role-specific overalls:',
+        bestPosition,
+        'with score:',
+        bestScore
+      )
+
       // If no role-specific overalls found, fall back to the original position logic
       if (!bestPosition) {
-        console.log('PlayerCards - No role-specific overalls found, falling back to position string')
+        console.log(
+          'PlayerCards - No role-specific overalls found, falling back to position string'
+        )
         // Split by comma and take the first position
         const positions = props.player.position.split(',').map(pos => pos.trim())
         const firstPosition = positions[0]
-        
+
         // Extract the position type (e.g., "AM", "M", "D") and side (e.g., "R", "C", "L")
         const match = firstPosition.match(/^([A-Z]+)\s*\(([A-Z]+)\)$/)
         if (match) {
@@ -169,30 +191,58 @@ export default defineComponent({
           console.log('PlayerCards - Using first position as-is:', bestPosition)
         }
       }
-      
+
       // Translate FM positions to FIFA positions
       const fmToFifaPositionMap = {
-        'GK': 'GK',
-        'SW': 'SW',
-        'DC': 'CB', // Centre Back
-        'DR': 'RB', // Right Back
-        'DL': 'LB', // Left Back
-        'WBR': 'RWB', // Right Wing Back
-        'WBL': 'LWB', // Left Wing Back
-        'DM': 'CDM', // Centre Defensive Midfielder
-        'MC': 'CM', // Centre Midfielder
-        'MR': 'RM', // Right Midfielder
-        'ML': 'LM', // Left Midfielder
-        'AMC': 'CAM', // Centre Attacking Midfielder
-        'AMR': 'RW', // Right Winger
-        'AML': 'LW', // Left Winger
-        'ST': 'ST' // Striker
+        GK: 'GK',
+        SW: 'SW',
+        DC: 'CB', // Centre Back
+        DR: 'RB', // Right Back
+        DL: 'LB', // Left Back
+        WBR: 'RWB', // Right Wing Back
+        WBL: 'LWB', // Left Wing Back
+        DM: 'CDM', // Centre Defensive Midfielder
+        MC: 'CM', // Centre Midfielder
+        MR: 'RM', // Right Midfielder
+        ML: 'LM', // Left Midfielder
+        AMC: 'CAM', // Centre Attacking Midfielder
+        AMR: 'RW', // Right Winger
+        AML: 'LW', // Left Winger
+        ST: 'ST' // Striker
       }
-      
+
       const fifaPosition = fmToFifaPositionMap[bestPosition] || bestPosition
-      console.log('PlayerCards - Final FIFA position:', fifaPosition, 'from FM position:', bestPosition)
-      
+      console.log(
+        'PlayerCards - Final FIFA position:',
+        fifaPosition,
+        'from FM position:',
+        bestPosition
+      )
+
       return fifaPosition
+    })
+
+    // Format player name for display
+    const formattedName = computed(() => {
+      if (!props.player.name) return ''
+
+      const fullName = props.player.name.trim()
+
+      // If only one word, return it in caps
+      if (!fullName.includes(' ')) {
+        return fullName.toUpperCase()
+      }
+
+      // Split the name into parts
+      const nameParts = fullName.split(' ')
+
+      // Remove the first name (first part)
+      const lastNameParts = nameParts.slice(1)
+
+      // Join the remaining parts and convert to uppercase
+      const lastName = lastNameParts.join(' ').toUpperCase()
+
+      return lastName
     })
 
     // Check if we need to fetch detailed data
@@ -211,7 +261,7 @@ export default defineComponent({
     // Fetch detailed player data if nationality_iso is missing
     const fetchDetailedData = async () => {
       if (!needsDetailedData.value) return
-      
+
       isLoadingDetailedData.value = true
       try {
         const result = await fetchFullPlayerStats(props.datasetId, props.player.uid)
@@ -247,33 +297,64 @@ export default defineComponent({
 
     const effectiveClubImageUrl = computed(() => {
       if (props.clubImageUrl) {
-        console.log('PlayerCards using props.clubImageUrl:', props.clubImageUrl, 'for player:', props.player.name)
+        console.log(
+          'PlayerCards using props.clubImageUrl:',
+          props.clubImageUrl,
+          'for player:',
+          props.player.name
+        )
         return props.clubImageUrl
       }
       // Generate club logo URL using the same approach as TeamLogo component
       if (props.player.club && props.player.club !== '-') {
         // The TeamLogo component handles this via useTeamLogosBackend
         // For now, we'll return null and let the TeamLogo component handle it
-        console.log('PlayerCards: club logo will be handled by TeamLogo component for player:', props.player.name, 'club:', props.player.club)
+        console.log(
+          'PlayerCards: club logo will be handled by TeamLogo component for player:',
+          props.player.name,
+          'club:',
+          props.player.club
+        )
         return null
       }
-      console.log('PlayerCards no club logo URL available for player:', props.player.name, 'club:', props.player.club)
+      console.log(
+        'PlayerCards no club logo URL available for player:',
+        props.player.name,
+        'club:',
+        props.player.club
+      )
       return null
     })
 
     const effectivePlayerFaceUrl = computed(() => {
       if (props.playerFaceUrl) {
-        console.log('PlayerCards using props.playerFaceUrl:', props.playerFaceUrl, 'for player:', props.player.name)
+        console.log(
+          'PlayerCards using props.playerFaceUrl:',
+          props.playerFaceUrl,
+          'for player:',
+          props.player.name
+        )
         return props.playerFaceUrl
       }
       // Generate player face URL using the same approach as PlayerDetailDialog
       const playerUID = props.player.UID || props.player.uid
       if (playerUID) {
         const faceUrl = `/api/faces?uid=${encodeURIComponent(playerUID)}`
-        console.log('PlayerCards generated face URL:', faceUrl, 'for player:', props.player.name, 'UID:', playerUID)
+        console.log(
+          'PlayerCards generated face URL:',
+          faceUrl,
+          'for player:',
+          props.player.name,
+          'UID:',
+          playerUID
+        )
         return faceUrl
       }
-      console.log('PlayerCards no player face URL available for player:', props.player.name, 'UID not found')
+      console.log(
+        'PlayerCards no player face URL available for player:',
+        props.player.name,
+        'UID not found'
+      )
       return null
     })
 
@@ -294,7 +375,8 @@ export default defineComponent({
       effectiveClubImageUrl,
       effectivePlayerFaceUrl,
       isLoadingDetailedData,
-      formattedPosition
+      formattedPosition,
+      formattedName
     }
   }
 })
@@ -430,7 +512,7 @@ $border-color: #444;
     .player-photo {
         position: absolute;
         right: 10px;
-        top: 35px;
+        top: 15px; // Moved up from 35px
         
         .q-avatar {
             border: none;
@@ -486,11 +568,22 @@ $border-color: #444;
     }
 }
 
-// Bottom section with stats
+// Bottom section with name and stats
 .card-bottom {
     padding: 1rem;
     position: relative;
     z-index: 2;
+
+    .player-name {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: $text-light;
+        text-align: center;
+        margin-bottom: 0.75rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
 
     .stats-grid {
         display: grid;
