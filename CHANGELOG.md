@@ -1,3 +1,10 @@
+## [1.5.9](https://github.com/LiamHardman/fm-dash/compare/v1.5.8...v1.5.9) (2025-07-24)
+
+
+### Bug Fixes
+
+* placeholder faces ([f5180e9](https://github.com/LiamHardman/fm-dash/commit/f5180e9c21300d400b24a4ff2f83e6013e6d95cb))
+
 ## [1.5.8](https://github.com/LiamHardman/fm-dash/compare/v1.5.7...v1.5.8) (2025-07-24)
 
 
