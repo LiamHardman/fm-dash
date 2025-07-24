@@ -19,8 +19,17 @@
                     <TeamLogo :team-name="player.club" :size="40" class="player-club-logo" />
                 </div>
                 <div class="player-photo">
-                    <img v-if="effectivePlayerFaceUrl" :src="effectivePlayerFaceUrl" alt="Player Face" />
-                    <q-icon v-else name="person" size="90px" color="grey-8" />
+                    <img 
+                        v-if="effectivePlayerFaceUrl && !imageLoadError" 
+                        :src="effectivePlayerFaceUrl" 
+                        alt="Player Face" 
+                        @error="handleImageError"
+                        @load="handleImageLoad"
+                        ref="playerImage"
+                    />
+                    <div v-else class="fallback-icon">
+                        <q-icon name="person" size="150px" color="grey-8" />
+                    </div>
                 </div>
             </div>
 
@@ -127,6 +136,7 @@ export default defineComponent({
     const qInstance = useQuasar()
     const detailedPlayerData = ref(null)
     const isLoadingDetailedData = ref(false)
+    const imageLoadError = ref(false)
 
     // Format position to show only the first position
     const formattedPosition = computed(() => {
@@ -306,6 +316,68 @@ export default defineComponent({
 
     const handleCardClick = () => emit('click')
 
+    const handleImageError = () => {
+      console.log('Image failed to load')
+      imageLoadError.value = true
+    }
+
+    const handleImageLoad = (event) => {
+      console.log('Image loaded:', event.target.src)
+      
+      // Simple check: if the image dimensions are very small, it's likely a placeholder
+      if (event.target.naturalWidth < 50 || event.target.naturalHeight < 50) {
+        console.log('Image too small, treating as error')
+        imageLoadError.value = true
+        return
+      }
+      
+      // Try canvas analysis, but catch any errors
+      try {
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        canvas.width = event.target.naturalWidth
+        canvas.height = event.target.naturalHeight
+        ctx.drawImage(event.target, 0, 0)
+        
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+        const data = imageData.data
+        
+        // Check if the image is mostly white/transparent
+        let whitePixels = 0
+        let totalPixels = data.length / 4
+        
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i]
+          const g = data[i + 1]
+          const b = data[i + 2]
+          const a = data[i + 3]
+          
+          // Consider pixel white if RGB values are high and alpha is low, or if alpha is very low
+          if ((r > 240 && g > 240 && b > 240 && a < 50) || a < 10) {
+            whitePixels++
+          }
+        }
+        
+        const whitePercentage = whitePixels / totalPixels
+        console.log('White pixel percentage:', whitePercentage)
+        
+        // If more than 90% of pixels are white/transparent, treat as error
+        if (whitePercentage > 0.9) {
+          console.log('Image mostly white, treating as error')
+          imageLoadError.value = true
+        }
+      } catch (error) {
+        console.log('Canvas analysis failed:', error)
+        // If canvas analysis fails, we'll keep the image as is
+      }
+      
+      // Additional check: if the image appears to be a 1x1 pixel or very small, it's likely a placeholder
+      if (event.target.naturalWidth === 1 && event.target.naturalHeight === 1) {
+        console.log('Image is 1x1 pixel, treating as error')
+        imageLoadError.value = true
+      }
+    }
+
     onMounted(() => {
       if (needsDetailedData.value) {
         fetchDetailedData()
@@ -320,7 +392,10 @@ export default defineComponent({
       formattedPosition,
       playerVitals,
       formattedPlayerName,
-      positionStyle
+      positionStyle,
+      imageLoadError,
+      handleImageError,
+      handleImageLoad
     }
   }
 })
@@ -499,6 +574,14 @@ $border-color: #444;
             height: 100%;
             object-fit: contain;
             object-position: bottom center;
+        }
+        
+        .fallback-icon {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
     }
 }
