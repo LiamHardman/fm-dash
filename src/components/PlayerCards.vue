@@ -19,10 +19,8 @@
                     <TeamLogo :team-name="player.club" :size="40" class="player-club-logo" />
                 </div>
                 <div class="player-photo">
-                    <q-avatar size="150px" :color="'transparent'">
-                        <img v-if="effectivePlayerFaceUrl" :src="effectivePlayerFaceUrl" alt="Player Face" />
-                        <q-icon v-else name="person" size="90px" color="grey-8" />
-                    </q-avatar>
+                    <img v-if="effectivePlayerFaceUrl" :src="effectivePlayerFaceUrl" alt="Player Face" />
+                    <q-icon v-else name="person" size="90px" color="grey-8" />
                 </div>
             </div>
 
@@ -491,12 +489,14 @@ $border-color: #444;
 
     .player-photo {
         position: absolute;
-        top: -85px;
-        right: -35px;
-        width: 200px;
+        top: -112px;
+        right: 0px;
+        width: 180px;
         height: 200px;
         
-        .q-avatar img {
+        img {
+            width: 100%;
+            height: 100%;
             object-fit: contain;
             object-position: bottom center;
         }
