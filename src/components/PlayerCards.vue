@@ -36,14 +36,14 @@
             <div class="card-footer">
                 <div class="stats-grid">
                     <div class="stats-column">
-                        <div class="stat-item"><span>{{ player.pac }}</span> PAC</div>
-                        <div class="stat-item"><span>{{ player.sho }}</span> SHO</div>
-                        <div class="stat-item"><span>{{ player.pas }}</span> PAS</div>
+                        <div class="stat-item"><span>{{ isGoalkeeper ? player.div : player.pac }}</span> {{ isGoalkeeper ? 'DIV' : 'PAC' }}</div>
+                        <div class="stat-item"><span>{{ isGoalkeeper ? player.han : player.sho }}</span> {{ isGoalkeeper ? 'HAN' : 'SHO' }}</div>
+                        <div class="stat-item"><span>{{ isGoalkeeper ? player.kic : player.pas }}</span> {{ isGoalkeeper ? 'KIC' : 'PAS' }}</div>
                     </div>
                     <div class="stats-column">
-                        <div class="stat-item"><span>{{ player.dri }}</span> DRI</div>
-                        <div class="stat-item"><span>{{ player.def }}</span> DEF</div>
-                        <div class="stat-item"><span>{{ player.phy }}</span> PHY</div>
+                        <div class="stat-item"><span>{{ isGoalkeeper ? player.ref : player.dri }}</span> {{ isGoalkeeper ? 'REF' : 'DRI' }}</div>
+                        <div class="stat-item"><span>{{ isGoalkeeper ? player.spd : player.def }}</span> {{ isGoalkeeper ? 'SPD' : 'DEF' }}</div>
+                        <div class="stat-item"><span>{{ isGoalkeeper ? player.pos : player.phy }}</span> {{ isGoalkeeper ? 'POS' : 'PHY' }}</div>
                     </div>
                 </div>
             </div>
@@ -291,15 +291,29 @@ export default defineComponent({
       // If player is 85 rated or higher, they should be rare no matter what
       if (overall >= 85) return true
       
-      // Get all stats
-      const stats = [
-        props.player.pac || 0,
-        props.player.sho || 0,
-        props.player.pas || 0,
-        props.player.dri || 0,
-        props.player.def || 0,
-        props.player.phy || 0
-      ]
+      // Get appropriate stats based on player type
+      let stats = []
+      if (isGoalkeeper.value) {
+        // Use goalkeeper stats
+        stats = [
+          props.player.div || 0,
+          props.player.han || 0,
+          props.player.kic || 0,
+          props.player.ref || 0,
+          props.player.spd || 0,
+          props.player.pos || 0
+        ]
+      } else {
+        // Use outfield player stats
+        stats = [
+          props.player.pac || 0,
+          props.player.sho || 0,
+          props.player.pas || 0,
+          props.player.dri || 0,
+          props.player.def || 0,
+          props.player.phy || 0
+        ]
+      }
       
       // If a player has at least 2 stats that are within 1 point of the player's overall or higher, they should be rare
       const statsCloseToOverall = stats.filter(stat => stat >= (overall - 1)).length
@@ -314,6 +328,25 @@ export default defineComponent({
 
     const cardTypeClass = computed(() => `card-${cardType.value}`)
     const rarityClass = computed(() => isRare.value ? 'rare' : 'non-rare')
+
+    // Check if player is a goalkeeper
+    const isGoalkeeper = computed(() => {
+      if (!props.player.position) return false
+      
+      // Check various ways the position might indicate goalkeeper
+      const position = props.player.position.toLowerCase()
+      const shortPositions = props.player.shortPositions || props.player.short_positions || []
+      const positionGroups = props.player.positionGroups || []
+      const parsedPositions = props.player.parsedPositions || []
+      
+      return (
+        position.includes('gk') ||
+        position.includes('goalkeeper') ||
+        shortPositions.some(pos => pos === 'GK') ||
+        positionGroups.some(group => group === 'Goalkeepers') ||
+        parsedPositions.some(pos => pos === 'Goalkeeper')
+      )
+    })
 
     // Generate image URLs based on available data
     const effectiveNationFlagUrl = computed(() => {
@@ -435,7 +468,8 @@ export default defineComponent({
       handleImageError,
       handleImageLoad,
       cardTypeClass,
-      rarityClass
+      rarityClass,
+      isGoalkeeper
     }
   }
 })
