@@ -1,49 +1,43 @@
 <template>
     <div class="fifa-card" @click="handleCardClick">
+        <div class="card-bg"></div>
         <div class="card-content">
-            <!-- Header: Rating -->
-            <div class="card-top">
-                <div class="player-details">
-                    <div class="player-rating">{{ player.overall }}</div>
+            <div class="card-header">
+                <div class="player-rating">{{ player.overall }}</div>
+                <div class="player-position">{{ formattedPosition }}</div>
+                <div class="player-name">{{ player.name }}</div>
+                <div class="player-vitals-container">
+                    <div class="player-vitals">{{ playerVitals }}</div>
                 </div>
-                <!-- Position moved below rating -->
-                <div class="player-position" :class="{ 'position-2': formattedPosition.length === 2, 'position-3': formattedPosition.length === 3 }">{{ formattedPosition }}</div>
             </div>
 
-            <!-- Middle: Photo, Nation, Club -->
             <div class="card-middle">
                 <div class="nation-flag" v-if="effectiveNationFlagUrl">
                     <img :src="effectiveNationFlagUrl" alt="Nation Flag" />
                 </div>
                 <div class="club-logo" v-if="player.club && player.club !== '-'">
-                    <TeamLogo 
-                        :team-name="player.club"
-                        :size="32"
-                        class="player-club-logo"
-                    />
+                    <TeamLogo :team-name="player.club" :size="40" class="player-club-logo" />
                 </div>
                 <div class="player-photo">
-                    <q-avatar
-                        size="150px"
-                        :color="'transparent'"
-                        :text-color="$q.dark.isActive ? 'grey-5' : 'grey-8'"
-                    >
+                    <q-avatar size="150px" :color="'transparent'">
                         <img v-if="effectivePlayerFaceUrl" :src="effectivePlayerFaceUrl" alt="Player Face" />
-                        <q-icon v-else name="person" size="90px" />
+                        <q-icon v-else name="person" size="90px" color="grey-8" />
                     </q-avatar>
                 </div>
             </div>
 
-            <!-- Footer: Name and Stats -->
-            <div class="card-bottom">
-                <div class="player-name">{{ formattedName }}</div>
+            <div class="card-footer">
                 <div class="stats-grid">
-                    <div class="stat-item"><span>{{ player.pac }}</span> PAC</div>
-                    <div class="stat-item"><span>{{ player.dri }}</span> DRI</div>
-                    <div class="stat-item"><span>{{ player.sho }}</span> SHO</div>
-                    <div class="stat-item"><span>{{ player.def }}</span> DEF</div>
-                    <div class="stat-item"><span>{{ player.pas }}</span> PAS</div>
-                    <div class="stat-item"><span>{{ player.phy }}</span> PHY</div>
+                    <div class="stats-column">
+                        <div class="stat-item"><span>{{ player.pac }}</span> PAC</div>
+                        <div class="stat-item"><span>{{ player.sho }}</span> SHO</div>
+                        <div class="stat-item"><span>{{ player.pas }}</span> PAS</div>
+                    </div>
+                    <div class="stats-column">
+                        <div class="stat-item"><span>{{ player.dri }}</span> DRI</div>
+                        <div class="stat-item"><span>{{ player.def }}</span> DEF</div>
+                        <div class="stat-item"><span>{{ player.phy }}</span> PHY</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -56,6 +50,47 @@ import { computed, defineComponent, onMounted, ref } from 'vue'
 import { fetchFullPlayerStats } from '../services/playerService'
 import TeamLogo from './TeamLogo.vue'
 
+// Helper function to format currency
+const formatCurrency = (value, symbol) => {
+  if (!value || value === 'N/A') return 'N/A'
+  
+  // Handle transfer value ranges like "£127M - £381M" - extract upper bound
+  if (typeof value === 'string' && value.includes(' - ')) {
+    const parts = value.split(' - ')
+    if (parts.length > 1) {
+      value = parts[parts.length - 1].trim() // Take the upper bound
+    }
+  }
+  
+  // Check if the value already has proper formatting (like "£381M" or "£150K")
+  if (typeof value === 'string') {
+    const hasCurrencySymbol = /[£$€¥]/.test(value)
+    const hasSuffix = /[MK]$/i.test(value)
+    if (hasCurrencySymbol && hasSuffix) {
+      // Already properly formatted, return as is
+      return value
+    }
+  }
+  
+  // Remove any existing currency symbols and "p/w" or similar suffixes
+  let cleanValue = value
+  if (typeof cleanValue === 'string') {
+    cleanValue = cleanValue.replace(/[£$€¥]/g, '').replace(/\s*p\/w\s*$/i, '').replace(/\s*per week\s*$/i, '').replace(/,/g, '')
+  }
+  
+  // Convert to number
+  const numValue = parseFloat(cleanValue)
+  if (isNaN(numValue)) return 'N/A'
+  
+  if (numValue >= 1000000) {
+    return `${symbol}${(numValue / 1000000).toFixed(1).replace('.0', '')}M`
+  }
+  if (numValue >= 1000) {
+    return `${symbol}${(numValue / 1000).toFixed(0)}K`
+  }
+  return `${symbol}${numValue}`
+}
+
 export default defineComponent({
   name: 'PlayerCards',
   components: { TeamLogo },
@@ -66,7 +101,7 @@ export default defineComponent({
     },
     currencySymbol: {
       type: String,
-      default: '$'
+      default: '£'
     },
     clubImageUrl: {
       type: String,
@@ -93,274 +128,108 @@ export default defineComponent({
 
     // Format position to show only the first position
     const formattedPosition = computed(() => {
-      if (!props.player.position) return ''
+        if (!props.player.position) return ''
+        let bestPosition = null
+        let bestScore = 0
 
-      // Find the position with the highest role-specific overall
-      let bestPosition = null
-      let bestScore = 0
+        if (props.player.roleSpecificOveralls) {
+            const roles = Array.isArray(props.player.roleSpecificOveralls)
+                ? props.player.roleSpecificOveralls
+                : Object.entries(props.player.roleSpecificOveralls).map(([roleName, score]) => ({ roleName, score }))
 
-      console.log(
-        'PlayerCards formattedPosition - Player:',
-        props.player.name,
-        'RoleSpecificOveralls:',
-        props.player.roleSpecificOveralls
-      )
-      console.log('PlayerCards - Full player object keys:', Object.keys(props.player))
-      console.log('PlayerCards - Player object:', props.player)
-
-      if (props.player.roleSpecificOveralls) {
-        if (Array.isArray(props.player.roleSpecificOveralls)) {
-          // Handle array format
-          console.log('PlayerCards - Processing array format roleSpecificOveralls')
-          console.log('PlayerCards - Array length:', props.player.roleSpecificOveralls.length)
-          for (const rso of props.player.roleSpecificOveralls) {
-            console.log('PlayerCards - Checking role:', rso.roleName, 'score:', rso.score)
-            if (rso.score > bestScore) {
-              bestScore = rso.score
-              // Extract position from role name (e.g., "DC - Central Defender - Defend" -> "DC")
-              const positionMatch = rso.roleName.match(/^([A-Z]+)\s*-/)
-              if (positionMatch) {
-                bestPosition = positionMatch[1]
-                console.log(
-                  'PlayerCards - Found better position:',
-                  bestPosition,
-                  'from role:',
-                  rso.roleName
-                )
-              }
+            for (const rso of roles) {
+                const score = typeof rso.score === 'number' ? rso.score : rso[1]
+                const roleName = rso.roleName || rso[0]
+                if (score > bestScore) {
+                    bestScore = score
+                    const positionMatch = roleName.match(/^([A-Z]+)\s*-/)
+                    if (positionMatch) {
+                        bestPosition = positionMatch[1]
+                    }
+                }
             }
-          }
-        } else {
-          // Handle object format
-          console.log('PlayerCards - Processing object format roleSpecificOveralls')
-          for (const [roleName, score] of Object.entries(props.player.roleSpecificOveralls)) {
-            console.log('PlayerCards - Checking role:', roleName, 'score:', score)
-            if (score > bestScore) {
-              bestScore = score
-              // Extract position from role name (e.g., "DC - Central Defender - Defend" -> "DC")
-              const positionMatch = roleName.match(/^([A-Z]+)\s*-/)
-              if (positionMatch) {
+        }
+
+        if (!bestPosition && props.player.best_role_overall) {
+            const positionMatch = props.player.best_role_overall.match(/^([A-Z]+)\s*-/)
+            if (positionMatch) {
                 bestPosition = positionMatch[1]
-                console.log(
-                  'PlayerCards - Found better position:',
-                  bestPosition,
-                  'from role:',
-                  roleName
-                )
-              }
             }
-          }
         }
-      }
 
-      // If no role-specific overalls found, try using best_role_overall
-      if (!bestPosition && props.player.best_role_overall) {
-        console.log('PlayerCards - Using best_role_overall:', props.player.best_role_overall)
-        const positionMatch = props.player.best_role_overall.match(/^([A-Z]+)\s*-/)
-        if (positionMatch) {
-          bestPosition = positionMatch[1]
-          console.log('PlayerCards - Found position from best_role_overall:', bestPosition)
+        if (!bestPosition) {
+            const positions = props.player.position.split(',').map(pos => pos.trim())
+            const firstPosition = positions[0]
+            const match = firstPosition.match(/^([A-Z]+)\s*\(([A-Z]+)\)$/)
+            bestPosition = match ? match[1] + match[2] : firstPosition
         }
-      }
 
-      console.log(
-        'PlayerCards - Best position from role-specific overalls:',
-        bestPosition,
-        'with score:',
-        bestScore
-      )
+        const fmToFifaPositionMap = { GK: 'GK', SW: 'SW', DC: 'CB', DR: 'RB', DL: 'LB', WBR: 'RWB', WBL: 'LWB', DM: 'CDM', MC: 'CM', MR: 'RM', ML: 'LM', AMC: 'CAM', AMR: 'RW', AML: 'LW', ST: 'ST', 'STC': 'ST' }
 
-      // If no role-specific overalls found, fall back to the original position logic
-      if (!bestPosition) {
-        console.log(
-          'PlayerCards - No role-specific overalls found, falling back to position string'
-        )
-        // Split by comma and take the first position
-        const positions = props.player.position.split(',').map(pos => pos.trim())
-        const firstPosition = positions[0]
-
-        // Extract the position type (e.g., "AM", "M", "D") and side (e.g., "R", "C", "L")
-        const match = firstPosition.match(/^([A-Z]+)\s*\(([A-Z]+)\)$/)
-        if (match) {
-          const positionType = match[1]
-          const side = match[2]
-          bestPosition = positionType + side
-          console.log('PlayerCards - Extracted position from parentheses:', bestPosition)
-        } else {
-          bestPosition = firstPosition
-          console.log('PlayerCards - Using first position as-is:', bestPosition)
+        // Added CF as a direct mapping for striker roles
+        if (bestPosition.includes('ST')) return 'ST'
+        if (bestPosition.includes('AM')) {
+             if(bestPosition.includes('C')) return 'CF' // Treat central AM as CF
         }
-      }
 
-      // Translate FM positions to FIFA positions
-      const fmToFifaPositionMap = {
-        GK: 'GK',
-        SW: 'SW',
-        DC: 'CB', // Centre Back
-        DR: 'RB', // Right Back
-        DL: 'LB', // Left Back
-        WBR: 'RWB', // Right Wing Back
-        WBL: 'LWB', // Left Wing Back
-        DM: 'CDM', // Centre Defensive Midfielder
-        MC: 'CM', // Centre Midfielder
-        MR: 'RM', // Right Midfielder
-        ML: 'LM', // Left Midfielder
-        AMC: 'CAM', // Centre Attacking Midfielder
-        AMR: 'RW', // Right Winger
-        AML: 'LW', // Left Winger
-        ST: 'ST' // Striker
-      }
 
-      const fifaPosition = fmToFifaPositionMap[bestPosition] || bestPosition
-      console.log(
-        'PlayerCards - Final FIFA position:',
-        fifaPosition,
-        'from FM position:',
-        bestPosition
-      )
-
-      return fifaPosition
+        return fmToFifaPositionMap[bestPosition] || bestPosition
     })
 
-    // Format player name for display
-    const formattedName = computed(() => {
-      if (!props.player.name) return ''
-
-      const fullName = props.player.name.trim()
-
-      // If only one word, return it in caps
-      if (!fullName.includes(' ')) {
-        return fullName.toUpperCase()
-      }
-
-      // Split the name into parts
-      const nameParts = fullName.split(' ')
-
-      // Remove the first name (first part)
-      const lastNameParts = nameParts.slice(1)
-
-      // Join the remaining parts and convert to uppercase
-      const lastName = lastNameParts.join(' ').toUpperCase()
-
-      return lastName
+    // New computed property for player vitals
+    const playerVitals = computed(() => {
+        const age = props.player.age || 'N/A'
+        
+        // Check multiple possible property names for transfer value - prioritize numeric amount
+        const transferValue = props.player.transferValueAmount || props.player.transfer_value || props.player.value || props.player.market_value
+        const formattedValue = transferValue ? formatCurrency(transferValue, props.currencySymbol) : 'N/A'
+        
+        // Check multiple possible property names for salary/wage - prioritize numeric amount
+        const salary = props.player.wageAmount || props.player.wage || props.player.salary || props.player.weekly_wage
+        const formattedSalary = salary ? formatCurrency(salary, props.currencySymbol) : 'N/A'
+        
+        return `${age} | ${formattedValue} | ${formattedSalary}`
     })
-
-    // Check if we need to fetch detailed data
-    const needsDetailedData = computed(() => {
-      const needsData = !props.player.nationality_iso && props.datasetId && props.player.uid
-      console.log('PlayerCards needsDetailedData check:', {
-        playerName: props.player.name,
-        hasNationalityIso: !!props.player.nationality_iso,
-        hasDatasetId: !!props.datasetId,
-        hasUid: !!props.player.uid,
-        needsData
-      })
-      return needsData
-    })
-
-    // Fetch detailed player data if nationality_iso is missing
-    const fetchDetailedData = async () => {
-      if (!needsDetailedData.value) return
-
-      isLoadingDetailedData.value = true
-      try {
-        const result = await fetchFullPlayerStats(props.datasetId, props.player.uid)
-        if (result.data && result.data.player) {
-          detailedPlayerData.value = result.data.player
-        }
-      } catch (error) {
-        console.error('Failed to fetch detailed player data:', error)
-      } finally {
-        isLoadingDetailedData.value = false
-      }
-    }
 
     // Use detailed data if available, otherwise use props
-    const playerData = computed(() => {
-      return detailedPlayerData.value || props.player
-    })
+    const playerData = computed(() => detailedPlayerData.value || props.player)
 
     // Generate image URLs based on available data
     const effectiveNationFlagUrl = computed(() => {
-      if (props.nationFlagUrl) {
-        console.log('PlayerCards using props.nationFlagUrl:', props.nationFlagUrl)
-        return props.nationFlagUrl
-      }
+      if (props.nationFlagUrl) return props.nationFlagUrl
       if (playerData.value.nationality_iso) {
-        const flagUrl = `https://flagcdn.com/w80/${playerData.value.nationality_iso.toLowerCase()}.png`
-        console.log('PlayerCards generated flag URL:', flagUrl)
-        return flagUrl
+        return `https://flagcdn.com/w80/${playerData.value.nationality_iso.toLowerCase()}.png`
       }
-      console.log('PlayerCards no flag URL available')
-      return null
-    })
-
-    const effectiveClubImageUrl = computed(() => {
-      if (props.clubImageUrl) {
-        console.log(
-          'PlayerCards using props.clubImageUrl:',
-          props.clubImageUrl,
-          'for player:',
-          props.player.name
-        )
-        return props.clubImageUrl
-      }
-      // Generate club logo URL using the same approach as TeamLogo component
-      if (props.player.club && props.player.club !== '-') {
-        // The TeamLogo component handles this via useTeamLogosBackend
-        // For now, we'll return null and let the TeamLogo component handle it
-        console.log(
-          'PlayerCards: club logo will be handled by TeamLogo component for player:',
-          props.player.name,
-          'club:',
-          props.player.club
-        )
-        return null
-      }
-      console.log(
-        'PlayerCards no club logo URL available for player:',
-        props.player.name,
-        'club:',
-        props.player.club
-      )
       return null
     })
 
     const effectivePlayerFaceUrl = computed(() => {
-      if (props.playerFaceUrl) {
-        console.log(
-          'PlayerCards using props.playerFaceUrl:',
-          props.playerFaceUrl,
-          'for player:',
-          props.player.name
-        )
-        return props.playerFaceUrl
-      }
-      // Generate player face URL using the same approach as PlayerDetailDialog
+      if (props.playerFaceUrl) return props.playerFaceUrl
       const playerUID = props.player.UID || props.player.uid
       if (playerUID) {
-        const faceUrl = `/api/faces?uid=${encodeURIComponent(playerUID)}`
-        console.log(
-          'PlayerCards generated face URL:',
-          faceUrl,
-          'for player:',
-          props.player.name,
-          'UID:',
-          playerUID
-        )
-        return faceUrl
+        return `/api/faces?uid=${encodeURIComponent(playerUID)}`
       }
-      console.log(
-        'PlayerCards no player face URL available for player:',
-        props.player.name,
-        'UID not found'
-      )
       return null
     })
+    
+    // Fetch detailed data logic (unchanged)
+    const needsDetailedData = computed(() => !props.player.nationality_iso && props.datasetId && props.player.uid)
+    const fetchDetailedData = async () => {
+       if (!needsDetailedData.value) return
+       isLoadingDetailedData.value = true
+       try {
+         const result = await fetchFullPlayerStats(props.datasetId, props.player.uid)
+         if (result.data && result.data.player) {
+           detailedPlayerData.value = result.data.player
+         }
+       } catch (error) {
+         console.error('Failed to fetch detailed player data:', error)
+       } finally {
+         isLoadingDetailedData.value = false
+       }
+     }
 
-    const handleCardClick = () => {
-      emit('click')
-    }
+    const handleCardClick = () => emit('click')
 
     onMounted(() => {
       if (needsDetailedData.value) {
@@ -372,26 +241,21 @@ export default defineComponent({
       qInstance,
       handleCardClick,
       effectiveNationFlagUrl,
-      effectiveClubImageUrl,
       effectivePlayerFaceUrl,
-      isLoadingDetailedData,
       formattedPosition,
-      formattedName
+      playerVitals
     }
   }
 })
 </script>
 
 <style lang="scss" scoped>
-// Define variables for easy theme changes
-$card-bg: #2a2a2a;
+// Define variables
+$card-bg: #1e1e1e;
 $gold-accent: #c89b3c;
-$gold-gradient: linear-gradient(45deg, #d4af37, #c89b3c);
 $text-light: #e0e0e0;
-$text-dark: #333;
 $border-color: #444;
 
-// New FIFA Card Design
 .fifa-card {
     width: 280px;
     height: 420px;
@@ -411,16 +275,17 @@ $border-color: #444;
         box-shadow: 0 20px 40px rgba($gold-accent, 0.3);
     }
 
-    // This pseudo-element creates the large diagonal background shape
+    // This pseudo-element creates the grey diagonal background
     &::before {
         content: '';
         position: absolute;
-        top: -50px;
+        top: 0;
         left: 0;
         width: 100%;
-        height: 220px;
-        background: #1c1c1c;
-        transform: skewY(-8deg);
+        height: 185px; // Height of the top section
+        background: #2a2a2a;
+        transform: skewY(-5deg);
+        transform-origin: top left;
         z-index: 1;
     }
 
@@ -428,12 +293,11 @@ $border-color: #444;
     &::after {
         content: '';
         position: absolute;
-        top: 140px;
-        left: -10%;
-        width: 120%;
-        height: 4px;
-        background: $gold-gradient;
-        transform: skewY(-8deg);
+        top: 280px; // Positioned between player face and stats
+        left: -5%;
+        width: 110%;
+        height: 3px;
+        background: linear-gradient(90deg, #d4af37, #c89b3c);
         z-index: 3;
         box-shadow: 0 0 10px rgba($gold-accent, 0.7);
     }
@@ -445,151 +309,132 @@ $border-color: #444;
     height: 100%;
     display: flex;
     flex-direction: column;
-    padding: 1rem;
 }
 
-// Top section of the card
-.card-top {
+// Header section
+.card-header {
     position: relative;
+    height: 170px;
+    padding: 1rem;
     z-index: 4;
-    padding: 0.5rem 1rem;
-    
-    .player-details {
-        display: flex;
-        align-items: baseline;
-        gap: 0.75rem;
-    }
 
     .player-rating {
-        font-size: 2.5rem;
+        position: absolute;
+        top: 15px;
+        left: 20px;
+        font-size: 3rem;
         font-weight: 900;
-        color: $gold-accent;
+        color: $text-light;
         line-height: 1;
-    }
-
-    .player-name {
-        font-size: 1.25rem;
-        font-weight: 500;
-        margin-left: auto; // Pushes the name to the right
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
     }
 
     .player-position {
+        position: absolute;
+        top: 60px;
+        left: 20px;
         font-size: 1.25rem;
-        font-weight: 700;
-        line-height: 1;
-        margin-top: 0.25rem; // Reduced space for tighter alignment
+        font-weight: 500;
         color: $text-light;
-        text-align: center; // Default center alignment
-        width: 3ch; // Fixed width for consistent spacing
-        display: inline-block;
-        
-        // 2-letter positions: left align with small offset
-        &.position-2 {
-            text-align: left;
-            margin-left: 0.25rem;
-        }
-        
-        // 3-letter positions: center align
-        &.position-3 {
-            text-align: center;
-            margin-left: 0;
-        }
+        opacity: 0.8;
+    }
+
+    .player-name {
+        position: absolute;
+        top: 25px;
+        left: 90px;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: $text-light;
+        white-space: nowrap;
+    }
+
+    .player-vitals-container {
+        position: absolute;
+        top: 60px;
+        left: 88px;
+        background: $gold-accent;
+        padding: 4px 8px;
+        border-radius: 4px;
+    }
+
+    .player-vitals {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #1e1e1e;
+        white-space: nowrap;
     }
 }
 
-// Middle section with placeholders and photo
+
+// Middle section
 .card-middle {
-    position: relative;
     flex-grow: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 2; // Below the gold line but above the bg
-
-    .player-photo {
-        position: absolute;
-        right: 10px;
-        top: 15px; // Moved up from 35px
-        
-        .q-avatar {
-            border: none;
-            background: transparent;
-            
-            img {
-                width: 100%;
-                height: 100%;
-                object-fit: cover;
-            }
-        }
-    }
-
-    .nation-flag, .club-logo {
-        position: absolute;
-        border: none;
-        box-shadow: none;
-    }
+    position: relative;
+    z-index: 2;
 
     .nation-flag {
-        top: 25px; // Moved up to align with rating
-        left: 10px;
-        width: 50px;
-        height: 35px;
-        border-radius: 4px;
-        overflow: hidden;
+        position: absolute;
+        top: -65px;
+        left: 20px;
+        width: 45px;
+        z-index: 5;
         
         img {
             width: 100%;
-            height: 100%;
+            height: 30px;
             object-fit: cover;
+            border-radius: 3px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
     }
 
     .club-logo {
-        top: 70px; // Moved up to align with position
-        left: 10px;
-        width: 50px;
-        height: 50px;
-        border-radius: 0;
-        overflow: hidden;
-        background: transparent;
-        
-        :deep(.team-logo) {
+        position: absolute;
+        top: -25px;
+        left: 20px;
+        width: 45px;
+        height: 45px;
+        z-index: 5;
+
+        :deep(.team-logo),
+        :deep(img) {
             width: 100%;
             height: 100%;
             object-fit: contain;
         }
+    }
+
+    .player-photo {
+        position: absolute;
+        top: -85px;
+        right: -35px;
+        width: 200px;
+        height: 200px;
         
-        :deep(.team-logo-placeholder) {
-            display: none;
+        .q-avatar img {
+            object-fit: contain;
+            object-position: bottom center;
         }
     }
 }
 
-// Bottom section with name and stats
-.card-bottom {
-    padding: 1rem;
+// Footer section
+.card-footer {
+    padding: 0 1.5rem 1rem 1.5rem;
     position: relative;
     z-index: 2;
-
-    .player-name {
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: $text-light;
-        text-align: center;
-        margin-bottom: 0.75rem;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
+    margin-top: auto; // Pushes footer to the bottom
 
     .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        grid-template-rows: repeat(3, 1fr);
-        gap: 0.5rem 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        gap: 1.5rem;
+    }
+
+    .stats-column {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
     }
 
     .stat-item {
@@ -597,22 +442,16 @@ $border-color: #444;
         align-items: baseline;
         font-size: 1.1rem;
         font-weight: 500;
+        color: $text-light;
 
         span {
             color: $gold-accent;
             font-weight: 700;
             font-size: 1.2rem;
             margin-right: 0.5rem;
-            width: 30px; // Aligns the stat labels
+            width: 35px; // Aligns the stat labels
+            text-align: left;
         }
-    }
-}
-
-// Responsive adjustments
-@media (max-width: 600px) {
-    .fifa-card {
-        width: 260px;
-        height: 400px;
     }
 }
 </style>
