@@ -1,3 +1,10 @@
+## [1.5.5](https://github.com/LiamHardman/fm-dash/compare/v1.5.4...v1.5.5) (2025-07-24)
+
+
+### Bug Fixes
+
+* name fix for player cards ([314385f](https://github.com/LiamHardman/fm-dash/commit/314385f20e77439c3d5b481c5c0bb9c13c87174b))
+
 ## [1.5.4](https://github.com/LiamHardman/fm-dash/compare/v1.5.3...v1.5.4) (2025-07-23)
 
 
