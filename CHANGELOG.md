@@ -1,3 +1,10 @@
+## [1.5.6](https://github.com/LiamHardman/fm-dash/compare/v1.5.5...v1.5.6) (2025-07-24)
+
+
+### Bug Fixes
+
+* transfer value fix in player card ([24102ef](https://github.com/LiamHardman/fm-dash/commit/24102ef8810c05ea722da71744e086e0c129c5e5))
+
 ## [1.5.5](https://github.com/LiamHardman/fm-dash/compare/v1.5.4...v1.5.5) (2025-07-24)
 
 
