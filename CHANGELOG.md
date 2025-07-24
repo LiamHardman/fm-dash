@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/LiamHardman/fm-dash/compare/v1.5.9...v1.6.0) (2025-07-24)
+
+
+### Features
+
+* rarity and quality stuff for cards ([0e60149](https://github.com/LiamHardman/fm-dash/commit/0e601491bdc5bac3e49999ff0340149e6aeb0844))
+
 ## [1.5.9](https://github.com/LiamHardman/fm-dash/compare/v1.5.8...v1.5.9) (2025-07-24)
 
 
