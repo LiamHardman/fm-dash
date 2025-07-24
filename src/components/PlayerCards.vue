@@ -1,5 +1,5 @@
 <template>
-    <div class="fifa-card" @click="handleCardClick">
+    <div class="fifa-card" :class="[cardTypeClass, rarityClass]" @click="handleCardClick">
         <div class="card-bg"></div>
         <div class="card-content">
             <div class="card-header">
@@ -277,6 +277,44 @@ export default defineComponent({
     // Use detailed data if available, otherwise use props
     const playerData = computed(() => detailedPlayerData.value || props.player)
 
+    // Card type and rarity logic
+    const cardType = computed(() => {
+      const overall = props.player.overall || 0
+      if (overall >= 75) return 'gold'
+      if (overall >= 65) return 'silver'
+      return 'bronze'
+    })
+
+    const isRare = computed(() => {
+      const overall = props.player.overall || 0
+      
+      // If player is 85 rated or higher, they should be rare no matter what
+      if (overall >= 85) return true
+      
+      // Get all stats
+      const stats = [
+        props.player.pac || 0,
+        props.player.sho || 0,
+        props.player.pas || 0,
+        props.player.dri || 0,
+        props.player.def || 0,
+        props.player.phy || 0
+      ]
+      
+      // If a player has at least 2 stats that are within 1 point of the player's overall or higher, they should be rare
+      const statsCloseToOverall = stats.filter(stat => stat >= (overall - 1)).length
+      if (statsCloseToOverall >= 2) return true
+      
+      // If 4 of their stats are within 4 points of the overall rating, they should be rare
+      const statsWithinRange = stats.filter(stat => stat >= (overall - 4)).length
+      if (statsWithinRange >= 4) return true
+      
+      return false
+    })
+
+    const cardTypeClass = computed(() => `card-${cardType.value}`)
+    const rarityClass = computed(() => isRare.value ? 'rare' : 'non-rare')
+
     // Generate image URLs based on available data
     const effectiveNationFlagUrl = computed(() => {
       if (props.nationFlagUrl) return props.nationFlagUrl
@@ -395,7 +433,9 @@ export default defineComponent({
       positionStyle,
       imageLoadError,
       handleImageError,
-      handleImageLoad
+      handleImageLoad,
+      cardTypeClass,
+      rarityClass
     }
   }
 })
@@ -407,6 +447,20 @@ $card-bg: #1e1e1e;
 $gold-accent: #c89b3c;
 $text-light: #e0e0e0;
 $border-color: #444;
+
+// Card type colors - Rare variants
+$bronze-color-rare: #b8860b;
+$silver-color-rare: #e5e4e2;
+$gold-color-rare: #ffd700;
+
+// Card type colors - Non-rare variants
+$bronze-color-non-rare: #8b4513;
+$silver-color-non-rare: #a8a8a8;
+$gold-color-non-rare: #daa520;
+
+// Rarity effects
+$rare-glow: 0 0 20px rgba(255, 215, 0, 0.6);
+$non-rare-glow: 0 0 10px rgba(255, 255, 255, 0.3);
 
 .fifa-card {
     width: 280px;
@@ -452,6 +506,136 @@ $border-color: #444;
         background: linear-gradient(90deg, #d4af37, #c89b3c);
         z-index: 3;
         box-shadow: 0 0 10px rgba($gold-accent, 0.7);
+    }
+
+    // Card type styles with rarity variants
+    &.card-bronze {
+        &.rare {
+            border-color: $bronze-color-rare;
+            
+            &::after {
+                background: linear-gradient(90deg, $bronze-color-rare, darken($bronze-color-rare, 10%));
+                box-shadow: 0 0 10px rgba($bronze-color-rare, 0.7);
+            }
+            
+            .player-vitals-container {
+                background: $bronze-color-rare;
+            }
+            
+            .stat-item span {
+                color: $bronze-color-rare;
+            }
+        }
+        
+        &.non-rare {
+            border-color: $bronze-color-non-rare;
+            
+            &::after {
+                background: linear-gradient(90deg, $bronze-color-non-rare, darken($bronze-color-non-rare, 10%));
+                box-shadow: 0 0 10px rgba($bronze-color-non-rare, 0.7);
+            }
+            
+            .player-vitals-container {
+                background: $bronze-color-non-rare;
+            }
+            
+            .stat-item span {
+                color: $bronze-color-non-rare;
+            }
+        }
+    }
+
+    &.card-silver {
+        &.rare {
+            border-color: $silver-color-rare;
+            
+            &::after {
+                background: linear-gradient(90deg, $silver-color-rare, darken($silver-color-rare, 10%));
+                box-shadow: 0 0 10px rgba($silver-color-rare, 0.7);
+            }
+            
+            .player-vitals-container {
+                background: $silver-color-rare;
+            }
+            
+            .stat-item span {
+                color: $silver-color-rare;
+            }
+        }
+        
+        &.non-rare {
+            border-color: $silver-color-non-rare;
+            
+            &::after {
+                background: linear-gradient(90deg, $silver-color-non-rare, darken($silver-color-non-rare, 10%));
+                box-shadow: 0 0 10px rgba($silver-color-non-rare, 0.7);
+            }
+            
+            .player-vitals-container {
+                background: $silver-color-non-rare;
+            }
+            
+            .stat-item span {
+                color: $silver-color-non-rare;
+            }
+        }
+    }
+
+    &.card-gold {
+        &.rare {
+            border-color: $gold-color-rare;
+            
+            &::after {
+                background: linear-gradient(90deg, $gold-color-rare, darken($gold-color-rare, 10%));
+                box-shadow: 0 0 10px rgba($gold-color-rare, 0.7);
+            }
+            
+            .player-vitals-container {
+                background: $gold-color-rare;
+            }
+            
+            .stat-item span {
+                color: $gold-color-rare;
+            }
+        }
+        
+        &.non-rare {
+            border-color: $gold-color-non-rare;
+            
+            &::after {
+                background: linear-gradient(90deg, $gold-color-non-rare, darken($gold-color-non-rare, 10%));
+                box-shadow: 0 0 10px rgba($gold-color-non-rare, 0.7);
+            }
+            
+            .player-vitals-container {
+                background: $gold-color-non-rare;
+            }
+            
+            .stat-item span {
+                color: $gold-color-non-rare;
+            }
+        }
+    }
+
+    // Rarity styles
+    &.rare {
+        box-shadow: $rare-glow;
+        
+        &:hover {
+            box-shadow: 0 20px 40px rgba(255, 215, 0, 0.4), $rare-glow;
+        }
+        
+        &::before {
+            background: linear-gradient(135deg, #2a2a2a, #3a3a3a);
+        }
+    }
+
+    &.non-rare {
+        box-shadow: $non-rare-glow;
+        
+        &:hover {
+            box-shadow: 0 20px 40px rgba(255, 255, 255, 0.2), $non-rare-glow;
+        }
     }
 }
 
