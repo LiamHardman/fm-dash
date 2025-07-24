@@ -1,3 +1,10 @@
+## [1.5.8](https://github.com/LiamHardman/fm-dash/compare/v1.5.7...v1.5.8) (2025-07-24)
+
+
+### Bug Fixes
+
+* player image fix on card ([da5371b](https://github.com/LiamHardman/fm-dash/commit/da5371b6f68ca03a6a46fe13b466c82faafe6ab4))
+
 ## [1.5.7](https://github.com/LiamHardman/fm-dash/compare/v1.5.6...v1.5.7) (2025-07-24)
 
 
