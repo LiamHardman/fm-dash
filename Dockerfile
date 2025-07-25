@@ -8,6 +8,8 @@ COPY . .
 ARG VITE_API_BASE_URL=/api
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 RUN echo "Building Vue app with VITE_API_BASE_URL=${VITE_API_BASE_URL}"
+# Fix esbuild version issue by reinstalling it
+RUN npm rebuild esbuild
 RUN npm run build
 
 FROM golang:1.24-alpine AS go-builder
