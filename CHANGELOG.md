@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/LiamHardman/fm-dash/compare/v1.0.0...v1.0.1) (2025-07-25)
+
+
+### Bug Fixes
+
+* release please config ([2a85e42](https://github.com/LiamHardman/fm-dash/commit/2a85e4203565e3a09d2508af0060afb14710e03b))
+
 # 1.0.0 (2025-07-25)
 
 
