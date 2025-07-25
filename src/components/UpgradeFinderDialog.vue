@@ -869,13 +869,14 @@ export default {
     })
 
     const populateAllTeamNames = () => {
-      if (!props.players) {
+      const playersToUse = hasCompletePlayerData(playerStore.allPlayers) ? playerStore.allPlayers : props.players
+      if (!playersToUse) {
         allTeamNamesCache.value = []
         teamOptions.value = []
         return
       }
       const uniqueTeams = new Set()
-      for (const player of props.players) {
+      for (const player of playersToUse) {
         if (player.club && player.club.trim() !== '') {
           uniqueTeams.add(player.club)
         }
@@ -1006,7 +1007,8 @@ export default {
     }
 
     const updateTransferValueSliderBounds = () => {
-      if (!props.players || props.players.length === 0) {
+      const playersToUse = hasCompletePlayerData(playerStore.allPlayers) ? playerStore.allPlayers : props.players
+      if (!playersToUse || playersToUse.length === 0) {
         dynamicMinTransferValue.value = 0
         dynamicMaxTransferValue.value = 100000000
         maxTransferValueFilter.value = dynamicMaxTransferValue.value
@@ -1014,7 +1016,7 @@ export default {
       }
       let minVal = Number.POSITIVE_INFINITY
       let maxVal = 0
-      for (const p of props.players) {
+      for (const p of playersToUse) {
         const transferValueRange = parseTransferValueRange(p.transfer_value)
         if (transferValueRange.max > 0) {
           minVal = Math.min(minVal, transferValueRange.min)
@@ -1034,7 +1036,8 @@ export default {
     }
 
     const updateSalarySliderBounds = () => {
-      if (!props.players || props.players.length === 0) {
+      const playersToUse = hasCompletePlayerData(playerStore.allPlayers) ? playerStore.allPlayers : props.players
+      if (!playersToUse || playersToUse.length === 0) {
         dynamicMinSalary.value = 0
         dynamicMaxSalary.value = 1000000
         maxSalaryFilter.value = dynamicMaxSalary.value
@@ -1042,7 +1045,7 @@ export default {
       }
       let minVal = Number.POSITIVE_INFINITY
       let maxVal = 0
-      for (const p of props.players) {
+      for (const p of playersToUse) {
         if (typeof p.wageAmount === 'number') {
           minVal = Math.min(minVal, p.wageAmount)
           maxVal = Math.max(maxVal, p.wageAmount)
@@ -1061,10 +1064,16 @@ export default {
     }
 
     onMounted(async () => {
-      if (props.players && props.players.length > 0) {
-        // Check if players have the required data for formation calculation
-        const samplePlayer = props.players[0]
+      // Ensure we have complete player data with positions and role-specific overalls
+      if (props.datasetId && (!props.players || props.players.length === 0 || !hasCompletePlayerData(props.players))) {
+        console.log('UpgradeFinderDialog: Fetching complete player data...')
+        try {
+          await playerStore.fetchPlayersByDatasetId(props.datasetId)
+        } catch (error) {
+          console.error('Failed to fetch complete player data:', error)
+        }
       }
+      
       if (playerStore.allAvailableRoles.length === 0 && playerStore.currentDatasetId) {
         await playerStore.fetchAllAvailableRoles()
       }
@@ -1073,14 +1082,58 @@ export default {
       updateSalarySliderBounds()
       maxAgeFilter.value = ageSliderMax
     })
+    
+    // Helper function to check if player data is complete
+    const hasCompletePlayerData = (players) => {
+      if (!players || players.length === 0) return false
+      
+      // Check first few players for complete data
+      const sampleSize = Math.min(5, players.length)
+      for (let i = 0; i < sampleSize; i++) {
+        const player = players[i]
+        if (!player.shortPositions || player.shortPositions.length === 0) {
+          console.log(`Player ${player.name} missing shortPositions`)
+          return false
+        }
+        if (!player.roleSpecificOveralls || 
+            (Array.isArray(player.roleSpecificOveralls) && player.roleSpecificOveralls.length === 0) ||
+            (typeof player.roleSpecificOveralls === 'object' && Object.keys(player.roleSpecificOveralls).length === 0)) {
+          console.log(`Player ${player.name} missing roleSpecificOveralls`)
+          return false
+        }
+      }
+      return true
+    }
 
     watch(
-      () => props.players,
-      newPlayers => {
+      () => [props.players, playerStore.allPlayers],
+      async ([newPlayers, storePlayers]) => {
+        // Use store players if they have complete data, otherwise use props players
+        const playersToUse = hasCompletePlayerData(storePlayers) ? storePlayers : newPlayers
+        
         populateAllTeamNames()
         updateTransferValueSliderBounds()
         updateSalarySliderBounds()
-        if (newPlayers && newPlayers.length > 0) {
+        
+        // If we have a team selected and new player data, recalculate formation
+        if (playersToUse && playersToUse.length > 0 && teamName.value) {
+          await nextTick()
+          const teamPlayers = playersToUse.filter(player => 
+            player.club && player.club.toLowerCase() === teamName.value.toLowerCase()
+          )
+          if (teamPlayers.length > 0) {
+            const bestFormation = calculateBestFormationForTeam(teamPlayers)
+            if (bestFormation && !selectedFormationKey.value) {
+              selectedFormationKey.value = bestFormation
+              calculationMessage.value = `Auto-selected best formation: ${formations[bestFormation].name}. Calculating Best XI...`
+              calculationMessageClass.value = $q.dark.isActive
+                ? 'bg-info text-white'
+                : 'bg-blue-2 text-primary'
+            }
+          }
+        }
+        
+        if (playersToUse && playersToUse.length > 0) {
           if (
             maxTransferValueFilter.value > dynamicMaxTransferValue.value ||
             maxTransferValueFilter.value < dynamicMinTransferValue.value
@@ -1189,8 +1242,9 @@ export default {
     }
 
     const updateTeamPlayersForSelection = () => {
-      if (teamName.value && selectedPosition.value && props.players) {
-        teamPlayersForSelection.value = props.players
+      const playersToUse = hasCompletePlayerData(playerStore.allPlayers) ? playerStore.allPlayers : props.players
+      if (teamName.value && selectedPosition.value && playersToUse) {
+        teamPlayersForSelection.value = playersToUse
           .filter(player => {
             if (!player.club || player.club.toLowerCase() !== teamName.value.toLowerCase()) return false
             
@@ -1220,8 +1274,9 @@ export default {
 
     // Also update team players when team changes (for formation calculation)
     const updateTeamPlayersForFormation = () => {
-      if (teamName.value && props.players) {
-        const teamPlayers = props.players.filter(player => 
+      const playersToUse = hasCompletePlayerData(playerStore.allPlayers) ? playerStore.allPlayers : props.players
+      if (teamName.value && playersToUse) {
+        const teamPlayers = playersToUse.filter(player => 
           player.club && player.club.toLowerCase() === teamName.value.toLowerCase()
         )
         if (teamPlayers.length > 0 && selectedFormationKey.value) {
@@ -1234,8 +1289,9 @@ export default {
 
     // Formation watchers
     watch(selectedFormationKey, newKey => {
-      if (newKey && teamName.value && props.players) {
-        const teamPlayers = props.players.filter(player => 
+      const playersToUse = hasCompletePlayerData(playerStore.allPlayers) ? playerStore.allPlayers : props.players
+      if (newKey && teamName.value && playersToUse) {
+        const teamPlayers = playersToUse.filter(player => 
           player.club && player.club.toLowerCase() === teamName.value.toLowerCase()
         )
         calculateBestTeamAndDepth(teamPlayers)
@@ -1249,20 +1305,74 @@ export default {
 
     // Auto-select best formation when team changes
     watch(teamName, async (newTeamName) => {
-      if (newTeamName && props.players) {
+      const playersToUse = hasCompletePlayerData(playerStore.allPlayers) ? playerStore.allPlayers : props.players
+      if (newTeamName && playersToUse && playersToUse.length > 0) {
+        // Wait a bit to ensure player data is fully loaded
+        await nextTick()
+        
+        // Add a small delay to ensure player data is fully processed
+        await new Promise(resolve => setTimeout(resolve, 100))
+        
         // Get all players for the selected team (case-insensitive matching)
-        const teamPlayers = props.players.filter(player => 
+        const teamPlayers = playersToUse.filter(player => 
           player.club && player.club.toLowerCase() === newTeamName.toLowerCase()
         )
+        
         if (teamPlayers.length > 0) {
-          const bestFormation = calculateBestFormationForTeam(teamPlayers)
-          if (bestFormation) {
-            selectedFormationKey.value = bestFormation
-            calculationMessage.value = `Auto-selected best formation: ${formations[bestFormation].name}. Calculating Best XI...`
-            calculationMessageClass.value = $q.dark.isActive
-              ? 'bg-info text-white'
-              : 'bg-blue-2 text-primary'
+          
+          // Wait for player data to be fully loaded by checking if shortPositions are populated
+          let attempts = 0
+          const maxAttempts = 10
+          
+          const waitForPlayerData = () => {
+            // Check for players with at least shortPositions (roleSpecificOveralls might not be available for all players)
+            const playersWithPositions = teamPlayers.filter(p => 
+              p.shortPositions && p.shortPositions.length > 0
+            )
+            
+            // Also check if we have any players with roleSpecificOveralls
+            const playersWithRoleOveralls = teamPlayers.filter(p => 
+              p.roleSpecificOveralls && (
+                Array.isArray(p.roleSpecificOveralls) ? p.roleSpecificOveralls.length > 0 : Object.keys(p.roleSpecificOveralls).length > 0
+              )
+            )
+            
+            console.log(`Attempt ${attempts + 1} - Players with positions: ${playersWithPositions.length}, Players with role overalls: ${playersWithRoleOveralls.length}`)
+            
+            // Proceed if we have players with positions, even if roleSpecificOveralls are missing
+            if (playersWithPositions.length > 0 || attempts >= maxAttempts) {
+              if (playersWithPositions.length > 0) {
+                const bestFormation = calculateBestFormationForTeam(teamPlayers)
+                if (bestFormation) {
+                  selectedFormationKey.value = bestFormation
+                  calculationMessage.value = `Auto-selected best formation: ${formations[bestFormation].name}. Calculating Best XI...`
+                  calculationMessageClass.value = $q.dark.isActive
+                    ? 'bg-info text-white'
+                    : 'bg-blue-2 text-primary'
+                } else {
+                  calculationMessage.value = 'Could not determine best formation for this team.'
+                  calculationMessageClass.value = $q.dark.isActive
+                    ? 'bg-warning text-white'
+                    : 'bg-orange-2 text-dark'
+                }
+              } else {
+                calculationMessage.value = 'Player data not fully loaded yet. Please try again in a moment.'
+                calculationMessageClass.value = $q.dark.isActive
+                  ? 'bg-warning text-white'
+                  : 'bg-orange-2 text-dark'
+              }
+            } else {
+              attempts++
+              setTimeout(waitForPlayerData, 200)
+            }
           }
+          
+          waitForPlayerData()
+        } else {
+          calculationMessage.value = 'No players found for the selected team.'
+          calculationMessageClass.value = $q.dark.isActive
+            ? 'bg-warning text-white'
+            : 'bg-orange-2 text-dark'
         }
       }
     })
@@ -1272,8 +1382,6 @@ export default {
 
     const getPlayerOverallForRoleOrPosition = (player, role, position) => {
       if (!player) return 0
-      
-
       
       // Handle both array and object formats for roleSpecificOveralls
       const hasRoleOveralls = Array.isArray(player.roleSpecificOveralls)
@@ -1319,7 +1427,10 @@ export default {
         result = player.Overall || player.overall || 0
       }
       
-
+      // Debug logging for role-specific overalls
+      if (role && !hasRoleOveralls) {
+        console.log(`Warning: Player ${player.name} has no role-specific overalls for role ${role}, using main overall: ${result}`)
+      }
       
       return result
     }
@@ -1333,6 +1444,11 @@ export default {
       if (!player.roleSpecificOveralls) {
         return player.Overall || 0
       }
+
+      // Debug logging for first few calls (commented out for production)
+      // if (Math.random() < 0.1) { // Only log 10% of calls to avoid spam
+      //   console.log('getPlayerOverallForRole called for:', player.name, 'role:', slotFormationRole, 'has roleSpecificOveralls:', !!player.roleSpecificOveralls, 'has shortPositions:', !!player.shortPositions)
+      // }
 
       const hasRoleOveralls = Array.isArray(player.roleSpecificOveralls)
         ? player.roleSpecificOveralls.length > 0
@@ -1451,15 +1567,40 @@ export default {
 
     const calculateBestFormationForTeam = (teamPlayers) => {
       if (!teamPlayers || teamPlayers.length === 0) {
+        console.log('No team players provided for formation calculation')
         return null
       }
 
-      // Check cache first
-      const cacheKey = formationCache.generateKey(teamPlayers, 'team-best')
-      const cachedResult = formationCache.get(cacheKey)
-      if (cachedResult) {
-        return cachedResult.bestFormationKey
-      }
+              // Check if players have required data
+        const playersWithPositions = teamPlayers.filter(p => p.shortPositions && p.shortPositions.length > 0)
+        
+        if (playersWithPositions.length === 0) {
+          console.log('No players with position data found')
+          return null
+        }
+        
+        console.log(`Formation calculation: ${playersWithPositions.length} players with positions out of ${teamPlayers.length} total players`)
+        
+        // Debug: Check role-specific overalls for first few players
+        for (let i = 0; i < Math.min(3, teamPlayers.length); i++) {
+          const player = teamPlayers[i]
+          console.log(`Player ${i + 1}: ${player.name}`, {
+            shortPositions: player.shortPositions,
+            roleSpecificOveralls: player.roleSpecificOveralls ? 
+              (Array.isArray(player.roleSpecificOveralls) ? 
+                `${player.roleSpecificOveralls.length} roles` : 
+                `${Object.keys(player.roleSpecificOveralls).length} roles`) : 
+              'missing',
+            Overall: player.Overall
+          })
+        }
+
+        // Check cache first
+        const cacheKey = formationCache.generateKey(teamPlayers, 'team-best')
+        const cachedResult = formationCache.get(cacheKey)
+        if (cachedResult) {
+          return cachedResult.bestFormationKey
+        }
 
       let bestFormationKey = null
       let bestAverageOverall = 0
@@ -1777,7 +1918,29 @@ export default {
       if (!selectedTeamPlayer.value) return null
       const player = teamPlayersForSelection.value.find(p => p.name === selectedTeamPlayer.value)
       if (!player) return null
-      return getPlayerOverallForRoleOrPosition(player, selectedRole.value, selectedPosition.value)
+      
+      // For upgrade comparison, use the player's main overall rating as baseline
+      // This ensures we're comparing against their actual ability, not their position-specific rating
+      // which might be null if they can't play that position well
+      const mainOverall = player.Overall || player.overall || 0
+      
+      // If we have role-specific overalls and a selected role, try to get the role-specific rating
+      if (selectedRole.value && player.roleSpecificOveralls) {
+        let roleOverall = null
+        if (Array.isArray(player.roleSpecificOveralls)) {
+          const roleData = player.roleSpecificOveralls.find(r => r.roleName === selectedRole.value)
+          roleOverall = roleData ? roleData.score : null
+        } else if (typeof player.roleSpecificOveralls === 'object') {
+          roleOverall = player.roleSpecificOveralls[selectedRole.value] || null
+        }
+        
+        // If we found a role-specific rating, use it; otherwise fall back to main overall
+        if (roleOverall !== null && roleOverall > 0) {
+          return roleOverall
+        }
+      }
+      
+      return mainOverall
     }
 
     const selectedTeamPlayerObject = computed(() => {
@@ -1834,7 +1997,9 @@ export default {
         initialLoad.value = false
         return
       }
-      if (!props.players) {
+      
+      const playersToUse = hasCompletePlayerData(playerStore.allPlayers) ? playerStore.allPlayers : props.players
+      if (!playersToUse) {
         loading.value = false
         return
       }
@@ -1858,12 +2023,12 @@ export default {
       await new Promise(resolve => setTimeout(resolve, 300))
 
       try {
-        console.log('UpgradeFinderDialog - Original props.players first player:', props.players[0])
-        if (props.players[0]) {
-          console.log('UpgradeFinderDialog - Original props.players first player roleSpecificOveralls:', props.players[0].roleSpecificOveralls)
+        console.log('UpgradeFinderDialog - Original players first player:', playersToUse[0])
+        if (playersToUse[0]) {
+          console.log('UpgradeFinderDialog - Original players first player roleSpecificOveralls:', playersToUse[0].roleSpecificOveralls)
         }
 
-        upgradePlayers.value = props.players
+        upgradePlayers.value = playersToUse
           .filter(player => {
             if (player.club === teamName.value) return false
             if (player.transfer_value && player.transfer_value.toLowerCase() === 'not for sale')
@@ -2073,7 +2238,7 @@ export default {
         'W (L)': 'WL',
         'W (R)': 'WR',
         'DM (L)': 'DML',
-        'DM (C)': 'DMC',
+        'DM (C)': 'DM',
         'DM (R)': 'DMR',
         'WB (L)': 'WBL',
         'WB (C)': 'WBC',
