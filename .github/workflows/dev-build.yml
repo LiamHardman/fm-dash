@@ -155,8 +155,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:dev
-            ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.sha_short }}
+            ghcr.io/liamhardman/fm-dash:dev
+            ghcr.io/liamhardman/fm-dash:${{ steps.vars.outputs.sha_short }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -167,8 +167,8 @@ jobs:
           file: Dockerfile.frontend
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}-frontend:dev
-            ghcr.io/${{ github.repository }}-frontend:${{ steps.vars.outputs.sha_short }}
+            ghcr.io/liamhardman/fm-dash-frontend:dev
+            ghcr.io/liamhardman/fm-dash-frontend:${{ steps.vars.outputs.sha_short }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -179,8 +179,8 @@ jobs:
           file: Dockerfile.backend
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}-backend:dev
-            ghcr.io/${{ github.repository }}-backend:${{ steps.vars.outputs.sha_short }}
+            ghcr.io/liamhardman/fm-dash-backend:dev
+            ghcr.io/liamhardman/fm-dash-backend:${{ steps.vars.outputs.sha_short }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

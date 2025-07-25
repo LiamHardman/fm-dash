@@ -1,4 +1,5 @@
 handleGHRelease: true
 release-type: node
 package-name: fm-dash
-include-v-in-tag: true 
+include-v-in-tag: true
+repo-url: https://github.com/liamhardman/fm-dash 
