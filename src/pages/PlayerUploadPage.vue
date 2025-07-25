@@ -236,6 +236,8 @@
           v-bind="loaderProps" 
           @cancel="handleUploadCancel" 
         />
+
+
     </q-page>
 </template>
 
@@ -245,7 +247,7 @@ import { Notify, useQuasar } from 'quasar'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import InteractiveUploadLoader from '../components/InteractiveUploadLoader.vue'
-import playerService from '../services/playerService'
+import playerService from '../services/playerService.js'
 import { usePlayerStore } from '../stores/playerStore'
 import { useUiStore } from '../stores/uiStore'
 
@@ -406,27 +408,35 @@ export default {
             showNotification()
           }
 
-          // Check if data is already available for immediate redirect
-          const hasImmediateData = response.players && response.players.length > 0
+          // Check if this is a large file that needs background processing
+          const isLargeFileProcessing = response.processingStatus === 'processing'
           
-          if (hasImmediateData) {
-            // Data is already processed, show ready state
-            dataReady.value = true
-            uploadProgress.value = 100
-            
-            // Redirect immediately
-            setTimeout(() => {
-              if (playerStore.currentDatasetId) {
-                router.push(`/dataset/${playerStore.currentDatasetId}`)
-              }
-            }, 300) // Even faster for immediate data
+          if (isLargeFileProcessing) {
+            // Redirect to processing status page for large files
+            router.push(`/processing-status/${response.datasetId}`)
           } else {
-            // Data needs processing, use standard delay
-            setTimeout(() => {
-              if (playerStore.currentDatasetId) {
-                router.push(`/dataset/${playerStore.currentDatasetId}`)
-              }
-            }, 500) // Reduced from 1000ms for faster transition
+            // Check if data is already available for immediate redirect
+            const hasImmediateData = response.players && response.players.length > 0
+            
+            if (hasImmediateData) {
+              // Data is already processed, show ready state
+              dataReady.value = true
+              uploadProgress.value = 100
+              
+              // Redirect immediately
+              setTimeout(() => {
+                if (playerStore.currentDatasetId) {
+                  router.push(`/dataset/${playerStore.currentDatasetId}`)
+                }
+              }, 300) // Even faster for immediate data
+            } else {
+              // Data needs processing, use standard delay
+              setTimeout(() => {
+                if (playerStore.currentDatasetId) {
+                  router.push(`/dataset/${playerStore.currentDatasetId}`)
+                }
+              }, 500) // Reduced from 1000ms for faster transition
+            }
           }
         }
       } catch (e) {

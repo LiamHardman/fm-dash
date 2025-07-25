@@ -256,6 +256,7 @@ import { useAnalytics } from '../composables/useAnalytics'
 import { usePlayerStore } from '../stores/playerStore'
 import { useWishlistStore } from '../stores/wishlistStore'
 import { exportPlayersToCSV } from '../utils/csvExport'
+import playerService from '../services/playerService.js'
 
 const rawTechnicalAttributeKeysConst = [
   'Cor',
@@ -612,6 +613,17 @@ export default {
             await playerStore.fetchAllAvailableRoles()
           }
         } else {
+          // Check processing status first for large files
+          try {
+            const statusResponse = await playerService.checkProcessingStatus(datasetId)
+            if (statusResponse.status === 'processing') {
+              pageLoadingError.value = 'This dataset is still being processed in the background. Please wait a moment and try again.'
+              return
+            }
+          } catch (statusError) {
+            console.log('Processing status check failed, proceeding with data fetch:', statusError)
+          }
+
           // Fetch data from API
           await playerStore.fetchPlayersByDatasetId(datasetId)
           await playerStore.fetchAllAvailableRoles()

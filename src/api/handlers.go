@@ -4655,3 +4655,85 @@ func CalculatePlayerPercentilesAsync(ctx context.Context, datasetID string, play
 
 	return nil
 }
+
+// processingStatusHandler handles requests to check dataset processing status
+func processingStatusHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if r.Method != http.MethodGet {
+		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract dataset ID from URL path
+	pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	if len(pathParts) < 3 {
+		http.Error(w, "Invalid URL format. Expected: /api/processing-status/{datasetId}", http.StatusBadRequest)
+		return
+	}
+	datasetId := pathParts[2]
+
+	ctx, span := StartSpan(ctx, "processing.status.check")
+	defer span.End()
+
+	SetSpanAttributes(ctx,
+		attribute.String("dataset.id", datasetId),
+	)
+
+	// Check if dataset exists in store
+	storeMutex.RLock()
+	storedData, exists := playerDataStore[datasetId]
+	storeMutex.RUnlock()
+
+	if !exists {
+		// Dataset not found - return processing status
+		response := ProcessingStatusResponse{
+			DatasetID:        datasetId,
+			Status:           "processing",
+			Message:          "Dataset is being processed in the background",
+			EstimatedPlayers: 0,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		setCORSHeaders(w, r)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			RecordError(ctx, err, "Failed to encode processing status response")
+			http.Error(w, "Error encoding response: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		return
+	}
+
+	// Dataset exists - return completed status
+	response := ProcessingStatusResponse{
+		DatasetID:        datasetId,
+		Status:           "completed",
+		Message:          "Dataset processing completed",
+		PlayerCount:      len(storedData.Players),
+		CurrencySymbol:   storedData.CurrencySymbol,
+		EstimatedPlayers: len(storedData.Players),
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	setCORSHeaders(w, r)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		RecordError(ctx, err, "Failed to encode processing status response")
+		http.Error(w, "Error encoding response: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	RecordBusinessOperation(ctx, "processing_status_checked", true, map[string]interface{}{
+		"dataset_id":   datasetId,
+		"status":       response.Status,
+		"player_count": response.PlayerCount,
+	})
+}
+
+// ProcessingStatusResponse represents the response for processing status checks
+type ProcessingStatusResponse struct {
+	DatasetID        string `json:"datasetId"`
+	Status           string `json:"status"` // "processing" or "completed"
+	Message          string `json:"message"`
+	PlayerCount      int    `json:"playerCount,omitempty"`
+	CurrencySymbol   string `json:"currencySymbol,omitempty"`
+	EstimatedPlayers int    `json:"estimatedPlayers"`
+}
