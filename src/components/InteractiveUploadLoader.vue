@@ -16,10 +16,13 @@
             :color="iconColor"
             class="loader-icon"
           />
-          <div class="loading-dots">
+          <div class="loading-dots" v-if="!dataReady">
             <div class="dot" :class="{ active: dotIndex >= 0 }"></div>
             <div class="dot" :class="{ active: dotIndex >= 1 }"></div>
             <div class="dot" :class="{ active: dotIndex >= 2 }"></div>
+          </div>
+          <div class="ready-indicator" v-else>
+            <q-icon name="check_circle" size="2rem" color="positive" />
           </div>
         </div>
 
@@ -103,6 +106,10 @@ export default {
     progress: {
       type: Number,
       default: 0
+    },
+    dataReady: {
+      type: Boolean,
+      default: false
     }
   },
   setup(props, { emit }) {
@@ -297,6 +304,32 @@ export default {
         title: 'Wrapping Up Wage Structure',
         subtitle: 'Making sure backup players earn more than starters',
         stage: 'finalizing'
+      },
+      // Ready stage messages (100%)
+      {
+        title: 'Dataset Ready!',
+        subtitle: 'Your player database is ready for analysis',
+        stage: 'ready'
+      },
+      {
+        title: 'Analysis Engine Primed',
+        subtitle: 'All systems ready for tactical insights',
+        stage: 'ready'
+      },
+      {
+        title: 'Scouting Network Active',
+        subtitle: 'Ready to discover hidden gems and wonderkids',
+        stage: 'ready'
+      },
+      {
+        title: 'Transfer Market Analyzed',
+        subtitle: 'Prepared to find the perfect signings',
+        stage: 'ready'
+      },
+      {
+        title: 'Tactical Board Configured',
+        subtitle: 'Ready to optimize your formation and strategy',
+        stage: 'ready'
       }
     ]
 
@@ -315,11 +348,13 @@ export default {
 
     // Get current stage based on progress
     const getCurrentStage = () => {
+      if (props.dataReady) return 'ready'
       const progress = props.progress
       if (progress < 70) return 'upload'
       if (progress < 80) return 'processing'
       if (progress < 95) return 'fetching'
-      return 'finalizing'
+      if (progress < 100) return 'finalizing'
+      return 'ready' // New stage for when data is ready
     }
 
     const previousStage = ref(getCurrentStage())
@@ -348,9 +383,24 @@ export default {
     }
 
     const currentMessage = ref(getRandomMessage())
-    const currentIcon = computed(() => loadingIcons[currentIconIndex.value])
-    const iconColor = computed(() => iconColors[currentIconIndex.value % iconColors.length])
-    const progressValue = computed(() => Math.min(props.progress / 100, 1))
+    const currentIcon = computed(() => {
+      if (props.dataReady) {
+        return 'check_circle'
+      }
+      return loadingIcons[currentIconIndex.value]
+    })
+    const iconColor = computed(() => {
+      if (props.dataReady) {
+        return 'positive'
+      }
+      return iconColors[currentIconIndex.value % iconColors.length]
+    })
+    const progressValue = computed(() => {
+      if (props.dataReady) {
+        return 1
+      }
+      return Math.min(props.progress / 100, 1)
+    })
 
     const uploadStats = computed(() => ({
       filename: props.filename,
@@ -636,6 +686,13 @@ export default {
         color: color.adjust($primary, $lightness: 15%);
       }
     }
+  }
+
+  .ready-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.5s ease-in;
   }
 
   .actions {

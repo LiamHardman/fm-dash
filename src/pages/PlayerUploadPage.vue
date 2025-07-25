@@ -293,8 +293,11 @@ export default {
       filename: playerFile.value?.name || '',
       fileSize: playerFile.value ? formatFileSize(playerFile.value.size) : '',
       playersFound: 0, // Could be enhanced to show real-time player count
-      progress: uploadProgress.value
+      progress: uploadProgress.value,
+      dataReady: dataReady.value
     }))
+
+    const dataReady = ref(false)
 
     onMounted(async () => {
       // Fetch config first with cache clearing
@@ -329,6 +332,7 @@ export default {
       // Reset the upload state
       playerStore.loading = false
       uploadProgress.value = 0
+      dataReady.value = false
       Notify.create({
         type: 'info',
         message: 'Upload cancelled',
@@ -363,6 +367,7 @@ export default {
 
       // Reset progress
       uploadProgress.value = 0
+      dataReady.value = false
 
       try {
         const formData = new FormData()
@@ -401,12 +406,28 @@ export default {
             showNotification()
           }
 
-          // Redirect to the dataset page
-          setTimeout(() => {
-            if (playerStore.currentDatasetId) {
-              router.push(`/dataset/${playerStore.currentDatasetId}`)
-            }
-          }, 1000)
+          // Check if data is already available for immediate redirect
+          const hasImmediateData = response.players && response.players.length > 0
+          
+          if (hasImmediateData) {
+            // Data is already processed, show ready state
+            dataReady.value = true
+            uploadProgress.value = 100
+            
+            // Redirect immediately
+            setTimeout(() => {
+              if (playerStore.currentDatasetId) {
+                router.push(`/dataset/${playerStore.currentDatasetId}`)
+              }
+            }, 300) // Even faster for immediate data
+          } else {
+            // Data needs processing, use standard delay
+            setTimeout(() => {
+              if (playerStore.currentDatasetId) {
+                router.push(`/dataset/${playerStore.currentDatasetId}`)
+              }
+            }, 500) // Reduced from 1000ms for faster transition
+          }
         }
       } catch (e) {
         uploadProgress.value = 0

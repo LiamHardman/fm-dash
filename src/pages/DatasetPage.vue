@@ -601,8 +601,21 @@ export default {
       pageLoading.value = true
       pageLoadingError.value = ''
       try {
-        await playerStore.fetchPlayersByDatasetId(datasetId)
-        await playerStore.fetchAllAvailableRoles()
+        // Check if we already have data for this dataset in the store
+        const hasExistingData = playerStore.allPlayers.length > 0 && 
+                               playerStore.currentDatasetId === datasetId
+        
+        if (hasExistingData) {
+          console.log('Using existing data from store for dataset:', datasetId)
+          // Data is already available, just ensure roles are loaded
+          if (playerStore.allAvailableRoles.length === 0) {
+            await playerStore.fetchAllAvailableRoles()
+          }
+        } else {
+          // Fetch data from API
+          await playerStore.fetchPlayersByDatasetId(datasetId)
+          await playerStore.fetchAllAvailableRoles()
+        }
 
         await wishlistStore.initializeWishlistForDataset(datasetId)
 
@@ -627,6 +640,15 @@ export default {
     onMounted(async () => {
       const datasetIdFromRoute = route.params.datasetId
       if (datasetIdFromRoute) {
+        // Check if we have cached data for this dataset
+        const hasCachedData = playerStore.allPlayers.length > 0 && 
+                              playerStore.currentDatasetId === datasetIdFromRoute
+        
+        if (hasCachedData) {
+          console.log('Using cached data for dataset:', datasetIdFromRoute)
+          pageLoading.value = false // Don't show loading if we have cached data
+        }
+        
         await fetchDataset(datasetIdFromRoute)
       } else {
         pageLoadingError.value = 'No dataset ID provided in URL.'
