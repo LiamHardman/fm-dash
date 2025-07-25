@@ -489,7 +489,8 @@
                                                 :nation-flag-url="getFlagUrl(player.nationality_iso || player.nationality_fifa_code)"
                                                 :club-image-url="getTeamLogoUrl(player.club)"
                                                 :player-face-url="getPlayerFaceUrl(player.name, player.club)"
-                                                :dataset-id="currentDatasetId"
+                                                :dataset-id="props.datasetId"
+                                                :selected-role="selectedRole"
                                                 @click="handleCardClick(player)"
                                                 class="clickable-card"
                                             />

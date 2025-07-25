@@ -3,7 +3,7 @@
         <div class="card-bg"></div>
         <div class="card-content">
             <div class="card-header">
-                <div class="player-rating">{{ player.overall }}</div>
+                <div class="player-rating">{{ playerOverall }}</div>
                 <div class="player-position" :style="positionStyle">{{ formattedPosition }}</div>
                 <div class="player-name">{{ formattedPlayerName }}</div>
                 <div class="player-vitals-container">
@@ -53,7 +53,7 @@
 
 <script>
 import { useQuasar } from 'quasar'
-import { computed, defineComponent, onMounted, ref } from 'vue'
+import { computed, defineComponent, onMounted, ref, watch } from 'vue'
 import { fetchFullPlayerStats } from '../services/playerService'
 import TeamLogo from './TeamLogo.vue'
 
@@ -127,6 +127,10 @@ export default defineComponent({
       default: null
     },
     datasetId: {
+      type: String,
+      default: null
+    },
+    selectedRole: {
       type: String,
       default: null
     }
@@ -274,19 +278,86 @@ export default defineComponent({
       return {}
     })
 
+    // Computed property for player overall - shows role-specific rating when role is selected
+    const playerOverall = computed(() => {
+      // Use detailed player data if available, otherwise use props
+      const playerData = detailedPlayerData.value || props.player
+      
+      // If no role is selected, use the player's main overall
+      if (!props.selectedRole) {
+        return playerData.overall || playerData.Overall || 0
+      }
+      
+      // If a role is selected, try to get the role-specific overall
+      if (playerData.roleSpecificOveralls) {
+        let roleOverall = null
+        
+        if (Array.isArray(playerData.roleSpecificOveralls)) {
+          // Try exact match first
+          let roleData = playerData.roleSpecificOveralls.find(r => r.roleName === props.selectedRole)
+          
+          // If no exact match, try partial match (e.g., "WBL" matches "WBL - Complete Wing Back - Support")
+          if (!roleData) {
+            const selectedRolePrefix = props.selectedRole.split(' - ')[0] // Get "WBL" from "WBL - Complete Wing Back - Support"
+            roleData = playerData.roleSpecificOveralls.find(r => {
+              const roleName = r.roleName || r[0]
+              return roleName && roleName.startsWith(selectedRolePrefix)
+            })
+          }
+          
+          roleOverall = roleData ? roleData.score : null
+          
+          // Debug logging
+          if (props.selectedRole && playerData.name) {
+            console.log(`PlayerCards Debug - Player: ${playerData.name}, Selected Role: ${props.selectedRole}`)
+            console.log(`Available roles:`, playerData.roleSpecificOveralls.map(r => ({ roleName: r.roleName, score: r.score })))
+            console.log(`Found role data:`, roleData)
+            console.log(`Final role overall:`, roleOverall)
+          }
+        } else if (typeof playerData.roleSpecificOveralls === 'object') {
+          // Try exact match first
+          roleOverall = playerData.roleSpecificOveralls[props.selectedRole] || null
+          
+          // If no exact match, try partial match
+          if (roleOverall === null) {
+            const selectedRolePrefix = props.selectedRole.split(' - ')[0]
+            const matchingKey = Object.keys(playerData.roleSpecificOveralls).find(key => 
+              key.startsWith(selectedRolePrefix)
+            )
+            roleOverall = matchingKey ? playerData.roleSpecificOveralls[matchingKey] : null
+          }
+          
+          // Debug logging
+          if (props.selectedRole && playerData.name) {
+            console.log(`PlayerCards Debug - Player: ${playerData.name}, Selected Role: ${props.selectedRole}`)
+            console.log(`Available roles:`, Object.keys(playerData.roleSpecificOveralls))
+            console.log(`Final role overall:`, roleOverall)
+          }
+        }
+        
+        // If we found a role-specific rating, use it; otherwise fall back to main overall
+        if (roleOverall !== null && roleOverall > 0) {
+          return roleOverall
+        }
+      }
+      
+      // Fall back to main overall if no role-specific rating found
+      return playerData.overall || playerData.Overall || 0
+    })
+
     // Use detailed data if available, otherwise use props
     const playerData = computed(() => detailedPlayerData.value || props.player)
 
     // Card type and rarity logic
     const cardType = computed(() => {
-      const overall = props.player.overall || 0
+      const overall = playerOverall.value || 0
       if (overall >= 75) return 'gold'
       if (overall >= 65) return 'silver'
       return 'bronze'
     })
 
     const isRare = computed(() => {
-      const overall = props.player.overall || 0
+      const overall = playerOverall.value || 0
       
       // If player is 85 rated or higher, they should be rare no matter what
       if (overall >= 85) return true
@@ -367,16 +438,46 @@ export default defineComponent({
     })
 
     // Fetch detailed data logic (unchanged)
-    const needsDetailedData = computed(
-      () => !props.player.nationality_iso && props.datasetId && props.player.uid
-    )
+    const needsDetailedData = computed(() => {
+      console.log('PlayerCards: needsDetailedData check for player:', props.player.name)
+      console.log('PlayerCards: selectedRole:', props.selectedRole)
+      console.log('PlayerCards: datasetId:', props.datasetId)
+      console.log('PlayerCards: player.uid:', props.player.uid)
+      console.log('PlayerCards: player.nationality_iso:', props.player.nationality_iso)
+      console.log('PlayerCards: player.roleSpecificOveralls:', props.player.roleSpecificOveralls)
+      
+      // Fetch if missing nationality_iso
+      if (!props.player.nationality_iso && props.datasetId && props.player.uid) {
+        console.log('PlayerCards: needsDetailedData triggered - missing nationality_iso')
+        return true
+      }
+      
+      // Fetch if a role is selected but player doesn't have role-specific overalls
+      if (props.selectedRole && props.datasetId && props.player.uid) {
+        const hasRoleSpecificOveralls = props.player.roleSpecificOveralls && 
+          (Array.isArray(props.player.roleSpecificOveralls) ? props.player.roleSpecificOveralls.length > 0 : Object.keys(props.player.roleSpecificOveralls).length > 0)
+        
+        console.log('PlayerCards: hasRoleSpecificOveralls:', hasRoleSpecificOveralls)
+        
+        if (!hasRoleSpecificOveralls) {
+          console.log('PlayerCards: needsDetailedData triggered - role selected but no roleSpecificOveralls for player:', props.player.name)
+          return true
+        }
+      }
+      
+      console.log('PlayerCards: needsDetailedData returning false')
+      return false
+    })
     const fetchDetailedData = async () => {
       if (!needsDetailedData.value) return
+      console.log('PlayerCards: Fetching detailed data for player:', props.player.name)
       isLoadingDetailedData.value = true
       try {
         const result = await fetchFullPlayerStats(props.datasetId, props.player.uid)
+        console.log('PlayerCards: Detailed data result:', result)
         if (result.data && result.data.player) {
           detailedPlayerData.value = result.data.player
+          console.log('PlayerCards: Updated detailedPlayerData with roleSpecificOveralls:', result.data.player.roleSpecificOveralls)
         }
       } catch (error) {
         console.error('Failed to fetch detailed player data:', error)
@@ -455,6 +556,13 @@ export default defineComponent({
       }
     })
 
+    // Watch for changes in selectedRole and refetch detailed data if needed
+    watch(() => props.selectedRole, () => {
+      if (needsDetailedData.value) {
+        fetchDetailedData()
+      }
+    })
+
     return {
       qInstance,
       handleCardClick,
@@ -469,7 +577,8 @@ export default defineComponent({
       handleImageLoad,
       cardTypeClass,
       rarityClass,
-      isGoalkeeper
+      isGoalkeeper,
+      playerOverall
     }
   }
 })
