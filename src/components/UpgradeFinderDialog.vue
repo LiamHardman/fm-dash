@@ -225,7 +225,7 @@
                                             "
                                             :hint="
                                                 selectedTeamPlayer
-                                                    ? `Base Overall (${selectedRole ? getRoleShortName(selectedRole) : getPositionShortName(selectedPosition)}): ${getBaseOverallFromSelectedPlayer()}`
+                                                    ? `Base Overall (${selectedRole ? getRoleShortName(selectedRole) : getPositionShortName(selectedPosition)}): ${baseOverallForSelectedPlayer || 'Loading...'}`
                                                     : 'Select a player to set base overall'
                                             "
                                             :label-color="
@@ -699,6 +699,7 @@ import TeamLogo from './TeamLogo.vue'
 import { formations, getFormationLayout } from '@/utils/formations'
 import { formationCache } from '@/utils/formationCache'
 import { getFlagUrl, getTeamLogoUrl, getPlayerFaceUrl } from '@/utils/imageOptimization'
+import { fetchFullPlayerStats } from '../services/playerService'
 
 // From PlayerFilters.vue for consistency
 const AGE_SLIDER_MIN = 15
@@ -828,6 +829,7 @@ export default {
     const selectedPosition = ref(null)
     const selectedRole = ref(null)
     const selectedTeamPlayer = ref(null)
+    const baseOverallForSelectedPlayer = ref(null)
     const teamPlayersForSelection = ref([])
 
     // Formation-related variables
@@ -1915,15 +1917,10 @@ export default {
       }
     }
 
-    const getBaseOverallFromSelectedPlayer = () => {
+    const getBaseOverallFromSelectedPlayer = async () => {
       if (!selectedTeamPlayer.value) return null
       const player = teamPlayersForSelection.value.find(p => p.name === selectedTeamPlayer.value)
       if (!player) return null
-      
-      // For upgrade comparison, use the player's main overall rating as baseline
-      // This ensures we're comparing against their actual ability, not their position-specific rating
-      // which might be null if they can't play that position well
-      const mainOverall = player.Overall || player.overall || 0
       
       // If we have role-specific overalls and a selected role, try to get the role-specific rating
       if (selectedRole.value && player.roleSpecificOveralls) {
@@ -1941,6 +1938,42 @@ export default {
         }
       }
       
+      // If we don't have role-specific overalls but have a selected role, try to fetch detailed data
+      if (selectedRole.value && (!player.roleSpecificOveralls || 
+          (Array.isArray(player.roleSpecificOveralls) && player.roleSpecificOveralls.length === 0) ||
+          (typeof player.roleSpecificOveralls === 'object' && Object.keys(player.roleSpecificOveralls).length === 0))) {
+        
+        try {
+          if (player.uid && props.datasetId) {
+            const result = await fetchFullPlayerStats(props.datasetId, player.uid)
+            if (result.data && result.data.player) {
+              const detailedPlayer = result.data.player
+              
+              // Try to get role-specific overall from detailed data
+              if (detailedPlayer.roleSpecificOveralls) {
+                let roleOverall = null
+                if (Array.isArray(detailedPlayer.roleSpecificOveralls)) {
+                  const roleData = detailedPlayer.roleSpecificOveralls.find(r => r.roleName === selectedRole.value)
+                  roleOverall = roleData ? roleData.score : null
+                } else if (typeof detailedPlayer.roleSpecificOveralls === 'object') {
+                  roleOverall = detailedPlayer.roleSpecificOveralls[selectedRole.value] || null
+                }
+                
+                if (roleOverall !== null && roleOverall > 0) {
+                  return roleOverall
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error(`Failed to fetch detailed data for selected player ${player.name}:`, error)
+        }
+      }
+      
+      // For upgrade comparison, use the player's main overall rating as baseline
+      // This ensures we're comparing against their actual ability, not their position-specific rating
+      // which might be null if they can't play that position well
+      const mainOverall = player.Overall || player.overall || 0
       return mainOverall
     }
 
@@ -1949,11 +1982,19 @@ export default {
       return teamPlayersForSelection.value.find(p => p.name === selectedTeamPlayer.value) || null
     })
 
-    const targetOverallForSearch = computed(() => {
-      const base = getBaseOverallFromSelectedPlayer()
+    const updateBaseOverallForSelectedPlayer = async () => {
+      if (selectedTeamPlayer.value) {
+        baseOverallForSelectedPlayer.value = await getBaseOverallFromSelectedPlayer()
+      } else {
+        baseOverallForSelectedPlayer.value = null
+      }
+    }
+
+    const targetOverallForSearch = async () => {
+      const base = await getBaseOverallFromSelectedPlayer()
       if (base === null) return null
       return base + upgradeByValue.value
-    })
+    }
 
     const computedMinSliderTransferValue = computed(() => dynamicMinTransferValue.value)
     const computedMaxSliderTransferValue = computed(() => dynamicMaxTransferValue.value)
@@ -2005,11 +2046,16 @@ export default {
         return
       }
 
+      // Debug: Check what data is available
+      console.log('UpgradeFinderDialog: Using players from:', hasCompletePlayerData(playerStore.allPlayers) ? 'playerStore.allPlayers' : 'props.players')
+      console.log('UpgradeFinderDialog: Sample player roleSpecificOveralls:', playersToUse[0]?.roleSpecificOveralls)
+      console.log('UpgradeFinderDialog: Sample player shortPositions:', playersToUse[0]?.shortPositions)
+
       loading.value = true
       showResults.value = true
       currentPage.value = 1 // Reset to first page when new results are found
       initialLoad.value = false
-      const baseOverall = getBaseOverallFromSelectedPlayer()
+      const baseOverall = await getBaseOverallFromSelectedPlayer()
       if (baseOverall === null) {
         loading.value = false
         upgradePlayers.value = []
@@ -2029,42 +2075,71 @@ export default {
           console.log('UpgradeFinderDialog - Original players first player roleSpecificOveralls:', playersToUse[0].roleSpecificOveralls)
         }
 
-        upgradePlayers.value = playersToUse
-          .filter(player => {
-            if (player.club === teamName.value) return false
-            if (player.transfer_value && player.transfer_value.toLowerCase() === 'not for sale')
-              return false
-            if (!player.shortPositions || !player.shortPositions.includes(selectedPosition.value))
-              return false
+        // First, filter players based on basic criteria (without role-specific overalls)
+        const initialFilteredPlayers = playersToUse.filter(player => {
+          if (player.club === teamName.value) return false
+          if (player.transfer_value && player.transfer_value.toLowerCase() === 'not for sale')
+            return false
+          if (!player.shortPositions || !player.shortPositions.includes(selectedPosition.value))
+            return false
 
+          if (
+            currentMaxAge < ageSliderMax &&
+            (Number.parseInt(player.age, 10) || 0) > currentMaxAge
+          )
+            return false
+          if (
+            currentMaxTransferValue < computedMaxSliderTransferValue.value
+          ) {
+            const transferValueRange = parseTransferValueRange(player.transfer_value)
+            if (transferValueRange.max > currentMaxTransferValue) {
+              return false
+            }
+          }
+          if (
+            currentMaxSalary < computedMaxSliderSalary.value &&
+            (player.wageAmount || 0) > currentMaxSalary
+          )
+            return false
+
+          return true
+        })
+
+        console.log(`Initial filtering found ${initialFilteredPlayers.length} players, now fetching detailed data...`)
+
+        // Fetch detailed data for all filtered players
+        const detailedPlayers = []
+        for (const player of initialFilteredPlayers) {
+          try {
+            if (player.uid && props.datasetId) {
+              const result = await fetchFullPlayerStats(props.datasetId, player.uid)
+              if (result.data && result.data.player) {
+                detailedPlayers.push(result.data.player)
+              } else {
+                detailedPlayers.push(player) // Fallback to original player data
+              }
+            } else {
+              detailedPlayers.push(player) // Fallback to original player data
+            }
+          } catch (error) {
+            console.error(`Failed to fetch detailed data for player ${player.name}:`, error)
+            detailedPlayers.push(player) // Fallback to original player data
+          }
+        }
+
+        console.log(`Fetched detailed data for ${detailedPlayers.length} players`)
+
+        // Now filter and sort based on role-specific overalls
+        const filteredAndSortedPlayers = detailedPlayers
+          .filter(player => {
             const playerOverallForContext = getPlayerOverallForRoleOrPosition(
               player,
               selectedRole.value,
               selectedPosition.value
             )
+            console.log(`Player ${player.name} role-specific overall for ${selectedRole.value}: ${playerOverallForContext}`)
+            
             if ((playerOverallForContext || 0) < targetOverall) return false
-
-            if (
-              currentMaxAge < ageSliderMax &&
-              (Number.parseInt(player.age, 10) || 0) > currentMaxAge
-            )
-              return false
-            if (
-              currentMaxTransferValue < computedMaxSliderTransferValue.value
-            ) {
-              const transferValueRange = parseTransferValueRange(player.transfer_value)
-              // Check if the player's transfer value range overlaps with the filter
-              // A player should be excluded if their maximum value is greater than the filter maximum
-              if (transferValueRange.max > currentMaxTransferValue) {
-                return false
-              }
-            }
-            if (
-              currentMaxSalary < computedMaxSliderSalary.value &&
-              (player.wageAmount || 0) > currentMaxSalary
-            )
-              return false
-
             return true
           })
           .sort((a, b) => {
@@ -2081,10 +2156,8 @@ export default {
             return (overallB || 0) - (overallA || 0)
           })
 
-        console.log('UpgradeFinderDialog - Filtered upgradePlayers first player:', upgradePlayers.value[0])
-        if (upgradePlayers.value[0]) {
-          console.log('UpgradeFinderDialog - Filtered upgradePlayers first player roleSpecificOveralls:', upgradePlayers.value[0].roleSpecificOveralls)
-        }
+        console.log(`Found ${filteredAndSortedPlayers.length} players matching criteria for role: ${selectedRole.value}`)
+        upgradePlayers.value = filteredAndSortedPlayers
       } catch (_error) {
         upgradePlayers.value = []
       } finally {
@@ -2416,13 +2489,23 @@ export default {
     
     // Card click handler
     const handleCardClick = (player) => {
-      // Ensure we pass the original player object, not the processed one
-      const originalPlayer = props.players.find(
-        p => p.name === player.name && p.club === player.club
-      )
-      playerForDetailView.value = originalPlayer || player
+      playerForDetailView.value = player
       showPlayerDetailDialog.value = true
     }
+
+    // Watch for changes in selectedRole to re-trigger search
+    watch(selectedRole, async () => {
+      await updateBaseOverallForSelectedPlayer()
+      if (selectedTeamPlayer.value && showResults.value) {
+        console.log('Role changed to:', selectedRole.value, '- re-searching for upgrades')
+        findUpgrades()
+      }
+    })
+
+    // Watch for selected player changes to update base overall
+    watch(selectedTeamPlayer, async () => {
+      await updateBaseOverallForSelectedPlayer()
+    })
 
     return {
       quasar: $q,
@@ -2438,6 +2521,8 @@ export default {
       selectedTeamPlayer,
       teamPlayersForSelection,
       getBaseOverallFromSelectedPlayer,
+      updateBaseOverallForSelectedPlayer,
+      baseOverallForSelectedPlayer,
       selectedTeamPlayerObject,
       targetOverallForSearch,
       upgradeByValue,
