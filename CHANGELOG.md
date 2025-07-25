@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/LiamHardman/fm-dash/compare/v1.7.1...v1.8.0) (2025-07-25)
+
+
+### Features
+
+* Improved loading experience ([97fcd00](https://github.com/LiamHardman/fm-dash/commit/97fcd000b3a18efa2c988b7fc26ae3d26a3b4120))
+
 ## [1.7.1](https://github.com/LiamHardman/fm-dash/compare/v1.7.0...v1.7.1) (2025-07-24)
 
 
