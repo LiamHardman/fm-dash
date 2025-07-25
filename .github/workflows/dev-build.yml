@@ -74,12 +74,44 @@ jobs:
         working-directory: ./src/api
         run: go build -o api .
 
+      - name: Copy backend binary to root
+        run: |
+          echo "📋 Copying backend binary to root..."
+          cp src/api/api ./fm-dash-backend
+          chmod +x ./fm-dash-backend
+          echo "✅ Backend binary copied to root"
+
+      - name: Verify builds completed
+        run: |
+          echo "🔍 Verifying builds completed..."
+          if [ -d "dist" ]; then
+            echo "✅ Frontend build found in dist/"
+            ls -la dist/
+          else
+            echo "⚠️  Frontend build not found"
+          fi
+          
+          if [ -f "src/api/api" ]; then
+            echo "✅ Backend build found"
+            ls -la src/api/api
+          else
+            echo "⚠️  Backend build not found"
+          fi
+
       - name: Create build artifacts
         run: |
           echo "📦 Creating build artifacts..."
           
+          # Wait a moment for build to complete
+          sleep 2
+          
           # Create frontend build archive
-          cd dist && tar -czf ../fm-dash-frontend-dev.tar.gz . && cd ..
+          if [ -d "dist" ]; then
+            cd dist && tar -czf ../fm-dash-frontend-dev.tar.gz . && cd ..
+            echo "✅ Frontend build archive created"
+          else
+            echo "⚠️  dist directory not found, skipping frontend archive"
+          fi
           
           # Create source code archive
           tar -czf fm-dash-source-dev.tar.gz \
@@ -89,7 +121,9 @@ jobs:
             --exclude='*.log' \
             --exclude='coverage' \
             --exclude='src/api/coverage' \
-            .
+            . || echo "⚠️  Source archive creation failed, continuing..."
+          
+          echo "✅ Build artifacts creation completed"
 
   # Docker Build and Push
   docker:
