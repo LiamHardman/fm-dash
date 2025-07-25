@@ -177,9 +177,9 @@
                 </div>
               </div>
               
-              <div class="player-positions-section q-mt-sm" v-if="player.shortPositions?.length || player.position">
-                <q-badge
-                  v-for="pos in player.shortPositions || [player.position]"
+                      <div class="player-positions-section q-mt-sm" v-if="player.short_positions?.length || player.position">
+          <q-badge
+            v-for="pos in player.short_positions || [player.position]"
                   :key="pos"
                   outline
                   color="indigo-6"

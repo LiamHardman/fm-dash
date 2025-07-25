@@ -1,9 +1,50 @@
 package main
 
 import (
-	"log"
 	"math"
 )
+
+// Global variables for attribute weights
+var globalAttributeWeights map[string]map[string]int
+
+// getDefaultWeightsForCategory returns the default weights for a given category
+func getDefaultWeightsForCategory(categoryName string) map[string]int {
+	if weights, exists := defaultAttributeWeightsGo[categoryName]; exists {
+		return weights
+	}
+	return nil
+}
+
+// calculateWeightedAverageLinear calculates a weighted average using linear scaling
+func calculateWeightedAverageLinear(playerNumericAttributes, categoryAttributeWeights map[string]int) int {
+	if len(categoryAttributeWeights) == 0 {
+		return 0
+	}
+
+	var weightedAttributeSum float64
+	var totalApplicableWeightsSum float64
+
+	for attrKey, weightForAttribute := range categoryAttributeWeights {
+		attributeValue, exists := playerNumericAttributes[attrKey]
+		if !exists || attributeValue <= 0 {
+			continue
+		}
+
+		// Clamp to valid range
+		validValue := math.Max(1, math.Min(20, float64(attributeValue)))
+		weightFloat := float64(weightForAttribute)
+		weightedAttributeSum += validValue * weightFloat
+		totalApplicableWeightsSum += weightFloat
+	}
+
+	if totalApplicableWeightsSum == 0 {
+		return 0
+	}
+
+	// Apply linear scaling
+	scaledScore := (weightedAttributeSum / totalApplicableWeightsSum) * 5.3
+	return int(scaledScore + 0.5)
+}
 
 // Pre-computed scaling lookup table for better performance
 var nonLinearScalingLookup [100]int
@@ -113,7 +154,7 @@ func CalculateFifaStatGo(playerNumericAttributes map[string]int, categoryName st
 	if attributeWeights != nil {
 		currentCategoryWeightsSource = attributeWeights
 	} else {
-		log.Printf("Warning: global attributeWeights is nil in CalculateFifaStatGo. Using default for %s.", categoryName)
+		LogWarn("Warning: global attributeWeights is nil in CalculateFifaStatGo. Using default for %s.", categoryName)
 		currentCategoryWeightsSource = defaultAttributeWeightsGo // Fallback to compiled-in defaults
 	}
 	muAttributeWeights.RUnlock()
@@ -160,10 +201,10 @@ func CalculateFifaStatGo(playerNumericAttributes map[string]int, categoryName st
 		// If category not in primary source, try the compiled-in default as a further fallback
 		categoryAttributeWeights, ok = defaultAttributeWeightsGo[categoryName]
 		if !ok {
-			log.Printf("Error: Default attribute weights for category '%s' also not found. Returning 0.", categoryName)
+			LogWarn("Error: Default attribute weights for category '%s' also not found. Returning 0.", categoryName)
 			return 0
 		}
-		log.Printf("Warning: Category '%s' not found in loaded attribute weights, using compiled-in default.", categoryName)
+		LogWarn("Warning: Category '%s' not found in loaded attribute weights, using compiled-in default.", categoryName)
 	}
 
 	// Default calculation for all other categories.
@@ -183,75 +224,30 @@ func CalculateFifaStatGo(playerNumericAttributes map[string]int, categoryName st
 
 // CalculateFifaStatGoLinear calculates a FIFA-style category stat using linear scaling (legacy method)
 func CalculateFifaStatGoLinear(playerNumericAttributes map[string]int, categoryName string) int {
-	muAttributeWeights.RLock()
-	// Prefer loaded attributeWeights, fallback to defaultAttributeWeightsGo if the first is nil or category is missing
-	var currentCategoryWeightsSource map[string]map[string]int
-	if attributeWeights != nil {
-		currentCategoryWeightsSource = attributeWeights
-	} else {
-		log.Printf("Warning: global attributeWeights is nil in CalculateFifaStatGoLinear. Using default for %s.", categoryName)
-		currentCategoryWeightsSource = defaultAttributeWeightsGo // Fallback to compiled-in defaults
-	}
-	muAttributeWeights.RUnlock()
-
-	// Special handling for "PAS" category to calculate based on three methods and take the highest.
-	if categoryName == "PAS" {
-		// Method 1: Standard
-		weights1, ok1 := currentCategoryWeightsSource["PAS_standard"]
-		score1 := 0
-		if ok1 {
-			avg1 := calculateWeightedAverage(playerNumericAttributes, weights1)
-			score1 = int(math.Round(avg1 * 5.3))
-		}
-
-		// Method 2: No Set Pieces
-		weights2, ok2 := currentCategoryWeightsSource["PAS_no_set_pieces"]
-		score2 := 0
-		if ok2 {
-			avg2 := calculateWeightedAverage(playerNumericAttributes, weights2)
-			score2 = int(math.Round(avg2 * 5.3))
-		}
-
-		// Method 3: No Off The Ball
-		weights3, ok3 := currentCategoryWeightsSource["PAS_no_off_ball"]
-		score3 := 0
-		if ok3 {
-			avg3 := calculateWeightedAverage(playerNumericAttributes, weights3)
-			score3 = int(math.Round(avg3 * 5.3))
-		}
-
-		// Determine the maximum score from the three methods.
-		maxScore := score1
-		if score2 > maxScore {
-			maxScore = score2
-		}
-		if score3 > maxScore {
-			maxScore = score3
-		}
-		return Clamp(maxScore, 0, 99)
-	}
-
-	categoryAttributeWeights, ok := currentCategoryWeightsSource[categoryName]
-	if !ok {
-		// If category not in primary source, try the compiled-in default as a further fallback
-		categoryAttributeWeights, ok = defaultAttributeWeightsGo[categoryName]
-		if !ok {
-			log.Printf("Error: Default attribute weights for category '%s' also not found. Returning 0.", categoryName)
+	if globalAttributeWeights == nil {
+		LogWarn("Warning: global attributeWeights is nil in CalculateFifaStatGoLinear. Using default for %s.", categoryName)
+		// Use default weights for this category
+		defaultWeights := getDefaultWeightsForCategory(categoryName)
+		if defaultWeights == nil {
+			LogWarn("Error: Default attribute weights for category '%s' also not found. Returning 0.", categoryName)
 			return 0
 		}
-		log.Printf("Warning: Category '%s' not found in loaded attribute weights, using compiled-in default.", categoryName)
+		return calculateWeightedAverageLinear(playerNumericAttributes, defaultWeights)
 	}
 
-	// Default calculation for all other categories.
-	weightedAverage := calculateWeightedAverage(playerNumericAttributes, categoryAttributeWeights)
-	if weightedAverage == 0 {
-		return 0
+	weights, exists := globalAttributeWeights[categoryName]
+	if !exists {
+		LogWarn("Warning: Category '%s' not found in loaded attribute weights, using compiled-in default.", categoryName)
+		// Use default weights for this category
+		defaultWeights := getDefaultWeightsForCategory(categoryName)
+		if defaultWeights == nil {
+			LogWarn("Error: Default attribute weights for category '%s' also not found. Returning 0.", categoryName)
+			return 0
+		}
+		return calculateWeightedAverageLinear(playerNumericAttributes, defaultWeights)
 	}
 
-	// Apply original linear scaling method: Scale to approx 0-100 using factor 5.3
-	finalScore := int(math.Round(weightedAverage * 5.3))
-
-	return Clamp(finalScore, 0, 99) // Clamp from utils.go
+	return calculateWeightedAverageLinear(playerNumericAttributes, weights)
 }
 
 // CalculateOverallForRoleGoLinear calculates a player's suitability for a specific role using linear scaling (legacy method)

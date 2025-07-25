@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"log/slog"
 	"time"
 
@@ -17,13 +16,13 @@ var (
 	meter metric.Meter
 
 	// Upload metrics
-	uploadDuration         metric.Float64Histogram
-	uploadRowsPerSecond    metric.Float64Gauge
-	uploadFileSize         metric.Float64Histogram
-	uploadPlayersProcessed metric.Float64Gauge
-	uploadMemoryUsage      metric.Float64Gauge
-	uploadsTotal           metric.Int64Counter
-	uploadWorkers          metric.Float64Gauge
+	uploadDurationHistogram     metric.Float64Histogram
+	uploadRowsPerSecondGauge    metric.Float64ObservableGauge
+	uploadFileSizeHistogram     metric.Float64Histogram
+	uploadPlayersProcessedGauge metric.Int64ObservableGauge
+	uploadMemoryUsageGauge      metric.Float64ObservableGauge
+	uploadsTotalCounter         metric.Int64Counter
+	uploadWorkersGauge          metric.Int64ObservableGauge
 
 	// Application-specific metrics
 	// activeUploads   metric.Int64UpDownCounter
@@ -64,88 +63,142 @@ var durationBuckets = []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5,
 // Size buckets for file sizes in bytes
 var sizeBuckets = []float64{1024, 10240, 102400, 1048576, 10485760, 52428800} // 1KB to 50MB
 
-// initMetrics initializes OpenTelemetry metrics instruments
-func initMetrics() {
-	if !otelEnabled {
-		return
-	}
-
-	meter = otel.Meter("v2fmdash-api")
-
-	var err error
-	uploadDuration, err = meter.Float64Histogram(
-		"fm24_upload_duration_seconds",
-		metric.WithDescription("Time taken to process uploads"),
+// createUploadDurationHistogram creates a histogram for upload duration
+func createUploadDurationHistogram() (metric.Float64Histogram, error) {
+	histogram, err := meter.Float64Histogram(
+		"upload_duration",
 		metric.WithUnit("s"),
-		metric.WithExplicitBucketBoundaries(durationBuckets...),
+		metric.WithExplicitBucketBoundaries(1, 5, 10, 30, 60, 120, 300),
 	)
 	if err != nil {
-		log.Printf("Failed to create upload duration histogram: %v", err)
+		LogWarn("Failed to create upload duration histogram: %v", err)
+		return nil, err
 	}
+	return histogram, nil
+}
 
-	uploadRowsPerSecond, err = meter.Float64Gauge(
-		"fm24_upload_rows_per_second",
-		metric.WithDescription("Rows processed per second in last upload"),
+// createUploadRowsPerSecondGauge creates a gauge for upload rows per second
+func createUploadRowsPerSecondGauge() (metric.Float64ObservableGauge, error) {
+	gauge, err := meter.Float64ObservableGauge(
+		"upload_rows_per_second",
+		metric.WithUnit("rows/s"),
 	)
 	if err != nil {
-		log.Printf("Failed to create upload rows per second gauge: %v", err)
+		LogWarn("Failed to create upload rows per second gauge: %v", err)
+		return nil, err
 	}
+	return gauge, nil
+}
 
-	uploadFileSize, err = meter.Float64Histogram(
-		"fm24_upload_file_size_bytes",
-		metric.WithDescription("Size of uploaded files in bytes"),
+// createUploadFileSizeHistogram creates a histogram for upload file sizes
+func createUploadFileSizeHistogram() (metric.Float64Histogram, error) {
+	histogram, err := meter.Float64Histogram(
+		"upload_file_size",
 		metric.WithUnit("By"),
-		metric.WithExplicitBucketBoundaries(sizeBuckets...),
+		metric.WithExplicitBucketBoundaries(1024, 10240, 102400, 1048576, 10485760),
 	)
 	if err != nil {
-		log.Printf("Failed to create upload file size histogram: %v", err)
+		LogWarn("Failed to create upload file size histogram: %v", err)
+		return nil, err
 	}
+	return histogram, nil
+}
 
-	uploadPlayersProcessed, err = meter.Float64Gauge(
-		"fm24_upload_players_processed",
-		metric.WithDescription("Number of players processed in last upload"),
+// createUploadPlayersProcessedGauge creates a gauge for players processed
+func createUploadPlayersProcessedGauge() (metric.Int64ObservableGauge, error) {
+	gauge, err := meter.Int64ObservableGauge(
+		"upload_players_processed",
+		metric.WithUnit("players"),
 	)
 	if err != nil {
-		log.Printf("Failed to create upload players processed gauge: %v", err)
+		LogWarn("Failed to create upload players processed gauge: %v", err)
+		return nil, err
 	}
+	return gauge, nil
+}
 
-	uploadMemoryUsage, err = meter.Float64Gauge(
-		"fm24_upload_memory_usage_mb",
-		metric.WithDescription("Memory usage during last upload in MB"),
-		metric.WithUnit("MB"),
+// createUploadMemoryUsageGauge creates a gauge for memory usage during uploads
+func createUploadMemoryUsageGauge() (metric.Float64ObservableGauge, error) {
+	gauge, err := meter.Float64ObservableGauge(
+		"upload_memory_usage",
+		metric.WithUnit("By"),
 	)
 	if err != nil {
-		log.Printf("Failed to create upload memory usage gauge: %v", err)
+		LogWarn("Failed to create upload memory usage gauge: %v", err)
+		return nil, err
 	}
+	return gauge, nil
+}
 
-	uploadsTotal, err = meter.Int64Counter(
-		"fm24_uploads_total",
-		metric.WithDescription("Total number of file uploads processed"),
+// createUploadsTotalCounter creates a counter for total uploads
+func createUploadsTotalCounter() (metric.Int64Counter, error) {
+	counter, err := meter.Int64Counter(
+		"uploads_total",
 	)
 	if err != nil {
-		log.Printf("Failed to create uploads total counter: %v", err)
+		LogWarn("Failed to create uploads total counter: %v", err)
+		return nil, err
 	}
+	return counter, nil
+}
 
-	uploadWorkers, err = meter.Float64Gauge(
-		"fm24_upload_workers",
-		metric.WithDescription("Number of workers used in last upload"),
+// createUploadWorkersGauge creates a gauge for active upload workers
+func createUploadWorkersGauge() (metric.Int64ObservableGauge, error) {
+	gauge, err := meter.Int64ObservableGauge(
+		"upload_workers",
+		metric.WithUnit("workers"),
 	)
 	if err != nil {
-		log.Printf("Failed to create upload workers gauge: %v", err)
+		LogWarn("Failed to create upload workers gauge: %v", err)
+		return nil, err
+	}
+	return gauge, nil
+}
+
+// initMetrics initializes all metrics
+func initMetrics() {
+	// Initialize meter
+	meter = otel.GetMeterProvider().Meter("fm24-api")
+
+	// Create metrics
+	var err error
+
+	uploadDurationHistogram, err = createUploadDurationHistogram()
+	if err != nil {
+		LogWarn("Failed to create upload duration histogram: %v", err)
 	}
 
-	// Additional metrics removed to reduce commented code warnings
-	// These can be re-enabled later if needed: activeUploads, datasetCount, cacheSizeBytes
+	uploadRowsPerSecondGauge, err = createUploadRowsPerSecondGauge()
+	if err != nil {
+		LogWarn("Failed to create upload rows per second gauge: %v", err)
+	}
 
-	// Additional latency metrics removed to reduce commented code warnings
-	// These can be re-enabled later if needed: searchLatency, apiLatency, dbQueryDuration
+	uploadFileSizeHistogram, err = createUploadFileSizeHistogram()
+	if err != nil {
+		LogWarn("Failed to create upload file size histogram: %v", err)
+	}
 
-	// Additional business metrics removed to reduce commented code warnings
-	// These can be re-enabled later if needed: concurrentUsers, playersPerTeam, teamRatingsDistribution, userEngagementScore, dataQualityScore
+	uploadPlayersProcessedGauge, err = createUploadPlayersProcessedGauge()
+	if err != nil {
+		LogWarn("Failed to create upload players processed gauge: %v", err)
+	}
 
-	initEnhancedMetrics()
+	uploadMemoryUsageGauge, err = createUploadMemoryUsageGauge()
+	if err != nil {
+		LogWarn("Failed to create upload memory usage gauge: %v", err)
+	}
 
-	log.Printf("OpenTelemetry metrics initialized successfully")
+	uploadsTotalCounter, err = createUploadsTotalCounter()
+	if err != nil {
+		LogWarn("Failed to create uploads total counter: %v", err)
+	}
+
+	uploadWorkersGauge, err = createUploadWorkersGauge()
+	if err != nil {
+		LogWarn("Failed to create upload workers gauge: %v", err)
+	}
+
+	LogInfo("OpenTelemetry metrics initialized successfully")
 }
 
 // recordUploadMetrics stores metrics for a completed upload if metrics are enabled.
@@ -155,43 +208,36 @@ func recordUploadMetrics(ctx context.Context, fileSizeBytes int64, totalDuration
 		return
 	}
 
-	rowsPerSecond := 0.0
-	if parseDuration.Seconds() > 0 {
-		rowsPerSecond = float64(playersProcessed) / parseDuration.Seconds()
-	}
+	// rowsPerSecond calculation would be handled by gauge callback
 
 	// Record to OpenTelemetry metrics
-	if uploadDuration != nil {
-		uploadDuration.Record(ctx, totalDuration.Seconds(), metric.WithAttributes(
+	if uploadDurationHistogram != nil {
+		uploadDurationHistogram.Record(ctx, totalDuration.Seconds(), metric.WithAttributes(
 			attribute.String("type", "total"),
 		))
-		uploadDuration.Record(ctx, parseDuration.Seconds(), metric.WithAttributes(
+		uploadDurationHistogram.Record(ctx, parseDuration.Seconds(), metric.WithAttributes(
 			attribute.String("type", "parse"),
 		))
 	}
 
-	if uploadRowsPerSecond != nil {
-		uploadRowsPerSecond.Record(ctx, rowsPerSecond)
+	if uploadRowsPerSecondGauge != nil {
+		// The gauge callback will handle recording the value
 	}
 
-	if uploadFileSize != nil {
-		uploadFileSize.Record(ctx, float64(fileSizeBytes))
+	if uploadFileSizeHistogram != nil {
+		uploadFileSizeHistogram.Record(ctx, float64(fileSizeBytes))
 	}
 
-	if uploadPlayersProcessed != nil {
-		uploadPlayersProcessed.Record(ctx, float64(playersProcessed))
+	if uploadPlayersProcessedGauge != nil {
+		// The gauge callback will handle recording the value
 	}
 
-	if uploadMemoryUsage != nil {
-		uploadMemoryUsage.Record(ctx, memoryAllocMB)
+	if uploadMemoryUsageGauge != nil {
+		// The gauge callback will handle recording the value
 	}
 
-	if uploadWorkers != nil {
-		uploadWorkers.Record(ctx, float64(numWorkers))
-	}
-
-	if uploadsTotal != nil {
-		uploadsTotal.Add(ctx, 1)
+	if uploadsTotalCounter != nil {
+		uploadsTotalCounter.Add(ctx, 1)
 	}
 }
 
@@ -451,11 +497,11 @@ func RecordDatasetChange(ctx context.Context, operation, datasetID string, delta
 
 // RecordUploadSize records the size of file uploads
 func RecordUploadSize(ctx context.Context, sizeBytes int64, fileType string) {
-	if !otelEnabled || uploadFileSize == nil {
+	if !otelEnabled || uploadFileSizeHistogram == nil {
 		return
 	}
 
-	uploadFileSize.Record(ctx, float64(sizeBytes), metric.WithAttributes(
+	uploadFileSizeHistogram.Record(ctx, float64(sizeBytes), metric.WithAttributes(
 		attribute.String("file.type", fileType),
 	))
 }

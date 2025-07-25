@@ -1,17 +1,16 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"log/slog"
 	"math"
 	"net/http"
+	"net/url"
 	"os"
 	"runtime"
 	"sort"
@@ -22,8 +21,10 @@ import (
 
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
+	"google.golang.org/protobuf/proto"
 
 	apperrors "api/errors"
+	pb "api/proto"
 )
 
 // Note: gzip compression middleware already exists in middleware.go
@@ -101,7 +102,7 @@ func cleanupStaleDuplicateMappings() {
 	}
 
 	if len(staleMappings) > 0 {
-		log.Printf("Cleaned up %d stale duplicate mappings", len(staleMappings))
+		logInfo(context.Background(), "Cleaned up %d stale duplicate mappings", len(staleMappings))
 	}
 }
 
@@ -215,21 +216,23 @@ type Team struct {
 }
 
 // getMaxUploadSize reads the MAX_UPLOAD_SIZE environment variable and returns the size in bytes.
-// If not set or invalid, defaults to 15MB.
+// If not set or invalid, defaults to 20MB.
 func getMaxUploadSize() int64 {
 	envValue := os.Getenv("MAX_UPLOAD_SIZE")
+
 	if envValue == "" {
-		return 20 * 1024 * 1024 // Default 15MB
+		return 20 * 1024 * 1024 // Default 20MB
 	}
 
 	// Parse as integer (expecting value in MB)
 	sizeInMB, err := strconv.Atoi(envValue)
 	if err != nil || sizeInMB <= 0 {
-		log.Printf("Invalid MAX_UPLOAD_SIZE environment variable '%s', defaulting to 20MB", envValue)
-		return 20 * 1024 * 1024 // Default 15MB
+		logWarn(context.Background(), "Invalid MAX_UPLOAD_SIZE environment variable '%s', defaulting to 20MB", envValue)
+		return 20 * 1024 * 1024 // Default 20MB
 	}
 
-	return int64(sizeInMB) * 1024 * 1024
+	result := int64(sizeInMB) * 1024 * 1024
+	return result
 }
 
 // getFileSizeLimitErrorMessage returns the user-facing error message with the current upload limit
@@ -403,9 +406,53 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	AddSpanEvent(ctx, "duplicate.check.completed", attribute.Bool("is_duplicate", isDuplicate))
 	duplicateSpan.End()
 
+	// Determine if this is a large file that needs streaming response
+	isLargeFile := actualFileSize > 10*1024*1024       // 10MB threshold
+	estimatedPlayerCount := int(actualFileSize / 2048) // Rough estimation: ~2KB per player row
+
+	if isLargeFile {
+		// For large files, return immediate response and process in background
+		datasetID := uuid.New().String()
+
+		// Store the file hash mapping for duplicate detection
+		storeDuplicateMapping(fileHash, datasetID)
+
+		// Return immediate response for large files
+		response := UploadResponse{
+			DatasetID:              datasetID,
+			Message:                "Large file detected. Processing in background. Check processing status for updates.",
+			DetectedCurrencySymbol: "$", // Will be updated during processing
+			ProcessingStatus:       "processing",
+			PlayerCount:            estimatedPlayerCount,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		setCORSHeaders(w, r)
+
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			RecordError(ctx, err, "Failed to encode streaming response")
+			http.Error(w, "Error encoding response: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Process the file in background
+		go func() {
+			processLargeFileAsync(ctx, fileContent, handler.Filename, datasetID, fileHash, actualFileSize)
+		}()
+
+		RecordBusinessOperation(ctx, "large_file_upload_started", true, map[string]interface{}{
+			"filename":          handler.Filename,
+			"file_size_bytes":   actualFileSize,
+			"dataset_id":        datasetID,
+			"estimated_players": estimatedPlayerCount,
+		})
+
+		return
+	}
+
+	// For smaller files, use the existing synchronous processing
 	parseStartTime := time.Now()
 	// Optimized pre-allocation based on file size estimation
-	estimatedPlayerCount := int(actualFileSize / 2048) // Rough estimation: ~2KB per player row
 	if estimatedPlayerCount == 0 {
 		estimatedPlayerCount = 100 // Minimum reasonable estimate
 	}
@@ -442,7 +489,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			if result.Err == nil {
 				playersList = append(playersList, result.Player)
 			} else {
-				log.Printf("Skipping row due to error from worker: %v", result.Err)
+				logWarn(ctx, "Skipping row due to error from worker", "error", result.Err)
 			}
 		}
 		LogDebug("Finished collecting results from resultsChan.")
@@ -463,9 +510,9 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	if processingError != nil {
 		RecordError(ctx, processingError, "HTML parsing failed")
-		log.Printf("Error during HTML parsing or worker setup: %v", processingError)
+		logError(ctx, "Error during HTML parsing or worker setup", "error", processingError)
 		if len(headersSnapshot) > 0 {
-			log.Println("Waiting for any potentially started workers after parsing error...")
+			logInfo(ctx, "Waiting for any potentially started workers after parsing error...")
 			wg.Wait()
 		}
 		close(resultsChan)
@@ -516,7 +563,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if !foundSymbol {
-			log.Println("No currency symbol detected from parsed player monetary values, using default '$'.")
+			logInfo(ctx, "No currency symbol detected from parsed player monetary values, using default '$'")
 		}
 	}
 
@@ -546,160 +593,71 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	logDebug(ctx, "Player data stored successfully",
 		"dataset_id", datasetID,
 		"player_count", len(playersList),
-		"detected_currency", finalDatasetCurrencySymbol)
+		"parse_duration", parseDuration,
+		"currency_symbol", finalDatasetCurrencySymbol)
 
-	// Send response immediately - percentiles will be calculated asynchronously
-	response := UploadResponse{DatasetID: datasetID, Message: "File uploaded and parsed successfully.", DetectedCurrencySymbol: finalDatasetCurrencySymbol}
+	// Extract roles from processed players for immediate response
+	roles := extractRolesFromPlayers(playersList)
+
+	// Create enhanced response with processed data
+	response := UploadResponse{
+		DatasetID:              datasetID,
+		Message:                "File uploaded and processed successfully.",
+		DetectedCurrencySymbol: finalDatasetCurrencySymbol,
+		Players:                processBasicPlayerData(playersList), // Return processed players
+		Roles:                  roles,                               // Return available roles
+		PercentilesReady:       false,                               // Percentiles will be calculated asynchronously
+		ProcessingStatus:       "completed",
+		PlayerCount:            len(playersList),
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	setCORSHeaders(w, r)
 
-	ctx, responseSpan := StartSpan(ctx, "response.encode")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		RecordError(ctx, err, "Failed to encode JSON response")
-		log.Printf("Error encoding JSON response for upload: %v", err)
-		http.Error(w, "Error encoding JSON response: "+err.Error(), http.StatusInternalServerError)
+		RecordError(ctx, err, "Failed to encode upload response")
+		http.Error(w, "Error encoding response: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	responseSpan.End()
 
-	// Calculate percentiles asynchronously after response is sent
+	// Start async percentile calculation
 	go func() {
-		percentileCtx := context.Background()
-		percentileCtx, percentileSpan := StartSpan(percentileCtx, "percentiles.calculate_upload_async")
-		defer percentileSpan.End()
+		ctx, asyncSpan := StartSpan(context.Background(), "async.percentile_calculation")
+		defer asyncSpan.End()
 
-		SetSpanAttributes(percentileCtx,
+		SetSpanAttributes(ctx,
 			attribute.String("dataset.id", datasetID),
-			attribute.Int("dataset.player_count", len(playersList)),
-			attribute.String("operation.type", "async_percentile_calculation"),
+			attribute.Int("player_count", len(playersList)),
 		)
 
+		logInfo(ctx, "Starting async percentile calculation for dataset %s", datasetID)
 		startTime := time.Now()
-		logDebug(percentileCtx, "Starting async percentile calculation after response sent",
-			"dataset_id", datasetID,
-			"player_count", len(playersList))
 
-		// Get the stored data and calculate percentiles
-		storedPlayers, storedCurrency, found := GetPlayerData(datasetID)
-		if !found {
-			LogWarn("Could not retrieve stored dataset %s for percentile calculation", sanitizeForLogging(datasetID))
-			return
+		// Calculate percentiles asynchronously
+		if err := CalculatePlayerPercentilesAsync(ctx, datasetID, playersList, finalDatasetCurrencySymbol); err != nil {
+			logError(ctx, "Error calculating percentiles for dataset %s: %v", datasetID, err)
 		}
 
-		// Make a deep copy to avoid race conditions during calculation
-		// Use the original deep copy to avoid any concurrency issues with optimizations
-		playersCopyForPercentiles := make([]Player, len(storedPlayers))
-		for i := range storedPlayers {
-			playersCopyForPercentiles[i] = storedPlayers[i]
-			// Deep copy all the maps to prevent race conditions
-			if storedPlayers[i].Attributes != nil {
-				playersCopyForPercentiles[i].Attributes = make(map[string]string)
-				for k, v := range storedPlayers[i].Attributes {
-					playersCopyForPercentiles[i].Attributes[k] = v
-				}
-			}
-			if storedPlayers[i].NumericAttributes != nil {
-				playersCopyForPercentiles[i].NumericAttributes = make(map[string]int)
-				for k, v := range storedPlayers[i].NumericAttributes {
-					playersCopyForPercentiles[i].NumericAttributes[k] = v
-				}
-			}
-			if storedPlayers[i].PerformanceStatsNumeric != nil {
-				playersCopyForPercentiles[i].PerformanceStatsNumeric = make(map[string]float64)
-				for k, v := range storedPlayers[i].PerformanceStatsNumeric {
-					playersCopyForPercentiles[i].PerformanceStatsNumeric[k] = v
-				}
-			}
-			if storedPlayers[i].PerformancePercentiles != nil {
-				playersCopyForPercentiles[i].PerformancePercentiles = make(map[string]map[string]float64)
-				for group, stats := range storedPlayers[i].PerformancePercentiles {
-					playersCopyForPercentiles[i].PerformancePercentiles[group] = make(map[string]float64)
-					for stat, value := range stats {
-						playersCopyForPercentiles[i].PerformancePercentiles[group][stat] = value
-					}
-				}
-			}
-			if storedPlayers[i].RoleSpecificOveralls != nil {
-				playersCopyForPercentiles[i].RoleSpecificOveralls = make([]RoleOverallScore, len(storedPlayers[i].RoleSpecificOveralls))
-				copy(playersCopyForPercentiles[i].RoleSpecificOveralls, storedPlayers[i].RoleSpecificOveralls)
-			}
-			if storedPlayers[i].ShortPositions != nil {
-				playersCopyForPercentiles[i].ShortPositions = make([]string, len(storedPlayers[i].ShortPositions))
-				copy(playersCopyForPercentiles[i].ShortPositions, storedPlayers[i].ShortPositions)
-			}
-			if storedPlayers[i].ParsedPositions != nil {
-				playersCopyForPercentiles[i].ParsedPositions = make([]string, len(storedPlayers[i].ParsedPositions))
-				copy(playersCopyForPercentiles[i].ParsedPositions, storedPlayers[i].ParsedPositions)
-			}
-			if storedPlayers[i].PositionGroups != nil {
-				playersCopyForPercentiles[i].PositionGroups = make([]string, len(storedPlayers[i].PositionGroups))
-				copy(playersCopyForPercentiles[i].PositionGroups, storedPlayers[i].PositionGroups)
-			}
-		}
+		calculationTime := time.Since(startTime)
+		logInfo(ctx, "Completed async percentile calculation for dataset %s in %v", datasetID, calculationTime)
 
-		// Calculate percentiles for all division filters to ensure stability
-		CalculatePlayerPerformancePercentiles(playersCopyForPercentiles)
-
-		// Update the stored data with calculated percentiles (use sync SetPlayerData to avoid additional async operations)
-		SetPlayerData(datasetID, playersCopyForPercentiles, storedCurrency)
-
-		duration := time.Since(startTime)
-		SetSpanAttributes(percentileCtx,
-			attribute.Int64("percentile_calculation.duration_ms", duration.Milliseconds()),
-			attribute.String("percentile_calculation.status", "success"),
-		)
-
-		LogInfo("Completed async percentile calculation for dataset %s in %v", sanitizeForLogging(datasetID), duration)
+		RecordBusinessOperation(ctx, "async_percentile_calculation_completed", true, map[string]interface{}{
+			"dataset_id":       datasetID,
+			"player_count":     len(playersList),
+			"calculation_time": calculationTime.Milliseconds(),
+		})
 	}()
 
-	var memStats runtime.MemStats
-	runtime.ReadMemStats(&memStats)
-	rowsPerSecond := 0.0
-	if parseDuration.Seconds() > 0 {
-		rowsPerSecond = float64(len(playersList)) / parseDuration.Seconds()
-	}
-	totalDuration := time.Since(startTime)
-	memAllocMB := BToMb(memStats.Alloc) // Assumes BToMb is defined in utils.go
-
-	// Record comprehensive business operation metrics
-	RecordBusinessOperation(ctx, "file_upload", true, map[string]interface{}{
-		"filename":          handler.Filename,
-		"file_size_bytes":   actualFileSize,
-		"players_processed": len(playersList),
-		"workers_used":      numWorkers,
-		"currency_detected": finalDatasetCurrencySymbol,
-		"rows_per_second":   rowsPerSecond,
-		"memory_mb":         memAllocMB,
+	RecordBusinessOperation(ctx, "file_upload_completed", true, map[string]interface{}{
+		"filename":             handler.Filename,
+		"file_size_bytes":      actualFileSize,
+		"dataset_id":           datasetID,
+		"player_count":         len(playersList),
+		"parse_duration_ms":    parseDuration.Milliseconds(),
+		"currency_symbol":      finalDatasetCurrencySymbol,
+		"roles_count":          len(roles),
+		"total_upload_time_ms": time.Since(startTime).Milliseconds(),
 	})
-
-	// Record metrics if enabled
-	recordUploadMetrics(ctx, actualFileSize, totalDuration, parseDuration,
-		len(playersList), memAllocMB, numWorkers)
-
-	// Add final span attributes with performance metrics
-	SetSpanAttributes(ctx,
-		attribute.String("upload.status", "success"),
-		attribute.String("dataset.id", datasetID),
-		attribute.Int("players.processed", len(playersList)),
-		attribute.Float64("performance.rows_per_second", rowsPerSecond),
-		attribute.Float64("performance.memory_mb", memAllocMB),
-		attribute.Int64("performance.total_duration_ms", totalDuration.Milliseconds()),
-		attribute.Int64("performance.parse_duration_ms", parseDuration.Milliseconds()),
-	)
-
-	// Log performance metrics with trace context
-	logDebug(ctx, "Upload processing completed",
-		"filename", handler.Filename,
-		"file_size_kb", actualFileSize/1024,
-		"total_duration_ms", totalDuration.Milliseconds(),
-		"parse_duration_ms", parseDuration.Milliseconds(),
-		"players_parsed", len(playersList),
-		"rows_per_second", rowsPerSecond,
-		"memory_alloc_mb", memAllocMB,
-		"workers", numWorkers,
-		"goroutines", runtime.NumGoroutine(),
-		"trace_id", GetTraceID(ctx),
-		"span_id", GetSpanID(ctx))
 }
 
 // playerDataHandler handles GET requests for retrieving player data by dataset ID.
@@ -722,20 +680,34 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	if r.Method != http.MethodGet {
-		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
+		WriteErrorResponse(w, r, "method_not_allowed", "Only GET method is allowed", nil, http.StatusMethodNotAllowed)
 		return
+	}
+
+	// Initialize content negotiation
+	negotiator := NewContentNegotiator(r)
+	serializer := negotiator.SelectSerializer()
+	supportsProtobuf := negotiator.SupportsProtobuf()
+
+	// Get request ID for response metadata
+	requestID := r.Header.Get("X-Request-ID")
+	if requestID == "" {
+		requestID = generateRequestID()
 	}
 
 	SetSpanAttributes(ctx,
 		attribute.String("http.method", r.Method),
 		attribute.String("http.route", "/api/players"),
+		attribute.String("response.format", serializer.ContentType()),
+		attribute.Bool("client.supports_protobuf", supportsProtobuf),
+		attribute.String("request.id", requestID),
 	)
 
 	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/players/"), "/")
 	if len(pathParts) == 0 || pathParts[0] == "" {
 		logWarn(ctx, "Dataset ID missing in request path")
 		SetSpanAttributes(ctx, attribute.String("error.type", "missing_dataset_id"))
-		http.Error(w, "Dataset ID is missing in the request path", http.StatusBadRequest)
+		WriteErrorResponse(w, r, "missing_dataset_id", "Dataset ID is missing in the request path", nil, http.StatusBadRequest)
 		return
 	}
 	datasetID := pathParts[0]
@@ -811,7 +783,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 		if !found {
 			logWarn(ctx, "Player data not found", "dataset_id", datasetID)
 			SetSpanAttributes(ctx, attribute.String("error.type", "dataset_not_found"))
-			http.Error(w, "Player data not found for the given ID.", http.StatusNotFound)
+			WriteErrorResponse(w, r, "dataset_not_found", "Player data not found for the given ID.", nil, http.StatusNotFound)
 			return
 		}
 
@@ -820,16 +792,17 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 			attribute.String("dataset.currency", currencySymbol),
 		)
 
+		// Make a deep copy of players to avoid modifying the stored data and prevent race conditions
+		// Use optimized deep copy for better memory efficiency
+		playersCopy := OptimizedDeepCopyPlayers(players)
+
 		// Recalculate all player ratings based on the current calculation method setting
 		ctx, recalcSpan := StartSpan(ctx, "ratings.recalculate")
-		players = RecalculateAllPlayersRatings(players)
+		playersCopy = RecalculateAllPlayersRatings(playersCopy)
 		recalcSpan.End()
 
 		// Calculate percentiles with appropriate filtering using optimized algorithm
 		ctx, percentileSpan := StartSpan(ctx, "percentiles.calculate")
-		// Make a deep copy of players to avoid modifying the stored data and prevent race conditions
-		// Use optimized deep copy for better memory efficiency
-		playersCopy := OptimizedDeepCopyPlayers(players)
 
 		if divisionFilter != DivisionFilterAll {
 			// Recalculate percentiles with division filter
@@ -847,7 +820,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 			Players        []Player
 			CurrencySymbol string
 		}{
-			Players:        players,
+			Players:        playersCopy,
 			CurrencySymbol: currencySymbol,
 		}
 		setInMemCacheForDataset(percentileCacheKey, cacheData, 10*time.Minute) // Cache for 10 minutes
@@ -872,7 +845,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Cache-Control", "public, max-age=180") // Cache for 3 minutes
 			setCORSHeaders(w, r)
 			if _, err := w.Write(jsonData); err != nil {
-				log.Printf("Error writing cached response: %v", err)
+				logError(ctx, "Error writing cached response", "error", err)
 			}
 			SetSpanAttributes(ctx, attribute.Bool("final_cache.hit", true))
 			return
@@ -933,7 +906,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 		} else if minAge != -1 || maxAge != -1 {
-			log.Printf("Skipping player %s due to unparsable age '%s' while age filters are active.", playerCopy.Name, playerCopy.Age)
+			logWarn(ctx, "Skipping player due to unparsable age while age filters are active", "player_name", playerCopy.Name, "age", playerCopy.Age)
 			continue
 		}
 
@@ -966,41 +939,87 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	logDebug(ctx, "Returning processed players", "dataset_id", datasetID, "player_count", len(processedPlayers))
 
-	response := PlayerDataWithCurrency{Players: processedPlayers, CurrencySymbol: currencySymbol}
-	w.Header().Set("Content-Type", "application/json")
-	setCORSHeaders(w, r)
+	// Create response data structure
+	responseData := PlayerDataWithCurrency{Players: processedPlayers, CurrencySymbol: currencySymbol}
 
-	// Encode response to JSON and cache it
-	var buf bytes.Buffer
-	encoder := json.NewEncoder(&buf)
-	if err := encoder.Encode(response); err != nil {
-		RecordError(ctx, err, "Failed to encode player data response")
-		http.Error(w, "Error encoding response: "+err.Error(), http.StatusInternalServerError)
+	// Use the content negotiation system to write the response
+	if supportsProtobuf {
+		// Create protobuf response with metadata
+		metadata := CreateResponseMetadata(requestID, int32(len(processedPlayers)), found)
+		protoResponse := &pb.PlayerDataResponse{
+			Players:        make([]*pb.Player, len(processedPlayers)),
+			CurrencySymbol: currencySymbol,
+			Metadata:       metadata,
+		}
+
+		// Convert players to protobuf format
+		for i, player := range processedPlayers {
+			protoPlayer, err := player.ToProto(ctx)
+			if err != nil {
+				logError(ctx, "Failed to convert player to protobuf",
+					"error", err,
+					"player_uid", player.UID,
+					"player_name", player.Name)
+				// Fallback to JSON on conversion error
+				break
+			}
+			protoResponse.Players[i] = protoPlayer
+		}
+
+		// Try to write protobuf response using content negotiation
+		if err := WriteResponse(w, r, protoResponse); err == nil {
+			// Protobuf response written successfully
+			SetSpanAttributes(ctx,
+				attribute.String("response.serialization", "protobuf"),
+				attribute.Int("response.size_bytes", len(processedPlayers)*1024), // Rough estimate
+			)
+
+			logDebug(ctx, "Protobuf response written successfully",
+				"player_count", len(processedPlayers))
+			return
+		} else {
+			logWarn(ctx, "Protobuf serialization failed, falling back to JSON",
+				"error", err,
+				"dataset_id", datasetID)
+			SetSpanAttributes(ctx,
+				attribute.String("fallback.reason", "protobuf_serialization_failed"),
+				attribute.String("fallback.error", err.Error()),
+			)
+		}
+	}
+
+	// Fallback to JSON response
+	SetSpanAttributes(ctx,
+		attribute.String("response.serialization", "json"),
+		attribute.Int("response.size_bytes", len(processedPlayers)*1024), // Rough estimate
+	)
+
+	logDebug(ctx, "Writing JSON response",
+		"player_count", len(processedPlayers))
+
+	// Write JSON response using content negotiation
+	if err := WriteResponse(w, r, responseData); err != nil {
+		RecordError(ctx, err, "Failed to write JSON response")
+		WriteErrorResponse(w, r, "SERIALIZATION_ERROR",
+			"Failed to serialize response data",
+			[]string{err.Error()},
+			http.StatusInternalServerError)
 		return
 	}
 
-	// Cache the final filtered response
-	jsonData := buf.Bytes()
-	setInMemCacheForDataset(finalCacheKey, jsonData, 3*time.Minute) // Cache for 3 minutes
-
-	// Write response
-	if _, err := w.Write(jsonData); err != nil {
-		log.Printf("Error writing response: %v", err)
-	}
-
-	logDebug(ctx, "Player data processed and cached",
+	logDebug(ctx, "Player data processed and served",
 		"dataset_id", datasetID,
 		"processed_count", len(processedPlayers),
 		"original_count", len(data.Players),
-		"response_size_kb", len(jsonData)/1024,
+		"response_format", serializer.ContentType(),
 		"processing_time_ms", time.Since(startTime).Milliseconds())
 
 	RecordBusinessOperation(ctx, "player_data_served", true, map[string]interface{}{
 		"dataset_id":           datasetID,
 		"player_count":         len(processedPlayers),
-		"response_size_bytes":  len(jsonData),
+		"response_format":      serializer.ContentType(),
 		"processing_time_ms":   time.Since(startTime).Milliseconds(),
-		"percentile_cache_hit": found, // Whether percentiles were from cache
+		"percentile_cache_hit": found,
 		"division_filter":      divisionFilterStr,
 		"has_filters":          filterPosition != "" || filterRole != "" || minAgeStr != "" || maxAgeStr != "",
 	})
@@ -1008,15 +1027,41 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 
 // rolesHandler returns a list of all available role names.
 func rolesHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	startTime := time.Now()
+
+	// Start comprehensive tracing
+	ctx, span := StartSpan(ctx, "api.roles.get")
+	defer span.End()
+
+	// Initialize content negotiation
+	negotiator := NewContentNegotiator(r)
+	serializer := negotiator.SelectSerializer()
+	supportsProtobuf := negotiator.SupportsProtobuf()
+
+	// Get request ID for response metadata
+	requestID := r.Header.Get("X-Request-ID")
+	if requestID == "" {
+		requestID = generateRequestID()
+	}
+
+	SetSpanAttributes(ctx,
+		attribute.String("http.method", r.Method),
+		attribute.String("http.route", "/api/roles"),
+		attribute.String("response.format", serializer.ContentType()),
+		attribute.Bool("client.supports_protobuf", supportsProtobuf),
+		attribute.String("request.id", requestID),
+	)
+
 	if r.Method != http.MethodGet {
-		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
+		WriteErrorResponse(w, r, "method_not_allowed", "Only GET method is allowed", nil, http.StatusMethodNotAllowed)
 		return
 	}
 
 	// Ensure config is initialized with timeout
 	if err := EnsureConfigInitialized(5 * time.Second); err != nil {
-		log.Printf("Configuration not ready for roles request: %v", err)
-		http.Error(w, "Configuration loading, please try again", http.StatusServiceUnavailable)
+		logError(ctx, "Configuration not ready for roles request", "error", err)
+		WriteErrorResponse(w, r, "config_not_ready", "Configuration loading, please try again", nil, http.StatusServiceUnavailable)
 		return
 	}
 
@@ -1029,25 +1074,92 @@ func rolesHandler(w http.ResponseWriter, r *http.Request) {
 
 	sort.Strings(roleNames) // Sort for consistent frontend display
 
-	w.Header().Set("Content-Type", "application/json")
+	// Set CORS headers
 	setCORSHeaders(w, r)
-	if err := json.NewEncoder(w).Encode(roleNames); err != nil {
-		log.Printf("Error encoding JSON response for roles: %v", err)
-		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
+
+	// Create response metadata
+	metadata := CreateResponseMetadata(requestID, int32(len(roleNames)), false)
+
+	if supportsProtobuf {
+		// Create protobuf response
+		protoResponse := &pb.RolesResponse{
+			Roles:    roleNames,
+			Metadata: metadata,
+		}
+
+		// Serialize to protobuf
+		responseBytes, err := serializer.Serialize(protoResponse)
+		if err == nil {
+			// Protobuf serialization successful
+			w.Header().Set("Content-Type", serializer.ContentType())
+			if serializer.ShouldCompress() {
+				w.Header().Set("Content-Encoding", "gzip")
+			}
+
+			if _, writeErr := w.Write(responseBytes); writeErr != nil {
+				logError(ctx, "Error writing protobuf response", "error", writeErr)
+			}
+
+			logDebug(ctx, "Roles served as protobuf",
+				"role_count", len(roleNames),
+				"response_size_bytes", len(responseBytes),
+				"processing_time_ms", time.Since(startTime).Milliseconds())
+			return
+		}
+
+		// Log protobuf serialization failure
+		logWarn(ctx, "Protobuf serialization failed for roles, falling back to JSON", "error", err)
 	}
+
+	// Fallback to JSON
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(roleNames); err != nil {
+		logError(ctx, "Error encoding JSON response for roles", "error", err)
+		WriteErrorResponse(w, r, "serialization_error", "Error encoding response", nil, http.StatusInternalServerError)
+		return
+	}
+
+	logDebug(ctx, "Roles served as JSON",
+		"role_count", len(roleNames),
+		"processing_time_ms", time.Since(startTime).Milliseconds())
 }
 
 // leaguesHandler returns league data with teams and their ratings
 func leaguesHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	startTime := time.Now()
+
+	// Start comprehensive tracing
+	ctx, span := StartSpan(ctx, "api.leagues.get")
+	defer span.End()
+
+	// Initialize content negotiation
+	negotiator := NewContentNegotiator(r)
+	serializer := negotiator.SelectSerializer()
+	supportsProtobuf := negotiator.SupportsProtobuf()
+
+	// Get request ID for response metadata
+	requestID := r.Header.Get("X-Request-ID")
+	if requestID == "" {
+		requestID = generateRequestID()
+	}
+
+	SetSpanAttributes(ctx,
+		attribute.String("http.method", r.Method),
+		attribute.String("http.route", "/api/leagues"),
+		attribute.String("response.format", serializer.ContentType()),
+		attribute.Bool("client.supports_protobuf", supportsProtobuf),
+		attribute.String("request.id", requestID),
+	)
+
 	if r.Method != http.MethodGet {
-		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
+		WriteErrorResponse(w, r, "method_not_allowed", "Only GET method is allowed", nil, http.StatusMethodNotAllowed)
 		return
 	}
 
 	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/leagues/"), "/")
 	if len(pathParts) == 0 || pathParts[0] == "" {
-		http.Error(w, "Dataset ID is missing in the request path", http.StatusBadRequest)
+		WriteErrorResponse(w, r, "missing_dataset_id", "Dataset ID is missing in the request path", nil, http.StatusBadRequest)
 		return
 	}
 	datasetID := pathParts[0]
@@ -1059,13 +1171,61 @@ func leaguesHandler(w http.ResponseWriter, r *http.Request) {
 	if cached, found := getFromMemCache(cacheKey); found {
 		if leaguesData, ok := cached.([]League); ok {
 			logInfo(ctx, "Retrieved leagues data from memory cache", "dataset_id", datasetID)
+
+			// Set CORS headers
+			setCORSHeaders(w, r)
+
+			// Create response metadata
+			metadata := CreateResponseMetadata(requestID, int32(len(leaguesData)), true)
+
+			if supportsProtobuf {
+				// Create protobuf response
+				protoLeagues := make([]string, len(leaguesData))
+				for i, league := range leaguesData {
+					protoLeagues[i] = league.Name
+				}
+
+				protoResponse := &pb.LeaguesResponse{
+					Leagues:  protoLeagues,
+					Metadata: metadata,
+				}
+
+				// Serialize to protobuf
+				responseBytes, err := serializer.Serialize(protoResponse)
+				if err == nil {
+					// Protobuf serialization successful
+					w.Header().Set("Content-Type", serializer.ContentType())
+					w.Header().Set("X-Cache-Source", "memory")
+					w.Header().Set("Cache-Control", "public, max-age=300") // 5 minutes
+					if serializer.ShouldCompress() {
+						w.Header().Set("Content-Encoding", "gzip")
+					}
+
+					if _, writeErr := w.Write(responseBytes); writeErr != nil {
+						logError(ctx, "Error writing protobuf response", "error", writeErr)
+					}
+
+					logDebug(ctx, "Leagues served as protobuf from cache",
+						"league_count", len(leaguesData),
+						"response_size_bytes", len(responseBytes),
+						"processing_time_ms", time.Since(startTime).Milliseconds())
+					return
+				}
+
+				// Log protobuf serialization failure
+				logWarn(ctx, "Protobuf serialization failed for cached leagues, falling back to JSON", "error", err)
+			}
+
+			// Fallback to JSON
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("X-Cache-Source", "memory")
 			w.Header().Set("Cache-Control", "public, max-age=300") // 5 minutes
-			setCORSHeaders(w, r)
 			if err := json.NewEncoder(w).Encode(leaguesData); err != nil {
-				http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
-				log.Printf("Error encoding JSON response for cached leagues (DatasetID: %s): %v", sanitizeForLogging(datasetID), err)
+				WriteErrorResponse(w, r, "serialization_error", "Error encoding response", nil, http.StatusInternalServerError)
+				logError(ctx, "Error encoding JSON response for cached leagues",
+					"error", err,
+					"dataset_id", datasetID)
+				return
 			}
 			return
 		}
@@ -1075,7 +1235,7 @@ func leaguesHandler(w http.ResponseWriter, r *http.Request) {
 	players, _, found := GetPlayerData(datasetID)
 	if !found {
 		logWarn(ctx, "Player data not found", "dataset_id", datasetID)
-		http.Error(w, "Player data not found for the given ID.", http.StatusNotFound)
+		WriteErrorResponse(w, r, "dataset_not_found", "Player data not found for the given ID.", nil, http.StatusNotFound)
 		return
 	}
 
@@ -1089,26 +1249,103 @@ func leaguesHandler(w http.ResponseWriter, r *http.Request) {
 	// Cache the result for 5 minutes
 	setInMemCache(cacheKey, leaguesData, 5*time.Minute)
 
+	// Set CORS headers
+	setCORSHeaders(w, r)
+
+	// Create response metadata
+	metadata := CreateResponseMetadata(requestID, int32(len(leaguesData)), false)
+
+	if supportsProtobuf {
+		// Create protobuf response
+		protoLeagues := make([]string, len(leaguesData))
+		for i, league := range leaguesData {
+			protoLeagues[i] = league.Name
+		}
+
+		protoResponse := &pb.LeaguesResponse{
+			Leagues:  protoLeagues,
+			Metadata: metadata,
+		}
+
+		// Serialize to protobuf
+		responseBytes, err := serializer.Serialize(protoResponse)
+		if err == nil {
+			// Protobuf serialization successful
+			w.Header().Set("Content-Type", serializer.ContentType())
+			w.Header().Set("X-Cache-Source", "computed")
+			w.Header().Set("Cache-Control", "public, max-age=300") // 5 minutes
+			if serializer.ShouldCompress() {
+				w.Header().Set("Content-Encoding", "gzip")
+			}
+
+			if _, writeErr := w.Write(responseBytes); writeErr != nil {
+				logError(ctx, "Error writing protobuf response", "error", writeErr)
+			}
+
+			logDebug(ctx, "Leagues served as protobuf",
+				"league_count", len(leaguesData),
+				"response_size_bytes", len(responseBytes),
+				"processing_time_ms", time.Since(startTime).Milliseconds())
+			return
+		}
+
+		// Log protobuf serialization failure
+		logWarn(ctx, "Protobuf serialization failed for leagues, falling back to JSON", "error", err)
+	}
+
+	// Fallback to JSON
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-Cache-Source", "computed")
-	setCORSHeaders(w, r)
+	w.Header().Set("Cache-Control", "public, max-age=300") // 5 minutes
 	if err := json.NewEncoder(w).Encode(leaguesData); err != nil {
-		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
-		log.Printf("Error encoding JSON response for leagues (DatasetID: %s): %v", sanitizeForLogging(datasetID), err)
+		WriteErrorResponse(w, r, "serialization_error", "Error encoding response", nil, http.StatusInternalServerError)
+		logError(ctx, "Error encoding JSON response for leagues",
+			"error", err,
+			"dataset_id", datasetID)
+		return
 	}
+
+	logDebug(ctx, "Leagues served as JSON",
+		"league_count", len(leaguesData),
+		"processing_time_ms", time.Since(startTime).Milliseconds())
 }
 
 // teamsHandler returns detailed team data for a specific league
 func teamsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	startTime := time.Now()
+
+	// Start comprehensive tracing
+	ctx, span := StartSpan(ctx, "api.teams.get")
+	defer span.End()
+
+	// Initialize content negotiation
+	negotiator := NewContentNegotiator(r)
+	serializer := negotiator.SelectSerializer()
+	supportsProtobuf := negotiator.SupportsProtobuf()
+
+	// Get request ID for response metadata
+	requestID := r.Header.Get("X-Request-ID")
+	if requestID == "" {
+		requestID = generateRequestID()
+	}
+
+	SetSpanAttributes(ctx,
+		attribute.String("http.method", r.Method),
+		attribute.String("http.route", "/api/teams"),
+		attribute.String("response.format", serializer.ContentType()),
+		attribute.Bool("client.supports_protobuf", supportsProtobuf),
+		attribute.String("request.id", requestID),
+	)
+
 	if r.Method != http.MethodGet {
-		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
+		WriteErrorResponse(w, r, "method_not_allowed", "Only GET method is allowed", nil, http.StatusMethodNotAllowed)
 		return
 	}
 
 	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/teams/"), "/")
 	if len(pathParts) < 2 || pathParts[0] == "" || pathParts[1] == "" {
-		http.Error(w, "Dataset ID and Division are required in the request path", http.StatusBadRequest)
+		WriteErrorResponse(w, r, "missing_parameters", "Dataset ID and Division are required in the request path", nil, http.StatusBadRequest)
 		return
 	}
 	datasetID := pathParts[0]
@@ -1121,13 +1358,61 @@ func teamsHandler(w http.ResponseWriter, r *http.Request) {
 	if cached, found := getFromMemCache(cacheKey); found {
 		if teamsData, ok := cached.([]Team); ok {
 			logInfo(ctx, "Retrieved teams data from memory cache", "dataset_id", datasetID, "division", division)
+
+			// Set CORS headers
+			setCORSHeaders(w, r)
+
+			// Create response metadata
+			metadata := CreateResponseMetadata(requestID, int32(len(teamsData)), true)
+
+			if supportsProtobuf {
+				// Create protobuf response
+				protoTeams := make([]string, len(teamsData))
+				for i, team := range teamsData {
+					protoTeams[i] = team.Name
+				}
+
+				protoResponse := &pb.TeamsResponse{
+					Teams:    protoTeams,
+					Metadata: metadata,
+				}
+
+				// Serialize to protobuf
+				responseBytes, err := serializer.Serialize(protoResponse)
+				if err == nil {
+					// Protobuf serialization successful
+					w.Header().Set("Content-Type", serializer.ContentType())
+					w.Header().Set("X-Cache-Source", "memory")
+					w.Header().Set("Cache-Control", "public, max-age=300") // 5 minutes
+					if serializer.ShouldCompress() {
+						w.Header().Set("Content-Encoding", "gzip")
+					}
+
+					if _, writeErr := w.Write(responseBytes); writeErr != nil {
+						logError(ctx, "Error writing protobuf response", "error", writeErr)
+					}
+
+					logDebug(ctx, "Teams served as protobuf from cache",
+						"team_count", len(teamsData),
+						"response_size_bytes", len(responseBytes),
+						"processing_time_ms", time.Since(startTime).Milliseconds())
+					return
+				}
+
+				// Log protobuf serialization failure
+				logWarn(ctx, "Protobuf serialization failed for cached teams, falling back to JSON", "error", err)
+			}
+
+			// Fallback to JSON
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("X-Cache-Source", "memory")
 			w.Header().Set("Cache-Control", "public, max-age=300") // 5 minutes
-			setCORSHeaders(w, r)
 			if err := json.NewEncoder(w).Encode(teamsData); err != nil {
-				http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
-				log.Printf("Error encoding JSON response for cached teams (DatasetID: %s, Division: %s): %v", sanitizeForLogging(datasetID), sanitizeForLogging(division), err)
+				WriteErrorResponse(w, r, "serialization_error", "Error encoding response", nil, http.StatusInternalServerError)
+				logError(ctx, "Error encoding JSON response for cached teams",
+					"error", err,
+					"dataset_id", datasetID,
+					"division", division)
 			}
 			return
 		}
@@ -1155,7 +1440,7 @@ func teamsHandler(w http.ResponseWriter, r *http.Request) {
 	setCORSHeaders(w, r)
 	if err := json.NewEncoder(w).Encode(teamsData); err != nil {
 		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
-		log.Printf("Error encoding JSON response for teams (DatasetID: %s, Division: %s): %v", sanitizeForLogging(datasetID), sanitizeForLogging(division), err)
+		logError(ctx, "Error encoding JSON response for teams", "dataset_id", sanitizeForLogging(datasetID), "division", sanitizeForLogging(division), "error", err)
 	}
 }
 
@@ -1224,6 +1509,13 @@ type PercentileRequest struct {
 	TargetDivision string `json:"targetDivision"`
 }
 
+// PlayerPercentilesRequest represents a request for player percentiles by UID
+type PlayerPercentilesRequest struct {
+	PlayerUID       string `json:"playerUID"`
+	CompareDivision string `json:"compareDivision"` // "all", "same", "top5"
+	ComparePosition string `json:"comparePosition"` // position group like "Global", "Midfielders", etc.
+}
+
 // percentilesHandler handles POST requests to recalculate percentiles for a specific player with division filtering
 func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -1285,7 +1577,7 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// NEW: Generate cache key and try to load from cache first
-	cacheKey := generatePercentilesCacheKey(datasetID, req.PlayerName, req.DivisionFilter, req.TargetDivision, players)
+	cacheKey := generatePercentilesCacheKey(ctx, datasetID, req.PlayerName, req.DivisionFilter, req.TargetDivision, players)
 
 	logDebug(ctx, "Generated cache key for percentiles request",
 		"dataset_id", datasetID,
@@ -1296,7 +1588,7 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 		"player_count", len(players))
 
 	// Try to load from cache
-	if cachedPercentiles, found := loadPercentilesFromCache(cacheKey, datasetID, req.PlayerName, req.DivisionFilter, req.TargetDivision, players); found {
+	if cachedPercentiles, found := loadPercentilesFromCache(ctx, cacheKey, datasetID, req.PlayerName, req.DivisionFilter, req.TargetDivision, players); found {
 		logDebug(ctx, "🎯 CACHE HIT - Returning cached percentiles",
 			"dataset_id", datasetID,
 			"player_name", req.PlayerName,
@@ -1308,13 +1600,13 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Cache-Status", "HIT")
 		setCORSHeaders(w, r)
 		if err := json.NewEncoder(w).Encode(cachedPercentiles); err != nil {
-			log.Printf("Error encoding JSON response for cached percentiles (DatasetID: %s): %v", sanitizeForLogging(datasetID), err)
+			logError(ctx, "Error encoding JSON response for cached percentiles", "dataset_id", sanitizeForLogging(datasetID), "error", err)
 			http.Error(w, "Error encoding response", http.StatusInternalServerError)
 		}
 		return
 	}
 
-	// Cache miss - perform calculation
+	// Cache miss - perform optimized calculation
 	logDebug(ctx, "💫 CACHE MISS - calculating percentiles",
 		"dataset_id", datasetID,
 		"player_name", req.PlayerName,
@@ -1322,25 +1614,259 @@ func percentilesHandler(w http.ResponseWriter, r *http.Request) {
 		"target_division", req.TargetDivision,
 		"cache_key", cacheKey)
 
-	// Create a copy of the dataset and recalculate percentiles with division filtering
-	playersCopy := make([]Player, len(players))
-	copy(playersCopy, players)
+	// OPTIMIZATION: Filter players first, then only copy the filtered subset
+	var filteredPlayers []Player
+	var targetPlayerInFiltered bool
 
-	CalculatePlayerPerformancePercentilesWithDivisionFilter(playersCopy, divisionFilter, req.TargetDivision)
+	// Filter players based on division criteria
+	for i := range players {
+		if isPlayerInTargetDivision(&players[i], divisionFilter, req.TargetDivision) {
+			filteredPlayers = append(filteredPlayers, players[i])
+			if i == targetPlayerIndex {
+				targetPlayerInFiltered = true
+			}
+		}
+	}
+
+	// If target player is not in filtered set, add them
+	if !targetPlayerInFiltered {
+		filteredPlayers = append(filteredPlayers, players[targetPlayerIndex])
+	}
+
+	logDebug(ctx, "Filtered players for percentile calculation",
+		"total_players", len(players),
+		"filtered_players", len(filteredPlayers),
+		"target_player_included", targetPlayerInFiltered)
+
+	// Create a copy of only the filtered players (much smaller dataset)
+	playersCopy := make([]Player, len(filteredPlayers))
+	copy(playersCopy, filteredPlayers)
+
+	// Calculate percentiles only for the filtered subset
+	CalculatePlayerPerformancePercentilesWithDivisionFilter(playersCopy, DivisionFilterAll, "")
+
+	// Find the target player in the filtered copy
+	var updatedPlayer *Player
+	for i := range playersCopy {
+		if playersCopy[i].Name == req.PlayerName {
+			updatedPlayer = &playersCopy[i]
+			break
+		}
+	}
+
+	if updatedPlayer == nil {
+		http.Error(w, "Player not found after calculation", http.StatusInternalServerError)
+		return
+	}
 
 	// Get the updated percentiles for the target player
-	updatedPercentiles := playersCopy[targetPlayerIndex].PerformancePercentiles
+	updatedPercentiles := updatedPlayer.PerformancePercentiles
 
 	// NEW: Save to cache for future requests
 	go func() {
-		savePercentilesToCache(cacheKey, datasetID, req.PlayerName, req.DivisionFilter, req.TargetDivision, players, updatedPercentiles)
+		savePercentilesToCache(ctx, cacheKey, datasetID, req.PlayerName, req.DivisionFilter, req.TargetDivision, players, updatedPercentiles)
 	}()
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-Cache-Status", "MISS")
 	setCORSHeaders(w, r)
 	if err := json.NewEncoder(w).Encode(updatedPercentiles); err != nil {
-		log.Printf("Error encoding JSON response for percentiles (DatasetID: %s): %v", sanitizeForLogging(datasetID), err)
+		logError(ctx, "Error encoding JSON response for percentiles", "dataset_id", sanitizeForLogging(datasetID), "error", err)
+		http.Error(w, "Error encoding response", http.StatusInternalServerError)
+	}
+}
+
+// playerPercentilesHandler handles POST requests to get percentiles for a specific player by UID
+func playerPercentilesHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if r.Method != http.MethodPost {
+		http.Error(w, "Only POST method is allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/player-percentiles/"), "/")
+	if len(pathParts) == 0 || pathParts[0] == "" {
+		http.Error(w, "Dataset ID is missing in the request path", http.StatusBadRequest)
+		return
+	}
+	datasetID := pathParts[0]
+
+	var req PlayerPercentilesRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Error parsing request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	logInfo(ctx, "Processing player percentiles request",
+		"dataset_id", datasetID,
+		"player_uid", req.PlayerUID,
+		"compare_division", req.CompareDivision,
+		"compare_position", req.ComparePosition)
+
+	// Get the full dataset
+	players, _, found := GetPlayerData(datasetID)
+	if !found {
+		logWarn(ctx, "Player data not found", "dataset_id", datasetID)
+		http.Error(w, "Player data not found for the given ID.", http.StatusNotFound)
+		return
+	}
+
+	// Find the specific player by UID
+	var targetPlayer *Player
+	playerUID, err := strconv.ParseInt(req.PlayerUID, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid player UID format", http.StatusBadRequest)
+		return
+	}
+
+	for i := range players {
+		if players[i].UID == playerUID {
+			targetPlayer = &players[i]
+			break
+		}
+	}
+
+	if targetPlayer == nil {
+		http.Error(w, "Player not found in dataset", http.StatusNotFound)
+		return
+	}
+
+	// Parse division filter
+	var divisionFilter = DivisionFilterAll
+	var targetDivision = ""
+
+	switch req.CompareDivision {
+	case "same":
+		divisionFilter = DivisionFilterSame
+		// For 'same', we need to get the target player's division
+		if targetPlayer != nil {
+			targetDivision = targetPlayer.Division
+		}
+	case "top5":
+		divisionFilter = DivisionFilterTop5
+	case "all", "":
+		divisionFilter = DivisionFilterAll
+	default:
+		// If it's not a special filter type, treat it as a specific division
+		divisionFilter = DivisionFilterSame
+		targetDivision = req.CompareDivision
+	}
+
+	// Generate cache key for this specific request
+	cacheKey := generatePlayerPercentilesCacheKey(ctx, datasetID, req.PlayerUID, req.CompareDivision, req.ComparePosition, players)
+
+	logDebug(ctx, "Generated cache key for player percentiles request",
+		"dataset_id", datasetID,
+		"player_uid", req.PlayerUID,
+		"compare_division", req.CompareDivision,
+		"compare_position", req.ComparePosition,
+		"cache_key", cacheKey,
+		"player_count", len(players))
+
+	// Try to load from cache
+	if cachedPercentiles, found := loadPlayerPercentilesFromCache(ctx, cacheKey, datasetID, req.PlayerUID, req.CompareDivision, req.ComparePosition, players); found {
+		logDebug(ctx, "🎯 CACHE HIT - Returning cached player percentiles",
+			"dataset_id", datasetID,
+			"player_uid", req.PlayerUID,
+			"compare_division", req.CompareDivision,
+			"compare_position", req.ComparePosition,
+			"cache_key", cacheKey)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Cache-Status", "HIT")
+		setCORSHeaders(w, r)
+		if err := json.NewEncoder(w).Encode(cachedPercentiles); err != nil {
+			logError(ctx, "Error encoding JSON response for cached player percentiles", "dataset_id", sanitizeForLogging(datasetID), "error", err)
+			http.Error(w, "Error encoding response", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Cache miss - perform optimized calculation
+	logDebug(ctx, "💫 CACHE MISS - calculating player percentiles",
+		"dataset_id", datasetID,
+		"player_uid", req.PlayerUID,
+		"compare_division", req.CompareDivision,
+		"compare_position", req.ComparePosition,
+		"cache_key", cacheKey)
+
+	// OPTIMIZATION: Filter players first, then only copy the filtered subset
+	var filteredPlayers []Player
+	var targetPlayerInFiltered bool
+
+	// Filter players based on division criteria
+	for i := range players {
+		if isPlayerInTargetDivision(&players[i], divisionFilter, targetDivision) {
+			filteredPlayers = append(filteredPlayers, players[i])
+			if players[i].UID == playerUID {
+				targetPlayerInFiltered = true
+			}
+		}
+	}
+
+	// If target player is not in filtered set, add them
+	if !targetPlayerInFiltered {
+		filteredPlayers = append(filteredPlayers, *targetPlayer)
+	}
+
+	logDebug(ctx, "Filtered players for percentile calculation",
+		"total_players", len(players),
+		"filtered_players", len(filteredPlayers),
+		"target_player_included", targetPlayerInFiltered)
+
+	// Create a copy of only the filtered players (much smaller dataset)
+	playersCopy := make([]Player, len(filteredPlayers))
+	copy(playersCopy, filteredPlayers)
+
+	// Calculate percentiles only for the filtered subset
+	CalculatePlayerPerformancePercentilesWithDivisionFilter(playersCopy, DivisionFilterAll, "")
+
+	// Find the target player in the filtered copy
+	var updatedPlayer *Player
+	for i := range playersCopy {
+		if playersCopy[i].UID == playerUID {
+			updatedPlayer = &playersCopy[i]
+			break
+		}
+	}
+
+	if updatedPlayer == nil {
+		http.Error(w, "Player not found after calculation", http.StatusInternalServerError)
+		return
+	}
+
+	// Get the percentiles for the specific position group
+	var resultPercentiles map[string]interface{}
+	if req.ComparePosition == "Global" || req.ComparePosition == "" {
+		// Return all percentiles
+		resultPercentiles = make(map[string]interface{})
+		for group, percentiles := range updatedPlayer.PerformancePercentiles {
+			resultPercentiles[group] = percentiles
+		}
+	} else {
+		// Return only the specific position group
+		if percentiles, exists := updatedPlayer.PerformancePercentiles[req.ComparePosition]; exists {
+			resultPercentiles = map[string]interface{}{
+				req.ComparePosition: percentiles,
+			}
+		} else {
+			// Position group not found, return empty result
+			resultPercentiles = map[string]interface{}{
+				req.ComparePosition: map[string]int{},
+			}
+		}
+	}
+
+	// Save to cache for future requests
+	go func() {
+		savePlayerPercentilesToCache(ctx, cacheKey, datasetID, req.PlayerUID, req.CompareDivision, req.ComparePosition, players, resultPercentiles)
+	}()
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Cache-Status", "MISS")
+	setCORSHeaders(w, r)
+	if err := json.NewEncoder(w).Encode(resultPercentiles); err != nil {
+		logError(ctx, "Error encoding JSON response for player percentiles", "dataset_id", sanitizeForLogging(datasetID), "error", err)
 		http.Error(w, "Error encoding response", http.StatusInternalServerError)
 	}
 }
@@ -1426,7 +1952,7 @@ func percentilesStatusHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	setCORSHeaders(w, r)
 	if err := json.NewEncoder(w).Encode(statusResponse); err != nil {
-		log.Printf("Error encoding JSON response for percentiles status (DatasetID: %s): %v", sanitizeForLogging(datasetID), err)
+		logError(ctx, "Error encoding JSON response for percentiles status", "dataset_id", sanitizeForLogging(datasetID), "error", err)
 		http.Error(w, "Error encoding response", http.StatusInternalServerError)
 	}
 }
@@ -1572,14 +2098,35 @@ type SearchResult struct {
 // searchHandler handles GET requests for searching players, teams, leagues, and nations
 func searchHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	if r.Method != http.MethodGet {
-		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
-		return
-	}
+	startTime := time.Now()
 
 	// Start tracing
 	ctx, span := StartSpan(ctx, "search.handler")
 	defer span.End()
+
+	// Initialize content negotiation
+	negotiator := NewContentNegotiator(r)
+	serializer := negotiator.SelectSerializer()
+	supportsProtobuf := negotiator.SupportsProtobuf()
+
+	// Get request ID for response metadata
+	requestID := r.Header.Get("X-Request-ID")
+	if requestID == "" {
+		requestID = generateRequestID()
+	}
+
+	SetSpanAttributes(ctx,
+		attribute.String("http.method", r.Method),
+		attribute.String("http.route", "/api/search"),
+		attribute.String("response.format", serializer.ContentType()),
+		attribute.Bool("client.supports_protobuf", supportsProtobuf),
+		attribute.String("request.id", requestID),
+	)
+
+	if r.Method != http.MethodGet {
+		WriteErrorResponse(w, r, "method_not_allowed", "Only GET method is allowed", nil, http.StatusMethodNotAllowed)
+		return
+	}
 
 	// Track active requests
 	IncrementActiveRequests(ctx, "/search")
@@ -1588,13 +2135,13 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract dataset ID from URL path
 	pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	if len(pathParts) < 3 || pathParts[0] != "api" || pathParts[1] != "search" {
-		http.Error(w, "Invalid URL format. Expected /api/search/{datasetId}", http.StatusBadRequest)
+		WriteErrorResponse(w, r, "invalid_url", "Invalid URL format. Expected /api/search/{datasetId}", nil, http.StatusBadRequest)
 		return
 	}
 
 	datasetID := pathParts[2]
 	if datasetID == "" {
-		http.Error(w, "Dataset ID is required", http.StatusBadRequest)
+		WriteErrorResponse(w, r, "missing_dataset_id", "Dataset ID is required", nil, http.StatusBadRequest)
 		return
 	}
 
@@ -1602,10 +2149,47 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
 	if query == "" {
 		// Return empty results for empty query
+		setCORSHeaders(w, r)
+
+		// Create response metadata
+		metadata := CreateResponseMetadata(requestID, 0, false)
+
+		if supportsProtobuf {
+			// Create empty protobuf response
+			protoResponse := &pb.SearchResponse{
+				Players:  []*pb.Player{},
+				Query:    "",
+				Metadata: metadata,
+			}
+
+			// Serialize to protobuf
+			responseBytes, err := serializer.Serialize(protoResponse)
+			if err == nil {
+				// Protobuf serialization successful
+				w.Header().Set("Content-Type", serializer.ContentType())
+				if serializer.ShouldCompress() {
+					w.Header().Set("Content-Encoding", "gzip")
+				}
+
+				if _, writeErr := w.Write(responseBytes); writeErr != nil {
+					logError(ctx, "Error writing protobuf response", "error", writeErr)
+				}
+
+				logDebug(ctx, "Empty search results served as protobuf",
+					"response_size_bytes", len(responseBytes),
+					"processing_time_ms", time.Since(startTime).Milliseconds())
+				return
+			}
+
+			// Log protobuf serialization failure
+			logWarn(ctx, "Protobuf serialization failed for empty search results, falling back to JSON", "error", err)
+		}
+
+		// Fallback to JSON
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode([]SearchResult{}); err != nil {
-			log.Printf("Error encoding empty search results: %v", err)
-			http.Error(w, "Error encoding response", http.StatusInternalServerError)
+			logError(ctx, "Error encoding empty search results", "error", err)
+			WriteErrorResponse(w, r, "serialization_error", "Error encoding response", nil, http.StatusInternalServerError)
 		}
 		return
 	}
@@ -1618,7 +2202,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	// Get player data
 	players, _, found := GetPlayerData(datasetID)
 	if !found {
-		http.Error(w, "Dataset not found", http.StatusNotFound)
+		WriteErrorResponse(w, r, "dataset_not_found", "Dataset not found", nil, http.StatusNotFound)
 		return
 	}
 
@@ -1628,10 +2212,10 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	logDebug(ctx, "Performing search", "dataset_id", datasetID, "query", query, "player_count", len(players))
 
 	// NEW: Generate cache key and try to load from cache first
-	cacheKey := generateSearchCacheKey(datasetID, query, players)
+	cacheKey := generateSearchCacheKey(ctx, datasetID, query, players)
 
 	// Try to load from cache
-	if cachedResults, found := loadSearchFromCache(cacheKey, datasetID, query, players); found {
+	if cachedResults, found := loadSearchFromCache(ctx, cacheKey, datasetID, query, players); found {
 		logInfo(ctx, "Returning cached search results",
 			"dataset_id", datasetID,
 			"query", query,
@@ -1642,11 +2226,66 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 			attribute.Int("search.results_count", len(cachedResults)),
 			attribute.String("search.cache_status", "HIT"))
 
+		// Set CORS headers
+		setCORSHeaders(w, r)
+
+		// Create response metadata
+		metadata := CreateResponseMetadata(requestID, int32(len(cachedResults)), true)
+
+		if supportsProtobuf {
+			// Create protobuf response
+			// Note: For search results we only include minimal player data in protobuf format
+			protoPlayers := make([]*pb.Player, 0, len(cachedResults))
+			for _, result := range cachedResults {
+				if result.Type == "player" {
+					// Create a minimal player representation for search results
+					protoPlayer := &pb.Player{
+						Uid:      int64(0), // We don't have UID in search results
+						Name:     result.Name,
+						Position: result.Description,
+						Overall:  int32(result.Overall),
+					}
+					protoPlayers = append(protoPlayers, protoPlayer)
+				}
+			}
+
+			protoResponse := &pb.SearchResponse{
+				Players:  protoPlayers,
+				Query:    query,
+				Metadata: metadata,
+			}
+
+			// Serialize to protobuf
+			responseBytes, err := serializer.Serialize(protoResponse)
+			if err == nil {
+				// Protobuf serialization successful
+				w.Header().Set("Content-Type", serializer.ContentType())
+				w.Header().Set("X-Cache-Status", "HIT")
+				if serializer.ShouldCompress() {
+					w.Header().Set("Content-Encoding", "gzip")
+				}
+
+				if _, writeErr := w.Write(responseBytes); writeErr != nil {
+					logError(ctx, "Error writing protobuf response", "error", writeErr)
+				}
+
+				logDebug(ctx, "Search results served as protobuf from cache",
+					"result_count", len(cachedResults),
+					"response_size_bytes", len(responseBytes),
+					"processing_time_ms", time.Since(startTime).Milliseconds())
+				return
+			}
+
+			// Log protobuf serialization failure
+			logWarn(ctx, "Protobuf serialization failed for cached search results, falling back to JSON", "error", err)
+		}
+
+		// Fallback to JSON
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("X-Cache-Status", "HIT")
 		if err := json.NewEncoder(w).Encode(cachedResults); err != nil {
 			RecordError(ctx, err, "Failed to encode cached search results")
-			http.Error(w, "Error encoding response", http.StatusInternalServerError)
+			WriteErrorResponse(w, r, "serialization_error", "Error encoding response", nil, http.StatusInternalServerError)
 			return
 		}
 		return
@@ -1664,7 +2303,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	// NEW: Save to cache for future requests (only cache if results are not too large)
 	if len(results) <= 1000 { // Reasonable limit to avoid caching huge result sets
 		go func() {
-			saveSearchToCache(cacheKey, datasetID, query, players, results)
+			saveSearchToCache(ctx, cacheKey, datasetID, query, players, results)
 		}()
 	}
 
@@ -1672,11 +2311,66 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		attribute.Int("search.results_count", len(results)),
 		attribute.String("search.cache_status", "MISS"))
 
+	// Set CORS headers
+	setCORSHeaders(w, r)
+
+	// Create response metadata
+	metadata := CreateResponseMetadata(requestID, int32(len(results)), false)
+
+	if supportsProtobuf {
+		// Create protobuf response
+		// Note: For search results we only include minimal player data in protobuf format
+		protoPlayers := make([]*pb.Player, 0, len(results))
+		for _, result := range results {
+			if result.Type == "player" {
+				// Create a minimal player representation for search results
+				protoPlayer := &pb.Player{
+					Uid:      int64(0), // We don't have UID in search results
+					Name:     result.Name,
+					Position: result.Description,
+					Overall:  int32(result.Overall),
+				}
+				protoPlayers = append(protoPlayers, protoPlayer)
+			}
+		}
+
+		protoResponse := &pb.SearchResponse{
+			Players:  protoPlayers,
+			Query:    query,
+			Metadata: metadata,
+		}
+
+		// Serialize to protobuf
+		responseBytes, err := serializer.Serialize(protoResponse)
+		if err == nil {
+			// Protobuf serialization successful
+			w.Header().Set("Content-Type", serializer.ContentType())
+			w.Header().Set("X-Cache-Status", "MISS")
+			if serializer.ShouldCompress() {
+				w.Header().Set("Content-Encoding", "gzip")
+			}
+
+			if _, writeErr := w.Write(responseBytes); writeErr != nil {
+				logError(ctx, "Error writing protobuf response", "error", writeErr)
+			}
+
+			logDebug(ctx, "Search results served as protobuf",
+				"result_count", len(results),
+				"response_size_bytes", len(responseBytes),
+				"processing_time_ms", time.Since(startTime).Milliseconds())
+			return
+		}
+
+		// Log protobuf serialization failure
+		logWarn(ctx, "Protobuf serialization failed for search results, falling back to JSON", "error", err)
+	}
+
+	// Fallback to JSON
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-Cache-Status", "MISS")
 	if err := json.NewEncoder(w).Encode(results); err != nil {
 		RecordError(ctx, err, "Failed to encode search results")
-		http.Error(w, "Error encoding response", http.StatusInternalServerError)
+		WriteErrorResponse(w, r, "serialization_error", "Error encoding response", nil, http.StatusInternalServerError)
 		return
 	}
 
@@ -1765,7 +2459,7 @@ func performSearch(players []Player, query string) []SearchResult {
 				Name:        leagueName,
 				Type:        "league",
 				Description: fmt.Sprintf("%d players", playerCount),
-				URL:         fmt.Sprintf("/leagues?league=%s", leagueName),
+				URL:         fmt.Sprintf("/leagues?league=%s", url.QueryEscape(leagueName)),
 			})
 		}
 	}
@@ -1814,7 +2508,7 @@ func performSearch(players []Player, query string) []SearchResult {
 				Name:        nationName,
 				Type:        "nation",
 				Description: fmt.Sprintf("%d players", playerCount),
-				URL:         fmt.Sprintf("/nations?nation=%s", nationName),
+				URL:         fmt.Sprintf("/nations?nation=%s", url.QueryEscape(nationName)),
 			})
 		}
 	}
@@ -1905,10 +2599,10 @@ func bargainHunterHandler(w http.ResponseWriter, r *http.Request) {
 	players = RecalculateAllPlayersRatings(players)
 
 	// NEW: Generate cache key and try to load from cache first
-	cacheKey := generateBargainHunterCacheKey(datasetID, req.MaxBudget, req.MaxSalary, req.MinAge, req.MaxAge, req.MinOverall, players)
+	cacheKey := generateBargainHunterCacheKey(ctx, datasetID, req.MaxBudget, req.MaxSalary, req.MinAge, req.MaxAge, req.MinOverall, players)
 
 	// Try to load from cache
-	if cachedResults, found := loadBargainHunterFromCache(cacheKey, datasetID, req.MaxBudget, req.MaxSalary, req.MinAge, req.MaxAge, req.MinOverall, players); found {
+	if cachedResults, found := loadBargainHunterFromCache(ctx, cacheKey, datasetID, req.MaxBudget, req.MaxSalary, req.MinAge, req.MaxAge, req.MinOverall, players); found {
 		logInfo(ctx, "Returning cached bargain hunter results",
 			"dataset_id", datasetID,
 			"cache_key", cacheKey,
@@ -1918,7 +2612,7 @@ func bargainHunterHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Cache-Status", "HIT")
 		setCORSHeaders(w, r)
 		if err := json.NewEncoder(w).Encode(cachedResults); err != nil {
-			log.Printf("Error encoding JSON response for cached bargain hunter (DatasetID: %s): %v", sanitizeForLogging(datasetID), err)
+			logError(ctx, "Error encoding JSON response for cached bargain hunter", "dataset_id", sanitizeForLogging(datasetID), "error", err)
 			http.Error(w, "Error encoding response", http.StatusInternalServerError)
 		}
 		return
@@ -1934,7 +2628,7 @@ func bargainHunterHandler(w http.ResponseWriter, r *http.Request) {
 
 	// NEW: Save to cache for future requests
 	go func() {
-		saveBargainHunterToCache(cacheKey, datasetID, req.MaxBudget, req.MaxSalary, req.MinAge, req.MaxAge, req.MinOverall, players, bargainPlayers)
+		saveBargainHunterToCache(ctx, cacheKey, datasetID, req.MaxBudget, req.MaxSalary, req.MinAge, req.MaxAge, req.MinOverall, players, bargainPlayers)
 	}()
 
 	w.Header().Set("Content-Type", "application/json")
@@ -1942,7 +2636,7 @@ func bargainHunterHandler(w http.ResponseWriter, r *http.Request) {
 	setCORSHeaders(w, r)
 	if err := json.NewEncoder(w).Encode(bargainPlayers); err != nil {
 		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
-		log.Printf("Error encoding JSON response for bargain hunter (DatasetID: %s): %v", sanitizeForLogging(datasetID), err)
+		logError(ctx, "Error encoding JSON response for bargain hunter", "dataset_id", sanitizeForLogging(datasetID), "error", err)
 	}
 }
 
@@ -2487,4 +3181,1477 @@ func deepCopyPlayers(players []Player) []Player {
 	}
 
 	return playersCopy
+}
+
+// fullPlayerStatsHandler returns detailed stats for a single player
+func fullPlayerStatsHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	startTime := time.Now()
+
+	// Start comprehensive tracing
+	ctx, span := StartSpan(ctx, "api.fullplayerstats.get")
+	defer span.End()
+
+	// Extract player UID and dataset ID from URL
+	pathParts := strings.Split(r.URL.Path, "/")
+	if len(pathParts) < 5 {
+		http.Error(w, "Invalid URL format. Expected: /api/fullplayerstats/{datasetID}/{playerUID}", http.StatusBadRequest)
+		return
+	}
+
+	datasetID := pathParts[3]
+	playerUIDStr := pathParts[4]
+
+	// Parse player UID
+	playerUID, err := strconv.ParseInt(playerUIDStr, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid player UID", http.StatusBadRequest)
+		return
+	}
+
+	SetSpanAttributes(ctx,
+		attribute.String("dataset.id", datasetID),
+		attribute.Int64("player.uid", playerUID),
+	)
+
+	// Get dataset
+	ctx, dataSpan := StartSpan(ctx, "storage.get_dataset")
+	players, currencySymbol, found := GetPlayerData(datasetID)
+	dataSpan.End()
+
+	if !found {
+		logError(ctx, "Failed to get dataset for full player stats",
+			"dataset_id", datasetID,
+			"player_uid", playerUID)
+		http.Error(w, "Dataset not found", http.StatusNotFound)
+		return
+	}
+
+	// Find the specific player
+	var targetPlayer *Player
+	for _, player := range players {
+		if player.UID == playerUID {
+			targetPlayer = &player
+			break
+		}
+	}
+
+	if targetPlayer == nil {
+		http.Error(w, "Player not found", http.StatusNotFound)
+		return
+	}
+
+	// OPTIMIZATION: Only calculate percentiles for this specific player if missing
+	if targetPlayer.PerformancePercentiles == nil || len(targetPlayer.PerformancePercentiles) == 0 {
+		logInfo(ctx, "Player missing percentiles, calculating for this player only",
+			"dataset_id", datasetID,
+			"player_uid", playerUID,
+			"player_name", targetPlayer.Name)
+
+		// OPTIMIZATION: Use division-based filtering for better performance
+		// Default to "same" division instead of "all" for faster processing
+		ctx, percentileSpan := StartSpan(ctx, "percentiles.calculate_single_player")
+
+		// Filter players by the same division as the target player
+		var filteredPlayers []Player
+		targetDivision := targetPlayer.Division
+
+		// Add the target player first
+		filteredPlayers = append(filteredPlayers, *targetPlayer)
+
+		// Add players in the same division for comparison
+		for _, player := range players {
+			if player.UID != targetPlayer.UID && player.Division == targetDivision {
+				filteredPlayers = append(filteredPlayers, player)
+				// Limit to 50 players for faster processing
+				if len(filteredPlayers) >= 50 {
+					break
+				}
+			}
+		}
+
+		// If we don't have enough players in the same division, add some from similar positions
+		if len(filteredPlayers) < 20 {
+			for _, player := range players {
+				if len(filteredPlayers) >= 50 {
+					break
+				}
+
+				// Skip if already included
+				alreadyIncluded := false
+				for _, included := range filteredPlayers {
+					if included.UID == player.UID {
+						alreadyIncluded = true
+						break
+					}
+				}
+
+				if !alreadyIncluded && player.Position == targetPlayer.Position {
+					filteredPlayers = append(filteredPlayers, player)
+				}
+			}
+		}
+
+		// Calculate percentiles only for the filtered comparison group
+		CalculatePlayerPerformancePercentiles(filteredPlayers)
+
+		// Find the updated player with percentiles
+		for _, player := range filteredPlayers {
+			if player.UID == playerUID {
+				targetPlayer = &player
+				break
+			}
+		}
+
+		percentileSpan.End()
+
+		logInfo(ctx, "Successfully calculated percentiles for player",
+			"dataset_id", datasetID,
+			"player_uid", playerUID,
+			"player_name", targetPlayer.Name,
+			"percentile_groups", len(targetPlayer.PerformancePercentiles),
+			"comparison_players", len(filteredPlayers),
+			"target_division", targetDivision)
+	}
+
+	// Create response with full player data
+	response := map[string]interface{}{
+		"player":          targetPlayer,
+		"dataset_id":      datasetID,
+		"currency_symbol": currencySymbol,
+	}
+
+	// Serialize to JSON string for protobuf compatibility
+	jsonData, err := json.Marshal(response)
+	if err != nil {
+		logError(ctx, "Failed to marshal full player stats response",
+			"error", err,
+			"dataset_id", datasetID,
+			"player_uid", playerUID)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Use GenericResponse for protobuf compatibility
+	protoResponse := &pb.GenericResponse{
+		Data: string(jsonData),
+	}
+
+	// Use content negotiation to determine response format
+	if err := WriteResponse(w, r, protoResponse); err != nil {
+		logError(ctx, "Failed to write full player stats response",
+			"error", err,
+			"dataset_id", datasetID,
+			"player_uid", playerUID)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	logInfo(ctx, "Successfully returned full player stats",
+		"dataset_id", datasetID,
+		"player_uid", playerUID,
+		"player_name", targetPlayer.Name,
+		"response_time_ms", time.Since(startTime).Milliseconds())
+}
+
+// getSimilarPlayersForComparison returns a subset of players for percentile calculation
+// This avoids calculating percentiles for the entire dataset when only one player is needed
+func getSimilarPlayersForComparison(allPlayers []Player, targetPlayer *Player) []Player {
+	// Start with the target player
+	similarPlayers := []Player{*targetPlayer}
+
+	// Add players in the same position for comparison
+	// This provides enough data for meaningful percentiles without processing the entire dataset
+	position := targetPlayer.Position
+
+	// Collect up to 100 similar players for comparison
+	maxSimilarPlayers := 100
+	count := 0
+
+	for _, player := range allPlayers {
+		if count >= maxSimilarPlayers {
+			break
+		}
+
+		// Skip the target player (already added)
+		if player.UID == targetPlayer.UID {
+			continue
+		}
+
+		// Add players with similar position
+		if position != "" && player.Position == position {
+			similarPlayers = append(similarPlayers, player)
+			count++
+		}
+	}
+
+	// If we don't have enough similar players, add some random players for broader comparison
+	if len(similarPlayers) < 50 {
+		for _, player := range allPlayers {
+			if len(similarPlayers) >= maxSimilarPlayers {
+				break
+			}
+
+			// Skip if already included
+			alreadyIncluded := false
+			for _, included := range similarPlayers {
+				if included.UID == player.UID {
+					alreadyIncluded = true
+					break
+				}
+			}
+
+			if !alreadyIncluded {
+				similarPlayers = append(similarPlayers, player)
+			}
+		}
+	}
+
+	return similarPlayers
+}
+
+// teamDataHandler returns detailed stats for all players in a team or nation
+func teamDataHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// Extract dataset ID, team/nation name, and type from URL
+	// Expected format: /api/team_data/{datasetID}/{type}/{name}
+	pathParts := strings.Split(r.URL.Path, "/")
+	if len(pathParts) < 6 {
+		http.Error(w, "Invalid URL format. Expected: /api/team_data/{datasetID}/{type}/{name}", http.StatusBadRequest)
+		return
+	}
+
+	datasetID := pathParts[3]
+	dataType := pathParts[4] // "team" or "nation"
+	teamOrNationName := pathParts[5]
+
+	// Validate data type
+	if dataType != "team" && dataType != "nation" {
+		http.Error(w, "Invalid data type. Must be 'team' or 'nation'", http.StatusBadRequest)
+		return
+	}
+
+	// Get dataset
+	players, currencySymbol, found := GetPlayerData(datasetID)
+	if !found {
+		logError(ctx, "Failed to get dataset for team data",
+			"dataset_id", datasetID,
+			"type", dataType,
+			"name", teamOrNationName)
+		http.Error(w, "Dataset not found", http.StatusNotFound)
+		return
+	}
+
+	// Filter players based on type
+	var filteredPlayers []Player
+	if dataType == "team" {
+		filteredPlayers = make([]Player, 0)
+		for _, player := range players {
+			if player.Club == teamOrNationName {
+				filteredPlayers = append(filteredPlayers, player)
+			}
+		}
+	} else { // nation
+		filteredPlayers = make([]Player, 0)
+		for _, player := range players {
+			if player.Nationality == teamOrNationName {
+				filteredPlayers = append(filteredPlayers, player)
+			}
+		}
+	}
+
+	if len(filteredPlayers) == 0 {
+		http.Error(w, fmt.Sprintf("No players found for %s: %s", dataType, teamOrNationName), http.StatusNotFound)
+		return
+	}
+
+	// Ensure all players have percentile data
+	playersWithPercentiles := make([]Player, len(filteredPlayers))
+	copy(playersWithPercentiles, filteredPlayers)
+
+	// Calculate percentiles for the filtered players
+	CalculatePlayerPerformancePercentiles(playersWithPercentiles)
+
+	// Create response with full team/nation data
+	response := map[string]interface{}{
+		"players":         playersWithPercentiles,
+		"dataset_id":      datasetID,
+		"currency_symbol": currencySymbol,
+		"type":            dataType,
+		"name":            teamOrNationName,
+		"player_count":    len(playersWithPercentiles),
+	}
+
+	// Serialize to JSON string for protobuf compatibility
+	jsonData, err := json.Marshal(response)
+	if err != nil {
+		logError(ctx, "Failed to marshal team data response",
+			"error", err,
+			"dataset_id", datasetID,
+			"type", dataType,
+			"name", teamOrNationName)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Use GenericResponse for protobuf compatibility
+	protoResponse := &pb.GenericResponse{
+		Data: string(jsonData),
+	}
+
+	// Use content negotiation to determine response format
+	if err := WriteResponse(w, r, protoResponse); err != nil {
+		logError(ctx, "Failed to write team data response",
+			"error", err,
+			"dataset_id", datasetID,
+			"type", dataType,
+			"name", teamOrNationName)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	logInfo(ctx, "Successfully returned team data",
+		"dataset_id", datasetID,
+		"type", dataType,
+		"name", teamOrNationName,
+		"player_count", len(playersWithPercentiles))
+}
+
+// performanceDataHandler handles GET requests for retrieving detailed performance data by dataset ID.
+func performanceDataHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	startTime := time.Now()
+
+	// Start comprehensive tracing
+	ctx, span := StartSpan(ctx, "api.performance.get")
+	defer span.End()
+
+	// Track active requests
+	IncrementActiveRequests(ctx, "/api/performance")
+	defer DecrementActiveRequests(ctx, "/api/performance")
+
+	// Record API operation metrics at the end
+	defer func() {
+		status := http.StatusOK
+		RecordAPIOperation(ctx, r.Method, "/api/performance", status, time.Since(startTime))
+	}()
+
+	if r.Method != http.MethodGet {
+		WriteErrorResponse(w, r, "method_not_allowed", "Only GET method is allowed", nil, http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Initialize content negotiation
+	negotiator := NewContentNegotiator(r)
+	serializer := negotiator.SelectSerializer()
+	supportsProtobuf := negotiator.SupportsProtobuf()
+
+	// Get request ID for response metadata
+	requestID := r.Header.Get("X-Request-ID")
+	if requestID == "" {
+		requestID = generateRequestID()
+	}
+
+	SetSpanAttributes(ctx,
+		attribute.String("http.method", r.Method),
+		attribute.String("http.route", "/api/performance"),
+		attribute.String("response.format", serializer.ContentType()),
+		attribute.Bool("client.supports_protobuf", supportsProtobuf),
+		attribute.String("request.id", requestID),
+	)
+
+	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/performance/"), "/")
+	if len(pathParts) == 0 || pathParts[0] == "" {
+		logWarn(ctx, "Dataset ID missing in request path")
+		SetSpanAttributes(ctx, attribute.String("error.type", "missing_dataset_id"))
+		WriteErrorResponse(w, r, "missing_dataset_id", "Dataset ID is missing in the request path", nil, http.StatusBadRequest)
+		return
+	}
+	datasetID := pathParts[0]
+
+	SetSpanAttributes(ctx, attribute.String("dataset.id", datasetID))
+
+	queryValues := r.URL.Query()
+	filterPosition := queryValues.Get("position")
+	filterRole := queryValues.Get("role")
+	minAgeStr := queryValues.Get("minAge")
+	maxAgeStr := queryValues.Get("maxAge")
+	minTransferValueStr := queryValues.Get("minTransferValue")
+	maxTransferValueStr := queryValues.Get("maxTransferValue")
+	maxSalaryStr := queryValues.Get("maxSalary")
+	divisionFilterStr := queryValues.Get("divisionFilter") // "all", "same", "top5"
+	targetDivision := queryValues.Get("targetDivision")
+	positionCompare := queryValues.Get("positionCompare") // "all", "broad", "detailed"
+
+	logDebug(ctx, "Processing performance data request",
+		"dataset_id", datasetID,
+		"position_filter", filterPosition,
+		"role_filter", filterRole,
+		"min_age", minAgeStr,
+		"max_age", maxAgeStr,
+		"min_transfer_value", minTransferValueStr,
+		"max_transfer_value", maxTransferValueStr,
+		"max_salary", maxSalaryStr,
+		"division_filter", divisionFilterStr,
+		"target_division", targetDivision,
+		"position_compare", positionCompare)
+
+	// Create cache key for performance data
+	performanceCacheKey := fmt.Sprintf("performance:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s",
+		datasetID, filterPosition, filterRole, minAgeStr, maxAgeStr,
+		minTransferValueStr, maxTransferValueStr, maxSalaryStr, divisionFilterStr, targetDivision)
+
+	// Check cache for performance data
+	if cachedPerformance, cacheFound := getFromMemCache(performanceCacheKey); cacheFound {
+		if jsonData, ok := cachedPerformance.([]byte); ok {
+			logDebug(ctx, "Serving performance data from cache", "dataset_id", datasetID)
+
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Cache-Control", "public, max-age=300") // Cache for 5 minutes
+			setCORSHeaders(w, r)
+			if _, err := w.Write(jsonData); err != nil {
+				logError(ctx, "Error writing cached performance response", "error", err)
+			}
+			SetSpanAttributes(ctx, attribute.Bool("performance_cache.hit", true))
+			return
+		}
+	}
+
+	// Cache miss - need to load and process performance data
+	SetSpanAttributes(ctx, attribute.Bool("performance_cache.hit", false))
+
+	// Use the storage interface to get player data
+	ctx, dataSpan := StartSpan(ctx, "storage.get_dataset")
+	players, currencySymbol, found := GetPlayerData(datasetID)
+	dataSpan.End()
+
+	if !found {
+		logWarn(ctx, "Player data not found", "dataset_id", datasetID)
+		SetSpanAttributes(ctx, attribute.String("error.type", "dataset_not_found"))
+		WriteErrorResponse(w, r, "dataset_not_found", "Player data not found for the given ID.", nil, http.StatusNotFound)
+		return
+	}
+
+	SetSpanAttributes(ctx,
+		attribute.Int("dataset.initial_player_count", len(players)),
+		attribute.String("dataset.currency", currencySymbol),
+	)
+
+	// Enhance players with calculations (convert string attributes to numeric)
+	ctx, enhanceSpan := StartSpan(ctx, "players.enhance")
+	logInfo(ctx, "Enhancing players with calculations", "player_count", len(players))
+	for i := range players {
+		EnhancePlayerWithCalculations(&players[i])
+	}
+	logInfo(ctx, "Enhanced players with calculations", "player_count", len(players))
+	enhanceSpan.End()
+
+	// Recalculate all player ratings based on the current calculation method setting
+	ctx, recalcSpan := StartSpan(ctx, "ratings.recalculate")
+	players = RecalculateAllPlayersRatings(players)
+	recalcSpan.End()
+
+	// Parse filters
+	var minAge, maxAge int
+	var minTransferValue, maxTransferValue, maxSalary int64
+
+	if minAgeStr != "" {
+		if val, err := strconv.Atoi(minAgeStr); err == nil {
+			minAge = val
+		}
+	}
+	if maxAgeStr != "" {
+		if val, err := strconv.Atoi(maxAgeStr); err == nil {
+			maxAge = val
+		}
+	}
+	if minTransferValueStr != "" {
+		if val, err := strconv.ParseInt(minTransferValueStr, 10, 64); err == nil {
+			minTransferValue = val
+		}
+	}
+	if maxTransferValueStr != "" {
+		if val, err := strconv.ParseInt(maxTransferValueStr, 10, 64); err == nil {
+			maxTransferValue = val
+		}
+	}
+	if maxSalaryStr != "" {
+		if val, err := strconv.ParseInt(maxSalaryStr, 10, 64); err == nil {
+			maxSalary = val
+		}
+	}
+
+	// Parse division filter
+	var divisionFilter = DivisionFilterAll
+	switch divisionFilterStr {
+	case "same":
+		divisionFilter = DivisionFilterSame
+	case "top5":
+		divisionFilter = DivisionFilterTop5
+	case "all", "":
+		divisionFilter = DivisionFilterAll
+	}
+
+	// Calculate percentiles with appropriate filtering
+	ctx, percentileSpan := StartSpan(ctx, "percentiles.calculate")
+	// Make a deep copy of players to avoid modifying the stored data
+	playersCopy := OptimizedDeepCopyPlayers(players)
+
+	if divisionFilter != DivisionFilterAll {
+		// Recalculate percentiles with division filter
+		CalculatePlayerPerformancePercentilesWithDivisionFilter(playersCopy, divisionFilter, targetDivision)
+	} else {
+		// Calculate global percentiles using optimized algorithm
+		CalculatePlayerPerformancePercentiles(playersCopy)
+	}
+
+	players = playersCopy
+	percentileSpan.End()
+
+	// Apply filters to get final performance data
+	ctx, filterSpan := StartSpan(ctx, "performance.filter")
+	filteredPlayers := filterPlayersForPerformance(players, filterPosition, filterRole, minAge, maxAge, minTransferValue, maxTransferValue, maxSalary, positionCompare)
+	filterSpan.End()
+
+	SetSpanAttributes(ctx, attribute.Int("performance.filtered_player_count", len(filteredPlayers)))
+
+	// Create response with detailed performance data
+	response := struct {
+		Players        []Player `json:"players"`
+		CurrencySymbol string   `json:"currencySymbol"`
+		TotalCount     int      `json:"totalCount"`
+		FilteredCount  int      `json:"filteredCount"`
+	}{
+		Players:        filteredPlayers,
+		CurrencySymbol: currencySymbol,
+		TotalCount:     len(players),
+		FilteredCount:  len(filteredPlayers),
+	}
+
+	// Serialize response
+	var responseData []byte
+	var err error
+
+	if supportsProtobuf {
+		// For protobuf, we need to convert to JSON first, then wrap in protobuf
+		_, jsonSpan := StartSpan(ctx, "serialization.json")
+		jsonData, jsonErr := json.Marshal(response)
+		jsonSpan.End()
+
+		if jsonErr != nil {
+			logError(ctx, "Failed to marshal performance response to JSON", "error", jsonErr)
+			SetSpanAttributes(ctx, attribute.String("error.type", "json_marshal_failed"))
+			WriteErrorResponse(w, r, "serialization_failed", "Failed to serialize response", nil, http.StatusInternalServerError)
+			return
+		}
+
+		// Create protobuf response wrapper
+		_, protoSpan := StartSpan(ctx, "serialization.protobuf")
+		protoResponse := &pb.GenericResponse{
+			Data: string(jsonData),
+		}
+		responseData, err = proto.Marshal(protoResponse)
+		protoSpan.End()
+	} else {
+		// Use JSON serialization
+		_, jsonSpan := StartSpan(ctx, "serialization.json")
+		responseData, err = json.Marshal(response)
+		jsonSpan.End()
+	}
+
+	if err != nil {
+		logError(ctx, "Failed to serialize performance response", "error", err)
+		SetSpanAttributes(ctx, attribute.String("error.type", "serialization_failed"))
+		WriteErrorResponse(w, r, "serialization_failed", "Failed to serialize response", nil, http.StatusInternalServerError)
+		return
+	}
+
+	// Cache the performance data
+	setInMemCacheForDataset(performanceCacheKey, responseData, 5*time.Minute) // Cache for 5 minutes
+
+	// Set response headers
+	w.Header().Set("Content-Type", serializer.ContentType())
+	w.Header().Set("Cache-Control", "public, max-age=300") // Cache for 5 minutes
+	setCORSHeaders(w, r)
+
+	// Write response
+	if _, err := w.Write(responseData); err != nil {
+		logError(ctx, "Error writing performance response", "error", err)
+	}
+
+	logDebug(ctx, "Performance data request completed",
+		"dataset_id", datasetID,
+		"total_players", len(players),
+		"filtered_players", len(filteredPlayers),
+		"response_size_bytes", len(responseData))
+}
+
+// exportDataHandler handles GET requests for exporting complete dataset data.
+func exportDataHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	startTime := time.Now()
+
+	// Start comprehensive tracing
+	ctx, span := StartSpan(ctx, "api.export.get")
+	defer span.End()
+
+	// Track active requests
+	IncrementActiveRequests(ctx, "/api/export")
+	defer DecrementActiveRequests(ctx, "/api/export")
+
+	// Record API operation metrics at the end
+	defer func() {
+		status := http.StatusOK
+		RecordAPIOperation(ctx, r.Method, "/api/export", status, time.Since(startTime))
+	}()
+
+	if r.Method != http.MethodGet {
+		WriteErrorResponse(w, r, "method_not_allowed", "Only GET method is allowed", nil, http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get request ID for response metadata
+	requestID := r.Header.Get("X-Request-ID")
+	if requestID == "" {
+		requestID = generateRequestID()
+	}
+
+	SetSpanAttributes(ctx,
+		attribute.String("http.method", r.Method),
+		attribute.String("http.route", "/api/export"),
+		attribute.String("request.id", requestID),
+	)
+
+	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/export/"), "/")
+	if len(pathParts) == 0 || pathParts[0] == "" {
+		logWarn(ctx, "Dataset ID missing in request path")
+		SetSpanAttributes(ctx, attribute.String("error.type", "missing_dataset_id"))
+		WriteErrorResponse(w, r, "missing_dataset_id", "Dataset ID is missing in the request path", nil, http.StatusBadRequest)
+		return
+	}
+	datasetID := pathParts[0]
+
+	SetSpanAttributes(ctx, attribute.String("dataset.id", datasetID))
+
+	// Get format from query parameter
+	format := r.URL.Query().Get("format")
+	if format == "" {
+		format = "json" // Default to JSON
+	}
+
+	if format != "json" && format != "csv" {
+		logWarn(ctx, "Invalid export format", "format", format)
+		SetSpanAttributes(ctx, attribute.String("error.type", "invalid_format"))
+		WriteErrorResponse(w, r, "invalid_format", "Invalid export format. Supported formats: json, csv", nil, http.StatusBadRequest)
+		return
+	}
+
+	SetSpanAttributes(ctx, attribute.String("export.format", format))
+
+	logDebug(ctx, "Processing export request",
+		"dataset_id", datasetID,
+		"format", format)
+
+	// Use the storage interface to get player data
+	ctx, dataSpan := StartSpan(ctx, "storage.get_dataset")
+	players, currencySymbol, found := GetPlayerData(datasetID)
+	dataSpan.End()
+
+	if !found {
+		logWarn(ctx, "Player data not found", "dataset_id", datasetID)
+		SetSpanAttributes(ctx, attribute.String("error.type", "dataset_not_found"))
+		WriteErrorResponse(w, r, "dataset_not_found", "Player data not found for the given ID.", nil, http.StatusNotFound)
+		return
+	}
+
+	SetSpanAttributes(ctx,
+		attribute.Int("dataset.player_count", len(players)),
+		attribute.String("dataset.currency", currencySymbol),
+	)
+
+	// Enhance players with calculations (convert string attributes to numeric)
+	ctx, enhanceSpan := StartSpan(ctx, "players.enhance")
+	logInfo(ctx, "Enhancing players with calculations for export", "player_count", len(players))
+	for i := range players {
+		EnhancePlayerWithCalculations(&players[i])
+	}
+	logInfo(ctx, "Enhanced players with calculations for export", "player_count", len(players))
+	enhanceSpan.End()
+
+	// Recalculate all player ratings
+	ctx, recalcSpan := StartSpan(ctx, "ratings.recalculate")
+	players = RecalculateAllPlayersRatings(players)
+	recalcSpan.End()
+
+	// Calculate performance percentiles
+	ctx, percentileSpan := StartSpan(ctx, "percentiles.calculate")
+	CalculatePlayerPerformancePercentiles(players)
+	percentileSpan.End()
+
+	SetSpanAttributes(ctx, attribute.Int("export.player_count", len(players)))
+
+	// Export based on format
+	var responseData []byte
+
+	if format == "csv" {
+		// Generate CSV content
+		_, csvSpan := StartSpan(ctx, "export.csv_generate")
+		csvContent := generateCSVContent(players)
+		csvSpan.End()
+
+		// Set response headers for CSV download
+		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=players_export_%s.csv", datasetID))
+		setCORSHeaders(w, r)
+
+		responseData = []byte(csvContent)
+	} else {
+		// Generate JSON content
+		_, jsonSpan := StartSpan(ctx, "export.json_generate")
+		jsonContent := generateJSONContent(players, currencySymbol, datasetID)
+		jsonSpan.End()
+
+		// Set response headers for JSON
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=players_export_%s.json", datasetID))
+		setCORSHeaders(w, r)
+
+		responseData = jsonContent
+	}
+
+	// Write response
+	if _, writeErr := w.Write(responseData); writeErr != nil {
+		logError(ctx, "Error writing export response", "error", writeErr)
+	}
+
+	logDebug(ctx, "Export request completed",
+		"dataset_id", datasetID,
+		"format", format,
+		"player_count", len(players),
+		"response_size_bytes", len(responseData))
+}
+
+// filterPlayersForPerformance applies all filters to get performance data
+func filterPlayersForPerformance(players []Player, position, role string, minAge, maxAge int, minTransferValue, maxTransferValue, maxSalary int64, positionCompare string) []Player {
+	filtered := make([]Player, 0, len(players))
+
+	for _, player := range players {
+		// Age filter
+		if minAge > 0 {
+			if age, err := strconv.Atoi(player.Age); err == nil && age < minAge {
+				continue
+			}
+		}
+		if maxAge > 0 {
+			if age, err := strconv.Atoi(player.Age); err == nil && age > maxAge {
+				continue
+			}
+		}
+
+		// Transfer value filter
+		if minTransferValue > 0 {
+			if transferValue, err := strconv.ParseInt(player.TransferValue, 10, 64); err == nil && transferValue < minTransferValue {
+				continue
+			}
+		}
+		if maxTransferValue > 0 {
+			if transferValue, err := strconv.ParseInt(player.TransferValue, 10, 64); err == nil && transferValue > maxTransferValue {
+				continue
+			}
+		}
+
+		// Salary filter
+		if maxSalary > 0 {
+			if wage, err := strconv.ParseInt(player.Wage, 10, 64); err == nil && wage > maxSalary {
+				continue
+			}
+		}
+
+		// Position filter
+		if position != "" && !matchesPosition(player, position, positionCompare) {
+			continue
+		}
+
+		// Role filter
+		if role != "" && !matchesRole(player, role) {
+			continue
+		}
+
+		filtered = append(filtered, player)
+	}
+
+	return filtered
+}
+
+// matchesPosition checks if a player matches the given position filter
+func matchesPosition(player Player, position, compare string) bool {
+	if position == "" {
+		return true
+	}
+
+	// Handle position groups
+	switch position {
+	case "Goalkeeper":
+		return containsPosition(player.ShortPositions, "GK")
+	case "Defender":
+		return containsAnyPosition(player.ShortPositions, []string{"DC", "DR", "DL", "WBR", "WBL"})
+	case "Midfielder":
+		return containsAnyPosition(player.ShortPositions, []string{"DM", "MC", "MR", "ML", "AMR", "AMC", "AML"})
+	case "Forward":
+		return containsPosition(player.ShortPositions, "ST")
+	}
+
+	// Handle specific positions
+	return containsPosition(player.ShortPositions, position)
+}
+
+// matchesRole checks if a player matches the given role filter
+func matchesRole(player Player, role string) bool {
+	if role == "" {
+		return true
+	}
+
+	// Check if player has the specific role in their role-specific overalls
+	if player.RoleSpecificOveralls != nil {
+		for _, rso := range player.RoleSpecificOveralls {
+			if strings.Contains(strings.ToLower(rso.RoleName), strings.ToLower(role)) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// containsPosition checks if a slice contains a specific position
+func containsPosition(positions []string, position string) bool {
+	for _, pos := range positions {
+		if pos == position {
+			return true
+		}
+	}
+	return false
+}
+
+// containsAnyPosition checks if a slice contains any of the given positions
+func containsAnyPosition(positions []string, targetPositions []string) bool {
+	for _, pos := range positions {
+		for _, target := range targetPositions {
+			if pos == target {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// contains checks if a slice contains a specific string
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
+}
+
+// getAttributeFullName returns the full name for an attribute key
+func getAttributeFullName(attrKey string) string {
+	attributeFullNameMap := map[string]string{
+		"Cor":  "Corners",
+		"Cro":  "Crossing",
+		"Dri":  "Dribbling",
+		"Fin":  "Finishing",
+		"Fir":  "First Touch",
+		"Fre":  "Free Kick Taking",
+		"Hea":  "Heading",
+		"Lon":  "Long Shots",
+		"L Th": "Long Throws",
+		"Mar":  "Marking",
+		"Pas":  "Passing",
+		"Pen":  "Penalty Taking",
+		"Tck":  "Tackling",
+		"Tec":  "Technique",
+		"Agg":  "Aggression",
+		"Ant":  "Anticipation",
+		"Bra":  "Bravery",
+		"Cmp":  "Composure",
+		"Cnt":  "Concentration",
+		"Dec":  "Decisions",
+		"Det":  "Determination",
+		"Fla":  "Flair",
+		"Ldr":  "Leadership",
+		"OtB":  "Off the Ball",
+		"Pos":  "Positioning",
+		"Tea":  "Teamwork",
+		"Vis":  "Vision",
+		"Wor":  "Work Rate",
+		"Acc":  "Acceleration",
+		"Agi":  "Agility",
+		"Bal":  "Balance",
+		"Jum":  "Jumping Reach",
+		"Nat":  "Natural Fitness",
+		"Pac":  "Pace",
+		"Sta":  "Stamina",
+		"Str":  "Strength",
+		"Aer":  "Aerial Reach",
+		"Cmd":  "Command of Area",
+		"Com":  "Communication",
+		"Ecc":  "Eccentricity",
+		"Han":  "Handling",
+		"Kic":  "Kicking",
+		"1v1":  "One on Ones",
+		"Pun":  "Punching (Tendency)",
+		"Ref":  "Reflexes",
+		"TRO":  "Rushing Out (Tendency)",
+		"Thr":  "Throwing",
+	}
+
+	if fullName, exists := attributeFullNameMap[attrKey]; exists {
+		return fullName
+	}
+	return attrKey // Return the original key if no mapping exists
+}
+
+// generateCSVContent generates CSV content from player data
+func generateCSVContent(players []Player) string {
+	if len(players) == 0 {
+		return ""
+	}
+
+	// First, collect all unique role names and performance percentile groups
+	roleNames := make(map[string]bool)
+	percentileGroups := make(map[string]bool)
+	attributeNames := make(map[string]bool)
+
+	for _, player := range players {
+		// Collect role names
+		for _, role := range player.RoleSpecificOveralls {
+			roleNames[role.RoleName] = true
+		}
+
+		// Collect performance percentile groups
+		for group := range player.PerformancePercentiles {
+			percentileGroups[group] = true
+		}
+
+		// Collect attribute names
+		for attr := range player.Attributes {
+			attributeNames[attr] = true
+		}
+	}
+
+	// Convert maps to sorted slices for consistent column ordering
+	roleNamesList := make([]string, 0, len(roleNames))
+	for role := range roleNames {
+		roleNamesList = append(roleNamesList, role)
+	}
+	sort.Strings(roleNamesList)
+
+	percentileGroupsList := make([]string, 0, len(percentileGroups))
+	for group := range percentileGroups {
+		percentileGroupsList = append(percentileGroupsList, group)
+	}
+	sort.Strings(percentileGroupsList)
+
+	attributeNamesList := make([]string, 0, len(attributeNames))
+	for attr := range attributeNames {
+		attributeNamesList = append(attributeNamesList, attr)
+	}
+	sort.Strings(attributeNamesList)
+
+	// Define CSV headers
+	headers := []string{
+		"Name", "Age", "Nationality", "Nationality ISO", "Nationality FIFA Code",
+		"Club", "Division", "Position", "Transfer Value", "Wage",
+		"Overall", "PAC", "SHO", "PAS", "DRI", "DEF", "PHY", "GK",
+		"DIV", "HAN", "REF", "KIC", "SPD", "POS", // Individual GK stats
+		"Personality", "Media Handling", "Attributes Masked",
+	}
+
+	// Add FM attribute columns right after Attributes Masked (Technical -> Mental -> Physical -> Goalkeeper)
+	// Technical attributes
+	technicalAttrs := []string{"Cor", "Cro", "Dri", "Fin", "Fir", "Fre", "Hea", "Lon", "L Th", "Mar", "Pas", "Pen", "Tck", "Tec"}
+	for _, attrName := range technicalAttrs {
+		if attributeNames[attrName] {
+			headers = append(headers, getAttributeFullName(attrName))
+		}
+	}
+
+	// Mental attributes
+	mentalAttrs := []string{"Agg", "Ant", "Bra", "Cmp", "Cnt", "Dec", "Det", "Fla", "Ldr", "OtB", "Pos", "Tea", "Vis", "Wor"}
+	for _, attrName := range mentalAttrs {
+		if attributeNames[attrName] {
+			headers = append(headers, getAttributeFullName(attrName))
+		}
+	}
+
+	// Physical attributes
+	physicalAttrs := []string{"Acc", "Agi", "Bal", "Jum", "Nat", "Pac", "Sta", "Str"}
+	for _, attrName := range physicalAttrs {
+		if attributeNames[attrName] {
+			headers = append(headers, getAttributeFullName(attrName))
+		}
+	}
+
+	// Goalkeeper attributes
+	gkAttrs := []string{"Aer", "Cmd", "Com", "Ecc", "Han", "Kic", "1v1", "Pun", "Ref", "TRO", "Thr"}
+	for _, attrName := range gkAttrs {
+		if attributeNames[attrName] {
+			headers = append(headers, getAttributeFullName(attrName))
+		}
+	}
+
+	// Add any remaining attributes that weren't in the predefined lists
+	for _, attrName := range attributeNamesList {
+		if !contains(technicalAttrs, attrName) && !contains(mentalAttrs, attrName) &&
+			!contains(physicalAttrs, attrName) && !contains(gkAttrs, attrName) {
+			headers = append(headers, getAttributeFullName(attrName))
+		}
+	}
+
+	// Add role rating columns
+	for _, roleName := range roleNamesList {
+		headers = append(headers, fmt.Sprintf("Role_%s", roleName))
+	}
+
+	// Add performance percentile columns
+	for _, group := range percentileGroupsList {
+		headers = append(headers, fmt.Sprintf("Percentile_%s", group))
+	}
+
+	// Create CSV content
+	var csvLines []string
+	csvLines = append(csvLines, strings.Join(headers, ","))
+
+	for _, player := range players {
+		// Basic info
+		row := []string{
+			escapeCSVField(player.Name),
+			escapeCSVField(player.Age),
+			escapeCSVField(player.Nationality),
+			escapeCSVField(player.NationalityISO),
+			escapeCSVField(player.NationalityFIFACode),
+			escapeCSVField(player.Club),
+			escapeCSVField(player.Division),
+			escapeCSVField(player.Position),
+			escapeCSVField(player.TransferValue),
+			escapeCSVField(player.Wage),
+		}
+
+		// FIFA stats (outfield)
+		row = append(row, []string{
+			fmt.Sprintf("%d", player.Overall),
+			fmt.Sprintf("%d", player.PAC),
+			fmt.Sprintf("%d", player.SHO),
+			fmt.Sprintf("%d", player.PAS),
+			fmt.Sprintf("%d", player.DRI),
+			fmt.Sprintf("%d", player.DEF),
+			fmt.Sprintf("%d", player.PHY),
+			fmt.Sprintf("%d", player.GK),
+		}...)
+
+		// Individual GK stats
+		row = append(row, []string{
+			fmt.Sprintf("%d", player.DIV),
+			fmt.Sprintf("%d", player.HAN),
+			fmt.Sprintf("%d", player.REF),
+			fmt.Sprintf("%d", player.KIC),
+			fmt.Sprintf("%d", player.SPD),
+			fmt.Sprintf("%d", player.POS),
+		}...)
+
+		// Personal info
+		row = append(row, []string{
+			escapeCSVField(player.Personality),
+			escapeCSVField(player.MediaHandling),
+			fmt.Sprintf("%t", player.AttributeMasked),
+		}...)
+
+		// FM Attributes (individual columns) right after Attributes Masked (Technical -> Mental -> Physical -> Goalkeeper)
+		// Technical attributes
+		technicalAttrs := []string{"Cor", "Cro", "Dri", "Fin", "Fir", "Fre", "Hea", "Lon", "L Th", "Mar", "Pas", "Pen", "Tck", "Tec"}
+		for _, attrName := range technicalAttrs {
+			if attributeNames[attrName] {
+				if value, exists := player.Attributes[attrName]; exists {
+					row = append(row, escapeCSVField(value))
+				} else {
+					row = append(row, "") // Empty for players without this attribute
+				}
+			}
+		}
+
+		// Mental attributes
+		mentalAttrs := []string{"Agg", "Ant", "Bra", "Cmp", "Cnt", "Dec", "Det", "Fla", "Ldr", "OtB", "Pos", "Tea", "Vis", "Wor"}
+		for _, attrName := range mentalAttrs {
+			if attributeNames[attrName] {
+				if value, exists := player.Attributes[attrName]; exists {
+					row = append(row, escapeCSVField(value))
+				} else {
+					row = append(row, "") // Empty for players without this attribute
+				}
+			}
+		}
+
+		// Physical attributes
+		physicalAttrs := []string{"Acc", "Agi", "Bal", "Jum", "Nat", "Pac", "Sta", "Str"}
+		for _, attrName := range physicalAttrs {
+			if attributeNames[attrName] {
+				if value, exists := player.Attributes[attrName]; exists {
+					row = append(row, escapeCSVField(value))
+				} else {
+					row = append(row, "") // Empty for players without this attribute
+				}
+			}
+		}
+
+		// Goalkeeper attributes
+		gkAttrs := []string{"Aer", "Cmd", "Com", "Ecc", "Han", "Kic", "1v1", "Pun", "Ref", "TRO", "Thr"}
+		for _, attrName := range gkAttrs {
+			if attributeNames[attrName] {
+				if value, exists := player.Attributes[attrName]; exists {
+					row = append(row, escapeCSVField(value))
+				} else {
+					row = append(row, "") // Empty for players without this attribute
+				}
+			}
+		}
+
+		// Add any remaining attributes that weren't in the predefined lists
+		for _, attrName := range attributeNamesList {
+			if !contains(technicalAttrs, attrName) && !contains(mentalAttrs, attrName) &&
+				!contains(physicalAttrs, attrName) && !contains(gkAttrs, attrName) {
+				if value, exists := player.Attributes[attrName]; exists {
+					row = append(row, escapeCSVField(value))
+				} else {
+					row = append(row, "") // Empty for players without this attribute
+				}
+			}
+		}
+
+		// Role ratings (individual columns)
+		roleMap := make(map[string]int)
+		for _, role := range player.RoleSpecificOveralls {
+			roleMap[role.RoleName] = role.Score
+		}
+		for _, roleName := range roleNamesList {
+			if score, exists := roleMap[roleName]; exists {
+				row = append(row, fmt.Sprintf("%d", score))
+			} else {
+				row = append(row, "") // Empty for players without this role
+			}
+		}
+
+		// Performance percentiles (individual columns)
+		for _, group := range percentileGroupsList {
+			if percentiles, exists := player.PerformancePercentiles[group]; exists {
+				percentilesJSON, _ := json.Marshal(percentiles)
+				row = append(row, escapeCSVField(string(percentilesJSON)))
+			} else {
+				row = append(row, "") // Empty for players without this percentile group
+			}
+		}
+
+		csvLines = append(csvLines, strings.Join(row, ","))
+	}
+
+	return strings.Join(csvLines, "\n")
+}
+
+// generateJSONContent generates JSON content from player data
+func generateJSONContent(players []Player, currencySymbol, datasetID string) []byte {
+	// Create export metadata
+	exportData := struct {
+		Metadata struct {
+			ExportDate     string `json:"exportDate"`
+			DatasetID      string `json:"datasetId"`
+			TotalPlayers   int    `json:"totalPlayers"`
+			CurrencySymbol string `json:"currencySymbol"`
+			Format         string `json:"format"`
+			Version        string `json:"version"`
+		} `json:"metadata"`
+		Players []Player `json:"players"`
+	}{
+		Players: players,
+	}
+
+	exportData.Metadata.ExportDate = time.Now().Format(time.RFC3339)
+	exportData.Metadata.DatasetID = datasetID
+	exportData.Metadata.TotalPlayers = len(players)
+	exportData.Metadata.CurrencySymbol = currencySymbol
+	exportData.Metadata.Format = "json"
+	exportData.Metadata.Version = "1.0"
+
+	jsonData, err := json.MarshalIndent(exportData, "", "  ")
+	if err != nil {
+		logError(context.Background(), "Error marshaling JSON export", "error", err)
+		return []byte("{}")
+	}
+
+	return jsonData
+}
+
+// escapeCSVField escapes a field for CSV format
+func escapeCSVField(field string) string {
+	if strings.Contains(field, ",") || strings.Contains(field, "\"") || strings.Contains(field, "\n") {
+		// Escape quotes by doubling them
+		field = strings.ReplaceAll(field, "\"", "\"\"")
+		// Wrap in quotes
+		field = "\"" + field + "\""
+	}
+	return field
+}
+
+// extractRolesFromPlayers extracts unique roles from the player data
+func extractRolesFromPlayers(players []Player) []string {
+	roleSet := make(map[string]bool)
+
+	for _, player := range players {
+		// Extract roles from role-specific overalls
+		for _, roleOverall := range player.RoleSpecificOveralls {
+			if roleOverall.RoleName != "" {
+				roleSet[roleOverall.RoleName] = true
+			}
+		}
+
+		// Extract roles from position groups
+		for _, positionGroup := range player.PositionGroups {
+			if positionGroup != "" {
+				roleSet[positionGroup] = true
+			}
+		}
+	}
+
+	// Convert map to slice
+	roles := make([]string, 0, len(roleSet))
+	for role := range roleSet {
+		roles = append(roles, role)
+	}
+
+	// Sort for consistent output
+	sort.Strings(roles)
+	return roles
+}
+
+// processBasicPlayerData performs basic processing on players without heavy calculations
+func processBasicPlayerData(players []Player) []Player {
+	processedPlayers := make([]Player, len(players))
+
+	for i, player := range players {
+		// Copy the player
+		processedPlayers[i] = player
+
+		// Ensure basic fields are properly set
+		if processedPlayers[i].Attributes == nil {
+			processedPlayers[i].Attributes = make(map[string]string)
+		}
+		if processedPlayers[i].NumericAttributes == nil {
+			processedPlayers[i].NumericAttributes = make(map[string]int)
+		}
+		if processedPlayers[i].PerformanceStatsNumeric == nil {
+			processedPlayers[i].PerformanceStatsNumeric = make(map[string]float64)
+		}
+		if processedPlayers[i].PerformancePercentiles == nil {
+			processedPlayers[i].PerformancePercentiles = make(map[string]map[string]float64)
+		}
+		if processedPlayers[i].ShortPositions == nil {
+			processedPlayers[i].ShortPositions = make([]string, 0)
+		}
+		if processedPlayers[i].ParsedPositions == nil {
+			processedPlayers[i].ParsedPositions = make([]string, 0)
+		}
+		if processedPlayers[i].PositionGroups == nil {
+			processedPlayers[i].PositionGroups = make([]string, 0)
+		}
+		if processedPlayers[i].RoleSpecificOveralls == nil {
+			processedPlayers[i].RoleSpecificOveralls = make([]RoleOverallScore, 0)
+		}
+
+		// Ensure numeric fields are properly set
+		if processedPlayers[i].Overall == 0 {
+			processedPlayers[i].Overall = 50 // Default value
+		}
+		processedPlayers[i].OverallLower = processedPlayers[i].Overall
+	}
+
+	return processedPlayers
+}
+
+// processLargeFileAsync processes large files in the background
+func processLargeFileAsync(ctx context.Context, fileContent []byte, filename string, datasetID string, fileHash string, actualFileSize int64) {
+	ctx, span := StartSpan(ctx, "large_file_processing")
+	defer span.End()
+
+	SetSpanAttributes(ctx,
+		attribute.String("dataset.id", datasetID),
+		attribute.String("file.name", filename),
+		attribute.Int64("file.size", actualFileSize),
+	)
+
+	logInfo(ctx, "Starting background processing for large file",
+		"dataset_id", datasetID,
+		"filename", filename,
+		"file_size_mb", actualFileSize/(1024*1024))
+
+	startTime := time.Now()
+
+	// Use the same parsing logic as synchronous processing
+	estimatedPlayerCount := int(actualFileSize / 2048)
+	if estimatedPlayerCount == 0 {
+		estimatedPlayerCount = 100
+	}
+	optimalCapacity := calculateOptimalSliceCapacity(estimatedPlayerCount)
+	playersList := make([]Player, 0, optimalCapacity)
+
+	// Ensure configuration is initialized
+	if err := EnsureConfigInitialized(5 * time.Second); err != nil {
+		logWarn(ctx, "Configuration initialization timeout, proceeding with defaults", "error", err)
+	}
+
+	numWorkers := runtime.NumCPU()
+	if numWorkers == 0 {
+		numWorkers = 1
+	}
+
+	// Dynamic buffer sizing
+	bufferSize := calculateOptimalBufferSize(numWorkers, actualFileSize)
+	rowCellsChan := make(chan []string, bufferSize)
+	resultsChan := make(chan PlayerParseResult, bufferSize)
+	var wg sync.WaitGroup
+
+	var headersSnapshot []string
+
+	doneConsumingResults := make(chan struct{})
+	go func() {
+		defer close(doneConsumingResults)
+		for result := range resultsChan {
+			if result.Err == nil {
+				playersList = append(playersList, result.Player)
+			} else {
+				logWarn(ctx, "Skipping row due to error from worker", "error", result.Err)
+			}
+		}
+	}()
+
+	// Parse the HTML content
+	contentReader := strings.NewReader(string(fileContent))
+	err := ParseHTMLPlayerTable(contentReader, &headersSnapshot, rowCellsChan, numWorkers, resultsChan, &wg)
+
+	if err != nil {
+		logError(ctx, "Error during HTML parsing", "error", err)
+		SetSpanAttributes(ctx, attribute.String("processing.status", "failed"))
+		return
+	}
+
+	if len(headersSnapshot) == 0 {
+		logError(ctx, "No headers parsed from HTML file")
+		SetSpanAttributes(ctx, attribute.String("processing.status", "failed"))
+		return
+	}
+
+	wg.Wait()
+	close(resultsChan)
+	<-doneConsumingResults
+
+	// Detect currency symbol
+	finalDatasetCurrencySymbol := "$"
+	if len(playersList) > 0 {
+		for i := range playersList {
+			_, _, tvSymbol := ParseMonetaryValueGo(playersList[i].TransferValue)
+			if tvSymbol != "" {
+				finalDatasetCurrencySymbol = tvSymbol
+				break
+			}
+			_, _, wSymbol := ParseMonetaryValueGo(playersList[i].Wage)
+			if wSymbol != "" {
+				finalDatasetCurrencySymbol = wSymbol
+				break
+			}
+		}
+	}
+
+	// Store the processed data
+	SetPlayerDataAsync(datasetID, playersList, finalDatasetCurrencySymbol)
+
+	processingTime := time.Since(startTime)
+	logInfo(ctx, "Completed background processing for large file",
+		"dataset_id", datasetID,
+		"player_count", len(playersList),
+		"processing_time", processingTime,
+		"currency_symbol", finalDatasetCurrencySymbol)
+
+	// Calculate percentiles asynchronously
+	go func() {
+		if err := CalculatePlayerPercentilesAsync(ctx, datasetID, playersList, finalDatasetCurrencySymbol); err != nil {
+			logError(ctx, "Error calculating percentiles for dataset %s: %v", datasetID, err)
+		}
+	}()
+
+	SetSpanAttributes(ctx,
+		attribute.String("processing.status", "completed"),
+		attribute.Int("player_count", len(playersList)),
+		attribute.String("currency_symbol", finalDatasetCurrencySymbol),
+		attribute.Int64("processing_time_ms", processingTime.Milliseconds()),
+	)
+
+	RecordBusinessOperation(ctx, "large_file_processing_completed", true, map[string]interface{}{
+		"dataset_id":      datasetID,
+		"filename":        filename,
+		"file_size_bytes": actualFileSize,
+		"player_count":    len(playersList),
+		"processing_time": processingTime.Milliseconds(),
+		"currency_symbol": finalDatasetCurrencySymbol,
+	})
+}
+
+// CalculatePlayerPercentilesAsync calculates percentiles for a dataset asynchronously
+func CalculatePlayerPercentilesAsync(ctx context.Context, datasetID string, players []Player, currencySymbol string) error {
+	ctx, span := StartSpan(ctx, "percentile_calculation_async")
+	defer span.End()
+
+	SetSpanAttributes(ctx,
+		attribute.String("dataset.id", datasetID),
+		attribute.Int("player_count", len(players)),
+	)
+
+	logInfo(ctx, "Starting async percentile calculation for dataset %s", datasetID)
+	startTime := time.Now()
+
+	// Get a fresh copy of the data from the store to avoid race conditions
+	// This ensures we're working with the most up-to-date data and not a reference
+	// that might be modified by other goroutines
+	storeMutex.RLock()
+	storedData, exists := playerDataStore[datasetID]
+	storeMutex.RUnlock()
+
+	if !exists {
+		logError(ctx, "Dataset %s not found in store for percentile calculation", datasetID)
+		return fmt.Errorf("dataset %s not found in store", datasetID)
+	}
+
+	// Use the existing OptimizedDeepCopyPlayers function which is designed to handle this safely
+	playersCopy := OptimizedDeepCopyPlayers(storedData.Players)
+
+	// Calculate percentiles for all division filters to ensure stability
+	CalculatePlayerPerformancePercentiles(playersCopy)
+
+	// Update the stored data with calculated percentiles
+	SetPlayerData(datasetID, playersCopy, storedData.CurrencySymbol)
+
+	calculationTime := time.Since(startTime)
+	logInfo(ctx, "Completed async percentile calculation for dataset %s in %v", datasetID, calculationTime)
+
+	SetSpanAttributes(ctx,
+		attribute.Int64("calculation_time_ms", calculationTime.Milliseconds()),
+		attribute.String("calculation.status", "success"),
+	)
+
+	RecordBusinessOperation(ctx, "percentile_calculation_completed", true, map[string]interface{}{
+		"dataset_id":       datasetID,
+		"player_count":     len(players),
+		"calculation_time": calculationTime.Milliseconds(),
+	})
+
+	return nil
 }

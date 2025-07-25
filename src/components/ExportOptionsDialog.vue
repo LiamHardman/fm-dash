@@ -269,7 +269,7 @@ export default defineComponent({
             basicInfo: true,
             fifahStats: true,
             fmStats: true,
-            roleRatings: false,
+            roleRatings: true,
             performancePercentiles: true,
             contractInfo: true,
             personalInfo: true
@@ -340,7 +340,7 @@ export default defineComponent({
                 basicInfo: true,
                 fifahStats: true,
                 fmStats: true,
-                roleRatings: false,
+                roleRatings: true,
                 performancePercentiles: true,
                 contractInfo: true,
                 personalInfo: true

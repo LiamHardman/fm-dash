@@ -295,7 +295,7 @@ func TestCalculateFifaStatGoLinearExtensive(t *testing.T) {
 		result := CalculateFifaStatGoLinear(attributes, "PHY")
 		// Should only count Str and Jum
 		expected := int(math.Round(float64(15*8+10*5) / float64(8+5) * 5.3)) // Str weight=8, Jum weight=5
-		if abs(result-expected) > 1 {                                        // Allow for rounding differences
+		if absInt(result-expected) > 1 {                                     // Allow for rounding differences
 			t.Errorf("CalculateFifaStatGoLinear with mixed valid/invalid = %d; want approximately %d", result, expected)
 		}
 	})
@@ -515,7 +515,7 @@ func TestCalculateOverallForRoleExtensive(t *testing.T) {
 		result := CalculateOverallForRoleGoLinear(attributes, roleWeights)
 		expected := int(math.Round(15.0 * overallScalingFactor)) // Should be close to this
 
-		if abs(result-expected) > 2 { // Allow small variance
+		if absInt(result-expected) > 2 { // Allow small variance
 			t.Errorf("Single attribute role calculation = %d; want approximately %d", result, expected)
 		}
 	})
@@ -947,7 +947,7 @@ func TestCalculationEdgeCases(t *testing.T) {
 }
 
 // Helper functions
-func abs(a int) int {
+func absInt(a int) int {
 	if a < 0 {
 		return -a
 	}

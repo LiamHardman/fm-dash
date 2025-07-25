@@ -290,6 +290,8 @@
                         </q-card>
                     </q-expansion-item>
 
+
+
                     <q-expansion-item
                         expand-separator
                         icon="filter_alt"
@@ -355,6 +357,8 @@ import playerService from '../services/playerService'
 
 export default defineComponent({
   name: 'SettingsModal',
+  components: {
+  },
   props: {
     modelValue: {
       type: Boolean,

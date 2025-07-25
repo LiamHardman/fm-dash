@@ -1,6 +1,12 @@
 # Roadmap
 
 ## Short Term
+
+### In Progress
+- **Frontend Performance Optimization**: Third-party library optimization for reduced bundle sizes
+- **Bundle Size Reduction**: Tree-shakeable imports and dynamic loading implementation
+
+### Planned
 - Make S3 storage retention configurable
 - Implementation of League logos
 - Document how certain parts of the calculations work (e.g., the FIFA style stats and overall)

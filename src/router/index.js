@@ -80,7 +80,7 @@ const routes = [
     path: '/docs',
     name: 'docs',
     component: DocsPage
-  }
+  },
 ]
 
 const router = createRouter({

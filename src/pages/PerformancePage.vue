@@ -43,7 +43,22 @@
                         </p>
                     </div>
                     <div class="hero-right">
-                         <q-btn unelevated icon="share" label="Share" @click="shareDataset" class="share-btn-modern"/>
+                        <q-btn 
+                            unelevated 
+                            icon="download" 
+                            label="Export" 
+                            @click="openExportOptions" 
+                            :disable="filteredPlayers.length === 0"
+                            class="export-btn-modern q-mr-sm"
+                        >
+                            <q-tooltip v-if="filteredPlayers.length > 0">
+                                Export {{ filteredPlayers.length }} filtered players
+                            </q-tooltip>
+                            <q-tooltip v-else>
+                                No players to export
+                            </q-tooltip>
+                        </q-btn>
+                        <q-btn unelevated icon="share" label="Share" @click="shareDataset" class="share-btn-modern"/>
                     </div>
                 </div>
 
@@ -211,11 +226,11 @@
                             <q-tab-panels v-model="attackingPlotTab" animated>
                                 <q-tab-panel name="shooting">
                                     <div class="charts-grid">
-                                        <ScatterPlotCard 
+                                        <DynamicScatterPlotCard 
                                             v-for="config in attackingShootingCharts" 
                                             :key="config.title" 
                                             v-bind="config" 
-                                            :is-dark-mode="$q.dark.isActive" 
+                                            :is-dark-mode="isDarkMode" 
                                             :all-players-data="filteredPlayers"
                                             @player-click="openPlayerDetail"
                                         />
@@ -247,11 +262,11 @@
                             <q-tab-panels v-model="passingPlotTab" animated>
                                 <q-tab-panel name="creative">
                                     <div class="charts-grid">
-                                        <ScatterPlotCard 
+                                        <DynamicScatterPlotCard 
                                             v-for="config in passingCreativeCharts" 
                                             :key="config.title" 
                                             v-bind="config" 
-                                            :is-dark-mode="$q.dark.isActive" 
+                                            :is-dark-mode="isDarkMode" 
                                             :all-players-data="filteredPlayers"
                                             @player-click="openPlayerDetail"
                                         />
@@ -262,11 +277,11 @@
                                 </q-tab-panel>
                                 <q-tab-panel name="progression">
                                     <div class="charts-grid">
-                                        <ScatterPlotCard 
+                                        <DynamicScatterPlotCard 
                                             v-for="config in passingProgressionCharts" 
                                             :key="config.title" 
                                             v-bind="config" 
-                                            :is-dark-mode="$q.dark.isActive" 
+                                            :is-dark-mode="isDarkMode" 
                                             :all-players-data="filteredPlayers"
                                             @player-click="openPlayerDetail"
                                         />
@@ -277,11 +292,11 @@
                                 </q-tab-panel>
                                 <q-tab-panel name="crossing">
                                     <div class="charts-grid">
-                                        <ScatterPlotCard 
+                                        <DynamicScatterPlotCard 
                                             v-for="config in passingCrossingCharts" 
                                             :key="config.title" 
                                             v-bind="config" 
-                                            :is-dark-mode="$q.dark.isActive" 
+                                            :is-dark-mode="isDarkMode" 
                                             :all-players-data="filteredPlayers"
                                             @player-click="openPlayerDetail"
                                         />
@@ -314,11 +329,11 @@
                             <q-tab-panels v-model="defendingPlotTab" animated>
                                 <q-tab-panel name="duels">
                                     <div class="charts-grid">
-                                        <ScatterPlotCard 
+                                        <DynamicScatterPlotCard 
                                             v-for="config in defendingDuelsCharts" 
                                             :key="config.title" 
                                             v-bind="config" 
-                                            :is-dark-mode="$q.dark.isActive" 
+                                            :is-dark-mode="isDarkMode" 
                                             :all-players-data="filteredPlayers"
                                             @player-click="openPlayerDetail"
                                         />
@@ -329,11 +344,11 @@
                                 </q-tab-panel>
                                 <q-tab-panel name="pressing">
                                     <div class="charts-grid">
-                                        <ScatterPlotCard 
+                                        <DynamicScatterPlotCard 
                                             v-for="config in defendingPressingCharts" 
                                             :key="config.title" 
                                             v-bind="config" 
-                                            :is-dark-mode="$q.dark.isActive" 
+                                            :is-dark-mode="isDarkMode" 
                                             :all-players-data="filteredPlayers"
                                             @player-click="openPlayerDetail"
                                         />
@@ -344,11 +359,11 @@
                                 </q-tab-panel>
                                 <q-tab-panel name="aerial">
                                     <div class="charts-grid">
-                                        <ScatterPlotCard 
+                                        <DynamicScatterPlotCard 
                                             v-for="config in defendingAerialCharts" 
                                             :key="config.title" 
                                             v-bind="config" 
-                                            :is-dark-mode="$q.dark.isActive" 
+                                            :is-dark-mode="isDarkMode" 
                                             :all-players-data="filteredPlayers"
                                             @player-click="openPlayerDetail"
                                         />
@@ -359,11 +374,11 @@
                                 </q-tab-panel>
                                 <q-tab-panel name="workrate">
                                     <div class="charts-grid">
-                                        <ScatterPlotCard 
+                                        <DynamicScatterPlotCard 
                                             v-for="config in defendingWorkrateCharts" 
                                             :key="config.title" 
                                             v-bind="config" 
-                                            :is-dark-mode="$q.dark.isActive" 
+                                            :is-dark-mode="isDarkMode" 
                                             :all-players-data="filteredPlayers"
                                             @player-click="openPlayerDetail"
                                         />
@@ -393,11 +408,11 @@
                             <q-tab-panels v-model="goalkeepingPlotTab" animated>
                                 <q-tab-panel name="shotstopping">
                                     <div class="charts-grid">
-                                        <ScatterPlotCard 
+                                        <DynamicScatterPlotCard 
                                             v-for="config in goalkeepingShotstoppingCharts" 
                                             :key="config.title" 
                                             v-bind="config" 
-                                            :is-dark-mode="$q.dark.isActive" 
+                                            :is-dark-mode="isDarkMode" 
                                             :all-players-data="filteredPlayers"
                                             @player-click="openPlayerDetail"
                                         />
@@ -414,7 +429,22 @@
         </div>
 
         <!-- Player Detail Dialog -->
-        <PlayerDetailDialog :player="playerForDetailView" :show="showPlayerDetailDialog" @close="showPlayerDetailDialog = false" :currency-symbol="detectedCurrencySymbol" :dataset-id="currentDatasetId" />
+                <DynamicPlayerDetailDialog 
+            :player="playerForDetailView" 
+            :show="showPlayerDetailDialog" 
+            @close="showPlayerDetailDialog = false" 
+            :currency-symbol="detectedCurrencySymbol" 
+            :dataset-id="currentDatasetId" 
+        />
+
+        <!-- Export Options Dialog -->
+        <ExportOptionsDialog
+            :show="showExportOptions"
+            :player-count="filteredPlayers.length"
+            :export-type="exportFormat"
+            @close="showExportOptions = false"
+            @export="handleExportWithOptions"
+        />
     </q-page>
 </template>
 
@@ -423,26 +453,45 @@ import { debounce, useQuasar } from 'quasar'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 // biome-ignore lint/correctness/noUnusedImports: used in template
-import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
-// biome-ignore lint/correctness/noUnusedImports: used in template
-import ScatterPlotCard from '../components/ScatterPlotCard.vue'
-// biome-ignore lint/correctness/noUnusedImports: used in template
 import StatCard from '../components/StatCard.vue'
+// Dynamic imports for better performance
+import { useDynamicComponents } from '../composables/useDynamicComponents.js'
 import { usePlayerStore } from '../stores/playerStore'
+import { useUiStore } from '../stores/uiStore'
+import { fetchPerformanceData } from '../services/playerService'
+import { getNumericValue, getPlayerDivision } from '../utils/playerUtils'
+import { formatNumber } from '../utils/currencyUtils'
+import ExportOptionsDialog from '../components/ExportOptionsDialog.vue'
+import { exportPlayersToCSV } from '../utils/csvExport.js'
 
 const router = useRouter()
 const route = useRoute()
 const $q = useQuasar()
 const playerStore = usePlayerStore()
+const uiStore = useUiStore()
+
+// Initialize dynamic components
+const { DynamicPlayerDetailDialog, DynamicScatterPlotCard, initializePreloading } =
+  useDynamicComponents()
+
+// Initialize preloading for performance page
+initializePreloading(route)
 
 // --- Reactive Data ---
 const pageLoadingError = ref('')
 const showPlayerDetailDialog = ref(false)
 const playerForDetailView = ref(null)
 const topPlayersByStat = ref({})
+
+// Export functionality
+const showExportOptions = ref(false)
+const exportFormat = ref('csv')
 // biome-ignore lint/correctness/noUnusedVariables: used in template
 const currentTab = ref('attacking')
 const pageLoading = ref(true)
+
+// Add computed property for dark mode detection using UI store
+const isDarkMode = computed(() => uiStore.isDarkModeActive)
 
 // --- Filter State with new defaults ---
 const sliderValue = ref(0)
@@ -1067,13 +1116,6 @@ const allStatsForCalculation = computed(() => [
 ])
 
 // --- Helper Methods ---
-const getPlayerDivision = player => player.division || player.Division || 'N/A'
-const getNumericValue = val => {
-  if (val === undefined || val === null || val === '-' || val === '') return null
-  const cleaned = String(val).replace(/,/g, '').replace(/%/g, '')
-  const num = parseFloat(cleaned)
-  return Number.isNaN(num) ? null : num
-}
 
 // --- Core Methods ---
 const calculateTopPerformers = () => {
@@ -1099,16 +1141,71 @@ const calculateTopPerformers = () => {
   topPlayersByStat.value = results
 }
 
-// biome-ignore lint/correctness/noUnusedVariables: used in template
-const formatNumber = num => new Intl.NumberFormat().format(num)
+
 // biome-ignore lint/correctness/noUnusedVariables: used in template
 const openPlayerDetail = player => {
   // Find the full player object from allPlayersData
   const fullPlayer =
     allPlayersData.value.find(p => p.name === player.name && p.club === player.club) || player
 
+  // Debug: Log the player data to see what fields are available
+  console.log('Player selected:', {
+    name: fullPlayer.name,
+    uid: fullPlayer.uid,
+    UID: fullPlayer.UID,
+    hasAttributes: !!fullPlayer.attributes,
+    hasPerformancePercentiles: !!fullPlayer.performancePercentiles,
+    attributesCount: Object.keys(fullPlayer.attributes || {}).length
+  })
+
   playerForDetailView.value = fullPlayer
   showPlayerDetailDialog.value = true
+}
+
+// Export functionality
+const openExportOptions = () => {
+  showExportOptions.value = true
+}
+
+const handleExportWithOptions = async exportOptions => {
+  try {
+    if (!currentDatasetId.value) {
+      $q.notify({
+        type: 'negative',
+        message: 'No dataset available for export',
+        position: 'top'
+      })
+      return
+    }
+
+    console.log(`Exporting dataset ${currentDatasetId.value} with options:`, exportOptions)
+
+    // Export using the backend API
+    await exportPlayersToCSV(currentDatasetId.value, exportOptions.format)
+
+    // Show success message
+    $q.notify({
+      type: 'positive',
+      message: `Successfully exported dataset as ${exportOptions.format.toUpperCase()}`,
+      position: 'top',
+      actions: [
+        {
+          label: 'Dismiss',
+          color: 'white'
+        }
+      ]
+    })
+
+    // Close the dialog
+    showExportOptions.value = false
+  } catch (error) {
+    console.error('Export failed:', error)
+    $q.notify({
+      type: 'negative',
+      message: `Export failed: ${error.message}`,
+      position: 'top'
+    })
+  }
 }
 
 // biome-ignore lint/correctness/noUnusedVariables: used in template
@@ -1129,7 +1226,13 @@ const fetchPlayersAndCurrency = async datasetId => {
   pageLoading.value = true
   pageLoadingError.value = ''
   try {
-    await playerStore.fetchPlayersByDatasetId(datasetId)
+    // Use the new performance API to get detailed player data with all attributes
+    const performanceResponse = await fetchPerformanceData(datasetId)
+    
+    // Update the player store with the performance data
+    playerStore.setPlayers(performanceResponse.data.players)
+    playerStore.setCurrencySymbol(performanceResponse.data.currencySymbol)
+    playerStore.setCurrentDatasetId(datasetId)
 
     // Set default to all divisions and all positions for proper threshold calculation
     const allDivisions = [
@@ -1146,7 +1249,7 @@ const fetchPlayersAndCurrency = async datasetId => {
     overallSliderValue.value = thresholds.overall
     selectedOverall.value = thresholds.overall
   } catch (err) {
-    pageLoadingError.value = `Failed to load player data: ${err.message || 'Unknown server error'}. Please try uploading again.`
+    pageLoadingError.value = `Failed to load performance data: ${err.message || 'Unknown server error'}. Please try uploading again.`
   } finally {
     pageLoading.value = false
   }
@@ -1384,6 +1487,19 @@ $border-radius-small: 8px;
             }
         }
         .share-btn-modern {
+            background: rgba(255,255,255,0.15);
+            color: white;
+            font-weight: 600;
+            border-radius: $border-radius-small;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            &:hover {
+                background: rgba(255,255,255,0.25);
+                transform: translateY(-2px);
+            }
+        }
+
+        .export-btn-modern {
             background: rgba(255,255,255,0.15);
             color: white;
             font-weight: 600;

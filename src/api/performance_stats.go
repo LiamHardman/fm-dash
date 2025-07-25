@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/sha256"
 	"fmt"
-	"log"
 	"math"
 	"sort"
 	"sync"
@@ -23,13 +22,19 @@ var (
 	maxCacheAge          = 30 * time.Minute
 )
 
+// Global mutex for protecting concurrent percentile calculations
+var percentileCalculationMutex sync.RWMutex
+
+// Global mutex for protecting the entire players slice during percentile calculations
+var playersPercentileMutex sync.RWMutex
+
 // generateDatasetHash creates a hash of the dataset for cache invalidation
 func generateDatasetHash(players []Player) string {
 	hasher := sha256.New()
 
 	// Hash player count and key attributes for quick change detection
 	if _, err := fmt.Fprintf(hasher, "%d", len(players)); err != nil {
-		log.Printf("Failed to write player count to hash: %v", err)
+		LogWarn("Failed to write player count to hash: %v", err)
 	}
 
 	// Sample a subset of players for hash to balance speed vs accuracy
@@ -42,7 +47,7 @@ func generateDatasetHash(players []Player) string {
 		player := &players[i]
 		if i < 50 || i >= len(players)-50 {
 			if _, err := fmt.Fprintf(hasher, "%s:%s:%d", player.Name, player.Division, player.Overall); err != nil {
-				log.Printf("Failed to write player data to hash: %v", err)
+				LogWarn("Failed to write player data to hash: %v", err)
 			}
 		}
 	}
@@ -176,6 +181,10 @@ func CalculatePlayerPerformancePercentiles(players []Player) {
 	if len(players) == 0 {
 		return
 	}
+
+	// Acquire write lock for protecting the entire players slice during percentile calculations
+	playersPercentileMutex.Lock()
+	defer playersPercentileMutex.Unlock()
 
 	startTime := time.Now()
 	LogDebug("🔄 Calculating global percentiles for %d players", len(players))
@@ -402,8 +411,12 @@ func CalculatePlayerPerformancePercentilesWithDivisionFilter(players []Player, d
 		return
 	}
 
+	// Acquire write lock for protecting the entire players slice during percentile calculations
+	playersPercentileMutex.Lock()
+	defer playersPercentileMutex.Unlock()
+
 	startTime := time.Now()
-	log.Printf("🔄 Calculating percentiles with division filter: %d, target: %s, player count: %d", divisionFilter, sanitizeForLogging(targetDivision), len(players))
+	LogInfo("🔄 Calculating percentiles with division filter: %d, target: %s, player count: %d", divisionFilter, sanitizeForLogging(targetDivision), len(players))
 
 	// Pre-filter players once to avoid repeated checks
 	var filteredPlayerIndices []int
@@ -412,7 +425,7 @@ func CalculatePlayerPerformancePercentilesWithDivisionFilter(players []Player, d
 			filteredPlayerIndices = append(filteredPlayerIndices, i)
 		}
 	}
-	log.Printf("📊 Division filter will include %d out of %d players", len(filteredPlayerIndices), len(players))
+	LogInfo("📊 Division filter will include %d out of %d players", len(filteredPlayerIndices), len(players))
 
 	// Initialize PerformancePercentiles maps for all players if not already done
 	for i := range players {
@@ -589,6 +602,6 @@ func CalculatePlayerPerformancePercentilesWithDivisionFilter(players []Player, d
 	}
 
 	duration := time.Since(startTime)
-	log.Printf("⚡ Optimized percentile calculation completed in %v for %d players (%d included by filter)",
+	LogInfo("⚡ Optimized percentile calculation completed in %v for %d players (%d included by filter)",
 		duration, len(players), len(filteredPlayerIndices))
 }

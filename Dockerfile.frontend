@@ -20,10 +20,6 @@ LABEL stage=final-frontend
 # Copy custom nginx configuration
 COPY nginx-frontend.conf /etc/nginx/nginx.conf
 
-# Copy configuration injection script
-COPY config-injector.sh /usr/local/bin/config-injector.sh
-RUN chmod +x /usr/local/bin/config-injector.sh
-
 # Remove default nginx static assets
 RUN rm -rf /usr/share/nginx/html/*
 
@@ -39,5 +35,5 @@ USER nginx
 
 EXPOSE 8080
 
-# Use the configuration injection script as the entrypoint
-CMD ["/usr/local/bin/config-injector.sh"] 
+# Start nginx directly
+CMD ["nginx", "-g", "daemon off;"] 

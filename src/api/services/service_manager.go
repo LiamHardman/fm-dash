@@ -3,7 +3,7 @@ package services
 
 import (
 	"context"
-	"log"
+	"fmt"
 )
 
 // ServiceManager coordinates all business services
@@ -26,7 +26,7 @@ func CreateServiceManager(storage StorageInterface) *ServiceManager {
 		ProcessingService: processingService,
 	}
 
-	log.Println("Service manager initialized with all services")
+	fmt.Println("Service manager initialized with all services")
 	return manager
 }
 
@@ -64,11 +64,21 @@ func (sm *ServiceManager) HealthCheck(ctx context.Context) map[string]string {
 
 // Shutdown gracefully shuts down all services
 func (sm *ServiceManager) Shutdown(_ context.Context) error {
-	log.Println("Shutting down service manager...")
+	fmt.Println("Shutting down service manager...")
 
 	// Services don't currently need explicit shutdown,
 	// but this provides a hook for future cleanup
 
-	log.Println("Service manager shutdown complete")
+	fmt.Println("Service manager shutdown complete")
 	return nil
+}
+
+// Add stub for GetAllDatasets to PlayerService
+func (s *PlayerService) GetAllDatasets(ctx context.Context) []string {
+	return nil // TODO: implement
+}
+
+// Add stub for SearchAll to SearchService
+func (s *SearchService) SearchAll(ctx context.Context, query string, datasetID string, limit int) ([]SearchResult, error) {
+	return nil, nil // TODO: implement
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"sort"
 	"strconv"
 	"strings"
@@ -257,7 +256,6 @@ func EnhancePlayerWithCalculations(player *Player) {
 	// Note: OptimizedPlayer conversion disabled here as it's inefficient to convert back immediately
 	// OptimizedPlayer should be used in storage and processing layers, not during enhancement
 	// The conversion happens in storage layers where memory benefits are actually realized
-	// This optimization is handled at the storage level for maximum memory benefit
 	// Converting here and back would negate the memory savings
 
 	// Convert string attributes to numeric and parse performance stats
@@ -464,6 +462,20 @@ func EnhancePlayerWithCalculations(player *Player) {
 		player.POS = 0
 	}
 
+	// Set lowercase FIFA stats for frontend compatibility
+	player.Pac = player.PAC
+	player.Sho = player.SHO
+	player.Pas = player.PAS
+	player.Dri = player.DRI
+	player.Def = player.DEF
+	player.Phy = player.PHY
+	player.Gk = player.GK
+	player.Div = player.DIV
+	player.Han = player.HAN
+	player.Ref = player.REF
+	player.Kic = player.KIC
+	player.Spd = player.SPD
+	player.Pos = player.POS
 	// --- START: Overall Calculation (Optimized) ---
 	maxRoleBasedOverall := 0
 	bestRoleName := ""
@@ -488,7 +500,7 @@ func EnhancePlayerWithCalculations(player *Player) {
 		muRoleSpecificOverallWeights.RLock()
 		if len(roleSpecificOverallWeights) > 0 { // roleSpecificOverallWeights from config.go
 			// Only log this warning once to avoid spam
-			log.Printf("Warning: precomputedRoleWeights is empty. Falling back to iterating roleSpecificOverallWeights (SLOW PATH). Check init logs.")
+			LogWarn("precomputedRoleWeights is empty. Falling back to iterating roleSpecificOverallWeights (SLOW PATH). Check init logs.")
 		} else {
 			shouldUseFallback = false
 		}
@@ -546,7 +558,7 @@ func EnhancePlayerWithCalculations(player *Player) {
 		}
 
 		if len(calculatedRoleOveralls) == 0 && len(player.ShortPositions) > 0 {
-			log.Printf("Fallback Warning: Player '%s' with ShortPositions %v found no matching roles in fallback roleSpecificOverallWeights. Role-based overall will be 0.", player.Name, player.ShortPositions)
+			LogWarn("Fallback Warning: Player with ShortPositions found no matching roles in fallback roleSpecificOverallWeights. Role-based overall will be 0.", "player_name", player.Name, "short_positions", player.ShortPositions)
 		}
 
 	case len(player.ShortPositions) > 0:
@@ -593,7 +605,7 @@ func EnhancePlayerWithCalculations(player *Player) {
 		}
 
 		if !foundAnyRoleMatch && len(player.ShortPositions) > 0 {
-			log.Printf("Warning: Player '%s' with ShortPositions %v found no matching roles in precomputedRoleWeights. Role-based overall will be 0.", player.Name, player.ShortPositions)
+			LogWarn("Warning: Player with ShortPositions found no matching roles in precomputedRoleWeights. Role-based overall will be 0.", "player_name", player.Name, "short_positions", player.ShortPositions)
 		}
 	default:
 		// This case means player has no short positions, so maxRoleBasedOverall will naturally be 0.
@@ -634,6 +646,8 @@ func EnhancePlayerWithCalculations(player *Player) {
 	// Set Overall to the mean of the top 7 role-specific scores
 	// This provides a more balanced representation of the player's abilities focused on their best roles
 	player.Overall = meanRoleBasedOverall
+	// Set lowercase Overall for frontend compatibility (after Overall is calculated)
+	player.OverallLower = player.Overall
 
 	// Note: We changed from using the mean of all role-specific overall scores
 	// to using the mean of the top 7 role-specific overall scores
@@ -689,6 +703,10 @@ func EnhancePlayerWithCalculations(player *Player) {
 
 // RecalculatePlayerRatings recalculates all ratings for a player based on the current calculation method setting
 func RecalculatePlayerRatings(player *Player) {
+	// First, ensure numeric attributes are properly converted from string attributes
+	// This is crucial for FIFA-style calculations
+	EnhancePlayerWithCalculations(player)
+
 	// Determine if player is a goalkeeper first
 	isGoalkeeper := false
 	for _, posGroup := range player.PositionGroups {
@@ -751,6 +769,21 @@ func RecalculatePlayerRatings(player *Player) {
 		player.SPD = 0
 		player.POS = 0
 	}
+
+	// Set lowercase FIFA stats for frontend compatibility
+	player.Pac = player.PAC
+	player.Sho = player.SHO
+	player.Pas = player.PAS
+	player.Dri = player.DRI
+	player.Def = player.DEF
+	player.Phy = player.PHY
+	player.Gk = player.GK
+	player.Div = player.DIV
+	player.Han = player.HAN
+	player.Ref = player.REF
+	player.Kic = player.KIC
+	player.Spd = player.SPD
+	player.Pos = player.POS
 
 	// Recalculate role-specific overalls
 	maxRoleBasedOverall := 0
@@ -823,6 +856,8 @@ func RecalculatePlayerRatings(player *Player) {
 	// Update overall and best role
 	player.BestRoleOverall = bestRoleName
 	player.Overall = meanRoleBasedOverall
+	// Set lowercase Overall for frontend compatibility (after Overall is calculated)
+	player.OverallLower = player.Overall
 
 	// Check ALL attributes for masking and set the AttributeMasked flag
 	// This ensures the flag is updated even during recalculations
@@ -874,12 +909,19 @@ func RecalculatePlayerRatings(player *Player) {
 
 // RecalculateAllPlayersRatings recalculates ratings for all players in a slice
 func RecalculateAllPlayersRatings(players []Player) []Player {
-	recalculatedPlayers := make([]Player, len(players))
-	for i := range players {
-		// Make a copy to avoid modifying the original
-		recalculatedPlayers[i] = players[i]
-		RecalculatePlayerRatings(&recalculatedPlayers[i])
-	}
+	LogInfo("RecalculateAllPlayersRatings called for %d players", len(players))
 
-	return recalculatedPlayers
+	// Acquire write lock to prevent concurrent modifications
+	playersPercentileMutex.Lock()
+	defer playersPercentileMutex.Unlock()
+
+	// Create a new slice to avoid modifying the original
+	result := make([]Player, len(players))
+	copy(result, players)
+	for i := range result {
+		// Make a copy to avoid modifying the original
+		result[i] = players[i]
+		RecalculatePlayerRatings(&result[i])
+	}
+	return result
 }

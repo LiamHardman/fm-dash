@@ -1,0 +1,14 @@
+handleGHRelease: true
+release-type: node
+package-name: fm-dash
+bump-minor-pre-major: true
+bump-patch-for-minor-pre-major: true
+include-component-in-tag: false
+tag-separator: "-"
+release-notes-path: CHANGELOG.md
+changelog-path: CHANGELOG.md
+changelog-type: GitHub
+include-v-in-tag: true
+prerelease: false
+release-as: ""
+pull-request-title-pattern: "chore: release ${version}" 

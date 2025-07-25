@@ -108,3 +108,12 @@ export function parseCurrencyString(valueString) {
 
   return Math.round(value * multiplier)
 }
+
+/**
+ * Formats a number with locale-specific formatting (commas, etc.)
+ * @param {number} num - The number to format
+ * @returns {string} The formatted number string
+ */
+export function formatNumber(num) {
+  return new Intl.NumberFormat().format(num)
+}

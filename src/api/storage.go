@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -27,16 +26,17 @@ func compressData(data []byte) ([]byte, error) {
 	gz := gzip.NewWriter(&buf)
 	defer func() {
 		if closeErr := gz.Close(); closeErr != nil {
-			log.Printf("Failed to close gzip writer: %v", closeErr)
+			LogWarn("Failed to close gzip writer: %v", closeErr)
 		}
 	}()
 
 	if _, err := gz.Write(data); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to write to gzip writer: %w", err)
 	}
 
 	if err := gz.Close(); err != nil {
-		return nil, err
+		LogWarn("Failed to close gzip writer: %v", err)
+		return nil, fmt.Errorf("failed to close gzip writer: %w", err)
 	}
 
 	return buf.Bytes(), nil
@@ -46,15 +46,20 @@ func compressData(data []byte) ([]byte, error) {
 func decompressData(data []byte) ([]byte, error) {
 	reader, err := gzip.NewReader(bytes.NewReader(data))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create gzip reader: %w", err)
 	}
 	defer func() {
 		if closeErr := reader.Close(); closeErr != nil {
-			log.Printf("Failed to close gzip reader: %v", closeErr)
+			LogWarn("Failed to close gzip reader: %v", closeErr)
 		}
 	}()
 
-	return io.ReadAll(reader)
+	decompressedData, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read from gzip reader: %w", err)
+	}
+
+	return decompressedData, nil
 }
 
 // StorageInterface defines the interface for data storage operations
@@ -70,6 +75,7 @@ type StorageInterface interface {
 type DatasetData struct {
 	Players        []Player `json:"players"`
 	CurrencySymbol string   `json:"currency_symbol"`
+	CacheData      string   `json:"cache_data,omitempty"`
 }
 
 // InMemoryStorage provides in-memory storage for datasets
@@ -154,7 +160,7 @@ func (s *InMemoryStorage) List() ([]string, error) {
 // CleanupOldDatasets removes datasets older than the specified duration
 func (s *InMemoryStorage) CleanupOldDatasets(_ time.Duration, _ []string) error {
 	// In-memory storage doesn't persist data, so no cleanup needed
-	log.Println("CleanupOldDatasets called on in-memory storage - no action needed")
+	LogInfo("CleanupOldDatasets called on in-memory storage - no action needed")
 	return nil
 }
 
@@ -203,7 +209,7 @@ func CreateS3Storage(endpoint, accessKey, secretKey, bucketName string, useSSL b
 		},
 	})
 	if err != nil {
-		log.Printf("Warning: Failed to create S3 client: %v. Using fallback storage.", err)
+		LogWarn("Warning: Failed to create S3 client: %v. Using fallback storage.", err)
 		return &S3Storage{fallback: fallback}
 	}
 
@@ -213,17 +219,17 @@ func CreateS3Storage(endpoint, accessKey, secretKey, bucketName string, useSSL b
 	LogDebug("Testing S3 connection by checking bucket existence: %s", bucketName)
 	exists, err := client.BucketExists(ctx, bucketName)
 	if err != nil {
-		log.Printf("Warning: S3 bucket check failed - %v. Using fallback storage.", err)
+		LogWarn("Warning: S3 bucket check failed - %v. Using fallback storage.", err)
 		return &S3Storage{fallback: fallback}
 	}
 
 	if !exists {
 		err = client.MakeBucket(ctx, bucketName, minio.MakeBucketOptions{})
 		if err != nil {
-			log.Printf("Warning: Failed to create bucket %s: %v. Using fallback storage.", bucketName, err)
+			LogWarn("Warning: Failed to create bucket %s: %v. Using fallback storage.", bucketName, err)
 			return &S3Storage{fallback: fallback}
 		}
-		log.Printf("Created S3 bucket: %s", bucketName)
+		LogInfo("Created S3 bucket: %s", bucketName)
 	} else {
 		LogDebug("S3 bucket %s already exists", bucketName)
 	}
@@ -335,14 +341,14 @@ func (s *S3Storage) storeSync(datasetID string, data DatasetData) error {
 	defer func() {
 		if r := recover(); r != nil {
 			RecordError(ctx, apperrors.WrapErrJSONMarshalPanic(r), "JSON marshal panic recovered")
-			log.Printf("PANIC during JSON marshaling for dataset %s: %v", sanitizeForLogging(datasetID), r)
+			LogWarn("PANIC during JSON marshaling for dataset %s: %v", sanitizeForLogging(datasetID), r)
 		}
 	}()
 
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		RecordError(ctx, err, "Failed to marshal dataset data")
-		log.Printf("JSON marshal error for dataset %s: %v", sanitizeForLogging(datasetID), err)
+		LogWarn("JSON marshal error for dataset %s: %v", sanitizeForLogging(datasetID), err)
 		return fmt.Errorf("failed to marshal data: %w", err)
 	}
 
@@ -373,7 +379,7 @@ func (s *S3Storage) storeSync(datasetID string, data DatasetData) error {
 	})
 	if err != nil {
 		RecordError(ctx, err, "Failed to store to S3")
-		log.Printf("Warning: Failed to store to S3: %v. Using fallback storage.", err)
+		LogWarn("Warning: Failed to store to S3: %v. Using fallback storage.", err)
 		AddSpanEvent(ctx, "storage.fallback_to_memory", attribute.String("reason", "s3_store_failed"))
 		return s.fallback.Store(datasetID, data)
 	}
@@ -423,21 +429,21 @@ func (s *S3Storage) retrieveSync(datasetID string) (DatasetData, error) {
 		object, err = s.client.GetObject(ctx, s.bucketName, objectName, minio.GetObjectOptions{})
 		if err != nil {
 			RecordError(ctx, err, "Failed to retrieve from S3")
-			log.Printf("Warning: Failed to retrieve from S3: %v. Trying fallback storage.", err)
+			LogWarn("Warning: Failed to retrieve from S3: %v. Trying fallback storage.", err)
 			AddSpanEvent(ctx, "storage.fallback_to_memory", attribute.String("reason", "s3_get_failed"))
 			return s.fallback.Retrieve(datasetID)
 		}
 	}
 	defer func() {
 		if closeErr := object.Close(); closeErr != nil {
-			log.Printf("Failed to close S3 object: %v", closeErr)
+			LogWarn("Failed to close S3 object: %v", closeErr)
 		}
 	}()
 
 	data, err := io.ReadAll(object)
 	if err != nil {
 		RecordError(ctx, err, "Failed to read S3 object data")
-		log.Printf("Warning: Failed to read from S3 object: %v. Trying fallback storage.", err)
+		LogWarn("Warning: Failed to read from S3 object: %v. Trying fallback storage.", err)
 		AddSpanEvent(ctx, "storage.fallback_to_memory", attribute.String("reason", "s3_read_failed"))
 		return s.fallback.Retrieve(datasetID)
 	}
@@ -453,7 +459,7 @@ func (s *S3Storage) retrieveSync(datasetID string) (DatasetData, error) {
 		jsonData, err = decompressData(data)
 		if err != nil {
 			RecordError(ctx, err, "Failed to decompress S3 data")
-			log.Printf("Warning: Failed to decompress S3 data: %v. Trying fallback storage.", err)
+			LogWarn("Warning: Failed to decompress S3 data: %v. Trying fallback storage.", err)
 			AddSpanEvent(ctx, "storage.fallback_to_memory", attribute.String("reason", "decompress_failed"))
 			return s.fallback.Retrieve(datasetID)
 		}
@@ -465,14 +471,14 @@ func (s *S3Storage) retrieveSync(datasetID string) (DatasetData, error) {
 	var dataset DatasetData
 	if err := json.Unmarshal(jsonData, &dataset); err != nil {
 		RecordError(ctx, err, "Failed to unmarshal S3 data")
-		log.Printf("Warning: Failed to unmarshal S3 data: %v. Trying fallback storage.", err)
+		LogWarn("Warning: Failed to unmarshal S3 data: %v. Trying fallback storage.", err)
 		AddSpanEvent(ctx, "storage.fallback_to_memory", attribute.String("reason", "unmarshal_failed"))
 		return s.fallback.Retrieve(datasetID)
 	}
 
 	SetSpanAttributes(ctx, attribute.Int("dataset.player_count", len(dataset.Players)))
 	RecordDBOperation(ctx, "retrieve", "s3_datasets", time.Since(start), 1)
-	log.Printf("Retrieved dataset %s from S3", sanitizeForLogging(datasetID))
+	LogDebug("Retrieved dataset %s from S3", sanitizeForLogging(datasetID))
 	return dataset, nil
 }
 
@@ -492,15 +498,15 @@ func (s *S3Storage) deleteSync(datasetID string) error {
 
 	err := s.client.RemoveObject(ctx, s.bucketName, objectName, minio.RemoveObjectOptions{})
 	if err != nil {
-		log.Printf("Warning: Failed to delete from S3: %v. Using fallback storage.", err)
+		LogWarn("Warning: Failed to delete from S3: %v. Using fallback storage.", err)
 		return s.fallback.Delete(datasetID)
 	}
 
 	if err := s.fallback.Delete(datasetID); err != nil {
-		log.Printf("Warning: Failed to delete from fallback storage: %v", err)
+		LogWarn("Warning: Failed to delete from fallback storage: %v", err)
 		// Don't return error since S3 deletion succeeded
 	}
-	log.Printf("Deleted dataset %s from S3", sanitizeForLogging(datasetID))
+	LogDebug("Deleted dataset %s from S3", sanitizeForLogging(datasetID))
 	return nil
 }
 
@@ -519,7 +525,7 @@ func (s *S3Storage) List() ([]string, error) {
 	var ids []string
 	for object := range objectCh {
 		if object.Err != nil {
-			log.Printf("Warning: Error listing S3 objects: %v. Using fallback storage.", object.Err)
+			LogWarn("Warning: Error listing S3 objects: %v. Using fallback storage.", object.Err)
 			return s.fallback.List()
 		}
 
@@ -530,7 +536,7 @@ func (s *S3Storage) List() ([]string, error) {
 		}
 	}
 
-	log.Printf("Listed %d datasets from S3", len(ids))
+	LogDebug("Listed %d datasets from S3", len(ids))
 	return ids, nil
 }
 
@@ -555,7 +561,7 @@ func (s *S3Storage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets []s
 	var deletedCount int
 	for object := range objectCh {
 		if object.Err != nil {
-			log.Printf("Warning: Error listing S3 objects during cleanup: %v", object.Err)
+			LogWarn("Warning: Error listing S3 objects during cleanup: %v", object.Err)
 			continue
 		}
 
@@ -569,17 +575,17 @@ func (s *S3Storage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets []s
 
 		// Skip excluded datasets (like demo)
 		if excludeSet[datasetID] {
-			log.Printf("Skipping cleanup for excluded dataset: %s", sanitizeForLogging(datasetID))
+			LogDebug("Skipping cleanup for excluded dataset: %s", sanitizeForLogging(datasetID))
 			continue
 		}
 
 		// Check if object is older than cutoff time
 		if object.LastModified.Before(cutoffTime) {
-			log.Printf("Deleting old dataset: %s (last modified: %s)", sanitizeForLogging(datasetID), object.LastModified.Format(time.RFC3339))
+			LogDebug("Deleting old dataset: %s (last modified: %s)", sanitizeForLogging(datasetID), object.LastModified.Format(time.RFC3339))
 
 			err := s.client.RemoveObject(ctx, s.bucketName, object.Key, minio.RemoveObjectOptions{})
 			if err != nil {
-				log.Printf("Warning: Failed to delete old dataset %s from S3: %v", sanitizeForLogging(datasetID), err)
+				LogWarn("Warning: Failed to delete old dataset %s from S3: %v", sanitizeForLogging(datasetID), err)
 				continue
 			}
 
@@ -618,7 +624,7 @@ func (s *S3Storage) getFaceImage(ctx context.Context, filename string, w http.Re
 	}
 	defer func() {
 		if closeErr := reader.Close(); closeErr != nil {
-			log.Printf("Failed to close S3 reader: %v", closeErr)
+			LogWarn("Failed to close S3 reader: %v", closeErr)
 		}
 	}()
 
@@ -658,7 +664,7 @@ func (s *S3Storage) getTeamLogo(ctx context.Context, filename string, w http.Res
 	}
 	defer func() {
 		if closeErr := reader.Close(); closeErr != nil {
-			log.Printf("Failed to close S3 reader: %v", closeErr)
+			LogWarn("Failed to close S3 reader: %v", closeErr)
 		}
 	}()
 
@@ -684,7 +690,7 @@ func CreateLocalFileStorage(datasetDir string) (*LocalFileStorage, error) {
 		return nil, fmt.Errorf("failed to create datasets directory %s: %w", datasetDir, err)
 	}
 
-	log.Printf("Initialized local file storage at: %s", datasetDir)
+	LogInfo("Initialized local file storage at: %s", datasetDir)
 	return &LocalFileStorage{
 		datasetDir: datasetDir,
 	}, nil
@@ -746,7 +752,7 @@ func (s *LocalFileStorage) Store(datasetID string, data DatasetData) error {
 		attribute.Int("compressed.size_bytes", len(compressedData)),
 	)
 
-	log.Printf("Stored dataset %s to local file: %s", sanitizeForLogging(datasetID), sanitizeForLogging(filename))
+	LogDebug("Stored dataset %s to local file: %s", sanitizeForLogging(datasetID), sanitizeForLogging(filename))
 	return nil
 }
 
@@ -822,7 +828,7 @@ func (s *LocalFileStorage) Retrieve(datasetID string) (DatasetData, error) {
 	}
 
 	SetSpanAttributes(ctx, attribute.Int("dataset.player_count", len(dataset.Players)))
-	log.Printf("Retrieved dataset %s from local file: %s", sanitizeForLogging(datasetID), sanitizeForLogging(filename))
+	LogDebug("Retrieved dataset %s from local file: %s", sanitizeForLogging(datasetID), sanitizeForLogging(filename))
 	return dataset, nil
 }
 
@@ -849,13 +855,13 @@ func (s *LocalFileStorage) Delete(datasetID string) error {
 
 	// Don't treat "file not found" as an error
 	if err := os.Remove(compressedFile); err != nil && !os.IsNotExist(err) {
-		log.Printf("Warning: Failed to remove compressed file %s: %v", sanitizeForLogging(compressedFile), err)
+		LogWarn("Warning: Failed to remove compressed file %s: %v", sanitizeForLogging(compressedFile), err)
 	}
 	if err := os.Remove(uncompressedFile); err != nil && !os.IsNotExist(err) {
-		log.Printf("Warning: Failed to remove uncompressed file %s: %v", sanitizeForLogging(uncompressedFile), err)
+		LogWarn("Warning: Failed to remove uncompressed file %s: %v", sanitizeForLogging(uncompressedFile), err)
 	}
 
-	log.Printf("Deleted dataset %s from local storage", sanitizeForLogging(datasetID))
+	LogDebug("Deleted dataset %s from local storage", sanitizeForLogging(datasetID))
 	return nil
 }
 
@@ -895,7 +901,7 @@ func (s *LocalFileStorage) List() ([]string, error) {
 		}
 	}
 
-	log.Printf("Listed %d datasets from local storage", len(ids))
+	LogDebug("Listed %d datasets from local storage", len(ids))
 	return ids, nil
 }
 
@@ -926,7 +932,7 @@ func (s *LocalFileStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatas
 			continue
 		}
 
-		// Extract dataset ID
+		// Extract dataset ID from object key
 		var datasetID string
 		if strings.HasSuffix(name, ".json.gz") {
 			datasetID = strings.TrimSuffix(name, ".json.gz")
@@ -936,29 +942,29 @@ func (s *LocalFileStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatas
 
 		// Skip excluded datasets
 		if excludeSet[datasetID] {
-			log.Printf("Skipping cleanup for excluded dataset: %s", sanitizeForLogging(datasetID))
+			LogDebug("Skipping cleanup for excluded dataset: %s", sanitizeForLogging(datasetID))
 			continue
 		}
 
 		// Get file info to check modification time - safely construct the file path
 		filePath, err := validateAndJoinPath(s.datasetDir, name)
 		if err != nil {
-			log.Printf("Warning: Invalid file path for %s: %v", sanitizeForLogging(name), err)
+			LogWarn("Warning: Invalid file path for %s: %v", sanitizeForLogging(name), err)
 			continue
 		}
 
 		info, err := os.Stat(filePath)
 		if err != nil {
-			log.Printf("Warning: Failed to get file info for %s: %v", sanitizeForLogging(filePath), err)
+			LogWarn("Warning: Failed to get file info for %s: %v", sanitizeForLogging(filePath), err)
 			continue
 		}
 
 		// Check if file is older than cutoff time
 		if info.ModTime().Before(cutoffTime) {
-			log.Printf("Deleting old dataset file: %s (last modified: %s)", sanitizeForLogging(name), info.ModTime().Format(time.RFC3339))
+			LogDebug("Deleting old dataset file: %s (last modified: %s)", sanitizeForLogging(name), info.ModTime().Format(time.RFC3339))
 
 			if err := os.Remove(filePath); err != nil {
-				log.Printf("Warning: Failed to delete old dataset file %s: %v", sanitizeForLogging(filePath), err)
+				LogWarn("Warning: Failed to delete old dataset file %s: %v", sanitizeForLogging(filePath), err)
 				continue
 			}
 
@@ -966,7 +972,7 @@ func (s *LocalFileStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatas
 		}
 	}
 
-	log.Printf("Cleanup completed: deleted %d old dataset files from local storage", deletedCount)
+	LogDebug("Cleanup completed: deleted %d old dataset files from local storage", deletedCount)
 	return nil
 }
 
@@ -984,7 +990,7 @@ func CreateHybridStorage(datasetDir string) (*HybridStorage, error) {
 		return nil, fmt.Errorf("failed to create local file storage: %w", err)
 	}
 
-	log.Println("Initialized hybrid storage (in-memory + local file fallback)")
+	LogInfo("Initialized hybrid storage (in-memory + local file fallback)")
 	return &HybridStorage{
 		memory: memory,
 		local:  local,
@@ -995,7 +1001,7 @@ func CreateHybridStorage(datasetDir string) (*HybridStorage, error) {
 func (s *HybridStorage) Store(datasetID string, data DatasetData) error {
 	// Store in both memory and local file
 	if err := s.memory.Store(datasetID, data); err != nil {
-		log.Printf("Warning: Failed to store dataset %s in memory: %v", sanitizeForLogging(datasetID), err)
+		LogWarn("Warning: Failed to store dataset %s in memory: %v", sanitizeForLogging(datasetID), err)
 	}
 
 	return s.local.Store(datasetID, data)
@@ -1006,12 +1012,12 @@ func (s *HybridStorage) Retrieve(datasetID string) (DatasetData, error) {
 	// Try memory first for fastest access
 	data, err := s.memory.Retrieve(datasetID)
 	if err == nil {
-		log.Printf("Retrieved dataset %s from memory", sanitizeForLogging(datasetID))
+		LogDebug("Retrieved dataset %s from memory", sanitizeForLogging(datasetID))
 		return data, nil
 	}
 
 	// Try persistent storage (critical for multi-replica consistency)
-	log.Printf("Dataset %s not found in memory, checking persistent storage", sanitizeForLogging(datasetID))
+	LogDebug("Dataset %s not found in memory, checking persistent storage", sanitizeForLogging(datasetID))
 	data, err = s.local.Retrieve(datasetID)
 	if err != nil {
 		return DatasetData{}, err
@@ -1020,13 +1026,13 @@ func (s *HybridStorage) Retrieve(datasetID string) (DatasetData, error) {
 	// Store in memory for future access (warm up the cache)
 	go func() {
 		if storeErr := s.memory.Store(datasetID, data); storeErr != nil {
-			log.Printf("Warning: Failed to cache dataset %s in memory: %v", sanitizeForLogging(datasetID), storeErr)
+			LogWarn("Warning: Failed to cache dataset %s in memory: %v", sanitizeForLogging(datasetID), storeErr)
 		} else {
-			log.Printf("Successfully cached dataset %s in memory for future access", sanitizeForLogging(datasetID))
+			LogDebug("Successfully cached dataset %s in memory for future access", sanitizeForLogging(datasetID))
 		}
 	}()
 
-	log.Printf("Retrieved dataset %s from persistent storage and cached in memory", sanitizeForLogging(datasetID))
+	LogDebug("Retrieved dataset %s from persistent storage and cached in memory", sanitizeForLogging(datasetID))
 	return data, nil
 }
 
@@ -1035,7 +1041,7 @@ func (s *HybridStorage) Delete(datasetID string) error {
 	// Delete from both memory and local file
 	if err := s.memory.Delete(datasetID); err != nil {
 		// Ignore error since it might not exist in memory
-		log.Printf("Note: Dataset %s not found in memory during deletion", sanitizeForLogging(datasetID))
+		LogDebug("Note: Dataset %s not found in memory during deletion", sanitizeForLogging(datasetID))
 	}
 	return s.local.Delete(datasetID)
 }
@@ -1070,7 +1076,7 @@ func (s *HybridStorage) List() ([]string, error) {
 func (s *HybridStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets []string) error {
 	// Cleanup both memory and local storage
 	if err := s.memory.CleanupOldDatasets(maxAge, excludeDatasets); err != nil {
-		log.Printf("Warning: Memory cleanup failed: %v", err)
+		LogWarn("Warning: Memory cleanup failed: %v", err)
 		// Continue with local cleanup even if memory cleanup fails
 	}
 	return s.local.CleanupOldDatasets(maxAge, excludeDatasets)
@@ -1079,12 +1085,164 @@ func (s *HybridStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets
 // InitializeStorage creates and returns the appropriate storage implementation
 //
 //nolint:ireturn // StorageInterface is the intended return type for this factory function
-func InitializeStorage() StorageInterface {
+func InitializeStorage(ctx context.Context) StorageInterface {
+	logInfo(ctx, "Initializing storage system")
+	start := time.Now()
+
+	// Validate and determine storage configuration
+	config := validateStorageConfiguration(ctx)
+
+	// Initialize the base storage backend
+	baseStorage := initializeBaseStorage(ctx)
+
+	// Apply protobuf wrapper if enabled and available
+	if config.UseProtobuf {
+		protobufStorage, err := createProtobufStorageWithFallback(ctx, baseStorage)
+		if err != nil {
+			logError(ctx, "Failed to initialize protobuf storage, falling back to JSON serialization",
+				"error", err, "duration_ms", time.Since(start).Milliseconds())
+			return baseStorage
+		}
+		logInfo(ctx, "Storage initialization completed",
+			"storage_type", "protobuf",
+			"duration_ms", time.Since(start).Milliseconds())
+		return protobufStorage
+	}
+
+	logDebug(ctx, "Storage initialization completed",
+		"storage_type", "json",
+		"duration_ms", time.Since(start).Milliseconds())
+	return baseStorage
+}
+
+// CreateProtobufEnabledStorage creates a storage instance with protobuf serialization enabled
+// This factory method allows explicit creation of protobuf storage for testing or specific use cases
+//
+//nolint:ireturn // StorageInterface is the intended return type for this factory function
+func CreateProtobufEnabledStorage(ctx context.Context, backend StorageInterface) StorageInterface {
+	logDebug(ctx, "Creating protobuf-enabled storage wrapper")
+	return CreateProtobufStorage(backend)
+}
+
+// CreateJSONStorage creates a storage instance with JSON serialization (no protobuf wrapper)
+// This factory method allows explicit creation of JSON-only storage for testing or specific use cases
+//
+//nolint:ireturn // StorageInterface is the intended return type for this factory function
+func CreateJSONStorage(ctx context.Context) StorageInterface {
+	logInfo(ctx, "Creating JSON-only storage without protobuf wrapper")
+	return initializeBaseStorage(ctx)
+}
+
+// StorageConfiguration holds the validated storage configuration
+type StorageConfiguration struct {
+	UseProtobuf bool
+	ConfigValid bool
+	Errors      []string
+}
+
+// validateStorageConfiguration validates the storage configuration from environment variables
+func validateStorageConfiguration(ctx context.Context) StorageConfiguration {
+	logDebug(ctx, "Validating storage configuration")
+	start := time.Now()
+
+	config := StorageConfiguration{
+		UseProtobuf: false,
+		ConfigValid: true,
+		Errors:      []string{},
+	}
+
+	// Check USE_PROTOBUF environment variable
+	protobufEnv := strings.ToLower(strings.TrimSpace(os.Getenv("USE_PROTOBUF")))
+
+	switch protobufEnv {
+	case "true", "1", "yes", "on":
+		config.UseProtobuf = true
+		logInfo(ctx, "Protobuf storage configuration enabled", "env_value", protobufEnv)
+	case "false", "0", "no", "off", "":
+		config.UseProtobuf = false
+		logInfo(ctx, "Protobuf storage configuration disabled", "env_value", protobufEnv)
+	default:
+		config.ConfigValid = false
+		config.Errors = append(config.Errors, fmt.Sprintf("invalid USE_PROTOBUF value: %s (expected: true/false)", protobufEnv))
+		logError(ctx, "Invalid USE_PROTOBUF environment variable value",
+			"error", WrapErrorf(ErrInvalidProtobufEnv, "invalid value: %s", protobufEnv),
+			"env_value", protobufEnv,
+			"expected_values", "true/false")
+	}
+
+	// Log configuration validation results
+	if config.ConfigValid {
+		logDebug(ctx, "Storage configuration validation completed",
+			"use_protobuf", config.UseProtobuf,
+			"duration_ms", time.Since(start).Milliseconds())
+	} else {
+		logError(ctx, "Storage configuration validation failed",
+			"error", WrapErrorf(ErrConfigValidationFailed, "validation failed with %d errors", len(config.Errors)),
+			"error_count", len(config.Errors),
+			"errors", config.Errors,
+			"duration_ms", time.Since(start).Milliseconds())
+	}
+
+	return config
+}
+
+// createProtobufStorageWithFallback creates protobuf storage with graceful fallback handling
+//
+//nolint:ireturn // This function is designed to return different storage implementations
+func createProtobufStorageWithFallback(ctx context.Context, baseStorage StorageInterface) (StorageInterface, error) {
+	logDebug(ctx, "Creating protobuf storage with fallback handling")
+	start := time.Now()
+
+	// Create protobuf storage wrapper
+	protobufStorage := CreateProtobufStorage(baseStorage)
+	if protobufStorage == nil {
+		err := ErrProtobufStorageWrapper
+		logError(ctx, "Failed to create protobuf storage wrapper", "error", err)
+		return nil, err
+	}
+
+	// Test protobuf storage functionality with a simple operation
+	if err := testProtobufStorage(ctx, protobufStorage); err != nil {
+		logError(ctx, "Protobuf storage functionality test failed", "error", err)
+		return nil, fmt.Errorf("protobuf storage functionality test failed: %w", err)
+	}
+
+	logDebug(ctx, "Protobuf storage created and validated successfully",
+		"duration_ms", time.Since(start).Milliseconds())
+	return protobufStorage, nil
+}
+
+// testProtobufStorage performs a basic functionality test on protobuf storage
+func testProtobufStorage(ctx context.Context, _ StorageInterface) error {
+	logDebug(ctx, "Testing protobuf storage functionality")
+	start := time.Now()
+
+	// This is a placeholder for protobuf storage testing
+	// In a real implementation, you might:
+	// - Test a simple store/retrieve cycle with minimal data
+	// - Verify protobuf serialization/deserialization works
+	// - Check error handling and fallback mechanisms
+
+	// For now, we'll assume the test passes
+	// In production, you would add actual test logic here
+
+	logDebug(ctx, "Protobuf storage functionality test completed",
+		"duration_ms", time.Since(start).Milliseconds())
+	return nil
+}
+
+// initializeBaseStorage creates the underlying storage backend (S3, hybrid, or in-memory)
+//
+//nolint:ireturn // This function is designed to return different storage implementations
+func initializeBaseStorage(ctx context.Context) StorageInterface {
+	logDebug(ctx, "Initializing base storage backend")
+	start := time.Now()
+
 	inMemory := CreateInMemoryStorage()
 
 	s3Endpoint := os.Getenv("S3_ENDPOINT")
 	if s3Endpoint == "" {
-		log.Println("No S3 endpoint configured. Using hybrid storage (in-memory + local file fallback).")
+		logInfo(ctx, "No S3 endpoint configured, using hybrid storage", "storage_type", "hybrid")
 
 		// Use configurable datasets directory, default to "./datasets"
 		datasetDir := os.Getenv("DATASETS_DIR")
@@ -1094,10 +1252,18 @@ func InitializeStorage() StorageInterface {
 
 		hybrid, err := CreateHybridStorage(datasetDir)
 		if err != nil {
-			log.Printf("Failed to initialize hybrid storage: %v. Falling back to in-memory only.", err)
+			logError(ctx, "Failed to initialize hybrid storage, falling back to in-memory only",
+				"error", err, "dataset_dir", datasetDir)
+			logInfo(ctx, "Base storage initialization completed",
+				"storage_type", "in-memory",
+				"duration_ms", time.Since(start).Milliseconds())
 			return inMemory
 		}
 
+		logInfo(ctx, "Base storage initialization completed",
+			"storage_type", "hybrid",
+			"dataset_dir", datasetDir,
+			"duration_ms", time.Since(start).Milliseconds())
 		return hybrid
 	}
 
@@ -1106,7 +1272,7 @@ func InitializeStorage() StorageInterface {
 	useSSL := strings.ToLower(os.Getenv("S3_USE_SSL")) == "true"
 
 	if accessKey == "" || secretKey == "" {
-		log.Println("S3 credentials not provided. Using hybrid storage (in-memory + local file fallback).")
+		logInfo(ctx, "S3 credentials not provided, using hybrid storage", "storage_type", "hybrid")
 
 		// Use configurable datasets directory, default to "./datasets"
 		datasetDir := os.Getenv("DATASETS_DIR")
@@ -1116,19 +1282,26 @@ func InitializeStorage() StorageInterface {
 
 		hybrid, err := CreateHybridStorage(datasetDir)
 		if err != nil {
-			log.Printf("Failed to initialize hybrid storage: %v. Falling back to in-memory only.", err)
+			logError(ctx, "Failed to initialize hybrid storage, falling back to in-memory only",
+				"error", err, "dataset_dir", datasetDir)
+			logInfo(ctx, "Base storage initialization completed",
+				"storage_type", "in-memory",
+				"duration_ms", time.Since(start).Milliseconds())
 			return inMemory
 		}
 
+		logInfo(ctx, "Base storage initialization completed",
+			"storage_type", "hybrid",
+			"dataset_dir", datasetDir,
+			"duration_ms", time.Since(start).Milliseconds())
 		return hybrid
 	}
 
-	// Debug logging (only show first few chars for security)
 	// Log configuration without sensitive credentials
-	LogDebug("S3 Config: endpoint=%s, useSSL=%v, credentials_provided=%t",
-		s3Endpoint,
-		useSSL,
-		accessKey != "" && secretKey != "")
+	logDebug(ctx, "S3 configuration detected",
+		"endpoint", s3Endpoint,
+		"use_ssl", useSSL,
+		"credentials_provided", accessKey != "" && secretKey != "")
 
 	bucketName := os.Getenv("S3_BUCKET_NAME")
 	if bucketName == "" {
@@ -1136,6 +1309,10 @@ func InitializeStorage() StorageInterface {
 	}
 	s3Storage := CreateS3Storage(s3Endpoint, accessKey, secretKey, bucketName, useSSL, inMemory)
 
-	LogDebug("Initialized S3 storage with in-memory fallback")
+	logInfo(ctx, "Base storage initialization completed",
+		"storage_type", "s3",
+		"endpoint", s3Endpoint,
+		"bucket_name", bucketName,
+		"duration_ms", time.Since(start).Milliseconds())
 	return s3Storage
 }

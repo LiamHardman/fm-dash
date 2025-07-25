@@ -2,20 +2,28 @@
     <q-dialog 
         :model-value="show" 
         @hide="$emit('close')"
-        :class="qInstance.dark.isActive ? 'dark-dialog' : 'light-dialog'"
+        :class="isDarkMode ? 'dark-dialog' : 'light-dialog'"
         backdrop-filter="blur(3px)"
-        :backdrop-color="qInstance.dark.isActive ? 'rgba(0, 0, 0, 0.8)' : 'rgba(0, 0, 0, 0.5)'"
+        :backdrop-color="isDarkMode ? 'rgba(0, 0, 0, 0.8)' : 'rgba(0, 0, 0, 0.5)'"
         transition-show="scale"
         transition-hide="scale"
     >
         <q-card
             class="player-detail-dialog-card modern-dialog-card"
             :class="
-                qInstance.dark.isActive
-                    ? 'text-white'
+                isDarkMode
+                    ? 'bg-dark text-white'
                     : 'bg-white text-dark'
             "
-            style="max-width: 1400px; width: 95vw; max-height: 90vh; position: relative;"
+            :style="{
+                'max-width': '1400px',
+                'width': '95vw',
+                'max-height': '90vh',
+                'position': 'relative',
+                'background': isDarkMode ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' : '#fff',
+                'color': isDarkMode ? '#fff' : '#222'
+            }"
+            :data-dark-mode="isDarkMode"
         >
             <!-- Floating Close Button -->
             <q-btn 
@@ -24,11 +32,11 @@
                 icon="close" 
                 @click="$emit('close')" 
                 class="floating-close-btn"
-                :class="qInstance.dark.isActive ? 'text-grey-4' : 'text-grey-7'"
+                :class="isDarkMode ? 'text-grey-4' : 'text-grey-7'"
             >
                 <q-tooltip
                     :class="
-                        qInstance.dark.isActive
+                        isDarkMode
                             ? 'bg-grey-7'
                             : 'bg-white text-primary'
                     "
@@ -36,14 +44,46 @@
                 >
             </q-btn>
 
-            <q-card-section v-if="player" class="scroll main-content-section no-header-section">
+            <!-- Player data not available -->
+            <q-card-section v-if="player && (!displayPlayer || !displayPlayer.name)" class="scroll main-content-section no-header-section">
+                <div class="text-center q-pa-lg">
+                    <q-icon name="person_off" size="4em" class="text-grey-4 q-mb-md" />
+                    <div class="text-h6 text-grey-6">Player data not available</div>
+                    <div class="text-caption text-grey-6 q-mt-sm">Unable to load player information</div>
+                </div>
+            </q-card-section>
+
+
+
+            <q-card-section v-else-if="player && displayPlayer && displayPlayer.name" class="scroll main-content-section no-header-section">
+                <!-- Progressive loading indicator -->
+                <div v-if="isLoadingDetailedData" class="loading-indicator q-mb-md">
+                    <div class="text-center">
+                        <q-spinner-dots color="primary" size="1em" />
+                        <div class="text-caption q-mt-xs">Loading detailed attributes...</div>
+                    </div>
+                </div>
+
+                <!-- Error message for detailed data -->
+                <div v-if="detailedDataError" class="error-message q-mb-md">
+                    <q-banner class="bg-red-1 text-red-8">
+                        <template v-slot:avatar>
+                            <q-icon name="error" color="red" />
+                        </template>
+                        Failed to load detailed attributes: {{ detailedDataError }}
+                        <template v-slot:action>
+                            <q-btn flat color="red" label="Retry" @click="fetchDetailedPlayerData" />
+                        </template>
+                    </q-banner>
+                </div>
+
                 <div class="row q-col-gutter-lg">
                     <div class="col-12 col-md-4">
                         <div class="row q-col-gutter-sm q-mb-md">
                             <div class="col-6">
                                 <q-select
                                     v-if="performanceComparisonOptions.length > 0"
-                                    :disable="performanceComparisonOptions.length <= 1"
+                                    :disable="false"
                                     v-model="selectedComparisonGroup"
                                     :options="performanceComparisonOptions"
                                     label="Compare Position"
@@ -53,21 +93,18 @@
                                     map-options
                                     class="modern-select"
                                     :label-color="
-                                        qInstance.dark.isActive ? 'grey-4' : ''
+                                        isDarkMode ? 'grey-4' : ''
                                     "
                                     :popup-content-class="
-                                        qInstance.dark.isActive
+                                        isDarkMode
                                             ? 'bg-grey-8 text-white'
                                             : 'bg-white text-dark'
                                     "
                                 />
                                 <q-tooltip
-                                    v-if="
-                                        performanceComparisonOptions.length <= 1 &&
-                                        performanceComparisonOptions.length > 0
-                                    "
+                                    v-if="performanceComparisonOptions.length === 1"
                                 >
-                                    Only global comparison available for this player.
+                                    Only one comparison option available for this player and division.
                                 </q-tooltip>
                             </div>
                             <div class="col-6">
@@ -81,10 +118,10 @@
                                     map-options
                                     class="modern-select"
                                     :label-color="
-                                        qInstance.dark.isActive ? 'grey-4' : ''
+                                        isDarkMode ? 'grey-4' : ''
                                     "
                                     :popup-content-class="
-                                        qInstance.dark.isActive
+                                        isDarkMode
                                             ? 'bg-grey-8 text-white'
                                             : 'bg-white text-dark'
                                     "
@@ -131,7 +168,13 @@
                                 </div>
 
                                 <!-- Percentile Content -->
-                                <div v-else-if="hasAnyPerformanceData" class="percentile-content-area">
+                                <div v-else-if="hasAnyPerformanceData" class="percentile-content-area" :key="`${displayPlayer?.uid || displayPlayer?.UID || 'unknown'}-${displayPlayer?.name || 'unknown'}-${divisionFilter}`">
+                                    <!-- Debug info -->
+                                    <div v-if="false" class="debug-info">
+                                        forceRecompute: {{ forceRecompute }}, 
+                                        hasAnyPerformanceData: {{ hasAnyPerformanceData }}, 
+                                        categorizedPerformanceStats keys: {{ Object.keys(categorizedPerformanceStats) }}
+                                    </div>
                                     <div
                                         v-for="(stats, category, index) in categorizedPerformanceStats"
                                         :key="`perf-${category}-${selectedComparisonGroup}`"
@@ -241,8 +284,8 @@
                                                 <q-avatar
                                                     v-else
                                                     size="80px"
-                                                    :color="qInstance.dark.isActive ? 'grey-7' : 'grey-4'"
-                                                    :text-color="qInstance.dark.isActive ? 'grey-4' : 'grey-7'"
+                                                    :color="isDarkMode ? 'grey-7' : 'grey-4'"
+                                                    :text-color="isDarkMode ? 'grey-4' : 'grey-7'"
                                                     class="player-face-placeholder"
                                                 >
                                                     <q-icon name="person" size="32px" />
@@ -262,7 +305,7 @@
                                                 />
                                                 <q-icon
                                                     v-if="!player.nationality_iso || flagLoadError"
-                                                    :color="qInstance.dark.isActive ? 'grey-5' : 'grey-7'"
+                                                    :color="isDarkMode ? 'grey-5' : 'grey-7'"
                                                     name="flag"
                                                     size="2.5em"
                                                     class="player-flag-placeholder"
@@ -304,11 +347,11 @@
                                                         <h5
                                                             class="text-h5 player-name no-margin"
                                                             :class="
-                                                                qInstance.dark.isActive ? 'text-white' : 'text-dark'
+                                                                isDarkMode ? 'text-white' : 'text-dark'
                                                             "
-                                                            :title="player.name"
-                                                        >
-                                                            {{ player.name }}
+                                                                                            :title="displayPlayer?.name || 'Unknown Player'"
+                            >
+                                {{ displayPlayer?.name || 'Unknown Player' }}
                                                             <q-icon
                                                                 v-if="player.attributeMasked"
                                                                 name="warning"
@@ -318,7 +361,7 @@
                                                             >
                                                                 <q-tooltip
                                                                     :class="
-                                                                        qInstance.dark.isActive
+                                                                        isDarkMode
                                                                             ? 'bg-grey-7 text-white'
                                                                             : 'bg-white text-dark'
                                                                     "
@@ -368,42 +411,42 @@
                                                         <q-badge
                                                             outline
                                                             color="primary"
-                                                            :label="`${player.age || '-'} years`"
+                                                            :label="`${displayPlayer?.age || '-'} years`"
                                                             class="player-age-badge q-mr-sm"
                                                         />
                                                         <q-badge
                                                             outline
                                                             color="secondary"
-                                                            :label="player.nationality || 'Unknown'"
+                                                            :label="displayPlayer?.nationality || 'Unknown'"
                                                             class="player-nationality-badge q-mr-sm"
                                                         />
                                                         <q-badge
-                                                            v-if="player.club"
+                                                            v-if="displayPlayer?.club"
                                                             outline
                                                             color="teal"
-                                                            :label="player.club"
+                                                            :label="displayPlayer?.club"
                                                             class="player-club-badge q-mr-sm"
                                                         />
                                                         <q-badge
-                                                            v-if="player.personality"
+                                                            v-if="displayPlayer?.personality"
                                                             outline
                                                             color="purple"
-                                                            :label="player.personality"
+                                                            :label="displayPlayer?.personality"
                                                             class="player-personality-badge q-mr-sm"
                                                         />
                                                         <q-badge
-                                                            v-if="player.media_handling"
+                                                            v-if="displayPlayer?.media_handling"
                                                             outline
                                                             color="orange"
-                                                            :label="player.media_handling"
+                                                            :label="displayPlayer?.media_handling"
                                                             class="player-media-badge"
                                                         />
                                                     </div>
                                                 </div>
                                                 
-                                                <div class="player-positions-section q-mt-sm" v-if="player.shortPositions?.length || player.position">
+                                                <div class="player-positions-section q-mt-sm" v-if="displayPlayer?.short_positions?.length || displayPlayer?.position">
                                                     <q-badge
-                                                        v-for="pos in player.shortPositions || [player.position]"
+                                                        v-for="pos in displayPlayer?.short_positions || [displayPlayer?.position]"
                                                         :key="pos"
                                                         outline
                                                         color="indigo-6"
@@ -440,11 +483,10 @@
                                 <q-separator spaced="md" class="profile-separator" />
 
                                 <div class="fifa-stats-section">
-                                    
                                     <div class="fifa-stats-grid">
                                         <div
                                             v-for="stat in fifaStatsToDisplay"
-                                            :key="`fifa-${stat.name}-${player?.UID || player?.uid}`"
+                                            :key="`fifa-${stat.name}-${displayPlayer?.UID || displayPlayer?.uid || 'unknown'}`"
                                             class="fifa-stat-card"
                                         >
                                             <q-card
@@ -452,16 +494,16 @@
                                                 bordered
                                                 :class="[
                                                     'fifa-stat-item text-center',
-                                                    getUnifiedRatingClass(player[stat.name], 100),
+                                                    getUnifiedRatingClass(getFifaStatValue(stat.name), 100),
                                                 ]"
                                             >
                                                 <div class="fifa-stat-label">{{ stat.label }}</div>
                                                 <div class="fifa-stat-value">
-                                                    {{ player[stat.name] !== undefined ? player[stat.name] : "-" }}
+                                                    {{ getFifaStatValue(stat.name) }}
                                                 </div>
                                                 <q-tooltip
                                                     :class="
-                                                        qInstance.dark.isActive
+                                                        isDarkMode
                                                             ? 'bg-grey-7 text-white'
                                                             : 'bg-white text-dark'
                                                     "
@@ -499,6 +541,7 @@
                                                     : attributeCategories.technical"
                                                 :key="attrKey"
                                                 class="attribute-list-item modern-attribute-item"
+                                                v-show="!isLoadingDetailedData"
                                             >
                                                 <q-item-section>
                                                     <q-item-label lines="1" class="attribute-name">
@@ -506,7 +549,7 @@
                                                     </q-item-label>
                                                     <q-tooltip
                                                         :class="
-                                                            qInstance.dark.isActive
+                                                            isDarkMode
                                                                 ? 'bg-grey-7 text-white'
                                                                 : 'bg-white text-dark'
                                                         "
@@ -526,7 +569,8 @@
                                                     <span
                                                         :class="[
                                                             'attribute-value modern-attribute-value',
-                                                            getUnifiedRatingClass(player.attributes[attrKey], 20)
+                                                            getUnifiedRatingClass(displayPlayer?.attributes?.[attrKey], 20),
+                                                            { 'loading-attribute': isLoadingDetailedData }
                                                         ]"
                                                     >
                                                         {{ getDisplayAttribute(attrKey) }}
@@ -534,8 +578,44 @@
                                                 </q-item-section>
                                             </q-item>
                                             
+                                            <!-- Loading skeleton placeholders -->
+                                            <template v-if="isLoadingDetailedData">
+                                                <q-item 
+                                                    v-for="attrKey in (isGoalkeeper ? goalkeepingAttrsOrdered : technicalAttrsOrdered)" 
+                                                    :key="`loading-tech-${attrKey}`" 
+                                                    class="attribute-list-item modern-attribute-item"
+                                                >
+                                                    <q-item-section>
+                                                        <q-item-label lines="1" class="attribute-name">
+                                                            {{ attributeFullNameMap[attrKey] || attrKey }}
+                                                        </q-item-label>
+                                                        <q-tooltip
+                                                            :class="
+                                                                isDarkMode
+                                                                    ? 'bg-grey-7 text-white'
+                                                                    : 'bg-white text-dark'
+                                                            "
+                                                            :delay="500"
+                                                            max-width="300px"
+                                                            class="modern-tooltip"
+                                                        >
+                                                            <div class="tooltip-header">
+                                                                {{ attributeFullNameMap[attrKey] || attrKey }}
+                                                            </div>
+                                                            <div class="tooltip-description">
+                                                                {{ attributeDescriptions[attrKey] || 'No description available' }}
+                                                            </div>
+                                                        </q-tooltip>
+                                                    </q-item-section>
+                                                    <q-item-section side>
+                                                        <q-skeleton type="text" width="30px" class="loading-attribute-skeleton" />
+                                                    </q-item-section>
+                                                </q-item>
+                                            </template>
+                                            
+                                            <!-- No attributes message -->
                                             <q-item
-                                                v-if="!(isGoalkeeper ? attributeCategories.goalkeeping : attributeCategories.technical).length"
+                                                v-if="!isLoadingDetailedData && !(isGoalkeeper ? attributeCategories.goalkeeping : attributeCategories.technical).length"
                                                 class="no-attributes-item"
                                             >
                                                 <q-item-section class="text-center q-py-md">
@@ -563,6 +643,7 @@
                                                 v-for="attrKey in attributeCategories.mental"
                                                 :key="attrKey"
                                                 class="attribute-list-item modern-attribute-item"
+                                                v-show="!isLoadingDetailedData"
                                             >
                                                 <q-item-section>
                                                     <q-item-label lines="1" class="attribute-name">
@@ -570,7 +651,7 @@
                                                     </q-item-label>
                                                     <q-tooltip
                                                         :class="
-                                                            qInstance.dark.isActive
+                                                            isDarkMode
                                                                 ? 'bg-grey-7 text-white'
                                                                 : 'bg-white text-dark'
                                                         "
@@ -590,7 +671,8 @@
                                                     <span
                                                         :class="[
                                                             'attribute-value modern-attribute-value',
-                                                            getUnifiedRatingClass(player.attributes[attrKey], 20)
+                                                            getUnifiedRatingClass(displayPlayer?.attributes?.[attrKey], 20),
+                                                            { 'loading-attribute': isLoadingDetailedData }
                                                         ]"
                                                     >
                                                         {{ getDisplayAttribute(attrKey) }}
@@ -598,7 +680,43 @@
                                                 </q-item-section>
                                             </q-item>
                                             
-                                            <q-item v-if="!attributeCategories.mental.length" class="no-attributes-item">
+                                            <!-- Loading skeleton placeholders -->
+                                            <template v-if="isLoadingDetailedData">
+                                                <q-item 
+                                                    v-for="attrKey in mentalAttrsOrdered" 
+                                                    :key="`loading-mental-${attrKey}`" 
+                                                    class="attribute-list-item modern-attribute-item"
+                                                >
+                                                    <q-item-section>
+                                                        <q-item-label lines="1" class="attribute-name">
+                                                            {{ attributeFullNameMap[attrKey] || attrKey }}
+                                                        </q-item-label>
+                                                        <q-tooltip
+                                                            :class="
+                                                                isDarkMode
+                                                                    ? 'bg-grey-7 text-white'
+                                                                    : 'bg-white text-dark'
+                                                            "
+                                                            :delay="500"
+                                                            max-width="300px"
+                                                            class="modern-tooltip"
+                                                        >
+                                                            <div class="tooltip-header">
+                                                                {{ attributeFullNameMap[attrKey] || attrKey }}
+                                                            </div>
+                                                            <div class="tooltip-description">
+                                                                {{ attributeDescriptions[attrKey] || 'No description available' }}
+                                                            </div>
+                                                        </q-tooltip>
+                                                    </q-item-section>
+                                                    <q-item-section side>
+                                                        <q-skeleton type="text" width="30px" class="loading-attribute-skeleton" />
+                                                    </q-item-section>
+                                                </q-item>
+                                            </template>
+                                            
+                                            <!-- No attributes message -->
+                                            <q-item v-if="!isLoadingDetailedData && !attributeCategories.mental.length" class="no-attributes-item">
                                                 <q-item-section class="text-center q-py-md">
                                                     <q-icon name="info_outline" size="sm" class="q-mr-sm" />
                                                     No mental attributes.
@@ -626,6 +744,7 @@
                                                         v-for="attrKey in attributeCategories.physical"
                                                         :key="attrKey"
                                                         class="attribute-list-item modern-attribute-item"
+                                                        v-show="!isLoadingDetailedData"
                                                     >
                                                         <q-item-section>
                                                             <q-item-label lines="1" class="attribute-name">
@@ -633,7 +752,7 @@
                                                             </q-item-label>
                                                             <q-tooltip
                                                                 :class="
-                                                                    qInstance.dark.isActive
+                                                                    isDarkMode
                                                                         ? 'bg-grey-7 text-white'
                                                                         : 'bg-white text-dark'
                                                                 "
@@ -653,7 +772,8 @@
                                                             <span
                                                                 :class="[
                                                                     'attribute-value modern-attribute-value',
-                                                                    getUnifiedRatingClass(player.attributes[attrKey], 20)
+                                                                    getUnifiedRatingClass(displayPlayer?.attributes?.[attrKey], 20),
+                                                                    { 'loading-attribute': isLoadingDetailedData }
                                                                 ]"
                                                             >
                                                                 {{ getDisplayAttribute(attrKey) }}
@@ -661,7 +781,43 @@
                                                         </q-item-section>
                                                     </q-item>
                                                     
-                                                    <q-item v-if="!attributeCategories.physical.length" class="no-attributes-item">
+                                                    <!-- Loading skeleton placeholders -->
+                                                    <template v-if="isLoadingDetailedData">
+                                                        <q-item 
+                                                            v-for="attrKey in physicalAttrsOrdered" 
+                                                            :key="`loading-physical-${attrKey}`" 
+                                                            class="attribute-list-item modern-attribute-item"
+                                                        >
+                                                            <q-item-section>
+                                                                <q-item-label lines="1" class="attribute-name">
+                                                                    {{ attributeFullNameMap[attrKey] || attrKey }}
+                                                                </q-item-label>
+                                                                <q-tooltip
+                                                                    :class="
+                                                                        isDarkMode
+                                                                            ? 'bg-grey-7 text-white'
+                                                                            : 'bg-white text-dark'
+                                                                    "
+                                                                    :delay="500"
+                                                                    max-width="300px"
+                                                                    class="modern-tooltip"
+                                                                >
+                                                                    <div class="tooltip-header">
+                                                                        {{ attributeFullNameMap[attrKey] || attrKey }}
+                                                                    </div>
+                                                                    <div class="tooltip-description">
+                                                                        {{ attributeDescriptions[attrKey] || 'No description available' }}
+                                                                    </div>
+                                                                </q-tooltip>
+                                                            </q-item-section>
+                                                            <q-item-section side>
+                                                                <q-skeleton type="text" width="30px" class="loading-attribute-skeleton" />
+                                                            </q-item-section>
+                                                        </q-item>
+                                                    </template>
+                                                    
+                                                    <!-- No attributes message -->
+                                                    <q-item v-if="!isLoadingDetailedData && !attributeCategories.physical.length" class="no-attributes-item">
                                                         <q-item-section class="text-center q-py-md">
                                                             <q-icon name="info_outline" size="sm" class="q-mr-sm" />
                                                             No physical attributes.
@@ -672,7 +828,7 @@
                                         </q-card>
                                     </div>
                                     
-                                    <div class="col-12" v-if="player.roleSpecificOveralls && player.roleSpecificOveralls.length > 0">
+                                    <div class="col-12" v-if="displayPlayer && displayPlayer.roleSpecificOveralls && displayPlayer.roleSpecificOveralls.length > 0">
                                         <q-card flat bordered class="attribute-card modern-attribute-card role-ratings-card">
                                             <q-card-section class="attribute-card-header">
                                                 <div class="attribute-section-title">
@@ -687,7 +843,7 @@
                                                         v-for="roleOverall in sortedRoleSpecificOveralls"
                                                         :key="`role-${roleOverall.roleName}-${roleOverall.score}`"
                                                         :class="{
-                                                            'best-role-highlight': roleOverall.score === player.Overall,
+                                                            'best-role-highlight': roleOverall.score === displayPlayer.Overall,
                                                         }"
                                                         class="attribute-list-item modern-attribute-item role-item"
                                                     >
@@ -739,12 +895,16 @@ import {
   onUnmounted,
   ref,
   toRef,
-  watch
+  watch,
+  nextTick
 } from 'vue'
 import { usePercentileRetry } from '../composables/usePercentileRetry'
 import { usePlayerStore } from '../stores/playerStore'
 import { useUiStore } from '../stores/uiStore'
 import { formatCurrency } from '../utils/currencyUtils'
+import { fetchFullPlayerStats } from '../services/playerService.js'
+import { getCachedPlayerData, setCachedPlayerData } from '../utils/playerDetailOptimizer.js'
+import logger from '../utils/logger.js'
 
 // Lazy load TeamLogo component to prevent blocking dialog opening
 const TeamLogo = defineAsyncComponent(() => import('../components/TeamLogo.vue'))
@@ -1097,15 +1257,73 @@ export default defineComponent({
     const qInstance = useQuasar()
     const uiStore = useUiStore()
     const _playerStore = usePlayerStore()
+    
+    // Create a reactive ref for dark mode state
+    const darkModeState = ref(false)
+    
+    // Function to update dark mode state
+    const updateDarkModeState = () => {
+      const quasarDark = qInstance.dark.isActive
+      const bodyDark = document.body.classList.contains('body--dark')
+      const newState = quasarDark || bodyDark
+      console.log('Updating dark mode state:', newState, 'quasarDark:', quasarDark, 'bodyDark:', bodyDark)
+      darkModeState.value = newState
+    }
+    
+    // Ensure dark mode detection is reactive
+    const isDarkMode = computed(() => {
+      return darkModeState.value
+    })
+
+    // Watch for dark mode changes to trigger reactivity
+    watch(() => qInstance.dark.isActive, () => {
+      console.log('Quasar dark mode changed:', qInstance.dark.isActive)
+      updateDarkModeState()
+    })
+
+    // Also watch for body class changes
+    const observer = new MutationObserver(() => {
+      console.log('Body classes changed:', document.body.className)
+      updateDarkModeState()
+    })
+    
+    onMounted(() => {
+      updateDarkModeState() // Initial state
+      observer.observe(document.body, { attributes: true, attributeFilter: ['class'] })
+    })
+    
+    onUnmounted(() => {
+      observer.disconnect()
+    })
+    
+
     const selectedComparisonGroup = ref('Global')
     const flagLoadError = ref(false)
-    const divisionFilter = ref('all')
+    const divisionFilter = ref('same')
 
     // Convert props to refs for the percentile retry composable
     const playerRef = toRef(props, 'player')
     const datasetIdRef = toRef(props, 'datasetId')
 
-    // Use the percentile retry composable
+    // Add reactive data for detailed player stats
+    const detailedPlayerData = ref(null)
+    const isLoadingDetailedData = ref(false)
+    const detailedDataError = ref(null)
+    const percentileUpdateCounter = ref(0) // Force reactivity when percentiles change
+    const percentileDataTrigger = ref(0) // Additional trigger for percentile data changes
+    const forceRecompute = ref(0) // Force template re-render
+
+    // Computed property to get the player data to display (detailed or basic)
+    const displayPlayer = computed(() => {
+      const result = detailedPlayerData.value && detailedPlayerData.value.name 
+        ? detailedPlayerData.value 
+        : props.player && props.player.name 
+          ? props.player 
+          : null
+      return result
+    })
+
+    // Use the percentile retry composable with displayPlayer instead of props.player
     const {
       isLoadingPercentiles,
       hasValidPercentiles,
@@ -1114,7 +1332,7 @@ export default defineComponent({
       percentilesRetryCount,
       maxRetries,
       manualRetry
-    } = usePercentileRetry(playerRef, datasetIdRef, selectedComparisonGroup)
+    } = usePercentileRetry(displayPlayer, datasetIdRef, selectedComparisonGroup, divisionFilter)
 
     // Face image handling
     const faceImageLoadError = ref(false)
@@ -1124,8 +1342,12 @@ export default defineComponent({
       flagLoadError.value = true
     }
 
-    const handleFaceImageError = () => {
+    const handleFaceImageError = (event) => {
+      // Set error state and hide the image if it fails to load (404 or other error)
       faceImageLoadError.value = true
+      if (event && event.target) {
+        event.target.style.display = 'none'
+      }
     }
 
     const handleFaceImageLoad = () => {
@@ -1162,6 +1384,18 @@ export default defineComponent({
       attributeDisplayCache.clear()
     }
 
+    // Optimize cache size management
+    const manageCacheSize = () => {
+      if (performanceStatsCache.size > maxCacheSize) {
+        const entries = Array.from(performanceStatsCache.entries())
+        // Remove oldest entries (first 20% of cache)
+        const toRemove = Math.floor(maxCacheSize * 0.2)
+        for (let i = 0; i < toRemove; i++) {
+          performanceStatsCache.delete(entries[i][0])
+        }
+      }
+    }
+
     onMounted(() => {
       /* Initialization logic if needed */
     })
@@ -1170,178 +1404,19 @@ export default defineComponent({
       clearAllCaches()
     })
 
-    // Memoized performance comparison options with better caching
-    const performanceComparisonOptionsCache = new Map()
 
-    const performanceComparisonOptions = computed(() => {
-      if (!props.player?.performancePercentiles) {
-        return props.player?.performancePercentiles?.Global
-          ? [{ label: 'Overall Dataset', value: 'Global' }]
-          : []
-      }
 
-      const player = props.player
-      const cacheKey = `${getCacheKey(player, 'options')}-${JSON.stringify(player.shortPositions)}-${JSON.stringify(player.positionGroups)}`
 
-      if (performanceComparisonOptionsCache.has(cacheKey)) {
-        return performanceComparisonOptionsCache.get(cacheKey)
-      }
-
-      const playerPercentiles = player.performancePercentiles
-      const playerShortPositions = player.shortPositions || []
-      const playerBroadGroups = player.positionGroups || []
-      const options = []
-
-      // Pre-create sets for faster lookups
-      const broadGroupsSet = new Set(playerBroadGroups)
-      const shortPositionsSet = new Set(playerShortPositions)
-      const addedValues = new Set()
-
-      const preferredOrder = [
-        'Global',
-        'Goalkeepers',
-        'Defenders',
-        'Midfielders',
-        'Attackers',
-        'Full-backs',
-        'Centre-backs',
-        'Wing-backs',
-        'Defensive Midfielders',
-        'Central Midfielders',
-        'Wide Midfielders',
-        'Attacking Midfielders (Central)',
-        'Wingers',
-        'Strikers'
-      ]
-
-      const shouldIncludeGroup = groupKey => {
-        if (groupKey === 'Global') return true
-
-        // Check broad groups
-        if (broadGroupsSet.has(groupKey)) return true
-
-        // Check detailed groups
-        const requiredPositions = detailedGroupToShortPositionsMap[groupKey]
-        if (requiredPositions) {
-          return requiredPositions.some(pos => shortPositionsSet.has(pos))
-        }
-
-        return false
-      }
-
-      // Process preferred order groups
-      for (let i = 0; i < preferredOrder.length; i++) {
-        const groupKey = preferredOrder[i]
-        if (
-          playerPercentiles[groupKey] &&
-          shouldIncludeGroup(groupKey) &&
-          !addedValues.has(groupKey)
-        ) {
-          options.push({
-            label: groupKey === 'Global' ? 'Overall Dataset' : `vs. ${groupKey}`,
-            value: groupKey
-          })
-          addedValues.add(groupKey)
-        }
-      }
-
-      // Clean up cache if it gets too large
-      if (performanceComparisonOptionsCache.size > 20) {
-        performanceComparisonOptionsCache.clear()
-      }
-
-      performanceComparisonOptionsCache.set(cacheKey, options)
-      return options
-    })
-
-    const getPositionGroupForHighestRole = () => {
-      if (!props.player?.roleSpecificOveralls?.length) {
-        return null
-      }
-
-      // Find the role with the highest overall rating
-      const highestRole = props.player.roleSpecificOveralls.reduce((max, role) =>
-        role.score > max.score ? role : max
-      )
-
-      // Extract the short position from the role name (e.g., "DM" from "DM - Defensive Midfielder - Support")
-      const shortPosition = highestRole.roleName.split(' - ')[0]
-
-      // Map short position to detailed group first
-      const detailedGroup = Object.entries(detailedGroupToShortPositionsMap).find(
-        ([_groupName, positions]) => positions.includes(shortPosition)
-      )
-
-      if (detailedGroup) {
-        return detailedGroup[0] // Return the detailed group name
-      }
-
-      // Fallback to broad position group
-      const positionToGroupMap = {
-        GK: 'Goalkeepers',
-        SW: 'Defenders',
-        DR: 'Defenders',
-        DL: 'Defenders',
-        DC: 'Defenders',
-        WBR: 'Defenders',
-        WBL: 'Defenders', // Wing-backs are in defenders for broad groups
-        DM: 'Midfielders',
-        MC: 'Midfielders',
-        MR: 'Midfielders',
-        ML: 'Midfielders',
-        AMC: 'Midfielders',
-        AMR: 'Midfielders',
-        AML: 'Midfielders',
-        ST: 'Attackers'
-      }
-
-      return positionToGroupMap[shortPosition] || null
-    }
-
-    // Optimized player watcher with cache cleanup
-    watch(
-      () => props.player,
-      (newPlayer, oldPlayer) => {
-        // Clear caches when player changes to prevent stale data
-        if (oldPlayer && newPlayer !== oldPlayer) {
-          clearAllCaches()
-        }
-
-        flagLoadError.value = false
-        faceImageLoadError.value = false
-        shouldShowTeamLogo.value = false
-
-        if (!newPlayer?.performancePercentiles) {
-          selectedComparisonGroup.value = 'Global'
-          return
-        }
-
-        const newOptions = performanceComparisonOptions.value
-        const highestRoleGroup = getPositionGroupForHighestRole()
-
-        // Priority-based selection logic
-        if (highestRoleGroup && newOptions.some(opt => opt.value === highestRoleGroup)) {
-          selectedComparisonGroup.value = highestRoleGroup
-        } else if (newOptions.some(opt => opt.value === 'Global')) {
-          selectedComparisonGroup.value = 'Global'
-        } else if (newOptions.length > 0) {
-          selectedComparisonGroup.value = newOptions[0].value
-        } else {
-          selectedComparisonGroup.value = 'Global'
-        }
-      },
-      { immediate: true }
-    )
 
     // Watch dialog visibility to delay team logo loading
     watch(
       () => props.show,
       isShowing => {
         if (isShowing) {
-          // Delay team logo rendering until dialog is fully opened
+          // Delay team logo rendering until dialog is fully opened and data is loaded
           setTimeout(() => {
             shouldShowTeamLogo.value = true
-          }, 50) // Small delay to ensure smooth dialog opening
+          }, 100) // Increased delay to prioritize data loading
         } else {
           shouldShowTeamLogo.value = false
         }
@@ -1360,90 +1435,22 @@ export default defineComponent({
       return props.player.division
     }
 
-    const onDivisionFilterChange = async () => {
-      if (!props.datasetId || !props.player) return
 
-      try {
-        const targetDivision = getTargetDivision()
-        const requestPayload = {
-          playerName: props.player.name,
-          divisionFilter: divisionFilter.value,
-          targetDivision: targetDivision
-        }
-
-        // Instead of refetching all data, we need to fetch just updated percentiles for this player
-        // For now, let's create a dedicated API call for this
-        const url = `/api/percentiles/${props.datasetId}`
-
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(requestPayload)
-        })
-
-        if (response.ok) {
-          const updatedPercentiles = await response.json()
-
-          // Count non-empty percentile groups for debugging
-          let _nonEmptyGroups = 0
-          let _totalStats = 0
-          for (const [_groupKey, groupPercentiles] of Object.entries(updatedPercentiles)) {
-            const statsInGroup = Object.keys(groupPercentiles).length
-            const nonNegativeStats = Object.values(groupPercentiles).filter(val => val >= 0).length
-            if (nonNegativeStats > 0) {
-              _nonEmptyGroups++
-            }
-            _totalStats += statsInGroup
-          }
-
-          // Log whether this is a cache hit or miss
-          const _cacheStatus = response.headers.get('X-Cache-Status')
-
-          // Update the player's percentiles without affecting the main dataset
-          if (props.player.performancePercentiles) {
-            Object.assign(props.player.performancePercentiles, updatedPercentiles)
-
-            // Clear relevant caches to force recomputation
-            performanceStatsCache.clear()
-            performanceComparisonOptionsCache.clear()
-          }
-        } else {
-          const _errorText = await response.text()
-        }
-      } catch (_error) {}
-    }
 
     const isGoalkeeper = computed(() => {
-      if (!props.player) return false
-      return (
-        props.player.shortPositions?.includes('GK') ||
-        props.player.positionGroups?.includes('Goalkeepers') ||
-        props.player.parsedPositions?.includes('Goalkeeper')
+      if (!displayPlayer.value || !displayPlayer.value.name) return false
+      
+      // Use derived position information
+      const derivedShortPositions = deriveShortPositions(displayPlayer.value)
+      const derivedPositionGroups = derivePositionGroups(displayPlayer.value)
+      
+      const isGK = (
+        derivedShortPositions.includes('GK') ||
+        derivedPositionGroups.includes('Goalkeepers') ||
+        displayPlayer.value.parsed_positions?.includes('Goalkeeper') ||
+        displayPlayer.value.position?.includes('GK')
       )
-    })
-
-    // Memoized attribute filtering for better performance
-    const attributeCategories = computed(() => {
-      if (!props.player?.attributes) {
-        return {
-          technical: [],
-          mental: [],
-          physical: [],
-          goalkeeping: []
-        }
-      }
-
-      const playerAttributes = props.player.attributes
-      const hasAttribute = key => Object.hasOwn(playerAttributes, key)
-
-      return {
-        technical: technicalAttrsOrdered.filter(hasAttribute),
-        mental: mentalAttrsOrdered.filter(hasAttribute),
-        physical: physicalAttrsOrdered.filter(hasAttribute),
-        goalkeeping: isGoalkeeper.value ? goalkeepingAttrsOrdered.filter(hasAttribute) : []
-      }
+      return isGK
     })
 
     // Pre-defined stat configurations for better performance
@@ -1465,32 +1472,75 @@ export default defineComponent({
       { name: 'PHY', label: 'PHY' }
     ]
 
+    // FIFA stats that show immediately with loading states
     const fifaStatsToDisplay = computed(() => {
-      if (!props.player) return []
-
       const statsTemplate = isGoalkeeper.value ? goalkeepingStats : outfieldStats
-      return statsTemplate.filter(stat => props.player[stat.name] !== undefined)
+      
+      // If we have detailed player data, use it
+      if (displayPlayer.value && displayPlayer.value.name) {
+        const filteredStats = statsTemplate.filter(stat => {
+          const hasStat = displayPlayer.value[stat.name] !== undefined && displayPlayer.value[stat.name] !== null
+          return hasStat
+        })
+        return filteredStats
+      }
+      
+      // Check if we have basic player data with FIFA stats
+      if (props.player && props.player.name) {
+        const filteredStats = statsTemplate.filter(stat => {
+          const lowercaseStatName = stat.name.toLowerCase()
+          const hasStat = props.player[lowercaseStatName] !== undefined && props.player[lowercaseStatName] !== null
+          return hasStat
+        })
+        return filteredStats
+      }
+      
+      // Otherwise, show all stats with loading state
+      return statsTemplate
     })
 
+    // Basic player data for template access
+    const basicPlayer = computed(() => props.player || {})
+
+    // Get FIFA stat value with loading state
+    const getFifaStatValue = (statName) => {
+      // First try basic player data (lowercase) - this is the immediate data
+      const lowercaseStatName = statName.toLowerCase()
+      if (props.player && props.player[lowercaseStatName] !== undefined && props.player[lowercaseStatName] !== null) {
+        return props.player[lowercaseStatName]
+      }
+      
+      // Then try detailed player data (uppercase) - this is the enhanced data
+      if (displayPlayer.value && displayPlayer.value[statName] !== undefined && displayPlayer.value[statName] !== null) {
+        return displayPlayer.value[statName]
+      }
+      
+      if (isLoadingDetailedData.value) {
+        return '...'
+      }
+      
+      return '-'
+    }
+
     const _averageRatingData = computed(() => {
-      if (!props.player || !props.player.attributes || !props.player.performancePercentiles)
+      if (!displayPlayer.value || !displayPlayer.value.attributes || !displayPlayer.value.name)
         return null
-      const groupKey = selectedComparisonGroup.value
-      const percentilesForGroup = props.player.performancePercentiles[groupKey]
       if (
-        !percentilesForGroup ||
-        !Object.hasOwn(props.player.attributes, 'Av Rat') ||
-        props.player.attributes['Av Rat'] === '-' ||
-        props.player.attributes['Av Rat'] === '' ||
-        !Object.hasOwn(percentilesForGroup, 'Av Rat')
+        !Object.hasOwn(displayPlayer.value.attributes, 'Av Rat') ||
+        displayPlayer.value.attributes['Av Rat'] === '-' ||
+        displayPlayer.value.attributes['Av Rat'] === ''
       ) {
         return null
       }
+      // Get percentile for average rating from detailed player data
+      const percentilesForGroup = displayPlayer.value.performancePercentiles?.[selectedComparisonGroup.value]
+      const avgRatingPercentile = percentilesForGroup?.['Av Rat'] ?? null
+      
       return {
         key: 'Av Rat',
         name: performanceStatMap['Av Rat'] || 'Average Rating',
-        value: props.player.attributes['Av Rat'],
-        percentile: percentilesForGroup['Av Rat'] >= 0 ? percentilesForGroup['Av Rat'] : null
+        value: displayPlayer.value.attributes['Av Rat'],
+        percentile: avgRatingPercentile
       }
     })
 
@@ -1522,20 +1572,23 @@ export default defineComponent({
       for (let i = 0; i < categoryStats.length; i++) {
         const statKey = categoryStats[i]
         const rawAttributeValue = playerAttributes[statKey]
-        const percentileValue = percentilesForGroup[statKey]
 
         if (
           performanceStatMap[statKey] &&
           rawAttributeValue !== undefined &&
           rawAttributeValue !== '-' &&
-          rawAttributeValue !== '' &&
-          percentileValue !== undefined
+          rawAttributeValue !== ''
         ) {
+          // Get percentile from the detailed player data
+          const percentile = percentilesForGroup?.[statKey] ?? null
+          
+
+          
           statsInCategory.push({
             key: statKey,
             name: performanceStatMap[statKey],
             value: rawAttributeValue,
-            percentile: percentileValue >= 0 ? percentileValue : null
+            percentile: percentile
           })
         }
       }
@@ -1552,58 +1605,21 @@ export default defineComponent({
         }
       }
 
-      return statsInCategory.sort((a, b) => a.name.localeCompare(b.name))
+      const result = statsInCategory.sort((a, b) => a.name.localeCompare(b.name))
+      
+      // Manage cache size after building stats
+      manageCacheSize()
+      
+      return result
     }
 
-    const categorizedPerformanceStats = computed(() => {
-      if (!props.player?.attributes || !props.player?.performancePercentiles) {
-        return {}
-      }
 
-      const groupKey = selectedComparisonGroup.value
-      const percentilesForGroup = props.player.performancePercentiles[groupKey]
-      if (!percentilesForGroup) return {}
 
-      const cacheKey = getCacheKey(props.player, groupKey)
-
-      // Return cached result if available
-      if (performanceStatsCache.has(cacheKey)) {
-        const cached = performanceStatsCache.get(cacheKey)
-        // Move to end for LRU behavior
-        performanceStatsCache.delete(cacheKey)
-        performanceStatsCache.set(cacheKey, cached)
-        return cached
-      }
-
-      const result = {}
-      const categoryOrder = getCategoryOrder.value
-
-      for (let i = 0; i < categoryOrder.length; i++) {
-        const categoryName = categoryOrder[i]
-        const categoryStats = buildStatsForCategory(
-          categoryName,
-          percentilesForGroup,
-          props.player.attributes
-        )
-
-        if (categoryStats.length > 0) {
-          result[categoryName] = categoryStats
-        }
-      }
-
-      // Implement LRU cache eviction
-      if (performanceStatsCache.size >= maxCacheSize) {
-        const firstKey = performanceStatsCache.keys().next().value
-        performanceStatsCache.delete(firstKey)
-      }
-
-      performanceStatsCache.set(cacheKey, result)
-      return result
+    const hasAnyPerformanceData = computed(() => {
+      const keys = Object.keys(categorizedPerformanceStats.value)
+      
+      return keys.length > 0
     })
-
-    const hasAnyPerformanceData = computed(
-      () => Object.keys(categorizedPerformanceStats.value).length > 0
-    )
 
     const getUnifiedRatingClass = (value, maxScale) => {
       const numValue = Number.parseInt(value, 10)
@@ -1650,7 +1666,7 @@ export default defineComponent({
     let lastSortedRoles = []
 
     const sortedRoleSpecificOveralls = computed(() => {
-      const roleOveralls = props.player?.roleSpecificOveralls
+      const roleOveralls = displayPlayer.value?.roleSpecificOveralls
       if (!roleOveralls || roleOveralls.length === 0) {
         return []
       }
@@ -1727,14 +1743,19 @@ export default defineComponent({
     const attributeDisplayCache = new Map()
 
     const getDisplayAttribute = attrKey => {
-      if (!props.player) return '-'
+      // Show loading state if detailed data is still loading
+      if (isLoadingDetailedData.value) {
+        return '...'
+      }
+      
+      if (!displayPlayer.value) return '-'
 
-      const cacheKey = `${attrKey}-${props.player.UID || props.player.uid}-${showAttributeMasks.value}`
+      const cacheKey = `${attrKey}-${displayPlayer.value.UID || displayPlayer.value.uid}-${showAttributeMasks.value}`
       if (attributeDisplayCache.has(cacheKey)) {
         return attributeDisplayCache.get(cacheKey)
       }
 
-      const rawValue = props.player.attributes?.[attrKey]
+      const rawValue = displayPlayer.value.attributes?.[attrKey]
       if (rawValue === undefined) return '-'
 
       let displayValue
@@ -1743,7 +1764,8 @@ export default defineComponent({
       } else if (showAttributeMasks.value && String(rawValue).includes('-')) {
         displayValue = rawValue
       } else {
-        const numericValue = props.player.numericAttributes?.[attrKey]
+        // Use numericAttributes if available, otherwise use the raw value
+        const numericValue = displayPlayer.value.numericAttributes?.[attrKey]
         displayValue = numericValue !== undefined ? numericValue : rawValue
       }
 
@@ -1756,6 +1778,832 @@ export default defineComponent({
       return displayValue
     }
 
+    // Force recomputation when player changes
+    watch(
+      () => props.player,
+      _newPlayer => {
+        percentileUpdateCounter.value++
+        percentileDataTrigger.value++
+        forceRecompute.value++
+      },
+      { immediate: true }
+    )
+
+
+
+    // Division filter change handler - moved after reactive variables are declared
+    const onDivisionFilterChange = async () => {
+      if (!props.datasetId || !displayPlayer.value) return
+
+      try {
+        // Update percentiles for the current player with new division filter
+        const playerUID = displayPlayer.value.uid || displayPlayer.value.UID
+        if (playerUID) {
+          // Preserve the current comparison group
+          const currentComparisonGroup = selectedComparisonGroup.value
+          
+          // Handle the 'same' division filter by converting it to the player's actual division
+          let effectiveDivision = divisionFilter.value
+          if (divisionFilter.value === 'same') {
+            const targetDivision = getTargetDivision()
+            if (targetDivision) {
+              effectiveDivision = targetDivision
+            } else {
+              // If no target division is available, fall back to 'same'
+              effectiveDivision = 'same'
+            }
+          }
+          
+          const updatedPercentiles = await fetchPlayerPercentiles(
+            playerUID,
+            effectiveDivision,
+            currentComparisonGroup
+          )
+          
+          if (updatedPercentiles) {
+            // Replace the percentiles instead of merging them
+            if (detailedPlayerData.value) {
+              detailedPlayerData.value.performancePercentiles = updatedPercentiles
+              // Force reactivity by incrementing the counters
+              percentileUpdateCounter.value++
+              percentileDataTrigger.value++
+              forceRecompute.value++
+            }
+            // Also update props.player if it exists
+            if (props.player) {
+              props.player.performancePercentiles = updatedPercentiles
+            }
+            // Clear all caches to force recomputation
+            performanceStatsCache.clear()
+            performanceComparisonOptionsCache.clear()
+          }
+        }
+      } catch (error) {
+        logger.error('Failed to update percentiles on division filter change', { error: error.message })
+      }
+    }
+
+    // Categorized performance stats computed property - moved after reactive variables are declared
+    const categorizedPerformanceStats = computed(() => {
+      // Force reactivity by accessing the detailed player data and the update counter
+      const player = displayPlayer.value
+      const playerName = player?.name
+      const playerUID = player?.uid || player?.UID
+      const playerAttributes = player?.attributes
+      const performancePercentiles = player?.performancePercentiles
+      const updateCounter = percentileUpdateCounter.value // Force dependency on percentile updates
+      const dataTrigger = percentileDataTrigger.value // Force dependency on data changes
+      const recomputeTrigger = forceRecompute.value // Force dependency on template re-render
+      
+      // Force dependency on forceRecompute to ensure re-evaluation
+      const forceRecomputeValue = forceRecompute.value
+      
+      // Force reactivity by accessing the actual percentile data structure
+      const percentilesHash = performancePercentiles ? JSON.stringify(Object.keys(performancePercentiles).sort()) : ''
+      
+      // Force reactivity by accessing the actual percentile values
+      const percentileValues = performancePercentiles ? Object.values(performancePercentiles).slice(0, 3) : []
+      
+      // Force dependency on performance percentiles by accessing specific values
+      const percentilesKeys = performancePercentiles ? Object.keys(performancePercentiles) : []
+      const hasPercentiles = percentilesKeys.length > 0
+      
+      // Force reactivity by accessing the specific percentile data for the selected group
+      const selectedGroupData = performancePercentiles?.[selectedComparisonGroup.value]
+      const selectedGroupKeys = selectedGroupData ? Object.keys(selectedGroupData) : []
+      
+      if (!playerAttributes || !playerName || !playerUID) {
+        return {}
+      }
+
+      // Use full attributes from detailed player data
+      
+      // Get percentiles from the detailed player data
+      const percentilesForGroup = performancePercentiles?.[selectedComparisonGroup.value]
+      
+      // Force reactivity by accessing the percentile data structure
+      const availableGroups = performancePercentiles ? Object.keys(performancePercentiles) : []
+      
+      // Check if we have percentile data for the selected group
+      if (!percentilesForGroup || Object.keys(percentilesForGroup).length === 0) {
+        return {}
+      }
+      
+      // Force reactivity by accessing the specific percentile values
+      const percentileKeys = Object.keys(percentilesForGroup)
+      if (percentileKeys.length === 0) {
+        return {}
+      }
+      
+      // Access a few percentile values to ensure Vue tracks the dependency
+      const samplePercentiles = percentileKeys.slice(0, 3).map(key => percentilesForGroup[key])
+      if (samplePercentiles.some(p => p === undefined || p === null)) {
+        return {}
+      }
+      
+      // Force reactivity by accessing the actual percentile values
+      // This ensures Vue tracks changes to the specific percentile data
+      const sampleValues = samplePercentiles.map(p => p?.toString() || '0')
+
+      // Create a more specific cache key that includes player UID to ensure cache invalidation
+      const cacheKey = `${playerUID}-${selectedComparisonGroup.value}-${divisionFilter.value}-${updateCounter}-${dataTrigger}-${recomputeTrigger}-${percentilesHash}-${selectedGroupKeys.length}`
+
+      // Return cached result if available
+      if (performanceStatsCache.has(cacheKey)) {
+        const cached = performanceStatsCache.get(cacheKey)
+        // Move to end for LRU behavior
+        performanceStatsCache.delete(cacheKey)
+        performanceStatsCache.set(cacheKey, cached)
+        return cached
+      }
+
+      const result = {}
+      const categoryOrder = getCategoryOrder.value
+
+      for (let i = 0; i < categoryOrder.length; i++) {
+        const categoryName = categoryOrder[i]
+        const categoryStats = buildStatsForCategory(
+          categoryName,
+          percentilesForGroup, // Pass percentiles from detailed player data
+          playerAttributes
+        )
+
+        if (categoryStats.length > 0) {
+          result[categoryName] = categoryStats
+        }
+      }
+
+      // Implement LRU cache eviction
+      if (performanceStatsCache.size >= maxCacheSize) {
+        const firstKey = performanceStatsCache.keys().next().value
+        performanceStatsCache.delete(firstKey)
+      }
+
+      performanceStatsCache.set(cacheKey, result)
+      return result
+    })
+
+          // Function to fetch percentiles for a specific player using the new API
+      const fetchPlayerPercentiles = async (playerUID, compareDivision = 'same', comparePosition = 'Global') => {
+        if (!props.datasetId || !playerUID) return null
+
+        try {
+          const requestPayload = {
+            playerUID: playerUID.toString(),
+            compareDivision: compareDivision,
+            comparePosition: comparePosition
+          }
+
+          const url = `/api/player-percentiles/${props.datasetId}`
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestPayload)
+          })
+
+          if (response.ok) {
+            const percentiles = await response.json()
+            
+            // Validate the response
+            if (!percentiles || typeof percentiles !== 'object') {
+              throw new Error('Invalid percentile response format')
+            }
+            
+
+            
+            return percentiles
+          } else {
+            // Log the error response
+            const errorText = await response.text()
+            logger.error('Percentile fetch failed', {
+              status: response.status,
+              statusText: response.statusText,
+              error_text: errorText
+            })
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+          }
+        } catch (error) {
+          logger.error('Failed to fetch percentiles', { 
+            error: error?.message || 'Unknown error',
+            player_uid: playerUID,
+            stack: error?.stack || 'No stack trace',
+            error_type: error?.constructor?.name || 'Unknown'
+          })
+          return null
+        }
+      }
+
+    // Function to fetch detailed player data
+    const fetchDetailedPlayerData = async () => {
+      console.log('fetchDetailedPlayerData called with:', {
+        hasPlayer: !!props.player,
+        hasDatasetId: !!props.datasetId,
+        playerName: props.player?.name,
+        playerUID: props.player?.uid || props.player?.UID
+      })
+      
+      if (!props.player || !props.datasetId) {
+        console.log('fetchDetailedPlayerData early return - missing player or datasetId')
+        return
+      }
+
+      const startTime = performance.now()
+      isLoadingDetailedData.value = true
+      detailedDataError.value = null
+
+      try {
+        // Check if the player already has detailed data (from performance API)
+        console.log('Checking player data structure:', {
+          hasAttributes: !!props.player.attributes,
+          hasPerformancePercentiles: !!props.player.performancePercentiles,
+          attributesKeys: props.player.attributes ? Object.keys(props.player.attributes) : [],
+          performancePercentilesKeys: props.player.performancePercentiles ? Object.keys(props.player.performancePercentiles) : [],
+          playerKeys: Object.keys(props.player)
+        })
+        
+        if (props.player.attributes && props.player.performancePercentiles) {
+          // Use the pre-loaded data from performance API
+          detailedPlayerData.value = props.player
+          const loadTime = performance.now() - startTime
+
+          
+          // Clear caches to force recomputation
+          performanceStatsCache.clear()
+          performanceComparisonOptionsCache.clear()
+        } else {
+                  // OPTIMIZATION: Check cache first
+        const playerUID = props.player.uid || props.player.UID
+        const cacheStartTime = performance.now()
+        const cachedData = getCachedPlayerData(props.datasetId, playerUID)
+        const cacheTime = performance.now() - cacheStartTime
+        
+        if (cachedData) {
+          detailedPlayerData.value = cachedData
+          const loadTime = performance.now() - startTime
+
+          
+          // Cache hit - no need to fetch from API
+          return
+        } else {
+            // OPTIMIZATION: Fetch player data and percentiles in parallel
+            const playerUID = props.player.uid || props.player.UID
+            
+            // Handle the 'same' division filter by converting it to the player's actual division
+            let effectiveDivision = divisionFilter.value
+            if (divisionFilter.value === 'same') {
+              const targetDivision = props.player?.division
+              if (targetDivision) {
+                effectiveDivision = targetDivision
+              } else {
+                // If no target division is available, fall back to 'same'
+                effectiveDivision = 'same'
+              }
+            }
+
+            // OPTIMIZATION: Parallel API calls for better performance
+            const apiStartTime = performance.now()
+
+
+            const [playerResult, percentileResult] = await Promise.allSettled([
+              fetchFullPlayerStats(props.datasetId, playerUID),
+              fetchPlayerPercentiles(playerUID, effectiveDivision, selectedComparisonGroup.value)
+            ])
+            
+            const apiTime = performance.now() - apiStartTime
+
+          
+          // Handle player data result
+          if (playerResult.status === 'fulfilled' && playerResult.value.format === 'json' && playerResult.value.data.player) {
+            console.log('API returned player data:', {
+              dataKeys: Object.keys(playerResult.value.data),
+              playerKeys: playerResult.value.data.player ? Object.keys(playerResult.value.data.player) : [],
+              hasAttributes: playerResult.value.data.player?.attributes ? Object.keys(playerResult.value.data.player.attributes).length : 0,
+              hasPerformancePercentiles: playerResult.value.data.player?.performancePercentiles ? Object.keys(playerResult.value.data.player.performancePercentiles).length : 0
+            })
+            
+            detailedPlayerData.value = playerResult.value.data.player
+            const playerDataTime = performance.now() - apiStartTime
+
+            
+            // Cache the player data for future use
+            setCachedPlayerData(props.datasetId, playerUID, playerResult.value.data.player)
+          } else {
+            console.error('Failed to fetch player data:', {
+              status: playerResult.status,
+              format: playerResult.value?.format,
+              hasData: !!playerResult.value?.data,
+              hasPlayer: !!playerResult.value?.data?.player
+            })
+            throw new Error('Failed to fetch player data')
+          }
+          
+          // Handle percentile result
+          if (percentileResult.status === 'fulfilled' && percentileResult.value && detailedPlayerData.value) {
+            if (!detailedPlayerData.value.performancePercentiles) {
+              detailedPlayerData.value.performancePercentiles = {}
+            }
+            Object.assign(detailedPlayerData.value.performancePercentiles, percentileResult.value)
+            
+            // Force reactivity by incrementing the counters
+            percentileUpdateCounter.value++
+            percentileDataTrigger.value++
+            forceRecompute.value++
+            
+            const percentileTime = performance.now() - apiStartTime
+
+          } else {
+            logger.warn('Failed to fetch percentiles, will retry', {
+              player_name: detailedPlayerData.value?.name,
+              error: percentileResult.reason
+            })
+          }
+          
+          // Clear caches to force recomputation
+          performanceStatsCache.clear()
+          performanceComparisonOptionsCache.clear()
+        }
+        
+        const totalTime = performance.now() - startTime
+
+      }
+      } catch (error) {
+        const errorTime = performance.now() - startTime
+        detailedDataError.value = error.message
+        logger.error('Failed to fetch detailed player data', { 
+          error: error.message,
+          time_ms: Math.round(errorTime)
+        })
+      } finally {
+        isLoadingDetailedData.value = false
+      }
+    }
+
+    // Watch for player changes to fetch detailed data with debouncing
+    let fetchTimeout = null
+    watch(() => props.player, (newPlayer) => {
+    //   console.log('PlayerDetailDialog watch triggered:', {
+    //     hasNewPlayer: !!newPlayer,
+    //     playerName: newPlayer?.name,
+    //     playerUID: newPlayer?.uid || newPlayer?.UID
+    //   })
+      
+      if (newPlayer && (newPlayer.uid || newPlayer.UID)) {
+        console.log('Setting up fetchDetailedPlayerData timeout')
+        // Clear any existing timeout to prevent rapid successive calls
+        if (fetchTimeout) {
+          clearTimeout(fetchTimeout)
+        }
+        
+        // Debounce the fetch to prevent rapid successive API calls
+        fetchTimeout = setTimeout(() => {
+          console.log('fetchDetailedPlayerData timeout triggered')
+          const dialogOpenStartTime = performance.now()
+
+          
+          // Reset detailed data when player changes
+          detailedPlayerData.value = null
+          detailedDataError.value = null
+          
+          // Fetch detailed data with optimized loading
+          fetchDetailedPlayerData().catch((error) => {
+            const errorTime = performance.now() - dialogOpenStartTime
+            console.error('PlayerDetailDialog failed to load', {
+              player_name: newPlayer.name,
+              player_uid: newPlayer.uid || newPlayer.UID,
+              error: error.message,
+              time_ms: Math.round(errorTime)
+            })
+          })
+        }, 50) // Small debounce to prevent rapid successive calls
+      }
+    }, { immediate: true })
+
+    // Force recomputation when displayPlayer changes
+    watch(
+      () => displayPlayer.value,
+      (newPlayer, oldPlayer) => {
+        percentileUpdateCounter.value++
+        percentileDataTrigger.value++
+        forceRecompute.value++
+      }
+    )
+
+    // Force recomputation when forceRecompute changes
+    watch(
+      () => forceRecompute.value,
+      (newValue, oldValue) => {
+        // Force recomputation when forceRecompute changes
+      }
+    )
+
+    // Watch for changes in categorizedPerformanceStats
+    watch(
+      () => categorizedPerformanceStats.value,
+      (newStats, oldStats) => {
+        // Stats changed
+      },
+      { deep: true }
+    )
+
+    // Watch for changes in hasAnyPerformanceData
+    watch(
+      () => hasAnyPerformanceData.value,
+      (newValue, oldValue) => {
+        // Performance data availability changed
+      }
+    )
+
+    // Optimized player watcher with cache cleanup - moved after displayPlayer definition
+    watch(
+      () => props.player,
+      (newPlayer, oldPlayer) => {
+        // Clear caches when player changes to prevent stale data
+        if (oldPlayer && newPlayer !== oldPlayer) {
+          clearAllCaches()
+        }
+
+        flagLoadError.value = false
+        faceImageLoadError.value = false
+        shouldShowTeamLogo.value = false
+
+        // Reset to Global initially when player changes
+        selectedComparisonGroup.value = 'Global'
+      },
+      { immediate: true }
+    )
+
+    // Watch for detailed player data changes to update comparison group
+    watch(
+      () => detailedPlayerData.value,
+      (newData, oldData) => {
+        // Clear performance stats cache when detailed player data changes
+        performanceStatsCache.clear()
+        
+        // Reset loading state when detailed player data changes
+        if (newData !== oldData) {
+          // Force recomputation to ensure loading state updates
+          percentileUpdateCounter.value++
+          percentileDataTrigger.value++
+          forceRecompute.value++
+        }
+
+        // Update comparison group when detailed data is available
+        if (newData?.performancePercentiles) {
+          updateComparisonGroupForPlayer(newData)
+        }
+      }
+    )
+
+    // Function to update comparison group for a specific player
+    const updateComparisonGroupForPlayer = (player) => {
+      if (!player?.performancePercentiles) {
+        selectedComparisonGroup.value = 'Global'
+        return
+      }
+
+      const newOptions = performanceComparisonOptions.value
+      const highestRoleGroup = getPositionGroupForHighestRole()
+
+      // Get the player's available positions
+      const playerPositions = deriveShortPositions(player)
+      const playerPositionGroups = derivePositionGroups(player)
+
+      // Priority-based selection logic
+      // 1. Try to use the highest-rated role's position group if available
+      if (highestRoleGroup && newOptions.some(opt => opt.value === highestRoleGroup)) {
+        selectedComparisonGroup.value = highestRoleGroup
+      } 
+      // 2. Try to use the first available position group that the player can play
+      else {
+        const availablePlayerGroup = newOptions.find(opt => 
+          playerPositionGroups.includes(opt.value)
+        )
+        if (availablePlayerGroup) {
+          selectedComparisonGroup.value = availablePlayerGroup.value
+        }
+        // 3. Fall back to Global if available
+        else if (newOptions.some(opt => opt.value === 'Global')) {
+          selectedComparisonGroup.value = 'Global'
+        }
+        // 4. Use first available option
+        else if (newOptions.length > 0) {
+          selectedComparisonGroup.value = newOptions[0].value
+        }
+        // 5. Default to Global
+        else {
+          selectedComparisonGroup.value = 'Global'
+        }
+      }
+    }
+
+    // Watch for comparison group changes to clear performance stats cache
+    watch(
+      () => selectedComparisonGroup.value,
+      async (newGroup, oldGroup) => {
+        // Clear performance stats cache when comparison group changes
+        performanceStatsCache.clear()
+        
+        // Fetch new percentiles for the new comparison group
+        if (newGroup !== oldGroup && displayPlayer.value && props.datasetId) {
+          const playerUID = displayPlayer.value.uid || displayPlayer.value.UID
+          if (playerUID) {
+            // Handle the 'same' division filter by converting it to the player's actual division
+            let effectiveDivision = divisionFilter.value
+            if (divisionFilter.value === 'same') {
+              const targetDivision = displayPlayer.value?.division
+              if (targetDivision) {
+                effectiveDivision = targetDivision
+              } else {
+                // If no target division is available, fall back to 'same'
+                effectiveDivision = 'same'
+              }
+            }
+            
+            const updatedPercentiles = await fetchPlayerPercentiles(
+              playerUID,
+              effectiveDivision,
+              newGroup
+            )
+            
+            if (updatedPercentiles) {
+              // Replace the percentiles
+              if (detailedPlayerData.value) {
+                detailedPlayerData.value.performancePercentiles = updatedPercentiles
+                // Force reactivity
+                percentileUpdateCounter.value++
+                percentileDataTrigger.value++
+                forceRecompute.value++
+              }
+              if (props.player) {
+                props.player.performancePercentiles = updatedPercentiles
+              }
+              performanceStatsCache.clear()
+              performanceComparisonOptionsCache.clear()
+            }
+          }
+        }
+      }
+    )
+
+    // Watch for division filter changes to clear performance stats cache
+    watch(
+      () => divisionFilter.value,
+      async (newFilter, oldFilter) => {
+        // Clear performance stats cache when division filter changes
+        performanceStatsCache.clear()
+        
+        // Call the division filter change handler
+        if (newFilter !== oldFilter) {
+          await onDivisionFilterChange()
+        }
+      }
+    )
+
+    // Watch for detailed player data changes to clear performance stats cache
+    watch(
+      () => detailedPlayerData.value,
+      (newData, oldData) => {
+        // Clear performance stats cache when detailed player data changes
+        performanceStatsCache.clear()
+        
+        // Reset loading state when detailed player data changes
+        if (newData !== oldData) {
+          // Force recomputation to ensure loading state updates
+          percentileUpdateCounter.value++
+          percentileDataTrigger.value++
+          forceRecompute.value++
+        }
+      }
+    )
+    
+    // Watch for performance percentiles changes to increment counter
+    watch(
+      () => detailedPlayerData.value?.performancePercentiles,
+      (newPercentiles) => {
+        if (newPercentiles) {
+          // Force reactivity by incrementing the counters
+          percentileUpdateCounter.value++
+          percentileDataTrigger.value++
+          forceRecompute.value++
+        }
+      },
+      { deep: true }
+    )
+
+    // Helper functions to derive position information from available data
+    const deriveShortPositions = (player) => {
+      const positions = []
+      
+      // Extract from position field (e.g., "AM (LC), ST (C)" -> ["AM", "ST"])
+      if (player.position) {
+        const positionParts = player.position.split(',').map(p => p.trim())
+        for (const part of positionParts) {
+          const shortPos = part.split(' ')[0] // Extract "AM" from "AM (LC)"
+          if (shortPos && !positions.includes(shortPos)) {
+            positions.push(shortPos)
+          }
+        }
+      }
+      
+      // Extract from role names in roleSpecificOveralls
+      if (player.roleSpecificOveralls) {
+        for (const role of player.roleSpecificOveralls) {
+          const shortPos = role.roleName.split(' - ')[0] // Extract "AMC" from "AMC - Trequartista - Attack"
+          if (shortPos && !positions.includes(shortPos)) {
+            positions.push(shortPos)
+          }
+        }
+      }
+      
+      return positions
+    }
+
+    const derivePositionGroups = (player) => {
+      const shortPositions = deriveShortPositions(player)
+      const groups = []
+      
+      // Map short positions to broad groups
+      const positionToGroupMap = {
+        GK: 'Goalkeepers',
+        SW: 'Defenders',
+        DR: 'Defenders',
+        DL: 'Defenders',
+        DC: 'Defenders',
+        WBR: 'Defenders',
+        WBL: 'Defenders',
+        DM: 'Midfielders',
+        MC: 'Midfielders',
+        MR: 'Midfielders',
+        ML: 'Midfielders',
+        AMC: 'Midfielders',
+        AMR: 'Midfielders',
+        AML: 'Midfielders',
+        ST: 'Attackers'
+      }
+      
+      for (const pos of shortPositions) {
+        const group = positionToGroupMap[pos]
+        if (group && !groups.includes(group)) {
+          groups.push(group)
+        }
+      }
+      
+      return groups
+    }
+
+    // Memoized performance comparison options with better caching - moved after displayPlayer definition
+    const performanceComparisonOptionsCache = new Map()
+
+    const performanceComparisonOptions = computed(() => {
+      if (!displayPlayer.value) {
+        return []
+      }
+
+      const player = displayPlayer.value
+      
+      // Derive position information from available data
+      const derivedShortPositions = deriveShortPositions(player)
+      const derivedPositionGroups = derivePositionGroups(player)
+      
+      const cacheKey = `${getCacheKey(player, 'options')}-${JSON.stringify(derivedShortPositions)}-${JSON.stringify(derivedPositionGroups)}`
+
+      if (performanceComparisonOptionsCache.has(cacheKey)) {
+        return performanceComparisonOptionsCache.get(cacheKey)
+      }
+
+      const playerShortPositions = derivedShortPositions
+      const playerBroadGroups = derivedPositionGroups
+      const options = []
+
+      // Pre-create sets for faster lookups
+      const broadGroupsSet = new Set(playerBroadGroups)
+      const shortPositionsSet = new Set(playerShortPositions)
+      const addedValues = new Set()
+
+      const preferredOrder = [
+        'Global',
+        'Goalkeepers',
+        'Defenders',
+        'Midfielders',
+        'Attackers',
+        'Full-backs',
+        'Centre-backs',
+        'Wing-backs',
+        'Defensive Midfielders',
+        'Central Midfielders',
+        'Wide Midfielders',
+        'Attacking Midfielders (Central)',
+        'Wingers',
+        'Strikers'
+      ]
+
+      const shouldIncludeGroup = groupKey => {
+        if (groupKey === 'Global') return true
+
+        // Check broad groups
+        if (broadGroupsSet.has(groupKey)) return true
+
+        // Check detailed groups
+        const requiredPositions = detailedGroupToShortPositionsMap[groupKey]
+        if (requiredPositions) {
+          return requiredPositions.some(pos => shortPositionsSet.has(pos))
+        }
+
+        return false
+      }
+
+      // Process preferred order groups - don't check if they exist in current percentiles
+      for (let i = 0; i < preferredOrder.length; i++) {
+        const groupKey = preferredOrder[i]
+        if (
+          shouldIncludeGroup(groupKey) &&
+          !addedValues.has(groupKey)
+        ) {
+          options.push({
+            label: groupKey === 'Global' ? 'Overall Dataset' : `vs. ${groupKey}`,
+            value: groupKey
+          })
+          addedValues.add(groupKey)
+        }
+      }
+
+      // Clean up cache if it gets too large
+      if (performanceComparisonOptionsCache.size > 20) {
+        performanceComparisonOptionsCache.clear()
+      }
+
+      performanceComparisonOptionsCache.set(cacheKey, options)
+      return options
+    })
+
+    const getPositionGroupForHighestRole = () => {
+      if (!displayPlayer.value?.roleSpecificOveralls?.length) {
+        return null
+      }
+
+      // Find the role with the highest overall rating
+      const highestRole = displayPlayer.value.roleSpecificOveralls.reduce((max, role) =>
+        role.score > max.score ? role : max
+      )
+
+      // Extract the short position from the role name (e.g., "DM" from "DM - Defensive Midfielder - Support")
+      const shortPosition = highestRole.roleName.split(' - ')[0]
+
+      // Map short position to detailed group first
+      const detailedGroup = Object.entries(detailedGroupToShortPositionsMap).find(
+        ([_groupName, positions]) => positions.includes(shortPosition)
+      )
+
+      if (detailedGroup) {
+        return detailedGroup[0] // Return the detailed group name
+      }
+
+      // Fallback to broad position group
+      const positionToGroupMap = {
+        GK: 'Goalkeepers',
+        SW: 'Defenders',
+        DR: 'Defenders',
+        DL: 'Defenders',
+        DC: 'Defenders',
+        WBR: 'Defenders',
+        WBL: 'Defenders', // Wing-backs are in defenders for broad groups
+        DM: 'Midfielders',
+        MC: 'Midfielders',
+        MR: 'Midfielders',
+        ML: 'Midfielders',
+        AMC: 'Midfielders',
+        AMR: 'Midfielders',
+        AML: 'Midfielders',
+        ST: 'Attackers'
+      }
+
+      return positionToGroupMap[shortPosition] || null
+    }
+
+    // Updated attribute categories to use displayPlayer
+    const attributeCategories = computed(() => {
+      if (!displayPlayer.value?.attributes || !displayPlayer.value.name) {
+        return {
+          technical: [],
+          mental: [],
+          physical: [],
+          goalkeeping: []
+        }
+      }
+
+      const playerAttributes = displayPlayer.value.attributes
+      const hasAttribute = key => Object.hasOwn(playerAttributes, key)
+
+      return {
+        technical: technicalAttrsOrdered.filter(hasAttribute),
+        mental: mentalAttrsOrdered.filter(hasAttribute),
+        physical: physicalAttrsOrdered.filter(hasAttribute),
+        goalkeeping: isGoalkeeper.value ? goalkeepingAttrsOrdered.filter(hasAttribute) : []
+      }
+    })
+
     return {
       qInstance,
       attributeCategories,
@@ -1766,6 +2614,8 @@ export default defineComponent({
       getUnifiedRatingClass,
       getBarFillStyle,
       fifaStatsToDisplay,
+      getFifaStatValue,
+      basicPlayer,
       sortedRoleSpecificOveralls,
       isGoalkeeper,
       formattedTransferValue,
@@ -1788,6 +2638,12 @@ export default defineComponent({
       getDisplayAttribute,
       shouldShowTeamLogo,
 
+      // Attribute order arrays for loading placeholders
+      technicalAttrsOrdered,
+      mentalAttrsOrdered,
+      physicalAttrsOrdered,
+      goalkeepingAttrsOrdered,
+
       // Percentile retry functionality
       isLoadingPercentiles,
       hasValidPercentiles,
@@ -1795,7 +2651,16 @@ export default defineComponent({
       showLoadingState,
       percentilesRetryCount,
       maxRetries,
-      manualRetry
+      manualRetry,
+
+      // Detailed player data
+      detailedPlayerData,
+      isLoadingDetailedData,
+      detailedDataError,
+      displayPlayer,
+      forceRecompute,
+      updateComparisonGroupForPlayer,
+      isDarkMode // <-- add this line
     }
   }
 })
@@ -3109,6 +3974,35 @@ $breakpoint-xs-max: 599px !default;
         }
     }
 }
+
+.loading-attribute {
+    opacity: 0.6;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.loading-attribute-skeleton {
+    border-radius: 4px;
+    opacity: 0.7;
+    animation: skeleton-pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 0.6;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+@keyframes skeleton-pulse {
+    0%, 100% {
+        opacity: 0.4;
+    }
+    50% {
+        opacity: 0.8;
+    }
+}
 </style>
 
 <style lang="scss">
@@ -3170,5 +4064,33 @@ body.body--dark .q-page-container,
 body.body--dark .q-page {
     background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
 }
+
+/* Dialog card background fix for dark/light mode */
+.dark-dialog .player-detail-dialog-card {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+  color: #fff !important;
+}
+.light-dialog .player-detail-dialog-card {
+  background: #fff !important;
+  color: #222 !important;
+}
+
+/* Force dark background for the main card when it has bg-dark class - HIGH SPECIFICITY */
+.q-dialog .q-card.player-detail-dialog-card.bg-dark,
+.q-dialog .q-card.player-detail-dialog-card.modern-dialog-card.bg-dark,
+.dark-dialog .q-card.player-detail-dialog-card,
+.dark-dialog .q-card.player-detail-dialog-card.modern-dialog-card {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+  color: #fff !important;
+  border: none !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Override Quasar's bg-dark class specifically for our card */
+.q-card.player-detail-dialog-card.bg-dark {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+  color: #fff !important;
+}
+
 </style>
 

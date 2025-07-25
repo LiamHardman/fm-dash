@@ -4,10 +4,82 @@ import vue from '@vitejs/plugin-vue'
 import { visualizer } from 'rollup-plugin-visualizer'
 import { defineConfig } from 'vite'
 
+// Custom plugin for chunk size analysis and warnings
+function chunkSizeAnalyzer() {
+  return {
+    name: 'chunk-size-analyzer',
+    generateBundle(options, bundle) {
+      const chunkSizeLimit = 500 * 1024 // 500KB in bytes
+      const criticalChunkLimit = 300 * 1024 // 300KB for critical chunks
+
+      Object.entries(bundle).forEach(([fileName, chunk]) => {
+        if (chunk.type === 'chunk') {
+          const size = Buffer.byteLength(chunk.code, 'utf8')
+          const sizeKB = Math.round(size / 1024)
+
+          // Check for oversized chunks
+          if (size > chunkSizeLimit) {
+            console.warn(`⚠️  Large chunk detected: ${fileName} (${sizeKB}KB)`)
+            console.warn(`   Consider splitting this chunk further or lazy loading components`)
+          }
+
+          // Check for critical chunks that should be smaller
+          if (chunk.isEntry && size > criticalChunkLimit) {
+            console.warn(`⚠️  Large entry chunk: ${fileName} (${sizeKB}KB)`)
+            console.warn(`   Entry chunks should be smaller for faster initial loading`)
+          }
+
+          // Log chunk information in development
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`📦 Chunk: ${fileName} - ${sizeKB}KB`)
+          }
+        }
+      })
+
+      // Generate chunk size report
+      const chunks = Object.entries(bundle)
+        .filter(([, chunk]) => chunk.type === 'chunk')
+        .map(([fileName, chunk]) => ({
+          name: fileName,
+          size: Buffer.byteLength(chunk.code, 'utf8'),
+          isEntry: chunk.isEntry
+        }))
+        .sort((a, b) => b.size - a.size)
+
+      const totalSize = chunks.reduce((sum, chunk) => sum + chunk.size, 0)
+
+      console.log('\n📊 Bundle Analysis:')
+      console.log(`Total bundle size: ${Math.round(totalSize / 1024)}KB`)
+      console.log(`Number of chunks: ${chunks.length}`)
+      console.log('\nLargest chunks:')
+      chunks.slice(0, 5).forEach(chunk => {
+        const sizeKB = Math.round(chunk.size / 1024)
+        const type = chunk.isEntry ? '(entry)' : ''
+        console.log(`  ${chunk.name}: ${sizeKB}KB ${type}`)
+      })
+    }
+  }
+}
+
 export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src')
+    }
+  },
+  optimizeDeps: {
+    include: [
+      'vue',
+      'vue-router',
+      'pinia',
+      '@quasar/extras',
+      'quasar'
+    ],
+    // Force include problematic modules to prevent initialization issues
+    force: true,
+    // Ensure proper module resolution
+    esbuildOptions: {
+      target: 'esnext'
     }
   },
   plugins: [
@@ -17,6 +89,8 @@ export default defineConfig({
     quasar({
       sassVariables: '@/quasar-variables.scss'
     }),
+    // Chunk size analyzer for build optimization
+    chunkSizeAnalyzer(),
     // Bundle analyzer - only in development or when explicitly requested
     (process.env.ANALYZE === 'true' || process.env.NODE_ENV === 'development') &&
       visualizer({
@@ -30,19 +104,140 @@ export default defineConfig({
   build: {
     // Optimize build output with advanced chunking
     rollupOptions: {
+      // Ensure proper module resolution
+      preserveEntrySignatures: 'strict',
+      // Handle ES module initialization issues
+      onwarn(warning, warn) {
+        // Suppress circular dependency warnings for now
+        if (warning.code === 'CIRCULAR_DEPENDENCY') {
+          return
+        }
+        warn(warning)
+      },
       output: {
-        // Manual chunks for better caching and loading
-        manualChunks: {
-          // Core Vue framework
-          'vue-core': ['vue', 'vue-router', 'pinia'],
-          // UI framework
-          'ui-framework': ['quasar'],
-          // Charts and visualization
-          charts: ['chart.js', 'vue-chartjs', 'chartjs-plugin-annotation'],
-          // Utilities and composables
-          utils: ['@vueuse/core'],
-          // Large vendor libraries
-          'vendor-large': []
+        // Advanced manual chunks for optimal caching and loading
+        manualChunks: id => {
+          // Store modules - load early and separately to prevent initialization issues
+          if (id.includes('stores/')) {
+            if (id.includes('optimizedPlayerStore.js')) {
+              return 'store-optimized-player'
+            }
+            if (id.includes('playerStore.js')) {
+              return 'store-player'
+            }
+            if (id.includes('uiStore.js')) {
+              return 'store-ui'
+            }
+            if (id.includes('wishlistStore.js')) {
+              return 'store-wishlist'
+            }
+            return 'store-misc'
+          }
+
+          // Route-based chunks for major pages
+          if (
+            id.includes('pages/PlayerUploadPage.vue') ||
+            id.includes('components/InteractiveUploadLoader.vue')
+          ) {
+            return 'page-upload'
+          }
+          if (
+            id.includes('pages/DatasetPage.vue') ||
+            id.includes('components/PlayerTableRow.vue')
+          ) {
+            return 'page-player-table'
+          }
+          // Keep PlayerDataTable in a separate chunk to avoid initialization issues
+          if (id.includes('components/PlayerDataTable.vue')) {
+            return 'component-player-data-table'
+          }
+          if (id.includes('pages/TeamViewPage.vue') || id.includes('components/PitchDisplay.vue')) {
+            return 'page-team-view'
+          }
+          if (
+            id.includes('pages/PerformancePage.vue') ||
+            id.includes('components/PerformanceMonitor.vue')
+          ) {
+            return 'page-performance'
+          }
+
+          // Vendor chunk splitting
+          if (id.includes('node_modules')) {
+            // Core Vue framework - highest priority, keep small
+            if (
+              id.includes('vue/dist/vue.esm') ||
+              id.includes('vue-router/dist') ||
+              id.includes('pinia/dist')
+            ) {
+              return 'vendor-vue-core'
+            }
+
+            // Quasar UI framework - keep together to prevent initialization issues
+            if (id.includes('quasar') || id.includes('@quasar/extras')) {
+              return 'vendor-quasar'
+            }
+
+            // Charts and visualization - separate by library to reduce size
+            if (id.includes('chart.js/dist') || id.includes('chart.js/auto')) {
+              return 'vendor-chartjs-core'
+            }
+            if (id.includes('vue-chartjs')) {
+              return 'vendor-vue-chartjs'
+            }
+            if (id.includes('chartjs-plugin')) {
+              return 'vendor-chartjs-plugins'
+            }
+
+            // VueUse utilities - split by feature
+            if (id.includes('@vueuse/core')) {
+              return 'vendor-vueuse'
+            }
+
+            // CSS processing libraries
+            if (id.includes('sass') || id.includes('postcss') || id.includes('autoprefixer')) {
+              return 'vendor-css-processors'
+            }
+
+            // Development tools (should be excluded in production)
+            if (id.includes('rollup-plugin-visualizer') || id.includes('@vue/devtools')) {
+              return 'vendor-dev-tools'
+            }
+
+            // Other smaller vendor libraries
+            if (id.includes('node_modules')) {
+              // Group small utilities together
+              if (
+                id.includes('unique-slug') ||
+                id.includes('fs-minipass') ||
+                id.includes('biome')
+              ) {
+                return 'vendor-utils-small'
+              }
+              return 'vendor-misc'
+            }
+          }
+
+          // Component-based chunks for heavy components
+          if (
+            id.includes('components/PlayerDetailDialog.vue') ||
+            id.includes('components/player-details/')
+          ) {
+            return 'component-player-details'
+          }
+          if (
+            id.includes('components/ExportOptionsDialog.vue') ||
+            id.includes('utils/csvExport.js')
+          ) {
+            return 'component-export'
+          }
+          if (id.includes('components/ScatterPlotCard.vue') || id.includes('components/filters/')) {
+            return 'component-charts-filters'
+          }
+
+          // Composables and utilities - separate from stores
+          if (id.includes('composables/') || id.includes('utils/') || id.includes('services/')) {
+            return 'shared-utilities'
+          }
         },
         chunkFileNames: chunkInfo => {
           const facadeModuleId = chunkInfo.facadeModuleId
@@ -63,8 +258,8 @@ export default defineConfig({
         }
       }
     },
-    // Optimize build performance and output
-    chunkSizeWarningLimit: 800, // Reduced from 1000 to encourage smaller chunks
+    // Optimize build performance and output with stricter chunk size limits
+    chunkSizeWarningLimit: 500, // Reduced to encourage smaller, more focused chunks
     sourcemap: process.env.NODE_ENV === 'development',
     cssCodeSplit: true,
     assetsInlineLimit: 2048, // Reduced from 4096 to avoid large inline assets
@@ -119,28 +314,7 @@ export default defineConfig({
   },
   // Alternative way to expose env vars (prefixed with VITE_)
   envPrefix: ['VITE_'],
-  // Enhanced dependency optimization
-  optimizeDeps: {
-    include: [
-      'vue',
-      'vue-router',
-      'pinia',
-      'quasar',
-      '@vueuse/core',
-      // Pre-bundle commonly used utilities
-      'chart.js/auto',
-      'vue-chartjs'
-    ],
-    exclude: ['@vitejs/plugin-vue'],
-    esbuildOptions: {
-      target: 'es2020',
-      format: 'esm',
-      // Optimize for production builds
-      treeShaking: true
-    },
-    // Force optimization of specific packages
-    force: process.env.NODE_ENV === 'production'
-  },
+
   // CSS optimization
   css: {
     devSourcemap: process.env.NODE_ENV === 'development'

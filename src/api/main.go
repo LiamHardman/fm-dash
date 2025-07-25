@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -11,8 +12,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	apperrors "api/errors"
 )
 
 var (
@@ -81,21 +80,21 @@ func validateEnvironmentVariables() error {
 	// Validate OTEL_EXPORTER_OTLP_ENDPOINT if set
 	if endpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"); endpoint != "" {
 		if !strings.Contains(endpoint, ":") {
-			return apperrors.WrapErrInvalidOtelEndpoint(endpoint)
+			return fmt.Errorf("invalid OTEL_EXPORTER_OTLP_ENDPOINT: %s (must include port)", endpoint)
 		}
 	}
 
 	// Validate S3_ENDPOINT format if set
 	if endpoint := os.Getenv("S3_ENDPOINT"); endpoint != "" {
 		if !strings.Contains(endpoint, ":") && !strings.HasPrefix(endpoint, "http") {
-			return apperrors.WrapErrInvalidS3Endpoint(endpoint)
+			return fmt.Errorf("invalid S3_ENDPOINT: %s (should include port or be full URL)", endpoint)
 		}
 	}
 
 	// Validate SERVICE_NAME doesn't contain dangerous characters
 	if serviceName := os.Getenv("SERVICE_NAME"); serviceName != "" {
 		if strings.ContainsAny(serviceName, " \t\n\r;|&$`") {
-			return apperrors.ErrInvalidServiceName
+			return fmt.Errorf("invalid SERVICE_NAME: contains unsafe characters")
 		}
 	}
 
@@ -150,7 +149,7 @@ func main() {
 	InitInMemoryCache()
 
 	// Initialize cache storage system
-	InitCacheStorage()
+	InitCacheStorage(context.Background())
 
 	// Initialize memory optimizations
 	InitializeMemoryOptimizations()
@@ -214,6 +213,9 @@ func main() {
 	// API endpoint for updating player percentiles with division filtering
 	http.Handle("/api/percentiles/", wrapHandler(http.HandlerFunc(percentilesHandler), "percentiles"))
 
+	// API endpoint for player percentiles by UID
+	http.Handle("/api/player-percentiles/", wrapHandler(http.HandlerFunc(playerPercentilesHandler), "player-percentiles"))
+
 	// API endpoint for checking percentile status
 	http.Handle("/api/percentiles-status/", wrapHandler(http.HandlerFunc(percentilesStatusHandler), "percentiles-status"))
 
@@ -265,11 +267,12 @@ func main() {
 	mux.Handle("/", wrapHandler(indexHandler, "index"))
 	mux.Handle("/public/", http.StripPrefix("/public/", fsPublic))
 	mux.Handle("/api/upload", wrapHandler(http.HandlerFunc(uploadHandler), "upload"))
-	mux.Handle("/api/players/", wrapHandler(http.HandlerFunc(playerDataHandler), "player-data"))
+	mux.Handle("/api/players/", wrapHandler(http.HandlerFunc(GetFormatAwareCacheHandler()), "player-data"))
 	mux.Handle("/api/roles", wrapHandler(http.HandlerFunc(rolesHandler), "roles"))
 	mux.Handle("/api/leagues/", wrapHandler(http.HandlerFunc(leaguesHandler), "leagues"))
 	mux.Handle("/api/teams/", wrapHandler(http.HandlerFunc(teamsHandler), "teams"))
 	mux.Handle("/api/percentiles/", wrapHandler(http.HandlerFunc(percentilesHandler), "percentiles"))
+	mux.Handle("/api/player-percentiles/", wrapHandler(http.HandlerFunc(playerPercentilesHandler), "player-percentiles"))
 	mux.Handle("/api/percentiles-status/", wrapHandler(http.HandlerFunc(percentilesStatusHandler), "percentiles-status"))
 	mux.Handle("/api/search/", wrapHandler(http.HandlerFunc(searchHandler), "search"))
 	mux.Handle("/api/config", wrapHandler(http.HandlerFunc(cachedConfigHandler), "config"))
@@ -292,6 +295,16 @@ func main() {
 
 	// API endpoint for memory optimization reports
 	mux.Handle("/api/memory-optimization", wrapHandler(http.HandlerFunc(GetMemoryOptimizationHandler()), "memory-optimization"))
+
+	// API endpoint for detailed player stats
+	mux.Handle("/api/fullplayerstats/", wrapHandler(http.HandlerFunc(fullPlayerStatsHandler), "full-player-stats"))
+	mux.Handle("/api/team_data/", wrapHandler(http.HandlerFunc(teamDataHandler), "team-data"))
+
+	// API endpoint for performance data
+	mux.Handle("/api/performance/", wrapHandler(http.HandlerFunc(performanceDataHandler), "performance-data"))
+
+	// API endpoint for exporting complete dataset data
+	mux.Handle("/api/export/", wrapHandler(http.HandlerFunc(exportDataHandler), "export-data"))
 
 	// Create server with proper timeouts
 	server := &http.Server{

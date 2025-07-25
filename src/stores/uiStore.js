@@ -1,9 +1,7 @@
 import { defineStore } from 'pinia'
-import { useQuasar } from 'quasar'
 import { ref } from 'vue'
 
 export const useUiStore = defineStore('ui', () => {
-  const $q = useQuasar()
   // Initialize with a default value, initDarkMode will override this.
   // Defaulting to true here to align with the user's intent for dark mode by default.
   const isDarkModeActive = ref(true)
@@ -23,7 +21,19 @@ export const useUiStore = defineStore('ui', () => {
   function toggleDarkMode() {
     // Directly toggle the current state
     isDarkModeActive.value = !isDarkModeActive.value
-    $q.dark.set(isDarkModeActive.value)
+    
+    // Apply dark mode to document body as fallback
+    if (isDarkModeActive.value) {
+      document.body.classList.add('body--dark')
+    } else {
+      document.body.classList.remove('body--dark')
+    }
+    
+    // Try to use Quasar if available - use a different approach
+    if (typeof window !== 'undefined' && window.$q) {
+      window.$q.dark.set(isDarkModeActive.value)
+    }
+    
     try {
       localStorage.setItem('darkMode', isDarkModeActive.value ? 'true' : 'false')
     } catch (_e) {}
@@ -104,15 +114,21 @@ export const useUiStore = defineStore('ui', () => {
     } catch (_e) {
       darkModePreference = true
     }
-    // Set the ref and Quasar's dark mode
+    
+    // Set the ref
     isDarkModeActive.value = darkModePreference
-    $q.dark.set(darkModePreference)
-    try {
-      const storedPreference = localStorage.getItem('showLogos')
-      if (storedPreference !== null) {
-        showLogos.value = storedPreference === 'true'
-      }
-    } catch (_e) {}
+    
+    // Apply dark mode to document body as fallback
+    if (darkModePreference) {
+      document.body.classList.add('body--dark')
+    } else {
+      document.body.classList.remove('body--dark')
+    }
+    
+    // Try to use Quasar if available - use a different approach
+    if (typeof window !== 'undefined' && window.$q) {
+      window.$q.dark.set(darkModePreference)
+    }
   }
 
   // Initialize notification preferences
@@ -174,24 +190,6 @@ export const useUiStore = defineStore('ui', () => {
     initLogosDisplay()
     initAttributeMasksDisplay()
   }
-
-  // Watch for changes in Quasar's dark mode state and update the store
-  // This is generally not needed if the store is the single source of truth
-  // and all changes go through toggleDarkMode.
-  // However, if Quasar's dark mode could be changed externally, this would be useful.
-  // For this specific fix, we'll assume the store is the master.
-  // if ($q && $q.dark) {
-  //   watch(
-  //     () => $q.dark.isActive,
-  //     (newValue) => {
-  //       if (isDarkModeActive.value !== newValue) {
-  //         isDarkModeActive.value = newValue;
-  //         // Optionally update localStorage here too if Quasar's state can change independently
-  //         // localStorage.setItem('darkMode', newValue ? 'true' : 'false');
-  //       }
-  //     }
-  //   );
-  // }
 
   return {
     isDarkModeActive,

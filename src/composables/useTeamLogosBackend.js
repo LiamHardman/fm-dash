@@ -40,7 +40,11 @@ export function useTeamLogosBackend(options = {}) {
       isLoading.value = true
       lastError.value = null
 
-      const response = await fetch(`/api/team-match?name=${encodeURIComponent(normalizedName)}`)
+      const response = await fetch(`/api/team-match?name=${encodeURIComponent(normalizedName)}`, {
+        headers: {
+          'Accept': 'application/x-protobuf'
+        }
+      })
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`)
