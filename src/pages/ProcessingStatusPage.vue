@@ -88,6 +88,7 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+@use "sass:color";
 .processing-status-page {
   min-height: 100vh;
   background: linear-gradient(135deg, #f8f9fc 0%, #ffffff 100%);

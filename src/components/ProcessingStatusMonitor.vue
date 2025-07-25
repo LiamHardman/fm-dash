@@ -274,6 +274,7 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+@use "sass:color";
 .processing-status-monitor {
   .status-card {
     width: 100%;
