@@ -908,6 +908,54 @@ export default {
       return 0
     }
 
+    const parseTransferValueRange = (valueString) => {
+      if (!valueString) return { min: 0, max: 0 }
+      
+      // Handle range format like "£4.8M - £14.5M"
+      const rangeMatch = valueString.match(/£([\d.]+)M\s*-\s*£([\d.]+)M/)
+      if (rangeMatch) {
+        const minValue = parseFloat(rangeMatch[1]) * 1000000
+        const maxValue = parseFloat(rangeMatch[2]) * 1000000
+        return { min: minValue, max: maxValue }
+      }
+      
+      // Handle single value format like "£28M"
+      const singleMatch = valueString.match(/£([\d.]+)M/)
+      if (singleMatch) {
+        const value = parseFloat(singleMatch[1]) * 1000000
+        return { min: value, max: value }
+      }
+      
+      // Handle k format like "£500k"
+      const kMatch = valueString.match(/£([\d.]+)k/i)
+      if (kMatch) {
+        const value = parseFloat(kMatch[1]) * 1000
+        return { min: value, max: value }
+      }
+      
+      // Handle K format like "£500K"
+      const kMatchUpper = valueString.match(/£([\d.]+)K/)
+      if (kMatchUpper) {
+        const value = parseFloat(kMatchUpper[1]) * 1000
+        return { min: value, max: value }
+      }
+      
+      // Handle other formats with single values
+      const singleValueMatch = valueString.match(/£([\d,]+)/)
+      if (singleValueMatch) {
+        const number = parseInt(singleValueMatch[1].replace(/,/g, ''))
+        let value = number
+        if (number >= 1000000) {
+          value = (number / 1000000) * 1000000
+        } else if (number >= 1000) {
+          value = (number / 1000) * 1000
+        }
+        return { min: value, max: value }
+      }
+      
+      return { min: 0, max: 0 }
+    }
+
     const formatWage = (wageString) => {
       if (!wageString) return 'N/A'
       
@@ -925,10 +973,22 @@ export default {
     const formatValue = (valueString) => {
       if (!valueString) return 'N/A'
       
-      // Extract the upper bound from strings like "£28M - £34M"
+      // Handle range format like "£4.8M - £14.5M"
+      const rangeMatch = valueString.match(/£([\d.]+)M\s*-\s*£([\d.]+)M/)
+      if (rangeMatch) {
+        return `£${rangeMatch[1]}M - £${rangeMatch[2]}M`
+      }
+      
+      // Handle single value format like "£28M"
       const match = valueString.match(/£([\d.]+)M/)
       if (match) {
         return `£${match[1]}M`
+      }
+      
+      // Handle k/K format like "£500k" or "£500K"
+      const kMatch = valueString.match(/£([\d.]+)[kK]/)
+      if (kMatch) {
+        return `£${kMatch[1]}k`
       }
       
       // Handle other formats
@@ -955,10 +1015,10 @@ export default {
       let minVal = Number.POSITIVE_INFINITY
       let maxVal = 0
       for (const p of props.players) {
-        const transferValue = parseTransferValue(p.transfer_value)
-        if (transferValue > 0) {
-          minVal = Math.min(minVal, transferValue)
-          maxVal = Math.max(maxVal, transferValue)
+        const transferValueRange = parseTransferValueRange(p.transfer_value)
+        if (transferValueRange.max > 0) {
+          minVal = Math.min(minVal, transferValueRange.min)
+          maxVal = Math.max(maxVal, transferValueRange.max)
         }
       }
       dynamicMinTransferValue.value = minVal === Number.POSITIVE_INFINITY ? 0 : Math.max(0, minVal)
@@ -1824,10 +1884,15 @@ export default {
             )
               return false
             if (
-              currentMaxTransferValue < computedMaxSliderTransferValue.value &&
-              parseTransferValue(player.transfer_value) > currentMaxTransferValue
-            )
-              return false
+              currentMaxTransferValue < computedMaxSliderTransferValue.value
+            ) {
+              const transferValueRange = parseTransferValueRange(player.transfer_value)
+              // Check if the player's transfer value range overlaps with the filter
+              // A player should be excluded if their maximum value is greater than the filter maximum
+              if (transferValueRange.max > currentMaxTransferValue) {
+                return false
+              }
+            }
             if (
               currentMaxSalary < computedMaxSliderSalary.value &&
               (player.wageAmount || 0) > currentMaxSalary
@@ -2270,6 +2335,7 @@ export default {
         formatWage,
         formatValue,
       parseTransferValue,
+      parseTransferValueRange,
         formatCurrency,
       updateTeamPlayersForFormation
     }
