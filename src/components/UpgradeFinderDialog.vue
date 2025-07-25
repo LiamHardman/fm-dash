@@ -699,7 +699,7 @@ import TeamLogo from './TeamLogo.vue'
 import { formations, getFormationLayout } from '@/utils/formations'
 import { formationCache } from '@/utils/formationCache'
 import { getFlagUrl, getTeamLogoUrl, getPlayerFaceUrl } from '@/utils/imageOptimization'
-import { fetchFullPlayerStats } from '../services/playerService'
+import { fetchFullPlayerStats, findPlayerUpgrades } from '../services/playerService'
 
 // From PlayerFilters.vue for consistency
 const AGE_SLIDER_MIN = 15
@@ -2039,22 +2039,12 @@ export default {
         initialLoad.value = false
         return
       }
-      
-      const playersToUse = hasCompletePlayerData(playerStore.allPlayers) ? playerStore.allPlayers : props.players
-      if (!playersToUse) {
-        loading.value = false
-        return
-      }
-
-      // Debug: Check what data is available
-      console.log('UpgradeFinderDialog: Using players from:', hasCompletePlayerData(playerStore.allPlayers) ? 'playerStore.allPlayers' : 'props.players')
-      console.log('UpgradeFinderDialog: Sample player roleSpecificOveralls:', playersToUse[0]?.roleSpecificOveralls)
-      console.log('UpgradeFinderDialog: Sample player shortPositions:', playersToUse[0]?.shortPositions)
 
       loading.value = true
       showResults.value = true
       currentPage.value = 1 // Reset to first page when new results are found
       initialLoad.value = false
+      
       const baseOverall = await getBaseOverallFromSelectedPlayer()
       if (baseOverall === null) {
         loading.value = false
@@ -2070,95 +2060,31 @@ export default {
       await new Promise(resolve => setTimeout(resolve, 300))
 
       try {
-        console.log('UpgradeFinderDialog - Original players first player:', playersToUse[0])
-        if (playersToUse[0]) {
-          console.log('UpgradeFinderDialog - Original players first player roleSpecificOveralls:', playersToUse[0].roleSpecificOveralls)
+        // Use the new API endpoint for finding upgrades
+        const request = {
+          datasetId: props.datasetId,
+          team: teamName.value,
+          position: selectedPosition.value,
+          role: selectedRole.value,
+          minOverall: targetOverall,
+          maxAge: currentMaxAge < ageSliderMax ? currentMaxAge : 0,
+          maxTransferValue: currentMaxTransferValue < computedMaxSliderTransferValue.value ? currentMaxTransferValue : 0,
+          maxSalary: currentMaxSalary < computedMaxSliderSalary.value ? currentMaxSalary : 0
         }
 
-        // First, filter players based on basic criteria (without role-specific overalls)
-        const initialFilteredPlayers = playersToUse.filter(player => {
-          if (player.club === teamName.value) return false
-          if (player.transfer_value && player.transfer_value.toLowerCase() === 'not for sale')
-            return false
-          if (!player.shortPositions || !player.shortPositions.includes(selectedPosition.value))
-            return false
+        console.log('UpgradeFinderDialog: Sending request to API:', request)
 
-          if (
-            currentMaxAge < ageSliderMax &&
-            (Number.parseInt(player.age, 10) || 0) > currentMaxAge
-          )
-            return false
-          if (
-            currentMaxTransferValue < computedMaxSliderTransferValue.value
-          ) {
-            const transferValueRange = parseTransferValueRange(player.transfer_value)
-            if (transferValueRange.max > currentMaxTransferValue) {
-              return false
-            }
-          }
-          if (
-            currentMaxSalary < computedMaxSliderSalary.value &&
-            (player.wageAmount || 0) > currentMaxSalary
-          )
-            return false
-
-          return true
-        })
-
-        console.log(`Initial filtering found ${initialFilteredPlayers.length} players, now fetching detailed data...`)
-
-        // Fetch detailed data for all filtered players
-        const detailedPlayers = []
-        for (const player of initialFilteredPlayers) {
-          try {
-            if (player.uid && props.datasetId) {
-              const result = await fetchFullPlayerStats(props.datasetId, player.uid)
-              if (result.data && result.data.player) {
-                detailedPlayers.push(result.data.player)
-              } else {
-                detailedPlayers.push(player) // Fallback to original player data
-              }
-            } else {
-              detailedPlayers.push(player) // Fallback to original player data
-            }
-          } catch (error) {
-            console.error(`Failed to fetch detailed data for player ${player.name}:`, error)
-            detailedPlayers.push(player) // Fallback to original player data
-          }
+        const response = await findPlayerUpgrades(request)
+        
+        if (response.data && response.data.players) {
+          console.log(`Found ${response.data.players.length} upgrades via API`)
+          upgradePlayers.value = response.data.players
+        } else {
+          console.log('No upgrades found or invalid response')
+          upgradePlayers.value = []
         }
-
-        console.log(`Fetched detailed data for ${detailedPlayers.length} players`)
-
-        // Now filter and sort based on role-specific overalls
-        const filteredAndSortedPlayers = detailedPlayers
-          .filter(player => {
-            const playerOverallForContext = getPlayerOverallForRoleOrPosition(
-              player,
-              selectedRole.value,
-              selectedPosition.value
-            )
-            console.log(`Player ${player.name} role-specific overall for ${selectedRole.value}: ${playerOverallForContext}`)
-            
-            if ((playerOverallForContext || 0) < targetOverall) return false
-            return true
-          })
-          .sort((a, b) => {
-            const overallA = getPlayerOverallForRoleOrPosition(
-              a,
-              selectedRole.value,
-              selectedPosition.value
-            )
-            const overallB = getPlayerOverallForRoleOrPosition(
-              b,
-              selectedRole.value,
-              selectedPosition.value
-            )
-            return (overallB || 0) - (overallA || 0)
-          })
-
-        console.log(`Found ${filteredAndSortedPlayers.length} players matching criteria for role: ${selectedRole.value}`)
-        upgradePlayers.value = filteredAndSortedPlayers
-      } catch (_error) {
+      } catch (error) {
+        console.error('Error finding upgrades:', error)
         upgradePlayers.value = []
       } finally {
         loading.value = false

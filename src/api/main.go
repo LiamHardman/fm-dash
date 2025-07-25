@@ -303,6 +303,9 @@ func main() {
 	mux.Handle("/api/fullplayerstats/", wrapHandler(http.HandlerFunc(fullPlayerStatsHandler), "full-player-stats"))
 	mux.Handle("/api/team_data/", wrapHandler(http.HandlerFunc(teamDataHandler), "team-data"))
 
+	// API endpoint for finding player upgrades
+	mux.Handle("/api/upgrade-finder", wrapHandler(http.HandlerFunc(upgradeFinderHandler), "upgrade-finder"))
+
 	// API endpoint for performance data
 	mux.Handle("/api/performance/", wrapHandler(http.HandlerFunc(performanceDataHandler), "performance-data"))
 

@@ -4737,3 +4737,250 @@ type ProcessingStatusResponse struct {
 	CurrencySymbol   string `json:"currencySymbol,omitempty"`
 	EstimatedPlayers int    `json:"estimatedPlayers"`
 }
+
+// --- END: Struct Definitions ---
+
+// UpgradeFinderRequest represents the request parameters for finding player upgrades
+type UpgradeFinderRequest struct {
+	DatasetID        string `json:"datasetId"`
+	Team             string `json:"team"`
+	Position         string `json:"position"`
+	Role             string `json:"role"`
+	MinOverall       int    `json:"minOverall"`
+	MaxAge           int    `json:"maxAge"`
+	MaxTransferValue int64  `json:"maxTransferValue"`
+	MaxSalary        int64  `json:"maxSalary"`
+}
+
+// UpgradeFinderResponse represents the response for upgrade finding
+type UpgradeFinderResponse struct {
+	Players        []Player `json:"players"`
+	CurrencySymbol string   `json:"currencySymbol"`
+	BaseOverall    int      `json:"baseOverall"`
+	TargetOverall  int      `json:"targetOverall"`
+	TotalFound     int      `json:"totalFound"`
+}
+
+// upgradeFinderHandler handles POST requests for finding player upgrades
+func upgradeFinderHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	startTime := time.Now()
+
+	// Start comprehensive tracing
+	ctx, span := StartSpan(ctx, "api.upgrade-finder.post")
+	defer span.End()
+
+	// Track active requests
+	IncrementActiveRequests(ctx, "/api/upgrade-finder")
+	defer DecrementActiveRequests(ctx, "/api/upgrade-finder")
+
+	// Record API operation metrics at the end
+	defer func() {
+		status := http.StatusOK
+		RecordAPIOperation(ctx, r.Method, "/api/upgrade-finder", status, time.Since(startTime))
+	}()
+
+	if r.Method != http.MethodPost {
+		WriteErrorResponse(w, r, "method_not_allowed", "Only POST method is allowed", nil, http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Initialize content negotiation
+	negotiator := NewContentNegotiator(r)
+	serializer := negotiator.SelectSerializer()
+	supportsProtobuf := negotiator.SupportsProtobuf()
+
+	// Get request ID for response metadata
+	requestID := r.Header.Get("X-Request-ID")
+	if requestID == "" {
+		requestID = generateRequestID()
+	}
+
+	SetSpanAttributes(ctx,
+		attribute.String("http.method", r.Method),
+		attribute.String("http.route", "/api/upgrade-finder"),
+		attribute.String("response.format", serializer.ContentType()),
+		attribute.Bool("client.supports_protobuf", supportsProtobuf),
+		attribute.String("request.id", requestID),
+	)
+
+	// Parse request body
+	var req UpgradeFinderRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		logError(ctx, "Error decoding upgrade finder request", "error", err)
+		WriteErrorResponse(w, r, "invalid_request", "Invalid request body", nil, http.StatusBadRequest)
+		return
+	}
+
+	// Validate required fields
+	if req.DatasetID == "" {
+		WriteErrorResponse(w, r, "missing_dataset_id", "Dataset ID is required", nil, http.StatusBadRequest)
+		return
+	}
+
+	if req.Position == "" {
+		WriteErrorResponse(w, r, "missing_position", "Position is required", nil, http.StatusBadRequest)
+		return
+	}
+
+	if req.MinOverall <= 0 {
+		WriteErrorResponse(w, r, "invalid_min_overall", "Minimum overall must be greater than 0", nil, http.StatusBadRequest)
+		return
+	}
+
+	logDebug(ctx, "Processing upgrade finder request",
+		"dataset_id", req.DatasetID,
+		"team", req.Team,
+		"position", req.Position,
+		"role", req.Role,
+		"min_overall", req.MinOverall,
+		"max_age", req.MaxAge,
+		"max_transfer_value", req.MaxTransferValue,
+		"max_salary", req.MaxSalary)
+
+	// Get players from storage
+	players, currencySymbol, found := GetPlayerData(req.DatasetID)
+	if !found {
+		logWarn(ctx, "No players found for dataset", "dataset_id", req.DatasetID)
+		WriteErrorResponse(w, r, "no_players_found", "No players found for the specified dataset", nil, http.StatusNotFound)
+		return
+	}
+
+	// Filter and find upgrades
+	upgrades := findPlayerUpgrades(players, req)
+
+	// Set CORS headers
+	setCORSHeaders(w, r)
+
+	// Create response
+	response := UpgradeFinderResponse{
+		Players:        upgrades,
+		CurrencySymbol: currencySymbol,
+		BaseOverall:    req.MinOverall,
+		TargetOverall:  req.MinOverall + 1, // Default upgrade by 1
+		TotalFound:     len(upgrades),
+	}
+
+	if supportsProtobuf {
+		// Create protobuf response (if protobuf types are available)
+		// For now, fall back to JSON
+		logDebug(ctx, "Protobuf not implemented for upgrade finder, using JSON")
+	}
+
+	// Return JSON response
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		logError(ctx, "Error encoding JSON response for upgrade finder", "error", err)
+		WriteErrorResponse(w, r, "serialization_error", "Error encoding response", nil, http.StatusInternalServerError)
+		return
+	}
+
+	logDebug(ctx, "Upgrade finder response served",
+		"upgrades_found", len(upgrades),
+		"processing_time_ms", time.Since(startTime).Milliseconds())
+}
+
+// findPlayerUpgrades filters and finds player upgrades based on the request criteria
+func findPlayerUpgrades(players []Player, req UpgradeFinderRequest) []Player {
+	var upgrades []Player
+
+	for _, player := range players {
+		// Skip players from the same team
+		if req.Team != "" && player.Club == req.Team {
+			continue
+		}
+
+		// Check position match
+		if !matchesPositionForUpgrade(player, req.Position) {
+			continue
+		}
+
+		// Get player's overall for the specified role
+		playerOverall := getPlayerOverallForRole(player, req.Role, req.Position)
+		if playerOverall < req.MinOverall {
+			continue
+		}
+
+		// Check age filter
+		if req.MaxAge > 0 {
+			playerAge, _ := strconv.Atoi(player.Age)
+			if playerAge > req.MaxAge {
+				continue
+			}
+		}
+
+		// Check transfer value filter
+		if req.MaxTransferValue > 0 {
+			if player.TransferValueAmount > req.MaxTransferValue {
+				continue
+			}
+		}
+
+		// Check salary filter
+		if req.MaxSalary > 0 {
+			if player.WageAmount > req.MaxSalary {
+				continue
+			}
+		}
+
+		upgrades = append(upgrades, player)
+	}
+
+	// Sort by role-specific overall (descending)
+	sort.Slice(upgrades, func(i, j int) bool {
+		overallI := getPlayerOverallForRole(upgrades[i], req.Role, req.Position)
+		overallJ := getPlayerOverallForRole(upgrades[j], req.Role, req.Position)
+		return overallI > overallJ
+	})
+
+	return upgrades
+}
+
+// matchesPositionForUpgrade checks if a player matches the required position
+func matchesPositionForUpgrade(player Player, position string) bool {
+	// Check short positions first
+	for _, pos := range player.ShortPositions {
+		if pos == position {
+			return true
+		}
+	}
+
+	// Check parsed positions
+	for _, pos := range player.ParsedPositions {
+		if pos == position {
+			return true
+		}
+	}
+
+	return false
+}
+
+// getPlayerOverallForRole gets the overall rating for a player in a specific role
+func getPlayerOverallForRole(player Player, role, position string) int {
+	// If role is specified, try to get role-specific overall
+	if role != "" {
+		for _, roleOverall := range player.RoleSpecificOveralls {
+			if roleOverall.RoleName == role {
+				return roleOverall.Score
+			}
+		}
+	}
+
+	// If position is specified, find the best role-specific overall for that position
+	if position != "" {
+		bestOverall := 0
+		for _, roleOverall := range player.RoleSpecificOveralls {
+			if strings.HasPrefix(roleOverall.RoleName, position+" - ") {
+				if roleOverall.Score > bestOverall {
+					bestOverall = roleOverall.Score
+				}
+			}
+		}
+		if bestOverall > 0 {
+			return bestOverall
+		}
+	}
+
+	// Fall back to main overall
+	return player.Overall
+}

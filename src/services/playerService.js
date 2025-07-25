@@ -349,3 +349,29 @@ export async function fetchPerformanceData(datasetID, filters = {}) {
     throw error
   }
 }
+
+export async function findPlayerUpgrades(request) {
+  try {
+    // Use protobuf-aware API for upgrade finder
+    const { post } = useProtobufApi('')
+    
+    const response = await post('/api/upgrade-finder', request, {}, 'api.GenericResponse')
+    
+    // Handle protobuf response structure where data is in the data field
+    if (response.data) {
+      try {
+        const parsedData = JSON.parse(response.data)
+        return { data: parsedData, format: 'json' }
+      } catch (parseError) {
+        logger.error('Error parsing upgrade finder data from protobuf response:', parseError)
+        throw new Error('Invalid upgrade finder data format')
+      }
+    }
+    
+    // Fallback for JSON responses or direct data objects
+    return { data: response, format: 'json' }
+  } catch (error) {
+    logger.error('Error finding player upgrades:', error)
+    throw error
+  }
+}
