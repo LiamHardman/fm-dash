@@ -4750,6 +4750,20 @@ type UpgradeFinderRequest struct {
 	MaxAge           int    `json:"maxAge"`
 	MaxTransferValue int64  `json:"maxTransferValue"`
 	MaxSalary        int64  `json:"maxSalary"`
+	// Minimum attribute filters
+	MinPAC int `json:"minPAC"`
+	MinDRI int `json:"minDRI"`
+	MinSHO int `json:"minSHO"`
+	MinPAS int `json:"minPAS"`
+	MinDEF int `json:"minDEF"`
+	MinPHY int `json:"minPHY"`
+	MinGK  int `json:"minGK"`
+	MinDIV int `json:"minDIV"`
+	MinHAN int `json:"minHAN"`
+	MinREF int `json:"minREF"`
+	MinKIC int `json:"minKIC"`
+	MinSPD int `json:"minSPD"`
+	MinPOS int `json:"minPOS"`
 }
 
 // UpgradeFinderResponse represents the response for upgrade finding
@@ -4921,6 +4935,47 @@ func findPlayerUpgrades(players []Player, req UpgradeFinderRequest) []Player {
 			if player.WageAmount > req.MaxSalary {
 				continue
 			}
+		}
+
+		// Check minimum attribute filters
+		if req.MinPAC > 0 && player.PAC < req.MinPAC {
+			continue
+		}
+		if req.MinDRI > 0 && player.DRI < req.MinDRI {
+			continue
+		}
+		if req.MinSHO > 0 && player.SHO < req.MinSHO {
+			continue
+		}
+		if req.MinPAS > 0 && player.PAS < req.MinPAS {
+			continue
+		}
+		if req.MinDEF > 0 && player.DEF < req.MinDEF {
+			continue
+		}
+		if req.MinPHY > 0 && player.PHY < req.MinPHY {
+			continue
+		}
+		if req.MinGK > 0 && player.GK < req.MinGK {
+			continue
+		}
+		if req.MinDIV > 0 && player.DIV < req.MinDIV {
+			continue
+		}
+		if req.MinHAN > 0 && player.HAN < req.MinHAN {
+			continue
+		}
+		if req.MinREF > 0 && player.REF < req.MinREF {
+			continue
+		}
+		if req.MinKIC > 0 && player.KIC < req.MinKIC {
+			continue
+		}
+		if req.MinSPD > 0 && player.SPD < req.MinSPD {
+			continue
+		}
+		if req.MinPOS > 0 && player.POS < req.MinPOS {
+			continue
 		}
 
 		upgrades = append(upgrades, player)

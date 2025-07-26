@@ -441,6 +441,20 @@
                                     </div>
                                 </div>
 
+                                <!-- Stat Filters Button -->
+                                <div class="row q-col-gutter-md q-mt-md">
+                                    <div class="col-12">
+                                        <q-btn
+                                            color="secondary"
+                                            icon="tune"
+                                            label="Stat Filters"
+                                            class="full-width q-py-sm"
+                                            @click="showStatFiltersModal = true"
+                                            outline
+                                        />
+                                    </div>
+                                </div>
+
                                 <div class="row q-col-gutter-md q-mt-md">
                                     <div class="col-12">
                                         <q-btn
@@ -682,7 +696,238 @@
         :currency-symbol="currencySymbol"
         :dataset-id="datasetId"
     />
-    
+
+    <!-- Stat Filters Modal -->
+    <q-dialog v-model="showStatFiltersModal" persistent>
+        <q-card class="stat-filters-modal" style="min-width: 600px; max-width: 800px;">
+            <q-card-section class="row items-center q-pb-none">
+                <div class="text-h6">Stat Filters</div>
+                <q-space />
+                <q-btn icon="close" flat round dense v-close-popup />
+            </q-card-section>
+
+            <q-card-section class="q-pt-none">
+                <div class="text-caption q-mb-md">
+                    Set minimum values for player attributes. Only players meeting all criteria will be shown.
+                </div>
+
+                <div class="row q-col-gutter-md">
+                    <!-- Outfield Player Attributes -->
+                    <div class="col-12 col-md-6">
+                        <div class="text-subtitle2 q-mb-sm">Outfield Player Attributes</div>
+                        
+                        <div class="q-mb-md">
+                            <div class="text-caption q-mb-xs">PAC (Pace): {{ minPACFilter }}</div>
+                            <q-slider
+                                v-model="minPACFilter"
+                                :min="0"
+                                :max="99"
+                                label
+                                label-always
+                                color="orange"
+                                :dark="$q.dark.isActive"
+                                class="q-px-sm"
+                            />
+                        </div>
+
+                        <div class="q-mb-md">
+                            <div class="text-caption q-mb-xs">DRI (Dribbling): {{ minDRIFilter }}</div>
+                            <q-slider
+                                v-model="minDRIFilter"
+                                :min="0"
+                                :max="99"
+                                label
+                                label-always
+                                color="blue"
+                                :dark="$q.dark.isActive"
+                                class="q-px-sm"
+                            />
+                        </div>
+
+                        <div class="q-mb-md">
+                            <div class="text-caption q-mb-xs">SHO (Shooting): {{ minSHOFilter }}</div>
+                            <q-slider
+                                v-model="minSHOFilter"
+                                :min="0"
+                                :max="99"
+                                label
+                                label-always
+                                color="red"
+                                :dark="$q.dark.isActive"
+                                class="q-px-sm"
+                            />
+                        </div>
+
+                        <div class="q-mb-md">
+                            <div class="text-caption q-mb-xs">PAS (Passing): {{ minPASFilter }}</div>
+                            <q-slider
+                                v-model="minPASFilter"
+                                :min="0"
+                                :max="99"
+                                label
+                                label-always
+                                color="green"
+                                :dark="$q.dark.isActive"
+                                class="q-px-sm"
+                            />
+                        </div>
+
+                        <div class="q-mb-md">
+                            <div class="text-caption q-mb-xs">DEF (Defending): {{ minDEFFilter }}</div>
+                            <q-slider
+                                v-model="minDEFFilter"
+                                :min="0"
+                                :max="99"
+                                label
+                                label-always
+                                color="purple"
+                                :dark="$q.dark.isActive"
+                                class="q-px-sm"
+                            />
+                        </div>
+
+                        <div class="q-mb-md">
+                            <div class="text-caption q-mb-xs">PHY (Physical): {{ minPHYFilter }}</div>
+                            <q-slider
+                                v-model="minPHYFilter"
+                                :min="0"
+                                :max="99"
+                                label
+                                label-always
+                                color="brown"
+                                :dark="$q.dark.isActive"
+                                class="q-px-sm"
+                            />
+                        </div>
+                    </div>
+
+                    <!-- Goalkeeper Attributes -->
+                    <div class="col-12 col-md-6">
+                        <div class="text-subtitle2 q-mb-sm">Goalkeeper Attributes</div>
+                        
+                        <div class="q-mb-md">
+                            <div class="text-caption q-mb-xs">GK (Goalkeeping): {{ minGKFilter }}</div>
+                            <q-slider
+                                v-model="minGKFilter"
+                                :min="0"
+                                :max="99"
+                                label
+                                label-always
+                                color="teal"
+                                :dark="$q.dark.isActive"
+                                class="q-px-sm"
+                            />
+                        </div>
+
+                        <div class="q-mb-md">
+                            <div class="text-caption q-mb-xs">DIV (Diving): {{ minDIVFilter }}</div>
+                            <q-slider
+                                v-model="minDIVFilter"
+                                :min="0"
+                                :max="99"
+                                label
+                                label-always
+                                color="cyan"
+                                :dark="$q.dark.isActive"
+                                class="q-px-sm"
+                            />
+                        </div>
+
+                        <div class="q-mb-md">
+                            <div class="text-caption q-mb-xs">HAN (Handling): {{ minHANFilter }}</div>
+                            <q-slider
+                                v-model="minHANFilter"
+                                :min="0"
+                                :max="99"
+                                label
+                                label-always
+                                color="indigo"
+                                :dark="$q.dark.isActive"
+                                class="q-px-sm"
+                            />
+                        </div>
+
+                        <div class="q-mb-md">
+                            <div class="text-caption q-mb-xs">REF (Reflexes): {{ minREFFilter }}</div>
+                            <q-slider
+                                v-model="minREFFilter"
+                                :min="0"
+                                :max="99"
+                                label
+                                label-always
+                                color="deep-orange"
+                                :dark="$q.dark.isActive"
+                                class="q-px-sm"
+                            />
+                        </div>
+
+                        <div class="q-mb-md">
+                            <div class="text-caption q-mb-xs">KIC (Kicking): {{ minKICFilter }}</div>
+                            <q-slider
+                                v-model="minKICFilter"
+                                :min="0"
+                                :max="99"
+                                label
+                                label-always
+                                color="lime"
+                                :dark="$q.dark.isActive"
+                                class="q-px-sm"
+                            />
+                        </div>
+
+                        <div class="q-mb-md">
+                            <div class="text-caption q-mb-xs">SPD (Speed): {{ minSPDFilter }}</div>
+                            <q-slider
+                                v-model="minSPDFilter"
+                                :min="0"
+                                :max="99"
+                                label
+                                label-always
+                                color="amber"
+                                :dark="$q.dark.isActive"
+                                class="q-px-sm"
+                            />
+                        </div>
+
+                        <div class="q-mb-md">
+                            <div class="text-caption q-mb-xs">POS (Positioning): {{ minPOSFilter }}</div>
+                            <q-slider
+                                v-model="minPOSFilter"
+                                :min="0"
+                                :max="99"
+                                label
+                                label-always
+                                color="pink"
+                                :dark="$q.dark.isActive"
+                                class="q-px-sm"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="row q-col-gutter-md q-mt-lg">
+                    <div class="col-6">
+                        <q-btn
+                            color="grey"
+                            label="Reset All"
+                            class="full-width"
+                            @click="resetStatFilters"
+                            outline
+                        />
+                    </div>
+                    <div class="col-6">
+                        <q-btn
+                            color="primary"
+                            label="Apply Filters"
+                            class="full-width"
+                            @click="showStatFiltersModal = false"
+                        />
+                    </div>
+                </div>
+            </q-card-section>
+        </q-card>
+    </q-dialog>
 
 </template>
 
@@ -852,6 +1097,24 @@ export default {
     const maxSalaryFilter = ref(null)
     const dynamicMinSalary = ref(0)
     const dynamicMaxSalary = ref(1000000)
+
+    // Minimum attribute filters
+    const minPACFilter = ref(0)
+    const minDRIFilter = ref(0)
+    const minSHOFilter = ref(0)
+    const minPASFilter = ref(0)
+    const minDEFFilter = ref(0)
+    const minPHYFilter = ref(0)
+    const minGKFilter = ref(0)
+    const minDIVFilter = ref(0)
+    const minHANFilter = ref(0)
+    const minREFFilter = ref(0)
+    const minKICFilter = ref(0)
+    const minSPDFilter = ref(0)
+    const minPOSFilter = ref(0)
+
+    // Modal state
+    const showStatFiltersModal = ref(false)
 
     const loading = ref(false)
     const showResults = ref(false)
@@ -1983,9 +2246,33 @@ export default {
     })
 
     const updateBaseOverallForSelectedPlayer = async () => {
-      if (selectedTeamPlayer.value) {
-        baseOverallForSelectedPlayer.value = await getBaseOverallFromSelectedPlayer()
-      } else {
+      if (!selectedTeamPlayer.value) {
+        baseOverallForSelectedPlayer.value = null
+        return
+      }
+
+      try {
+        // Get the player object from the team players
+        const player = teamPlayersForSelection.value.find(p => p.uid === selectedTeamPlayer.value)
+        if (!player) {
+          baseOverallForSelectedPlayer.value = null
+          return
+        }
+
+        // Check if we need to fetch detailed data for this player
+        if (!player.roleSpecificOveralls || player.roleSpecificOveralls.length === 0) {
+          console.log('UpgradeFinderDialog: Fetching detailed data for selected player:', player.name)
+          const detailedData = await fetchFullPlayerStats(props.datasetId, player.uid)
+          if (detailedData && detailedData.data) {
+            Object.assign(player, detailedData.data)
+          }
+        }
+
+        // Get the overall for the selected role
+        const overall = getPlayerOverallForRoleOrPosition(player, selectedRole.value, selectedPosition.value)
+        baseOverallForSelectedPlayer.value = overall
+      } catch (error) {
+        console.error('Error updating base overall for selected player:', error)
         baseOverallForSelectedPlayer.value = null
       }
     }
@@ -2069,7 +2356,21 @@ export default {
           minOverall: targetOverall,
           maxAge: currentMaxAge < ageSliderMax ? currentMaxAge : 0,
           maxTransferValue: currentMaxTransferValue < computedMaxSliderTransferValue.value ? currentMaxTransferValue : 0,
-          maxSalary: currentMaxSalary < computedMaxSliderSalary.value ? currentMaxSalary : 0
+          maxSalary: currentMaxSalary < computedMaxSliderSalary.value ? currentMaxSalary : 0,
+          // Minimum attribute filters
+          minPAC: minPACFilter.value,
+          minDRI: minDRIFilter.value,
+          minSHO: minSHOFilter.value,
+          minPAS: minPASFilter.value,
+          minDEF: minDEFFilter.value,
+          minPHY: minPHYFilter.value,
+          minGK: minGKFilter.value,
+          minDIV: minDIVFilter.value,
+          minHAN: minHANFilter.value,
+          minREF: minREFFilter.value,
+          minKIC: minKICFilter.value,
+          minSPD: minSPDFilter.value,
+          minPOS: minPOSFilter.value
         }
 
         console.log('UpgradeFinderDialog: Sending request to API:', request)
@@ -2433,6 +2734,22 @@ export default {
       await updateBaseOverallForSelectedPlayer()
     })
 
+    const resetStatFilters = () => {
+      minPACFilter.value = 0
+      minDRIFilter.value = 0
+      minSHOFilter.value = 0
+      minPASFilter.value = 0
+      minDEFFilter.value = 0
+      minPHYFilter.value = 0
+      minGKFilter.value = 0
+      minDIVFilter.value = 0
+      minHANFilter.value = 0
+      minREFFilter.value = 0
+      minKICFilter.value = 0
+      minSPDFilter.value = 0
+      minPOSFilter.value = 0
+    }
+
     return {
       quasar: $q,
       teamName,
@@ -2465,6 +2782,20 @@ export default {
       computedMaxSliderSalary,
       computedStepSliderSalary,
       formattedMaxSalaryLabel,
+      // Minimum attribute filters
+      minPACFilter,
+      minDRIFilter,
+      minSHOFilter,
+      minPASFilter,
+      minDEFFilter,
+      minPHYFilter,
+      minGKFilter,
+      minDIVFilter,
+      minHANFilter,
+      minREFFilter,
+      minKICFilter,
+      minSPDFilter,
+      minPOSFilter,
       loading,
       showResults,
       initialLoad,
@@ -2514,7 +2845,9 @@ export default {
       parseTransferValue,
       parseTransferValueRange,
         formatCurrency,
-      updateTeamPlayersForFormation
+      updateTeamPlayersForFormation,
+      resetStatFilters,
+      showStatFiltersModal
     }
   }
 }
