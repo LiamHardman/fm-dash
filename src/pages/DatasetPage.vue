@@ -518,8 +518,8 @@ export default {
           // Age range filter
           if (player.age !== undefined && player.age !== null) {
             const playerAge = player.age
-            const filterMinAge = currentFilters.value.minAge || 0
-            const filterMaxAge = currentFilters.value.maxAge || 0
+            const filterMinAge = currentFilters.value.ageRange?.min || 0
+            const filterMaxAge = currentFilters.value.ageRange?.max || 0
 
             // Only apply age filter if maxAge is greater than 0 (0 means no maximum)
             if (filterMaxAge > 0 && (playerAge < filterMinAge || playerAge > filterMaxAge)) {
