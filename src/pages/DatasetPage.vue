@@ -417,6 +417,54 @@ export default {
     const AGE_SLIDER_MIN_DEFAULT = computed(() => playerStore.AGE_SLIDER_MIN_DEFAULT)
     const AGE_SLIDER_MAX_DEFAULT = computed(() => playerStore.AGE_SLIDER_MAX_DEFAULT)
 
+    const parseTransferValueRange = (valueString) => {
+      if (!valueString) return { min: 0, max: 0 }
+      
+      // Handle range format like "£4.8M - £14.5M"
+      const rangeMatch = valueString.match(/£([\d.]+)M\s*-\s*£([\d.]+)M/)
+      if (rangeMatch) {
+        const minValue = parseFloat(rangeMatch[1]) * 1000000
+        const maxValue = parseFloat(rangeMatch[2]) * 1000000
+        return { min: minValue, max: maxValue }
+      }
+      
+      // Handle single value format like "£28M"
+      const singleMatch = valueString.match(/£([\d.]+)M/)
+      if (singleMatch) {
+        const value = parseFloat(singleMatch[1]) * 1000000
+        return { min: value, max: value }
+      }
+      
+      // Handle k format like "£500k"
+      const kMatch = valueString.match(/£([\d.]+)k/i)
+      if (kMatch) {
+        const value = parseFloat(kMatch[1]) * 1000
+        return { min: value, max: value }
+      }
+      
+      // Handle K format like "£500K"
+      const kMatchUpper = valueString.match(/£([\d.]+)K/)
+      if (kMatchUpper) {
+        const value = parseFloat(kMatchUpper[1]) * 1000
+        return { min: value, max: value }
+      }
+      
+      // Handle other formats with single values
+      const singleValueMatch = valueString.match(/£([\d,]+)/)
+      if (singleValueMatch) {
+        const number = parseInt(singleValueMatch[1].replace(/,/g, ''))
+        let value = number
+        if (number >= 1000000) {
+          value = (number / 1000000) * 1000000
+        } else if (number >= 1000) {
+          value = (number / 1000) * 1000
+        }
+        return { min: value, max: value }
+      }
+      
+      return { min: 0, max: 0 }
+    }
+
     const filteredPlayers = computed(() => {
       if (!Array.isArray(allPlayersData.value)) return []
 
@@ -487,11 +535,23 @@ export default {
           }
 
           // Transfer value range filter
-          if (
-            player.transferValueAmount < currentFilters.value.transferValueRangeLocal.min ||
-            player.transferValueAmount > currentFilters.value.transferValueRangeLocal.max
-          ) {
-            return false
+          if (player.transfer_value) {
+            // Parse the player's transfer value range
+            const playerRange = parseTransferValueRange(player.transfer_value)
+            const playerMax = playerRange.max
+            if (
+              playerMax < currentFilters.value.transferValueRangeLocal.min ||
+              playerMax > currentFilters.value.transferValueRangeLocal.max
+            ) {
+              return false
+            }
+          } else if (player.transferValueAmount !== undefined) {
+            if (
+              player.transferValueAmount < currentFilters.value.transferValueRangeLocal.min ||
+              player.transferValueAmount > currentFilters.value.transferValueRangeLocal.max
+            ) {
+              return false
+            }
           }
 
           // Max salary filter
