@@ -473,71 +473,35 @@ export default {
       return { min: 0, max: 0 }
     }
 
+    // Filter players based on current filters
     const filteredPlayers = computed(() => {
-      if (!Array.isArray(allPlayersData.value)) return []
+      if (!allPlayersData.value || allPlayersData.value.length === 0) {
+        return []
+      }
 
-      return allPlayersData.value
-        .filter(player => {
-          // Debug: Log current filter values at the start
-          if (allPlayersData.value.indexOf(player) === 0) {
-            console.log('=== FILTER DEBUG ===')
-            console.log('Current Filters:', {
-              minSalary: currentFilters.value.minSalary,
-              maxSalary: currentFilters.value.maxSalary,
-              minTransferValue: currentFilters.value.minTransferValue,
-              maxTransferValue: currentFilters.value.maxTransferValue
-            })
-            console.log('==================')
-          }
-
-          // Debug: Show first few players' data structure
-          if (allPlayersData.value.indexOf(player) < 3) {
-            console.log('Player Data Structure:', {
-              player: player.name,
-              hasWageAmount: 'wageAmount' in player,
-              wageAmount: player.wageAmount,
-              hasWage: 'wage' in player,
-              wage: player.wage,
-              hasSalary: 'salary' in player,
-              salary: player.salary,
-              keys: Object.keys(player).filter(key => key.toLowerCase().includes('wage') || key.toLowerCase().includes('salary'))
-            })
-          }
-
-          // Debug: Show salary data for first 5 players
-          if (allPlayersData.value.indexOf(player) < 5) {
-            console.log('Salary Debug - Player:', player.name, {
-              wageAmount: player.wageAmount,
-              wage: player.wage,
-              salary: player.salary,
-              allKeys: Object.keys(player)
-            })
-          }
-
+      return allPlayersData.value.filter(player => {
+          // Basic debug log to see if filter is being called
+          console.log('Filter function called for player:', player.name)
+          
+          // Debug: Log current filter values
+          console.log('Current filter values:', {
+            transferValueRangeLocal: currentFilters.value.transferValueRangeLocal,
+            minSalary: currentFilters.value.minSalary,
+            maxSalary: currentFilters.value.maxSalary
+          })
+          
           // Name filter
-          if (
-            currentFilters.value.name &&
-            !player.name.toLowerCase().includes(currentFilters.value.name.toLowerCase())
-          ) {
-            console.log('Player filtered by name:', player.name)
+          if (currentFilters.value.name && !player.name.toLowerCase().includes(currentFilters.value.name.toLowerCase())) {
             return false
           }
 
           // Club filter
-          if (
-            currentFilters.value.club &&
-            player.club !== currentFilters.value.club
-          ) {
-            console.log('Player filtered by club:', player.name, 'club:', player.club)
+          if (currentFilters.value.club && player.club !== currentFilters.value.club) {
             return false
           }
 
           // Position filter
-          if (
-            currentFilters.value.position &&
-            !player.short_positions?.includes(currentFilters.value.position)
-          ) {
-            console.log('Player filtered by position:', player.name, 'positions:', player.short_positions)
+          if (currentFilters.value.position && !player.short_positions?.includes(currentFilters.value.position)) {
             return false
           }
 
@@ -552,17 +516,12 @@ export default {
               hasRole = player.roleSpecificOveralls.hasOwnProperty(currentFilters.value.role)
             }
             if (!hasRole) {
-              console.log('Player filtered by role:', player.name, 'role:', currentFilters.value.role)
               return false
             }
           }
 
           // Nationality filter
-          if (
-            currentFilters.value.nationality &&
-            player.nationality_iso !== currentFilters.value.nationality
-          ) {
-            console.log('Player filtered by nationality:', player.name, 'nationality:', player.nationality_iso)
+          if (currentFilters.value.nationality && player.nationality_iso !== currentFilters.value.nationality) {
             return false
           }
 
@@ -574,19 +533,63 @@ export default {
 
             // Only apply age filter if maxAge is greater than 0 (0 means no maximum)
             if (filterMaxAge > 0 && (playerAge < filterMinAge || playerAge > filterMaxAge)) {
-              console.log('Player filtered by age:', player.name, 'age:', playerAge, 'range:', filterMinAge, '-', filterMaxAge)
               return false
             }
           }
 
           // Transfer value range filter
-          if (player.transfer_value) {
+          const filterMin = currentFilters.value.transferValueRangeLocal?.min || 0
+          const filterMax = currentFilters.value.transferValueRangeLocal?.max || 0
+          
+          // Debug: Log filter values
+          if (filterMin > 0 || filterMax > 0) {
+            console.log('Transfer Value Filter Active:', {
+              filterMin,
+              filterMax,
+              player: player.name,
+              transferValue: player.transfer_value
+            })
+          }
+          
+          // If any transfer value filter is set, we need to check the player's transfer value
+          if (filterMin > 0 || filterMax > 0) {
+            // If player has no transfer value data or is "Not for Sale", filter them out
+            if (!player.transfer_value || 
+                player.transfer_value === '-' || 
+                player.transfer_value === undefined || 
+                player.transfer_value === null ||
+                player.transfer_value === 'Not for Sale' ||
+                player.transfer_value.toLowerCase().includes('not for sale')) {
+              return false
+            }
+            
             const transferValueRange = parseTransferValueRange(player.transfer_value)
-            const playerMax = transferValueRange.max
-            const filterMin = currentFilters.value.minTransferValue || 0
-            const filterMax = currentFilters.value.maxTransferValue || 0
-
-            if (playerMax < filterMin || playerMax > filterMax) {
+            if (transferValueRange) {
+              const playerMax = transferValueRange.max
+              
+              // Debug logging for transfer value filtering
+              if (filterMin > 0 || filterMax > 0) {
+                console.log('Transfer Value Debug:', {
+                  player: player.name,
+                  transferValue: player.transfer_value,
+                  playerRange: transferValueRange,
+                  playerMax,
+                  filterMin,
+                  filterMax,
+                  shouldFilterMin: filterMin > 0 && playerMax < filterMin,
+                  shouldFilterMax: filterMax > 0 && playerMax > filterMax
+                })
+              }
+              
+              // Apply the filters
+              if (filterMin > 0 && playerMax < filterMin) {
+                return false
+              }
+              if (filterMax > 0 && playerMax > filterMax) {
+                return false
+              }
+            } else {
+              // If we can't parse the transfer value, filter out the player
               return false
             }
           }
@@ -602,65 +605,59 @@ export default {
               const filterMinSalary = currentFilters.value.minSalary || 0
               const filterMaxSalary = currentFilters.value.maxSalary || 0
               
-              // Debug logging for salary filtering
-              if (player.name === 'Test Player' || playerSalary > 1000 || player.name.includes('Test')) {
-                console.log('Salary Debug:', {
-                  player: player.name,
-                  wageString,
-                  playerSalary,
-                  filterMinSalary,
-                  filterMaxSalary,
-                  shouldFilter: playerSalary < filterMinSalary || playerSalary > filterMaxSalary
-                })
-              }
-              
-              if (playerSalary < filterMinSalary || playerSalary > filterMaxSalary) {
+              // Only apply filter if filter values are actually set (not 0)
+              if (filterMinSalary > 0 && playerSalary < filterMinSalary) {
                 return false
               }
-            }
-          } else {
-            // Debug: Log players without salary data
-            if (allPlayersData.value.indexOf(player) < 10) {
-              console.log('Player without salary data:', {
-                player: player.name,
-                wage: player.wage,
-                hasWage: 'wage' in player
-              })
+              if (filterMaxSalary > 0 && playerSalary > filterMaxSalary) {
+                return false
+              }
             }
           }
 
           // FIFA-style stat minimum filters
-          if (
-            currentFilters.value.minOverall > 0 &&
-            (player.Overall || 0) < currentFilters.value.minOverall
-          )
+          if (currentFilters.value.minOverall > 0 && (player.Overall || 0) < currentFilters.value.minOverall) {
             return false
-          if (currentFilters.value.minPAC > 0 && (player.PAC || 0) < currentFilters.value.minPAC)
+          }
+          if (currentFilters.value.minPAC > 0 && (player.PAC || 0) < currentFilters.value.minPAC) {
             return false
-          if (currentFilters.value.minSHO > 0 && (player.SHO || 0) < currentFilters.value.minSHO)
+          }
+          if (currentFilters.value.minSHO > 0 && (player.SHO || 0) < currentFilters.value.minSHO) {
             return false
-          if (currentFilters.value.minPAS > 0 && (player.PAS || 0) < currentFilters.value.minPAS)
+          }
+          if (currentFilters.value.minPAS > 0 && (player.PAS || 0) < currentFilters.value.minPAS) {
             return false
-          if (currentFilters.value.minDRI > 0 && (player.DRI || 0) < currentFilters.value.minDRI)
+          }
+          if (currentFilters.value.minDRI > 0 && (player.DRI || 0) < currentFilters.value.minDRI) {
             return false
-          if (currentFilters.value.minDEF > 0 && (player.DEF || 0) < currentFilters.value.minDEF)
+          }
+          if (currentFilters.value.minDEF > 0 && (player.DEF || 0) < currentFilters.value.minDEF) {
             return false
-          if (currentFilters.value.minPHY > 0 && (player.PHY || 0) < currentFilters.value.minPHY)
+          }
+          if (currentFilters.value.minPHY > 0 && (player.PHY || 0) < currentFilters.value.minPHY) {
             return false
-          if (currentFilters.value.minGK > 0 && (player.GK || 0) < currentFilters.value.minGK)
+          }
+          if (currentFilters.value.minGK > 0 && (player.GK || 0) < currentFilters.value.minGK) {
             return false
-          if (currentFilters.value.minDIV > 0 && (player.DIV || 0) < currentFilters.value.minDIV)
+          }
+          if (currentFilters.value.minDIV > 0 && (player.DIV || 0) < currentFilters.value.minDIV) {
             return false
-          if (currentFilters.value.minHAN > 0 && (player.HAN || 0) < currentFilters.value.minHAN)
+          }
+          if (currentFilters.value.minHAN > 0 && (player.HAN || 0) < currentFilters.value.minHAN) {
             return false
-          if (currentFilters.value.minREF > 0 && (player.REF || 0) < currentFilters.value.minREF)
+          }
+          if (currentFilters.value.minREF > 0 && (player.REF || 0) < currentFilters.value.minREF) {
             return false
-          if (currentFilters.value.minKIC > 0 && (player.KIC || 0) < currentFilters.value.minKIC)
+          }
+          if (currentFilters.value.minKIC > 0 && (player.KIC || 0) < currentFilters.value.minKIC) {
             return false
-          if (currentFilters.value.minSPD > 0 && (player.SPD || 0) < currentFilters.value.minSPD)
+          }
+          if (currentFilters.value.minSPD > 0 && (player.SPD || 0) < currentFilters.value.minSPD) {
             return false
-          if (currentFilters.value.minPOS > 0 && (player.POS || 0) < currentFilters.value.minPOS)
+          }
+          if (currentFilters.value.minPOS > 0 && (player.POS || 0) < currentFilters.value.minPOS) {
             return false
+          }
 
           // FM Attribute minimum filters
           for (const rawAttrKey of allRawFmAttributeKeys) {
@@ -677,8 +674,7 @@ export default {
           }
 
           return true
-        })
-        .map(player => {
+        }).map(player => {
           if (currentFilters.value.role && player.roleSpecificOveralls) {
             let roleSpecificOverall = null
             if (Array.isArray(player.roleSpecificOveralls)) {
@@ -696,7 +692,7 @@ export default {
           }
           return player
         })
-    })
+      })
 
     const isGoalkeeperView = computed(() => {
       // First check explicit position or role filters

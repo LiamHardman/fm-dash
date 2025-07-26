@@ -1358,14 +1358,14 @@ export default {
       for (let i = 0; i < sampleSize; i++) {
         const player = players[i]
         if (!player.shortPositions || player.shortPositions.length === 0) {
-          console.log(`Player ${player.name} missing shortPositions`)
-          return false
+          // console.log(`Player ${player.name} missing shortPositions`)
+          continue
         }
         if (!player.roleSpecificOveralls || 
             (Array.isArray(player.roleSpecificOveralls) && player.roleSpecificOveralls.length === 0) ||
             (typeof player.roleSpecificOveralls === 'object' && Object.keys(player.roleSpecificOveralls).length === 0)) {
-          console.log(`Player ${player.name} missing roleSpecificOveralls`)
-          return false
+          // console.log(`Player ${player.name} missing roleSpecificOveralls`)
+          continue
         }
       }
       return true

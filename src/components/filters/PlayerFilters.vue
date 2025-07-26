@@ -1643,86 +1643,72 @@ export default defineComponent({
 
     // Transfer value in millions for display
     const transferValueMinMillions = computed({
-      get: () => filters.value.transferValueRangeLocal.min / 1000000,
-      set: (value) => {
+      get() {
+        const minValue = filters.value.transferValueRangeLocal.min
+        return minValue / 1000000
+      },
+      set(value) {
         const numValue = parseFloat(value) || 0
-        filters.value.transferValueRangeLocal.min = numValue * 1000000
+        const newValue = numValue * 1000000
+        filters.value.transferValueRangeLocal.min = newValue
+        applyFilters()
       }
     })
 
     const transferValueMaxMillions = computed({
-      get: () => filters.value.transferValueRangeLocal.max / 1000000,
-      set: (value) => {
+      get() {
+        const maxValue = filters.value.transferValueRangeLocal.max
+        return maxValue / 1000000
+      },
+      set(value) {
         const numValue = parseFloat(value) || 0
-        filters.value.transferValueRangeLocal.max = numValue * 1000000
+        const newValue = numValue * 1000000
+        filters.value.transferValueRangeLocal.max = newValue
+        applyFilters()
       }
     })
 
     // Salary in thousands for display
     const salaryMinThousands = computed({
-      get: () => {
-        const value = filters.value.minSalary / 1000
-        console.log('Salary Min Get:', { minSalary: filters.value.minSalary, result: value })
-        return value
+      get() {
+        const minValue = filters.value.minSalary
+        return minValue / 1000
       },
-      set: (value) => {
+      set(value) {
         const numValue = parseFloat(value) || 0
         const newValue = numValue * 1000
-        console.log('Salary Min Set:', { input: value, numValue, newValue })
         filters.value.minSalary = newValue
+        applyFilters()
       }
     })
 
     const salaryMaxThousands = computed({
-      get: () => {
-        const value = filters.value.maxSalary / 1000
-        console.log('Salary Max Get:', { maxSalary: filters.value.maxSalary, result: value })
-        return value
+      get() {
+        const maxValue = filters.value.maxSalary
+        return maxValue / 1000
       },
-      set: (value) => {
+      set(value) {
         const numValue = parseFloat(value) || 0
         const newValue = numValue * 1000
-        console.log('Salary Max Set:', { input: value, numValue, newValue })
         filters.value.maxSalary = newValue
+        applyFilters()
       }
     })
 
     // Change handlers
     const onTransferValueMinChange = () => {
-      console.log('Transfer Value Min Change:', {
-        inputValue: transferValueMinMillions.value,
-        actualValue: filters.value.transferValueRangeLocal.min,
-        inMillions: filters.value.transferValueRangeLocal.min / 1000000
-      })
       applyFilters()
     }
 
     const onTransferValueMaxChange = () => {
-      console.log('Transfer Value Max Change:', {
-        inputValue: transferValueMaxMillions.value,
-        actualValue: filters.value.transferValueRangeLocal.max,
-        inMillions: filters.value.transferValueRangeLocal.max / 1000000
-      })
       applyFilters()
     }
 
     const onSalaryMinChange = () => {
-      console.log('Salary Min Change:', {
-        inputValue: salaryMinThousands.value,
-        actualValue: filters.value.minSalary,
-        inThousands: filters.value.minSalary / 1000,
-        rawFilters: filters.value
-      })
       applyFilters()
     }
 
     const onSalaryMaxChange = () => {
-      console.log('Salary Max Change:', {
-        inputValue: salaryMaxThousands.value,
-        actualValue: filters.value.maxSalary,
-        inThousands: filters.value.maxSalary / 1000,
-        rawFilters: filters.value
-      })
       applyFilters()
     }
 
