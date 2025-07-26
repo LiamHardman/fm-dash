@@ -428,6 +428,14 @@ export default {
         return { min: minValue, max: maxValue }
       }
       
+      // Handle range format like "£85K - £850K"
+      const rangeKMatch = valueString.match(/£([\d.]+)K\s*-\s*£([\d.]+)K/i)
+      if (rangeKMatch) {
+        const minValue = parseFloat(rangeKMatch[1]) * 1000
+        const maxValue = parseFloat(rangeKMatch[2]) * 1000
+        return { min: minValue, max: maxValue }
+      }
+      
       // Handle single value format like "£28M"
       const singleMatch = valueString.match(/£([\d.]+)M/)
       if (singleMatch) {
@@ -470,96 +478,155 @@ export default {
 
       return allPlayersData.value
         .filter(player => {
+          // Debug: Log current filter values at the start
+          if (allPlayersData.value.indexOf(player) === 0) {
+            console.log('=== FILTER DEBUG ===')
+            console.log('Current Filters:', {
+              minSalary: currentFilters.value.minSalary,
+              maxSalary: currentFilters.value.maxSalary,
+              minTransferValue: currentFilters.value.minTransferValue,
+              maxTransferValue: currentFilters.value.maxTransferValue
+            })
+            console.log('==================')
+          }
+
+          // Debug: Show first few players' data structure
+          if (allPlayersData.value.indexOf(player) < 3) {
+            console.log('Player Data Structure:', {
+              player: player.name,
+              hasWageAmount: 'wageAmount' in player,
+              wageAmount: player.wageAmount,
+              hasWage: 'wage' in player,
+              wage: player.wage,
+              hasSalary: 'salary' in player,
+              salary: player.salary,
+              keys: Object.keys(player).filter(key => key.toLowerCase().includes('wage') || key.toLowerCase().includes('salary'))
+            })
+          }
+
+          // Debug: Show salary data for first 5 players
+          if (allPlayersData.value.indexOf(player) < 5) {
+            console.log('Salary Debug - Player:', player.name, {
+              wageAmount: player.wageAmount,
+              wage: player.wage,
+              salary: player.salary,
+              allKeys: Object.keys(player)
+            })
+          }
+
+          // Name filter
           if (
             currentFilters.value.name &&
             !player.name.toLowerCase().includes(currentFilters.value.name.toLowerCase())
           ) {
+            console.log('Player filtered by name:', player.name)
             return false
           }
 
-          if (currentFilters.value.club && player.club !== currentFilters.value.club) {
+          // Club filter
+          if (
+            currentFilters.value.club &&
+            player.club !== currentFilters.value.club
+          ) {
+            console.log('Player filtered by club:', player.name, 'club:', player.club)
             return false
           }
 
-          if (currentFilters.value.position) {
-            const hasPosition = player.short_positions?.includes(currentFilters.value.position)
-            if (!hasPosition) return false
+          // Position filter
+          if (
+            currentFilters.value.position &&
+            !player.short_positions?.includes(currentFilters.value.position)
+          ) {
+            console.log('Player filtered by position:', player.name, 'positions:', player.short_positions)
+            return false
           }
 
-          if (currentFilters.value.role) {
-            const hasRole = player.roleSpecificOveralls?.some(
-              role => role.roleName === currentFilters.value.role
-            )
-            if (!hasRole) return false
+          // Role filter
+          if (currentFilters.value.role && player.roleSpecificOveralls) {
+            let hasRole = false
+            if (Array.isArray(player.roleSpecificOveralls)) {
+              hasRole = player.roleSpecificOveralls.some(
+                rso => rso.roleName === currentFilters.value.role
+              )
+            } else if (typeof player.roleSpecificOveralls === 'object') {
+              hasRole = player.roleSpecificOveralls.hasOwnProperty(currentFilters.value.role)
+            }
+            if (!hasRole) {
+              console.log('Player filtered by role:', player.name, 'role:', currentFilters.value.role)
+              return false
+            }
           }
 
+          // Nationality filter
           if (
             currentFilters.value.nationality &&
-            player.nationality !== currentFilters.value.nationality
+            player.nationality_iso !== currentFilters.value.nationality
           ) {
+            console.log('Player filtered by nationality:', player.name, 'nationality:', player.nationality_iso)
             return false
-          }
-
-          // Continent-based nationality filter (for preset filters like EU, Europe, etc.)
-          if (
-            currentFilters.value.continentNationalities &&
-            currentFilters.value.continentNationalities.length > 0 &&
-            !currentFilters.value.continentNationalities.includes(player.nationality)
-          ) {
-            return false
-          }
-
-          // Media handling filter
-          if (currentFilters.value.mediaHandling && currentFilters.value.mediaHandling.length > 0) {
-            if (!player.media_handling) return false
-            const playerMediaHandlings = player.media_handling.split(',').map(s => s.trim())
-            const hasMediaHandling = currentFilters.value.mediaHandling.some(filter =>
-              playerMediaHandlings.includes(filter)
-            )
-            if (!hasMediaHandling) return false
-          }
-
-          if (currentFilters.value.personality && currentFilters.value.personality.length > 0) {
-            if (!player.personality) return false
-            const hasPersonality = currentFilters.value.personality.includes(player.personality)
-            if (!hasPersonality) return false
           }
 
           // Age range filter
-          const playerAge = Number.parseInt(player.age, 10) || 0
-          if (
-            playerAge < currentFilters.value.ageRange.min ||
-            playerAge > currentFilters.value.ageRange.max
-          ) {
-            return false
+          if (player.age !== undefined && player.age !== null) {
+            const playerAge = player.age
+            const filterMinAge = currentFilters.value.minAge || 0
+            const filterMaxAge = currentFilters.value.maxAge || 0
+
+            // Only apply age filter if maxAge is greater than 0 (0 means no maximum)
+            if (filterMaxAge > 0 && (playerAge < filterMinAge || playerAge > filterMaxAge)) {
+              console.log('Player filtered by age:', player.name, 'age:', playerAge, 'range:', filterMinAge, '-', filterMaxAge)
+              return false
+            }
           }
 
           // Transfer value range filter
           if (player.transfer_value) {
-            // Parse the player's transfer value range
-            const playerRange = parseTransferValueRange(player.transfer_value)
-            const playerMax = playerRange.max
-            if (
-              playerMax < currentFilters.value.transferValueRangeLocal.min ||
-              playerMax > currentFilters.value.transferValueRangeLocal.max
-            ) {
-              return false
-            }
-          } else if (player.transferValueAmount !== undefined) {
-            if (
-              player.transferValueAmount < currentFilters.value.transferValueRangeLocal.min ||
-              player.transferValueAmount > currentFilters.value.transferValueRangeLocal.max
-            ) {
+            const transferValueRange = parseTransferValueRange(player.transfer_value)
+            const playerMax = transferValueRange.max
+            const filterMin = currentFilters.value.minTransferValue || 0
+            const filterMax = currentFilters.value.maxTransferValue || 0
+
+            if (playerMax < filterMin || playerMax > filterMax) {
               return false
             }
           }
 
-          // Max salary filter
-          if (
-            currentFilters.value.maxSalary !== null &&
-            player.wageAmount > currentFilters.value.maxSalary
-          ) {
-            return false
+          // Salary range filter
+          if (player.wage && player.wage !== '-' && player.wage !== undefined && player.wage !== null) {
+            // Parse wage string like "£7,500 p/w" to get numeric value
+            const wageString = player.wage
+            const numericValue = parseFloat(wageString.replace(/[£,]/g, '').replace(' p/w', ''))
+            
+            if (!isNaN(numericValue)) {
+              const playerSalary = numericValue
+              const filterMinSalary = currentFilters.value.minSalary || 0
+              const filterMaxSalary = currentFilters.value.maxSalary || 0
+              
+              // Debug logging for salary filtering
+              if (player.name === 'Test Player' || playerSalary > 1000 || player.name.includes('Test')) {
+                console.log('Salary Debug:', {
+                  player: player.name,
+                  wageString,
+                  playerSalary,
+                  filterMinSalary,
+                  filterMaxSalary,
+                  shouldFilter: playerSalary < filterMinSalary || playerSalary > filterMaxSalary
+                })
+              }
+              
+              if (playerSalary < filterMinSalary || playerSalary > filterMaxSalary) {
+                return false
+              }
+            }
+          } else {
+            // Debug: Log players without salary data
+            if (allPlayersData.value.indexOf(player) < 10) {
+              console.log('Player without salary data:', {
+                player: player.name,
+                wage: player.wage,
+                hasWage: 'wage' in player
+              })
+            }
           }
 
           // FIFA-style stat minimum filters
@@ -1254,4 +1321,4 @@ export default {
         }
     }
 }
-</style> 
+</style>

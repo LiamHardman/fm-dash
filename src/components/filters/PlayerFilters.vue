@@ -212,72 +212,70 @@
                 </div>
 
                 <div class="col-12 col-md-3">
-                    <div class="text-caption q-mb-xs slider-label">
-                        Max Salary:
-                        {{
-                            filters.maxSalary === salarySliderMax
-                                ? "Any"
-                                : formatCurrency(
-                                      filters.maxSalary,
-                                      currencySymbol,
-                                  )
-                        }}
+                    <div class="text-subtitle2 q-mb-sm">Transfer Value Range (Millions)</div>
+                    <div class="row q-gutter-sm">
+                        <q-input
+                            v-model="transferValueMinMillions"
+                            label="Min Value (M)"
+                            type="number"
+                            outlined
+                            dense
+                            class="col"
+                            @update:model-value="onTransferValueMinChange"
+                        >
+                            <template v-slot:prepend>
+                                <q-icon name="attach_money" />
+                            </template>
+                        </q-input>
+                        <q-input
+                            v-model="transferValueMaxMillions"
+                            label="Max Value (M)"
+                            type="number"
+                            outlined
+                            dense
+                            class="col"
+                            @update:model-value="onTransferValueMaxChange"
+                        >
+                            <template v-slot:prepend>
+                                <q-icon name="attach_money" />
+                            </template>
+                        </q-input>
                     </div>
-                    <q-slider
-                        v-model="filters.maxSalary"
-                        :min="salarySliderMin"
-                        :max="salarySliderMax"
-                        :step="salarySliderStep"
-                        label-always
-                        :label-value="
-                            filters.maxSalary === salarySliderMax
-                                ? 'Any'
-                                : formatCurrency(
-                                      filters.maxSalary,
-                                      currencySymbol,
-                                  )
-                        "
-                        @update:model-value="debouncedApplyFilters"
-                        color="primary"
-                        class="q-px-sm"
-                        :disable="isLoading || !isDataAvailable"
-                    />
                 </div>
 
-                <div class="col-12 col-md-4">
-                    <div class="text-caption q-mb-xs slider-label">
-                        Transfer Value ({{ currencySymbol }})
+                <div class="col-12 col-md-3">
+                    <div class="text-subtitle2 q-mb-sm">Salary Range (Thousands)</div>
+                    <div class="row q-gutter-sm">
+                        <q-input
+                            v-model="salaryMinThousands"
+                            label="Min Salary (K)"
+                            type="number"
+                            outlined
+                            dense
+                            class="col"
+                            @update:model-value="onSalaryMinChange"
+                        >
+                            <template v-slot:prepend>
+                                <q-icon name="payments" />
+                            </template>
+                        </q-input>
+                        <q-input
+                            v-model="salaryMaxThousands"
+                            label="Max Salary (K)"
+                            type="number"
+                            outlined
+                            dense
+                            class="col"
+                            @update:model-value="onSalaryMaxChange"
+                        >
+                            <template v-slot:prepend>
+                                <q-icon name="payments" />
+                            </template>
+                        </q-input>
                     </div>
-                    <q-range
-                        v-model="filters.transferValueRangeLocal"
-                        :min="currentSliderMin"
-                        :max="currentSliderMax"
-                        :step="transferValueSliderStep"
-                        label-always
-                        :left-label-value="
-                            formatRangeLabel(
-                                filters.transferValueRangeLocal.min,
-                                false,
-                            )
-                        "
-                        :right-label-value="
-                            formatRangeLabel(
-                                filters.transferValueRangeLocal.max,
-                                true,
-                            )
-                        "
-                        @update:model-value="debouncedApplyFilters"
-                        :disable="
-                            isLoading ||
-                            !isDataAvailable ||
-                            currentSliderMin >= currentSliderMax
-                        "
-                        color="primary"
-                        class="q-px-sm"
-                    />
                 </div>
 
-                <div class="col-12 col-md-2">
+                <div class="col-12 col-md-3">
                     <q-btn
                         color="grey"
                         label="Clear All"
@@ -974,6 +972,7 @@ export default defineComponent({
         max: 100000000
       },
       maxSalary: SALARY_SLIDER_MAX,
+      minSalary: 0, // Added for new salary range
       minOverall: 0,
       minPHY: 0,
       minSHO: 0,
@@ -1320,6 +1319,50 @@ export default defineComponent({
       return formatCurrency(displayValue, props.currencySymbol)
     }
 
+    const formatSmallRangeLabel = (value, isMaxBoundary) => {
+      if (value === null || value === undefined) return 'N/A'
+      if (isMaxBoundary) {
+        if (
+          props.initialDatasetRange &&
+          typeof props.initialDatasetRange.max === 'number' &&
+          value === props.initialDatasetRange.max
+        ) {
+          return 'Any'
+        }
+      } else {
+        if (
+          props.initialDatasetRange &&
+          typeof props.initialDatasetRange.min === 'number' &&
+          value === props.initialDatasetRange.min
+        ) {
+          return formatCurrency(value, props.currencySymbol) || '0'
+        }
+      }
+      return formatCurrency(value, props.currencySymbol)
+    }
+
+    const formatLargeRangeLabel = (value, isMaxBoundary) => {
+      if (value === null || value === undefined) return 'N/A'
+      if (isMaxBoundary) {
+        if (
+          props.initialDatasetRange &&
+          typeof props.initialDatasetRange.max === 'number' &&
+          value === props.initialDatasetRange.max
+        ) {
+          return 'Any'
+        }
+      } else {
+        if (
+          props.initialDatasetRange &&
+          typeof props.initialDatasetRange.min === 'number' &&
+          value === props.initialDatasetRange.min
+        ) {
+          return formatCurrency(value, props.currencySymbol) || '0'
+        }
+      }
+      return formatCurrency(value, props.currencySymbol)
+    }
+
     watch(
       () => props.uniqueClubs,
       newClubs => {
@@ -1435,6 +1478,7 @@ export default defineComponent({
           max: props.initialDatasetRange ? props.initialDatasetRange.max : 100000000
         },
         maxSalary: salarySliderMax.value,
+        minSalary: 0, // Reset new salary range
         minOverall: 0,
         minPHY: 0,
         minSHO: 0,
@@ -1572,6 +1616,116 @@ export default defineComponent({
       }
     }
 
+    // Format functions
+    const formatCurrency = (value, symbol) => {
+      if (!value || value === 0) return `${symbol}0`
+      if (value >= 1000000) {
+        return `${symbol}${(value / 1000000).toFixed(1)}M`
+      } else if (value >= 1000) {
+        return `${symbol}${(value / 1000).toFixed(0)}K`
+      }
+      return `${symbol}${value.toLocaleString()}`
+    }
+
+    const formatAgeLabel = (value) => {
+      return value === AGE_SLIDER_MAX ? 'Any' : `${value}`
+    }
+
+    const formatTransferValueLabel = (value) => {
+      if (value === 0) return 'Any'
+      return formatCurrency(value, props.currencySymbol)
+    }
+
+    const formatSalaryLabel = (value) => {
+      if (value === 0) return 'Any'
+      return formatCurrency(value, props.currencySymbol)
+    }
+
+    // Transfer value in millions for display
+    const transferValueMinMillions = computed({
+      get: () => filters.value.transferValueRangeLocal.min / 1000000,
+      set: (value) => {
+        const numValue = parseFloat(value) || 0
+        filters.value.transferValueRangeLocal.min = numValue * 1000000
+      }
+    })
+
+    const transferValueMaxMillions = computed({
+      get: () => filters.value.transferValueRangeLocal.max / 1000000,
+      set: (value) => {
+        const numValue = parseFloat(value) || 0
+        filters.value.transferValueRangeLocal.max = numValue * 1000000
+      }
+    })
+
+    // Salary in thousands for display
+    const salaryMinThousands = computed({
+      get: () => {
+        const value = filters.value.minSalary / 1000
+        console.log('Salary Min Get:', { minSalary: filters.value.minSalary, result: value })
+        return value
+      },
+      set: (value) => {
+        const numValue = parseFloat(value) || 0
+        const newValue = numValue * 1000
+        console.log('Salary Min Set:', { input: value, numValue, newValue })
+        filters.value.minSalary = newValue
+      }
+    })
+
+    const salaryMaxThousands = computed({
+      get: () => {
+        const value = filters.value.maxSalary / 1000
+        console.log('Salary Max Get:', { maxSalary: filters.value.maxSalary, result: value })
+        return value
+      },
+      set: (value) => {
+        const numValue = parseFloat(value) || 0
+        const newValue = numValue * 1000
+        console.log('Salary Max Set:', { input: value, numValue, newValue })
+        filters.value.maxSalary = newValue
+      }
+    })
+
+    // Change handlers
+    const onTransferValueMinChange = () => {
+      console.log('Transfer Value Min Change:', {
+        inputValue: transferValueMinMillions.value,
+        actualValue: filters.value.transferValueRangeLocal.min,
+        inMillions: filters.value.transferValueRangeLocal.min / 1000000
+      })
+      applyFilters()
+    }
+
+    const onTransferValueMaxChange = () => {
+      console.log('Transfer Value Max Change:', {
+        inputValue: transferValueMaxMillions.value,
+        actualValue: filters.value.transferValueRangeLocal.max,
+        inMillions: filters.value.transferValueRangeLocal.max / 1000000
+      })
+      applyFilters()
+    }
+
+    const onSalaryMinChange = () => {
+      console.log('Salary Min Change:', {
+        inputValue: salaryMinThousands.value,
+        actualValue: filters.value.minSalary,
+        inThousands: filters.value.minSalary / 1000,
+        rawFilters: filters.value
+      })
+      applyFilters()
+    }
+
+    const onSalaryMaxChange = () => {
+      console.log('Salary Max Change:', {
+        inputValue: salaryMaxThousands.value,
+        actualValue: filters.value.maxSalary,
+        inThousands: filters.value.maxSalary / 1000,
+        rawFilters: filters.value
+      })
+      applyFilters()
+    }
+
     return {
       quasarInstance,
       filters,
@@ -1598,27 +1752,31 @@ export default defineComponent({
       roleFilterOptions,
       mediaHandlingOptions,
       personalityOptions,
-      transferValueSliderStep,
       isDataAvailable,
       applyFilters,
       debouncedApplyFilters,
       clearAllFilters,
-      formatRangeLabel,
       filterClubOptions,
       filterNationalityOptions,
       onPositionChange,
       ageSliderMin: AGE_SLIDER_MIN,
       ageSliderMax: AGE_SLIDER_MAX,
-      currentSliderMin,
-      currentSliderMax,
-      salarySliderMin,
-      salarySliderMax,
-      salarySliderStep,
       formatCurrency,
       selectedPreset,
       presetFilters,
       presetOptions,
-      applyPresetFilter
+      applyPresetFilter,
+      formatAgeLabel,
+      formatTransferValueLabel,
+      formatSalaryLabel,
+      transferValueMinMillions,
+      transferValueMaxMillions,
+      salaryMinThousands,
+      salaryMaxThousands,
+      onTransferValueMinChange,
+      onTransferValueMaxChange,
+      onSalaryMinChange,
+      onSalaryMaxChange
     }
   }
 })
