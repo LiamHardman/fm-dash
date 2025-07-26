@@ -480,16 +480,6 @@ export default {
       }
 
       return allPlayersData.value.filter(player => {
-          // Basic debug log to see if filter is being called
-          console.log('Filter function called for player:', player.name)
-          
-          // Debug: Log current filter values
-          console.log('Current filter values:', {
-            transferValueRangeLocal: currentFilters.value.transferValueRangeLocal,
-            minSalary: currentFilters.value.minSalary,
-            maxSalary: currentFilters.value.maxSalary
-          })
-          
           // Name filter
           if (currentFilters.value.name && !player.name.toLowerCase().includes(currentFilters.value.name.toLowerCase())) {
             return false
@@ -541,16 +531,6 @@ export default {
           const filterMin = currentFilters.value.transferValueRangeLocal?.min || 0
           const filterMax = currentFilters.value.transferValueRangeLocal?.max || 0
           
-          // Debug: Log filter values
-          if (filterMin > 0 || filterMax > 0) {
-            console.log('Transfer Value Filter Active:', {
-              filterMin,
-              filterMax,
-              player: player.name,
-              transferValue: player.transfer_value
-            })
-          }
-          
           // If any transfer value filter is set, we need to check the player's transfer value
           if (filterMin > 0 || filterMax > 0) {
             // If player has no transfer value data or is "Not for Sale", filter them out
@@ -566,20 +546,6 @@ export default {
             const transferValueRange = parseTransferValueRange(player.transfer_value)
             if (transferValueRange) {
               const playerMax = transferValueRange.max
-              
-              // Debug logging for transfer value filtering
-              if (filterMin > 0 || filterMax > 0) {
-                console.log('Transfer Value Debug:', {
-                  player: player.name,
-                  transferValue: player.transfer_value,
-                  playerRange: transferValueRange,
-                  playerMax,
-                  filterMin,
-                  filterMax,
-                  shouldFilterMin: filterMin > 0 && playerMax < filterMin,
-                  shouldFilterMax: filterMax > 0 && playerMax > filterMax
-                })
-              }
               
               // Apply the filters
               if (filterMin > 0 && playerMax < filterMin) {
