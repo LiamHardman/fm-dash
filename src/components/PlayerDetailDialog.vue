@@ -444,9 +444,9 @@
                                                     </div>
                                                 </div>
                                                 
-                                                <div class="player-positions-section q-mt-sm" v-if="displayPlayer?.short_positions?.length || displayPlayer?.position">
+                                                <div class="player-positions-section q-mt-sm" v-if="playerPositions.length > 0">
                                                     <q-badge
-                                                        v-for="pos in displayPlayer?.short_positions || [displayPlayer?.position]"
+                                                        v-for="pos in playerPositions"
                                                         :key="pos"
                                                         outline
                                                         color="indigo-6"
@@ -2396,13 +2396,72 @@ export default defineComponent({
     const deriveShortPositions = (player) => {
       const positions = []
       
-      // Extract from position field (e.g., "AM (LC), ST (C)" -> ["AM", "ST"])
+      // Extract from position field (e.g., "D (RC), WB (R)" -> ["DC", "DR", "WBR"])
       if (player.position) {
         const positionParts = player.position.split(',').map(p => p.trim())
         for (const part of positionParts) {
-          const shortPos = part.split(' ')[0] // Extract "AM" from "AM (LC)"
-          if (shortPos && !positions.includes(shortPos)) {
-            positions.push(shortPos)
+          // Extract the position abbreviation and the side/role info
+          const match = part.match(/^([A-Z\/]+)\s*\(([^)]+)\)$/)
+          if (match) {
+            const basePos = match[1] // e.g., "D", "WB", "D/WB"
+            const sideInfo = match[2] // e.g., "RC", "R", "RL"
+            
+            // Split compound positions (e.g., "D/WB" -> ["D", "WB"])
+            const positionTypes = basePos.split('/')
+            
+            for (const posType of positionTypes) {
+              // Handle side-specific positions
+              if (sideInfo.includes('C')) {
+                // Center position
+                if (posType === 'D') {
+                  positions.push('DC')
+                } else if (posType === 'WB') {
+                  positions.push('WBR') // Default to right wing-back for center
+                } else if (posType === 'AM') {
+                  positions.push('AMC')
+                } else if (posType === 'M') {
+                  positions.push('MC')
+                } else {
+                  positions.push(posType)
+                }
+              }
+              
+              if (sideInfo.includes('R')) {
+                // Right position
+                if (posType === 'D') {
+                  positions.push('DR')
+                } else if (posType === 'WB') {
+                  positions.push('WBR')
+                } else if (posType === 'AM') {
+                  positions.push('AMR')
+                } else if (posType === 'M') {
+                  positions.push('MR')
+                } else {
+                  positions.push(posType)
+                }
+              }
+              
+              if (sideInfo.includes('L')) {
+                // Left position
+                if (posType === 'D') {
+                  positions.push('DL')
+                } else if (posType === 'WB') {
+                  positions.push('WBL')
+                } else if (posType === 'AM') {
+                  positions.push('AML')
+                } else if (posType === 'M') {
+                  positions.push('ML')
+                } else {
+                  positions.push(posType)
+                }
+              }
+            }
+          } else {
+            // Handle simple position without side info
+            const shortPos = part.split(' ')[0]
+            if (shortPos && !positions.includes(shortPos)) {
+              positions.push(shortPos)
+            }
           }
         }
       }
@@ -2604,6 +2663,12 @@ export default defineComponent({
       }
     })
 
+    // Computed property for player positions using the deriveShortPositions function
+    const playerPositions = computed(() => {
+      if (!displayPlayer.value) return []
+      return deriveShortPositions(displayPlayer.value)
+    })
+
     return {
       qInstance,
       attributeCategories,
@@ -2660,7 +2725,10 @@ export default defineComponent({
       displayPlayer,
       forceRecompute,
       updateComparisonGroupForPlayer,
-      isDarkMode // <-- add this line
+      isDarkMode, // <-- add this line
+      
+      // Player positions computed property
+      playerPositions
     }
   }
 })
