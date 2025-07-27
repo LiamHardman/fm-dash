@@ -410,8 +410,8 @@ export const usePlayerStore = defineStore('player', () => {
         age: Number.parseInt(p.age, 10) || 0,
 
         // Ensure arrays are properly initialized
-        shortPositions: Array.isArray(p.short_positions) ? p.short_positions : [],
-        short_positions: Array.isArray(p.short_positions) ? p.short_positions : [], // Keep both for compatibility
+        shortPositions: Array.isArray(p.shortPositions) ? p.shortPositions : [],
+        short_positions: Array.isArray(p.shortPositions) ? p.shortPositions : [], // Keep both for compatibility
         parsedPositions: Array.isArray(p.parsedPositions) ? p.parsedPositions : [],
         positionGroups: Array.isArray(p.positionGroups) ? p.positionGroups : [],
 

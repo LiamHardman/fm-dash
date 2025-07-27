@@ -537,17 +537,16 @@ const calculateThresholds = () => {
     const positionMatch =
       selectedPositions.value.length === 0 ||
       selectedPositions.value.some((selectedPos) => {
+        const playerPositions = player.short_positions || player.shortPositions || []
         // Handle position groups
-        if (selectedPos === 'Goalkeeper') return player.shortPositions?.includes('GK')
+        if (selectedPos === 'Goalkeeper') return playerPositions.includes('GK')
         if (selectedPos === 'Defender')
-          return player.shortPositions?.some((pos) =>
-            ['DC', 'DR', 'DL', 'WBR', 'WBL'].includes(pos)
-          )
+          return playerPositions.some((pos) => ['DC', 'DR', 'DL', 'WBR', 'WBL'].includes(pos))
         if (selectedPos === 'Midfielder')
-          return player.shortPositions?.some((pos) =>
+          return playerPositions.some((pos) =>
             ['DM', 'MC', 'MR', 'ML', 'AMR', 'AMC', 'AML'].includes(pos)
           )
-        if (selectedPos === 'Forward') return player.shortPositions?.includes('ST')
+        if (selectedPos === 'Forward') return playerPositions.includes('ST')
 
         // Handle specific positions
         if (
@@ -568,7 +567,7 @@ const calculateThresholds = () => {
             'ST',
           ].includes(selectedPos)
         ) {
-          return player.shortPositions?.includes(selectedPos)
+          return playerPositions.includes(selectedPos)
         }
 
         return false
@@ -669,17 +668,16 @@ const filteredPlayers = computed(() => {
     const matchesPosition =
       selectedPositions.value.length === 0 ||
       selectedPositions.value.some((selectedPos) => {
+        const playerPositions = player.short_positions || player.shortPositions || []
         // Handle position groups
-        if (selectedPos === 'Goalkeeper') return player.shortPositions?.includes('GK')
+        if (selectedPos === 'Goalkeeper') return playerPositions.includes('GK')
         if (selectedPos === 'Defender')
-          return player.shortPositions?.some((pos) =>
-            ['DC', 'DR', 'DL', 'WBR', 'WBL'].includes(pos)
-          )
+          return playerPositions.some((pos) => ['DC', 'DR', 'DL', 'WBR', 'WBL'].includes(pos))
         if (selectedPos === 'Midfielder')
-          return player.shortPositions?.some((pos) =>
+          return playerPositions.some((pos) =>
             ['DM', 'MC', 'MR', 'ML', 'AMR', 'AMC', 'AML'].includes(pos)
           )
-        if (selectedPos === 'Forward') return player.shortPositions?.includes('ST')
+        if (selectedPos === 'Forward') return playerPositions.includes('ST')
 
         // Handle specific positions
         if (
@@ -700,7 +698,7 @@ const filteredPlayers = computed(() => {
             'ST',
           ].includes(selectedPos)
         ) {
-          return player.shortPositions?.includes(selectedPos)
+          return playerPositions.includes(selectedPos)
         }
 
         return false

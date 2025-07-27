@@ -316,7 +316,8 @@ export default defineComponent({
 
             // Apply position filter
             if (selectedPosition.value) {
-              if (!player.shortPositions?.includes(selectedPosition.value)) {
+              const playerPositions = player.short_positions || player.shortPositions || []
+              if (!playerPositions.includes(selectedPosition.value)) {
                 return false
               }
             }

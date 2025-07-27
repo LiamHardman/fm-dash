@@ -81,6 +81,8 @@
                         label="Position"
                         dense
                         filled
+                        multiple
+                        use-chips
                         clearable
                         emit-value
                         map-options
@@ -107,6 +109,7 @@
                         :disable="
                             isLoading ||
                             !filters.position ||
+                            filters.position.length === 0 ||
                             roleFilterOptions.length === 0 ||
                             (roleFilterOptions.length === 1 &&
                                 roleFilterOptions[0].value === null)
@@ -117,8 +120,8 @@
                             <q-item>
                                 <q-item-section class="text-grey">
                                     {{
-                                        filters.position
-                                            ? "No specific roles for this position"
+                                        filters.position && filters.position.length > 0
+                                            ? "No specific roles for selected positions"
                                             : "Select position first"
                                     }}
                                 </q-item-section>
@@ -960,7 +963,7 @@ export default defineComponent({
     const filters = ref({
       name: '',
       club: null,
-      position: null,
+      position: [],
       role: null,
       nationality: null,
       continentNationalities: [],
@@ -1210,7 +1213,7 @@ export default defineComponent({
       return (
         filters.value.name !== '' ||
         filters.value.club !== null ||
-        filters.value.position !== null ||
+        (filters.value.position && filters.value.position.length > 0) ||
         filters.value.role !== null ||
         filters.value.nationality !== null ||
         (Array.isArray(filters.value.continentNationalities) &&
@@ -1227,7 +1230,7 @@ export default defineComponent({
     })
 
     const positionOptions = computed(() => {
-      const options = [{ label: 'Any Position', value: null }]
+      const options = []
       for (const shortPos of orderedShortPositions) {
         options.push({ label: shortPos, value: shortPos })
       }
@@ -1237,14 +1240,23 @@ export default defineComponent({
     const roleFilterOptions = computed(() => {
       if (
         !filters.value.position ||
+        filters.value.position.length === 0 ||
         !playerStore.allAvailableRoles ||
         playerStore.allAvailableRoles.length === 0
       ) {
         return [{ label: 'Any Role', value: null }]
       }
-      const selectedPosShortCode = filters.value.position
-      const filtered = playerStore.allAvailableRoles
-        .filter((roleFullName) => roleFullName.startsWith(`${selectedPosShortCode} - `))
+
+      // Get roles for all selected positions
+      const allRoles = new Set()
+      for (const selectedPos of filters.value.position) {
+        const rolesForPosition = playerStore.allAvailableRoles.filter((roleFullName) =>
+          roleFullName.startsWith(`${selectedPos} - `)
+        )
+        rolesForPosition.forEach((role) => allRoles.add(role))
+      }
+
+      const filtered = Array.from(allRoles)
         .map((roleFullName) => ({
           label: roleFullName,
           value: roleFullName,
@@ -1469,7 +1481,7 @@ export default defineComponent({
       filters.value = {
         name: '',
         club: null,
-        position: null,
+        position: [],
         role: null,
         nationality: null,
         continentNationalities: [],

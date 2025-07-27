@@ -207,8 +207,9 @@ export default defineComponent({
 
     const isGoalkeeper = computed(() => {
       if (!props.player) return false
+      const playerPositions = props.player.short_positions || props.player.shortPositions || []
       return (
-        props.player.short_positions?.includes('GK') ||
+        playerPositions.includes('GK') ||
         props.player.position_groups?.includes('Goalkeepers') ||
         props.player.parsed_positions?.includes('Goalkeeper')
       )

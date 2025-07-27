@@ -495,11 +495,14 @@ export default {
           }
 
           // Position filter
-          if (
-            currentFilters.value.position &&
-            !player.short_positions?.includes(currentFilters.value.position)
-          ) {
-            return false
+          if (currentFilters.value.position && currentFilters.value.position.length > 0) {
+            const playerPositions = player.short_positions || player.shortPositions || []
+            const hasMatchingPosition = currentFilters.value.position.some((selectedPos) =>
+              playerPositions.includes(selectedPos)
+            )
+            if (!hasMatchingPosition) {
+              return false
+            }
           }
 
           // Role filter
@@ -695,9 +698,10 @@ export default {
       // If we have filtered players, check if majority are goalkeepers
       if (filteredPlayers.value && filteredPlayers.value.length > 0) {
         const goalkeeperCount = filteredPlayers.value.filter((player) => {
+          const playerPositions = player.short_positions || player.shortPositions || []
           const isGK =
             player.position?.includes('GK') ||
-            player.short_positions?.includes('GK') ||
+            playerPositions.includes('GK') ||
             player.position_groups?.includes('Goalkeepers')
           return isGK
         }).length
