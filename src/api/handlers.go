@@ -1937,95 +1937,383 @@ type TeamRatings struct {
 }
 
 // calculateTeamRatings calculates the overall and section ratings for a team
+// using formation-based optimization similar to the frontend approach
 func calculateTeamRatings(players []Player) TeamRatings {
 	if len(players) < 11 {
 		return TeamRatings{}
 	}
 
-	// Sort players by overall rating
-	sort.Slice(players, func(i, j int) bool {
-		return players[i].Overall > players[j].Overall
-	})
-
-	// Take the top 11 players as the best XI
-	bestXI := players[:11]
-
-	// Calculate average overall
-	var totalOverall int
-	for i := range bestXI {
-		totalOverall += bestXI[i].Overall
+	// Define common formations to test (same as frontend)
+	formations := []struct {
+		name   string
+		layout [][]string
+	}{
+		{"4-4-2", [][]string{
+			{"GK"},
+			{"D (R)", "D (C)", "D (C)", "D (L)"},
+			{"M (R)", "M (C)", "M (C)", "M (L)"},
+			{"ST (C)", "ST (C)"},
+		}},
+		{"4-3-3", [][]string{
+			{"GK"},
+			{"D (R)", "D (C)", "D (C)", "D (L)"},
+			{"M (C)", "M (C)", "M (C)"},
+			{"AM (R)", "ST (C)", "AM (L)"},
+		}},
+		{"4-2-3-1", [][]string{
+			{"GK"},
+			{"D (R)", "D (C)", "D (C)", "D (L)"},
+			{"DM (C)", "DM (C)"},
+			{"AM (R)", "AM (C)", "AM (L)"},
+			{"ST (C)"},
+		}},
+		{"3-5-2", [][]string{
+			{"GK"},
+			{"D (C)", "D (C)", "D (C)"},
+			{"WB (R)", "M (C)", "M (C)", "M (C)", "WB (L)"},
+			{"ST (C)", "ST (C)"},
+		}},
+		{"4-1-4-1", [][]string{
+			{"GK"},
+			{"D (R)", "D (C)", "D (C)", "D (L)"},
+			{"DM (C)"},
+			{"M (R)", "M (C)", "M (C)", "M (L)"},
+			{"ST (C)"},
+		}},
 	}
-	bestOverall := totalOverall / 11
 
-	// Calculate section ratings based on positions
-	// Pre-allocate with estimated capacities based on typical team formations
-	attPlayers := make([]Player, 0, 4) // Typically 3-4 attackers in best XI
-	midPlayers := make([]Player, 0, 4) // Typically 3-4 midfielders in best XI
-	defPlayers := make([]Player, 0, 5) // Typically 4-5 defenders in best XI
+	// Position mappings (EXACT same as frontend)
+	positionSideMap := map[string][]string{
+		"D (R)":  {"DR"},
+		"D (L)":  {"DL"},
+		"D (C)":  {"DC"},
+		"WB (R)": {"WBR"},
+		"WB (L)": {"WBL"},
+		"DM (C)": {"DM"},
+		"M (R)":  {"MR"},
+		"M (L)":  {"ML"},
+		"M (C)":  {"MC"},
+		"AM (R)": {"AMR"},
+		"AM (L)": {"AML"},
+		"AM (C)": {"AMC"},
+		"ST (C)": {"ST"},
+		"GK":     {"GK"},
+	}
 
-	for i := range bestXI {
-		// Categorize based on position groups
-		isAttacker := false
-		isMidfielder := false
-		isDefender := false
+	fallbackPositionMap := map[string][]string{
+		"D (R)":  {"DR", "WBR", "MR"},
+		"D (L)":  {"DL", "WBL", "ML"},
+		"D (C)":  {"DC", "DM"},
+		"WB (R)": {"WBR", "DR", "MR"},
+		"WB (L)": {"WBL", "DL", "ML"},
+		"DM (C)": {"DM", "DC", "MC"},
+		"M (R)":  {"MR", "WBR", "AMR"},
+		"M (L)":  {"ML", "WBL", "AML"},
+		"M (C)":  {"MC", "DM"},
+		"AM (R)": {"AMR", "MR"},
+		"AM (L)": {"AML", "ML"},
+		"AM (C)": {"AMC", "MC"},
+		"ST (C)": {"ST", "AMC"},
+		"GK":     {"GK"},
+	}
 
-		for _, posGroup := range bestXI[i].PositionGroups {
-			switch posGroup {
-			case "Attackers":
-				isAttacker = true
-			case "Midfielders":
-				isMidfielder = true
-			case "Defenders":
-				isDefender = true
+	// FM slot role matcher (EXACT same as frontend)
+	fmSlotRoleMatcher := map[string][]string{
+		"GK":     {"Goalkeeper"},
+		"D (R)":  {"Defender (Right)", "Right Back"},
+		"D (L)":  {"Defender (Left)", "Left Back"},
+		"D (C)":  {"Defender (Centre)", "Centre Back"},
+		"WB (R)": {"Wing-Back (Right)", "Right Wing-Back"},
+		"WB (L)": {"Wing-Back (Left)", "Left Wing-Back"},
+		"DM (C)": {"Defensive Midfielder (Centre)", "Centre Defensive Midfielder"},
+		"M (R)":  {"Midfielder (Right)", "Right Midfielder"},
+		"M (L)":  {"Midfielder (Left)", "Left Midfielder"},
+		"M (C)":  {"Midfielder (Centre)", "Centre Midfielder"},
+		"AM (R)": {"Attacking Midfielder (Right)", "Right Attacking Midfielder", "Winger (Right)"},
+		"AM (L)": {"Attacking Midfielder (Left)", "Left Attacking Midfielder", "Winger (Left)"},
+		"AM (C)": {"Attacking Midfielder (Centre)", "Centre Attacking Midfielder"},
+		"ST (C)": {"Striker (Centre)", "Striker"},
+	}
+
+	fmMatcherToRoleKeyPrefix := map[string]string{
+		"GOALKEEPER":                    "GK",
+		"SWEEPER":                       "DC",
+		"DEFENDER (RIGHT)":              "DR",
+		"RIGHT BACK":                    "DR",
+		"DEFENDER (LEFT)":               "DL",
+		"LEFT BACK":                     "DL",
+		"DEFENDER (CENTRE)":             "DC",
+		"CENTRE BACK":                   "DC",
+		"WING-BACK (RIGHT)":             "WBR",
+		"RIGHT WING-BACK":               "WBR",
+		"WING-BACK (LEFT)":              "WBL",
+		"LEFT WING-BACK":                "WBL",
+		"DEFENSIVE MIDFIELDER (CENTRE)": "DM",
+		"CENTRE DEFENSIVE MIDFIELDER":   "DM",
+		"MIDFIELDER (RIGHT)":            "MR",
+		"RIGHT MIDFIELDER":              "MR",
+		"MIDFIELDER (LEFT)":             "ML",
+		"LEFT MIDFIELDER":               "ML",
+		"MIDFIELDER (CENTRE)":           "MC",
+		"CENTRE MIDFIELDER":             "MC",
+		"ATTACKING MIDFIELDER (RIGHT)":  "AMR",
+		"RIGHT ATTACKING MIDFIELDER":    "AMR",
+		"WINGER (RIGHT)":                "AMR",
+		"ATTACKING MIDFIELDER (LEFT)":   "AML",
+		"LEFT ATTACKING MIDFIELDER":     "AML",
+		"WINGER (LEFT)":                 "AML",
+		"ATTACKING MIDFIELDER (CENTRE)": "AMC",
+		"CENTRE ATTACKING MIDFIELDER":   "AMC",
+		"STRIKER (CENTRE)":              "ST",
+		"STRIKER":                       "ST",
+	}
+
+	// Section position definitions (same as frontend)
+	attackingPositions := []string{"AM (R)", "AM (L)", "ST (C)"}
+	midfielderPositions := []string{"DM (C)", "M (R)", "M (L)", "M (C)", "AM (C)"}
+	defensivePositions := []string{"GK", "D (R)", "D (L)", "D (C)", "WB (R)", "WB (L)"}
+
+	const MIN_SUITABILITY_THRESHOLD = 10
+
+	var bestOverall int
+	var bestSectionRatings TeamRatings
+
+	// Test each formation
+	for _, formation := range formations {
+		formationSlots := []string{}
+		for _, row := range formation.layout {
+			formationSlots = append(formationSlots, row...)
+		}
+
+		// Calculate best team for this formation
+		teamComposition := make(map[string]Player)
+		usedPlayers := make(map[string]bool)
+
+		// Fill each position with the best available player (same logic as frontend)
+		for _, slot := range formationSlots {
+			var bestPlayer Player
+			var bestRating int
+
+			for _, player := range players {
+				if usedPlayers[player.Name] {
+					continue
+				}
+
+				// Get position-specific rating for this player in this role (EXACT same as frontend)
+				rating := getPlayerOverallForRoleGo(player, slot, positionSideMap, fallbackPositionMap, fmSlotRoleMatcher, fmMatcherToRoleKeyPrefix)
+
+				if rating >= MIN_SUITABILITY_THRESHOLD {
+					// Check if player can play this position (EXACT same as frontend)
+					slotPositions := positionSideMap[slot] // Note: frontend uses toUpperCase()
+					fallbackPositions := fallbackPositionMap[slot]
+					playerPositions := player.ShortPositions
+
+					isExactMatch := false
+					isFallbackMatch := false
+
+					for _, pos := range playerPositions {
+						for _, slotPos := range slotPositions {
+							if pos == slotPos {
+								isExactMatch = true
+								break
+							}
+						}
+						for _, fallbackPos := range fallbackPositions {
+							if pos == fallbackPos {
+								isFallbackMatch = true
+								break
+							}
+						}
+					}
+
+					if isExactMatch || isFallbackMatch {
+						// Sort score logic (same as frontend)
+						sortScore := rating
+						if isExactMatch {
+							sortScore += 10000
+						} else {
+							sortScore -= 5000
+						}
+
+						if sortScore > bestRating {
+							bestRating = sortScore
+							bestPlayer = player
+						}
+					}
+				}
+			}
+
+			if bestPlayer.Name != "" {
+				teamComposition[slot] = bestPlayer
+				usedPlayers[bestPlayer.Name] = true
 			}
 		}
 
-		// Assign to categories (players can be in multiple)
-		if isAttacker {
-			attPlayers = append(attPlayers, bestXI[i])
+		// Calculate average overall for this formation
+		var totalRating int
+		var playerCount int
+		var attSum, midSum, defSum int
+		var attCount, midCount, defCount int
+
+		for slot, player := range teamComposition {
+			rating := getPlayerOverallForRoleGo(player, slot, positionSideMap, fallbackPositionMap, fmSlotRoleMatcher, fmMatcherToRoleKeyPrefix)
+			totalRating += rating
+			playerCount++
+
+			// Categorize by position (same as frontend)
+			if contains(attackingPositions, slot) {
+				attSum += rating
+				attCount++
+			} else if contains(midfielderPositions, slot) {
+				midSum += rating
+				midCount++
+			} else if contains(defensivePositions, slot) {
+				defSum += rating
+				defCount++
+			}
 		}
-		if isMidfielder {
-			midPlayers = append(midPlayers, bestXI[i])
-		}
-		if isDefender {
-			defPlayers = append(defPlayers, bestXI[i])
+
+		if playerCount >= 5 { // Minimum viable team
+			averageOverall := totalRating / playerCount
+			if averageOverall > bestOverall {
+				bestOverall = averageOverall
+				// Calculate section ratings
+				attRating := 0
+				if attCount > 0 {
+					attRating = attSum / attCount
+				}
+				midRating := 0
+				if midCount > 0 {
+					midRating = midSum / midCount
+				}
+				defRating := 0
+				if defCount > 0 {
+					defRating = defSum / defCount
+				}
+
+				bestSectionRatings = TeamRatings{
+					BestOverall: averageOverall,
+					AttRating:   attRating,
+					MidRating:   midRating,
+					DefRating:   defRating,
+				}
+			}
 		}
 	}
 
-	// Calculate section averages
-	attRating := 0
-	if len(attPlayers) > 0 {
-		var attSum int
-		for i := range attPlayers {
-			attSum += attPlayers[i].Overall
-		}
-		attRating = attSum / len(attPlayers)
+	return bestSectionRatings
+}
+
+// getPlayerOverallForRoleGo calculates the rating for a player in a specific role (EXACT same logic as frontend)
+func getPlayerOverallForRoleGo(player Player, role string, positionSideMap, fallbackPositionMap, fmSlotRoleMatcher map[string][]string, fmMatcherToRoleKeyPrefix map[string]string) int {
+	if player.Name == "" || role == "" {
+		return 0
 	}
 
-	midRating := 0
-	if len(midPlayers) > 0 {
-		var midSum int
-		for i := range midPlayers {
-			midSum += midPlayers[i].Overall
-		}
-		midRating = midSum / len(midPlayers)
+	bestScoreForRole := 0
+
+	// Check if player has role-specific overalls
+	if len(player.RoleSpecificOveralls) == 0 {
+		// If no role-specific overalls, use player's general Overall as fallback
+		return player.Overall
 	}
 
-	defRating := 0
-	if len(defPlayers) > 0 {
-		var defSum int
-		for i := range defPlayers {
-			defSum += defPlayers[i].Overall
-		}
-		defRating = defSum / len(defPlayers)
+	// Check if player has role-specific overalls (same logic as frontend)
+	hasRoleOveralls := len(player.RoleSpecificOveralls) > 0
+	if !hasRoleOveralls {
+		// If no role-specific overalls, use player's general Overall as fallback
+		return player.Overall
 	}
 
-	return TeamRatings{
-		BestOverall: bestOverall,
-		AttRating:   attRating,
-		MidRating:   midRating,
-		DefRating:   defRating,
+	// Get required positions for this role (same as frontend)
+	upperSlotRole := strings.ToUpper(role)
+	requiredPositions := []string{}
+	if positions, exists := positionSideMap[upperSlotRole]; exists {
+		requiredPositions = positions
 	}
+
+	// Check exact position matches first (same as frontend)
+	if player.ShortPositions != nil && len(player.ShortPositions) > 0 {
+		exactPositionMatches := []string{}
+		for _, pos := range player.ShortPositions {
+			for _, requiredPos := range requiredPositions {
+				if pos == requiredPos {
+					exactPositionMatches = append(exactPositionMatches, pos)
+				}
+			}
+		}
+
+		if len(exactPositionMatches) > 0 {
+			// Find best role-specific rating for exact matches
+			for _, rso := range player.RoleSpecificOveralls {
+				rsoBasePosition := strings.Split(rso.RoleName, " - ")[0]
+				for _, exactMatch := range exactPositionMatches {
+					if rsoBasePosition == exactMatch {
+						if rso.Score > bestScoreForRole {
+							bestScoreForRole = rso.Score
+						}
+					}
+				}
+			}
+
+			if bestScoreForRole > 0 {
+				return bestScoreForRole
+			}
+		}
+	}
+
+	// Fallback logic (same as frontend)
+	if bestScoreForRole == 0 {
+		upperSlotRole := strings.ToUpper(role)
+		fmPositionMatchers := []string{}
+		if matchers, exists := fmSlotRoleMatcher[upperSlotRole]; exists {
+			fmPositionMatchers = matchers
+		}
+		if len(fmPositionMatchers) == 0 {
+			fmPositionMatchers = []string{upperSlotRole}
+		}
+
+		// Build target role key prefixes (same as frontend)
+		targetRoleKeyPrefixes := []string{}
+		for _, matcher := range fmPositionMatchers {
+			if prefix, exists := fmMatcherToRoleKeyPrefix[strings.ToUpper(matcher)]; exists {
+				// Check if not already included
+				found := false
+				for _, existing := range targetRoleKeyPrefixes {
+					if existing == prefix {
+						found = true
+						break
+					}
+				}
+				if !found {
+					targetRoleKeyPrefixes = append(targetRoleKeyPrefixes, prefix)
+				}
+			}
+		}
+
+		// Check role-specific overalls against target prefixes
+		for _, rso := range player.RoleSpecificOveralls {
+			rsoBasePosition := strings.Split(rso.RoleName, " - ")[0]
+			for _, targetPrefix := range targetRoleKeyPrefixes {
+				if rsoBasePosition == targetPrefix {
+					if rso.Score > bestScoreForRole {
+						bestScoreForRole = rso.Score
+					}
+				}
+			}
+		}
+
+		// Final fallback to player's general Overall rating if still nothing found
+		if bestScoreForRole == 0 {
+			fallbackOverall := player.Overall - 10
+			if fallbackOverall < 0 {
+				fallbackOverall = 0
+			}
+			bestScoreForRole = fallbackOverall
+		}
+	}
+
+	return bestScoreForRole
 }
 
 // calculateAverage calculates the average of a slice of integers
