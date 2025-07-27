@@ -50,6 +50,7 @@
                                 selectedTeamPlayer = null;
                                 selectedRole = null;
                                 teamPlayersForSelection = [];
+                                detailedTeamPlayers = [];
                                 selectedFormationKey = null;
                                 squadComposition = {};
                             "
@@ -939,7 +940,7 @@ import { formatCurrency } from '@/utils/currencyUtils'
 import { formationCache } from '@/utils/formationCache'
 import { formations, getFormationLayout } from '@/utils/formations'
 import { getFlagUrl, getPlayerFaceUrl, getTeamLogoUrl } from '@/utils/imageOptimization'
-import { fetchFullPlayerStats, findPlayerUpgrades } from '../services/playerService'
+import { fetchFullPlayerStats, fetchTeamData, findPlayerUpgrades } from '../services/playerService'
 import PitchDisplay from './PitchDisplay.vue'
 import PlayerCards from './PlayerCards.vue'
 import PlayerDataTable from './PlayerDataTable.vue'
@@ -1076,6 +1077,7 @@ export default {
     const selectedTeamPlayer = ref(null)
     const baseOverallForSelectedPlayer = ref(null)
     const teamPlayersForSelection = ref([])
+    const detailedTeamPlayers = ref([]) // Store detailed team data with role-specific overalls
 
     // Formation-related variables
     const selectedFormationKey = ref(null)
@@ -1379,6 +1381,8 @@ export default {
           (typeof player.roleSpecificOveralls === 'object' &&
             Object.keys(player.roleSpecificOveralls).length === 0)
         ) {
+          // console.log(`Player ${player.name} missing roleSpecificOveralls`)
+          return false
         }
       }
       return true
@@ -1521,9 +1525,14 @@ export default {
     }
 
     const updateTeamPlayersForSelection = () => {
-      const playersToUse = hasCompletePlayerData(playerStore.allPlayers)
-        ? playerStore.allPlayers
-        : props.players
+      // Use detailed team data if available, otherwise fall back to general player data
+      const playersToUse =
+        detailedTeamPlayers.value.length > 0
+          ? detailedTeamPlayers.value
+          : hasCompletePlayerData(playerStore.allPlayers)
+            ? playerStore.allPlayers
+            : props.players
+
       if (teamName.value && selectedPosition.value && playersToUse) {
         teamPlayersForSelection.value = playersToUse
           .filter((player) => {
@@ -1556,9 +1565,14 @@ export default {
 
     // Also update team players when team changes (for formation calculation)
     const updateTeamPlayersForFormation = () => {
-      const playersToUse = hasCompletePlayerData(playerStore.allPlayers)
-        ? playerStore.allPlayers
-        : props.players
+      // Use detailed team data if available, otherwise fall back to general player data
+      const playersToUse =
+        detailedTeamPlayers.value.length > 0
+          ? detailedTeamPlayers.value
+          : hasCompletePlayerData(playerStore.allPlayers)
+            ? playerStore.allPlayers
+            : props.players
+
       if (teamName.value && playersToUse) {
         const teamPlayers = playersToUse.filter(
           (player) => player.club && player.club.toLowerCase() === teamName.value.toLowerCase()
@@ -1573,9 +1587,14 @@ export default {
 
     // Formation watchers
     watch(selectedFormationKey, (newKey) => {
-      const playersToUse = hasCompletePlayerData(playerStore.allPlayers)
-        ? playerStore.allPlayers
-        : props.players
+      // Use detailed team data if available, otherwise fall back to general player data
+      const playersToUse =
+        detailedTeamPlayers.value.length > 0
+          ? detailedTeamPlayers.value
+          : hasCompletePlayerData(playerStore.allPlayers)
+            ? playerStore.allPlayers
+            : props.players
+
       if (newKey && teamName.value && playersToUse) {
         const teamPlayers = playersToUse.filter(
           (player) => player.club && player.club.toLowerCase() === teamName.value.toLowerCase()
@@ -1591,81 +1610,93 @@ export default {
 
     // Auto-select best formation when team changes
     watch(teamName, async (newTeamName) => {
-      const playersToUse = hasCompletePlayerData(playerStore.allPlayers)
-        ? playerStore.allPlayers
-        : props.players
-      if (newTeamName && playersToUse && playersToUse.length > 0) {
-        // Wait a bit to ensure player data is fully loaded
-        await nextTick()
+      if (!newTeamName) {
+        detailedTeamPlayers.value = []
+        return
+      }
 
-        // Add a small delay to ensure player data is fully processed
-        await new Promise((resolve) => setTimeout(resolve, 100))
+      try {
+        // Fetch detailed team data to ensure we have role-specific overalls
+        console.log('UpgradeFinderDialog: Fetching detailed team data for:', newTeamName)
+        const teamData = await fetchTeamData(props.datasetId, 'team', newTeamName)
 
-        // Get all players for the selected team (case-insensitive matching)
-        const teamPlayers = playersToUse.filter(
-          (player) => player.club && player.club.toLowerCase() === newTeamName.toLowerCase()
-        )
+        if (teamData.data?.players && teamData.data.players.length > 0) {
+          const teamPlayers = teamData.data.players
 
-        if (teamPlayers.length > 0) {
-          // Wait for player data to be fully loaded by checking if shortPositions are populated
-          let attempts = 0
-          const maxAttempts = 10
+          // Check if players have role-specific overalls
+          const playersWithRoleOveralls = teamPlayers.filter(
+            (p) =>
+              p.roleSpecificOveralls &&
+              (Array.isArray(p.roleSpecificOveralls)
+                ? p.roleSpecificOveralls.length > 0
+                : Object.keys(p.roleSpecificOveralls).length > 0)
+          )
 
-          const waitForPlayerData = () => {
-            // Check for players with at least shortPositions (roleSpecificOveralls might not be available for all players)
-            const playersWithPositions = teamPlayers.filter(
-              (p) => p.shortPositions && p.shortPositions.length > 0
+          console.log(
+            `UpgradeFinderDialog: Team data loaded - ${teamPlayers.length} players, ${playersWithRoleOveralls.length} with role overalls`
+          )
+
+          // Store the detailed team data for use in player selection
+          detailedTeamPlayers.value = teamPlayers
+
+          // Use the detailed team data for formation calculation
+          const bestFormation = calculateBestFormationForTeam(teamPlayers)
+          if (bestFormation) {
+            selectedFormationKey.value = bestFormation
+            calculationMessage.value = `Auto-selected best formation: ${formations[bestFormation].name}. Calculating Best XI...`
+            calculationMessageClass.value = $q.dark.isActive
+              ? 'bg-info text-white'
+              : 'bg-blue-2 text-primary'
+          } else {
+            calculationMessage.value = 'Could not determine best formation for this team.'
+            calculationMessageClass.value = $q.dark.isActive
+              ? 'bg-warning text-white'
+              : 'bg-orange-2 text-dark'
+          }
+        } else {
+          // Fallback to using general player data
+          const playersToUse = hasCompletePlayerData(playerStore.allPlayers)
+            ? playerStore.allPlayers
+            : props.players
+
+          if (playersToUse && playersToUse.length > 0) {
+            const teamPlayers = playersToUse.filter(
+              (player) => player.club && player.club.toLowerCase() === newTeamName.toLowerCase()
             )
 
-            // Also check if we have any players with roleSpecificOveralls
-            const playersWithRoleOveralls = teamPlayers.filter(
-              (p) =>
-                p.roleSpecificOveralls &&
-                (Array.isArray(p.roleSpecificOveralls)
-                  ? p.roleSpecificOveralls.length > 0
-                  : Object.keys(p.roleSpecificOveralls).length > 0)
-            )
-
-            console.log(
-              `Attempt ${attempts + 1} - Players with positions: ${playersWithPositions.length}, Players with role overalls: ${playersWithRoleOveralls.length}`
-            )
-
-            // Proceed if we have players with positions, even if roleSpecificOveralls are missing
-            if (playersWithPositions.length > 0 || attempts >= maxAttempts) {
-              if (playersWithPositions.length > 0) {
-                const bestFormation = calculateBestFormationForTeam(teamPlayers)
-                if (bestFormation) {
-                  selectedFormationKey.value = bestFormation
-                  calculationMessage.value = `Auto-selected best formation: ${formations[bestFormation].name}. Calculating Best XI...`
-                  calculationMessageClass.value = $q.dark.isActive
-                    ? 'bg-info text-white'
-                    : 'bg-blue-2 text-primary'
-                } else {
-                  calculationMessage.value = 'Could not determine best formation for this team.'
-                  calculationMessageClass.value = $q.dark.isActive
-                    ? 'bg-warning text-white'
-                    : 'bg-orange-2 text-dark'
-                }
+            if (teamPlayers.length > 0) {
+              const bestFormation = calculateBestFormationForTeam(teamPlayers)
+              if (bestFormation) {
+                selectedFormationKey.value = bestFormation
+                calculationMessage.value = `Auto-selected best formation: ${formations[bestFormation].name}. Calculating Best XI...`
+                calculationMessageClass.value = $q.dark.isActive
+                  ? 'bg-info text-white'
+                  : 'bg-blue-2 text-primary'
               } else {
-                calculationMessage.value =
-                  'Player data not fully loaded yet. Please try again in a moment.'
+                calculationMessage.value = 'Could not determine best formation for this team.'
                 calculationMessageClass.value = $q.dark.isActive
                   ? 'bg-warning text-white'
                   : 'bg-orange-2 text-dark'
               }
             } else {
-              attempts++
-              setTimeout(waitForPlayerData, 200)
+              calculationMessage.value = 'No players found for the selected team.'
+              calculationMessageClass.value = $q.dark.isActive
+                ? 'bg-warning text-white'
+                : 'bg-orange-2 text-dark'
             }
+          } else {
+            calculationMessage.value = 'No player data available.'
+            calculationMessageClass.value = $q.dark.isActive
+              ? 'bg-warning text-white'
+              : 'bg-orange-2 text-dark'
           }
-
-          waitForPlayerData()
-        } else {
-          calculationMessage.value = 'No players found for the selected team.'
-          calculationMessageClass.value = $q.dark.isActive
-            ? 'bg-warning text-white'
-            : 'bg-orange-2 text-dark'
         }
+      } catch (error) {
+        console.error('Error fetching team data:', error)
+        calculationMessage.value = 'Failed to load team data. Please try again.'
+        calculationMessageClass.value = $q.dark.isActive
+          ? 'bg-warning text-white'
+          : 'bg-orange-2 text-dark'
       }
     })
 

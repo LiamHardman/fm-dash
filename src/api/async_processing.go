@@ -5,6 +5,7 @@ import (
 	"context"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -587,11 +588,19 @@ func (f *AsyncPlayerFilter) matchesFilter(player *Player, filter PlayerFilter) b
 	}
 
 	// Transfer value filter
-	if filter.MinTransferValue > 0 && player.TransferValueAmount < filter.MinTransferValue {
-		return false
-	}
-	if filter.MaxTransferValue > 0 && player.TransferValueAmount > filter.MaxTransferValue {
-		return false
+	if filter.MinTransferValue > 0 || filter.MaxTransferValue > 0 {
+		// Skip players who are "Not for Sale"
+		if player.TransferValue == "Not for Sale" ||
+			strings.Contains(strings.ToLower(player.TransferValue), "not for sale") {
+			return false
+		}
+
+		if filter.MinTransferValue > 0 && player.TransferValueAmount < filter.MinTransferValue {
+			return false
+		}
+		if filter.MaxTransferValue > 0 && player.TransferValueAmount > filter.MaxTransferValue {
+			return false
+		}
 	}
 
 	// Salary filter

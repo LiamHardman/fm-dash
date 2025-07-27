@@ -2678,8 +2678,10 @@ func processBargainHunter(players []Player, maxBudget, maxSalary, minAge, maxAge
 	for i := range players {
 		player := players[i]
 
-		// Skip free transfers entirely
-		if player.TransferValueAmount == 0 {
+		// Skip free transfers and "Not for Sale" players entirely
+		if player.TransferValueAmount == 0 ||
+			player.TransferValue == "Not for Sale" ||
+			strings.Contains(strings.ToLower(player.TransferValue), "not for sale") {
 			continue
 		}
 
@@ -3950,13 +3952,18 @@ func filterPlayersForPerformance(players []Player, position, role string, minAge
 		}
 
 		// Transfer value filter
-		if minTransferValue > 0 {
-			if transferValue, err := strconv.ParseInt(player.TransferValue, 10, 64); err == nil && transferValue < minTransferValue {
+		if minTransferValue > 0 || maxTransferValue > 0 {
+			// Skip players who are "Not for Sale"
+			if player.TransferValue == "Not for Sale" ||
+				strings.Contains(strings.ToLower(player.TransferValue), "not for sale") {
 				continue
 			}
-		}
-		if maxTransferValue > 0 {
-			if transferValue, err := strconv.ParseInt(player.TransferValue, 10, 64); err == nil && transferValue > maxTransferValue {
+
+			// Use the parsed TransferValueAmount field instead of trying to parse the string
+			if minTransferValue > 0 && player.TransferValueAmount < minTransferValue {
+				continue
+			}
+			if maxTransferValue > 0 && player.TransferValueAmount > maxTransferValue {
 				continue
 			}
 		}
@@ -4925,6 +4932,12 @@ func findPlayerUpgrades(players []Player, req UpgradeFinderRequest) []Player {
 
 		// Check transfer value filter
 		if req.MaxTransferValue > 0 {
+			// Skip players who are "Not for Sale"
+			if player.TransferValue == "Not for Sale" ||
+				strings.Contains(strings.ToLower(player.TransferValue), "not for sale") {
+				continue
+			}
+
 			if player.TransferValueAmount > req.MaxTransferValue {
 				continue
 			}
