@@ -106,24 +106,58 @@
                                 <div class="team-division">{{ team.division }}</div>
                                 <div class="player-count">{{ team.playerCount }} players</div>
                             </div>
-                            <div class="team-ratings">
-                                <div class="rating-item">
-                                    <div class="rating-label">Best</div>
-                                    <div class="rating-value" :class="getOverallClass(team.bestOverall)">
-                                        {{ team.bestOverall }}
+                            <div class="team-section-ratings">
+                                <div 
+                                    class="section-ratings-large"
+                                    :title="`${team.name} - ATT: ${team.attRating}, MID: ${team.midRating}, DEF: ${team.defRating}`"
+                                >
+                                    <div class="section-rating-large att">
+                                        <span class="section-label-large">ATT</span>
+                                        <span 
+                                            class="section-value-large"
+                                            :class="getOverallClass(team.attRating)"
+                                        >
+                                            {{ team.attRating }}
+                                        </span>
+                                    </div>
+                                    <div class="section-rating-large mid">
+                                        <span class="section-label-large">MID</span>
+                                        <span 
+                                            class="section-value-large"
+                                            :class="getOverallClass(team.midRating)"
+                                        >
+                                            {{ team.midRating }}
+                                        </span>
+                                    </div>
+                                    <div class="section-rating-large def">
+                                        <span class="section-label-large">DEF</span>
+                                        <span 
+                                            class="section-value-large"
+                                            :class="getOverallClass(team.defRating)"
+                                        >
+                                            {{ team.defRating }}
+                                        </span>
                                     </div>
                                 </div>
-                                <div class="rating-item">
-                                    <div class="rating-label">Att</div>
-                                    <div class="rating-value">{{ team.attRating }}</div>
-                                </div>
-                                <div class="rating-item">
-                                    <div class="rating-label">Mid</div>
-                                    <div class="rating-value">{{ team.midRating }}</div>
-                                </div>
-                                <div class="rating-item">
-                                    <div class="rating-label">Def</div>
-                                    <div class="rating-value">{{ team.defRating }}</div>
+                            </div>
+                            <div class="team-overall">
+                                <div class="team-rating" :title="`${team.name} - Overall: ${team.bestOverall}`">
+                                    <div 
+                                        class="highest-overall-large"
+                                        :class="getOverallClass(team.bestOverall)"
+                                    >
+                                        {{ team.bestOverall > 0 ? team.bestOverall + ' AVG' : 'N/A' }}
+                                    </div>
+                                    <div class="star-rating-large">
+                                        <span
+                                            v-for="star in 5"
+                                            :key="star"
+                                            class="star-large"
+                                            :class="getStarClass(team.bestOverall, star)"
+                                        >
+                                            ★
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -272,10 +306,46 @@ export default {
     }
 
     const getOverallClass = (overall) => {
-      if (overall >= 85) return 'text-positive'
-      if (overall >= 80) return 'text-warning'
-      if (overall >= 75) return 'text-info'
-      return 'text-grey'
+      if (overall === null || overall === undefined || overall === 0) return 'rating-na'
+      const numericOverall = Number(overall)
+      if (Number.isNaN(numericOverall)) return 'rating-na'
+
+      if (numericOverall >= 90) return 'rating-tier-6'
+      if (numericOverall >= 80) return 'rating-tier-5'
+      if (numericOverall >= 70) return 'rating-tier-4'
+      if (numericOverall >= 55) return 'rating-tier-3'
+      if (numericOverall >= 40) return 'rating-tier-2'
+      return 'rating-tier-1'
+    }
+
+    const getStarClass = (overall, starPosition) => {
+      if (!overall || overall === 0) return 'empty'
+
+      const starRating = getStarRating(overall)
+
+      if (starPosition <= Math.floor(starRating)) {
+        return 'filled'
+      }
+      if (starPosition === Math.floor(starRating) + 1 && starRating % 1 === 0.5) {
+        return 'half'
+      }
+      return 'empty'
+    }
+
+    const getStarRating = (overall) => {
+      if (!overall || overall === 0) return 0
+
+      if (overall >= 85) return 5
+      if (overall >= 82) return 4.5
+      if (overall >= 78) return 4
+      if (overall >= 74) return 3.5
+      if (overall >= 70) return 3
+      if (overall >= 67) return 2.5
+      if (overall >= 64) return 2
+      if (overall >= 60) return 1.5
+      if (overall >= 55) return 1
+      if (overall >= 50) return 0.5
+      return 0
     }
 
     const shareDataset = () => {
@@ -362,6 +432,8 @@ export default {
       playerForDetailView,
       showPlayerDetailDialog,
       getOverallClass,
+      getStarClass,
+      getStarRating,
       quasarInstance,
       router,
       detectedCurrencySymbol,
@@ -665,17 +737,17 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
     }
     
     .teams-list {
-        .team-row {
-            display: grid;
-            grid-template-columns: auto 1fr auto;
-            gap: 1rem;
-            align-items: center;
-            padding: 1rem;
-            border-radius: $border-radius-small;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            border: 1px solid rgba(0, 0, 0, 0.06);
-            margin-bottom: 0.5rem;
+                    .team-row {
+                display: grid;
+                grid-template-columns: auto 1fr auto auto;
+                gap: 1rem;
+                align-items: center;
+                padding: 1rem;
+                border-radius: $border-radius-small;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                border: 1px solid rgba(0, 0, 0, 0.06);
+                margin-bottom: 0.5rem;
             
             .body--dark & {
                 border-color: rgba(255, 255, 255, 0.1);
@@ -684,10 +756,10 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
             &:hover {
                 transform: translateY(-1px);
                 box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-                background: rgba(59, 130, 246, 0.05);
+                background: rgba(103, 126, 234, 0.05);
                 
                 .body--dark & {
-                    background: rgba(59, 130, 246, 0.1);
+                    background: rgba(103, 126, 234, 0.1);
                 }
             }
             
@@ -695,22 +767,22 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                width: 48px;
+                width: 32px;
                 
                 .team-logo {
                     border-radius: 4px;
+                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
                 }
             }
             
             .team-info {
                 .team-name {
-                    font-weight: 600;
-                    font-size: 1.1rem;
+                    font-weight: 700;
+                    font-size: 1rem;
                     color: #1e293b;
-                    margin-bottom: 0.25rem;
                     
                     .body--dark & {
-                        color: #f1f5f9;
+                        color: rgba(255, 255, 255, 0.9);
                     }
                 }
                 
@@ -726,48 +798,77 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
                 
                 .player-count {
                     font-size: 0.85rem;
-                    color: #94a3b8;
+                    color: #64748b;
+                    margin-top: 0.2rem;
                     
                     .body--dark & {
-                        color: #64748b;
+                        color: rgba(255, 255, 255, 0.6);
                     }
                 }
             }
             
-            .team-ratings {
-                display: grid;
-                grid-template-columns: repeat(4, 1fr);
-                gap: 0.5rem;
-                min-width: 200px;
-                
-                @media (max-width: 768px) {
-                    grid-template-columns: repeat(2, 1fr);
-                    min-width: auto;
-                }
-                
-                .rating-item {
-                    text-align: center;
-                    padding: 0.5rem;
-                    background: rgba(59, 130, 246, 0.1);
-                    border-radius: 4px;
+            .team-section-ratings {
+                .section-ratings-large {
+                    display: flex;
+                    gap: 0.5rem;
                     
-                    .body--dark & {
-                        background: rgba(59, 130, 246, 0.2);
-                    }
-                    
-                    .rating-label {
-                        font-size: 0.75rem;
-                        color: #64748b;
-                        margin-bottom: 0.25rem;
+                    .section-rating-large {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
                         
-                        .body--dark & {
-                            color: #94a3b8;
+                        .section-label-large {
+                            font-size: 0.7rem;
+                            font-weight: 600;
+                            text-transform: uppercase;
+                            letter-spacing: 0.5px;
+                            margin-bottom: 0.2rem;
+                        }
+                        
+                        .section-value-large {
+                            font-size: 0.8rem;
+                            font-weight: 700;
+                            padding: 0.2rem 0.4rem;
+                            border-radius: 4px;
+                            min-width: 24px;
+                            text-align: center;
                         }
                     }
+                }
+            }
+            
+            .team-overall {
+                text-align: center;
+                
+                .team-rating {
+                    .highest-overall-large {
+                        font-size: 0.9rem;
+                        font-weight: 700;
+                        margin-bottom: 0.3rem;
+                    }
                     
-                    .rating-value {
-                        font-weight: 600;
-                        font-size: 1rem;
+                    .star-rating-large {
+                        .star-large {
+                            font-size: 0.8rem;
+                            margin: 0 0.05rem;
+                            
+                            &.filled {
+                                color: #fbbf24;
+                            }
+                            
+                            &.half {
+                                color: #fbbf24;
+                                opacity: 0.5;
+                            }
+                            
+                            &.empty {
+                                color: #d1d5db;
+                                
+                                .body--dark & {
+                                    color: rgba(255, 255, 255, 0.3);
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -849,6 +950,61 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
             p {
                 margin: 0;
             }
+        }
+    }
+}
+
+// Rating Tier Classes
+.rating-tier-6 {
+    background-color: #10b981 !important;
+    color: white !important;
+}
+
+.rating-tier-5 {
+    background-color: #34d399 !important;
+    color: white !important;
+}
+
+.rating-tier-4 {
+    background-color: #fbbf24 !important;
+    color: white !important;
+}
+
+.rating-tier-3 {
+    background-color: #f59e0b !important;
+    color: white !important;
+}
+
+.rating-tier-2 {
+    background-color: #ef4444 !important;
+    color: white !important;
+}
+
+.rating-tier-1 {
+    background-color: #991b1b !important;
+    color: white !important;
+}
+
+.rating-na {
+    color: #9ca3af !important;
+    
+    .body--dark & {
+        color: rgba(255, 255, 255, 0.5) !important;
+    }
+}
+
+// Responsive Design
+@media (max-width: 768px) {
+    .main-content {
+        padding: 1rem;
+    }
+    
+    .teams-list .team-row {
+        grid-template-columns: auto 1fr auto;
+        gap: 0.75rem;
+        
+        .team-section-ratings {
+            display: none;
         }
     }
 }
