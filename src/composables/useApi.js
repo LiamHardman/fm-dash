@@ -1,6 +1,6 @@
 import { ref } from 'vue'
-import { useErrorHandling } from './useErrorHandling'
 import protobufClient from '../utils/protobufClient'
+import { useErrorHandling } from './useErrorHandling'
 
 // Determine the base URL at runtime
 const getBaseURL = () => {
@@ -16,7 +16,7 @@ export function useApi(initialBaseURL) {
   const { handleFetchError, withRetry, safeAsync } = useErrorHandling()
   const isLoading = ref(false)
   const abortController = ref(null)
-  
+
   // Track if protobuf has been initialized
   const protobufInitialized = ref(false)
   const protobufSupported = ref(false)
@@ -24,9 +24,9 @@ export function useApi(initialBaseURL) {
   // Default request configuration
   const defaultConfig = {
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
     },
-    credentials: 'same-origin'
+    credentials: 'same-origin',
   }
 
   // Create request with abort capability
@@ -40,7 +40,7 @@ export function useApi(initialBaseURL) {
     const config = {
       ...defaultConfig,
       ...options,
-      signal: abortController.value.signal
+      signal: abortController.value.signal,
     }
 
     return { url: `${baseURL.value}${url}`, config }
@@ -51,14 +51,14 @@ export function useApi(initialBaseURL) {
     if (protobufInitialized.value) {
       return protobufSupported.value
     }
-    
+
     try {
       // Check if protobuf is supported
       const supported = await protobufClient.initialize()
       protobufSupported.value = supported
       protobufInitialized.value = true
       return supported
-    } catch (error) {
+    } catch (_error) {
       protobufSupported.value = false
       protobufInitialized.value = true
       return false
@@ -71,9 +71,9 @@ export function useApi(initialBaseURL) {
 
     try {
       isLoading.value = true
-      
+
       // Check if we should use protobuf
-      if (messageType && await initializeProtobuf()) {
+      if (messageType && (await initializeProtobuf())) {
         try {
           // Try to use protobuf
           return await protobufClient.fetchWithProtobuf(fullUrl, config, messageType)
@@ -82,7 +82,7 @@ export function useApi(initialBaseURL) {
           console.warn('Protobuf request failed, falling back to JSON:', protobufError)
         }
       }
-      
+
       // Standard JSON request
       const response = await fetch(fullUrl, config)
 
@@ -100,8 +100,8 @@ export function useApi(initialBaseURL) {
           _protobuf: {
             format: 'json',
             payloadSize: JSON.stringify(jsonData).length,
-            fallbackReason: 'json_request'
-          }
+            fallbackReason: 'json_request',
+          },
         }
       }
       return await response.text()
@@ -121,16 +121,20 @@ export function useApi(initialBaseURL) {
     const queryString = new URLSearchParams(params).toString()
     const fullUrl = queryString ? `${url}?${queryString}` : url
 
-    return request(fullUrl, {
-      method: 'GET'
-    }, messageType)
+    return request(
+      fullUrl,
+      {
+        method: 'GET',
+      },
+      messageType
+    )
   }
 
   // POST request with optional protobuf support
   const post = async (url, data, options = {}, messageType = null) => {
     const config = {
       method: 'POST',
-      ...options
+      ...options,
     }
 
     if (data instanceof FormData) {
@@ -145,17 +149,25 @@ export function useApi(initialBaseURL) {
 
   // PUT request with optional protobuf support
   const put = async (url, data, messageType = null) => {
-    return request(url, {
-      method: 'PUT',
-      body: JSON.stringify(data)
-    }, messageType)
+    return request(
+      url,
+      {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      },
+      messageType
+    )
   }
 
   // DELETE request with optional protobuf support
   const del = async (url, messageType = null) => {
-    return request(url, {
-      method: 'DELETE'
-    }, messageType)
+    return request(
+      url,
+      {
+        method: 'DELETE',
+      },
+      messageType
+    )
   }
 
   // File upload with progress
@@ -165,11 +177,11 @@ export function useApi(initialBaseURL) {
 
     const { url: fullUrl, config } = createRequest(url, {
       method: 'POST',
-      body: formData
+      body: formData,
     })
 
     if (config.headers) {
-      delete config.headers['Content-Type']
+      config.headers['Content-Type'] = undefined
     }
 
     try {
@@ -180,7 +192,7 @@ export function useApi(initialBaseURL) {
         return new Promise((resolve, reject) => {
           const xhr = new XMLHttpRequest()
 
-          xhr.upload.addEventListener('progress', event => {
+          xhr.upload.addEventListener('progress', (event) => {
             if (event.lengthComputable) {
               const progress = (event.loaded / event.total) * 100
               onProgress(progress)
@@ -196,8 +208,8 @@ export function useApi(initialBaseURL) {
                   _protobuf: {
                     format: 'json',
                     payloadSize: xhr.responseText.length,
-                    fallbackReason: 'form_data_upload'
-                  }
+                    fallbackReason: 'form_data_upload',
+                  },
                 })
               } catch (_error) {
                 resolve(xhr.responseText)
@@ -215,11 +227,11 @@ export function useApi(initialBaseURL) {
 
           // Add any custom headers except Content-Type
           if (config.headers) {
-            Object.entries(config.headers).forEach(([key, value]) => {
+            for (const [key, value] of Object.entries(config.headers)) {
               if (key.toLowerCase() !== 'content-type' && value !== undefined) {
                 xhr.setRequestHeader(key, value)
               }
-            })
+            }
           }
 
           xhr.send(formData)
@@ -239,8 +251,8 @@ export function useApi(initialBaseURL) {
         _protobuf: {
           format: 'json',
           payloadSize: JSON.stringify(jsonData).length,
-          fallbackReason: 'form_data_upload'
-        }
+          fallbackReason: 'form_data_upload',
+        },
       }
     } finally {
       isLoading.value = false
@@ -264,8 +276,8 @@ export function useApi(initialBaseURL) {
     for (const req of requests) {
       try {
         const result = await request(
-          req.url, 
-          req.options, 
+          req.url,
+          req.options,
           req.messageType // Support for protobuf message type
         )
         results.push({ success: true, data: result })
@@ -287,16 +299,16 @@ export function useApi(initialBaseURL) {
       return { healthy: false, error }
     }
   }
-  
+
   // Get protobuf client status
   const getProtobufStatus = () => {
     return {
       initialized: protobufInitialized.value,
       supported: protobufSupported.value,
-      clientStatus: protobufClient.getStatus()
+      clientStatus: protobufClient.getStatus(),
     }
   }
-  
+
   // Enable or disable protobuf support
   const setProtobufEnabled = (enabled) => {
     protobufClient.setProtobufEnabled(enabled)
@@ -315,13 +327,13 @@ export function useApi(initialBaseURL) {
     cancel,
     batch,
     healthCheck,
-    
+
     // Protobuf specific methods
     getProtobufStatus,
     setProtobufEnabled,
     initializeProtobuf,
 
     safeAsync,
-    withRetry
+    withRetry,
   }
 }

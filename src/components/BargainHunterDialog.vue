@@ -367,25 +367,25 @@ export default defineComponent({
   name: 'BargainHunterDialog',
   components: {
     PlayerDetailDialog,
-    PlayerDataTable
+    PlayerDataTable,
   },
   props: {
     show: {
       type: Boolean,
-      default: false
+      default: false,
     },
     players: {
       type: Array,
-      default: () => []
+      default: () => [],
     },
     currencySymbol: {
       type: String,
-      default: '$'
+      default: '$',
     },
     datasetId: {
       type: String,
-      default: null
-    }
+      default: null,
+    },
   },
   emits: ['close'],
   setup(props) {
@@ -472,15 +472,15 @@ export default defineComponent({
 
     // Computed property to transform bargain results for PlayerDataTable
     const playersForTable = computed(() => {
-      return filteredBargainResults.value.map(result => ({
+      return filteredBargainResults.value.map((result) => ({
         ...result.player,
-        valueScore: result.valueScore
+        valueScore: result.valueScore,
       }))
     })
 
     // Filtered results for table display
     const filteredBargainResults = computed(() => {
-      return bargainResults.value.filter(result => {
+      return bargainResults.value.filter((result) => {
         const score = result.valueScore
         if (score >= 80 && showExcellentValue.value) return true
         if (score >= 60 && score < 80 && showGreatValue.value) return true
@@ -506,16 +506,16 @@ export default defineComponent({
           maxSalary: maxSalary.value ? maxSalary.value * 1000 : 0, // Convert to actual amount
           minAge: ageRange.value.min || 0,
           maxAge: ageRange.value.max || 0,
-          minOverall: minOverall.value || 0
+          minOverall: minOverall.value || 0,
         }
 
         // Call backend API
         const response = await fetch(`/api/bargain-hunter/${props.datasetId}`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
           },
-          body: JSON.stringify(requestBody)
+          body: JSON.stringify(requestBody),
         })
 
         if (!response.ok) {
@@ -528,7 +528,7 @@ export default defineComponent({
         qInstance.notify({
           message: 'Error finding bargains. Please try again.',
           color: 'negative',
-          icon: 'error'
+          icon: 'error',
         })
       } finally {
         loading.value = false
@@ -545,22 +545,22 @@ export default defineComponent({
       }, 300)
     }
 
-    const handlePlayerSelected = player => {
+    const handlePlayerSelected = (player) => {
       selectedPlayer.value = player
       showPlayerDetail.value = true
     }
 
-    const handleTeamSelected = _teamName => {
+    const handleTeamSelected = (_teamName) => {
       // For bargain hunter, we don't need team selection functionality
       // but we need to provide the handler for PlayerDataTable compatibility
     }
 
-    const _formatValueScore = score => {
+    const _formatValueScore = (score) => {
       if (typeof score !== 'number') return '0'
       return Math.round(score).toString()
     }
 
-    const toggleValueTier = tier => {
+    const toggleValueTier = (tier) => {
       if (tier === 'excellent') {
         showExcellentValue.value = !showExcellentValue.value
       } else if (tier === 'great') {
@@ -580,7 +580,7 @@ export default defineComponent({
     // Watchers
     watch(
       () => props.show,
-      async newShow => {
+      async (newShow) => {
         if (newShow && props.datasetId) {
           // Auto-search when dialog opens
           await findBargains()
@@ -640,9 +640,9 @@ export default defineComponent({
       minOverallSliderMax,
       maxBudgetSliderStep,
       maxSalarySliderStep,
-      getUnifiedRatingClass
+      getUnifiedRatingClass,
     }
-  }
+  },
 })
 </script>
 

@@ -8,7 +8,7 @@ import { defineConfig } from 'vite'
 function chunkSizeAnalyzer() {
   return {
     name: 'chunk-size-analyzer',
-    generateBundle(options, bundle) {
+    generateBundle(_options, bundle) {
       const chunkSizeLimit = 500 * 1024 // 500KB in bytes
       const criticalChunkLimit = 300 * 1024 // 300KB for critical chunks
 
@@ -20,13 +20,13 @@ function chunkSizeAnalyzer() {
           // Check for oversized chunks
           if (size > chunkSizeLimit) {
             console.warn(`⚠️  Large chunk detected: ${fileName} (${sizeKB}KB)`)
-            console.warn(`   Consider splitting this chunk further or lazy loading components`)
+            console.warn('   Consider splitting this chunk further or lazy loading components')
           }
 
           // Check for critical chunks that should be smaller
           if (chunk.isEntry && size > criticalChunkLimit) {
             console.warn(`⚠️  Large entry chunk: ${fileName} (${sizeKB}KB)`)
-            console.warn(`   Entry chunks should be smaller for faster initial loading`)
+            console.warn('   Entry chunks should be smaller for faster initial loading')
           }
 
           // Log chunk information in development
@@ -42,7 +42,7 @@ function chunkSizeAnalyzer() {
         .map(([fileName, chunk]) => ({
           name: fileName,
           size: Buffer.byteLength(chunk.code, 'utf8'),
-          isEntry: chunk.isEntry
+          isEntry: chunk.isEntry,
         }))
         .sort((a, b) => b.size - a.size)
 
@@ -52,42 +52,36 @@ function chunkSizeAnalyzer() {
       console.log(`Total bundle size: ${Math.round(totalSize / 1024)}KB`)
       console.log(`Number of chunks: ${chunks.length}`)
       console.log('\nLargest chunks:')
-      chunks.slice(0, 5).forEach(chunk => {
+      chunks.slice(0, 5).forEach((chunk) => {
         const sizeKB = Math.round(chunk.size / 1024)
         const type = chunk.isEntry ? '(entry)' : ''
         console.log(`  ${chunk.name}: ${sizeKB}KB ${type}`)
       })
-    }
+    },
   }
 }
 
 export default defineConfig({
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src')
-    }
+      '@': path.resolve(__dirname, './src'),
+    },
   },
   optimizeDeps: {
-    include: [
-      'vue',
-      'vue-router',
-      'pinia',
-      '@quasar/extras',
-      'quasar'
-    ],
+    include: ['vue', 'vue-router', 'pinia', '@quasar/extras', 'quasar'],
     // Force include problematic modules to prevent initialization issues
     force: true,
     // Ensure proper module resolution
     esbuildOptions: {
-      target: 'esnext'
-    }
+      target: 'esnext',
+    },
   },
   plugins: [
     vue({
-      template: { transformAssetUrls }
+      template: { transformAssetUrls },
     }),
     quasar({
-      sassVariables: '@/quasar-variables.scss'
+      sassVariables: '@/quasar-variables.scss',
     }),
     // Chunk size analyzer for build optimization
     chunkSizeAnalyzer(),
@@ -98,8 +92,8 @@ export default defineConfig({
         open: process.env.ANALYZE === 'true',
         gzipSize: true,
         brotliSize: true,
-        template: 'treemap' // Better visualization
-      })
+        template: 'treemap', // Better visualization
+      }),
   ].filter(Boolean),
   build: {
     // Optimize build output with advanced chunking
@@ -116,7 +110,7 @@ export default defineConfig({
       },
       output: {
         // Advanced manual chunks for optimal caching and loading
-        manualChunks: id => {
+        manualChunks: (id) => {
           // Store modules - load early and separately to prevent initialization issues
           if (id.includes('stores/')) {
             if (id.includes('optimizedPlayerStore.js')) {
@@ -239,24 +233,24 @@ export default defineConfig({
             return 'shared-utilities'
           }
         },
-        chunkFileNames: chunkInfo => {
+        chunkFileNames: (chunkInfo) => {
           const facadeModuleId = chunkInfo.facadeModuleId
             ? chunkInfo.facadeModuleId.split('/').pop().replace('.vue', '')
             : 'chunk'
           return `js/${facadeModuleId}-[hash].js`
         },
-        assetFileNames: assetInfo => {
+        assetFileNames: (assetInfo) => {
           const info = assetInfo.name.split('.')
           const ext = info[info.length - 1]
           if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(ext)) {
-            return `images/[name]-[hash][extname]`
+            return 'images/[name]-[hash][extname]'
           }
           if (/css/i.test(ext)) {
-            return `css/[name]-[hash][extname]`
+            return 'css/[name]-[hash][extname]'
           }
-          return `assets/[name]-[hash][extname]`
-        }
-      }
+          return 'assets/[name]-[hash][extname]'
+        },
+      },
     },
     // Optimize build performance and output with stricter chunk size limits
     chunkSizeWarningLimit: 500, // Reduced to encourage smaller, more focused chunks
@@ -270,19 +264,19 @@ export default defineConfig({
         drop_console: process.env.NODE_ENV === 'production',
         drop_debugger: true,
         pure_funcs: ['console.log', 'console.info'], // Remove specific console methods
-        passes: 2 // Multiple compression passes
+        passes: 2, // Multiple compression passes
       },
       mangle: {
-        safari10: true // Safari 10+ compatibility
-      }
+        safari10: true, // Safari 10+ compatibility
+      },
     },
     // CommonJS to ESM conversion optimization
     commonjsOptions: {
       include: [/node_modules/],
-      transformMixedEsModules: true
+      transformMixedEsModules: true,
     },
     // Target modern browsers for smaller bundle
-    target: 'es2020'
+    target: 'es2020',
   },
   server: {
     port: 3000,
@@ -290,19 +284,19 @@ export default defineConfig({
       // Proxy for the file upload endpoint
       '/upload': {
         target: 'http://localhost:8091', // Your Go backend URL
-        changeOrigin: true // Recommended for most cases
+        changeOrigin: true, // Recommended for most cases
         // secure: false, // If your backend is HTTP and Vite is HTTPS (dev only)
       },
       // Proxy for all other API calls (e.g., /api/players, /api/roles)
       '/api': {
         target: 'http://localhost:8091', // Your Go backend URL
-        changeOrigin: true
+        changeOrigin: true,
         // secure: false,
         // Optional: rewrite path if your Go API doesn't expect /api prefix
         // rewrite: (path) => path.replace(/^\/api/, '')
         // However, your Go routes are already /api/players and /api/roles, so no rewrite needed here.
-      }
-    }
+      },
+    },
   },
   define: {
     // Make environment variables available to the frontend
@@ -310,13 +304,13 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version || '1.0.0'),
     __BUILD_DATE__: JSON.stringify(new Date().toISOString()),
     // Define global to prevent require() errors
-    global: 'globalThis'
+    global: 'globalThis',
   },
   // Alternative way to expose env vars (prefixed with VITE_)
   envPrefix: ['VITE_'],
 
   // CSS optimization
   css: {
-    devSourcemap: process.env.NODE_ENV === 'development'
-  }
+    devSourcemap: process.env.NODE_ENV === 'development',
+  },
 })

@@ -22,7 +22,7 @@ export function useCurrency(currencySymbol = '$') {
   }
 
   // Parse currency string back to number
-  const parseCurrency = currencyString => {
+  const parseCurrency = (currencyString) => {
     if (!currencyString || typeof currencyString !== 'string') return 0
 
     const cleaned = currencyString.replace(/[^\d.-]/g, '')
@@ -31,7 +31,7 @@ export function useCurrency(currencySymbol = '$') {
   }
 
   // Check if a value represents currency
-  const isCurrencyValue = value => {
+  const isCurrencyValue = (value) => {
     if (typeof value === 'number') return true
     if (typeof value === 'string') {
       return /^[$£€¥]?[\d,]+(\.\d{2})?[KkMm]?$/.test(value.trim())
@@ -43,6 +43,6 @@ export function useCurrency(currencySymbol = '$') {
     formatDisplayCurrency,
     formatCompactCurrency,
     parseCurrency,
-    isCurrencyValue
+    isCurrencyValue,
   }
 }

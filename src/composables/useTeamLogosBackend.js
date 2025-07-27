@@ -8,7 +8,7 @@ export function useTeamLogosBackend(options = {}) {
   const {
     similarityThreshold = 0.7,
     maxResults: _maxResults = 10,
-    cacheTimeout = 3600000 // 1 hour cache
+    cacheTimeout = 3600000, // 1 hour cache
   } = options
 
   // Cache for team matches and logos
@@ -22,7 +22,7 @@ export function useTeamLogosBackend(options = {}) {
    * @param {string} teamName - Team name to search for
    * @returns {Promise<Array>} - Array of team matches
    */
-  const getTeamMatches = async teamName => {
+  const getTeamMatches = async (teamName) => {
     if (!teamName || teamName.trim() === '') {
       return []
     }
@@ -42,8 +42,8 @@ export function useTeamLogosBackend(options = {}) {
 
       const response = await fetch(`/api/team-match?name=${encodeURIComponent(normalizedName)}`, {
         headers: {
-          'Accept': 'application/x-protobuf'
-        }
+          Accept: 'application/x-protobuf',
+        },
       })
 
       if (!response.ok) {
@@ -55,7 +55,7 @@ export function useTeamLogosBackend(options = {}) {
       // Cache the results
       matchCache.set(cacheKey, {
         data: matches,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       })
 
       return matches
@@ -72,7 +72,7 @@ export function useTeamLogosBackend(options = {}) {
    * @param {string} teamName - Team name to search for
    * @returns {Promise<Object|null>} - Best match or null
    */
-  const getBestTeamMatch = async teamName => {
+  const getBestTeamMatch = async (teamName) => {
     const matches = await getTeamMatches(teamName)
 
     if (matches.length === 0) {
@@ -93,7 +93,7 @@ export function useTeamLogosBackend(options = {}) {
    * @param {string} teamName - Team name to search for
    * @returns {Promise<string|null>} - Team ID or null
    */
-  const getTeamId = async teamName => {
+  const getTeamId = async (teamName) => {
     const match = await getBestTeamMatch(teamName)
     return match ? match.id : null
   }
@@ -103,7 +103,7 @@ export function useTeamLogosBackend(options = {}) {
    * @param {string} teamName - Team name to search for
    * @returns {Promise<string|null>} - Logo URL or null
    */
-  const getTeamLogoUrl = async teamName => {
+  const getTeamLogoUrl = async (teamName) => {
     if (!teamName) return null
 
     const cacheKey = `logo_${teamName.toLowerCase()}`
@@ -118,7 +118,7 @@ export function useTeamLogosBackend(options = {}) {
       // Cache negative result
       logoCache.set(cacheKey, {
         url: null,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       })
       return null
     }
@@ -128,7 +128,7 @@ export function useTeamLogosBackend(options = {}) {
     // Cache the logo URL
     logoCache.set(cacheKey, {
       url: logoUrl,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     })
 
     return logoUrl
@@ -139,7 +139,7 @@ export function useTeamLogosBackend(options = {}) {
    * @param {import('vue').Ref<string>} teamNameRef - Reactive team name reference
    * @returns {import('vue').ComputedRef<string|null>} - Reactive logo URL
    */
-  const createReactiveLogoUrl = teamNameRef => {
+  const createReactiveLogoUrl = (teamNameRef) => {
     const logoUrl = ref(null)
 
     // Watch for changes in team name and update logo URL
@@ -177,7 +177,7 @@ export function useTeamLogosBackend(options = {}) {
           processed: i + 1,
           total,
           current: teamName,
-          percentage: Math.round(((i + 1) / total) * 100)
+          percentage: Math.round(((i + 1) / total) * 100),
         })
       }
     }
@@ -190,7 +190,7 @@ export function useTeamLogosBackend(options = {}) {
    * @param {string} teamName - Team name to check
    * @returns {Promise<boolean>} - True if logo is available
    */
-  const hasTeamLogo = async teamName => {
+  const hasTeamLogo = async (teamName) => {
     const logoUrl = await getTeamLogoUrl(teamName)
     return logoUrl !== null
   }
@@ -211,7 +211,7 @@ export function useTeamLogosBackend(options = {}) {
     return {
       matchCacheSize: matchCache.size,
       logoCacheSize: logoCache.size,
-      totalCacheSize: matchCache.size + logoCache.size
+      totalCacheSize: matchCache.size + logoCache.size,
     }
   }
 
@@ -219,8 +219,8 @@ export function useTeamLogosBackend(options = {}) {
    * Preload team matches for common searches
    * @param {Array<string>} teamNames - Array of team names to preload
    */
-  const preloadTeamMatches = async teamNames => {
-    const promises = teamNames.map(name => getTeamMatches(name))
+  const preloadTeamMatches = async (teamNames) => {
+    const promises = teamNames.map((name) => getTeamMatches(name))
     await Promise.allSettled(promises)
   }
 
@@ -242,6 +242,6 @@ export function useTeamLogosBackend(options = {}) {
     preloadTeamMatches,
 
     // Utilities
-    getCacheStats
+    getCacheStats,
   }
 }

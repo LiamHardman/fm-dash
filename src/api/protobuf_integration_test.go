@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,8 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"google.golang.org/protobuf/proto"
 	pb "api/proto"
+
+	"google.golang.org/protobuf/proto"
 )
 
 // TestProtobufRequestResponseCycle tests the complete protobuf request/response cycle
@@ -24,33 +23,33 @@ func TestProtobufRequestResponseCycle(t *testing.T) {
 	testPlayers := []Player{
 		{
 			UID:                 1,
-			Name:               "Test Player 1",
-			Position:           "ST",
-			Age:                "25",
-			Club:               "Test FC",
-			Division:           "Premier League",
-			TransferValue:      "£50M",
-			Wage:               "£100K",
-			Overall:            85,
+			Name:                "Test Player 1",
+			Position:            "ST",
+			Age:                 "25",
+			Club:                "Test FC",
+			Division:            "Premier League",
+			TransferValue:       "£50M",
+			Wage:                "£100K",
+			Overall:             85,
 			TransferValueAmount: 50000000,
-			WageAmount:         100000,
-			ShortPositions:     []string{"ST"},
-			PositionGroups:     []string{"Forward"},
+			WageAmount:          100000,
+			ShortPositions:      []string{"ST"},
+			PositionGroups:      []string{"Forward"},
 		},
 		{
 			UID:                 2,
-			Name:               "Test Player 2",
-			Position:           "CM",
-			Age:                "28",
-			Club:               "Test United",
-			Division:           "Premier League",
-			TransferValue:      "£30M",
-			Wage:               "£80K",
-			Overall:            82,
+			Name:                "Test Player 2",
+			Position:            "CM",
+			Age:                 "28",
+			Club:                "Test United",
+			Division:            "Premier League",
+			TransferValue:       "£30M",
+			Wage:                "£80K",
+			Overall:             82,
 			TransferValueAmount: 30000000,
-			WageAmount:         80000,
-			ShortPositions:     []string{"CM"},
-			PositionGroups:     []string{"Midfielder"},
+			WageAmount:          80000,
+			ShortPositions:      []string{"CM"},
+			PositionGroups:      []string{"Midfielder"},
 		},
 	}
 	testCurrency := "£"
@@ -73,10 +72,10 @@ func TestProtobufRequestResponseCycle(t *testing.T) {
 
 	// Test cases for different endpoints and accept headers
 	testCases := []struct {
-		name           string
-		endpoint       string
-		acceptHeader   string
-		expectedStatus int
+		name             string
+		endpoint         string
+		acceptHeader     string
+		expectedStatus   int
 		validateResponse func(t *testing.T, resp *http.Response)
 	}{
 		{
@@ -90,27 +89,27 @@ func TestProtobufRequestResponseCycle(t *testing.T) {
 				if !strings.Contains(contentType, "application/x-protobuf") {
 					t.Errorf("Expected protobuf content type, got %s", contentType)
 				}
-				
+
 				// Read and decode the protobuf response
 				body, err := io.ReadAll(resp.Body)
 				if err != nil {
 					t.Fatalf("Failed to read response body: %v", err)
 				}
-				
+
 				playerData := &pb.PlayerDataResponse{}
 				if err := proto.Unmarshal(body, playerData); err != nil {
 					t.Fatalf("Failed to unmarshal protobuf response: %v", err)
 				}
-				
+
 				// Verify response data
 				if len(playerData.Players) != 2 {
 					t.Errorf("Expected 2 players, got %d", len(playerData.Players))
 				}
-				
+
 				if playerData.CurrencySymbol != testCurrency {
 					t.Errorf("Expected currency symbol %s, got %s", testCurrency, playerData.CurrencySymbol)
 				}
-				
+
 				// Verify metadata
 				if playerData.Metadata == nil {
 					t.Error("Expected metadata in response")
@@ -119,7 +118,7 @@ func TestProtobufRequestResponseCycle(t *testing.T) {
 						t.Errorf("Expected total count 2, got %d", playerData.Metadata.TotalCount)
 					}
 				}
-				
+
 				// Verify first player data
 				player1 := playerData.Players[0]
 				if player1.Name != "Test Player 1" {
@@ -141,19 +140,19 @@ func TestProtobufRequestResponseCycle(t *testing.T) {
 				if !strings.Contains(contentType, "application/json") {
 					t.Errorf("Expected JSON content type, got %s", contentType)
 				}
-				
+
 				// Read and decode the JSON response
 				var data map[string]interface{}
 				if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 					t.Fatalf("Failed to decode JSON response: %v", err)
 				}
-				
+
 				// Verify response data
 				players, ok := data["players"].([]interface{})
 				if !ok || len(players) != 2 {
 					t.Errorf("Expected 2 players, got %v", players)
 				}
-				
+
 				if currency, ok := data["currency_symbol"].(string); !ok || currency != testCurrency {
 					t.Errorf("Expected currency symbol %s, got %v", testCurrency, data["currency_symbol"])
 				}
@@ -170,23 +169,23 @@ func TestProtobufRequestResponseCycle(t *testing.T) {
 				if !strings.Contains(contentType, "application/x-protobuf") {
 					t.Errorf("Expected protobuf content type, got %s", contentType)
 				}
-				
+
 				// Read and decode the protobuf response
 				body, err := io.ReadAll(resp.Body)
 				if err != nil {
 					t.Fatalf("Failed to read response body: %v", err)
 				}
-				
+
 				rolesData := &pb.RolesResponse{}
 				if err := proto.Unmarshal(body, rolesData); err != nil {
 					t.Fatalf("Failed to unmarshal protobuf response: %v", err)
 				}
-				
+
 				// Verify response has roles
 				if len(rolesData.Roles) == 0 {
 					t.Error("Expected roles in response, got empty list")
 				}
-				
+
 				// Verify metadata
 				if rolesData.Metadata == nil {
 					t.Error("Expected metadata in response")
@@ -204,23 +203,23 @@ func TestProtobufRequestResponseCycle(t *testing.T) {
 				if !strings.Contains(contentType, "application/x-protobuf") {
 					t.Errorf("Expected protobuf content type, got %s", contentType)
 				}
-				
+
 				// Read and decode the protobuf response
 				body, err := io.ReadAll(resp.Body)
 				if err != nil {
 					t.Fatalf("Failed to read response body: %v", err)
 				}
-				
+
 				leaguesData := &pb.LeaguesResponse{}
 				if err := proto.Unmarshal(body, leaguesData); err != nil {
 					t.Fatalf("Failed to unmarshal protobuf response: %v", err)
 				}
-				
+
 				// Verify response has leagues
 				if len(leaguesData.Leagues) == 0 {
 					t.Error("Expected leagues in response, got empty list")
 				}
-				
+
 				// Verify Premier League is included
 				found := false
 				for _, league := range leaguesData.Leagues {
@@ -232,7 +231,7 @@ func TestProtobufRequestResponseCycle(t *testing.T) {
 				if !found {
 					t.Error("Expected 'Premier League' in leagues response")
 				}
-				
+
 				// Verify metadata
 				if leaguesData.Metadata == nil {
 					t.Error("Expected metadata in response")
@@ -250,23 +249,23 @@ func TestProtobufRequestResponseCycle(t *testing.T) {
 				if !strings.Contains(contentType, "application/x-protobuf") {
 					t.Errorf("Expected protobuf content type, got %s", contentType)
 				}
-				
+
 				// Read and decode the protobuf response
 				body, err := io.ReadAll(resp.Body)
 				if err != nil {
 					t.Fatalf("Failed to read response body: %v", err)
 				}
-				
+
 				teamsData := &pb.TeamsResponse{}
 				if err := proto.Unmarshal(body, teamsData); err != nil {
 					t.Fatalf("Failed to unmarshal protobuf response: %v", err)
 				}
-				
+
 				// Verify response has teams
 				if len(teamsData.Teams) != 2 {
 					t.Errorf("Expected 2 teams, got %d", len(teamsData.Teams))
 				}
-				
+
 				// Verify teams are included
 				foundFC := false
 				foundUnited := false
@@ -284,7 +283,7 @@ func TestProtobufRequestResponseCycle(t *testing.T) {
 				if !foundUnited {
 					t.Error("Expected 'Test United' in teams response")
 				}
-				
+
 				// Verify metadata
 				if teamsData.Metadata == nil {
 					t.Error("Expected metadata in response")
@@ -302,28 +301,28 @@ func TestProtobufRequestResponseCycle(t *testing.T) {
 				if !strings.Contains(contentType, "application/x-protobuf") {
 					t.Errorf("Expected protobuf content type, got %s", contentType)
 				}
-				
+
 				// Read and decode the protobuf response
 				body, err := io.ReadAll(resp.Body)
 				if err != nil {
 					t.Fatalf("Failed to read response body: %v", err)
 				}
-				
+
 				searchData := &pb.SearchResponse{}
 				if err := proto.Unmarshal(body, searchData); err != nil {
 					t.Fatalf("Failed to unmarshal protobuf response: %v", err)
 				}
-				
+
 				// Verify response has players
 				if len(searchData.Players) == 0 {
 					t.Error("Expected players in search response, got empty list")
 				}
-				
+
 				// Verify query parameter
 				if searchData.Query != "Test" {
 					t.Errorf("Expected query 'Test', got %s", searchData.Query)
 				}
-				
+
 				// Verify metadata
 				if searchData.Metadata == nil {
 					t.Error("Expected metadata in response")
@@ -380,10 +379,10 @@ func TestProtobufRequestResponseCycle(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to create request: %v", err)
 			}
-			
+
 			// Set the Accept header
 			req.Header.Set("Accept", tc.acceptHeader)
-			
+
 			// Send the request
 			client := &http.Client{}
 			resp, err := client.Do(req)
@@ -391,12 +390,12 @@ func TestProtobufRequestResponseCycle(t *testing.T) {
 				t.Fatalf("Failed to send request: %v", err)
 			}
 			defer resp.Body.Close()
-			
+
 			// Check the response status
 			if resp.StatusCode != tc.expectedStatus {
 				t.Errorf("Expected status %d, got %d", tc.expectedStatus, resp.StatusCode)
 			}
-			
+
 			// Validate the response
 			tc.validateResponse(t, resp)
 		})
@@ -409,11 +408,11 @@ func TestProtobufContentNegotiation(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		negotiator := NewContentNegotiator(r)
 		serializer := negotiator.SelectSerializer()
-		
+
 		// Write response with the negotiated content type
 		w.Header().Set("Content-Type", serializer.ContentType())
 		w.Header().Set("X-Supports-Protobuf", fmt.Sprintf("%t", negotiator.SupportsProtobuf()))
-		
+
 		// Create a simple response based on the serializer type
 		if serializer.ContentType() == "application/x-protobuf" {
 			// Create a simple protobuf response
@@ -425,13 +424,13 @@ func TestProtobufContentNegotiation(t *testing.T) {
 					RequestId:  "test-request-id",
 				},
 			}
-			
+
 			data, err := serializer.Serialize(response)
 			if err != nil {
 				http.Error(w, "Serialization error", http.StatusInternalServerError)
 				return
 			}
-			
+
 			w.Write(data)
 		} else {
 			// Create a simple JSON response
@@ -443,21 +442,21 @@ func TestProtobufContentNegotiation(t *testing.T) {
 					"request_id":  "test-request-id",
 				},
 			}
-			
+
 			data, err := serializer.Serialize(response)
 			if err != nil {
 				http.Error(w, "Serialization error", http.StatusInternalServerError)
 				return
 			}
-			
+
 			w.Write(data)
 		}
 	})
-	
+
 	// Create a test server
 	server := httptest.NewServer(handler)
 	defer server.Close()
-	
+
 	// Test cases for different Accept headers
 	testCases := []struct {
 		name                string
@@ -526,7 +525,7 @@ func TestProtobufContentNegotiation(t *testing.T) {
 			supportsProtobuf:    false,
 		},
 	}
-	
+
 	// Run test cases
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -535,12 +534,12 @@ func TestProtobufContentNegotiation(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to create request: %v", err)
 			}
-			
+
 			// Set the Accept header
 			if tc.acceptHeader != "" {
 				req.Header.Set("Accept", tc.acceptHeader)
 			}
-			
+
 			// Send the request
 			client := &http.Client{}
 			resp, err := client.Do(req)
@@ -548,19 +547,19 @@ func TestProtobufContentNegotiation(t *testing.T) {
 				t.Fatalf("Failed to send request: %v", err)
 			}
 			defer resp.Body.Close()
-			
+
 			// Check the content type
 			contentType := resp.Header.Get("Content-Type")
 			if contentType != tc.expectedContentType {
 				t.Errorf("Expected content type %s, got %s", tc.expectedContentType, contentType)
 			}
-			
+
 			// Check the supports protobuf header
 			supportsProtobuf := resp.Header.Get("X-Supports-Protobuf")
 			if supportsProtobuf != fmt.Sprintf("%t", tc.supportsProtobuf) {
 				t.Errorf("Expected supports protobuf %t, got %s", tc.supportsProtobuf, supportsProtobuf)
 			}
-			
+
 			// Verify the response can be parsed correctly
 			if strings.Contains(contentType, "application/x-protobuf") {
 				// Read and decode the protobuf response
@@ -568,12 +567,12 @@ func TestProtobufContentNegotiation(t *testing.T) {
 				if err != nil {
 					t.Fatalf("Failed to read response body: %v", err)
 				}
-				
+
 				genericResponse := &pb.GenericResponse{}
 				if err := proto.Unmarshal(body, genericResponse); err != nil {
 					t.Fatalf("Failed to unmarshal protobuf response: %v", err)
 				}
-				
+
 				// Verify response data
 				if genericResponse.Data != "This is a protobuf response" {
 					t.Errorf("Expected data 'This is a protobuf response', got %s", genericResponse.Data)
@@ -584,7 +583,7 @@ func TestProtobufContentNegotiation(t *testing.T) {
 				if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 					t.Fatalf("Failed to decode JSON response: %v", err)
 				}
-				
+
 				// Verify response data
 				if dataStr, ok := data["data"].(string); !ok || dataStr != "This is a JSON response" {
 					t.Errorf("Expected data 'This is a JSON response', got %v", data["data"])
@@ -601,30 +600,30 @@ func TestProtobufFallbackMechanisms(t *testing.T) {
 		// Extract the scenario from the URL path
 		pathParts := strings.Split(r.URL.Path, "/")
 		scenario := pathParts[len(pathParts)-1]
-		
+
 		// Get the accept header to determine client preference
 		acceptHeader := r.Header.Get("Accept")
 		wantsProtobuf := strings.Contains(acceptHeader, "application/x-protobuf")
-		
+
 		switch scenario {
 		case "serialization_error":
 			// Simulate a protobuf serialization error with JSON fallback
 			if wantsProtobuf {
 				// Create an invalid protobuf message (will fail serialization)
 				errorHandler := GetProtobufErrorHandler()
-				
+
 				// This is a valid protobuf message but we'll force an error
 				playerData := &pb.PlayerDataResponse{
 					Players: []*pb.Player{
 						{
-							Uid: 12345,
+							Uid:  12345,
 							Name: "Test Player",
 						},
 					},
 					CurrencySymbol: "$",
-					Metadata: CreateResponseMetadata("test-request", 1, false),
+					Metadata:       CreateResponseMetadata("test-request", 1, false),
 				}
-				
+
 				// Simulate serialization error and handle with fallback
 				err := fmt.Errorf("simulated serialization error")
 				errorHandler.HandleSerializationError(r.Context(), w, r, playerData, err, "test-dataset")
@@ -633,26 +632,26 @@ func TestProtobufFallbackMechanisms(t *testing.T) {
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(map[string]interface{}{
 					"message": "JSON response",
-					"error": nil,
+					"error":   nil,
 				})
 			}
-			
+
 		case "conversion_error":
 			// Simulate a protobuf conversion error with JSON fallback
 			if wantsProtobuf {
 				errorHandler := GetProtobufErrorHandler()
-				
+
 				// Create some data that would normally be converted to protobuf
 				data := map[string]interface{}{
 					"players": []map[string]interface{}{
 						{
-							"uid": 12345,
+							"uid":  12345,
 							"name": "Test Player",
 						},
 					},
 					"currency_symbol": "$",
 				}
-				
+
 				// Simulate conversion error and handle with fallback
 				err := fmt.Errorf("simulated conversion error")
 				errorHandler.HandleProtobufConversionError(
@@ -661,27 +660,27 @@ func TestProtobufFallbackMechanisms(t *testing.T) {
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(map[string]interface{}{
 					"message": "JSON response",
-					"error": nil,
+					"error":   nil,
 				})
 			}
-			
+
 		case "compression_error":
 			// Simulate a protobuf compression error with uncompressed fallback
 			if wantsProtobuf {
 				errorHandler := GetProtobufErrorHandler()
-				
+
 				// Create a valid protobuf message
 				playerData := &pb.PlayerDataResponse{
 					Players: []*pb.Player{
 						{
-							Uid: 12345,
+							Uid:  12345,
 							Name: "Test Player",
 						},
 					},
 					CurrencySymbol: "$",
-					Metadata: CreateResponseMetadata("test-request", 1, false),
+					Metadata:       CreateResponseMetadata("test-request", 1, false),
 				}
-				
+
 				// Simulate compression error and handle with fallback
 				err := fmt.Errorf("simulated compression error")
 				errorHandler.HandleProtobufCompressionError(
@@ -690,34 +689,34 @@ func TestProtobufFallbackMechanisms(t *testing.T) {
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).Encode(map[string]interface{}{
 					"message": "JSON response",
-					"error": nil,
+					"error":   nil,
 				})
 			}
-			
+
 		case "validation_error":
 			// Return a validation error response
-			WriteErrorResponse(w, r, "validation_error", 
-				"Invalid player data: validation failed", 
-				[]string{"Player name is required", "Age must be a number"}, 
+			WriteErrorResponse(w, r, "validation_error",
+				"Invalid player data: validation failed",
+				[]string{"Player name is required", "Age must be a number"},
 				http.StatusBadRequest)
-			
+
 		case "server_error":
 			// Return a server error response
-			WriteErrorResponse(w, r, "server_error", 
-				"Internal server error occurred", 
-				[]string{"Database connection failed"}, 
+			WriteErrorResponse(w, r, "server_error",
+				"Internal server error occurred",
+				[]string{"Database connection failed"},
 				http.StatusInternalServerError)
-			
+
 		default:
 			w.WriteHeader(http.StatusNotFound)
 			fmt.Fprintf(w, "Unknown scenario: %s", scenario)
 		}
 	})
-	
+
 	// Create a test server
 	server := httptest.NewServer(handler)
 	defer server.Close()
-	
+
 	// Test cases
 	testCases := []struct {
 		name           string
@@ -737,11 +736,11 @@ func TestProtobufFallbackMechanisms(t *testing.T) {
 				if !strings.Contains(contentType, "application/json") {
 					t.Errorf("Expected JSON content type, got %s", contentType)
 				}
-				
+
 				// Should have fallback header
 				fallbackHeader := resp.Header.Get("X-Serialization-Fallback")
 				if fallbackHeader != string(FallbackReasonMarshalFailed) {
-					t.Errorf("Expected fallback header %s, got %s", 
+					t.Errorf("Expected fallback header %s, got %s",
 						FallbackReasonMarshalFailed, fallbackHeader)
 				}
 			},
@@ -757,11 +756,11 @@ func TestProtobufFallbackMechanisms(t *testing.T) {
 				if !strings.Contains(contentType, "application/json") {
 					t.Errorf("Expected JSON content type, got %s", contentType)
 				}
-				
+
 				// Should have fallback header
 				fallbackHeader := resp.Header.Get("X-Serialization-Fallback")
 				if fallbackHeader != string(FallbackReasonConversionFailed) {
-					t.Errorf("Expected fallback header %s, got %s", 
+					t.Errorf("Expected fallback header %s, got %s",
 						FallbackReasonConversionFailed, fallbackHeader)
 				}
 			},
@@ -777,7 +776,7 @@ func TestProtobufFallbackMechanisms(t *testing.T) {
 				if !strings.Contains(contentType, "application/x-protobuf") {
 					t.Errorf("Expected protobuf content type, got %s", contentType)
 				}
-				
+
 				// Should have compression disabled header
 				compressionHeader := resp.Header.Get("X-Compression-Status")
 				if compressionHeader != "disabled" {
@@ -796,28 +795,28 @@ func TestProtobufFallbackMechanisms(t *testing.T) {
 				if !strings.Contains(contentType, "application/x-protobuf") {
 					t.Errorf("Expected protobuf content type, got %s", contentType)
 				}
-				
+
 				// Read and decode the protobuf error response
 				body, err := io.ReadAll(resp.Body)
 				if err != nil {
 					t.Fatalf("Failed to read response body: %v", err)
 				}
-				
+
 				errorResponse := &pb.ErrorResponse{}
 				if err := proto.Unmarshal(body, errorResponse); err != nil {
 					t.Fatalf("Failed to unmarshal protobuf error response: %v", err)
 				}
-				
+
 				// Verify error response fields
 				if errorResponse.ErrorCode != "validation_error" {
 					t.Errorf("Expected error code 'validation_error', got %s", errorResponse.ErrorCode)
 				}
-				
+
 				if !strings.Contains(errorResponse.Message, "Invalid player data") {
-					t.Errorf("Expected error message to contain 'Invalid player data', got %s", 
+					t.Errorf("Expected error message to contain 'Invalid player data', got %s",
 						errorResponse.Message)
 				}
-				
+
 				if len(errorResponse.Details) != 2 {
 					t.Errorf("Expected 2 error details, got %d", len(errorResponse.Details))
 				}
@@ -834,22 +833,22 @@ func TestProtobufFallbackMechanisms(t *testing.T) {
 				if !strings.Contains(contentType, "application/json") {
 					t.Errorf("Expected JSON content type, got %s", contentType)
 				}
-				
+
 				// Read and decode the JSON error response
 				var errorData map[string]interface{}
 				if err := json.NewDecoder(resp.Body).Decode(&errorData); err != nil {
 					t.Fatalf("Failed to decode JSON error response: %v", err)
 				}
-				
+
 				// Verify error response fields
 				if errorCode, ok := errorData["error_code"].(string); !ok || errorCode != "validation_error" {
 					t.Errorf("Expected error code 'validation_error', got %v", errorData["error_code"])
 				}
-				
+
 				if message, ok := errorData["message"].(string); !ok || !strings.Contains(message, "Invalid player data") {
 					t.Errorf("Expected error message to contain 'Invalid player data', got %v", errorData["message"])
 				}
-				
+
 				details, ok := errorData["details"].([]interface{})
 				if !ok || len(details) != 2 {
 					t.Errorf("Expected 2 error details, got %v", errorData["details"])
@@ -867,18 +866,18 @@ func TestProtobufFallbackMechanisms(t *testing.T) {
 				if !strings.Contains(contentType, "application/x-protobuf") {
 					t.Errorf("Expected protobuf content type, got %s", contentType)
 				}
-				
+
 				// Read and decode the protobuf error response
 				body, err := io.ReadAll(resp.Body)
 				if err != nil {
 					t.Fatalf("Failed to read response body: %v", err)
 				}
-				
+
 				errorResponse := &pb.ErrorResponse{}
 				if err := proto.Unmarshal(body, errorResponse); err != nil {
 					t.Fatalf("Failed to unmarshal protobuf error response: %v", err)
 				}
-				
+
 				// Verify error response fields
 				if errorResponse.ErrorCode != "server_error" {
 					t.Errorf("Expected error code 'server_error', got %s", errorResponse.ErrorCode)
@@ -886,7 +885,7 @@ func TestProtobufFallbackMechanisms(t *testing.T) {
 			},
 		},
 	}
-	
+
 	// Run test cases
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -896,10 +895,10 @@ func TestProtobufFallbackMechanisms(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to create request: %v", err)
 			}
-			
+
 			// Set the Accept header
 			req.Header.Set("Accept", tc.acceptHeader)
-			
+
 			// Send the request
 			client := &http.Client{}
 			resp, err := client.Do(req)
@@ -907,12 +906,12 @@ func TestProtobufFallbackMechanisms(t *testing.T) {
 				t.Fatalf("Failed to send request: %v", err)
 			}
 			defer resp.Body.Close()
-			
+
 			// Check the response status
 			if resp.StatusCode != tc.expectedStatus {
 				t.Errorf("Expected status %d, got %d", tc.expectedStatus, resp.StatusCode)
 			}
-			
+
 			// Run the response check function
 			tc.checkResponse(t, resp)
 		})
@@ -949,24 +948,24 @@ func TestConcurrentProtobufRequests(t *testing.T) {
 
 	// Number of concurrent requests
 	concurrency := 10
-	
+
 	// Create a wait group to synchronize goroutines
 	var wg sync.WaitGroup
 	wg.Add(concurrency * 2) // JSON and protobuf requests
-	
+
 	// Track errors
 	errorCh := make(chan error, concurrency*2)
-	
+
 	// Track response formats
 	jsonResponses := 0
 	protobufResponses := 0
 	var responseMutex sync.Mutex
-	
+
 	// Make concurrent protobuf requests
 	for i := 0; i < concurrency; i++ {
 		go func(i int) {
 			defer wg.Done()
-			
+
 			// Create a request
 			url := fmt.Sprintf("%s/api/players/%s", server.URL, testDatasetID)
 			req, err := http.NewRequest("GET", url, nil)
@@ -974,10 +973,10 @@ func TestConcurrentProtobufRequests(t *testing.T) {
 				errorCh <- fmt.Errorf("failed to create request: %v", err)
 				return
 			}
-			
+
 			// Set Accept header for protobuf
 			req.Header.Set("Accept", "application/x-protobuf")
-			
+
 			// Send the request
 			client := &http.Client{}
 			resp, err := client.Do(req)
@@ -986,51 +985,51 @@ func TestConcurrentProtobufRequests(t *testing.T) {
 				return
 			}
 			defer resp.Body.Close()
-			
+
 			// Check status code
 			if resp.StatusCode != http.StatusOK {
 				errorCh <- fmt.Errorf("expected status 200, got %d", resp.StatusCode)
 				return
 			}
-			
+
 			// Check content type
 			contentType := resp.Header.Get("Content-Type")
 			if !strings.Contains(contentType, "application/x-protobuf") {
 				errorCh <- fmt.Errorf("expected protobuf content type, got %s", contentType)
 				return
 			}
-			
+
 			// Read and decode the protobuf response
 			body, err := io.ReadAll(resp.Body)
 			if err != nil {
 				errorCh <- fmt.Errorf("failed to read response body: %v", err)
 				return
 			}
-			
+
 			playerData := &pb.PlayerDataResponse{}
 			if err := proto.Unmarshal(body, playerData); err != nil {
 				errorCh <- fmt.Errorf("failed to unmarshal protobuf response: %v", err)
 				return
 			}
-			
+
 			// Verify response data
 			if len(playerData.Players) != len(testPlayers) {
 				errorCh <- fmt.Errorf("expected %d players, got %d", len(testPlayers), len(playerData.Players))
 				return
 			}
-			
+
 			// Track response format
 			responseMutex.Lock()
 			protobufResponses++
 			responseMutex.Unlock()
 		}(i)
 	}
-	
+
 	// Make concurrent JSON requests
 	for i := 0; i < concurrency; i++ {
 		go func(i int) {
 			defer wg.Done()
-			
+
 			// Create a request
 			url := fmt.Sprintf("%s/api/players/%s", server.URL, testDatasetID)
 			req, err := http.NewRequest("GET", url, nil)
@@ -1038,10 +1037,10 @@ func TestConcurrentProtobufRequests(t *testing.T) {
 				errorCh <- fmt.Errorf("failed to create request: %v", err)
 				return
 			}
-			
+
 			// Set Accept header for JSON
 			req.Header.Set("Accept", "application/json")
-			
+
 			// Send the request
 			client := &http.Client{}
 			resp, err := client.Do(req)
@@ -1050,62 +1049,62 @@ func TestConcurrentProtobufRequests(t *testing.T) {
 				return
 			}
 			defer resp.Body.Close()
-			
+
 			// Check status code
 			if resp.StatusCode != http.StatusOK {
 				errorCh <- fmt.Errorf("expected status 200, got %d", resp.StatusCode)
 				return
 			}
-			
+
 			// Check content type
 			contentType := resp.Header.Get("Content-Type")
 			if !strings.Contains(contentType, "application/json") {
 				errorCh <- fmt.Errorf("expected JSON content type, got %s", contentType)
 				return
 			}
-			
+
 			// Read and decode the JSON response
 			var data map[string]interface{}
 			if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 				errorCh <- fmt.Errorf("failed to decode JSON response: %v", err)
 				return
 			}
-			
+
 			// Verify response data
 			players, ok := data["players"].([]interface{})
 			if !ok || len(players) != len(testPlayers) {
 				errorCh <- fmt.Errorf("expected %d players, got %v", len(testPlayers), len(players))
 				return
 			}
-			
+
 			// Track response format
 			responseMutex.Lock()
 			jsonResponses++
 			responseMutex.Unlock()
 		}(i)
 	}
-	
+
 	// Wait for all goroutines to finish
 	wg.Wait()
 	close(errorCh)
-	
+
 	// Check for errors
 	var errors []error
 	for err := range errorCh {
 		errors = append(errors, err)
 	}
-	
+
 	if len(errors) > 0 {
 		for _, err := range errors {
 			t.Errorf("Concurrent test error: %v", err)
 		}
 	}
-	
+
 	// Verify response counts
 	if protobufResponses != concurrency {
 		t.Errorf("Expected %d protobuf responses, got %d", concurrency, protobufResponses)
 	}
-	
+
 	if jsonResponses != concurrency {
 		t.Errorf("Expected %d JSON responses, got %d", concurrency, jsonResponses)
 	}
@@ -1119,14 +1118,14 @@ func TestProtobufErrorHandlingWithRetries(t *testing.T) {
 		// Extract the scenario from the URL path
 		pathParts := strings.Split(r.URL.Path, "/")
 		scenario := pathParts[len(pathParts)-1]
-		
+
 		// Get the accept header to determine client preference
 		acceptHeader := r.Header.Get("Accept")
 		wantsProtobuf := strings.Contains(acceptHeader, "application/x-protobuf")
-		
+
 		// Increment request count
 		requestCount++
-		
+
 		switch scenario {
 		case "transient_error":
 			// Simulate a transient error that succeeds on retry
@@ -1136,27 +1135,27 @@ func TestProtobufErrorHandlingWithRetries(t *testing.T) {
 				w.Write([]byte("Service temporarily unavailable"))
 				return
 			}
-			
+
 			// Subsequent requests succeed
 			if wantsProtobuf {
 				// Return protobuf response
 				response := &pb.PlayerDataResponse{
 					Players: []*pb.Player{
 						{
-							Uid: 12345,
+							Uid:  12345,
 							Name: "Test Player",
 						},
 					},
 					CurrencySymbol: "$",
-					Metadata: CreateResponseMetadata("test-request", 1, false),
+					Metadata:       CreateResponseMetadata("test-request", 1, false),
 				}
-				
+
 				data, err := proto.Marshal(response)
 				if err != nil {
 					http.Error(w, "Serialization error", http.StatusInternalServerError)
 					return
 				}
-				
+
 				w.Header().Set("Content-Type", "application/x-protobuf")
 				w.Write(data)
 			} else {
@@ -1165,14 +1164,14 @@ func TestProtobufErrorHandlingWithRetries(t *testing.T) {
 				json.NewEncoder(w).Encode(map[string]interface{}{
 					"players": []map[string]interface{}{
 						{
-							"uid": 12345,
+							"uid":  12345,
 							"name": "Test Player",
 						},
 					},
 					"currency_symbol": "$",
 				})
 			}
-			
+
 		case "partial_response":
 			// Simulate a partial response that requires retry
 			if requestCount <= 1 {
@@ -1181,27 +1180,27 @@ func TestProtobufErrorHandlingWithRetries(t *testing.T) {
 				w.Write([]byte{0x0A, 0x03}) // Incomplete protobuf message
 				return
 			}
-			
+
 			// Subsequent requests succeed
 			if wantsProtobuf {
 				// Return complete protobuf response
 				response := &pb.PlayerDataResponse{
 					Players: []*pb.Player{
 						{
-							Uid: 12345,
+							Uid:  12345,
 							Name: "Test Player",
 						},
 					},
 					CurrencySymbol: "$",
-					Metadata: CreateResponseMetadata("test-request", 1, false),
+					Metadata:       CreateResponseMetadata("test-request", 1, false),
 				}
-				
+
 				data, err := proto.Marshal(response)
 				if err != nil {
 					http.Error(w, "Serialization error", http.StatusInternalServerError)
 					return
 				}
-				
+
 				w.Header().Set("Content-Type", "application/x-protobuf")
 				w.Write(data)
 			} else {
@@ -1210,18 +1209,18 @@ func TestProtobufErrorHandlingWithRetries(t *testing.T) {
 				json.NewEncoder(w).Encode(map[string]interface{}{
 					"players": []map[string]interface{}{
 						{
-							"uid": 12345,
+							"uid":  12345,
 							"name": "Test Player",
 						},
 					},
 					"currency_symbol": "$",
 				})
 			}
-			
+
 		case "permanent_error":
 			// Simulate a permanent error that should not be retried
 			w.WriteHeader(http.StatusBadRequest)
-			
+
 			if wantsProtobuf {
 				// Return protobuf error
 				errorResponse := &pb.ErrorResponse{
@@ -1230,13 +1229,13 @@ func TestProtobufErrorHandlingWithRetries(t *testing.T) {
 					Details:   []string{"Parameter 'id' is required"},
 					Metadata:  CreateResponseMetadata("test-request", 0, false),
 				}
-				
+
 				data, err := proto.Marshal(errorResponse)
 				if err != nil {
 					http.Error(w, "Serialization error", http.StatusInternalServerError)
 					return
 				}
-				
+
 				w.Header().Set("Content-Type", "application/x-protobuf")
 				w.Write(data)
 			} else {
@@ -1248,81 +1247,81 @@ func TestProtobufErrorHandlingWithRetries(t *testing.T) {
 					"details":    []string{"Parameter 'id' is required"},
 				})
 			}
-			
+
 		default:
 			w.WriteHeader(http.StatusNotFound)
 			fmt.Fprintf(w, "Unknown scenario: %s", scenario)
 		}
 	})
-	
+
 	// Create a test server
 	server := httptest.NewServer(handler)
 	defer server.Close()
-	
+
 	// Test cases
 	testCases := []struct {
-		name           string
-		scenario       string
-		acceptHeader   string
-		expectedStatus int
+		name            string
+		scenario        string
+		acceptHeader    string
+		expectedStatus  int
 		expectedRetries int
 	}{
 		{
-			name:           "Transient Error with Protobuf Accept",
-			scenario:       "transient_error",
-			acceptHeader:   "application/x-protobuf",
-			expectedStatus: http.StatusOK,
+			name:            "Transient Error with Protobuf Accept",
+			scenario:        "transient_error",
+			acceptHeader:    "application/x-protobuf",
+			expectedStatus:  http.StatusOK,
 			expectedRetries: 1,
 		},
 		{
-			name:           "Partial Response with Protobuf Accept",
-			scenario:       "partial_response",
-			acceptHeader:   "application/x-protobuf",
-			expectedStatus: http.StatusOK,
+			name:            "Partial Response with Protobuf Accept",
+			scenario:        "partial_response",
+			acceptHeader:    "application/x-protobuf",
+			expectedStatus:  http.StatusOK,
 			expectedRetries: 1,
 		},
 		{
-			name:           "Permanent Error with Protobuf Accept",
-			scenario:       "permanent_error",
-			acceptHeader:   "application/x-protobuf",
-			expectedStatus: http.StatusBadRequest,
+			name:            "Permanent Error with Protobuf Accept",
+			scenario:        "permanent_error",
+			acceptHeader:    "application/x-protobuf",
+			expectedStatus:  http.StatusBadRequest,
 			expectedRetries: 0,
 		},
 	}
-	
+
 	// Run test cases
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Reset request count
 			requestCount = 0
-			
+
 			// Create a request to the test server
 			url := fmt.Sprintf("%s/%s", server.URL, tc.scenario)
 			req, err := http.NewRequest("GET", url, nil)
 			if err != nil {
 				t.Fatalf("Failed to create request: %v", err)
 			}
-			
+
 			// Set the Accept header
 			req.Header.Set("Accept", tc.acceptHeader)
-			
+
 			// Create a client with retry capability
 			client := &http.Client{
 				Timeout: 5 * time.Second,
 			}
-			
+
 			// Send the request
 			resp, err := client.Do(req)
 			if err != nil {
 				t.Fatalf("Failed to send request: %v", err)
 			}
 			defer resp.Body.Close()
-			
+
 			// Check the response status
 			if resp.StatusCode != tc.expectedStatus {
 				t.Errorf("Expected status %d, got %d", tc.expectedStatus, resp.StatusCode)
 			}
-			
+
 			// Check the number of requests made (original + retries)
 			expectedRequests := tc.expectedRetries + 1
 			if requestCount != expectedRequests {

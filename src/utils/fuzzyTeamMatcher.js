@@ -95,12 +95,12 @@ export function calculateTeamSimilarity(name1, name2) {
   const similarity = (maxLength - distance) / maxLength
 
   // Word-based matching for additional confidence
-  const words1 = norm1.split(' ').filter(w => w.length > 1)
-  const words2 = norm2.split(' ').filter(w => w.length > 1)
+  const words1 = norm1.split(' ').filter((w) => w.length > 1)
+  const words2 = norm2.split(' ').filter((w) => w.length > 1)
 
   if (words1.length > 0 && words2.length > 0) {
-    const wordMatches = words1.filter(word1 =>
-      words2.some(word2 => {
+    const wordMatches = words1.filter((word1) =>
+      words2.some((word2) => {
         if (word1 === word2) return true
         if (word1.length > 3 && word2.length > 3) {
           return levenshteinDistance(word1, word2) <= 1
@@ -186,7 +186,7 @@ export class TeamNameCache {
   getCacheStats() {
     return {
       size: this.cache.size,
-      entries: Array.from(this.cache.entries())
+      entries: Array.from(this.cache.entries()),
     }
   }
 }

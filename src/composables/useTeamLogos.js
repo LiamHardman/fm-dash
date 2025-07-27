@@ -20,7 +20,7 @@ export function useTeamLogos(options = {}) {
     strictMode = false,
     batchSize = 50, // Increased batch size for better performance
     batchDelay = 1, // Reduced delay for faster processing
-    lowerIdPreferenceThreshold = 0.05 // New option: how close scores need to be to prefer lower IDs
+    lowerIdPreferenceThreshold = 0.05, // New option: how close scores need to be to prefer lower IDs
   } = options
 
   // Enhanced stop words for better matching
@@ -52,7 +52,7 @@ export function useTeamLogos(options = {}) {
     'football',
     'soccer',
     'sport',
-    'sports'
+    'sports',
   ])
 
   // Reactive state for async processing
@@ -67,7 +67,7 @@ export function useTeamLogos(options = {}) {
    * @param {string} name - The team name to normalize
    * @returns {string} - Normalized team name
    */
-  const normalizeTeamName = name => {
+  const normalizeTeamName = (name) => {
     if (!name) return ''
 
     const normalized = name
@@ -123,7 +123,7 @@ export function useTeamLogos(options = {}) {
       elche: 'elche',
       mallorca: 'mallorca',
       alaves: 'alaves',
-      'rayo vallecano': 'rayo vallecano'
+      'rayo vallecano': 'rayo vallecano',
     }
 
     return abbreviations[normalized] || normalized
@@ -160,7 +160,7 @@ export function useTeamLogos(options = {}) {
       normalizedLookup.get(normalized).push({ id, name, normalized })
 
       // Word index for partial matches
-      const words = normalized.split(' ').filter(w => w.length > 2 && !stopWords.has(w))
+      const words = normalized.split(' ').filter((w) => w.length > 2 && !stopWords.has(w))
       for (const word of words) {
         if (!wordIndex.has(word)) {
           wordIndex.set(word, [])
@@ -205,7 +205,7 @@ export function useTeamLogos(options = {}) {
       prefixIndex,
       suffixIndex,
       nGramIndex,
-      generateNGrams
+      generateNGrams,
     }
   })()
 
@@ -234,8 +234,8 @@ export function useTeamLogos(options = {}) {
     }
 
     // Optimized word-based similarity
-    const words1 = norm1.split(' ').filter(w => w.length > 1)
-    const words2 = norm2.split(' ').filter(w => w.length > 1)
+    const words1 = norm1.split(' ').filter((w) => w.length > 1)
+    const words2 = norm2.split(' ').filter((w) => w.length > 1)
 
     if (words1.length === 0 || words2.length === 0) return 0
 
@@ -332,10 +332,10 @@ export function useTeamLogos(options = {}) {
 
     const searchWords = normalizeTeamName(searchName)
       .split(' ')
-      .filter(w => w.length > 1)
+      .filter((w) => w.length > 1)
     const foundWords = normalizeTeamName(foundName)
       .split(' ')
-      .filter(w => w.length > 1)
+      .filter((w) => w.length > 1)
 
     // Count exact word matches
     let exactMatches = 0
@@ -368,17 +368,17 @@ export function useTeamLogos(options = {}) {
       {
         search: ['nottingham', 'forest'],
         found: ['nottingham', 'forest', 'nottm'],
-        minScore: 0.85
+        minScore: 0.85,
       },
       { search: ['crystal', 'palace'], found: ['crystal', 'palace'], minScore: 0.9 },
       { search: ['west', 'ham'], found: ['west', 'ham'], minScore: 0.9 },
-      { search: ['brighton', 'hove'], found: ['brighton', 'hove'], minScore: 0.85 }
+      { search: ['brighton', 'hove'], found: ['brighton', 'hove'], minScore: 0.85 },
     ]
 
     for (const validation of specificValidations) {
-      const hasSearchTerms = validation.search.every(term => searchNorm.includes(term))
+      const hasSearchTerms = validation.search.every((term) => searchNorm.includes(term))
       if (hasSearchTerms) {
-        const hasFoundTerms = validation.found.some(term => foundNorm.includes(term))
+        const hasFoundTerms = validation.found.some((term) => foundNorm.includes(term))
         if (!hasFoundTerms && score < validation.minScore) {
           return false
         }
@@ -394,7 +394,9 @@ export function useTeamLogos(options = {}) {
 
     // Strict mode additional checks
     if (strictMode) {
-      const hasOnlyCommonWords = searchWords.every(word => stopWords.has(word) || word.length <= 2)
+      const hasOnlyCommonWords = searchWords.every(
+        (word) => stopWords.has(word) || word.length <= 2
+      )
 
       if (hasOnlyCommonWords && score < 0.9) {
         return false
@@ -409,22 +411,21 @@ export function useTeamLogos(options = {}) {
    * @param {string} teamName - The display name of the team
    * @returns {Array} - Array of candidate teams to check
    */
-  const getCandidates = teamName => {
+  const getCandidates = (teamName) => {
     const normalized = normalizeTeamName(teamName)
     const candidates = new Map() // Use Map to avoid duplicates and store priorities
 
     // Priority 1: Exact normalized matches (highest priority)
     const exactMatches = teamIndex.normalizedLookup.get(normalized)
     if (exactMatches) {
-      exactMatches.forEach(team => candidates.set(team.id, { ...team, priority: 1 }))
+      for (const team of exactMatches) {
+        candidates.set(team.id, { ...team, priority: 1 })
+      }
       // If we found exact matches, sort by ID (lower IDs preferred) and return early for performance
       if (exactMatches.length > 0) {
-        const sortedExactMatches = Array.from(candidates.values()).sort((a, b) => {
-          const idA = parseInt(a.id, 10)
-          const idB = parseInt(b.id, 10)
-          return idA - idB // Lower ID wins
-        })
-        return sortedExactMatches
+        return Array.from(candidates.values())
+          .sort((a, b) => a.id - b.id)
+          .slice(0, 50) // Limit to top 50 candidates for performance
       }
     }
 
@@ -433,18 +434,18 @@ export function useTeamLogos(options = {}) {
     }
 
     // Priority 2: Significant word matches
-    const words = normalized.split(' ').filter(w => w.length > 2 && !stopWords.has(w))
+    const words = normalized.split(' ').filter((w) => w.length > 2 && !stopWords.has(w))
     const wordScores = new Map() // Track how many words match
 
     for (const word of words) {
       const wordMatches = teamIndex.wordIndex.get(word)
       if (wordMatches) {
-        wordMatches.forEach(team => {
+        for (const team of wordMatches) {
           if (!candidates.has(team.id)) {
             wordScores.set(team.id, (wordScores.get(team.id) || 0) + 1)
             candidates.set(team.id, { ...team, priority: 2 })
           }
-        })
+        }
       }
     }
 
@@ -457,8 +458,8 @@ export function useTeamLogos(options = {}) {
         if (a.priority !== b.priority) return a.priority - b.priority // Then by priority
 
         // If same score and priority, favor lower ID
-        const idA = parseInt(a.id, 10)
-        const idB = parseInt(b.id, 10)
+        const idA = Number.parseInt(a.id, 10)
+        const idB = Number.parseInt(b.id, 10)
         return idA - idB // Lower ID wins
       })
       .slice(0, 50) // Limit to top 50 candidates for performance
@@ -471,7 +472,7 @@ export function useTeamLogos(options = {}) {
    * @param {string} teamName - The display name of the team
    * @returns {string|null} - The numerical team ID or null if not found
    */
-  const getTeamId = teamName => {
+  const getTeamId = (teamName) => {
     if (!teamName) return null
 
     // Check cache first
@@ -519,7 +520,7 @@ export function useTeamLogos(options = {}) {
         validCandidates.push({
           id: candidate.id,
           score: similarity,
-          candidate: candidate
+          candidate: candidate,
         })
       }
     }
@@ -539,8 +540,8 @@ export function useTeamLogos(options = {}) {
 
       // If scores are very close (within configured threshold), favor the team with lower ID
       if (Math.abs(scoreDiff) <= lowerIdPreferenceThreshold) {
-        const idA = parseInt(a.id, 10)
-        const idB = parseInt(b.id, 10)
+        const idA = Number.parseInt(a.id, 10)
+        const idB = Number.parseInt(b.id, 10)
         return idA - idB // Lower ID wins
       }
 
@@ -562,7 +563,7 @@ export function useTeamLogos(options = {}) {
    * @param {string} teamName - The display name of the team
    * @returns {Promise<string|null>} - Promise resolving to team ID or null
    */
-  const getTeamIdAsync = async teamName => {
+  const getTeamIdAsync = async (teamName) => {
     if (!teamName) return null
 
     // Check cache first
@@ -571,7 +572,7 @@ export function useTeamLogos(options = {}) {
     }
 
     // Use sync method for now, but wrapped in Promise for consistency
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
       setTimeout(() => {
         const result = getTeamId(teamName)
         resolve(result)
@@ -599,7 +600,7 @@ export function useTeamLogos(options = {}) {
         const batch = uniqueTeams.slice(i, i + batchSize)
 
         // Process entire batch synchronously for speed
-        const _batchResults = batch.map(teamName => {
+        const _batchResults = batch.map((teamName) => {
           const teamId = getTeamId(teamName)
           results.set(teamName, teamId)
           processedCount.value++
@@ -610,7 +611,7 @@ export function useTeamLogos(options = {}) {
               teamId,
               processed: processedCount.value,
               total: totalCount.value,
-              progress: processedCount.value / totalCount.value
+              progress: processedCount.value / totalCount.value,
             })
           }
 
@@ -619,7 +620,7 @@ export function useTeamLogos(options = {}) {
 
         // Small delay between batches to prevent UI blocking
         if (i + batchSize < uniqueTeams.length) {
-          await new Promise(resolve => setTimeout(resolve, batchDelay))
+          await new Promise((resolve) => setTimeout(resolve, batchDelay))
         }
       }
     } finally {
@@ -634,7 +635,7 @@ export function useTeamLogos(options = {}) {
    * @param {string} teamName - The display name of the team
    * @returns {string|null} - The logo URL or null if no team ID found
    */
-  const getTeamLogoUrl = teamName => {
+  const getTeamLogoUrl = (teamName) => {
     const teamId = getTeamId(teamName)
     if (!teamId) return null
 
@@ -646,7 +647,7 @@ export function useTeamLogos(options = {}) {
    * @param {string} teamName - The display name of the team
    * @returns {Promise<string|null>} - Promise resolving to logo URL or null
    */
-  const getTeamLogoUrlAsync = async teamName => {
+  const getTeamLogoUrlAsync = async (teamName) => {
     const teamId = await getTeamIdAsync(teamName)
     if (!teamId) return null
 
@@ -658,7 +659,7 @@ export function useTeamLogos(options = {}) {
    * @param {string} teamName - The display name of the team
    * @returns {import('vue').ComputedRef<string|null>} - Reactive logo URL
    */
-  const getReactiveLogoUrl = teamName => {
+  const getReactiveLogoUrl = (teamName) => {
     return computed(() => {
       const teamId = logoCache.get(teamName)
       if (!teamId) return null
@@ -671,7 +672,7 @@ export function useTeamLogos(options = {}) {
    * @param {import('vue').Ref<string>} teamNameRef - Reactive team name
    * @returns {import('vue').ComputedRef<string|null>} - Reactive logo URL
    */
-  const createTeamLogoUrl = teamNameRef => {
+  const createTeamLogoUrl = (teamNameRef) => {
     return computed(() => getTeamLogoUrl(teamNameRef.value))
   }
 
@@ -680,7 +681,7 @@ export function useTeamLogos(options = {}) {
    * @param {string} teamName - The display name of the team
    * @returns {boolean} - True if team ID exists (logo may exist)
    */
-  const hasTeamLogo = teamName => {
+  const hasTeamLogo = (teamName) => {
     return getTeamId(teamName) !== null
   }
 
@@ -689,7 +690,7 @@ export function useTeamLogos(options = {}) {
    * @param {string} teamName - The display name of the team
    * @returns {Object|null} - Match details or null
    */
-  const getTeamMatchDetails = teamName => {
+  const getTeamMatchDetails = (teamName) => {
     if (!teamName) return null
 
     const exactId = teamIndex.exactLookup.get(teamName)
@@ -709,7 +710,7 @@ export function useTeamLogos(options = {}) {
           id: candidate.id,
           name: candidate.name,
           score: similarity,
-          isValid: isLikelyCorrectMatch(teamName, candidate.name, similarity)
+          isValid: isLikelyCorrectMatch(teamName, candidate.name, similarity),
         })
       }
     }
@@ -718,12 +719,12 @@ export function useTeamLogos(options = {}) {
 
     if (scoredCandidates.length === 0) return null
 
-    const bestValid = scoredCandidates.find(c => c.isValid)
-    const alternatives = scoredCandidates.slice(0, 10).map(c => ({
+    const bestValid = scoredCandidates.find((c) => c.isValid)
+    const alternatives = scoredCandidates.slice(0, 10).map((c) => ({
       id: c.id,
       name: c.name,
       score: c.score,
-      isRecommended: c.isValid
+      isRecommended: c.isValid,
     }))
 
     if (bestValid) {
@@ -731,7 +732,7 @@ export function useTeamLogos(options = {}) {
         id: bestValid.id,
         name: bestValid.name,
         score: bestValid.score,
-        alternatives
+        alternatives,
       }
     }
 
@@ -753,7 +754,7 @@ export function useTeamLogos(options = {}) {
     return {
       size: logoCache.size,
       totalTeams: Object.keys(teamsData).length,
-      hitRate: logoCache.size > 0 ? logoCache.size / Object.keys(teamsData).length : 0
+      hitRate: logoCache.size > 0 ? logoCache.size / Object.keys(teamsData).length : 0,
     }
   }
 
@@ -784,6 +785,6 @@ export function useTeamLogos(options = {}) {
     getCacheStats,
 
     // Performance monitoring
-    teamIndex: readonly(teamIndex)
+    teamIndex: readonly(teamIndex),
   }
 }

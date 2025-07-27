@@ -24,6 +24,86 @@ func safeIntToInt32(value int) int32 {
 
 // --- RoleOverallScore Conversion Functions ---
 
+// ToProto converts a RoleOverallScore struct to protobuf format
+func (r *RoleOverallScore) ToProto(ctx context.Context) (*proto.RoleOverallScore, error) {
+	ctx, span := StartSpanWithAttributes(ctx, "protobuf.conversion.role_overall_score_to_proto", []attribute.KeyValue{
+		attribute.String("conversion.type", "role_overall_score"),
+		attribute.String("conversion.direction", "to_protobuf"),
+	})
+	defer span.End()
+
+	if r == nil {
+		RecordError(ctx, ErrNilRoleOverallScore, "Cannot convert nil RoleOverallScore to protobuf",
+			WithErrorCategory("validation"),
+			WithSeverity("medium"))
+		return nil, ErrNilRoleOverallScore
+	}
+
+	SetSpanAttributes(ctx,
+		attribute.String("role.name", r.RoleName),
+		attribute.Int("role.score", r.Score),
+	)
+
+	logDebug(ctx, "Converting RoleOverallScore to protobuf",
+		"role_name", r.RoleName,
+		"role_score", r.Score,
+		"conversion_type", "role_overall_score",
+		"conversion_direction", "to_protobuf")
+
+	protoRole := &proto.RoleOverallScore{
+		RoleName: r.RoleName,
+		Score:    safeIntToInt32(r.Score),
+	}
+
+	logDebug(ctx, "Successfully converted RoleOverallScore to protobuf",
+		"role_name", r.RoleName,
+		"role_score", r.Score,
+		"proto_role_name", protoRole.RoleName,
+		"proto_role_score", protoRole.Score)
+
+	return protoRole, nil
+}
+
+// RoleOverallScoreFromProto converts a protobuf RoleOverallScore to our struct
+func RoleOverallScoreFromProto(ctx context.Context, protoRole *proto.RoleOverallScore) (*RoleOverallScore, error) {
+	ctx, span := StartSpanWithAttributes(ctx, "protobuf.conversion.role_overall_score_from_proto", []attribute.KeyValue{
+		attribute.String("conversion.type", "role_overall_score"),
+		attribute.String("conversion.direction", "from_protobuf"),
+	})
+	defer span.End()
+
+	if protoRole == nil {
+		RecordError(ctx, ErrNilProtobufRoleOverallScore, "Cannot convert nil protobuf RoleOverallScore",
+			WithErrorCategory("validation"),
+			WithSeverity("medium"))
+		return nil, ErrNilProtobufRoleOverallScore
+	}
+
+	SetSpanAttributes(ctx,
+		attribute.String("proto_role.name", protoRole.RoleName),
+		attribute.Int("proto_role.score", int(protoRole.Score)),
+	)
+
+	logDebug(ctx, "Converting protobuf RoleOverallScore to struct",
+		"proto_role_name", protoRole.RoleName,
+		"proto_role_score", protoRole.Score,
+		"conversion_type", "role_overall_score",
+		"conversion_direction", "from_protobuf")
+
+	role := &RoleOverallScore{
+		RoleName: protoRole.RoleName,
+		Score:    int(protoRole.Score),
+	}
+
+	logDebug(ctx, "Successfully converted protobuf RoleOverallScore to struct",
+		"proto_role_name", protoRole.RoleName,
+		"proto_role_score", protoRole.Score,
+		"role_name", role.RoleName,
+		"role_score", role.Score)
+
+	return role, nil
+}
+
 // --- Player Conversion Functions ---
 
 // ToProto converts a Player struct to protobuf format (optimized for frontend)
@@ -376,4 +456,26 @@ func DatasetDataFromProto(ctx context.Context, protoDataset *proto.DatasetData) 
 		"duration_ms", duration.Milliseconds())
 
 	return dataset, nil
+}
+
+// --- Optimized Conversion Methods ---
+
+// ToProtoOptimized converts a PlayerDataWithCurrency to protobuf format with optimizations
+func (d *PlayerDataWithCurrency) ToProtoOptimized(ctx context.Context) (*proto.DatasetData, error) {
+	// For now, use the same implementation as ToProto
+	// In a real implementation, this would include optimizations like:
+	// - Object pooling
+	// - Reduced memory allocations
+	// - Parallel processing for large datasets
+	return d.ToProto(ctx)
+}
+
+// DatasetDataFromProtoOptimized converts a protobuf DatasetData to the native struct with optimizations
+func DatasetDataFromProtoOptimized(ctx context.Context, protoDataset *proto.DatasetData) (*PlayerDataWithCurrency, error) {
+	// For now, use the same implementation as DatasetDataFromProto
+	// In a real implementation, this would include optimizations like:
+	// - Object pooling
+	// - Reduced memory allocations
+	// - Parallel processing for large datasets
+	return DatasetDataFromProto(ctx, protoDataset)
 }

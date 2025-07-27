@@ -32,13 +32,13 @@ export default {
   props: {
     columns: { type: Array, required: true },
     sortField: { type: String, required: true },
-    sortDirection: { type: String, required: true }
+    sortDirection: { type: String, required: true },
   },
   emits: ['sort'],
   setup(props) {
     const quasarInstance = useQuasar()
 
-    const getHeaderClass = col => {
+    const getHeaderClass = (col) => {
       const classes = ['sortable-header']
 
       if (props.sortField === col.name) {
@@ -54,9 +54,9 @@ export default {
 
     return {
       quasarInstance,
-      getHeaderClass
+      getHeaderClass,
     }
-  }
+  },
 }
 </script>
 

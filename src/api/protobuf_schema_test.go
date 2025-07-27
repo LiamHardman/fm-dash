@@ -4,8 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"google.golang.org/protobuf/proto"
 	pb "api/proto"
+
+	"google.golang.org/protobuf/proto"
 )
 
 func TestProtobufSchemaExtensions(t *testing.T) {
@@ -98,11 +99,11 @@ func TestProtobufSchemaExtensions(t *testing.T) {
 				TotalCount: 2,
 			},
 			Pagination: &pb.PaginationInfo{
-				Page:       1,
-				PerPage:    10,
-				TotalPages: 1,
-				TotalCount: 2,
-				HasNext:    false,
+				Page:        1,
+				PerPage:     10,
+				TotalPages:  1,
+				TotalCount:  2,
+				HasNext:     false,
 				HasPrevious: false,
 			},
 		}
@@ -247,11 +248,11 @@ func TestProtobufSchemaExtensions(t *testing.T) {
 				TotalCount: 1,
 			},
 			Pagination: &pb.PaginationInfo{
-				Page:       1,
-				PerPage:    20,
-				TotalPages: 1,
-				TotalCount: 1,
-				HasNext:    false,
+				Page:        1,
+				PerPage:     20,
+				TotalPages:  1,
+				TotalCount:  1,
+				HasNext:     false,
 				HasPrevious: false,
 			},
 		}
@@ -430,33 +431,32 @@ func TestProtobufImportStructure(t *testing.T) {
 		response := &pb.PlayerDataResponse{
 			Players: []*pb.Player{
 				{
-					Uid:                1,
-					Name:               "Test Player",
-					Position:           "Midfielder",
-					Age:                "25",
-					Club:               "Test FC",
-					Division:           "Premier League",
-					TransferValue:      "£10M",
-					Wage:               "£50K",
-					Nationality:        "England",
-					NationalityIso:     "ENG",
+					Uid:                 1,
+					Name:                "Test Player",
+					Position:            "Midfielder",
+					Age:                 "25",
+					Club:                "Test FC",
+					Division:            "Premier League",
+					TransferValue:       "£10M",
+					Wage:                "£50K",
+					Nationality:         "England",
+					NationalityIso:      "ENG",
 					NationalityFifaCode: "ENG",
-					AttributeMasked:    false,
-					Attributes:         map[string]string{"Pace": "85"},
-					NumericAttributes:  map[string]int32{"Pace": 85},
-					ParsedPositions:    []string{"CM", "CAM"},
-					ShortPositions:     []string{"CM"},
-					PositionGroups:     []string{"Midfield"},
-					Pac:                85,
-					Sho:                75,
-					Pas:                80,
-					Dri:                78,
-					Def:                65,
-					Phy:                82,
-					Overall:            79,
-					BestRoleOverall:    "Central Midfielder",
+					AttributeMasked:     false,
+					EssentialAttributes: map[string]string{"Pace": "85"},
+					ParsedPositions:     []string{"CM", "CAM"},
+					ShortPositions:      []string{"CM"},
+					PositionGroups:      []string{"Midfield"},
+					Pac:                 85,
+					Sho:                 75,
+					Pas:                 80,
+					Dri:                 78,
+					Def:                 65,
+					Phy:                 82,
+					Overall:             79,
+					BestRoleOverall:     "Central Midfielder",
 					TransferValueAmount: 10000000,
-					WageAmount:         50000,
+					WageAmount:          50000,
 				},
 			},
 			CurrencySymbol: "£",

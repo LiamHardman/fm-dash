@@ -12,7 +12,7 @@ class FormationCache {
     const playerHash = players
       .sort((a, b) => {
         // Create unique identifiers for sorting
-        const getUniqueId = p => {
+        const getUniqueId = (p) => {
           let id = p.UID || p.uid
           if (!id || id === '') {
             id = `${p.name || 'unknown'}-${p.club || 'unknown'}-${p.age || 'unknown'}-${p.position || 'unknown'}`
@@ -22,7 +22,7 @@ class FormationCache {
         }
         return getUniqueId(a).localeCompare(getUniqueId(b))
       })
-      .map(p => {
+      .map((p) => {
         let playerUID = p.UID || p.uid
         if (!playerUID || playerUID === '') {
           playerUID = `${p.name || 'unknown'}-${p.club || 'unknown'}-${p.age || 'unknown'}-${p.position || 'unknown'}`
@@ -70,7 +70,7 @@ class FormationCache {
 
     this.cache.set(key, {
       ...value,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     })
   }
 

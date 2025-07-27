@@ -1,4 +1,4 @@
-import { onMounted, watch } from 'vue'
+import { onMounted } from 'vue'
 import { analytics, trackEvent, trackPageView } from '../services/analytics'
 
 /**
@@ -9,7 +9,7 @@ import { analytics, trackEvent, trackPageView } from '../services/analytics'
  */
 export function useAnalytics(options = {}) {
   const { trackPageViews = true } = options
-  
+
   // Track initial page view on mount
   if (trackPageViews) {
     onMounted(() => {
@@ -40,7 +40,7 @@ export function useAnalytics(options = {}) {
       trackEvent('form_submission', {
         form_name: formName,
         form_data: JSON.stringify(formData),
-        event_category: 'form_interaction'
+        event_category: 'form_interaction',
       })
     },
 
@@ -49,7 +49,7 @@ export function useAnalytics(options = {}) {
       trackEvent('button_click', {
         button_name: buttonName,
         ...context,
-        event_category: 'ui_interaction'
+        event_category: 'ui_interaction',
       })
     },
 
@@ -59,8 +59,8 @@ export function useAnalytics(options = {}) {
         operation: operation, // 'upload', 'download', 'delete', etc.
         file_name: fileName,
         file_size: fileSize,
-        event_category: 'file_interaction'
+        event_category: 'file_interaction',
       })
-    }
+    },
   }
 }

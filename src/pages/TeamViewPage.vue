@@ -342,11 +342,11 @@ import PitchDisplay from '../components/PitchDisplay.vue'
 import PlayerDataTable from '../components/PlayerDataTable.vue'
 import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
 import TeamLogo from '../components/TeamLogo.vue'
+import { fetchTeamData } from '../services/playerService'
 import { usePlayerStore } from '../stores/playerStore'
 import { debounce } from '../utils/debounce'
 import { formationCache } from '../utils/formationCache'
 import { formations, getFormationLayout } from '../utils/formations'
-import { fetchFullPlayerStats, fetchTeamData } from '../services/playerService'
 
 // Currency utils are not directly used here for formatting,
 // but PlayerDataTable and PlayerDetailDialog will use them with the passed symbol.
@@ -365,16 +365,16 @@ const fmSlotRoleMatcher = {
   'AM (R)': ['Attacking Midfielder (Right)', 'Right Attacking Midfielder', 'Winger (Right)'],
   'AM (L)': ['Attacking Midfielder (Left)', 'Left Attacking Midfielder', 'Winger (Left)'],
   'AM (C)': ['Attacking Midfielder (Centre)', 'Centre Attacking Midfielder'],
-  'ST (C)': ['Striker (Centre)', 'Striker']
+  'ST (C)': ['Striker (Centre)', 'Striker'],
 }
 
 export default {
   name: 'TeamViewPage',
-  components: { 
-    PlayerDataTable, 
-    PlayerDetailDialog, 
-    PitchDisplay, 
-    TeamLogo 
+  components: {
+    PlayerDataTable,
+    PlayerDetailDialog,
+    PitchDisplay,
+    TeamLogo,
   },
   setup() {
     const quasarInstance = useQuasar()
@@ -433,7 +433,7 @@ export default {
       'ATTACKING MIDFIELDER (CENTRE)': 'AMC',
       'CENTRE ATTACKING MIDFIELDER': 'AMC',
       'STRIKER (CENTRE)': 'ST',
-      STRIKER: 'ST'
+      STRIKER: 'ST',
     }
 
     // For handling combined positions like D/WB(R)
@@ -452,7 +452,7 @@ export default {
       'AM (L)': ['AML'],
       'AM (C)': ['AMC'],
       'ST (C)': ['ST'],
-      GK: ['GK']
+      GK: ['GK'],
     }
 
     const fallbackPositionMap = {
@@ -469,10 +469,10 @@ export default {
       'AM (L)': ['AML', 'ML'],
       'AM (C)': ['AMC', 'MC'],
       'ST (C)': ['ST', 'AMC'],
-      GK: ['GK']
+      GK: ['GK'],
     }
 
-    const fetchPlayersAndCurrency = async datasetId => {
+    const fetchPlayersAndCurrency = async (datasetId) => {
       pageLoading.value = true
       pageLoadingError.value = ''
       try {
@@ -533,8 +533,8 @@ export default {
       try {
         // Use the new team data API to get all detailed player data in one request
         const teamData = await fetchTeamData(currentDatasetId.value, 'team', selectedTeamName.value)
-        
-        if (teamData.data && teamData.data.players) {
+
+        if (teamData.data?.players) {
           teamPlayers.value = teamData.data.players
 
           // console.log('Team players loaded via API:', {
@@ -571,7 +571,9 @@ export default {
             squadComposition.value = {}
             bestTeamAverageOverall.value = null
             calculationMessage.value = 'No players found for this team.'
-            calculationMessageClass.value = quasarInstance.dark.isActive ? 'text-grey-5' : 'text-grey-7'
+            calculationMessageClass.value = quasarInstance.dark.isActive
+              ? 'text-grey-5'
+              : 'text-grey-7'
           }
         } else {
           throw new Error('Invalid team data response')
@@ -579,10 +581,8 @@ export default {
       } catch (error) {
         console.error('Error loading team players:', error)
         calculationMessage.value = `Failed to load team players: ${error.message}`
-        calculationMessageClass.value = quasarInstance.dark.isActive
-          ? 'text-red-5'
-          : 'text-red-7'
-        
+        calculationMessageClass.value = quasarInstance.dark.isActive ? 'text-red-5' : 'text-red-7'
+
         // Fallback to empty state
         teamPlayers.value = []
         selectedFormationKey.value = null
@@ -609,9 +609,9 @@ export default {
     }
 
     const formationOptions = computed(() => {
-      return Object.keys(formations).map(key => ({
+      return Object.keys(formations).map((key) => ({
         label: formations[key].name,
-        value: key
+        value: key,
       }))
     })
 
@@ -635,7 +635,7 @@ export default {
           starters[slotId] = {
             ...starterEntry.player, // Spread all player properties
             Overall: starterEntry.overallInRole, // Use position-specific rating
-            exactPositionMatch: starterEntry.exactMatch // Pass this to the pitch display
+            exactPositionMatch: starterEntry.exactMatch, // Pass this to the pitch display
           }
         } else {
           starters[slotId] = null // No player for this slot
@@ -657,7 +657,7 @@ export default {
       // otherwise default to outfield player view which is what users typically want to see.
       if (teamPlayers.value.length === 0) return false
 
-      const goalkeeperCount = teamPlayers.value.filter(p =>
+      const goalkeeperCount = teamPlayers.value.filter((p) =>
         p.position_groups?.includes('Goalkeepers')
       ).length
 
@@ -673,7 +673,7 @@ export default {
       return null
     })
 
-    const getStarRating = overall => {
+    const getStarRating = (overall) => {
       if (!overall || overall === 0) return 0
 
       if (overall >= 85) return 5
@@ -703,12 +703,12 @@ export default {
       return 'star-empty'
     }
 
-    const handlePlayerSelectedFromTeam = player => {
+    const handlePlayerSelectedFromTeam = (player) => {
       playerForDetailView.value = player
       showPlayerDetailDialog.value = true
     }
 
-    const handleTeamSelected = teamName => {
+    const handleTeamSelected = (teamName) => {
       // Navigate to team view page with the selected team
       const datasetId = currentDatasetId.value || sessionStorage.getItem('currentDatasetId')
       if (datasetId && teamName && teamName !== selectedTeamName.value) {
@@ -717,13 +717,13 @@ export default {
           path: '/team-view',
           query: {
             datasetId: datasetId,
-            team: teamName
-          }
+            team: teamName,
+          },
         })
       }
     }
 
-    const getOverallClass = overall => {
+    const getOverallClass = (overall) => {
       if (overall === null || overall === undefined) return 'rating-na'
       const numericOverall = Number(overall)
       if (Number.isNaN(numericOverall)) return 'rating-na'
@@ -741,7 +741,7 @@ export default {
         return { attRating: 0, midRating: 0, defRating: 0 }
       }
 
-      const formationSlots = formationLayout.flatMap(row => row.positions)
+      const formationSlots = formationLayout.flatMap((row) => row.positions)
 
       // Define position categories
       const defensivePositions = ['GK', 'D (R)', 'D (L)', 'D (C)', 'WB (R)', 'WB (L)']
@@ -777,7 +777,7 @@ export default {
       return {
         attRating: attCount > 0 ? Math.round(attSum / attCount) : 0,
         midRating: midCount > 0 ? Math.round(midSum / midCount) : 0,
-        defRating: defCount > 0 ? Math.round(defSum / defCount) : 0
+        defRating: defCount > 0 ? Math.round(defSum / defCount) : 0,
       }
     }
 
@@ -803,8 +803,8 @@ export default {
       const upperSlotRoleOriginal = slotFormationRole.toUpperCase()
       const requiredPositions = positionSideMap[upperSlotRoleOriginal] || []
 
-              if (player.shortPositions && player.shortPositions.length > 0) {
-          const exactPositionMatches = player.shortPositions.filter(pos =>
+      if (player.shortPositions && player.shortPositions.length > 0) {
+        const exactPositionMatches = player.shortPositions.filter((pos) =>
           requiredPositions.includes(pos)
         )
 
@@ -840,7 +840,9 @@ export default {
       const fallbackPositions = fallbackPositionMap[upperSlotRoleOriginal] || []
 
       if (player.shortPositions && player.shortPositions.length > 0) {
-        const fallbackMatches = player.shortPositions.filter(pos => fallbackPositions.includes(pos))
+        const fallbackMatches = player.shortPositions.filter((pos) =>
+          fallbackPositions.includes(pos)
+        )
 
         if (fallbackMatches.length > 0) {
           if (Array.isArray(player.roleSpecificOveralls)) {
@@ -872,8 +874,8 @@ export default {
         const fmPositionMatchers = fmSlotRoleMatcher[upperSlotRole] || [upperSlotRole]
 
         const targetRoleKeyPrefixes = fmPositionMatchers
-          .map(matcher => fmMatcherToRoleKeyPrefix[matcher.toUpperCase()])
-          .filter(prefix => !!prefix)
+          .map((matcher) => fmMatcherToRoleKeyPrefix[matcher.toUpperCase()])
+          .filter((prefix) => !!prefix)
           .reduce((acc, val) => {
             if (!acc.includes(val)) {
               acc.push(val)
@@ -934,18 +936,20 @@ export default {
       console.log('Calculating best formation for team:', {
         teamName: selectedTeamName.value,
         playerCount: teamPlayers.value.length,
-        samplePlayerData: teamPlayers.value[0] ? {
-          name: teamPlayers.value[0].name,
-          shortPositions: teamPlayers.value[0].shortPositions,
-          roleSpecificOveralls: teamPlayers.value[0].roleSpecificOveralls?.length || 0,
-          Overall: teamPlayers.value[0].Overall
-        } : null
+        samplePlayerData: teamPlayers.value[0]
+          ? {
+              name: teamPlayers.value[0].name,
+              shortPositions: teamPlayers.value[0].shortPositions,
+              roleSpecificOveralls: teamPlayers.value[0].roleSpecificOveralls?.length || 0,
+              Overall: teamPlayers.value[0].Overall,
+            }
+          : null,
       })
-      
+
       // Debug: Check position mappings
-      console.log('Position mappings for GK:', positionSideMap['GK'])
+      console.log('Position mappings for GK:', positionSideMap.GK)
       console.log('Position mappings for ST (C):', positionSideMap['ST (C)'])
-      console.log('Fallback mappings for GK:', fallbackPositionMap['GK'])
+      console.log('Fallback mappings for GK:', fallbackPositionMap.GK)
 
       // Check cache first
       const cacheKey = formationCache.generateKey(teamPlayers.value, 'team-best')
@@ -963,7 +967,7 @@ export default {
         const formationLayoutForCalc = getFormationLayout(formationKey)
         if (!formationLayoutForCalc) continue
 
-        const formationSlots = formationLayoutForCalc.flatMap(row => row.positions)
+        const formationSlots = formationLayoutForCalc.flatMap((row) => row.positions)
         const tempSquadComposition = {}
 
         // Initialize slots
@@ -971,7 +975,7 @@ export default {
           tempSquadComposition[slot.id] = []
         }
 
-                // Calculate player scores for each position in this formation
+        // Calculate player scores for each position in this formation
         const allPotentialPlayerAssignments = []
         for (const slot of formationSlots) {
           // Use the same logic as calculateBestTeamAndDepth for consistency
@@ -982,9 +986,9 @@ export default {
               const slotPositions = positionSideMap[slot.role.toUpperCase()] || []
               const fallbackPositions = fallbackPositionMap[slot.role.toUpperCase()] || []
               const playerPositions = player.shortPositions || []
-              
-              const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos))
-              const isFallbackMatch = playerPositions.some(pos => fallbackPositions.includes(pos))
+
+              const isExactMatch = playerPositions.some((pos) => slotPositions.includes(pos))
+              const isFallbackMatch = playerPositions.some((pos) => fallbackPositions.includes(pos))
 
               // Include both exact matches and fallback matches
               if (isExactMatch || isFallbackMatch) {
@@ -994,7 +998,7 @@ export default {
                   slotRole: slot.role,
                   overallInRole: overallInRole,
                   sortScore: overallInRole,
-                  exactMatch: isExactMatch
+                  exactMatch: isExactMatch,
                 }
 
                 if (isExactMatch) {
@@ -1007,14 +1011,16 @@ export default {
               }
             }
           }
-          
+
           // Debug: Log the first few players and their position data
           if (formationKey === '442_classic' && slot.role === 'GK') {
             console.log('Debug - Sample players for GK position:')
             for (let i = 0; i < Math.min(3, teamPlayers.value.length); i++) {
               const player = teamPlayers.value[i]
               const overallInRole = getPlayerOverallForRole(player, slot.role)
-              console.log(`Player ${i}: ${player.name}, positions: ${player.shortPositions}, overall: ${overallInRole}, threshold: ${MIN_SUITABILITY_THRESHOLD}`)
+              console.log(
+                `Player ${i}: ${player.name}, positions: ${player.shortPositions}, overall: ${overallInRole}, threshold: ${MIN_SUITABILITY_THRESHOLD}`
+              )
             }
           }
         }
@@ -1034,7 +1040,7 @@ export default {
               tempSquadComposition[slot.id].push({
                 player: assignment.player,
                 overallInRole: assignment.overallInRole,
-                exactMatch: assignment.exactMatch
+                exactMatch: assignment.exactMatch,
               })
               assignedPlayersToSlots.add(assignment.player.name)
               break
@@ -1056,9 +1062,11 @@ export default {
 
         // Only consider formations with at least 5 filled positions (minimum viable team)
         const hasEnoughPlayers = filledPositions >= 5
-        
-        console.log(`Formation ${formationKey}: filled=${filledPositions}, avg=${startersCount > 0 ? (sumOfStartersOverall / startersCount).toFixed(1) : 0}, viable=${hasEnoughPlayers}`)
-        
+
+        console.log(
+          `Formation ${formationKey}: filled=${filledPositions}, avg=${startersCount > 0 ? (sumOfStartersOverall / startersCount).toFixed(1) : 0}, viable=${hasEnoughPlayers}`
+        )
+
         if (startersCount > 0 && hasEnoughPlayers) {
           const averageOverall = sumOfStartersOverall / startersCount
           if (averageOverall > bestAverageOverall) {
@@ -1071,7 +1079,7 @@ export default {
       console.log('Formation calculation result:', {
         bestFormationKey,
         bestAverageOverall,
-        totalFormationsTested: Object.keys(formations).length
+        totalFormationsTested: Object.keys(formations).length,
       })
 
       // Cache the result
@@ -1079,7 +1087,7 @@ export default {
         formationCache.set(cacheKey, {
           bestFormationKey,
           bestAverageOverall,
-          teamName: selectedTeamName.value
+          teamName: selectedTeamName.value,
         })
       }
 
@@ -1126,7 +1134,7 @@ export default {
         return
       }
 
-      const formationSlots = formationLayoutForCalc.flatMap(row => row.positions)
+      const formationSlots = formationLayoutForCalc.flatMap((row) => row.positions)
 
       // Initialize slots
       for (const slot of formationSlots) {
@@ -1168,10 +1176,11 @@ export default {
 
             // For first XI and depth chart, we ONLY want players who can ACTUALLY play the position
             // isExactMatch means player has the EXACT position for this slot
-            const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos))
+            const isExactMatch = playerPositions.some((pos) => slotPositions.includes(pos))
 
             // Include both exact matches and fallback positions for more options
-            const canPlayInPosition = isExactMatch || playerPositions.some(pos => _fallbackPositions.includes(pos))
+            const _canPlayInPosition =
+              isExactMatch || playerPositions.some((pos) => _fallbackPositions.includes(pos))
 
             // More inclusive approach - include players who meet the threshold
             if (overallInRole >= MIN_SUITABILITY_THRESHOLD) {
@@ -1187,7 +1196,7 @@ export default {
                 slotRole: slot.role,
                 overallInRole: overallInRole, // Store original score for display
                 sortScore: overallInRole, // Will be used for sorting
-                exactMatch: isExactMatch // Flag for UI display
+                exactMatch: isExactMatch, // Flag for UI display
               }
 
               // Adjust sort score based on position match
@@ -1240,7 +1249,7 @@ export default {
                   tempSquadComposition[slot.id].push({
                     player: assignment.player,
                     overallInRole: assignment.overallInRole,
-                    exactMatch: assignment.exactMatch
+                    exactMatch: assignment.exactMatch,
                   })
                   assignedPlayersToSlots.add(assignment.player.name)
                   break // Move to next slot for this depth level
@@ -1278,7 +1287,7 @@ export default {
                   tempSquadComposition[slot.id].push({
                     player: assignment.player,
                     overallInRole: assignment.overallInRole,
-                    exactMatch: assignment.exactMatch
+                    exactMatch: assignment.exactMatch,
                   })
                   assignedPlayersToSlots.add(assignment.player.name)
                   break // Move to next slot for this depth level
@@ -1309,7 +1318,7 @@ export default {
               const playerPositions = player.shortPositions || []
 
               // Check if player can play any fallback position
-              const canPlayFallback = playerPositions.some(pos => fallbackPositions.includes(pos))
+              const canPlayFallback = playerPositions.some((pos) => fallbackPositions.includes(pos))
 
               if (canPlayFallback) {
                 const overallInRole = getPlayerOverallForRole(player, slot.role)
@@ -1317,7 +1326,7 @@ export default {
                   fallbackAssignments.push({
                     player,
                     overallInRole,
-                    exactMatch: false
+                    exactMatch: false,
                   })
                 }
               }
@@ -1367,12 +1376,12 @@ export default {
           squadComposition: squadComposition.value,
           bestTeamAverageOverall: bestTeamAverageOverall.value,
           teamName: selectedTeamName.value,
-          formation: selectedFormationKey.value
+          formation: selectedFormationKey.value,
         })
       }
     }
 
-    watch(selectedFormationKey, newKey => {
+    watch(selectedFormationKey, (newKey) => {
       if (newKey && selectedTeamName.value) {
         calculateBestTeamAndDepth()
       } else {
@@ -1383,11 +1392,11 @@ export default {
       }
     })
 
-    const handlePlayerMovedOnPitch = moveData => {
+    const handlePlayerMovedOnPitch = (moveData) => {
       const { player, fromSlotId, toSlotId, toSlotRole } = moveData
 
       const currentStarters = JSON.parse(JSON.stringify(bestTeamPlayersForPitch.value))
-      const playerToMoveFullData = allPlayersData.value.find(p => p.name === player.name)
+      const playerToMoveFullData = allPlayersData.value.find((p) => p.name === player.name)
 
       if (!playerToMoveFullData) return
 
@@ -1397,24 +1406,24 @@ export default {
       // Check if player is in their natural position in the new slot
       const playerPositions = playerToMoveFullData.shortPositions || []
       const slotPositions = positionSideMap[toSlotRole.toUpperCase()] || []
-      const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos))
+      const isExactMatch = playerPositions.some((pos) => slotPositions.includes(pos))
 
       const playerCurrentlyInTargetSlotFullData = currentStarters[toSlotId]
-        ? allPlayersData.value.find(p => p.name === currentStarters[toSlotId].name)
+        ? allPlayersData.value.find((p) => p.name === currentStarters[toSlotId].name)
         : null
 
       // Update target slot with role-specific rating and position match info
       currentStarters[toSlotId] = {
         ...playerToMoveFullData,
         Overall: overallInNewRole, // Role-specific rating for the position
-        exactPositionMatch: isExactMatch // Position match flag for UI
+        exactPositionMatch: isExactMatch, // Position match flag for UI
       }
 
       // Update original slot
       if (playerCurrentlyInTargetSlotFullData && fromSlotId) {
         const originalRoleOfFromSlot = currentFormationLayout.value
-          .flatMap(r => r.positions)
-          .find(p => p.id === fromSlotId)?.role
+          .flatMap((r) => r.positions)
+          .find((p) => p.id === fromSlotId)?.role
 
         if (originalRoleOfFromSlot) {
           // Calculate role-specific rating for the player in the original slot
@@ -1426,12 +1435,12 @@ export default {
           // Check if player is in their natural position in the original slot
           const playerPositions = playerCurrentlyInTargetSlotFullData.shortPositions || []
           const slotPositions = positionSideMap[originalRoleOfFromSlot.toUpperCase()] || []
-          const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos))
+          const isExactMatch = playerPositions.some((pos) => slotPositions.includes(pos))
 
           currentStarters[fromSlotId] = {
             ...playerCurrentlyInTargetSlotFullData,
             Overall: overallInOldRole, // Role-specific rating
-            exactPositionMatch: isExactMatch // Position match flag
+            exactPositionMatch: isExactMatch, // Position match flag
           }
         } else {
           currentStarters[fromSlotId] = null
@@ -1474,7 +1483,7 @@ export default {
 
     watch(
       () => allPlayersData.value,
-      newVal => {
+      (newVal) => {
         if (pageLoading.value) return // Don't run if initial load is happening
         if (newVal && newVal.length > 0) {
           // If a team was specified in the query params, select it
@@ -1503,7 +1512,7 @@ export default {
 
     watch(
       () => route.query.team,
-      newTeam => {
+      (newTeam) => {
         if (newTeam && newTeam !== selectedTeamName.value) {
           selectedTeamName.value = newTeam
           loadTeamPlayers()
@@ -1525,7 +1534,7 @@ export default {
           color: 'positive',
           icon: 'check_circle',
           position: 'top',
-          timeout: 2000
+          timeout: 2000,
         })
       } catch (_err) {
         // Fallback for older browsers
@@ -1541,7 +1550,7 @@ export default {
           color: 'positive',
           icon: 'check_circle',
           position: 'top',
-          timeout: 2000
+          timeout: 2000,
         })
       }
     }
@@ -1556,7 +1565,7 @@ export default {
           starters[slotId] = {
             ...starterEntry.player,
             Overall: starterEntry.overallInRole,
-            exactPositionMatch: starterEntry.exactMatch
+            exactPositionMatch: starterEntry.exactMatch,
           }
         } else {
           starters[slotId] = null
@@ -1599,9 +1608,9 @@ export default {
       router,
       detectedCurrencySymbol, // Expose currency symbol
       currentDatasetId,
-      shareDataset
+      shareDataset,
     }
-  }
+  },
 }
 </script>
 

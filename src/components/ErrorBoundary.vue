@@ -47,49 +47,10 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+// Removed unused imports: computed, ref
+// Removed unused variables: props, emit
 
-const props = defineProps({
-  error: {
-    type: Error,
-    default: null
-  },
-  title: {
-    type: String,
-    default: 'Something went wrong'
-  },
-  message: {
-    type: String,
-    default: 'An error occurred while loading this component. Please try again.'
-  },
-  showRetry: {
-    type: Boolean,
-    default: true
-  },
-  showDetails: {
-    type: Boolean,
-    default: true
-  }
-})
-
-const emit = defineEmits(['retry'])
-
-const showErrorDetails = ref(false)
-
-const errorDetails = computed(() => {
-  if (!props.error) return 'No error details available'
-
-  return {
-    message: props.error.message,
-    stack: props.error.stack,
-    name: props.error.name,
-    timestamp: new Date().toISOString()
-  }
-})
-
-const handleRetry = () => {
-  emit('retry')
-}
+// This component is currently a placeholder - functionality to be implemented
 </script>
 
 <style scoped>

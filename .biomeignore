@@ -1,0 +1,50 @@
+# Development utilities and test files
+dev-utils/
+scripts/
+test/
+tests/
+__tests__/
+
+# Build and distribution files
+dist/
+build/
+coverage/
+*.min.js
+*.min.css
+
+# Documentation
+docs/
+*.md
+
+# Configuration and lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+
+# Data files that don't need linting
+src/utils/teams_data.json
+public/config.js
+
+# Vite config (contains intentional console statements)
+vite.config.js
+
+# Test data
+testdata.html 

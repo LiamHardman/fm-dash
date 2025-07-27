@@ -27,7 +27,7 @@ class DynamicComponentLoader {
       timeout = 30000,
       suspensible = false,
       onError = null,
-      retryAttempts = 3
+      retryAttempts = 3,
     } = options
 
     const componentId = this.generateComponentId(loader)
@@ -67,7 +67,7 @@ class DynamicComponentLoader {
       errorComponent,
       delay,
       timeout,
-      suspensible
+      suspensible,
     })
   }
 
@@ -90,7 +90,7 @@ class DynamicComponentLoader {
         if (attempt < retryAttempts) {
           // Exponential backoff
           const delay = 2 ** attempt * 1000
-          await new Promise(resolve => setTimeout(resolve, delay))
+          await new Promise((resolve) => setTimeout(resolve, delay))
         }
       }
     }
@@ -132,28 +132,28 @@ class DynamicComponentLoader {
     const sortedComponents = components.sort((a, b) => (b.priority || 0) - (a.priority || 0))
 
     // Preload high priority components first
-    const highPriority = sortedComponents.filter(c => (c.priority || 0) >= 8)
+    const highPriority = sortedComponents.filter((c) => (c.priority || 0) >= 8)
     const mediumPriority = sortedComponents.filter(
-      c => (c.priority || 0) >= 5 && (c.priority || 0) < 8
+      (c) => (c.priority || 0) >= 5 && (c.priority || 0) < 8
     )
-    const lowPriority = sortedComponents.filter(c => (c.priority || 0) < 5)
+    const lowPriority = sortedComponents.filter((c) => (c.priority || 0) < 5)
 
     // Load high priority components immediately
-    await Promise.all(highPriority.map(c => this.preloadComponent(c.loader)))
+    await Promise.all(highPriority.map((c) => this.preloadComponent(c.loader)))
 
     // Load medium priority components with slight delay
     setTimeout(() => {
-      Promise.all(mediumPriority.map(c => this.preloadComponent(c.loader)))
+      Promise.all(mediumPriority.map((c) => this.preloadComponent(c.loader)))
     }, 1000)
 
     // Load low priority components when idle
     if (window.requestIdleCallback) {
       window.requestIdleCallback(() => {
-        Promise.all(lowPriority.map(c => this.preloadComponent(c.loader)))
+        Promise.all(lowPriority.map((c) => this.preloadComponent(c.loader)))
       })
     } else {
       setTimeout(() => {
-        Promise.all(lowPriority.map(c => this.preloadComponent(c.loader)))
+        Promise.all(lowPriority.map((c) => this.preloadComponent(c.loader)))
       }, 3000)
     }
   }
@@ -201,13 +201,13 @@ class DynamicComponentLoader {
       cachedComponents: this.componentCache.size,
       loadingComponents: Array.from(this.loadingStates.values()).filter(Boolean).length,
       errorComponents: this.errorStates.size,
-      preloadQueue: this.preloadQueue.size
+      preloadQueue: this.preloadQueue.size,
     }
   }
 
   // Private methods
   generateComponentId(loader) {
-    return loader.toString().slice(0, 50) + '_' + Date.now()
+    return `${loader.toString().slice(0, 50)}_${Date.now()}`
   }
 
   setLoadingState(componentId, loading) {
@@ -228,35 +228,35 @@ const dynamicLoader = new DynamicComponentLoader()
 
 // Composable for using dynamic component loader in components
 export function useDynamicLoader() {
-  const loadingStates = ref(new Map())
+  const _loadingStates = ref(new Map())
   const errorStates = ref(new Map())
 
   const createAsyncComponent = (loader, options = {}) => {
     return dynamicLoader.createAsyncComponent(loader, {
       ...options,
-      onError: error => {
+      onError: (error) => {
         const componentId = dynamicLoader.generateComponentId(loader)
         errorStates.value.set(componentId, error)
         if (options.onError) {
           options.onError(error)
         }
-      }
+      },
     })
   }
 
-  const preloadComponent = loader => {
+  const preloadComponent = (loader) => {
     return dynamicLoader.preloadComponent(loader)
   }
 
-  const preloadCriticalComponents = components => {
+  const preloadCriticalComponents = (components) => {
     return dynamicLoader.preloadCriticalComponents(components)
   }
 
-  const isLoading = computed(() => componentId => {
+  const isLoading = computed(() => (componentId) => {
     return dynamicLoader.isLoading(componentId)
   })
 
-  const getError = computed(() => componentId => {
+  const getError = computed(() => (componentId) => {
     return dynamicLoader.getError(componentId)
   })
 
@@ -269,7 +269,7 @@ export function useDynamicLoader() {
     isLoading,
     getError,
     cacheStats,
-    clearCache: dynamicLoader.clearCache.bind(dynamicLoader)
+    clearCache: dynamicLoader.clearCache.bind(dynamicLoader),
   }
 }
 

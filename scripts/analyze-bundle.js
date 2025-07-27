@@ -5,14 +5,14 @@
  * Analyzes the built bundle to identify optimization opportunities
  */
 
-import { readFileSync, existsSync } from 'fs'
-import { join } from 'path'
-import { execSync } from 'child_process'
+import { execSync } from 'node:child_process'
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 const BUNDLE_SIZE_LIMITS = {
   critical: 300 * 1024, // 300KB for critical chunks
-  warning: 500 * 1024,  // 500KB warning threshold
-  error: 1000 * 1024    // 1MB error threshold
+  warning: 500 * 1024, // 500KB warning threshold
+  error: 1000 * 1024 // 1MB error threshold
 }
 
 class BundleAnalyzer {
@@ -42,7 +42,7 @@ class BundleAnalyzer {
 
   analyzeChunks() {
     console.log('📦 Analyzing JavaScript chunks...')
-    
+
     try {
       const jsFiles = execSync(`find ${this.distPath} -name "*.js" -type f`, { encoding: 'utf8' })
         .trim()
@@ -52,7 +52,7 @@ class BundleAnalyzer {
       for (const filePath of jsFiles) {
         const stats = this.getFileStats(filePath)
         const fileName = filePath.split('/').pop()
-        
+
         this.results.chunks.push({
           name: fileName,
           path: filePath,
@@ -82,7 +82,6 @@ class BundleAnalyzer {
 
       // Sort chunks by size
       this.results.chunks.sort((a, b) => b.size - a.size)
-      
     } catch (error) {
       console.error('Error analyzing chunks:', error.message)
     }
@@ -90,7 +89,7 @@ class BundleAnalyzer {
 
   analyzeAssets() {
     console.log('🎨 Analyzing CSS and other assets...')
-    
+
     try {
       const cssFiles = execSync(`find ${this.distPath} -name "*.css" -type f`, { encoding: 'utf8' })
         .trim()
@@ -100,7 +99,7 @@ class BundleAnalyzer {
       for (const filePath of cssFiles) {
         const stats = this.getFileStats(filePath)
         const fileName = filePath.split('/').pop()
-        
+
         this.results.assets.push({
           name: fileName,
           path: filePath,
@@ -111,7 +110,10 @@ class BundleAnalyzer {
       }
 
       // Analyze other assets (images, fonts, etc.)
-      const otherAssets = execSync(`find ${this.distPath} -type f ! -name "*.js" ! -name "*.css" ! -name "*.html" ! -name "*.map"`, { encoding: 'utf8' })
+      const otherAssets = execSync(
+        `find ${this.distPath} -type f ! -name "*.js" ! -name "*.css" ! -name "*.html" ! -name "*.map"`,
+        { encoding: 'utf8' }
+      )
         .trim()
         .split('\n')
         .filter(Boolean)
@@ -120,7 +122,7 @@ class BundleAnalyzer {
         const stats = this.getFileStats(filePath)
         const fileName = filePath.split('/').pop()
         const ext = fileName.split('.').pop()
-        
+
         this.results.assets.push({
           name: fileName,
           path: filePath,
@@ -132,7 +134,6 @@ class BundleAnalyzer {
 
       // Sort assets by size
       this.results.assets.sort((a, b) => b.size - a.size)
-      
     } catch (error) {
       console.error('Error analyzing assets:', error.message)
     }
@@ -147,8 +148,8 @@ class BundleAnalyzer {
       .reduce((sum, asset) => sum + asset.size, 0)
 
     // Check for large vendor chunks
-    const largeVendorChunks = this.results.chunks.filter(chunk => 
-      chunk.isVendor && chunk.size > BUNDLE_SIZE_LIMITS.warning
+    const largeVendorChunks = this.results.chunks.filter(
+      chunk => chunk.isVendor && chunk.size > BUNDLE_SIZE_LIMITS.warning
     )
 
     if (largeVendorChunks.length > 0) {
@@ -184,8 +185,8 @@ class BundleAnalyzer {
     }
 
     // Check for unused CSS
-    const largeCSSFiles = this.results.assets.filter(asset => 
-      asset.type === 'css' && asset.size > 50 * 1024
+    const largeCSSFiles = this.results.assets.filter(
+      asset => asset.type === 'css' && asset.size > 50 * 1024
     )
 
     if (largeCSSFiles.length > 0) {
@@ -201,7 +202,7 @@ class BundleAnalyzer {
 
   printReport() {
     console.log('\n📊 Bundle Analysis Report')
-    console.log('=' .repeat(50))
+    console.log('='.repeat(50))
 
     // Summary
     const totalJSSize = this.results.chunks.reduce((sum, chunk) => sum + chunk.size, 0)
@@ -213,7 +214,9 @@ class BundleAnalyzer {
       .reduce((sum, asset) => sum + asset.size, 0)
 
     console.log('\n📈 Summary:')
-    console.log(`  JavaScript: ${Math.round(totalJSSize / 1024)}KB (${this.results.chunks.length} files)`)
+    console.log(
+      `  JavaScript: ${Math.round(totalJSSize / 1024)}KB (${this.results.chunks.length} files)`
+    )
     console.log(`  CSS: ${Math.round(totalCSSSize / 1024)}KB`)
     console.log(`  Other Assets: ${Math.round(totalAssetSize / 1024)}KB`)
     console.log(`  Total: ${Math.round((totalJSSize + totalCSSSize + totalAssetSize) / 1024)}KB`)
@@ -268,7 +271,7 @@ class BundleAnalyzer {
       return {
         size: content.length
       }
-    } catch (error) {
+    } catch (_error) {
       return { size: 0 }
     }
   }

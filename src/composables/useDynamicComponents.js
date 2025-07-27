@@ -18,7 +18,7 @@ export function useDynamicComponents() {
       errorComponent: ErrorBoundary,
       delay: 200,
       timeout: 30000,
-      retryAttempts: 3
+      retryAttempts: 3,
     }
   )
 
@@ -29,7 +29,7 @@ export function useDynamicComponents() {
       errorComponent: ErrorBoundary,
       delay: 200,
       timeout: 30000,
-      retryAttempts: 3
+      retryAttempts: 3,
     }
   )
 
@@ -40,21 +40,22 @@ export function useDynamicComponents() {
       errorComponent: ErrorBoundary,
       delay: 100, // Charts should load faster
       timeout: 30000,
-      retryAttempts: 3
+      retryAttempts: 3,
     }
   )
 
   const DynamicPlayerDataTable = createAsyncComponent(
-    () => import('@/components/PlayerDataTable.vue').catch(error => {
-      console.error('Failed to load PlayerDataTable:', error)
-      throw error
-    }),
+    () =>
+      import('@/components/PlayerDataTable.vue').catch((error) => {
+        console.error('Failed to load PlayerDataTable:', error)
+        throw error
+      }),
     {
       loadingComponent: LoadingSpinner,
       errorComponent: ErrorBoundary,
       delay: 150,
       timeout: 30000,
-      retryAttempts: 3
+      retryAttempts: 3,
     }
   )
 
@@ -63,7 +64,7 @@ export function useDynamicComponents() {
     errorComponent: ErrorBoundary,
     delay: 150,
     timeout: 30000,
-    retryAttempts: 3
+    retryAttempts: 3,
   })
 
   const DynamicPerformanceMonitor = createAsyncComponent(
@@ -73,7 +74,7 @@ export function useDynamicComponents() {
       errorComponent: ErrorBoundary,
       delay: 200,
       timeout: 30000,
-      retryAttempts: 3
+      retryAttempts: 3,
     }
   )
 
@@ -84,7 +85,7 @@ export function useDynamicComponents() {
       errorComponent: ErrorBoundary,
       delay: 200,
       timeout: 30000,
-      retryAttempts: 3
+      retryAttempts: 3,
     }
   )
 
@@ -96,7 +97,7 @@ export function useDynamicComponents() {
       errorComponent: ErrorBoundary,
       delay: 150,
       timeout: 30000,
-      retryAttempts: 3
+      retryAttempts: 3,
     }
   )
 
@@ -108,7 +109,7 @@ export function useDynamicComponents() {
       errorComponent: ErrorBoundary,
       delay: 100,
       timeout: 30000,
-      retryAttempts: 3
+      retryAttempts: 3,
     }
   )
 
@@ -119,7 +120,7 @@ export function useDynamicComponents() {
       errorComponent: ErrorBoundary,
       delay: 100,
       timeout: 30000,
-      retryAttempts: 3
+      retryAttempts: 3,
     }
   )
 
@@ -130,7 +131,7 @@ export function useDynamicComponents() {
       errorComponent: ErrorBoundary,
       delay: 150,
       timeout: 30000,
-      retryAttempts: 3
+      retryAttempts: 3,
     }
   )
 
@@ -140,45 +141,45 @@ export function useDynamicComponents() {
     critical: [
       {
         loader: () => import('@/components/PlayerDataTable.vue'),
-        priority: 9
+        priority: 9,
       },
       {
         loader: () => import('@/components/filters/PlayerFilters.vue'),
-        priority: 8
-      }
+        priority: 8,
+      },
     ],
 
     // Medium priority - components used in common workflows
     common: [
       {
         loader: () => import('@/components/PlayerDetailDialog.vue'),
-        priority: 7
+        priority: 7,
       },
       {
         loader: () => import('@/components/ScatterPlotCard.vue'),
-        priority: 6
+        priority: 6,
       },
       {
         loader: () => import('@/components/PitchDisplay.vue'),
-        priority: 6
-      }
+        priority: 6,
+      },
     ],
 
     // Low priority - components used less frequently
     optional: [
       {
         loader: () => import('@/components/ExportOptionsDialog.vue'),
-        priority: 4
+        priority: 4,
       },
       {
         loader: () => import('@/components/PerformanceMonitor.vue'),
-        priority: 3
+        priority: 3,
       },
       {
         loader: () => import('@/components/InteractiveUploadLoader.vue'),
-        priority: 3
-      }
-    ]
+        priority: 3,
+      },
+    ],
   }
 
   // Initialize preloading based on route or user behavior
@@ -186,7 +187,7 @@ export function useDynamicComponents() {
     const allComponents = [
       ...preloadStrategy.critical,
       ...preloadStrategy.common,
-      ...preloadStrategy.optional
+      ...preloadStrategy.optional,
     ]
 
     // Route-specific preloading
@@ -198,33 +199,35 @@ export function useDynamicComponents() {
           routeSpecificComponents = [
             ...preloadStrategy.critical,
             ...preloadStrategy.common.filter(
-              c =>
+              (c) =>
                 c.loader.toString().includes('PlayerDetailDialog') ||
                 c.loader.toString().includes('ScatterPlotCard')
-            )
+            ),
           ]
           break
         case 'team-view':
           routeSpecificComponents = [
-            ...preloadStrategy.critical.filter(c =>
+            ...preloadStrategy.critical.filter((c) =>
               c.loader.toString().includes('PlayerDataTable')
             ),
-            ...preloadStrategy.common.filter(c => c.loader.toString().includes('PitchDisplay'))
+            ...preloadStrategy.common.filter((c) => c.loader.toString().includes('PitchDisplay')),
           ]
           break
         case 'performance':
           routeSpecificComponents = [
-            ...preloadStrategy.common.filter(c => c.loader.toString().includes('ScatterPlotCard')),
-            ...preloadStrategy.optional.filter(c =>
+            ...preloadStrategy.common.filter((c) =>
+              c.loader.toString().includes('ScatterPlotCard')
+            ),
+            ...preloadStrategy.optional.filter((c) =>
               c.loader.toString().includes('PerformanceMonitor')
-            )
+            ),
           ]
           break
         case 'upload':
           routeSpecificComponents = [
-            ...preloadStrategy.optional.filter(c =>
+            ...preloadStrategy.optional.filter((c) =>
               c.loader.toString().includes('InteractiveUploadLoader')
-            )
+            ),
           ]
           break
         default:
@@ -254,7 +257,7 @@ export function useDynamicComponents() {
 
     // Preloading utilities
     initializePreloading,
-    preloadStrategy
+    preloadStrategy,
   }
 }
 
@@ -270,5 +273,5 @@ export const DynamicComponents = {
   PlayerFilters: () => import('@/components/filters/PlayerFilters.vue'),
   PlayerAttributesCard: () => import('@/components/player-details/PlayerAttributesCard.vue'),
   PlayerProfileCard: () => import('@/components/player-details/PlayerProfileCard.vue'),
-  PerformanceAnalysisCard: () => import('@/components/player-details/PerformanceAnalysisCard.vue')
+  PerformanceAnalysisCard: () => import('@/components/player-details/PerformanceAnalysisCard.vue'),
 }

@@ -15,84 +15,84 @@ const routes = [
   {
     path: '/',
     name: 'home',
-    component: LandingPage
+    component: LandingPage,
   },
   {
     path: '/upload',
     name: 'upload',
-    component: PlayerUploadPage
+    component: PlayerUploadPage,
   },
   {
     path: '/dataset/:datasetId',
     name: 'dataset',
     component: DatasetPage,
-    props: true
+    props: true,
   },
   {
     path: '/team-view',
     name: 'team-view',
-    component: TeamViewPage
+    component: TeamViewPage,
   },
   {
     path: '/team-view/:datasetId',
     name: 'shared-dataset',
     component: TeamViewPage,
-    props: true
+    props: true,
   },
   {
     path: '/nations',
     name: 'nations',
-    component: NationsPage
+    component: NationsPage,
   },
   {
     path: '/nations/:datasetId',
     name: 'shared-nations',
     component: NationsPage,
-    props: true
+    props: true,
   },
   {
     path: '/leagues',
     name: 'leagues',
-    component: LeaguesPage
+    component: LeaguesPage,
   },
   {
     path: '/leagues/:datasetId',
     name: 'shared-leagues',
     component: LeaguesPage,
-    props: true
+    props: true,
   },
   {
     path: '/performance',
     name: 'performance',
-    component: PerformancePage
+    component: PerformancePage,
   },
   {
     path: '/performance/:datasetId',
     name: 'shared-performance',
     component: PerformancePage,
-    props: true
+    props: true,
   },
   {
     path: '/wishlist',
     name: 'wishlist',
-    component: WishlistPage
+    component: WishlistPage,
   },
   {
     path: '/docs',
     name: 'docs',
-    component: DocsPage
+    component: DocsPage,
   },
   {
     path: '/processing-status/:datasetId',
     name: 'processing-status',
     component: ProcessingStatusPage,
-    props: true
+    props: true,
   },
 ]
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
+  routes,
 })
 
 export default router

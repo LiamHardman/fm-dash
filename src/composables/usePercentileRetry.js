@@ -66,7 +66,7 @@ export function usePercentileRetry(player, datasetId, selectedComparisonGroup, d
 
     // Check if there are any non-negative percentile values (actual data)
     return Object.values(percentiles).some(
-      value => value !== null && value !== undefined && value >= 0
+      (value) => value !== null && value !== undefined && value >= 0
     )
   })
 
@@ -82,7 +82,9 @@ export function usePercentileRetry(player, datasetId, selectedComparisonGroup, d
     const values = Object.values(percentiles)
     if (values.length === 0) return true
 
-    const validValues = values.filter(value => value !== null && value !== undefined && value >= 0)
+    const validValues = values.filter(
+      (value) => value !== null && value !== undefined && value >= 0
+    )
 
     // If less than 30% of percentiles are valid, consider retry needed
     return validValues.length < values.length * 0.3
@@ -121,22 +123,22 @@ export function usePercentileRetry(player, datasetId, selectedComparisonGroup, d
       const requestPayload = {
         playerUID: player.value.uid?.toString() || player.value.UID?.toString(),
         compareDivision: effectiveDivision,
-        comparePosition: selectedComparisonGroup?.value || 'Global'
+        comparePosition: selectedComparisonGroup?.value || 'Global',
       }
 
       console.log('Starting percentile API call', {
         dataset_id: datasetId.value,
         player_uid: requestPayload.playerUID,
         division: effectiveDivision,
-        position: selectedComparisonGroup?.value || 'Global'
+        position: selectedComparisonGroup?.value || 'Global',
       })
 
       const response = await fetch(`/api/player-percentiles/${datasetId.value}`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(requestPayload)
+        body: JSON.stringify(requestPayload),
       })
 
       const apiTime = performance.now() - startTime
@@ -144,7 +146,7 @@ export function usePercentileRetry(player, datasetId, selectedComparisonGroup, d
         dataset_id: datasetId.value,
         player_uid: requestPayload.playerUID,
         status: response.status,
-        api_time_ms: Math.round(apiTime)
+        api_time_ms: Math.round(apiTime),
       })
 
       if (response.ok) {
@@ -156,7 +158,7 @@ export function usePercentileRetry(player, datasetId, selectedComparisonGroup, d
           player_uid: requestPayload.playerUID,
           total_time_ms: Math.round(totalTime),
           parse_time_ms: Math.round(totalTime - apiTime),
-          percentile_groups: Object.keys(updatedPercentiles).length
+          percentile_groups: Object.keys(updatedPercentiles).length,
         })
 
         // Update the player's percentiles
@@ -167,23 +169,22 @@ export function usePercentileRetry(player, datasetId, selectedComparisonGroup, d
         }
 
         return true
-      } else {
-        const errorTime = performance.now() - startTime
-        console.error('Percentile API call failed', {
-          dataset_id: datasetId.value,
-          player_uid: requestPayload.playerUID,
-          status: response.status,
-          time_ms: Math.round(errorTime)
-        })
-        return false
       }
+      const errorTime = performance.now() - startTime
+      console.error('Percentile API call failed', {
+        dataset_id: datasetId.value,
+        player_uid: requestPayload.playerUID,
+        status: response.status,
+        time_ms: Math.round(errorTime),
+      })
+      return false
     } catch (error) {
       const errorTime = performance.now() - startTime
       console.error('Percentile API call error', {
         dataset_id: datasetId?.value,
         player_uid: player?.value?.uid || player?.value?.UID,
         error: error.message,
-        time_ms: Math.round(errorTime)
+        time_ms: Math.round(errorTime),
       })
       return false
     } finally {
@@ -244,6 +245,6 @@ export function usePercentileRetry(player, datasetId, selectedComparisonGroup, d
     manualRetry,
     startPercentileRetry,
     stopPercentileRetry,
-    resetState
+    resetState,
   }
 }

@@ -138,25 +138,25 @@ export default defineComponent({
   name: 'FreeAgentsDialog',
   components: {
     PlayerDetailDialog,
-    PlayerDataTable
+    PlayerDataTable,
   },
   props: {
     show: {
       type: Boolean,
-      default: false
+      default: false,
     },
     players: {
       type: Array,
-      default: () => []
+      default: () => [],
     },
     currencySymbol: {
       type: String,
-      default: '$'
+      default: '$',
     },
     datasetId: {
       type: String,
-      default: null
-    }
+      default: null,
+    },
   },
   emits: ['close'],
   setup(props) {
@@ -175,7 +175,7 @@ export default defineComponent({
       try {
         // Filter players without clubs and sort by overall rating
         const freePlayersList = props.players
-          .filter(player => {
+          .filter((player) => {
             // Check if player has no club (various possible formats)
             const club = player.club
             return (
@@ -200,19 +200,19 @@ export default defineComponent({
         qInstance.notify({
           message: 'Error finding free agents. Please try again.',
           color: 'negative',
-          icon: 'error'
+          icon: 'error',
         })
       } finally {
         loading.value = false
       }
     }
 
-    const handlePlayerSelected = player => {
+    const handlePlayerSelected = (player) => {
       selectedPlayer.value = player
       showPlayerDetail.value = true
     }
 
-    const handleTeamSelected = _teamName => {
+    const handleTeamSelected = (_teamName) => {
       // For free agents, we don't need team selection functionality
       // but we need to provide the handler for PlayerDataTable compatibility
     }
@@ -220,7 +220,7 @@ export default defineComponent({
     // Watchers
     watch(
       () => props.show,
-      async newShow => {
+      async (newShow) => {
         if (newShow && props.players.length > 0) {
           // Auto-search when dialog opens
           await findFreeAgents()
@@ -233,7 +233,7 @@ export default defineComponent({
 
     watch(
       () => props.players,
-      newPlayers => {
+      (newPlayers) => {
         if (props.show && newPlayers.length > 0) {
           findFreeAgents()
         }
@@ -255,9 +255,9 @@ export default defineComponent({
       freeAgents,
       findFreeAgents,
       handlePlayerSelected,
-      handleTeamSelected
+      handleTeamSelected,
     }
-  }
+  },
 })
 </script>
 

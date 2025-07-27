@@ -49,14 +49,14 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ProcessingStatusMonitor from '../components/ProcessingStatusMonitor.vue'
 
 export default {
   name: 'ProcessingStatusPage',
   components: {
-    ProcessingStatusMonitor
+    ProcessingStatusMonitor,
   },
   setup() {
     const route = useRoute()
@@ -66,7 +66,7 @@ export default {
     onMounted(() => {
       // Get dataset ID from route params
       datasetId.value = route.params.datasetId
-      
+
       if (!datasetId.value) {
         // Redirect to upload page if no dataset ID
         router.push('/upload')
@@ -81,9 +81,9 @@ export default {
     return {
       datasetId,
       router,
-      handleProcessingCompleted
+      handleProcessingCompleted,
     }
-  }
+  },
 }
 </script>
 

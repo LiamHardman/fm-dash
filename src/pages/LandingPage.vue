@@ -129,9 +129,9 @@ export default defineComponent({
 
     return {
       navigateToUpload,
-      navigateToDemo
+      navigateToDemo,
     }
-  }
+  },
 })
 </script>
 

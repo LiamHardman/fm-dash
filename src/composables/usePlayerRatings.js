@@ -24,7 +24,7 @@ export function usePlayerRatings() {
   }
 
   // Alternative rating system for 1-20 scale (FM attributes)
-  const getFMRatingClass = rating => {
+  const getFMRatingClass = (rating) => {
     if (!rating && rating !== 0) return 'rating-na'
 
     const numValue = Number.parseInt(rating, 10)
@@ -84,7 +84,7 @@ export function usePlayerRatings() {
     SPD: 'Speed (GK)',
     PHY: 'Physical',
     DEF: 'Defending',
-    SHO: 'Shooting'
+    SHO: 'Shooting',
   }
 
   // Attribute groupings for better organization
@@ -104,8 +104,8 @@ export function usePlayerRatings() {
         'PAS',
         'PEN',
         'TAC',
-        'TEC'
-      ]
+        'TEC',
+      ],
     },
     mental: {
       name: 'Mental',
@@ -123,21 +123,21 @@ export function usePlayerRatings() {
         'POS',
         'TEA',
         'VIS',
-        'WOR'
-      ]
+        'WOR',
+      ],
     },
     physical: {
       name: 'Physical',
-      attrs: ['ACC', 'AGI', 'BAL', 'JUM', 'NAT', 'PAC', 'STA', 'STR']
+      attrs: ['ACC', 'AGI', 'BAL', 'JUM', 'NAT', 'PAC', 'STA', 'STR'],
     },
     goalkeeper: {
       name: 'Goalkeeper',
-      attrs: ['DIV', 'HAN', 'KIC', 'REF', 'SPD']
+      attrs: ['DIV', 'HAN', 'KIC', 'REF', 'SPD'],
     },
     fifa: {
       name: 'FIFA',
-      attrs: ['PAC', 'SHO', 'PAS', 'DRI', 'DEF', 'PHY']
-    }
+      attrs: ['PAC', 'SHO', 'PAS', 'DRI', 'DEF', 'PHY'],
+    },
   }))
 
   // Calculate weighted average rating
@@ -169,7 +169,7 @@ export function usePlayerRatings() {
       'rating-55': '#ff0000', // Red
       'rating-50': '#dc143c', // Crimson
       'rating-below-50': '#8b0000', // Dark red
-      'rating-na': '#808080' // Gray
+      'rating-na': '#808080', // Gray
     }
     return colorMap[ratingClass] || '#808080'
   }
@@ -194,6 +194,6 @@ export function usePlayerRatings() {
     attributeGroups,
     calculateWeightedRating,
     getRatingColor,
-    formatRating
+    formatRating,
   }
 }

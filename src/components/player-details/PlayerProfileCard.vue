@@ -224,17 +224,17 @@ import { useUiStore } from '@/stores/uiStore'
 export default defineComponent({
   name: 'PlayerProfileCard',
   components: {
-    TeamLogo
+    TeamLogo,
   },
   props: {
     player: {
       type: Object,
-      required: true
+      required: true,
     },
     currencySymbol: {
       type: String,
-      default: '$'
-    }
+      default: '$',
+    },
   },
   setup(props) {
     const uiStore = useUiStore()
@@ -287,9 +287,9 @@ export default defineComponent({
       formattedWage,
       handleFaceImageError,
       handleFaceImageLoad,
-      handleFlagError
+      handleFlagError,
     }
-  }
+  },
 })
 </script>
 

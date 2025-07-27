@@ -87,16 +87,16 @@ export default {
   props: {
     datasetId: {
       type: String,
-      required: true
+      required: true,
     },
     autoRefresh: {
       type: Boolean,
-      default: true
+      default: true,
     },
     refreshInterval: {
       type: Number,
-      default: 5000 // 5 seconds
-    }
+      default: 5000, // 5 seconds
+    },
   },
   emits: ['status-changed', 'completed'],
   setup(props, { emit }) {
@@ -156,13 +156,13 @@ export default {
     // Methods
     const checkStatus = async () => {
       if (checking.value) return
-      
+
       checking.value = true
       checkCount.value++
 
       try {
         const response = await playerService.checkProcessingStatus(props.datasetId)
-        
+
         status.value = response.status
         message.value = response.message
         playerCount.value = response.playerCount || 0
@@ -184,11 +184,11 @@ export default {
     const handleCompleted = () => {
       // Stop all intervals
       stopIntervals()
-      
+
       // Emit events
       emit('status-changed', { status: 'completed', playerCount: playerCount.value })
       emit('completed', { datasetId: props.datasetId, playerCount: playerCount.value })
-      
+
       // Update progress to 100%
       progressValue.value = 1
     }
@@ -244,7 +244,7 @@ export default {
     onMounted(() => {
       // Initial check
       checkStatus()
-      
+
       // Start intervals
       startIntervals()
     })
@@ -267,9 +267,9 @@ export default {
       statusSubtitle,
       checkStatus,
       viewDataset,
-      formatNumber
+      formatNumber,
     }
-  }
+  },
 }
 </script>
 

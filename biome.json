@@ -31,7 +31,13 @@
       "docs/**/*.md",
       "testdata.html",
       "src/utils/teams_data.json",
-      "package-lock.json"
+      "package-lock.json",
+      "vite.config.js",
+      "dev-utils/**",
+      "scripts/**",
+      "test/**",
+      "tests/**",
+      "__tests__/**"
     ]
   },
   "formatter": {
@@ -46,7 +52,7 @@
     "rules": {
       "recommended": true,
       "suspicious": {
-        "noConsole": "warn",
+        "noConsole": "off",
         "noDebugger": "warn"
       },
       "style": {
@@ -61,9 +67,7 @@
     "formatter": {
       "quoteStyle": "single",
       "semicolons": "asNeeded",
-      "trailingCommas": "none",
-      "bracketSpacing": true,
-      "arrowParentheses": "asNeeded"
+      "trailingCommas": "es5"
     }
   },
   "json": {

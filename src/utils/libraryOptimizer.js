@@ -7,75 +7,75 @@
 export const optimizedChartImports = {
   // Core Chart.js components used across the app
   core: () =>
-    import('chart.js').then(module => ({
+    import('chart.js').then((module) => ({
       Chart: module.Chart,
       LinearScale: module.LinearScale,
       PointElement: module.PointElement,
       Title: module.Title,
       Tooltip: module.Tooltip,
-      Legend: module.Legend
+      Legend: module.Legend,
     })),
 
   // Scatter plot specific components
   scatter: () =>
-    import('chart.js').then(module => ({
+    import('chart.js').then((module) => ({
       Chart: module.Chart,
       LinearScale: module.LinearScale,
       PointElement: module.PointElement,
       Title: module.Title,
       Tooltip: module.Tooltip,
-      Legend: module.Legend
+      Legend: module.Legend,
     })),
 
   // Annotation plugin - only load when needed
-  annotation: () => import('chartjs-plugin-annotation')
+  annotation: () => import('chartjs-plugin-annotation'),
 }
 
 // VueUse optimization - only import specific composables
 export const optimizedVueUseImports = {
   // Web notification - only used in upload page
   webNotification: () =>
-    import('@vueuse/core').then(module => ({
-      useWebNotification: module.useWebNotification
+    import('@vueuse/core').then((module) => ({
+      useWebNotification: module.useWebNotification,
     })),
 
   // Other commonly used VueUse composables
   storage: () =>
-    import('@vueuse/core').then(module => ({
+    import('@vueuse/core').then((module) => ({
       useLocalStorage: module.useLocalStorage,
-      useSessionStorage: module.useSessionStorage
+      useSessionStorage: module.useSessionStorage,
     })),
 
   // DOM utilities
   dom: () =>
-    import('@vueuse/core').then(module => ({
+    import('@vueuse/core').then((module) => ({
       useElementSize: module.useElementSize,
       useWindowSize: module.useWindowSize,
-      useIntersectionObserver: module.useIntersectionObserver
-    }))
+      useIntersectionObserver: module.useIntersectionObserver,
+    })),
 }
 
 // Quasar optimization - conditional component loading
 export const optimizedQuasarImports = {
   // Core Quasar utilities that are always needed
   core: () =>
-    import('quasar').then(module => ({
+    import('quasar').then((module) => ({
       useQuasar: module.useQuasar,
-      Notify: module.Notify
+      Notify: module.Notify,
     })),
 
   // Dialog components - only load when needed
   dialogs: () =>
-    import('quasar').then(module => ({
-      Dialog: module.Dialog
+    import('quasar').then((module) => ({
+      Dialog: module.Dialog,
     })),
 
   // Loading components
   loading: () =>
-    import('quasar').then(module => ({
+    import('quasar').then((module) => ({
       Loading: module.Loading,
-      LoadingBar: module.LoadingBar
-    }))
+      LoadingBar: module.LoadingBar,
+    })),
 }
 
 // Development-only library loader
@@ -86,10 +86,10 @@ export const loadDevLibraries = async () => {
       // Bundle analyzer
       import('rollup-plugin-visualizer').catch(() => null),
       // Performance monitoring tools
-      import('@vue/devtools-api').catch(() => null)
+      import('@vue/devtools-api').catch(() => null),
     ])
 
-    return devTools.filter(result => result.status === 'fulfilled').map(result => result.value)
+    return devTools.filter((result) => result.status === 'fulfilled').map((result) => result.value)
   }
   return []
 }
@@ -117,7 +117,7 @@ export const conditionalLibraryLoader = {
       return import('../utils/performance.js').catch(() => null)
     }
     return null
-  }
+  },
 }
 
 // Bundle size analyzer for development
@@ -144,10 +144,10 @@ export const preloadCriticalLibraries = async () => {
     import('pinia'),
 
     // UI framework - high priority
-    import('quasar').then(module => ({
+    import('quasar').then((module) => ({
       useQuasar: module.useQuasar,
-      Notify: module.Notify
-    }))
+      Notify: module.Notify,
+    })),
   ]
 
   try {
@@ -195,7 +195,7 @@ export const libraryUsageTracker = {
     }
 
     return unused
-  }
+  },
 }
 
 // Export optimization utilities
@@ -207,5 +207,5 @@ export default {
   conditionalLibraryLoader,
   analyzeBundleSize,
   preloadCriticalLibraries,
-  libraryUsageTracker
+  libraryUsageTracker,
 }

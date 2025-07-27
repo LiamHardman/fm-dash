@@ -27,9 +27,9 @@ export default {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/x-protobuf'
+          Accept: 'application/x-protobuf',
         },
-        body: JSON.stringify(wishlistData)
+        body: JSON.stringify(wishlistData),
       })
 
       if (!response.ok) {
@@ -47,8 +47,8 @@ export default {
     try {
       const response = await fetch(`${API_ENDPOINT}/api/wishlists/${datasetId}`, {
         headers: {
-          'Accept': 'application/x-protobuf'
-        }
+          Accept: 'application/x-protobuf',
+        },
       })
 
       if (response.status === 404) {
@@ -76,8 +76,8 @@ export default {
       const response = await fetch(`${API_ENDPOINT}/api/wishlists/${datasetId}`, {
         method: 'DELETE',
         headers: {
-          'Accept': 'application/x-protobuf'
-        }
+          Accept: 'application/x-protobuf',
+        },
       })
 
       if (!response.ok && response.status !== 404) {
@@ -122,7 +122,7 @@ export default {
   async migrateLocalStorageToMinIO() {
     try {
       const allKeys = Object.keys(localStorage)
-      const wishlistKeys = allKeys.filter(key => key.startsWith('fm_dash_wishlist_'))
+      const wishlistKeys = allKeys.filter((key) => key.startsWith('fm_dash_wishlist_'))
 
       for (const key of wishlistKeys) {
         const datasetId = key.replace('fm_dash_wishlist_', '')
@@ -135,5 +135,5 @@ export default {
         }
       }
     } catch (_error) {}
-  }
+  },
 }

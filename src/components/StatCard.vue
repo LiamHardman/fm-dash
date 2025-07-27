@@ -41,12 +41,12 @@ export default defineComponent({
   props: {
     stat: {
       type: Object,
-      required: true
+      required: true,
     },
     players: {
       type: Array,
-      default: () => []
-    }
+      default: () => [],
+    },
   },
   emits: ['player-click'],
   methods: {
@@ -62,7 +62,7 @@ export default defineComponent({
       }
       const stringValue = String(value)
       const cleanValue = stringValue.replace(/,/g, '').replace(/%/g, '')
-      const numValue = parseFloat(cleanValue)
+      const numValue = Number.parseFloat(cleanValue)
 
       if (Number.isNaN(numValue)) {
         return stringValue
@@ -81,8 +81,8 @@ export default defineComponent({
       }
 
       return numValue.toFixed(2)
-    }
-  }
+    },
+  },
 })
 </script>
   

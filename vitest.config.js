@@ -6,8 +6,8 @@ export default defineConfig({
   plugins: [
     vue(),
     quasar({
-      sassVariables: 'src/quasar-variables.scss'
-    })
+      sassVariables: 'src/quasar-variables.scss',
+    }),
   ],
   test: {
     environment: 'jsdom',
@@ -16,11 +16,11 @@ export default defineConfig({
     include: ['src/**/*.{test,spec}.{js,ts,vue}'],
     exclude: ['node_modules', 'dist', 'src/api/**'],
     testTimeout: 5000,
-    hookTimeout: 5000
+    hookTimeout: 5000,
   },
   resolve: {
     alias: {
-      '@': new URL('./src', import.meta.url).pathname
-    }
-  }
+      '@': new URL('./src', import.meta.url).pathname,
+    },
+  },
 })

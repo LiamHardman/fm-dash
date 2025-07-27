@@ -322,7 +322,7 @@ export default {
     const playerForDetailView = ref(null)
     const showPlayerDetailDialog = ref(false)
 
-    const fetchLeaguesAndCurrency = async datasetId => {
+    const fetchLeaguesAndCurrency = async (datasetId) => {
       pageLoading.value = true
       pageLoadingError.value = ''
       try {
@@ -397,7 +397,7 @@ export default {
         leagueOptions.value = []
         return
       }
-      const leagueNames = allLeaguesData.value.map(league => league.name).sort()
+      const leagueNames = allLeaguesData.value.map((league) => league.name).sort()
       allLeagueNamesCache.value = leagueNames
       leagueOptions.value = leagueNames
     }
@@ -412,12 +412,12 @@ export default {
       update(() => {
         const needle = val.toLowerCase()
         leagueOptions.value = allLeagueNamesCache.value.filter(
-          league => league.toLowerCase().indexOf(needle) > -1
+          (league) => league.toLowerCase().indexOf(needle) > -1
         )
       })
     }
 
-    const selectLeague = leagueName => {
+    const selectLeague = (leagueName) => {
       selectedLeagueName.value = leagueName
       loadLeagueTeams()
     }
@@ -439,7 +439,7 @@ export default {
       leagueTeams.value = []
     }
 
-    const handleTeamSelected = team => {
+    const handleTeamSelected = (team) => {
       // Navigate to the team-view page with team filtering
       const datasetId = currentDatasetId.value || sessionStorage.getItem('currentDatasetId')
       if (datasetId) {
@@ -447,13 +447,13 @@ export default {
           path: '/team-view',
           query: {
             datasetId: datasetId,
-            team: team.name
-          }
+            team: team.name,
+          },
         })
       }
     }
 
-    const getOverallClass = overall => {
+    const getOverallClass = (overall) => {
       if (overall === null || overall === undefined || overall === 0) return 'rating-na'
       const numericOverall = Number(overall)
       if (Number.isNaN(numericOverall)) return 'rating-na'
@@ -480,7 +480,7 @@ export default {
       return 'star-empty'
     }
 
-    const getStarRating = overall => {
+    const getStarRating = (overall) => {
       if (!overall || overall === 0) return 0
 
       if (overall >= 85) return 5
@@ -508,7 +508,7 @@ export default {
           color: 'positive',
           icon: 'check_circle',
           position: 'top',
-          timeout: 2000
+          timeout: 2000,
         })
       } catch (_err) {
         const textArea = document.createElement('textarea')
@@ -523,7 +523,7 @@ export default {
           color: 'positive',
           icon: 'check_circle',
           position: 'top',
-          timeout: 2000
+          timeout: 2000,
         })
       }
     }
@@ -544,7 +544,7 @@ export default {
 
     watch(
       () => route.query.league,
-      newLeague => {
+      (newLeague) => {
         if (newLeague && newLeague.trim() !== '' && newLeague !== selectedLeagueName.value) {
           selectedLeagueName.value = newLeague
           loadLeagueTeams()
@@ -577,9 +577,9 @@ export default {
       shareDataset,
       displayedLeagues,
       showAllLeagues,
-      INITIAL_LEAGUES_LIMIT
+      INITIAL_LEAGUES_LIMIT,
     }
-  }
+  },
 }
 </script>
 

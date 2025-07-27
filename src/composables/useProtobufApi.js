@@ -2,9 +2,9 @@
  * useProtobufApi - Composable for making API requests with protobuf support
  */
 
-import { ref, computed } from 'vue'
-import protobufClient from '../utils/protobufClient'
+import { computed, ref } from 'vue'
 import logger from '../utils/logger.js'
+import protobufClient from '../utils/protobufClient'
 
 // Performance metrics
 const metrics = {
@@ -16,7 +16,7 @@ const metrics = {
   averagePayloadSize: 0,
   lastRequestTime: 0,
   fallbacks: {},
-  errorsByType: {}
+  errorsByType: {},
 }
 
 // Get base URL from configuration
@@ -36,12 +36,12 @@ export function useProtobufApi(initialBaseURL) {
   const baseURL = ref(initialBaseURL || getBaseURL())
   const isLoading = ref(false)
   const abortController = ref(null)
-  const errorDetails = ref(null)
+  const _errorDetails = ref(null)
 
   /**
    * Create a request with proper error handling
    */
-  const createRequest = (url, options = {}) => {
+  const createRequest = (_url, options = {}) => {
     // Cancel any existing request
     if (abortController.value) {
       abortController.value.abort()
@@ -52,27 +52,27 @@ export function useProtobufApi(initialBaseURL) {
 
     return {
       ...options,
-      signal: abortController.value.signal
+      signal: abortController.value.signal,
     }
   }
 
   /**
    * Make a protobuf request with fallback to JSON
    */
-  const protobufRequest = async (url, options = {}, messageType) => {
+  const protobufRequest = async (url, options, messageType) => {
     const requestStartTime = performance.now()
     const config = createRequest(url, options)
-    
+
     try {
       isLoading.value = true
-      
+
       // Use protobufClient to make the request
       const response = await protobufClient.fetchWithProtobuf(url, config, messageType)
-      
+
       // Update metrics
       const endTime = performance.now()
       updateMetrics(response, endTime - requestStartTime)
-      
+
       // Log successful requests with format information
       if (response._protobuf) {
         // logger.info(`API request succeeded (${response._protobuf.format})`, {
@@ -84,34 +84,34 @@ export function useProtobufApi(initialBaseURL) {
         //   fallbackReason: response._protobuf.fallbackReason || null,
         //   retryCount: response._protobuf.retryCount || 0
         // })
-        
+
         // Track fallbacks for monitoring
         if (response._protobuf.fallbackReason) {
           metrics.fallbacks = metrics.fallbacks || {}
-          metrics.fallbacks[response._protobuf.fallbackReason] = 
+          metrics.fallbacks[response._protobuf.fallbackReason] =
             (metrics.fallbacks[response._protobuf.fallbackReason] || 0) + 1
         }
       }
-      
+
       return response
     } catch (error) {
       if (error.name === 'AbortError') {
         logger.info('Request aborted by user', { url })
         return null
       }
-      
+
       // Update failed request count
       metrics.failedRequests++
-      
+
       // Collect detailed error information for logging
       const errorDetails = {
         url,
         messageType,
         errorType: error.name,
         errorMessage: error.message,
-        requestDuration: performance.now() - requestStartTime
+        requestDuration: performance.now() - requestStartTime,
       }
-      
+
       // Add specific error details based on error type
       if (error.name === 'ProtobufDecodingError') {
         errorDetails.bufferSize = error.bufferSize
@@ -121,19 +121,19 @@ export function useProtobufApi(initialBaseURL) {
         errorDetails.errorCode = error.errorCode
         errorDetails.details = error.details
       }
-      
+
       // Log detailed error information
       logger.error('API request failed', errorDetails)
-      
+
       // Track error types for monitoring
       metrics.errorsByType = metrics.errorsByType || {}
       metrics.errorsByType[error.name] = (metrics.errorsByType[error.name] || 0) + 1
-      
+
       // Enhance error with additional context
       error.requestUrl = url
       error.messageType = messageType
       error.requestTime = new Date().toISOString()
-      
+
       throw error
     } finally {
       isLoading.value = false
@@ -149,12 +149,12 @@ export function useProtobufApi(initialBaseURL) {
   const updateMetrics = (response, requestTime) => {
     metrics.lastRequestTime = requestTime
     metrics.totalRequests++
-    
+
     // Update average request time
-    metrics.averageRequestTime = 
-      (metrics.averageRequestTime * (metrics.totalRequests - 1) + requestTime) / 
+    metrics.averageRequestTime =
+      (metrics.averageRequestTime * (metrics.totalRequests - 1) + requestTime) /
       metrics.totalRequests
-    
+
     // Update format-specific metrics
     if (response._protobuf) {
       if (response._protobuf.format === 'protobuf') {
@@ -162,11 +162,12 @@ export function useProtobufApi(initialBaseURL) {
       } else {
         metrics.jsonRequests++
       }
-      
+
       // Update payload size metrics
       if (response._protobuf.payloadSize) {
-        metrics.averagePayloadSize = 
-          (metrics.averagePayloadSize * (metrics.totalRequests - 1) + response._protobuf.payloadSize) / 
+        metrics.averagePayloadSize =
+          (metrics.averagePayloadSize * (metrics.totalRequests - 1) +
+            response._protobuf.payloadSize) /
           metrics.totalRequests
       }
     }
@@ -178,13 +179,17 @@ export function useProtobufApi(initialBaseURL) {
    * @param {Object} params - Query parameters
    * @param {string} messageType - Protobuf message type
    */
-  const get = async (url, params = {}, messageType) => {
+  const get = async (url, params, messageType) => {
     const queryString = new URLSearchParams(params).toString()
     const fullUrl = queryString ? `${url}?${queryString}` : url
 
-    return protobufRequest(fullUrl, {
-      method: 'GET'
-    }, messageType)
+    return protobufRequest(
+      fullUrl,
+      {
+        method: 'GET',
+      },
+      messageType
+    )
   }
 
   /**
@@ -194,10 +199,10 @@ export function useProtobufApi(initialBaseURL) {
    * @param {Object} options - Additional options
    * @param {string} messageType - Protobuf message type
    */
-  const post = async (url, data, options = {}, messageType) => {
+  const post = async (url, data, options, messageType) => {
     const config = {
       method: 'POST',
-      ...options
+      ...options,
     }
 
     if (data instanceof FormData) {
@@ -217,10 +222,14 @@ export function useProtobufApi(initialBaseURL) {
    * @param {string} messageType - Protobuf message type
    */
   const put = async (url, data, messageType) => {
-    return protobufRequest(url, {
-      method: 'PUT',
-      body: JSON.stringify(data)
-    }, messageType)
+    return protobufRequest(
+      url,
+      {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      },
+      messageType
+    )
   }
 
   /**
@@ -229,9 +238,13 @@ export function useProtobufApi(initialBaseURL) {
    * @param {string} messageType - Protobuf message type
    */
   const del = async (url, messageType) => {
-    return protobufRequest(url, {
-      method: 'DELETE'
-    }, messageType)
+    return protobufRequest(
+      url,
+      {
+        method: 'DELETE',
+      },
+      messageType
+    )
   }
 
   /**
@@ -272,7 +285,7 @@ export function useProtobufApi(initialBaseURL) {
     try {
       const params = clearCache ? { clear_cache: 'true' } : {}
       const response = await get('/api/config', params, 'api.GenericResponse')
-      
+
       // Handle protobuf response structure where config is in the data field
       if (response.data) {
         try {
@@ -282,7 +295,7 @@ export function useProtobufApi(initialBaseURL) {
           throw new Error('Invalid config data format')
         }
       }
-      
+
       // Fallback for JSON responses or direct config objects
       return response
     } catch (error) {
@@ -306,19 +319,21 @@ export function useProtobufApi(initialBaseURL) {
       // Check file size
       const file = formData.get('file')
       if (file && file.size > maxSizeBytes) {
-        throw new Error(`File size exceeds maximum allowed size of ${maxSizeBytes / (1024 * 1024)}MB`)
+        throw new Error(
+          `File size exceeds maximum allowed size of ${maxSizeBytes / (1024 * 1024)}MB`
+        )
       }
 
       const config = {
         method: 'POST',
-        body: formData
+        body: formData,
       }
 
       // Add progress tracking if callback provided
       if (onProgress && typeof XMLHttpRequest !== 'undefined') {
         return new Promise((resolve, reject) => {
           const xhr = new XMLHttpRequest()
-          
+
           xhr.upload.addEventListener('progress', (event) => {
             if (event.lengthComputable) {
               const percentComplete = (event.loaded / event.total) * 100
@@ -334,10 +349,10 @@ export function useProtobufApi(initialBaseURL) {
                   ...response,
                   _protobuf: {
                     format: 'json',
-                    fallbackReason: 'file_upload'
-                  }
+                    fallbackReason: 'file_upload',
+                  },
                 })
-              } catch (error) {
+              } catch (_error) {
                 reject(new Error('Invalid JSON response from server'))
               }
             } else {
@@ -380,7 +395,7 @@ export function useProtobufApi(initialBaseURL) {
       ...protobufClient.getStatus(),
       baseURL: baseURL.value,
       isLoading: isLoading.value,
-      metrics: { ...metrics }
+      metrics: { ...metrics },
     }
   }
 
@@ -395,7 +410,7 @@ export function useProtobufApi(initialBaseURL) {
     // State
     isLoading: computed(() => isLoading.value),
     baseURL: computed(() => baseURL.value),
-    
+
     // Methods
     get,
     post,
@@ -408,8 +423,8 @@ export function useProtobufApi(initialBaseURL) {
     cancel,
     getClientStatus,
     setProtobufEnabled,
-    
+
     // Metrics
-    metrics: computed(() => ({ ...metrics }))
+    metrics: computed(() => ({ ...metrics })),
   }
-} 
+}

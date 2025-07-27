@@ -96,24 +96,24 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { getPerformanceMetrics, clearAllCaches } from '../utils/playerDetailOptimizer.js'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { clearAllCaches, getPerformanceMetrics } from '../utils/playerDetailOptimizer.js'
 
 export default {
   name: 'PlayerDetailPerformanceMonitor',
   props: {
     isLoading: {
       type: Boolean,
-      default: false
+      default: false,
     },
     hasError: {
       type: Boolean,
-      default: false
+      default: false,
     },
     playerName: {
       type: String,
-      default: ''
-    }
+      default: '',
+    },
   },
   setup(props) {
     const showMonitor = ref(false)
@@ -123,7 +123,7 @@ export default {
       cacheMisses: 0,
       cacheHitRate: 0,
       averageLoadTime: 0,
-      totalRequests: 0
+      totalRequests: 0,
     })
 
     // Update metrics periodically
@@ -167,9 +167,9 @@ export default {
       dialogState,
       refreshMetrics,
       clearCache,
-      isDevelopment
+      isDevelopment,
     }
-  }
+  },
 }
 </script>
 

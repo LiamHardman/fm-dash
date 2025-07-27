@@ -253,10 +253,10 @@ import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
 import UpgradeFinderDialog from '../components/UpgradeFinderDialog.vue'
 import WonderkidsDialog from '../components/WonderkidsDialog.vue'
 import { useAnalytics } from '../composables/useAnalytics'
+import playerService from '../services/playerService.js'
 import { usePlayerStore } from '../stores/playerStore'
 import { useWishlistStore } from '../stores/wishlistStore'
 import { exportPlayersToCSV } from '../utils/csvExport'
-import playerService from '../services/playerService.js'
 
 const rawTechnicalAttributeKeysConst = [
   'Cor',
@@ -272,7 +272,7 @@ const rawTechnicalAttributeKeysConst = [
   'Pas',
   'Pen',
   'Tck',
-  'Tec'
+  'Tec',
 ]
 const rawMentalAttributeKeysConst = [
   'Agg',
@@ -288,7 +288,7 @@ const rawMentalAttributeKeysConst = [
   'Pos',
   'Tea',
   'Vis',
-  'Wor'
+  'Wor',
 ]
 const rawPhysicalAttributeKeysConst = ['Acc', 'Agi', 'Bal', 'Jum', 'Nat', 'Pac', 'Sta', 'Str']
 const rawGoalkeeperAttributeKeysConst = [
@@ -302,17 +302,17 @@ const rawGoalkeeperAttributeKeysConst = [
   'Pun',
   'Ref',
   'TRO',
-  'Thr'
+  'Thr',
 ]
 
 const allRawFmAttributeKeys = [
   ...rawTechnicalAttributeKeysConst,
   ...rawMentalAttributeKeysConst,
   ...rawPhysicalAttributeKeysConst,
-  ...rawGoalkeeperAttributeKeysConst
+  ...rawGoalkeeperAttributeKeysConst,
 ]
 
-const formatFilterKeyPrefix = attrKey => {
+const formatFilterKeyPrefix = (attrKey) => {
   return attrKey.replace(/\s+/g, '').replace(/\(|\)/g, '')
 }
 
@@ -326,7 +326,7 @@ export default {
     WonderkidsDialog,
     BargainHunterDialog,
     FreeAgentsDialog,
-    ExportOptionsDialog
+    ExportOptionsDialog,
   },
   setup() {
     const quasarInstance = useQuasar()
@@ -356,11 +356,11 @@ export default {
       personality: [],
       ageRange: {
         min: computed(() => AGE_SLIDER_MIN_DEFAULT.value),
-        max: computed(() => AGE_SLIDER_MAX_DEFAULT.value)
+        max: computed(() => AGE_SLIDER_MAX_DEFAULT.value),
       },
       transferValueRangeLocal: {
         min: 0,
-        max: 100000000
+        max: 100000000,
       },
       maxSalary: null,
       minOverall: 0,
@@ -377,7 +377,7 @@ export default {
       minKIC: 0,
       minSPD: 0,
       minPOS: 0,
-      continentNationalities: []
+      continentNationalities: [],
     })
 
     for (const attrKey of allRawFmAttributeKeys) {
@@ -397,14 +397,14 @@ export default {
     const transferValueRangeForFilters = computed(() => {
       const range = playerStore.currentDatasetTransferValueRange || {
         min: 0,
-        max: 100000000
+        max: 100000000,
       }
       return range
     })
     const initialDatasetTransferValueRangeForFilters = computed(() => {
       const range = playerStore.initialDatasetTransferValueRange || {
         min: 0,
-        max: 100000000
+        max: 100000000,
       }
       return range
     })
@@ -419,48 +419,48 @@ export default {
 
     const parseTransferValueRange = (valueString) => {
       if (!valueString) return { min: 0, max: 0 }
-      
+
       // Handle range format like "£4.8M - £14.5M"
       const rangeMatch = valueString.match(/£([\d.]+)M\s*-\s*£([\d.]+)M/)
       if (rangeMatch) {
-        const minValue = parseFloat(rangeMatch[1]) * 1000000
-        const maxValue = parseFloat(rangeMatch[2]) * 1000000
+        const minValue = Number.parseFloat(rangeMatch[1]) * 1000000
+        const maxValue = Number.parseFloat(rangeMatch[2]) * 1000000
         return { min: minValue, max: maxValue }
       }
-      
+
       // Handle range format like "£85K - £850K"
       const rangeKMatch = valueString.match(/£([\d.]+)K\s*-\s*£([\d.]+)K/i)
       if (rangeKMatch) {
-        const minValue = parseFloat(rangeKMatch[1]) * 1000
-        const maxValue = parseFloat(rangeKMatch[2]) * 1000
+        const minValue = Number.parseFloat(rangeKMatch[1]) * 1000
+        const maxValue = Number.parseFloat(rangeKMatch[2]) * 1000
         return { min: minValue, max: maxValue }
       }
-      
+
       // Handle single value format like "£28M"
       const singleMatch = valueString.match(/£([\d.]+)M/)
       if (singleMatch) {
-        const value = parseFloat(singleMatch[1]) * 1000000
+        const value = Number.parseFloat(singleMatch[1]) * 1000000
         return { min: value, max: value }
       }
-      
+
       // Handle k format like "£500k"
       const kMatch = valueString.match(/£([\d.]+)k/i)
       if (kMatch) {
-        const value = parseFloat(kMatch[1]) * 1000
+        const value = Number.parseFloat(kMatch[1]) * 1000
         return { min: value, max: value }
       }
-      
+
       // Handle K format like "£500K"
       const kMatchUpper = valueString.match(/£([\d.]+)K/)
       if (kMatchUpper) {
-        const value = parseFloat(kMatchUpper[1]) * 1000
+        const value = Number.parseFloat(kMatchUpper[1]) * 1000
         return { min: value, max: value }
       }
-      
+
       // Handle other formats with single values
       const singleValueMatch = valueString.match(/£([\d,]+)/)
       if (singleValueMatch) {
-        const number = parseInt(singleValueMatch[1].replace(/,/g, ''))
+        const number = Number.parseInt(singleValueMatch[1].replace(/,/g, ''))
         let value = number
         if (number >= 1000000) {
           value = (number / 1000000) * 1000000
@@ -469,7 +469,7 @@ export default {
         }
         return { min: value, max: value }
       }
-      
+
       return { min: 0, max: 0 }
     }
 
@@ -479,9 +479,13 @@ export default {
         return []
       }
 
-      return allPlayersData.value.filter(player => {
+      return allPlayersData.value
+        .filter((player) => {
           // Name filter
-          if (currentFilters.value.name && !player.name.toLowerCase().includes(currentFilters.value.name.toLowerCase())) {
+          if (
+            currentFilters.value.name &&
+            !player.name.toLowerCase().includes(currentFilters.value.name.toLowerCase())
+          ) {
             return false
           }
 
@@ -491,7 +495,10 @@ export default {
           }
 
           // Position filter
-          if (currentFilters.value.position && !player.short_positions?.includes(currentFilters.value.position)) {
+          if (
+            currentFilters.value.position &&
+            !player.short_positions?.includes(currentFilters.value.position)
+          ) {
             return false
           }
 
@@ -500,10 +507,10 @@ export default {
             let hasRole = false
             if (Array.isArray(player.roleSpecificOveralls)) {
               hasRole = player.roleSpecificOveralls.some(
-                rso => rso.roleName === currentFilters.value.role
+                (rso) => rso.roleName === currentFilters.value.role
               )
             } else if (typeof player.roleSpecificOveralls === 'object') {
-              hasRole = player.roleSpecificOveralls.hasOwnProperty(currentFilters.value.role)
+              hasRole = Object.hasOwn(player.roleSpecificOveralls, currentFilters.value.role)
             }
             if (!hasRole) {
               return false
@@ -511,7 +518,10 @@ export default {
           }
 
           // Nationality filter
-          if (currentFilters.value.nationality && player.nationality_iso !== currentFilters.value.nationality) {
+          if (
+            currentFilters.value.nationality &&
+            player.nationality_iso !== currentFilters.value.nationality
+          ) {
             return false
           }
 
@@ -530,23 +540,25 @@ export default {
           // Transfer value range filter
           const filterMin = currentFilters.value.transferValueRangeLocal?.min || 0
           const filterMax = currentFilters.value.transferValueRangeLocal?.max || 0
-          
+
           // If any transfer value filter is set, we need to check the player's transfer value
           if (filterMin > 0 || filterMax > 0) {
             // If player has no transfer value data or is "Not for Sale", filter them out
-            if (!player.transfer_value || 
-                player.transfer_value === '-' || 
-                player.transfer_value === undefined || 
-                player.transfer_value === null ||
-                player.transfer_value === 'Not for Sale' ||
-                player.transfer_value.toLowerCase().includes('not for sale')) {
+            if (
+              !player.transfer_value ||
+              player.transfer_value === '-' ||
+              player.transfer_value === undefined ||
+              player.transfer_value === null ||
+              player.transfer_value === 'Not for Sale' ||
+              player.transfer_value.toLowerCase().includes('not for sale')
+            ) {
               return false
             }
-            
+
             const transferValueRange = parseTransferValueRange(player.transfer_value)
             if (transferValueRange) {
               const playerMax = transferValueRange.max
-              
+
               // Apply the filters
               if (filterMin > 0 && playerMax < filterMin) {
                 return false
@@ -561,16 +573,23 @@ export default {
           }
 
           // Salary range filter
-          if (player.wage && player.wage !== '-' && player.wage !== undefined && player.wage !== null) {
+          if (
+            player.wage &&
+            player.wage !== '-' &&
+            player.wage !== undefined &&
+            player.wage !== null
+          ) {
             // Parse wage string like "£7,500 p/w" to get numeric value
             const wageString = player.wage
-            const numericValue = parseFloat(wageString.replace(/[£,]/g, '').replace(' p/w', ''))
-            
-            if (!isNaN(numericValue)) {
+            const numericValue = Number.parseFloat(
+              wageString.replace(/[£,]/g, '').replace(' p/w', '')
+            )
+
+            if (!Number.isNaN(numericValue)) {
               const playerSalary = numericValue
               const filterMinSalary = currentFilters.value.minSalary || 0
               const filterMaxSalary = currentFilters.value.maxSalary || 0
-              
+
               // Only apply filter if filter values are actually set (not 0)
               if (filterMinSalary > 0 && playerSalary < filterMinSalary) {
                 return false
@@ -582,7 +601,10 @@ export default {
           }
 
           // FIFA-style stat minimum filters
-          if (currentFilters.value.minOverall > 0 && (player.Overall || 0) < currentFilters.value.minOverall) {
+          if (
+            currentFilters.value.minOverall > 0 &&
+            (player.Overall || 0) < currentFilters.value.minOverall
+          ) {
             return false
           }
           if (currentFilters.value.minPAC > 0 && (player.PAC || 0) < currentFilters.value.minPAC) {
@@ -640,12 +662,13 @@ export default {
           }
 
           return true
-        }).map(player => {
+        })
+        .map((player) => {
           if (currentFilters.value.role && player.roleSpecificOveralls) {
             let roleSpecificOverall = null
             if (Array.isArray(player.roleSpecificOveralls)) {
               const roleMatch = player.roleSpecificOveralls.find(
-                rso => rso.roleName === currentFilters.value.role
+                (rso) => rso.roleName === currentFilters.value.role
               )
               if (roleMatch) roleSpecificOverall = roleMatch.score
             } else if (typeof player.roleSpecificOveralls === 'object') {
@@ -658,7 +681,7 @@ export default {
           }
           return player
         })
-      })
+    })
 
     const isGoalkeeperView = computed(() => {
       // First check explicit position or role filters
@@ -671,10 +694,10 @@ export default {
 
       // If we have filtered players, check if majority are goalkeepers
       if (filteredPlayers.value && filteredPlayers.value.length > 0) {
-        const goalkeeperCount = filteredPlayers.value.filter(player => {
+        const goalkeeperCount = filteredPlayers.value.filter((player) => {
           const isGK =
             player.position?.includes('GK') ||
-                          player.short_positions?.includes('GK') ||
+            player.short_positions?.includes('GK') ||
             player.position_groups?.includes('Goalkeepers')
           return isGK
         }).length
@@ -687,14 +710,14 @@ export default {
       return false
     })
 
-    const fetchDataset = async datasetId => {
+    const fetchDataset = async (datasetId) => {
       pageLoading.value = true
       pageLoadingError.value = ''
       try {
         // Check if we already have data for this dataset in the store
-        const hasExistingData = playerStore.allPlayers.length > 0 && 
-                               playerStore.currentDatasetId === datasetId
-        
+        const hasExistingData =
+          playerStore.allPlayers.length > 0 && playerStore.currentDatasetId === datasetId
+
         if (hasExistingData) {
           console.log('Using existing data from store for dataset:', datasetId)
           // Data is already available, just ensure roles are loaded
@@ -706,7 +729,8 @@ export default {
           try {
             const statusResponse = await playerService.checkProcessingStatus(datasetId)
             if (statusResponse.status === 'processing') {
-              pageLoadingError.value = 'This dataset is still being processed in the background. Please wait a moment and try again.'
+              pageLoadingError.value =
+                'This dataset is still being processed in the background. Please wait a moment and try again.'
               return
             }
           } catch (statusError) {
@@ -726,7 +750,7 @@ export default {
         currentFilters.value.transferValueRangeLocal = {
           min: initTvRange && initTvRange.min !== undefined ? initTvRange.min : 0,
           max: initTvRange && initTvRange.max !== undefined ? initTvRange.max : 100000000,
-          userSet: false
+          userSet: false,
         }
         currentFilters.value.maxSalary =
           initSalaryRange && initSalaryRange.max !== undefined ? initSalaryRange.max : 1000000
@@ -742,14 +766,14 @@ export default {
       const datasetIdFromRoute = route.params.datasetId
       if (datasetIdFromRoute) {
         // Check if we have cached data for this dataset
-        const hasCachedData = playerStore.allPlayers.length > 0 && 
-                              playerStore.currentDatasetId === datasetIdFromRoute
-        
+        const hasCachedData =
+          playerStore.allPlayers.length > 0 && playerStore.currentDatasetId === datasetIdFromRoute
+
         if (hasCachedData) {
           console.log('Using cached data for dataset:', datasetIdFromRoute)
           pageLoading.value = false // Don't show loading if we have cached data
         }
-        
+
         await fetchDataset(datasetIdFromRoute)
       } else {
         pageLoadingError.value = 'No dataset ID provided in URL.'
@@ -767,7 +791,7 @@ export default {
           color: 'positive',
           icon: 'check_circle',
           position: 'top',
-          timeout: 2000
+          timeout: 2000,
         })
       } catch (_err) {
         const textArea = document.createElement('textarea')
@@ -781,7 +805,7 @@ export default {
           color: 'positive',
           icon: 'check_circle',
           position: 'top',
-          timeout: 2000
+          timeout: 2000,
         })
       }
 
@@ -789,7 +813,7 @@ export default {
       analytics.shareDataset(currentDatasetId.value)
     }
 
-    const handlePlayerSelected = player => {
+    const handlePlayerSelected = (player) => {
       playerForDetailView.value = player
       showPlayerDetailDialog.value = true
 
@@ -797,14 +821,14 @@ export default {
       analytics.viewPlayerDetails(player.id || player.name, player.name)
     }
 
-    const handleTeamSelected = teamName => {
+    const handleTeamSelected = (teamName) => {
       if (currentDatasetId.value) {
         const url = router.resolve({
           path: '/team-view',
           query: {
             datasetId: currentDatasetId.value,
-            team: teamName
-          }
+            team: teamName,
+          },
         }).href
         const newWindow = window.open(url, '_blank')
         if (!newWindow) {
@@ -816,32 +840,31 @@ export default {
       }
     }
 
-    const handleFiltersChanged = filtersFromChild => {
+    const handleFiltersChanged = (filtersFromChild) => {
       const newTransferRange = filtersFromChild.transferValueRangeLocal
       const oldTransferRange = currentFilters.value.transferValueRangeLocal
 
       // Track filter usage for analytics
-      Object.keys(filtersFromChild).forEach(filterKey => {
+      for (const filterKey of Object.keys(filtersFromChild)) {
         const newValue = filtersFromChild[filterKey]
         const oldValue = currentFilters.value[filterKey]
 
-        // Only track if the value actually changed and is meaningful
-        if (
-          newValue !== oldValue &&
-          newValue !== '' &&
-          newValue !== null &&
-          newValue !== undefined
-        ) {
-          analytics.useFilter(
-            filterKey,
-            typeof newValue === 'object' ? JSON.stringify(newValue) : newValue
-          )
+        // Only track if the value actually changed
+        if (JSON.stringify(newValue) !== JSON.stringify(oldValue)) {
+          // Track filter changes for analytics
+          if (analytics && typeof analytics.trackEvent === 'function') {
+            analytics.trackEvent('filter_changed', {
+              filter_name: filterKey,
+              new_value: typeof newValue === 'object' ? JSON.stringify(newValue) : newValue,
+              old_value: typeof oldValue === 'object' ? JSON.stringify(oldValue) : oldValue,
+            })
+          }
         }
-      })
+      }
 
       currentFilters.value = {
         ...currentFilters.value,
-        ...filtersFromChild
+        ...filtersFromChild,
       }
 
       if (
@@ -879,13 +902,13 @@ export default {
       analytics.trackButtonClick('Export Options', { feature_type: 'export' })
     }
 
-    const handleExportWithOptions = async exportOptions => {
+    const handleExportWithOptions = async (exportOptions) => {
       try {
         if (!currentDatasetId.value) {
           quasarInstance.notify({
             type: 'negative',
             message: 'No dataset available for export',
-            position: 'top'
+            position: 'top',
           })
           return
         }
@@ -901,9 +924,9 @@ export default {
           actions: [
             {
               label: 'Dismiss',
-              color: 'white'
-            }
-          ]
+              color: 'white',
+            },
+          ],
         })
 
         // Track export event
@@ -911,7 +934,7 @@ export default {
         analytics.trackButtonClick(`Export ${exportOptions.format.toUpperCase()}`, {
           feature_type: 'export',
           dataset_id: currentDatasetId.value,
-          preset: exportOptions.preset
+          preset: exportOptions.preset,
         })
 
         // Close the dialog
@@ -920,7 +943,7 @@ export default {
         quasarInstance.notify({
           type: 'negative',
           message: `Export failed: ${error.message}`,
-          position: 'top'
+          position: 'top',
         })
       }
     }
@@ -938,13 +961,13 @@ export default {
 
     watch(
       () => playerStore.initialDatasetTransferValueRange,
-      newRange => {
+      (newRange) => {
         if (newRange && !currentFilters.value.transferValueRangeLocal.userSet) {
           // Check userSet flag
           currentFilters.value.transferValueRangeLocal = {
             min: newRange.min !== undefined ? newRange.min : 0,
             max: newRange.max !== undefined ? newRange.max : 100000000,
-            userSet: false // Keep userSet as false when programmatically updating
+            userSet: false, // Keep userSet as false when programmatically updating
           }
         }
       },
@@ -953,7 +976,7 @@ export default {
 
     watch(
       () => playerStore.salaryRange,
-      newRange => {
+      (newRange) => {
         const currentMaxSalary = currentFilters.value.maxSalary
         const storeMaxSalary = playerStore.salaryRange?.max
 
@@ -974,7 +997,7 @@ export default {
       { immediate: true, deep: true }
     )
 
-    const formatNumber = num => {
+    const formatNumber = (num) => {
       if (num >= 1000000) {
         return `${(num / 1000000).toFixed(1).replace(/\.0$/, '')}M`
       }
@@ -1024,9 +1047,9 @@ export default {
       openFreeAgents,
       openExportOptions,
       handleExportWithOptions,
-      showFilters
+      showFilters,
     }
-  }
+  },
 }
 </script>
 

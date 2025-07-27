@@ -54,7 +54,7 @@ describe('debounce', () => {
       value: 'test',
       method: function (arg) {
         return this.value + arg
-      }
+      },
     }
 
     const mockFn = vi.fn(obj.method)

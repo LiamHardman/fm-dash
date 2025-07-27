@@ -21,6 +21,59 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// RoleOverallScore stores the calculated overall score for a player in a specific role.
+type RoleOverallScore struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RoleName      string                 `protobuf:"bytes,1,opt,name=role_name,json=roleName,proto3" json:"role_name,omitempty"`
+	Score         int32                  `protobuf:"varint,2,opt,name=score,proto3" json:"score,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RoleOverallScore) Reset() {
+	*x = RoleOverallScore{}
+	mi := &file_proto_player_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RoleOverallScore) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RoleOverallScore) ProtoMessage() {}
+
+func (x *RoleOverallScore) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_player_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RoleOverallScore.ProtoReflect.Descriptor instead.
+func (*RoleOverallScore) Descriptor() ([]byte, []int) {
+	return file_proto_player_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *RoleOverallScore) GetRoleName() string {
+	if x != nil {
+		return x.RoleName
+	}
+	return ""
+}
+
+func (x *RoleOverallScore) GetScore() int32 {
+	if x != nil {
+		return x.Score
+	}
+	return 0
+}
+
 // Player holds essential information for frontend display and sorting
 type Player struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
@@ -64,13 +117,15 @@ type Player struct {
 	// Numeric values for sorting
 	TransferValueAmount int64 `protobuf:"varint,34,opt,name=transfer_value_amount,json=transferValueAmount,proto3" json:"transfer_value_amount,omitempty"`
 	WageAmount          int64 `protobuf:"varint,35,opt,name=wage_amount,json=wageAmount,proto3" json:"wage_amount,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Role-specific overall scores
+	RoleSpecificOveralls []*RoleOverallScore `protobuf:"bytes,36,rep,name=role_specific_overalls,json=roleSpecificOveralls,proto3" json:"role_specific_overalls,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *Player) Reset() {
 	*x = Player{}
-	mi := &file_proto_player_proto_msgTypes[0]
+	mi := &file_proto_player_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -82,7 +137,7 @@ func (x *Player) String() string {
 func (*Player) ProtoMessage() {}
 
 func (x *Player) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_player_proto_msgTypes[0]
+	mi := &file_proto_player_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -95,7 +150,7 @@ func (x *Player) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Player.ProtoReflect.Descriptor instead.
 func (*Player) Descriptor() ([]byte, []int) {
-	return file_proto_player_proto_rawDescGZIP(), []int{0}
+	return file_proto_player_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *Player) GetUid() int64 {
@@ -343,6 +398,13 @@ func (x *Player) GetWageAmount() int64 {
 	return 0
 }
 
+func (x *Player) GetRoleSpecificOveralls() []*RoleOverallScore {
+	if x != nil {
+		return x.RoleSpecificOveralls
+	}
+	return nil
+}
+
 // DatasetData represents a dataset containing player information
 type DatasetData struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
@@ -355,7 +417,7 @@ type DatasetData struct {
 
 func (x *DatasetData) Reset() {
 	*x = DatasetData{}
-	mi := &file_proto_player_proto_msgTypes[1]
+	mi := &file_proto_player_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -367,7 +429,7 @@ func (x *DatasetData) String() string {
 func (*DatasetData) ProtoMessage() {}
 
 func (x *DatasetData) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_player_proto_msgTypes[1]
+	mi := &file_proto_player_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -380,7 +442,7 @@ func (x *DatasetData) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DatasetData.ProtoReflect.Descriptor instead.
 func (*DatasetData) Descriptor() ([]byte, []int) {
-	return file_proto_player_proto_rawDescGZIP(), []int{1}
+	return file_proto_player_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *DatasetData) GetPlayers() []*Player {
@@ -408,7 +470,10 @@ var File_proto_player_proto protoreflect.FileDescriptor
 
 const file_proto_player_proto_rawDesc = "" +
 	"\n" +
-	"\x12proto/player.proto\x12\x06player\"\xde\b\n" +
+	"\x12proto/player.proto\x12\x06player\"E\n" +
+	"\x10RoleOverallScore\x12\x1b\n" +
+	"\trole_name\x18\x01 \x01(\tR\broleName\x12\x14\n" +
+	"\x05score\x18\x02 \x01(\x05R\x05score\"\xae\t\n" +
 	"\x06Player\x12\x10\n" +
 	"\x03uid\x18\x01 \x01(\x03R\x03uid\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1a\n" +
@@ -446,7 +511,8 @@ const file_proto_player_proto_rawDesc = "" +
 	"\x11best_role_overall\x18! \x01(\tR\x0fbestRoleOverall\x122\n" +
 	"\x15transfer_value_amount\x18\" \x01(\x03R\x13transferValueAmount\x12\x1f\n" +
 	"\vwage_amount\x18# \x01(\x03R\n" +
-	"wageAmount\x1aF\n" +
+	"wageAmount\x12N\n" +
+	"\x16role_specific_overalls\x18$ \x03(\v2\x18.player.RoleOverallScoreR\x14roleSpecificOveralls\x1aF\n" +
 	"\x18EssentialAttributesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x7f\n" +
@@ -468,20 +534,22 @@ func file_proto_player_proto_rawDescGZIP() []byte {
 	return file_proto_player_proto_rawDescData
 }
 
-var file_proto_player_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_proto_player_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_proto_player_proto_goTypes = []any{
-	(*Player)(nil),      // 0: player.Player
-	(*DatasetData)(nil), // 1: player.DatasetData
-	nil,                 // 2: player.Player.EssentialAttributesEntry
+	(*RoleOverallScore)(nil), // 0: player.RoleOverallScore
+	(*Player)(nil),           // 1: player.Player
+	(*DatasetData)(nil),      // 2: player.DatasetData
+	nil,                      // 3: player.Player.EssentialAttributesEntry
 }
 var file_proto_player_proto_depIdxs = []int32{
-	2, // 0: player.Player.essential_attributes:type_name -> player.Player.EssentialAttributesEntry
-	0, // 1: player.DatasetData.players:type_name -> player.Player
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	3, // 0: player.Player.essential_attributes:type_name -> player.Player.EssentialAttributesEntry
+	0, // 1: player.Player.role_specific_overalls:type_name -> player.RoleOverallScore
+	1, // 2: player.DatasetData.players:type_name -> player.Player
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_proto_player_proto_init() }
@@ -495,7 +563,7 @@ func file_proto_player_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_player_proto_rawDesc), len(file_proto_player_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

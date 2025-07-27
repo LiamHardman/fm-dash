@@ -1,6 +1,5 @@
-import { useApi } from '../composables/useApi.js'
-import { useProtobufApi } from '../composables/useProtobufApi.js'
 import { useErrorHandling } from '../composables/useErrorHandling.js'
+import { useProtobufApi } from '../composables/useProtobufApi.js'
 import logger from '../utils/logger.js'
 
 const API_ENDPOINT = import.meta.env.VITE_API_ENDPOINT || ''
@@ -53,14 +52,14 @@ export default {
     divisionFilter = 'all',
     targetDivision = null,
     positionCompare = 'all',
-    retryCount = 0,
+    _retryCount = 0,
     maxRetries = 3
   ) {
     if (!datasetId) {
       return Promise.reject(new Error('Dataset ID is required.'))
     }
 
-    const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
+    const _delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
     try {
       // Build query parameters
@@ -103,29 +102,24 @@ export default {
       // Use protobuf-aware API for player data
       const { getPlayerData } = useProtobufApi('')
       const { withRetry } = useErrorHandling()
-      
+
       // Use withRetry to handle potential race conditions with exponential backoff
-      return await withRetry(
-        () => getPlayerData(datasetId, params),
-        {
-          retries: maxRetries,
-          initialDelay: 200,
-          onRetry: (attempt) => {
-            logger.warn(
-              `Dataset not found (attempt ${attempt + 1}/${maxRetries + 1}), retrying...`
-            )
-          },
-          shouldRetry: (error) => error.message?.includes('404')
-        }
-      )
+      return await withRetry(() => getPlayerData(datasetId, params), {
+        retries: maxRetries,
+        initialDelay: 200,
+        onRetry: (attempt) => {
+          logger.warn(`Dataset not found (attempt ${attempt + 1}/${maxRetries + 1}), retrying...`)
+        },
+        shouldRetry: (error) => error.message?.includes('404'),
+      })
     } catch (error) {
       logger.error('Error fetching players by dataset ID in playerService:', error)
-      
+
       // Provide more specific error messages
       if (error.message?.includes('404')) {
         throw new Error(`Player data not found for ID: ${datasetId}.`)
       }
-      
+
       throw error
     }
   },
@@ -152,7 +146,7 @@ export default {
         maxUploadSizeMB: 15,
         maxUploadSizeBytes: 15 * 1024 * 1024,
         useScaledRatings: true, // Default to scaled ratings
-        datasetRetentionDays: 30 // Default retention period
+        datasetRetentionDays: 30, // Default retention period
       }
     }
   },
@@ -167,7 +161,7 @@ export default {
       throw error
     }
   },
-  
+
   /**
    * Get client status information including protobuf capabilities
    */
@@ -175,7 +169,7 @@ export default {
     const { getClientStatus } = useProtobufApi('')
     return getClientStatus()
   },
-  
+
   /**
    * Enable or disable protobuf support
    * @param {boolean} enabled - Whether protobuf should be enabled
@@ -200,7 +194,7 @@ export default {
       console.error('Error checking processing status:', error)
       throw new Error(`Failed to check processing status: ${error.message}`)
     }
-  }
+  },
 }
 
 /**
@@ -215,22 +209,22 @@ export async function fetchFullPlayerStats(datasetID, playerUID) {
     // Use protobuf-aware API for detailed player stats
     const { get } = useProtobufApi('')
     const url = `/api/fullplayerstats/${datasetID}/${playerUID}`
-    
+
     logger.info('Starting fetchFullPlayerStats API call', {
       dataset_id: datasetID,
       player_uid: playerUID,
-      url: url
+      url: url,
     })
-    
+
     const response = await get(url, {}, 'api.GenericResponse')
-    
+
     const apiTime = performance.now() - startTime
     logger.info('fetchFullPlayerStats API call completed', {
       dataset_id: datasetID,
       player_uid: playerUID,
-      api_time_ms: Math.round(apiTime)
+      api_time_ms: Math.round(apiTime),
     })
-    
+
     // Handle protobuf response structure where data is in the data field
     if (response.data) {
       try {
@@ -240,7 +234,7 @@ export async function fetchFullPlayerStats(datasetID, playerUID) {
           dataset_id: datasetID,
           player_uid: playerUID,
           total_time_ms: Math.round(totalTime),
-          parse_time_ms: Math.round(totalTime - apiTime)
+          parse_time_ms: Math.round(totalTime - apiTime),
         })
         return { data: parsedData, format: 'json' }
       } catch (parseError) {
@@ -248,13 +242,13 @@ export async function fetchFullPlayerStats(datasetID, playerUID) {
         throw new Error('Invalid detailed player data format')
       }
     }
-    
+
     // Fallback for JSON responses or direct data objects
     const totalTime = performance.now() - startTime
     logger.info('fetchFullPlayerStats completed (fallback)', {
       dataset_id: datasetID,
       player_uid: playerUID,
-      total_time_ms: Math.round(totalTime)
+      total_time_ms: Math.round(totalTime),
     })
     return { data: response, format: 'json' }
   } catch (error) {
@@ -263,7 +257,7 @@ export async function fetchFullPlayerStats(datasetID, playerUID) {
       error: error.message,
       dataset_id: datasetID,
       player_uid: playerUID,
-      time_ms: Math.round(errorTime)
+      time_ms: Math.round(errorTime),
     })
     throw error
   }
@@ -281,9 +275,9 @@ export async function fetchTeamData(datasetID, type, name) {
     // Use protobuf-aware API for team data
     const { get } = useProtobufApi('')
     const url = `/api/team_data/${datasetID}/${type}/${encodeURIComponent(name)}`
-    
+
     const response = await get(url, {}, 'api.GenericResponse')
-    
+
     // Handle protobuf response structure where data is in the data field
     if (response.data) {
       try {
@@ -294,7 +288,7 @@ export async function fetchTeamData(datasetID, type, name) {
         throw new Error('Invalid team data format')
       }
     }
-    
+
     // Fallback for JSON responses or direct data objects
     return { data: response, format: 'json' }
   } catch (error) {
@@ -313,24 +307,26 @@ export async function fetchPerformanceData(datasetID, filters = {}) {
   try {
     // Use protobuf-aware API for performance data
     const { get } = useProtobufApi('')
-    
+
     // Build query parameters
     const params = new URLSearchParams()
     if (filters.position) params.append('position', filters.position)
     if (filters.role) params.append('role', filters.role)
     if (filters.minAge) params.append('minAge', filters.minAge.toString())
     if (filters.maxAge) params.append('maxAge', filters.maxAge.toString())
-    if (filters.minTransferValue) params.append('minTransferValue', filters.minTransferValue.toString())
-    if (filters.maxTransferValue) params.append('maxTransferValue', filters.maxTransferValue.toString())
+    if (filters.minTransferValue)
+      params.append('minTransferValue', filters.minTransferValue.toString())
+    if (filters.maxTransferValue)
+      params.append('maxTransferValue', filters.maxTransferValue.toString())
     if (filters.maxSalary) params.append('maxSalary', filters.maxSalary.toString())
     if (filters.divisionFilter) params.append('divisionFilter', filters.divisionFilter)
     if (filters.targetDivision) params.append('targetDivision', filters.targetDivision)
     if (filters.positionCompare) params.append('positionCompare', filters.positionCompare)
-    
+
     const url = `/api/performance/${datasetID}?${params.toString()}`
-    
+
     const response = await get(url, {}, 'api.GenericResponse')
-    
+
     // Handle protobuf response structure where data is in the data field
     if (response.data) {
       try {
@@ -341,7 +337,7 @@ export async function fetchPerformanceData(datasetID, filters = {}) {
         throw new Error('Invalid performance data format')
       }
     }
-    
+
     // Fallback for JSON responses or direct data objects
     return { data: response, format: 'json' }
   } catch (error) {
@@ -354,9 +350,9 @@ export async function findPlayerUpgrades(request) {
   try {
     // Use protobuf-aware API for upgrade finder
     const { post } = useProtobufApi('')
-    
+
     const response = await post('/api/upgrade-finder', request, {}, 'api.GenericResponse')
-    
+
     // Handle protobuf response structure where data is in the data field
     if (response.data) {
       try {
@@ -367,7 +363,7 @@ export async function findPlayerUpgrades(request) {
         throw new Error('Invalid upgrade finder data format')
       }
     }
-    
+
     // Fallback for JSON responses or direct data objects
     return { data: response, format: 'json' }
   } catch (error) {

@@ -39,8 +39,8 @@ const initializeGA = () => {
       // Enhanced configuration options
       send_page_view: false, // We'll handle page views manually
       custom_map: {
-        custom_parameter_1: 'dataset_id'
-      }
+        custom_parameter_1: 'dataset_id',
+      },
     })
 
     // console.log('✅ Google Analytics initialized with tracking ID:', GA_TRACKING_ID)
@@ -72,7 +72,7 @@ export const trackPageView = (pagePath, pageTitle = '') => {
   try {
     window.gtag('config', GA_TRACKING_ID, {
       page_path: pagePath,
-      page_title: pageTitle
+      page_title: pageTitle,
     })
   } catch (_error) {}
 }
@@ -91,7 +91,7 @@ export const trackEvent = (eventName, parameters = {}) => {
   try {
     window.gtag('event', eventName, {
       ...parameters,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     })
   } catch (_error) {}
 }
@@ -101,10 +101,10 @@ export const trackEvent = (eventName, parameters = {}) => {
  */
 export const analytics = {
   // User interactions
-  shareDataset: datasetId => {
+  shareDataset: (datasetId) => {
     trackEvent('share_dataset', {
       dataset_id: datasetId,
-      event_category: 'engagement'
+      event_category: 'engagement',
     })
   },
 
@@ -112,7 +112,7 @@ export const analytics = {
     trackEvent('upload_dataset', {
       file_size: fileSize,
       player_count: playerCount,
-      event_category: 'user_action'
+      event_category: 'user_action',
     })
   },
 
@@ -120,7 +120,7 @@ export const analytics = {
     trackEvent('view_player_details', {
       player_id: playerId,
       player_name: playerName,
-      event_category: 'content_interaction'
+      event_category: 'content_interaction',
     })
   },
 
@@ -128,7 +128,7 @@ export const analytics = {
     trackEvent('use_filter', {
       filter_type: filterType,
       filter_value: filterValue,
-      event_category: 'user_interaction'
+      event_category: 'user_interaction',
     })
   },
 
@@ -136,7 +136,7 @@ export const analytics = {
     trackEvent('navigate_team_view', {
       team_name: teamName,
       dataset_id: datasetId,
-      event_category: 'navigation'
+      event_category: 'navigation',
     })
   },
 
@@ -144,7 +144,7 @@ export const analytics = {
     trackEvent('search_players', {
       search_term: searchTerm,
       result_count: resultCount,
-      event_category: 'search'
+      event_category: 'search',
     })
   },
 
@@ -152,7 +152,7 @@ export const analytics = {
     trackEvent('download_data', {
       data_type: dataType,
       format: format,
-      event_category: 'engagement'
+      event_category: 'engagement',
     })
   },
 
@@ -161,7 +161,7 @@ export const analytics = {
     trackEvent('wishlist_action', {
       action: action, // 'add' or 'remove'
       player_id: playerId,
-      event_category: 'feature_usage'
+      event_category: 'feature_usage',
     })
   },
 
@@ -169,21 +169,21 @@ export const analytics = {
     trackEvent('use_upgrade_finder', {
       position: position,
       filters_applied: Object.keys(filters).length,
-      event_category: 'feature_usage'
+      event_category: 'feature_usage',
     })
   },
 
-  useWonderkids: filters => {
+  useWonderkids: (filters) => {
     trackEvent('use_wonderkids', {
       filters_applied: Object.keys(filters).length,
-      event_category: 'feature_usage'
+      event_category: 'feature_usage',
     })
   },
 
-  useBargainHunter: filters => {
+  useBargainHunter: (filters) => {
     trackEvent('use_bargain_hunter', {
       filters_applied: Object.keys(filters).length,
-      event_category: 'feature_usage'
+      event_category: 'feature_usage',
     })
   },
 
@@ -192,7 +192,7 @@ export const analytics = {
     trackEvent('page_visit', {
       page_name: pageName,
       ...additionalData,
-      event_category: 'navigation'
+      event_category: 'navigation',
     })
   },
 
@@ -202,9 +202,9 @@ export const analytics = {
       error_type: errorType,
       error_message: errorMessage,
       context: JSON.stringify(context),
-      event_category: 'error'
+      event_category: 'error',
     })
-  }
+  },
 }
 
 export default analytics

@@ -796,7 +796,7 @@ import {
   EUCountries,
   getAllAfricanCountries,
   getAllEuropeanCountries,
-  getAllSouthAmericanCountries
+  getAllSouthAmericanCountries,
 } from '../../utils/countryMapping'
 
 // Define attribute keys (ensure these match keys in player.attributes)
@@ -815,7 +815,7 @@ const rawTechnicalAttributeKeys = [
   'Pas',
   'Pen',
   'Tck',
-  'Tec'
+  'Tec',
 ]
 const rawMentalAttributeKeys = [
   'Agg',
@@ -831,7 +831,7 @@ const rawMentalAttributeKeys = [
   'Pos',
   'Tea',
   'Vis',
-  'Wor'
+  'Wor',
 ]
 const rawPhysicalAttributeKeys = ['Acc', 'Agi', 'Bal', 'Jum', 'Nat', 'Pac', 'Sta', 'Str']
 const rawGoalkeeperAttributeKeys = [
@@ -845,7 +845,7 @@ const rawGoalkeeperAttributeKeys = [
   'Pun',
   'Ref',
   'TRO',
-  'Thr'
+  'Thr',
 ]
 
 // Full names for display
@@ -896,7 +896,7 @@ const attributeFullNameMap = {
   Pun: 'Punching (Tendency)',
   Ref: 'Reflexes',
   TRO: 'Rushing Out (Tendency)',
-  Thr: 'Throwing'
+  Thr: 'Throwing',
 }
 
 const orderedShortPositions = [
@@ -913,7 +913,7 @@ const orderedShortPositions = [
   'AMR',
   'AMC',
   'AML',
-  'ST'
+  'ST',
 ]
 
 const AGE_SLIDER_MIN = 15
@@ -937,21 +937,21 @@ export default defineComponent({
     currencySymbol: { type: String, default: '$' },
     transferValueRange: {
       type: Object,
-      default: () => ({ min: 0, max: 100000000 })
+      default: () => ({ min: 0, max: 100000000 }),
     },
     initialDatasetRange: {
       type: Object,
-      default: () => ({ min: 0, max: 100000000 })
+      default: () => ({ min: 0, max: 100000000 }),
     },
     salaryRange: {
       type: Object,
-      default: () => ({ min: 0, max: 1000000 })
+      default: () => ({ min: 0, max: 1000000 }),
     },
     uniqueClubs: { type: Array, default: () => [] },
     uniqueNationalities: { type: Array, default: () => [] },
     uniqueMediaHandlings: { type: Array, default: () => [] },
     uniquePersonalities: { type: Array, default: () => [] },
-    isLoading: { type: Boolean, default: false }
+    isLoading: { type: Boolean, default: false },
   },
   emits: ['filter-changed'],
   setup(props, { emit }) {
@@ -969,7 +969,7 @@ export default defineComponent({
       ageRange: { min: AGE_SLIDER_MIN, max: AGE_SLIDER_MAX },
       transferValueRangeLocal: {
         min: 0,
-        max: 100000000
+        max: 100000000,
       },
       maxSalary: SALARY_SLIDER_MAX,
       minSalary: 0, // Added for new salary range
@@ -980,7 +980,7 @@ export default defineComponent({
       minDRI: 0,
       minDEF: 0,
       minMEN: 0,
-      minGK: 0
+      minGK: 0,
     })
 
     const showMinimumStatsModal = ref(false)
@@ -990,9 +990,9 @@ export default defineComponent({
     const inlineEditingValue = ref(0)
     const attributeInputRefs = ref({}) // To store refs to q-input components
 
-    const formatAttrName = attrKey => attributeFullNameMap[attrKey] || attrKey
+    const formatAttrName = (attrKey) => attributeFullNameMap[attrKey] || attrKey
 
-    const formatAttrKey = attrKey => {
+    const formatAttrKey = (attrKey) => {
       return attrKey.replace(/\s+/g, '').replace(/\(|\)/g, '')
     }
 
@@ -1030,7 +1030,7 @@ export default defineComponent({
       ...technicalAttributeKeys,
       ...mentalAttributeKeys,
       ...physicalAttributeKeys,
-      ...goalkeeperAttributeKeys
+      ...goalkeeperAttributeKeys,
     ]
 
     for (const attr of allAttributeKeys) {
@@ -1048,24 +1048,24 @@ export default defineComponent({
         label: 'Free Transfers',
         description: 'Players available on free transfers',
         filters: {
-          transferValueRangeLocal: { min: 0, max: 0 }
-        }
+          transferValueRangeLocal: { min: 0, max: 0 },
+        },
       },
       wonderkids: {
         label: 'Wonderkids',
         description: 'Young talented players (15-21 years)',
         filters: {
           ageRange: { min: 15, max: 21 },
-          minOverall: 75
-        }
+          minOverall: 75,
+        },
       },
       'prime-players': {
         label: 'Prime Players',
         description: 'Players in their prime (26-30 years)',
         filters: {
           ageRange: { min: 26, max: 30 },
-          minOverall: 82
-        }
+          minOverall: 82,
+        },
       },
       'ballon-dor': {
         label: "Ballon D'Or Contenders",
@@ -1076,37 +1076,37 @@ export default defineComponent({
           minPas: 15,
           minTec: 16,
           minDri: 15,
-          minFin: 15
-        }
+          minFin: 15,
+        },
       },
       'eu-players': {
         label: 'EU Players',
         description: 'Players from European Union countries',
         filters: {
-          continentNationalities: EUCountries
-        }
+          continentNationalities: EUCountries,
+        },
       },
       'european-players': {
         label: 'European Players',
         description: 'Players from all European countries',
         filters: {
-          continentNationalities: getAllEuropeanCountries()
-        }
+          continentNationalities: getAllEuropeanCountries(),
+        },
       },
       'south-american-players': {
         label: 'South American Players',
         description: 'Players from South American countries',
         filters: {
-          continentNationalities: getAllSouthAmericanCountries()
-        }
+          continentNationalities: getAllSouthAmericanCountries(),
+        },
       },
       'african-players': {
         label: 'African Players',
         description: 'Players from African countries',
         filters: {
-          continentNationalities: getAllAfricanCountries()
-        }
-      }
+          continentNationalities: getAllAfricanCountries(),
+        },
+      },
     }
 
     const presetOptions = computed(() => [
@@ -1118,10 +1118,10 @@ export default defineComponent({
       { label: '🇪🇺 EU Players', value: 'eu-players' },
       { label: '🌍 European Players', value: 'european-players' },
       { label: '🌎 South American Players', value: 'south-american-players' },
-      { label: '🌍 African Players', value: 'african-players' }
+      { label: '🌍 African Players', value: 'african-players' },
     ])
 
-    const applyPresetFilter = presetKey => {
+    const applyPresetFilter = (presetKey) => {
       if (!presetKey || !presetFilters[presetKey]) {
         selectedPreset.value = null
         return
@@ -1136,18 +1136,21 @@ export default defineComponent({
       selectedPreset.value = presetKey
 
       // Apply preset filters
-      Object.keys(preset.filters).forEach(filterKey => {
+      for (const filterKey of Object.keys(preset.filters)) {
         if (filterKey === 'transferValueRangeLocal') {
-          filters.value.transferValueRangeLocal = { ...preset.filters[filterKey] }
-        } else if (filterKey === 'ageRange') {
-          filters.value.ageRange = { ...preset.filters[filterKey] }
-        } else if (filterKey === 'continentNationalities') {
-          // Set the continent nationalities for filtering
-          filters.value.continentNationalities = [...preset.filters[filterKey]]
+          // Handle transfer value range conversion
+          const range = preset.filters[filterKey]
+          if (range && range.min !== undefined && range.max !== undefined) {
+            filters.value.transferValueRangeLocal = {
+              min: range.min,
+              max: range.max,
+            }
+          }
         } else {
+          // Apply other filters directly
           filters.value[filterKey] = preset.filters[filterKey]
         }
-      })
+      }
 
       // Apply the filters
       applyFilters()
@@ -1156,7 +1159,7 @@ export default defineComponent({
       quasarInstance.notify({
         type: 'positive',
         message: `Applied ${preset.label} filter preset`,
-        position: 'top'
+        position: 'top',
       })
     }
 
@@ -1174,7 +1177,7 @@ export default defineComponent({
     const salarySliderMin = computed(() => props.salaryRange?.min || 0)
     const salarySliderMax = computed(() => props.salaryRange?.max || SALARY_SLIDER_MAX)
 
-    const salarySliderStep = computed(() => {
+    const _salarySliderStep = computed(() => {
       const range = salarySliderMax.value - salarySliderMin.value
       if (range <= 0) return 1000
       if (range < 50000) return 500
@@ -1194,7 +1197,7 @@ export default defineComponent({
         filters.value.minDEF > 0 ||
         filters.value.minMEN > 0 ||
         filters.value.minGK > 0
-      const hasActiveAttributeFilters = allAttributeKeys.some(attr => {
+      const hasActiveAttributeFilters = allAttributeKeys.some((attr) => {
         const filterKey = `min${formatAttrKey(attr)}`
         return filters.value[filterKey] > 0
       })
@@ -1241,23 +1244,23 @@ export default defineComponent({
       }
       const selectedPosShortCode = filters.value.position
       const filtered = playerStore.allAvailableRoles
-        .filter(roleFullName => roleFullName.startsWith(`${selectedPosShortCode} - `))
-        .map(roleFullName => ({
+        .filter((roleFullName) => roleFullName.startsWith(`${selectedPosShortCode} - `))
+        .map((roleFullName) => ({
           label: roleFullName,
-          value: roleFullName
+          value: roleFullName,
         }))
         .sort((a, b) => a.label.localeCompare(b.label))
       return [{ label: 'Any Role', value: null }, ...filtered]
     })
 
     const mediaHandlingOptions = computed(() =>
-      props.uniqueMediaHandlings.map(mh => ({ label: mh, value: mh }))
+      props.uniqueMediaHandlings.map((mh) => ({ label: mh, value: mh }))
     )
     const personalityOptions = computed(() =>
-      props.uniquePersonalities.map(p => ({ label: p, value: p }))
+      props.uniquePersonalities.map((p) => ({ label: p, value: p }))
     )
 
-    const transferValueSliderStep = computed(() => {
+    const _transferValueSliderStep = computed(() => {
       const range = currentSliderMax.value - currentSliderMin.value
 
       let step
@@ -1286,7 +1289,7 @@ export default defineComponent({
       return step
     })
 
-    const formatRangeLabel = (value, isMaxBoundary = false) => {
+    const _formatRangeLabel = (value, isMaxBoundary = false) => {
       if (value === null || value === undefined) return 'N/A'
 
       // Check if the value appears to be in millions (common range for transfer values)
@@ -1319,7 +1322,7 @@ export default defineComponent({
       return formatCurrency(displayValue, props.currencySymbol)
     }
 
-    const formatSmallRangeLabel = (value, isMaxBoundary) => {
+    const _formatSmallRangeLabel = (value, isMaxBoundary) => {
       if (value === null || value === undefined) return 'N/A'
       if (isMaxBoundary) {
         if (
@@ -1341,7 +1344,7 @@ export default defineComponent({
       return formatCurrency(value, props.currencySymbol)
     }
 
-    const formatLargeRangeLabel = (value, isMaxBoundary) => {
+    const _formatLargeRangeLabel = (value, isMaxBoundary) => {
       if (value === null || value === undefined) return 'N/A'
       if (isMaxBoundary) {
         if (
@@ -1365,21 +1368,21 @@ export default defineComponent({
 
     watch(
       () => props.uniqueClubs,
-      newClubs => {
+      (newClubs) => {
         clubOptions.value = newClubs
       },
       { immediate: true }
     )
     watch(
       () => props.uniqueNationalities,
-      newNats => {
+      (newNats) => {
         nationalityOptions.value = newNats
       },
       { immediate: true }
     )
     watch(
       () => props.transferValueRange,
-      newDynamicRange => {
+      (newDynamicRange) => {
         if (
           newDynamicRange &&
           typeof newDynamicRange.min === 'number' &&
@@ -1393,7 +1396,7 @@ export default defineComponent({
             // We still have default values, so update with real data
             filters.value.transferValueRangeLocal = {
               min: newDynamicRange.min,
-              max: newDynamicRange.max
+              max: newDynamicRange.max,
             }
           } else {
             // Clamp existing values to new valid range
@@ -1413,7 +1416,7 @@ export default defineComponent({
     )
     watch(
       () => props.initialDatasetRange,
-      newInitialRange => {
+      (newInitialRange) => {
         if (
           newInitialRange &&
           typeof newInitialRange.min === 'number' &&
@@ -1426,7 +1429,7 @@ export default defineComponent({
           if (currentMin === 0 && currentMax === 100000000) {
             filters.value.transferValueRangeLocal = {
               min: newInitialRange.min,
-              max: newInitialRange.max
+              max: newInitialRange.max,
             }
           }
         }
@@ -1435,7 +1438,7 @@ export default defineComponent({
     )
     watch(
       () => props.salaryRange,
-      newSalaryRange => {
+      (newSalaryRange) => {
         if (newSalaryRange?.max && typeof newSalaryRange.max === 'number') {
           // Only update if we still have the default value
           if (filters.value.maxSalary === SALARY_SLIDER_MAX) {
@@ -1452,7 +1455,7 @@ export default defineComponent({
       const clampedMax = Math.min(filters.value.transferValueRangeLocal.max, currentSliderMax.value)
       emit('filter-changed', {
         ...filters.value,
-        transferValueRangeLocal: { min: clampedMin, max: clampedMax }
+        transferValueRangeLocal: { min: clampedMin, max: clampedMax },
       })
     }
     const debouncedApplyFilters = debounce(applyFilters, 400)
@@ -1475,7 +1478,7 @@ export default defineComponent({
         ageRange: { min: AGE_SLIDER_MIN, max: AGE_SLIDER_MAX },
         transferValueRangeLocal: {
           min: props.initialDatasetRange ? props.initialDatasetRange.min : 0,
-          max: props.initialDatasetRange ? props.initialDatasetRange.max : 100000000
+          max: props.initialDatasetRange ? props.initialDatasetRange.max : 100000000,
         },
         maxSalary: salarySliderMax.value,
         minSalary: 0, // Reset new salary range
@@ -1486,7 +1489,7 @@ export default defineComponent({
         minDRI: 0,
         minDEF: 0,
         minMEN: 0,
-        minGK: 0
+        minGK: 0,
       }
       for (const attr of allAttributeKeys) {
         filters.value[`min${formatAttrKey(attr)}`] = 0
@@ -1502,7 +1505,7 @@ export default defineComponent({
       }
       update(() => {
         const needle = val.toLowerCase()
-        clubOptions.value = props.uniqueClubs.filter(v => v.toLowerCase().indexOf(needle) > -1)
+        clubOptions.value = props.uniqueClubs.filter((v) => v.toLowerCase().indexOf(needle) > -1)
       })
     }
     const filterNationalityOptions = (val, update, abort) => {
@@ -1513,7 +1516,7 @@ export default defineComponent({
       update(() => {
         const needle = val.toLowerCase()
         nationalityOptions.value = props.uniqueNationalities.filter(
-          v => v.toLowerCase().indexOf(needle) > -1
+          (v) => v.toLowerCase().indexOf(needle) > -1
         )
       })
     }
@@ -1531,7 +1534,7 @@ export default defineComponent({
       ) {
         filters.value.transferValueRangeLocal = {
           min: props.initialDatasetRange.min,
-          max: props.initialDatasetRange.max
+          max: props.initialDatasetRange.max,
         }
       } else if (
         props.transferValueRange &&
@@ -1540,7 +1543,7 @@ export default defineComponent({
       ) {
         filters.value.transferValueRangeLocal = {
           min: props.transferValueRange.min,
-          max: props.transferValueRange.max
+          max: props.transferValueRange.max,
         }
       } else {
       }
@@ -1552,20 +1555,20 @@ export default defineComponent({
 
       filters.value.ageRange = {
         min: AGE_SLIDER_MIN,
-        max: AGE_SLIDER_MAX
+        max: AGE_SLIDER_MAX,
       }
     })
 
     watch(
       () => playerStore.currentDatasetId,
-      async newId => {
+      async (newId) => {
         if (newId && playerStore.allAvailableRoles.length === 0) {
           await playerStore.fetchAllAvailableRoles()
         }
         if (newId && props.initialDatasetRange) {
           filters.value.transferValueRangeLocal = {
             min: props.initialDatasetRange.min,
-            max: props.initialDatasetRange.max
+            max: props.initialDatasetRange.max,
           }
         }
       }
@@ -1591,7 +1594,7 @@ export default defineComponent({
       applyFilters()
     }
 
-    const startInlineEdit = attrKey => {
+    const startInlineEdit = (attrKey) => {
       finishInlineEdit() // Save any previous edit first
       inlineEditingAttributeKey.value = attrKey
       const filterKey = `min${formatAttrKey(attrKey)}`
@@ -1621,7 +1624,8 @@ export default defineComponent({
       if (!value || value === 0) return `${symbol}0`
       if (value >= 1000000) {
         return `${symbol}${(value / 1000000).toFixed(1)}M`
-      } else if (value >= 1000) {
+      }
+      if (value >= 1000) {
         return `${symbol}${(value / 1000).toFixed(0)}K`
       }
       return `${symbol}${value.toLocaleString()}`
@@ -1648,11 +1652,11 @@ export default defineComponent({
         return minValue / 1000000
       },
       set(value) {
-        const numValue = parseFloat(value) || 0
+        const numValue = Number.parseFloat(value) || 0
         const newValue = numValue * 1000000
         filters.value.transferValueRangeLocal.min = newValue
         applyFilters()
-      }
+      },
     })
 
     const transferValueMaxMillions = computed({
@@ -1661,11 +1665,11 @@ export default defineComponent({
         return maxValue / 1000000
       },
       set(value) {
-        const numValue = parseFloat(value) || 0
+        const numValue = Number.parseFloat(value) || 0
         const newValue = numValue * 1000000
         filters.value.transferValueRangeLocal.max = newValue
         applyFilters()
-      }
+      },
     })
 
     // Salary in thousands for display
@@ -1675,11 +1679,11 @@ export default defineComponent({
         return minValue / 1000
       },
       set(value) {
-        const numValue = parseFloat(value) || 0
+        const numValue = Number.parseFloat(value) || 0
         const newValue = numValue * 1000
         filters.value.minSalary = newValue
         applyFilters()
-      }
+      },
     })
 
     const salaryMaxThousands = computed({
@@ -1688,11 +1692,11 @@ export default defineComponent({
         return maxValue / 1000
       },
       set(value) {
-        const numValue = parseFloat(value) || 0
+        const numValue = Number.parseFloat(value) || 0
         const newValue = numValue * 1000
         filters.value.maxSalary = newValue
         applyFilters()
-      }
+      },
     })
 
     // Change handlers
@@ -1762,9 +1766,9 @@ export default defineComponent({
       onTransferValueMinChange,
       onTransferValueMaxChange,
       onSalaryMinChange,
-      onSalaryMaxChange
+      onSalaryMaxChange,
     }
-  }
+  },
 })
 </script>
 

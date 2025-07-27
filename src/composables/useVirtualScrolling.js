@@ -26,7 +26,7 @@ export function useVirtualScrolling(options = {}) {
   })
 
   // Optimized rendering function
-  const getVisibleItems = items => {
+  const getVisibleItems = (items) => {
     if (!items || items.length === 0) return []
 
     const start = startIndex.value
@@ -35,12 +35,12 @@ export function useVirtualScrolling(options = {}) {
     return items.slice(start, end).map((item, index) => ({
       ...item,
       virtualIndex: start + index,
-      actualIndex: start + index
+      actualIndex: start + index,
     }))
   }
 
   // Scroll handler with debouncing
-  const handleScroll = scrollInfo => {
+  const handleScroll = (scrollInfo) => {
     scrollTop.value = scrollInfo.verticalPosition
     isScrolling.value = true
 
@@ -54,7 +54,7 @@ export function useVirtualScrolling(options = {}) {
   }
 
   // Calculate total height for virtual scrolling
-  const getTotalHeight = itemCount => itemCount * itemHeight
+  const getTotalHeight = (itemCount) => itemCount * itemHeight
 
   // Get offset for virtual positioning
   const getOffset = () => startIndex.value * itemHeight
@@ -69,7 +69,7 @@ export function useVirtualScrolling(options = {}) {
     getVisibleItems,
     handleScroll,
     getTotalHeight,
-    getOffset
+    getOffset,
   }
 }
 
@@ -149,7 +149,7 @@ export function useOptimizedSorting() {
 
       // Only yield every few chunks to maintain speed
       if (chunks.length % 3 === 0) {
-        await new Promise(resolve => setTimeout(resolve, 0))
+        await new Promise((resolve) => setTimeout(resolve, 0))
       }
     }
 
@@ -176,7 +176,7 @@ export function useOptimizedSorting() {
 
       // Only yield between major merge iterations
       if (chunks.length > 1) {
-        await new Promise(resolve => setTimeout(resolve, 0))
+        await new Promise((resolve) => setTimeout(resolve, 0))
       }
     }
 
@@ -214,7 +214,7 @@ export function useOptimizedSorting() {
     sortDirection,
     sortLargeArray,
     createSortFunction,
-    clearSortCache
+    clearSortCache,
   }
 }
 
@@ -225,11 +225,11 @@ export function useIntersectionObserver(options = {}) {
   const visibleElements = ref(new Set())
   const observer = ref(null)
 
-  const createObserver = callback => {
+  const createObserver = (callback) => {
     if (!window.IntersectionObserver) return null
 
     observer.value = new IntersectionObserver(
-      entries => {
+      (entries) => {
         for (const entry of entries) {
           if (entry.isIntersecting) {
             visibleElements.value.add(entry.target)
@@ -242,20 +242,20 @@ export function useIntersectionObserver(options = {}) {
       },
       {
         threshold,
-        rootMargin
+        rootMargin,
       }
     )
 
     return observer.value
   }
 
-  const observe = element => {
+  const observe = (element) => {
     if (observer.value && element) {
       observer.value.observe(element)
     }
   }
 
-  const unobserve = element => {
+  const unobserve = (element) => {
     if (observer.value && element) {
       observer.value.unobserve(element)
       visibleElements.value.delete(element)
@@ -274,6 +274,6 @@ export function useIntersectionObserver(options = {}) {
     createObserver,
     observe,
     unobserve,
-    disconnect
+    disconnect,
   }
 }

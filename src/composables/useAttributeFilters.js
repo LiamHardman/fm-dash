@@ -18,7 +18,7 @@ export function useAttributeFilters() {
         attrs.push({
           value: attr,
           label: attributeFullNameMap[attr] || attr,
-          group: group.name
+          group: group.name,
         })
       }
     }
@@ -31,17 +31,17 @@ export function useAttributeFilters() {
     for (const [key, group] of Object.entries(attributeGroups.value)) {
       grouped[key] = {
         name: group.name,
-        attributes: group.attrs.map(attr => ({
+        attributes: group.attrs.map((attr) => ({
           value: attr,
-          label: attributeFullNameMap[attr] || attr
-        }))
+          label: attributeFullNameMap[attr] || attr,
+        })),
       }
     }
     return grouped
   })
 
   // Add attribute filter
-  const addAttributeFilter = attribute => {
+  const addAttributeFilter = (attribute) => {
     if (!selectedAttributes.value.includes(attribute)) {
       selectedAttributes.value.push(attribute)
       if (!attributeThresholds[attribute]) {
@@ -51,7 +51,7 @@ export function useAttributeFilters() {
   }
 
   // Remove attribute filter
-  const removeAttributeFilter = attribute => {
+  const removeAttributeFilter = (attribute) => {
     const index = selectedAttributes.value.indexOf(attribute)
     if (index > -1) {
       selectedAttributes.value.splice(index, 1)
@@ -68,7 +68,7 @@ export function useAttributeFilters() {
   }
 
   // Get attribute threshold
-  const getAttributeThreshold = attribute => {
+  const getAttributeThreshold = (attribute) => {
     return attributeThresholds[attribute] || { min: 1, max: 20 }
   }
 
@@ -78,11 +78,11 @@ export function useAttributeFilters() {
   }
 
   // Check if player matches attribute filters - SECURITY FIXED
-  const playerMatchesAttributeFilters = player => {
+  const playerMatchesAttributeFilters = (player) => {
     if (selectedAttributes.value.length === 0) return true
     if (!player || typeof player !== 'object') return false
 
-    return selectedAttributes.value.every(attr => {
+    return selectedAttributes.value.every((attr) => {
       // Validate attribute name to prevent remote property injection
       if (!isValidPlayerProperty(attr)) {
         return false
@@ -109,6 +109,6 @@ export function useAttributeFilters() {
     clearAttributeFilters,
     getAttributeThreshold,
     setAttributeThreshold,
-    playerMatchesAttributeFilters
+    playerMatchesAttributeFilters,
   }
 }

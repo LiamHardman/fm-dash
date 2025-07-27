@@ -10,7 +10,7 @@ export function useErrorHandling() {
    */
   const handleFetchError = async (response, requestInfo = {}) => {
     let errorMessage = `HTTP ${response.status}: ${response.statusText}`
-    
+
     try {
       // Try to parse error response as JSON
       const errorData = await response.json()
@@ -19,25 +19,25 @@ export function useErrorHandling() {
       } else if (errorData.error) {
         errorMessage = errorData.error
       }
-    } catch (e) {
+    } catch (_e) {
       // If not JSON, try to get text
       try {
         const errorText = await response.text()
         if (errorText) {
           errorMessage = errorText
         }
-      } catch (textError) {
+      } catch (_textError) {
         // Ignore text parsing errors
       }
     }
-    
+
     const error = new Error(errorMessage)
     error.status = response.status
     error.requestInfo = requestInfo
-    
+
     return error
   }
-  
+
   /**
    * Retry a function with exponential backoff
    * @param {Function} fn - Function to retry
@@ -50,38 +50,38 @@ export function useErrorHandling() {
       maxDelay = 5000,
       factor = 2,
       onRetry = null,
-      shouldRetry = () => true
+      shouldRetry = () => true,
     } = options
-    
+
     let lastError
-    
+
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         return await fn()
       } catch (error) {
         lastError = error
-        
+
         // Check if we should retry
         if (attempt >= retries || !shouldRetry(error)) {
           throw error
         }
-        
+
         // Calculate delay with exponential backoff
-        const delay = Math.min(initialDelay * Math.pow(factor, attempt), maxDelay)
-        
+        const delay = Math.min(initialDelay * factor ** attempt, maxDelay)
+
         // Call onRetry callback if provided
         if (onRetry) {
           onRetry(attempt, error, delay)
         }
-        
+
         // Wait before retrying
-        await new Promise(resolve => setTimeout(resolve, delay))
+        await new Promise((resolve) => setTimeout(resolve, delay))
       }
     }
-    
+
     throw lastError
   }
-  
+
   /**
    * Safely execute an async function with error handling
    * @param {Function} fn - Async function to execute
@@ -89,7 +89,7 @@ export function useErrorHandling() {
    */
   const safeAsync = async (fn, options = {}) => {
     const { fallback = null, onError = null } = options
-    
+
     try {
       return await fn()
     } catch (error) {
@@ -99,10 +99,10 @@ export function useErrorHandling() {
       return fallback
     }
   }
-  
+
   return {
     handleFetchError,
     withRetry,
-    safeAsync
+    safeAsync,
   }
 }

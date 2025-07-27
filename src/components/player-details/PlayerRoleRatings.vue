@@ -46,8 +46,8 @@ export default defineComponent({
   props: {
     player: {
       type: Object,
-      required: true
-    }
+      required: true,
+    },
   },
   setup(props) {
     const qInstance = useQuasar()
@@ -74,12 +74,12 @@ export default defineComponent({
       return Object.fromEntries(entries.sort((a, b) => b[1] - a[1]))
     })
 
-    const isBestRole = role => {
+    const isBestRole = (role) => {
       if (!props.player || !props.player.bestRoleOverall) return false
       return props.player.bestRoleOverall === role
     }
 
-    const getRatingColorClass = rating => {
+    const getRatingColorClass = (rating) => {
       if (rating >= 16) return 'text-green-10'
       if (rating >= 14) return 'text-green-8'
       if (rating >= 12) return 'text-amber-8'
@@ -91,9 +91,9 @@ export default defineComponent({
       qInstance,
       sortedRoleRatings,
       isBestRole,
-      getRatingColorClass
+      getRatingColorClass,
     }
-  }
+  },
 })
 </script>
 

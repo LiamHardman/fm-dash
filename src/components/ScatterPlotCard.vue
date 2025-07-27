@@ -26,7 +26,6 @@
 import { Chart as ChartJS, Legend, LinearScale, PointElement, Title, Tooltip } from 'chart.js'
 import annotationPlugin from 'chartjs-plugin-annotation'
 import { computed } from 'vue'
-import { Scatter } from 'vue-chartjs'
 
 // Register Chart.js components and the annotation plugin
 ChartJS.register(Title, Tooltip, Legend, PointElement, LinearScale, annotationPlugin)
@@ -43,7 +42,7 @@ const props = defineProps({
   xAxisLabel: { type: String, required: true },
   yAxisLabel: { type: String, required: true },
   quadrantLabels: { type: Object, required: true },
-  isDarkMode: { type: Boolean, default: false }
+  isDarkMode: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['player-click'])
@@ -58,7 +57,7 @@ const lightThemeColors = {
   good: 'rgba(0, 100, 0, 0.7)',
   bad: 'rgba(183, 28, 28, 0.7)',
   highlightBg: 'rgba(255, 255, 255, 0.85)',
-  highlightFaceBorder: '#00695c'
+  highlightFaceBorder: '#00695c',
 }
 
 const darkThemeColors = {
@@ -70,22 +69,22 @@ const darkThemeColors = {
   good: '#A2C592',
   bad: '#E6827A',
   highlightBg: 'rgba(40, 44, 52, 0.85)',
-  highlightFaceBorder: '#E6827A'
+  highlightFaceBorder: '#E6827A',
 }
 
 const themeColors = computed(() => (props.isDarkMode ? darkThemeColors : lightThemeColors))
 
 // --- Data Processing ---
-const getNumericValue = val => {
+const getNumericValue = (val) => {
   if (val === undefined || val === null || val === '-' || val === '') return null
   const cleaned = String(val).replace(/,/g, '').replace(/%/g, '')
-  const num = parseFloat(cleaned)
+  const num = Number.parseFloat(cleaned)
   return Number.isNaN(num) ? null : num
 }
 
 const processedData = computed(() => {
   return props.allPlayersData
-    .map(player => {
+    .map((player) => {
       const xValue = getNumericValue(
         player.performanceStatsNumeric?.[props.xAxisKey] || player.attributes?.[props.xAxisKey]
       )
@@ -98,10 +97,10 @@ const processedData = computed(() => {
       return {
         x: xValue,
         y: yValue,
-        player: player // Store the full player object
+        player: player, // Store the full player object
       }
     })
-    .filter(item => item !== null)
+    .filter((item) => item !== null)
 })
 
 const avgX = computed(() => {
@@ -117,23 +116,23 @@ const avgY = computed(() => {
 })
 
 // --- Chart Configuration ---
-const chartData = computed(() => ({
+const _chartData = computed(() => ({
   datasets: [
     {
       data: processedData.value,
       backgroundColor: themeColors.value.point,
       pointRadius: 4,
-      pointHoverRadius: 7
-    }
-  ]
+      pointHoverRadius: 7,
+    },
+  ],
 }))
 
-const chartOptions = computed(() => ({
+const _chartOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: true,
   aspectRatio: 1.5,
   layout: {
-    padding: 20
+    padding: 20,
   },
   scales: {
     x: {
@@ -141,34 +140,34 @@ const chartOptions = computed(() => ({
         display: true,
         text: props.xAxisLabel,
         color: themeColors.value.text,
-        font: { size: 10, weight: 'bold' }
+        font: { size: 10, weight: 'bold' },
       },
       grid: { display: false },
       ticks: { color: themeColors.value.axis, font: { size: 12 } },
-      border: { color: themeColors.value.axis }
+      border: { color: themeColors.value.axis },
     },
     y: {
       title: {
         display: true,
         text: props.yAxisLabel,
         color: themeColors.value.text,
-        font: { size: 10, weight: 'bold' }
+        font: { size: 10, weight: 'bold' },
       },
       grid: { display: false },
       ticks: { color: themeColors.value.axis, font: { size: 12 } },
-      border: { color: themeColors.value.axis }
-    }
+      border: { color: themeColors.value.axis },
+    },
   },
   plugins: {
     legend: { display: false },
     tooltip: {
       callbacks: {
-        label: ctx => [
+        label: (ctx) => [
           `${ctx.raw.player.name}`,
           `${props.xAxisLabel}: ${ctx.raw.x.toFixed(2)}`,
-          `${props.yAxisLabel}: ${ctx.raw.y.toFixed(2)}`
-        ]
-      }
+          `${props.yAxisLabel}: ${ctx.raw.y.toFixed(2)}`,
+        ],
+      },
     },
     annotation: {
       annotations: {
@@ -178,23 +177,23 @@ const chartOptions = computed(() => ({
           yMin: avgY.value,
           yMax: avgY.value,
           borderColor: themeColors.value.gridLine,
-          borderWidth: 1.5
+          borderWidth: 1.5,
         },
         avgLineY: {
           type: 'line',
           xMin: avgX.value,
           xMax: avgX.value,
           borderColor: themeColors.value.gridLine,
-          borderWidth: 1.5
+          borderWidth: 1.5,
         },
 
         // Quadrant Labels
         ...generateQuadrantLabels(),
 
         // Highlighted Player Labels & Images
-        ...generatePlayerHighlightAnnotations()
-      }
-    }
+        ...generatePlayerHighlightAnnotations(),
+      },
+    },
   },
   onClick: (_event, elements) => {
     if (elements && elements.length > 0) {
@@ -202,7 +201,7 @@ const chartOptions = computed(() => ({
       const player = processedData.value[index].player
       emit('player-click', player)
     }
-  }
+  },
 }))
 
 // --- Annotation Generators ---
@@ -213,17 +212,17 @@ const generateQuadrantLabels = () => {
     [key]: {
       type: 'label',
       xValue:
-        position.x === 'start' ? ctx => ctx.chart.scales.x.min : ctx => ctx.chart.scales.x.max,
+        position.x === 'start' ? (ctx) => ctx.chart.scales.x.min : (ctx) => ctx.chart.scales.x.max,
       yValue:
-        position.y === 'start' ? ctx => ctx.chart.scales.y.max : ctx => ctx.chart.scales.y.min,
+        position.y === 'start' ? (ctx) => ctx.chart.scales.y.max : (ctx) => ctx.chart.scales.y.min,
       content: content,
       color: [color, themeColors.value.text],
       font: [{ ...font, weight: 'bold' }, { ...font }],
       position: { x: position.x, y: 'start' }, // Keep text aligned at its 'start' edge
       xAdjust,
       yAdjust,
-      textAlign
-    }
+      textAlign,
+    },
   })
 
   return {
@@ -262,7 +261,7 @@ const generateQuadrantLabels = () => {
       15,
       -15,
       'left'
-    )
+    ),
   }
 }
 
@@ -271,7 +270,7 @@ const generatePlayerHighlightAnnotations = () => {
 
   props.highlightedPlayers.forEach((player, index) => {
     // Find the full player data object to get the faceUrl
-    const fullPlayerData = processedData.value.find(p => p.player.name === player.name)
+    const fullPlayerData = processedData.value.find((p) => p.player.name === player.name)
 
     // Player Name Label
     annotations[`playerLabel${index}`] = {
@@ -284,7 +283,7 @@ const generatePlayerHighlightAnnotations = () => {
       font: { size: 12, weight: 'bold' },
       borderRadius: 4,
       padding: 6,
-      yAdjust: -35 // Position above the player point
+      yAdjust: -35, // Position above the player point
     }
 
     // Player Face Image
@@ -296,13 +295,13 @@ const generatePlayerHighlightAnnotations = () => {
         xValue: player.x,
         yValue: player.y,
         radius: 12,
-        backgroundColor: ctx => {
+        backgroundColor: (ctx) => {
           const pattern = ctx.chart.ctx.createPattern(img, 'repeat')
           return pattern
         },
         borderWidth: 2,
         borderColor: themeColors.value.highlightFaceBorder,
-        drawTime: 'afterDatasetsDraw'
+        drawTime: 'afterDatasetsDraw',
       }
     }
   })

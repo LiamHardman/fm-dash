@@ -179,7 +179,7 @@ const orderedShortPositions = [
   'AMR',
   'AMC',
   'AML',
-  'ST'
+  'ST',
 ]
 
 // Debounce utility
@@ -197,33 +197,33 @@ export default defineComponent({
   name: 'WonderkidsDialog',
   components: {
     PlayerDataTable,
-    PlayerDetailDialog
+    PlayerDetailDialog,
   },
   props: {
     show: {
       type: Boolean,
-      default: false
+      default: false,
     },
     players: {
       type: Array,
-      default: () => []
+      default: () => [],
     },
     currencySymbol: {
       type: String,
-      default: '$'
+      default: '$',
     },
     datasetId: {
       type: String,
-      default: null
+      default: null,
     },
     transferValueRange: {
       type: Object,
-      default: () => ({ min: 0, max: 100000000 })
+      default: () => ({ min: 0, max: 100000000 }),
     },
     salaryRange: {
       type: Object,
-      default: () => ({ min: 0, max: 1000000 })
-    }
+      default: () => ({ min: 0, max: 1000000 }),
+    },
   },
   emits: ['close'],
   setup(props) {
@@ -301,13 +301,13 @@ export default defineComponent({
     })
 
     // Methods
-    const getAllWonderkids = allPlayers => {
+    const getAllWonderkids = (allPlayers) => {
       // Get top 10 players from each age (15-21) that meet the filter criteria
       const allWonderkidsFromAllAges = []
 
       for (const age of ages) {
         const playersOfAge = allPlayers
-          .filter(player => {
+          .filter((player) => {
             const playerAge = Number(player.age)
             // Must match this specific age
             if (playerAge !== age) {
@@ -356,7 +356,7 @@ export default defineComponent({
         qInstance.notify({
           color: 'negative',
           message: 'Failed to load wonderkids',
-          icon: 'error'
+          icon: 'error',
         })
       } finally {
         loading.value = false
@@ -372,17 +372,17 @@ export default defineComponent({
       loadWonderkids()
     }, 300)
 
-    const handlePlayerSelected = player => {
+    const handlePlayerSelected = (player) => {
       selectedPlayer.value = player
       showPlayerDetail.value = true
     }
 
-    const handleTeamSelected = _teamName => {}
+    const handleTeamSelected = (_teamName) => {}
 
     // Initialize sliders when props change
     watch(
       () => props.transferValueRange,
-      newRange => {
+      (newRange) => {
         if (newRange && maxTransferValue.value === 100000000) {
           maxTransferValue.value = newRange.max
         }
@@ -392,7 +392,7 @@ export default defineComponent({
 
     watch(
       () => props.salaryRange,
-      newRange => {
+      (newRange) => {
         if (newRange && maxSalary.value === 1000000) {
           maxSalary.value = newRange.max
         }
@@ -403,7 +403,7 @@ export default defineComponent({
     // Watchers
     watch(
       () => props.show,
-      newShow => {
+      (newShow) => {
         if (newShow && props.players.length > 0) {
           loadWonderkids()
         }
@@ -412,7 +412,7 @@ export default defineComponent({
 
     watch(
       () => props.players,
-      newPlayers => {
+      (newPlayers) => {
         if (props.show && newPlayers.length > 0) {
           loadWonderkids()
         }
@@ -449,9 +449,9 @@ export default defineComponent({
       debouncedFiltersChanged,
       handlePlayerSelected,
       handleTeamSelected,
-      formatCurrency
+      formatCurrency,
     }
-  }
+  },
 })
 </script>
 

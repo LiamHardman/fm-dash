@@ -28,11 +28,11 @@ describe('CSV Export Utility', () => {
       attributes: {
         Pas: '18',
         Tec: '16',
-        Vis: '17'
+        Vis: '17',
       },
       personality: 'Professional',
       media_handling: 'Evasive',
-      foot: 'Right'
+      foot: 'Right',
     },
     {
       name: 'Jane Smith',
@@ -51,11 +51,11 @@ describe('CSV Export Utility', () => {
       attributes: {
         Han: '17',
         Ref: '16',
-        Cmd: '15'
+        Cmd: '15',
       },
       personality: 'Driven',
-      media_handling: 'Respectful'
-    }
+      media_handling: 'Respectful',
+    },
   ]
 
   describe('validateExportData', () => {
@@ -149,9 +149,9 @@ describe('CSV Export Utility', () => {
               exportDate: expect.any(String),
               totalPlayers: mockPlayers.length,
               exportType: 'full_dataset',
-              version: '1.0'
+              version: '1.0',
             },
-            players: mockPlayers
+            players: mockPlayers,
           }
           expect(exportData.metadata.totalPlayers).toBe(2)
           expect(exportData.players).toEqual(mockPlayers)

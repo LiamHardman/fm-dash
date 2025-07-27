@@ -14,7 +14,7 @@ export function memoize(fn, options = {}) {
     maxSize = 100,
     keyGenerator = (...args) => JSON.stringify(args),
     ttl = null, // Time to live in milliseconds
-    cacheKey = null
+    cacheKey = null,
   } = options
 
   const cache = cacheKey ? memoCache.get(cacheKey) || new Map() : new Map()
@@ -43,7 +43,7 @@ export function memoize(fn, options = {}) {
     // Store in cache
     const cacheEntry = {
       value: result,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     }
 
     cache.set(key, cacheEntry)
@@ -79,7 +79,7 @@ export function memoizedComputed(getter, options = {}) {
 
   return computed(() => {
     // Track dependencies if provided
-    const currentDepsValues = dependencies.map(dep => (isRef(dep) ? dep.value : dep))
+    const currentDepsValues = dependencies.map((dep) => (isRef(dep) ? dep.value : dep))
 
     // Check if dependencies have changed
     const depsChanged =
@@ -162,7 +162,7 @@ export class MemoizationProfiler {
         cacheHits: 0,
         cacheMisses: 0,
         totalTime: 0,
-        averageTime: 0
+        averageTime: 0,
       })
     }
 
@@ -220,7 +220,7 @@ export function useMemoizedComputeds(computedDefinitions) {
 
     memoizedRefs[key] = memoizedComputed(getter, {
       dependencies,
-      ...options
+      ...options,
     })
   }
 
@@ -269,7 +269,7 @@ export function shallowEqual(a, b) {
 
     if (keysA.length !== keysB.length) return false
 
-    return keysA.every(key => a[key] === b[key])
+    return keysA.every((key) => a[key] === b[key])
   }
 
   return false

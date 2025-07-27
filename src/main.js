@@ -17,7 +17,7 @@ const pinia = createPinia()
 // Configure Quasar with minimal settings first
 app.use(Quasar, {
   plugins: {
-    Notify
+    Notify,
   },
   config: {
     brand: {
@@ -28,10 +28,10 @@ app.use(Quasar, {
       positive: '#21BA45',
       negative: '#C10015',
       info: '#31CCEC',
-      warning: '#F2C037'
+      warning: '#F2C037',
     },
-    dark: 'auto' // Enable auto dark mode detection
-  }
+    dark: 'auto', // Enable auto dark mode detection
+  },
 })
 
 app.use(pinia)
@@ -51,7 +51,7 @@ if (process.env.NODE_ENV === 'production' && 'performance' in window) {
           perfData.domContentLoadedEventEnd - perfData.domContentLoadedEventStart
         ),
         loadComplete: Math.round(perfData.loadEventEnd - perfData.loadEventStart),
-        totalTime: Math.round(perfData.loadEventEnd - perfData.fetchStart)
+        totalTime: Math.round(perfData.loadEventEnd - perfData.fetchStart),
       })
     }
   })

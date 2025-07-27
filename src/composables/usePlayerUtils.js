@@ -8,7 +8,7 @@ export function usePlayerUtils() {
     PAS: 'KIC', // Kicking -> Passing
     DRI: 'REF', // Reflexes -> Dribbling
     DEF: 'SPD', // Speed -> Defending
-    PHY: 'POS' // Positioning -> Physical
+    PHY: 'POS', // Positioning -> Physical
   }
 
   // Position group mappings
@@ -16,7 +16,7 @@ export function usePlayerUtils() {
     GK: ['GK'],
     DEF: ['CB', 'LB', 'RB', 'LWB', 'RWB', 'SW'],
     MID: ['CM', 'CDM', 'CAM', 'LM', 'RM', 'DM', 'AM'],
-    ATT: ['ST', 'CF', 'LW', 'RW', 'IF', 'TQ', 'F9']
+    ATT: ['ST', 'CF', 'LW', 'RW', 'IF', 'TQ', 'F9'],
   }
 
   // Get player value with GK mapping applied - SECURITY FIXED
@@ -39,18 +39,18 @@ export function usePlayerUtils() {
   }
 
   // Check if player is a goalkeeper
-  const isGoalkeeper = player => {
+  const isGoalkeeper = (player) => {
     return (
       player.position && (player.position.includes('GK') || player.position.includes('Goalkeeper'))
     )
   }
 
   // Get player's position group
-  const getPositionGroup = position => {
+  const getPositionGroup = (position) => {
     if (!position) return 'UNKNOWN'
 
     for (const [group, positions] of Object.entries(positionGroups)) {
-      if (positions.some(pos => position.includes(pos))) {
+      if (positions.some((pos) => position.includes(pos))) {
         return group
       }
     }
@@ -58,7 +58,7 @@ export function usePlayerUtils() {
   }
 
   // Get position index for sorting
-  const getPositionIndex = position => {
+  const getPositionIndex = (position) => {
     const positionOrder = [
       'GK',
       'CB',
@@ -80,23 +80,23 @@ export function usePlayerUtils() {
       'CF',
       'IF',
       'TQ',
-      'F9'
+      'F9',
     ]
     const index = positionOrder.indexOf(position)
     return index === -1 ? 999 : index
   }
 
   // Format player name with proper capitalization
-  const formatPlayerName = name => {
+  const formatPlayerName = (name) => {
     if (!name) return ''
     return name
       .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
       .join(' ')
   }
 
   // Get player age category
-  const getAgeCategory = age => {
+  const getAgeCategory = (age) => {
     if (age < 18) return 'Youth'
     if (age < 23) return 'Young'
     if (age < 30) return 'Prime'
@@ -121,6 +121,6 @@ export function usePlayerUtils() {
     getPositionIndex,
     formatPlayerName,
     getAgeCategory,
-    calculatePotentialRating
+    calculatePotentialRating,
   }
 }

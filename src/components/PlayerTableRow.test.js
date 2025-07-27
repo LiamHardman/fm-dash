@@ -6,8 +6,8 @@ import PlayerTableRow from './PlayerTableRow.vue'
 // Mock Quasar
 const mockQuasar = {
   dark: {
-    isActive: false
-  }
+    isActive: false,
+  },
 }
 
 // Global test config
@@ -15,9 +15,9 @@ const globalConfig = {
   global: {
     plugins: [Quasar],
     mocks: {
-      $q: mockQuasar
-    }
-  }
+      $q: mockQuasar,
+    },
+  },
 }
 
 describe('PlayerTableRow', () => {
@@ -28,7 +28,7 @@ describe('PlayerTableRow', () => {
     position: 'CAM',
     rating: 85,
     transferValue: 5000000,
-    wage: 50000
+    wage: 50000,
   }
 
   const mockColumns = [
@@ -36,18 +36,18 @@ describe('PlayerTableRow', () => {
     { name: 'age', label: 'Age', type: 'number' },
     { name: 'club', label: 'Club', type: 'text' },
     { name: 'rating', label: 'Rating', type: 'rating' },
-    { name: 'transferValue', label: 'Value', type: 'currency' }
+    { name: 'transferValue', label: 'Value', type: 'currency' },
   ]
 
   const mockGetDisplayValue = vi.fn((player, col) => {
     return player[col.name]
   })
 
-  const mockFormatCurrency = vi.fn(value => {
+  const mockFormatCurrency = vi.fn((value) => {
     return `$${value?.toLocaleString() || '0'}`
   })
 
-  const mockGetRatingClass = vi.fn(rating => {
+  const mockGetRatingClass = vi.fn((rating) => {
     if (rating >= 80) return 'rating-excellent'
     if (rating >= 70) return 'rating-good'
     return 'rating-average'
@@ -60,7 +60,7 @@ describe('PlayerTableRow', () => {
     isGoalkeeperView: false,
     getDisplayValue: mockGetDisplayValue,
     formatCurrency: mockFormatCurrency,
-    getRatingClass: mockGetRatingClass
+    getRatingClass: mockGetRatingClass,
   }
 
   beforeEach(() => {
@@ -70,7 +70,7 @@ describe('PlayerTableRow', () => {
   it('renders all table cells for columns', () => {
     const wrapper = mount(PlayerTableRow, {
       props: defaultProps,
-      ...globalConfig
+      ...globalConfig,
     })
 
     const cells = wrapper.findAll('td')
@@ -80,7 +80,7 @@ describe('PlayerTableRow', () => {
   it('displays correct values in cells', () => {
     const wrapper = mount(PlayerTableRow, {
       props: defaultProps,
-      ...globalConfig
+      ...globalConfig,
     })
 
     const cells = wrapper.findAll('td')
@@ -94,7 +94,7 @@ describe('PlayerTableRow', () => {
   it('renders club as clickable link', () => {
     const wrapper = mount(PlayerTableRow, {
       props: defaultProps,
-      ...globalConfig
+      ...globalConfig,
     })
 
     const clubCell = wrapper.findAll('td')[2] // Club column
@@ -107,7 +107,7 @@ describe('PlayerTableRow', () => {
   it('emits team-selected when club link is clicked', async () => {
     const wrapper = mount(PlayerTableRow, {
       props: defaultProps,
-      ...globalConfig
+      ...globalConfig,
     })
 
     const clubLink = wrapper.find('.club-link a')
@@ -120,7 +120,7 @@ describe('PlayerTableRow', () => {
   it('formats currency values correctly', () => {
     mount(PlayerTableRow, {
       props: defaultProps,
-      ...globalConfig
+      ...globalConfig,
     })
 
     // The formatCurrency function should be called
@@ -130,7 +130,7 @@ describe('PlayerTableRow', () => {
   it('applies rating class to rating columns', () => {
     mount(PlayerTableRow, {
       props: defaultProps,
-      ...globalConfig
+      ...globalConfig,
     })
 
     // The getRatingClass function should be called
@@ -140,7 +140,7 @@ describe('PlayerTableRow', () => {
   it('emits player-selected when row is clicked', async () => {
     const wrapper = mount(PlayerTableRow, {
       props: defaultProps,
-      ...globalConfig
+      ...globalConfig,
     })
 
     const row = wrapper.find('tr')
@@ -153,7 +153,7 @@ describe('PlayerTableRow', () => {
   it('emits context-menu when right-clicked', async () => {
     const wrapper = mount(PlayerTableRow, {
       props: defaultProps,
-      ...globalConfig
+      ...globalConfig,
     })
 
     const row = wrapper.find('tr')
@@ -166,15 +166,15 @@ describe('PlayerTableRow', () => {
   it('applies goalkeeper-row class for goalkeepers', () => {
     const gkPlayer = {
       ...mockPlayer,
-      position: 'GK'
+      position: 'GK',
     }
 
     const wrapper = mount(PlayerTableRow, {
       props: {
         ...defaultProps,
-        player: gkPlayer
+        player: gkPlayer,
       },
-      ...globalConfig
+      ...globalConfig,
     })
 
     const row = wrapper.find('tr')
@@ -184,7 +184,7 @@ describe('PlayerTableRow', () => {
   it('applies text-right class to number and rating columns', () => {
     const wrapper = mount(PlayerTableRow, {
       props: defaultProps,
-      ...globalConfig
+      ...globalConfig,
     })
 
     const cells = wrapper.findAll('td')
@@ -202,7 +202,7 @@ describe('PlayerTableRow', () => {
   it('stops propagation when club link is clicked', async () => {
     const wrapper = mount(PlayerTableRow, {
       props: defaultProps,
-      ...globalConfig
+      ...globalConfig,
     })
 
     const clubLink = wrapper.find('.club-link a')
@@ -216,7 +216,7 @@ describe('PlayerTableRow', () => {
   it('renders regular text for non-special column types', () => {
     const wrapper = mount(PlayerTableRow, {
       props: defaultProps,
-      ...globalConfig
+      ...globalConfig,
     })
 
     const nameCell = wrapper.findAll('td')[0] // Name column
@@ -230,9 +230,9 @@ describe('PlayerTableRow', () => {
     const wrapper = mount(PlayerTableRow, {
       props: {
         ...defaultProps,
-        player: emptyPlayer
+        player: emptyPlayer,
       },
-      ...globalConfig
+      ...globalConfig,
     })
 
     expect(wrapper.findAll('td')).toHaveLength(5)
@@ -243,9 +243,9 @@ describe('PlayerTableRow', () => {
     const wrapper = mount(PlayerTableRow, {
       props: {
         ...defaultProps,
-        currencySymbol: '€'
+        currencySymbol: '€',
       },
-      ...globalConfig
+      ...globalConfig,
     })
 
     expect(wrapper.props('currencySymbol')).toBe('€')
@@ -255,9 +255,9 @@ describe('PlayerTableRow', () => {
     const wrapper = mount(PlayerTableRow, {
       props: {
         ...defaultProps,
-        isGoalkeeperView: true
+        isGoalkeeperView: true,
       },
-      ...globalConfig
+      ...globalConfig,
     })
 
     expect(wrapper.props('isGoalkeeperView')).toBe(true)

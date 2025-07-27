@@ -45,7 +45,7 @@ class UploadFlowProfiler {
     this.startTime = performance.now()
     this.currentStep = null
     this.stepStartTime = null
-    
+
     console.log('🚀 Starting Upload Flow Profiling')
     this.markStep('upload_flow_start')
   }
@@ -65,7 +65,7 @@ class UploadFlowProfiler {
         duration: stepDuration,
         totalDuration,
         timestamp: now,
-        ...additionalData
+        ...additionalData,
       }
     }
 
@@ -75,7 +75,7 @@ class UploadFlowProfiler {
     console.log(`📊 Step: ${stepName}`, {
       stepDuration: `${stepDuration.toFixed(2)}ms`,
       totalDuration: `${totalDuration.toFixed(2)}ms`,
-      ...additionalData
+      ...additionalData,
     })
   }
 
@@ -84,7 +84,7 @@ class UploadFlowProfiler {
    */
   endStep(additionalData = {}) {
     if (!this.enabled) return
-    
+
     if (this.currentStep) {
       this.markStep(this.currentStep, additionalData)
     }
@@ -103,7 +103,7 @@ class UploadFlowProfiler {
       this.metrics[this.currentStep] = {
         duration: this.stepStartTime ? now - this.stepStartTime : 0,
         totalDuration,
-        timestamp: now
+        timestamp: now,
       }
     }
 
@@ -119,23 +119,22 @@ class UploadFlowProfiler {
     console.log('📈 Upload Flow Performance Report')
     console.log('================================')
 
-    const steps = Object.entries(this.metrics)
-      .sort((a, b) => a[1].totalDuration - b[1].totalDuration)
+    const steps = Object.entries(this.metrics).sort(
+      (a, b) => a[1].totalDuration - b[1].totalDuration
+    )
 
     let totalTime = 0
-    steps.forEach(([stepName, data]) => {
+    for (const [stepName, data] of steps) {
       totalTime += data.duration
-      console.log(`${stepName}:`)
-      console.log(`  Duration: ${data.duration.toFixed(2)}ms`)
-      console.log(`  Total Time: ${data.totalDuration.toFixed(2)}ms`)
-      if (data.playerCount) console.log(`  Player Count: ${data.playerCount}`)
-      if (data.cacheSize) console.log(`  Cache Size: ${data.cacheSize}`)
-      if (data.cacheType) console.log(`  Cache Type: ${data.cacheType}`)
+      console.log(`  ${stepName}: ${data.duration.toFixed(2)}ms`)
+      if (data.memory) {
+        console.log(`    Memory: ${data.memory.toFixed(2)}MB`)
+      }
       console.log('')
-    })
+    }
 
     console.log(`Total Flow Time: ${totalTime.toFixed(2)}ms`)
-    
+
     // Identify bottlenecks
     const bottlenecks = steps
       .filter(([_, data]) => data.duration > 100) // Steps taking more than 100ms
@@ -143,15 +142,15 @@ class UploadFlowProfiler {
 
     if (bottlenecks.length > 0) {
       console.log('🐌 Potential Bottlenecks:')
-      bottlenecks.forEach(([stepName, data]) => {
+      for (const [stepName, data] of bottlenecks) {
         console.log(`  ${stepName}: ${data.duration.toFixed(2)}ms`)
-      })
+      }
     }
 
     return {
       totalTime,
       steps: this.metrics,
-      bottlenecks
+      bottlenecks,
     }
   }
 
@@ -166,7 +165,7 @@ class UploadFlowProfiler {
 
     this.markStep(`${operationName}_start`)
     const startTime = performance.now()
-    
+
     try {
       const result = await operation()
       const duration = performance.now() - startTime
@@ -183,4 +182,4 @@ class UploadFlowProfiler {
 // Global profiler instance
 const uploadFlowProfiler = new UploadFlowProfiler()
 
-export default uploadFlowProfiler 
+export default uploadFlowProfiler

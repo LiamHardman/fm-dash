@@ -7,7 +7,7 @@
  * @param {Object} player - The player object
  * @returns {string} The player's division or 'N/A' if not found
  */
-export const getPlayerDivision = player => {
+export const getPlayerDivision = (player) => {
   return player.division || player.Division || 'N/A'
 }
 
@@ -16,10 +16,10 @@ export const getPlayerDivision = player => {
  * @param {any} val - The value to convert
  * @returns {number|null} The numeric value or null if invalid
  */
-export const getNumericValue = val => {
+export const getNumericValue = (val) => {
   if (val === undefined || val === null || val === '-' || val === '') return null
   const cleaned = String(val).replace(/,/g, '').replace(/%/g, '')
-  const num = parseFloat(cleaned)
+  const num = Number.parseFloat(cleaned)
   return Number.isNaN(num) ? null : num
 }
 
@@ -28,7 +28,7 @@ export const getNumericValue = val => {
  * @param {Object} player - The player object
  * @returns {Array<string>} Array of player positions
  */
-export const getPlayerPositions = player => {
+export const getPlayerPositions = (player) => {
   return player.shortPositions || player.short_positions || []
 }
 
@@ -48,7 +48,7 @@ export const playerMatchesPosition = (player, position) => {
  * @param {Object} player - The player object
  * @returns {number} The player's overall rating
  */
-export const getPlayerOverall = player => {
+export const getPlayerOverall = (player) => {
   return player.Overall || player.overall || 0
 }
 
@@ -57,8 +57,8 @@ export const getPlayerOverall = player => {
  * @param {Object} player - The player object
  * @returns {number} The player's age
  */
-export const getPlayerAge = player => {
-  return parseInt(player.age || player.Age || 0, 10)
+export const getPlayerAge = (player) => {
+  return Number.parseInt(player.age || player.Age || 0, 10)
 }
 
 /**
@@ -66,8 +66,8 @@ export const getPlayerAge = player => {
  * @param {Object} player - The player object
  * @returns {number} The player's transfer value
  */
-export const getPlayerTransferValue = player => {
-  return parseInt(player.transferValueAmount || player.TransferValueAmount || 0, 10)
+export const getPlayerTransferValue = (player) => {
+  return Number.parseInt(player.transferValueAmount || player.TransferValueAmount || 0, 10)
 }
 
 /**
@@ -75,6 +75,6 @@ export const getPlayerTransferValue = player => {
  * @param {Object} player - The player object
  * @returns {number} The player's wage
  */
-export const getPlayerWage = player => {
-  return parseInt(player.wageAmount || player.WageAmount || 0, 10)
-} 
+export const getPlayerWage = (player) => {
+  return Number.parseInt(player.wageAmount || player.WageAmount || 0, 10)
+}

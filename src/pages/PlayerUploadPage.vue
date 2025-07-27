@@ -254,7 +254,7 @@ import { useUiStore } from '../stores/uiStore'
 export default {
   name: 'PlayerUploadPage',
   components: {
-    InteractiveUploadLoader
+    InteractiveUploadLoader,
   },
   setup() {
     const router = useRouter()
@@ -273,20 +273,20 @@ export default {
     const {
       isSupported: notificationSupported,
       permissionGranted,
-      show: showNotification
+      show: showNotification,
     } = useWebNotification({
       title: 'FM24 Data Processing Complete',
       body: 'Your large file has been processed and is ready to view!',
       icon: '/favicon.ico',
-      tag: 'upload-complete'
+      tag: 'upload-complete',
     })
 
     const loading = computed(() => playerStore.loading)
     const error = computed({
       get: () => playerStore.error,
-      set: value => {
+      set: (value) => {
         playerStore.error = value
-      }
+      },
     })
 
     // Computed values for the interactive loader
@@ -296,7 +296,7 @@ export default {
       fileSize: playerFile.value ? formatFileSize(playerFile.value.size) : '',
       playersFound: 0, // Could be enhanced to show real-time player count
       progress: uploadProgress.value,
-      dataReady: dataReady.value
+      dataReady: dataReady.value,
     }))
 
     const dataReady = ref(false)
@@ -315,7 +315,7 @@ export default {
       uiStore.initNotifications()
     })
 
-    const formatFileSize = bytes => {
+    const formatFileSize = (bytes) => {
       if (bytes === 0) return '0 Bytes'
       const k = 1024
       const sizes = ['Bytes', 'KB', 'MB', 'GB']
@@ -323,7 +323,7 @@ export default {
       return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`
     }
 
-    const onFileSelected = file => {
+    const onFileSelected = (file) => {
       if (file && file.size > maxFileSizeBytes.value) {
         showFileSizeLimitModal.value = true
         playerFile.value = null
@@ -339,11 +339,11 @@ export default {
         type: 'info',
         message: 'Upload cancelled',
         position: 'top',
-        timeout: 2000
+        timeout: 2000,
       })
     }
 
-    const updateProgress = progress => {
+    const updateProgress = (progress) => {
       // If progress is from file upload (0-100 range), scale to 70%
       // If progress is explicit stage progress (80, 95, 100), use directly
       if (progress <= 100 && uploadProgress.value < 70) {
@@ -394,7 +394,7 @@ export default {
             type: 'positive',
             message: successMessage,
             position: 'top',
-            timeout: isDuplicate ? 3000 : 2000
+            timeout: isDuplicate ? 3000 : 2000,
           })
 
           // Show web notification for large files if enabled and supported (but not for duplicates)
@@ -410,19 +410,19 @@ export default {
 
           // Check if this is a large file that needs background processing
           const isLargeFileProcessing = response.processingStatus === 'processing'
-          
+
           if (isLargeFileProcessing) {
             // Redirect to processing status page for large files
             router.push(`/processing-status/${response.datasetId}`)
           } else {
             // Check if data is already available for immediate redirect
             const hasImmediateData = response.players && response.players.length > 0
-            
+
             if (hasImmediateData) {
               // Data is already processed, show ready state
               dataReady.value = true
               uploadProgress.value = 100
-              
+
               // Redirect immediately
               setTimeout(() => {
                 if (playerStore.currentDatasetId) {
@@ -447,7 +447,7 @@ export default {
             message: playerStore.error,
             position: 'top',
             timeout: 5000,
-            actions: [{ label: 'Dismiss', color: 'white' }]
+            actions: [{ label: 'Dismiss', color: 'white' }],
           })
         } else {
           Notify.create({
@@ -455,7 +455,7 @@ export default {
             message: `Upload failed: ${e.message}`,
             position: 'top',
             timeout: 5000,
-            actions: [{ label: 'Dismiss', color: 'white' }]
+            actions: [{ label: 'Dismiss', color: 'white' }],
           })
         }
       } finally {
@@ -465,7 +465,7 @@ export default {
       }
     }
 
-    const formatNumber = value => {
+    const formatNumber = (value) => {
       return Number(value).toLocaleString()
     }
 
@@ -495,9 +495,9 @@ export default {
       handleUploadCancel,
       formatNumber,
       maxPlayersSupported,
-      datasetRetentionDays
+      datasetRetentionDays,
     }
-  }
+  },
 }
 </script>
 

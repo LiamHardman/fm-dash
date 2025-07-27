@@ -102,8 +102,8 @@
 </template>
 
 <script>
-import { computed, defineComponent, onMounted, ref } from 'vue'
 import { useQuasar } from 'quasar'
+import { computed, defineComponent, onMounted, ref } from 'vue'
 import SettingsModal from './components/SettingsModal.vue'
 import UniversalSearch from './components/UniversalSearch.vue'
 import { useAnalytics } from './composables/useAnalytics'
@@ -115,7 +115,7 @@ export default defineComponent({
   name: 'App',
   components: {
     UniversalSearch,
-    SettingsModal
+    SettingsModal,
   },
   setup() {
     const $q = useQuasar()
@@ -132,7 +132,7 @@ export default defineComponent({
     onMounted(() => {
       // Expose Quasar instance globally for the UI store
       window.$q = $q
-      
+
       uiStore.initSettings() // Initialize all settings including the new rating calculation setting
     })
 
@@ -144,9 +144,9 @@ export default defineComponent({
       toggleDarkMode: uiStore.toggleDarkMode,
       currentDatasetId,
       wishlistCount,
-      showSettingsModal
+      showSettingsModal,
     }
-  }
+  },
 })
 </script>
 

@@ -97,7 +97,7 @@ import PlayerDetailDialog from './PlayerDetailDialog.vue'
 export default defineComponent({
   name: 'UniversalSearch',
   components: {
-    PlayerDetailDialog
+    PlayerDetailDialog,
   },
   setup() {
     const router = useRouter()
@@ -142,7 +142,7 @@ export default defineComponent({
     }
 
     // Create stable debounced function with cancellation support
-    const debouncedSearchFn = debounce(async query => {
+    const debouncedSearchFn = debounce(async (query) => {
       // Generate unique ID for this search
       const searchId = ++currentSearchId
 
@@ -191,7 +191,7 @@ export default defineComponent({
     }, 300)
 
     // Watch searchQuery and trigger debounced search
-    watch(searchQuery, newQuery => {
+    watch(searchQuery, (newQuery) => {
       debouncedSearchFn(newQuery)
     })
 
@@ -201,7 +201,7 @@ export default defineComponent({
       isLoading.value = false
     }
 
-    const getResultIcon = type => {
+    const getResultIcon = (type) => {
       switch (type) {
         case 'player':
           return 'person'
@@ -216,7 +216,7 @@ export default defineComponent({
       }
     }
 
-    const getResultColor = type => {
+    const getResultColor = (type) => {
       switch (type) {
         case 'player':
           return 'blue'
@@ -233,7 +233,7 @@ export default defineComponent({
 
     // Unified rating class function (same as used in PlayerDataTable)
     const getUnifiedRatingClass = (value, maxScale) => {
-      const numValue = parseInt(value, 10)
+      const numValue = Number.parseInt(value, 10)
       if (Number.isNaN(numValue) || value === null || value === undefined || value === '-')
         return 'rating-na'
       const percentage = (numValue / maxScale) * 100
@@ -245,13 +245,13 @@ export default defineComponent({
       return 'rating-tier-1'
     }
 
-    const findPlayerByName = playerName => {
+    const findPlayerByName = (playerName) => {
       return playerStore.allPlayers?.find(
-        player => player.name?.toLowerCase() === playerName.toLowerCase()
+        (player) => player.name?.toLowerCase() === playerName.toLowerCase()
       )
     }
 
-    const handleResultClick = result => {
+    const handleResultClick = (result) => {
       if (result.type === 'player') {
         // Find the full player object and open detail dialog
         const player = findPlayerByName(result.name)
@@ -262,7 +262,7 @@ export default defineComponent({
           // Fallback: navigate to dataset page with search filter
           router.push({
             path: `/dataset/${playerStore.currentDatasetId}`,
-            query: { search: result.name }
+            query: { search: result.name },
           })
         }
       } else if (result.type === 'team') {
@@ -271,21 +271,21 @@ export default defineComponent({
           path: '/team-view',
           query: {
             datasetId: playerStore.currentDatasetId,
-            team: result.name
-          }
+            team: result.name,
+          },
         }).href
         window.open(url, '_blank')
       } else if (result.type === 'league') {
         // Navigate to leagues page with league filter
         router.push({
           path: `/leagues/${playerStore.currentDatasetId}`,
-          query: { league: result.name }
+          query: { league: result.name },
         })
       } else if (result.type === 'nation') {
         // Navigate to nations page with nation filter
         router.push({
           path: `/nations/${playerStore.currentDatasetId}`,
-          query: { nation: result.name }
+          query: { nation: result.name },
         })
       }
 
@@ -295,7 +295,7 @@ export default defineComponent({
     // Focus search input when dataset changes
     watch(
       () => playerStore.currentDatasetId,
-      newId => {
+      (newId) => {
         if (newId) {
           nextTick(() => {
             if (searchInput.value) {
@@ -321,9 +321,9 @@ export default defineComponent({
       playerForDetailView,
       showPlayerDetailDialog,
       currentDatasetId,
-      detectedCurrencySymbol
+      detectedCurrencySymbol,
     }
-  }
+  },
 })
 </script>
 

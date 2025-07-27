@@ -11,7 +11,7 @@ const gkStatMapping = {
   PAS: 'KIC',
   DRI: 'HAN',
   DEF: 'SPD',
-  PHY: 'POS'
+  PHY: 'POS',
 }
 
 // Position sort order for position-based sorting
@@ -29,7 +29,7 @@ const positionSortOrder = [
   'AMR',
   'AMC',
   'AML',
-  'ST'
+  'ST',
 ]
 
 // Security utilities
@@ -61,7 +61,7 @@ const SAFE_PLAYER_PROPERTIES = new Set([
   'weight',
   'attributes',
   'roleSpecificOveralls',
-  'performancePercentiles'
+  'performancePercentiles',
 ])
 
 const DANGEROUS_PROPS = new Set([
@@ -72,7 +72,7 @@ const DANGEROUS_PROPS = new Set([
   'valueOf',
   'hasOwnProperty',
   'isPrototypeOf',
-  'propertyIsEnumerable'
+  'propertyIsEnumerable',
 ])
 
 /**
@@ -162,8 +162,8 @@ function getPositionIndex(positionString) {
   mainPart = mainPart.replace(/\\s*\\(.*?\\)\\s*/g, '').trim()
   const basePositionCodes = mainPart
     .split(/[,/]/)
-    .map(p => p.trim())
-    .filter(p => p.length > 0)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0)
   const rolesToEvaluate = new Set()
 
   for (const baseCode of basePositionCodes) {
@@ -260,7 +260,7 @@ function customSortPlayers(players, fieldKey, direction, sortField, isGoalkeeper
  * Filter players based on criteria
  */
 function filterPlayers(players, filters) {
-  return players.filter(player => {
+  return players.filter((player) => {
     if (filters.name && !player.name.toLowerCase().includes(filters.name.toLowerCase())) {
       return false
     }
@@ -315,8 +315,8 @@ function calculateRatingStats(players, statKey) {
   }
 
   const values = players
-    .map(p => p[statKey])
-    .filter(v => v !== null && v !== undefined && !Number.isNaN(v))
+    .map((p) => p[statKey])
+    .filter((v) => v !== null && v !== undefined && !Number.isNaN(v))
     .sort((a, b) => a - b)
 
   if (values.length === 0) {
@@ -387,7 +387,7 @@ function batchProcess(players, operations) {
 
       default:
         safeSetProperty(results, operation.id, {
-          error: `Unknown operation type: ${operation.type}`
+          error: `Unknown operation type: ${operation.type}`,
         })
     }
   }
@@ -396,7 +396,7 @@ function batchProcess(players, operations) {
 }
 
 // Handle messages from main thread
-self.onmessage = e => {
+self.onmessage = (e) => {
   // Validate message origin for security
   if (e.origin && e.origin !== self.location.origin) {
     return
@@ -479,13 +479,13 @@ self.onmessage = e => {
     self.postMessage({
       type: 'SUCCESS',
       id,
-      result
+      result,
     })
   } catch (error) {
     self.postMessage({
       type: 'ERROR',
       id,
-      error: error.message
+      error: error.message,
     })
   }
 }

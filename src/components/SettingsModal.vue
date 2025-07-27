@@ -357,19 +357,18 @@ import playerService from '../services/playerService'
 
 export default defineComponent({
   name: 'SettingsModal',
-  components: {
-  },
+  components: {},
   props: {
     modelValue: {
       type: Boolean,
-      default: false
-    }
+      default: false,
+    },
   },
   emits: ['update:modelValue'],
   setup(props, { emit }) {
     const showDialog = computed({
       get: () => props.modelValue,
-      set: value => emit('update:modelValue', value)
+      set: (value) => emit('update:modelValue', value),
     })
 
     const uiStore = useUiStore()
@@ -378,22 +377,22 @@ export default defineComponent({
 
     const useScaledRatings = computed({
       get: () => uiStore.useScaledRatings,
-      set: value => uiStore.setRatingCalculation(value)
+      set: (value) => uiStore.setRatingCalculation(value),
     })
 
     const showFaces = computed({
       get: () => uiStore.showFaces,
-      set: value => uiStore.setFacesDisplay(value)
+      set: (value) => uiStore.setFacesDisplay(value),
     })
 
     const showLogos = computed({
       get: () => uiStore.showLogos,
-      set: value => uiStore.setLogosDisplay(value)
+      set: (value) => uiStore.setLogosDisplay(value),
     })
 
     const showAttributeMasks = computed({
       get: () => uiStore.showAttributeMasks,
-      set: _value => uiStore.toggleAttributeMasks()
+      set: (_value) => uiStore.toggleAttributeMasks(),
     })
 
     const isLoading = ref(false)
@@ -409,7 +408,7 @@ export default defineComponent({
       } catch (_error) {}
     })
 
-    const setRatingMethod = async useScaled => {
+    const setRatingMethod = async (useScaled) => {
       if (isLoading.value) return
 
       isLoading.value = true
@@ -417,7 +416,7 @@ export default defineComponent({
       try {
         // Update backend first
         await playerService.updateConfig({
-          useScaledRatings: useScaled
+          useScaledRatings: useScaled,
         })
 
         // Update local store
@@ -442,9 +441,9 @@ export default defineComponent({
               icon: 'close',
               color: 'white',
               round: true,
-              handler: () => {}
-            }
-          ]
+              handler: () => {},
+            },
+          ],
         })
       } catch (_error) {
         // Show error notification
@@ -460,9 +459,9 @@ export default defineComponent({
               icon: 'close',
               color: 'white',
               round: true,
-              handler: () => {}
-            }
-          ]
+              handler: () => {},
+            },
+          ],
         })
       } finally {
         isLoading.value = false
@@ -482,9 +481,9 @@ export default defineComponent({
       showLogos,
       showAttributeMasks,
       isLoading,
-      activeTab
+      activeTab,
     }
-  }
+  },
 })
 </script>
 

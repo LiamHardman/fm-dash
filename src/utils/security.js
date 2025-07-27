@@ -35,7 +35,7 @@ const SAFE_PLAYER_PROPERTIES = new Set([
   'weight',
   'attributes',
   'roleSpecificOveralls',
-  'performancePercentiles'
+  'performancePercentiles',
 ])
 
 /**
@@ -49,7 +49,7 @@ const DANGEROUS_PROPS = new Set([
   'valueOf',
   'hasOwnProperty',
   'isPrototypeOf',
-  'propertyIsEnumerable'
+  'propertyIsEnumerable',
 ])
 
 /**
@@ -90,7 +90,7 @@ export function isValidImageUrl(url, trustedDomains = ['flagcdn.com']) {
     const urlObj = new URL(url)
 
     // Check if the hostname ends with any of the trusted domains
-    return trustedDomains.some(domain => {
+    return trustedDomains.some((domain) => {
       // Ensure the domain is at the end of the hostname with proper boundary
       const hostname = urlObj.hostname.toLowerCase()
       const trustedDomain = domain.toLowerCase()
@@ -110,10 +110,10 @@ export function isValidImageUrl(url, trustedDomains = ['flagcdn.com']) {
  * @returns {Object} - Merged object
  */
 export function safeMerge(target, source) {
-  if (!target || typeof target !== 'object') target = {}
-  if (!source || typeof source !== 'object') return target
+  const safeTarget = !target || typeof target !== 'object' ? {} : target
+  if (!source || typeof source !== 'object') return safeTarget
 
-  const result = { ...target }
+  const result = { ...safeTarget }
 
   for (const key in source) {
     // Skip dangerous properties
@@ -157,12 +157,13 @@ export function sanitizeString(input, maxLength = 1000) {
   if (typeof input !== 'string') return ''
 
   // Truncate if too long
-  if (input.length > maxLength) {
-    input = input.substring(0, maxLength)
+  let sanitizedInput = input
+  if (sanitizedInput.length > maxLength) {
+    sanitizedInput = sanitizedInput.substring(0, maxLength)
   }
 
   // Remove potentially dangerous characters
-  return input
+  return sanitizedInput
     .replace(/[<>'"]/g, '') // Remove HTML/JS injection chars
     .replace(/\0/g, '') // Remove null bytes
     .trim()
@@ -211,8 +212,8 @@ export function sanitizeFilters(filters) {
     // Handle arrays (like positions, clubs)
     else if (Array.isArray(value)) {
       sanitized[key] = value
-        .filter(item => typeof item === 'string')
-        .map(item => sanitizeString(item, 100))
+        .filter((item) => typeof item === 'string')
+        .map((item) => sanitizeString(item, 100))
         .slice(0, 50) // Limit array size
     }
     // Handle objects (like ranges)

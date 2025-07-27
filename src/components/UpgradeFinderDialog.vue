@@ -933,18 +933,18 @@
 
 <script>
 import { useQuasar } from 'quasar'
-import { computed, onMounted, ref, watch, nextTick } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { usePlayerStore } from '@/stores/playerStore' // Corrected Import Path
 import { formatCurrency } from '@/utils/currencyUtils'
+import { formationCache } from '@/utils/formationCache'
+import { formations, getFormationLayout } from '@/utils/formations'
+import { getFlagUrl, getPlayerFaceUrl, getTeamLogoUrl } from '@/utils/imageOptimization'
+import { fetchFullPlayerStats, findPlayerUpgrades } from '../services/playerService'
+import PitchDisplay from './PitchDisplay.vue'
+import PlayerCards from './PlayerCards.vue'
 import PlayerDataTable from './PlayerDataTable.vue'
 import PlayerDetailDialog from './PlayerDetailDialog.vue'
-import PlayerCards from './PlayerCards.vue'
-import PitchDisplay from './PitchDisplay.vue'
 import TeamLogo from './TeamLogo.vue'
-import { formations, getFormationLayout } from '@/utils/formations'
-import { formationCache } from '@/utils/formationCache'
-import { getFlagUrl, getTeamLogoUrl, getPlayerFaceUrl } from '@/utils/imageOptimization'
-import { fetchFullPlayerStats, findPlayerUpgrades } from '../services/playerService'
 
 // From PlayerFilters.vue for consistency
 const AGE_SLIDER_MIN = 15
@@ -963,7 +963,7 @@ const orderedShortPositions = [
   'AMR',
   'AMC',
   'AML',
-  'ST'
+  'ST',
 ]
 
 // Formation calculation constants (from TeamViewPage)
@@ -983,7 +983,7 @@ const positionSideMap = {
   'AM (L)': ['AML'],
   'AM (C)': ['AMC'],
   'ST (C)': ['ST'],
-  GK: ['GK']
+  GK: ['GK'],
 }
 
 const fallbackPositionMap = {
@@ -1000,7 +1000,7 @@ const fallbackPositionMap = {
   'AM (L)': ['AML', 'ML'],
   'AM (C)': ['AMC', 'MC'],
   'ST (C)': ['ST', 'AMC'],
-  GK: ['GK']
+  GK: ['GK'],
 }
 
 // Additional constants from TeamViewPage
@@ -1018,7 +1018,7 @@ const fmSlotRoleMatcher = {
   'AM (R)': ['Attacking Midfielder (Right)', 'Right Attacking Midfielder', 'Winger (Right)'],
   'AM (L)': ['Attacking Midfielder (Left)', 'Left Attacking Midfielder', 'Winger (Left)'],
   'AM (C)': ['Attacking Midfielder (Centre)', 'Centre Attacking Midfielder'],
-  'ST (C)': ['Striker (Centre)', 'Striker']
+  'ST (C)': ['Striker (Centre)', 'Striker'],
 }
 
 const fmMatcherToRoleKeyPrefix = {
@@ -1051,7 +1051,7 @@ const fmMatcherToRoleKeyPrefix = {
   'ATTACKING MIDFIELDER (CENTRE)': 'AMC',
   'CENTRE ATTACKING MIDFIELDER': 'AMC',
   'STRIKER (CENTRE)': 'ST',
-  STRIKER: 'ST'
+  STRIKER: 'ST',
 }
 
 export default {
@@ -1061,7 +1061,7 @@ export default {
     show: { type: Boolean, default: false },
     players: { type: Array, required: true },
     currencySymbol: { type: String, default: '$' },
-    datasetId: { type: String, default: null }
+    datasetId: { type: String, default: null },
   },
   emits: ['close'],
   setup(props) {
@@ -1124,18 +1124,20 @@ export default {
     const playerForDetailView = ref(null)
     const showPlayerDetailDialog = ref(false)
     const showAllCards = ref(false)
-    
+
     // Pagination variables
     const currentPage = ref(1)
     const playersPerPage = 6
 
     // Computed property for safe access to currentDatasetId
-    const currentDatasetId = computed(() => {
+    const _currentDatasetId = computed(() => {
       return playerStore?.currentDatasetId || null
     })
 
     const populateAllTeamNames = () => {
-      const playersToUse = hasCompletePlayerData(playerStore.allPlayers) ? playerStore.allPlayers : props.players
+      const playersToUse = hasCompletePlayerData(playerStore.allPlayers)
+        ? playerStore.allPlayers
+        : props.players
       if (!playersToUse) {
         allTeamNamesCache.value = []
         teamOptions.value = []
@@ -1153,64 +1155,65 @@ export default {
 
     const parseTransferValue = (valueString) => {
       if (!valueString) return 0
-      
+
       // Extract the upper bound from strings like "£28M - £34M"
       const match = valueString.match(/£([\d.]+)M/)
       if (match) {
-        return parseFloat(match[1]) * 1000000
+        return Number.parseFloat(match[1]) * 1000000
       }
-      
+
       // Handle other formats
       const upperMatch = valueString.match(/£([\d,]+)/)
       if (upperMatch) {
-        const number = parseInt(upperMatch[1].replace(/,/g, ''))
+        const number = Number.parseInt(upperMatch[1].replace(/,/g, ''))
         if (number >= 1000000) {
           return (number / 1000000) * 1000000
-        } else if (number >= 1000) {
+        }
+        if (number >= 1000) {
           return (number / 1000) * 1000
         }
         return number
       }
-      
+
       return 0
     }
 
     const parseTransferValueRange = (valueString) => {
       if (!valueString) return { min: 0, max: 0 }
-      
+
       // Handle range format like "£4.8M - £14.5M"
       const rangeMatch = valueString.match(/£([\d.]+)M\s*-\s*£([\d.]+)M/)
       if (rangeMatch) {
-        const minValue = parseFloat(rangeMatch[1]) * 1000000
-        const maxValue = parseFloat(rangeMatch[2]) * 1000000
+        const minValue = Number.parseFloat(rangeMatch[1]) * 1000000
+        const maxValue = Number.parseFloat(rangeMatch[2]) * 1000000
         return { min: minValue, max: maxValue }
       }
-      
+
       // Handle single value format like "£28M"
       const singleMatch = valueString.match(/£([\d.]+)M/)
       if (singleMatch) {
-        const value = parseFloat(singleMatch[1]) * 1000000
+        const value = Number.parseFloat(singleMatch[1]) * 1000000
         return { min: value, max: value }
       }
-      
+
       // Handle k format like "£500k"
       const kMatch = valueString.match(/£([\d.]+)k/i)
       if (kMatch) {
-        const value = parseFloat(kMatch[1]) * 1000
+        const value = Number.parseFloat(kMatch[1]) * 1000
         return { min: value, max: value }
       }
-      
+
       // Handle K format like "£500K"
       const kMatchUpper = valueString.match(/£([\d.]+)K/)
       if (kMatchUpper) {
-        const value = parseFloat(kMatchUpper[1]) * 1000
+        const value = Number.parseFloat(kMatchUpper[1]) * 1000
         return { min: value, max: value }
       }
-      
+
       // Handle other formats with single values
       const singleValueMatch = valueString.match(/£([\d,]+)/)
       if (singleValueMatch) {
-        const number = parseInt(singleValueMatch[1].replace(/,/g, ''))
+        const number = Number.parseInt(singleValueMatch[1].replace(/,/g, ''))
         let value = number
         if (number >= 1000000) {
           value = (number / 1000000) * 1000000
@@ -1219,18 +1222,18 @@ export default {
         }
         return { min: value, max: value }
       }
-      
+
       return { min: 0, max: 0 }
     }
 
     const formatWage = (wageString) => {
       if (!wageString) return 'N/A'
-      
+
       // Extract the number from strings like "£13,750 p/w"
       const match = wageString.match(/£([\d,]+)/)
       if (!match) return wageString
-      
-      const number = parseInt(match[1].replace(/,/g, ''))
+
+      const number = Number.parseInt(match[1].replace(/,/g, ''))
       if (number >= 1000) {
         return `£${(number / 1000).toFixed(2)}K`
       }
@@ -1239,41 +1242,44 @@ export default {
 
     const formatValue = (valueString) => {
       if (!valueString) return 'N/A'
-      
+
       // Handle range format like "£4.8M - £14.5M"
       const rangeMatch = valueString.match(/£([\d.]+)M\s*-\s*£([\d.]+)M/)
       if (rangeMatch) {
         return `£${rangeMatch[1]}M - £${rangeMatch[2]}M`
       }
-      
+
       // Handle single value format like "£28M"
       const match = valueString.match(/£([\d.]+)M/)
       if (match) {
         return `£${match[1]}M`
       }
-      
+
       // Handle k/K format like "£500k" or "£500K"
       const kMatch = valueString.match(/£([\d.]+)[kK]/)
       if (kMatch) {
         return `£${kMatch[1]}k`
       }
-      
+
       // Handle other formats
       const upperMatch = valueString.match(/£([\d,]+)/)
       if (upperMatch) {
-        const number = parseInt(upperMatch[1].replace(/,/g, ''))
+        const number = Number.parseInt(upperMatch[1].replace(/,/g, ''))
         if (number >= 1000000) {
           return `£${(number / 1000000).toFixed(1)}M`
-        } else if (number >= 1000) {
+        }
+        if (number >= 1000) {
           return `£${(number / 1000).toFixed(0)}k`
         }
       }
-      
+
       return valueString
     }
 
     const updateTransferValueSliderBounds = () => {
-      const playersToUse = hasCompletePlayerData(playerStore.allPlayers) ? playerStore.allPlayers : props.players
+      const playersToUse = hasCompletePlayerData(playerStore.allPlayers)
+        ? playerStore.allPlayers
+        : props.players
       if (!playersToUse || playersToUse.length === 0) {
         dynamicMinTransferValue.value = 0
         dynamicMaxTransferValue.value = 100000000
@@ -1302,7 +1308,9 @@ export default {
     }
 
     const updateSalarySliderBounds = () => {
-      const playersToUse = hasCompletePlayerData(playerStore.allPlayers) ? playerStore.allPlayers : props.players
+      const playersToUse = hasCompletePlayerData(playerStore.allPlayers)
+        ? playerStore.allPlayers
+        : props.players
       if (!playersToUse || playersToUse.length === 0) {
         dynamicMinSalary.value = 0
         dynamicMaxSalary.value = 1000000
@@ -1331,7 +1339,10 @@ export default {
 
     onMounted(async () => {
       // Ensure we have complete player data with positions and role-specific overalls
-      if (props.datasetId && (!props.players || props.players.length === 0 || !hasCompletePlayerData(props.players))) {
+      if (
+        props.datasetId &&
+        (!props.players || props.players.length === 0 || !hasCompletePlayerData(props.players))
+      ) {
         console.log('UpgradeFinderDialog: Fetching complete player data...')
         try {
           await playerStore.fetchPlayersByDatasetId(props.datasetId)
@@ -1339,7 +1350,7 @@ export default {
           console.error('Failed to fetch complete player data:', error)
         }
       }
-      
+
       if (playerStore.allAvailableRoles.length === 0 && playerStore.currentDatasetId) {
         await playerStore.fetchAllAvailableRoles()
       }
@@ -1348,11 +1359,11 @@ export default {
       updateSalarySliderBounds()
       maxAgeFilter.value = ageSliderMax
     })
-    
+
     // Helper function to check if player data is complete
     const hasCompletePlayerData = (players) => {
       if (!players || players.length === 0) return false
-      
+
       // Check first few players for complete data
       const sampleSize = Math.min(5, players.length)
       for (let i = 0; i < sampleSize; i++) {
@@ -1361,11 +1372,13 @@ export default {
           // console.log(`Player ${player.name} missing shortPositions`)
           continue
         }
-        if (!player.roleSpecificOveralls || 
-            (Array.isArray(player.roleSpecificOveralls) && player.roleSpecificOveralls.length === 0) ||
-            (typeof player.roleSpecificOveralls === 'object' && Object.keys(player.roleSpecificOveralls).length === 0)) {
-          // console.log(`Player ${player.name} missing roleSpecificOveralls`)
-          continue
+        if (
+          !player.roleSpecificOveralls ||
+          (Array.isArray(player.roleSpecificOveralls) &&
+            player.roleSpecificOveralls.length === 0) ||
+          (typeof player.roleSpecificOveralls === 'object' &&
+            Object.keys(player.roleSpecificOveralls).length === 0)
+        ) {
         }
       }
       return true
@@ -1376,16 +1389,16 @@ export default {
       async ([newPlayers, storePlayers]) => {
         // Use store players if they have complete data, otherwise use props players
         const playersToUse = hasCompletePlayerData(storePlayers) ? storePlayers : newPlayers
-        
+
         populateAllTeamNames()
         updateTransferValueSliderBounds()
         updateSalarySliderBounds()
-        
+
         // If we have a team selected and new player data, recalculate formation
         if (playersToUse && playersToUse.length > 0 && teamName.value) {
           await nextTick()
-          const teamPlayers = playersToUse.filter(player => 
-            player.club && player.club.toLowerCase() === teamName.value.toLowerCase()
+          const teamPlayers = playersToUse.filter(
+            (player) => player.club && player.club.toLowerCase() === teamName.value.toLowerCase()
           )
           if (teamPlayers.length > 0) {
             const bestFormation = calculateBestFormationForTeam(teamPlayers)
@@ -1398,7 +1411,7 @@ export default {
             }
           }
         }
-        
+
         if (playersToUse && playersToUse.length > 0) {
           if (
             maxTransferValueFilter.value > dynamicMaxTransferValue.value ||
@@ -1418,9 +1431,9 @@ export default {
     )
 
     const formationOptions = computed(() => {
-      return Object.keys(formations).map(key => ({
+      return Object.keys(formations).map((key) => ({
         label: formations[key].name,
-        value: key
+        value: key,
       }))
     })
 
@@ -1442,7 +1455,7 @@ export default {
           starters[slotId] = {
             ...starterEntry.player,
             Overall: starterEntry.overallInRole,
-            exactPositionMatch: starterEntry.exactMatch
+            exactPositionMatch: starterEntry.exactMatch,
           }
         } else {
           starters[slotId] = null
@@ -1468,21 +1481,21 @@ export default {
         return [{ label: 'Any Role', value: null }]
       }
       const roles = playerStore.allAvailableRoles
-        .filter(roleFullName => roleFullName.startsWith(`${selectedPosition.value} - `))
-        .map(roleFullName => ({
+        .filter((roleFullName) => roleFullName.startsWith(`${selectedPosition.value} - `))
+        .map((roleFullName) => ({
           label: roleFullName,
-          value: roleFullName
+          value: roleFullName,
         }))
         .sort((a, b) => a.label.localeCompare(b.label))
       return [{ label: 'Any Role', value: null }, ...roles]
     })
 
-    const getRoleShortName = fullRoleName => {
+    const getRoleShortName = (fullRoleName) => {
       if (!fullRoleName) return ''
       const parts = fullRoleName.split(' - ')
       return parts.length > 1 ? parts[1] : fullRoleName
     }
-    const getPositionShortName = shortPos => {
+    const getPositionShortName = (shortPos) => {
       return shortPos || ''
     }
 
@@ -1496,7 +1509,7 @@ export default {
       update(() => {
         const needle = val.toLowerCase()
         teamOptions.value = allTeamNamesCache.value.filter(
-          team => team.toLowerCase().indexOf(needle) > -1
+          (team) => team.toLowerCase().indexOf(needle) > -1
         )
       })
     }
@@ -1508,16 +1521,19 @@ export default {
     }
 
     const updateTeamPlayersForSelection = () => {
-      const playersToUse = hasCompletePlayerData(playerStore.allPlayers) ? playerStore.allPlayers : props.players
+      const playersToUse = hasCompletePlayerData(playerStore.allPlayers)
+        ? playerStore.allPlayers
+        : props.players
       if (teamName.value && selectedPosition.value && playersToUse) {
         teamPlayersForSelection.value = playersToUse
-          .filter(player => {
-            if (!player.club || player.club.toLowerCase() !== teamName.value.toLowerCase()) return false
-            
+          .filter((player) => {
+            if (!player.club || player.club.toLowerCase() !== teamName.value.toLowerCase())
+              return false
+
             // Try both field names for compatibility
             const positions = player.shortPositions || player.short_positions || []
             const hasPosition = positions.includes(selectedPosition.value)
-            
+
             return hasPosition
           })
           .sort((a, b) => {
@@ -1540,10 +1556,12 @@ export default {
 
     // Also update team players when team changes (for formation calculation)
     const updateTeamPlayersForFormation = () => {
-      const playersToUse = hasCompletePlayerData(playerStore.allPlayers) ? playerStore.allPlayers : props.players
+      const playersToUse = hasCompletePlayerData(playerStore.allPlayers)
+        ? playerStore.allPlayers
+        : props.players
       if (teamName.value && playersToUse) {
-        const teamPlayers = playersToUse.filter(player => 
-          player.club && player.club.toLowerCase() === teamName.value.toLowerCase()
+        const teamPlayers = playersToUse.filter(
+          (player) => player.club && player.club.toLowerCase() === teamName.value.toLowerCase()
         )
         if (teamPlayers.length > 0 && selectedFormationKey.value) {
           calculateBestTeamAndDepth(teamPlayers)
@@ -1554,11 +1572,13 @@ export default {
     watch([teamName, selectedPosition, selectedRole], updateTeamPlayersForSelection)
 
     // Formation watchers
-    watch(selectedFormationKey, newKey => {
-      const playersToUse = hasCompletePlayerData(playerStore.allPlayers) ? playerStore.allPlayers : props.players
+    watch(selectedFormationKey, (newKey) => {
+      const playersToUse = hasCompletePlayerData(playerStore.allPlayers)
+        ? playerStore.allPlayers
+        : props.players
       if (newKey && teamName.value && playersToUse) {
-        const teamPlayers = playersToUse.filter(player => 
-          player.club && player.club.toLowerCase() === teamName.value.toLowerCase()
+        const teamPlayers = playersToUse.filter(
+          (player) => player.club && player.club.toLowerCase() === teamName.value.toLowerCase()
         )
         calculateBestTeamAndDepth(teamPlayers)
       } else {
@@ -1571,40 +1591,45 @@ export default {
 
     // Auto-select best formation when team changes
     watch(teamName, async (newTeamName) => {
-      const playersToUse = hasCompletePlayerData(playerStore.allPlayers) ? playerStore.allPlayers : props.players
+      const playersToUse = hasCompletePlayerData(playerStore.allPlayers)
+        ? playerStore.allPlayers
+        : props.players
       if (newTeamName && playersToUse && playersToUse.length > 0) {
         // Wait a bit to ensure player data is fully loaded
         await nextTick()
-        
+
         // Add a small delay to ensure player data is fully processed
-        await new Promise(resolve => setTimeout(resolve, 100))
-        
+        await new Promise((resolve) => setTimeout(resolve, 100))
+
         // Get all players for the selected team (case-insensitive matching)
-        const teamPlayers = playersToUse.filter(player => 
-          player.club && player.club.toLowerCase() === newTeamName.toLowerCase()
+        const teamPlayers = playersToUse.filter(
+          (player) => player.club && player.club.toLowerCase() === newTeamName.toLowerCase()
         )
-        
+
         if (teamPlayers.length > 0) {
-          
           // Wait for player data to be fully loaded by checking if shortPositions are populated
           let attempts = 0
           const maxAttempts = 10
-          
+
           const waitForPlayerData = () => {
             // Check for players with at least shortPositions (roleSpecificOveralls might not be available for all players)
-            const playersWithPositions = teamPlayers.filter(p => 
-              p.shortPositions && p.shortPositions.length > 0
+            const playersWithPositions = teamPlayers.filter(
+              (p) => p.shortPositions && p.shortPositions.length > 0
             )
-            
+
             // Also check if we have any players with roleSpecificOveralls
-            const playersWithRoleOveralls = teamPlayers.filter(p => 
-              p.roleSpecificOveralls && (
-                Array.isArray(p.roleSpecificOveralls) ? p.roleSpecificOveralls.length > 0 : Object.keys(p.roleSpecificOveralls).length > 0
-              )
+            const playersWithRoleOveralls = teamPlayers.filter(
+              (p) =>
+                p.roleSpecificOveralls &&
+                (Array.isArray(p.roleSpecificOveralls)
+                  ? p.roleSpecificOveralls.length > 0
+                  : Object.keys(p.roleSpecificOveralls).length > 0)
             )
-            
-            console.log(`Attempt ${attempts + 1} - Players with positions: ${playersWithPositions.length}, Players with role overalls: ${playersWithRoleOveralls.length}`)
-            
+
+            console.log(
+              `Attempt ${attempts + 1} - Players with positions: ${playersWithPositions.length}, Players with role overalls: ${playersWithRoleOveralls.length}`
+            )
+
             // Proceed if we have players with positions, even if roleSpecificOveralls are missing
             if (playersWithPositions.length > 0 || attempts >= maxAttempts) {
               if (playersWithPositions.length > 0) {
@@ -1622,7 +1647,8 @@ export default {
                     : 'bg-orange-2 text-dark'
                 }
               } else {
-                calculationMessage.value = 'Player data not fully loaded yet. Please try again in a moment.'
+                calculationMessage.value =
+                  'Player data not fully loaded yet. Please try again in a moment.'
                 calculationMessageClass.value = $q.dark.isActive
                   ? 'bg-warning text-white'
                   : 'bg-orange-2 text-dark'
@@ -1632,7 +1658,7 @@ export default {
               setTimeout(waitForPlayerData, 200)
             }
           }
-          
+
           waitForPlayerData()
         } else {
           calculationMessage.value = 'No players found for the selected team.'
@@ -1648,26 +1674,26 @@ export default {
 
     const getPlayerOverallForRoleOrPosition = (player, role, position) => {
       if (!player) return 0
-      
+
       // Handle both array and object formats for roleSpecificOveralls
       const hasRoleOveralls = Array.isArray(player.roleSpecificOveralls)
         ? player.roleSpecificOveralls.length > 0
         : Object.keys(player.roleSpecificOveralls || {}).length > 0
-      
+
       let result = 0
-      
+
       if (role) {
         if (Array.isArray(player.roleSpecificOveralls)) {
-          const roleData = player.roleSpecificOveralls.find(r => r.roleName === role)
-          result = roleData ? roleData.score : (player.Overall || player.overall || 0)
+          const roleData = player.roleSpecificOveralls.find((r) => r.roleName === role)
+          result = roleData ? roleData.score : player.Overall || player.overall || 0
         } else if (player.roleSpecificOveralls) {
-          result = player.roleSpecificOveralls[role] || (player.Overall || player.overall || 0)
+          result = player.roleSpecificOveralls[role] || player.Overall || player.overall || 0
         } else {
           result = player.Overall || player.overall || 0
         }
       } else if (position) {
         let maxOverallForPosition = 0
-        
+
         if (hasRoleOveralls) {
           if (Array.isArray(player.roleSpecificOveralls)) {
             for (const rso of player.roleSpecificOveralls) {
@@ -1687,17 +1713,20 @@ export default {
             }
           }
         }
-        
-        result = maxOverallForPosition > 0 ? maxOverallForPosition : (player.Overall || player.overall || 0)
+
+        result =
+          maxOverallForPosition > 0 ? maxOverallForPosition : player.Overall || player.overall || 0
       } else {
         result = player.Overall || player.overall || 0
       }
-      
+
       // Debug logging for role-specific overalls
       if (role && !hasRoleOveralls) {
-        console.log(`Warning: Player ${player.name} has no role-specific overalls for role ${role}, using main overall: ${result}`)
+        console.log(
+          `Warning: Player ${player.name} has no role-specific overalls for role ${role}, using main overall: ${result}`
+        )
       }
-      
+
       return result
     }
 
@@ -1728,7 +1757,7 @@ export default {
       const requiredPositions = positionSideMap[upperSlotRoleOriginal] || []
 
       if (player.shortPositions && player.shortPositions.length > 0) {
-        const exactPositionMatches = player.shortPositions.filter(pos =>
+        const exactPositionMatches = player.shortPositions.filter((pos) =>
           requiredPositions.includes(pos)
         )
 
@@ -1764,7 +1793,9 @@ export default {
       const fallbackPositions = fallbackPositionMap[upperSlotRoleOriginal] || []
 
       if (player.shortPositions && player.shortPositions.length > 0) {
-        const fallbackMatches = player.shortPositions.filter(pos => fallbackPositions.includes(pos))
+        const fallbackMatches = player.shortPositions.filter((pos) =>
+          fallbackPositions.includes(pos)
+        )
 
         if (fallbackMatches.length > 0) {
           if (Array.isArray(player.roleSpecificOveralls)) {
@@ -1796,8 +1827,8 @@ export default {
         const fmPositionMatchers = fmSlotRoleMatcher[upperSlotRole] || [upperSlotRole]
 
         const targetRoleKeyPrefixes = fmPositionMatchers
-          .map(matcher => fmMatcherToRoleKeyPrefix[matcher.toUpperCase()])
-          .filter(prefix => !!prefix)
+          .map((matcher) => fmMatcherToRoleKeyPrefix[matcher.toUpperCase()])
+          .filter((prefix) => !!prefix)
           .reduce((acc, val) => {
             if (!acc.includes(val)) {
               acc.push(val)
@@ -1837,36 +1868,40 @@ export default {
         return null
       }
 
-              // Check if players have required data
-        const playersWithPositions = teamPlayers.filter(p => p.shortPositions && p.shortPositions.length > 0)
-        
-        if (playersWithPositions.length === 0) {
-          console.log('No players with position data found')
-          return null
-        }
-        
-        console.log(`Formation calculation: ${playersWithPositions.length} players with positions out of ${teamPlayers.length} total players`)
-        
-        // Debug: Check role-specific overalls for first few players
-        for (let i = 0; i < Math.min(3, teamPlayers.length); i++) {
-          const player = teamPlayers[i]
-          console.log(`Player ${i + 1}: ${player.name}`, {
-            shortPositions: player.shortPositions,
-            roleSpecificOveralls: player.roleSpecificOveralls ? 
-              (Array.isArray(player.roleSpecificOveralls) ? 
-                `${player.roleSpecificOveralls.length} roles` : 
-                `${Object.keys(player.roleSpecificOveralls).length} roles`) : 
-              'missing',
-            Overall: player.Overall
-          })
-        }
+      // Check if players have required data
+      const playersWithPositions = teamPlayers.filter(
+        (p) => p.shortPositions && p.shortPositions.length > 0
+      )
 
-        // Check cache first
-        const cacheKey = formationCache.generateKey(teamPlayers, 'team-best')
-        const cachedResult = formationCache.get(cacheKey)
-        if (cachedResult) {
-          return cachedResult.bestFormationKey
-        }
+      if (playersWithPositions.length === 0) {
+        console.log('No players with position data found')
+        return null
+      }
+
+      console.log(
+        `Formation calculation: ${playersWithPositions.length} players with positions out of ${teamPlayers.length} total players`
+      )
+
+      // Debug: Check role-specific overalls for first few players
+      for (let i = 0; i < Math.min(3, teamPlayers.length); i++) {
+        const player = teamPlayers[i]
+        console.log(`Player ${i + 1}: ${player.name}`, {
+          shortPositions: player.shortPositions,
+          roleSpecificOveralls: player.roleSpecificOveralls
+            ? Array.isArray(player.roleSpecificOveralls)
+              ? `${player.roleSpecificOveralls.length} roles`
+              : `${Object.keys(player.roleSpecificOveralls).length} roles`
+            : 'missing',
+          Overall: player.Overall,
+        })
+      }
+
+      // Check cache first
+      const cacheKey = formationCache.generateKey(teamPlayers, 'team-best')
+      const cachedResult = formationCache.get(cacheKey)
+      if (cachedResult) {
+        return cachedResult.bestFormationKey
+      }
 
       let bestFormationKey = null
       let bestAverageOverall = 0
@@ -1876,7 +1911,7 @@ export default {
         const formationLayoutForCalc = getFormationLayout(formationKey)
         if (!formationLayoutForCalc) continue
 
-        const formationSlots = formationLayoutForCalc.flatMap(row => row.positions)
+        const formationSlots = formationLayoutForCalc.flatMap((row) => row.positions)
         const tempSquadComposition = {}
 
         // Initialize slots
@@ -1894,9 +1929,9 @@ export default {
               const slotPositions = positionSideMap[slot.role.toUpperCase()] || []
               const fallbackPositions = fallbackPositionMap[slot.role.toUpperCase()] || []
               const playerPositions = player.shortPositions || []
-              
-              const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos))
-              const isFallbackMatch = playerPositions.some(pos => fallbackPositions.includes(pos))
+
+              const isExactMatch = playerPositions.some((pos) => slotPositions.includes(pos))
+              const isFallbackMatch = playerPositions.some((pos) => fallbackPositions.includes(pos))
 
               if (isExactMatch || isFallbackMatch) {
                 const assignment = {
@@ -1905,7 +1940,7 @@ export default {
                   slotRole: slot.role,
                   overallInRole: overallInRole,
                   sortScore: overallInRole,
-                  exactMatch: isExactMatch
+                  exactMatch: isExactMatch,
                 }
 
                 if (isExactMatch) {
@@ -1935,7 +1970,7 @@ export default {
               tempSquadComposition[slot.id].push({
                 player: assignment.player,
                 overallInRole: assignment.overallInRole,
-                exactMatch: assignment.exactMatch
+                exactMatch: assignment.exactMatch,
               })
               assignedPlayersToSlots.add(assignment.player.name)
               break
@@ -1956,7 +1991,7 @@ export default {
         }
 
         const hasEnoughPlayers = filledPositions >= 5
-        
+
         if (startersCount > 0 && hasEnoughPlayers) {
           const averageOverall = sumOfStartersOverall / startersCount
           if (averageOverall > bestAverageOverall) {
@@ -1971,7 +2006,7 @@ export default {
         formationCache.set(cacheKey, {
           bestFormationKey,
           bestAverageOverall,
-          teamName: teamName.value
+          teamName: teamName.value,
         })
       }
 
@@ -2018,7 +2053,7 @@ export default {
         return
       }
 
-      const formationSlots = formationLayoutForCalc.flatMap(row => row.positions)
+      const formationSlots = formationLayoutForCalc.flatMap((row) => row.positions)
 
       // Initialize slots
       for (const slot of formationSlots) {
@@ -2035,9 +2070,10 @@ export default {
             const slotPositions = positionSideMap[slot.role.toUpperCase()] || []
             const fallbackPositions = fallbackPositionMap[slot.role.toUpperCase()] || []
             const playerPositions = player.shortPositions || []
-            
-            const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos))
-            const canPlayInPosition = isExactMatch || playerPositions.some(pos => fallbackPositions.includes(pos))
+
+            const isExactMatch = playerPositions.some((pos) => slotPositions.includes(pos))
+            const _canPlayInPosition =
+              isExactMatch || playerPositions.some((pos) => fallbackPositions.includes(pos))
 
             if (overallInRole >= MIN_SUITABILITY_THRESHOLD) {
               const assignment = {
@@ -2046,7 +2082,7 @@ export default {
                 slotRole: slot.role,
                 overallInRole: overallInRole,
                 sortScore: overallInRole,
-                exactMatch: isExactMatch
+                exactMatch: isExactMatch,
               }
 
               if (isExactMatch) {
@@ -2093,7 +2129,7 @@ export default {
                   tempSquadComposition[slot.id].push({
                     player: assignment.player,
                     overallInRole: assignment.overallInRole,
-                    exactMatch: assignment.exactMatch
+                    exactMatch: assignment.exactMatch,
                   })
                   assignedPlayersToSlots.add(assignment.player.name)
                   break
@@ -2128,7 +2164,7 @@ export default {
                   tempSquadComposition[slot.id].push({
                     player: assignment.player,
                     overallInRole: assignment.overallInRole,
-                    exactMatch: assignment.exactMatch
+                    exactMatch: assignment.exactMatch,
                   })
                   assignedPlayersToSlots.add(assignment.player.name)
                   break
@@ -2175,53 +2211,61 @@ export default {
           squadComposition: squadComposition.value,
           bestTeamAverageOverall: bestTeamAverageOverall.value,
           teamName: teamName.value,
-          formation: selectedFormationKey.value
+          formation: selectedFormationKey.value,
         })
       }
     }
 
     const getBaseOverallFromSelectedPlayer = async () => {
       if (!selectedTeamPlayer.value) return null
-      const player = teamPlayersForSelection.value.find(p => p.name === selectedTeamPlayer.value)
+      const player = teamPlayersForSelection.value.find((p) => p.name === selectedTeamPlayer.value)
       if (!player) return null
-      
+
       // If we have role-specific overalls and a selected role, try to get the role-specific rating
       if (selectedRole.value && player.roleSpecificOveralls) {
         let roleOverall = null
         if (Array.isArray(player.roleSpecificOveralls)) {
-          const roleData = player.roleSpecificOveralls.find(r => r.roleName === selectedRole.value)
+          const roleData = player.roleSpecificOveralls.find(
+            (r) => r.roleName === selectedRole.value
+          )
           roleOverall = roleData ? roleData.score : null
         } else if (typeof player.roleSpecificOveralls === 'object') {
           roleOverall = player.roleSpecificOveralls[selectedRole.value] || null
         }
-        
+
         // If we found a role-specific rating, use it; otherwise fall back to main overall
         if (roleOverall !== null && roleOverall > 0) {
           return roleOverall
         }
       }
-      
+
       // If we don't have role-specific overalls but have a selected role, try to fetch detailed data
-      if (selectedRole.value && (!player.roleSpecificOveralls || 
-          (Array.isArray(player.roleSpecificOveralls) && player.roleSpecificOveralls.length === 0) ||
-          (typeof player.roleSpecificOveralls === 'object' && Object.keys(player.roleSpecificOveralls).length === 0))) {
-        
+      if (
+        selectedRole.value &&
+        (!player.roleSpecificOveralls ||
+          (Array.isArray(player.roleSpecificOveralls) &&
+            player.roleSpecificOveralls.length === 0) ||
+          (typeof player.roleSpecificOveralls === 'object' &&
+            Object.keys(player.roleSpecificOveralls).length === 0))
+      ) {
         try {
           if (player.uid && props.datasetId) {
             const result = await fetchFullPlayerStats(props.datasetId, player.uid)
-            if (result.data && result.data.player) {
+            if (result.data?.player) {
               const detailedPlayer = result.data.player
-              
+
               // Try to get role-specific overall from detailed data
               if (detailedPlayer.roleSpecificOveralls) {
                 let roleOverall = null
                 if (Array.isArray(detailedPlayer.roleSpecificOveralls)) {
-                  const roleData = detailedPlayer.roleSpecificOveralls.find(r => r.roleName === selectedRole.value)
+                  const roleData = detailedPlayer.roleSpecificOveralls.find(
+                    (r) => r.roleName === selectedRole.value
+                  )
                   roleOverall = roleData ? roleData.score : null
                 } else if (typeof detailedPlayer.roleSpecificOveralls === 'object') {
                   roleOverall = detailedPlayer.roleSpecificOveralls[selectedRole.value] || null
                 }
-                
+
                 if (roleOverall !== null && roleOverall > 0) {
                   return roleOverall
                 }
@@ -2232,7 +2276,7 @@ export default {
           console.error(`Failed to fetch detailed data for selected player ${player.name}:`, error)
         }
       }
-      
+
       // For upgrade comparison, use the player's main overall rating as baseline
       // This ensures we're comparing against their actual ability, not their position-specific rating
       // which might be null if they can't play that position well
@@ -2242,7 +2286,7 @@ export default {
 
     const selectedTeamPlayerObject = computed(() => {
       if (!selectedTeamPlayer.value) return null
-      return teamPlayersForSelection.value.find(p => p.name === selectedTeamPlayer.value) || null
+      return teamPlayersForSelection.value.find((p) => p.name === selectedTeamPlayer.value) || null
     })
 
     const updateBaseOverallForSelectedPlayer = async () => {
@@ -2253,7 +2297,7 @@ export default {
 
       try {
         // Get the player object from the team players
-        const player = teamPlayersForSelection.value.find(p => p.uid === selectedTeamPlayer.value)
+        const player = teamPlayersForSelection.value.find((p) => p.uid === selectedTeamPlayer.value)
         if (!player) {
           baseOverallForSelectedPlayer.value = null
           return
@@ -2261,15 +2305,22 @@ export default {
 
         // Check if we need to fetch detailed data for this player
         if (!player.roleSpecificOveralls || player.roleSpecificOveralls.length === 0) {
-          console.log('UpgradeFinderDialog: Fetching detailed data for selected player:', player.name)
+          console.log(
+            'UpgradeFinderDialog: Fetching detailed data for selected player:',
+            player.name
+          )
           const detailedData = await fetchFullPlayerStats(props.datasetId, player.uid)
-          if (detailedData && detailedData.data) {
+          if (detailedData?.data) {
             Object.assign(player, detailedData.data)
           }
         }
 
         // Get the overall for the selected role
-        const overall = getPlayerOverallForRoleOrPosition(player, selectedRole.value, selectedPosition.value)
+        const overall = getPlayerOverallForRoleOrPosition(
+          player,
+          selectedRole.value,
+          selectedPosition.value
+        )
         baseOverallForSelectedPlayer.value = overall
       } catch (error) {
         console.error('Error updating base overall for selected player:', error)
@@ -2331,7 +2382,7 @@ export default {
       showResults.value = true
       currentPage.value = 1 // Reset to first page when new results are found
       initialLoad.value = false
-      
+
       const baseOverall = await getBaseOverallFromSelectedPlayer()
       if (baseOverall === null) {
         loading.value = false
@@ -2344,7 +2395,7 @@ export default {
       const currentMaxAge = maxAgeFilter.value
       const currentMaxSalary = maxSalaryFilter.value
 
-      await new Promise(resolve => setTimeout(resolve, 300))
+      await new Promise((resolve) => setTimeout(resolve, 300))
 
       try {
         // Use the new API endpoint for finding upgrades
@@ -2355,7 +2406,10 @@ export default {
           role: selectedRole.value,
           minOverall: targetOverall,
           maxAge: currentMaxAge < ageSliderMax ? currentMaxAge : 0,
-          maxTransferValue: currentMaxTransferValue < computedMaxSliderTransferValue.value ? currentMaxTransferValue : 0,
+          maxTransferValue:
+            currentMaxTransferValue < computedMaxSliderTransferValue.value
+              ? currentMaxTransferValue
+              : 0,
           maxSalary: currentMaxSalary < computedMaxSliderSalary.value ? currentMaxSalary : 0,
           // Minimum attribute filters
           minPAC: minPACFilter.value,
@@ -2370,14 +2424,14 @@ export default {
           minREF: minREFFilter.value,
           minKIC: minKICFilter.value,
           minSPD: minSPDFilter.value,
-          minPOS: minPOSFilter.value
+          minPOS: minPOSFilter.value,
         }
 
         console.log('UpgradeFinderDialog: Sending request to API:', request)
 
         const response = await findPlayerUpgrades(request)
-        
-        if (response.data && response.data.players) {
+
+        if (response.data?.players) {
           console.log(`Found ${response.data.players.length} upgrades via API`)
           upgradePlayers.value = response.data.players
         } else {
@@ -2393,7 +2447,7 @@ export default {
     }
 
     const processedUpgradePlayers = computed(() => {
-      return upgradePlayers.value.map(player => {
+      return upgradePlayers.value.map((player) => {
         const displayOverall = getPlayerOverallForRoleOrPosition(
           player,
           selectedRole.value,
@@ -2401,22 +2455,25 @@ export default {
         )
         return {
           ...player,
-          Overall: displayOverall // This 'Overall' will be used by PlayerDataTable
+          Overall: displayOverall, // This 'Overall' will be used by PlayerDataTable
         }
       })
     })
 
     const processedUpgradePlayersForCards = computed(() => {
-      return upgradePlayers.value.map(player => {
-        console.log('UpgradeFinderDialog - Original player roleSpecificOveralls:', player.roleSpecificOveralls)
+      return upgradePlayers.value.map((player) => {
+        console.log(
+          'UpgradeFinderDialog - Original player roleSpecificOveralls:',
+          player.roleSpecificOveralls
+        )
         console.log('UpgradeFinderDialog - Original player name:', player.name)
-        
+
         const displayOverall = getPlayerOverallForRoleOrPosition(
           player,
           selectedRole.value,
           selectedPosition.value
         )
-        
+
         const processedPlayer = {
           ...player, // Keep all original player data including nationality_iso
           name: player.name,
@@ -2434,31 +2491,34 @@ export default {
           phy: player.phy || 0,
           position: player.position || player.shortPositions?.[0] || 'Unknown',
           // Explicitly preserve roleSpecificOveralls
-          roleSpecificOveralls: player.roleSpecificOveralls || []
+          roleSpecificOveralls: player.roleSpecificOveralls || [],
         }
-        
-        console.log('UpgradeFinderDialog - Processed player roleSpecificOveralls:', processedPlayer.roleSpecificOveralls)
+
+        console.log(
+          'UpgradeFinderDialog - Processed player roleSpecificOveralls:',
+          processedPlayer.roleSpecificOveralls
+        )
         console.log('UpgradeFinderDialog - Processed player name:', processedPlayer.name)
-        
+
         return processedPlayer
       })
     })
 
-    const handlePlayerSelectedForDetailView = player => {
+    const handlePlayerSelectedForDetailView = (player) => {
       // Ensure we pass the original player object, not the one with potentially modified 'Overall'
       const originalPlayer = props.players.find(
-        p => p.name === player.name && p.club === player.club
+        (p) => p.name === player.name && p.club === player.club
       )
       playerForDetailView.value = originalPlayer || player
       showPlayerDetailDialog.value = true
     }
 
-    const handleTeamSelected = _teamName => {
+    const handleTeamSelected = (_teamName) => {
       // For upgrade finder, we don't need team selection functionality
       // but we need to provide the handler for PlayerDataTable compatibility
     }
 
-    const handlePlayerSelectedFromTeam = player => {
+    const handlePlayerSelectedFromTeam = (player) => {
       playerForDetailView.value = player
       showPlayerDetailDialog.value = true
     }
@@ -2466,44 +2526,44 @@ export default {
     const handlePositionClick = (positionData) => {
       // Extract position information from the clicked position
       const { slotId, slotRole } = positionData
-      
+
       // Translate formation position to searchable position
       const basePosition = translateFormationPositionToSearchable(slotRole)
-      
+
       // Set the position filter to this position
       selectedPosition.value = basePosition
-      
+
       // Find the player in this position from squad composition
       const positionPlayers = squadComposition.value[slotId]
       if (positionPlayers && positionPlayers.length > 0) {
         const playerInPosition = positionPlayers[0].player
-        
+
         // Set the team player filter to this player
         selectedTeamPlayer.value = playerInPosition.name
-        
+
         // Find the best role for this player in this position
         const bestRole = findBestRoleForPlayerInPosition(playerInPosition, basePosition)
         selectedRole.value = bestRole
-        
+
         // If no specific role found, try to find any role for this position
         if (!bestRole && playerInPosition.roleSpecificOveralls) {
           if (Array.isArray(playerInPosition.roleSpecificOveralls)) {
-            const anyRoleForPosition = playerInPosition.roleSpecificOveralls.find(rso => 
+            const anyRoleForPosition = playerInPosition.roleSpecificOveralls.find((rso) =>
               rso.roleName.includes(basePosition)
             )
             if (anyRoleForPosition) {
               selectedRole.value = anyRoleForPosition.roleName
             }
           } else {
-            const anyRoleForPosition = Object.keys(playerInPosition.roleSpecificOveralls).find(roleName => 
-              roleName.includes(basePosition)
+            const anyRoleForPosition = Object.keys(playerInPosition.roleSpecificOveralls).find(
+              (roleName) => roleName.includes(basePosition)
             )
             if (anyRoleForPosition) {
               selectedRole.value = anyRoleForPosition
             }
           }
         }
-        
+
         // Automatically trigger upgrade search for this player after reactive updates
         nextTick(() => {
           findUpgrades()
@@ -2513,7 +2573,7 @@ export default {
         selectedRole.value = null
         selectedTeamPlayer.value = null
       }
-      
+
       // Update the team players for selection with the new position
       updateTeamPlayersForSelection()
     }
@@ -2521,8 +2581,8 @@ export default {
     const translateFormationPositionToSearchable = (formationPosition) => {
       // Map formation positions to searchable positions
       const positionMap = {
-        'GK': 'GK',
-        'SW': 'SW',
+        GK: 'GK',
+        SW: 'SW',
         'D (L)': 'DL',
         'D (C)': 'DC',
         'D (R)': 'DR',
@@ -2544,9 +2604,9 @@ export default {
         'WB (L)': 'WBL',
         'WB (C)': 'WBC',
         'WB (R)': 'WBR',
-        'WB (RL)': 'WBR'
+        'WB (RL)': 'WBR',
       }
-      
+
       const searchablePosition = positionMap[formationPosition]
       return searchablePosition || formationPosition
     }
@@ -2554,7 +2614,7 @@ export default {
     // Helper methods for player cards
     const getKeyAttributes = (player) => {
       const keyAttrs = []
-      
+
       // Add key attributes based on position
       if (player.position === 'GK') {
         keyAttrs.push(
@@ -2574,18 +2634,16 @@ export default {
           { key: 'phy', name: 'PHY', value: player.phy || 0 }
         )
       }
-      
+
       return keyAttrs
     }
 
-
-
     const findBestRoleForPlayerInPosition = (player, position) => {
       if (!player || !position) return null
-      
+
       let bestRole = null
       let bestScore = 0
-      
+
       // Check if player has role-specific overalls
       if (player.roleSpecificOveralls) {
         if (Array.isArray(player.roleSpecificOveralls)) {
@@ -2610,7 +2668,7 @@ export default {
           }
         }
       }
-      
+
       return bestRole
     }
 
@@ -2618,7 +2676,7 @@ export default {
       const numValue = Number.parseInt(value, 10)
       if (Number.isNaN(numValue) || value === null || value === undefined || value === '-')
         return 'rating-na'
-      
+
       // For FIFA stats (1-100 scale), calculate percentage correctly
       if (maxScale === 20) {
         const percentage = ((numValue - 1) / (maxScale - 1)) * 100
@@ -2628,16 +2686,15 @@ export default {
         if (percentage >= 55) return 'rating-tier-3'
         if (percentage >= 40) return 'rating-tier-2'
         return 'rating-tier-1'
-      } else {
-        // For FIFA stats (1-100 scale) and overall ratings (0-100 scale)
-        const percentage = (numValue / maxScale) * 100
-        if (percentage >= 90) return 'rating-tier-6'
-        if (percentage >= 80) return 'rating-tier-5'
-        if (percentage >= 70) return 'rating-tier-4'
-        if (percentage >= 55) return 'rating-tier-3'
-        if (percentage >= 40) return 'rating-tier-2'
-        return 'rating-tier-1'
       }
+      // For FIFA stats (1-100 scale) and overall ratings (0-100 scale)
+      const percentage = (numValue / maxScale) * 100
+      if (percentage >= 90) return 'rating-tier-6'
+      if (percentage >= 80) return 'rating-tier-5'
+      if (percentage >= 70) return 'rating-tier-4'
+      if (percentage >= 55) return 'rating-tier-3'
+      if (percentage >= 40) return 'rating-tier-2'
+      return 'rating-tier-1'
     }
 
     // Get card rarity class based on overall rating
@@ -2650,12 +2707,12 @@ export default {
     }
 
     const upgradeFinderIsGoalkeeperView = computed(() => selectedPosition.value === 'GK')
-    
+
     // Pagination computed properties
     const totalPages = computed(() => {
       return Math.ceil(processedUpgradePlayersForCards.value.length / playersPerPage)
     })
-    
+
     const paginatedPlayers = computed(() => {
       const startIndex = (currentPage.value - 1) * playersPerPage
       const endIndex = startIndex + playersPerPage
@@ -2664,7 +2721,7 @@ export default {
 
     watch(
       () => props.show,
-      newValue => {
+      (newValue) => {
         if (!newValue) {
           teamName.value = null
           selectedPosition.value = null
@@ -2700,20 +2757,20 @@ export default {
         }
       }
     )
-    
+
     // Pagination methods
     const nextPage = () => {
       if (currentPage.value < totalPages.value) {
         currentPage.value++
       }
     }
-    
+
     const previousPage = () => {
       if (currentPage.value > 1) {
         currentPage.value--
       }
     }
-    
+
     // Card click handler
     const handleCardClick = (player) => {
       playerForDetailView.value = player
@@ -2811,7 +2868,6 @@ export default {
       handleCardClick,
       showAllCards,
       findUpgrades,
-      getUnifiedRatingClass,
       getCardRarityClass,
       playerForDetailView,
       showPlayerDetailDialog,
@@ -2835,21 +2891,21 @@ export default {
       calculationMessage,
       calculationMessageClass,
       handlePlayerSelectedFromTeam,
-              handlePositionClick,
-        findBestRoleForPlayerInPosition,
-        translateFormationPositionToSearchable,
-        getKeyAttributes,
-        getUnifiedRatingClass,
-        formatWage,
-        formatValue,
+      handlePositionClick,
+      findBestRoleForPlayerInPosition,
+      translateFormationPositionToSearchable,
+      getKeyAttributes,
+      getUnifiedRatingClass,
+      formatWage,
+      formatValue,
       parseTransferValue,
       parseTransferValueRange,
-        formatCurrency,
+      formatCurrency,
       updateTeamPlayersForFormation,
       resetStatFilters,
-      showStatFiltersModal
+      showStatFiltersModal,
     }
-  }
+  },
 }
 </script>
 

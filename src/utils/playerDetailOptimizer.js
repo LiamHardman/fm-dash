@@ -14,11 +14,11 @@ const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 export function getCachedPlayerData(datasetId, playerUID) {
   const cacheKey = `${datasetId}-${playerUID}`
   const cached = playerDataCache.get(cacheKey)
-  
+
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     return cached.data
   }
-  
+
   return null
 }
 
@@ -29,14 +29,14 @@ export function setCachedPlayerData(datasetId, playerUID, data) {
   const cacheKey = `${datasetId}-${playerUID}`
   playerDataCache.set(cacheKey, {
     data,
-    timestamp: Date.now()
+    timestamp: Date.now(),
   })
-  
+
   // Clean up old entries if cache gets too large
   if (playerDataCache.size > 100) {
     const entries = Array.from(playerDataCache.entries())
     entries.sort((a, b) => a[1].timestamp - b[1].timestamp)
-    
+
     // Remove oldest 20 entries
     for (let i = 0; i < 20 && i < entries.length; i++) {
       playerDataCache.delete(entries[i][0])
@@ -58,20 +58,20 @@ export function getCacheStats() {
   const now = Date.now()
   let validEntries = 0
   let expiredEntries = 0
-  
-  for (const [key, value] of playerDataCache.entries()) {
+
+  for (const [_key, value] of playerDataCache.entries()) {
     if (now - value.timestamp < CACHE_TTL) {
       validEntries++
     } else {
       expiredEntries++
     }
   }
-  
+
   return {
     totalEntries: playerDataCache.size,
     validEntries,
     expiredEntries,
-    hitRate: 0 // Would need to track hits/misses to calculate this
+    hitRate: 0, // Would need to track hits/misses to calculate this
   }
 }
 
@@ -146,7 +146,7 @@ const percentileCache = new PercentileCache()
  */
 export async function fetchPlayerDataOptimized(datasetId, playerUID, options = {}) {
   const startTime = performance.now()
-  const { forceRefresh = false, includePercentiles = true } = options
+  const { forceRefresh = false, includePercentiles: _includePercentiles = true } = options
 
   try {
     // Check cache first
@@ -156,45 +156,44 @@ export async function fetchPlayerDataOptimized(datasetId, playerUID, options = {
         return {
           data: cached,
           fromCache: true,
-          loadTime: performance.now() - startTime
+          loadTime: performance.now() - startTime,
         }
       }
     }
 
     // Import the service dynamically to avoid circular dependencies
     const { fetchFullPlayerStats } = await import('../services/playerService.js')
-    
+
     // Fetch from API
     const result = await fetchFullPlayerStats(datasetId, playerUID)
-    
+
     if (result.format === 'json' && result.data.player) {
       const playerData = result.data.player
-      
+
       // Cache the result
       setCachedPlayerData(datasetId, playerUID, playerData)
-      
+
       const loadTime = performance.now() - startTime
       logger.info('Player data fetched successfully', {
         datasetId,
         playerUID,
         playerName: playerData.name,
         loadTime: `${loadTime.toFixed(2)}ms`,
-        fromCache: false
+        fromCache: false,
       })
 
       return {
         data: playerData,
         fromCache: false,
-        loadTime
+        loadTime,
       }
-    } else {
-      throw new Error('Invalid response format')
     }
+    throw new Error('Invalid response format')
   } catch (error) {
     logger.error('Failed to fetch player data', {
       datasetId,
       playerUID,
-      error: error.message
+      error: error.message,
     })
     throw error
   }
@@ -213,7 +212,7 @@ export async function fetchPercentilesOptimized(playerUID, division, position) {
       return {
         data: cached,
         fromCache: true,
-        loadTime: performance.now() - startTime
+        loadTime: performance.now() - startTime,
       }
     }
 
@@ -221,44 +220,43 @@ export async function fetchPercentilesOptimized(playerUID, division, position) {
     const response = await fetch(`/api/player-percentiles/${playerUID}`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         playerUID: playerUID.toString(),
         compareDivision: division,
-        comparePosition: position
-      })
+        comparePosition: position,
+      }),
     })
 
     if (response.ok) {
       const percentiles = await response.json()
-      
+
       // Cache the result
       percentileCache.set(playerUID, division, position, percentiles)
-      
+
       const loadTime = performance.now() - startTime
       logger.info('Percentiles fetched successfully', {
         playerUID,
         division,
         position,
         loadTime: `${loadTime.toFixed(2)}ms`,
-        fromCache: false
+        fromCache: false,
       })
 
       return {
         data: percentiles,
         fromCache: false,
-        loadTime
+        loadTime,
       }
-    } else {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
     }
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`)
   } catch (error) {
     logger.error('Failed to fetch percentiles', {
       playerUID,
       division,
       position,
-      error: error.message
+      error: error.message,
     })
     throw error
   }
@@ -288,7 +286,12 @@ export function preloadPercentiles(playerUID, division = 'same', position = 'Glo
       await fetchPercentilesOptimized(playerUID, division, position)
       logger.debug('Percentiles preloaded', { playerUID, division, position })
     } catch (error) {
-      logger.debug('Percentiles preload failed', { playerUID, division, position, error: error.message })
+      logger.debug('Percentiles preload failed', {
+        playerUID,
+        division,
+        position,
+        error: error.message,
+      })
     }
   }, 200)
 }
@@ -299,10 +302,12 @@ export function preloadPercentiles(playerUID, division = 'same', position = 'Glo
 export function getPerformanceMetrics() {
   return {
     ...performanceMetrics,
-    cacheHitRate: performanceMetrics.totalRequests > 0 
-      ? performanceMetrics.cacheHits / (performanceMetrics.cacheHits + performanceMetrics.cacheMisses)
-      : 0,
-    averageLoadTime: performanceMetrics.averageLoadTime
+    cacheHitRate:
+      performanceMetrics.totalRequests > 0
+        ? performanceMetrics.cacheHits /
+          (performanceMetrics.cacheHits + performanceMetrics.cacheMisses)
+        : 0,
+    averageLoadTime: performanceMetrics.averageLoadTime,
   }
 }
 
@@ -332,14 +337,19 @@ export function cleanupCaches() {
 /**
  * Optimized data fetcher that combines player data and percentiles
  */
-export async function fetchPlayerDataWithPercentiles(datasetId, playerUID, division = 'same', position = 'Global') {
+export async function fetchPlayerDataWithPercentiles(
+  datasetId,
+  playerUID,
+  division = 'same',
+  position = 'Global'
+) {
   const startTime = performance.now()
 
   try {
     // Fetch player data and percentiles in parallel
     const [playerResult, percentileResult] = await Promise.allSettled([
       fetchPlayerDataOptimized(datasetId, playerUID),
-      fetchPercentilesOptimized(playerUID, division, position)
+      fetchPercentilesOptimized(playerUID, division, position),
     ])
 
     const playerData = playerResult.status === 'fulfilled' ? playerResult.value.data : null
@@ -359,7 +369,7 @@ export async function fetchPlayerDataWithPercentiles(datasetId, playerUID, divis
       playerUID,
       totalTime: `${totalTime.toFixed(2)}ms`,
       playerSuccess: playerResult.status === 'fulfilled',
-      percentileSuccess: percentileResult.status === 'fulfilled'
+      percentileSuccess: percentileResult.status === 'fulfilled',
     })
 
     return {
@@ -368,14 +378,15 @@ export async function fetchPlayerDataWithPercentiles(datasetId, playerUID, divis
       loadTime: totalTime,
       fromCache: {
         player: playerResult.status === 'fulfilled' ? playerResult.value.fromCache : false,
-        percentiles: percentileResult.status === 'fulfilled' ? percentileResult.value.fromCache : false
-      }
+        percentiles:
+          percentileResult.status === 'fulfilled' ? percentileResult.value.fromCache : false,
+      },
     }
   } catch (error) {
     logger.error('Failed to fetch player data with percentiles', {
       datasetId,
       playerUID,
-      error: error.message
+      error: error.message,
     })
     throw error
   }
@@ -392,5 +403,5 @@ export default {
   getPerformanceMetrics,
   clearAllCaches,
   cleanupCaches,
-  fetchPlayerDataWithPercentiles
-} 
+  fetchPlayerDataWithPercentiles,
+}

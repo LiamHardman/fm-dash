@@ -21,19 +21,19 @@ export const useUiStore = defineStore('ui', () => {
   function toggleDarkMode() {
     // Directly toggle the current state
     isDarkModeActive.value = !isDarkModeActive.value
-    
+
     // Apply dark mode to document body as fallback
     if (isDarkModeActive.value) {
       document.body.classList.add('body--dark')
     } else {
       document.body.classList.remove('body--dark')
     }
-    
+
     // Try to use Quasar if available - use a different approach
     if (typeof window !== 'undefined' && window.$q) {
       window.$q.dark.set(isDarkModeActive.value)
     }
-    
+
     try {
       localStorage.setItem('darkMode', isDarkModeActive.value ? 'true' : 'false')
     } catch (_e) {}
@@ -114,17 +114,17 @@ export const useUiStore = defineStore('ui', () => {
     } catch (_e) {
       darkModePreference = true
     }
-    
+
     // Set the ref
     isDarkModeActive.value = darkModePreference
-    
+
     // Apply dark mode to document body as fallback
     if (darkModePreference) {
       document.body.classList.add('body--dark')
     } else {
       document.body.classList.remove('body--dark')
     }
-    
+
     // Try to use Quasar if available - use a different approach
     if (typeof window !== 'undefined' && window.$q) {
       window.$q.dark.set(darkModePreference)
@@ -213,6 +213,6 @@ export const useUiStore = defineStore('ui', () => {
     showAttributeMasks,
     toggleAttributeMasks,
     initAttributeMasksDisplay,
-    initSettings
+    initSettings,
   }
 })

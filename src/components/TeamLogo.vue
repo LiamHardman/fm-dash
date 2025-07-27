@@ -50,32 +50,32 @@ export default defineComponent({
   props: {
     teamName: {
       type: String,
-      required: true
+      required: true,
     },
     size: {
       type: [String, Number],
-      default: 32
+      default: 32,
     },
     rounded: {
       type: Boolean,
-      default: false
+      default: false,
     },
     fallbackIcon: {
       type: String,
-      default: 'shield'
+      default: 'shield',
     },
     logoClass: {
       type: String,
-      default: ''
+      default: '',
     },
     placeholderClass: {
       type: String,
-      default: ''
+      default: '',
     },
     containerClass: {
       type: String,
-      default: ''
-    }
+      default: '',
+    },
   },
   setup(props) {
     const $q = useQuasar()
@@ -86,7 +86,7 @@ export default defineComponent({
     const isLoadingLogo = ref(false)
 
     // Load logo when team name changes
-    const loadLogo = async teamName => {
+    const loadLogo = async (teamName) => {
       if (!teamName || teamName === '-') {
         logoUrl.value = null
         isLoadingLogo.value = false
@@ -98,7 +98,7 @@ export default defineComponent({
         const module = await import('../composables/useTeamLogosBackend')
         globalTeamLogos = module.useTeamLogosBackend({
           cacheTimeout: 3600000, // 1 hour cache
-          similarityThreshold: 0.7
+          similarityThreshold: 0.7,
         })
       }
 
@@ -119,7 +119,7 @@ export default defineComponent({
     }
 
     const iconSize = computed(() => {
-      const sizeNum = typeof props.size === 'string' ? parseInt(props.size) : props.size
+      const sizeNum = typeof props.size === 'string' ? Number.parseInt(props.size) : props.size
       return `${Math.max(12, sizeNum * 0.6)}px`
     })
 
@@ -132,7 +132,7 @@ export default defineComponent({
       return {
         width: sizeStr,
         height: sizeStr,
-        borderRadius: props.rounded ? '50%' : '4px'
+        borderRadius: props.rounded ? '50%' : '4px',
       }
     })
 
@@ -147,7 +147,7 @@ export default defineComponent({
     // Watch for team name changes
     watch(
       () => props.teamName,
-      newTeamName => {
+      (newTeamName) => {
         logoLoadError.value = false
         loadLogo(newTeamName)
       },
@@ -163,9 +163,9 @@ export default defineComponent({
       placeholderStyle,
       handleLogoError,
       handleLogoLoad,
-      showLogos: computed(() => uiStore.showLogos)
+      showLogos: computed(() => uiStore.showLogos),
     }
-  }
+  },
 })
 </script>
 

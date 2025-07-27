@@ -14,7 +14,7 @@ export function usePlayerFilters(props, emit) {
     personalities: [],
     positions: [],
     selectedAttributes: [],
-    attributeThresholds: {}
+    attributeThresholds: {},
   })
 
   // UI state
@@ -68,7 +68,7 @@ export function usePlayerFilters(props, emit) {
   watch(filters, emitFilterChanged, { deep: true })
 
   // Toggle filter selection
-  const toggleFilter = filterName => {
+  const toggleFilter = (filterName) => {
     if (selectedFilters.value.has(filterName)) {
       selectedFilters.value.delete(filterName)
     } else {
@@ -77,7 +77,7 @@ export function usePlayerFilters(props, emit) {
   }
 
   // Check if filter is active
-  const isFilterActive = filterName => {
+  const isFilterActive = (filterName) => {
     switch (filterName) {
       case 'overall':
         return filters.overall.min > 1 || filters.overall.max < 99
@@ -118,7 +118,7 @@ export function usePlayerFilters(props, emit) {
       'clubs',
       'nationalities',
       'positions',
-      'attributes'
+      'attributes',
     ]
     return filterNames.filter(isFilterActive).length
   })
@@ -134,6 +134,6 @@ export function usePlayerFilters(props, emit) {
     clearAllFilters,
     toggleFilter,
     isFilterActive,
-    emitFilterChanged
+    emitFilterChanged,
   }
 }

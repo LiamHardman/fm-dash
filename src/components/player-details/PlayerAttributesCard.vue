@@ -233,8 +233,8 @@ export default defineComponent({
   props: {
     player: {
       type: Object,
-      required: true
-    }
+      required: true,
+    },
   },
   setup(props) {
     // Check if player is a goalkeeper
@@ -249,7 +249,7 @@ export default defineComponent({
       const allAttributes = props.player?.attributes || {}
       const attributeKeys = Object.keys(allAttributes)
 
-      const technical = attributeKeys.filter(key =>
+      const technical = attributeKeys.filter((key) =>
         [
           'corners',
           'crossing',
@@ -264,11 +264,11 @@ export default defineComponent({
           'passing',
           'penalty_taking',
           'tackling',
-          'technique'
+          'technique',
         ].includes(key)
       )
 
-      const goalkeeping = attributeKeys.filter(key =>
+      const goalkeeping = attributeKeys.filter((key) =>
         [
           'aerial_reach',
           'command_of_area',
@@ -280,11 +280,11 @@ export default defineComponent({
           'reflexes',
           'rushing_out',
           'tendency_to_punch',
-          'throwing'
+          'throwing',
         ].includes(key)
       )
 
-      const mental = attributeKeys.filter(key =>
+      const mental = attributeKeys.filter((key) =>
         [
           'aggression',
           'anticipation',
@@ -299,11 +299,11 @@ export default defineComponent({
           'positioning',
           'teamwork',
           'vision',
-          'work_rate'
+          'work_rate',
         ].includes(key)
       )
 
-      const physical = attributeKeys.filter(key =>
+      const physical = attributeKeys.filter((key) =>
         [
           'acceleration',
           'agility',
@@ -312,7 +312,7 @@ export default defineComponent({
           'natural_fitness',
           'pace',
           'stamina',
-          'strength'
+          'strength',
         ].includes(key)
       )
 
@@ -320,7 +320,7 @@ export default defineComponent({
         technical,
         goalkeeping,
         mental,
-        physical
+        physical,
       }
     })
 
@@ -372,7 +372,7 @@ export default defineComponent({
       natural_fitness: 'Natural Fitness',
       pace: 'Pace',
       stamina: 'Stamina',
-      strength: 'Strength'
+      strength: 'Strength',
     }
 
     // Attribute descriptions
@@ -390,7 +390,7 @@ export default defineComponent({
       passing: 'Accuracy and vision when passing the ball',
       penalty_taking: 'Ability to score from penalty kicks',
       tackling: 'Ability to win the ball through tackles',
-      technique: 'Technical skill and ball control'
+      technique: 'Technical skill and ball control',
       // Add more descriptions as needed...
     }
 
@@ -402,7 +402,7 @@ export default defineComponent({
     })
 
     // Get display attribute value
-    const getDisplayAttribute = attrKey => {
+    const getDisplayAttribute = (attrKey) => {
       const value = props.player?.attributes?.[attrKey]
       if (value === undefined || value === null) return '-'
       return value
@@ -429,9 +429,9 @@ export default defineComponent({
       attributeDescriptions,
       sortedRoleSpecificOveralls,
       getDisplayAttribute,
-      getUnifiedRatingClass
+      getUnifiedRatingClass,
     }
-  }
+  },
 })
 </script>
 

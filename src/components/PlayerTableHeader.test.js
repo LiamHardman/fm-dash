@@ -8,9 +8,9 @@ const globalConfig = {
   global: {
     plugins: [Quasar],
     stubs: {
-      QIcon: true
-    }
-  }
+      QIcon: true,
+    },
+  },
 }
 
 describe('PlayerTableHeader', () => {
@@ -18,16 +18,16 @@ describe('PlayerTableHeader', () => {
     columns: [
       { name: 'name', label: 'Name', type: 'text' },
       { name: 'age', label: 'Age', type: 'number' },
-      { name: 'rating', label: 'Rating', type: 'rating' }
+      { name: 'rating', label: 'Rating', type: 'rating' },
     ],
     sortField: 'name',
-    sortDirection: 'asc'
+    sortDirection: 'asc',
   }
 
   it('renders all column headers', () => {
     const wrapper = mount(PlayerTableHeader, {
       props: defaultProps,
-      ...globalConfig
+      ...globalConfig,
     })
 
     const headers = wrapper.findAll('th')
@@ -40,7 +40,7 @@ describe('PlayerTableHeader', () => {
   it('applies correct classes to headers', () => {
     const wrapper = mount(PlayerTableHeader, {
       props: defaultProps,
-      ...globalConfig
+      ...globalConfig,
     })
 
     const headers = wrapper.findAll('th')
@@ -61,7 +61,7 @@ describe('PlayerTableHeader', () => {
   it('shows sort indicator for active sort field', () => {
     const wrapper = mount(PlayerTableHeader, {
       props: defaultProps,
-      ...globalConfig
+      ...globalConfig,
     })
 
     const activeHeader = wrapper.find('th.active-sort')
@@ -72,7 +72,7 @@ describe('PlayerTableHeader', () => {
   it('shows ascending sort icon when sort direction is asc', () => {
     const wrapper = mount(PlayerTableHeader, {
       props: defaultProps,
-      ...globalConfig
+      ...globalConfig,
     })
 
     const sortIndicator = wrapper.find('.sort-indicator')
@@ -87,9 +87,9 @@ describe('PlayerTableHeader', () => {
     const wrapper = mount(PlayerTableHeader, {
       props: {
         ...defaultProps,
-        sortDirection: 'desc'
+        sortDirection: 'desc',
       },
-      ...globalConfig
+      ...globalConfig,
     })
 
     const sortIndicator = wrapper.find('.sort-indicator')
@@ -102,7 +102,7 @@ describe('PlayerTableHeader', () => {
   it('emits sort event when header is clicked', async () => {
     const wrapper = mount(PlayerTableHeader, {
       props: defaultProps,
-      ...globalConfig
+      ...globalConfig,
     })
 
     const headers = wrapper.findAll('th')
@@ -115,7 +115,7 @@ describe('PlayerTableHeader', () => {
   it('applies text-right class to number and rating columns', () => {
     const wrapper = mount(PlayerTableHeader, {
       props: defaultProps,
-      ...globalConfig
+      ...globalConfig,
     })
 
     const headers = wrapper.findAll('th')
@@ -134,9 +134,9 @@ describe('PlayerTableHeader', () => {
     const wrapper = mount(PlayerTableHeader, {
       props: {
         ...defaultProps,
-        sortField: 'age'
+        sortField: 'age',
       },
-      ...globalConfig
+      ...globalConfig,
     })
 
     const headers = wrapper.findAll('th')
@@ -152,7 +152,7 @@ describe('PlayerTableHeader', () => {
   it('has correct cursor and user-select styles', () => {
     const wrapper = mount(PlayerTableHeader, {
       props: defaultProps,
-      ...globalConfig
+      ...globalConfig,
     })
 
     const headers = wrapper.findAll('th')
@@ -165,7 +165,7 @@ describe('PlayerTableHeader', () => {
   it('renders proper header content structure', () => {
     const wrapper = mount(PlayerTableHeader, {
       props: defaultProps,
-      ...globalConfig
+      ...globalConfig,
     })
 
     const firstHeader = wrapper.find('th')
@@ -181,9 +181,9 @@ describe('PlayerTableHeader', () => {
     const wrapper = mount(PlayerTableHeader, {
       props: {
         ...defaultProps,
-        columns: []
+        columns: [],
       },
-      ...globalConfig
+      ...globalConfig,
     })
 
     const headers = wrapper.findAll('th')

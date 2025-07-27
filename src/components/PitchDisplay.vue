@@ -158,7 +158,7 @@ const fmSlotRoleToKeyPrefixMap = {
   'AM (R)': 'AMR', // Right attacking midfielder maps to AMR prefix
   'AM (L)': 'AML', // Left attacking midfielder maps to AML prefix
   'AM (C)': 'AMC', // Center attacking midfielder maps to AMC prefix
-  'ST (C)': 'ST' // Striker maps to ST prefix
+  'ST (C)': 'ST', // Striker maps to ST prefix
 }
 
 export default {
@@ -166,18 +166,18 @@ export default {
   props: {
     formation: {
       type: Array,
-      default: () => []
+      default: () => [],
     },
     players: {
       // This is the bestTeamPlayers object from TeamViewPage
       // OR bestTeamPlayersForPitch from TeamViewPage (if using squad depth)
       type: Object,
-      default: () => ({})
+      default: () => ({}),
     },
     disablePlayerClicks: {
       type: Boolean,
-      default: false
-    }
+      default: false,
+    },
   },
   emits: ['player-click', 'player-moved', 'position-click'],
   setup(props, { emit }) {
@@ -185,11 +185,11 @@ export default {
     const isDragging = ref(false)
     const draggedPlayerInfo = ref(null)
 
-    const getPlayerSlotStyle = numPlayersInRow => {
+    const getPlayerSlotStyle = (numPlayersInRow) => {
       const percentageWidth = 100 / Math.max(1, numPlayersInRow)
       return {
         flex: `1 1 ${percentageWidth}%`,
-        maxWidth: `${percentageWidth}%`
+        maxWidth: `${percentageWidth}%`,
       }
     }
 
@@ -216,7 +216,7 @@ export default {
         ? player.roleSpecificOveralls
         : Object.entries(player.roleSpecificOveralls).map(([roleName, score]) => ({
             roleName,
-            score
+            score,
           }))
 
       if (roleData.length === 0) {
@@ -228,7 +228,7 @@ export default {
 
       // Filter for roles that match this position and sort by score
       const matchingRoles = roleData
-        .filter(rso => {
+        .filter((rso) => {
           const rsoBasePosition = rso.roleName.split(' - ')[0].trim()
           return rsoBasePosition === positionPrefix
         })
@@ -245,7 +245,7 @@ export default {
       }
 
       // Find the best non-Generic role for this position
-      const bestNonGenericRole = matchingRoles.find(rso => !rso.roleName.includes('Generic'))
+      const bestNonGenericRole = matchingRoles.find((rso) => !rso.roleName.includes('Generic'))
 
       if (bestNonGenericRole) {
         // Return the full role name or just the role part after the position
@@ -279,7 +279,7 @@ export default {
       isDragging.value = true
       draggedPlayerInfo.value = {
         player: props.players[fromSlotId],
-        fromSlotId
+        fromSlotId,
       }
       event.dataTransfer.effectAllowed = 'move'
       if (player?.name) {
@@ -296,17 +296,17 @@ export default {
       document.body.classList.remove('grabbing-cursor')
     }
 
-    const handleDragOver = event => {
+    const handleDragOver = (event) => {
       event.preventDefault()
     }
 
-    const handleDragEnterSlot = event => {
+    const handleDragEnterSlot = (event) => {
       if (event.target.classList.contains('drop-zone')) {
         event.target.classList.add('drop-zone-hover')
       }
     }
 
-    const handleDragLeaveSlot = event => {
+    const handleDragLeaveSlot = (event) => {
       if (event.target.classList.contains('drop-zone')) {
         event.target.classList.remove('drop-zone-hover')
       }
@@ -329,14 +329,14 @@ export default {
             player,
             fromSlotId,
             toSlotId,
-            toSlotRole
+            toSlotRole,
           })
         }
       }
       handleDragEnd()
     }
 
-    const handleDropOnPitch = _event => {
+    const handleDropOnPitch = (_event) => {
       handleDragEnd()
     }
 
@@ -353,9 +353,9 @@ export default {
       handleDropOnSlot,
       handleDropOnPitch,
       handleDragEnterSlot,
-      handleDragLeaveSlot
+      handleDragLeaveSlot,
     }
-  }
+  },
 }
 </script>
 

@@ -46,7 +46,7 @@ async function examples() {
   // 4. Batch processing for multiple teams
   const { batchGetTeamLogos } = useTeamLogosBackend()
   const teamNames = ['Valencia', 'Barcelona', 'Real Madrid']
-  const _logoMap = await batchGetTeamLogos(teamNames, _progress => {})
+  const _logoMap = await batchGetTeamLogos(teamNames, (_progress) => {})
 }
 
 // MIGRATION STEPS

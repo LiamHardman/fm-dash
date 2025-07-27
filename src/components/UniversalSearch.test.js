@@ -13,8 +13,8 @@ global.fetch = vi.fn()
 vi.mock('vue-router', () => ({
   useRouter: vi.fn(() => ({
     push: vi.fn(),
-    resolve: vi.fn(() => ({ href: '/mocked-url' }))
-  }))
+    resolve: vi.fn(() => ({ href: '/mocked-url' })),
+  })),
 }))
 
 // Mock window.open
@@ -26,7 +26,7 @@ const MockPlayerDetailDialog = {
   name: 'PlayerDetailDialog',
   template: '<div class="mock-player-detail-dialog"></div>',
   props: ['player', 'show', 'currency-symbol', 'dataset-id'],
-  emits: ['close']
+  emits: ['close'],
 }
 
 const globalConfig = {
@@ -34,11 +34,11 @@ const globalConfig = {
     plugins: [
       Quasar,
       createTestingPinia({
-        createSpy: vi.fn
-      })
+        createSpy: vi.fn,
+      }),
     ],
     components: {
-      PlayerDetailDialog: MockPlayerDetailDialog
+      PlayerDetailDialog: MockPlayerDetailDialog,
     },
     stubs: {
       QInput: {
@@ -48,62 +48,62 @@ const globalConfig = {
         props: ['modelValue', 'filled', 'dense', 'placeholder', 'disable'],
         emits: ['update:modelValue', 'keyup'],
         methods: {
-          focus: vi.fn()
-        }
+          focus: vi.fn(),
+        },
       },
       QIcon: {
         name: 'QIcon',
         template: '<i></i>',
-        props: ['name', 'color']
+        props: ['name', 'color'],
       },
       QBtn: {
         name: 'QBtn',
         template: '<button @click="$emit(\'click\')"><slot /></button>',
         props: ['flat', 'round', 'dense', 'icon', 'size'],
-        emits: ['click']
+        emits: ['click'],
       },
       QCard: {
         name: 'QCard',
         template: '<div class="q-card"><slot /></div>',
-        props: ['flat', 'bordered']
+        props: ['flat', 'bordered'],
       },
       QCardSection: {
         name: 'QCardSection',
-        template: '<div class="q-card-section"><slot /></div>'
+        template: '<div class="q-card-section"><slot /></div>',
       },
       QList: {
         name: 'QList',
         template: '<div class="q-list"><slot /></div>',
-        props: ['separator']
+        props: ['separator'],
       },
       QItem: {
         name: 'QItem',
         template: '<div class="q-item" @click="$emit(\'click\')"><slot /></div>',
         props: ['clickable'],
-        emits: ['click']
+        emits: ['click'],
       },
       QItemSection: {
         name: 'QItemSection',
         template: '<div class="q-item-section"><slot /></div>',
-        props: ['avatar', 'side']
+        props: ['avatar', 'side'],
       },
       QItemLabel: {
         name: 'QItemLabel',
         template: '<div class="q-item-label"><slot /></div>',
-        props: ['caption']
+        props: ['caption'],
       },
       QChip: {
         name: 'QChip',
         template: '<span class="q-chip"><slot /></span>',
-        props: ['color', 'text-color', 'size']
+        props: ['color', 'text-color', 'size'],
       },
       QSpinner: {
         name: 'QSpinner',
         template: '<div class="q-spinner"></div>',
-        props: ['size']
-      }
-    }
-  }
+        props: ['size'],
+      },
+    },
+  },
 }
 
 describe('UniversalSearch', () => {
@@ -116,7 +116,7 @@ describe('UniversalSearch', () => {
 
     mockRouter = {
       push: vi.fn(),
-      resolve: vi.fn(() => ({ href: '/mocked-url' }))
+      resolve: vi.fn(() => ({ href: '/mocked-url' })),
     }
     useRouter.mockReturnValue(mockRouter)
 
@@ -127,8 +127,8 @@ describe('UniversalSearch', () => {
           { type: 'player', id: 1, name: 'John Doe', description: 'Forward at Test FC' },
           { type: 'team', id: 2, name: 'Test FC', description: 'Football Club' },
           { type: 'league', id: 3, name: 'Test League', description: 'Premier League' },
-          { type: 'nation', id: 4, name: 'England', description: 'National Team' }
-        ])
+          { type: 'nation', id: 4, name: 'England', description: 'National Team' },
+        ]),
     })
   })
 
@@ -140,7 +140,7 @@ describe('UniversalSearch', () => {
   const createWrapper = (options = {}) => {
     const wrapper = mount(UniversalSearch, {
       ...globalConfig,
-      ...options
+      ...options,
     })
 
     playerStore = usePlayerStore()
@@ -193,7 +193,7 @@ describe('UniversalSearch', () => {
     await nextTick()
 
     expect(global.fetch).toHaveBeenCalledWith('/api/search/test-dataset-123?q=John', {
-      signal: expect.any(AbortSignal)
+      signal: expect.any(AbortSignal),
     })
   })
 
@@ -287,8 +287,8 @@ describe('UniversalSearch', () => {
       path: '/team-view',
       query: {
         datasetId: 'test-dataset-123',
-        team: 'Test FC'
-      }
+        team: 'Test FC',
+      },
     })
     expect(global.window.open).toHaveBeenCalledWith('/mocked-url', '_blank')
   })
@@ -302,7 +302,7 @@ describe('UniversalSearch', () => {
 
     expect(mockRouter.push).toHaveBeenCalledWith({
       path: '/leagues/test-dataset-123',
-      query: { league: 'Premier League' }
+      query: { league: 'Premier League' },
     })
   })
 
@@ -315,7 +315,7 @@ describe('UniversalSearch', () => {
 
     expect(mockRouter.push).toHaveBeenCalledWith({
       path: '/nations/test-dataset-123',
-      query: { nation: 'England' }
+      query: { nation: 'England' },
     })
   })
 
@@ -329,7 +329,7 @@ describe('UniversalSearch', () => {
 
     expect(mockRouter.push).toHaveBeenCalledWith({
       path: '/dataset/test-dataset-123',
-      query: { search: 'Unknown Player' }
+      query: { search: 'Unknown Player' },
     })
   })
 
@@ -363,7 +363,7 @@ describe('UniversalSearch', () => {
 
     await nextTick()
     expect(global.fetch).toHaveBeenLastCalledWith('/api/search/test-dataset-123?q=second', {
-      signal: expect.any(AbortSignal)
+      signal: expect.any(AbortSignal),
     })
   })
 
@@ -420,7 +420,7 @@ describe('UniversalSearch', () => {
     // Mock empty results
     global.fetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve([])
+      json: () => Promise.resolve([]),
     })
 
     const input = wrapper.findComponent({ name: 'QInput' })

@@ -90,7 +90,7 @@ export const performance = {
   /**
    * Mark the start of a performance measurement
    */
-  mark: name => {
+  mark: (name) => {
     if (isDev && window.performance) {
       window.performance.mark(`${name}-start`)
     }
@@ -99,7 +99,7 @@ export const performance = {
   /**
    * Measure performance between marks
    */
-  measure: name => {
+  measure: (name) => {
     if (isDev && window.performance) {
       try {
         window.performance.mark(`${name}-end`)
@@ -112,7 +112,7 @@ export const performance = {
         logger.warn('Performance measurement failed:', e)
       }
     }
-  }
+  },
 }
 
 export default logger

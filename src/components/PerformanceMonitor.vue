@@ -175,7 +175,7 @@ export default {
       if (performance.memory) {
         memoryUsage.value = {
           used: performance.memory.usedJSHeapSize,
-          limit: performance.memory.jsHeapSizeLimit
+          limit: performance.memory.jsHeapSizeLimit,
         }
       }
     }
@@ -187,7 +187,7 @@ export default {
       workerStatus.value = {
         active: 1, // Number of active workers
         total: 1, // Total workers created
-        pendingTasks: 0 // Tasks waiting to be processed
+        pendingTasks: 0, // Tasks waiting to be processed
       }
     }
 
@@ -201,7 +201,7 @@ export default {
       cacheStats.value = {
         hits: cacheHits,
         total: totalOperations,
-        hitRate: cacheHits / totalOperations
+        hitRate: cacheHits / totalOperations,
       }
     }
 
@@ -213,17 +213,17 @@ export default {
           performanceObserver.disconnect()
         }
 
-        performanceObserver = new PerformanceObserver(list => {
+        performanceObserver = new PerformanceObserver((list) => {
           const entries = list.getEntries()
           const renderTimes = entries
-            .filter(entry => entry.entryType === 'measure')
-            .map(entry => entry.duration)
+            .filter((entry) => entry.entryType === 'measure')
+            .map((entry) => entry.duration)
 
           if (renderTimes.length > 0) {
             const avgTime = renderTimes.reduce((a, b) => a + b, 0) / renderTimes.length
             renderStats.value = {
               averageTime: avgTime,
-              operations: renderTimes.length
+              operations: renderTimes.length,
             }
           }
         })
@@ -237,7 +237,7 @@ export default {
       // This would be connected to your virtual scroll implementation
       virtualScrollStats.value = {
         visibleItems: 20, // Number of visible items
-        scrollTop: 0 // Current scroll position
+        scrollTop: 0, // Current scroll position
       }
     }
 
@@ -323,9 +323,9 @@ export default {
       cacheStats,
       renderStats,
       virtualScrollStats,
-      memoizationSavings
+      memoizationSavings,
     }
-  }
+  },
 }
 </script>
 

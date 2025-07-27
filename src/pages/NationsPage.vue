@@ -551,11 +551,11 @@ import { useRoute, useRouter } from 'vue-router'
 import PitchDisplay from '../components/PitchDisplay.vue'
 import PlayerDataTable from '../components/PlayerDataTable.vue'
 import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
+import { fetchTeamData } from '../services/playerService'
 import { usePlayerStore } from '../stores/playerStore'
 import { formationCache } from '../utils/formationCache'
 import { formations, getFormationLayout } from '../utils/formations'
 import { cacheLogger } from '../utils/logger'
-import { fetchFullPlayerStats, fetchTeamData } from '../services/playerService'
 
 const fmSlotRoleMatcher = {
   GK: ['Goalkeeper'],
@@ -571,7 +571,7 @@ const fmSlotRoleMatcher = {
   'AM (R)': ['Attacking Midfielder (Right)', 'Right Attacking Midfielder', 'Winger (Right)'],
   'AM (L)': ['Attacking Midfielder (Left)', 'Left Attacking Midfielder', 'Winger (Left)'],
   'AM (C)': ['Attacking Midfielder (Centre)', 'Centre Attacking Midfielder'],
-  'ST (C)': ['Striker (Centre)', 'Striker']
+  'ST (C)': ['Striker (Centre)', 'Striker'],
 }
 
 export default {
@@ -630,7 +630,7 @@ export default {
       const playerCount = allPlayersData.value.length
       const samplePlayerData = allPlayersData.value
         .slice(0, 10)
-        .map(p => `${p.name}:${p.Overall || 0}:${p.nationality}`)
+        .map((p) => `${p.name}:${p.Overall || 0}:${p.nationality}`)
         .join('|')
       const cacheInput = `${currentDatasetId.value}:${playerCount}:${samplePlayerData}:${CACHE_VERSION}`
 
@@ -657,24 +657,24 @@ export default {
           datasetId: currentDatasetId.value,
           generatedAt: new Date().toISOString(),
           playerCount: allPlayersData.value.length,
-          nationsData: nationsData.value.map(nation => ({
+          nationsData: nationsData.value.map((nation) => ({
             name: nation.name,
             nationality_iso: nation.nationality_iso,
             playerCount: nation.playerCount,
             bestFormationOverall: nation.bestFormationOverall,
             attRating: nation.attRating,
             midRating: nation.midRating,
-            defRating: nation.defRating
-          }))
+            defRating: nation.defRating,
+          })),
         }
 
         // Save to API endpoint which will handle local/S3 storage based on configuration
         const response = await fetch(`/api/cache/nation-ratings/${cacheKey.value}`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
           },
-          body: JSON.stringify(cacheData)
+          body: JSON.stringify(cacheData),
         })
 
         if (response.ok) {
@@ -729,11 +729,11 @@ export default {
         }
 
         // Restore cached nation data
-        const restoredNations = cacheData.nationsData.map(cachedNation => ({
+        const restoredNations = cacheData.nationsData.map((cachedNation) => ({
           ...cachedNation,
           isCalculating: false,
           players: [], // Will be populated if needed
-          topPlayersByPosition: {} // Will be populated if needed
+          topPlayersByPosition: {}, // Will be populated if needed
         }))
 
         nationsData.value = restoredNations
@@ -769,7 +769,7 @@ export default {
 
       try {
         const response = await fetch(`/api/cache/nation-ratings/${cacheKey.value}`, {
-          method: 'DELETE'
+          method: 'DELETE',
         })
 
         if (response.ok) {
@@ -811,7 +811,7 @@ export default {
       'ATTACKING MIDFIELDER (CENTRE)': 'AMC',
       'CENTRE ATTACKING MIDFIELDER': 'AMC',
       'STRIKER (CENTRE)': 'ST',
-      STRIKER: 'ST'
+      STRIKER: 'ST',
     }
 
     const positionSideMap = {
@@ -828,7 +828,7 @@ export default {
       'AM (L)': ['AML'],
       'AM (C)': ['AMC'],
       'ST (C)': ['ST'],
-      GK: ['GK']
+      GK: ['GK'],
     }
 
     const fallbackPositionMap = {
@@ -845,7 +845,7 @@ export default {
       'AM (L)': ['AML', 'ML'],
       'AM (C)': ['AMC', 'MC'],
       'ST (C)': ['ST', 'AMC'],
-      GK: ['GK']
+      GK: ['GK'],
     }
 
     // Reactive refs for pagination
@@ -909,7 +909,7 @@ export default {
               defRating: null,
               isCalculating: false,
               players: [],
-              topPlayersByPosition: {} // NEW: Pre-filtered top players per position
+              topPlayersByPosition: {}, // NEW: Pre-filtered top players per position
             })
           }
 
@@ -939,7 +939,7 @@ export default {
         'AMR',
         'AML',
         'AMC',
-        'ST'
+        'ST',
       ]
 
       for (const [_nationalityName, nation] of nationsMap) {
@@ -947,7 +947,7 @@ export default {
         let _totalOptimizedPlayers = 0
 
         for (const position of allPositions) {
-          const playersForPosition = nation.players.filter(player => {
+          const playersForPosition = nation.players.filter((player) => {
             const playerPositions = player.shortPositions || []
             return playerPositions.includes(position)
           })
@@ -970,14 +970,14 @@ export default {
       nationsData.value = Array.from(nationsMap.values()).sort(
         (a, b) => b.playerCount - a.playerCount
       )
-      
+
       // console.log('[NationRatings] Initialized', nationsData.value.length, 'nations')
     }
 
     // NEW: Calculate ratings for a single nation
-    const calculateNationRatings = async nation => {
+    const calculateNationRatings = async (nation) => {
       // Set calculating state
-      const nationIndex = nationsData.value.findIndex(n => n.name === nation.name)
+      const nationIndex = nationsData.value.findIndex((n) => n.name === nation.name)
       if (nationIndex !== -1) {
         nationsData.value[nationIndex].isCalculating = true
       }
@@ -986,10 +986,10 @@ export default {
       // console.log('[NationRatings] Calculating ratings for', nation.name)
 
       // Simulate small delay to prevent UI blocking
-      await new Promise(resolve => setTimeout(resolve, 10))
+      await new Promise((resolve) => setTimeout(resolve, 10))
 
-      let topPlayersByPosition = {}
-      
+      const topPlayersByPosition = {}
+
       try {
         // Use the new team data API to get all detailed player data in one request
         const nationData = await fetchTeamData(currentDatasetId.value, 'nation', nation.name)
@@ -1003,7 +1003,7 @@ export default {
               attRating: 0,
               midRating: 0,
               defRating: 0,
-              isCalculating: false
+              isCalculating: false,
             }
           }
           console.log('[NationRatings] No players found for', nation.name)
@@ -1036,7 +1036,7 @@ export default {
               attRating: 0,
               midRating: 0,
               defRating: 0,
-              isCalculating: false
+              isCalculating: false,
             }
           }
           console.log('[NationRatings] No top players by position for', nation.name)
@@ -1052,7 +1052,7 @@ export default {
             attRating: 0,
             midRating: 0,
             defRating: 0,
-            isCalculating: false
+            isCalculating: false,
           }
         }
         return
@@ -1061,7 +1061,7 @@ export default {
       let bestOverall = 0
       let hasMinimumPlayers = false
       let bestSectionRatings = { attRating: 0, midRating: 0, defRating: 0 }
-      
+
       // console.log('[NationRatings] Starting calculation for', nation.name, 'with', Object.keys(topPlayersByPosition).length, 'positions')
       // console.log('[NationRatings] Available positions:', Object.keys(topPlayersByPosition))
 
@@ -1074,7 +1074,7 @@ export default {
           continue
         }
 
-        const formationSlots = formationLayoutForCalc.flatMap(row => row.positions)
+        const formationSlots = formationLayoutForCalc.flatMap((row) => row.positions)
         const tempSquadComposition = {}
 
         for (const slot of formationSlots) {
@@ -1104,7 +1104,7 @@ export default {
             if (topPlayersByPosition[position]) {
               for (const player of topPlayersByPosition[position]) {
                 // Only add if not already included from exact matches
-                if (!relevantPlayers.some(p => p.name === player.name)) {
+                if (!relevantPlayers.some((p) => p.name === player.name)) {
                   relevantPlayers.push(player)
                 }
               }
@@ -1118,7 +1118,7 @@ export default {
             if (overallInRole >= MIN_SUITABILITY_THRESHOLD) {
               // console.log('[NationRatings] Player', player.name, 'has overall', overallInRole, 'for role', slot.role, 'in', nation.name)
               const playerPositions = player.shortPositions || []
-              const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos))
+              const isExactMatch = playerPositions.some((pos) => slotPositions.includes(pos))
 
               const assignment = {
                 player,
@@ -1126,7 +1126,7 @@ export default {
                 slotRole: slot.role,
                 overallInRole: overallInRole,
                 sortScore: overallInRole,
-                exactMatch: isExactMatch
+                exactMatch: isExactMatch,
               }
 
               if (isExactMatch) {
@@ -1153,7 +1153,7 @@ export default {
               tempSquadComposition[slot.id].push({
                 player: assignment.player,
                 overallInRole: assignment.overallInRole,
-                exactMatch: assignment.exactMatch
+                exactMatch: assignment.exactMatch,
               })
               assignedPlayersToSlots.add(assignment.player.name)
               break
@@ -1163,11 +1163,11 @@ export default {
 
         // Check if we have enough players to generate meaningful ratings
         const filledPositions = Object.values(tempSquadComposition).filter(
-          slotPlayers => slotPlayers.length > 0
+          (slotPlayers) => slotPlayers.length > 0
         ).length
         const hasEnoughPlayers = filledPositions >= 5
-        
-                  // console.log('[NationRatings] Formation', formationKey, 'filled positions:', filledPositions, 'for', nation.name)
+
+        // console.log('[NationRatings] Formation', formationKey, 'filled positions:', filledPositions, 'for', nation.name)
 
         if (hasEnoughPlayers) {
           hasMinimumPlayers = true
@@ -1221,14 +1221,14 @@ export default {
               bestSectionRatings = {
                 attRating: attCount > 0 ? Math.round(attSum / attCount) : 0,
                 midRating: midCount > 0 ? Math.round(midSum / midCount) : 0,
-                defRating: defCount > 0 ? Math.round(defSum / defCount) : 0
+                defRating: defCount > 0 ? Math.round(defSum / defCount) : 0,
               }
             }
           }
         }
         // Reduced delay frequency since we're working with much smaller datasets now
         if (Object.keys(formations).indexOf(formationKey) % 5 === 0) {
-          await new Promise(resolve => setTimeout(resolve, 1))
+          await new Promise((resolve) => setTimeout(resolve, 1))
         }
       }
 
@@ -1240,18 +1240,18 @@ export default {
         //   bestOverall,
         //   bestSectionRatings
         // })
-        
+
         nationsData.value[nationIndex] = {
           ...nationsData.value[nationIndex],
           bestFormationOverall: hasMinimumPlayers ? bestOverall : 0,
           attRating: hasMinimumPlayers ? bestSectionRatings.attRating : 0,
           midRating: hasMinimumPlayers ? bestSectionRatings.midRating : 0,
           defRating: hasMinimumPlayers ? bestSectionRatings.defRating : 0,
-          isCalculating: false
+          isCalculating: false,
         }
         // Debug log - commented out to reduce console spam
         // console.log('[NationRatings] After update - nation:', nationsData.value[nationIndex])
-        
+
         // Force reactivity update
         nationsData.value = [...nationsData.value]
         // console.log('[NationRatings] Completed calculation for', nation.name, 'with hasMinimumPlayers:', hasMinimumPlayers)
@@ -1279,7 +1279,7 @@ export default {
         } catch (_error) {
           // console.error('[NationRatings] Error processing nation:', nation.name, _error)
           // Mark as failed and continue
-          const nationIndex = nationsData.value.findIndex(n => n.name === nation.name)
+          const nationIndex = nationsData.value.findIndex((n) => n.name === nation.name)
           if (nationIndex !== -1) {
             nationsData.value[nationIndex].isCalculating = false
             nationsData.value[nationIndex].bestFormationOverall = 0
@@ -1287,7 +1287,7 @@ export default {
         }
 
         // Small delay between nations to keep UI responsive
-        await new Promise(resolve => setTimeout(resolve, 5))
+        await new Promise((resolve) => setTimeout(resolve, 5))
       }
 
       isProcessingQueue.value = false
@@ -1301,7 +1301,7 @@ export default {
       if (nationsData.value.length === 0) return
 
       // console.log('[NationRatings] Starting calculations for', nationsData.value.length, 'nations')
-      
+
       // Queue all nations for calculation
       calculationQueue.value = [...nationsData.value]
       calculationProgress.value = { current: 0, total: nationsData.value.length }
@@ -1310,7 +1310,7 @@ export default {
       processCalculationQueue()
     }
 
-    const fetchPlayersAndCurrency = async datasetId => {
+    const fetchPlayersAndCurrency = async (datasetId) => {
       pageLoading.value = true
       pageLoadingError.value = ''
       try {
@@ -1393,12 +1393,12 @@ export default {
       update(() => {
         const needle = val.toLowerCase()
         nationOptions.value = allNationNamesCache.value.filter(
-          nation => nation.toLowerCase().indexOf(needle) > -1
+          (nation) => nation.toLowerCase().indexOf(needle) > -1
         )
       })
     }
 
-    const selectNation = nationName => {
+    const selectNation = (nationName) => {
       selectedNationName.value = nationName
       loadNationPlayers()
     }
@@ -1413,12 +1413,16 @@ export default {
         return
       }
       loadingNation.value = true
-      
+
       try {
         // Use the new team data API to get all detailed player data in one request
-        const nationData = await fetchTeamData(currentDatasetId.value, 'nation', selectedNationName.value)
-        
-        if (nationData.data && nationData.data.players) {
+        const nationData = await fetchTeamData(
+          currentDatasetId.value,
+          'nation',
+          selectedNationName.value
+        )
+
+        if (nationData.data?.players) {
           nationPlayers.value = nationData.data.players
 
           if (nationData.data.players.length > 0) {
@@ -1443,7 +1447,9 @@ export default {
             squadComposition.value = {}
             bestNationAverageOverall.value = null
             calculationMessage.value = 'No players found for this nation.'
-            calculationMessageClass.value = quasarInstance.dark.isActive ? 'text-grey-5' : 'text-grey-7'
+            calculationMessageClass.value = quasarInstance.dark.isActive
+              ? 'text-grey-5'
+              : 'text-grey-7'
           }
         } else {
           throw new Error('Invalid nation data response')
@@ -1451,10 +1457,8 @@ export default {
       } catch (error) {
         console.error('Error loading nation players:', error)
         calculationMessage.value = `Failed to load nation players: ${error.message}`
-        calculationMessageClass.value = quasarInstance.dark.isActive
-          ? 'text-red-5'
-          : 'text-red-7'
-        
+        calculationMessageClass.value = quasarInstance.dark.isActive ? 'text-red-5' : 'text-red-7'
+
         // Fallback to empty state
         nationPlayers.value = []
         selectedFormationKey.value = null
@@ -1475,9 +1479,9 @@ export default {
     }
 
     const formationOptions = computed(() => {
-      return Object.keys(formations).map(key => ({
+      return Object.keys(formations).map((key) => ({
         label: formations[key].name,
-        value: key
+        value: key,
       }))
     })
 
@@ -1499,7 +1503,7 @@ export default {
           starters[slotId] = {
             ...starterEntry.player,
             Overall: starterEntry.overallInRole,
-            exactPositionMatch: starterEntry.exactMatch
+            exactPositionMatch: starterEntry.exactMatch,
           }
         } else {
           starters[slotId] = null
@@ -1519,7 +1523,7 @@ export default {
       // Only show goalkeeper view if more than half the players are goalkeepers
       if (nationPlayers.value.length === 0) return false
 
-      const goalkeeperCount = nationPlayers.value.filter(p =>
+      const goalkeeperCount = nationPlayers.value.filter((p) =>
         p.position_groups?.includes('Goalkeepers')
       ).length
 
@@ -1527,12 +1531,12 @@ export default {
       return goalkeeperCount > nationPlayers.value.length / 2
     })
 
-    const handlePlayerSelectedFromNation = player => {
+    const handlePlayerSelectedFromNation = (player) => {
       playerForDetailView.value = player
       showPlayerDetailDialog.value = true
     }
 
-    const getOverallClass = overall => {
+    const getOverallClass = (overall) => {
       if (overall === null || overall === undefined || overall === 0) return 'rating-na'
       const numericOverall = Number(overall)
       if (Number.isNaN(numericOverall)) return 'rating-na'
@@ -1559,7 +1563,7 @@ export default {
       return 'empty'
     }
 
-    const getStarRating = overall => {
+    const getStarRating = (overall) => {
       if (!overall || overall === 0) return 0
 
       if (overall >= 85) return 5
@@ -1580,7 +1584,7 @@ export default {
         return { attRating: 0, midRating: 0, defRating: 0 }
       }
 
-      const formationSlots = formationLayout.flatMap(row => row.positions)
+      const formationSlots = formationLayout.flatMap((row) => row.positions)
 
       // Define position categories
       const defensivePositions = ['GK', 'D (R)', 'D (L)', 'D (C)', 'WB (R)', 'WB (L)']
@@ -1616,7 +1620,7 @@ export default {
       return {
         attRating: attCount > 0 ? Math.round(attSum / attCount) : 0,
         midRating: midCount > 0 ? Math.round(midSum / midCount) : 0,
-        defRating: defCount > 0 ? Math.round(defSum / defCount) : 0
+        defRating: defCount > 0 ? Math.round(defSum / defCount) : 0,
       }
     }
 
@@ -1624,7 +1628,7 @@ export default {
       if (!player || !slotFormationRole) return 0
 
       let bestScoreForRole = 0
-      
+
       // console.log('[getPlayerOverallForRole] Calculating for player', player.name, 'role', slotFormationRole, 'has roleSpecificOveralls:', !!player.roleSpecificOveralls, 'general Overall:', player.Overall)
 
       if (!player.roleSpecificOveralls) {
@@ -1647,7 +1651,7 @@ export default {
       const requiredPositions = positionSideMap[upperSlotRoleOriginal] || []
 
       if (player.shortPositions && player.shortPositions.length > 0) {
-        const exactPositionMatches = player.shortPositions.filter(pos =>
+        const exactPositionMatches = player.shortPositions.filter((pos) =>
           requiredPositions.includes(pos)
         )
 
@@ -1683,7 +1687,9 @@ export default {
       const fallbackPositions = fallbackPositionMap[upperSlotRoleOriginal] || []
 
       if (player.shortPositions && player.shortPositions.length > 0) {
-        const fallbackMatches = player.shortPositions.filter(pos => fallbackPositions.includes(pos))
+        const fallbackMatches = player.shortPositions.filter((pos) =>
+          fallbackPositions.includes(pos)
+        )
 
         if (fallbackMatches.length > 0) {
           if (Array.isArray(player.roleSpecificOveralls)) {
@@ -1715,8 +1721,8 @@ export default {
         const fmPositionMatchers = fmSlotRoleMatcher[upperSlotRole] || [upperSlotRole]
 
         const targetRoleKeyPrefixes = fmPositionMatchers
-          .map(matcher => fmMatcherToRoleKeyPrefix[matcher.toUpperCase()])
-          .filter(prefix => !!prefix)
+          .map((matcher) => fmMatcherToRoleKeyPrefix[matcher.toUpperCase()])
+          .filter((prefix) => !!prefix)
           .reduce((acc, val) => {
             if (!acc.includes(val)) {
               acc.push(val)
@@ -1784,7 +1790,7 @@ export default {
         const formationLayoutForCalc = getFormationLayout(formationKey)
         if (!formationLayoutForCalc) continue
 
-        const formationSlots = formationLayoutForCalc.flatMap(row => row.positions)
+        const formationSlots = formationLayoutForCalc.flatMap((row) => row.positions)
         const tempSquadComposition = {}
 
         for (const slot of formationSlots) {
@@ -1799,7 +1805,7 @@ export default {
             if (overallInRole >= MIN_SUITABILITY_THRESHOLD) {
               const slotPositions = positionSideMap[slot.role.toUpperCase()] || []
               const playerPositions = player.shortPositions || []
-              const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos))
+              const isExactMatch = playerPositions.some((pos) => slotPositions.includes(pos))
 
               const canPlayInPosition = isExactMatch
 
@@ -1810,7 +1816,7 @@ export default {
                   slotRole: slot.role,
                   overallInRole: overallInRole,
                   sortScore: overallInRole,
-                  exactMatch: isExactMatch
+                  exactMatch: isExactMatch,
                 }
 
                 if (isExactMatch) {
@@ -1838,7 +1844,7 @@ export default {
               tempSquadComposition[slot.id].push({
                 player: assignment.player,
                 overallInRole: assignment.overallInRole,
-                exactMatch: assignment.exactMatch
+                exactMatch: assignment.exactMatch,
               })
               assignedPlayersToSlots.add(assignment.player.name)
               break
@@ -1869,7 +1875,7 @@ export default {
         formationCache.set(cacheKey, {
           bestFormationKey,
           bestAverageOverall,
-          nationName: selectedNationName.value
+          nationName: selectedNationName.value,
         })
       }
 
@@ -1900,7 +1906,7 @@ export default {
         return
       }
 
-      const formationSlots = formationLayoutForCalc.flatMap(row => row.positions)
+      const formationSlots = formationLayoutForCalc.flatMap((row) => row.positions)
 
       for (const slot of formationSlots) {
         tempSquadComposition[slot.id] = []
@@ -1917,7 +1923,7 @@ export default {
           if (overallInRole >= MIN_SUITABILITY_THRESHOLD) {
             const slotPositions = positionSideMap[slot.role.toUpperCase()] || []
             const playerPositions = player.shortPositions || []
-            const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos))
+            const isExactMatch = playerPositions.some((pos) => slotPositions.includes(pos))
 
             const canPlayInPosition = isExactMatch
 
@@ -1928,7 +1934,7 @@ export default {
                 slotRole: slot.role,
                 overallInRole: overallInRole,
                 sortScore: overallInRole,
-                exactMatch: isExactMatch
+                exactMatch: isExactMatch,
               }
 
               if (isExactMatch) {
@@ -1975,7 +1981,7 @@ export default {
                   tempSquadComposition[slot.id].push({
                     player: assignment.player,
                     overallInRole: assignment.overallInRole,
-                    exactMatch: assignment.exactMatch
+                    exactMatch: assignment.exactMatch,
                   })
                   assignedPlayersToSlots.add(assignment.player.name)
                   break
@@ -2009,7 +2015,7 @@ export default {
                   tempSquadComposition[slot.id].push({
                     player: assignment.player,
                     overallInRole: assignment.overallInRole,
-                    exactMatch: assignment.exactMatch
+                    exactMatch: assignment.exactMatch,
                   })
                   assignedPlayersToSlots.add(assignment.player.name)
                   break
@@ -2034,7 +2040,7 @@ export default {
             if (!assignedPlayersToSlots.has(player.name)) {
               const playerPositions = player.shortPositions || []
 
-              const canPlayFallback = playerPositions.some(pos => fallbackPositions.includes(pos))
+              const canPlayFallback = playerPositions.some((pos) => fallbackPositions.includes(pos))
 
               if (canPlayFallback) {
                 const overallInRole = getPlayerOverallForRole(player, slot.role)
@@ -2042,7 +2048,7 @@ export default {
                   fallbackAssignments.push({
                     player,
                     overallInRole,
-                    exactMatch: false
+                    exactMatch: false,
                   })
                 }
               }
@@ -2085,7 +2091,7 @@ export default {
       }
     }
 
-    watch(selectedFormationKey, newKey => {
+    watch(selectedFormationKey, (newKey) => {
       if (newKey && selectedNationName.value) {
         calculateBestNationAndDepth()
       } else {
@@ -2096,11 +2102,11 @@ export default {
       }
     })
 
-    const handlePlayerMovedOnPitch = moveData => {
+    const handlePlayerMovedOnPitch = (moveData) => {
       const { player, fromSlotId, toSlotId, toSlotRole } = moveData
 
       const currentStarters = JSON.parse(JSON.stringify(bestNationPlayersForPitch.value))
-      const playerToMoveFullData = allPlayersData.value.find(p => p.name === player.name)
+      const playerToMoveFullData = allPlayersData.value.find((p) => p.name === player.name)
 
       if (!playerToMoveFullData) return
 
@@ -2108,22 +2114,22 @@ export default {
 
       const playerPositions = playerToMoveFullData.shortPositions || []
       const slotPositions = positionSideMap[toSlotRole.toUpperCase()] || []
-      const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos))
+      const isExactMatch = playerPositions.some((pos) => slotPositions.includes(pos))
 
       const playerCurrentlyInTargetSlotFullData = currentStarters[toSlotId]
-        ? allPlayersData.value.find(p => p.name === currentStarters[toSlotId].name)
+        ? allPlayersData.value.find((p) => p.name === currentStarters[toSlotId].name)
         : null
 
       currentStarters[toSlotId] = {
         ...playerToMoveFullData,
         Overall: overallInNewRole,
-        exactPositionMatch: isExactMatch
+        exactPositionMatch: isExactMatch,
       }
 
       if (playerCurrentlyInTargetSlotFullData && fromSlotId) {
         const originalRoleOfFromSlot = currentFormationLayout.value
-          .flatMap(r => r.positions)
-          .find(p => p.id === fromSlotId)?.role
+          .flatMap((r) => r.positions)
+          .find((p) => p.id === fromSlotId)?.role
 
         if (originalRoleOfFromSlot) {
           const overallInOldRole = getPlayerOverallForRole(
@@ -2133,12 +2139,12 @@ export default {
 
           const playerPositions = playerCurrentlyInTargetSlotFullData.shortPositions || []
           const slotPositions = positionSideMap[originalRoleOfFromSlot.toUpperCase()] || []
-          const isExactMatch = playerPositions.some(pos => slotPositions.includes(pos))
+          const isExactMatch = playerPositions.some((pos) => slotPositions.includes(pos))
 
           currentStarters[fromSlotId] = {
             ...playerCurrentlyInTargetSlotFullData,
             Overall: overallInOldRole,
-            exactPositionMatch: isExactMatch
+            exactPositionMatch: isExactMatch,
           }
         } else {
           currentStarters[fromSlotId] = null
@@ -2170,7 +2176,7 @@ export default {
 
     watch(
       () => allPlayersData.value,
-      async newVal => {
+      async (newVal) => {
         if (pageLoading.value) return
         if (newVal && newVal.length > 0) {
           populateNationFilterOptions()
@@ -2229,7 +2235,7 @@ export default {
 
     watch(
       () => route.query.nation,
-      newNation => {
+      (newNation) => {
         if (newNation && newNation.trim() !== '' && newNation !== selectedNationName.value) {
           selectedNationName.value = newNation
           loadNationPlayers()
@@ -2254,7 +2260,7 @@ export default {
           color: 'positive',
           icon: 'check_circle',
           position: 'top',
-          timeout: 2000
+          timeout: 2000,
         })
       } catch (_err) {
         const textArea = document.createElement('textarea')
@@ -2269,7 +2275,7 @@ export default {
           color: 'positive',
           icon: 'check_circle',
           position: 'top',
-          timeout: 2000
+          timeout: 2000,
         })
       }
     }
@@ -2277,12 +2283,12 @@ export default {
     // Add computed property for current nation flag ISO
     const currentNationFlagISO = computed(() => {
       if (!selectedNationName.value) return null
-      const nation = nationsWithRatings.value.find(n => n.name === selectedNationName.value)
+      const nation = nationsWithRatings.value.find((n) => n.name === selectedNationName.value)
       return nation?.nationality_iso || null
     })
 
     // Add handleTeamSelected function (for compatibility with PlayerDataTable)
-    const handleTeamSelected = teamName => {
+    const handleTeamSelected = (teamName) => {
       // Redirect to team view page when a team is selected from the player table
       router.push(`/team-view/${currentDatasetId.value}?team=${encodeURIComponent(teamName)}`)
     }
@@ -2334,9 +2340,9 @@ export default {
       calculationProgress,
       isProcessingQueue,
       cacheLoading,
-      cacheKey
+      cacheKey,
     }
-  }
+  },
 }
 </script>
 

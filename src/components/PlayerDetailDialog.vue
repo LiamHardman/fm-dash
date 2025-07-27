@@ -896,15 +896,14 @@ import {
   ref,
   toRef,
   watch,
-  nextTick
 } from 'vue'
 import { usePercentileRetry } from '../composables/usePercentileRetry'
+import { fetchFullPlayerStats } from '../services/playerService.js'
 import { usePlayerStore } from '../stores/playerStore'
 import { useUiStore } from '../stores/uiStore'
 import { formatCurrency } from '../utils/currencyUtils'
-import { fetchFullPlayerStats } from '../services/playerService.js'
-import { getCachedPlayerData, setCachedPlayerData } from '../utils/playerDetailOptimizer.js'
 import logger from '../utils/logger.js'
+import { getCachedPlayerData, setCachedPlayerData } from '../utils/playerDetailOptimizer.js'
 
 // Lazy load TeamLogo component to prevent blocking dialog opening
 const TeamLogo = defineAsyncComponent(() => import('../components/TeamLogo.vue'))
@@ -956,7 +955,7 @@ const attributeFullNameMap = {
   Pun: 'Punching (Tendency)',
   Ref: 'Reflexes',
   TRO: 'Rushing Out (Tendency)',
-  Thr: 'Throwing'
+  Thr: 'Throwing',
 }
 
 const attributeDescriptions = {
@@ -1013,7 +1012,7 @@ const attributeDescriptions = {
   Pun: 'Tendency to punch the ball away rather than catch it',
   Ref: 'Speed of reaction when making saves',
   TRO: 'Tendency to rush out of goal to close down attackers',
-  Thr: 'Accuracy and effectiveness when throwing the ball to teammates'
+  Thr: 'Accuracy and effectiveness when throwing the ball to teammates',
 }
 
 const fifaAttributeDescriptions = {
@@ -1031,7 +1030,7 @@ const fifaAttributeDescriptions = {
   KIC: 'Kicking power and accuracy for goal kicks and distribution',
   REF: 'Reflexes and reaction speed when making saves',
   SPD: 'Speed when rushing out or moving around the penalty area',
-  POS: 'Positioning and decision-making when coming off the goal line'
+  POS: 'Positioning and decision-making when coming off the goal line',
 }
 
 const fifaToFmAttributeMapping = {
@@ -1039,70 +1038,70 @@ const fifaToFmAttributeMapping = {
   PAC: {
     primary: ['Acc', 'Pac'],
     secondary: ['Agi'],
-    description: 'Based on Acceleration, Pace, and Agility'
+    description: 'Based on Acceleration, Pace, and Agility',
   },
   SHO: {
     primary: ['Fin', 'Lon'],
     secondary: ['Pen', 'Hea', 'Cmp', 'Tec', 'Ant', 'Dec', 'Fla'],
     description:
-      'Based on Finishing, Long Shots, Penalties, Heading, Composure, Technique, Anticipation, Decisions, and Flair'
+      'Based on Finishing, Long Shots, Penalties, Heading, Composure, Technique, Anticipation, Decisions, and Flair',
   },
   PAS: {
     primary: ['Pas', 'Vis'],
     secondary: ['Cro', 'Tec', 'Fre', 'Tea', 'Dec', 'Fir', 'Cor', 'OtB'],
     description:
-      'Based on Passing, Vision, Crossing, Technique, Free Kicks, Teamwork, Decisions, First Touch, Corners, and Off the Ball'
+      'Based on Passing, Vision, Crossing, Technique, Free Kicks, Teamwork, Decisions, First Touch, Corners, and Off the Ball',
   },
   DRI: {
     primary: ['Dri', 'Fir', 'Tec'],
     secondary: ['Fla', 'Cmp', 'OtB'],
-    description: 'Based on Dribbling, First Touch, Technique, Flair, Composure, and Off the Ball'
+    description: 'Based on Dribbling, First Touch, Technique, Flair, Composure, and Off the Ball',
   },
   DEF: {
     primary: ['Mar', 'Tck', 'Ant', 'Pos'],
     secondary: ['Hea', 'Cnt', 'Dec', 'Cmp', 'Bra', 'Agg', 'Wor'],
     description:
-      'Based on Marking, Tackling, Anticipation, Positioning, Heading, Concentration, Decisions, Composure, Bravery, Aggression, and Work Rate'
+      'Based on Marking, Tackling, Anticipation, Positioning, Heading, Concentration, Decisions, Composure, Bravery, Aggression, and Work Rate',
   },
   PHY: {
     primary: ['Str', 'Sta', 'Nat'],
     secondary: ['Jum', 'Agg', 'Bra', 'Wor', 'Bal'],
     description:
-      'Based on Strength, Stamina, Natural Fitness, Jumping Reach, Aggression, Bravery, Work Rate, and Balance'
+      'Based on Strength, Stamina, Natural Fitness, Jumping Reach, Aggression, Bravery, Work Rate, and Balance',
   },
 
   // Goalkeeper FIFA Stats mapped to FM attributes
   DIV: {
     primary: ['Aer', 'Ref', '1v1'],
     secondary: ['Agi', 'Han'],
-    description: 'Based on Aerial Reach, Reflexes, One on Ones, Agility, and Handling'
+    description: 'Based on Aerial Reach, Reflexes, One on Ones, Agility, and Handling',
   },
   HAN: {
     primary: ['Han', 'Cmd'],
     secondary: ['Cmp', 'Cnt'],
-    description: 'Based on Handling, Command of Area, Composure, and Concentration'
+    description: 'Based on Handling, Command of Area, Composure, and Concentration',
   },
   REF: {
     primary: ['Ref', 'Ant', '1v1'],
     secondary: ['Cnt'],
-    description: 'Based on Reflexes, Anticipation, One on Ones, and Concentration'
+    description: 'Based on Reflexes, Anticipation, One on Ones, and Concentration',
   },
   KIC: {
     primary: ['Kic', 'Thr'],
     secondary: ['Tec', 'Vis', 'Pas'],
-    description: 'Based on Kicking, Throwing, Technique, Vision, and Passing'
+    description: 'Based on Kicking, Throwing, Technique, Vision, and Passing',
   },
   SPD: {
     primary: ['Acc', 'Pac', 'TRO'],
     secondary: [],
-    description: 'Based on Acceleration, Pace, and Rushing Out Tendency'
+    description: 'Based on Acceleration, Pace, and Rushing Out Tendency',
   },
   POS: {
     primary: ['Pos', 'Cmd', 'Ant', 'Dec'],
     secondary: ['TRO', 'Cnt', 'Com'],
     description:
-      'Based on Positioning, Command of Area, Anticipation, Decisions, Rushing Out Tendency, Concentration, and Communication'
-  }
+      'Based on Positioning, Command of Area, Anticipation, Decisions, Rushing Out Tendency, Concentration, and Communication',
+  },
 }
 
 const technicalAttrsOrdered = [
@@ -1119,7 +1118,7 @@ const technicalAttrsOrdered = [
   'Pas',
   'Pen',
   'Tck',
-  'Tec'
+  'Tec',
 ]
 const mentalAttrsOrdered = [
   'Agg',
@@ -1135,7 +1134,7 @@ const mentalAttrsOrdered = [
   'Pos',
   'Tea',
   'Vis',
-  'Wor'
+  'Wor',
 ]
 const physicalAttrsOrdered = ['Acc', 'Agi', 'Bal', 'Jum', 'Nat', 'Pac', 'Sta', 'Str']
 const goalkeepingAttrsOrdered = [
@@ -1151,7 +1150,7 @@ const goalkeepingAttrsOrdered = [
   'Pun',
   'Ref',
   'TRO',
-  'Thr'
+  'Thr',
 ]
 
 const performanceStatMap = {
@@ -1193,7 +1192,7 @@ const performanceStatMap = {
   'Con/90': 'Goals Conceded per 90',
   'Cln/90': 'Clean Sheets per 90',
   'xGP/90': 'Expected Goals Prevented per 90',
-  'Sv %': 'Save Percentage'
+  'Sv %': 'Save Percentage',
 }
 
 const performanceStatCategories = {
@@ -1211,7 +1210,7 @@ const performanceStatCategories = {
     'Cr C/90',
     'CRS A/90',
     'Cr C/A',
-    'Poss Lost/90'
+    'Poss Lost/90',
   ],
   Defensive: [
     'Tck/90',
@@ -1223,9 +1222,9 @@ const performanceStatCategories = {
     'Pres C/90',
     'Poss Won/90',
     'Fls',
-    'FA'
+    'FA',
   ],
-  Goalkeeping: ['Con/90', 'Cln/90', 'xGP/90', 'Sv %']
+  Goalkeeping: ['Con/90', 'Cln/90', 'xGP/90', 'Sv %'],
 }
 
 // Mapping from detailed group name (key in performancePercentiles) to the ShortPositions that define them
@@ -1238,71 +1237,80 @@ const detailedGroupToShortPositionsMap = {
   'Wide Midfielders': ['MR', 'ML'],
   'Attacking Midfielders (Central)': ['AMC'],
   Wingers: ['AMR', 'AML'],
-  Strikers: ['ST']
+  Strikers: ['ST'],
 }
 
 export default defineComponent({
   name: 'PlayerDetailDialog',
   components: {
-    TeamLogo
+    TeamLogo,
   },
   props: {
     player: { type: Object, default: () => null },
     show: { type: Boolean, default: false },
     currencySymbol: { type: String, default: '$' },
-    datasetId: { type: String, default: null }
+    datasetId: { type: String, default: null },
   },
   emits: ['close'],
   setup(props) {
     const qInstance = useQuasar()
     const uiStore = useUiStore()
     const _playerStore = usePlayerStore()
-    
+
     // Create a reactive ref for dark mode state
     const darkModeState = ref(false)
-    
+
     // Function to update dark mode state
     const updateDarkModeState = () => {
       const quasarDark = qInstance.dark.isActive
       const bodyDark = document.body.classList.contains('body--dark')
       const newState = quasarDark || bodyDark
-      console.log('Updating dark mode state:', newState, 'quasarDark:', quasarDark, 'bodyDark:', bodyDark)
+      console.log(
+        'Updating dark mode state:',
+        newState,
+        'quasarDark:',
+        quasarDark,
+        'bodyDark:',
+        bodyDark
+      )
       darkModeState.value = newState
     }
-    
+
     // Ensure dark mode detection is reactive
     const isDarkMode = computed(() => {
       return darkModeState.value
     })
 
     // Watch for dark mode changes to trigger reactivity
-    watch(() => qInstance.dark.isActive, () => {
-      console.log('Quasar dark mode changed:', qInstance.dark.isActive)
-      updateDarkModeState()
-    })
+    watch(
+      () => qInstance.dark.isActive,
+      () => {
+        console.log('Quasar dark mode changed:', qInstance.dark.isActive)
+        updateDarkModeState()
+      }
+    )
 
     // Also watch for body class changes
     const observer = new MutationObserver(() => {
       console.log('Body classes changed:', document.body.className)
       updateDarkModeState()
     })
-    
+
     onMounted(() => {
       updateDarkModeState() // Initial state
       observer.observe(document.body, { attributes: true, attributeFilter: ['class'] })
     })
-    
+
     onUnmounted(() => {
       observer.disconnect()
     })
-    
 
     const selectedComparisonGroup = ref('Global')
     const flagLoadError = ref(false)
     const divisionFilter = ref('same')
 
     // Convert props to refs for the percentile retry composable
-    const playerRef = toRef(props, 'player')
+    const _playerRef = toRef(props, 'player')
     const datasetIdRef = toRef(props, 'datasetId')
 
     // Add reactive data for detailed player stats
@@ -1315,10 +1323,10 @@ export default defineComponent({
 
     // Computed property to get the player data to display (detailed or basic)
     const displayPlayer = computed(() => {
-      const result = detailedPlayerData.value && detailedPlayerData.value.name 
-        ? detailedPlayerData.value 
-        : props.player && props.player.name 
-          ? props.player 
+      const result = detailedPlayerData.value?.name
+        ? detailedPlayerData.value
+        : props.player?.name
+          ? props.player
           : null
       return result
     })
@@ -1331,7 +1339,7 @@ export default defineComponent({
       showLoadingState,
       percentilesRetryCount,
       maxRetries,
-      manualRetry
+      manualRetry,
     } = usePercentileRetry(displayPlayer, datasetIdRef, selectedComparisonGroup, divisionFilter)
 
     // Face image handling
@@ -1345,7 +1353,7 @@ export default defineComponent({
     const handleFaceImageError = (event) => {
       // Set error state and hide the image if it fails to load (404 or other error)
       faceImageLoadError.value = true
-      if (event && event.target) {
+      if (event?.target) {
         event.target.style.display = 'none'
       }
     }
@@ -1370,7 +1378,7 @@ export default defineComponent({
     // Reset face image error when player changes
     watch(
       () => props.player,
-      _newPlayer => {
+      (_newPlayer) => {
         faceImageLoadError.value = false
       },
       { immediate: true }
@@ -1404,14 +1412,10 @@ export default defineComponent({
       clearAllCaches()
     })
 
-
-
-
-
     // Watch dialog visibility to delay team logo loading
     watch(
       () => props.show,
-      isShowing => {
+      (isShowing) => {
         if (isShowing) {
           // Delay team logo rendering until dialog is fully opened and data is loaded
           setTimeout(() => {
@@ -1427,7 +1431,7 @@ export default defineComponent({
     const divisionFilterOptions = computed(() => [
       { label: 'All', value: 'all' },
       { label: 'Same', value: 'same' },
-      { label: 'Top 5', value: 'top5' }
+      { label: 'Top 5', value: 'top5' },
     ])
 
     const getTargetDivision = () => {
@@ -1435,21 +1439,18 @@ export default defineComponent({
       return props.player.division
     }
 
-
-
     const isGoalkeeper = computed(() => {
       if (!displayPlayer.value || !displayPlayer.value.name) return false
-      
+
       // Use derived position information
       const derivedShortPositions = deriveShortPositions(displayPlayer.value)
       const derivedPositionGroups = derivePositionGroups(displayPlayer.value)
-      
-      const isGK = (
+
+      const isGK =
         derivedShortPositions.includes('GK') ||
         derivedPositionGroups.includes('Goalkeepers') ||
         displayPlayer.value.parsed_positions?.includes('Goalkeeper') ||
         displayPlayer.value.position?.includes('GK')
-      )
       return isGK
     })
 
@@ -1460,7 +1461,7 @@ export default defineComponent({
       { name: 'REF', label: 'REF' },
       { name: 'KIC', label: 'KIC' },
       { name: 'SPD', label: 'SPD' },
-      { name: 'POS', label: 'POS' }
+      { name: 'POS', label: 'POS' },
     ]
 
     const outfieldStats = [
@@ -1469,32 +1470,35 @@ export default defineComponent({
       { name: 'PAS', label: 'PAS' },
       { name: 'DRI', label: 'DRI' },
       { name: 'DEF', label: 'DEF' },
-      { name: 'PHY', label: 'PHY' }
+      { name: 'PHY', label: 'PHY' },
     ]
 
     // FIFA stats that show immediately with loading states
     const fifaStatsToDisplay = computed(() => {
       const statsTemplate = isGoalkeeper.value ? goalkeepingStats : outfieldStats
-      
+
       // If we have detailed player data, use it
-      if (displayPlayer.value && displayPlayer.value.name) {
-        const filteredStats = statsTemplate.filter(stat => {
-          const hasStat = displayPlayer.value[stat.name] !== undefined && displayPlayer.value[stat.name] !== null
+      if (displayPlayer.value?.name) {
+        const filteredStats = statsTemplate.filter((stat) => {
+          const hasStat =
+            displayPlayer.value[stat.name] !== undefined && displayPlayer.value[stat.name] !== null
           return hasStat
         })
         return filteredStats
       }
-      
+
       // Check if we have basic player data with FIFA stats
-      if (props.player && props.player.name) {
-        const filteredStats = statsTemplate.filter(stat => {
+      if (props.player?.name) {
+        const filteredStats = statsTemplate.filter((stat) => {
           const lowercaseStatName = stat.name.toLowerCase()
-          const hasStat = props.player[lowercaseStatName] !== undefined && props.player[lowercaseStatName] !== null
+          const hasStat =
+            props.player[lowercaseStatName] !== undefined &&
+            props.player[lowercaseStatName] !== null
           return hasStat
         })
         return filteredStats
       }
-      
+
       // Otherwise, show all stats with loading state
       return statsTemplate
     })
@@ -1506,19 +1510,27 @@ export default defineComponent({
     const getFifaStatValue = (statName) => {
       // First try basic player data (lowercase) - this is the immediate data
       const lowercaseStatName = statName.toLowerCase()
-      if (props.player && props.player[lowercaseStatName] !== undefined && props.player[lowercaseStatName] !== null) {
+      if (
+        props.player &&
+        props.player[lowercaseStatName] !== undefined &&
+        props.player[lowercaseStatName] !== null
+      ) {
         return props.player[lowercaseStatName]
       }
-      
+
       // Then try detailed player data (uppercase) - this is the enhanced data
-      if (displayPlayer.value && displayPlayer.value[statName] !== undefined && displayPlayer.value[statName] !== null) {
+      if (
+        displayPlayer.value &&
+        displayPlayer.value[statName] !== undefined &&
+        displayPlayer.value[statName] !== null
+      ) {
         return displayPlayer.value[statName]
       }
-      
+
       if (isLoadingDetailedData.value) {
         return '...'
       }
-      
+
       return '-'
     }
 
@@ -1533,14 +1545,15 @@ export default defineComponent({
         return null
       }
       // Get percentile for average rating from detailed player data
-      const percentilesForGroup = displayPlayer.value.performancePercentiles?.[selectedComparisonGroup.value]
+      const percentilesForGroup =
+        displayPlayer.value.performancePercentiles?.[selectedComparisonGroup.value]
       const avgRatingPercentile = percentilesForGroup?.['Av Rat'] ?? null
-      
+
       return {
         key: 'Av Rat',
         name: performanceStatMap['Av Rat'] || 'Average Rating',
         value: displayPlayer.value.attributes['Av Rat'],
-        percentile: avgRatingPercentile
+        percentile: avgRatingPercentile,
       }
     })
 
@@ -1581,14 +1594,12 @@ export default defineComponent({
         ) {
           // Get percentile from the detailed player data
           const percentile = percentilesForGroup?.[statKey] ?? null
-          
 
-          
           statsInCategory.push({
             key: statKey,
             name: performanceStatMap[statKey],
             value: rawAttributeValue,
-            percentile: percentile
+            percentile: percentile,
           })
         }
       }
@@ -1597,7 +1608,7 @@ export default defineComponent({
 
       // Optimize sorting for General category
       if (categoryName === 'General') {
-        const avgRatingIndex = statsInCategory.findIndex(stat => stat.key === 'Av Rat')
+        const avgRatingIndex = statsInCategory.findIndex((stat) => stat.key === 'Av Rat')
         if (avgRatingIndex > -1) {
           const avgRatingStat = statsInCategory.splice(avgRatingIndex, 1)[0]
           statsInCategory.sort((a, b) => a.name.localeCompare(b.name))
@@ -1606,18 +1617,16 @@ export default defineComponent({
       }
 
       const result = statsInCategory.sort((a, b) => a.name.localeCompare(b.name))
-      
+
       // Manage cache size after building stats
       manageCacheSize()
-      
+
       return result
     }
 
-
-
     const hasAnyPerformanceData = computed(() => {
       const keys = Object.keys(categorizedPerformanceStats.value)
-      
+
       return keys.length > 0
     })
 
@@ -1634,13 +1643,13 @@ export default defineComponent({
       return 'rating-tier-1'
     }
 
-    const getBarFillStyle = percentile => {
+    const getBarFillStyle = (percentile) => {
       if (percentile === null || percentile === undefined || percentile < 0) {
         return {
           width: '0%',
           backgroundColor: '#9e9e9e',
           height: '12px',
-          borderRadius: '3px'
+          borderRadius: '3px',
         }
       }
       const p = Math.max(0, Math.min(100, percentile))
@@ -1657,7 +1666,7 @@ export default defineComponent({
         backgroundColor: backgroundColor,
         height: '12px',
         borderRadius: '3px',
-        transition: 'width 0.3s ease, background-color 0.3s ease'
+        transition: 'width 0.3s ease, background-color 0.3s ease',
       }
     }
 
@@ -1742,12 +1751,12 @@ export default defineComponent({
     // Optimized attribute display with memoization
     const attributeDisplayCache = new Map()
 
-    const getDisplayAttribute = attrKey => {
+    const getDisplayAttribute = (attrKey) => {
       // Show loading state if detailed data is still loading
       if (isLoadingDetailedData.value) {
         return '...'
       }
-      
+
       if (!displayPlayer.value) return '-'
 
       const cacheKey = `${attrKey}-${displayPlayer.value.UID || displayPlayer.value.uid}-${showAttributeMasks.value}`
@@ -1781,15 +1790,13 @@ export default defineComponent({
     // Force recomputation when player changes
     watch(
       () => props.player,
-      _newPlayer => {
+      (_newPlayer) => {
         percentileUpdateCounter.value++
         percentileDataTrigger.value++
         forceRecompute.value++
       },
       { immediate: true }
     )
-
-
 
     // Division filter change handler - moved after reactive variables are declared
     const onDivisionFilterChange = async () => {
@@ -1801,7 +1808,7 @@ export default defineComponent({
         if (playerUID) {
           // Preserve the current comparison group
           const currentComparisonGroup = selectedComparisonGroup.value
-          
+
           // Handle the 'same' division filter by converting it to the player's actual division
           let effectiveDivision = divisionFilter.value
           if (divisionFilter.value === 'same') {
@@ -1813,13 +1820,13 @@ export default defineComponent({
               effectiveDivision = 'same'
             }
           }
-          
+
           const updatedPercentiles = await fetchPlayerPercentiles(
             playerUID,
             effectiveDivision,
             currentComparisonGroup
           )
-          
+
           if (updatedPercentiles) {
             // Replace the percentiles instead of merging them
             if (detailedPlayerData.value) {
@@ -1839,7 +1846,9 @@ export default defineComponent({
           }
         }
       } catch (error) {
-        logger.error('Failed to update percentiles on division filter change', { error: error.message })
+        logger.error('Failed to update percentiles on division filter change', {
+          error: error.message,
+        })
       }
     }
 
@@ -1854,56 +1863,60 @@ export default defineComponent({
       const updateCounter = percentileUpdateCounter.value // Force dependency on percentile updates
       const dataTrigger = percentileDataTrigger.value // Force dependency on data changes
       const recomputeTrigger = forceRecompute.value // Force dependency on template re-render
-      
+
       // Force dependency on forceRecompute to ensure re-evaluation
-      const forceRecomputeValue = forceRecompute.value
-      
+      const _forceRecomputeValue = forceRecompute.value
+
       // Force reactivity by accessing the actual percentile data structure
-      const percentilesHash = performancePercentiles ? JSON.stringify(Object.keys(performancePercentiles).sort()) : ''
-      
+      const percentilesHash = performancePercentiles
+        ? JSON.stringify(Object.keys(performancePercentiles).sort())
+        : ''
+
       // Force reactivity by accessing the actual percentile values
-      const percentileValues = performancePercentiles ? Object.values(performancePercentiles).slice(0, 3) : []
-      
+      const _percentileValues = performancePercentiles
+        ? Object.values(performancePercentiles).slice(0, 3)
+        : []
+
       // Force dependency on performance percentiles by accessing specific values
       const percentilesKeys = performancePercentiles ? Object.keys(performancePercentiles) : []
-      const hasPercentiles = percentilesKeys.length > 0
-      
+      const _hasPercentiles = percentilesKeys.length > 0
+
       // Force reactivity by accessing the specific percentile data for the selected group
       const selectedGroupData = performancePercentiles?.[selectedComparisonGroup.value]
       const selectedGroupKeys = selectedGroupData ? Object.keys(selectedGroupData) : []
-      
+
       if (!playerAttributes || !playerName || !playerUID) {
         return {}
       }
 
       // Use full attributes from detailed player data
-      
+
       // Get percentiles from the detailed player data
       const percentilesForGroup = performancePercentiles?.[selectedComparisonGroup.value]
-      
+
       // Force reactivity by accessing the percentile data structure
-      const availableGroups = performancePercentiles ? Object.keys(performancePercentiles) : []
-      
+      const _availableGroups = performancePercentiles ? Object.keys(performancePercentiles) : []
+
       // Check if we have percentile data for the selected group
       if (!percentilesForGroup || Object.keys(percentilesForGroup).length === 0) {
         return {}
       }
-      
+
       // Force reactivity by accessing the specific percentile values
       const percentileKeys = Object.keys(percentilesForGroup)
       if (percentileKeys.length === 0) {
         return {}
       }
-      
+
       // Access a few percentile values to ensure Vue tracks the dependency
-      const samplePercentiles = percentileKeys.slice(0, 3).map(key => percentilesForGroup[key])
-      if (samplePercentiles.some(p => p === undefined || p === null)) {
+      const samplePercentiles = percentileKeys.slice(0, 3).map((key) => percentilesForGroup[key])
+      if (samplePercentiles.some((p) => p === undefined || p === null)) {
         return {}
       }
-      
+
       // Force reactivity by accessing the actual percentile values
       // This ensures Vue tracks changes to the specific percentile data
-      const sampleValues = samplePercentiles.map(p => p?.toString() || '0')
+      const _sampleValues = samplePercentiles.map((p) => p?.toString() || '0')
 
       // Create a more specific cache key that includes player UID to ensure cache invalidation
       const cacheKey = `${playerUID}-${selectedComparisonGroup.value}-${divisionFilter.value}-${updateCounter}-${dataTrigger}-${recomputeTrigger}-${percentilesHash}-${selectedGroupKeys.length}`
@@ -1943,57 +1956,58 @@ export default defineComponent({
       return result
     })
 
-          // Function to fetch percentiles for a specific player using the new API
-      const fetchPlayerPercentiles = async (playerUID, compareDivision = 'same', comparePosition = 'Global') => {
-        if (!props.datasetId || !playerUID) return null
+    // Function to fetch percentiles for a specific player using the new API
+    const fetchPlayerPercentiles = async (
+      playerUID,
+      compareDivision = 'same',
+      comparePosition = 'Global'
+    ) => {
+      if (!props.datasetId || !playerUID) return null
 
-        try {
-          const requestPayload = {
-            playerUID: playerUID.toString(),
-            compareDivision: compareDivision,
-            comparePosition: comparePosition
-          }
-
-          const url = `/api/player-percentiles/${props.datasetId}`
-          const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestPayload)
-          })
-
-          if (response.ok) {
-            const percentiles = await response.json()
-            
-            // Validate the response
-            if (!percentiles || typeof percentiles !== 'object') {
-              throw new Error('Invalid percentile response format')
-            }
-            
-
-            
-            return percentiles
-          } else {
-            // Log the error response
-            const errorText = await response.text()
-            logger.error('Percentile fetch failed', {
-              status: response.status,
-              statusText: response.statusText,
-              error_text: errorText
-            })
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-          }
-        } catch (error) {
-          logger.error('Failed to fetch percentiles', { 
-            error: error?.message || 'Unknown error',
-            player_uid: playerUID,
-            stack: error?.stack || 'No stack trace',
-            error_type: error?.constructor?.name || 'Unknown'
-          })
-          return null
+      try {
+        const requestPayload = {
+          playerUID: playerUID.toString(),
+          compareDivision: compareDivision,
+          comparePosition: comparePosition,
         }
+
+        const url = `/api/player-percentiles/${props.datasetId}`
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestPayload),
+        })
+
+        if (response.ok) {
+          const percentiles = await response.json()
+
+          // Validate the response
+          if (!percentiles || typeof percentiles !== 'object') {
+            throw new Error('Invalid percentile response format')
+          }
+
+          return percentiles
+        }
+        // Log the error response
+        const errorText = await response.text()
+        logger.error('Percentile fetch failed', {
+          status: response.status,
+          statusText: response.statusText,
+          error_text: errorText,
+        })
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      } catch (error) {
+        logger.error('Failed to fetch percentiles', {
+          error: error?.message || 'Unknown error',
+          player_uid: playerUID,
+          stack: error?.stack || 'No stack trace',
+          error_type: error?.constructor?.name || 'Unknown',
+        })
+        return null
       }
+    }
 
     // Function to fetch detailed player data
     const fetchDetailedPlayerData = async () => {
@@ -2001,9 +2015,9 @@ export default defineComponent({
         hasPlayer: !!props.player,
         hasDatasetId: !!props.datasetId,
         playerName: props.player?.name,
-        playerUID: props.player?.uid || props.player?.UID
+        playerUID: props.player?.uid || props.player?.UID,
       })
-      
+
       if (!props.player || !props.datasetId) {
         console.log('fetchDetailedPlayerData early return - missing player or datasetId')
         return
@@ -2019,74 +2033,80 @@ export default defineComponent({
           hasAttributes: !!props.player.attributes,
           hasPerformancePercentiles: !!props.player.performancePercentiles,
           attributesKeys: props.player.attributes ? Object.keys(props.player.attributes) : [],
-          performancePercentilesKeys: props.player.performancePercentiles ? Object.keys(props.player.performancePercentiles) : [],
-          playerKeys: Object.keys(props.player)
+          performancePercentilesKeys: props.player.performancePercentiles
+            ? Object.keys(props.player.performancePercentiles)
+            : [],
+          playerKeys: Object.keys(props.player),
         })
-        
+
         if (props.player.attributes && props.player.performancePercentiles) {
           // Use the pre-loaded data from performance API
           detailedPlayerData.value = props.player
-          const loadTime = performance.now() - startTime
+          const _loadTime = performance.now() - startTime
 
-          
           // Clear caches to force recomputation
           performanceStatsCache.clear()
           performanceComparisonOptionsCache.clear()
         } else {
-                  // OPTIMIZATION: Check cache first
-        const playerUID = props.player.uid || props.player.UID
-        const cacheStartTime = performance.now()
-        const cachedData = getCachedPlayerData(props.datasetId, playerUID)
-        const cacheTime = performance.now() - cacheStartTime
-        
-        if (cachedData) {
-          detailedPlayerData.value = cachedData
-          const loadTime = performance.now() - startTime
+          // OPTIMIZATION: Check cache first
+          const playerUID = props.player.uid || props.player.UID
+          const cacheStartTime = performance.now()
+          const cachedData = getCachedPlayerData(props.datasetId, playerUID)
+          const _cacheTime = performance.now() - cacheStartTime
 
-          
-          // Cache hit - no need to fetch from API
-          return
-        } else {
-            // OPTIMIZATION: Fetch player data and percentiles in parallel
-            const playerUID = props.player.uid || props.player.UID
-            
-            // Handle the 'same' division filter by converting it to the player's actual division
-            let effectiveDivision = divisionFilter.value
-            if (divisionFilter.value === 'same') {
-              const targetDivision = props.player?.division
-              if (targetDivision) {
-                effectiveDivision = targetDivision
-              } else {
-                // If no target division is available, fall back to 'same'
-                effectiveDivision = 'same'
-              }
+          if (cachedData) {
+            detailedPlayerData.value = cachedData
+            const _loadTime = performance.now() - startTime
+
+            // Cache hit - no need to fetch from API
+            return
+          }
+          // OPTIMIZATION: Fetch player data and percentiles in parallel
+
+          // Handle the 'same' division filter by converting it to the player's actual division
+          let effectiveDivision = divisionFilter.value
+          if (divisionFilter.value === 'same') {
+            const targetDivision = props.player?.division
+            if (targetDivision) {
+              effectiveDivision = targetDivision
+            } else {
+              // If no target division is available, fall back to 'same'
+              effectiveDivision = 'same'
             }
+          }
 
-            // OPTIMIZATION: Parallel API calls for better performance
-            const apiStartTime = performance.now()
+          // OPTIMIZATION: Parallel API calls for better performance
+          const apiStartTime = performance.now()
 
+          const [playerResult, percentileResult] = await Promise.allSettled([
+            fetchFullPlayerStats(props.datasetId, playerUID),
+            fetchPlayerPercentiles(playerUID, effectiveDivision, selectedComparisonGroup.value),
+          ])
 
-            const [playerResult, percentileResult] = await Promise.allSettled([
-              fetchFullPlayerStats(props.datasetId, playerUID),
-              fetchPlayerPercentiles(playerUID, effectiveDivision, selectedComparisonGroup.value)
-            ])
-            
-            const apiTime = performance.now() - apiStartTime
+          const _apiTime = performance.now() - apiStartTime
 
-          
           // Handle player data result
-          if (playerResult.status === 'fulfilled' && playerResult.value.format === 'json' && playerResult.value.data.player) {
+          if (
+            playerResult.status === 'fulfilled' &&
+            playerResult.value.format === 'json' &&
+            playerResult.value.data.player
+          ) {
             console.log('API returned player data:', {
               dataKeys: Object.keys(playerResult.value.data),
-              playerKeys: playerResult.value.data.player ? Object.keys(playerResult.value.data.player) : [],
-              hasAttributes: playerResult.value.data.player?.attributes ? Object.keys(playerResult.value.data.player.attributes).length : 0,
-              hasPerformancePercentiles: playerResult.value.data.player?.performancePercentiles ? Object.keys(playerResult.value.data.player.performancePercentiles).length : 0
+              playerKeys: playerResult.value.data.player
+                ? Object.keys(playerResult.value.data.player)
+                : [],
+              hasAttributes: playerResult.value.data.player?.attributes
+                ? Object.keys(playerResult.value.data.player.attributes).length
+                : 0,
+              hasPerformancePercentiles: playerResult.value.data.player?.performancePercentiles
+                ? Object.keys(playerResult.value.data.player.performancePercentiles).length
+                : 0,
             })
-            
-            detailedPlayerData.value = playerResult.value.data.player
-            const playerDataTime = performance.now() - apiStartTime
 
-            
+            detailedPlayerData.value = playerResult.value.data.player
+            const _playerDataTime = performance.now() - apiStartTime
+
             // Cache the player data for future use
             setCachedPlayerData(props.datasetId, playerUID, playerResult.value.data.player)
           } else {
@@ -2094,46 +2114,47 @@ export default defineComponent({
               status: playerResult.status,
               format: playerResult.value?.format,
               hasData: !!playerResult.value?.data,
-              hasPlayer: !!playerResult.value?.data?.player
+              hasPlayer: !!playerResult.value?.data?.player,
             })
             throw new Error('Failed to fetch player data')
           }
-          
+
           // Handle percentile result
-          if (percentileResult.status === 'fulfilled' && percentileResult.value && detailedPlayerData.value) {
+          if (
+            percentileResult.status === 'fulfilled' &&
+            percentileResult.value &&
+            detailedPlayerData.value
+          ) {
             if (!detailedPlayerData.value.performancePercentiles) {
               detailedPlayerData.value.performancePercentiles = {}
             }
             Object.assign(detailedPlayerData.value.performancePercentiles, percentileResult.value)
-            
+
             // Force reactivity by incrementing the counters
             percentileUpdateCounter.value++
             percentileDataTrigger.value++
             forceRecompute.value++
-            
-            const percentileTime = performance.now() - apiStartTime
 
+            const _percentileTime = performance.now() - apiStartTime
           } else {
             logger.warn('Failed to fetch percentiles, will retry', {
               player_name: detailedPlayerData.value?.name,
-              error: percentileResult.reason
+              error: percentileResult.reason,
             })
           }
-          
+
           // Clear caches to force recomputation
           performanceStatsCache.clear()
           performanceComparisonOptionsCache.clear()
-        }
-        
-        const totalTime = performance.now() - startTime
 
-      }
+          const _totalTime = performance.now() - startTime
+        }
       } catch (error) {
         const errorTime = performance.now() - startTime
         detailedDataError.value = error.message
-        logger.error('Failed to fetch detailed player data', { 
+        logger.error('Failed to fetch detailed player data', {
           error: error.message,
-          time_ms: Math.round(errorTime)
+          time_ms: Math.round(errorTime),
         })
       } finally {
         isLoadingDetailedData.value = false
@@ -2142,48 +2163,51 @@ export default defineComponent({
 
     // Watch for player changes to fetch detailed data with debouncing
     let fetchTimeout = null
-    watch(() => props.player, (newPlayer) => {
-    //   console.log('PlayerDetailDialog watch triggered:', {
-    //     hasNewPlayer: !!newPlayer,
-    //     playerName: newPlayer?.name,
-    //     playerUID: newPlayer?.uid || newPlayer?.UID
-    //   })
-      
-      if (newPlayer && (newPlayer.uid || newPlayer.UID)) {
-        console.log('Setting up fetchDetailedPlayerData timeout')
-        // Clear any existing timeout to prevent rapid successive calls
-        if (fetchTimeout) {
-          clearTimeout(fetchTimeout)
-        }
-        
-        // Debounce the fetch to prevent rapid successive API calls
-        fetchTimeout = setTimeout(() => {
-          console.log('fetchDetailedPlayerData timeout triggered')
-          const dialogOpenStartTime = performance.now()
+    watch(
+      () => props.player,
+      (newPlayer) => {
+        //   console.log('PlayerDetailDialog watch triggered:', {
+        //     hasNewPlayer: !!newPlayer,
+        //     playerName: newPlayer?.name,
+        //     playerUID: newPlayer?.uid || newPlayer?.UID
+        //   })
 
-          
-          // Reset detailed data when player changes
-          detailedPlayerData.value = null
-          detailedDataError.value = null
-          
-          // Fetch detailed data with optimized loading
-          fetchDetailedPlayerData().catch((error) => {
-            const errorTime = performance.now() - dialogOpenStartTime
-            console.error('PlayerDetailDialog failed to load', {
-              player_name: newPlayer.name,
-              player_uid: newPlayer.uid || newPlayer.UID,
-              error: error.message,
-              time_ms: Math.round(errorTime)
+        if (newPlayer && (newPlayer.uid || newPlayer.UID)) {
+          console.log('Setting up fetchDetailedPlayerData timeout')
+          // Clear any existing timeout to prevent rapid successive calls
+          if (fetchTimeout) {
+            clearTimeout(fetchTimeout)
+          }
+
+          // Debounce the fetch to prevent rapid successive API calls
+          fetchTimeout = setTimeout(() => {
+            console.log('fetchDetailedPlayerData timeout triggered')
+            const dialogOpenStartTime = performance.now()
+
+            // Reset detailed data when player changes
+            detailedPlayerData.value = null
+            detailedDataError.value = null
+
+            // Fetch detailed data with optimized loading
+            fetchDetailedPlayerData().catch((error) => {
+              const errorTime = performance.now() - dialogOpenStartTime
+              console.error('PlayerDetailDialog failed to load', {
+                player_name: newPlayer.name,
+                player_uid: newPlayer.uid || newPlayer.UID,
+                error: error.message,
+                time_ms: Math.round(errorTime),
+              })
             })
-          })
-        }, 50) // Small debounce to prevent rapid successive calls
-      }
-    }, { immediate: true })
+          }, 50) // Small debounce to prevent rapid successive calls
+        }
+      },
+      { immediate: true }
+    )
 
     // Force recomputation when displayPlayer changes
     watch(
       () => displayPlayer.value,
-      (newPlayer, oldPlayer) => {
+      (_newPlayer, _oldPlayer) => {
         percentileUpdateCounter.value++
         percentileDataTrigger.value++
         forceRecompute.value++
@@ -2193,7 +2217,7 @@ export default defineComponent({
     // Force recomputation when forceRecompute changes
     watch(
       () => forceRecompute.value,
-      (newValue, oldValue) => {
+      (_newValue, _oldValue) => {
         // Force recomputation when forceRecompute changes
       }
     )
@@ -2201,7 +2225,7 @@ export default defineComponent({
     // Watch for changes in categorizedPerformanceStats
     watch(
       () => categorizedPerformanceStats.value,
-      (newStats, oldStats) => {
+      (_newStats, _oldStats) => {
         // Stats changed
       },
       { deep: true }
@@ -2210,7 +2234,7 @@ export default defineComponent({
     // Watch for changes in hasAnyPerformanceData
     watch(
       () => hasAnyPerformanceData.value,
-      (newValue, oldValue) => {
+      (_newValue, _oldValue) => {
         // Performance data availability changed
       }
     )
@@ -2240,7 +2264,7 @@ export default defineComponent({
       (newData, oldData) => {
         // Clear performance stats cache when detailed player data changes
         performanceStatsCache.clear()
-        
+
         // Reset loading state when detailed player data changes
         if (newData !== oldData) {
           // Force recomputation to ensure loading state updates
@@ -2267,24 +2291,24 @@ export default defineComponent({
       const highestRoleGroup = getPositionGroupForHighestRole()
 
       // Get the player's available positions
-      const playerPositions = deriveShortPositions(player)
+      const _playerPositions = deriveShortPositions(player)
       const playerPositionGroups = derivePositionGroups(player)
 
       // Priority-based selection logic
       // 1. Try to use the highest-rated role's position group if available
-      if (highestRoleGroup && newOptions.some(opt => opt.value === highestRoleGroup)) {
+      if (highestRoleGroup && newOptions.some((opt) => opt.value === highestRoleGroup)) {
         selectedComparisonGroup.value = highestRoleGroup
-      } 
+      }
       // 2. Try to use the first available position group that the player can play
       else {
-        const availablePlayerGroup = newOptions.find(opt => 
+        const availablePlayerGroup = newOptions.find((opt) =>
           playerPositionGroups.includes(opt.value)
         )
         if (availablePlayerGroup) {
           selectedComparisonGroup.value = availablePlayerGroup.value
         }
         // 3. Fall back to Global if available
-        else if (newOptions.some(opt => opt.value === 'Global')) {
+        else if (newOptions.some((opt) => opt.value === 'Global')) {
           selectedComparisonGroup.value = 'Global'
         }
         // 4. Use first available option
@@ -2304,7 +2328,7 @@ export default defineComponent({
       async (newGroup, oldGroup) => {
         // Clear performance stats cache when comparison group changes
         performanceStatsCache.clear()
-        
+
         // Fetch new percentiles for the new comparison group
         if (newGroup !== oldGroup && displayPlayer.value && props.datasetId) {
           const playerUID = displayPlayer.value.uid || displayPlayer.value.UID
@@ -2320,13 +2344,13 @@ export default defineComponent({
                 effectiveDivision = 'same'
               }
             }
-            
+
             const updatedPercentiles = await fetchPlayerPercentiles(
               playerUID,
               effectiveDivision,
               newGroup
             )
-            
+
             if (updatedPercentiles) {
               // Replace the percentiles
               if (detailedPlayerData.value) {
@@ -2353,7 +2377,7 @@ export default defineComponent({
       async (newFilter, oldFilter) => {
         // Clear performance stats cache when division filter changes
         performanceStatsCache.clear()
-        
+
         // Call the division filter change handler
         if (newFilter !== oldFilter) {
           await onDivisionFilterChange()
@@ -2367,7 +2391,7 @@ export default defineComponent({
       (newData, oldData) => {
         // Clear performance stats cache when detailed player data changes
         performanceStatsCache.clear()
-        
+
         // Reset loading state when detailed player data changes
         if (newData !== oldData) {
           // Force recomputation to ensure loading state updates
@@ -2377,7 +2401,7 @@ export default defineComponent({
         }
       }
     )
-    
+
     // Watch for performance percentiles changes to increment counter
     watch(
       () => detailedPlayerData.value?.performancePercentiles,
@@ -2395,20 +2419,20 @@ export default defineComponent({
     // Helper functions to derive position information from available data
     const deriveShortPositions = (player) => {
       const positions = []
-      
+
       // Extract from position field (e.g., "D (RC), WB (R)" -> ["DC", "DR", "WBR"])
       if (player.position) {
-        const positionParts = player.position.split(',').map(p => p.trim())
+        const positionParts = player.position.split(',').map((p) => p.trim())
         for (const part of positionParts) {
           // Extract the position abbreviation and the side/role info
-          const match = part.match(/^([A-Z\/]+)\s*\(([^)]+)\)$/)
+          const match = part.match(/^([A-Z/]+)\s*\(([^)]+)\)$/)
           if (match) {
             const basePos = match[1] // e.g., "D", "WB", "D/WB"
             const sideInfo = match[2] // e.g., "RC", "R", "RL"
-            
+
             // Split compound positions (e.g., "D/WB" -> ["D", "WB"])
             const positionTypes = basePos.split('/')
-            
+
             for (const posType of positionTypes) {
               // Handle side-specific positions
               if (sideInfo.includes('C')) {
@@ -2425,7 +2449,7 @@ export default defineComponent({
                   positions.push(posType)
                 }
               }
-              
+
               if (sideInfo.includes('R')) {
                 // Right position
                 if (posType === 'D') {
@@ -2440,7 +2464,7 @@ export default defineComponent({
                   positions.push(posType)
                 }
               }
-              
+
               if (sideInfo.includes('L')) {
                 // Left position
                 if (posType === 'D') {
@@ -2465,7 +2489,7 @@ export default defineComponent({
           }
         }
       }
-      
+
       // Extract from role names in roleSpecificOveralls
       if (player.roleSpecificOveralls) {
         for (const role of player.roleSpecificOveralls) {
@@ -2475,14 +2499,14 @@ export default defineComponent({
           }
         }
       }
-      
+
       return positions
     }
 
     const derivePositionGroups = (player) => {
       const shortPositions = deriveShortPositions(player)
       const groups = []
-      
+
       // Map short positions to broad groups
       const positionToGroupMap = {
         GK: 'Goalkeepers',
@@ -2499,16 +2523,16 @@ export default defineComponent({
         AMC: 'Midfielders',
         AMR: 'Midfielders',
         AML: 'Midfielders',
-        ST: 'Attackers'
+        ST: 'Attackers',
       }
-      
+
       for (const pos of shortPositions) {
         const group = positionToGroupMap[pos]
         if (group && !groups.includes(group)) {
           groups.push(group)
         }
       }
-      
+
       return groups
     }
 
@@ -2521,11 +2545,11 @@ export default defineComponent({
       }
 
       const player = displayPlayer.value
-      
+
       // Derive position information from available data
       const derivedShortPositions = deriveShortPositions(player)
       const derivedPositionGroups = derivePositionGroups(player)
-      
+
       const cacheKey = `${getCacheKey(player, 'options')}-${JSON.stringify(derivedShortPositions)}-${JSON.stringify(derivedPositionGroups)}`
 
       if (performanceComparisonOptionsCache.has(cacheKey)) {
@@ -2555,10 +2579,10 @@ export default defineComponent({
         'Wide Midfielders',
         'Attacking Midfielders (Central)',
         'Wingers',
-        'Strikers'
+        'Strikers',
       ]
 
-      const shouldIncludeGroup = groupKey => {
+      const shouldIncludeGroup = (groupKey) => {
         if (groupKey === 'Global') return true
 
         // Check broad groups
@@ -2567,7 +2591,7 @@ export default defineComponent({
         // Check detailed groups
         const requiredPositions = detailedGroupToShortPositionsMap[groupKey]
         if (requiredPositions) {
-          return requiredPositions.some(pos => shortPositionsSet.has(pos))
+          return requiredPositions.some((pos) => shortPositionsSet.has(pos))
         }
 
         return false
@@ -2576,13 +2600,10 @@ export default defineComponent({
       // Process preferred order groups - don't check if they exist in current percentiles
       for (let i = 0; i < preferredOrder.length; i++) {
         const groupKey = preferredOrder[i]
-        if (
-          shouldIncludeGroup(groupKey) &&
-          !addedValues.has(groupKey)
-        ) {
+        if (shouldIncludeGroup(groupKey) && !addedValues.has(groupKey)) {
           options.push({
             label: groupKey === 'Global' ? 'Overall Dataset' : `vs. ${groupKey}`,
-            value: groupKey
+            value: groupKey,
           })
           addedValues.add(groupKey)
         }
@@ -2635,7 +2656,7 @@ export default defineComponent({
         AMC: 'Midfielders',
         AMR: 'Midfielders',
         AML: 'Midfielders',
-        ST: 'Attackers'
+        ST: 'Attackers',
       }
 
       return positionToGroupMap[shortPosition] || null
@@ -2648,18 +2669,18 @@ export default defineComponent({
           technical: [],
           mental: [],
           physical: [],
-          goalkeeping: []
+          goalkeeping: [],
         }
       }
 
       const playerAttributes = displayPlayer.value.attributes
-      const hasAttribute = key => Object.hasOwn(playerAttributes, key)
+      const hasAttribute = (key) => Object.hasOwn(playerAttributes, key)
 
       return {
         technical: technicalAttrsOrdered.filter(hasAttribute),
         mental: mentalAttrsOrdered.filter(hasAttribute),
         physical: physicalAttrsOrdered.filter(hasAttribute),
-        goalkeeping: isGoalkeeper.value ? goalkeepingAttrsOrdered.filter(hasAttribute) : []
+        goalkeeping: isGoalkeeper.value ? goalkeepingAttrsOrdered.filter(hasAttribute) : [],
       }
     })
 
@@ -2726,11 +2747,11 @@ export default defineComponent({
       forceRecompute,
       updateComparisonGroupForPlayer,
       isDarkMode, // <-- add this line
-      
+
       // Player positions computed property
-      playerPositions
+      playerPositions,
     }
-  }
+  },
 })
 </script>
 

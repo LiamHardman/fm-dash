@@ -170,16 +170,16 @@ export default defineComponent({
   props: {
     show: {
       type: Boolean,
-      default: false
+      default: false,
     },
     playerCount: {
       type: Number,
-      default: 0
+      default: 0,
     },
     exportType: {
       type: String, // 'csv' or 'json'
-      default: 'csv'
-    }
+      default: 'csv',
+    },
   },
   emits: ['close', 'export'],
   setup(props, { emit }) {
@@ -196,12 +196,12 @@ export default defineComponent({
       roleRatings: false,
       performancePercentiles: false,
       contractInfo: true,
-      personalInfo: false
+      personalInfo: false,
     })
 
     const formatOptions = [
       { label: 'CSV', value: 'csv' },
-      { label: 'JSON', value: 'json' }
+      { label: 'JSON', value: 'json' },
     ]
 
     const presetOptions = [
@@ -209,14 +209,14 @@ export default defineComponent({
       { label: 'Detailed', value: 'detailed' },
       { label: 'Scout Report', value: 'scout' },
       { label: 'Analysis', value: 'analysis' },
-      { label: 'All Data', value: 'all' }
+      { label: 'All Data', value: 'all' },
     ]
 
     const selectedCategoriesCount = computed(() => {
       return Object.values(selectedOptions.value).filter(Boolean).length
     })
 
-    const selectPreset = preset => {
+    const selectPreset = (preset) => {
       selectedPreset.value = preset
 
       switch (preset) {
@@ -228,7 +228,7 @@ export default defineComponent({
             roleRatings: false,
             performancePercentiles: false,
             contractInfo: true,
-            personalInfo: false
+            personalInfo: false,
           }
           break
         case 'detailed':
@@ -239,7 +239,7 @@ export default defineComponent({
             roleRatings: false,
             performancePercentiles: false,
             contractInfo: true,
-            personalInfo: true
+            personalInfo: true,
           }
           break
         case 'scout':
@@ -250,7 +250,7 @@ export default defineComponent({
             roleRatings: true,
             performancePercentiles: true,
             contractInfo: true,
-            personalInfo: true
+            personalInfo: true,
           }
           break
         case 'analysis':
@@ -261,7 +261,7 @@ export default defineComponent({
             roleRatings: true,
             performancePercentiles: true,
             contractInfo: false,
-            personalInfo: false
+            personalInfo: false,
           }
           break
         case 'all':
@@ -272,7 +272,7 @@ export default defineComponent({
             roleRatings: true,
             performancePercentiles: true,
             contractInfo: true,
-            personalInfo: true
+            personalInfo: true,
           }
           break
       }
@@ -299,7 +299,7 @@ export default defineComponent({
                 roleRatings: false,
                 performancePercentiles: false,
                 contractInfo: true,
-                personalInfo: false
+                personalInfo: false,
               }
               break
             case 'detailed':
@@ -310,7 +310,7 @@ export default defineComponent({
                 roleRatings: false,
                 performancePercentiles: false,
                 contractInfo: true,
-                personalInfo: true
+                personalInfo: true,
               }
               break
             case 'scout':
@@ -321,7 +321,7 @@ export default defineComponent({
                 roleRatings: true,
                 performancePercentiles: true,
                 contractInfo: true,
-                personalInfo: true
+                personalInfo: true,
               }
               break
             case 'analysis':
@@ -332,7 +332,7 @@ export default defineComponent({
                 roleRatings: true,
                 performancePercentiles: true,
                 contractInfo: false,
-                personalInfo: false
+                personalInfo: false,
               }
               break
             case 'all':
@@ -343,14 +343,14 @@ export default defineComponent({
                 roleRatings: true,
                 performancePercentiles: true,
                 contractInfo: true,
-                personalInfo: true
+                personalInfo: true,
               }
               break
           }
 
           // Check if all options match
           const matches = Object.keys(tempOptions).every(
-            key => tempOptions[key] === currentSelection[key]
+            (key) => tempOptions[key] === currentSelection[key]
           )
 
           if (matches) {
@@ -373,7 +373,7 @@ export default defineComponent({
         $q.notify({
           type: 'warning',
           message: 'Please select at least one data category to export',
-          position: 'top'
+          position: 'top',
         })
         return
       }
@@ -384,7 +384,7 @@ export default defineComponent({
         const exportOptions = {
           format: selectedFormat.value,
           options: selectedOptions.value,
-          preset: selectedPreset.value
+          preset: selectedPreset.value,
         }
 
         emit('export', exportOptions)
@@ -392,7 +392,7 @@ export default defineComponent({
         $q.notify({
           type: 'negative',
           message: 'Export failed. Please try again.',
-          position: 'top'
+          position: 'top',
         })
       } finally {
         exporting.value = false
@@ -402,7 +402,7 @@ export default defineComponent({
     // Initialize format based on prop
     watch(
       () => props.exportType,
-      newType => {
+      (newType) => {
         selectedFormat.value = newType
       },
       { immediate: true }
@@ -417,9 +417,9 @@ export default defineComponent({
       selectedCategoriesCount,
       exporting,
       selectPreset,
-      handleExport
+      handleExport,
     }
-  }
+  },
 })
 </script>
 

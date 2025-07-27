@@ -94,8 +94,8 @@ export default defineComponent({
   props: {
     player: {
       type: Object,
-      required: true
-    }
+      required: true,
+    },
   },
   setup(props) {
     const qInstance = useQuasar()
@@ -117,7 +117,7 @@ export default defineComponent({
         'penalty_taking',
         'tackling',
         'technique',
-        'corners'
+        'corners',
       ]
 
       for (const key of technicalKeys) {
@@ -145,7 +145,7 @@ export default defineComponent({
         'positioning',
         'teamwork',
         'vision',
-        'work_rate'
+        'work_rate',
       ]
 
       for (const key of mentalKeys) {
@@ -167,7 +167,7 @@ export default defineComponent({
         'natural_fitness',
         'pace',
         'stamina',
-        'strength'
+        'strength',
       ]
 
       for (const key of physicalKeys) {
@@ -193,7 +193,7 @@ export default defineComponent({
         'reflexes',
         'rushing_out',
         'tendency_to_punch',
-        'throwing'
+        'throwing',
       ]
 
       for (const key of gkKeys) {
@@ -210,7 +210,7 @@ export default defineComponent({
       return (
         props.player.short_positions?.includes('GK') ||
         props.player.position_groups?.includes('Goalkeepers') ||
-                  props.player.parsed_positions?.includes('Goalkeeper')
+        props.player.parsed_positions?.includes('Goalkeeper')
       )
     })
 
@@ -221,15 +221,15 @@ export default defineComponent({
       return Object.keys(goalkeeperAttributes.value).length > 0
     })
 
-    const formatAttrName = attr => {
+    const formatAttrName = (attr) => {
       return attr
         .replace(/_/g, ' ')
         .split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ')
     }
 
-    const getColorClass = value => {
+    const getColorClass = (value) => {
       const numValue = Number.parseInt(value, 10)
       if (Number.isNaN(numValue)) return ''
 
@@ -248,9 +248,9 @@ export default defineComponent({
       goalkeeperAttributes,
       hasGoalkeeperAttributes,
       formatAttrName,
-      getColorClass
+      getColorClass,
     }
-  }
+  },
 })
 </script>
 

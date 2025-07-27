@@ -232,7 +232,7 @@ export const CountryToContinentMap = {
   Tahiti: 'Oceania',
   'New Caledonia': 'Oceania',
   Guam: 'Oceania',
-  'American Samoa': 'Oceania'
+  'American Samoa': 'Oceania',
 }
 
 // European Union countries (for EU Players filter)
@@ -263,7 +263,7 @@ export const EUCountries = [
   'Slovakia',
   'Slovenia',
   'Spain',
-  'Sweden'
+  'Sweden',
 ]
 
 // Get continent for a country
@@ -279,7 +279,7 @@ export function isEUCountry(countryName) {
 // Get all countries from a continent
 export function getCountriesFromContinent(continentName) {
   return Object.keys(CountryToContinentMap).filter(
-    country => CountryToContinentMap[country] === continentName
+    (country) => CountryToContinentMap[country] === continentName
   )
 }
 

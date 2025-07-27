@@ -348,14 +348,14 @@ export default {
     datasetId: { type: String, default: null },
     showValueScore: { type: Boolean, default: false },
     defaultSortField: { type: String, default: 'Overall' },
-    defaultSortDirection: { type: String, default: 'desc' }
+    defaultSortDirection: { type: String, default: 'desc' },
   },
   emits: [
     'update:sort',
     'player-selected',
     'update:pagination',
     'team-selected',
-    'remove-from-wishlist'
+    'remove-from-wishlist',
   ],
 
   setup(props, { emit }) {
@@ -386,7 +386,7 @@ export default {
       sortBy: props.defaultSortField,
       descending: props.defaultSortDirection === 'desc',
       page: 1,
-      rowsPerPage: 50 // Default rows per page, even if selector is hidden
+      rowsPerPage: 50, // Default rows per page, even if selector is hidden
     })
 
     // Get current dataset ID - use prop first, then fallback to store
@@ -414,12 +414,12 @@ export default {
       'AMR',
       'AMC',
       'AML',
-      'ST'
+      'ST',
     ]
 
     // Memoized position index calculation (expensive string processing)
     const getPositionIndex = memoize(
-      positionString => {
+      (positionString) => {
         if (!positionString || typeof positionString !== 'string') {
           return positionSortOrder.length + 2 // Place invalid/empty last
         }
@@ -446,8 +446,8 @@ export default {
         mainPart = mainPart.replace(/\s*\(.*?\)\s*/g, '').trim()
         const basePositionCodes = mainPart
           .split(/[,/]/)
-          .map(p => p.trim())
-          .filter(p => p.length > 0)
+          .map((p) => p.trim())
+          .filter((p) => p.length > 0)
         const rolesToEvaluate = new Set()
 
         for (const baseCode of basePositionCodes) {
@@ -476,12 +476,12 @@ export default {
       },
       {
         maxSize: 100, // Cache position calculations
-        keyGenerator: positionString => positionString,
-        cacheKey: 'positionIndex'
+        keyGenerator: (positionString) => positionString,
+        cacheKey: 'positionIndex',
       }
     )
 
-    const onPaginationUpdate = newPagination => {
+    const onPaginationUpdate = (newPagination) => {
       pagination.value = newPagination
     }
 
@@ -513,7 +513,7 @@ export default {
         sortable: true,
         align: 'left',
         style: nameColumnStyle,
-        headerStyle: nameColumnStyle
+        headerStyle: nameColumnStyle,
       },
       age: {
         name: 'age',
@@ -522,7 +522,7 @@ export default {
         sortable: true,
         align: 'center',
         style: ageColumnStyle,
-        headerStyle: ageColumnStyle
+        headerStyle: ageColumnStyle,
       },
       position: {
         name: 'position',
@@ -531,7 +531,7 @@ export default {
         sortable: true,
         align: 'left',
         style: positionColumnStyle,
-        headerStyle: positionColumnStyle
+        headerStyle: positionColumnStyle,
       },
       club: {
         name: 'club',
@@ -540,7 +540,7 @@ export default {
         sortable: true,
         align: 'left',
         style: clubColumnStyle,
-        headerStyle: clubColumnStyle
+        headerStyle: clubColumnStyle,
       },
       transfer_value: {
         name: 'transfer_value',
@@ -550,7 +550,7 @@ export default {
         align: 'right',
         sortField: 'transferValueAmount',
         style: moneyColumnStyle,
-        headerStyle: moneyColumnStyle
+        headerStyle: moneyColumnStyle,
       },
       wage: {
         name: 'wage',
@@ -560,7 +560,7 @@ export default {
         align: 'right',
         sortField: 'wageAmount',
         style: moneyColumnStyle,
-        headerStyle: moneyColumnStyle
+        headerStyle: moneyColumnStyle,
       },
       Overall: {
         name: 'Overall',
@@ -570,7 +570,7 @@ export default {
         align: 'center',
         isOverallStat: true,
         style: overallColumnStyle,
-        headerStyle: overallColumnStyle
+        headerStyle: overallColumnStyle,
       },
       valueScore: {
         name: 'valueScore',
@@ -580,7 +580,7 @@ export default {
         align: 'center',
         isValueScore: true,
         style: overallColumnStyle,
-        headerStyle: overallColumnStyle
+        headerStyle: overallColumnStyle,
       },
       personality: {
         name: 'personality',
@@ -589,7 +589,7 @@ export default {
         sortable: true,
         align: 'left',
         style: textColumnStyle,
-        headerStyle: textColumnStyle
+        headerStyle: textColumnStyle,
       },
       media_handling: {
         name: 'media_handling',
@@ -598,7 +598,7 @@ export default {
         sortable: true,
         align: 'left',
         style: textColumnStyle,
-        headerStyle: textColumnStyle
+        headerStyle: textColumnStyle,
       },
       nationality_display: {
         name: 'nationality_display',
@@ -607,8 +607,8 @@ export default {
         sortable: true,
         align: 'left',
         style: nationalityColumnStyle,
-        headerStyle: nationalityColumnStyle
-      }
+        headerStyle: nationalityColumnStyle,
+      },
     }
 
     const allFifaStatDefinitions = {
@@ -620,7 +620,7 @@ export default {
         align: 'center',
         isFifaStat: true,
         style: fifaStatColumnStyle,
-        headerStyle: fifaStatColumnStyle
+        headerStyle: fifaStatColumnStyle,
       },
       DIV: {
         name: 'DIV',
@@ -630,7 +630,7 @@ export default {
         align: 'center',
         isFifaStat: true,
         style: fifaStatColumnStyle,
-        headerStyle: fifaStatColumnStyle
+        headerStyle: fifaStatColumnStyle,
       },
       HAN: {
         name: 'HAN',
@@ -640,7 +640,7 @@ export default {
         align: 'center',
         isFifaStat: true,
         style: fifaStatColumnStyle,
-        headerStyle: fifaStatColumnStyle
+        headerStyle: fifaStatColumnStyle,
       },
       REF: {
         name: 'REF',
@@ -650,7 +650,7 @@ export default {
         align: 'center',
         isFifaStat: true,
         style: fifaStatColumnStyle,
-        headerStyle: fifaStatColumnStyle
+        headerStyle: fifaStatColumnStyle,
       },
       KIC: {
         name: 'KIC',
@@ -660,7 +660,7 @@ export default {
         align: 'center',
         isFifaStat: true,
         style: fifaStatColumnStyle,
-        headerStyle: fifaStatColumnStyle
+        headerStyle: fifaStatColumnStyle,
       },
       SPD: {
         name: 'SPD',
@@ -670,7 +670,7 @@ export default {
         align: 'center',
         isFifaStat: true,
         style: fifaStatColumnStyle,
-        headerStyle: fifaStatColumnStyle
+        headerStyle: fifaStatColumnStyle,
       },
       POS: {
         name: 'POS',
@@ -680,7 +680,7 @@ export default {
         align: 'center',
         isFifaStat: true,
         style: fifaStatColumnStyle,
-        headerStyle: fifaStatColumnStyle
+        headerStyle: fifaStatColumnStyle,
       },
       PAC: {
         name: 'PAC',
@@ -690,7 +690,7 @@ export default {
         align: 'center',
         isFifaStat: true,
         style: fifaStatColumnStyle,
-        headerStyle: fifaStatColumnStyle
+        headerStyle: fifaStatColumnStyle,
       },
       SHO: {
         name: 'SHO',
@@ -700,7 +700,7 @@ export default {
         align: 'center',
         isFifaStat: true,
         style: fifaStatColumnStyle,
-        headerStyle: fifaStatColumnStyle
+        headerStyle: fifaStatColumnStyle,
       },
       PAS: {
         name: 'PAS',
@@ -710,7 +710,7 @@ export default {
         align: 'center',
         isFifaStat: true,
         style: fifaStatColumnStyle,
-        headerStyle: fifaStatColumnStyle
+        headerStyle: fifaStatColumnStyle,
       },
       DRI: {
         name: 'DRI',
@@ -720,7 +720,7 @@ export default {
         align: 'center',
         isFifaStat: true,
         style: fifaStatColumnStyle,
-        headerStyle: fifaStatColumnStyle
+        headerStyle: fifaStatColumnStyle,
       },
       DEF: {
         name: 'DEF',
@@ -730,7 +730,7 @@ export default {
         align: 'center',
         isFifaStat: true,
         style: fifaStatColumnStyle,
-        headerStyle: fifaStatColumnStyle
+        headerStyle: fifaStatColumnStyle,
       },
       PHY: {
         name: 'PHY',
@@ -740,8 +740,8 @@ export default {
         align: 'center',
         isFifaStat: true,
         style: fifaStatColumnStyle,
-        headerStyle: fifaStatColumnStyle
-      }
+        headerStyle: fifaStatColumnStyle,
+      },
     }
 
     // Regular computed for columns (removed memoization to fix reactivity issues)
@@ -754,7 +754,7 @@ export default {
         baseColumnDefinitions.club,
         baseColumnDefinitions.transfer_value,
         baseColumnDefinitions.wage,
-        baseColumnDefinitions.Overall
+        baseColumnDefinitions.Overall,
       ]
 
       // Add value score column if enabled
@@ -769,7 +769,7 @@ export default {
             allFifaStatDefinitions.REF,
             allFifaStatDefinitions.KIC,
             allFifaStatDefinitions.SPD,
-            allFifaStatDefinitions.POS
+            allFifaStatDefinitions.POS,
           ]
         : [
             allFifaStatDefinitions.PAC,
@@ -777,23 +777,23 @@ export default {
             allFifaStatDefinitions.PAS,
             allFifaStatDefinitions.DRI,
             allFifaStatDefinitions.DEF,
-            allFifaStatDefinitions.PHY
+            allFifaStatDefinitions.PHY,
           ]
 
       const trailingColumns = [
         baseColumnDefinitions.personality,
-        baseColumnDefinitions.media_handling
+        baseColumnDefinitions.media_handling,
       ]
       return [...newOrderBase, ...fifaColumnsInOrder, ...trailingColumns]
     })
 
-    const getColumnLabel = fieldName => {
-      const col = currentColumns.value.find(c => c.name === fieldName)
+    const getColumnLabel = (fieldName) => {
+      const col = currentColumns.value.find((c) => c.name === fieldName)
       return col ? col.label : fieldName
     }
 
-    const getSortFieldKey = colName => {
-      const colDef = currentColumns.value.find(c => c.name === colName)
+    const getSortFieldKey = (colName) => {
+      const colDef = currentColumns.value.find((c) => c.name === colName)
       return colDef?.sortField || colDef?.field || colName
     }
 
@@ -1018,7 +1018,7 @@ export default {
           type: 'warning',
           message: 'Sorting was interrupted. Showing unsorted data.',
           position: 'top',
-          timeout: 3000
+          timeout: 3000,
         })
 
         // Fallback to direct assignment if async sorting fails
@@ -1048,7 +1048,7 @@ export default {
         type: 'info',
         message: 'Sorting cancelled',
         position: 'top',
-        timeout: 2000
+        timeout: 2000,
       })
     }
 
@@ -1082,10 +1082,11 @@ export default {
         emit('update:sort', {
           key: getSortFieldKey(sortField.value),
           direction: sortDirection.value,
-          isFifaStat: currentColumns.value.find(c => c.name === sortField.value)?.isFifaStat,
-          isOverallStat: currentColumns.value.find(c => c.name === sortField.value)?.isOverallStat,
-          isValueScore: currentColumns.value.find(c => c.name === sortField.value)?.isValueScore,
-          displayField: sortField.value
+          isFifaStat: currentColumns.value.find((c) => c.name === sortField.value)?.isFifaStat,
+          isOverallStat: currentColumns.value.find((c) => c.name === sortField.value)
+            ?.isOverallStat,
+          isValueScore: currentColumns.value.find((c) => c.name === sortField.value)?.isValueScore,
+          displayField: sortField.value,
         })
       }
     })
@@ -1107,16 +1108,16 @@ export default {
       {
         maxSize: 200, // Cache up to 200 different rating calculations
         keyGenerator: (value, maxScale) => `${value}-${maxScale}`,
-        cacheKey: 'unifiedRatingClass'
+        cacheKey: 'unifiedRatingClass',
       }
     )
 
-    const getMoneyClass = numericAmount => {
+    const getMoneyClass = (numericAmount) => {
       if (numericAmount === null || numericAmount === undefined) return 'money-na'
       return 'money-uniform'
     }
 
-    const getValueScoreClass = valueScore => {
+    const getValueScoreClass = (valueScore) => {
       if (valueScore === null || valueScore === undefined) return 'rating-na'
       const score = Number(valueScore)
       if (Number.isNaN(score)) return 'rating-na'
@@ -1129,7 +1130,7 @@ export default {
       return 'rating-na'
     }
 
-    const onFlagError = event => {
+    const onFlagError = (event) => {
       if (event.target) event.target.style.display = 'none'
       const placeholderIcon = event.target.nextElementSibling
       if (placeholderIcon?.classList.contains('q-icon')) {
@@ -1137,7 +1138,7 @@ export default {
       }
     }
 
-    const onRequest = requestProp => {
+    const onRequest = (requestProp) => {
       const { page, sortBy, descending } = requestProp.pagination
       pagination.value.page = page
 
@@ -1153,32 +1154,32 @@ export default {
         emit('update:sort', {
           key: getSortFieldKey(sortField.value),
           direction: sortDirection.value,
-          isFifaStat: currentColumns.value.find(c => c.name === sortBy)?.isFifaStat,
-          isOverallStat: currentColumns.value.find(c => c.name === sortBy)?.isOverallStat,
-          isValueScore: currentColumns.value.find(c => c.name === sortBy)?.isValueScore,
-          displayField: sortBy
+          isFifaStat: currentColumns.value.find((c) => c.name === sortBy)?.isFifaStat,
+          isOverallStat: currentColumns.value.find((c) => c.name === sortBy)?.isOverallStat,
+          isValueScore: currentColumns.value.find((c) => c.name === sortBy)?.isValueScore,
+          displayField: sortBy,
         })
       }
       emit('update:pagination', { ...pagination.value })
     }
 
-    const onPageChange = newPage => {
+    const onPageChange = (newPage) => {
       pagination.value.page = newPage
     }
 
-    const onRowsPerPageChange = newRowsPerPage => {
+    const onRowsPerPageChange = (newRowsPerPage) => {
       pagination.value.rowsPerPage = newRowsPerPage
       pagination.value.page = 1
     }
 
-    const customSort = rows => {
+    const customSort = (rows) => {
       // The actual sorting is now done in the `sortedPlayers` computed property.
       // QTable's `sort-method` is still needed, but we just return the rows as they are
       // because our computed property `sortedPlayers` (bound to :rows) already handles it.
       return rows
     }
 
-    const sortTable = fieldName => {
+    const sortTable = (fieldName) => {
       // Prevent rapid clicking during sort operations
       if (isAsyncSorting.value) {
         return
@@ -1202,7 +1203,7 @@ export default {
       if (sortField.value === fieldName) {
         newDirection = sortDirection.value === 'asc' ? 'desc' : 'asc'
       } else {
-        const colDef = currentColumns.value.find(c => c.name === fieldName)
+        const colDef = currentColumns.value.find((c) => c.name === fieldName)
         if (colDef && (colDef.isOverallStat || colDef.isFifaStat || colDef.isValueScore)) {
           newDirection = 'desc'
         } else {
@@ -1219,18 +1220,18 @@ export default {
       emit('update:sort', {
         key: actualSortKey,
         direction: newDirection,
-        isFifaStat: currentColumns.value.find(c => c.name === fieldName)?.isFifaStat,
-        isOverallStat: currentColumns.value.find(c => c.name === fieldName)?.isOverallStat,
-        isValueScore: currentColumns.value.find(c => c.name === fieldName)?.isValueScore,
-        displayField: fieldName
+        isFifaStat: currentColumns.value.find((c) => c.name === fieldName)?.isFifaStat,
+        isOverallStat: currentColumns.value.find((c) => c.name === fieldName)?.isOverallStat,
+        isValueScore: currentColumns.value.find((c) => c.name === fieldName)?.isValueScore,
+        displayField: fieldName,
       })
     }
 
-    const onRowClick = player => {
+    const onRowClick = (player) => {
       emit('player-selected', player)
     }
 
-    const onClubClick = player => {
+    const onClubClick = (player) => {
       if (player.club && player.club.trim() !== '') {
         emit('team-selected', player.club)
       } else {
@@ -1248,11 +1249,11 @@ export default {
       pas: 'kic', // Kicking -> Passing
       dri: 'ref', // Reflexes -> Dribbling
       def: 'spd', // Speed -> Defending
-      phy: 'pos' // Positioning -> Physical
+      phy: 'pos', // Positioning -> Physical
     }
 
     // Memoized player value getter (called frequently during sorting and rendering)
-    const getPlayerValue = (player, fieldKey, columnName = null) => {
+    const getPlayerValue = (player, fieldKey, _columnName = null) => {
       // For regular view, map GK stats to standard FIFA stats if the player is a goalkeeper
       if (!props.isGoalkeeperView && player.position && player.position.includes('GK')) {
         const mappedStat = gkStatMapping[fieldKey]
@@ -1270,7 +1271,7 @@ export default {
           pas: 'kic', // Passing -> Kicking
           dri: 'ref', // Dribbling -> Reflexes
           def: 'spd', // Defending -> Speed
-          phy: 'pos' // Physical -> Positioning
+          phy: 'pos', // Physical -> Positioning
         }
         const mappedStat = gkStatMappingReverse[fieldKey]
         if (mappedStat && player[mappedStat] !== undefined) {
@@ -1302,7 +1303,7 @@ export default {
 
           return `gen${cacheGeneration.value}-${playerUID}-${fieldKey}-${columnName || ''}`
         },
-        cacheKey: 'playerValue'
+        cacheKey: 'playerValue',
       }
     )
 
@@ -1317,7 +1318,7 @@ export default {
 
     const contextMenuPlayer = ref(null)
 
-    const isPlayerInWishlist = player => {
+    const isPlayerInWishlist = (player) => {
       if (!player || !currentDatasetId.value) return false
       return wishlistStore.isInWishlist(currentDatasetId.value, player)
     }
@@ -1333,14 +1334,14 @@ export default {
             type: 'positive',
             message: `${contextMenuPlayer.value.name} added to wishlist`,
             position: 'top',
-            timeout: 2000
+            timeout: 2000,
           })
         } else {
           $q.notify({
             type: 'warning',
             message: `${contextMenuPlayer.value.name} is already in wishlist`,
             position: 'top',
-            timeout: 2000
+            timeout: 2000,
           })
         }
       }
@@ -1357,7 +1358,7 @@ export default {
             type: 'positive',
             message: `${contextMenuPlayer.value.name} removed from wishlist`,
             position: 'top',
-            timeout: 2000
+            timeout: 2000,
           })
           if (props.showWishlistActions) {
             emit('remove-from-wishlist', contextMenuPlayer.value)
@@ -1470,9 +1471,9 @@ export default {
       handleRemoveFromWishlist,
       handlePlayerDetails,
       onRightClick,
-      tableKey
+      tableKey,
     }
-  }
+  },
 }
 </script>
 

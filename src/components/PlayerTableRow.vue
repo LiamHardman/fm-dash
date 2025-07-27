@@ -54,7 +54,7 @@ export default {
     isGoalkeeperView: { type: Boolean, default: false },
     getDisplayValue: { type: Function, required: true },
     formatCurrency: { type: Function, required: true },
-    getRatingClass: { type: Function, required: true }
+    getRatingClass: { type: Function, required: true },
   },
   emits: ['player-selected', 'context-menu', 'team-selected'],
   setup(props) {
@@ -75,7 +75,7 @@ export default {
       return classes.join(' ')
     })
 
-    const getCellClass = col => {
+    const getCellClass = (col) => {
       const classes = ['player-cell']
 
       if (col.type === 'number' || col.type === 'rating') {
@@ -85,15 +85,15 @@ export default {
       return classes.join(' ')
     }
 
-    const displayValue = col => props.getDisplayValue(props.player, col)
+    const displayValue = (col) => props.getDisplayValue(props.player, col)
 
     return {
       quasarInstance,
       rowClass,
       getCellClass,
-      displayValue
+      displayValue,
     }
-  }
+  },
 }
 </script>
 

@@ -11,7 +11,7 @@ export function useTableUtils(items, options = {}) {
   const searchQuery = ref('')
 
   // Sorting utilities
-  const setSortField = field => {
+  const setSortField = (field) => {
     if (sortField.value === field) {
       // Toggle direction if same field
       sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
@@ -56,17 +56,17 @@ export function useTableUtils(items, options = {}) {
 
     const lowercaseQuery = query.toLowerCase().trim()
 
-    return itemsToFilter.filter(item => {
+    return itemsToFilter.filter((item) => {
       // If searchFields provided, only search those fields
       if (searchFields.length > 0) {
-        return searchFields.some(field => {
+        return searchFields.some((field) => {
           const value = item[field]
           return value?.toString().toLowerCase().includes(lowercaseQuery)
         })
       }
 
       // Otherwise search all string fields
-      return Object.values(item).some(value => {
+      return Object.values(item).some((value) => {
         return value?.toString().toLowerCase().includes(lowercaseQuery)
       })
     })
@@ -92,7 +92,7 @@ export function useTableUtils(items, options = {}) {
   })
 
   // Navigate pagination
-  const goToPage = page => {
+  const goToPage = (page) => {
     const maxPage = paginationInfo.value.pages
     currentPage.value = Math.max(1, Math.min(page, maxPage))
   }
@@ -128,6 +128,6 @@ export function useTableUtils(items, options = {}) {
     prevPage,
     firstPage,
     lastPage,
-    resetTable
+    resetTable,
   }
 }

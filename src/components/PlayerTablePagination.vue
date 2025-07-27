@@ -72,7 +72,7 @@ export default {
     itemsPerPage: { type: Number, required: true },
     maxDisplayItems: { type: Number, default: 1000 },
     isSliced: { type: Boolean, default: false },
-    maxPagesToShow: { type: Number, default: 7 }
+    maxPagesToShow: { type: Number, default: 7 },
   },
   emits: ['page-change'],
   setup(props) {
@@ -121,9 +121,9 @@ export default {
       totalPages,
       startItem,
       endItem,
-      visiblePages
+      visiblePages,
     }
-  }
+  },
 }
 </script>
 

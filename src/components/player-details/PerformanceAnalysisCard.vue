@@ -168,28 +168,28 @@ export default defineComponent({
   props: {
     player: {
       type: Object,
-      required: true
+      required: true,
     },
     selectedComparisonGroup: {
       type: String,
-      default: 'global'
+      default: 'global',
     },
     selectedDivisionFilter: {
       type: String,
-      default: 'all'
+      default: 'all',
     },
     performanceComparisonOptions: {
       type: Array,
-      default: () => []
+      default: () => [],
     },
     divisionFilterOptions: {
       type: Array,
-      default: () => []
+      default: () => [],
     },
     datasetId: {
       type: String,
-      required: false
-    }
+      required: false,
+    },
   },
   setup(props) {
     // Convert props to refs for the composable
@@ -205,7 +205,7 @@ export default defineComponent({
       showLoadingState,
       percentilesRetryCount,
       maxRetries,
-      manualRetry
+      manualRetry,
     } = usePercentileRetry(playerRef, datasetIdRef, selectedComparisonGroupRef)
     // Check if player has any performance data
     const hasAnyPerformanceData = computed(() => {
@@ -215,7 +215,7 @@ export default defineComponent({
       if (!percentiles) return false
 
       return Object.values(percentiles).some(
-        value => value !== null && value !== undefined && value >= 0
+        (value) => value !== null && value !== undefined && value >= 0
       )
     })
 
@@ -233,17 +233,16 @@ export default defineComponent({
           'tackles_per_game',
           'interceptions_per_game',
           'clearances_per_game',
-          'blocks_per_game'
+          'blocks_per_game',
         ],
         Passing: ['passes_per_game', 'pass_accuracy', 'crosses_per_game', 'long_balls_per_game'],
-        Physical: ['fouls_per_game', 'was_fouled_per_game', 'cards_per_game', 'distance_covered']
+        Physical: ['fouls_per_game', 'was_fouled_per_game', 'cards_per_game', 'distance_covered'],
       }
 
       // Mapping from FM format keys to normalized keys
       const fmToNormalizedMap = {
         'Gls/90': 'goals',
         'Asts/90': 'assists',
-        'K Ps/90': 'key_passes',
         'Shot/90': 'shots_per_game',
         'ShT/90': 'shots_on_target_per_game',
         'Tck/90': 'tackles_per_game',
@@ -254,8 +253,8 @@ export default defineComponent({
         'Pas %': 'pass_accuracy',
         'Cr C/90': 'crosses_per_game',
         'K Ps/90': 'long_balls_per_game', // Using key passes as proxy for long balls
-        'Fls': 'fouls_per_game',
-        'FA': 'was_fouled_per_game',
+        Fls: 'fouls_per_game',
+        FA: 'was_fouled_per_game',
         // Note: 'cards_per_game' and 'distance_covered' don't have direct FM equivalents
       }
 
@@ -266,14 +265,16 @@ export default defineComponent({
 
         for (const statKey of statKeys) {
           // Find the FM key that maps to this normalized key
-          const fmKey = Object.keys(fmToNormalizedMap).find(key => fmToNormalizedMap[key] === statKey)
-          
+          const fmKey = Object.keys(fmToNormalizedMap).find(
+            (key) => fmToNormalizedMap[key] === statKey
+          )
+
           if (fmKey && percentiles[fmKey] !== undefined) {
             categoryStats.push({
               key: statKey,
               name: formatStatName(statKey),
               percentile: percentiles[fmKey],
-              value: getStatValue(statKey)
+              value: getStatValue(statKey),
             })
           }
         }
@@ -287,7 +288,7 @@ export default defineComponent({
     })
 
     // Format stat names for display
-    const formatStatName = statKey => {
+    const formatStatName = (statKey) => {
       const nameMap = {
         goals: 'Goals',
         assists: 'Assists',
@@ -305,43 +306,43 @@ export default defineComponent({
         fouls_per_game: 'Fouls/Game',
         was_fouled_per_game: 'Was Fouled/Game',
         cards_per_game: 'Cards/Game',
-        distance_covered: 'Distance Covered'
+        distance_covered: 'Distance Covered',
       }
 
-      return nameMap[statKey] || statKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+      return nameMap[statKey] || statKey.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())
     }
 
     // Get actual stat value from player data
-    const getStatValue = statKey => {
+    const getStatValue = (statKey) => {
       if (!props.player?.attributes) return '-'
-      
+
       // Mapping from normalized keys to FM format keys
       const normalizedToFmMap = {
-        'goals': 'Gls/90',
-        'assists': 'Asts/90',
-        'key_passes': 'K Ps/90',
-        'shots_per_game': 'Shot/90',
-        'shots_on_target_per_game': 'ShT/90',
-        'tackles_per_game': 'Tck/90',
-        'interceptions_per_game': 'Int/90',
-        'clearances_per_game': 'Clr/90',
-        'blocks_per_game': 'Blk/90',
-        'passes_per_game': 'Ps C/90',
-        'pass_accuracy': 'Pas %',
-        'crosses_per_game': 'Cr C/90',
-        'long_balls_per_game': 'K Ps/90', // Using key passes as proxy for long balls
-        'fouls_per_game': 'Fls',
-        'was_fouled_per_game': 'FA'
+        goals: 'Gls/90',
+        assists: 'Asts/90',
+        key_passes: 'K Ps/90',
+        shots_per_game: 'Shot/90',
+        shots_on_target_per_game: 'ShT/90',
+        tackles_per_game: 'Tck/90',
+        interceptions_per_game: 'Int/90',
+        clearances_per_game: 'Clr/90',
+        blocks_per_game: 'Blk/90',
+        passes_per_game: 'Ps C/90',
+        pass_accuracy: 'Pas %',
+        crosses_per_game: 'Cr C/90',
+        long_balls_per_game: 'K Ps/90', // Using key passes as proxy for long balls
+        fouls_per_game: 'Fls',
+        was_fouled_per_game: 'FA',
       }
-      
+
       const fmKey = normalizedToFmMap[statKey]
       if (!fmKey) return '-'
-      
+
       return props.player.attributes[fmKey] || '-'
     }
 
     // Generate bar fill style based on percentile
-    const getBarFillStyle = percentile => {
+    const getBarFillStyle = (percentile) => {
       if (percentile === null || percentile === undefined || percentile < 0) {
         return { width: '0%', backgroundColor: '#e0e0e0' }
       }
@@ -362,7 +363,7 @@ export default defineComponent({
       return {
         width: `${width}%`,
         backgroundColor: color,
-        transition: 'all 0.3s ease'
+        transition: 'all 0.3s ease',
       }
     }
 
@@ -379,9 +380,9 @@ export default defineComponent({
       showLoadingState,
       percentilesRetryCount,
       maxRetries,
-      manualRetry
+      manualRetry,
     }
-  }
+  },
 })
 </script>
 

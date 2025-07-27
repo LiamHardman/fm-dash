@@ -20,7 +20,7 @@ export class PerformanceTracker {
       label,
       time: now,
       elapsed,
-      sinceLastCheckpoint
+      sinceLastCheckpoint,
     })
   }
 
@@ -32,7 +32,7 @@ export class PerformanceTracker {
 
 // Helper function to defer expensive operations
 export function deferToNextFrame(callback) {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     requestAnimationFrame(() => {
       const result = callback()
       resolve(result)
@@ -41,7 +41,7 @@ export function deferToNextFrame(callback) {
 }
 
 // Helper to batch process large arrays without blocking UI
-export async function batchProcess(array, batchSize = 100, processor) {
+export async function batchProcess(array, batchSize, processor) {
   const results = []
   for (let i = 0; i < array.length; i += batchSize) {
     const batch = array.slice(i, i + batchSize)
@@ -52,7 +52,7 @@ export async function batchProcess(array, batchSize = 100, processor) {
 }
 
 // Optimized min/max finder for large arrays
-export function findMinMax(array, valueExtractor = x => x) {
+export function findMinMax(array, valueExtractor = (x) => x) {
   if (array.length === 0) return { min: 0, max: 0 }
 
   let min = Number.MAX_SAFE_INTEGER

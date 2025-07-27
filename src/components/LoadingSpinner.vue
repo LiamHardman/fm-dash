@@ -17,20 +17,20 @@
 defineProps({
   message: {
     type: String,
-    default: 'Loading...'
+    default: 'Loading...',
   },
   size: {
     type: String,
-    default: '40px'
+    default: '40px',
   },
   color: {
     type: String,
-    default: 'primary'
+    default: 'primary',
   },
   fullscreen: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
 })
 </script>
 

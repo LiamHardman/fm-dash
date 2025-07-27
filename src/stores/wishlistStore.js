@@ -9,13 +9,13 @@ export const useWishlistStore = defineStore('wishlist', () => {
   const loading = ref(false)
 
   // Get wishlist for current dataset
-  const getWishlistForDataset = datasetId => {
+  const getWishlistForDataset = (datasetId) => {
     if (!datasetId) return []
     return wishlistsByDataset.value[datasetId] || []
   }
 
   // Load wishlist for specific dataset (from MinIO with localStorage fallback)
-  const loadWishlistForDataset = async datasetId => {
+  const loadWishlistForDataset = async (datasetId) => {
     if (!datasetId) return []
 
     loading.value = true
@@ -33,7 +33,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
   }
 
   // Save wishlist for specific dataset (to MinIO with localStorage fallback)
-  const saveWishlistForDataset = async datasetId => {
+  const saveWishlistForDataset = async (datasetId) => {
     if (!datasetId || !wishlistsByDataset.value[datasetId]) return
 
     try {
@@ -52,7 +52,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
 
     // Check if player is already in wishlist
     const existingIndex = wishlistsByDataset.value[datasetId].findIndex(
-      p => p.name === player.name && p.club === player.club
+      (p) => p.name === player.name && p.club === player.club
     )
 
     if (existingIndex === -1) {
@@ -73,7 +73,7 @@ export const useWishlistStore = defineStore('wishlist', () => {
     if (!datasetId || !player || !wishlistsByDataset.value[datasetId]) return false
 
     const index = wishlistsByDataset.value[datasetId].findIndex(
-      p => p.name === player.name && p.club === player.club
+      (p) => p.name === player.name && p.club === player.club
     )
 
     if (index !== -1) {
@@ -94,12 +94,12 @@ export const useWishlistStore = defineStore('wishlist', () => {
     if (!datasetId || !player || !wishlistsByDataset.value[datasetId]) return false
 
     return wishlistsByDataset.value[datasetId].some(
-      p => p.name === player.name && p.club === player.club
+      (p) => p.name === player.name && p.club === player.club
     )
   }
 
   // Clear wishlist for specific dataset
-  const clearWishlistForDataset = async datasetId => {
+  const clearWishlistForDataset = async (datasetId) => {
     if (datasetId && wishlistsByDataset.value[datasetId]) {
       wishlistsByDataset.value[datasetId] = []
       await saveWishlistForDataset(datasetId)
@@ -112,13 +112,13 @@ export const useWishlistStore = defineStore('wishlist', () => {
   }
 
   // Get wishlist count for dataset
-  const getWishlistCount = datasetId => {
+  const getWishlistCount = (datasetId) => {
     if (!datasetId) return 0
     return wishlistsByDataset.value[datasetId]?.length || 0
   }
 
   // Initialize wishlists for a dataset (call this when dataset is loaded)
-  const initializeWishlistForDataset = async datasetId => {
+  const initializeWishlistForDataset = async (datasetId) => {
     if (!datasetId) return
 
     // Only load if not already loaded
@@ -161,6 +161,6 @@ export const useWishlistStore = defineStore('wishlist', () => {
     isInWishlist,
     clearWishlistForDataset,
     getWishlistCount,
-    initializeWishlistForDataset
+    initializeWishlistForDataset,
   }
 })

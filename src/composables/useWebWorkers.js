@@ -20,7 +20,7 @@ export function useWebWorkers() {
     workers.value.set(workerName, worker)
 
     // Handle messages from worker
-    worker.onmessage = e => {
+    worker.onmessage = (e) => {
       const { type, id, result, error } = e.data
       const task = pendingTasks.value.get(id)
 
@@ -35,7 +35,7 @@ export function useWebWorkers() {
     }
 
     // Handle worker errors
-    worker.onerror = error => {
+    worker.onerror = (error) => {
       // Reject all pending tasks for this worker
       for (const [id, task] of pendingTasks.value.entries()) {
         if (task.workerName === workerName) {
@@ -70,22 +70,22 @@ export function useWebWorkers() {
 
       // Store pending task
       pendingTasks.value.set(taskId, {
-        resolve: result => {
+        resolve: (result) => {
           clearTimeout(timeoutId)
           resolve(result)
         },
-        reject: error => {
+        reject: (error) => {
           clearTimeout(timeoutId)
           reject(error)
         },
-        workerName
+        workerName,
       })
 
       // Send task to worker
       worker.postMessage({
         type,
         id: taskId,
-        data
+        data,
       })
     })
   }
@@ -93,7 +93,7 @@ export function useWebWorkers() {
   /**
    * Terminate a specific worker
    */
-  const terminateWorker = workerName => {
+  const terminateWorker = (workerName) => {
     const worker = workers.value.get(workerName)
     if (worker) {
       worker.terminate()
@@ -121,7 +121,7 @@ export function useWebWorkers() {
   /**
    * Check if worker is available
    */
-  const hasWorker = workerName => {
+  const hasWorker = (workerName) => {
     return workers.value.has(workerName)
   }
 
@@ -130,8 +130,9 @@ export function useWebWorkers() {
    */
   const getPendingTaskCount = (workerName = null) => {
     if (workerName) {
-      return Array.from(pendingTasks.value.values()).filter(task => task.workerName === workerName)
-        .length
+      return Array.from(pendingTasks.value.values()).filter(
+        (task) => task.workerName === workerName
+      ).length
     }
     return pendingTasks.value.size
   }
@@ -149,7 +150,7 @@ export function useWebWorkers() {
     hasWorker,
     getPendingTaskCount,
     workers: workers.value,
-    pendingTasks: pendingTasks.value
+    pendingTasks: pendingTasks.value,
   }
 }
 
@@ -203,7 +204,7 @@ export function usePlayerCalculationWorker() {
       fieldKey,
       direction,
       sortField,
-      isGoalkeeperView
+      isGoalkeeperView,
     })
   }
 
@@ -219,7 +220,7 @@ export function usePlayerCalculationWorker() {
 
     return executeTask('playerCalculation', 'FILTER_PLAYERS', {
       players,
-      filters
+      filters,
     })
   }
 
@@ -235,7 +236,7 @@ export function usePlayerCalculationWorker() {
 
     return executeTask('playerCalculation', 'CALCULATE_STATS', {
       players,
-      statKey
+      statKey,
     })
   }
 
@@ -251,7 +252,7 @@ export function usePlayerCalculationWorker() {
 
     return executeTask('playerCalculation', 'BATCH_PROCESS', {
       players,
-      operations
+      operations,
     })
   }
 
@@ -280,7 +281,7 @@ export function usePlayerCalculationWorker() {
   }
 
   const filterPlayersMainThread = (players, filters) => {
-    return players.filter(player => {
+    return players.filter((player) => {
       if (filters.name && !player.name.toLowerCase().includes(filters.name.toLowerCase())) {
         return false
       }
@@ -290,8 +291,8 @@ export function usePlayerCalculationWorker() {
 
   const calculateStatsMainThread = (players, statKey) => {
     const values = players
-      .map(p => p[statKey])
-      .filter(v => v != null && !Number.isNaN(v))
+      .map((p) => p[statKey])
+      .filter((v) => v != null && !Number.isNaN(v))
       .sort((a, b) => a - b)
 
     if (values.length === 0) {
@@ -342,6 +343,6 @@ export function usePlayerCalculationWorker() {
     calculateStats,
     batchProcess,
     getPendingTaskCount: () => getPendingTaskCount('playerCalculation'),
-    terminateWorker: () => terminateWorker('playerCalculation')
+    terminateWorker: () => terminateWorker('playerCalculation'),
   }
 }

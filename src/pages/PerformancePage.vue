@@ -452,17 +452,13 @@
 import { debounce, useQuasar } from 'quasar'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-// biome-ignore lint/correctness/noUnusedImports: used in template
-import StatCard from '../components/StatCard.vue'
 // Dynamic imports for better performance
 import { useDynamicComponents } from '../composables/useDynamicComponents.js'
+import { fetchPerformanceData } from '../services/playerService'
 import { usePlayerStore } from '../stores/playerStore'
 import { useUiStore } from '../stores/uiStore'
-import { fetchPerformanceData } from '../services/playerService'
-import { getNumericValue, getPlayerDivision } from '../utils/playerUtils'
-import { formatNumber } from '../utils/currencyUtils'
-import ExportOptionsDialog from '../components/ExportOptionsDialog.vue'
 import { exportPlayersToCSV } from '../utils/csvExport.js'
+import { getNumericValue, getPlayerDivision } from '../utils/playerUtils'
 
 const router = useRouter()
 const route = useRoute()
@@ -471,8 +467,11 @@ const playerStore = usePlayerStore()
 const uiStore = useUiStore()
 
 // Initialize dynamic components
-const { DynamicPlayerDetailDialog, DynamicScatterPlotCard, initializePreloading } =
-  useDynamicComponents()
+const {
+  DynamicPlayerDetailDialog: _DynamicPlayerDetailDialog,
+  DynamicScatterPlotCard: _DynamicScatterPlotCard,
+  initializePreloading,
+} = useDynamicComponents()
 
 // Initialize preloading for performance page
 initializePreloading(route)
@@ -485,13 +484,13 @@ const topPlayersByStat = ref({})
 
 // Export functionality
 const showExportOptions = ref(false)
-const exportFormat = ref('csv')
+const _exportFormat = ref('csv')
 // biome-ignore lint/correctness/noUnusedVariables: used in template
 const currentTab = ref('attacking')
 const pageLoading = ref(true)
 
 // Add computed property for dark mode detection using UI store
-const isDarkMode = computed(() => uiStore.isDarkModeActive)
+const _isDarkMode = computed(() => uiStore.isDarkModeActive)
 
 // --- Filter State with new defaults ---
 const sliderValue = ref(0)
@@ -512,10 +511,10 @@ const currentDatasetId = computed(() => playerStore.currentDatasetId)
 // --- Computed Properties for Filtering ---
 // biome-ignore lint/correctness/noUnusedVariables: used in template
 const maxMinutes = computed(() =>
-  Math.max(2000, ...allPlayersData.value.map(p => getNumericValue(p.attributes?.Mins) || 0))
+  Math.max(2000, ...allPlayersData.value.map((p) => getNumericValue(p.attributes?.Mins) || 0))
 )
 // biome-ignore lint/correctness/noUnusedVariables: used in template
-const maxOverall = computed(() => Math.max(100, ...allPlayersData.value.map(p => p.Overall || 0)))
+const maxOverall = computed(() => Math.max(100, ...allPlayersData.value.map((p) => p.Overall || 0)))
 
 // Function to calculate thresholds for ~100 players
 const calculateThresholds = () => {
@@ -523,11 +522,11 @@ const calculateThresholds = () => {
 
   // Get all available divisions for comparison
   const allAvailableDivisions = [
-    ...new Set(allPlayersData.value.map(p => getPlayerDivision(p)).filter(Boolean))
+    ...new Set(allPlayersData.value.map((p) => getPlayerDivision(p)).filter(Boolean)),
   ]
 
   // First filter by selected divisions and positions
-  const filteredByDivisionAndPosition = allPlayersData.value.filter(player => {
+  const filteredByDivisionAndPosition = allPlayersData.value.filter((player) => {
     const division = getPlayerDivision(player)
     // Consider "all divisions" if empty array OR if all available divisions are selected
     const divisionMatch =
@@ -537,13 +536,15 @@ const calculateThresholds = () => {
 
     const positionMatch =
       selectedPositions.value.length === 0 ||
-      selectedPositions.value.some(selectedPos => {
+      selectedPositions.value.some((selectedPos) => {
         // Handle position groups
         if (selectedPos === 'Goalkeeper') return player.shortPositions?.includes('GK')
         if (selectedPos === 'Defender')
-          return player.shortPositions?.some(pos => ['DC', 'DR', 'DL', 'WBR', 'WBL'].includes(pos))
+          return player.shortPositions?.some((pos) =>
+            ['DC', 'DR', 'DL', 'WBR', 'WBL'].includes(pos)
+          )
         if (selectedPos === 'Midfielder')
-          return player.shortPositions?.some(pos =>
+          return player.shortPositions?.some((pos) =>
             ['DM', 'MC', 'MR', 'ML', 'AMR', 'AMC', 'AML'].includes(pos)
           )
         if (selectedPos === 'Forward') return player.shortPositions?.includes('ST')
@@ -564,7 +565,7 @@ const calculateThresholds = () => {
             'AMC',
             'AMR',
             'AML',
-            'ST'
+            'ST',
           ].includes(selectedPos)
         ) {
           return player.shortPositions?.includes(selectedPos)
@@ -578,7 +579,7 @@ const calculateThresholds = () => {
 
   // Step 1: Calculate overall threshold to get ~250 players
   const sortedOverall = [...filteredByDivisionAndPosition]
-    .map(p => p.Overall || 0)
+    .map((p) => p.Overall || 0)
     .sort((a, b) => b - a)
 
   const overallTargetIndex = Math.min(249, sortedOverall.length - 1) // Target 250 players
@@ -586,12 +587,12 @@ const calculateThresholds = () => {
 
   // Step 2: Filter by overall rating first, then calculate minutes threshold
   const playersAfterOverallFilter = filteredByDivisionAndPosition.filter(
-    player => (player.Overall || 0) >= overallThreshold
+    (player) => (player.Overall || 0) >= overallThreshold
   )
 
   // Step 3: Calculate minutes threshold from the overall-filtered players
   const sortedMinutes = [...playersAfterOverallFilter]
-    .map(p => getNumericValue(p.attributes?.Mins) || 0)
+    .map((p) => getNumericValue(p.attributes?.Mins) || 0)
     .sort((a, b) => b - a)
 
   const minutesTargetIndex = Math.min(99, sortedMinutes.length - 1) // Target 100 players
@@ -603,10 +604,10 @@ const calculateThresholds = () => {
 
 const availableDivisions = computed(() => {
   const divisions = [
-    ...new Set(allPlayersData.value.map(p => getPlayerDivision(p)).filter(Boolean))
+    ...new Set(allPlayersData.value.map((p) => getPlayerDivision(p)).filter(Boolean)),
   ].sort()
   // Ensure default selections are included if they exist in the data
-  selectedDivisions.value = selectedDivisions.value.filter(d => divisions.includes(d))
+  selectedDivisions.value = selectedDivisions.value.filter((d) => divisions.includes(d))
   return divisions
 })
 
@@ -642,17 +643,17 @@ const availablePositions = computed(() => {
     { label: 'AML - Attacking Mid (Left)', value: 'AML' },
 
     // Forwards
-    { label: 'ST - Striker', value: 'ST' }
+    { label: 'ST - Striker', value: 'ST' },
   ]
 })
 
 const filteredPlayers = computed(() => {
   // Get all available divisions for comparison
   const allAvailableDivisions = [
-    ...new Set(allPlayersData.value.map(p => getPlayerDivision(p)).filter(Boolean))
+    ...new Set(allPlayersData.value.map((p) => getPlayerDivision(p)).filter(Boolean)),
   ]
 
-  return allPlayersData.value.filter(player => {
+  return allPlayersData.value.filter((player) => {
     const minutesPlayed = getNumericValue(player.attributes?.Mins) || 0
     const overall = player.Overall || 0
     const division = getPlayerDivision(player)
@@ -667,13 +668,15 @@ const filteredPlayers = computed(() => {
 
     const matchesPosition =
       selectedPositions.value.length === 0 ||
-      selectedPositions.value.some(selectedPos => {
+      selectedPositions.value.some((selectedPos) => {
         // Handle position groups
         if (selectedPos === 'Goalkeeper') return player.shortPositions?.includes('GK')
         if (selectedPos === 'Defender')
-          return player.shortPositions?.some(pos => ['DC', 'DR', 'DL', 'WBR', 'WBL'].includes(pos))
+          return player.shortPositions?.some((pos) =>
+            ['DC', 'DR', 'DL', 'WBR', 'WBL'].includes(pos)
+          )
         if (selectedPos === 'Midfielder')
-          return player.shortPositions?.some(pos =>
+          return player.shortPositions?.some((pos) =>
             ['DM', 'MC', 'MR', 'ML', 'AMR', 'AMC', 'AML'].includes(pos)
           )
         if (selectedPos === 'Forward') return player.shortPositions?.includes('ST')
@@ -694,7 +697,7 @@ const filteredPlayers = computed(() => {
             'AMC',
             'AMR',
             'AML',
-            'ST'
+            'ST',
           ].includes(selectedPos)
         ) {
           return player.shortPositions?.includes(selectedPos)
@@ -712,16 +715,16 @@ const filteredPlayers = computed(() => {
 const selectedDivisionsDisplayText = computed(() => {
   const count = selectedDivisions.value.length
   const allAvailableDivisions = [
-    ...new Set(allPlayersData.value.map(p => getPlayerDivision(p)).filter(Boolean))
+    ...new Set(allPlayersData.value.map((p) => getPlayerDivision(p)).filter(Boolean)),
   ]
 
   if (count === 0 || count === allAvailableDivisions.length) {
     return 'All divisions'
-  } else if (count <= 5) {
-    return selectedDivisions.value.join(', ')
-  } else {
-    return `${count} divisions selected`
   }
+  if (count <= 5) {
+    return selectedDivisions.value.join(', ')
+  }
+  return `${count} divisions selected`
 })
 
 // Computed property for custom display text in position filter
@@ -730,16 +733,16 @@ const selectedPositionsDisplayText = computed(() => {
   const count = selectedPositions.value.length
   if (count === 0) {
     return ''
-  } else if (count <= 3) {
+  }
+  if (count <= 3) {
     // Show labels for the selected positions
-    const labels = selectedPositions.value.map(value => {
-      const option = availablePositions.value.find(opt => opt.value === value)
+    const labels = selectedPositions.value.map((value) => {
+      const option = availablePositions.value.find((opt) => opt.value === value)
       return option ? option.label : value
     })
     return labels.join(', ')
-  } else {
-    return `${count} positions selected`
   }
+  return `${count} positions selected`
 })
 
 // --- Data Definitions (Charts & Stats) ---
@@ -757,8 +760,8 @@ const scatterPlotConfigs = ref([
       topRight: ['Elite', 'Over-performing'],
       topLeft: ['Clinical', 'Over-performing'],
       bottomRight: ['Wasteful', 'Under-performing'],
-      bottomLeft: ['Low Threat', 'Under-performing']
-    }
+      bottomLeft: ['Low Threat', 'Under-performing'],
+    },
   },
   {
     category: 'attacking',
@@ -772,8 +775,8 @@ const scatterPlotConfigs = ref([
       topRight: ['Elite Attacker', ''],
       topLeft: ['Selective Shooter', ''],
       bottomRight: ['Inefficient Volume', ''],
-      bottomLeft: ['Limited Threat', '']
-    }
+      bottomLeft: ['Limited Threat', ''],
+    },
   },
 
   // Passing plots
@@ -789,8 +792,8 @@ const scatterPlotConfigs = ref([
       topRight: ['Elite Creator', ''],
       topLeft: ['Fortunate Creator', ''],
       bottomRight: ['Unlucky Creator', ''],
-      bottomLeft: ['Limited Creator', '']
-    }
+      bottomLeft: ['Limited Creator', ''],
+    },
   },
   {
     category: 'passing',
@@ -804,8 +807,8 @@ const scatterPlotConfigs = ref([
       topRight: ['Elite Creator', ''],
       topLeft: ['Clinical Passer', ''],
       bottomRight: ['Wasteful Creator', ''],
-      bottomLeft: ['Limited Creator', '']
-    }
+      bottomLeft: ['Limited Creator', ''],
+    },
   },
 
   {
@@ -820,8 +823,8 @@ const scatterPlotConfigs = ref([
       topRight: ['Accurate Progressive', ''],
       topLeft: ['Selective Progressive', ''],
       bottomRight: ['Risky Progressive', ''],
-      bottomLeft: ['Limited Progressive', '']
-    }
+      bottomLeft: ['Limited Progressive', ''],
+    },
   },
   {
     category: 'passing',
@@ -835,8 +838,8 @@ const scatterPlotConfigs = ref([
       topRight: ['Elite Passer', ''],
       topLeft: ['Accurate Passer', ''],
       bottomRight: ['Volume Passer', ''],
-      bottomLeft: ['Limited Passer', '']
-    }
+      bottomLeft: ['Limited Passer', ''],
+    },
   },
 
   {
@@ -851,8 +854,8 @@ const scatterPlotConfigs = ref([
       topRight: ['Elite Crosser', ''],
       topLeft: ['Selective Crosser', ''],
       bottomRight: ['Volume Crosser', ''],
-      bottomLeft: ['Limited Crosser', '']
-    }
+      bottomLeft: ['Limited Crosser', ''],
+    },
   },
   {
     category: 'passing',
@@ -866,8 +869,8 @@ const scatterPlotConfigs = ref([
       topRight: ['Elite Crosser', ''],
       topLeft: ['Clinical Crosser', ''],
       bottomRight: ['Volume Crosser', ''],
-      bottomLeft: ['Limited Crosser', '']
-    }
+      bottomLeft: ['Limited Crosser', ''],
+    },
   },
 
   // Defending plots
@@ -883,8 +886,8 @@ const scatterPlotConfigs = ref([
       topRight: ['Elite Ball-Winner', ''],
       topLeft: ['Conservative', ''],
       bottomRight: ['Reckless', ''],
-      bottomLeft: ['Passive', '']
-    }
+      bottomLeft: ['Passive', ''],
+    },
   },
   {
     category: 'defending',
@@ -898,8 +901,8 @@ const scatterPlotConfigs = ref([
       topRight: ['Elite Defender', ''],
       topLeft: ['Tackle Specialist', ''],
       bottomRight: ['Interception Specialist', ''],
-      bottomLeft: ['Limited Defender', '']
-    }
+      bottomLeft: ['Limited Defender', ''],
+    },
   },
 
   {
@@ -914,8 +917,8 @@ const scatterPlotConfigs = ref([
       topRight: ['Effective Presser', ''],
       topLeft: ['Positional Winner', ''],
       bottomRight: ['Ineffective Presser', ''],
-      bottomLeft: ['Low Activity', '']
-    }
+      bottomLeft: ['Low Activity', ''],
+    },
   },
   {
     category: 'defending',
@@ -929,8 +932,8 @@ const scatterPlotConfigs = ref([
       topRight: ['Elite Presser', ''],
       topLeft: ['Selective Presser', ''],
       bottomRight: ['Ineffective Presser', ''],
-      bottomLeft: ['Limited Presser', '']
-    }
+      bottomLeft: ['Limited Presser', ''],
+    },
   },
 
   {
@@ -945,8 +948,8 @@ const scatterPlotConfigs = ref([
       topRight: ['Elite Aerial', ''],
       topLeft: ['Selective Winner', ''],
       bottomRight: ['Ineffective Challenger', ''],
-      bottomLeft: ['Limited Aerial', '']
-    }
+      bottomLeft: ['Limited Aerial', ''],
+    },
   },
   {
     category: 'defending',
@@ -960,8 +963,8 @@ const scatterPlotConfigs = ref([
       topRight: ['Elite Aerial Defender', ''],
       topLeft: ['Selective Header', ''],
       bottomRight: ['Clearance Specialist', ''],
-      bottomLeft: ['Limited Aerial', '']
-    }
+      bottomLeft: ['Limited Aerial', ''],
+    },
   },
 
   {
@@ -976,8 +979,8 @@ const scatterPlotConfigs = ref([
       topRight: ['Elite Work Rate', ''],
       topLeft: ['Endurance Runner', ''],
       bottomRight: ['Sprint Specialist', ''],
-      bottomLeft: ['Limited Movement', '']
-    }
+      bottomLeft: ['Limited Movement', ''],
+    },
   },
   {
     category: 'defending',
@@ -991,8 +994,8 @@ const scatterPlotConfigs = ref([
       topRight: ['Elite Intensity', ''],
       topLeft: ['Endurance Presser', ''],
       bottomRight: ['Sprint Presser', ''],
-      bottomLeft: ['Limited Intensity', '']
-    }
+      bottomLeft: ['Limited Intensity', ''],
+    },
   },
 
   // Goalkeeping plots
@@ -1008,8 +1011,8 @@ const scatterPlotConfigs = ref([
       topRight: ['Busy & Effective', ''],
       topLeft: ['Elite Goalkeeper', ''],
       bottomRight: ['Struggling', ''],
-      bottomLeft: ['Protected', '']
-    }
+      bottomLeft: ['Protected', ''],
+    },
   },
   {
     category: 'goalkeeping',
@@ -1023,9 +1026,9 @@ const scatterPlotConfigs = ref([
       topRight: ['Elite Shot-Stopper', ''],
       topLeft: ['Protected Keeper', ''],
       bottomRight: ['Exposed Keeper', ''],
-      bottomLeft: ['Limited Impact', '']
-    }
-  }
+      bottomLeft: ['Limited Impact', ''],
+    },
+  },
 ])
 
 const statCategories = {
@@ -1033,74 +1036,78 @@ const statCategories = {
     { key: 'Gls/90', name: 'Goals per 90' },
     { key: 'xG/90', name: 'xG per 90' },
     { key: 'Shot/90', name: 'Shots per 90' },
-    { key: 'Conv %', name: 'Conversion %' }
+    { key: 'Conv %', name: 'Conversion %' },
   ],
   passing: [
     { key: 'Asts/90', name: 'Assists per 90' },
     { key: 'xA/90', name: 'xA per 90' },
     { key: 'K Ps/90', name: 'Key Passes per 90' },
-    { key: 'Pas %', name: 'Pass Completion %' }
+    { key: 'Pas %', name: 'Pass Completion %' },
   ],
   defensive: [
     { key: 'Tck/90', name: 'Tackles per 90' },
     { key: 'Int/90', name: 'Interceptions per 90' },
     { key: 'Hdrs W/90', name: 'Headers Won per 90' },
-    { key: 'Pres C/90', name: 'Pressures Completed p90' }
+    { key: 'Pres C/90', name: 'Pressures Completed p90' },
   ],
   goalkeeping: [
     { key: 'Con/90', name: 'Goals Conceded p90' },
     { key: 'xGP/90', name: 'xG Prevented p90' },
     { key: 'Sv %', name: 'Save Percentage' },
-    { key: 'Clean Sheets', name: 'Clean Sheets' }
-  ]
+    { key: 'Clean Sheets', name: 'Clean Sheets' },
+  ],
 }
 
 // --- Computed properties for each tab ---
 const attackingCharts = computed(() =>
-  scatterPlotConfigs.value.filter(c => c.category === 'attacking')
+  scatterPlotConfigs.value.filter((c) => c.category === 'attacking')
 )
-const passingCharts = computed(() => scatterPlotConfigs.value.filter(c => c.category === 'passing'))
+const passingCharts = computed(() =>
+  scatterPlotConfigs.value.filter((c) => c.category === 'passing')
+)
 const defendingCharts = computed(() =>
-  scatterPlotConfigs.value.filter(c => c.category === 'defending')
+  scatterPlotConfigs.value.filter((c) => c.category === 'defending')
 )
 const goalkeepingCharts = computed(() =>
-  scatterPlotConfigs.value.filter(c => c.category === 'goalkeeping')
+  scatterPlotConfigs.value.filter((c) => c.category === 'goalkeeping')
 )
 
 // Add computed properties for each subcategory
 // biome-ignore lint/correctness/noUnusedVariables: used in template
 const attackingShootingCharts = computed(() =>
-  attackingCharts.value.filter(c => c.group === 'shooting')
+  attackingCharts.value.filter((c) => c.group === 'shooting')
 )
 // biome-ignore lint/correctness/noUnusedVariables: used in template
 const passingCreativeCharts = computed(() =>
-  passingCharts.value.filter(c => c.group === 'creative')
+  passingCharts.value.filter((c) => c.group === 'creative')
 )
 // biome-ignore lint/correctness/noUnusedVariables: used in template
 const passingProgressionCharts = computed(() =>
-  passingCharts.value.filter(c => c.group === 'progression')
+  passingCharts.value.filter((c) => c.group === 'progression')
 )
 // biome-ignore lint/correctness/noUnusedVariables: used in template
 const passingCrossingCharts = computed(() =>
-  passingCharts.value.filter(c => c.group === 'crossing')
+  passingCharts.value.filter((c) => c.group === 'crossing')
 )
 // biome-ignore lint/correctness/noUnusedVariables: used in template
-const defendingDuelsCharts = computed(() => defendingCharts.value.filter(c => c.group === 'duels'))
+const defendingDuelsCharts = computed(() =>
+  defendingCharts.value.filter((c) => c.group === 'duels')
+)
 // biome-ignore lint/correctness/noUnusedVariables: used in template
 const defendingPressingCharts = computed(() =>
-  defendingCharts.value.filter(c => c.group === 'pressing')
+  defendingCharts.value.filter((c) => c.group === 'pressing')
 )
 // biome-ignore lint/correctness/noUnusedVariables: used in template
 const defendingAerialCharts = computed(() =>
-  defendingCharts.value.filter(c => c.group === 'aerial')
+  defendingCharts.value.filter((c) => c.group === 'aerial')
 )
 // biome-ignore lint/correctness/noUnusedVariables: used in template
 const defendingWorkrateCharts = computed(() =>
-  defendingCharts.value.filter(c => c.group === 'workrate')
+  defendingCharts.value.filter((c) => c.group === 'workrate')
 )
 // biome-ignore lint/correctness/noUnusedVariables: used in template
 const goalkeepingShotstoppingCharts = computed(() =>
-  goalkeepingCharts.value.filter(c => c.group === 'shotstopping')
+  goalkeepingCharts.value.filter((c) => c.group === 'shotstopping')
 )
 
 const attackingStats = computed(() => statCategories.offensive)
@@ -1112,7 +1119,7 @@ const allStatsForCalculation = computed(() => [
   ...attackingStats.value,
   ...passingStats.value,
   ...defendingStats.value,
-  ...goalkeepingStats.value
+  ...goalkeepingStats.value,
 ])
 
 // --- Helper Methods ---
@@ -1122,31 +1129,31 @@ const calculateTopPerformers = () => {
   const playersToProcess = filteredPlayers.value
   const results = {}
   const uniqueStats = [
-    ...new Map(allStatsForCalculation.value.map(item => [item.key, item])).values()
+    ...new Map(allStatsForCalculation.value.map((item) => [item.key, item])).values(),
   ]
 
-  uniqueStats.forEach(stat => {
-    const playersWithStat = playersToProcess.filter(player => {
-      const numValue = getNumericValue(player.attributes?.[stat.key])
-      return numValue !== null && (stat.key === 'Con/90' ? numValue >= 0 : numValue > 0)
+  for (const stat of uniqueStats) {
+    const playersWithStat = playersToProcess.filter((player) => {
+      const value = getNumericValue(player, stat)
+      return value !== null && value !== undefined && !Number.isNaN(value)
     })
-    results[stat.key] = playersWithStat
-      .sort((a, b) => {
-        const valA = getNumericValue(a.attributes[stat.key])
-        const valB = getNumericValue(b.attributes[stat.key])
-        return stat.key === 'Con/90' ? valA - valB : valB - valA
-      })
+
+    const _results = playersWithStat
+      .map((player) => ({
+        player,
+        value: getNumericValue(player, stat),
+      }))
+      .sort((a, b) => b.value - a.value)
       .slice(0, 10)
-  })
+  }
   topPlayersByStat.value = results
 }
 
-
 // biome-ignore lint/correctness/noUnusedVariables: used in template
-const openPlayerDetail = player => {
+const openPlayerDetail = (player) => {
   // Find the full player object from allPlayersData
   const fullPlayer =
-    allPlayersData.value.find(p => p.name === player.name && p.club === player.club) || player
+    allPlayersData.value.find((p) => p.name === player.name && p.club === player.club) || player
 
   // Debug: Log the player data to see what fields are available
   console.log('Player selected:', {
@@ -1155,7 +1162,7 @@ const openPlayerDetail = player => {
     UID: fullPlayer.UID,
     hasAttributes: !!fullPlayer.attributes,
     hasPerformancePercentiles: !!fullPlayer.performancePercentiles,
-    attributesCount: Object.keys(fullPlayer.attributes || {}).length
+    attributesCount: Object.keys(fullPlayer.attributes || {}).length,
   })
 
   playerForDetailView.value = fullPlayer
@@ -1163,17 +1170,17 @@ const openPlayerDetail = player => {
 }
 
 // Export functionality
-const openExportOptions = () => {
+const _openExportOptions = () => {
   showExportOptions.value = true
 }
 
-const handleExportWithOptions = async exportOptions => {
+const _handleExportWithOptions = async (exportOptions) => {
   try {
     if (!currentDatasetId.value) {
       $q.notify({
         type: 'negative',
         message: 'No dataset available for export',
-        position: 'top'
+        position: 'top',
       })
       return
     }
@@ -1191,9 +1198,9 @@ const handleExportWithOptions = async exportOptions => {
       actions: [
         {
           label: 'Dismiss',
-          color: 'white'
-        }
-      ]
+          color: 'white',
+        },
+      ],
     })
 
     // Close the dialog
@@ -1203,7 +1210,7 @@ const handleExportWithOptions = async exportOptions => {
     $q.notify({
       type: 'negative',
       message: `Export failed: ${error.message}`,
-      position: 'top'
+      position: 'top',
     })
   }
 }
@@ -1217,18 +1224,18 @@ const shareDataset = () => {
       message: 'Link copied to clipboard!',
       color: 'positive',
       icon: 'content_copy',
-      position: 'top'
+      position: 'top',
     })
   })
 }
 
-const fetchPlayersAndCurrency = async datasetId => {
+const fetchPlayersAndCurrency = async (datasetId) => {
   pageLoading.value = true
   pageLoadingError.value = ''
   try {
     // Use the new performance API to get detailed player data with all attributes
     const performanceResponse = await fetchPerformanceData(datasetId)
-    
+
     // Update the player store with the performance data
     playerStore.setPlayers(performanceResponse.data.players)
     playerStore.setCurrencySymbol(performanceResponse.data.currencySymbol)
@@ -1236,7 +1243,7 @@ const fetchPlayersAndCurrency = async datasetId => {
 
     // Set default to all divisions and all positions for proper threshold calculation
     const allDivisions = [
-      ...new Set(allPlayersData.value.map(p => getPlayerDivision(p)).filter(Boolean))
+      ...new Set(allPlayersData.value.map((p) => getPlayerDivision(p)).filter(Boolean)),
     ]
     selectedDivisions.value = [...allDivisions]
     selectedPositions.value = [] // Empty means all positions
@@ -1280,7 +1287,7 @@ const filterDivisionsFn = (val, update) => {
   update(() => {
     const needle = val.toLowerCase()
     divisionOptions.value = availableDivisions.value.filter(
-      v => v.toLowerCase().indexOf(needle) > -1
+      (v) => v.toLowerCase().indexOf(needle) > -1
     )
   })
 }
@@ -1301,7 +1308,7 @@ const filterPositionsFn = (val, update) => {
   update(() => {
     const needle = val.toLowerCase()
     positionOptions.value = availablePositions.value.filter(
-      option => option.label.toLowerCase().indexOf(needle) > -1
+      (option) => option.label.toLowerCase().indexOf(needle) > -1
     )
   })
 }
@@ -1310,8 +1317,8 @@ const filterPositionsFn = (val, update) => {
 // biome-ignore lint/correctness/noUnusedVariables: used in template
 const selectAllPositions = () => {
   selectedPositions.value = availablePositions.value
-    .filter(option => option.value !== null && !option.disable)
-    .map(option => option.value)
+    .filter((option) => option.value !== null && !option.disable)
+    .map((option) => option.value)
 }
 
 // biome-ignore lint/correctness/noUnusedVariables: used in template
@@ -1332,14 +1339,14 @@ watch(
 
 watch(
   sliderValue,
-  debounce(newValue => {
+  debounce((newValue) => {
     selectedMinutes.value = newValue
   }, 300)
 )
 
 watch(
   overallSliderValue,
-  debounce(newValue => {
+  debounce((newValue) => {
     selectedOverall.value = newValue
   }, 300)
 )
@@ -1365,7 +1372,7 @@ watch(
 
 watch(
   availableDivisions,
-  newDivisions => {
+  (newDivisions) => {
     divisionOptions.value = newDivisions
   },
   { immediate: true }
@@ -1373,7 +1380,7 @@ watch(
 
 watch(
   availablePositions,
-  newPositions => {
+  (newPositions) => {
     positionOptions.value = newPositions
   },
   { immediate: true }

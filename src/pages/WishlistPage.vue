@@ -189,7 +189,7 @@ export default defineComponent({
   name: 'WishlistPage',
   components: {
     PlayerDataTable,
-    PlayerDetailDialog
+    PlayerDetailDialog,
   },
   setup() {
     const router = useRouter()
@@ -247,23 +247,23 @@ export default defineComponent({
       quasarInstance.notify({
         type: 'positive',
         message: 'Wishlist cleared successfully',
-        position: 'top'
+        position: 'top',
       })
     }
 
-    const handlePlayerSelected = player => {
+    const handlePlayerSelected = (player) => {
       playerForDetailView.value = player
       showPlayerDetailDialog.value = true
     }
 
-    const handleTeamSelected = team => {
+    const handleTeamSelected = (team) => {
       if (currentDatasetId.value) {
         const url = router.resolve({
           path: '/team-view',
           query: {
             datasetId: currentDatasetId.value,
-            team: team
-          }
+            team: team,
+          },
         }).href
         const newWindow = window.open(url, '_blank')
         if (!newWindow) {
@@ -273,13 +273,13 @@ export default defineComponent({
       }
     }
 
-    const handleRemoveFromWishlist = async player => {
+    const handleRemoveFromWishlist = async (player) => {
       const success = await wishlistStore.removeFromWishlist(currentDatasetId.value, player)
       if (success) {
         quasarInstance.notify({
           type: 'positive',
           message: `${player.name} removed from wishlist`,
-          position: 'top'
+          position: 'top',
         })
       }
     }
@@ -301,9 +301,9 @@ export default defineComponent({
       clearWishlist,
       handlePlayerSelected,
       handleTeamSelected,
-      handleRemoveFromWishlist
+      handleRemoveFromWishlist,
     }
-  }
+  },
 })
 </script>
 

@@ -62,25 +62,26 @@ const formatCurrency = (value, symbol) => {
   if (!value || value === 'N/A') return 'N/A'
 
   // Handle transfer value ranges like "£127M - £381M" - extract upper bound
-  if (typeof value === 'string' && value.includes(' - ')) {
-    const parts = value.split(' - ')
+  let processedValue = value
+  if (typeof processedValue === 'string' && processedValue.includes(' - ')) {
+    const parts = processedValue.split(' - ')
     if (parts.length > 1) {
-      value = parts[parts.length - 1].trim() // Take the upper bound
+      processedValue = parts[parts.length - 1].trim() // Take the upper bound
     }
   }
 
   // Check if the value already has proper formatting (like "£381M" or "£150K")
-  if (typeof value === 'string') {
-    const hasCurrencySymbol = /[£$€¥]/.test(value)
-    const hasSuffix = /[MK]$/i.test(value)
+  if (typeof processedValue === 'string') {
+    const hasCurrencySymbol = /[£$€¥]/.test(processedValue)
+    const hasSuffix = /[MK]$/i.test(processedValue)
     if (hasCurrencySymbol && hasSuffix) {
       // Already properly formatted, return as is
-      return value
+      return processedValue
     }
   }
 
   // Remove any existing currency symbols and "p/w" or similar suffixes
-  let cleanValue = value
+  let cleanValue = processedValue
   if (typeof cleanValue === 'string') {
     cleanValue = cleanValue
       .replace(/[£$€¥]/g, '')
@@ -90,8 +91,8 @@ const formatCurrency = (value, symbol) => {
   }
 
   // Convert to number
-  const numValue = parseFloat(cleanValue)
-  if (isNaN(numValue)) return 'N/A'
+  const numValue = Number.parseFloat(cleanValue)
+  if (Number.isNaN(numValue)) return 'N/A'
 
   if (numValue >= 1000000) {
     return `${symbol}${(numValue / 1000000).toFixed(1).replace('.0', '')}M`
@@ -108,32 +109,32 @@ export default defineComponent({
   props: {
     player: {
       type: Object,
-      required: true
+      required: true,
     },
     currencySymbol: {
       type: String,
-      default: '£'
+      default: '£',
     },
     clubImageUrl: {
       type: String,
-      default: null
+      default: null,
     },
     nationFlagUrl: {
       type: String,
-      default: null
+      default: null,
     },
     playerFaceUrl: {
       type: String,
-      default: null
+      default: null,
     },
     datasetId: {
       type: String,
-      default: null
+      default: null,
     },
     selectedRole: {
       type: String,
-      default: null
-    }
+      default: null,
+    },
   },
   emits: ['click'],
   setup(props, { emit }) {
@@ -153,7 +154,7 @@ export default defineComponent({
           ? props.player.roleSpecificOveralls
           : Object.entries(props.player.roleSpecificOveralls).map(([roleName, score]) => ({
               roleName,
-              score
+              score,
             }))
 
         for (const rso of roles) {
@@ -177,7 +178,7 @@ export default defineComponent({
       }
 
       if (!bestPosition) {
-        const positions = props.player.position.split(',').map(pos => pos.trim())
+        const positions = props.player.position.split(',').map((pos) => pos.trim())
         const firstPosition = positions[0]
         const match = firstPosition.match(/^([A-Z]+)\s*\(([A-Z]+)\)$/)
         bestPosition = match ? match[1] + match[2] : firstPosition
@@ -199,7 +200,7 @@ export default defineComponent({
         AMR: 'RW',
         AML: 'LW',
         ST: 'ST',
-        STC: 'ST'
+        STC: 'ST',
       }
 
       // Added CF as a direct mapping for striker roles
@@ -212,7 +213,7 @@ export default defineComponent({
     })
 
     // Helper function to format player name
-    const formatPlayerName = fullName => {
+    const formatPlayerName = (fullName) => {
       if (!fullName) return ''
 
       const nameParts = fullName.trim().split(' ')
@@ -282,65 +283,74 @@ export default defineComponent({
     const playerOverall = computed(() => {
       // Use detailed player data if available, otherwise use props
       const playerData = detailedPlayerData.value || props.player
-      
+
       // If no role is selected, use the player's main overall
       if (!props.selectedRole) {
         return playerData.overall || playerData.Overall || 0
       }
-      
+
       // If a role is selected, try to get the role-specific overall
       if (playerData.roleSpecificOveralls) {
         let roleOverall = null
-        
+
         if (Array.isArray(playerData.roleSpecificOveralls)) {
           // Try exact match first
-          let roleData = playerData.roleSpecificOveralls.find(r => r.roleName === props.selectedRole)
-          
+          let roleData = playerData.roleSpecificOveralls.find(
+            (r) => r.roleName === props.selectedRole
+          )
+
           // If no exact match, try partial match (e.g., "WBL" matches "WBL - Complete Wing Back - Support")
           if (!roleData) {
             const selectedRolePrefix = props.selectedRole.split(' - ')[0] // Get "WBL" from "WBL - Complete Wing Back - Support"
-            roleData = playerData.roleSpecificOveralls.find(r => {
+            roleData = playerData.roleSpecificOveralls.find((r) => {
               const roleName = r.roleName || r[0]
-              return roleName && roleName.startsWith(selectedRolePrefix)
+              return roleName?.startsWith(selectedRolePrefix)
             })
           }
-          
+
           roleOverall = roleData ? roleData.score : null
-          
+
           // Debug logging
           if (props.selectedRole && playerData.name) {
-            console.log(`PlayerCards Debug - Player: ${playerData.name}, Selected Role: ${props.selectedRole}`)
-            console.log(`Available roles:`, playerData.roleSpecificOveralls.map(r => ({ roleName: r.roleName, score: r.score })))
-            console.log(`Found role data:`, roleData)
-            console.log(`Final role overall:`, roleOverall)
+            console.log(
+              `PlayerCards Debug - Player: ${playerData.name}, Selected Role: ${props.selectedRole}`
+            )
+            console.log(
+              'Available roles:',
+              playerData.roleSpecificOveralls.map((r) => ({ roleName: r.roleName, score: r.score }))
+            )
+            console.log('Found role data:', roleData)
+            console.log('Final role overall:', roleOverall)
           }
         } else if (typeof playerData.roleSpecificOveralls === 'object') {
           // Try exact match first
           roleOverall = playerData.roleSpecificOveralls[props.selectedRole] || null
-          
+
           // If no exact match, try partial match
           if (roleOverall === null) {
             const selectedRolePrefix = props.selectedRole.split(' - ')[0]
-            const matchingKey = Object.keys(playerData.roleSpecificOveralls).find(key => 
+            const matchingKey = Object.keys(playerData.roleSpecificOveralls).find((key) =>
               key.startsWith(selectedRolePrefix)
             )
             roleOverall = matchingKey ? playerData.roleSpecificOveralls[matchingKey] : null
           }
-          
+
           // Debug logging
           if (props.selectedRole && playerData.name) {
-            console.log(`PlayerCards Debug - Player: ${playerData.name}, Selected Role: ${props.selectedRole}`)
-            console.log(`Available roles:`, Object.keys(playerData.roleSpecificOveralls))
-            console.log(`Final role overall:`, roleOverall)
+            console.log(
+              `PlayerCards Debug - Player: ${playerData.name}, Selected Role: ${props.selectedRole}`
+            )
+            console.log('Available roles:', Object.keys(playerData.roleSpecificOveralls))
+            console.log('Final role overall:', roleOverall)
           }
         }
-        
+
         // If we found a role-specific rating, use it; otherwise fall back to main overall
         if (roleOverall !== null && roleOverall > 0) {
           return roleOverall
         }
       }
-      
+
       // Fall back to main overall if no role-specific rating found
       return playerData.overall || playerData.Overall || 0
     })
@@ -358,10 +368,10 @@ export default defineComponent({
 
     const isRare = computed(() => {
       const overall = playerOverall.value || 0
-      
+
       // If player is 85 rated or higher, they should be rare no matter what
       if (overall >= 85) return true
-      
+
       // Get appropriate stats based on player type
       let stats = []
       if (isGoalkeeper.value) {
@@ -372,7 +382,7 @@ export default defineComponent({
           props.player.kic || 0,
           props.player.ref || 0,
           props.player.spd || 0,
-          props.player.pos || 0
+          props.player.pos || 0,
         ]
       } else {
         // Use outfield player stats
@@ -382,40 +392,40 @@ export default defineComponent({
           props.player.pas || 0,
           props.player.dri || 0,
           props.player.def || 0,
-          props.player.phy || 0
+          props.player.phy || 0,
         ]
       }
-      
+
       // If a player has at least 2 stats that are within 1 point of the player's overall or higher, they should be rare
-      const statsCloseToOverall = stats.filter(stat => stat >= (overall - 1)).length
+      const statsCloseToOverall = stats.filter((stat) => stat >= overall - 1).length
       if (statsCloseToOverall >= 2) return true
-      
+
       // If 4 of their stats are within 4 points of the overall rating, they should be rare
-      const statsWithinRange = stats.filter(stat => stat >= (overall - 4)).length
+      const statsWithinRange = stats.filter((stat) => stat >= overall - 4).length
       if (statsWithinRange >= 4) return true
-      
+
       return false
     })
 
     const cardTypeClass = computed(() => `card-${cardType.value}`)
-    const rarityClass = computed(() => isRare.value ? 'rare' : 'non-rare')
+    const rarityClass = computed(() => (isRare.value ? 'rare' : 'non-rare'))
 
     // Check if player is a goalkeeper
     const isGoalkeeper = computed(() => {
       if (!props.player.position) return false
-      
+
       // Check various ways the position might indicate goalkeeper
       const position = props.player.position.toLowerCase()
       const shortPositions = props.player.shortPositions || props.player.short_positions || []
       const positionGroups = props.player.positionGroups || []
       const parsedPositions = props.player.parsedPositions || []
-      
+
       return (
         position.includes('gk') ||
         position.includes('goalkeeper') ||
-        shortPositions.some(pos => pos === 'GK') ||
-        positionGroups.some(group => group === 'Goalkeepers') ||
-        parsedPositions.some(pos => pos === 'Goalkeeper')
+        shortPositions.some((pos) => pos === 'GK') ||
+        positionGroups.some((group) => group === 'Goalkeepers') ||
+        parsedPositions.some((pos) => pos === 'Goalkeeper')
       )
     })
 
@@ -445,26 +455,32 @@ export default defineComponent({
       console.log('PlayerCards: player.uid:', props.player.uid)
       console.log('PlayerCards: player.nationality_iso:', props.player.nationality_iso)
       console.log('PlayerCards: player.roleSpecificOveralls:', props.player.roleSpecificOveralls)
-      
+
       // Fetch if missing nationality_iso
       if (!props.player.nationality_iso && props.datasetId && props.player.uid) {
         console.log('PlayerCards: needsDetailedData triggered - missing nationality_iso')
         return true
       }
-      
+
       // Fetch if a role is selected but player doesn't have role-specific overalls
       if (props.selectedRole && props.datasetId && props.player.uid) {
-        const hasRoleSpecificOveralls = props.player.roleSpecificOveralls && 
-          (Array.isArray(props.player.roleSpecificOveralls) ? props.player.roleSpecificOveralls.length > 0 : Object.keys(props.player.roleSpecificOveralls).length > 0)
-        
+        const hasRoleSpecificOveralls =
+          props.player.roleSpecificOveralls &&
+          (Array.isArray(props.player.roleSpecificOveralls)
+            ? props.player.roleSpecificOveralls.length > 0
+            : Object.keys(props.player.roleSpecificOveralls).length > 0)
+
         console.log('PlayerCards: hasRoleSpecificOveralls:', hasRoleSpecificOveralls)
-        
+
         if (!hasRoleSpecificOveralls) {
-          console.log('PlayerCards: needsDetailedData triggered - role selected but no roleSpecificOveralls for player:', props.player.name)
+          console.log(
+            'PlayerCards: needsDetailedData triggered - role selected but no roleSpecificOveralls for player:',
+            props.player.name
+          )
           return true
         }
       }
-      
+
       console.log('PlayerCards: needsDetailedData returning false')
       return false
     })
@@ -475,9 +491,12 @@ export default defineComponent({
       try {
         const result = await fetchFullPlayerStats(props.datasetId, props.player.uid)
         console.log('PlayerCards: Detailed data result:', result)
-        if (result.data && result.data.player) {
+        if (result.data?.player) {
           detailedPlayerData.value = result.data.player
-          console.log('PlayerCards: Updated detailedPlayerData with roleSpecificOveralls:', result.data.player.roleSpecificOveralls)
+          console.log(
+            'PlayerCards: Updated detailedPlayerData with roleSpecificOveralls:',
+            result.data.player.roleSpecificOveralls
+          )
         }
       } catch (error) {
         console.error('Failed to fetch detailed player data:', error)
@@ -495,14 +514,14 @@ export default defineComponent({
 
     const handleImageLoad = (event) => {
       console.log('Image loaded:', event.target.src)
-      
+
       // Simple check: if the image dimensions are very small, it's likely a placeholder
       if (event.target.naturalWidth < 50 || event.target.naturalHeight < 50) {
         console.log('Image too small, treating as error')
         imageLoadError.value = true
         return
       }
-      
+
       // Try canvas analysis, but catch any errors
       try {
         const canvas = document.createElement('canvas')
@@ -510,29 +529,29 @@ export default defineComponent({
         canvas.width = event.target.naturalWidth
         canvas.height = event.target.naturalHeight
         ctx.drawImage(event.target, 0, 0)
-        
+
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
         const data = imageData.data
-        
+
         // Check if the image is mostly white/transparent
         let whitePixels = 0
-        let totalPixels = data.length / 4
-        
+        const totalPixels = data.length / 4
+
         for (let i = 0; i < data.length; i += 4) {
           const r = data[i]
           const g = data[i + 1]
           const b = data[i + 2]
           const a = data[i + 3]
-          
+
           // Consider pixel white if RGB values are high and alpha is low, or if alpha is very low
           if ((r > 240 && g > 240 && b > 240 && a < 50) || a < 10) {
             whitePixels++
           }
         }
-        
+
         const whitePercentage = whitePixels / totalPixels
         console.log('White pixel percentage:', whitePercentage)
-        
+
         // If more than 90% of pixels are white/transparent, treat as error
         if (whitePercentage > 0.9) {
           console.log('Image mostly white, treating as error')
@@ -542,7 +561,7 @@ export default defineComponent({
         console.log('Canvas analysis failed:', error)
         // If canvas analysis fails, we'll keep the image as is
       }
-      
+
       // Additional check: if the image appears to be a 1x1 pixel or very small, it's likely a placeholder
       if (event.target.naturalWidth === 1 && event.target.naturalHeight === 1) {
         console.log('Image is 1x1 pixel, treating as error')
@@ -557,11 +576,14 @@ export default defineComponent({
     })
 
     // Watch for changes in selectedRole and refetch detailed data if needed
-    watch(() => props.selectedRole, () => {
-      if (needsDetailedData.value) {
-        fetchDetailedData()
+    watch(
+      () => props.selectedRole,
+      () => {
+        if (needsDetailedData.value) {
+          fetchDetailedData()
+        }
       }
-    })
+    )
 
     return {
       qInstance,
@@ -578,9 +600,9 @@ export default defineComponent({
       cardTypeClass,
       rarityClass,
       isGoalkeeper,
-      playerOverall
+      playerOverall,
     }
-  }
+  },
 })
 </script>
 
