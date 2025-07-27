@@ -78,7 +78,12 @@
             <div v-if="!pageLoading && !pageLoadingError && selectedNationName && !loadingNation" class="nation-dashboard">
                 
                 <!-- Nation Header Section (replaces hero) -->
-                <div class="nation-hero-section">
+                <GradientBackground 
+                    :image-url="currentNationFlagISO ? `https://flagcdn.com/w80/${currentNationFlagISO.toLowerCase()}.png` : null"
+                    :fallback-gradient="'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'"
+                    :intensity="0.4"
+                    class="nation-hero-section"
+                >
                     <div class="nation-hero-content">
                         <div class="nation-primary-info">
                             <div class="nation-name-section">
@@ -141,7 +146,7 @@
                             </div>
                         </div>
                     </div>
-                </div>
+                </GradientBackground>
 
                 <!-- Formation & Tactics Section - New Layout -->
                 <div class="formation-tactics-layout">
@@ -548,6 +553,7 @@
 import { useQuasar } from 'quasar'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import GradientBackground from '../components/GradientBackground.vue'
 import PitchDisplay from '../components/PitchDisplay.vue'
 import PlayerDataTable from '../components/PlayerDataTable.vue'
 import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
@@ -576,7 +582,7 @@ const fmSlotRoleMatcher = {
 
 export default {
   name: 'NationsPage',
-  components: { PlayerDataTable, PlayerDetailDialog, PitchDisplay },
+  components: { PlayerDataTable, PlayerDetailDialog, PitchDisplay, GradientBackground },
   setup() {
     const quasarInstance = useQuasar()
     const router = useRouter()
@@ -2508,24 +2514,12 @@ $card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.12);
 
 // Nation Hero Section
 .nation-hero-section {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border-radius: $border-radius;
     padding: 3rem;
     color: white;
     position: relative;
     overflow: hidden;
     box-shadow: $card-shadow;
-    
-    &::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
-        pointer-events: none;
-    }
     
     .nation-hero-content {
         position: relative;

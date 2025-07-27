@@ -73,7 +73,12 @@
             <div v-if="!pageLoading && !pageLoadingError && selectedTeamName && !loadingTeam" class="team-dashboard">
                 
                 <!-- Team Header Section (replaces hero) -->
-                <div class="team-hero-section">
+                <GradientBackground 
+                    :image-url="teamLogoUrl"
+                    :fallback-gradient="'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'"
+                    :intensity="0.4"
+                    class="team-hero-section"
+                >
                     <div class="team-hero-content">
                         <div class="team-primary-info">
                             <div class="team-name-section">
@@ -135,7 +140,7 @@
                             </div>
                         </div>
                     </div>
-                </div>
+                </GradientBackground>
 
                 <!-- Formation & Tactics Section - New Layout -->
                 <div class="formation-tactics-layout">
@@ -338,6 +343,7 @@
 import { useQuasar } from 'quasar'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import GradientBackground from '../components/GradientBackground.vue'
 import PitchDisplay from '../components/PitchDisplay.vue'
 import PlayerDataTable from '../components/PlayerDataTable.vue'
 import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
@@ -375,6 +381,7 @@ export default {
     PlayerDetailDialog,
     PitchDisplay,
     TeamLogo,
+    GradientBackground,
   },
   setup() {
     const quasarInstance = useQuasar()
@@ -391,6 +398,13 @@ export default {
     const allPlayersData = computed(() => playerStore.allPlayers)
     const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol)
     const currentDatasetId = computed(() => playerStore.currentDatasetId)
+
+    // Computed property for team logo URL for gradient background
+    const teamLogoUrl = computed(() => {
+      if (!selectedTeamName.value) return null
+      // We'll use the same API endpoint that TeamLogo component uses
+      return `/api/logos?teamId=${encodeURIComponent(selectedTeamName.value)}&size=256`
+    })
 
     const selectedFormationKey = ref(null)
 
@@ -1609,6 +1623,7 @@ export default {
       detectedCurrencySymbol, // Expose currency symbol
       currentDatasetId,
       shareDataset,
+      teamLogoUrl,
     }
   },
 }
@@ -1766,26 +1781,12 @@ $border-radius-small: 8px;
 
 // Team Hero Section (replaces the hero section)
 .team-hero-section {
-    background: $primary-gradient;
     color: white;
     border-radius: $border-radius;
     padding: 3rem;
     margin-bottom: 2rem;
     position: relative;
     overflow: hidden;
-    
-    &::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-image: 
-            radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
-            radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
-        animation: float 20s ease-in-out infinite;
-    }
     
     .team-hero-content {
         position: relative;
