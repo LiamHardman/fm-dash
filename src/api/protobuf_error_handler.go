@@ -13,9 +13,9 @@ import (
 // ProtobufErrorHandler provides centralized error handling for protobuf operations
 type ProtobufErrorHandler struct {
 	// Configuration
-	maxRetries        int
+	maxRetries         int
 	enableDetailedLogs bool
-	
+
 	// Metrics
 	fallbackCount      int64
 	errorsByType       map[string]int64
@@ -25,7 +25,7 @@ type ProtobufErrorHandler struct {
 // NewProtobufErrorHandler creates a new ProtobufErrorHandler
 func NewProtobufErrorHandler() *ProtobufErrorHandler {
 	return &ProtobufErrorHandler{
-		maxRetries:        3,
+		maxRetries:         3,
 		enableDetailedLogs: true,
 		errorsByType:       make(map[string]int64),
 	}
@@ -42,7 +42,7 @@ func (h *ProtobufErrorHandler) HandleSerializationError(
 ) {
 	// Record error metrics
 	h.recordError("serialization", datasetID)
-	
+
 	// Log detailed error information
 	logError(ctx, "Protobuf serialization failed",
 		"error", err,
@@ -51,7 +51,7 @@ func (h *ProtobufErrorHandler) HandleSerializationError(
 		"accept", r.Header.Get("Accept"),
 		"user_agent", r.Header.Get("User-Agent"),
 	)
-	
+
 	// Create fallback event for monitoring
 	fallbackEvent := &ProtobufFallbackEvent{
 		DatasetID: datasetID,
@@ -59,14 +59,14 @@ func (h *ProtobufErrorHandler) HandleSerializationError(
 		Error:     err,
 		Message:   "Falling back to JSON serialization",
 	}
-	
+
 	// Log fallback event
 	logInfo(ctx, fallbackEvent.String())
-	
+
 	// Attempt JSON fallback
 	jsonSerializer := &JSONSerializer{}
 	responseData, jsonErr := jsonSerializer.Serialize(data)
-	
+
 	if jsonErr != nil {
 		// Both protobuf and JSON serialization failed
 		logError(ctx, "Both protobuf and JSON serialization failed",
@@ -74,18 +74,20 @@ func (h *ProtobufErrorHandler) HandleSerializationError(
 			"json_error", jsonErr,
 			"dataset_id", datasetID,
 		)
-		
+
 		// Return a simple error response as last resort
 		h.writeLastResortErrorResponse(w, "Serialization failed", http.StatusInternalServerError)
 		return
 	}
-	
+
 	// Set appropriate headers for JSON fallback
 	w.Header().Set("Content-Type", jsonSerializer.ContentType())
 	w.Header().Set("X-Serialization-Fallback", string(FallbackReasonMarshalFailed))
-	
+
 	// Write the JSON response
-	w.Write(responseData)
+	if _, err := w.Write(responseData); err != nil {
+		logError(ctx, "Error writing JSON response", "error", err)
+	}
 }
 
 // HandleProtobufConversionError handles protobuf conversion errors with fallback
@@ -100,14 +102,14 @@ func (h *ProtobufErrorHandler) HandleProtobufConversionError(
 ) {
 	// Record error metrics
 	h.recordError("conversion_"+direction, datasetID)
-	
+
 	// Log detailed error information
 	logError(ctx, "Protobuf conversion failed",
 		"error", err,
 		"direction", direction,
 		"dataset_id", datasetID,
 	)
-	
+
 	// Create fallback event for monitoring
 	fallbackEvent := &ProtobufFallbackEvent{
 		DatasetID: datasetID,
@@ -115,15 +117,15 @@ func (h *ProtobufErrorHandler) HandleProtobufConversionError(
 		Error:     err,
 		Message:   fmt.Sprintf("Conversion failed (%s)", direction),
 	}
-	
+
 	// Log fallback event
 	logInfo(ctx, fallbackEvent.String())
-	
+
 	// For to_protobuf direction, attempt JSON fallback
 	if direction == "to_protobuf" {
 		jsonSerializer := &JSONSerializer{}
 		responseData, jsonErr := jsonSerializer.Serialize(data)
-		
+
 		if jsonErr != nil {
 			// Both protobuf conversion and JSON serialization failed
 			logError(ctx, "Both protobuf conversion and JSON serialization failed",
@@ -131,25 +133,27 @@ func (h *ProtobufErrorHandler) HandleProtobufConversionError(
 				"json_error", jsonErr,
 				"dataset_id", datasetID,
 			)
-			
+
 			// Return a simple error response as last resort
 			h.writeLastResortErrorResponse(w, "Data conversion failed", http.StatusInternalServerError)
 			return
 		}
-		
+
 		// Set appropriate headers for JSON fallback
 		w.Header().Set("Content-Type", jsonSerializer.ContentType())
 		w.Header().Set("X-Serialization-Fallback", string(FallbackReasonConversionFailed))
-		
+
 		// Write the JSON response
-		w.Write(responseData)
+		if _, err := w.Write(responseData); err != nil {
+			logError(ctx, "Error writing JSON response", "error", err)
+		}
 		return
 	}
-	
+
 	// For from_protobuf direction, return appropriate error
-	WriteErrorResponse(w, r, "conversion_error", 
-		"Failed to convert data from protobuf format", 
-		[]string{err.Error()}, 
+	WriteErrorResponse(w, r, "conversion_error",
+		"Failed to convert data from protobuf format",
+		[]string{err.Error()},
 		http.StatusInternalServerError)
 }
 
@@ -165,14 +169,14 @@ func (h *ProtobufErrorHandler) HandleProtobufCompressionError(
 ) {
 	// Record error metrics
 	h.recordError("compression_"+operation, datasetID)
-	
+
 	// Log detailed error information
 	logError(ctx, "Protobuf compression operation failed",
 		"error", err,
 		"operation", operation,
 		"dataset_id", datasetID,
 	)
-	
+
 	// Create fallback event for monitoring
 	var reason ProtobufFallbackReason
 	if operation == "compress" {
@@ -180,42 +184,44 @@ func (h *ProtobufErrorHandler) HandleProtobufCompressionError(
 	} else {
 		reason = FallbackReasonDecompressionFailed
 	}
-	
+
 	fallbackEvent := &ProtobufFallbackEvent{
 		DatasetID: datasetID,
 		Reason:    reason,
 		Error:     err,
 		Message:   fmt.Sprintf("%s operation failed", operation),
 	}
-	
+
 	// Log fallback event
 	logInfo(ctx, fallbackEvent.String())
-	
+
 	// For compression failures, try uncompressed protobuf
 	if operation == "compress" {
 		// Try to serialize without compression
 		protobufSerializer := &ProtobufSerializer{}
 		responseData, pbErr := protobufSerializer.Serialize(data)
-		
+
 		if pbErr != nil {
 			// Fall back to JSON as last resort
 			h.HandleSerializationError(ctx, w, r, data, pbErr, datasetID)
 			return
 		}
-		
+
 		// Set appropriate headers for uncompressed protobuf
 		w.Header().Set("Content-Type", protobufSerializer.ContentType())
 		w.Header().Set("X-Compression-Status", "disabled")
-		
+
 		// Write the uncompressed protobuf response
-		w.Write(responseData)
+		if _, err := w.Write(responseData); err != nil {
+			logError(ctx, "Error writing uncompressed protobuf response", "error", err)
+		}
 		return
 	}
-	
+
 	// For decompression failures, return appropriate error
-	WriteErrorResponse(w, r, "decompression_error", 
-		"Failed to decompress protobuf data", 
-		[]string{err.Error()}, 
+	WriteErrorResponse(w, r, "decompression_error",
+		"Failed to decompress protobuf data",
+		[]string{err.Error()},
 		http.StatusInternalServerError)
 }
 
@@ -230,36 +236,38 @@ func (h *ProtobufErrorHandler) HandleClientCompatibilityError(
 ) {
 	// Record error metrics
 	h.recordError("client_compatibility", datasetID)
-	
+
 	// Log detailed error information
 	logInfo(ctx, "Client compatibility issue detected",
 		"client_info", clientInfo,
 		"dataset_id", datasetID,
 		"user_agent", r.Header.Get("User-Agent"),
 	)
-	
+
 	// Fall back to JSON for this client
 	jsonSerializer := &JSONSerializer{}
 	responseData, jsonErr := jsonSerializer.Serialize(data)
-	
+
 	if jsonErr != nil {
 		// JSON serialization failed
 		logError(ctx, "JSON serialization failed for compatibility fallback",
 			"error", jsonErr,
 			"dataset_id", datasetID,
 		)
-		
+
 		// Return a simple error response as last resort
 		h.writeLastResortErrorResponse(w, "Serialization failed", http.StatusInternalServerError)
 		return
 	}
-	
+
 	// Set appropriate headers for JSON fallback
 	w.Header().Set("Content-Type", jsonSerializer.ContentType())
 	w.Header().Set("X-Serialization-Fallback", "client_compatibility")
-	
+
 	// Write the JSON response
-	w.Write(responseData)
+	if _, err := w.Write(responseData); err != nil {
+		logError(ctx, "Error writing JSON response", "error", err)
+	}
 }
 
 // CreateErrorResponse creates a protobuf error response
@@ -273,9 +281,9 @@ func (h *ProtobufErrorHandler) CreateErrorResponse(
 	if requestID == "" {
 		requestID = fmt.Sprintf("err_%d", time.Now().UnixNano())
 	}
-	
+
 	metadata := CreateResponseMetadata(requestID, 0, false)
-	
+
 	return &pb.ErrorResponse{
 		ErrorCode: errorCode,
 		Message:   message,
@@ -288,13 +296,15 @@ func (h *ProtobufErrorHandler) CreateErrorResponse(
 func (h *ProtobufErrorHandler) writeLastResortErrorResponse(w http.ResponseWriter, message string, statusCode int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	
+
 	// Use simple map for maximum compatibility
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"error":   "serialization_error",
 		"message": message,
 		"time":    time.Now().Unix(),
-	})
+	}); err != nil {
+		logError(context.Background(), "Error encoding last resort error response", "error", err)
+	}
 }
 
 // recordError records error metrics for monitoring
@@ -302,7 +312,7 @@ func (h *ProtobufErrorHandler) recordError(errorType string, datasetID string) {
 	h.errorsByType[errorType]++
 	h.fallbackCount++
 	h.lastErrorTimestamp = time.Now()
-	
+
 	// In a real implementation, we would send these metrics to a monitoring system
 }
 

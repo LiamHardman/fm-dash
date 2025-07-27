@@ -60,7 +60,9 @@ func cachedRolesHandler(w http.ResponseWriter, r *http.Request) {
 					w.Header().Set("X-Cache-Source", "memory")
 					w.Header().Set("X-Cache-Format", "protobuf")
 					w.Header().Set("Cache-Control", "public, max-age=86400")
-					w.Write(responseData)
+					if _, err := w.Write(responseData); err != nil {
+						logError(r.Context(), "Error writing protobuf response", "error", err)
+					}
 					return
 				}
 			}
@@ -83,7 +85,7 @@ func cachedRolesHandler(w http.ResponseWriter, r *http.Request) {
 	// For Protobuf format
 	protoResponse := &pb.RolesResponse{
 		Roles:    roleNames,
-		Metadata: CreateResponseMetadata(requestID, int32(len(roleNames)), false),
+		Metadata: CreateResponseMetadata(requestID, safeInt32(len(roleNames)), false),
 	}
 	// Optimize memory usage for protobuf cached data
 	optimizedProtoResponse := OptimizeMemoryForProtobuf(protoResponse)
@@ -105,7 +107,9 @@ func cachedRolesHandler(w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Set("Content-Type", serializer.ContentType())
 		w.Header().Set("Cache-Control", "public, max-age=86400")
-		w.Write(responseData)
+		if _, err := w.Write(responseData); err != nil {
+			logError(r.Context(), "Error writing protobuf response", "error", err)
+		}
 	} else {
 		// Default JSON response
 		w.Header().Set("Content-Type", "application/json")
@@ -175,7 +179,9 @@ func cachedConfigHandler(w http.ResponseWriter, r *http.Request) {
 						w.Header().Set("X-Cache-Source", "memory")
 						w.Header().Set("X-Cache-Format", "protobuf")
 						w.Header().Set("Cache-Control", "public, max-age=3600")
-						w.Write(responseData)
+						if _, err := w.Write(responseData); err != nil {
+							logError(r.Context(), "Error writing protobuf response", "error", err)
+						}
 						return
 					}
 				}
@@ -235,7 +241,9 @@ func cachedConfigHandler(w http.ResponseWriter, r *http.Request) {
 
 			w.Header().Set("Content-Type", serializer.ContentType())
 			w.Header().Set("Cache-Control", "public, max-age=3600")
-			w.Write(responseData)
+			if _, err := w.Write(responseData); err != nil {
+				logError(r.Context(), "Error writing protobuf response", "error", err)
+			}
 		} else {
 			// Default JSON response
 			w.Header().Set("Content-Type", "application/json")
@@ -310,7 +318,9 @@ func cachedConfigHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			w.Header().Set("Content-Type", serializer.ContentType())
-			w.Write(responseData)
+			if _, err := w.Write(responseData); err != nil {
+				logError(r.Context(), "Error writing protobuf response", "error", err)
+			}
 		} else {
 			// Default JSON response
 			w.Header().Set("Content-Type", "application/json")

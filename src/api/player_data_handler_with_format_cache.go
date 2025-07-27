@@ -6,6 +6,7 @@ import (
 	"time"
 
 	pb "api/proto"
+
 	"go.opentelemetry.io/otel/attribute"
 )
 
@@ -92,16 +93,16 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Create filter map for cache key generation
 	filters := map[string]string{
-		"position":        filterPosition,
-		"role":            filterRole,
-		"minAge":          minAgeStr,
-		"maxAge":          maxAgeStr,
+		"position":         filterPosition,
+		"role":             filterRole,
+		"minAge":           minAgeStr,
+		"maxAge":           maxAgeStr,
 		"minTransferValue": minTransferValueStr,
 		"maxTransferValue": maxTransferValueStr,
-		"maxSalary":       maxSalaryStr,
-		"divisionFilter":  divisionFilterStr,
-		"targetDivision":  targetDivision,
-		"positionCompare": positionCompare,
+		"maxSalary":        maxSalaryStr,
+		"divisionFilter":   divisionFilterStr,
+		"targetDivision":   targetDivision,
+		"positionCompare":  positionCompare,
 	}
 
 	// Generate cache key based on dataset ID and filters
@@ -173,10 +174,10 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, percentileSpan := StartSpan(ctx, "percentiles.calculate")
 	// Make a deep copy of players to avoid modifying the stored data and prevent race conditions
 	playersCopy := OptimizedDeepCopyPlayers(players)
-	
+
 	// Apply division filtering for percentile calculation
 	filteredPlayersForPercentiles := ApplyDivisionFilter(playersCopy, divisionFilter, targetDivision)
-	
+
 	// Calculate percentiles
 	CalculatePlayerPerformancePercentiles(filteredPlayersForPercentiles)
 	percentileSpan.End()
@@ -213,9 +214,9 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 		protoPlayerResponse := &pb.PlayerDataResponse{
 			Players:        make([]*pb.Player, 0, len(filteredPlayers)),
 			CurrencySymbol: currencySymbol,
-			Metadata:       CreateResponseMetadata(requestID, int32(len(filteredPlayers)), false),
+			Metadata:       CreateResponseMetadata(requestID, safeInt32(len(filteredPlayers)), false),
 		}
-		
+
 		// Convert each player to protobuf
 		for _, player := range filteredPlayers {
 			protoPlayer, err := player.ToProto(ctx)
@@ -228,7 +229,7 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			protoPlayerResponse.Players = append(protoPlayerResponse.Players, protoPlayer)
 		}
-		
+
 		// Set the protobuf data in the cache response
 		cachedResponse.ProtobufData = protoPlayerResponse
 	}

@@ -945,7 +945,7 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 	// Use the content negotiation system to write the response
 	if supportsProtobuf {
 		// Create protobuf response with metadata
-		metadata := CreateResponseMetadata(requestID, int32(len(processedPlayers)), found)
+		metadata := CreateResponseMetadata(requestID, safeInt32(len(processedPlayers)), found)
 		protoResponse := &pb.PlayerDataResponse{
 			Players:        make([]*pb.Player, len(processedPlayers)),
 			CurrencySymbol: currencySymbol,
@@ -1078,7 +1078,7 @@ func rolesHandler(w http.ResponseWriter, r *http.Request) {
 	setCORSHeaders(w, r)
 
 	// Create response metadata
-	metadata := CreateResponseMetadata(requestID, int32(len(roleNames)), false)
+	metadata := CreateResponseMetadata(requestID, safeInt32(len(roleNames)), false)
 
 	if supportsProtobuf {
 		// Create protobuf response
@@ -1176,7 +1176,7 @@ func leaguesHandler(w http.ResponseWriter, r *http.Request) {
 			setCORSHeaders(w, r)
 
 			// Create response metadata
-			metadata := CreateResponseMetadata(requestID, int32(len(leaguesData)), true)
+			metadata := CreateResponseMetadata(requestID, safeInt32(len(leaguesData)), true)
 
 			if supportsProtobuf {
 				// Create protobuf response
@@ -1253,7 +1253,7 @@ func leaguesHandler(w http.ResponseWriter, r *http.Request) {
 	setCORSHeaders(w, r)
 
 	// Create response metadata
-	metadata := CreateResponseMetadata(requestID, int32(len(leaguesData)), false)
+	metadata := CreateResponseMetadata(requestID, safeInt32(len(leaguesData)), false)
 
 	if supportsProtobuf {
 		// Create protobuf response
@@ -1363,7 +1363,7 @@ func teamsHandler(w http.ResponseWriter, r *http.Request) {
 			setCORSHeaders(w, r)
 
 			// Create response metadata
-			metadata := CreateResponseMetadata(requestID, int32(len(teamsData)), true)
+			metadata := CreateResponseMetadata(requestID, safeInt32(len(teamsData)), true)
 
 			if supportsProtobuf {
 				// Create protobuf response
@@ -2230,7 +2230,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		setCORSHeaders(w, r)
 
 		// Create response metadata
-		metadata := CreateResponseMetadata(requestID, int32(len(cachedResults)), true)
+		metadata := CreateResponseMetadata(requestID, safeInt32(len(cachedResults)), true)
 
 		if supportsProtobuf {
 			// Create protobuf response
@@ -2315,7 +2315,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	setCORSHeaders(w, r)
 
 	// Create response metadata
-	metadata := CreateResponseMetadata(requestID, int32(len(results)), false)
+	metadata := CreateResponseMetadata(requestID, safeInt32(len(results)), false)
 
 	if supportsProtobuf {
 		// Create protobuf response
@@ -2328,7 +2328,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 					Uid:      int64(0), // We don't have UID in search results
 					Name:     result.Name,
 					Position: result.Description,
-					Overall:  int32(result.Overall),
+					Overall:  safeInt32(result.Overall),
 				}
 				protoPlayers = append(protoPlayers, protoPlayer)
 			}
@@ -4627,7 +4627,7 @@ func CalculatePlayerPercentilesAsync(ctx context.Context, datasetID string, play
 
 	if !exists {
 		logError(ctx, "Dataset %s not found in store for percentile calculation", datasetID)
-		return fmt.Errorf("dataset %s not found in store", datasetID)
+		return WrapErrorf(ErrDatasetNotFound, "dataset: %s", datasetID)
 	}
 
 	// Use the existing OptimizedDeepCopyPlayers function which is designed to handle this safely

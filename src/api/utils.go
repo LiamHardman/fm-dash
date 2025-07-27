@@ -1,6 +1,9 @@
 package main
 
-import "sort"
+import (
+	"math"
+	"sort"
+)
 
 // GetFirstNCells returns the first N cells from a slice of strings.
 // Useful for logging or error messages.
@@ -51,4 +54,15 @@ func Clamp(value, minVal, maxVal int) int {
 		return maxVal
 	}
 	return value
+}
+
+// safeInt32 converts an int to int32 with bounds checking
+func safeInt32(n int) int32 {
+	if n > math.MaxInt32 {
+		return math.MaxInt32
+	}
+	if n < math.MinInt32 {
+		return math.MinInt32
+	}
+	return int32(n)
 }

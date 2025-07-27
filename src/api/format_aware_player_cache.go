@@ -76,7 +76,7 @@ func CachePlayerData(ctx context.Context, cacheKey string, players []Player, cur
 	protoPlayerResponse := &pb.PlayerDataResponse{
 		Players:        make([]*pb.Player, 0, len(players)),
 		CurrencySymbol: currencySymbol,
-		Metadata:       CreateResponseMetadata(requestID, int32(len(players)), true),
+		Metadata:       CreateResponseMetadata(requestID, safeInt32(len(players)), true),
 	}
 
 	// Convert each player to protobuf
@@ -203,7 +203,9 @@ func WritePlayerDataResponse(ctx context.Context, w http.ResponseWriter, r *http
 		w.Header().Set("Content-Type", serializer.ContentType())
 		w.Header().Set("X-Cache-Source", "memory")
 		w.Header().Set("X-Cache-Format", "protobuf")
-		w.Write(responseData)
+		if _, err := w.Write(responseData); err != nil {
+			logError(r.Context(), "Error writing protobuf response", "error", err)
+		}
 		return nil
 	} else {
 		// Write JSON response

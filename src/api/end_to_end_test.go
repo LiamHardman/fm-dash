@@ -233,7 +233,11 @@ func TestEndToEndProtobufErrorHandling(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to send request: %v", err)
 			}
-			defer resp.Body.Close()
+			defer func() {
+				if err := resp.Body.Close(); err != nil {
+					t.Logf("Warning: failed to close response body: %v", err)
+				}
+			}()
 
 			// Check the response status
 			if resp.StatusCode != tc.expectedStatus {

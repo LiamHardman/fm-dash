@@ -40,7 +40,7 @@ func (p *ProtobufSerializer) Serialize(data interface{}) ([]byte, error) {
 	case *pb.GenericResponse:
 		return proto.Marshal(v)
 	default:
-		return nil, fmt.Errorf("unsupported data type for protobuf serialization: %T", data)
+		return nil, WrapErrorf(ErrUnsupportedDataType, "data type: %T", data)
 	}
 }
 
@@ -202,7 +202,7 @@ func parseQuality(qStr string) (float64, error) {
 	case "0", "0.0", "0.00":
 		return 0.0, nil
 	default:
-		return 1.0, fmt.Errorf("invalid quality value: %s", qStr)
+		return 1.0, WrapErrorf(ErrInvalidQualityValue, "value: %s", qStr)
 	}
 }
 
@@ -273,11 +273,13 @@ func WriteResponse(w http.ResponseWriter, r *http.Request, data interface{}) err
 		jsonSerializer := &JSONSerializer{}
 		responseData, jsonErr := jsonSerializer.Serialize(data)
 		if jsonErr != nil {
-			return fmt.Errorf("both protobuf and JSON serialization failed: %v, %v", err, jsonErr)
+			return WrapErrorf(ErrSerializationFailed, "protobuf: %v, json: %v", err, jsonErr)
 		}
 		w.Header().Set("Content-Type", jsonSerializer.ContentType())
 		logDebug(r.Context(), "WriteResponse: setting JSON content type", "content_type", jsonSerializer.ContentType())
-		w.Write(responseData)
+		if _, err := w.Write(responseData); err != nil {
+			logError(r.Context(), "Error writing response data", "error", err)
+		}
 		return nil
 	}
 
@@ -287,7 +289,9 @@ func WriteResponse(w http.ResponseWriter, r *http.Request, data interface{}) err
 		w.Header().Set("Content-Encoding", "gzip")
 	}
 
-	w.Write(responseData)
+	if _, err := w.Write(responseData); err != nil {
+		logError(r.Context(), "Error writing response data", "error", err)
+	}
 	return nil
 }
 
@@ -313,11 +317,13 @@ func WriteErrorResponse(w http.ResponseWriter, r *http.Request, errorCode, messa
 	if err := WriteResponse(w, r, errorResponse); err != nil {
 		// Final fallback to simple JSON error
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"error":   errorCode,
 			"message": message,
 			"details": details,
-		})
+		}); err != nil {
+			logError(r.Context(), "Error encoding error response", "error", err)
+		}
 	}
 }
 
