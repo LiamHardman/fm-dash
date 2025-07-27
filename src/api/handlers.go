@@ -4800,3 +4800,229 @@ func getPlayerOverallForRole(player Player, role, position string) int {
 	// Fall back to main overall
 	return player.Overall
 }
+
+// processTopTeamsData returns the top teams across all divisions
+func processTopTeamsData(players []Player, limit int) []Team {
+	// Group all players by team
+	teamMap := make(map[string][]Player)
+	for i := range players {
+		if players[i].Club != "" {
+			teamMap[players[i].Club] = append(teamMap[players[i].Club], players[i])
+		}
+	}
+
+	teams := make([]Team, 0, len(teamMap))
+	for teamName, teamPlayers := range teamMap {
+		// Skip teams with too few players (likely data issues)
+		if len(teamPlayers) < 5 {
+			continue
+		}
+
+		team := Team{
+			Name:        teamName,
+			Division:    teamPlayers[0].Division, // Use first player's division
+			PlayerCount: len(teamPlayers),
+			Players:     teamPlayers,
+		}
+
+		ratings := calculateTeamRatings(teamPlayers)
+		team.BestOverall = ratings.BestOverall
+		team.AttRating = ratings.AttRating
+		team.MidRating = ratings.MidRating
+		team.DefRating = ratings.DefRating
+
+		teams = append(teams, team)
+	}
+
+	// Sort teams by overall rating (best first)
+	sort.Slice(teams, func(i, j int) bool {
+		return teams[i].BestOverall > teams[j].BestOverall
+	})
+
+	// Return top N teams
+	if limit > 0 && len(teams) > limit {
+		return teams[:limit]
+	}
+
+	return teams
+}
+
+// topTeamsHandler returns the top teams across all divisions
+func topTeamsHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	startTime := time.Now()
+
+	// Start comprehensive tracing
+	ctx, span := StartSpan(ctx, "api.top-teams.get")
+	defer span.End()
+
+	// Initialize content negotiation
+	negotiator := NewContentNegotiator(r)
+	serializer := negotiator.SelectSerializer()
+	supportsProtobuf := negotiator.SupportsProtobuf()
+
+	// Get request ID for response metadata
+	requestID := r.Header.Get("X-Request-ID")
+	if requestID == "" {
+		requestID = generateRequestID()
+	}
+
+	SetSpanAttributes(ctx,
+		attribute.String("http.method", r.Method),
+		attribute.String("http.route", "/api/top-teams"),
+		attribute.String("response.format", serializer.ContentType()),
+		attribute.Bool("client.supports_protobuf", supportsProtobuf),
+		attribute.String("request.id", requestID),
+	)
+
+	if r.Method != http.MethodGet {
+		WriteErrorResponse(w, r, "method_not_allowed", "Only GET method is allowed", nil, http.StatusMethodNotAllowed)
+		return
+	}
+
+	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/top-teams/"), "/")
+	if len(pathParts) < 1 || pathParts[0] == "" {
+		WriteErrorResponse(w, r, "missing_parameters", "Dataset ID is required in the request path", nil, http.StatusBadRequest)
+		return
+	}
+	datasetID := pathParts[0]
+
+	// Get limit from query parameter, default to 100
+	limit := 100
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
+			limit = parsedLimit
+		}
+	}
+
+	logInfo(ctx, "Processing top teams request", "dataset_id", datasetID, "limit", limit)
+
+	// Try to get top teams data from cache first
+	cacheKey := fmt.Sprintf("top_teams_%s_%d", datasetID, limit)
+	if cached, found := getFromMemCache(cacheKey); found {
+		if teamsData, ok := cached.([]Team); ok {
+			logInfo(ctx, "Retrieved top teams data from memory cache", "dataset_id", datasetID, "limit", limit)
+
+			// Set CORS headers
+			setCORSHeaders(w, r)
+
+			if supportsProtobuf {
+				// Create protobuf response with full team data
+				jsonData, err := json.Marshal(teamsData)
+				if err == nil {
+					protoResponse := &pb.GenericResponse{
+						Data: string(jsonData),
+					}
+
+					// Serialize to protobuf
+					responseBytes, err := serializer.Serialize(protoResponse)
+					if err == nil {
+						// Protobuf serialization successful
+						w.Header().Set("Content-Type", serializer.ContentType())
+						w.Header().Set("X-Cache-Source", "memory")
+						w.Header().Set("Cache-Control", "public, max-age=300") // 5 minutes
+						if serializer.ShouldCompress() {
+							w.Header().Set("Content-Encoding", "gzip")
+						}
+
+						if _, writeErr := w.Write(responseBytes); writeErr != nil {
+							logError(ctx, "Error writing protobuf response", "error", writeErr)
+						}
+
+						logDebug(ctx, "Top teams served as protobuf from cache",
+							"team_count", len(teamsData),
+							"response_size_bytes", len(responseBytes),
+							"processing_time_ms", time.Since(startTime).Milliseconds())
+						return
+					}
+
+					// Log protobuf serialization failure
+					logWarn(ctx, "Protobuf serialization failed for cached top teams, falling back to JSON", "error", err)
+				}
+			}
+
+			// Fallback to JSON
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("X-Cache-Source", "memory")
+			w.Header().Set("Cache-Control", "public, max-age=300") // 5 minutes
+			if err := json.NewEncoder(w).Encode(teamsData); err != nil {
+				WriteErrorResponse(w, r, "serialization_error", "Error encoding response", nil, http.StatusInternalServerError)
+				logError(ctx, "Error encoding JSON response for cached top teams",
+					"error", err,
+					"dataset_id", datasetID,
+					"limit", limit)
+			}
+			return
+		}
+	}
+
+	// Get player data from storage
+	players, _, found := GetPlayerData(datasetID)
+	if !found {
+		logWarn(ctx, "Player data not found", "dataset_id", datasetID)
+		http.Error(w, "Player data not found for the given ID.", http.StatusNotFound)
+		return
+	}
+
+	// Recalculate all player ratings based on the current calculation method setting
+	players = RecalculateAllPlayersRatings(players)
+
+	// Process top teams data
+	teamsData := processTopTeamsData(players, limit)
+
+	// Cache the result for 5 minutes
+	setInMemCache(cacheKey, teamsData, 5*time.Minute)
+
+	// Set CORS headers
+	setCORSHeaders(w, r)
+
+	if supportsProtobuf {
+		// Create protobuf response with full team data
+		jsonData, err := json.Marshal(teamsData)
+		if err == nil {
+			protoResponse := &pb.GenericResponse{
+				Data: string(jsonData),
+			}
+
+			// Serialize to protobuf
+			responseBytes, err := serializer.Serialize(protoResponse)
+			if err == nil {
+				// Protobuf serialization successful
+				w.Header().Set("Content-Type", serializer.ContentType())
+				w.Header().Set("X-Cache-Source", "computed")
+				w.Header().Set("Cache-Control", "public, max-age=300") // 5 minutes
+				if serializer.ShouldCompress() {
+					w.Header().Set("Content-Encoding", "gzip")
+				}
+
+				if _, writeErr := w.Write(responseBytes); writeErr != nil {
+					logError(ctx, "Error writing protobuf response", "error", writeErr)
+				}
+
+				logDebug(ctx, "Top teams served as protobuf",
+					"team_count", len(teamsData),
+					"response_size_bytes", len(responseBytes),
+					"processing_time_ms", time.Since(startTime).Milliseconds())
+				return
+			}
+
+			// Log protobuf serialization failure
+			logWarn(ctx, "Protobuf serialization failed for top teams, falling back to JSON", "error", err)
+		}
+	}
+
+	// Fallback to JSON
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Cache-Source", "computed")
+	if err := json.NewEncoder(w).Encode(teamsData); err != nil {
+		http.Error(w, "Error encoding JSON response", http.StatusInternalServerError)
+		logError(ctx, "Error encoding JSON response for top teams", "dataset_id", sanitizeForLogging(datasetID), "limit", limit, "error", err)
+		return
+	}
+
+	logInfo(ctx, "Top teams request completed",
+		"dataset_id", datasetID,
+		"limit", limit,
+		"team_count", len(teamsData),
+		"processing_time_ms", time.Since(startTime).Milliseconds())
+}

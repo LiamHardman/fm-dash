@@ -5,6 +5,7 @@ const PlayerUploadPage = () => import('../pages/PlayerUploadPage.vue')
 const TeamViewPage = () => import('../pages/TeamViewPage.vue')
 const DatasetPage = () => import('../pages/DatasetPage.vue')
 const NationsPage = () => import('../pages/NationsPage.vue')
+const TeamsPage = () => import('../pages/TeamsPage.vue')
 const LeaguesPage = () => import('../pages/LeaguesPage.vue')
 const DocsPage = () => import('../pages/DocsPage.vue')
 const WishlistPage = () => import('../pages/WishlistPage.vue')
@@ -47,6 +48,17 @@ const routes = [
     path: '/nations/:datasetId',
     name: 'shared-nations',
     component: NationsPage,
+    props: true,
+  },
+  {
+    path: '/teams',
+    name: 'teams',
+    component: TeamsPage,
+  },
+  {
+    path: '/teams/:datasetId',
+    name: 'shared-teams',
+    component: TeamsPage,
     props: true,
   },
   {

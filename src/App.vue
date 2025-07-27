@@ -22,9 +22,10 @@
                         >
                             Players
                         </router-link>
-                        <router-link to="/team-view" class="nav-link">Team View</router-link>
+                        <!-- <router-link to="/team-view" class="nav-link">Team View</router-link> -->
                         <router-link to="/performance" class="nav-link">Performance</router-link>
                         <router-link to="/nations" class="nav-link">Nations</router-link>
+                        <router-link to="/teams" class="nav-link">Teams</router-link>
                         <router-link to="/leagues" class="nav-link">Leagues</router-link>
                         <router-link 
                             to="/wishlist" 

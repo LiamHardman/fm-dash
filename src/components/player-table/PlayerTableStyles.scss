@@ -1,0 +1,216 @@
+// Player Data Table Styles
+.player-data-table-container {
+  background: transparent;
+  
+  // Ensure card sections have proper backgrounds
+  .body--dark & {
+    :deep(.q-card-section) {
+      background: transparent !important;
+      color: rgba(255, 255, 255, 0.9) !important;
+    }
+    
+    :deep(.q-card-actions) {
+      background: transparent !important;
+      border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+    }
+  }
+}
+
+.table-controls-header {
+  margin-bottom: 1rem;
+  
+  .sort-info-chip {
+    background: rgba(46, 116, 181, 0.1);
+    color: #2e74b5;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: 1px solid rgba(46, 116, 181, 0.2);
+    
+    .body--dark & {
+      background: rgba(96, 165, 250, 0.1);
+      color: #60a5fa;
+      border-color: rgba(96, 165, 250, 0.2);
+    }
+  }
+}
+
+.player-q-table {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  
+  .body--dark & {
+    background: #1e293b;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  }
+  
+  .q-table__top {
+    background: rgba(46, 116, 181, 0.03);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    
+    .body--dark & {
+      background: rgba(96, 165, 250, 0.05);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+  }
+  
+  .q-table__bottom {
+    background: rgba(46, 116, 181, 0.02);
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    
+    .body--dark & {
+      background: rgba(96, 165, 250, 0.03);
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+  }
+}
+
+.no-players-card {
+  background: white !important;
+  border: 1px solid rgba(46, 116, 181, 0.15) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+  
+  .body--dark & {
+    background: #1e293b !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3) !important;
+  }
+  
+  .no-players-text {
+    color: #64748b !important;
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin: 0;
+    
+    .body--dark & {
+      color: rgba(255, 255, 255, 0.7) !important;
+    }
+  }
+}
+
+.money-uniform {
+  color: #334155;
+  .body--dark & {
+    color: rgba(255, 255, 255, 0.85);
+  }
+}
+
+.money-na {
+  color: #9ca3af;
+  .body--dark & {
+    color: #6b7280;
+  }
+}
+
+@keyframes sortProgress {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes gentlePulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.02);
+    opacity: 0.9;
+  }
+}
+
+@keyframes subtleGlow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.table-sorting {
+  .modern-table-header {
+    background: linear-gradient(180deg, rgba(46, 116, 181, 0.1) 0%, rgba(46, 116, 181, 0.15) 100%);
+    
+    .body--dark & {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.15) 100%);
+    }
+  }
+}
+
+:deep(.q-table__bottom .q-select .q-field__native),
+:deep(.q-table__bottom .q-select .q-field__input) {
+  .body--dark & {
+    color: rgba(255, 255, 255, 0.9);
+  }
+}
+
+/* Fixed table layout for consistent column widths */
+.fixed-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.fixed-table .q-table__top {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.body--dark .fixed-table .q-table__top {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+// Full-screen table enhancements
+.full-screen-table {
+  height: 100% !important;
+  
+  .q-table {
+    height: 100% !important;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .q-table__container {
+    flex: 1 !important;
+    height: 100% !important;
+    overflow: hidden;
+  }
+  
+  .q-table__middle {
+    flex: 1 !important;
+    height: 100% !important;
+    overflow: hidden;
+  }
+  
+  .q-virtual-scroll {
+    height: 100% !important;
+  }
+}
+
+.player-data-table-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  
+  .relative-position {
+    flex: 1;
+    height: 100%;
+    overflow: hidden;
+  }
+} 

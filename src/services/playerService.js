@@ -281,6 +281,39 @@ export async function fetchTeamData(datasetID, type, name) {
 }
 
 /**
+ * Fetch top teams data across all divisions
+ * @param {string} datasetID - The dataset ID
+ * @param {number} limit - Maximum number of teams to return (default: 100)
+ * @returns {Promise<Array>} - Array of top teams with ratings
+ */
+export async function fetchTopTeams(datasetID, limit = 100) {
+  try {
+    // Use protobuf-aware API for top teams data
+    const { get } = useProtobufApi('')
+    const url = `/api/top-teams/${datasetID}?limit=${limit}`
+
+    const response = await get(url, {}, 'api.GenericResponse')
+
+    // Handle protobuf response structure where data is in the data field
+    if (response.data) {
+      try {
+        const parsedData = JSON.parse(response.data)
+        return parsedData
+      } catch (parseError) {
+        logger.error('Error parsing top teams data from protobuf response:', parseError)
+        throw new Error('Invalid top teams data format')
+      }
+    }
+
+    // Fallback for JSON responses or direct data objects
+    return response
+  } catch (error) {
+    logger.error('Error fetching top teams data:', error)
+    throw error
+  }
+}
+
+/**
  * Fetch detailed performance data for the performance page
  * @param {string} datasetID - The dataset ID
  * @param {Object} filters - Optional filters for the performance data

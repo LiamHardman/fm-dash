@@ -209,6 +209,9 @@ func main() {
 	// API endpoint for retrieving teams data for a specific league
 	http.Handle("/api/teams/", wrapHandler(http.HandlerFunc(teamsHandler), "teams"))
 
+	// API endpoint for retrieving top teams across all divisions
+	http.Handle("/api/top-teams/", wrapHandler(http.HandlerFunc(topTeamsHandler), "top-teams"))
+
 	// API endpoint for updating player percentiles with division filtering
 	http.Handle("/api/percentiles/", wrapHandler(http.HandlerFunc(percentilesHandler), "percentiles"))
 
@@ -270,6 +273,7 @@ func main() {
 	mux.Handle("/api/roles", wrapHandler(http.HandlerFunc(rolesHandler), "roles"))
 	mux.Handle("/api/leagues/", wrapHandler(http.HandlerFunc(leaguesHandler), "leagues"))
 	mux.Handle("/api/teams/", wrapHandler(http.HandlerFunc(teamsHandler), "teams"))
+	mux.Handle("/api/top-teams/", wrapHandler(http.HandlerFunc(topTeamsHandler), "top-teams"))
 	mux.Handle("/api/percentiles/", wrapHandler(http.HandlerFunc(percentilesHandler), "percentiles"))
 	mux.Handle("/api/player-percentiles/", wrapHandler(http.HandlerFunc(playerPercentilesHandler), "player-percentiles"))
 	mux.Handle("/api/percentiles-status/", wrapHandler(http.HandlerFunc(percentilesStatusHandler), "percentiles-status"))
