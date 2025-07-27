@@ -253,7 +253,6 @@ import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
 import UpgradeFinderDialog from '../components/UpgradeFinderDialog.vue'
 import WonderkidsDialog from '../components/WonderkidsDialog.vue'
 import { useAnalytics } from '../composables/useAnalytics'
-import playerService from '../services/playerService.js'
 import { usePlayerStore } from '../stores/playerStore'
 import { useWishlistStore } from '../stores/wishlistStore'
 import { exportPlayersToCSV } from '../utils/csvExport'
@@ -516,7 +515,9 @@ export default {
               hasRole = Object.hasOwn(player.roleSpecificOveralls, currentFilters.value.role)
             }
             if (!hasRole) {
-              console.log(`Player ${player.name} filtered out - doesn't have role: ${currentFilters.value.role}`)
+              console.log(
+                `Player ${player.name} filtered out - doesn't have role: ${currentFilters.value.role}`
+              )
               return false
             }
             console.log(`Player ${player.name} has role: ${currentFilters.value.role}`)
@@ -681,7 +682,9 @@ export default {
             }
 
             if (roleSpecificOverall !== null && roleSpecificOverall !== undefined) {
-              console.log(`Role-specific overall applied for ${player.name}: ${roleSpecificOverall} (role: ${currentFilters.value.role})`)
+              console.log(
+                `Role-specific overall applied for ${player.name}: ${roleSpecificOverall} (role: ${currentFilters.value.role})`
+              )
               return { ...player, Overall: roleSpecificOverall, overall: roleSpecificOverall }
             }
           }
@@ -692,7 +695,7 @@ export default {
     const isGoalkeeperView = computed(() => {
       // First check explicit position or role filters
       if (
-        (currentFilters.value.position && currentFilters.value.position.includes('GK')) ||
+        currentFilters.value.position?.includes('GK') ||
         currentFilters.value.role?.includes('Goalkeeper')
       ) {
         return true
