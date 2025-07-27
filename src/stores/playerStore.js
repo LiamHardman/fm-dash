@@ -254,30 +254,7 @@ export const usePlayerStore = defineStore('player', () => {
         uploadFlowProfiler.endUploadFlow()
         return response
       }
-      if (response.processingStatus === 'processing') {
-        // Handle streaming response for large files
-        uploadFlowProfiler.markStep('streaming_response_handling')
-        console.log(
-          'Large file detected, processing in background. Dataset ID:',
-          response.datasetId
-        )
 
-        // Store the dataset ID for later use
-        currentDatasetId.value = response.datasetId
-        detectedCurrencySymbol.value = response.detectedCurrencySymbol || '£'
-        sessionStorage.setItem('currentDatasetId', currentDatasetId.value)
-        sessionStorage.setItem('detectedCurrencySymbol', detectedCurrencySymbol.value)
-
-        // Don't try to fetch data immediately - it's not ready yet
-        // The user can navigate to the dataset page and wait for processing to complete
-        tracker.checkpoint('Streaming response handled')
-
-        if (onProgress) onProgress(100)
-        tracker.finish()
-
-        uploadFlowProfiler.endUploadFlow()
-        return response
-      }
       // Fallback to original flow for backward compatibility
       uploadFlowProfiler.markStep('fallback_api_calls_start')
       tracker.checkpoint('Using fallback data fetching')

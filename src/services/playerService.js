@@ -178,23 +178,6 @@ export default {
     const { setProtobufEnabled } = useProtobufApi('')
     setProtobufEnabled(enabled)
   },
-
-  /**
-   * Check the processing status of a dataset
-   * @param {string} datasetId - The dataset ID to check
-   * @returns {Promise<Object>} Processing status response
-   */
-  async checkProcessingStatus(datasetId) {
-    try {
-      // Use protobuf-aware API for processing status checks
-      const { get } = useProtobufApi('')
-      const response = await get(`/api/processing-status/${datasetId}`)
-      return response
-    } catch (error) {
-      console.error('Error checking processing status:', error)
-      throw new Error(`Failed to check processing status: ${error.message}`)
-    }
-  },
 }
 
 /**

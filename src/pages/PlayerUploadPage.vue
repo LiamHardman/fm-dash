@@ -408,36 +408,12 @@ export default {
             showNotification()
           }
 
-          // Check if this is a large file that needs background processing
-          const isLargeFileProcessing = response.processingStatus === 'processing'
-
-          if (isLargeFileProcessing) {
-            // Redirect to processing status page for large files
-            router.push(`/processing-status/${response.datasetId}`)
-          } else {
-            // Check if data is already available for immediate redirect
-            const hasImmediateData = response.players && response.players.length > 0
-
-            if (hasImmediateData) {
-              // Data is already processed, show ready state
-              dataReady.value = true
-              uploadProgress.value = 100
-
-              // Redirect immediately
-              setTimeout(() => {
-                if (playerStore.currentDatasetId) {
-                  router.push(`/dataset/${playerStore.currentDatasetId}`)
-                }
-              }, 300) // Even faster for immediate data
-            } else {
-              // Data needs processing, use standard delay
-              setTimeout(() => {
-                if (playerStore.currentDatasetId) {
-                  router.push(`/dataset/${playerStore.currentDatasetId}`)
-                }
-              }, 500) // Reduced from 1000ms for faster transition
+          // Always redirect to dataset page regardless of file size
+          setTimeout(() => {
+            if (playerStore.currentDatasetId) {
+              router.push(`/dataset/${playerStore.currentDatasetId}`)
             }
-          }
+          }, 500)
         }
       } catch (e) {
         uploadProgress.value = 0

@@ -9,7 +9,6 @@ const LeaguesPage = () => import('../pages/LeaguesPage.vue')
 const DocsPage = () => import('../pages/DocsPage.vue')
 const WishlistPage = () => import('../pages/WishlistPage.vue')
 const PerformancePage = () => import('../pages/PerformancePage.vue')
-const ProcessingStatusPage = () => import('../pages/ProcessingStatusPage.vue')
 
 const routes = [
   {
@@ -81,12 +80,6 @@ const routes = [
     path: '/docs',
     name: 'docs',
     component: DocsPage,
-  },
-  {
-    path: '/processing-status/:datasetId',
-    name: 'processing-status',
-    component: ProcessingStatusPage,
-    props: true,
   },
 ]
 

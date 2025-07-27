@@ -406,51 +406,8 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	AddSpanEvent(ctx, "duplicate.check.completed", attribute.Bool("is_duplicate", isDuplicate))
 	duplicateSpan.End()
 
-	// Determine if this is a large file that needs streaming response
-	isLargeFile := actualFileSize > 10*1024*1024       // 10MB threshold
+	// Process all files synchronously
 	estimatedPlayerCount := int(actualFileSize / 2048) // Rough estimation: ~2KB per player row
-
-	if isLargeFile {
-		// For large files, return immediate response and process in background
-		datasetID := uuid.New().String()
-
-		// Store the file hash mapping for duplicate detection
-		storeDuplicateMapping(fileHash, datasetID)
-
-		// Return immediate response for large files
-		response := UploadResponse{
-			DatasetID:              datasetID,
-			Message:                "Large file detected. Processing in background. Check processing status for updates.",
-			DetectedCurrencySymbol: "$", // Will be updated during processing
-			ProcessingStatus:       "processing",
-			PlayerCount:            estimatedPlayerCount,
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		setCORSHeaders(w, r)
-
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			RecordError(ctx, err, "Failed to encode streaming response")
-			http.Error(w, "Error encoding response: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		// Process the file in background
-		go func() {
-			processLargeFileAsync(ctx, fileContent, handler.Filename, datasetID, fileHash, actualFileSize)
-		}()
-
-		RecordBusinessOperation(ctx, "large_file_upload_started", true, map[string]interface{}{
-			"filename":          handler.Filename,
-			"file_size_bytes":   actualFileSize,
-			"dataset_id":        datasetID,
-			"estimated_players": estimatedPlayerCount,
-		})
-
-		return
-	}
-
-	// For smaller files, use the existing synchronous processing
 	parseStartTime := time.Now()
 	// Optimized pre-allocation based on file size estimation
 	if estimatedPlayerCount == 0 {
@@ -607,8 +564,8 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		Players:                processBasicPlayerData(playersList), // Return processed players
 		Roles:                  roles,                               // Return available roles
 		PercentilesReady:       false,                               // Percentiles will be calculated asynchronously
-		ProcessingStatus:       "completed",
-		PlayerCount:            len(playersList),
+
+		PlayerCount: len(playersList),
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -4485,133 +4442,6 @@ func processBasicPlayerData(players []Player) []Player {
 	return processedPlayers
 }
 
-// processLargeFileAsync processes large files in the background
-func processLargeFileAsync(ctx context.Context, fileContent []byte, filename string, datasetID string, fileHash string, actualFileSize int64) {
-	ctx, span := StartSpan(ctx, "large_file_processing")
-	defer span.End()
-
-	SetSpanAttributes(ctx,
-		attribute.String("dataset.id", datasetID),
-		attribute.String("file.name", filename),
-		attribute.Int64("file.size", actualFileSize),
-	)
-
-	logInfo(ctx, "Starting background processing for large file",
-		"dataset_id", datasetID,
-		"filename", filename,
-		"file_size_mb", actualFileSize/(1024*1024))
-
-	startTime := time.Now()
-
-	// Use the same parsing logic as synchronous processing
-	estimatedPlayerCount := int(actualFileSize / 2048)
-	if estimatedPlayerCount == 0 {
-		estimatedPlayerCount = 100
-	}
-	optimalCapacity := calculateOptimalSliceCapacity(estimatedPlayerCount)
-	playersList := make([]Player, 0, optimalCapacity)
-
-	// Ensure configuration is initialized
-	if err := EnsureConfigInitialized(5 * time.Second); err != nil {
-		logWarn(ctx, "Configuration initialization timeout, proceeding with defaults", "error", err)
-	}
-
-	numWorkers := runtime.NumCPU()
-	if numWorkers == 0 {
-		numWorkers = 1
-	}
-
-	// Dynamic buffer sizing
-	bufferSize := calculateOptimalBufferSize(numWorkers, actualFileSize)
-	rowCellsChan := make(chan []string, bufferSize)
-	resultsChan := make(chan PlayerParseResult, bufferSize)
-	var wg sync.WaitGroup
-
-	var headersSnapshot []string
-
-	doneConsumingResults := make(chan struct{})
-	go func() {
-		defer close(doneConsumingResults)
-		for result := range resultsChan {
-			if result.Err == nil {
-				playersList = append(playersList, result.Player)
-			} else {
-				logWarn(ctx, "Skipping row due to error from worker", "error", result.Err)
-			}
-		}
-	}()
-
-	// Parse the HTML content
-	contentReader := strings.NewReader(string(fileContent))
-	err := ParseHTMLPlayerTable(contentReader, &headersSnapshot, rowCellsChan, numWorkers, resultsChan, &wg)
-
-	if err != nil {
-		logError(ctx, "Error during HTML parsing", "error", err)
-		SetSpanAttributes(ctx, attribute.String("processing.status", "failed"))
-		return
-	}
-
-	if len(headersSnapshot) == 0 {
-		logError(ctx, "No headers parsed from HTML file")
-		SetSpanAttributes(ctx, attribute.String("processing.status", "failed"))
-		return
-	}
-
-	wg.Wait()
-	close(resultsChan)
-	<-doneConsumingResults
-
-	// Detect currency symbol
-	finalDatasetCurrencySymbol := "$"
-	if len(playersList) > 0 {
-		for i := range playersList {
-			_, _, tvSymbol := ParseMonetaryValueGo(playersList[i].TransferValue)
-			if tvSymbol != "" {
-				finalDatasetCurrencySymbol = tvSymbol
-				break
-			}
-			_, _, wSymbol := ParseMonetaryValueGo(playersList[i].Wage)
-			if wSymbol != "" {
-				finalDatasetCurrencySymbol = wSymbol
-				break
-			}
-		}
-	}
-
-	// Store the processed data
-	SetPlayerDataAsync(datasetID, playersList, finalDatasetCurrencySymbol)
-
-	processingTime := time.Since(startTime)
-	logInfo(ctx, "Completed background processing for large file",
-		"dataset_id", datasetID,
-		"player_count", len(playersList),
-		"processing_time", processingTime,
-		"currency_symbol", finalDatasetCurrencySymbol)
-
-	// Calculate percentiles asynchronously
-	go func() {
-		if err := CalculatePlayerPercentilesAsync(ctx, datasetID, playersList, finalDatasetCurrencySymbol); err != nil {
-			logError(ctx, "Error calculating percentiles for dataset %s: %v", datasetID, err)
-		}
-	}()
-
-	SetSpanAttributes(ctx,
-		attribute.String("processing.status", "completed"),
-		attribute.Int("player_count", len(playersList)),
-		attribute.String("currency_symbol", finalDatasetCurrencySymbol),
-		attribute.Int64("processing_time_ms", processingTime.Milliseconds()),
-	)
-
-	RecordBusinessOperation(ctx, "large_file_processing_completed", true, map[string]interface{}{
-		"dataset_id":      datasetID,
-		"filename":        filename,
-		"file_size_bytes": actualFileSize,
-		"player_count":    len(playersList),
-		"processing_time": processingTime.Milliseconds(),
-		"currency_symbol": finalDatasetCurrencySymbol,
-	})
-}
-
 // CalculatePlayerPercentilesAsync calculates percentiles for a dataset asynchronously
 func CalculatePlayerPercentilesAsync(ctx context.Context, datasetID string, players []Player, currencySymbol string) error {
 	ctx, span := StartSpan(ctx, "percentile_calculation_async")
@@ -4661,88 +4491,6 @@ func CalculatePlayerPercentilesAsync(ctx context.Context, datasetID string, play
 	})
 
 	return nil
-}
-
-// processingStatusHandler handles requests to check dataset processing status
-func processingStatusHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	if r.Method != http.MethodGet {
-		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	// Extract dataset ID from URL path
-	pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-	if len(pathParts) < 3 {
-		http.Error(w, "Invalid URL format. Expected: /api/processing-status/{datasetId}", http.StatusBadRequest)
-		return
-	}
-	datasetId := pathParts[2]
-
-	ctx, span := StartSpan(ctx, "processing.status.check")
-	defer span.End()
-
-	SetSpanAttributes(ctx,
-		attribute.String("dataset.id", datasetId),
-	)
-
-	// Check if dataset exists in store
-	storeMutex.RLock()
-	storedData, exists := playerDataStore[datasetId]
-	storeMutex.RUnlock()
-
-	if !exists {
-		// Dataset not found - return processing status
-		response := ProcessingStatusResponse{
-			DatasetID:        datasetId,
-			Status:           "processing",
-			Message:          "Dataset is being processed in the background",
-			EstimatedPlayers: 0,
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		setCORSHeaders(w, r)
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			RecordError(ctx, err, "Failed to encode processing status response")
-			http.Error(w, "Error encoding response: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-		return
-	}
-
-	// Dataset exists - return completed status
-	response := ProcessingStatusResponse{
-		DatasetID:        datasetId,
-		Status:           "completed",
-		Message:          "Dataset processing completed",
-		PlayerCount:      len(storedData.Players),
-		CurrencySymbol:   storedData.CurrencySymbol,
-		EstimatedPlayers: len(storedData.Players),
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	setCORSHeaders(w, r)
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		RecordError(ctx, err, "Failed to encode processing status response")
-		http.Error(w, "Error encoding response: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	RecordBusinessOperation(ctx, "processing_status_checked", true, map[string]interface{}{
-		"dataset_id":   datasetId,
-		"status":       response.Status,
-		"player_count": response.PlayerCount,
-	})
-}
-
-// ProcessingStatusResponse represents the response for processing status checks
-type ProcessingStatusResponse struct {
-	DatasetID        string `json:"datasetId"`
-	Status           string `json:"status"` // "processing" or "completed"
-	Message          string `json:"message"`
-	PlayerCount      int    `json:"playerCount,omitempty"`
-	CurrencySymbol   string `json:"currencySymbol,omitempty"`
-	EstimatedPlayers int    `json:"estimatedPlayers"`
 }
 
 // --- END: Struct Definitions ---
