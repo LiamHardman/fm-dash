@@ -516,8 +516,10 @@ export default {
               hasRole = Object.hasOwn(player.roleSpecificOveralls, currentFilters.value.role)
             }
             if (!hasRole) {
+              console.log(`Player ${player.name} filtered out - doesn't have role: ${currentFilters.value.role}`)
               return false
             }
+            console.log(`Player ${player.name} has role: ${currentFilters.value.role}`)
           }
 
           // Nationality filter
@@ -679,7 +681,8 @@ export default {
             }
 
             if (roleSpecificOverall !== null && roleSpecificOverall !== undefined) {
-              return { ...player, Overall: roleSpecificOverall }
+              console.log(`Role-specific overall applied for ${player.name}: ${roleSpecificOverall} (role: ${currentFilters.value.role})`)
+              return { ...player, Overall: roleSpecificOverall, overall: roleSpecificOverall }
             }
           }
           return player
@@ -689,7 +692,7 @@ export default {
     const isGoalkeeperView = computed(() => {
       // First check explicit position or role filters
       if (
-        currentFilters.value.position === 'GK' ||
+        (currentFilters.value.position && currentFilters.value.position.includes('GK')) ||
         currentFilters.value.role?.includes('Goalkeeper')
       ) {
         return true
