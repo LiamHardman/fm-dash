@@ -55,6 +55,8 @@
                         label="Nationality"
                         dense
                         filled
+                        multiple
+                        use-chips
                         clearable
                         use-input
                         hide-selected
@@ -965,7 +967,7 @@ export default defineComponent({
       club: null,
       position: [],
       role: null,
-      nationality: null,
+      nationality: [],
       continentNationalities: [],
       mediaHandling: [],
       personality: [],
@@ -1215,7 +1217,7 @@ export default defineComponent({
         filters.value.club !== null ||
         (filters.value.position && filters.value.position.length > 0) ||
         filters.value.role !== null ||
-        filters.value.nationality !== null ||
+        (Array.isArray(filters.value.nationality) && filters.value.nationality.length > 0) ||
         (Array.isArray(filters.value.continentNationalities) &&
           filters.value.continentNationalities.length > 0) ||
         (Array.isArray(filters.value.mediaHandling) && filters.value.mediaHandling.length > 0) ||
@@ -1483,7 +1485,7 @@ export default defineComponent({
         club: null,
         position: [],
         role: null,
-        nationality: null,
+        nationality: [],
         continentNationalities: [],
         mediaHandling: [],
         personality: [],

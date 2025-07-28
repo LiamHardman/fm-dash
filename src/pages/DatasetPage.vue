@@ -350,7 +350,7 @@ export default {
       position: '',
       role: '',
       club: '',
-      nationality: '',
+      nationality: [],
       mediaHandling: [],
       personality: [],
       ageRange: {
@@ -526,7 +526,8 @@ export default {
           // Nationality filter
           if (
             currentFilters.value.nationality &&
-            player.nationality_iso !== currentFilters.value.nationality
+            currentFilters.value.nationality.length > 0 &&
+            !currentFilters.value.nationality.includes(player.nationality)
           ) {
             return false
           }
