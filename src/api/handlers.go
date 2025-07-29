@@ -5314,3 +5314,124 @@ func topTeamsHandler(w http.ResponseWriter, r *http.Request) {
 		"team_count", len(teamsData),
 		"processing_time_ms", time.Since(startTime).Milliseconds())
 }
+
+// divisionsHandler returns unique divisions for a dataset
+func divisionsHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	startTime := time.Now()
+
+	// Start comprehensive tracing
+	ctx, span := StartSpan(ctx, "api.divisions.get")
+	defer span.End()
+
+	// Initialize content negotiation
+	negotiator := NewContentNegotiator(r)
+	serializer := negotiator.SelectSerializer()
+	supportsProtobuf := negotiator.SupportsProtobuf()
+
+	// Get request ID for response metadata
+	requestID := r.Header.Get("X-Request-ID")
+	if requestID == "" {
+		requestID = generateRequestID()
+	}
+
+	SetSpanAttributes(ctx,
+		attribute.String("http.method", r.Method),
+		attribute.String("http.route", "/api/divisions"),
+		attribute.String("response.format", serializer.ContentType()),
+		attribute.Bool("client.supports_protobuf", supportsProtobuf),
+		attribute.String("request.id", requestID),
+	)
+
+	if r.Method != http.MethodGet {
+		WriteErrorResponse(w, r, "method_not_allowed", "Only GET method is allowed", nil, http.StatusMethodNotAllowed)
+		return
+	}
+
+	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/divisions/"), "/")
+	if len(pathParts) == 0 || pathParts[0] == "" {
+		WriteErrorResponse(w, r, "missing_dataset_id", "Dataset ID is missing in the request path", nil, http.StatusBadRequest)
+		return
+	}
+	datasetID := pathParts[0]
+
+	logInfo(ctx, "Processing divisions request", "dataset_id", datasetID)
+
+	// Try to get divisions data from cache first
+	cacheKey := fmt.Sprintf("divisions_%s", datasetID)
+	if cached, found := getFromMemCache(cacheKey); found {
+		if divisionsData, ok := cached.([]string); ok {
+			logInfo(ctx, "Retrieved divisions data from memory cache", "dataset_id", datasetID)
+
+			// Set CORS headers
+			setCORSHeaders(w, r)
+
+			// For now, only support JSON response for divisions
+			// TODO: Add protobuf support when pb.DivisionsResponse is defined
+
+			// Fallback to JSON
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("X-Cache-Source", "memory")
+			w.Header().Set("Cache-Control", "public, max-age=300") // 5 minutes
+			if err := json.NewEncoder(w).Encode(divisionsData); err != nil {
+				WriteErrorResponse(w, r, "serialization_error", "Error encoding response", nil, http.StatusInternalServerError)
+				logError(ctx, "Error encoding JSON response for cached divisions",
+					"error", err,
+					"dataset_id", datasetID)
+				return
+			}
+
+			logDebug(ctx, "Divisions served as JSON from cache",
+				"division_count", len(divisionsData),
+				"processing_time_ms", time.Since(startTime).Milliseconds())
+			return
+		}
+	}
+
+	// Get player data from storage
+	players, _, found := GetPlayerData(datasetID)
+	if !found {
+		logWarn(ctx, "Player data not found", "dataset_id", datasetID)
+		WriteErrorResponse(w, r, "dataset_not_found", "Player data not found for the given ID.", nil, http.StatusNotFound)
+		return
+	}
+
+	// Extract unique divisions
+	divisionsMap := make(map[string]bool)
+	for _, player := range players {
+		if player.Division != "" {
+			divisionsMap[player.Division] = true
+		}
+	}
+
+	// Convert to sorted slice
+	divisions := make([]string, 0, len(divisionsMap))
+	for division := range divisionsMap {
+		divisions = append(divisions, division)
+	}
+	sort.Strings(divisions)
+
+	// Cache the result
+	setInMemCache(cacheKey, divisions, 300) // Cache for 5 minutes
+
+	// Set CORS headers
+	setCORSHeaders(w, r)
+
+	// For now, only support JSON response for divisions
+	// TODO: Add protobuf support when pb.DivisionsResponse is defined
+
+	// Fallback to JSON
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "public, max-age=300") // 5 minutes
+	if err := json.NewEncoder(w).Encode(divisions); err != nil {
+		WriteErrorResponse(w, r, "serialization_error", "Error encoding response", nil, http.StatusInternalServerError)
+		logError(ctx, "Error encoding JSON response for divisions",
+			"error", err,
+			"dataset_id", datasetID)
+		return
+	}
+
+	logDebug(ctx, "Divisions served as JSON",
+		"division_count", len(divisions),
+		"processing_time_ms", time.Since(startTime).Milliseconds())
+}

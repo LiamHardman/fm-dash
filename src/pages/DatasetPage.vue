@@ -119,6 +119,7 @@
                         :all-available-roles="allAvailableRoles"
                         :unique-clubs="uniqueClubs"
                         :unique-nationalities="uniqueNationalities"
+                        :unique-divisions="uniqueDivisions"
                         :unique-media-handlings="uniqueMediaHandlings"
                         :unique-personalities="uniquePersonalities"
                         :transfer-value-range="transferValueRangeForFilters"
@@ -390,6 +391,9 @@ export default {
     const loading = computed(() => playerStore.loading)
     const uniqueClubs = computed(() => playerStore.uniqueClubs)
     const uniqueNationalities = computed(() => playerStore.uniqueNationalities)
+    const uniqueDivisions = computed(() => {
+      return playerStore.uniqueDivisions || []
+    })
     const uniqueMediaHandlings = computed(() => playerStore.uniqueMediaHandlings)
     const uniquePersonalities = computed(() => playerStore.uniquePersonalities)
 
@@ -495,11 +499,146 @@ export default {
 
           // Position filter
           if (currentFilters.value.position && currentFilters.value.position.length > 0) {
+            // Check multiple possible position fields
             const playerPositions = player.short_positions || player.shortPositions || []
-            const hasMatchingPosition = currentFilters.value.position.some((selectedPos) =>
-              playerPositions.includes(selectedPos)
-            )
+            const playerPosition = player.position || ''
+            const playerParsedPositions = player.parsedPositions || []
+
+            // Parse the position string to extract short codes
+            const parsePositionString = (positionStr) => {
+              if (!positionStr) return []
+
+              // Split by comma to handle multiple positions
+              const positions = positionStr.split(',').map((p) => p.trim())
+              const shortCodes = []
+
+              for (const pos of positions) {
+                // Extract the main position part (before the parentheses)
+                const mainPos = pos.split('(')[0].trim()
+                const sideInfo = pos.includes('(') ? pos.split('(')[1].split(')')[0] : ''
+
+                console.log('Parsing position:', { pos, mainPos, sideInfo })
+
+                // Handle different position formats
+                if (mainPos.includes('GK') || mainPos.includes('Goalkeeper')) {
+                  shortCodes.push('GK')
+                }
+
+                // Handle defensive positions
+                if (mainPos.includes('DR') || mainPos.includes('D R')) shortCodes.push('DR')
+                if (mainPos.includes('DC') || mainPos.includes('D C')) shortCodes.push('DC')
+                if (mainPos.includes('DL') || mainPos.includes('D L')) shortCodes.push('DL')
+
+                // Handle wing-back positions
+                if (mainPos.includes('WBR') || mainPos.includes('WB R')) shortCodes.push('WBR')
+                if (mainPos.includes('WBL') || mainPos.includes('WB L')) shortCodes.push('WBL')
+
+                // Handle defensive midfield
+                if (mainPos.includes('DM')) shortCodes.push('DM')
+
+                // Handle midfield positions
+                if (mainPos.includes('MR') || mainPos.includes('M R')) shortCodes.push('MR')
+                if (mainPos.includes('MC') || mainPos.includes('M C')) shortCodes.push('MC')
+                if (mainPos.includes('ML') || mainPos.includes('M L')) shortCodes.push('ML')
+
+                // Handle attacking midfield positions
+                if (mainPos.includes('AMR') || mainPos.includes('AM R')) shortCodes.push('AMR')
+                if (mainPos.includes('AMC') || mainPos.includes('AM C')) shortCodes.push('AMC')
+                if (mainPos.includes('AML') || mainPos.includes('AM L')) shortCodes.push('AML')
+
+                // Handle striker positions
+                if (mainPos.includes('ST')) shortCodes.push('ST')
+
+                // Handle combined positions (like D/AM, WB/AM, M/AM)
+                if (mainPos.includes('D/AM') || mainPos.includes('D AM')) {
+                  shortCodes.push('DR', 'DC', 'DL', 'AMR', 'AMC', 'AML')
+                }
+                if (mainPos.includes('WB/AM') || mainPos.includes('WB AM')) {
+                  shortCodes.push('WBR', 'WBL', 'AMR', 'AMC', 'AML')
+                }
+                if (mainPos.includes('M/AM') || mainPos.includes('M AM')) {
+                  shortCodes.push('MR', 'MC', 'ML', 'AMR', 'AMC', 'AML')
+                }
+
+                // Handle specific side indicators from the parentheses
+                if (sideInfo.includes('R')) {
+                  if (mainPos.includes('AM')) shortCodes.push('AMR')
+                  if (mainPos.includes('M')) shortCodes.push('MR')
+                  if (mainPos.includes('D')) shortCodes.push('DR')
+                  if (mainPos.includes('WB')) shortCodes.push('WBR')
+                }
+                if (sideInfo.includes('L')) {
+                  if (mainPos.includes('AM')) shortCodes.push('AML')
+                  if (mainPos.includes('M')) shortCodes.push('ML')
+                  if (mainPos.includes('D')) shortCodes.push('DL')
+                  if (mainPos.includes('WB')) shortCodes.push('WBL')
+                }
+                if (sideInfo.includes('C')) {
+                  if (mainPos.includes('AM')) shortCodes.push('AMC')
+                  if (mainPos.includes('M')) shortCodes.push('MC')
+                  if (mainPos.includes('D')) shortCodes.push('DC')
+                }
+
+                // Handle combined side indicators
+                if (sideInfo.includes('LC')) {
+                  if (mainPos.includes('AM')) {
+                    shortCodes.push('AML', 'AMC')
+                  }
+                  if (mainPos.includes('M')) {
+                    shortCodes.push('ML', 'MC')
+                  }
+                }
+                if (sideInfo.includes('RC')) {
+                  if (mainPos.includes('AM')) {
+                    shortCodes.push('AMR', 'AMC')
+                  }
+                  if (mainPos.includes('M')) {
+                    shortCodes.push('MR', 'MC')
+                  }
+                }
+                if (sideInfo.includes('RL')) {
+                  if (mainPos.includes('AM')) {
+                    shortCodes.push('AMR', 'AML')
+                  }
+                  if (mainPos.includes('M')) {
+                    shortCodes.push('MR', 'ML')
+                  }
+                }
+              }
+
+              return shortCodes
+            }
+
+            const parsedPlayerPositions = parsePositionString(playerPosition)
+
+            console.log('Position filter debug:', {
+              playerName: player.name,
+              selectedPositions: currentFilters.value.position,
+              playerPositions: playerPositions,
+              playerPosition: playerPosition,
+              playerParsedPositions: playerParsedPositions,
+              parsedPlayerPositions: parsedPlayerPositions,
+              hasShortPositions: !!player.short_positions,
+              hasShortPositionsAlt: !!player.shortPositions,
+              hasPosition: !!player.position,
+              hasParsedPositions: !!player.parsedPositions,
+            })
+
+            // Check if any of the selected positions match any of the player's position fields
+            const hasMatchingPosition = currentFilters.value.position.some((selectedPos) => {
+              // Check short positions array
+              if (playerPositions.includes(selectedPos)) return true
+              // Check parsed positions array
+              if (playerParsedPositions.includes(selectedPos)) return true
+              // Check parsed position string
+              if (parsedPlayerPositions.includes(selectedPos)) return true
+              // Check position string (might contain multiple positions)
+              if (playerPosition && playerPosition.includes(selectedPos)) return true
+              return false
+            })
+
             if (!hasMatchingPosition) {
+              console.log(`Player ${player.name} filtered out - position mismatch`)
               return false
             }
           }
@@ -528,6 +667,15 @@ export default {
             currentFilters.value.nationality &&
             currentFilters.value.nationality.length > 0 &&
             !currentFilters.value.nationality.includes(player.nationality)
+          ) {
+            return false
+          }
+
+          // Division filter
+          if (
+            currentFilters.value.division &&
+            currentFilters.value.division.length > 0 &&
+            !currentFilters.value.division.includes(player.division)
           ) {
             return false
           }
@@ -1015,6 +1163,7 @@ export default {
       loading,
       uniqueClubs,
       uniqueNationalities,
+      uniqueDivisions,
       uniqueMediaHandlings,
       uniquePersonalities,
       transferValueRangeForFilters,

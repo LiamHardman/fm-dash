@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, ref, shallowRef } from 'vue'
+import { computed, ref, shallowRef, watch } from 'vue'
 import playerService from '../services/playerService.js'
 import { PerformanceTracker } from '../utils/performance.js'
 import uploadFlowProfiler from '../utils/performanceProfiler.js'
@@ -61,6 +61,27 @@ export const usePlayerStore = defineStore('player', () => {
     }
     return Array.from(personalities).sort()
   })
+
+  const uniqueDivisions = ref([])
+
+  // Update uniqueDivisions when allPlayers changes
+  watch(
+    allPlayers,
+    (newPlayers) => {
+      if (!Array.isArray(newPlayers) || newPlayers.length === 0) {
+        uniqueDivisions.value = []
+        return
+      }
+      const divisions = new Set()
+      for (const p of newPlayers) {
+        if (p.division && p.division.trim() !== '') {
+          divisions.add(p.division)
+        }
+      }
+      uniqueDivisions.value = Array.from(divisions).sort()
+    },
+    { immediate: true }
+  )
 
   const uniquePositionsCount = computed(() => {
     if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) return 0
@@ -683,6 +704,7 @@ export const usePlayerStore = defineStore('player', () => {
     error,
     uniqueClubs,
     uniqueNationalities,
+    uniqueDivisions,
     uniqueMediaHandlings,
     uniquePersonalities,
     uniquePositionsCount,

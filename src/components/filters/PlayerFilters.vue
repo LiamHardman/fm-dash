@@ -78,6 +78,39 @@
                 </div>
                 <div class="col-12 col-sm-6 col-md-3">
                     <q-select
+                        v-model="filters.division"
+                        :options="divisionOptions"
+                        label="Division"
+                        dense
+                        filled
+                        multiple
+                        use-chips
+                        clearable
+                        use-input
+                        hide-selected
+                        fill-input
+                        input-debounce="300"
+                        @filter="filterDivisionOptions"
+                        @update:model-value="applyFilters"
+                        behavior="menu"
+                        :disable="isLoading"
+                    >
+                        <template v-slot:no-option>
+                            <q-item
+                                ><q-item-section class="text-grey"
+                                    >No results</q-item-section
+                                ></q-item
+                            >
+                        </template>
+                    </q-select>
+                </div>
+
+            </div>
+
+            <!-- Second Row: Advanced Filters -->
+            <div class="row q-col-gutter-md q-mb-md">
+                <div class="col-12 col-sm-6 col-md-3">
+                    <q-select
                         v-model="filters.position"
                         :options="positionOptions"
                         label="Position"
@@ -93,10 +126,6 @@
                         :disable="isLoading"
                     />
                 </div>
-            </div>
-
-            <!-- Second Row: Advanced Filters -->
-            <div class="row q-col-gutter-md q-mb-md">
                 <div class="col-12 col-sm-6 col-md-3">
                     <q-select
                         v-model="filters.role"
@@ -131,25 +160,7 @@
                         </template>
                     </q-select>
                 </div>
-                <div class="col-12 col-sm-6 col-md-3">
-                    <q-select
-                        v-model="selectedPreset"
-                        :options="presetOptions"
-                        label="Preset Filters"
-                        dense
-                        filled
-                        clearable
-                        emit-value
-                        map-options
-                        @update:model-value="applyPresetFilter"
-                        behavior="menu"
-                        :disable="isLoading"
-                    >
-                        <template v-slot:prepend>
-                            <q-icon name="filter_list" />
-                        </template>
-                    </q-select>
-                </div>
+
                 <div class="col-12 col-sm-6 col-md-3">
                     <q-select
                         v-model="filters.mediaHandling"
@@ -293,7 +304,7 @@
                 </div>
             </div>
 
-            <!-- Fourth Row: Set Minimum Stats Button -->
+            <!-- Fourth Row: Set Minimum Stats Button and Preset Filters -->
             <div class="row q-col-gutter-md q-mt-sm">
                 <div class="col-12 col-sm-6 col-md-3">
                     <q-btn
@@ -309,6 +320,26 @@
                         icon="tune"
                         style="height: 40px;"
                     />
+                </div>
+                <div class="col-12 col-sm-6 col-md-3">
+                    <q-select
+                        v-model="selectedPreset"
+                        :options="presetOptions"
+                        label="Preset Filters"
+                        dense
+                        filled
+                        clearable
+                        emit-value
+                        map-options
+                        @update:model-value="applyPresetFilter"
+                        behavior="menu"
+                        :disable="isLoading"
+                        style="height: 40px;"
+                    >
+                        <template v-slot:prepend>
+                            <q-icon name="filter_list" />
+                        </template>
+                    </q-select>
                 </div>
             </div>
 
@@ -954,6 +985,7 @@ export default defineComponent({
     },
     uniqueClubs: { type: Array, default: () => [] },
     uniqueNationalities: { type: Array, default: () => [] },
+    uniqueDivisions: { type: Array, default: () => [] },
     uniqueMediaHandlings: { type: Array, default: () => [] },
     uniquePersonalities: { type: Array, default: () => [] },
     isLoading: { type: Boolean, default: false },
@@ -968,6 +1000,7 @@ export default defineComponent({
       position: [],
       role: null,
       nationality: [],
+      division: [],
       continentNationalities: [],
       mediaHandling: [],
       personality: [],
@@ -1170,6 +1203,7 @@ export default defineComponent({
 
     const clubOptions = ref([])
     const nationalityOptions = ref([])
+    const divisionOptions = ref([])
     const currentSliderMin = computed(() => {
       return props.transferValueRange.min
     })
@@ -1218,6 +1252,7 @@ export default defineComponent({
         (filters.value.position && filters.value.position.length > 0) ||
         filters.value.role !== null ||
         (Array.isArray(filters.value.nationality) && filters.value.nationality.length > 0) ||
+        (Array.isArray(filters.value.division) && filters.value.division.length > 0) ||
         (Array.isArray(filters.value.continentNationalities) &&
           filters.value.continentNationalities.length > 0) ||
         (Array.isArray(filters.value.mediaHandling) && filters.value.mediaHandling.length > 0) ||
@@ -1395,6 +1430,13 @@ export default defineComponent({
       { immediate: true }
     )
     watch(
+      () => props.uniqueDivisions,
+      (newDivs) => {
+        divisionOptions.value = newDivs
+      },
+      { immediate: true }
+    )
+    watch(
       () => props.transferValueRange,
       (newDynamicRange) => {
         if (
@@ -1486,6 +1528,7 @@ export default defineComponent({
         position: [],
         role: null,
         nationality: [],
+        division: [],
         continentNationalities: [],
         mediaHandling: [],
         personality: [],
@@ -1530,6 +1573,18 @@ export default defineComponent({
       update(() => {
         const needle = val.toLowerCase()
         nationalityOptions.value = props.uniqueNationalities.filter(
+          (v) => v.toLowerCase().indexOf(needle) > -1
+        )
+      })
+    }
+    const filterDivisionOptions = (val, update, abort) => {
+      if (val.length < 1 && val !== '') {
+        abort()
+        return
+      }
+      update(() => {
+        const needle = val.toLowerCase()
+        divisionOptions.value = props.uniqueDivisions.filter(
           (v) => v.toLowerCase().indexOf(needle) > -1
         )
       })
@@ -1586,6 +1641,17 @@ export default defineComponent({
           }
         }
       }
+    )
+
+    // Watch for uniqueDivisions prop changes to populate divisionOptions
+    watch(
+      () => props.uniqueDivisions,
+      (newDivisions) => {
+        if (Array.isArray(newDivisions)) {
+          divisionOptions.value = newDivisions
+        }
+      },
+      { immediate: true }
     )
 
     const resetMinimumStats = () => {
@@ -1752,6 +1818,7 @@ export default defineComponent({
       finishInlineEdit, // Inline editing methods
       clubOptions,
       nationalityOptions,
+      divisionOptions,
       positionOptions,
       roleFilterOptions,
       mediaHandlingOptions,
@@ -1762,6 +1829,7 @@ export default defineComponent({
       clearAllFilters,
       filterClubOptions,
       filterNationalityOptions,
+      filterDivisionOptions,
       onPositionChange,
       ageSliderMin: AGE_SLIDER_MIN,
       ageSliderMax: AGE_SLIDER_MAX,
