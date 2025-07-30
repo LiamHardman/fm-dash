@@ -1,31 +1,41 @@
-# Roadmap
+## Short Term (Days-Weeks)
+- Interactive tutorial for first-time users
+- Dataset table refactor, with a focus on customizability & maintainability
+- Both user and maintainer-facing documentation improvements
+    - Both removing old/non-relevant documentation, but also making it much easier to find documentation
+- New demo dataset
+- New total stat score
+    - Implementation in the dataset table to understand how well-rounded players are
+- Default docker compose that's well documented & well-supported along with self-hosting docs for other ways of hosting
 
-## Short Term
+## Medium Term (Weeks-Months)
+- New 'Money ball rating'
+- Authentication
+    - This will enable:
+        - Association of multiple datasets
+        - Link datasets together
+        - 1 wishlist for multiple datasets
+- Team comparisons
+- New 'simple' tab in the player details view
+- 'Pros and cons' summary for both teams and players
+- 'Playstyle' display for players
+- Look into feasibility of AI player descriptions
+- 'Create a team' page
 
-### In Progress
-- **Frontend Performance Optimization**: Third-party library optimization for reduced bundle sizes
-- **Bundle Size Reduction**: Tree-shakeable imports and dynamic loading implementation
 
-### Planned
-- Make S3 storage retention configurable
-- Implementation of League logos
-- Document how certain parts of the calculations work (e.g., the FIFA style stats and overall)
-- Add goalkeeping performance percentiles
-- Add functionality for saves that have attribute masking
-- Addition of 2nd nationality support
-- Reviewing team name -> team ID mapping & logo retrieval accuracy
 
-## Medium Term
 
-- Implement some form of authentication for wishlists and datasets, and allow naming of datasets
-- Implement Regen faces
-- Experiment with a FIFA card-style display
-- Test notifications and fix the corresponding UI element
-- Multi-replica container deployment & documentation
-- Add a performance tab on the detailed player view to display graphs (e.g., passes attempted vs. completed)
-- Implement wishlist categories/tags
-- Allow player comparison from a wishlist using categories and/or tags
+## Long Term ('At Some Point')
+- Regen faces
+- Multi-language support
+- User-facing docs on how different ratings are calculated
 
-## Long Term
+
+
+## Technical Roadmap
+- Break down playerdatatable into multiple components
+- Fix camelcase and snakecase inconsistencies
+- Fix new pipeline code check fails
+- Ability to define team in upgrade finder with second dataset
+- Test notifications and resolve UI issues (or remove the feature)
 - Increase test coverage
-- Review viability of supporting other languages
