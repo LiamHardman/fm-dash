@@ -689,6 +689,32 @@ export default {
             return false
           }
 
+          // Media handling filter
+          if (
+            currentFilters.value.mediaHandling &&
+            currentFilters.value.mediaHandling.length > 0 &&
+            player.media_handling
+          ) {
+            // Split media handling by comma and check if any match the selected filters
+            const playerMediaHandlings = player.media_handling.split(',').map((mh) => mh.trim())
+            const hasMatchingMediaHandling = currentFilters.value.mediaHandling.some((selectedMh) =>
+              playerMediaHandlings.includes(selectedMh)
+            )
+            if (!hasMatchingMediaHandling) {
+              return false
+            }
+          }
+
+          // Personality filter
+          if (
+            currentFilters.value.personality &&
+            currentFilters.value.personality.length > 0 &&
+            player.personality &&
+            !currentFilters.value.personality.includes(player.personality)
+          ) {
+            return false
+          }
+
           // Age range filter
           if (player.age !== undefined && player.age !== null) {
             const playerAge = player.age
