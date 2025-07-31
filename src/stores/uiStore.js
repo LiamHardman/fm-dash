@@ -17,6 +17,9 @@ export const useUiStore = defineStore('ui', () => {
   const showLogos = ref(true) // Default to showing logos
   const showAttributeMasks = ref(true) // Default to showing attribute masks
 
+  // Tutorial state
+  const showFirstTimeTutorial = ref(false) // Control tutorial modal visibility
+
   // Function to toggle dark mode
   function toggleDarkMode() {
     // Directly toggle the current state
@@ -191,6 +194,15 @@ export const useUiStore = defineStore('ui', () => {
     initAttributeMasksDisplay()
   }
 
+  // Tutorial functions
+  function showTutorial() {
+    showFirstTimeTutorial.value = true
+  }
+
+  function hideTutorial() {
+    showFirstTimeTutorial.value = false
+  }
+
   return {
     isDarkModeActive,
     toggleDarkMode,
@@ -213,6 +225,9 @@ export const useUiStore = defineStore('ui', () => {
     showAttributeMasks,
     toggleAttributeMasks,
     initAttributeMasksDisplay,
+    showFirstTimeTutorial,
+    showTutorial,
+    hideTutorial,
     initSettings,
   }
 })

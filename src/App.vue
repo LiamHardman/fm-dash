@@ -99,12 +99,16 @@
 
         <!-- Settings Modal -->
         <SettingsModal v-model="showSettingsModal" />
+        
+        <!-- First Time Tutorial Modal -->
+        <FirstTimeTutorialModal v-model="showTutorialModal" />
     </q-layout>
 </template>
 
 <script>
 import { useQuasar } from 'quasar'
 import { computed, defineComponent, onMounted, ref } from 'vue'
+import FirstTimeTutorialModal from './components/FirstTimeTutorialModal.vue'
 import SettingsModal from './components/SettingsModal.vue'
 import UniversalSearch from './components/UniversalSearch.vue'
 import { useAnalytics } from './composables/useAnalytics'
@@ -117,6 +121,7 @@ export default defineComponent({
   components: {
     UniversalSearch,
     SettingsModal,
+    FirstTimeTutorialModal,
   },
   setup() {
     const $q = useQuasar()
@@ -129,6 +134,18 @@ export default defineComponent({
 
     // Settings modal state
     const showSettingsModal = ref(false)
+
+    // Tutorial modal state
+    const showTutorialModal = computed({
+      get: () => uiStore.showFirstTimeTutorial,
+      set: (value) => {
+        if (value) {
+          uiStore.showTutorial()
+        } else {
+          uiStore.hideTutorial()
+        }
+      },
+    })
 
     onMounted(() => {
       // Expose Quasar instance globally for the UI store
@@ -146,6 +163,7 @@ export default defineComponent({
       currentDatasetId,
       wishlistCount,
       showSettingsModal,
+      showTutorialModal,
     }
   },
 })

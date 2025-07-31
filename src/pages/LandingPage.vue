@@ -113,11 +113,13 @@
 <script>
 import { defineComponent } from 'vue'
 import { useRouter } from 'vue-router'
+import { useUiStore } from '@/stores/uiStore'
 
 export default defineComponent({
   name: 'LandingPage',
   setup() {
     const router = useRouter()
+    const uiStore = useUiStore()
 
     const navigateToUpload = () => {
       router.push('/upload')
@@ -127,9 +129,14 @@ export default defineComponent({
       router.push('/dataset/1e0c8dcd-f6b8-4874-a72e-a2a3bdf20038')
     }
 
+    const showTutorial = () => {
+      uiStore.showTutorial()
+    }
+
     return {
       navigateToUpload,
       navigateToDemo,
+      showTutorial,
     }
   },
 })
@@ -241,6 +248,20 @@ export default defineComponent({
         }
         
         .secondary-action-btn {
+            padding: 0.8rem 1.5rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            border-radius: 12px;
+            border-width: 2px;
+            transition: all 0.3s ease;
+            
+            &:hover {
+                transform: translateY(-2px);
+                background: rgba(255, 255, 255, 0.1);
+            }
+        }
+        
+        .tutorial-action-btn {
             padding: 0.8rem 1.5rem;
             font-weight: 600;
             letter-spacing: 0.5px;

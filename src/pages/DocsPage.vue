@@ -36,6 +36,15 @@
                             @click="setActiveSection('api-reference')"
                             class="hero-secondary"
                         />
+                        <q-btn
+                            outline
+                            size="lg"
+                            color="secondary"
+                            label="First Time Guide"
+                            icon="school"
+                            @click="showTutorial"
+                            class="hero-tutorial"
+                        />
                     </div>
                 </div>
                 <div class="hero-visual">
@@ -784,12 +793,14 @@
 
 <script>
 import { defineComponent, ref } from 'vue'
+import { useUiStore } from '@/stores/uiStore'
 
 export default defineComponent({
   name: 'DocsPage',
   setup() {
     const activeSection = ref('getting-started')
     const mobileSidebarOpen = ref(false)
+    const uiStore = useUiStore()
 
     const docSections = [
       {
@@ -1116,6 +1127,10 @@ volumes:
       activeSection.value = sectionId
     }
 
+    const showTutorial = () => {
+      uiStore.showTutorial()
+    }
+
     return {
       activeSection,
       mobileSidebarOpen,
@@ -1131,6 +1146,7 @@ volumes:
       exportSteps,
       copyToClipboard,
       setActiveSection,
+      showTutorial,
     }
   },
 })

@@ -314,19 +314,28 @@
 
                     <q-expansion-item
                         expand-separator
-                        icon="notifications"
-                        label="Notifications"
-                        caption="Manage notification preferences and alerts"
+                        icon="school"
+                        label="Help & Tutorial"
+                        caption="Get help and view the first time setup guide"
                         header-class="settings-expansion-header"
                         class="settings-expansion"
-                        disable
                     >
                         <q-card flat class="expansion-content">
                             <q-card-section>
-                                <div class="coming-soon">
-                                    <q-icon name="construction" size="2rem" class="q-mb-md" />
-                                    <p>Notification settings coming soon...</p>
-                                    <p class="text-caption">Configure notification preferences and alerts</p>
+                                <div class="help-section">
+                                    <div class="help-description">
+                                        <p>Need help getting started? View our comprehensive first time setup guide.</p>
+                                    </div>
+                                    <div class="help-actions">
+                                        <q-btn
+                                            unelevated
+                                            color="primary"
+                                            icon="school"
+                                            label="Open First Time Guide"
+                                            @click="showTutorial"
+                                            class="tutorial-btn"
+                                        />
+                                    </div>
                                 </div>
                             </q-card-section>
                         </q-card>
@@ -472,6 +481,11 @@ export default defineComponent({
       emit('update:modelValue', false)
     }
 
+    const showTutorial = () => {
+      closeModal()
+      uiStore.showTutorial()
+    }
+
     return {
       showDialog,
       closeModal,
@@ -482,6 +496,7 @@ export default defineComponent({
       showAttributeMasks,
       isLoading,
       activeTab,
+      showTutorial,
     }
   },
 })
@@ -826,6 +841,33 @@ export default defineComponent({
         
         .body--dark & {
             color: rgba(255, 255, 255, 0.5);
+        }
+    }
+}
+
+.help-section {
+    padding: 1rem 0;
+    
+    .help-description {
+        margin-bottom: 1.5rem;
+        
+        p {
+            color: #666;
+            line-height: 1.6;
+            margin: 0;
+            
+            .body--dark & {
+                color: rgba(255, 255, 255, 0.7);
+            }
+        }
+    }
+    
+    .help-actions {
+        text-align: center;
+        
+        .tutorial-btn {
+            padding: 0.8rem 1.5rem;
+            font-weight: 600;
         }
     }
 }

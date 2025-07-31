@@ -18,6 +18,7 @@
                                 label="First Time?"
                                 icon="help_outline"
                                 class="help-btn"
+                                @click="showTutorial"
                             />
                         </div>
                         
@@ -445,6 +446,10 @@ export default {
       return Number(value).toLocaleString()
     }
 
+    const showTutorial = () => {
+      uiStore.showTutorial()
+    }
+
     const maxPlayersSupported = computed(() => {
       // Rule: 15MB = 10,000 players
       // So players = (current max file size in MB / 15MB) * 10,000
@@ -472,6 +477,7 @@ export default {
       formatNumber,
       maxPlayersSupported,
       datasetRetentionDays,
+      showTutorial,
     }
   },
 }
