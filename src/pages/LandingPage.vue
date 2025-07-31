@@ -126,7 +126,7 @@ export default defineComponent({
     }
 
     const navigateToDemo = () => {
-      router.push('/dataset/1e0c8dcd-f6b8-4874-a72e-a2a3bdf20038')
+      router.push('/dataset/45e277af-1cf1-4688-9874-c59e1f3026ae')
     }
 
     const showTutorial = () => {
