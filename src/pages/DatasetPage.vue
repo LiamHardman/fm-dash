@@ -362,7 +362,7 @@ export default {
         min: 0,
         max: 100000000,
       },
-      maxSalary: null,
+      maxSalary: 1000000, // Default to 1M, will be updated by watch function
       minOverall: 0,
       minPAC: 0,
       minSHO: 0,
@@ -413,6 +413,15 @@ export default {
     })
     const salaryRangeForFilters = computed(() => {
       const range = playerStore.salaryRange || { min: 0, max: 1000000 }
+      // Debug logging
+      if (range.max === 10000) {
+        console.log(
+          'Salary range debug:',
+          range,
+          'playerStore.salaryRange:',
+          playerStore.salaryRange
+        )
+      }
       return range
     })
 
@@ -728,20 +737,14 @@ export default {
           }
 
           // Salary range filter
-          if (
-            player.wage &&
-            player.wage !== '-' &&
-            player.wage !== undefined &&
-            player.wage !== null
-          ) {
-            // Parse wage string like "£7,500 p/w" to get numeric value
-            const wageString = player.wage
-            const numericValue = Number.parseFloat(
-              wageString.replace(/[£,]/g, '').replace(' p/w', '')
-            )
+          if (player.wageAmount !== undefined && player.wageAmount !== null) {
+            // Use the numeric wage amount directly
+            const playerSalary =
+              typeof player.wageAmount === 'string'
+                ? Number.parseInt(player.wageAmount, 10) || 0
+                : player.wageAmount || 0
 
-            if (!Number.isNaN(numericValue)) {
-              const playerSalary = numericValue
+            if (playerSalary > 0) {
               const filterMinSalary = currentFilters.value.minSalary || 0
               const filterMaxSalary = currentFilters.value.maxSalary || 0
 
@@ -1132,9 +1135,10 @@ export default {
           newRange &&
           (currentMaxSalary === 1000000 ||
             currentMaxSalary === null ||
-            currentMaxSalary === storeMaxSalary)
+            currentMaxSalary === storeMaxSalary ||
+            currentMaxSalary === 0)
         ) {
-          if (newRange.max !== undefined) {
+          if (newRange.max !== undefined && newRange.max > 0) {
             currentFilters.value.maxSalary = newRange.max
           } else {
             currentFilters.value.maxSalary = 1000000

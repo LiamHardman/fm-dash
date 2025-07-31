@@ -141,14 +141,34 @@ export const usePlayerStore = defineStore('player', () => {
     let hasValidValue = false
 
     for (const player of allPlayers.value) {
-      if (typeof player.wageAmount === 'number') {
+      // Handle both number and string wage amounts
+      let wageAmount = player.wageAmount
+      if (typeof wageAmount === 'string') {
+        wageAmount = Number.parseInt(wageAmount, 10)
+      }
+
+      if (typeof wageAmount === 'number' && !Number.isNaN(wageAmount) && wageAmount > 0) {
         hasValidValue = true
-        if (player.wageAmount < min) min = player.wageAmount
-        if (player.wageAmount > max) max = player.wageAmount
+        if (wageAmount < min) min = wageAmount
+        if (wageAmount > max) max = wageAmount
       }
     }
 
+    // Debug: Log some sample wage amounts
+    if (allPlayers.value.length > 0) {
+      const samplePlayers = allPlayers.value.slice(0, 5)
+      console.log(
+        'Sample wage amounts:',
+        samplePlayers.map((p) => ({
+          name: p.name,
+          wageAmount: p.wageAmount,
+          type: typeof p.wageAmount,
+        }))
+      )
+    }
+
     if (!hasValidValue) {
+      console.log('No valid wage amounts found in player data')
       return { min: 0, max: 1000000 }
     }
 
@@ -156,7 +176,23 @@ export const usePlayerStore = defineStore('player', () => {
 
     if (min >= max) {
       // Handles cases where all values are same, or only one value
-      max = min + 10000 // Ensure max is greater for range slider
+      // Use a more reasonable range based on the salary value
+      if (min <= 10000) {
+        max = min + 5000 // For low salaries, add 5K
+      } else if (min <= 100000) {
+        max = min + 25000 // For medium salaries, add 25K
+      } else if (min <= 1000000) {
+        max = min + 100000 // For high salaries, add 100K
+      } else {
+        max = min + 500000 // For very high salaries, add 500K
+      }
+    }
+
+    // Debug logging to help identify salary range issues
+    if (min === max && min > 0) {
+      console.log(
+        `Salary range computation: All players have same salary ${min}, setting max to ${max}`
+      )
     }
 
     return { min, max }
@@ -429,6 +465,12 @@ export const usePlayerStore = defineStore('player', () => {
         ...p,
         // Ensure age is a number
         age: Number.parseInt(p.age, 10) || 0,
+
+        // Ensure wage amount is a number
+        wageAmount:
+          typeof p.wageAmount === 'string'
+            ? Number.parseInt(p.wageAmount, 10) || 0
+            : p.wageAmount || 0,
 
         // Ensure arrays are properly initialized
         shortPositions: Array.isArray(p.shortPositions) ? p.shortPositions : [],

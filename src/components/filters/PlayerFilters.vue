@@ -1496,8 +1496,12 @@ export default defineComponent({
       () => props.salaryRange,
       (newSalaryRange) => {
         if (newSalaryRange?.max && typeof newSalaryRange.max === 'number') {
-          // Only update if we still have the default value
-          if (filters.value.maxSalary === SALARY_SLIDER_MAX) {
+          // Update if we still have the default value or if the new range is different
+          if (
+            filters.value.maxSalary === SALARY_SLIDER_MAX ||
+            filters.value.maxSalary === null ||
+            filters.value.maxSalary === 1000000
+          ) {
             filters.value.maxSalary = newSalaryRange.max
           }
         }
