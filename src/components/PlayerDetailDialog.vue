@@ -1265,14 +1265,7 @@ export default defineComponent({
       const quasarDark = qInstance.dark.isActive
       const bodyDark = document.body.classList.contains('body--dark')
       const newState = quasarDark || bodyDark
-      console.log(
-        'Updating dark mode state:',
-        newState,
-        'quasarDark:',
-        quasarDark,
-        'bodyDark:',
-        bodyDark
-      )
+
       darkModeState.value = newState
     }
 
@@ -1285,14 +1278,12 @@ export default defineComponent({
     watch(
       () => qInstance.dark.isActive,
       () => {
-        console.log('Quasar dark mode changed:', qInstance.dark.isActive)
         updateDarkModeState()
       }
     )
 
     // Also watch for body class changes
     const observer = new MutationObserver(() => {
-      console.log('Body classes changed:', document.body.className)
       updateDarkModeState()
     })
 

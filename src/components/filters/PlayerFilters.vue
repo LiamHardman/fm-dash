@@ -1515,7 +1515,11 @@ export default defineComponent({
       const clampedMax = Math.min(filters.value.transferValueRangeLocal.max, currentSliderMax.value)
       emit('filter-changed', {
         ...filters.value,
-        transferValueRangeLocal: { min: clampedMin, max: clampedMax },
+        transferValueRangeLocal: {
+          min: clampedMin,
+          max: clampedMax,
+          userSet: filters.value.transferValueRangeLocal.userSet || false,
+        },
       })
     }
     const debouncedApplyFilters = debounce(applyFilters, 400)
@@ -1739,6 +1743,8 @@ export default defineComponent({
         const numValue = Number.parseFloat(value) || 0
         const newValue = numValue * 1000000
         filters.value.transferValueRangeLocal.min = newValue
+        // Set userSet flag when user changes the value
+        filters.value.transferValueRangeLocal.userSet = true
         applyFilters()
       },
     })
@@ -1752,6 +1758,8 @@ export default defineComponent({
         const numValue = Number.parseFloat(value) || 0
         const newValue = numValue * 1000000
         filters.value.transferValueRangeLocal.max = newValue
+        // Set userSet flag when user changes the value
+        filters.value.transferValueRangeLocal.userSet = true
         applyFilters()
       },
     })

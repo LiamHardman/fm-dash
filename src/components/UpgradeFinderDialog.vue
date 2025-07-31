@@ -1345,7 +1345,6 @@ export default {
         props.datasetId &&
         (!props.players || props.players.length === 0 || !hasCompletePlayerData(props.players))
       ) {
-        console.log('UpgradeFinderDialog: Fetching complete player data...')
         try {
           await playerStore.fetchPlayersByDatasetId(props.datasetId)
         } catch (error) {
@@ -1617,7 +1616,7 @@ export default {
 
       try {
         // Fetch detailed team data to ensure we have role-specific overalls
-        console.log('UpgradeFinderDialog: Fetching detailed team data for:', newTeamName)
+
         const teamData = await fetchTeamData(props.datasetId, 'team', newTeamName)
 
         if (teamData.data?.players && teamData.data.players.length > 0) {
@@ -2458,8 +2457,6 @@ export default {
           minPOS: minPOSFilter.value,
         }
 
-        console.log('UpgradeFinderDialog: Sending request to API:', request)
-
         const response = await findPlayerUpgrades(request)
 
         if (response.data?.players) {
@@ -2497,7 +2494,6 @@ export default {
           'UpgradeFinderDialog - Original player roleSpecificOveralls:',
           player.roleSpecificOveralls
         )
-        console.log('UpgradeFinderDialog - Original player name:', player.name)
 
         const displayOverall = getPlayerOverallForRoleOrPosition(
           player,
@@ -2529,7 +2525,6 @@ export default {
           'UpgradeFinderDialog - Processed player roleSpecificOveralls:',
           processedPlayer.roleSpecificOveralls
         )
-        console.log('UpgradeFinderDialog - Processed player name:', processedPlayer.name)
 
         return processedPlayer
       })

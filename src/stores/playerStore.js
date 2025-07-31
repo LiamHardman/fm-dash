@@ -154,21 +154,7 @@ export const usePlayerStore = defineStore('player', () => {
       }
     }
 
-    // Debug: Log some sample wage amounts
-    if (allPlayers.value.length > 0) {
-      const samplePlayers = allPlayers.value.slice(0, 5)
-      console.log(
-        'Sample wage amounts:',
-        samplePlayers.map((p) => ({
-          name: p.name,
-          wageAmount: p.wageAmount,
-          type: typeof p.wageAmount,
-        }))
-      )
-    }
-
     if (!hasValidValue) {
-      console.log('No valid wage amounts found in player data')
       return { min: 0, max: 1000000 }
     }
 
@@ -186,13 +172,6 @@ export const usePlayerStore = defineStore('player', () => {
       } else {
         max = min + 500000 // For very high salaries, add 500K
       }
-    }
-
-    // Debug logging to help identify salary range issues
-    if (min === max && min > 0) {
-      console.log(
-        `Salary range computation: All players have same salary ${min}, setting max to ${max}`
-      )
     }
 
     return { min, max }

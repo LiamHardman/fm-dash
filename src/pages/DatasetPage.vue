@@ -730,9 +730,14 @@ export default {
           // Transfer value range filter
           const filterMin = currentFilters.value.transferValueRangeLocal?.min || 0
           const filterMax = currentFilters.value.transferValueRangeLocal?.max || 0
+          const isUserSet = currentFilters.value.transferValueRangeLocal?.userSet || false
 
-          // If any transfer value filter is set, we need to check the player's transfer value
-          if (filterMin > 0 || filterMax > 0) {
+          // Only apply transfer value filtering if user has explicitly set a filter
+          // and the maximum value is less than the default maximum (indicating user intent)
+          const defaultMax = 100000000 // 100M default
+          const hasUserSetMaxFilter = isUserSet && filterMax > 0 && filterMax < defaultMax
+
+          if (hasUserSetMaxFilter) {
             // If player has no transfer value data or is "Not for Sale", filter them out
             if (
               !player.transfer_value ||
