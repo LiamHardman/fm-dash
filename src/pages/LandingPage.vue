@@ -34,6 +34,17 @@
                             <q-icon name="play_arrow" class="q-mr-xs" />
                             View Demo
                         </q-btn>
+                        <q-btn
+                            outline
+                            color="white"
+                            size="md"
+                            @click="openGitHub"
+                            class="github-action-btn"
+                            no-caps
+                        >
+                            <q-icon name="code" class="q-mr-xs" />
+                            View on GitHub
+                        </q-btn>
                     </div>
                 </div>
             </div>
@@ -133,10 +144,15 @@ export default defineComponent({
       uiStore.showTutorial()
     }
 
+    const openGitHub = () => {
+      window.open('https://github.com/LiamHardman/fm-dash', '_blank')
+    }
+
     return {
       navigateToUpload,
       navigateToDemo,
       showTutorial,
+      openGitHub,
     }
   },
 })
@@ -262,6 +278,20 @@ export default defineComponent({
         }
         
         .tutorial-action-btn {
+            padding: 0.8rem 1.5rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            border-radius: 12px;
+            border-width: 2px;
+            transition: all 0.3s ease;
+            
+            &:hover {
+                transform: translateY(-2px);
+                background: rgba(255, 255, 255, 0.1);
+            }
+        }
+        
+        .github-action-btn {
             padding: 0.8rem 1.5rem;
             font-weight: 600;
             letter-spacing: 0.5px;
