@@ -37,7 +37,6 @@ type Player struct {
 	DRI                     int                           `json:"DRI"`
 	DEF                     int                           `json:"DEF"`
 	PHY                     int                           `json:"PHY"`
-	TotalStats              int                           `json:"TotalStats"`
 	GK                      int                           `json:"GK,omitempty"`
 	DIV                     int                           `json:"DIV,omitempty"`
 	HAN                     int                           `json:"HAN,omitempty"`
@@ -52,7 +51,6 @@ type Player struct {
 	Dri                  int                `json:"dri,omitempty"`
 	Def                  int                `json:"def,omitempty"`
 	Phy                  int                `json:"phy,omitempty"`
-	TotalStatsLower      int                `json:"totalStats,omitempty"`
 	Gk                   int                `json:"gk,omitempty"`
 	Div                  int                `json:"div,omitempty"`
 	Han                  int                `json:"han,omitempty"`
@@ -62,6 +60,10 @@ type Player struct {
 	Pos                  int                `json:"pos,omitempty"`
 	Overall              int                `json:"Overall"`
 	OverallLower         int                `json:"overall"`
+	TotalStats           int                `json:"TotalStats"`
+	TotalStatsLower      int                `json:"totalStats"`
+	MBR                  int                `json:"MBR"`
+	Mbr                  int                `json:"mbr"`
 	BestRoleOverall      string             `json:"bestRoleOverall"`
 	RoleSpecificOveralls []RoleOverallScore `json:"roleSpecificOveralls"`
 	TransferValueAmount  int64              `json:"transferValueAmount"`

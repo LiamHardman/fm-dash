@@ -225,6 +225,10 @@ func (p *Player) ToProto(ctx context.Context) (*proto.Player, error) {
 		// Numeric values for sorting
 		TransferValueAmount: p.TransferValueAmount,
 		WageAmount:          p.WageAmount,
+
+		// Moneyball Rating and Total Stats
+		TotalStats: safeIntToInt32(p.TotalStats),
+		Mbr:        safeIntToInt32(p.MBR),
 	}
 
 	duration := time.Since(start)
@@ -316,6 +320,8 @@ func PlayerFromProto(ctx context.Context, protoPlayer *proto.Player) (*Player, e
 		BestRoleOverall:     protoPlayer.GetBestRoleOverall(),
 		TransferValueAmount: protoPlayer.GetTransferValueAmount(),
 		WageAmount:          protoPlayer.GetWageAmount(),
+		TotalStats:          int(protoPlayer.GetTotalStats()),
+		MBR:                 int(protoPlayer.GetMbr()),
 	}
 
 	duration := time.Since(start)

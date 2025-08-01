@@ -754,6 +754,16 @@ export default {
         style: fifaStatColumnStyle,
         headerStyle: fifaStatColumnStyle,
       },
+      MBR: {
+        name: 'MBR',
+        label: 'MBR',
+        field: 'mbr',
+        sortable: true,
+        align: 'center',
+        isFifaStat: true,
+        style: fifaStatColumnStyle,
+        headerStyle: fifaStatColumnStyle,
+      },
     }
 
     // Regular computed for columns (removed memoization to fix reactivity issues)
@@ -791,6 +801,7 @@ export default {
             allFifaStatDefinitions.DEF,
             allFifaStatDefinitions.PHY,
             allFifaStatDefinitions.TotalStats,
+            allFifaStatDefinitions.MBR,
           ]
 
       const trailingColumns = [
@@ -1289,6 +1300,8 @@ export default {
 
     // Memoized player value getter (called frequently during sorting and rendering)
     const getPlayerValue = (player, fieldKey, _columnName = null) => {
+
+
       // For regular view, map GK stats to standard FIFA stats if the player is a goalkeeper
       if (!props.isGoalkeeperView && player.position && player.position.includes('GK')) {
         const mappedStat = gkStatMapping[fieldKey]

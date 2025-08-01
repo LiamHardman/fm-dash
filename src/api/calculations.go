@@ -2,6 +2,8 @@ package main
 
 import (
 	"math"
+	"strconv"
+	"strings"
 )
 
 // Global variables for attribute weights
@@ -259,8 +261,14 @@ func CalculateOverallForRoleGoLinear(playerNumericAttributes, roleSpecificAttrWe
 	var weightedAttributeSum float64
 	var totalApplicableWeightsSum float64
 
+	// Create a local copy of the weights map to avoid concurrent access issues
+	localWeights := make(map[string]int, len(roleSpecificAttrWeights))
+	for k, v := range roleSpecificAttrWeights {
+		localWeights[k] = v
+	}
+
 	// Optimized loop: reduce math operations and casting
-	for attrKey, weightForAttribute := range roleSpecificAttrWeights {
+	for attrKey, weightForAttribute := range localWeights {
 		attributeValue, exists := playerNumericAttributes[attrKey]
 		if !exists || attributeValue <= 0 {
 			continue
@@ -308,8 +316,14 @@ func CalculateOverallForRoleGo(playerNumericAttributes, roleSpecificAttrWeights 
 	var weightedAttributeSum float64
 	var totalApplicableWeightsSum float64
 
+	// Create a local copy of the weights map to avoid concurrent access issues
+	localWeights := make(map[string]int, len(roleSpecificAttrWeights))
+	for k, v := range roleSpecificAttrWeights {
+		localWeights[k] = v
+	}
+
 	// Optimized loop: reduce math operations and casting
-	for attrKey, weightForAttribute := range roleSpecificAttrWeights {
+	for attrKey, weightForAttribute := range localWeights {
 		attributeValue, exists := playerNumericAttributes[attrKey]
 		if !exists || attributeValue <= 0 {
 			continue
@@ -411,4 +425,124 @@ func CalculateTotalStats(playerNumericAttributes map[string]int) int {
 	}
 
 	return total
+}
+
+// CalculateMoneyballRating calculates the Moneyball Rating (MBR) based on overall, age, mentality, and value score
+func CalculateMoneyballRating(player Player, valueScore float64) int {
+	// Base rating is the player's overall
+	baseRating := player.Overall
+
+	// Age modifiers
+	ageInt, err := strconv.Atoi(player.Age)
+	if err != nil {
+		ageInt = 26 // Default age if parsing fails
+	}
+	ageModifier := getAgeModifier(ageInt)
+
+	// Mentality modifier based on personality
+	mentalityModifier := getMentalityModifier(player.Personality)
+
+	// Value score contribution (divided by 3)
+	valueScoreContribution := int(valueScore / 3)
+
+	// Final calculation
+	moneyballRating := baseRating + ageModifier + mentalityModifier + valueScoreContribution
+
+	// Debug logging for players with 'Bell' in their name
+	if strings.Contains(strings.ToLower(player.Name), "bell") {
+		LogDebug("MBR Calculation for %s (UID: %d): Base=%d, Age=%d (modifier=%d), Personality='%s' (modifier=%d), ValueScore=%.2f (contribution=%d), Final=%d",
+			player.Name, player.UID, baseRating, ageInt, ageModifier, player.Personality, mentalityModifier, valueScore, valueScoreContribution, moneyballRating)
+	}
+
+	return moneyballRating
+}
+
+// getAgeModifier returns the age modifier for Moneyball Rating calculation
+func getAgeModifier(age int) int {
+	switch {
+	case age >= 16 && age <= 18:
+		return 20
+	case age == 19:
+		return 17
+	case age == 20:
+		return 14
+	case age == 21:
+		return 11
+	case age == 22:
+		return 8
+	case age == 23:
+		return 5
+	case age == 24:
+		return 4
+	case age == 25:
+		return 2
+	case age == 26:
+		return 0
+	case age == 27:
+		return -1
+	case age == 28:
+		return -3
+	case age == 29:
+		return -6
+	case age == 30:
+		return -10
+	case age == 31:
+		return -15
+	default:
+		// For ages outside the specified range, apply a gradual decline
+		if age > 31 {
+			return -15 - (age-31)*2 // Additional -2 per year after 31
+		}
+		return 0 // Default for ages below 16
+	}
+}
+
+// getMentalityModifier returns the mentality modifier based on personality
+func getMentalityModifier(personality string) int {
+	// Elite personalities
+	switch personality {
+	case "Model Citizen":
+		return 10
+	case "Model Professional":
+		return 10
+	}
+
+	// Very Good personalities
+	switch personality {
+	case "Perfectionist", "Resolute", "Professional", "Fairly Professional",
+		"Iron Willed", "Resillient", "Spirited", "Driven", "Determined",
+		"Fairly Determined", "Charismatic Leader", "Born Leader", "Leader",
+		"Very Ambitious", "Ambitious", "Fairly Ambitious":
+		return 7
+	}
+
+	// Good personalities
+	switch personality {
+	case "Balanced", "Light-Hearted", "Jovial", "Very Loyal", "Loyal",
+		"Fairly Loyal", "Honest", "Sporting", "Fairly Sporting":
+		return 3
+	}
+
+	// Okay personalities (neutral)
+	switch personality {
+	case "Balanced", "Light-Hearted", "Jovial", "Very Loyal", "Loyal",
+		"Fairly Loyal", "Honest", "Sporting", "Fairly Sporting":
+		return 0
+	}
+
+	// Poor personalities
+	switch personality {
+	case "Fickle", "Mercenary", "Unambitious", "Unsporting", "Realist":
+		return -5
+	}
+
+	// Very Poor personalities
+	switch personality {
+	case "Slack", "Casual", "Temperamental", "Spineless", "Low Self-Belief",
+		"Easily Discouraged", "Low Determination":
+		return -15
+	}
+
+	// Default for unknown personalities
+	return 0
 }

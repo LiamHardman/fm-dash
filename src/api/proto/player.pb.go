@@ -21,7 +21,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// RoleOverallScore stores the calculated overall score for a player in a specific role.
+// RoleOverallScore stores the calculated overall score for a player in a specific role
 type RoleOverallScore struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	RoleName      string                 `protobuf:"bytes,1,opt,name=role_name,json=roleName,proto3" json:"role_name,omitempty"`
@@ -117,10 +117,11 @@ type Player struct {
 	// Numeric values for sorting
 	TransferValueAmount int64 `protobuf:"varint,34,opt,name=transfer_value_amount,json=transferValueAmount,proto3" json:"transfer_value_amount,omitempty"`
 	WageAmount          int64 `protobuf:"varint,35,opt,name=wage_amount,json=wageAmount,proto3" json:"wage_amount,omitempty"`
-	// Role-specific overall scores
-	RoleSpecificOveralls []*RoleOverallScore `protobuf:"bytes,36,rep,name=role_specific_overalls,json=roleSpecificOveralls,proto3" json:"role_specific_overalls,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// Moneyball Rating and Total Stats
+	TotalStats    int32 `protobuf:"varint,36,opt,name=total_stats,json=totalStats,proto3" json:"total_stats,omitempty"`
+	Mbr           int32 `protobuf:"varint,37,opt,name=mbr,proto3" json:"mbr,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Player) Reset() {
@@ -398,11 +399,18 @@ func (x *Player) GetWageAmount() int64 {
 	return 0
 }
 
-func (x *Player) GetRoleSpecificOveralls() []*RoleOverallScore {
+func (x *Player) GetTotalStats() int32 {
 	if x != nil {
-		return x.RoleSpecificOveralls
+		return x.TotalStats
 	}
-	return nil
+	return 0
+}
+
+func (x *Player) GetMbr() int32 {
+	if x != nil {
+		return x.Mbr
+	}
+	return 0
 }
 
 // DatasetData represents a dataset containing player information
@@ -473,7 +481,7 @@ const file_proto_player_proto_rawDesc = "" +
 	"\x12proto/player.proto\x12\x06player\"E\n" +
 	"\x10RoleOverallScore\x12\x1b\n" +
 	"\trole_name\x18\x01 \x01(\tR\broleName\x12\x14\n" +
-	"\x05score\x18\x02 \x01(\x05R\x05score\"\xae\t\n" +
+	"\x05score\x18\x02 \x01(\x05R\x05score\"\x91\t\n" +
 	"\x06Player\x12\x10\n" +
 	"\x03uid\x18\x01 \x01(\x03R\x03uid\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1a\n" +
@@ -511,8 +519,10 @@ const file_proto_player_proto_rawDesc = "" +
 	"\x11best_role_overall\x18! \x01(\tR\x0fbestRoleOverall\x122\n" +
 	"\x15transfer_value_amount\x18\" \x01(\x03R\x13transferValueAmount\x12\x1f\n" +
 	"\vwage_amount\x18# \x01(\x03R\n" +
-	"wageAmount\x12N\n" +
-	"\x16role_specific_overalls\x18$ \x03(\v2\x18.player.RoleOverallScoreR\x14roleSpecificOveralls\x1aF\n" +
+	"wageAmount\x12\x1f\n" +
+	"\vtotal_stats\x18$ \x01(\x05R\n" +
+	"totalStats\x12\x10\n" +
+	"\x03mbr\x18% \x01(\x05R\x03mbr\x1aF\n" +
 	"\x18EssentialAttributesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x7f\n" +
@@ -543,13 +553,12 @@ var file_proto_player_proto_goTypes = []any{
 }
 var file_proto_player_proto_depIdxs = []int32{
 	3, // 0: player.Player.essential_attributes:type_name -> player.Player.EssentialAttributesEntry
-	0, // 1: player.Player.role_specific_overalls:type_name -> player.RoleOverallScore
-	1, // 2: player.DatasetData.players:type_name -> player.Player
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	1, // 1: player.DatasetData.players:type_name -> player.Player
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_proto_player_proto_init() }

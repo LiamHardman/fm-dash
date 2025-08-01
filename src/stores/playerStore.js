@@ -437,6 +437,8 @@ export const usePlayerStore = defineStore('player', () => {
       return []
     }
 
+
+
     const startTime = performance.now()
     const processed = playersData.map((p) => {
       // Ensure all required fields are present and properly formatted
@@ -461,12 +463,14 @@ export const usePlayerStore = defineStore('player', () => {
         roleSpecificOveralls: Array.isArray(p.roleSpecificOveralls) ? p.roleSpecificOveralls : [],
 
         // Ensure FIFA-style stats are numbers
-        PAC: Number.parseInt(p.PAC, 10) || 0,
-        SHO: Number.parseInt(p.SHO, 10) || 0,
-        PAS: Number.parseInt(p.PAS, 10) || 0,
-        DRI: Number.parseInt(p.DRI, 10) || 0,
-        DEF: Number.parseInt(p.DEF, 10) || 0,
-        PHY: Number.parseInt(p.PHY, 10) || 0,
+        PAC: Number(p.PAC) || 0,
+        SHO: Number(p.SHO) || 0,
+        PAS: Number(p.PAS) || 0,
+        DRI: Number(p.DRI) || 0,
+        DEF: Number(p.DEF) || 0,
+        PHY: Number(p.PHY) || 0,
+        TotalStats: Number(p.TotalStats) || Number(p.total_stats) || 0,
+        MBR: Number(p.MBR) || 0,
 
         // Ensure goalkeeper stats are numbers
         GK: Number.parseInt(p.GK, 10) || 0,
@@ -476,6 +480,16 @@ export const usePlayerStore = defineStore('player', () => {
         KIC: Number.parseInt(p.KIC, 10) || 0,
         SPD: Number.parseInt(p.SPD, 10) || 0,
         POS: Number.parseInt(p.POS, 10) || 0,
+
+        // Ensure lowercase FIFA stats for frontend compatibility
+        pac: Number(p.pac) || Number(p.PAC) || 0,
+        sho: Number(p.sho) || Number(p.SHO) || 0,
+        pas: Number(p.pas) || Number(p.PAS) || 0,
+        dri: Number(p.dri) || Number(p.DRI) || 0,
+        def: Number(p.def) || Number(p.DEF) || 0,
+        phy: Number(p.phy) || Number(p.PHY) || 0,
+        totalStats: Number(p.totalStats) || Number(p.TotalStats) || Number(p.total_stats) || 0,
+        mbr: Number(p.mbr) || Number(p.MBR) || 0,
 
         // Ensure overall is a number (handle both field names)
         Overall: Number.parseInt(p.Overall || p.overall, 10) || 0,
@@ -509,6 +523,25 @@ export const usePlayerStore = defineStore('player', () => {
     allAvailableRoles.value = []
     sessionStorage.removeItem('currentDatasetId')
     sessionStorage.removeItem('detectedCurrencySymbol')
+    
+    // Clear all cached datasets to force fresh data fetch
+    const keysToRemove = []
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i)
+      if (key && key.startsWith('dataset_')) {
+        keysToRemove.push(key)
+      }
+    }
+    keysToRemove.forEach(key => sessionStorage.removeItem(key))
+    console.log('Cleared all cached datasets')
+  }
+
+  // TEMPORARY: Force clear cache and reload data
+  function forceClearCacheAndReload() {
+    console.log('Force clearing all cache...')
+    resetState()
+    // Reload the page to force fresh data fetch
+    window.location.reload()
   }
 
   async function loadFromSessionStorage() {
@@ -746,5 +779,6 @@ export const usePlayerStore = defineStore('player', () => {
     setCurrentDatasetId,
     AGE_SLIDER_MIN_DEFAULT,
     AGE_SLIDER_MAX_DEFAULT,
+    forceClearCacheAndReload,
   }
 })

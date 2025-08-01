@@ -473,6 +473,7 @@ func EnhancePlayerWithCalculations(player *Player) {
 	player.Def = player.DEF
 	player.Phy = player.PHY
 	player.TotalStatsLower = player.TotalStats
+
 	player.Gk = player.GK
 	player.Div = player.DIV
 	player.Han = player.HAN
@@ -652,6 +653,11 @@ func EnhancePlayerWithCalculations(player *Player) {
 	player.Overall = meanRoleBasedOverall
 	// Set lowercase Overall for frontend compatibility (after Overall is calculated)
 	player.OverallLower = player.Overall
+
+	// Calculate Moneyball Rating (MBR) - AFTER Overall is calculated
+	valueScore := getExpectedValuePerRating(float64(player.Overall))
+	player.MBR = CalculateMoneyballRating(*player, valueScore)
+	player.Mbr = player.MBR // Ensure Mbr is set to the calculated MBR value
 
 	// Note: We changed from using the mean of all role-specific overall scores
 	// to using the mean of the top 7 role-specific overall scores

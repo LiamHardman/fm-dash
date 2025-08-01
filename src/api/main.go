@@ -303,6 +303,9 @@ func main() {
 	// API endpoint for memory optimization reports
 	mux.Handle("/api/memory-optimization", wrapHandler(http.HandlerFunc(GetMemoryOptimizationHandler()), "memory-optimization"))
 
+	// Debug endpoint for checking JSON serialization
+	mux.Handle("/api/debug/player", wrapHandler(http.HandlerFunc(debugPlayerDataHandler), "debug-player"))
+
 	// API endpoint for processing status checks
 
 	// API endpoint for detailed player stats

@@ -526,7 +526,7 @@ export default {
                 const mainPos = pos.split('(')[0].trim()
                 const sideInfo = pos.includes('(') ? pos.split('(')[1].split(')')[0] : ''
 
-                console.log('Parsing position:', { pos, mainPos, sideInfo })
+
 
                 // Handle different position formats
                 if (mainPos.includes('GK') || mainPos.includes('Goalkeeper')) {
@@ -620,18 +620,7 @@ export default {
 
             const parsedPlayerPositions = parsePositionString(playerPosition)
 
-            console.log('Position filter debug:', {
-              playerName: player.name,
-              selectedPositions: currentFilters.value.position,
-              playerPositions: playerPositions,
-              playerPosition: playerPosition,
-              playerParsedPositions: playerParsedPositions,
-              parsedPlayerPositions: parsedPlayerPositions,
-              hasShortPositions: !!player.short_positions,
-              hasShortPositionsAlt: !!player.shortPositions,
-              hasPosition: !!player.position,
-              hasParsedPositions: !!player.parsedPositions,
-            })
+
 
             // Check if any of the selected positions match any of the player's position fields
             const hasMatchingPosition = currentFilters.value.position.some((selectedPos) => {
@@ -647,7 +636,6 @@ export default {
             })
 
             if (!hasMatchingPosition) {
-              console.log(`Player ${player.name} filtered out - position mismatch`)
               return false
             }
           }

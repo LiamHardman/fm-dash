@@ -4,6 +4,12 @@ package player;
 
 option go_package = "api/proto";
 
+// RoleOverallScore stores the calculated overall score for a player in a specific role
+message RoleOverallScore {
+  string role_name = 1;
+  int32 score = 2;
+}
+
 // Player holds essential information for frontend display and sorting
 message Player {
   int64 uid = 1;
@@ -51,6 +57,10 @@ message Player {
   // Numeric values for sorting
   int64 transfer_value_amount = 34;
   int64 wage_amount = 35;
+  
+  // Moneyball Rating and Total Stats
+  int32 total_stats = 36;
+  int32 mbr = 37;
 }
 
 // DatasetData represents a dataset containing player information

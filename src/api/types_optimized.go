@@ -25,6 +25,7 @@ type OptimizedPlayer struct {
 	DEF        int16 `json:"def"`
 	PHY        int16 `json:"phy"`
 	TotalStats int16 `json:"totalStats"`
+	MBR        int16 `json:"mbr"`
 
 	// Goalkeeper stats (often zero, packed together)
 	GK  int16 `json:"gk"`
@@ -138,6 +139,7 @@ func ConvertToOptimized(player *Player) *OptimizedPlayer {
 		DEF:                  int16(clampInt16(player.DEF)),
 		PHY:                  int16(clampInt16(player.PHY)),
 		TotalStats:           int16(clampInt16(player.TotalStats)),
+		MBR:                  int16(clampInt16(player.MBR)),
 		GK:                   int16(clampInt16(player.GK)),
 		DIV:                  int16(clampInt16(player.DIV)),
 		HAN:                  int16(clampInt16(player.HAN)),
@@ -330,6 +332,7 @@ func ConvertFromOptimized(opt *OptimizedPlayer) *Player {
 		DEF:                     int(opt.DEF),
 		PHY:                     int(opt.PHY),
 		TotalStats:              int(opt.TotalStats),
+		MBR:                     int(opt.MBR),
 		GK:                      int(opt.GK),
 		DIV:                     int(opt.DIV),
 		HAN:                     int(opt.HAN),
@@ -342,6 +345,7 @@ func ConvertFromOptimized(opt *OptimizedPlayer) *Player {
 		WageAmount:              opt.WageAmount,
 		RoleSpecificOveralls:    opt.RoleSpecificOveralls,
 		TotalStatsLower:         int(opt.TotalStats),
+		Mbr:                     int(opt.MBR),
 		Attributes:              make(map[string]string),
 		NumericAttributes:       make(map[string]int),
 		PerformanceStatsNumeric: make(map[string]float64),

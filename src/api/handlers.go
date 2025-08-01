@@ -4417,7 +4417,7 @@ func generateCSVContent(players []Player) string {
 	headers := []string{
 		"Name", "Age", "Nationality", "Nationality ISO", "Nationality FIFA Code",
 		"Club", "Division", "Position", "Transfer Value", "Wage",
-		"Overall", "PAC", "SHO", "PAS", "DRI", "DEF", "PHY", "TotalStats", "GK",
+		"Overall", "PAC", "SHO", "PAS", "DRI", "DEF", "PHY", "TotalStats", "MBR", "GK",
 		"DIV", "HAN", "REF", "KIC", "SPD", "POS", // Individual GK stats
 		"Personality", "Media Handling", "Attributes Masked",
 	}
@@ -4502,6 +4502,7 @@ func generateCSVContent(players []Player) string {
 			fmt.Sprintf("%d", player.DEF),
 			fmt.Sprintf("%d", player.PHY),
 			fmt.Sprintf("%d", player.TotalStats),
+			fmt.Sprintf("%d", player.MBR),
 			fmt.Sprintf("%d", player.GK),
 		}...)
 
@@ -5435,4 +5436,33 @@ func divisionsHandler(w http.ResponseWriter, r *http.Request) {
 	logDebug(ctx, "Divisions served as JSON",
 		"division_count", len(divisions),
 		"processing_time_ms", time.Since(startTime).Milliseconds())
+}
+
+// Debug endpoint to check JSON serialization
+func debugPlayerDataHandler(w http.ResponseWriter, r *http.Request) {
+	datasetID := r.URL.Query().Get("dataset")
+	playerName := r.URL.Query().Get("player")
+
+	if datasetID == "" || playerName == "" {
+		http.Error(w, "Missing dataset or player parameter", http.StatusBadRequest)
+		return
+	}
+
+	players, _, found := GetPlayerData(datasetID)
+	if !found {
+		http.Error(w, "Dataset not found", http.StatusNotFound)
+		return
+	}
+
+	// Find the specific player
+	for _, player := range players {
+		if strings.Contains(strings.ToLower(player.Name), strings.ToLower(playerName)) {
+			// Return the raw JSON for this player
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(player)
+			return
+		}
+	}
+
+	http.Error(w, "Player not found", http.StatusNotFound)
 }

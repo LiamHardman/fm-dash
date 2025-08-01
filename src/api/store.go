@@ -264,20 +264,18 @@ func GetPlayerData(datasetID string) ([]Player, string, bool) {
 		)
 		// Return a deep copy to prevent race conditions
 		players := OptimizedDeepCopyPlayers(data.Players)
-		// Ensure NumericAttributes are populated for retrieved data
+		// Always enhance retrieved players to ensure TotalStats and MBR are calculated
 		enhancedCount := 0
 		for i := range players {
-			if players[i].NumericAttributes == nil || len(players[i].NumericAttributes) == 0 {
-				// LogInfo("Enhancing retrieved player %s (UID: %d) - NumericAttributes count: %d",
-				// 	players[i].Name, players[i].UID, len(players[i].NumericAttributes))
-				EnhancePlayerWithCalculations(&players[i])
-				enhancedCount++
-				// LogInfo("Enhanced retrieved player %s (UID: %d) - NumericAttributes count after: %d",
-				// 	players[i].Name, players[i].UID, len(players[i].NumericAttributes))
-			}
+			LogDebug("Enhancing retrieved player %s (UID: %d) - NumericAttributes count: %d",
+				players[i].Name, players[i].UID, len(players[i].NumericAttributes))
+			EnhancePlayerWithCalculations(&players[i])
+			enhancedCount++
+			LogDebug("Enhanced retrieved player %s (UID: %d) - NumericAttributes count after: %d",
+				players[i].Name, players[i].UID, len(players[i].NumericAttributes))
 		}
 		if enhancedCount > 0 {
-			LogInfo("Enhanced %d retrieved players for dataset %s", enhancedCount, datasetID)
+			LogDebug("Enhanced %d retrieved players for dataset %s", enhancedCount, datasetID)
 		}
 		return players, data.CurrencySymbol, true
 	}
@@ -293,20 +291,18 @@ func GetPlayerData(datasetID string) ([]Player, string, bool) {
 		)
 		// Return a deep copy to prevent race conditions
 		enhancedPlayers := OptimizedDeepCopyPlayers(players)
-		// Ensure NumericAttributes are populated for retrieved data
+		// Always enhance retrieved players to ensure TotalStats and MBR are calculated
 		enhancedCount := 0
 		for i := range enhancedPlayers {
-			if enhancedPlayers[i].NumericAttributes == nil || len(enhancedPlayers[i].NumericAttributes) == 0 {
-				LogInfo("Enhancing retrieved player %s (UID: %d) - NumericAttributes count: %d",
-					enhancedPlayers[i].Name, enhancedPlayers[i].UID, len(enhancedPlayers[i].NumericAttributes))
-				EnhancePlayerWithCalculations(&enhancedPlayers[i])
-				enhancedCount++
-				LogInfo("Enhanced retrieved player %s (UID: %d) - NumericAttributes count after: %d",
-					enhancedPlayers[i].Name, enhancedPlayers[i].UID, len(enhancedPlayers[i].NumericAttributes))
-			}
+			LogInfo("Enhancing retrieved player %s (UID: %d) - NumericAttributes count: %d",
+				enhancedPlayers[i].Name, enhancedPlayers[i].UID, len(enhancedPlayers[i].NumericAttributes))
+			EnhancePlayerWithCalculations(&enhancedPlayers[i])
+			enhancedCount++
+			LogInfo("Enhanced retrieved player %s (UID: %d) - NumericAttributes count after: %d",
+				enhancedPlayers[i].Name, enhancedPlayers[i].UID, len(enhancedPlayers[i].NumericAttributes))
 		}
 		if enhancedCount > 0 {
-			LogInfo("Enhanced %d retrieved players for dataset %s", enhancedCount, datasetID)
+			LogDebug("Enhanced %d retrieved players for dataset %s", enhancedCount, datasetID)
 		}
 
 		// Store the enhanced data in memory cache for future fast access
@@ -348,16 +344,16 @@ func SetPlayerData(datasetID string, players []Player, currencySymbol string) {
 	for i, player := range players {
 		enhancedPlayers[i] = player
 		// Always enhance players to ensure TotalStats and other calculated fields are populated
-		LogInfo("Enhancing player %s (UID: %d) before legacy storage - NumericAttributes count: %d",
+		LogDebug("Enhancing player %s (UID: %d) before legacy storage - NumericAttributes count: %d",
 			player.Name, player.UID, len(player.NumericAttributes))
 		EnhancePlayerWithCalculations(&enhancedPlayers[i])
 		enhancedCount++
-		LogInfo("Enhanced player %s (UID: %d) - NumericAttributes count after: %d",
+		LogDebug("Enhanced player %s (UID: %d) - NumericAttributes count after: %d",
 			enhancedPlayers[i].Name, enhancedPlayers[i].UID, len(enhancedPlayers[i].NumericAttributes))
 	}
 
 	if enhancedCount > 0 {
-		LogInfo("Enhanced %d players before legacy storage for dataset %s", enhancedCount, datasetID)
+		LogDebug("Enhanced %d players before legacy storage for dataset %s", enhancedCount, datasetID)
 	}
 
 	// Store in legacy format
@@ -401,16 +397,16 @@ func SetPlayerDataAsync(datasetID string, players []Player, currencySymbol strin
 	for i, player := range players {
 		enhancedPlayers[i] = player
 		// Always enhance players to ensure TotalStats and other calculated fields are populated
-		LogInfo("Enhancing player %s (UID: %d) before storage - NumericAttributes count: %d",
+		LogDebug("Enhancing player %s (UID: %d) before storage - NumericAttributes count: %d",
 			player.Name, player.UID, len(player.NumericAttributes))
 		EnhancePlayerWithCalculations(&enhancedPlayers[i])
 		enhancedCount++
-		LogInfo("Enhanced player %s (UID: %d) - NumericAttributes count after: %d",
+		LogDebug("Enhanced player %s (UID: %d) - NumericAttributes count after: %d",
 			enhancedPlayers[i].Name, enhancedPlayers[i].UID, len(enhancedPlayers[i].NumericAttributes))
 	}
 
 	if enhancedCount > 0 {
-		LogInfo("Enhanced %d players before storage for dataset %s", enhancedCount, datasetID)
+		LogDebug("Enhanced %d players before storage for dataset %s", enhancedCount, datasetID)
 	}
 
 	// Store in legacy format immediately (fast, in-memory operation)
