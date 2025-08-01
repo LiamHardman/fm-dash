@@ -18,12 +18,13 @@ type OptimizedPlayer struct {
 	Age     int32 `json:"age"` // Changed from string to int
 
 	// FIFA stats as int16 (range 0-99, saves 2 bytes per field)
-	PAC int16 `json:"pac"`
-	SHO int16 `json:"sho"`
-	PAS int16 `json:"pas"`
-	DRI int16 `json:"dri"`
-	DEF int16 `json:"def"`
-	PHY int16 `json:"phy"`
+	PAC        int16 `json:"pac"`
+	SHO        int16 `json:"sho"`
+	PAS        int16 `json:"pas"`
+	DRI        int16 `json:"dri"`
+	DEF        int16 `json:"def"`
+	PHY        int16 `json:"phy"`
+	TotalStats int16 `json:"totalStats"`
 
 	// Goalkeeper stats (often zero, packed together)
 	GK  int16 `json:"gk"`
@@ -136,6 +137,7 @@ func ConvertToOptimized(player *Player) *OptimizedPlayer {
 		DRI:                  int16(clampInt16(player.DRI)),
 		DEF:                  int16(clampInt16(player.DEF)),
 		PHY:                  int16(clampInt16(player.PHY)),
+		TotalStats:           int16(clampInt16(player.TotalStats)),
 		GK:                   int16(clampInt16(player.GK)),
 		DIV:                  int16(clampInt16(player.DIV)),
 		HAN:                  int16(clampInt16(player.HAN)),
@@ -327,6 +329,7 @@ func ConvertFromOptimized(opt *OptimizedPlayer) *Player {
 		DRI:                     int(opt.DRI),
 		DEF:                     int(opt.DEF),
 		PHY:                     int(opt.PHY),
+		TotalStats:              int(opt.TotalStats),
 		GK:                      int(opt.GK),
 		DIV:                     int(opt.DIV),
 		HAN:                     int(opt.HAN),
@@ -338,6 +341,7 @@ func ConvertFromOptimized(opt *OptimizedPlayer) *Player {
 		TransferValueAmount:     opt.TransferValueAmount,
 		WageAmount:              opt.WageAmount,
 		RoleSpecificOveralls:    opt.RoleSpecificOveralls,
+		TotalStatsLower:         int(opt.TotalStats),
 		Attributes:              make(map[string]string),
 		NumericAttributes:       make(map[string]int),
 		PerformanceStatsNumeric: make(map[string]float64),

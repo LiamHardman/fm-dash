@@ -37,6 +37,7 @@ type Player struct {
 	DRI                     int                           `json:"DRI"`
 	DEF                     int                           `json:"DEF"`
 	PHY                     int                           `json:"PHY"`
+	TotalStats              int                           `json:"TotalStats"`
 	GK                      int                           `json:"GK,omitempty"`
 	DIV                     int                           `json:"DIV,omitempty"`
 	HAN                     int                           `json:"HAN,omitempty"`
@@ -51,6 +52,7 @@ type Player struct {
 	Dri                  int                `json:"dri,omitempty"`
 	Def                  int                `json:"def,omitempty"`
 	Phy                  int                `json:"phy,omitempty"`
+	TotalStatsLower      int                `json:"totalStats,omitempty"`
 	Gk                   int                `json:"gk,omitempty"`
 	Div                  int                `json:"div,omitempty"`
 	Han                  int                `json:"han,omitempty"`

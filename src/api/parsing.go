@@ -86,7 +86,7 @@ func sendRowWithBackpressure(rowCellsChan chan []string, cells []string, timeout
 		// Successfully sent with timeout
 	case <-timer.C:
 		RecordChannelTimeout() // Record timeout event
-		LogWarn("Channel send timeout, dropping row", "timeout", timeout, "cell_count", len(cells))
+		LogWarn("Channel send timeout, dropping row - timeout: %v, cell_count: %d", timeout, len(cells))
 	}
 }
 
@@ -341,7 +341,7 @@ tokenLoop:
 		LogDebug("HTML parsing finished, closing rowCellsChan to signal %d workers", numWorkers)
 		closeChannelOnce() // Safe channel close
 	} else {
-		LogWarn("No workers were started during HTML parsing", "headers_found", len(currentHeaders) > 0)
+		LogWarn("No workers were started during HTML parsing - headers_found: %t", len(currentHeaders) > 0)
 		if len(currentHeaders) == 0 {
 			processingError = apperrors.ErrNoTableHeadersFound
 		} else {

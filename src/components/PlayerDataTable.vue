@@ -138,10 +138,12 @@
                         <template v-if="col.isFifaStat || col.isOverallStat">
                             <span
                                 :class="
-                                    getUnifiedRatingClass(
-                                        getDisplayValue(props.row, col),
-                                        100,
-                                    )
+                                    col.name === 'TotalStats'
+                                        ? getTotalStatsRatingClass(getDisplayValue(props.row, col))
+                                        : getUnifiedRatingClass(
+                                            getDisplayValue(props.row, col),
+                                            100,
+                                        )
                                 "
                                 class="attribute-value fifa-stat-value modern-stat-badge"
                             >
@@ -742,6 +744,16 @@ export default {
         style: fifaStatColumnStyle,
         headerStyle: fifaStatColumnStyle,
       },
+      TotalStats: {
+        name: 'TotalStats',
+        label: 'Total Stats',
+        field: 'totalStats',
+        sortable: true,
+        align: 'center',
+        isFifaStat: true,
+        style: fifaStatColumnStyle,
+        headerStyle: fifaStatColumnStyle,
+      },
     }
 
     // Regular computed for columns (removed memoization to fix reactivity issues)
@@ -778,6 +790,7 @@ export default {
             allFifaStatDefinitions.DRI,
             allFifaStatDefinitions.DEF,
             allFifaStatDefinitions.PHY,
+            allFifaStatDefinitions.TotalStats,
           ]
 
       const trailingColumns = [
@@ -1112,6 +1125,28 @@ export default {
       }
     )
 
+    // Custom rating class for TotalStats with specific ranges
+    const getTotalStatsRatingClass = memoize(
+      (value) => {
+        const numValue = Number.parseInt(value, 10)
+        if (Number.isNaN(numValue) || value === null || value === undefined || value === '-')
+          return 'rating-na'
+
+        // Custom ranges for TotalStats
+        if (numValue >= 520) return 'rating-tier-6' // Elite
+        if (numValue >= 470) return 'rating-tier-5' // Very good
+        if (numValue >= 430) return 'rating-tier-4' // Good
+        if (numValue >= 390) return 'rating-tier-3' // Average
+        if (numValue >= 350) return 'rating-tier-2' // Below average
+        return 'rating-tier-1' // Poor
+      },
+      {
+        maxSize: 200,
+        keyGenerator: (value) => `totalStats-${value}`,
+        cacheKey: 'totalStatsRatingClass',
+      }
+    )
+
     const getMoneyClass = (numericAmount) => {
       if (numericAmount === null || numericAmount === undefined) return 'money-na'
       return 'money-uniform'
@@ -1398,6 +1433,7 @@ export default {
       () => {
         // Clear all memoization caches when dataset changes
         getUnifiedRatingClass.clearCache()
+        getTotalStatsRatingClass.clearCache()
         getPlayerValueMemoized.clearCache()
         getPositionIndex.clearCache()
       }
@@ -1417,6 +1453,7 @@ export default {
     onUnmounted(() => {
       // Clear all caches on component cleanup
       getUnifiedRatingClass.clearCache()
+      getTotalStatsRatingClass.clearCache()
       getPlayerValueMemoized.clearCache()
       getPositionIndex.clearCache()
 
@@ -1445,6 +1482,7 @@ export default {
       sortedPlayers,
       getColumnLabel,
       getUnifiedRatingClass,
+      getTotalStatsRatingClass,
       getMoneyClass,
       getValueScoreClass,
       onFlagError,

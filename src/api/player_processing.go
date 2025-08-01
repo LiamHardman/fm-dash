@@ -462,6 +462,9 @@ func EnhancePlayerWithCalculations(player *Player) {
 		player.POS = 0
 	}
 
+	// Calculate TotalStats (sum of all physical, mental, and technical attributes)
+	player.TotalStats = CalculateTotalStats(player.NumericAttributes)
+
 	// Set lowercase FIFA stats for frontend compatibility
 	player.Pac = player.PAC
 	player.Sho = player.SHO
@@ -469,6 +472,7 @@ func EnhancePlayerWithCalculations(player *Player) {
 	player.Dri = player.DRI
 	player.Def = player.DEF
 	player.Phy = player.PHY
+	player.TotalStatsLower = player.TotalStats
 	player.Gk = player.GK
 	player.Div = player.DIV
 	player.Han = player.HAN
@@ -558,7 +562,7 @@ func EnhancePlayerWithCalculations(player *Player) {
 		}
 
 		if len(calculatedRoleOveralls) == 0 && len(player.ShortPositions) > 0 {
-			LogWarn("Fallback Warning: Player with ShortPositions found no matching roles in fallback roleSpecificOverallWeights. Role-based overall will be 0.", "player_name", player.Name, "short_positions", player.ShortPositions)
+			LogWarn("Fallback Warning: Player with ShortPositions found no matching roles in fallback roleSpecificOverallWeights. Role-based overall will be 0. - player_name: %s, short_positions: %v", player.Name, player.ShortPositions)
 		}
 
 	case len(player.ShortPositions) > 0:
@@ -605,7 +609,7 @@ func EnhancePlayerWithCalculations(player *Player) {
 		}
 
 		if !foundAnyRoleMatch && len(player.ShortPositions) > 0 {
-			LogWarn("Warning: Player with ShortPositions found no matching roles in precomputedRoleWeights. Role-based overall will be 0.", "player_name", player.Name, "short_positions", player.ShortPositions)
+			LogWarn("Warning: Player with ShortPositions found no matching roles in precomputedRoleWeights. Role-based overall will be 0. - player_name: %s, short_positions: %v", player.Name, player.ShortPositions)
 		}
 	default:
 		// This case means player has no short positions, so maxRoleBasedOverall will naturally be 0.

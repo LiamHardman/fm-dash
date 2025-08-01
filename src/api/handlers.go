@@ -4417,7 +4417,7 @@ func generateCSVContent(players []Player) string {
 	headers := []string{
 		"Name", "Age", "Nationality", "Nationality ISO", "Nationality FIFA Code",
 		"Club", "Division", "Position", "Transfer Value", "Wage",
-		"Overall", "PAC", "SHO", "PAS", "DRI", "DEF", "PHY", "GK",
+		"Overall", "PAC", "SHO", "PAS", "DRI", "DEF", "PHY", "TotalStats", "GK",
 		"DIV", "HAN", "REF", "KIC", "SPD", "POS", // Individual GK stats
 		"Personality", "Media Handling", "Attributes Masked",
 	}
@@ -4501,6 +4501,7 @@ func generateCSVContent(players []Player) string {
 			fmt.Sprintf("%d", player.DRI),
 			fmt.Sprintf("%d", player.DEF),
 			fmt.Sprintf("%d", player.PHY),
+			fmt.Sprintf("%d", player.TotalStats),
 			fmt.Sprintf("%d", player.GK),
 		}...)
 

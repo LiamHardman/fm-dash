@@ -2,9 +2,10 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"strings"
-	
+
 	"go.opentelemetry.io/otel/attribute"
 )
 
@@ -12,7 +13,7 @@ import (
 func DeletePlayerData(datasetID string) {
 	// Call the existing DeleteDataset function
 	_ = DeleteDataset(datasetID)
-	
+
 	// Also clean up any format-aware cache entries
 	cacheKey := "players:" + datasetID
 	DeleteAllFormatVariants(cacheKey)
@@ -27,21 +28,21 @@ func ApplyDivisionFilter(players []Player, filterType DivisionFilter, targetDivi
 	if filterType == DivisionFilterAll || len(players) == 0 {
 		return players
 	}
-	
+
 	// If no target division specified, use the first player's division
 	if targetDivision == "" && len(players) > 0 {
 		targetDivision = players[0].Division
 	}
-	
+
 	// Top 5 divisions (hardcoded for simplicity)
 	top5Divisions := map[string]bool{
 		"Premier Division": true,
-		"Championship": true,
-		"League One": true,
-		"La Liga": true,
-		"Serie A": true,
+		"Championship":     true,
+		"League One":       true,
+		"La Liga":          true,
+		"Serie A":          true,
 	}
-	
+
 	var result []Player
 	for _, player := range players {
 		switch filterType {
@@ -55,19 +56,19 @@ func ApplyDivisionFilter(players []Player, filterType DivisionFilter, targetDivi
 			}
 		}
 	}
-	
+
 	return result
 }
 
 // ApplyAllFilters applies all filters to the player data
-func ApplyAllFilters(ctx context.Context, players []Player, 
-	filterPosition, filterRole, minAgeStr, maxAgeStr, 
+func ApplyAllFilters(ctx context.Context, players []Player,
+	filterPosition, filterRole, minAgeStr, maxAgeStr,
 	minTransferValueStr, maxTransferValueStr, maxSalaryStr string,
 	divisionFilter DivisionFilter, targetDivision, positionCompare string) []Player {
-	
+
 	// Apply division filter first
 	filteredPlayers := ApplyDivisionFilter(players, divisionFilter, targetDivision)
-	
+
 	// Apply position filter
 	if filterPosition != "" {
 		var positionFiltered []Player
@@ -78,7 +79,7 @@ func ApplyAllFilters(ctx context.Context, players []Player,
 		}
 		filteredPlayers = positionFiltered
 	}
-	
+
 	// Apply role filter
 	if filterRole != "" {
 		var roleFiltered []Player
@@ -96,7 +97,7 @@ func ApplyAllFilters(ctx context.Context, players []Player,
 		}
 		filteredPlayers = roleFiltered
 	}
-	
+
 	// Apply age filters
 	if minAgeStr != "" {
 		minAge, err := strconv.Atoi(minAgeStr)
@@ -111,7 +112,7 @@ func ApplyAllFilters(ctx context.Context, players []Player,
 			filteredPlayers = ageFiltered
 		}
 	}
-	
+
 	if maxAgeStr != "" {
 		maxAge, err := strconv.Atoi(maxAgeStr)
 		if err == nil {
@@ -125,7 +126,7 @@ func ApplyAllFilters(ctx context.Context, players []Player,
 			filteredPlayers = ageFiltered
 		}
 	}
-	
+
 	// Apply transfer value filters
 	if minTransferValueStr != "" {
 		minValue, _, _ := ParseMonetaryValueGo(minTransferValueStr)
@@ -138,7 +139,7 @@ func ApplyAllFilters(ctx context.Context, players []Player,
 		}
 		filteredPlayers = valueFiltered
 	}
-	
+
 	if maxTransferValueStr != "" {
 		maxValue, _, _ := ParseMonetaryValueGo(maxTransferValueStr)
 		var valueFiltered []Player
@@ -150,7 +151,7 @@ func ApplyAllFilters(ctx context.Context, players []Player,
 		}
 		filteredPlayers = valueFiltered
 	}
-	
+
 	// Apply salary filter
 	if maxSalaryStr != "" {
 		maxSalary, _, _ := ParseMonetaryValueGo(maxSalaryStr)
@@ -163,7 +164,7 @@ func ApplyAllFilters(ctx context.Context, players []Player,
 		}
 		filteredPlayers = salaryFiltered
 	}
-	
+
 	// Log filter results
 	SetSpanAttributes(ctx,
 		attribute.Int("filters.result_count", len(filteredPlayers)),
@@ -171,8 +172,8 @@ func ApplyAllFilters(ctx context.Context, players []Player,
 		attribute.String("filters.role", filterRole),
 		attribute.String("filters.min_age", minAgeStr),
 		attribute.String("filters.max_age", maxAgeStr),
-		attribute.String("filters.division_filter", string(divisionFilter)),
+		attribute.String("filters.division_filter", fmt.Sprintf("%d", divisionFilter)),
 	)
-	
+
 	return filteredPlayers
 }

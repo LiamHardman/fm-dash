@@ -255,6 +255,16 @@ export const allFifaStatDefinitions = {
     style: fifaStatColumnStyle,
     headerStyle: fifaStatColumnStyle,
   },
+  TotalStats: {
+    name: 'TotalStats',
+    label: 'Total Stats',
+    field: 'totalStats',
+    sortable: true,
+    align: 'center',
+    isFifaStat: true,
+    style: fifaStatColumnStyle,
+    headerStyle: fifaStatColumnStyle,
+  },
 }
 
 /**
@@ -295,6 +305,7 @@ export function createCurrentColumns(props) {
         allFifaStatDefinitions.DRI,
         allFifaStatDefinitions.DEF,
         allFifaStatDefinitions.PHY,
+        allFifaStatDefinitions.TotalStats,
       ]
 
   const trailingColumns = [baseColumnDefinitions.personality, baseColumnDefinitions.media_handling]

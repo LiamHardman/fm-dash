@@ -110,7 +110,7 @@ func (c *HTTPClient) Do(req *http.Request) (*http.Response, error) {
 		} else {
 			lastErr = apperrors.WrapErrHTTPStatus(resp.StatusCode, resp.Status)
 			if closeErr := resp.Body.Close(); closeErr != nil {
-				LogWarn("Failed to close response body", "error", closeErr)
+				LogWarn("Failed to close response body: %v", closeErr)
 			}
 		}
 
@@ -127,7 +127,7 @@ func (c *HTTPClient) Do(req *http.Request) (*http.Response, error) {
 				)
 			}
 
-			LogWarn("HTTP request failed, retrying", "attempt", attempt+1, "max_attempts", c.retryConfig.MaxRetries+1, "delay", delay, "error", lastErr)
+			LogWarn("HTTP request failed, retrying - attempt: %d, max_attempts: %d, delay: %v, error: %v", attempt+1, c.retryConfig.MaxRetries+1, delay, lastErr)
 
 			select {
 			case <-time.After(delay):

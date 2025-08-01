@@ -381,3 +381,34 @@ func CalculateCategoryBasedOverall(player *Player, categoryWeights map[string]in
 
 	return Clamp(calculatedOverall, 0, 99) // Clamp from utils.go
 }
+
+// CalculateTotalStats calculates the sum of all physical, mental, and technical attributes
+func CalculateTotalStats(playerNumericAttributes map[string]int) int {
+	total := 0
+
+	// Physical attributes
+	physicalAttrs := []string{"Acc", "Agi", "Bal", "Jum", "Nat", "Pac", "Sta", "Str"}
+	for _, attr := range physicalAttrs {
+		if value, exists := playerNumericAttributes[attr]; exists && value > 0 {
+			total += value
+		}
+	}
+
+	// Mental attributes
+	mentalAttrs := []string{"Agg", "Ant", "Bra", "Cmp", "Cnt", "Dec", "Det", "Fla", "Ldr", "OtB", "Pos", "Tea", "Vis", "Wor"}
+	for _, attr := range mentalAttrs {
+		if value, exists := playerNumericAttributes[attr]; exists && value > 0 {
+			total += value
+		}
+	}
+
+	// Technical attributes
+	technicalAttrs := []string{"Cor", "Cro", "Dri", "Fin", "Fir", "Fre", "Hea", "Lon", "L Th", "Mar", "Pas", "Pen", "Tck", "Tec"}
+	for _, attr := range technicalAttrs {
+		if value, exists := playerNumericAttributes[attr]; exists && value > 0 {
+			total += value
+		}
+	}
+
+	return total
+}
