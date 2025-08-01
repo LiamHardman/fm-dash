@@ -1,5 +1,7 @@
 package main
 
+import "sync"
+
 // --- START: Struct Definitions ---
 
 // RoleOverallScore stores the calculated overall score for a player in a specific role.
@@ -68,6 +70,9 @@ type Player struct {
 	RoleSpecificOveralls []RoleOverallScore `json:"roleSpecificOveralls"`
 	TransferValueAmount  int64              `json:"transferValueAmount"`
 	WageAmount           int64              `json:"wageAmount"`
+
+	// Mutex to protect concurrent access to maps
+	mu sync.RWMutex `json:"-"`
 }
 
 // PlayerParseResult is used by worker goroutines to return a parsed player or an error.

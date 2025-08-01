@@ -267,9 +267,15 @@ func CalculateOverallForRoleGoLinear(playerNumericAttributes, roleSpecificAttrWe
 		localWeights[k] = v
 	}
 
+	// Create a local copy of the player attributes to avoid concurrent access issues
+	localAttributes := make(map[string]int, len(playerNumericAttributes))
+	for k, v := range playerNumericAttributes {
+		localAttributes[k] = v
+	}
+
 	// Optimized loop: reduce math operations and casting
 	for attrKey, weightForAttribute := range localWeights {
-		attributeValue, exists := playerNumericAttributes[attrKey]
+		attributeValue, exists := localAttributes[attrKey]
 		if !exists || attributeValue <= 0 {
 			continue
 		}
@@ -322,9 +328,15 @@ func CalculateOverallForRoleGo(playerNumericAttributes, roleSpecificAttrWeights 
 		localWeights[k] = v
 	}
 
+	// Create a local copy of the player attributes to avoid concurrent access issues
+	localAttributes := make(map[string]int, len(playerNumericAttributes))
+	for k, v := range playerNumericAttributes {
+		localAttributes[k] = v
+	}
+
 	// Optimized loop: reduce math operations and casting
 	for attrKey, weightForAttribute := range localWeights {
-		attributeValue, exists := playerNumericAttributes[attrKey]
+		attributeValue, exists := localAttributes[attrKey]
 		if !exists || attributeValue <= 0 {
 			continue
 		}

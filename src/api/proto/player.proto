@@ -61,6 +61,9 @@ message Player {
   // Moneyball Rating and Total Stats
   int32 total_stats = 36;
   int32 mbr = 37;
+  
+  // Role-specific overall scores
+  repeated RoleOverallScore role_specific_overalls = 38;
 }
 
 // DatasetData represents a dataset containing player information
