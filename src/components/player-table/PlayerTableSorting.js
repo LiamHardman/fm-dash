@@ -1,4 +1,3 @@
-import { nextTick } from 'vue'
 import { getPlayerValue, getPositionIndex } from './PlayerTableUtils'
 
 const MAX_DISPLAY_PLAYERS = 1000
@@ -62,7 +61,7 @@ export async function triggerAsyncSort(
   sortField,
   isGoalkeeperView,
   customSortFn,
-  sortKey,
+  _sortKey,
   sortController,
   sortingUtils
 ) {

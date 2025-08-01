@@ -1300,8 +1300,6 @@ export default {
 
     // Memoized player value getter (called frequently during sorting and rendering)
     const getPlayerValue = (player, fieldKey, _columnName = null) => {
-
-
       // For regular view, map GK stats to standard FIFA stats if the player is a goalkeeper
       if (!props.isGoalkeeperView && player.position && player.position.includes('GK')) {
         const mappedStat = gkStatMapping[fieldKey]

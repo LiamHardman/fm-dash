@@ -437,8 +437,6 @@ export const usePlayerStore = defineStore('player', () => {
       return []
     }
 
-
-
     const startTime = performance.now()
     const processed = playersData.map((p) => {
       // Ensure all required fields are present and properly formatted
@@ -523,16 +521,16 @@ export const usePlayerStore = defineStore('player', () => {
     allAvailableRoles.value = []
     sessionStorage.removeItem('currentDatasetId')
     sessionStorage.removeItem('detectedCurrencySymbol')
-    
+
     // Clear all cached datasets to force fresh data fetch
     const keysToRemove = []
     for (let i = 0; i < sessionStorage.length; i++) {
       const key = sessionStorage.key(i)
-      if (key && key.startsWith('dataset_')) {
+      if (key?.startsWith('dataset_')) {
         keysToRemove.push(key)
       }
     }
-    keysToRemove.forEach(key => sessionStorage.removeItem(key))
+    keysToRemove.forEach((key) => sessionStorage.removeItem(key))
     console.log('Cleared all cached datasets')
   }
 

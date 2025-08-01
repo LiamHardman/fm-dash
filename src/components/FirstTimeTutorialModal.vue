@@ -233,7 +233,7 @@ export default defineComponent({
       set: (value) => emit('update:modelValue', value),
     })
 
-    const $q = useQuasar()
+    const _$q = useQuasar()
     const router = useRouter()
     const currentStep = ref(0)
 

@@ -372,7 +372,7 @@ export default {
     onMounted(async () => {
       const datasetIdFromQuery = route.query.datasetId
       const datasetIdFromRoute = route.params.datasetId
-      const teamFromQuery = route.query.team
+      const _teamFromQuery = route.query.team
       const finalDatasetId =
         datasetIdFromRoute || datasetIdFromQuery || sessionStorage.getItem('currentDatasetId')
 

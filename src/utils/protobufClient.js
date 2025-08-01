@@ -215,7 +215,6 @@ class ProtobufClient {
                   // Numeric values for sorting
                   transfer_value_amount: { type: 'int64', id: 34 },
                   wage_amount: { type: 'int64', id: 35 },
-                  
                   // Moneyball Rating and Total Stats
                   total_stats: { type: 'int32', id: 36 },
                   mbr: { type: 'int32', id: 37 },

@@ -61,7 +61,7 @@ export default {
   },
   emits: ['sort'],
 
-  setup(props, { emit }) {
+  setup(_props, { emit }) {
     const sortTable = (fieldName) => {
       emit('sort', fieldName)
     }

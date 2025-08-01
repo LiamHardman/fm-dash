@@ -526,8 +526,6 @@ export default {
                 const mainPos = pos.split('(')[0].trim()
                 const sideInfo = pos.includes('(') ? pos.split('(')[1].split(')')[0] : ''
 
-
-
                 // Handle different position formats
                 if (mainPos.includes('GK') || mainPos.includes('Goalkeeper')) {
                   shortCodes.push('GK')
@@ -620,8 +618,6 @@ export default {
 
             const parsedPlayerPositions = parsePositionString(playerPosition)
 
-
-
             // Check if any of the selected positions match any of the player's position fields
             const hasMatchingPosition = currentFilters.value.position.some((selectedPos) => {
               // Check short positions array
@@ -631,7 +627,7 @@ export default {
               // Check parsed position string
               if (parsedPlayerPositions.includes(selectedPos)) return true
               // Check position string (might contain multiple positions)
-              if (playerPosition && playerPosition.includes(selectedPos)) return true
+              if (playerPosition?.includes(selectedPos)) return true
               return false
             })
 

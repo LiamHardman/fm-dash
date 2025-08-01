@@ -19,7 +19,7 @@ const gkStatMapping = {
  * @param {Boolean} isGoalkeeperView - Whether in goalkeeper view
  * @returns {*} Player value for the field
  */
-export function getPlayerValue(player, fieldKey, columnName = null, isGoalkeeperView = false) {
+export function getPlayerValue(player, fieldKey, _columnName = null, isGoalkeeperView = false) {
   // For regular view, map GK stats to standard FIFA stats if the player is a goalkeeper
   if (!isGoalkeeperView && player.position && player.position.includes('GK')) {
     const mappedStat = gkStatMapping[fieldKey]
@@ -53,7 +53,7 @@ export function getPlayerValue(player, fieldKey, columnName = null, isGoalkeeper
  * Memoized version of getPlayerValue for non-Overall fields only
  */
 export const getPlayerValueMemoized = memoize(
-  (player, fieldKey, columnName = null, isGoalkeeperView = false, cacheGeneration = 0) => {
+  (player, fieldKey, columnName = null, isGoalkeeperView = false, _cacheGeneration = 0) => {
     return getPlayerValue(player, fieldKey, columnName, isGoalkeeperView)
   },
   {
