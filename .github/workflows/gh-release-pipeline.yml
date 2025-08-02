@@ -748,6 +748,14 @@ jobs:
         with:
           version: 'latest'
 
+      - name: Configure kubectl
+        run: |
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > kubeconfig.yaml
+          export KUBECONFIG=kubeconfig.yaml
+          kubectl config current-context
+        env:
+          KUBECONFIG: kubeconfig.yaml
+
       - name: Rollout restart deployments
         run: |
           echo "🔄 Rolling out restart for deployments..."
@@ -773,6 +781,8 @@ jobs:
           kubectl rollout status deploy/v2fmdash-backend --timeout=300s
           
           echo "🎉 All deployments successfully rolled out!"
+        env:
+          KUBECONFIG: kubeconfig.yaml
 
   # Final Summary Job
   pipeline-summary:
