@@ -440,8 +440,8 @@ func CalculateTotalStats(playerNumericAttributes map[string]int) int {
 
 // CalculateMoneyballRating calculates the Moneyball Rating (MBR) based on overall, age, mentality, and value score
 func CalculateMoneyballRating(player Player, valueScore float64) int {
-	// Base rating is the player's overall divided by 2
-	baseRating := player.Overall / 2
+	// Base rating is the player's overall divided by 3 (reduced from 2)
+	baseRating := player.Overall / 3
 
 	// Age modifiers
 	ageInt, err := strconv.Atoi(player.Age)
@@ -500,8 +500,8 @@ func CalculateMoneyballRating(player Player, valueScore float64) int {
 		}
 	}
 
-	// Value score contribution (multiplied by 0.75)
-	valueScoreContribution := int(calculatedValueScore * 0.75)
+	// Value score contribution (reduced multiplier from 0.75 to 0.5)
+	valueScoreContribution := int(calculatedValueScore * 0.5)
 
 	// Calculate salary penalty based on overpayment
 	salaryPenalty := getSalaryPenalty(player.TransferValueAmount, player.WageAmount)
@@ -509,7 +509,13 @@ func CalculateMoneyballRating(player Player, valueScore float64) int {
 	// Final calculation
 	moneyballRating := baseRating + ageModifier + mentalityModifier + valueScoreContribution + salaryPenalty
 
-	return moneyballRating
+	// Apply sigmoid normalization to compress extreme values to 0-100 range
+	// Sigmoid function: 1 / (1 + e^(-x/scale_factor))
+	// Using scale factor of 50 to spread the curve appropriately
+	sigmoid := 1.0 / (1.0 + math.Exp(-float64(moneyballRating)/50.0))
+	normalizedRating := int(sigmoid * 100.0)
+
+	return normalizedRating
 }
 
 // getSalaryPenalty calculates a penalty for players who are overpaid relative to their transfer value
