@@ -123,6 +123,18 @@ func FastParseMonetaryValue(rawValue string) (originalDisplay string, numericVal
 	}
 	cleanValue = strings.TrimSpace(cleanValue)
 
+	// Remove per week indicators (p/w, /w, per week, etc.)
+	cleanValue = strings.ReplaceAll(cleanValue, "p/w", "")
+	cleanValue = strings.ReplaceAll(cleanValue, "P/W", "")
+	cleanValue = strings.ReplaceAll(cleanValue, "/w", "")
+	cleanValue = strings.ReplaceAll(cleanValue, "/W", "")
+	cleanValue = strings.ReplaceAll(cleanValue, "per week", "")
+	cleanValue = strings.ReplaceAll(cleanValue, "Per Week", "")
+	cleanValue = strings.TrimSpace(cleanValue)
+
+	// Remove commas from numbers (e.g., "47,500" -> "47500")
+	cleanValue = strings.ReplaceAll(cleanValue, ",", "")
+
 	// If it's a range (e.g., '£140M - £183M'), extract the upper bound
 	if strings.Contains(cleanValue, "-") {
 		parts := strings.Split(cleanValue, "-")

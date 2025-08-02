@@ -138,6 +138,9 @@ func parseCellsToPlayer(cells, headers []string) (Player, error) {
 		case "Wage":
 			player.Wage, player.WageAmount, _ = ParseMonetaryValueGo(cellValue)
 			isAnAttributeField = false
+		case "wage", "Salary", "salary", "Wages", "wages":
+			player.Wage, player.WageAmount, _ = ParseMonetaryValueGo(cellValue)
+			isAnAttributeField = false
 		case "Personality":
 			player.Personality = cellValue
 			isAnAttributeField = false

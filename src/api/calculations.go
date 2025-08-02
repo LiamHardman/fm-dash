@@ -503,10 +503,58 @@ func CalculateMoneyballRating(player Player, valueScore float64) int {
 	// Value score contribution (multiplied by 0.75)
 	valueScoreContribution := int(calculatedValueScore * 0.75)
 
+	// Calculate salary penalty based on overpayment
+	salaryPenalty := getSalaryPenalty(player.TransferValueAmount, player.WageAmount)
+
 	// Final calculation
-	moneyballRating := baseRating + ageModifier + mentalityModifier + valueScoreContribution
+	moneyballRating := baseRating + ageModifier + mentalityModifier + valueScoreContribution + salaryPenalty
 
 	return moneyballRating
+}
+
+// getSalaryPenalty calculates a penalty for players who are overpaid relative to their transfer value
+func getSalaryPenalty(transferValueAmount, wageAmount int64) int {
+	// Skip if no salary data
+	if wageAmount == 0 {
+		return 0
+	}
+
+	// Convert to millions for easier calculation
+	transferValueMillions := float64(transferValueAmount) / 1000000.0
+	wageThousandsPerWeek := float64(wageAmount) / 1000.0
+
+	// Calculate expected salary based on transfer value
+	// General rule: annual salary should be roughly 10-15% of transfer value
+	// Weekly salary = (transfer value * 0.12) / 52 weeks
+	expectedWeeklySalary := (transferValueMillions * 0.12 * 1000) / 52 // Convert to thousands per week
+
+	// Calculate salary ratio (actual vs expected)
+	salaryRatio := wageThousandsPerWeek / expectedWeeklySalary
+
+	// Apply penalties based on overpayment
+	switch {
+	case salaryRatio >= 3.0:
+		// Severely overpaid (3x or more expected salary)
+		return -15
+	case salaryRatio >= 2.5:
+		// Very overpaid (2.5x expected salary)
+		return -10
+	case salaryRatio >= 2.0:
+		// Overpaid (2x expected salary)
+		return -7
+	case salaryRatio >= 1.5:
+		// Somewhat overpaid (1.5x expected salary)
+		return -3
+	case salaryRatio <= 0.5:
+		// Underpaid (0.5x or less expected salary) - bonus
+		return 5
+	case salaryRatio <= 0.7:
+		// Somewhat underpaid (0.7x expected salary) - small bonus
+		return 2
+	default:
+		// Reasonably paid (0.7x to 1.5x expected salary)
+		return 0
+	}
 }
 
 // getAgeModifier returns the age modifier for Moneyball Rating calculation

@@ -594,7 +594,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		CalculatePlayerPerformancePercentiles(playersList)
 
 		// Log top 25 MBR players after calculations are complete
-		logTop25MBRPlayers(playersList)
+		logTop25OverallPlayers(playersList)
 
 		// Update the stored data with calculated percentiles
 		SetPlayerData(datasetID, playersList, finalDatasetCurrencySymbol)
@@ -4768,7 +4768,7 @@ func CalculatePlayerPercentilesAsync(ctx context.Context, datasetID string, play
 	CalculatePlayerPerformancePercentiles(playersCopy)
 
 	// Log top 25 MBR players after calculations are complete
-	logTop25MBRPlayers(playersCopy)
+	logTop25OverallPlayers(playersCopy)
 
 	// Update the stored data with calculated percentiles
 	SetPlayerData(datasetID, playersCopy, storedData.CurrencySymbol)
@@ -5474,19 +5474,19 @@ func debugPlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Player not found", http.StatusNotFound)
 }
 
-// logTop25MBRPlayers logs the top 25 players with the highest Moneyball Rating
-func logTop25MBRPlayers(players []Player) {
+// logTop25OverallPlayers logs the top 25 players by overall rating with their MBR breakdown
+func logTop25OverallPlayers(players []Player) {
 	// Create a copy of players for sorting
 	playersCopy := make([]Player, len(players))
 	copy(playersCopy, players)
 
-	// Sort by MBR in descending order
+	// Sort by overall rating in descending order
 	sort.Slice(playersCopy, func(i, j int) bool {
-		return playersCopy[i].MBR > playersCopy[j].MBR
+		return playersCopy[i].Overall > playersCopy[j].Overall
 	})
 
 	// Log top 25
-	LogInfo("=== TOP 25 MONEYBALL RATING PLAYERS ===")
+	LogInfo("=== TOP 25 OVERALL RATING PLAYERS (WITH MBR BREAKDOWN) ===")
 	for i := 0; i < 25 && i < len(playersCopy); i++ {
 		player := playersCopy[i]
 		ageInt, _ := strconv.Atoi(player.Age)
@@ -5527,11 +5527,14 @@ func logTop25MBRPlayers(players []Player) {
 			}
 		}
 
+		// Calculate salary penalty for logging
+		salaryPenalty := getSalaryPenalty(player.TransferValueAmount, player.WageAmount)
+
 		LogInfo("Rank %d: %s (Age: %d, Overall: %d, Club: %s) - MBR: %d",
 			i+1, player.Name, ageInt, player.Overall, player.Club, player.MBR)
-		LogInfo("  Breakdown: Base=%d, Age=%d, Mentality=%d, ValueScore=%.2f (contribution=%d)",
-			baseRating, ageModifier, mentalityModifier, calculatedValueScore, valueScoreContribution)
-		LogInfo("  Transfer Value: %s (£%d)", player.TransferValue, player.TransferValueAmount)
+		LogInfo("  Breakdown: Base=%d, Age=%d, Mentality=%d, ValueScore=%.2f (contribution=%d), SalaryPenalty=%d",
+			baseRating, ageModifier, mentalityModifier, calculatedValueScore, valueScoreContribution, salaryPenalty)
+		LogInfo("  Transfer Value: %s (£%d), Wage: £%d/week", player.TransferValue, player.TransferValueAmount, player.WageAmount)
 	}
-	LogInfo("=== END TOP 25 MBR PLAYERS ===")
+	LogInfo("=== END TOP 25 OVERALL RATING PLAYERS ===")
 }
