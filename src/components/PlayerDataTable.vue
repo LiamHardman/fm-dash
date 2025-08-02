@@ -94,6 +94,14 @@
                         >
                             {{ col.label }} ({{ currencySymbol }})
                         </span>
+                        <span v-else-if="col.name === 'TotalStats'">
+                            <q-tooltip>Total Stats</q-tooltip>
+                            {{ col.label }}
+                        </span>
+                        <span v-else-if="col.name === 'MBR'">
+                            <q-tooltip>Moneyball Rating</q-tooltip>
+                            {{ col.label }}
+                        </span>
                         <span v-else>
                             {{ col.label }}
                         </span>
@@ -502,6 +510,8 @@ export default {
       'width: 70px; min-width: 70px; max-width: 70px; text-align: center; white-space: nowrap;'
     const fifaStatColumnStyle =
       'width: 60px; min-width: 60px; max-width: 60px; text-align: center; white-space: nowrap;'
+    const widerFifaStatColumnStyle =
+      'width: 80px; min-width: 80px; max-width: 80px; text-align: center; white-space: nowrap;'
     const textColumnStyle =
       'width: 120px; min-width: 120px; max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'
     const nationalityColumnStyle =
@@ -746,13 +756,13 @@ export default {
       },
       TotalStats: {
         name: 'TotalStats',
-        label: 'Total Stats',
+        label: 'Total',
         field: 'totalStats',
         sortable: true,
         align: 'center',
         isFifaStat: true,
-        style: fifaStatColumnStyle,
-        headerStyle: fifaStatColumnStyle,
+        style: widerFifaStatColumnStyle,
+        headerStyle: widerFifaStatColumnStyle,
       },
       MBR: {
         name: 'MBR',
@@ -761,8 +771,8 @@ export default {
         sortable: true,
         align: 'center',
         isFifaStat: true,
-        style: fifaStatColumnStyle,
-        headerStyle: fifaStatColumnStyle,
+        style: widerFifaStatColumnStyle,
+        headerStyle: widerFifaStatColumnStyle,
       },
     }
 
