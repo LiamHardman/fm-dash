@@ -8,7 +8,7 @@ jobs:
   # Code Quality Checks
   code-quality:
     name: Code Quality Checks
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, kubernetes, my-repo-runner]
     continue-on-error: true
     
     steps:
@@ -45,7 +45,7 @@ jobs:
   # Build and Package
   build:
     name: Build Application
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, kubernetes, my-repo-runner]
     needs: [code-quality]
     
     steps:
@@ -128,7 +128,7 @@ jobs:
   # Docker Build and Push
   docker:
     name: Build and Push Docker Images
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, kubernetes, my-repo-runner]
     needs: [build]
     
     steps:
@@ -148,8 +148,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-
 
       - name: Build and push unified Docker image
         uses: docker/build-push-action@v5
@@ -186,12 +184,10 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-
-
   # Upload Build Artifacts
   upload-artifacts:
     name: Upload Build Artifacts
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, kubernetes, my-repo-runner]
     needs: [build]
     
     steps:
@@ -219,4 +215,46 @@ jobs:
           path: |
             fm-dash-frontend-dev.tar.gz
             fm-dash-source-dev.tar.gz
-          retention-days: 30 
+          retention-days: 30
+
+  # Deploy to Kubernetes
+  deploy:
+    name: Deploy to Kubernetes
+    runs-on: [self-hosted, kubernetes, my-repo-runner]
+    needs: [docker, upload-artifacts]
+    if: success()
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Rollout restart deployments
+        run: |
+          echo "🔄 Rolling out restart for deployments..."
+          
+          # Restart v2fmdash deployment
+          echo "📦 Restarting v2fmdash deployment..."
+          kubectl rollout restart deploy/v2fmdash
+          
+          # Restart v2fmdash-frontend deployment
+          echo "🌐 Restarting v2fmdash-frontend deployment..."
+          kubectl rollout restart deploy/v2fmdash-frontend
+          
+          # Restart v2fmdash-backend deployment
+          echo "🔧 Restarting v2fmdash-backend deployment..."
+          kubectl rollout restart deploy/v2fmdash-backend
+          
+          echo "✅ All deployments restarted successfully"
+          
+          # Wait for rollouts to complete
+          echo "⏳ Waiting for rollouts to complete..."
+          kubectl rollout status deploy/v2fmdash --timeout=300s
+          kubectl rollout status deploy/v2fmdash-frontend --timeout=300s
+          kubectl rollout status deploy/v2fmdash-backend --timeout=300s
+          
+          echo "🎉 All deployments successfully rolled out!" 
