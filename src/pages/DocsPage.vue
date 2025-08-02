@@ -738,6 +738,257 @@
                         </q-card-section>
                     </q-card>
                 </div>
+
+                <!-- Rating Calculations Section -->
+                <div
+                    v-if="activeSection === 'rating-calculations'"
+                    class="content-section"
+                >
+                    <div class="section-header">
+                        <div class="section-badge">
+                            <q-icon name="calculate" />
+                            <span>Rating System</span>
+                        </div>
+                        <h1 class="section-title">How Ratings Are Calculated</h1>
+                        <p class="section-subtitle">
+                            Understanding how FM-Dash calculates different player ratings and what they mean for player analysis.
+                        </p>
+                    </div>
+
+                    <!-- Overview -->
+                    <q-card class="info-card">
+                        <q-card-section>
+                            <div class="card-header">
+                                <q-icon
+                                    name="info"
+                                    size="1.5rem"
+                                    color="primary"
+                                />
+                                <h3>Rating System Overview</h3>
+                            </div>
+                            <p class="card-description">
+                                FM-Dash uses a sophisticated rating system that combines Football Manager's raw attributes 
+                                into meaningful categories. Each rating type serves a different purpose in player analysis.
+                            </p>
+                        </q-card-section>
+                    </q-card>
+
+                    <!-- FIFA-Style Ratings -->
+                    <q-card class="info-card">
+                        <q-card-section>
+                            <div class="card-header">
+                                <q-icon
+                                    name="sports_soccer"
+                                    size="1.5rem"
+                                    color="primary"
+                                />
+                                <h3>FIFA-Style Category Ratings</h3>
+                            </div>
+                            <p class="card-description">
+                                These ratings convert Football Manager's 1-20 attribute system into FIFA-style 0-99 ratings 
+                                that are easier to understand and compare.
+                            </p>
+                            
+                            <div class="rating-categories">
+                                <div class="rating-category" v-for="category in fifaCategories" :key="category.name">
+                                    <div class="category-header">
+                                        <h4>{{ category.name }}</h4>
+                                        <span class="category-description">{{ category.description }}</span>
+                                    </div>
+                                    <div class="attribute-weights">
+                                        <div class="weight-item" v-for="weight in category.weights" :key="weight.attribute">
+                                            <span class="attribute-name">{{ weight.attribute }}</span>
+                                            <span class="weight-value">{{ weight.weight }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </q-card-section>
+                    </q-card>
+
+                    <!-- Overall Rating -->
+                    <q-card class="info-card">
+                        <q-card-section>
+                            <div class="card-header">
+                                <q-icon
+                                    name="star"
+                                    size="1.5rem"
+                                    color="orange"
+                                />
+                                <h3>Overall Rating</h3>
+                            </div>
+                            <p class="card-description">
+                                The Overall rating represents a player's best performance across all possible roles. 
+                                It's calculated by evaluating the player in every applicable position and taking the highest score.
+                            </p>
+                            <div class="overall-calculation">
+                                <h4>How it's calculated:</h4>
+                                <ol>
+                                    <li>Evaluate the player in every applicable role (e.g., Central Midfielder, Winger, etc.)</li>
+                                    <li>Each role uses specific attribute weights optimized for that position</li>
+                                    <li>Take the highest score from all evaluated roles</li>
+                                    <li>Apply non-linear scaling to compress lower ratings and maintain separation</li>
+                                </ol>
+                                <div class="calculation-note">
+                                    <q-icon name="lightbulb" size="1rem" />
+                                    <span>This ensures the Overall rating represents the player's peak potential rather than an average.</span>
+                                </div>
+                            </div>
+                        </q-card-section>
+                    </q-card>
+
+                    <!-- Total Stats -->
+                    <q-card class="info-card">
+                        <q-card-section>
+                            <div class="card-header">
+                                <q-icon
+                                    name="summarize"
+                                    size="1.5rem"
+                                    color="green"
+                                />
+                                <h3>Total Stats</h3>
+                            </div>
+                            <p class="card-description">
+                                Total Stats is the sum of all physical, mental, and technical attributes. This provides a raw 
+                                measure of a player's total attribute points.
+                            </p>
+                            <div class="total-stats-breakdown">
+                                <h4>Included attributes:</h4>
+                                <div class="stats-categories">
+                                    <div class="stats-category">
+                                        <h5>Physical (8 attributes)</h5>
+                                        <p>Acceleration, Agility, Balance, Jumping, Natural Fitness, Pace, Stamina, Strength</p>
+                                    </div>
+                                    <div class="stats-category">
+                                        <h5>Mental (14 attributes)</h5>
+                                        <p>Aggression, Anticipation, Bravery, Composure, Concentration, Decisions, Determination, Flair, Leadership, Off The Ball, Positioning, Teamwork, Vision, Work Rate</p>
+                                    </div>
+                                    <div class="stats-category">
+                                        <h5>Technical (14 attributes)</h5>
+                                        <p>Corners, Crossing, Dribbling, Finishing, First Touch, Free Kicks, Heading, Long Shots, Long Throws, Marking, Passing, Penalty Taking, Tackling, Technique</p>
+                                    </div>
+                                </div>
+                                <div class="calculation-note">
+                                    <q-icon name="info" size="1rem" />
+                                    <span>Only attributes with values greater than 0 are included in the total.</span>
+                                </div>
+                            </div>
+                        </q-card-section>
+                    </q-card>
+
+                    <!-- Moneyball Rating -->
+                    <q-card class="info-card">
+                        <q-card-section>
+                            <div class="card-header">
+                                <q-icon
+                                    name="trending_up"
+                                    size="1.5rem"
+                                    color="purple"
+                                />
+                                <h3>Moneyball Rating (MBR)</h3>
+                            </div>
+                            <p class="card-description">
+                                The Moneyball Rating evaluates a player's value for money, considering their ability, age, 
+                                personality, and transfer value relative to market expectations.
+                            </p>
+                            <div class="mbr-calculation">
+                                <h4>Formula components:</h4>
+                                <div class="mbr-components">
+                                    <div class="mbr-component">
+                                        <h5>Base Rating</h5>
+                                        <p>Player Overall ÷ 3</p>
+                                    </div>
+                                    <div class="mbr-component">
+                                        <h5>Age Modifier</h5>
+                                        <p>Bonuses for young players (16-25), penalties for older players (26+)</p>
+                                    </div>
+                                    <div class="mbr-component">
+                                        <h5>Mentality Modifier</h5>
+                                        <p>Bonuses for good personalities, penalties for poor ones</p>
+                                    </div>
+                                    <div class="mbr-component">
+                                        <h5>Value Score</h5>
+                                        <p>How much value you get per rating point compared to market expectations</p>
+                                    </div>
+                                    <div class="mbr-component">
+                                        <h5>Transfer Value Penalty</h5>
+                                        <p>Penalties for overpriced players, bonuses for undervalued ones</p>
+                                    </div>
+                                    <div class="mbr-component">
+                                        <h5>Salary Penalty</h5>
+                                        <p>Penalties for overpaid players, bonuses for underpaid ones</p>
+                                    </div>
+                                </div>
+                                <div class="calculation-note">
+                                    <q-icon name="trending_up" size="1rem" />
+                                    <span>Higher MBR indicates better value for money. Perfect for finding undervalued players!</span>
+                                </div>
+                            </div>
+                        </q-card-section>
+                    </q-card>
+
+                    <!-- Scaling Information -->
+                    <q-card class="info-card">
+                        <q-card-section>
+                            <div class="card-header">
+                                <q-icon
+                                    name="tune"
+                                    size="1.5rem"
+                                    color="blue"
+                                />
+                                <h3>Rating Scaling</h3>
+                            </div>
+                            <p class="card-description">
+                                FM-Dash uses sophisticated scaling to convert Football Manager's 1-20 attributes into more 
+                                intuitive 0-99 ratings while maintaining meaningful differentiation between players.
+                            </p>
+                            <div class="scaling-info">
+                                <h4>Non-linear scaling:</h4>
+                                <ul>
+                                    <li><strong>Ratings 75+:</strong> Minimal compression to preserve elite player differentiation</li>
+                                    <li><strong>Ratings below 75:</strong> Progressive compression using power curves to create better separation</li>
+                                    <li><strong>Minimum progression:</strong> Ensures players with decent attributes don't cluster too low</li>
+                                </ul>
+                                <div class="calculation-note">
+                                    <q-icon name="info" size="1rem" />
+                                    <span>This scaling makes it easier to distinguish between players while maintaining realistic rating distributions.</span>
+                                </div>
+                            </div>
+                        </q-card-section>
+                    </q-card>
+
+                    <!-- Usage Tips -->
+                    <q-card class="info-card success-card">
+                        <q-card-section>
+                            <div class="card-header">
+                                <q-icon
+                                    name="tips_and_updates"
+                                    size="1.5rem"
+                                    color="positive"
+                                />
+                                <h3>How to Use These Ratings</h3>
+                            </div>
+                            <div class="usage-tips">
+                                <div class="tip-item">
+                                    <h4>Overall Rating</h4>
+                                    <p>Use for quick player comparisons and identifying the best players in your squad.</p>
+                                </div>
+                                <div class="tip-item">
+                                    <h4>FIFA-Style Ratings</h4>
+                                    <p>Use to understand a player's strengths and weaknesses in specific areas of the game.</p>
+                                </div>
+                                <div class="tip-item">
+                                    <h4>Total Stats</h4>
+                                    <p>Use to identify players with high raw attribute totals, regardless of how they're distributed.</p>
+                                </div>
+                                <div class="tip-item">
+                                    <h4>Moneyball Rating</h4>
+                                    <p>Use to find undervalued players and make smart transfer decisions based on value for money.</p>
+                                </div>
+                            </div>
+                        </q-card-section>
+                    </q-card>
+                </div>
             </div>
         </div>
 
@@ -826,6 +1077,12 @@ export default defineComponent({
         title: 'Local Deployment',
         subtitle: 'Self-hosting',
         icon: 'cloud_download',
+      },
+      {
+        id: 'rating-calculations',
+        title: 'Rating Calculations',
+        subtitle: 'How ratings work',
+        icon: 'calculate',
       },
     ]
 
@@ -1074,6 +1331,92 @@ volumes:
       },
     ]
 
+    const fifaCategories = [
+      {
+        name: 'PAC (Pace)',
+        description: 'How fast a player can move',
+        weights: [
+          { attribute: 'Acceleration', weight: 8 },
+          { attribute: 'Pace', weight: 8 },
+          { attribute: 'Agility', weight: 5 },
+        ],
+      },
+      {
+        name: 'SHO (Shooting)',
+        description: "A player's ability to score goals",
+        weights: [
+          { attribute: 'Finishing', weight: 8 },
+          { attribute: 'Long Shots', weight: 6 },
+          { attribute: 'Penalty Taking', weight: 4 },
+          { attribute: 'Heading', weight: 5 },
+          { attribute: 'Composure', weight: 6 },
+          { attribute: 'Technique', weight: 5 },
+          { attribute: 'Anticipation', weight: 4 },
+          { attribute: 'Decisions', weight: 4 },
+          { attribute: 'Flair', weight: 3 },
+        ],
+      },
+      {
+        name: 'PAS (Passing)',
+        description: "A player's ability to pass the ball effectively",
+        weights: [
+          { attribute: 'Passing', weight: 8 },
+          { attribute: 'Crossing', weight: 6 },
+          { attribute: 'Free Kicks', weight: 4 },
+          { attribute: 'Vision', weight: 7 },
+          { attribute: 'Technique', weight: 5 },
+          { attribute: 'Teamwork', weight: 4 },
+          { attribute: 'Decisions', weight: 4 },
+          { attribute: 'Corners', weight: 3 },
+          { attribute: 'First Touch', weight: 4 },
+          { attribute: 'Off The Ball', weight: 3 },
+        ],
+      },
+      {
+        name: 'DRI (Dribbling)',
+        description: "A player's ability to control the ball while moving",
+        weights: [
+          { attribute: 'Dribbling', weight: 8 },
+          { attribute: 'First Touch', weight: 7 },
+          { attribute: 'Technique', weight: 6 },
+          { attribute: 'Flair', weight: 5 },
+          { attribute: 'Composure', weight: 4 },
+          { attribute: 'Off The Ball', weight: 3 },
+        ],
+      },
+      {
+        name: 'DEF (Defending)',
+        description: "A player's defensive abilities",
+        weights: [
+          { attribute: 'Marking', weight: 8 },
+          { attribute: 'Tackling', weight: 8 },
+          { attribute: 'Heading', weight: 6 },
+          { attribute: 'Anticipation', weight: 7 },
+          { attribute: 'Concentration', weight: 6 },
+          { attribute: 'Positioning', weight: 7 },
+          { attribute: 'Decisions', weight: 5 },
+          { attribute: 'Composure', weight: 4 },
+          { attribute: 'Bravery', weight: 5 },
+          { attribute: 'Aggression', weight: 4 },
+          { attribute: 'Work Rate', weight: 4 },
+        ],
+      },
+      {
+        name: 'PHY (Physical)',
+        description: "A player's physical attributes",
+        weights: [
+          { attribute: 'Strength', weight: 8 },
+          { attribute: 'Stamina', weight: 7 },
+          { attribute: 'Natural Fitness', weight: 6 },
+          { attribute: 'Jumping', weight: 5 },
+          { attribute: 'Balance', weight: 4 },
+          { attribute: 'Aggression', weight: 5 },
+          { attribute: 'Bravery', weight: 4 },
+          { attribute: 'Work Rate', weight: 4 },
+        ],
+      },
+    ]
+
     const exportSteps = [
       {
         title: 'Download the FM Dash Search View',
@@ -1144,6 +1487,7 @@ volumes:
       dockerSteps,
       setupSteps,
       exportSteps,
+      fifaCategories,
       copyToClipboard,
       setActiveSection,
       showTutorial,
@@ -2658,6 +3002,232 @@ volumes:
         font-size: 0.875rem;
         color: var(--q-secondary);
         font-weight: 500;
+    }
+}
+
+// Rating Calculations Styles
+.rating-categories {
+    display: grid;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.rating-category {
+    background: rgba(25, 118, 210, 0.05);
+    border-radius: 12px;
+    padding: 1.5rem;
+    border: 1px solid rgba(25, 118, 210, 0.2);
+    transition: all 0.3s ease;
+
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(25, 118, 210, 0.15);
+    }
+}
+
+.category-header {
+    margin-bottom: 1rem;
+
+    h4 {
+        margin: 0 0 0.5rem 0;
+        font-weight: 700;
+        color: #1976d2;
+        font-size: 1.1rem;
+
+        .body--dark & {
+            color: #64b5f6;
+        }
+    }
+
+    .category-description {
+        color: var(--q-secondary);
+        font-size: 0.875rem;
+        font-style: italic;
+    }
+}
+
+.attribute-weights {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.75rem;
+}
+
+.weight-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 6px;
+    font-size: 0.875rem;
+
+    .body--dark & {
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .attribute-name {
+        color: var(--q-secondary);
+    }
+
+    .weight-value {
+        font-weight: 600;
+        color: var(--q-primary);
+        background: rgba(25, 118, 210, 0.1);
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        min-width: 2rem;
+        text-align: center;
+    }
+}
+
+.overall-calculation,
+.total-stats-breakdown,
+.mbr-calculation,
+.scaling-info {
+    margin-top: 1.5rem;
+
+    h4 {
+        margin: 0 0 1rem 0;
+        font-weight: 600;
+        color: #1976d2;
+        font-size: 1rem;
+
+        .body--dark & {
+            color: #64b5f6;
+        }
+    }
+
+    ol, ul {
+        margin: 0 0 1rem 0;
+        padding-left: 1.5rem;
+
+        li {
+            margin-bottom: 0.5rem;
+            line-height: 1.5;
+            color: var(--q-secondary);
+        }
+    }
+}
+
+.calculation-note {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(76, 175, 80, 0.1);
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    border-radius: 6px;
+    padding: 0.75rem;
+    font-size: 0.875rem;
+    color: #2e7d32;
+    margin-top: 1rem;
+
+    .body--dark & {
+        color: #81c784;
+    }
+}
+
+.stats-categories {
+    display: grid;
+    gap: 1rem;
+    margin: 1rem 0;
+
+    @media (min-width: 768px) {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+.stats-category {
+    background: rgba(25, 118, 210, 0.05);
+    border-radius: 8px;
+    padding: 1rem;
+    border-left: 3px solid var(--q-primary);
+
+    h5 {
+        margin: 0 0 0.5rem 0;
+        font-weight: 600;
+        color: #1976d2;
+        font-size: 0.95rem;
+
+        .body--dark & {
+            color: #64b5f6;
+        }
+    }
+
+    p {
+        margin: 0;
+        line-height: 1.4;
+        color: var(--q-secondary);
+        font-size: 0.8rem;
+    }
+}
+
+.mbr-components {
+    display: grid;
+    gap: 1rem;
+    margin: 1rem 0;
+
+    @media (min-width: 768px) {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.mbr-component {
+    background: rgba(156, 39, 176, 0.05);
+    border-radius: 8px;
+    padding: 1rem;
+    border-left: 3px solid #9c27b0;
+
+    h5 {
+        margin: 0 0 0.5rem 0;
+        font-weight: 600;
+        color: #9c27b0;
+        font-size: 0.95rem;
+
+        .body--dark & {
+            color: #ce93d8;
+        }
+    }
+
+    p {
+        margin: 0;
+        line-height: 1.4;
+        color: var(--q-secondary);
+        font-size: 0.875rem;
+    }
+}
+
+.usage-tips {
+    display: grid;
+    gap: 1rem;
+    margin-top: 1rem;
+
+    @media (min-width: 768px) {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.usage-tips .tip-item {
+    background: rgba(76, 175, 80, 0.05);
+    border-radius: 8px;
+    padding: 1rem;
+    border-left: 3px solid #4caf50;
+
+    h4 {
+        margin: 0 0 0.5rem 0;
+        font-weight: 600;
+        color: #2e7d32;
+        font-size: 0.95rem;
+
+        .body--dark & {
+            color: #81c784;
+        }
+    }
+
+    p {
+        margin: 0;
+        line-height: 1.4;
+        color: var(--q-secondary);
+        font-size: 0.875rem;
     }
 }
 </style>
