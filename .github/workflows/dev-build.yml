@@ -229,7 +229,34 @@ jobs:
 
       - name: Configure kubectl
         run: |
-          echo "${{ secrets.KUBECONFIG }}" > kubeconfig.yaml
+          # Function to check if content is valid base64
+          is_base64() {
+            local content="$1"
+            # Check if content contains only base64 characters and has proper length
+            if echo "$content" | grep -q '^[A-Za-z0-9+/]*=*$' && [ $(( ${#content} % 4 )) -eq 0 ]; then
+              # Try to decode and check if it produces valid output
+              if echo "$content" | base64 -d > /dev/null 2>&1; then
+                return 0
+              fi
+            fi
+            return 1
+          }
+          
+          # Try to detect if content is base64 encoded
+          if is_base64 "${{ secrets.KUBECONFIG }}"; then
+            echo "Detected base64-encoded kubeconfig, decoding..."
+            echo "${{ secrets.KUBECONFIG }}" | base64 -d > kubeconfig.yaml
+          else
+            echo "Detected plain text kubeconfig..."
+            echo "${{ secrets.KUBECONFIG }}" > kubeconfig.yaml
+          fi
+          
+          # Verify the kubeconfig file was created successfully
+          if [ ! -f kubeconfig.yaml ]; then
+            echo "Error: Failed to create kubeconfig.yaml"
+            exit 1
+          fi
+          
           export KUBECONFIG=kubeconfig.yaml
           kubectl config current-context
         env:
