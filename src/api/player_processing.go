@@ -941,21 +941,12 @@ func RecalculatePlayerRatings(player *Player) {
 	}
 }
 
-// RecalculateAllPlayersRatings recalculates ratings for all players in a slice
+// RecalculateAllPlayersRatings recalculates all ratings for all players
 func RecalculateAllPlayersRatings(players []Player) []Player {
-	LogInfo("RecalculateAllPlayersRatings called for %d players", len(players))
-
-	// Acquire write lock to prevent concurrent modifications
-	playersPercentileMutex.Lock()
-	defer playersPercentileMutex.Unlock()
-
-	// Create a new slice to avoid modifying the original
-	result := make([]Player, len(players))
-	copy(result, players)
-	for i := range result {
-		// Make a copy to avoid modifying the original
-		result[i] = players[i]
-		RecalculatePlayerRatings(&result[i])
+	// Process all players
+	for i := range players {
+		RecalculatePlayerRatings(&players[i])
 	}
-	return result
+
+	return players
 }

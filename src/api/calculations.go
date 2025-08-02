@@ -3,7 +3,6 @@ package main
 import (
 	"math"
 	"strconv"
-	"strings"
 )
 
 // Global variables for attribute weights
@@ -441,8 +440,8 @@ func CalculateTotalStats(playerNumericAttributes map[string]int) int {
 
 // CalculateMoneyballRating calculates the Moneyball Rating (MBR) based on overall, age, mentality, and value score
 func CalculateMoneyballRating(player Player, valueScore float64) int {
-	// Base rating is the player's overall
-	baseRating := player.Overall
+	// Base rating is the player's overall divided by 2
+	baseRating := player.Overall / 2
 
 	// Age modifiers
 	ageInt, err := strconv.Atoi(player.Age)
@@ -454,17 +453,58 @@ func CalculateMoneyballRating(player Player, valueScore float64) int {
 	// Mentality modifier based on personality
 	mentalityModifier := getMentalityModifier(player.Personality)
 
-	// Value score contribution (divided by 3)
-	valueScoreContribution := int(valueScore / 3)
+	// Calculate value score using the same methodology as bargain hunter
+	var calculatedValueScore float64
+	overall := float64(player.Overall)
+	transferValueMillions := float64(player.TransferValueAmount) / 1000000.0
+
+	// Prevent division by zero
+	if transferValueMillions == 0 {
+		calculatedValueScore = 0
+	} else {
+		// Calculate value-per-rating ratio (millions per overall point)
+		valuePerRating := transferValueMillions / overall
+
+		// Use logarithmic scaling to reduce the penalty for expensive but valuable players
+		logValuePerRating := math.Log10(valuePerRating + 1) // +1 to avoid log(0)
+
+		// Base efficiency score: higher overall rating and lower value-per-rating is better
+		baseEfficiency := overall / (logValuePerRating + 1)
+
+		// Apply tier-based multipliers to maintain some differentiation
+		switch {
+		case overall >= 80:
+			// Elite players (80+) - Expect premium pricing, moderate penalty for cost
+			calculatedValueScore = baseEfficiency * 1.2
+		case overall >= 70:
+			// Quality players (70-79) - Good balance of quality and value
+			calculatedValueScore = baseEfficiency * 1.0
+		case overall >= 60:
+			// Decent players (60-69) - Should be better value for money
+			calculatedValueScore = baseEfficiency * 0.9
+		case overall >= 55:
+			// Budget players (55-59) - Expected to be cheap
+			calculatedValueScore = baseEfficiency * 0.8
+		default:
+			// Youth/development players (<55) - Penalized for poor current ability
+			calculatedValueScore = baseEfficiency * 0.6
+		}
+
+		// Apply bonus for exceptional value scenarios
+		// If a player's value-per-rating is significantly below their tier average
+		expectedValuePerRating := getExpectedValuePerRating(overall)
+		if valuePerRating < expectedValuePerRating*0.7 { // 30% below expected
+			calculatedValueScore *= 1.3 // 30% bonus for exceptional value
+		} else if valuePerRating < expectedValuePerRating*0.85 { // 15% below expected
+			calculatedValueScore *= 1.15 // 15% bonus for good value
+		}
+	}
+
+	// Value score contribution (multiplied by 0.75)
+	valueScoreContribution := int(calculatedValueScore * 0.75)
 
 	// Final calculation
 	moneyballRating := baseRating + ageModifier + mentalityModifier + valueScoreContribution
-
-	// Debug logging for players with 'Bell' in their name
-	if strings.Contains(strings.ToLower(player.Name), "bell") {
-		LogDebug("MBR Calculation for %s (UID: %d): Base=%d, Age=%d (modifier=%d), Personality='%s' (modifier=%d), ValueScore=%.2f (contribution=%d), Final=%d",
-			player.Name, player.UID, baseRating, ageInt, ageModifier, player.Personality, mentalityModifier, valueScore, valueScoreContribution, moneyballRating)
-	}
 
 	return moneyballRating
 }
@@ -473,37 +513,37 @@ func CalculateMoneyballRating(player Player, valueScore float64) int {
 func getAgeModifier(age int) int {
 	switch {
 	case age >= 16 && age <= 18:
-		return 20
+		return 30
 	case age == 19:
-		return 17
+		return 25
 	case age == 20:
-		return 14
+		return 22
 	case age == 21:
-		return 11
+		return 18
 	case age == 22:
-		return 8
+		return 15
 	case age == 23:
-		return 5
+		return 10
 	case age == 24:
-		return 4
+		return 6
 	case age == 25:
-		return 2
+		return 3
 	case age == 26:
-		return 0
-	case age == 27:
 		return -1
-	case age == 28:
+	case age == 27:
 		return -3
+	case age == 28:
+		return -5
 	case age == 29:
-		return -6
-	case age == 30:
 		return -10
-	case age == 31:
+	case age == 30:
 		return -15
+	case age == 31:
+		return -20
 	default:
 		// For ages outside the specified range, apply a gradual decline
 		if age > 31 {
-			return -15 - (age-31)*2 // Additional -2 per year after 31
+			return -20 - (age-31)*2 // Additional -2 per year after 31
 		}
 		return 0 // Default for ages below 16
 	}
@@ -514,9 +554,9 @@ func getMentalityModifier(personality string) int {
 	// Elite personalities
 	switch personality {
 	case "Model Citizen":
-		return 10
+		return 20
 	case "Model Professional":
-		return 10
+		return 20
 	}
 
 	// Very Good personalities
@@ -525,14 +565,14 @@ func getMentalityModifier(personality string) int {
 		"Iron Willed", "Resillient", "Spirited", "Driven", "Determined",
 		"Fairly Determined", "Charismatic Leader", "Born Leader", "Leader",
 		"Very Ambitious", "Ambitious", "Fairly Ambitious":
-		return 7
+		return 15
 	}
 
 	// Good personalities
 	switch personality {
 	case "Balanced", "Light-Hearted", "Jovial", "Very Loyal", "Loyal",
 		"Fairly Loyal", "Honest", "Sporting", "Fairly Sporting":
-		return 3
+		return 8
 	}
 
 	// Okay personalities (neutral)
@@ -545,14 +585,14 @@ func getMentalityModifier(personality string) int {
 	// Poor personalities
 	switch personality {
 	case "Fickle", "Mercenary", "Unambitious", "Unsporting", "Realist":
-		return -5
+		return -15
 	}
 
 	// Very Poor personalities
 	switch personality {
 	case "Slack", "Casual", "Temperamental", "Spineless", "Low Self-Belief",
 		"Easily Discouraged", "Low Determination":
-		return -15
+		return -35
 	}
 
 	// Default for unknown personalities

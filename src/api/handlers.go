@@ -590,10 +590,14 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		logInfo(ctx, "Starting async percentile calculation for dataset %s", datasetID)
 		startTime := time.Now()
 
-		// Calculate percentiles asynchronously
-		if err := CalculatePlayerPercentilesAsync(ctx, datasetID, playersList, finalDatasetCurrencySymbol); err != nil {
-			logError(ctx, "Error calculating percentiles for dataset %s: %v", datasetID, err)
-		}
+		// Calculate percentiles for all division filters to ensure stability
+		CalculatePlayerPerformancePercentiles(playersList)
+
+		// Log top 25 MBR players after calculations are complete
+		logTop25MBRPlayers(playersList)
+
+		// Update the stored data with calculated percentiles
+		SetPlayerData(datasetID, playersList, finalDatasetCurrencySymbol)
 
 		calculationTime := time.Since(startTime)
 		logInfo(ctx, "Completed async percentile calculation for dataset %s in %v", datasetID, calculationTime)
@@ -4763,6 +4767,9 @@ func CalculatePlayerPercentilesAsync(ctx context.Context, datasetID string, play
 	// Calculate percentiles for all division filters to ensure stability
 	CalculatePlayerPerformancePercentiles(playersCopy)
 
+	// Log top 25 MBR players after calculations are complete
+	logTop25MBRPlayers(playersCopy)
+
 	// Update the stored data with calculated percentiles
 	SetPlayerData(datasetID, playersCopy, storedData.CurrencySymbol)
 
@@ -5465,4 +5472,66 @@ func debugPlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Error(w, "Player not found", http.StatusNotFound)
+}
+
+// logTop25MBRPlayers logs the top 25 players with the highest Moneyball Rating
+func logTop25MBRPlayers(players []Player) {
+	// Create a copy of players for sorting
+	playersCopy := make([]Player, len(players))
+	copy(playersCopy, players)
+
+	// Sort by MBR in descending order
+	sort.Slice(playersCopy, func(i, j int) bool {
+		return playersCopy[i].MBR > playersCopy[j].MBR
+	})
+
+	// Log top 25
+	LogInfo("=== TOP 25 MONEYBALL RATING PLAYERS ===")
+	for i := 0; i < 25 && i < len(playersCopy); i++ {
+		player := playersCopy[i]
+		ageInt, _ := strconv.Atoi(player.Age)
+		valueScore := getExpectedValuePerRating(float64(player.Overall))
+		baseRating := player.Overall / 2
+		ageModifier := getAgeModifier(ageInt)
+		mentalityModifier := getMentalityModifier(player.Personality)
+		valueScoreContribution := int(valueScore * 1.5)
+
+		// Calculate value score for logging
+		var calculatedValueScore float64
+		overall := float64(player.Overall)
+		transferValueMillions := float64(player.TransferValueAmount) / 1000000.0
+
+		if transferValueMillions > 0 {
+			valuePerRating := transferValueMillions / overall
+			logValuePerRating := math.Log10(valuePerRating + 1)
+			baseEfficiency := overall / (logValuePerRating + 1)
+
+			switch {
+			case overall >= 80:
+				calculatedValueScore = baseEfficiency * 1.2
+			case overall >= 70:
+				calculatedValueScore = baseEfficiency * 1.0
+			case overall >= 60:
+				calculatedValueScore = baseEfficiency * 0.9
+			case overall >= 55:
+				calculatedValueScore = baseEfficiency * 0.8
+			default:
+				calculatedValueScore = baseEfficiency * 0.6
+			}
+
+			expectedValuePerRating := getExpectedValuePerRating(overall)
+			if valuePerRating < expectedValuePerRating*0.7 {
+				calculatedValueScore *= 1.3
+			} else if valuePerRating < expectedValuePerRating*0.85 {
+				calculatedValueScore *= 1.15
+			}
+		}
+
+		LogInfo("Rank %d: %s (Age: %d, Overall: %d, Club: %s) - MBR: %d",
+			i+1, player.Name, ageInt, player.Overall, player.Club, player.MBR)
+		LogInfo("  Breakdown: Base=%d, Age=%d, Mentality=%d, ValueScore=%.2f (contribution=%d)",
+			baseRating, ageModifier, mentalityModifier, calculatedValueScore, valueScoreContribution)
+		LogInfo("  Transfer Value: %s (£%d)", player.TransferValue, player.TransferValueAmount)
+	}
+	LogInfo("=== END TOP 25 MBR PLAYERS ===")
 }
