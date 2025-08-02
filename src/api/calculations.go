@@ -465,6 +465,35 @@ func CalculateMoneyballRating(player Player, valueScore float64) int {
 		// Calculate value-per-rating ratio (millions per overall point)
 		valuePerRating := transferValueMillions / overall
 
+		// Get expected value for this overall rating
+		expectedValuePerRating := getExpectedValuePerRating(overall)
+
+		// Calculate how many times more expensive they are than expected
+		priceMultiplier := valuePerRating / expectedValuePerRating
+
+		// Apply aggressive penalty for expensive players in the value score itself
+		var valuePenalty float64
+		switch {
+		case priceMultiplier >= 5.0:
+			valuePenalty = 0.1 // 90% penalty for extremely expensive players
+		case priceMultiplier >= 4.0:
+			valuePenalty = 0.2 // 80% penalty for severely expensive players
+		case priceMultiplier >= 3.0:
+			valuePenalty = 0.3 // 70% penalty for very expensive players
+		case priceMultiplier >= 2.5:
+			valuePenalty = 0.4 // 60% penalty for expensive players
+		case priceMultiplier >= 2.0:
+			valuePenalty = 0.5 // 50% penalty for somewhat expensive players
+		case priceMultiplier >= 1.5:
+			valuePenalty = 0.7 // 30% penalty for slightly expensive players
+		case priceMultiplier <= 0.5:
+			valuePenalty = 1.5 // 50% bonus for undervalued players
+		case priceMultiplier <= 0.7:
+			valuePenalty = 1.2 // 20% bonus for somewhat undervalued players
+		default:
+			valuePenalty = 1.0 // No penalty/bonus for reasonably priced players
+		}
+
 		// Use logarithmic scaling to reduce the penalty for expensive but valuable players
 		logValuePerRating := math.Log10(valuePerRating + 1) // +1 to avoid log(0)
 
@@ -490,24 +519,74 @@ func CalculateMoneyballRating(player Player, valueScore float64) int {
 			calculatedValueScore = baseEfficiency * 0.6
 		}
 
-		// Apply bonus for exceptional value scenarios
-		// If a player's value-per-rating is significantly below their tier average
-		expectedValuePerRating := getExpectedValuePerRating(overall)
-		if valuePerRating < expectedValuePerRating*0.7 { // 30% below expected
-			calculatedValueScore *= 1.3 // 30% bonus for exceptional value
-		} else if valuePerRating < expectedValuePerRating*0.85 { // 15% below expected
-			calculatedValueScore *= 1.15 // 15% bonus for good value
+		// Apply the value penalty/bonus based on pricing
+		calculatedValueScore *= valuePenalty
+
+		// Apply bonus for exceptional value scenarios (only for reasonably priced players)
+		if priceMultiplier <= 1.5 {
+			if valuePerRating < expectedValuePerRating*0.7 { // 30% below expected
+				calculatedValueScore *= 1.3 // 30% bonus for exceptional value
+			} else if valuePerRating < expectedValuePerRating*0.85 { // 15% below expected
+				calculatedValueScore *= 1.15 // 15% bonus for good value
+			}
 		}
 	}
 
 	// Value score contribution (reduced multiplier from 0.75 to 0.5)
 	valueScoreContribution := int(calculatedValueScore * 0.5)
 
+	// Calculate transfer value penalty for expensive players
+	// This is currency-agnostic and scales automatically
+	var transferValuePenalty int
+	if transferValueMillions > 0 {
+		// Calculate value-per-rating ratio (millions per overall point)
+		valuePerRating := transferValueMillions / overall
+
+		// Get expected value for this overall rating
+		expectedValuePerRating := getExpectedValuePerRating(overall)
+
+		// Calculate how many times more expensive they are than expected
+		priceMultiplier := valuePerRating / expectedValuePerRating
+
+		// Apply penalty based on how overpriced they are
+		switch {
+		case priceMultiplier >= 5.0:
+			// Extremely overpriced (5x or more expected value)
+			transferValuePenalty = -40
+		case priceMultiplier >= 4.0:
+			// Severely overpriced (4x expected value)
+			transferValuePenalty = -30
+		case priceMultiplier >= 3.0:
+			// Very overpriced (3x expected value)
+			transferValuePenalty = -20
+		case priceMultiplier >= 2.5:
+			// Overpriced (2.5x expected value)
+			transferValuePenalty = -15
+		case priceMultiplier >= 2.0:
+			// Somewhat overpriced (2x expected value)
+			transferValuePenalty = -10
+		case priceMultiplier >= 1.5:
+			// Slightly overpriced (1.5x expected value)
+			transferValuePenalty = -5
+		case priceMultiplier <= 0.5:
+			// Undervalued (0.5x or less expected value) - bonus
+			transferValuePenalty = 5
+		case priceMultiplier <= 0.7:
+			// Somewhat undervalued (0.7x expected value) - small bonus
+			transferValuePenalty = 2
+		default:
+			// Reasonably priced (0.7x to 1.5x expected value)
+			transferValuePenalty = 0
+		}
+	} else {
+		transferValuePenalty = 0
+	}
+
 	// Calculate salary penalty based on overpayment
 	salaryPenalty := getSalaryPenalty(player.TransferValueAmount, player.WageAmount)
 
 	// Final calculation
-	moneyballRating := baseRating + ageModifier + mentalityModifier + valueScoreContribution + salaryPenalty
+	moneyballRating := baseRating + ageModifier + mentalityModifier + valueScoreContribution + transferValuePenalty + salaryPenalty
 
 	// Apply sigmoid normalization to compress extreme values to 0-100 range
 	// Sigmoid function: 1 / (1 + e^(-x/scale_factor))

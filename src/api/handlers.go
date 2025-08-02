@@ -5530,10 +5530,40 @@ func logTop25OverallPlayers(players []Player) {
 		// Calculate salary penalty for logging
 		salaryPenalty := getSalaryPenalty(player.TransferValueAmount, player.WageAmount)
 
+		// Calculate transfer value penalty for logging
+		var transferValuePenalty int
+		if player.TransferValueAmount > 0 {
+			transferValueMillions := float64(player.TransferValueAmount) / 1000000.0
+			valuePerRating := transferValueMillions / overall
+			expectedValuePerRating := getExpectedValuePerRating(overall)
+			priceMultiplier := valuePerRating / expectedValuePerRating
+
+			switch {
+			case priceMultiplier >= 5.0:
+				transferValuePenalty = -40
+			case priceMultiplier >= 4.0:
+				transferValuePenalty = -30
+			case priceMultiplier >= 3.0:
+				transferValuePenalty = -20
+			case priceMultiplier >= 2.5:
+				transferValuePenalty = -15
+			case priceMultiplier >= 2.0:
+				transferValuePenalty = -10
+			case priceMultiplier >= 1.5:
+				transferValuePenalty = -5
+			case priceMultiplier <= 0.5:
+				transferValuePenalty = 5
+			case priceMultiplier <= 0.7:
+				transferValuePenalty = 2
+			default:
+				transferValuePenalty = 0
+			}
+		}
+
 		LogInfo("Rank %d: %s (Age: %d, Overall: %d, Club: %s) - MBR: %d",
 			i+1, player.Name, ageInt, player.Overall, player.Club, player.MBR)
-		LogInfo("  Breakdown: Base=%d, Age=%d, Mentality=%d, ValueScore=%.2f (contribution=%d), SalaryPenalty=%d",
-			baseRating, ageModifier, mentalityModifier, calculatedValueScore, valueScoreContribution, salaryPenalty)
+		LogInfo("  Breakdown: Base=%d, Age=%d, Mentality=%d, ValueScore=%.2f (contribution=%d), TransferValuePenalty=%d, SalaryPenalty=%d",
+			baseRating, ageModifier, mentalityModifier, calculatedValueScore, valueScoreContribution, transferValuePenalty, salaryPenalty)
 		LogInfo("  Transfer Value: %s (£%d), Wage: £%d/week", player.TransferValue, player.TransferValueAmount, player.WageAmount)
 	}
 	LogInfo("=== END TOP 25 OVERALL RATING PLAYERS ===")
