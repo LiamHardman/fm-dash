@@ -789,20 +789,26 @@
                                 that are easier to understand and compare.
                             </p>
                             
-                            <div class="rating-categories">
-                                <div class="rating-category" v-for="category in fifaCategories" :key="category.name">
-                                    <div class="category-header">
-                                        <h4>{{ category.name }}</h4>
-                                        <span class="category-description">{{ category.description }}</span>
-                                    </div>
-                                    <div class="attribute-weights">
-                                        <div class="weight-item" v-for="weight in category.weights" :key="weight.attribute">
-                                            <span class="attribute-name">{{ weight.attribute }}</span>
-                                            <span class="weight-value">{{ weight.weight }}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                                                         <div class="rating-categories">
+                                 <div class="rating-category" v-for="category in fifaCategories" :key="category.name">
+                                     <div class="category-header">
+                                         <h4>{{ category.name }}</h4>
+                                         <span class="category-description">{{ category.description }}</span>
+                                     </div>
+                                     <div class="weights-explanation">
+                                         <p class="weights-note">
+                                             <q-icon name="info" size="1rem" />
+                                             <span>The numbers below are <strong>weights</strong> that determine how much each attribute contributes to the final rating. Higher weights = more important attributes.</span>
+                                         </p>
+                                     </div>
+                                     <div class="attribute-weights">
+                                         <div class="weight-item" v-for="weight in category.weights" :key="weight.attribute">
+                                             <span class="attribute-name">{{ weight.attribute }}</span>
+                                             <span class="weight-value">Weight: {{ weight.weight }}</span>
+                                         </div>
+                                     </div>
+                                 </div>
+                             </div>
                         </q-card-section>
                     </q-card>
 
@@ -3006,6 +3012,31 @@ volumes:
 }
 
 // Rating Calculations Styles
+.weights-explanation {
+    margin-bottom: 1rem;
+}
+
+.weights-note {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(255, 152, 0, 0.1);
+    border: 1px solid rgba(255, 152, 0, 0.3);
+    border-radius: 6px;
+    padding: 0.75rem;
+    font-size: 0.875rem;
+    color: #ef6c00;
+    margin: 0;
+
+    .body--dark & {
+        color: #ffb74d;
+    }
+
+    strong {
+        font-weight: 600;
+    }
+}
+
 .rating-categories {
     display: grid;
     gap: 1.5rem;
