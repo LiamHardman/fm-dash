@@ -74,7 +74,13 @@ export default defineConfig({
     // Ensure proper module resolution
     esbuildOptions: {
       target: 'esnext',
+      // Add tree-shaking optimization
+      treeShaking: true,
+      // Enable advanced minification during dev dependencies
+      minify: true,
     },
+    // Pre-bundle heavy dependencies for faster dev server startup
+    entries: ['src/main.js', 'src/stores/playerStore.js', 'src/composables/useApi.js'],
   },
   plugins: [
     vue({
