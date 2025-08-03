@@ -4,7 +4,7 @@
 
 import { computed, ref } from 'vue'
 import logger from '../utils/logger.js'
-import protobufClient from '../utils/protobufClient'
+import protobufClient from '../utils/protobufClient.js'
 
 // Performance metrics
 const metrics = {

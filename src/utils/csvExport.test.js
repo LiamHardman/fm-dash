@@ -1,7 +1,8 @@
 /**
- * Tests for CSV Export Utility
+ * Tests for CSV Export utility functions
  */
 
+import { describe, expect, test, vi } from 'vitest'
 import { getDefaultExportColumns, validateExportData } from './csvExport.js'
 
 describe('CSV Export Utility', () => {
@@ -139,7 +140,7 @@ describe('CSV Export Utility', () => {
   describe('JSON Export', () => {
     test('should create properly formatted JSON export object', () => {
       // Since we can't easily test the actual file download, we can test the structure
-      const _mockExportFunction = jest.fn()
+      const _mockExportFunction = vi.fn()
 
       // Test that the function would be called with proper parameters
       expect(() => {

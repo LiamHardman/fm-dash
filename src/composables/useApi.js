@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import protobufClient from '../utils/protobufClient'
+import protobufClient from '../utils/protobufClient.js'
 import { useErrorHandling } from './useErrorHandling'
 
 // Determine the base URL at runtime
