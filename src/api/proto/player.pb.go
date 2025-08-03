@@ -120,8 +120,8 @@ type Player struct {
 	// Moneyball Rating and Total Stats
 	TotalStats int32 `protobuf:"varint,36,opt,name=total_stats,json=totalStats,proto3" json:"total_stats,omitempty"`
 	Mbr        int32 `protobuf:"varint,37,opt,name=mbr,proto3" json:"mbr,omitempty"`
-	// Role-specific overall scores
-	RoleSpecificOveralls []*RoleOverallScore `protobuf:"bytes,38,rep,name=role_specific_overalls,json=roleSpecificOveralls,proto3" json:"role_specific_overalls,omitempty"`
+	// Role-specific overall scores for tactical analysis
+	RoleSpecificOveralls []*RoleOverallScore `protobuf:"bytes,38,rep,name=roleSpecificOveralls,proto3" json:"roleSpecificOveralls,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -490,7 +490,7 @@ const file_proto_player_proto_rawDesc = "" +
 	"\x12proto/player.proto\x12\x06player\"E\n" +
 	"\x10RoleOverallScore\x12\x1b\n" +
 	"\trole_name\x18\x01 \x01(\tR\broleName\x12\x14\n" +
-	"\x05score\x18\x02 \x01(\x05R\x05score\"\xe0\t\n" +
+	"\x05score\x18\x02 \x01(\x05R\x05score\"\xde\t\n" +
 	"\x06Player\x12\x10\n" +
 	"\x03uid\x18\x01 \x01(\x03R\x03uid\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1a\n" +
@@ -531,8 +531,8 @@ const file_proto_player_proto_rawDesc = "" +
 	"wageAmount\x12\x1f\n" +
 	"\vtotal_stats\x18$ \x01(\x05R\n" +
 	"totalStats\x12\x10\n" +
-	"\x03mbr\x18% \x01(\x05R\x03mbr\x12N\n" +
-	"\x16role_specific_overalls\x18& \x03(\v2\x18.player.RoleOverallScoreR\x14roleSpecificOveralls\x1aF\n" +
+	"\x03mbr\x18% \x01(\x05R\x03mbr\x12L\n" +
+	"\x14roleSpecificOveralls\x18& \x03(\v2\x18.player.RoleOverallScoreR\x14roleSpecificOveralls\x1aF\n" +
 	"\x18EssentialAttributesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x7f\n" +
@@ -563,7 +563,7 @@ var file_proto_player_proto_goTypes = []any{
 }
 var file_proto_player_proto_depIdxs = []int32{
 	3, // 0: player.Player.essential_attributes:type_name -> player.Player.EssentialAttributesEntry
-	0, // 1: player.Player.role_specific_overalls:type_name -> player.RoleOverallScore
+	0, // 1: player.Player.roleSpecificOveralls:type_name -> player.RoleOverallScore
 	1, // 2: player.DatasetData.players:type_name -> player.Player
 	3, // [3:3] is the sub-list for method output_type
 	3, // [3:3] is the sub-list for method input_type

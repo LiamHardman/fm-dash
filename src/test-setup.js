@@ -1,6 +1,20 @@
 import { config } from '@vue/test-utils'
 import { vi } from 'vitest'
 
+// Mock import.meta.env for test environment
+Object.defineProperty(globalThis, 'import', {
+  value: {
+    meta: {
+      env: {
+        DEV: false,
+        MODE: 'test',
+        PROD: false,
+      },
+    },
+  },
+  writable: true,
+})
+
 global.IntersectionObserver = vi.fn(() => ({
   disconnect: vi.fn(),
   observe: vi.fn(),

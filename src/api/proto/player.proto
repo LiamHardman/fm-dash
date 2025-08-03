@@ -62,8 +62,8 @@ message Player {
   int32 total_stats = 36;
   int32 mbr = 37;
   
-  // Role-specific overall scores
-  repeated RoleOverallScore role_specific_overalls = 38;
+  // Role-specific overall scores for tactical analysis
+  repeated RoleOverallScore roleSpecificOveralls = 38;
 }
 
 // DatasetData represents a dataset containing player information

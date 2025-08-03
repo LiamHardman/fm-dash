@@ -676,6 +676,13 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 	SetSpanAttributes(ctx, attribute.String("dataset.id", datasetID))
 
 	queryValues := r.URL.Query()
+
+	// Check for cache-busting parameter to fix field name compatibility issues
+	if queryValues.Get("clear_cache") == "true" {
+		invalidateDatasetCache(datasetID)
+		logInfo(ctx, "Dataset cache cleared due to clear_cache parameter", "dataset_id", datasetID)
+	}
+
 	filterPosition := queryValues.Get("position")
 	filterRole := queryValues.Get("role")
 	minAgeStr := queryValues.Get("minAge")
