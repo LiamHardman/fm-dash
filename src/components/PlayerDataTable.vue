@@ -68,185 +68,30 @@
                 no-data-label="No players to display"
             >
             <template v-slot:header="props">
-                <q-tr
+                <PlayerTableHeader 
                     :props="props"
-                    class="modern-table-header"
-                >
-                    <q-th
-                        v-for="col in props.cols"
-                        :key="col.name"
-                        :props="props"
-                        class="text-weight-bold modern-header-cell"
-                        :class="[
-                            col.headerClasses,
-                            { 'active-sort': sortField === col.name },
-                            { 'cursor-pointer': true },
-                            { 'sorting-in-progress': isAsyncSorting && sortField === col.name }
-                        ]"
-                        :style="col.headerStyle"
-                        @click="sortTable(col.name)"
-                    >
-                        <span
-                            v-if="
-                                col.name === 'transfer_value' ||
-                                col.name === 'wage'
-                            "
-                        >
-                            {{ col.label }} ({{ currencySymbol }})
-                        </span>
-                        <span v-else-if="col.name === 'TotalStats'">
-                            <q-tooltip>Total Stats</q-tooltip>
-                            {{ col.label }}
-                        </span>
-                        <span v-else-if="col.name === 'MBR'">
-                            <q-tooltip>Moneyball Rating</q-tooltip>
-                            {{ col.label }}
-                        </span>
-                        <span v-else>
-                            {{ col.label }}
-                        </span>
-                        <q-icon
-                            v-if="sortField === col.name && !isAsyncSorting"
-                            :name="
-                                sortDirection === 'asc'
-                                    ? 'arrow_upward'
-                                    : 'arrow_downward'
-                            "
-                            size="xs"
-                            class="q-ml-xs sort-icon"
-                        />
-                        <!-- Subtle sorting indicator -->
-                        <q-spinner-dots
-                            v-if="sortField === col.name && isAsyncSorting"
-                            size="xs"
-                            color="primary"
-                            class="q-ml-xs sorting-spinner"
-                        />
-                    </q-th>
-                </q-tr>
+                    :sort-field="sortField"
+                    :sort-direction="sortDirection"
+                    :is-async-sorting="isAsyncSorting"
+                    :currency-symbol="currencySymbol"
+                    @sort-table="sortTable"
+                />
             </template>
 
             <template v-slot:body="props">
-                <q-tr
+                <PlayerTableRow
                     :props="props"
-                    @click="onRowClick(props.row)"
-                    @contextmenu="onRightClick($event, props.row)"
-                    class="cursor-pointer table-row-hover modern-table-row"
-                >
-                    <q-td
-                        v-for="col in props.cols"
-                        :key="col.name"
-                        :props="props"
-                        :class="[
-                            col.classes,
-                            'table-cell-enhanced',
-                        ]"
-                        :style="col.style"
-                    >
-                        <template v-if="col.isFifaStat || col.isOverallStat">
-                            <span
-                                :class="
-                                    col.name === 'TotalStats'
-                                        ? getTotalStatsRatingClass(getDisplayValue(props.row, col))
-                                        : getUnifiedRatingClass(
-                                            getDisplayValue(props.row, col),
-                                            100,
-                                        )
-                                "
-                                class="attribute-value fifa-stat-value modern-stat-badge"
-                            >
-                                {{
-                                    getDisplayValue(props.row, col) !== undefined
-                                        ? getDisplayValue(props.row, col)
-                                        : "-"
-                                }}
-                            </span>
-                        </template>
-                        <template v-else-if="col.isValueScore">
-                            <span
-                                :class="getValueScoreClass(props.row.valueScore)"
-                                class="attribute-value value-score-value modern-stat-badge"
-                            >
-                                {{ 
-                                    props.row.valueScore !== undefined && props.row.valueScore !== null
-                                        ? Math.round(props.row.valueScore)
-                                        : "-"
-                                }}
-                            </span>
-                        </template>
-                        <template
-                            v-else-if="
-                                col.name === 'transfer_value' ||
-                                col.name === 'wage'
-                            "
-                        >
-                            <span
-                                :class="
-                                    getMoneyClass(
-                                        props.row[col.sortField || col.field],
-                                    )
-                                "
-                                class="money-value"
-                            >
-                                {{
-                                    formatDisplayCurrency(
-                                        props.row[col.sortField || col.field],
-                                        props.row[col.field],
-                                    )
-                                }}
-                            </span>
-                        </template>
-                        <template
-                            v-else-if="col.name === 'nationality_display'"
-                        >
-                            <div class="flex items-center no-wrap nationality-cell">
-                                <img
-                                    v-if="props.row.nationality_iso"
-                                    :src="`https://flagcdn.com/w20/${props.row.nationality_iso.toLowerCase()}.png`"
-                                    :alt="props.row.nationality || 'Flag'"
-                                    width="20"
-                                    height="13"
-                                    class="nationality-flag flex-shrink-0"
-                                    @error="onFlagError($event, props.row)"
-                                />
-                                <q-icon
-                                    v-else
-                                    name="flag"
-                                    size="xs"
-                                    :color="
-                                        qInstance.dark.isActive
-                                            ? 'grey-6'
-                                            : 'grey-7'
-                                    "
-                                    class="nationality-flag-placeholder flex-shrink-0"
-                                />
-                                <span class="nationality-text">{{ props.row.nationality || "-" }}</span>
-                            </div>
-                        </template>
-                        <template v-else-if="col.name === 'club'">
-                            <div class="club-cell">
-                                <span 
-                                    class="club-link"
-                                    @click.stop="onClubClick(props.row)"
-                                    :title="`View ${props.row[col.field]} team page`"
-                                >{{
-                                    props.row[col.field] !== undefined &&
-                                    props.row[col.field] !== null
-                                        ? props.row[col.field]
-                                        : "-"
-                                }}</span>
-                            </div>
-                        </template>
-                        <template v-else>
-                            <span>{{
-                                props.row[col.field] !== undefined &&
-                                props.row[col.field] !== null
-                                    ? props.row[col.field]
-                                    : "-"
-                            }}</span>
-                        </template>
-                    </q-td>
-                </q-tr>
+                    :get-display-value="getDisplayValue"
+                    :get-unified-rating-class="getUnifiedRatingClass"
+                    :get-total-stats-rating-class="getTotalStatsRatingClass"
+                    :get-value-score-class="getValueScoreClass"
+                    :get-money-class="getMoneyClass"
+                    :format-display-currency="formatDisplayCurrency"
+                    :on-flag-error="onFlagError"
+                    @row-click="onRowClick"
+                    @right-click="onRightClick"
+                    @club-click="onClubClick"
+                />
             </template>
 
             <template v-slot:loading>
@@ -256,79 +101,29 @@
             </template>
 
             <template v-slot:pagination="scope">
-                <q-pagination
-                    v-model="scope.pagination.page"
-                    :max="pagesNumber"
-                    :max-pages="maxPagesToShow"
-                    boundary-links
-                    direction-links
-                    @update:model-value="onPageChange"
-                    color="primary"
-                    active-color="primary"
-                    text-color="primary"
-                    active-text-color="white"
+                <PlayerTablePagination
+                    :scope="scope"
+                    :pages-number="pagesNumber"
+                    :max-pages-to-show="maxPagesToShow"
+                    :pagination-start-row="paginationStartRow"
+                    :pagination-end-row="paginationEndRow"
+                    :pagination-total-rows="paginationTotalRows"
+                    :total-sorted-count="totalSortedCount"
+                    :is-sliced="isSliced"
+                    @page-change="onPageChange"
                 />
-                <q-space />
-                <span
-                    class="q-ml-md text-caption pagination-info"
-                >
-                    {{ paginationStartRow }} - {{ paginationEndRow }} of
-                    {{ paginationTotalRows }}
-                    <span v-if="isSliced" class="text-italic q-ml-xs"
-                        >(from {{ totalSortedCount }} total sorted)</span
-                    >
-                </span>
             </template>
         </q-table>
-    </div>
 
-        <!-- Context Menu -->
-        <q-menu 
+        <PlayerTableContextMenu
             ref="contextMenu"
-            touch-position 
-            context-menu
-            :offset="[10, 10]"
-        >
-            <q-list dense style="min-width: 180px">
-                <q-item 
-                    clickable 
-                    v-close-popup 
-                    @click="handleAddToWishlist"
-                    v-if="contextMenuPlayer && !isPlayerInWishlist(contextMenuPlayer)"
-                >
-                    <q-item-section avatar>
-                        <q-icon name="favorite_border" color="positive" />
-                    </q-item-section>
-                    <q-item-section>Add to Wishlist</q-item-section>
-                </q-item>
-                
-                <q-item 
-                    clickable 
-                    v-close-popup 
-                    @click="handleRemoveFromWishlist"
-                    v-if="contextMenuPlayer && isPlayerInWishlist(contextMenuPlayer)"
-                >
-                    <q-item-section avatar>
-                        <q-icon name="favorite" color="negative" />
-                    </q-item-section>
-                    <q-item-section>Remove from Wishlist</q-item-section>
-                </q-item>
-                
-                <q-separator />
-                
-                <q-item 
-                    clickable 
-                    v-close-popup 
-                    @click="handlePlayerDetails"
-                    v-if="contextMenuPlayer"
-                >
-                    <q-item-section avatar>
-                        <q-icon name="info" color="info" />
-                    </q-item-section>
-                    <q-item-section>View Details</q-item-section>
-                </q-item>
-            </q-list>
-        </q-menu>
+            :context-menu-player="contextMenuPlayer"
+            :is-player-in-wishlist="contextMenuPlayer ? isPlayerInWishlist(contextMenuPlayer) : false"
+            @add-to-wishlist="handleAddToWishlist"
+            @remove-from-wishlist="handleRemoveFromWishlist"
+            @player-details="handlePlayerDetails"
+        />
+    </div>
     </div>
 </template>
 
@@ -337,17 +132,28 @@ import { useQuasar } from 'quasar'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { memoize } from '../composables/useMemoization'
+import { usePlayerTableCells } from '../composables/usePlayerTableCells'
+import { usePlayerTableColumns } from '../composables/usePlayerTableColumns'
 import { useOptimizedSorting } from '../composables/useVirtualScrolling'
 import { usePlayerCalculationWorker } from '../composables/useWebWorkers'
 import { usePlayerStore } from '../stores/playerStore'
 import { useUiStore } from '../stores/uiStore'
 import { useWishlistStore } from '../stores/wishlistStore'
-import { formatCurrency } from '../utils/currencyUtils'
+import PlayerTableContextMenu from './player-table/PlayerTableContextMenu.vue'
+import PlayerTableHeader from './player-table/PlayerTableHeader.vue'
+import PlayerTablePagination from './player-table/PlayerTablePagination.vue'
+import PlayerTableRow from './player-table/PlayerTableRow.vue'
 
 const MAX_DISPLAY_PLAYERS = 1000
 
 export default {
   name: 'PlayerDataTable',
+  components: {
+    PlayerTableHeader,
+    PlayerTableRow,
+    PlayerTablePagination,
+    PlayerTableContextMenu,
+  },
   props: {
     players: { type: Array, required: true },
     loading: { type: Boolean, default: false },
@@ -379,6 +185,27 @@ export default {
     const { sortLargeArray, clearSortCache } = useOptimizedSorting()
     const { sortPlayers: sortPlayersWorker } = usePlayerCalculationWorker()
 
+    // Cache generation key that changes when players data changes
+    const cacheGeneration = ref(0)
+
+    // Initialize composables
+    const { currentColumns, getColumnLabel, getSortFieldKey } = usePlayerTableColumns(
+      props.isGoalkeeperView,
+      props.showValueScore
+    )
+
+    const {
+      getUnifiedRatingClass,
+      getTotalStatsRatingClass,
+      getMoneyClass,
+      getValueScoreClass,
+      onFlagError,
+      formatDisplayCurrency,
+      getDisplayValue,
+      getPlayerValue,
+      clearCaches,
+    } = usePlayerTableCells(props.isGoalkeeperView, props.currencySymbol, cacheGeneration)
+
     const contextMenu = ref(null)
     const sortField = ref(props.defaultSortField)
     const sortDirection = ref(props.defaultSortDirection)
@@ -388,9 +215,6 @@ export default {
     const isAsyncSorting = ref(false)
     const isSliced = ref(false)
     const currentSortController = ref(null) // For cancelling sort operations
-
-    // Cache generation key that changes when players data changes
-    const cacheGeneration = ref(0)
 
     const pagination = ref({
       sortBy: props.defaultSortField,
@@ -493,342 +317,6 @@ export default {
 
     const onPaginationUpdate = (newPagination) => {
       pagination.value = newPagination
-    }
-
-    // Column definitions with fixed widths to prevent layout shifts
-    const nameColumnStyle =
-      'width: 200px; min-width: 200px; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'
-    const ageColumnStyle =
-      'width: 60px; min-width: 60px; max-width: 60px; text-align: center; white-space: nowrap;'
-    const positionColumnStyle =
-      'width: 150px; min-width: 150px; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'
-    const clubColumnStyle =
-      'width: 180px; min-width: 180px; max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'
-    const moneyColumnStyle =
-      'width: 110px; min-width: 110px; max-width: 110px; text-align: right; white-space: nowrap;'
-    const overallColumnStyle =
-      'width: 70px; min-width: 70px; max-width: 70px; text-align: center; white-space: nowrap;'
-    const fifaStatColumnStyle =
-      'width: 60px; min-width: 60px; max-width: 60px; text-align: center; white-space: nowrap;'
-    const widerFifaStatColumnStyle =
-      'width: 80px; min-width: 80px; max-width: 80px; text-align: center; white-space: nowrap;'
-    const textColumnStyle =
-      'width: 120px; min-width: 120px; max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'
-    const nationalityColumnStyle =
-      'width: 150px; min-width: 150px; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'
-
-    const baseColumnDefinitions = {
-      name: {
-        name: 'name',
-        label: 'Name',
-        field: 'name',
-        sortable: true,
-        align: 'left',
-        style: nameColumnStyle,
-        headerStyle: nameColumnStyle,
-      },
-      age: {
-        name: 'age',
-        label: 'Age',
-        field: 'age',
-        sortable: true,
-        align: 'center',
-        style: ageColumnStyle,
-        headerStyle: ageColumnStyle,
-      },
-      position: {
-        name: 'position',
-        label: 'Position',
-        field: 'position',
-        sortable: true,
-        align: 'left',
-        style: positionColumnStyle,
-        headerStyle: positionColumnStyle,
-      },
-      club: {
-        name: 'club',
-        label: 'Club',
-        field: 'club',
-        sortable: true,
-        align: 'left',
-        style: clubColumnStyle,
-        headerStyle: clubColumnStyle,
-      },
-      transfer_value: {
-        name: 'transfer_value',
-        label: 'Value',
-        field: 'transfer_value',
-        sortable: true,
-        align: 'right',
-        sortField: 'transferValueAmount',
-        style: moneyColumnStyle,
-        headerStyle: moneyColumnStyle,
-      },
-      wage: {
-        name: 'wage',
-        label: 'Salary',
-        field: 'wage',
-        sortable: true,
-        align: 'right',
-        sortField: 'wageAmount',
-        style: moneyColumnStyle,
-        headerStyle: moneyColumnStyle,
-      },
-      Overall: {
-        name: 'Overall',
-        label: 'Overall',
-        field: 'overall',
-        sortable: true,
-        align: 'center',
-        isOverallStat: true,
-        style: overallColumnStyle,
-        headerStyle: overallColumnStyle,
-      },
-      valueScore: {
-        name: 'valueScore',
-        label: 'Value Score',
-        field: 'valueScore',
-        sortable: true,
-        align: 'center',
-        isValueScore: true,
-        style: overallColumnStyle,
-        headerStyle: overallColumnStyle,
-      },
-      personality: {
-        name: 'personality',
-        label: 'Personality',
-        field: 'personality',
-        sortable: true,
-        align: 'left',
-        style: textColumnStyle,
-        headerStyle: textColumnStyle,
-      },
-      media_handling: {
-        name: 'media_handling',
-        label: 'Media Desc.',
-        field: 'media_handling',
-        sortable: true,
-        align: 'left',
-        style: textColumnStyle,
-        headerStyle: textColumnStyle,
-      },
-      nationality_display: {
-        name: 'nationality_display',
-        label: 'Nationality',
-        field: 'nationality',
-        sortable: true,
-        align: 'left',
-        style: nationalityColumnStyle,
-        headerStyle: nationalityColumnStyle,
-      },
-    }
-
-    const allFifaStatDefinitions = {
-      GK: {
-        name: 'GK',
-        label: 'GK',
-        field: 'gk',
-        sortable: true,
-        align: 'center',
-        isFifaStat: true,
-        style: fifaStatColumnStyle,
-        headerStyle: fifaStatColumnStyle,
-      },
-      DIV: {
-        name: 'DIV',
-        label: 'DIV',
-        field: 'div',
-        sortable: true,
-        align: 'center',
-        isFifaStat: true,
-        style: fifaStatColumnStyle,
-        headerStyle: fifaStatColumnStyle,
-      },
-      HAN: {
-        name: 'HAN',
-        label: 'HAN',
-        field: 'han',
-        sortable: true,
-        align: 'center',
-        isFifaStat: true,
-        style: fifaStatColumnStyle,
-        headerStyle: fifaStatColumnStyle,
-      },
-      REF: {
-        name: 'REF',
-        label: 'REF',
-        field: 'ref',
-        sortable: true,
-        align: 'center',
-        isFifaStat: true,
-        style: fifaStatColumnStyle,
-        headerStyle: fifaStatColumnStyle,
-      },
-      KIC: {
-        name: 'KIC',
-        label: 'KIC',
-        field: 'kic',
-        sortable: true,
-        align: 'center',
-        isFifaStat: true,
-        style: fifaStatColumnStyle,
-        headerStyle: fifaStatColumnStyle,
-      },
-      SPD: {
-        name: 'SPD',
-        label: 'SPD',
-        field: 'spd',
-        sortable: true,
-        align: 'center',
-        isFifaStat: true,
-        style: fifaStatColumnStyle,
-        headerStyle: fifaStatColumnStyle,
-      },
-      POS: {
-        name: 'POS',
-        label: 'POS',
-        field: 'pos',
-        sortable: true,
-        align: 'center',
-        isFifaStat: true,
-        style: fifaStatColumnStyle,
-        headerStyle: fifaStatColumnStyle,
-      },
-      PAC: {
-        name: 'PAC',
-        label: 'PAC',
-        field: 'pac',
-        sortable: true,
-        align: 'center',
-        isFifaStat: true,
-        style: fifaStatColumnStyle,
-        headerStyle: fifaStatColumnStyle,
-      },
-      SHO: {
-        name: 'SHO',
-        label: 'SHO',
-        field: 'sho',
-        sortable: true,
-        align: 'center',
-        isFifaStat: true,
-        style: fifaStatColumnStyle,
-        headerStyle: fifaStatColumnStyle,
-      },
-      PAS: {
-        name: 'PAS',
-        label: 'PAS',
-        field: 'pas',
-        sortable: true,
-        align: 'center',
-        isFifaStat: true,
-        style: fifaStatColumnStyle,
-        headerStyle: fifaStatColumnStyle,
-      },
-      DRI: {
-        name: 'DRI',
-        label: 'DRI',
-        field: 'dri',
-        sortable: true,
-        align: 'center',
-        isFifaStat: true,
-        style: fifaStatColumnStyle,
-        headerStyle: fifaStatColumnStyle,
-      },
-      DEF: {
-        name: 'DEF',
-        label: 'DEF',
-        field: 'def',
-        sortable: true,
-        align: 'center',
-        isFifaStat: true,
-        style: fifaStatColumnStyle,
-        headerStyle: fifaStatColumnStyle,
-      },
-      PHY: {
-        name: 'PHY',
-        label: 'PHY',
-        field: 'phy',
-        sortable: true,
-        align: 'center',
-        isFifaStat: true,
-        style: fifaStatColumnStyle,
-        headerStyle: fifaStatColumnStyle,
-      },
-      TotalStats: {
-        name: 'TotalStats',
-        label: 'Total',
-        field: 'totalStats',
-        sortable: true,
-        align: 'center',
-        isFifaStat: true,
-        style: widerFifaStatColumnStyle,
-        headerStyle: widerFifaStatColumnStyle,
-      },
-      MBR: {
-        name: 'MBR',
-        label: 'MBR',
-        field: 'mbr',
-        sortable: true,
-        align: 'center',
-        isFifaStat: true,
-        style: widerFifaStatColumnStyle,
-        headerStyle: widerFifaStatColumnStyle,
-      },
-    }
-
-    // Regular computed for columns (removed memoization to fix reactivity issues)
-    const currentColumns = computed(() => {
-      const newOrderBase = [
-        baseColumnDefinitions.name,
-        baseColumnDefinitions.nationality_display,
-        baseColumnDefinitions.age,
-        baseColumnDefinitions.position,
-        baseColumnDefinitions.club,
-        baseColumnDefinitions.transfer_value,
-        baseColumnDefinitions.wage,
-        baseColumnDefinitions.Overall,
-      ]
-
-      // Add value score column if enabled
-      if (props.showValueScore) {
-        newOrderBase.push(baseColumnDefinitions.valueScore)
-      }
-
-      const fifaColumnsInOrder = props.isGoalkeeperView
-        ? [
-            allFifaStatDefinitions.DIV,
-            allFifaStatDefinitions.HAN,
-            allFifaStatDefinitions.REF,
-            allFifaStatDefinitions.KIC,
-            allFifaStatDefinitions.SPD,
-            allFifaStatDefinitions.POS,
-          ]
-        : [
-            allFifaStatDefinitions.PAC,
-            allFifaStatDefinitions.SHO,
-            allFifaStatDefinitions.PAS,
-            allFifaStatDefinitions.DRI,
-            allFifaStatDefinitions.DEF,
-            allFifaStatDefinitions.PHY,
-            allFifaStatDefinitions.TotalStats,
-            allFifaStatDefinitions.MBR,
-          ]
-
-      const trailingColumns = [
-        baseColumnDefinitions.personality,
-        baseColumnDefinitions.media_handling,
-      ]
-      return [...newOrderBase, ...fifaColumnsInOrder, ...trailingColumns]
-    })
-
-    const getColumnLabel = (fieldName) => {
-      const col = currentColumns.value.find((c) => c.name === fieldName)
-      return col ? col.label : fieldName
-    }
-
-    const getSortFieldKey = (colName) => {
-      const colDef = currentColumns.value.find((c) => c.name === colName)
-      return colDef?.sortField || colDef?.field || colName
     }
 
     // Cache for sorted results to avoid re-sorting on pagination changes
@@ -1125,75 +613,6 @@ export default {
       }
     })
 
-    // Memoized rating class calculation (called frequently in table rendering)
-    const getUnifiedRatingClass = memoize(
-      (value, maxScale) => {
-        const numValue = Number.parseInt(value, 10)
-        if (Number.isNaN(numValue) || value === null || value === undefined || value === '-')
-          return 'rating-na'
-        const percentage = (numValue / maxScale) * 100
-        if (percentage >= 90) return 'rating-tier-6'
-        if (percentage >= 80) return 'rating-tier-5'
-        if (percentage >= 70) return 'rating-tier-4'
-        if (percentage >= 55) return 'rating-tier-3'
-        if (percentage >= 40) return 'rating-tier-2'
-        return 'rating-tier-1'
-      },
-      {
-        maxSize: 200, // Cache up to 200 different rating calculations
-        keyGenerator: (value, maxScale) => `${value}-${maxScale}`,
-        cacheKey: 'unifiedRatingClass',
-      }
-    )
-
-    // Custom rating class for TotalStats with specific ranges
-    const getTotalStatsRatingClass = memoize(
-      (value) => {
-        const numValue = Number.parseInt(value, 10)
-        if (Number.isNaN(numValue) || value === null || value === undefined || value === '-')
-          return 'rating-na'
-
-        // Custom ranges for TotalStats
-        if (numValue >= 520) return 'rating-tier-6' // Elite
-        if (numValue >= 470) return 'rating-tier-5' // Very good
-        if (numValue >= 430) return 'rating-tier-4' // Good
-        if (numValue >= 390) return 'rating-tier-3' // Average
-        if (numValue >= 350) return 'rating-tier-2' // Below average
-        return 'rating-tier-1' // Poor
-      },
-      {
-        maxSize: 200,
-        keyGenerator: (value) => `totalStats-${value}`,
-        cacheKey: 'totalStatsRatingClass',
-      }
-    )
-
-    const getMoneyClass = (numericAmount) => {
-      if (numericAmount === null || numericAmount === undefined) return 'money-na'
-      return 'money-uniform'
-    }
-
-    const getValueScoreClass = (valueScore) => {
-      if (valueScore === null || valueScore === undefined) return 'rating-na'
-      const score = Number(valueScore)
-      if (Number.isNaN(score)) return 'rating-na'
-
-      if (score >= 80) return 'rating-tier-6' // Excellent value - highest tier
-      if (score >= 60) return 'rating-tier-5' // Great value
-      if (score >= 40) return 'rating-tier-4' // Good value
-      if (score >= 20) return 'rating-tier-3' // Fair value
-      if (score >= 0) return 'rating-tier-2' // Poor value
-      return 'rating-na'
-    }
-
-    const onFlagError = (event) => {
-      if (event.target) event.target.style.display = 'none'
-      const placeholderIcon = event.target.nextElementSibling
-      if (placeholderIcon?.classList.contains('q-icon')) {
-        placeholderIcon.style.display = 'inline-flex'
-      }
-    }
-
     const onRequest = (requestProp) => {
       const { page, sortBy, descending } = requestProp.pagination
       pagination.value.page = page
@@ -1294,84 +713,6 @@ export default {
       }
     }
 
-    const formatDisplayCurrency = (numericAmount, originalDisplayValue) => {
-      return formatCurrency(numericAmount, props.currencySymbol, originalDisplayValue)
-    }
-
-    // GK stat mapping for both display and sorting consistency
-    const gkStatMapping = {
-      pac: 'div', // Diving -> Pace
-      sho: 'han', // Handling -> Shooting
-      pas: 'kic', // Kicking -> Passing
-      dri: 'ref', // Reflexes -> Dribbling
-      def: 'spd', // Speed -> Defending
-      phy: 'pos', // Positioning -> Physical
-    }
-
-    // Memoized player value getter (called frequently during sorting and rendering)
-    const getPlayerValue = (player, fieldKey, _columnName = null) => {
-      // For regular view, map GK stats to standard FIFA stats if the player is a goalkeeper
-      if (!props.isGoalkeeperView && player.position && player.position.includes('GK')) {
-        const mappedStat = gkStatMapping[fieldKey]
-        if (mappedStat && player[mappedStat] !== undefined) {
-          return player[mappedStat]
-        }
-      }
-
-      // For goalkeeper view, all players should show goalkeeper stats
-      if (props.isGoalkeeperView) {
-        // Map outfield FIFA stats to goalkeeper stats
-        const gkStatMappingReverse = {
-          pac: 'div', // Pace -> Diving
-          sho: 'han', // Shooting -> Handling
-          pas: 'kic', // Passing -> Kicking
-          dri: 'ref', // Dribbling -> Reflexes
-          def: 'spd', // Defending -> Speed
-          phy: 'pos', // Physical -> Positioning
-        }
-        const mappedStat = gkStatMappingReverse[fieldKey]
-        if (mappedStat && player[mappedStat] !== undefined) {
-          return player[mappedStat]
-        }
-      }
-
-      // Default behavior - use the field key
-      const value = player[fieldKey]
-
-      return value
-    }
-
-    // Memoized version for non-Overall fields only
-    const getPlayerValueMemoized = memoize(
-      (player, fieldKey, columnName = null) => {
-        return getPlayerValue(player, fieldKey, columnName)
-      },
-      {
-        maxSize: 1000,
-        keyGenerator: (player, fieldKey, columnName) => {
-          // Try to use the player's UID for cache key
-          let playerUID = player.UID || player.uid
-
-          // If no UID available or UID is empty, create a composite unique key
-          if (!playerUID || playerUID === '') {
-            playerUID = `${player.name || 'unknown'}-${player.club || 'unknown'}-${player.age || 'unknown'}-${player.position || 'unknown'}`
-          }
-
-          return `gen${cacheGeneration.value}-${playerUID}-${fieldKey}-${columnName || ''}`
-        },
-        cacheKey: 'playerValue',
-      }
-    )
-
-    const getDisplayValue = (player, col) => {
-      // For Overall field, always use non-memoized version to ensure reactivity
-      if (col.field === 'Overall' || col.name === 'Overall') {
-        return getPlayerValue(player, col.field, col.name)
-      }
-      // For other fields, use memoized version for performance
-      return getPlayerValueMemoized(player, col.field, col.name)
-    }
-
     const contextMenuPlayer = ref(null)
 
     const isPlayerInWishlist = (player) => {
@@ -1453,9 +794,7 @@ export default {
       () => props.players?.length,
       () => {
         // Clear all memoization caches when dataset changes
-        getUnifiedRatingClass.clearCache()
-        getTotalStatsRatingClass.clearCache()
-        getPlayerValueMemoized.clearCache()
+        clearCaches()
         getPositionIndex.clearCache()
       }
     )
@@ -1466,16 +805,14 @@ export default {
         // Clear player value cache when view mode changes and increment generation
         nextTick(() => {
           cacheGeneration.value++
-          getPlayerValueMemoized.clearCache()
+          clearCaches()
         })
       }
     )
 
     onUnmounted(() => {
       // Clear all caches on component cleanup
-      getUnifiedRatingClass.clearCache()
-      getTotalStatsRatingClass.clearCache()
-      getPlayerValueMemoized.clearCache()
+      clearCaches()
       getPositionIndex.clearCache()
 
       // Clear async sort timeout
@@ -1631,224 +968,7 @@ export default {
     }
 }
 
-.modern-table-header {
-    background: linear-gradient(180deg, rgba(46, 116, 181, 0.08) 0%, rgba(46, 116, 181, 0.12) 100%);
-    
-    .body--dark & {
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.12) 100%);
-    }
-}
 
-.modern-header-cell {
-    color: #1e293b !important;
-    font-weight: 700 !important;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-size: 0.8rem !important;
-    padding: 1rem 0.75rem !important;
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.9) !important;
-    }
-
-    &:hover {
-        background: rgba(46, 116, 181, 0.15) !important;
-        
-        .body--dark & {
-            background: rgba(255, 255, 255, 0.15) !important;
-        }
-    }
-    
-    &.active-sort {
-        background: rgba(46, 116, 181, 0.2) !important;
-        color: #2e74b5 !important;
-        
-        .body--dark & {
-            background: rgba(255, 255, 255, 0.2) !important;
-            color: #60a5fa !important;
-        }
-        
-        .sort-icon {
-            color: #2e74b5 !important;
-            
-            .body--dark & {
-                color: #60a5fa !important;
-            }
-        }
-    }
-    
-    &.sorting-in-progress {
-        background: rgba(46, 116, 181, 0.15) !important;
-        
-        .body--dark & {
-            background: rgba(255, 255, 255, 0.15) !important;
-        }
-        
-        .sorting-spinner {
-            color: #2e74b5 !important;
-            
-            .body--dark & {
-                color: #60a5fa !important;
-            }
-        }
-    }
-}
-
-.modern-table-row {
-    transition: all 0.2s ease;
-    
-    &:hover {
-        background: rgba(46, 116, 181, 0.04) !important;
-        box-shadow: 0 2px 8px rgba(46, 116, 181, 0.15);
-        transform: translateY(-1px);
-        
-        .body--dark & {
-            background: rgba(255, 255, 255, 0.04) !important;
-            box-shadow: 0 2px 8px rgba(255, 255, 255, 0.15);
-        }
-    }
-    
-    &:nth-child(even) {
-        background: rgba(46, 116, 181, 0.02);
-        
-        .body--dark & {
-            background: rgba(255, 255, 255, 0.02);
-        }
-        
-        &:hover {
-            background: rgba(46, 116, 181, 0.06) !important;
-            
-            .body--dark & {
-                background: rgba(255, 255, 255, 0.06) !important;
-            }
-        }
-    }
-}
-
-.table-cell-enhanced {
-    color: #334155 !important;
-    font-weight: 500;
-    padding: 0.75rem !important;
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.85) !important;
-    }
-}
-
-.modern-stat-badge {
-    padding: 4px 10px;
-    border-radius: 8px;
-    font-size: 0.8rem;
-    font-weight: 700;
-    text-align: center;
-    min-width: 36px;
-    display: inline-block;
-    border: 1px solid transparent;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    
-    .body--dark & {
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-    }
-}
-
-.money-value {
-    font-weight: 500;
-}
-
-.money-uniform {
-    color: #334155;
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.85);
-    }
-}
-
-.money-na {
-    color: #9ca3af;
-    .body--dark & {
-        color: #6b7280;
-    }
-}
-
-.nationality-flag {
-    border: 1px solid rgba(0, 0, 0, 0.15);
-    object-fit: cover;
-    margin-right: 8px;
-    width: 20px !important;
-    height: 13px !important;
-    flex-shrink: 0;
-    border-radius: 3px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-
-    .body--dark & {
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-    }
-}
-
-.nationality-flag-placeholder {
-    margin-right: 8px;
-    width: 20px;
-    height: 13px;
-    flex-shrink: 0;
-    color: #9ca3af;
-    
-    .body--dark & {
-        color: #6b7280;
-    }
-}
-
-.nationality-cell {
-    width: 100%;
-    overflow: hidden;
-    
-    .nationality-text {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        flex: 1;
-        min-width: 0;
-        font-weight: 500;
-    }
-}
-
-.club-cell {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.club-cell .club-link {
-    cursor: pointer;
-    color: inherit;
-    text-decoration: none;
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.club-cell .club-link:hover {
-    text-decoration: underline;
-}
-
-.body--dark .club-cell .club-link:hover {
-    color: #81C784;
-}
-
-.body--light .club-cell .club-link:hover {
-    color: #2E7D32;
-}
-
-.pagination-info {
-    color: #64748b !important;
-    font-weight: 500;
-    
-    .body--dark & {
-        color: rgba(255, 255, 255, 0.7) !important;
-    }
-}
 
 @keyframes sortProgress {
     0% {
