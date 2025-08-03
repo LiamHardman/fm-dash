@@ -267,12 +267,8 @@ func GetPlayerData(datasetID string) ([]Player, string, bool) {
 		// Always enhance retrieved players to ensure TotalStats and MBR are calculated
 		enhancedCount := 0
 		for i := range players {
-			LogDebug("Enhancing retrieved player %s (UID: %d) - NumericAttributes count: %d",
-				players[i].Name, players[i].UID, len(players[i].NumericAttributes))
 			EnhancePlayerWithCalculations(&players[i])
 			enhancedCount++
-			LogDebug("Enhanced retrieved player %s (UID: %d) - NumericAttributes count after: %d",
-				players[i].Name, players[i].UID, len(players[i].NumericAttributes))
 		}
 		if enhancedCount > 0 {
 			LogDebug("Enhanced %d retrieved players for dataset %s", enhancedCount, datasetID)
@@ -294,12 +290,8 @@ func GetPlayerData(datasetID string) ([]Player, string, bool) {
 		// Always enhance retrieved players to ensure TotalStats and MBR are calculated
 		enhancedCount := 0
 		for i := range enhancedPlayers {
-			LogInfo("Enhancing retrieved player %s (UID: %d) - NumericAttributes count: %d",
-				enhancedPlayers[i].Name, enhancedPlayers[i].UID, len(enhancedPlayers[i].NumericAttributes))
 			EnhancePlayerWithCalculations(&enhancedPlayers[i])
 			enhancedCount++
-			LogInfo("Enhanced retrieved player %s (UID: %d) - NumericAttributes count after: %d",
-				enhancedPlayers[i].Name, enhancedPlayers[i].UID, len(enhancedPlayers[i].NumericAttributes))
 		}
 		if enhancedCount > 0 {
 			LogDebug("Enhanced %d retrieved players for dataset %s", enhancedCount, datasetID)
