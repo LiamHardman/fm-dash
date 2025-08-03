@@ -3,7 +3,7 @@ import { useCurrency } from './useCurrency.js'
 
 // Mock the currencyUtils dependency
 vi.mock('@/utils/currencyUtils', () => ({
-  formatCurrency: vi.fn((amount, symbol, original) => `${symbol}${amount}`),
+  formatCurrency: vi.fn((amount, symbol, _original) => `${symbol}${amount}`),
 }))
 
 describe('useCurrency', () => {

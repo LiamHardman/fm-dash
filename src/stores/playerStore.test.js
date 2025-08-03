@@ -1,6 +1,30 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { usePlayerStore } from './playerStore'
+
+// Mock the logger at the top level to avoid import.meta.env issues
+vi.mock('../utils/logger.js', () => ({
+  default: {
+    log: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
+  logger: {
+    log: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
+  storeLogger: {
+    log: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
+}))
 
 // Mock the playerService
 vi.mock('../services/playerService.js', () => ({
@@ -21,19 +45,22 @@ vi.mock('../utils/performance.js', () => ({
   },
 }))
 
+// Mock protobufClient
+vi.mock('../utils/protobufClient.js', () => ({
+  default: {
+    isSupported: vi.fn(() => true),
+    setEnabled: vi.fn(),
+    isEnabled: vi.fn(() => true),
+  },
+}))
+
 describe('playerStore', () => {
   let store
   let playerService
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Create a fresh pinia instance for each test
     setActivePinia(createPinia())
-
-    // Get the store instance
-    store = usePlayerStore()
-
-    // Get the mocked playerService
-    playerService = require('../services/playerService.js').default
 
     // Reset mocks
     vi.resetAllMocks()
@@ -46,6 +73,14 @@ describe('playerStore', () => {
     })
     vi.spyOn(window.sessionStorage, 'setItem').mockImplementation(() => {})
     vi.spyOn(window.sessionStorage, 'removeItem').mockImplementation(() => {})
+
+    // Dynamically import the store to ensure mocks are in place
+    const { usePlayerStore } = await import('./playerStore')
+    store = usePlayerStore()
+
+    // Get the mocked playerService
+    const playerServiceModule = await import('../services/playerService.js')
+    playerService = playerServiceModule.default
   })
 
   afterEach(() => {
