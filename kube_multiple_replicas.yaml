@@ -35,6 +35,8 @@ spec:
               value: "/app/config/app-config.yaml"
             
             # Environment-specific overrides
+            - name: MAX_UPLOAD_SIZE
+              value: "100"
             - name: ENVIRONMENT
               value: "production"
             - name: DEPLOYMENT_ENV
