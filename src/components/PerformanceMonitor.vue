@@ -130,7 +130,7 @@
 
 <script>
 import { useQuasar } from 'quasar'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
 export default {
   name: 'PerformanceMonitor',
@@ -283,15 +283,18 @@ export default {
       }
     }
 
-    // Watch for monitor visibility
-    const startMonitoringWatcher = computed(() => showMonitor.value)
-    const _unwatchMonitor = () => {
-      if (startMonitoringWatcher.value) {
-        startMonitoring()
-      } else {
-        stopMonitoring()
-      }
-    }
+    // Watch for show/hide changes
+    watch(
+      () => showMonitor.value,
+      (isShowing) => {
+        if (isShowing) {
+          startMonitoring()
+        } else {
+          stopMonitoring()
+        }
+      },
+      { immediate: true }
+    )
 
     onMounted(() => {
       // Enable performance monitoring in development
@@ -302,15 +305,6 @@ export default {
 
     onUnmounted(() => {
       stopMonitoring()
-    })
-
-    // Watch for show/hide changes
-    const _unwatchShowMonitor = computed(() => {
-      if (showMonitor.value) {
-        startMonitoring()
-      } else {
-        stopMonitoring()
-      }
     })
 
     return {

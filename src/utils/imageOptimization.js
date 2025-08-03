@@ -202,6 +202,7 @@ export const globalLazyLoader = new LazyImageLoader()
 export class ImagePreloader {
   constructor() {
     this.cache = new Set()
+    this.maxConcurrent = 5 // Default max concurrent preloads
   }
 
   preload(src) {
@@ -223,7 +224,48 @@ export class ImagePreloader {
   }
 
   preloadMultiple(sources) {
-    return Promise.allSettled(sources.map((src) => this.preload(src)))
+    const promises = sources.map((src) => this.preload(src))
+    return Promise.allSettled(promises)
+  }
+
+  // Intelligent preloading based on viewport and connection
+  intelligentPreload(sources, priority = 'normal') {
+    const connection = navigator.connection || {}
+    const effectiveType = connection.effectiveType || '4g'
+
+    // Adjust strategy based on connection
+    let maxConcurrent = this.maxConcurrent
+    if (effectiveType === 'slow-2g' || effectiveType === '2g') {
+      maxConcurrent = 2 // Reduce for slow connections
+    } else if (effectiveType === '4g') {
+      maxConcurrent = 8 // Increase for fast connections
+    }
+
+    // Prioritize visible images
+    const visibleSources = sources.filter((src) => this.isInViewport(src))
+    const hiddenSources = sources.filter((src) => !this.isInViewport(src))
+
+    // Preload visible first, then hidden
+    return Promise.allSettled([
+      ...visibleSources.slice(0, maxConcurrent).map((src) => this.preload(src)),
+      ...hiddenSources
+        .slice(0, Math.max(1, maxConcurrent - visibleSources.length))
+        .map((src) => this.preload(src)),
+    ])
+  }
+
+  isInViewport(imageSrc) {
+    // Simple viewport detection - could be enhanced with Intersection Observer
+    const images = document.querySelectorAll(`img[src*="${imageSrc}"]`)
+    if (images.length === 0) return false
+
+    const rect = images[0].getBoundingClientRect()
+    return (
+      rect.top >= 0 &&
+      rect.left >= 0 &&
+      rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+      rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+    )
   }
 }
 

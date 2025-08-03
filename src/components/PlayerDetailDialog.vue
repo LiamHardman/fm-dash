@@ -1383,15 +1383,23 @@ export default defineComponent({
       attributeDisplayCache.clear()
     }
 
-    // Optimize cache size management
+    // Optimize cache size management using more efficient data structures
     const manageCacheSize = () => {
       if (performanceStatsCache.size > maxCacheSize) {
+        // Use more efficient LRU-style cleanup
+        const entriesToRemove = Math.floor(maxCacheSize * 0.3) // Remove 30% instead of 20%
         const entries = Array.from(performanceStatsCache.entries())
-        // Remove oldest entries (first 20% of cache)
-        const toRemove = Math.floor(maxCacheSize * 0.2)
-        for (let i = 0; i < toRemove; i++) {
+
+        // Sort by access time if available, otherwise remove oldest
+        entries.sort((a, b) => (a[1]._lastAccess || 0) - (b[1]._lastAccess || 0))
+
+        for (let i = 0; i < entriesToRemove; i++) {
           performanceStatsCache.delete(entries[i][0])
         }
+
+        console.log(
+          `🧹 Cleaned ${entriesToRemove} cache entries, size: ${performanceStatsCache.size}`
+        )
       }
     }
 
@@ -2680,6 +2688,27 @@ export default defineComponent({
       if (!displayPlayer.value) return []
       return deriveShortPositions(displayPlayer.value)
     })
+
+    // Enhanced cache with access tracking
+    const getCachedData = (cache, key) => {
+      const data = cache.get(key)
+      if (data) {
+        data._lastAccess = Date.now()
+        return data
+      }
+      return null
+    }
+
+    // Enhanced cache setter with access tracking
+    const setCachedData = (cache, key, data) => {
+      data._lastAccess = Date.now()
+      cache.set(key, data)
+
+      // Trigger cleanup if cache is getting large
+      if (cache.size > maxCacheSize * 0.9) {
+        manageCacheSize()
+      }
+    }
 
     return {
       qInstance,

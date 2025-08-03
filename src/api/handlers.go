@@ -683,6 +683,27 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 		logInfo(ctx, "Dataset cache cleared due to clear_cache parameter", "dataset_id", datasetID)
 	}
 
+	// OPTIMIZATION: Create query fingerprint for result caching
+	queryFingerprint := fmt.Sprintf("%s:%s:%s:%s:%s:%s:%s:%s:%s:%s",
+		datasetID, queryValues.Get("position"), queryValues.Get("role"),
+		queryValues.Get("minAge"), queryValues.Get("maxAge"),
+		queryValues.Get("minTransferValue"), queryValues.Get("maxTransferValue"),
+		queryValues.Get("maxSalary"), queryValues.Get("division_filter"),
+		queryValues.Get("target_division"))
+
+	resultCacheKey := "result:" + queryFingerprint
+	if cachedResult, found := getFromMemCache(resultCacheKey); found {
+		if cacheData, ok := cachedResult.(map[string]interface{}); ok {
+			SetSpanAttributes(ctx, attribute.Bool("result_cache.hit", true))
+			logDebug(ctx, "Result cache hit", "cache_key", resultCacheKey)
+			if err := WriteResponse(w, r, cacheData); err != nil {
+				logWarn(ctx, "Failed to write cached response", "error", err)
+			}
+			return
+		}
+	}
+	SetSpanAttributes(ctx, attribute.Bool("result_cache.hit", false))
+
 	filterPosition := queryValues.Get("position")
 	filterRole := queryValues.Get("role")
 	minAgeStr := queryValues.Get("minAge")
