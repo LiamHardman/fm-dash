@@ -382,21 +382,14 @@
                             @click="selectNation(nation.name)"
                         >
                             <div class="nation-flag-container">
-                                <img
-                                    v-if="nation.nationality_iso"
-                                    :src="`https://flagcdn.com/w20/${nation.nationality_iso.toLowerCase()}.png`"
-                                    :alt="nation.name"
-                                    width="24"
-                                    height="16"
-                                    class="nationality-flag"
-                                    @error="onFlagError($event, nation)"
-                                />
-                                <q-icon
-                                    v-else
-                                    name="flag"
-                                    size="sm"
-                                    :color="quasarInstance.dark.isActive ? 'grey-6' : 'grey-7'"
-                                />
+                                <q-avatar size="20px" class="q-mr-sm">
+                                  <img 
+                                    v-if="nation.nationalityIso"
+                                    :src="`https://flagcdn.com/w20/${nation.nationalityIso.toLowerCase()}.png`"
+                                    :alt="`${nation.name} flag`"
+                                    @error="($event) => $event.target.style.display = 'none'"
+                                  />
+                                </q-avatar>
                             </div>
                             <div class="nation-info">
                                 <div class="nation-name">{{ nation.name }}</div>
@@ -907,7 +900,7 @@ export default {
           if (!nationsMap.has(nationality)) {
             nationsMap.set(nationality, {
               name: nationality,
-              nationality_iso: player.nationality_iso || null,
+              nationalityIso: player.nationalityIso || null,
               playerCount: 0,
               bestFormationOverall: null, // Will be calculated async
               attRating: null,
@@ -923,9 +916,9 @@ export default {
           nation.playerCount++
           nation.players.push(player)
 
-          // Set nationality_iso if we don't have it yet
-          if (!nation.nationality_iso && player.nationality_iso) {
-            nation.nationality_iso = player.nationality_iso
+          // Set nationalityIso if we don't have it yet
+          if (!nation.nationalityIso && player.nationalityIso) {
+            nation.nationalityIso = player.nationalityIso
           }
         }
       }
@@ -2290,7 +2283,7 @@ export default {
     const currentNationFlagISO = computed(() => {
       if (!selectedNationName.value) return null
       const nation = nationsWithRatings.value.find((n) => n.name === selectedNationName.value)
-      return nation?.nationality_iso || null
+      return nation?.nationalityIso || null
     })
 
     // Add handleTeamSelected function (for compatibility with PlayerDataTable)

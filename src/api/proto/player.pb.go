@@ -88,7 +88,7 @@ type Player struct {
 	Personality         string                 `protobuf:"bytes,9,opt,name=personality,proto3" json:"personality,omitempty"`
 	MediaHandling       string                 `protobuf:"bytes,10,opt,name=media_handling,json=mediaHandling,proto3" json:"media_handling,omitempty"`
 	Nationality         string                 `protobuf:"bytes,11,opt,name=nationality,proto3" json:"nationality,omitempty"`
-	NationalityIso      string                 `protobuf:"bytes,12,opt,name=nationality_iso,json=nationalityIso,proto3" json:"nationality_iso,omitempty"`
+	NationalityIso      string                 `protobuf:"bytes,12,opt,name=nationalityIso,proto3" json:"nationalityIso,omitempty"`
 	NationalityFifaCode string                 `protobuf:"bytes,13,opt,name=nationality_fifa_code,json=nationalityFifaCode,proto3" json:"nationality_fifa_code,omitempty"`
 	AttributeMasked     bool                   `protobuf:"varint,14,opt,name=attribute_masked,json=attributeMasked,proto3" json:"attribute_masked,omitempty"`
 	// Essential FIFA-style stats for display and sorting
@@ -490,7 +490,7 @@ const file_proto_player_proto_rawDesc = "" +
 	"\x12proto/player.proto\x12\x06player\"E\n" +
 	"\x10RoleOverallScore\x12\x1b\n" +
 	"\trole_name\x18\x01 \x01(\tR\broleName\x12\x14\n" +
-	"\x05score\x18\x02 \x01(\x05R\x05score\"\xe1\t\n" +
+	"\x05score\x18\x02 \x01(\x05R\x05score\"\xe0\t\n" +
 	"\x06Player\x12\x10\n" +
 	"\x03uid\x18\x01 \x01(\x03R\x03uid\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1a\n" +
@@ -503,8 +503,8 @@ const file_proto_player_proto_rawDesc = "" +
 	"\vpersonality\x18\t \x01(\tR\vpersonality\x12%\n" +
 	"\x0emedia_handling\x18\n" +
 	" \x01(\tR\rmediaHandling\x12 \n" +
-	"\vnationality\x18\v \x01(\tR\vnationality\x12'\n" +
-	"\x0fnationality_iso\x18\f \x01(\tR\x0enationalityIso\x122\n" +
+	"\vnationality\x18\v \x01(\tR\vnationality\x12&\n" +
+	"\x0enationalityIso\x18\f \x01(\tR\x0enationalityIso\x122\n" +
 	"\x15nationality_fifa_code\x18\r \x01(\tR\x13nationalityFifaCode\x12)\n" +
 	"\x10attribute_masked\x18\x0e \x01(\bR\x0fattributeMasked\x12\x10\n" +
 	"\x03pac\x18\x0f \x01(\x05R\x03pac\x12\x10\n" +

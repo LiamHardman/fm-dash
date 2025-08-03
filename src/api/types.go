@@ -23,7 +23,7 @@ type Player struct {
 	Personality             string                        `json:"personality,omitempty"`
 	MediaHandling           string                        `json:"media_handling,omitempty"`
 	Nationality             string                        `json:"nationality"`
-	NationalityISO          string                        `json:"nationality_iso"`
+	NationalityISO          string                        `json:"nationalityIso"`
 	NationalityFIFACode     string                        `json:"nationality_fifa_code"`
 	AttributeMasked         bool                          `json:"attributeMasked,omitempty"`
 	Attributes              map[string]string             `json:"attributes"`

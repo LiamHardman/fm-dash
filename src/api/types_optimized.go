@@ -43,7 +43,7 @@ type OptimizedPlayer struct {
 	Position            string `json:"position"`              // Interned
 	Division            string `json:"division"`              // Interned
 	Nationality         string `json:"nationality"`           // Interned
-	NationalityISO      string `json:"nationality_iso"`       // Interned
+	NationalityISO      string `json:"nationalityIso"`        // Interned - Changed from nationality_iso
 	NationalityFIFACode string `json:"nationality_fifa_code"` // Interned
 	BestRoleOverall     string `json:"bestRoleOverall"`       // Interned
 

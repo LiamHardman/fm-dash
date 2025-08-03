@@ -26,8 +26,8 @@
 
   <div v-else-if="column.name === 'nationality_display'" 
        class="flex items-center no-wrap nationality-cell">
-    <img v-if="player.nationality_iso"
-         :src="`https://flagcdn.com/w20/${player.nationality_iso.toLowerCase()}.png`"
+            <img v-if="player.nationalityIso"
+             :src="`https://flagcdn.com/w20/${player.nationalityIso.toLowerCase()}.png`"
          :alt="player.nationality || 'Flag'"
          width="20"
          height="13"

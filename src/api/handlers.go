@@ -3665,17 +3665,16 @@ func getSimilarPlayersForComparison(allPlayers []Player, targetPlayer *Player) [
 func teamDataHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	// Extract dataset ID, team/nation name, and type from URL
-	// Expected format: /api/team_data/{datasetID}/{type}/{name}
-	pathParts := strings.Split(r.URL.Path, "/")
-	if len(pathParts) < 6 {
-		http.Error(w, "Invalid URL format. Expected: /api/team_data/{datasetID}/{type}/{name}", http.StatusBadRequest)
+	// Expected format: /api/team-data/{datasetID}/{type}/{name}
+	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/team-data/"), "/")
+	if len(pathParts) < 3 {
+		http.Error(w, "Invalid URL format. Expected: /api/team-data/{datasetID}/{type}/{name}", http.StatusBadRequest)
 		return
 	}
 
-	datasetID := pathParts[3]
-	dataType := pathParts[4] // "team" or "nation"
-	teamOrNationName := pathParts[5]
+	datasetID := pathParts[0]
+	dataType := pathParts[1] // "team" or "nation"
+	teamOrNationName := pathParts[2]
 
 	// Validate data type
 	if dataType != "team" && dataType != "nation" {

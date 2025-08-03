@@ -25,7 +25,7 @@ type NationRatingsCache struct {
 // CachedNation represents a nation's cached rating data
 type CachedNation struct {
 	Name                 string `json:"name"`
-	NationalityISO       string `json:"nationality_iso"`
+	NationalityISO       string `json:"nationalityIso"` // Changed from nationality_iso to nationalityIso
 	PlayerCount          int    `json:"playerCount"`
 	BestFormationOverall int    `json:"bestFormationOverall"`
 	AttRating            int    `json:"attRating"`

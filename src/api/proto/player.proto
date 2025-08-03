@@ -23,7 +23,7 @@ message Player {
   string personality = 9;
   string media_handling = 10;
   string nationality = 11;
-  string nationality_iso = 12;
+  string nationalityIso = 12;
   string nationality_fifa_code = 13;
   bool attribute_masked = 14;
   

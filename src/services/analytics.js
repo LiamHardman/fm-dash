@@ -37,9 +37,9 @@ const initializeGA = () => {
     window.gtag('js', new Date())
     window.gtag('config', GA_TRACKING_ID, {
       // Enhanced configuration options
-      send_page_view: false, // We'll handle page views manually
-      custom_map: {
-        custom_parameter_1: 'dataset_id',
+      sendPageView: false, // We'll handle page views manually
+      customMap: {
+        customParameter1: 'datasetId',
       },
     })
 
@@ -103,106 +103,106 @@ export const analytics = {
   // User interactions
   shareDataset: (datasetId) => {
     trackEvent('share_dataset', {
-      dataset_id: datasetId,
-      event_category: 'engagement',
+      datasetId: datasetId,
+      eventCategory: 'engagement',
     })
   },
 
   uploadDataset: (fileSize, playerCount) => {
     trackEvent('upload_dataset', {
-      file_size: fileSize,
-      player_count: playerCount,
-      event_category: 'user_action',
+      fileSize: fileSize,
+      playerCount: playerCount,
+      eventCategory: 'user_action',
     })
   },
 
   viewPlayerDetails: (playerId, playerName) => {
     trackEvent('view_player_details', {
-      player_id: playerId,
-      player_name: playerName,
-      event_category: 'content_interaction',
+      playerId: playerId,
+      playerName: playerName,
+      eventCategory: 'content_interaction',
     })
   },
 
   useFilter: (filterType, filterValue) => {
     trackEvent('use_filter', {
-      filter_type: filterType,
-      filter_value: filterValue,
-      event_category: 'user_interaction',
+      filterType: filterType,
+      filterValue: filterValue,
+      eventCategory: 'user_interaction',
     })
   },
 
   navigateToTeamView: (teamName, datasetId) => {
     trackEvent('navigate_team_view', {
-      team_name: teamName,
-      dataset_id: datasetId,
-      event_category: 'navigation',
+      teamName: teamName,
+      datasetId: datasetId,
+      eventCategory: 'navigation',
     })
   },
 
   searchPlayers: (searchTerm, resultCount) => {
     trackEvent('search_players', {
-      search_term: searchTerm,
-      result_count: resultCount,
-      event_category: 'search',
+      searchTerm: searchTerm,
+      resultCount: resultCount,
+      eventCategory: 'search',
     })
   },
 
   downloadData: (dataType, format) => {
     trackEvent('download_data', {
-      data_type: dataType,
+      dataType: dataType,
       format: format,
-      event_category: 'engagement',
+      eventCategory: 'export',
     })
   },
 
   // Feature usage
   useWishlist: (action, playerId) => {
     trackEvent('wishlist_action', {
-      action: action, // 'add' or 'remove'
-      player_id: playerId,
-      event_category: 'feature_usage',
+      action: action,
+      playerId: playerId,
+      eventCategory: 'feature_usage',
     })
   },
 
   useUpgradeFinder: (position, filters) => {
     trackEvent('use_upgrade_finder', {
       position: position,
-      filters_applied: Object.keys(filters).length,
-      event_category: 'feature_usage',
+      filtersApplied: Object.keys(filters).length,
+      eventCategory: 'feature_usage',
     })
   },
 
   useWonderkids: (filters) => {
     trackEvent('use_wonderkids', {
-      filters_applied: Object.keys(filters).length,
-      event_category: 'feature_usage',
+      filtersApplied: Object.keys(filters).length,
+      eventCategory: 'feature_usage',
     })
   },
 
   useBargainHunter: (filters) => {
     trackEvent('use_bargain_hunter', {
-      filters_applied: Object.keys(filters).length,
-      event_category: 'feature_usage',
+      filtersApplied: Object.keys(filters).length,
+      eventCategory: 'feature_usage',
     })
   },
 
   // Page visits
   visitPage: (pageName, additionalData = {}) => {
     trackEvent('page_visit', {
-      page_name: pageName,
+      pageName: pageName,
+      eventCategory: 'navigation',
       ...additionalData,
-      event_category: 'navigation',
     })
   },
 
   // Error tracking
   trackError: (errorType, errorMessage, context = {}) => {
     trackEvent('error_occurred', {
-      error_type: errorType,
-      error_message: errorMessage,
+      errorType: errorType,
+      errorMessage: errorMessage,
       context: JSON.stringify(context),
-      event_category: 'error',
+      eventCategory: 'error',
     })
   },
 }

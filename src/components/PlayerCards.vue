@@ -432,8 +432,8 @@ export default defineComponent({
     // Generate image URLs based on available data
     const effectiveNationFlagUrl = computed(() => {
       if (props.nationFlagUrl) return props.nationFlagUrl
-      if (playerData.value.nationality_iso) {
-        return `https://flagcdn.com/w80/${playerData.value.nationality_iso.toLowerCase()}.png`
+      if (playerData.value.nationalityIso) {
+        return `https://flagcdn.com/w80/${playerData.value.nationalityIso.toLowerCase()}.png`
       }
       return null
     })
@@ -453,12 +453,12 @@ export default defineComponent({
       console.log('PlayerCards: selectedRole:', props.selectedRole)
       console.log('PlayerCards: datasetId:', props.datasetId)
       console.log('PlayerCards: player.uid:', props.player.uid)
-      console.log('PlayerCards: player.nationality_iso:', props.player.nationality_iso)
+      console.log('PlayerCards: player.nationalityIso:', props.player.nationalityIso)
       console.log('PlayerCards: player.roleSpecificOveralls:', props.player.roleSpecificOveralls)
 
-      // Fetch if missing nationality_iso
-      if (!props.player.nationality_iso && props.datasetId && props.player.uid) {
-        console.log('PlayerCards: needsDetailedData triggered - missing nationality_iso')
+      // Fetch if missing nationalityIso
+      if (!props.player.nationalityIso && props.datasetId && props.player.uid) {
+        console.log('PlayerCards: needsDetailedData triggered - missing nationalityIso')
         return true
       }
 

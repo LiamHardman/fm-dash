@@ -501,7 +501,7 @@
                                             <PlayerCards 
                                                 :player="player"
                                                 :currency-symbol="currencySymbol"
-                                                :nation-flag-url="getFlagUrl(player.nationality_iso || player.nationality_fifa_code)"
+                                                :nation-flag-url="getFlagUrl(player.nationalityIso || player.nationality_fifa_code)"
                                                 :club-image-url="getTeamLogoUrl(player.club)"
                                                 :player-face-url="getPlayerFaceUrl(player.name, player.club)"
                                                 :dataset-id="props.datasetId"
@@ -2502,7 +2502,7 @@ export default {
         )
 
         const processedPlayer = {
-          ...player, // Keep all original player data including nationality_iso
+          ...player, // Keep all original player data including nationalityIso
           name: player.name,
           nationality: player.nationality || 'Unknown',
           division: player.division || 'Unknown',

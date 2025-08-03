@@ -294,8 +294,8 @@
                                             
                                             <div class="col-auto q-mr-md player-flag-container">
                                                 <img
-                                                    v-if="player.nationality_iso && !flagLoadError"
-                                                    :src="`https://flagcdn.com/w80/${player.nationality_iso.toLowerCase()}.png`"
+                                                                v-if="player.nationalityIso && !flagLoadError"
+            :src="`https://flagcdn.com/w80/${player.nationalityIso.toLowerCase()}.png`"
                                                     :alt="player.nationality || 'Flag'"
                                                     width="48"
                                                     height="32"
@@ -304,7 +304,7 @@
                                                     :title="player.nationality"
                                                 />
                                                 <q-icon
-                                                    v-if="!player.nationality_iso || flagLoadError"
+                                                    v-if="!player.nationalityIso || flagLoadError"
                                                     :color="isDarkMode ? 'grey-5' : 'grey-7'"
                                                     name="flag"
                                                     size="2.5em"

@@ -181,7 +181,7 @@ class ProtobufClient {
                   personality: { type: 'string', id: 9 },
                   media_handling: { type: 'string', id: 10 },
                   nationality: { type: 'string', id: 11 },
-                  nationality_iso: { type: 'string', id: 12 },
+                  nationalityIso: { type: 'string', id: 12 },
                   nationality_fifa_code: { type: 'string', id: 13 },
                   attribute_masked: { type: 'bool', id: 14 },
 

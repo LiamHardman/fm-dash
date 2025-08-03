@@ -257,7 +257,7 @@ export async function fetchTeamData(datasetID, type, name) {
   try {
     // Use protobuf-aware API for team data
     const { get } = useProtobufApi('')
-    const url = `/api/team_data/${datasetID}/${type}/${encodeURIComponent(name)}`
+    const url = `/api/team-data/${datasetID}/${type}/${encodeURIComponent(name)}`
 
     const response = await get(url, {}, 'api.GenericResponse')
 
