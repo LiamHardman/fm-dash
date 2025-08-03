@@ -1,6 +1,6 @@
 # Performance Guide
 
-This document covers optimization techniques and performance considerations for the Football Manager Data Browser (FM-Dash).
+This document covers optimization techniques and performance considerations for FM-Dash.
 
 ## Performance Overview
 

@@ -112,6 +112,9 @@ See our [Contributing Guide](CONTRIBUTING.md) for details.
 - **[API Reference](docs/API.md)** - For developers and integrations
 - **[Configuration](docs/CONFIGURATION.md)** - Setup and customization options
 - **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions
+- **[Architecture](docs/ARCHITECTURE.md)** - Technical architecture and design decisions
+- **[Frontend Performance](docs/FRONTEND_PERFORMANCE.md)** - Performance optimization guide
+- **[Contributing](CONTRIBUTING.md)** - How to contribute to the project
 
 ## 🆘 Support
 

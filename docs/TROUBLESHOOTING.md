@@ -1,6 +1,6 @@
 # Troubleshooting Guide
 
-This guide helps you diagnose and resolve common issues with the Football Manager Data Browser (FM-Dash).
+This guide helps you diagnose and resolve common issues with FM-Dash.
 
 ## Quick Diagnostics
 

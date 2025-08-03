@@ -1,6 +1,6 @@
 # Architecture Guide
 
-This document provides a comprehensive overview of the Football Manager Data Browser (FM-Dash) architecture, design decisions, and technical implementation details.
+This document provides a comprehensive overview of the FM-Dash architecture, design decisions, and technical implementation details.
 
 ## System Overview
 

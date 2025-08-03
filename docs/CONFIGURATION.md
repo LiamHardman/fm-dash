@@ -1,6 +1,6 @@
 # Configuration Guide
 
-This document explains how to configure the Football Manager Data Browser (FM-Dash) for different environments and use cases.
+This document explains how to configure FM-Dash for different environments and use cases.
 
 ## Environment Variables
 
@@ -120,7 +120,7 @@ VITE_HOT_RELOAD=true                # Enable hot module replacement
 ```bash
 # Production Configuration
 VITE_API_URL=https://api.yourdomain.com
-VITE_APP_TITLE=Football Manager Data Browser
+VITE_APP_TITLE=FM-Dash
 VITE_APP_VERSION=1.0.0
 VITE_DEBUG=false
 VITE_SENTRY_DSN=https://your-sentry-dsn  # Error tracking
