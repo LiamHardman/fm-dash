@@ -56,6 +56,13 @@
 
 * Improved loading experience ([97fcd00](https://github.com/LiamHardman/fm-dash/commit/97fcd000b3a18efa2c988b7fc26ae3d26a3b4120))
 
+## [1.0.1](https://github.com/LiamHardman/fm-dash/compare/v1.0.0...v1.0.1) (2025-08-04)
+
+
+### Bug Fixes
+
+* resolved docker build issues in main ([7dccdaa](https://github.com/LiamHardman/fm-dash/commit/7dccdaa19f4422ada8e61654c39be693b7be7a6d))
+
 ## 1.0.0 (2025-08-04)
 
 
