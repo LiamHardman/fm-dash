@@ -153,6 +153,12 @@ func main() {
 	// Initialize memory optimizations
 	InitializeMemoryOptimizations()
 
+	// Initialize advanced memory optimizer
+	LogInfo("Advanced memory optimizer initialized")
+
+	// Initialize memory profiler
+	InitializeMemoryProfiler()
+
 	// Start automatic cleanup scheduler for old datasets
 	StartCleanupScheduler()
 
@@ -272,7 +278,7 @@ func main() {
 	mux.Handle("/", wrapHandler(indexHandler, "index"))
 	mux.Handle("/public/", http.StripPrefix("/public/", fsPublic))
 	mux.Handle("/api/upload", wrapHandler(http.HandlerFunc(uploadHandler), "upload"))
-	mux.Handle("/api/players/", wrapHandler(http.HandlerFunc(GetFormatAwareCacheHandler()), "player-data"))
+	mux.Handle("/api/players/", wrapHandler(StreamingHandler(GetFormatAwareCacheHandler()), "player-data"))
 	mux.Handle("/api/roles", wrapHandler(http.HandlerFunc(rolesHandler), "roles"))
 	mux.Handle("/api/leagues/", wrapHandler(http.HandlerFunc(leaguesHandler), "leagues"))
 	mux.Handle("/api/divisions/", wrapHandler(http.HandlerFunc(divisionsHandler), "divisions"))
@@ -320,6 +326,12 @@ func main() {
 
 	// API endpoint for exporting complete dataset data
 	mux.Handle("/api/export/", wrapHandler(http.HandlerFunc(exportDataHandler), "export-data"))
+
+	// Register memory profiling endpoints
+	RegisterMemoryProfileEndpoints(mux)
+
+	// Register memory testing endpoints
+	RegisterMemoryTestEndpoints(mux)
 
 	// Create server with proper timeouts
 	server := &http.Server{

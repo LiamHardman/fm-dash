@@ -567,11 +567,15 @@ func EnhancePlayerWithCalculations(player *Player) {
 		// Batch process all matching roles
 		for _, role := range matchingRoles {
 			var overallForThisRole int
+			// Protect map access with mutex to prevent race conditions
+			player.mu.RLock()
 			if GetUseScaledRatings() {
 				overallForThisRole = CalculateOverallForRoleGo(player.NumericAttributes, role.weights)
 			} else {
 				overallForThisRole = CalculateOverallForRoleGoLinear(player.NumericAttributes, role.weights)
 			}
+			player.mu.RUnlock()
+
 			calculatedRoleOveralls = append(calculatedRoleOveralls, RoleOverallScore{RoleName: role.name, Score: overallForThisRole})
 			if overallForThisRole > maxRoleBasedOverall {
 				maxRoleBasedOverall = overallForThisRole
@@ -614,11 +618,15 @@ func EnhancePlayerWithCalculations(player *Player) {
 		// Batch process all applicable roles
 		for _, role := range allApplicableRoles {
 			var overallForThisRole int
+			// Protect map access with mutex to prevent race conditions
+			player.mu.RLock()
 			if GetUseScaledRatings() {
 				overallForThisRole = CalculateOverallForRoleGo(player.NumericAttributes, role.weights)
 			} else {
 				overallForThisRole = CalculateOverallForRoleGoLinear(player.NumericAttributes, role.weights)
 			}
+			player.mu.RUnlock()
+
 			calculatedRoleOveralls = append(calculatedRoleOveralls, RoleOverallScore{RoleName: role.name, Score: overallForThisRole})
 			if overallForThisRole > maxRoleBasedOverall {
 				maxRoleBasedOverall = overallForThisRole

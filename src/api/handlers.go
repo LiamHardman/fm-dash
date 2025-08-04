@@ -4567,6 +4567,9 @@ func generateCSVContent(players []Player) string {
 		}...)
 
 		// FM Attributes (individual columns) right after Attributes Masked (Technical -> Mental -> Physical -> Goalkeeper)
+		// Protect attribute map access with read lock
+		player.mu.RLock()
+
 		// Technical attributes
 		technicalAttrs := []string{"Cor", "Cro", "Dri", "Fin", "Fir", "Fre", "Hea", "Lon", "L Th", "Mar", "Pas", "Pen", "Tck", "Tec"}
 		for _, attrName := range technicalAttrs {
@@ -4649,6 +4652,9 @@ func generateCSVContent(players []Player) string {
 				row = append(row, "") // Empty for players without this percentile group
 			}
 		}
+
+		// Release the read lock after all map access is complete
+		player.mu.RUnlock()
 
 		csvLines = append(csvLines, strings.Join(row, ","))
 	}
