@@ -2,4 +2,7 @@ handleGHRelease: true
 release-type: node
 package-name: fm-dash
 include-v-in-tag: true
-repo-url: https://github.com/liamhardman/fm-dash 
+repo-url: https://github.com/liamhardman/fm-dash
+bump-minor-pre-major: true
+bump-patch-for-minor-pre-major: true
+separate-pull-requests: false 
