@@ -39,6 +39,7 @@ trap cleanup SIGINT SIGTERM
 # --- Environment Configuration ---
 # Enable protobuf serialization for improved performance
 export USE_PROTOBUF=true
+export MAX_UPLOAD_SIZE=100
 echo "Protobuf serialization: ENABLED"
 echo "To disable protobuf, set USE_PROTOBUF=false or comment out the export line above"
 echo ""

@@ -643,7 +643,12 @@ func (spc *StreamingPercentileCalculator) CalculatePercentilesOptimized(players 
 	// Single pass: collect values and player indices
 	playerIndices := make([]int, 0, len(players))
 	for i, player := range players {
-		if value, exists := player.NumericAttributes[statKey]; exists && value > 0 {
+		// Protect map access with read lock
+		player.mu.RLock()
+		value, exists := player.NumericAttributes[statKey]
+		player.mu.RUnlock()
+
+		if exists && value > 0 {
 			buffer = append(buffer, float64(value))
 			playerIndices = append(playerIndices, i)
 		}

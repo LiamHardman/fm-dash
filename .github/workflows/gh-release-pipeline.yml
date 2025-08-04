@@ -1,16 +1,20 @@
-name: Complete Release Pipeline
+name: Complete Release Pipeline (DEPRECATED)
 run-name: ${{ github.actor }} is running the complete release pipeline 🚀
 
 on:
-  push:
-    branches: [ gh-release ]
-  pull_request:
-    branches: [ gh-release ]
-  workflow_dispatch: # Allow manual trigger
+  # This workflow is deprecated - use release-please.yml instead
+  # Completely disabled to prevent conflicts with release-please
+  workflow_dispatch:
+    inputs:
+      force_run:
+        description: 'This workflow is deprecated - use release-please.yml instead'
+        required: false
+        default: 'disabled'
 
 jobs:
   # Step 1: Code Quality Checks (runs first)
   frontend-linting:
+    if: false  # Workflow completely disabled - use release-please.yml instead
     name: Frontend Code Quality (Biome)
     runs-on: [self-hosted, kubernetes, my-repo-runner]
     continue-on-error: true

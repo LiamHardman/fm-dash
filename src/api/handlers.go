@@ -553,6 +553,9 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		"parse_duration", parseDuration,
 		"currency_symbol", finalDatasetCurrencySymbol)
 
+	// Normalize MBR scores relative to the maximum (best player gets 100)
+	NormalizeMBRScoresRelativeToMax(playersList)
+
 	// Extract roles from processed players for immediate response
 	roles := extractRolesFromPlayers(playersList)
 
@@ -789,6 +792,9 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 		ctx, recalcSpan := StartSpan(ctx, "ratings.recalculate")
 		playersCopy = RecalculateAllPlayersRatings(playersCopy)
 		recalcSpan.End()
+
+		// Normalize MBR scores relative to the maximum (best player gets 100)
+		NormalizeMBRScoresRelativeToMax(playersCopy)
 
 		// Calculate percentiles with appropriate filtering using optimized algorithm
 		ctx, percentileSpan := StartSpan(ctx, "percentiles.calculate")
@@ -3930,6 +3936,9 @@ func performanceDataHandler(w http.ResponseWriter, r *http.Request) {
 	players = RecalculateAllPlayersRatings(players)
 	recalcSpan.End()
 
+	// Normalize MBR scores relative to the maximum (best player gets 100)
+	NormalizeMBRScoresRelativeToMax(players)
+
 	// Parse filters
 	var minAge, maxAge int
 	var minTransferValue, maxTransferValue, maxSalary int64
@@ -4161,6 +4170,9 @@ func exportDataHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, recalcSpan := StartSpan(ctx, "ratings.recalculate")
 	players = RecalculateAllPlayersRatings(players)
 	recalcSpan.End()
+
+	// Normalize MBR scores relative to the maximum (best player gets 100)
+	NormalizeMBRScoresRelativeToMax(players)
 
 	// Calculate performance percentiles
 	ctx, percentileSpan := StartSpan(ctx, "percentiles.calculate")
@@ -4555,6 +4567,9 @@ func generateCSVContent(players []Player) string {
 		}...)
 
 		// FM Attributes (individual columns) right after Attributes Masked (Technical -> Mental -> Physical -> Goalkeeper)
+		// Protect attribute map access with read lock
+		player.mu.RLock()
+
 		// Technical attributes
 		technicalAttrs := []string{"Cor", "Cro", "Dri", "Fin", "Fir", "Fre", "Hea", "Lon", "L Th", "Mar", "Pas", "Pen", "Tck", "Tec"}
 		for _, attrName := range technicalAttrs {
@@ -4637,6 +4652,9 @@ func generateCSVContent(players []Player) string {
 				row = append(row, "") // Empty for players without this percentile group
 			}
 		}
+
+		// Release the read lock after all map access is complete
+		player.mu.RUnlock()
 
 		csvLines = append(csvLines, strings.Join(row, ","))
 	}
@@ -5290,6 +5308,9 @@ func topTeamsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Recalculate all player ratings based on the current calculation method setting
 	players = RecalculateAllPlayersRatings(players)
+
+	// Normalize MBR scores relative to the maximum (best player gets 100)
+	NormalizeMBRScoresRelativeToMax(players)
 
 	// Process top teams data
 	teamsData := processTopTeamsData(players, limit)

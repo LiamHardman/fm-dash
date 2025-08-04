@@ -588,13 +588,8 @@ func CalculateMoneyballRating(player Player, valueScore float64) int {
 	// Final calculation
 	moneyballRating := baseRating + ageModifier + mentalityModifier + valueScoreContribution + transferValuePenalty + salaryPenalty
 
-	// Apply sigmoid normalization to compress extreme values to 0-100 range
-	// Sigmoid function: 1 / (1 + e^(-x/scale_factor))
-	// Using scale factor of 50 to spread the curve appropriately
-	sigmoid := 1.0 / (1.0 + math.Exp(-float64(moneyballRating)/50.0))
-	normalizedRating := int(sigmoid * 100.0)
-
-	return normalizedRating
+	// Store raw MBR for relative scaling (will be normalized later)
+	return moneyballRating
 }
 
 // getSalaryPenalty calculates a penalty for players who are overpaid relative to their transfer value
@@ -730,4 +725,45 @@ func getMentalityModifier(personality string) int {
 
 	// Default for unknown personalities
 	return 0
+}
+
+// NormalizeMBRScoresRelativeToMax normalizes all MBR scores relative to the maximum MBR value.
+// The player with the highest MBR gets 100, and all others are scaled proportionally.
+// For example: if max MBR is 150, a player with MBR 135 gets 90 (135/150 * 100).
+func NormalizeMBRScoresRelativeToMax(players []Player) {
+	if len(players) == 0 {
+		return
+	}
+
+	// First pass: Find the maximum MBR value
+	maxMBR := players[0].MBR
+	for i := range players {
+		if players[i].MBR > maxMBR {
+			maxMBR = players[i].MBR
+		}
+	}
+
+	// Handle edge case where max MBR is 0 or negative
+	if maxMBR <= 0 {
+		// If all players have 0 or negative MBR, set them all to 0
+		for i := range players {
+			players[i].MBR = 0
+			players[i].Mbr = 0 // Keep both fields in sync
+		}
+		return
+	}
+
+	// Second pass: Normalize all MBR scores relative to the maximum
+	for i := range players {
+		// Calculate the relative score: (player_score / max_score) * 100
+		normalizedMBR := int((float64(players[i].MBR) / float64(maxMBR)) * 100.0)
+
+		// Ensure the result is at least 0
+		if normalizedMBR < 0 {
+			normalizedMBR = 0
+		}
+
+		players[i].MBR = normalizedMBR
+		players[i].Mbr = normalizedMBR // Keep both fields in sync
+	}
 }

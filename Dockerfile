@@ -1,15 +1,15 @@
 FROM node:24-alpine AS vue-builder
 LABEL stage=vue-builder
 WORKDIR /app-vue
-COPY package.json ./
-# Remove package-lock.json and let npm install detect the correct platform dependencies
-RUN npm install --no-audit --no-fund --legacy-peer-deps
+# Copy package files for better caching and consistent dependency versions
+COPY package.json package-lock.json ./
+# Use npm ci for consistent, reproducible builds
+RUN npm ci --legacy-peer-deps
 COPY . .
 ARG VITE_API_BASE_URL=/api
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 RUN echo "Building Vue app with VITE_API_BASE_URL=${VITE_API_BASE_URL}"
-# Fix esbuild version issue by reinstalling it
-RUN npm rebuild esbuild
+# No need to rebuild esbuild when using npm ci with locked versions
 RUN npm run build
 
 FROM golang:1.24-alpine AS go-builder
