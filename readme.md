@@ -9,7 +9,7 @@
 [![Go Version](https://img.shields.io/badge/Go-1.24+-00ADD8?style=flat-square&logo=go)](https://golang.org)
 [![Vue Version](https://img.shields.io/badge/Vue.js-3.0+-4FC08D?style=flat-square&logo=vue.js)](https://vuejs.org)
 [![Quasar Version](https://img.shields.io/badge/Quasar-2.0+-1976D2?style=flat-square&logo=quasar)](https://quasar.dev)
-[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
+[![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg?style=flat-square)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
 [![CI/CD](https://github.com/LiamHardman/fm-dash/actions/workflows/code-quality.yml/badge.svg)](https://github.com/LiamHardman/fm-dash/actions/workflows/code-quality.yml)
 [![Release](https://github.com/LiamHardman/fm-dash/actions/workflows/release.yml/badge.svg)](https://github.com/LiamHardman/fm-dash/actions/workflows/release.yml)
