@@ -70,7 +70,7 @@ else
     echo "Starting Go backend API server (from $GO_API_DIR)..."
     # This command navigates to the Go API directory and runs the main.go file.
     # The Go API server typically runs on http://localhost:8091 (as per vite.config.js proxy)
-    (cd "$GO_API_DIR" && go run .) &
+    (cd "$GO_API_DIR" && USE_PROTOBUF="$USE_PROTOBUF" MAX_UPLOAD_SIZE="$MAX_UPLOAD_SIZE" go run .) &
     BACKEND_PID=$! # Get the Process ID of the backgrounded Go server
 
     sleep 2 # Give it a moment to start or fail
