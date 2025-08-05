@@ -5017,8 +5017,8 @@ func upgradeFinderHandler(w http.ResponseWriter, r *http.Request) {
 		"position", req.Position,
 		"min_overall", req.MinOverall)
 
-	// Filter and find upgrades
-	upgrades := findPlayerUpgrades(players, teamPlayers, req)
+	// Filter and find upgrades using optimized parallel processing
+	upgrades := OptimizedFindPlayerUpgrades(players, teamPlayers, req)
 
 	logDebug(ctx, "Upgrade finder results",
 		"upgrades_found", len(upgrades),

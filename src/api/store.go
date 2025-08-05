@@ -71,8 +71,8 @@ func StoreDataset(datasetID string, players []Player, currencySymbol string) err
 // StoreDatasetAsync stores player data using the storage interface asynchronously
 func StoreDatasetAsync(datasetID string, players []Player, currencySymbol string) {
 	// Create a proper deep copy of players slice to avoid race conditions during async storage
-	// CRITICAL: Use simple deepCopyPlayers instead of OptimizedDeepCopyPlayers (COW has race conditions)
-	playersCopy := deepCopyPlayers(players)
+	// PERFORMANCE: Use FastDeepCopyPlayers for much better performance while staying thread-safe
+	playersCopy := FastDeepCopyPlayers(players)
 
 	// Ensure all players have their NumericAttributes populated before storage
 	// This is critical because the data might be stored before the workers finish enhancement
@@ -262,10 +262,9 @@ func GetPlayerData(datasetID string) ([]Player, string, bool) {
 			attribute.Int("dataset.player_count", len(data.Players)),
 			attribute.String("data.source", "memory_fast"),
 		)
-		// Return a simple, safe deep copy to prevent race conditions
-		// CRITICAL: Use simple deepCopyPlayers instead of OptimizedDeepCopyPlayers
-		// because the COW optimization has race conditions with concurrent access
-		players := deepCopyPlayers(data.Players)
+		// Return an optimized, safe deep copy to prevent race conditions
+		// PERFORMANCE: Use FastDeepCopyPlayers for much better performance while staying thread-safe
+		players := FastDeepCopyPlayers(data.Players)
 		// Always enhance retrieved players to ensure TotalStats and MBR are calculated
 		enhancedCount := 0
 		for i := range players {
@@ -288,8 +287,8 @@ func GetPlayerData(datasetID string) ([]Player, string, bool) {
 			attribute.String("data.source", "persistent_fallback"),
 		)
 		// Return a deep copy to prevent race conditions
-		// CRITICAL: Use safe deepCopyPlayers instead of OptimizedDeepCopyPlayers (COW has race conditions)
-		enhancedPlayers := deepCopyPlayers(players)
+		// PERFORMANCE: Use FastDeepCopyPlayers for much better performance while staying thread-safe
+		enhancedPlayers := FastDeepCopyPlayers(players)
 		// Always enhance retrieved players to ensure TotalStats and MBR are calculated
 		enhancedCount := 0
 		for i := range enhancedPlayers {

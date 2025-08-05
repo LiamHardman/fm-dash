@@ -162,6 +162,9 @@ func main() {
 	// Start automatic cleanup scheduler for old datasets
 	StartCleanupScheduler()
 
+	// Start cache cleanup scheduler for performance optimization
+	StartCacheCleanupScheduler()
+
 	// Start async configuration loading in background
 	go func() {
 		configInitOnce.Do(initializeConfigAsync)
