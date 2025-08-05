@@ -110,8 +110,8 @@ func passesEarlyFilters(player *Player, req UpgradeFinderRequest, teamPlayerMap 
 		}
 	}
 
-	// Quick position check
-	if !matchesPositionForUpgrade(*player, req.Position) {
+	// Quick position check with caching
+	if !CachedMatchesPositionForUpgrade(*player, req.Position) {
 		return false
 	}
 

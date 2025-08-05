@@ -2496,22 +2496,20 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	)
 
 	// Get player data
-	players, _, found := GetPlayerData(datasetID)
+	// Quick dataset existence check (no expensive operations)
+	_, _, found := GetPlayerDataForIndexing(datasetID)
 	if !found {
 		WriteErrorResponse(w, r, "dataset_not_found", "Dataset not found", nil, http.StatusNotFound)
 		return
 	}
 
-	// Recalculate all player ratings based on the current calculation method setting
-	players = RecalculateAllPlayersRatings(players)
+	logDebug(ctx, "Performing search", "dataset_id", datasetID, "query", query)
 
-	logDebug(ctx, "Performing search", "dataset_id", datasetID, "query", query, "player_count", len(players))
-
-	// NEW: Generate cache key and try to load from cache first
-	cacheKey := generateSearchCacheKey(ctx, datasetID, query, players)
+	// NEW: Generate cache key (lightweight)
+	cacheKey := generateSearchCacheKeyLightweight(ctx, datasetID, query)
 
 	// Try to load from cache
-	if cachedResults, found := loadSearchFromCache(ctx, cacheKey, datasetID, query, players); found {
+	if cachedResults, found := loadSearchFromCacheLightweight(ctx, cacheKey, datasetID, query); found {
 		logInfo(ctx, "Returning cached search results",
 			"dataset_id", datasetID,
 			"query", query,
@@ -2593,13 +2591,18 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		"query", query,
 		"cache_key", cacheKey)
 
-	// Perform search
-	results := performSearch(players, query)
+	// Perform optimized search
+	results, searchErr := GetHybridSearchService().Search(ctx, datasetID, query, 100)
+	if searchErr != nil {
+		logError(ctx, "Error performing optimized search", "error", searchErr)
+		WriteErrorResponse(w, r, "search_error", "Search failed", nil, http.StatusInternalServerError)
+		return
+	}
 
 	// NEW: Save to cache for future requests (only cache if results are not too large)
 	if len(results) <= 1000 { // Reasonable limit to avoid caching huge result sets
 		go func() {
-			saveSearchToCache(ctx, cacheKey, datasetID, query, players, results)
+			saveSearchToCacheLightweight(ctx, cacheKey, datasetID, query, results)
 		}()
 	}
 
@@ -4011,8 +4014,8 @@ func performanceDataHandler(w http.ResponseWriter, r *http.Request) {
 	// Calculate percentiles with appropriate filtering
 	ctx, percentileSpan := StartSpan(ctx, "percentiles.calculate")
 	// Make a deep copy of players to avoid modifying the stored data
-	// CRITICAL: Use safe deepCopyPlayers instead of OptimizedDeepCopyPlayers (COW has race conditions)
-	playersCopy := deepCopyPlayers(players)
+	// PERFORMANCE: Use FastDeepCopyPlayers for much better performance while staying thread-safe
+	playersCopy := FastDeepCopyPlayers(players)
 
 	if divisionFilter != DivisionFilterAll {
 		// Recalculate percentiles with division filter
@@ -5626,8 +5629,8 @@ func debugPlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 // logTop25OverallPlayers logs the top 25 players by overall rating with their MBR breakdown
 func logTop25OverallPlayers(players []Player) {
 	// Create a proper deep copy of players for sorting to prevent any potential race conditions
-	// CRITICAL: Use simple deepCopyPlayers instead of OptimizedDeepCopyPlayers (COW has race conditions)
-	playersCopy := deepCopyPlayers(players)
+	// PERFORMANCE: Use FastDeepCopyPlayers for much better performance while staying thread-safe
+	playersCopy := FastDeepCopyPlayers(players)
 
 	// Sort by overall rating in descending order
 	sort.Slice(playersCopy, func(i, j int) bool {

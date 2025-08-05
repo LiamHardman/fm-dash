@@ -59,6 +59,9 @@ func StoreDataset(datasetID string, players []Player, currencySymbol string) err
 	// Invalidate related cache entries when dataset is updated
 	invalidateDatasetCache(datasetID)
 
+	// Invalidate search index when dataset is updated
+	GetHybridSearchService().InvalidateIndex(datasetID)
+
 	RecordBusinessOperation(ctx, "dataset_store", true, map[string]interface{}{
 		"dataset_id":   datasetID,
 		"player_count": len(players),
@@ -312,6 +315,82 @@ func GetPlayerData(datasetID string) ([]Player, string, bool) {
 		LogInfo("Cached %d enhanced players from S3 in memory for dataset %s", len(enhancedPlayers), datasetID)
 
 		return enhancedPlayers, currency, true
+	}
+
+	SetSpanAttributes(ctx, attribute.String("result", "not_found"))
+	return nil, "", false
+}
+
+// GetPlayerDataForIndexing retrieves player data optimized for search indexing (no deep copy, no enhancements)
+func GetPlayerDataForIndexing(datasetID string) ([]Player, string, bool) {
+	ctx := context.Background()
+	ctx, span := StartSpan(ctx, "store.get_player_data_for_indexing")
+	defer span.End()
+
+	SetSpanAttributes(ctx,
+		attribute.String("dataset.id", datasetID),
+		attribute.String("store.type", "indexing_optimized"),
+	)
+
+	// Try fast in-memory cache first
+	storeMutex.RLock()
+	if data, exists := playerDataStore[datasetID]; exists {
+		storeMutex.RUnlock()
+		AddSpanEvent(ctx, "store.memory_cache_hit_indexing")
+		SetSpanAttributes(ctx,
+			attribute.Int("dataset.player_count", len(data.Players)),
+			attribute.String("data.source", "memory_fast_indexing"),
+		)
+
+		// Return shallow copy - safe for read-only indexing, much faster than deep copy
+		// For search indexing, we only need name, club, position, nationality, division fields
+		players := make([]Player, len(data.Players))
+		for i, player := range data.Players {
+			players[i] = Player{
+				UID:         player.UID,
+				Name:        player.Name,
+				Club:        player.Club,
+				Position:    player.Position,
+				Nationality: player.Nationality,
+				Division:    player.Division,
+				Overall:     player.Overall,
+				Age:         player.Age,
+			}
+		}
+
+		logDebug(ctx, "Returned lightweight player data for indexing",
+			"dataset_id", datasetID,
+			"player_count", len(players))
+
+		return players, data.CurrencySymbol, true
+	}
+	storeMutex.RUnlock()
+
+	// Fallback to persistent storage - but use lightweight loading
+	AddSpanEvent(ctx, "store.fallback_to_persistent_indexing")
+	players, currency, err := RetrieveDataset(datasetID)
+	if err == nil {
+		SetSpanAttributes(ctx,
+			attribute.Int("dataset.player_count", len(players)),
+			attribute.String("data.source", "persistent_fallback_indexing"),
+		)
+
+		// Return lightweight copy for indexing
+		lightPlayers := make([]Player, len(players))
+		for i, player := range players {
+			lightPlayers[i] = Player{
+				UID:         player.UID,
+				Name:        player.Name,
+				Club:        player.Club,
+				Position:    player.Position,
+				Nationality: player.Nationality,
+				Division:    player.Division,
+				Overall:     player.Overall,
+				Age:         player.Age,
+			}
+		}
+
+		return lightPlayers, currency, true
 	}
 
 	SetSpanAttributes(ctx, attribute.String("result", "not_found"))

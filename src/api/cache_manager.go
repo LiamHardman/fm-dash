@@ -20,8 +20,17 @@ func StartCacheCleanupScheduler() {
 			// Clear role calculation cache to prevent memory leaks
 			ClearRoleOverallCache()
 
-			LogDebug("Periodic cache cleanup completed")
-			SetSpanAttributes(ctx, attribute.String("cache.cleanup.status", "completed"))
+			// Clear search cache to prevent memory leaks
+			GetOptimizedSearch().ClearCache()
+
+			// Clear position matching cache to prevent memory leaks
+			ClearPositionMatchCache()
+
+			LogDebug("Periodic cache cleanup completed - cleared role, search, and position caches")
+			SetSpanAttributes(ctx,
+				attribute.String("cache.cleanup.status", "completed"),
+				attribute.String("cache.types_cleaned", "role_overall,search,position_match"),
+			)
 			span.End()
 		}
 	}()

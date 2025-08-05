@@ -658,8 +658,8 @@ func (p *ConcurrentPercentileProcessor) ProcessPercentilesWithDivisionFilterAsyn
 	)
 
 	// Make a proper deep copy to avoid modifying original data and prevent race conditions
-	// CRITICAL: Use simple deepCopyPlayers instead of OptimizedDeepCopyPlayers (COW has race conditions)
-	playersCopy := deepCopyPlayers(players)
+	// PERFORMANCE: Use FastDeepCopyPlayers for much better performance while staying thread-safe
+	playersCopy := FastDeepCopyPlayers(players)
 
 	// Process in a goroutine to make it non-blocking
 	resultCh := make(chan []Player, 1)
