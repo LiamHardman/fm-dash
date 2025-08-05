@@ -63,7 +63,7 @@ func TestProtobufRequestResponseCycle(t *testing.T) {
 	// Create a test server with our API handlers
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/players/", playerDataHandler)
-	mux.HandleFunc("/api/roles", rolesHandler)
+	mux.HandleFunc("/api/roles", cachedRolesHandler)
 	mux.HandleFunc("/api/leagues/", leaguesHandler)
 	mux.HandleFunc("/api/teams/", teamsHandler)
 	mux.HandleFunc("/api/search/", searchHandler)

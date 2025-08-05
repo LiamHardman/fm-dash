@@ -292,7 +292,7 @@ func testRolesEndpoint(ctx context.Context, t *testing.T, useProtobuf bool) {
 	req := httptest.NewRequest("GET", "/api/roles", nil)
 	w := httptest.NewRecorder()
 
-	rolesHandler(w, req)
+	cachedRolesHandler(w, req)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("Expected status %d, got %d. Response: %s",
