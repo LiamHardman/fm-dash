@@ -36,8 +36,10 @@ func (h *TopKPlayerHeap) Pop() interface{} {
 
 // RoleOverallIndex pre-computes role-specific overalls for faster lookup
 type RoleOverallIndex struct {
-	data map[int64]map[string]int // playerUID -> roleName -> overall
-	mu   sync.RWMutex
+	data        map[int64]map[string]int // playerUID -> roleName -> overall
+	mu          sync.RWMutex
+	lastBuilt   time.Time
+	playerCount int // Track if we need to rebuild
 }
 
 func NewRoleOverallIndex() *RoleOverallIndex {
@@ -47,8 +49,21 @@ func NewRoleOverallIndex() *RoleOverallIndex {
 }
 
 func (idx *RoleOverallIndex) BuildIndex(players []Player) {
+	// Check if we need to rebuild (avoid unnecessary rebuilds)
+	idx.mu.RLock()
+	if len(idx.data) > 0 && idx.playerCount == len(players) && time.Since(idx.lastBuilt) < 10*time.Minute {
+		idx.mu.RUnlock()
+		return // Index is fresh
+	}
+	idx.mu.RUnlock()
+
 	idx.mu.Lock()
 	defer idx.mu.Unlock()
+
+	// Double-check after acquiring write lock
+	if len(idx.data) > 0 && idx.playerCount == len(players) && time.Since(idx.lastBuilt) < 10*time.Minute {
+		return
+	}
 
 	// Clear existing data
 	idx.data = make(map[int64]map[string]int)
@@ -60,6 +75,9 @@ func (idx *RoleOverallIndex) BuildIndex(players []Player) {
 		}
 		idx.data[players[i].UID] = playerRoles
 	}
+
+	idx.playerCount = len(players)
+	idx.lastBuilt = time.Now()
 }
 
 func (idx *RoleOverallIndex) GetRoleOverall(playerUID int64, role, position string) int {
@@ -450,6 +468,8 @@ func ClearRoleOverallCache() {
 func InvalidateRoleIndex() {
 	globalRoleIndex.mu.Lock()
 	globalRoleIndex.data = make(map[int64]map[string]int)
+	globalRoleIndex.playerCount = 0
+	globalRoleIndex.lastBuilt = time.Time{}
 	globalRoleIndex.mu.Unlock()
 	LogDebug("Role index invalidated")
 }

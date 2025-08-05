@@ -327,6 +327,136 @@ func GetPlayerData(datasetID string) ([]Player, string, bool) {
 	return nil, "", false
 }
 
+// GetPlayerDataForUpgradeFinder retrieves player data optimized for upgrade finder (minimal copy, no enhancements)
+func GetPlayerDataForUpgradeFinder(datasetID string) ([]Player, string, bool) {
+	ctx := context.Background()
+	ctx, span := StartSpan(ctx, "store.get_player_data_for_upgrade_finder")
+	defer span.End()
+
+	SetSpanAttributes(ctx,
+		attribute.String("dataset.id", datasetID),
+		attribute.String("store.type", "upgrade_finder_optimized"),
+	)
+
+	// Try fast in-memory cache first
+	storeMutex.RLock()
+	if data, exists := playerDataStore[datasetID]; exists {
+		storeMutex.RUnlock()
+		AddSpanEvent(ctx, "store.memory_cache_hit_upgrade_finder")
+		SetSpanAttributes(ctx,
+			attribute.Int("dataset.player_count", len(data.Players)),
+			attribute.String("data.source", "memory_fast_upgrade_finder"),
+		)
+
+		// Return minimal copy - only fields needed for upgrade finder
+		// Skip deep copy and enhancement calculations for massive performance gain
+		players := make([]Player, len(data.Players))
+		for i, player := range data.Players {
+			players[i] = Player{
+				// Core identity fields
+				UID:      player.UID,
+				Name:     player.Name,
+				Club:     player.Club,
+				Position: player.Position,
+				Age:      player.Age,
+
+				// Position matching fields
+				ShortPositions:  player.ShortPositions,
+				ParsedPositions: player.ParsedPositions,
+
+				// Overall rating fields
+				Overall:              player.Overall,
+				RoleSpecificOveralls: player.RoleSpecificOveralls,
+
+				// Filter fields
+				TransferValue:       player.TransferValue,
+				TransferValueAmount: player.TransferValueAmount,
+				WageAmount:          player.WageAmount,
+
+				// FIFA Stats (outfield and goalkeeper) - uppercase and lowercase versions
+				PAC: player.PAC,
+				DRI: player.DRI,
+				SHO: player.SHO,
+				PAS: player.PAS,
+				DEF: player.DEF,
+				PHY: player.PHY,
+				GK:  player.GK,
+				DIV: player.DIV,
+				HAN: player.HAN,
+				REF: player.REF,
+				KIC: player.KIC,
+				SPD: player.SPD,
+				POS: player.POS,
+				Pac: player.Pac,
+				Dri: player.Dri,
+				Sho: player.Sho,
+				Pas: player.Pas,
+				Def: player.Def,
+				Phy: player.Phy,
+				Gk:  player.Gk,
+				Div: player.Div,
+				Han: player.Han,
+				Ref: player.Ref,
+				Kic: player.Kic,
+				Spd: player.Spd,
+				Pos: player.Pos,
+
+				// Additional fields for UI display
+				Nationality:    player.Nationality,
+				NationalityISO: player.NationalityISO,
+				Division:       player.Division,
+				Wage:           player.Wage,
+				Personality:    player.Personality,
+				MediaHandling:  player.MediaHandling,
+
+				// FM Attributes map (contains detailed attributes like crossing, finishing, etc.)
+				Attributes:        player.Attributes,
+				NumericAttributes: player.NumericAttributes,
+
+				// Performance stats and other display fields
+				PerformanceStatsNumeric: player.PerformanceStatsNumeric,
+				PerformancePercentiles:  player.PerformancePercentiles,
+				TotalStats:              player.TotalStats,
+				TotalStatsLower:         player.TotalStatsLower,
+				MBR:                     player.MBR,
+				Mbr:                     player.Mbr,
+				OverallLower:            player.OverallLower,
+				BestRoleOverall:         player.BestRoleOverall,
+			}
+		}
+
+		logDebug(ctx, "Returned lightweight player data for upgrade finder",
+			"dataset_id", datasetID,
+			"player_count", len(players))
+
+		return players, data.CurrencySymbol, true
+	}
+	storeMutex.RUnlock()
+
+	// Fallback to persistent storage - but use lightweight loading
+	AddSpanEvent(ctx, "store.fallback_to_persistent_upgrade_finder")
+	players, currency, err := RetrieveDataset(datasetID)
+	if err == nil {
+		SetSpanAttributes(ctx,
+			attribute.Int("dataset.fallback_player_count", len(players)),
+			attribute.String("data.source", "persistent_upgrade_finder"),
+		)
+
+		logDebug(ctx, "Returned player data from persistent storage for upgrade finder",
+			"dataset_id", datasetID,
+			"player_count", len(players))
+
+		return players, currency, true
+	}
+
+	SetSpanAttributes(ctx,
+		attribute.String("error.type", "dataset_not_found"),
+		attribute.String("error.message", err.Error()),
+	)
+
+	return nil, "", false
+}
+
 // GetPlayerDataForIndexing retrieves player data optimized for search indexing (no deep copy, no enhancements)
 func GetPlayerDataForIndexing(datasetID string) ([]Player, string, bool) {
 	ctx := context.Background()

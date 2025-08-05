@@ -4884,18 +4884,29 @@ func upgradeFinderHandler(w http.ResponseWriter, r *http.Request) {
 		"max_transfer_value", req.MaxTransferValue,
 		"max_salary", req.MaxSalary)
 
-	// Get players from the main dataset (transfer market)
-	players, currencySymbol, found := GetPlayerData(req.DatasetID)
+	// Get players from the main dataset (transfer market) using optimized loader
+	dataLoadStart := time.Now()
+	players, currencySymbol, found := GetPlayerDataForUpgradeFinder(req.DatasetID)
+	dataLoadTime := time.Since(dataLoadStart)
+
 	if !found {
 		logWarn(ctx, "No players found for main dataset", "dataset_id", req.DatasetID)
 		WriteErrorResponse(w, r, "no_players_found", "No players found for the specified dataset", nil, http.StatusNotFound)
 		return
 	}
 
+	logDebug(ctx, "Data loading completed for upgrade finder",
+		"dataset_id", req.DatasetID,
+		"player_count", len(players),
+		"data_load_time_ms", dataLoadTime.Milliseconds())
+
 	// If a team dataset is specified, get team players from it for validation
 	var teamPlayers []Player
 	if req.TeamDatasetID != "" && req.TeamDatasetID != req.DatasetID {
-		teamPlayersData, _, teamFound := GetPlayerData(req.TeamDatasetID)
+		teamLoadStart := time.Now()
+		teamPlayersData, _, teamFound := GetPlayerDataForUpgradeFinder(req.TeamDatasetID)
+		teamLoadTime := time.Since(teamLoadStart)
+
 		if !teamFound {
 			logWarn(ctx, "No players found for team dataset", "team_dataset_id", req.TeamDatasetID)
 			WriteErrorResponse(w, r, "no_team_players_found", "No players found for the specified team dataset", nil, http.StatusNotFound)
@@ -4904,7 +4915,8 @@ func upgradeFinderHandler(w http.ResponseWriter, r *http.Request) {
 		teamPlayers = teamPlayersData
 		logDebug(ctx, "Using separate team dataset for team validation",
 			"team_dataset_id", req.TeamDatasetID,
-			"team_players_count", len(teamPlayers))
+			"team_players_count", len(teamPlayers),
+			"team_data_load_time_ms", teamLoadTime.Milliseconds())
 	} else {
 		// Use the same dataset for both team and upgrades
 		teamPlayers = players
@@ -4922,12 +4934,17 @@ func upgradeFinderHandler(w http.ResponseWriter, r *http.Request) {
 		"min_overall", req.MinOverall)
 
 	// Filter and find upgrades using optimized parallel processing
+	filterStart := time.Now()
 	upgrades := OptimizedFindPlayerUpgrades(players, teamPlayers, req)
+	filterTime := time.Since(filterStart)
 
 	logDebug(ctx, "Upgrade finder results",
 		"upgrades_found", len(upgrades),
 		"request_team", req.Team,
-		"request_position", req.Position)
+		"request_position", req.Position,
+		"filter_time_ms", filterTime.Milliseconds(),
+		"data_load_time_ms", dataLoadTime.Milliseconds(),
+		"total_time_ms", time.Since(startTime).Milliseconds())
 
 	// Set CORS headers
 	setCORSHeaders(w, r)
