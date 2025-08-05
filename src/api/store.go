@@ -62,6 +62,9 @@ func StoreDataset(datasetID string, players []Player, currencySymbol string) err
 	// Invalidate search index when dataset is updated
 	GetHybridSearchService().InvalidateIndex(datasetID)
 
+	// Invalidate role index for upgrade finder optimization
+	InvalidateRoleIndex()
+
 	RecordBusinessOperation(ctx, "dataset_store", true, map[string]interface{}{
 		"dataset_id":   datasetID,
 		"player_count": len(players),
@@ -115,6 +118,9 @@ func StoreDatasetAsync(datasetID string, players []Player, currencySymbol string
 
 		// Invalidate related cache entries when dataset is updated
 		invalidateDatasetCache(datasetID)
+
+		// Invalidate role index for upgrade finder optimization
+		InvalidateRoleIndex()
 
 		SetSpanAttributes(ctx,
 			attribute.Int64("operation.duration_ms", duration.Milliseconds()),
