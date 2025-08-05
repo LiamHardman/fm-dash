@@ -239,19 +239,19 @@ func (amo *AdvancedMemoryOptimizer) packAttributes(player *Player, opt *Optimize
 // packPositions converts slices to fixed arrays
 func (amo *AdvancedMemoryOptimizer) packPositions(player *Player, opt *OptimizedPlayer) {
 	// Pack parsed positions
-	opt.PositionCount = int8(min(len(player.ParsedPositions), len(opt.ParsedPositions)))
+	opt.PositionCount = int8(Min(len(player.ParsedPositions), len(opt.ParsedPositions)))
 	for i := 0; i < int(opt.PositionCount); i++ {
 		opt.ParsedPositions[i] = amo.positionPool.Intern(player.ParsedPositions[i])
 	}
 
 	// Pack short positions
-	opt.ShortPositionCount = int8(min(len(player.ShortPositions), len(opt.ShortPositions)))
+	opt.ShortPositionCount = int8(Min(len(player.ShortPositions), len(opt.ShortPositions)))
 	for i := 0; i < int(opt.ShortPositionCount); i++ {
 		opt.ShortPositions[i] = amo.positionPool.Intern(player.ShortPositions[i])
 	}
 
 	// Pack position groups
-	opt.PositionGroupsCount = int8(min(len(player.PositionGroups), len(opt.PositionGroups)))
+	opt.PositionGroupsCount = int8(Min(len(player.PositionGroups), len(opt.PositionGroups)))
 	for i := 0; i < int(opt.PositionGroupsCount); i++ {
 		opt.PositionGroups[i] = amo.positionPool.Intern(player.PositionGroups[i])
 	}
@@ -279,7 +279,7 @@ func (amo *AdvancedMemoryOptimizer) estimatePlayerSliceMemory(players []Player) 
 		return 0
 	}
 
-	sampleSize := min(len(players), 10)
+	sampleSize := Min(len(players), 10)
 	totalSize := int64(0)
 
 	for i := 0; i < sampleSize; i++ {
@@ -387,14 +387,6 @@ func (amo *AdvancedMemoryOptimizer) GetOptimizationStats() map[string]interface{
 	amo.nationalityPool.mu.RUnlock()
 
 	return stats
-}
-
-// Helper functions
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 func safeParseInt(s string) (int, error) {

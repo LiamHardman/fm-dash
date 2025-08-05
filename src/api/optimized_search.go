@@ -49,7 +49,7 @@ func (ops *OptimizedPlayerSearch) ParallelSearchPlayers(players []Player, query 
 // parallelSearch performs search using multiple goroutines
 func parallelSearch(players []Player, query string, searchFields []string) []Player {
 	queryLower := strings.ToLower(query)
-	numWorkers := minValue(8, len(players)/1000+1)
+	numWorkers := Min(8, len(players)/1000+1)
 	chunkSize := (len(players) + numWorkers - 1) / numWorkers
 
 	resultsChan := make(chan []Player, numWorkers)
@@ -57,7 +57,7 @@ func parallelSearch(players []Player, query string, searchFields []string) []Pla
 
 	for i := 0; i < numWorkers; i++ {
 		start := i * chunkSize
-		end := minValue(start+chunkSize, len(players))
+		end := Min(start+chunkSize, len(players))
 
 		wg.Add(1)
 		go func(start, end int) {
@@ -175,7 +175,7 @@ func ParallelFilterPlayers(players []Player, filterFunc func(*Player) bool) []Pl
 	}
 
 	// For larger datasets, use parallel filtering
-	numWorkers := minValue(8, len(players)/1000+1)
+	numWorkers := Min(8, len(players)/1000+1)
 	chunkSize := (len(players) + numWorkers - 1) / numWorkers
 
 	resultsChan := make(chan []Player, numWorkers)
@@ -183,7 +183,7 @@ func ParallelFilterPlayers(players []Player, filterFunc func(*Player) bool) []Pl
 
 	for i := 0; i < numWorkers; i++ {
 		start := i * chunkSize
-		end := minValue(start+chunkSize, len(players))
+		end := Min(start+chunkSize, len(players))
 
 		wg.Add(1)
 		go func(start, end int) {

@@ -30,7 +30,7 @@ func OptimizedFindPlayerUpgrades(players []Player, teamPlayers []Player, req Upg
 	candidatesChannel := make(chan []Player, 10)
 
 	// Calculate optimal chunk size for parallel processing
-	numWorkers := minValue(8, len(players)/1000+1)
+	numWorkers := Min(8, len(players)/1000+1)
 	chunkSize := (len(players) + numWorkers - 1) / numWorkers
 
 	var wg sync.WaitGroup
@@ -85,7 +85,7 @@ func OptimizedFindPlayerUpgrades(players []Player, teamPlayers []Player, req Upg
 	LogDebug("OptimizedFindPlayerUpgrades completed - found %d upgrades", len(allCandidates))
 	if len(allCandidates) > 0 {
 		// Log top 5 upgrades with their role-specific ratings for verification
-		for i := 0; i < minValue(5, len(allCandidates)); i++ {
+		for i := 0; i < Min(5, len(allCandidates)); i++ {
 			roleOverall := getCachedPlayerOverallForRole(allCandidates[i], req.Role, req.Position)
 			LogDebug("Upgrade %d: %s (Club: %s, Role Overall: %d, Main Overall: %d)",
 				i+1, allCandidates[i].Name, allCandidates[i].Club, roleOverall, allCandidates[i].Overall)

@@ -84,7 +84,7 @@ func (pt *ParseTimer) Finish(rowsProcessed, errors int64) {
 		"operation", pt.operation,
 		"rows_processed", rowsProcessed,
 		"duration_ms", duration.Milliseconds(),
-		"avg_time_per_row_ns", duration.Nanoseconds()/maxInt64(rowsProcessed, 1),
+		"avg_time_per_row_ns", duration.Nanoseconds()/MaxInt64(rowsProcessed, 1),
 		"errors", errors)
 }
 
@@ -212,9 +212,9 @@ func LogPerformanceReport(ctx context.Context) {
 		"goroutines", metrics.CurrentGoroutines)
 	logInfo(ctx, "JSON operation metrics",
 		"marshal_operations", metrics.JSONMarshalOperations,
-		"marshal_avg_time", time.Duration(metrics.JSONMarshalTime/maxInt64(metrics.JSONMarshalOperations, 1)).String(),
+		"marshal_avg_time", time.Duration(metrics.JSONMarshalTime/MaxInt64(metrics.JSONMarshalOperations, 1)).String(),
 		"unmarshal_operations", metrics.JSONUnmarshalOperations,
-		"unmarshal_avg_time", time.Duration(metrics.JSONUnmarshalTime/maxInt64(metrics.JSONUnmarshalOperations, 1)).String())
+		"unmarshal_avg_time", time.Duration(metrics.JSONUnmarshalTime/MaxInt64(metrics.JSONUnmarshalOperations, 1)).String())
 	logInfo(ctx, "Channel metrics",
 		"backpressure_events", metrics.ChannelBackpressureEvents,
 		"timeouts", metrics.ChannelTimeouts)
@@ -260,14 +260,6 @@ func formatBytes(b uint64) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "KMGTPE"[exp])
-}
-
-// maxInt64 returns the maximum of two int64 values
-func maxInt64(a, b int64) int64 {
-	if a > b {
-		return a
-	}
-	return b
 }
 
 // Global variable to track last logged parse count

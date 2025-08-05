@@ -117,17 +117,6 @@ func applyNonLinearScaling(linearRating float64) int {
 	return computeNonLinearScaling(linearRating)
 }
 
-// FastClamp efficiently clamps a value between min and max bounds
-func FastClamp(value, minVal, maxVal int) int {
-	if value < minVal {
-		return minVal
-	}
-	if value > maxVal {
-		return maxVal
-	}
-	return value
-}
-
 // calculateWeightedAverage calculates the weighted average for a set of player attributes.
 func calculateWeightedAverage(playerNumericAttributes, categoryAttributeWeights map[string]int) float64 {
 	var weightedSum, totalWeightOfPresentAttributes int64
@@ -197,7 +186,7 @@ func CalculateFifaStatGo(playerNumericAttributes map[string]int, categoryName st
 		if score3 > maxScore {
 			maxScore = score3
 		}
-		return FastClamp(maxScore, 0, 99)
+		return Clamp(maxScore, 0, 99)
 	}
 
 	categoryAttributeWeights, ok := currentCategoryWeightsSource[categoryName]
@@ -223,7 +212,7 @@ func CalculateFifaStatGo(playerNumericAttributes map[string]int, categoryName st
 	// Apply non-linear scaling to compress lower ratings
 	finalScore := applyNonLinearScaling(linearScore)
 
-	return FastClamp(finalScore, 0, 99)
+	return Clamp(finalScore, 0, 99)
 }
 
 // CalculateFifaStatGoLinear calculates a FIFA-style category stat using linear scaling (legacy method)

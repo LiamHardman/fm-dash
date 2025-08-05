@@ -66,3 +66,27 @@ func safeInt32(n int) int32 {
 	}
 	return int32(n)
 }
+
+// Min returns the smaller of two integers
+func Min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// Max returns the larger of two integers
+func Max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+// MaxInt64 returns the larger of two int64 values
+func MaxInt64(a, b int64) int64 {
+	if a > b {
+		return a
+	}
+	return b
+}

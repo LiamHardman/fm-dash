@@ -32,7 +32,7 @@ func fastDeepCopyParallel(players []Player) []Player {
 	result := make([]Player, len(players))
 
 	// Calculate optimal chunk size based on CPU cores and data size
-	numWorkers := minValue(8, (len(players)/500)+1) // Adaptive worker count
+	numWorkers := Min(8, (len(players)/500)+1) // Adaptive worker count
 	chunkSize := (len(players) + numWorkers - 1) / numWorkers
 
 	var wg sync.WaitGroup
@@ -40,7 +40,7 @@ func fastDeepCopyParallel(players []Player) []Player {
 
 	for i := 0; i < numWorkers; i++ {
 		start := i * chunkSize
-		end := minInt(start+chunkSize, len(players))
+		end := Min(start+chunkSize, len(players))
 
 		go func(start, end int) {
 			defer wg.Done()
@@ -141,12 +141,4 @@ func fastDeepCopyPlayer(original *Player) Player {
 	}
 
 	return player
-}
-
-// minValue helper function to avoid conflicts with existing min function
-func minValue(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
