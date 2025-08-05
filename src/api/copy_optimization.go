@@ -192,6 +192,10 @@ func (cow *CopyOnWritePlayer) deepCopyPlayer(original *Player) *Player {
 		copy(player.RoleSpecificOveralls, original.RoleSpecificOveralls)
 	}
 
+	// Ensure the mutex is fresh for this copy (zero value is valid for sync.RWMutex)
+	// This prevents any potential sharing of mutex state between copies
+	player.mu = sync.RWMutex{}
+
 	return player
 }
 

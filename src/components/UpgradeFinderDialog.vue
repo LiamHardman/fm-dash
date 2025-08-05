@@ -29,6 +29,75 @@
             </q-card-section>
 
             <q-card-section class="q-pt-md">
+                <!-- Dataset Configuration Row -->
+                <div class="row q-col-gutter-x-md q-col-gutter-y-sm q-mb-md">
+                    <div class="col-12">
+                        <q-card class="dataset-config-card">
+                            <q-card-section>
+                                <div class="card-header">
+                                    <h3 class="card-title">
+                                        <q-icon name="storage" class="card-icon" />
+                                        Dataset Configuration
+                                    </h3>
+                                    <p class="card-subtitle">Configure your datasets for team selection and upgrade search</p>
+                                </div>
+
+                                <div class="row q-col-gutter-md">
+                                    <div class="col-12 col-md-6">
+                                        <div class="dataset-section">
+                                            <h4 class="dataset-title">Transfer Market Dataset</h4>
+                                            <p class="dataset-description">Used to search for player upgrades</p>
+                                            <div class="dataset-info">
+                                                <q-icon name="check_circle" color="positive" />
+                                                <span>Currently using: Main Dataset</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-12 col-md-6">
+                                        <div class="dataset-section">
+                                            <h4 class="dataset-title">Team Dataset</h4>
+                                            <p class="dataset-description">Used to select teams and current squad</p>
+                                            <div v-if="!teamDatasetId" class="upload-area">
+                                                <q-btn
+                                                    icon="cloud_upload"
+                                                    label="Upload Team Dataset"
+                                                    color="primary"
+                                                    outline
+                                                    @click="$refs.teamDatasetFileInput.click()"
+                                                    :loading="teamDatasetUploading"
+                                                    class="full-width"
+                                                />
+                                                <input
+                                                    ref="teamDatasetFileInput"
+                                                    type="file"
+                                                    accept=".html"
+                                                    @change="uploadTeamDataset"
+                                                    style="display: none"
+                                                />
+                                                <div class="text-caption text-center q-mt-xs">
+                                                    Or use main dataset for teams
+                                                </div>
+                                            </div>
+                                            <div v-else class="dataset-info">
+                                                <q-icon name="check_circle" color="positive" />
+                                                <span>Team dataset uploaded</span>
+                                                <q-btn
+                                                    icon="close"
+                                                    size="sm"
+                                                    flat
+                                                    @click="clearTeamDataset"
+                                                    class="q-ml-sm"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </q-card-section>
+                        </q-card>
+                    </div>
+                </div>
+
                 <!-- Team Selection Row -->
                 <div class="row q-col-gutter-x-md q-col-gutter-y-sm q-mb-md">
                     <div class="col-12 col-md-6 col-lg-4">
@@ -1072,6 +1141,13 @@ export default {
     const teamOptions = ref([])
     const allTeamNamesCache = ref([])
 
+    // Team dataset state
+    const teamDatasetId = ref(null)
+    const teamDatasetUploading = ref(false)
+
+    // Store the original main dataset ID when dialog opens to prevent it from changing during team uploads
+    const originalMainDatasetId = ref(null)
+
     const selectedPosition = ref(null)
     const selectedRole = ref(null)
     const selectedTeamPlayer = ref(null)
@@ -1387,6 +1463,17 @@ export default {
       return true
     }
 
+    // Store the original main dataset ID when dialog opens to prevent it from changing during team uploads
+    watch(
+      () => props.show,
+      (isShowing) => {
+        if (isShowing && props.datasetId && !originalMainDatasetId.value) {
+          originalMainDatasetId.value = props.datasetId
+        }
+      },
+      { immediate: true }
+    )
+
     watch(
       () => [props.players, playerStore.allPlayers],
       async ([newPlayers, storePlayers]) => {
@@ -1616,8 +1703,9 @@ export default {
 
       try {
         // Fetch detailed team data to ensure we have role-specific overalls
-
-        const teamData = await fetchTeamData(props.datasetId, 'team', newTeamName)
+        // Use team dataset if available, otherwise use original main dataset
+        const datasetToUse = teamDatasetId.value || originalMainDatasetId.value
+        const teamData = await fetchTeamData(datasetToUse, 'team', newTeamName)
 
         if (teamData.data?.players && teamData.data.players.length > 0) {
           const teamPlayers = teamData.data.players
@@ -1629,10 +1717,6 @@ export default {
               (Array.isArray(p.roleSpecificOveralls)
                 ? p.roleSpecificOveralls.length > 0
                 : Object.keys(p.roleSpecificOveralls).length > 0)
-          )
-
-          console.log(
-            `UpgradeFinderDialog: Team data loaded - ${teamPlayers.length} players, ${playersWithRoleOveralls.length} with role overalls`
           )
 
           // Store the detailed team data for use in player selection
@@ -1748,13 +1832,6 @@ export default {
           maxOverallForPosition > 0 ? maxOverallForPosition : player.Overall || player.overall || 0
       } else {
         result = player.Overall || player.overall || 0
-      }
-
-      // Debug logging for role-specific overalls
-      if (role && !hasRoleOveralls) {
-        console.log(
-          `Warning: Player ${player.name} has no role-specific overalls for role ${role}, using main overall: ${result}`
-        )
       }
 
       return result
@@ -1894,7 +1971,6 @@ export default {
 
     const calculateBestFormationForTeam = (teamPlayers) => {
       if (!teamPlayers || teamPlayers.length === 0) {
-        console.log('No team players provided for formation calculation')
         return null
       }
 
@@ -1904,26 +1980,7 @@ export default {
       )
 
       if (playersWithPositions.length === 0) {
-        console.log('No players with position data found')
         return null
-      }
-
-      console.log(
-        `Formation calculation: ${playersWithPositions.length} players with positions out of ${teamPlayers.length} total players`
-      )
-
-      // Debug: Check role-specific overalls for first few players
-      for (let i = 0; i < Math.min(3, teamPlayers.length); i++) {
-        const player = teamPlayers[i]
-        console.log(`Player ${i + 1}: ${player.name}`, {
-          shortPositions: player.shortPositions,
-          roleSpecificOveralls: player.roleSpecificOveralls
-            ? Array.isArray(player.roleSpecificOveralls)
-              ? `${player.roleSpecificOveralls.length} roles`
-              : `${Object.keys(player.roleSpecificOveralls).length} roles`
-            : 'missing',
-          Overall: player.Overall,
-        })
       }
 
       // Check cache first
@@ -2246,6 +2303,82 @@ export default {
       }
     }
 
+    // Team dataset upload functions
+    const uploadTeamDataset = async (event) => {
+      const file = event.target.files[0]
+      if (!file) return
+
+      // Team dataset upload initiated
+
+      teamDatasetUploading.value = true
+
+      try {
+        const formData = new FormData()
+        formData.append('playerFile', file)
+
+        // Use the same upload endpoint as the main dataset
+        const response = await playerStore.uploadPlayerFile(formData)
+
+        if (!playerStore.error) {
+          teamDatasetId.value = response.datasetId
+
+          $q.notify({
+            type: 'positive',
+            message: 'Team dataset uploaded successfully!',
+            position: 'top',
+            timeout: 2000,
+          })
+
+          // Clear team selection when new dataset is uploaded
+          teamName.value = null
+          selectedTeamPlayer.value = null
+          selectedRole.value = null
+          teamPlayersForSelection.value = []
+          detailedTeamPlayers.value = []
+          selectedFormationKey.value = null
+          squadComposition.value = {}
+        } else {
+          $q.notify({
+            type: 'negative',
+            message: 'Failed to upload team dataset: ' + playerStore.error,
+            position: 'top',
+            timeout: 3000,
+          })
+        }
+      } catch (error) {
+        console.error('Error uploading team dataset:', error)
+        $q.notify({
+          type: 'negative',
+          message: 'Failed to upload team dataset',
+          position: 'top',
+          timeout: 3000,
+        })
+      } finally {
+        teamDatasetUploading.value = false
+        // Clear the file input
+        event.target.value = ''
+      }
+    }
+
+    const clearTeamDataset = () => {
+      teamDatasetId.value = null
+      // Clear team selection when dataset is cleared
+      teamName.value = null
+      selectedTeamPlayer.value = null
+      selectedRole.value = null
+      teamPlayersForSelection.value = []
+      detailedTeamPlayers.value = []
+      selectedFormationKey.value = null
+      squadComposition.value = {}
+
+      $q.notify({
+        type: 'info',
+        message: 'Team dataset cleared. Using main dataset for teams.',
+        position: 'top',
+        timeout: 2000,
+      })
+    }
+
     const getBaseOverallFromSelectedPlayer = async () => {
       if (!selectedTeamPlayer.value) return null
       const player = teamPlayersForSelection.value.find((p) => p.name === selectedTeamPlayer.value)
@@ -2335,10 +2468,6 @@ export default {
 
         // Check if we need to fetch detailed data for this player
         if (!player.roleSpecificOveralls || player.roleSpecificOveralls.length === 0) {
-          console.log(
-            'UpgradeFinderDialog: Fetching detailed data for selected player:',
-            player.name
-          )
           const detailedData = await fetchFullPlayerStats(props.datasetId, player.uid)
           if (detailedData?.data) {
             Object.assign(player, detailedData.data)
@@ -2429,8 +2558,11 @@ export default {
 
       try {
         // Use the new API endpoint for finding upgrades
+        // Execute upgrade finder request
+
         const request = {
-          datasetId: props.datasetId,
+          datasetId: originalMainDatasetId.value, // Always use the original main dataset for finding upgrades
+          teamDatasetId: teamDatasetId.value || originalMainDatasetId.value, // Use team dataset if available, otherwise use main dataset
           team: teamName.value,
           position: selectedPosition.value,
           role: selectedRole.value,
@@ -2460,10 +2592,8 @@ export default {
         const response = await findPlayerUpgrades(request)
 
         if (response.data?.players) {
-          console.log(`Found ${response.data.players.length} upgrades via API`)
           upgradePlayers.value = response.data.players
         } else {
-          console.log('No upgrades found or invalid response')
           upgradePlayers.value = []
         }
       } catch (error) {
@@ -2490,11 +2620,6 @@ export default {
 
     const processedUpgradePlayersForCards = computed(() => {
       return upgradePlayers.value.map((player) => {
-        console.log(
-          'UpgradeFinderDialog - Original player roleSpecificOveralls:',
-          player.roleSpecificOveralls
-        )
-
         const displayOverall = getPlayerOverallForRoleOrPosition(
           player,
           selectedRole.value,
@@ -2520,11 +2645,6 @@ export default {
           // Explicitly preserve roleSpecificOveralls
           roleSpecificOveralls: player.roleSpecificOveralls || [],
         }
-
-        console.log(
-          'UpgradeFinderDialog - Processed player roleSpecificOveralls:',
-          processedPlayer.roleSpecificOveralls
-        )
 
         return processedPlayer
       })
@@ -2807,7 +2927,6 @@ export default {
     watch(selectedRole, async () => {
       await updateBaseOverallForSelectedPlayer()
       if (selectedTeamPlayer.value && showResults.value) {
-        console.log('Role changed to:', selectedRole.value, '- re-searching for upgrades')
         findUpgrades()
       }
     })
@@ -2930,6 +3049,12 @@ export default {
       updateTeamPlayersForFormation,
       resetStatFilters,
       showStatFiltersModal,
+      // Team dataset functionality
+      teamDatasetId,
+      teamDatasetUploading,
+      uploadTeamDataset,
+      clearTeamDataset,
+      originalMainDatasetId,
     }
   },
 }
@@ -2978,6 +3103,101 @@ export default {
             
             .body--dark & {
                 background: transparent;
+            }
+        }
+    }
+
+    // Dataset configuration styling
+    .dataset-config-card {
+        background: rgba(249, 250, 251, 0.8);
+        border: 1px solid rgba(229, 231, 235, 0.8);
+        
+        .body--dark & {
+            background: rgba(31, 41, 55, 0.8);
+            border: 1px solid rgba(75, 85, 99, 0.8);
+        }
+        
+        .card-header {
+            background: none;
+            color: inherit;
+            padding: 1rem;
+            border-radius: 0;
+            
+            .card-title {
+                font-size: 1.1rem;
+                font-weight: 600;
+                margin: 0 0 0.25rem 0;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                color: #374151;
+                
+                .body--dark & {
+                    color: #f3f4f6;
+                }
+            }
+            
+            .card-subtitle {
+                font-size: 0.875rem;
+                color: #6b7280;
+                margin: 0;
+                
+                .body--dark & {
+                    color: #9ca3af;
+                }
+            }
+        }
+        
+        .dataset-section {
+            padding: 1rem;
+            border-radius: 8px;
+            background: white;
+            border: 1px solid rgba(229, 231, 235, 0.6);
+            
+            .body--dark & {
+                background: rgba(55, 65, 81, 0.6);
+                border: 1px solid rgba(75, 85, 99, 0.6);
+            }
+            
+            .dataset-title {
+                font-size: 1rem;
+                font-weight: 600;
+                margin: 0 0 0.5rem 0;
+                color: #111827;
+                
+                .body--dark & {
+                    color: #f9fafb;
+                }
+            }
+            
+            .dataset-description {
+                font-size: 0.875rem;
+                color: #6b7280;
+                margin: 0 0 1rem 0;
+                
+                .body--dark & {
+                    color: #9ca3af;
+                }
+            }
+            
+            .dataset-info {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                font-size: 0.875rem;
+                color: #059669;
+                
+                .body--dark & {
+                    color: #10b981;
+                }
+            }
+            
+            .upload-area {
+                text-align: center;
+                
+                .q-btn {
+                    margin-bottom: 0.5rem;
+                }
             }
         }
     }

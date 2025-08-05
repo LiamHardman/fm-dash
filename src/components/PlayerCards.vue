@@ -309,19 +309,6 @@ export default defineComponent({
           }
 
           roleOverall = roleData ? roleData.score : null
-
-          // Debug logging
-          if (props.selectedRole && playerData.name) {
-            console.log(
-              `PlayerCards Debug - Player: ${playerData.name}, Selected Role: ${props.selectedRole}`
-            )
-            console.log(
-              'Available roles:',
-              playerData.roleSpecificOveralls.map((r) => ({ roleName: r.roleName, score: r.score }))
-            )
-            console.log('Found role data:', roleData)
-            console.log('Final role overall:', roleOverall)
-          }
         } else if (typeof playerData.roleSpecificOveralls === 'object') {
           // Try exact match first
           roleOverall = playerData.roleSpecificOveralls[props.selectedRole] || null
@@ -333,15 +320,6 @@ export default defineComponent({
               key.startsWith(selectedRolePrefix)
             )
             roleOverall = matchingKey ? playerData.roleSpecificOveralls[matchingKey] : null
-          }
-
-          // Debug logging
-          if (props.selectedRole && playerData.name) {
-            console.log(
-              `PlayerCards Debug - Player: ${playerData.name}, Selected Role: ${props.selectedRole}`
-            )
-            console.log('Available roles:', Object.keys(playerData.roleSpecificOveralls))
-            console.log('Final role overall:', roleOverall)
           }
         }
 
@@ -449,16 +427,8 @@ export default defineComponent({
 
     // Fetch detailed data logic (unchanged)
     const needsDetailedData = computed(() => {
-      console.log('PlayerCards: needsDetailedData check for player:', props.player.name)
-      console.log('PlayerCards: selectedRole:', props.selectedRole)
-      console.log('PlayerCards: datasetId:', props.datasetId)
-      console.log('PlayerCards: player.uid:', props.player.uid)
-      console.log('PlayerCards: player.nationalityIso:', props.player.nationalityIso)
-      console.log('PlayerCards: player.roleSpecificOveralls:', props.player.roleSpecificOveralls)
-
       // Fetch if missing nationalityIso
       if (!props.player.nationalityIso && props.datasetId && props.player.uid) {
-        console.log('PlayerCards: needsDetailedData triggered - missing nationalityIso')
         return true
       }
 
@@ -470,33 +440,20 @@ export default defineComponent({
             ? props.player.roleSpecificOveralls.length > 0
             : Object.keys(props.player.roleSpecificOveralls).length > 0)
 
-        console.log('PlayerCards: hasRoleSpecificOveralls:', hasRoleSpecificOveralls)
-
         if (!hasRoleSpecificOveralls) {
-          console.log(
-            'PlayerCards: needsDetailedData triggered - role selected but no roleSpecificOveralls for player:',
-            props.player.name
-          )
           return true
         }
       }
 
-      console.log('PlayerCards: needsDetailedData returning false')
       return false
     })
     const fetchDetailedData = async () => {
       if (!needsDetailedData.value) return
-      console.log('PlayerCards: Fetching detailed data for player:', props.player.name)
       isLoadingDetailedData.value = true
       try {
         const result = await fetchFullPlayerStats(props.datasetId, props.player.uid)
-        console.log('PlayerCards: Detailed data result:', result)
         if (result.data?.player) {
           detailedPlayerData.value = result.data.player
-          console.log(
-            'PlayerCards: Updated detailedPlayerData with roleSpecificOveralls:',
-            result.data.player.roleSpecificOveralls
-          )
         }
       } catch (error) {
         console.error('Failed to fetch detailed player data:', error)

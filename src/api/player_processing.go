@@ -242,13 +242,23 @@ func parseCellsToPlayer(cells, headers []string) (Player, error) {
 // such as numeric attributes, FIFA stats, overall scores, parsed positions, etc.
 // It modifies the player struct pointed to.
 func EnhancePlayerWithCalculations(player *Player) {
+	// Add panic recovery for any remaining race conditions
+	defer func() {
+		if r := recover(); r != nil {
+			// Log the panic but don't crash the server
+			LogWarn("Race condition detected in EnhancePlayerWithCalculations, player: %s, error: %v", player.Name, r)
+		}
+	}()
 	// Ensure maps are initialized (though parseCellsToPlayer should do this)
+	// Use mutex to prevent race conditions during concurrent map initialization
+	player.mu.Lock()
 	if player.NumericAttributes == nil {
 		player.NumericAttributes = make(map[string]int, len(player.Attributes))
 	}
 	if player.PerformanceStatsNumeric == nil {
 		player.PerformanceStatsNumeric = make(map[string]float64, len(PerformanceStatKeys))
 	}
+	player.mu.Unlock()
 
 	// Apply string interning optimization for memory efficiency (after all map operations)
 	// Use enhanced version with compression for better memory savings

@@ -527,6 +527,13 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	parseDuration := time.Since(parseStartTime)
 	datasetID := uuid.New().String()
 
+	// Debug logging for dataset upload
+	logDebug(ctx, "Dataset upload processing",
+		"dataset_id", datasetID,
+		"player_count", len(playersList),
+		"currency", finalDatasetCurrencySymbol,
+		"parse_duration_ms", parseDuration.Milliseconds())
+
 	// Store data immediately in memory for fast access (without percentiles initially)
 	ctx, storageSpan := StartSpan(ctx, "storage.save_dataset_async")
 	SetSpanAttributes(ctx,
@@ -570,6 +577,12 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 		PlayerCount: len(playersList),
 	}
+
+	// Debug logging for upload response
+	logDebug(ctx, "Upload response generated",
+		"dataset_id", datasetID,
+		"player_count", len(playersList),
+		"response_ready", true)
 
 	w.Header().Set("Content-Type", "application/json")
 	setCORSHeaders(w, r)
@@ -4839,7 +4852,8 @@ func CalculatePlayerPercentilesAsync(ctx context.Context, datasetID string, play
 
 // UpgradeFinderRequest represents the request parameters for finding player upgrades
 type UpgradeFinderRequest struct {
-	DatasetID        string `json:"datasetId"`
+	DatasetID        string `json:"datasetId"`     // Dataset to search for upgrades (transfer market)
+	TeamDatasetID    string `json:"teamDatasetId"` // Optional: Dataset containing the team (current squad)
 	Team             string `json:"team"`
 	Position         string `json:"position"`
 	Role             string `json:"role"`
@@ -4949,16 +4963,50 @@ func upgradeFinderHandler(w http.ResponseWriter, r *http.Request) {
 		"max_transfer_value", req.MaxTransferValue,
 		"max_salary", req.MaxSalary)
 
-	// Get players from storage
+	// Get players from the main dataset (transfer market)
 	players, currencySymbol, found := GetPlayerData(req.DatasetID)
 	if !found {
-		logWarn(ctx, "No players found for dataset", "dataset_id", req.DatasetID)
+		logWarn(ctx, "No players found for main dataset", "dataset_id", req.DatasetID)
 		WriteErrorResponse(w, r, "no_players_found", "No players found for the specified dataset", nil, http.StatusNotFound)
 		return
 	}
 
+	// If a team dataset is specified, get team players from it for validation
+	var teamPlayers []Player
+	if req.TeamDatasetID != "" && req.TeamDatasetID != req.DatasetID {
+		teamPlayersData, _, teamFound := GetPlayerData(req.TeamDatasetID)
+		if !teamFound {
+			logWarn(ctx, "No players found for team dataset", "team_dataset_id", req.TeamDatasetID)
+			WriteErrorResponse(w, r, "no_team_players_found", "No players found for the specified team dataset", nil, http.StatusNotFound)
+			return
+		}
+		teamPlayers = teamPlayersData
+		logDebug(ctx, "Using separate team dataset for team validation",
+			"team_dataset_id", req.TeamDatasetID,
+			"team_players_count", len(teamPlayers))
+	} else {
+		// Use the same dataset for both team and upgrades
+		teamPlayers = players
+	}
+
+	// Add debug logging
+	logDebug(ctx, "Upgrade finder processing",
+		"main_dataset_id", req.DatasetID,
+		"team_dataset_id", req.TeamDatasetID,
+		"using_separate_datasets", req.TeamDatasetID != "" && req.TeamDatasetID != req.DatasetID,
+		"main_dataset_players", len(players),
+		"team_dataset_players", len(teamPlayers),
+		"team_name", req.Team,
+		"position", req.Position,
+		"min_overall", req.MinOverall)
+
 	// Filter and find upgrades
-	upgrades := findPlayerUpgrades(players, req)
+	upgrades := findPlayerUpgrades(players, teamPlayers, req)
+
+	logDebug(ctx, "Upgrade finder results",
+		"upgrades_found", len(upgrades),
+		"request_team", req.Team,
+		"request_position", req.Position)
 
 	// Set CORS headers
 	setCORSHeaders(w, r)
@@ -4992,13 +5040,43 @@ func upgradeFinderHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // findPlayerUpgrades filters and finds player upgrades based on the request criteria
-func findPlayerUpgrades(players []Player, req UpgradeFinderRequest) []Player {
+// players: the dataset to search for upgrades (transfer market)
+// teamPlayers: the dataset containing the team for validation (current squad)
+func findPlayerUpgrades(players []Player, teamPlayers []Player, req UpgradeFinderRequest) []Player {
 	var upgrades []Player
 
+	// Debug logging
+	LogDebug("findPlayerUpgrades starting - players: %d, teamPlayers: %d, team: %s, position: %s, minOverall: %d",
+		len(players), len(teamPlayers), req.Team, req.Position, req.MinOverall)
+
+	// Create a map of team players for efficient lookup if we have separate team data
+	teamPlayerMap := make(map[string]bool)
+	if req.TeamDatasetID != "" && req.TeamDatasetID != req.DatasetID {
+		LogDebug("Using separate team dataset for filtering")
+		for _, teamPlayer := range teamPlayers {
+			if teamPlayer.Club == req.Team {
+				// Use a unique identifier for each player (could be name + position or ID if available)
+				playerKey := teamPlayer.Name + "|" + teamPlayer.Position
+				teamPlayerMap[playerKey] = true
+			}
+		}
+		LogDebug("Found %d team players to exclude", len(teamPlayerMap))
+	} else {
+		LogDebug("Using same dataset for both team and upgrades")
+	}
+
 	for _, player := range players {
-		// Skip players from the same team
+		// Skip players from the same team (check both datasets)
 		if req.Team != "" && player.Club == req.Team {
 			continue
+		}
+
+		// If using separate team dataset, also skip players who are already in the team
+		if len(teamPlayerMap) > 0 {
+			playerKey := player.Name + "|" + player.Position
+			if teamPlayerMap[playerKey] {
+				continue
+			}
 		}
 
 		// Check position match
@@ -5090,6 +5168,12 @@ func findPlayerUpgrades(players []Player, req UpgradeFinderRequest) []Player {
 		overallJ := getPlayerOverallForRole(upgrades[j], req.Role, req.Position)
 		return overallI > overallJ
 	})
+
+	LogDebug("findPlayerUpgrades completed - found %d upgrades", len(upgrades))
+	if len(upgrades) > 0 {
+		LogDebug("Sample upgrade - Name: %s, Club: %s, Overall: %d",
+			upgrades[0].Name, upgrades[0].Club, upgrades[0].Overall)
+	}
 
 	return upgrades
 }
