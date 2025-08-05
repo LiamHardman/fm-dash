@@ -171,6 +171,9 @@ func (cow *CopyOnWritePlayer) deepCopyPlayer(original *Player) *Player {
 		}
 	}
 
+	// Initialize mutex for the copied player - CRITICAL for thread safety
+	player.mu = sync.RWMutex{}
+
 	// Copy slices efficiently
 	if original.ParsedPositions != nil {
 		player.ParsedPositions = make([]string, len(original.ParsedPositions))

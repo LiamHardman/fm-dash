@@ -249,8 +249,8 @@ func EnhancePlayerWithCalculations(player *Player) {
 			LogWarn("Race condition detected in EnhancePlayerWithCalculations, player: %s, error: %v", player.Name, r)
 		}
 	}()
-	// Ensure maps are initialized (though parseCellsToPlayer should do this)
-	// Use mutex to prevent race conditions during concurrent map initialization
+	// Ensure maps are initialized and create working copies to prevent race conditions
+	// Use mutex to prevent race conditions during concurrent map initialization and processing
 	player.mu.Lock()
 	if player.NumericAttributes == nil {
 		player.NumericAttributes = make(map[string]int, len(player.Attributes))
@@ -258,7 +258,6 @@ func EnhancePlayerWithCalculations(player *Player) {
 	if player.PerformanceStatsNumeric == nil {
 		player.PerformanceStatsNumeric = make(map[string]float64, len(PerformanceStatKeys))
 	}
-	player.mu.Unlock()
 
 	// Apply string interning optimization for memory efficiency (after all map operations)
 	// Use enhanced version with compression for better memory savings
@@ -293,13 +292,12 @@ func EnhancePlayerWithCalculations(player *Player) {
 
 		if isNumericTechnicalAttribute {
 			// Check for masked attributes like "10-15" or completely masked "-"
+			// Note: We're already holding the mutex, so no additional locking needed
 			switch {
 			case valStr == "-":
 				// Completely masked attribute
-				player.mu.Lock()
 				player.NumericAttributes[key] = 0 // Default to 0 for completely masked
 				player.AttributeMasked = true
-				player.mu.Unlock()
 			case strings.Contains(valStr, "-"):
 				parts := strings.Split(valStr, "-")
 				if len(parts) == 2 {
@@ -307,30 +305,20 @@ func EnhancePlayerWithCalculations(player *Player) {
 					val2, err2 := fastParseInt(strings.TrimSpace(parts[1]))
 
 					if err1 == nil && err2 == nil {
-						player.mu.Lock()
 						player.NumericAttributes[key] = (val1 + val2) / 2
 						player.AttributeMasked = true
-						player.mu.Unlock()
 					} else {
-						player.mu.Lock()
 						player.NumericAttributes[key] = 0 // Default on parsing error
-						player.mu.Unlock()
 					}
 				} else {
-					player.mu.Lock()
 					player.NumericAttributes[key] = 0 // Default if split is not two parts
-					player.mu.Unlock()
 				}
 			default:
 				valInt, err := fastParseInt(valStr)
 				if err == nil {
-					player.mu.Lock()
 					player.NumericAttributes[key] = valInt
-					player.mu.Unlock()
 				} else {
-					player.mu.Lock()
 					player.NumericAttributes[key] = 0 // Default to 0 if not a valid number
-					player.mu.Unlock()
 				}
 			}
 		} else {
@@ -384,9 +372,8 @@ func EnhancePlayerWithCalculations(player *Player) {
 					}
 
 					if err == nil {
-						player.mu.Lock()
+						// Note: We're already holding the mutex, so no additional locking needed
 						player.PerformanceStatsNumeric[key] = parsedValue
-						player.mu.Unlock()
 					}
 					// Don't store anything for unparseable stats - absence from map indicates missing data
 				}
@@ -395,6 +382,14 @@ func EnhancePlayerWithCalculations(player *Player) {
 			// If it's neither a known numeric attribute nor a performance stat, it remains in player.Attributes as a string.
 		}
 	}
+
+	// Create a safe copy of NumericAttributes for calculations to prevent race conditions
+	// We'll use this copy for all calculation operations
+	numericAttrsCopy := make(map[string]int, len(player.NumericAttributes))
+	for k, v := range player.NumericAttributes {
+		numericAttrsCopy[k] = v
+	}
+	player.mu.Unlock()
 
 	// Parse positions
 	player.ParsedPositions = ParsePlayerPositionsGo(player.Position)          // from positions.go
@@ -436,24 +431,25 @@ func EnhancePlayerWithCalculations(player *Player) {
 	}
 
 	// Calculate FIFA-style category stats based on player type
+	// Use the previously created safe copy of NumericAttributes
 	if isGoalkeeper {
 		// Goalkeepers get goalkeeper-specific stats
 		if GetUseScaledRatings() {
-			player.GK = CalculateFifaStatGo(player.NumericAttributes, "GK")
-			player.DIV = CalculateFifaStatGo(player.NumericAttributes, "DIV")
-			player.HAN = CalculateFifaStatGo(player.NumericAttributes, "HAN")
-			player.REF = CalculateFifaStatGo(player.NumericAttributes, "REF")
-			player.KIC = CalculateFifaStatGo(player.NumericAttributes, "KIC")
-			player.SPD = CalculateFifaStatGo(player.NumericAttributes, "SPD")
-			player.POS = CalculateFifaStatGo(player.NumericAttributes, "POS")
+			player.GK = CalculateFifaStatGo(numericAttrsCopy, "GK")
+			player.DIV = CalculateFifaStatGo(numericAttrsCopy, "DIV")
+			player.HAN = CalculateFifaStatGo(numericAttrsCopy, "HAN")
+			player.REF = CalculateFifaStatGo(numericAttrsCopy, "REF")
+			player.KIC = CalculateFifaStatGo(numericAttrsCopy, "KIC")
+			player.SPD = CalculateFifaStatGo(numericAttrsCopy, "SPD")
+			player.POS = CalculateFifaStatGo(numericAttrsCopy, "POS")
 		} else {
-			player.GK = CalculateFifaStatGoLinear(player.NumericAttributes, "GK")
-			player.DIV = CalculateFifaStatGoLinear(player.NumericAttributes, "DIV")
-			player.HAN = CalculateFifaStatGoLinear(player.NumericAttributes, "HAN")
-			player.REF = CalculateFifaStatGoLinear(player.NumericAttributes, "REF")
-			player.KIC = CalculateFifaStatGoLinear(player.NumericAttributes, "KIC")
-			player.SPD = CalculateFifaStatGoLinear(player.NumericAttributes, "SPD")
-			player.POS = CalculateFifaStatGoLinear(player.NumericAttributes, "POS")
+			player.GK = CalculateFifaStatGoLinear(numericAttrsCopy, "GK")
+			player.DIV = CalculateFifaStatGoLinear(numericAttrsCopy, "DIV")
+			player.HAN = CalculateFifaStatGoLinear(numericAttrsCopy, "HAN")
+			player.REF = CalculateFifaStatGoLinear(numericAttrsCopy, "REF")
+			player.KIC = CalculateFifaStatGoLinear(numericAttrsCopy, "KIC")
+			player.SPD = CalculateFifaStatGoLinear(numericAttrsCopy, "SPD")
+			player.POS = CalculateFifaStatGoLinear(numericAttrsCopy, "POS")
 		}
 		// Set outfield stats to 0 for goalkeepers
 		player.PAC = 0
@@ -465,19 +461,19 @@ func EnhancePlayerWithCalculations(player *Player) {
 	} else {
 		// Outfield players get outfield stats
 		if GetUseScaledRatings() {
-			player.PAC = CalculateFifaStatGo(player.NumericAttributes, "PAC") // CalculateFifaStatGo from calculations.go
-			player.SHO = CalculateFifaStatGo(player.NumericAttributes, "SHO")
-			player.PAS = CalculateFifaStatGo(player.NumericAttributes, "PAS")
-			player.DRI = CalculateFifaStatGo(player.NumericAttributes, "DRI")
-			player.DEF = CalculateFifaStatGo(player.NumericAttributes, "DEF")
-			player.PHY = CalculateFifaStatGo(player.NumericAttributes, "PHY")
+			player.PAC = CalculateFifaStatGo(numericAttrsCopy, "PAC") // CalculateFifaStatGo from calculations.go
+			player.SHO = CalculateFifaStatGo(numericAttrsCopy, "SHO")
+			player.PAS = CalculateFifaStatGo(numericAttrsCopy, "PAS")
+			player.DRI = CalculateFifaStatGo(numericAttrsCopy, "DRI")
+			player.DEF = CalculateFifaStatGo(numericAttrsCopy, "DEF")
+			player.PHY = CalculateFifaStatGo(numericAttrsCopy, "PHY")
 		} else {
-			player.PAC = CalculateFifaStatGoLinear(player.NumericAttributes, "PAC")
-			player.SHO = CalculateFifaStatGoLinear(player.NumericAttributes, "SHO")
-			player.PAS = CalculateFifaStatGoLinear(player.NumericAttributes, "PAS")
-			player.DRI = CalculateFifaStatGoLinear(player.NumericAttributes, "DRI")
-			player.DEF = CalculateFifaStatGoLinear(player.NumericAttributes, "DEF")
-			player.PHY = CalculateFifaStatGoLinear(player.NumericAttributes, "PHY")
+			player.PAC = CalculateFifaStatGoLinear(numericAttrsCopy, "PAC")
+			player.SHO = CalculateFifaStatGoLinear(numericAttrsCopy, "SHO")
+			player.PAS = CalculateFifaStatGoLinear(numericAttrsCopy, "PAS")
+			player.DRI = CalculateFifaStatGoLinear(numericAttrsCopy, "DRI")
+			player.DEF = CalculateFifaStatGoLinear(numericAttrsCopy, "DEF")
+			player.PHY = CalculateFifaStatGoLinear(numericAttrsCopy, "PHY")
 		}
 		// Set goalkeeper stats to 0 for outfield players
 		player.GK = 0
@@ -490,7 +486,7 @@ func EnhancePlayerWithCalculations(player *Player) {
 	}
 
 	// Calculate TotalStats (sum of all physical, mental, and technical attributes)
-	player.TotalStats = CalculateTotalStats(player.NumericAttributes)
+	player.TotalStats = CalculateTotalStats(numericAttrsCopy)
 
 	// Set lowercase FIFA stats for frontend compatibility
 	player.Pac = player.PAC
@@ -577,14 +573,12 @@ func EnhancePlayerWithCalculations(player *Player) {
 		// Batch process all matching roles
 		for _, role := range matchingRoles {
 			var overallForThisRole int
-			// Protect map access with mutex to prevent race conditions
-			player.mu.RLock()
+			// Use the previously created safe copy of NumericAttributes
 			if GetUseScaledRatings() {
-				overallForThisRole = CalculateOverallForRoleGo(player.NumericAttributes, role.weights)
+				overallForThisRole = CalculateOverallForRoleGo(numericAttrsCopy, role.weights)
 			} else {
-				overallForThisRole = CalculateOverallForRoleGoLinear(player.NumericAttributes, role.weights)
+				overallForThisRole = CalculateOverallForRoleGoLinear(numericAttrsCopy, role.weights)
 			}
-			player.mu.RUnlock()
 
 			calculatedRoleOveralls = append(calculatedRoleOveralls, RoleOverallScore{RoleName: role.name, Score: overallForThisRole})
 			if overallForThisRole > maxRoleBasedOverall {
@@ -628,14 +622,12 @@ func EnhancePlayerWithCalculations(player *Player) {
 		// Batch process all applicable roles
 		for _, role := range allApplicableRoles {
 			var overallForThisRole int
-			// Protect map access with mutex to prevent race conditions
-			player.mu.RLock()
+			// Use the previously created safe copy of NumericAttributes
 			if GetUseScaledRatings() {
-				overallForThisRole = CalculateOverallForRoleGo(player.NumericAttributes, role.weights)
+				overallForThisRole = CalculateOverallForRoleGo(numericAttrsCopy, role.weights)
 			} else {
-				overallForThisRole = CalculateOverallForRoleGoLinear(player.NumericAttributes, role.weights)
+				overallForThisRole = CalculateOverallForRoleGoLinear(numericAttrsCopy, role.weights)
 			}
-			player.mu.RUnlock()
 
 			calculatedRoleOveralls = append(calculatedRoleOveralls, RoleOverallScore{RoleName: role.name, Score: overallForThisRole})
 			if overallForThisRole > maxRoleBasedOverall {
@@ -691,7 +683,7 @@ func EnhancePlayerWithCalculations(player *Player) {
 
 	// Calculate Moneyball Rating (MBR) - AFTER Overall is calculated
 	valueScore := getExpectedValuePerRating(float64(player.Overall))
-	player.MBR = CalculateMoneyballRating(*player, valueScore)
+	player.MBR = CalculateMoneyballRating(player, valueScore)
 	player.Mbr = player.MBR // Ensure Mbr is set to the calculated MBR value
 
 	// Note: We changed from using the mean of all role-specific overall scores

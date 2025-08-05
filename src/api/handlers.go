@@ -798,8 +798,8 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 		)
 
 		// Make a deep copy of players to avoid modifying the stored data and prevent race conditions
-		// Use optimized deep copy for better memory efficiency
-		playersCopy := OptimizedDeepCopyPlayers(players)
+		// CRITICAL: Use simple deepCopyPlayers instead of OptimizedDeepCopyPlayers (COW has race conditions)
+		playersCopy := deepCopyPlayers(players)
 
 		// Recalculate all player ratings based on the current calculation method setting
 		ctx, recalcSpan := StartSpan(ctx, "ratings.recalculate")
@@ -3410,12 +3410,8 @@ func deepCopyPlayers(players []Player) []Player {
 		return nil
 	}
 
-	// Use optimized deep copy if memory optimizations are enabled
-	if memOptConfig.UseCopyOnWrite {
-		return OptimizedDeepCopyPlayers(players)
-	}
-
-	// Fallback to original implementation for compatibility
+	// CRITICAL: Use safe implementation instead of OptimizedDeepCopyPlayers
+	// OptimizedDeepCopyPlayers has COW race conditions with concurrent access
 	playersCopy := make([]Player, len(players))
 	for i := range players {
 		playersCopy[i] = players[i]
@@ -3428,6 +3424,22 @@ func deepCopyPlayers(players []Player) []Player {
 				for stat, value := range stats {
 					playersCopy[i].PerformancePercentiles[group][stat] = value
 				}
+			}
+		}
+
+		// Deep copy NumericAttributes map - CRITICAL for race condition prevention
+		if players[i].NumericAttributes != nil {
+			playersCopy[i].NumericAttributes = make(map[string]int)
+			for key, value := range players[i].NumericAttributes {
+				playersCopy[i].NumericAttributes[key] = value
+			}
+		}
+
+		// Deep copy Attributes map
+		if players[i].Attributes != nil {
+			playersCopy[i].Attributes = make(map[string]string)
+			for key, value := range players[i].Attributes {
+				playersCopy[i].Attributes[key] = value
 			}
 		}
 
@@ -3454,6 +3466,9 @@ func deepCopyPlayers(players []Player) []Player {
 			playersCopy[i].PositionGroups = make([]string, len(players[i].PositionGroups))
 			copy(playersCopy[i].PositionGroups, players[i].PositionGroups)
 		}
+
+		// Initialize mutex for the copied player - CRITICAL for thread safety
+		playersCopy[i].mu = sync.RWMutex{}
 
 		// Deep copy RoleSpecificOveralls slice
 		if players[i].RoleSpecificOveralls != nil {
@@ -3996,7 +4011,8 @@ func performanceDataHandler(w http.ResponseWriter, r *http.Request) {
 	// Calculate percentiles with appropriate filtering
 	ctx, percentileSpan := StartSpan(ctx, "percentiles.calculate")
 	// Make a deep copy of players to avoid modifying the stored data
-	playersCopy := OptimizedDeepCopyPlayers(players)
+	// CRITICAL: Use safe deepCopyPlayers instead of OptimizedDeepCopyPlayers (COW has race conditions)
+	playersCopy := deepCopyPlayers(players)
 
 	if divisionFilter != DivisionFilterAll {
 		// Recalculate percentiles with division filter
@@ -4820,7 +4836,8 @@ func CalculatePlayerPercentilesAsync(ctx context.Context, datasetID string, play
 	}
 
 	// Use the existing OptimizedDeepCopyPlayers function which is designed to handle this safely
-	playersCopy := OptimizedDeepCopyPlayers(storedData.Players)
+	// CRITICAL: Use safe deepCopyPlayers instead of OptimizedDeepCopyPlayers (COW has race conditions)
+	playersCopy := deepCopyPlayers(storedData.Players)
 
 	// Calculate percentiles for all division filters to ensure stability
 	CalculatePlayerPerformancePercentiles(playersCopy)
@@ -5608,9 +5625,9 @@ func debugPlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 
 // logTop25OverallPlayers logs the top 25 players by overall rating with their MBR breakdown
 func logTop25OverallPlayers(players []Player) {
-	// Create a copy of players for sorting
-	playersCopy := make([]Player, len(players))
-	copy(playersCopy, players)
+	// Create a proper deep copy of players for sorting to prevent any potential race conditions
+	// CRITICAL: Use simple deepCopyPlayers instead of OptimizedDeepCopyPlayers (COW has race conditions)
+	playersCopy := deepCopyPlayers(players)
 
 	// Sort by overall rating in descending order
 	sort.Slice(playersCopy, func(i, j int) bool {

@@ -31,64 +31,58 @@
             <q-card-section class="q-pt-md">
                 <!-- Dataset Configuration Row -->
                 <div class="row q-col-gutter-x-md q-col-gutter-y-sm q-mb-md">
-                    <div class="col-12">
-                        <q-card class="dataset-config-card">
-                            <q-card-section>
+                    <div class="col-12 col-lg-8">
+                        <q-card class="dataset-config-card compact">
+                            <q-card-section class="q-pa-md">
                                 <div class="card-header">
                                     <h3 class="card-title">
                                         <q-icon name="storage" class="card-icon" />
-                                        Dataset Configuration
+                                        Datasets
                                     </h3>
-                                    <p class="card-subtitle">Configure your datasets for team selection and upgrade search</p>
                                 </div>
 
-                                <div class="row q-col-gutter-md">
+                                <div class="row q-col-gutter-sm">
                                     <div class="col-12 col-md-6">
                                         <div class="dataset-section">
-                                            <h4 class="dataset-title">Transfer Market Dataset</h4>
-                                            <p class="dataset-description">Used to search for player upgrades</p>
                                             <div class="dataset-info">
-                                                <q-icon name="check_circle" color="positive" />
-                                                <span>Currently using: Main Dataset</span>
+                                                <q-icon name="search" size="sm" color="primary" />
+                                                <span class="dataset-label">Transfer Market</span>
+                                                <q-chip size="sm" color="positive" text-color="white" icon="check">
+                                                    Main Dataset
+                                                </q-chip>
                                             </div>
                                         </div>
                                     </div>
                                     
                                     <div class="col-12 col-md-6">
                                         <div class="dataset-section">
-                                            <h4 class="dataset-title">Team Dataset</h4>
-                                            <p class="dataset-description">Used to select teams and current squad</p>
-                                            <div v-if="!teamDatasetId" class="upload-area">
-                                                <q-btn
-                                                    icon="cloud_upload"
-                                                    label="Upload Team Dataset"
-                                                    color="primary"
-                                                    outline
-                                                    @click="$refs.teamDatasetFileInput.click()"
-                                                    :loading="teamDatasetUploading"
-                                                    class="full-width"
-                                                />
-                                                <input
-                                                    ref="teamDatasetFileInput"
-                                                    type="file"
-                                                    accept=".html"
-                                                    @change="uploadTeamDataset"
-                                                    style="display: none"
-                                                />
-                                                <div class="text-caption text-center q-mt-xs">
-                                                    Or use main dataset for teams
+                                            <div class="dataset-info">
+                                                <q-icon name="group" size="sm" color="primary" />
+                                                <span class="dataset-label">Team Data</span>
+                                                <div v-if="!teamDatasetId" class="dataset-actions">
+                                                    <q-btn
+                                                        icon="cloud_upload"
+                                                        label="Upload"
+                                                        color="primary"
+                                                        size="sm"
+                                                        outline
+                                                        dense
+                                                        @click="$refs.teamDatasetFileInput.click()"
+                                                        :loading="teamDatasetUploading"
+                                                    />
+                                                    <input
+                                                        ref="teamDatasetFileInput"
+                                                        type="file"
+                                                        accept=".html"
+                                                        @change="uploadTeamDataset"
+                                                        style="display: none"
+                                                    />
                                                 </div>
-                                            </div>
-                                            <div v-else class="dataset-info">
-                                                <q-icon name="check_circle" color="positive" />
-                                                <span>Team dataset uploaded</span>
-                                                <q-btn
-                                                    icon="close"
-                                                    size="sm"
-                                                    flat
-                                                    @click="clearTeamDataset"
-                                                    class="q-ml-sm"
-                                                />
+                                                <div v-else class="dataset-actions">
+                                                    <q-chip size="sm" color="positive" text-color="white" icon="check" removable @remove="clearTeamDataset">
+                                                        Custom Team Data
+                                                    </q-chip>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -100,7 +94,7 @@
 
                 <!-- Team Selection Row -->
                 <div class="row q-col-gutter-x-md q-col-gutter-y-sm q-mb-md">
-                    <div class="col-12 col-md-6 col-lg-4">
+                    <div class="col-12 col-lg-4">
                         <q-select
                             v-model="teamName"
                             :options="teamOptions"
@@ -161,7 +155,7 @@
                     </div>
 
                     <div class="col-12 col-md-6 col-lg-4">
-                        <div>
+                        <div class="upgrade-control">
                             <div
                                 class="text-caption q-mb-xs slider-label"
                                 :class="
@@ -197,9 +191,8 @@
                                 <div class="card-header">
                                     <h3 class="card-title">
                                         <q-icon name="filter_list" class="card-icon" />
-                                        Upgrade Filters
+                                        Search Filters
                                     </h3>
-                                    <p class="card-subtitle">Configure your search criteria</p>
                                 </div>
 
                                 <div class="row q-col-gutter-y-md">
@@ -3117,16 +3110,23 @@ export default {
             border: 1px solid rgba(75, 85, 99, 0.8);
         }
         
+        &.compact {
+            .q-card-section {
+                padding: 0.75rem !important;
+            }
+        }
+        
         .card-header {
             background: none;
             color: inherit;
-            padding: 1rem;
+            padding: 0;
             border-radius: 0;
+            margin-bottom: 0.75rem;
             
             .card-title {
-                font-size: 1.1rem;
+                font-size: 1rem;
                 font-weight: 600;
-                margin: 0 0 0.25rem 0;
+                margin: 0;
                 display: flex;
                 align-items: center;
                 gap: 0.5rem;
@@ -3135,68 +3135,45 @@ export default {
                 .body--dark & {
                     color: #f3f4f6;
                 }
-            }
-            
-            .card-subtitle {
-                font-size: 0.875rem;
-                color: #6b7280;
-                margin: 0;
                 
-                .body--dark & {
-                    color: #9ca3af;
+                .card-icon {
+                    color: #2e74b5;
+                    
+                    .body--dark & {
+                        color: #60a5fa;
+                    }
                 }
             }
         }
         
         .dataset-section {
-            padding: 1rem;
-            border-radius: 8px;
-            background: white;
-            border: 1px solid rgba(229, 231, 235, 0.6);
-            
-            .body--dark & {
-                background: rgba(55, 65, 81, 0.6);
-                border: 1px solid rgba(75, 85, 99, 0.6);
-            }
-            
-            .dataset-title {
-                font-size: 1rem;
-                font-weight: 600;
-                margin: 0 0 0.5rem 0;
-                color: #111827;
-                
-                .body--dark & {
-                    color: #f9fafb;
-                }
-            }
-            
-            .dataset-description {
-                font-size: 0.875rem;
-                color: #6b7280;
-                margin: 0 0 1rem 0;
-                
-                .body--dark & {
-                    color: #9ca3af;
-                }
-            }
-            
             .dataset-info {
                 display: flex;
                 align-items: center;
-                gap: 0.5rem;
-                font-size: 0.875rem;
-                color: #059669;
+                gap: 0.75rem;
+                flex-wrap: wrap;
+                min-height: 32px;
                 
-                .body--dark & {
-                    color: #10b981;
+                .dataset-label {
+                    font-size: 0.875rem;
+                    font-weight: 500;
+                    color: #374151;
+                    flex-shrink: 0;
+                    
+                    .body--dark & {
+                        color: #d1d5db;
+                    }
                 }
-            }
-            
-            .upload-area {
-                text-align: center;
                 
-                .q-btn {
-                    margin-bottom: 0.5rem;
+                .dataset-actions {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    margin-left: auto;
+                }
+                
+                .q-chip {
+                    margin-left: auto;
                 }
             }
         }
@@ -3211,6 +3188,13 @@ export default {
         .body--dark & {
             color: #d1d5db;
         }
+    }
+    
+    .upgrade-control {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
     }
 
     :deep(.q-slider) {
@@ -3412,6 +3396,24 @@ export default {
         .q-card-section {
             padding: 1rem;
         }
+        
+        .dataset-config-card {
+            &.compact {
+                .dataset-section {
+                    .dataset-info {
+                        flex-direction: column;
+                        align-items: flex-start;
+                        gap: 0.5rem;
+                        
+                        .dataset-actions,
+                        .q-chip {
+                            margin-left: 0;
+                            margin-top: 0.25rem;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     @media (max-width: 480px) {
@@ -3421,6 +3423,24 @@ export default {
         
         .q-card-section {
             padding: 0.75rem;
+        }
+        
+        .dataset-config-card {
+            &.compact {
+                .q-card-section {
+                    padding: 0.5rem !important;
+                }
+                
+                .card-header {
+                    margin-bottom: 0.5rem;
+                }
+            }
+        }
+        
+        .upgrade-control {
+            .slider-label {
+                font-size: 0.8rem;
+            }
         }
     }
 }
@@ -3569,11 +3589,11 @@ export default {
 // Filters card styling
 .filters-card {
     .card-header {
-        margin-bottom: 1.5rem;
+        margin-bottom: 1rem;
         
         .card-title {
-            margin: 0 0 0.25rem 0;
-            font-size: 1.125rem;
+            margin: 0;
+            font-size: 1rem;
             font-weight: 600;
             color: #374151;
             display: flex;
@@ -3590,16 +3610,6 @@ export default {
                 .body--dark & {
                     color: #60a5fa;
                 }
-            }
-        }
-        
-        .card-subtitle {
-            margin: 0;
-            color: #6b7280;
-            font-size: 0.875rem;
-            
-            .body--dark & {
-                color: #9ca3af;
             }
         }
     }

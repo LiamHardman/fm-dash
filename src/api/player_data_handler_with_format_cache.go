@@ -173,7 +173,8 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 	// Calculate percentiles with appropriate filtering using optimized algorithm
 	ctx, percentileSpan := StartSpan(ctx, "percentiles.calculate")
 	// Make a deep copy of players to avoid modifying the stored data and prevent race conditions
-	playersCopy := OptimizedDeepCopyPlayers(players)
+	// CRITICAL: Use simple deepCopyPlayers instead of OptimizedDeepCopyPlayers (COW has race conditions)
+	playersCopy := deepCopyPlayers(players)
 
 	// Apply division filtering for percentile calculation
 	filteredPlayersForPercentiles := ApplyDivisionFilter(playersCopy, divisionFilter, targetDivision)
