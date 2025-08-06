@@ -56,6 +56,14 @@
 
 * Improved loading experience ([97fcd00](https://github.com/LiamHardman/fm-dash/commit/97fcd000b3a18efa2c988b7fc26ae3d26a3b4120))
 
+## [1.0.2](https://github.com/LiamHardman/fm-dash/compare/v1.0.1...v1.0.2) (2025-08-06)
+
+
+### Bug Fixes
+
+* removal of notification feature in-browser ([#82](https://github.com/LiamHardman/fm-dash/issues/82)) ([4598db6](https://github.com/LiamHardman/fm-dash/commit/4598db6987b9bc6544409511b88b249874509bc5))
+* Resolved race conditions in backend, upgrade finder & search optimizations ([#79](https://github.com/LiamHardman/fm-dash/issues/79)) ([13b2ab8](https://github.com/LiamHardman/fm-dash/commit/13b2ab84ad73f7174c849b0c9420d1c67c6178fc))
+
 ## [1.0.1](https://github.com/LiamHardman/fm-dash/compare/v1.0.0...v1.0.1) (2025-08-04)
 
 
