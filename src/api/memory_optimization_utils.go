@@ -107,14 +107,11 @@ func OptimizePlayerData(ctx context.Context, players []Player) ([]Player, error)
 	}
 
 	// Use copy-on-write for operations if enabled
+	// Always use FastDeepCopyPlayers for best performance and thread safety
+	// PERFORMANCE: FastDeepCopyPlayers is faster than both OptimizedDeepCopyPlayers and deepCopyPlayers,
+	// while being completely thread-safe (no COW race conditions)
 	var result []Player
-	if memoryOptConfig.UseCopyOnWrite {
-		// Use optimized deep copy
-		result = OptimizedDeepCopyPlayers(players)
-	} else {
-		// Fall back to original deep copy
-		result = deepCopyPlayers(players)
-	}
+	result = FastDeepCopyPlayers(players)
 
 	// Record memory optimization metrics
 	if memoryOptConfig.MonitorMemoryUsage {

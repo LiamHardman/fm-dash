@@ -320,7 +320,7 @@ func testE2EAPIEndpoints(t *testing.T, datasetID, backendName string) {
 	}{
 		{fmt.Sprintf("/api/players/%s", datasetID), playerDataHandler, "players"},
 		{fmt.Sprintf("/api/leagues/%s", datasetID), leaguesHandler, "leagues"},
-		{"/api/roles", rolesHandler, "roles"},
+		{"/api/roles", cachedRolesHandler, "roles"},
 		{"/api/cache-status", cacheStatusHandler, "cache-status"},
 	}
 

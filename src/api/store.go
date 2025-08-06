@@ -59,6 +59,12 @@ func StoreDataset(datasetID string, players []Player, currencySymbol string) err
 	// Invalidate related cache entries when dataset is updated
 	invalidateDatasetCache(datasetID)
 
+	// Invalidate search index when dataset is updated
+	GetHybridSearchService().InvalidateIndex(datasetID)
+
+	// Invalidate role index for upgrade finder optimization
+	InvalidateRoleIndex()
+
 	RecordBusinessOperation(ctx, "dataset_store", true, map[string]interface{}{
 		"dataset_id":   datasetID,
 		"player_count": len(players),
@@ -70,9 +76,9 @@ func StoreDataset(datasetID string, players []Player, currencySymbol string) err
 
 // StoreDatasetAsync stores player data using the storage interface asynchronously
 func StoreDatasetAsync(datasetID string, players []Player, currencySymbol string) {
-	// Create a deep copy of players slice to avoid race conditions during async storage
-	playersCopy := make([]Player, len(players))
-	copy(playersCopy, players)
+	// Create a proper deep copy of players slice to avoid race conditions during async storage
+	// PERFORMANCE: Use FastDeepCopyPlayers for much better performance while staying thread-safe
+	playersCopy := FastDeepCopyPlayers(players)
 
 	// Ensure all players have their NumericAttributes populated before storage
 	// This is critical because the data might be stored before the workers finish enhancement
@@ -112,6 +118,9 @@ func StoreDatasetAsync(datasetID string, players []Player, currencySymbol string
 
 		// Invalidate related cache entries when dataset is updated
 		invalidateDatasetCache(datasetID)
+
+		// Invalidate role index for upgrade finder optimization
+		InvalidateRoleIndex()
 
 		SetSpanAttributes(ctx,
 			attribute.Int64("operation.duration_ms", duration.Milliseconds()),
@@ -262,8 +271,9 @@ func GetPlayerData(datasetID string) ([]Player, string, bool) {
 			attribute.Int("dataset.player_count", len(data.Players)),
 			attribute.String("data.source", "memory_fast"),
 		)
-		// Return a deep copy to prevent race conditions
-		players := OptimizedDeepCopyPlayers(data.Players)
+		// Return an optimized, safe deep copy to prevent race conditions
+		// PERFORMANCE: Use FastDeepCopyPlayers for much better performance while staying thread-safe
+		players := FastDeepCopyPlayers(data.Players)
 		// Always enhance retrieved players to ensure TotalStats and MBR are calculated
 		enhancedCount := 0
 		for i := range players {
@@ -286,7 +296,8 @@ func GetPlayerData(datasetID string) ([]Player, string, bool) {
 			attribute.String("data.source", "persistent_fallback"),
 		)
 		// Return a deep copy to prevent race conditions
-		enhancedPlayers := OptimizedDeepCopyPlayers(players)
+		// PERFORMANCE: Use FastDeepCopyPlayers for much better performance while staying thread-safe
+		enhancedPlayers := FastDeepCopyPlayers(players)
 		// Always enhance retrieved players to ensure TotalStats and MBR are calculated
 		enhancedCount := 0
 		for i := range enhancedPlayers {
@@ -310,6 +321,212 @@ func GetPlayerData(datasetID string) ([]Player, string, bool) {
 		LogInfo("Cached %d enhanced players from S3 in memory for dataset %s", len(enhancedPlayers), datasetID)
 
 		return enhancedPlayers, currency, true
+	}
+
+	SetSpanAttributes(ctx, attribute.String("result", "not_found"))
+	return nil, "", false
+}
+
+// GetPlayerDataForUpgradeFinder retrieves player data optimized for upgrade finder (minimal copy, no enhancements)
+func GetPlayerDataForUpgradeFinder(datasetID string) ([]Player, string, bool) {
+	ctx := context.Background()
+	ctx, span := StartSpan(ctx, "store.get_player_data_for_upgrade_finder")
+	defer span.End()
+
+	SetSpanAttributes(ctx,
+		attribute.String("dataset.id", datasetID),
+		attribute.String("store.type", "upgrade_finder_optimized"),
+	)
+
+	// Try fast in-memory cache first
+	storeMutex.RLock()
+	if data, exists := playerDataStore[datasetID]; exists {
+		storeMutex.RUnlock()
+		AddSpanEvent(ctx, "store.memory_cache_hit_upgrade_finder")
+		SetSpanAttributes(ctx,
+			attribute.Int("dataset.player_count", len(data.Players)),
+			attribute.String("data.source", "memory_fast_upgrade_finder"),
+		)
+
+		// Return minimal copy - only fields needed for upgrade finder
+		// Skip deep copy and enhancement calculations for massive performance gain
+		players := make([]Player, len(data.Players))
+		for i, player := range data.Players {
+			players[i] = Player{
+				// Core identity fields
+				UID:      player.UID,
+				Name:     player.Name,
+				Club:     player.Club,
+				Position: player.Position,
+				Age:      player.Age,
+
+				// Position matching fields
+				ShortPositions:  player.ShortPositions,
+				ParsedPositions: player.ParsedPositions,
+
+				// Overall rating fields
+				Overall:              player.Overall,
+				RoleSpecificOveralls: player.RoleSpecificOveralls,
+
+				// Filter fields
+				TransferValue:       player.TransferValue,
+				TransferValueAmount: player.TransferValueAmount,
+				WageAmount:          player.WageAmount,
+
+				// FIFA Stats (outfield and goalkeeper) - uppercase and lowercase versions
+				PAC: player.PAC,
+				DRI: player.DRI,
+				SHO: player.SHO,
+				PAS: player.PAS,
+				DEF: player.DEF,
+				PHY: player.PHY,
+				GK:  player.GK,
+				DIV: player.DIV,
+				HAN: player.HAN,
+				REF: player.REF,
+				KIC: player.KIC,
+				SPD: player.SPD,
+				POS: player.POS,
+				Pac: player.Pac,
+				Dri: player.Dri,
+				Sho: player.Sho,
+				Pas: player.Pas,
+				Def: player.Def,
+				Phy: player.Phy,
+				Gk:  player.Gk,
+				Div: player.Div,
+				Han: player.Han,
+				Ref: player.Ref,
+				Kic: player.Kic,
+				Spd: player.Spd,
+				Pos: player.Pos,
+
+				// Additional fields for UI display
+				Nationality:    player.Nationality,
+				NationalityISO: player.NationalityISO,
+				Division:       player.Division,
+				Wage:           player.Wage,
+				Personality:    player.Personality,
+				MediaHandling:  player.MediaHandling,
+
+				// FM Attributes map (contains detailed attributes like crossing, finishing, etc.)
+				Attributes:        player.Attributes,
+				NumericAttributes: player.NumericAttributes,
+
+				// Performance stats and other display fields
+				PerformanceStatsNumeric: player.PerformanceStatsNumeric,
+				PerformancePercentiles:  player.PerformancePercentiles,
+				TotalStats:              player.TotalStats,
+				TotalStatsLower:         player.TotalStatsLower,
+				MBR:                     player.MBR,
+				Mbr:                     player.Mbr,
+				OverallLower:            player.OverallLower,
+				BestRoleOverall:         player.BestRoleOverall,
+			}
+		}
+
+		logDebug(ctx, "Returned lightweight player data for upgrade finder",
+			"dataset_id", datasetID,
+			"player_count", len(players))
+
+		return players, data.CurrencySymbol, true
+	}
+	storeMutex.RUnlock()
+
+	// Fallback to persistent storage - but use lightweight loading
+	AddSpanEvent(ctx, "store.fallback_to_persistent_upgrade_finder")
+	players, currency, err := RetrieveDataset(datasetID)
+	if err == nil {
+		SetSpanAttributes(ctx,
+			attribute.Int("dataset.fallback_player_count", len(players)),
+			attribute.String("data.source", "persistent_upgrade_finder"),
+		)
+
+		logDebug(ctx, "Returned player data from persistent storage for upgrade finder",
+			"dataset_id", datasetID,
+			"player_count", len(players))
+
+		return players, currency, true
+	}
+
+	SetSpanAttributes(ctx,
+		attribute.String("error.type", "dataset_not_found"),
+		attribute.String("error.message", err.Error()),
+	)
+
+	return nil, "", false
+}
+
+// GetPlayerDataForIndexing retrieves player data optimized for search indexing (no deep copy, no enhancements)
+func GetPlayerDataForIndexing(datasetID string) ([]Player, string, bool) {
+	ctx := context.Background()
+	ctx, span := StartSpan(ctx, "store.get_player_data_for_indexing")
+	defer span.End()
+
+	SetSpanAttributes(ctx,
+		attribute.String("dataset.id", datasetID),
+		attribute.String("store.type", "indexing_optimized"),
+	)
+
+	// Try fast in-memory cache first
+	storeMutex.RLock()
+	if data, exists := playerDataStore[datasetID]; exists {
+		storeMutex.RUnlock()
+		AddSpanEvent(ctx, "store.memory_cache_hit_indexing")
+		SetSpanAttributes(ctx,
+			attribute.Int("dataset.player_count", len(data.Players)),
+			attribute.String("data.source", "memory_fast_indexing"),
+		)
+
+		// Return shallow copy - safe for read-only indexing, much faster than deep copy
+		// For search indexing, we only need name, club, position, nationality, division fields
+		players := make([]Player, len(data.Players))
+		for i, player := range data.Players {
+			players[i] = Player{
+				UID:         player.UID,
+				Name:        player.Name,
+				Club:        player.Club,
+				Position:    player.Position,
+				Nationality: player.Nationality,
+				Division:    player.Division,
+				Overall:     player.Overall,
+				Age:         player.Age,
+			}
+		}
+
+		logDebug(ctx, "Returned lightweight player data for indexing",
+			"dataset_id", datasetID,
+			"player_count", len(players))
+
+		return players, data.CurrencySymbol, true
+	}
+	storeMutex.RUnlock()
+
+	// Fallback to persistent storage - but use lightweight loading
+	AddSpanEvent(ctx, "store.fallback_to_persistent_indexing")
+	players, currency, err := RetrieveDataset(datasetID)
+	if err == nil {
+		SetSpanAttributes(ctx,
+			attribute.Int("dataset.player_count", len(players)),
+			attribute.String("data.source", "persistent_fallback_indexing"),
+		)
+
+		// Return lightweight copy for indexing
+		lightPlayers := make([]Player, len(players))
+		for i, player := range players {
+			lightPlayers[i] = Player{
+				UID:         player.UID,
+				Name:        player.Name,
+				Club:        player.Club,
+				Position:    player.Position,
+				Nationality: player.Nationality,
+				Division:    player.Division,
+				Overall:     player.Overall,
+				Age:         player.Age,
+			}
+		}
+
+		return lightPlayers, currency, true
 	}
 
 	SetSpanAttributes(ctx, attribute.String("result", "not_found"))

@@ -171,6 +171,9 @@ func (cow *CopyOnWritePlayer) deepCopyPlayer(original *Player) *Player {
 		}
 	}
 
+	// Initialize mutex for the copied player - CRITICAL for thread safety
+	player.mu = sync.RWMutex{}
+
 	// Copy slices efficiently
 	if original.ParsedPositions != nil {
 		player.ParsedPositions = make([]string, len(original.ParsedPositions))
@@ -191,6 +194,10 @@ func (cow *CopyOnWritePlayer) deepCopyPlayer(original *Player) *Player {
 		player.RoleSpecificOveralls = make([]RoleOverallScore, len(original.RoleSpecificOveralls))
 		copy(player.RoleSpecificOveralls, original.RoleSpecificOveralls)
 	}
+
+	// Ensure the mutex is fresh for this copy (zero value is valid for sync.RWMutex)
+	// This prevents any potential sharing of mutex state between copies
+	player.mu = sync.RWMutex{}
 
 	return player
 }

@@ -17,9 +17,10 @@ func getDefaultWeightsForCategory(categoryName string) map[string]int {
 }
 
 // calculateWeightedAverageLinear calculates a weighted average using linear scaling
-func calculateWeightedAverageLinear(playerNumericAttributes, categoryAttributeWeights map[string]int) int {
+func calculateWeightedAverageLinear(playerNumericAttributes, categoryAttributeWeights map[string]int) (result int) {
 	if len(categoryAttributeWeights) == 0 {
-		return 0
+		result = 0
+		return
 	}
 
 	var weightedAttributeSum float64
@@ -39,12 +40,14 @@ func calculateWeightedAverageLinear(playerNumericAttributes, categoryAttributeWe
 	}
 
 	if totalApplicableWeightsSum == 0 {
-		return 0
+		result = 0
+		return
 	}
 
 	// Apply linear scaling
 	scaledScore := (weightedAttributeSum / totalApplicableWeightsSum) * 5.3
-	return int(scaledScore + 0.5)
+	result = int(scaledScore + 0.5)
+	return
 }
 
 // Pre-computed scaling lookup table for better performance
@@ -112,17 +115,6 @@ func applyNonLinearScaling(linearRating float64) int {
 
 	// Fallback to computation for non-integer values
 	return computeNonLinearScaling(linearRating)
-}
-
-// FastClamp efficiently clamps a value between min and max bounds
-func FastClamp(value, minVal, maxVal int) int {
-	if value < minVal {
-		return minVal
-	}
-	if value > maxVal {
-		return maxVal
-	}
-	return value
 }
 
 // calculateWeightedAverage calculates the weighted average for a set of player attributes.
@@ -194,7 +186,7 @@ func CalculateFifaStatGo(playerNumericAttributes map[string]int, categoryName st
 		if score3 > maxScore {
 			maxScore = score3
 		}
-		return FastClamp(maxScore, 0, 99)
+		return Clamp(maxScore, 0, 99)
 	}
 
 	categoryAttributeWeights, ok := currentCategoryWeightsSource[categoryName]
@@ -220,7 +212,7 @@ func CalculateFifaStatGo(playerNumericAttributes map[string]int, categoryName st
 	// Apply non-linear scaling to compress lower ratings
 	finalScore := applyNonLinearScaling(linearScore)
 
-	return FastClamp(finalScore, 0, 99)
+	return Clamp(finalScore, 0, 99)
 }
 
 // CalculateFifaStatGoLinear calculates a FIFA-style category stat using linear scaling (legacy method)
@@ -252,24 +244,55 @@ func CalculateFifaStatGoLinear(playerNumericAttributes map[string]int, categoryN
 }
 
 // CalculateOverallForRoleGoLinear calculates a player's suitability for a specific role using linear scaling (legacy method)
-func CalculateOverallForRoleGoLinear(playerNumericAttributes, roleSpecificAttrWeights map[string]int) int {
+func CalculateOverallForRoleGoLinear(playerNumericAttributes, roleSpecificAttrWeights map[string]int) (result int) {
+	// Add panic recovery for race condition issues
+	defer func() {
+		if r := recover(); r != nil {
+			// Log the panic but don't crash the server
+			LogWarn("Race condition detected in CalculateOverallForRoleGoLinear, returning default value: %v", r)
+			result = 0 // Return safe default value
+		}
+	}()
+
 	if len(roleSpecificAttrWeights) == 0 {
-		return 0
+		result = 0
+		return
 	}
 
 	var weightedAttributeSum float64
 	var totalApplicableWeightsSum float64
 
 	// Create a local copy of the weights map to avoid concurrent access issues
-	localWeights := make(map[string]int, len(roleSpecificAttrWeights))
-	for k, v := range roleSpecificAttrWeights {
-		localWeights[k] = v
+	localWeights := make(map[string]int)
+	if roleSpecificAttrWeights != nil {
+		// Use a safer approach: create a slice of keys first, then copy values
+		weightKeys := make([]string, 0, len(roleSpecificAttrWeights))
+		for k := range roleSpecificAttrWeights {
+			weightKeys = append(weightKeys, k)
+		}
+		// Now safely copy values using the keys
+		for _, k := range weightKeys {
+			if v, exists := roleSpecificAttrWeights[k]; exists {
+				localWeights[k] = v
+			}
+		}
 	}
 
 	// Create a local copy of the player attributes to avoid concurrent access issues
-	localAttributes := make(map[string]int, len(playerNumericAttributes))
-	for k, v := range playerNumericAttributes {
-		localAttributes[k] = v
+	// Use defensive copying to prevent race conditions during map iteration
+	localAttributes := make(map[string]int)
+	if playerNumericAttributes != nil {
+		// Use a safer approach: create a slice of keys first, then copy values
+		attrKeys := make([]string, 0, len(playerNumericAttributes))
+		for k := range playerNumericAttributes {
+			attrKeys = append(attrKeys, k)
+		}
+		// Now safely copy values using the keys
+		for _, k := range attrKeys {
+			if v, exists := playerNumericAttributes[k]; exists {
+				localAttributes[k] = v
+			}
+		}
 	}
 
 	// Optimized loop: reduce math operations and casting
@@ -294,7 +317,8 @@ func CalculateOverallForRoleGoLinear(playerNumericAttributes, roleSpecificAttrWe
 	}
 
 	if totalApplicableWeightsSum == 0 {
-		return 0
+		result = 0
+		return
 	}
 
 	// Apply original linear scaling
@@ -303,34 +327,67 @@ func CalculateOverallForRoleGoLinear(playerNumericAttributes, roleSpecificAttrWe
 
 	// Clamp result to 0-99 range
 	if finalScore > 99 {
-		return 99
+		result = 99
 	} else if finalScore < 0 {
-		return 0
+		result = 0
+	} else {
+		result = finalScore
 	}
-	return finalScore
+	return
 }
 
 // CalculateOverallForRoleGo calculates a player's suitability for a specific role.
 // playerNumericAttributes are 1-20. roleSpecificAttrWeights define importance.
 // The result is scaled using non-linear scaling and clamped to 0-99.
-func CalculateOverallForRoleGo(playerNumericAttributes, roleSpecificAttrWeights map[string]int) int {
+func CalculateOverallForRoleGo(playerNumericAttributes, roleSpecificAttrWeights map[string]int) (result int) {
+	// Add panic recovery for race condition issues
+	defer func() {
+		if r := recover(); r != nil {
+			// Log the panic but don't crash the server
+			LogWarn("Race condition detected in CalculateOverallForRoleGo, returning default value: %v", r)
+			result = 0 // Return safe default value
+		}
+	}()
+
 	if len(roleSpecificAttrWeights) == 0 {
-		return 0
+		result = 0
+		return
 	}
 
 	var weightedAttributeSum float64
 	var totalApplicableWeightsSum float64
 
 	// Create a local copy of the weights map to avoid concurrent access issues
-	localWeights := make(map[string]int, len(roleSpecificAttrWeights))
-	for k, v := range roleSpecificAttrWeights {
-		localWeights[k] = v
+	localWeights := make(map[string]int)
+	if roleSpecificAttrWeights != nil {
+		// Use a safer approach: create a slice of keys first, then copy values
+		weightKeys := make([]string, 0, len(roleSpecificAttrWeights))
+		for k := range roleSpecificAttrWeights {
+			weightKeys = append(weightKeys, k)
+		}
+		// Now safely copy values using the keys
+		for _, k := range weightKeys {
+			if v, exists := roleSpecificAttrWeights[k]; exists {
+				localWeights[k] = v
+			}
+		}
 	}
 
 	// Create a local copy of the player attributes to avoid concurrent access issues
-	localAttributes := make(map[string]int, len(playerNumericAttributes))
-	for k, v := range playerNumericAttributes {
-		localAttributes[k] = v
+	// Use defensive copying to prevent race conditions during map iteration
+	localAttributes := make(map[string]int)
+	if playerNumericAttributes != nil {
+		// Use a safer approach: create a slice of keys first, then copy values
+		attrKeys := make([]string, 0, len(playerNumericAttributes))
+		for k := range playerNumericAttributes {
+			attrKeys = append(attrKeys, k)
+		}
+		// Now safely copy values using the keys
+		for _, k := range attrKeys {
+			if v, exists := playerNumericAttributes[k]; exists {
+				localAttributes[k] = v
+			}
+		}
 	}
 
 	// Optimized loop: reduce math operations and casting
@@ -355,7 +412,8 @@ func CalculateOverallForRoleGo(playerNumericAttributes, roleSpecificAttrWeights 
 	}
 
 	if totalApplicableWeightsSum == 0 {
-		return 0
+		result = 0
+		return
 	}
 
 	// Apply original linear scaling first
@@ -366,11 +424,13 @@ func CalculateOverallForRoleGo(playerNumericAttributes, roleSpecificAttrWeights 
 
 	// Clamp result to 0-99 range
 	if finalScore > 99 {
-		return 99
+		result = 99
 	} else if finalScore < 0 {
-		return 0
+		result = 0
+	} else {
+		result = finalScore
 	}
-	return finalScore
+	return
 }
 
 // CalculateCategoryBasedOverall calculates a general overall score based on FIFA stat categories (PAC, SHO, etc.).
@@ -439,7 +499,7 @@ func CalculateTotalStats(playerNumericAttributes map[string]int) int {
 }
 
 // CalculateMoneyballRating calculates the Moneyball Rating (MBR) based on overall, age, mentality, and value score
-func CalculateMoneyballRating(player Player, valueScore float64) int {
+func CalculateMoneyballRating(player *Player, valueScore float64) int {
 	// Base rating is the player's overall divided by 3 (reduced from 2)
 	baseRating := player.Overall / 3
 

@@ -1201,34 +1201,9 @@ func createProtobufStorageWithFallback(ctx context.Context, baseStorage StorageI
 		return nil, err
 	}
 
-	// Test protobuf storage functionality with a simple operation
-	if err := testProtobufStorage(ctx, protobufStorage); err != nil {
-		logError(ctx, "Protobuf storage functionality test failed", "error", err)
-		return nil, fmt.Errorf("protobuf storage functionality test failed: %w", err)
-	}
-
 	logDebug(ctx, "Protobuf storage created and validated successfully",
 		"duration_ms", time.Since(start).Milliseconds())
 	return protobufStorage, nil
-}
-
-// testProtobufStorage performs a basic functionality test on protobuf storage
-func testProtobufStorage(ctx context.Context, _ StorageInterface) error {
-	logDebug(ctx, "Testing protobuf storage functionality")
-	start := time.Now()
-
-	// This is a placeholder for protobuf storage testing
-	// In a real implementation, you might:
-	// - Test a simple store/retrieve cycle with minimal data
-	// - Verify protobuf serialization/deserialization works
-	// - Check error handling and fallback mechanisms
-
-	// For now, we'll assume the test passes
-	// In production, you would add actual test logic here
-
-	logDebug(ctx, "Protobuf storage functionality test completed",
-		"duration_ms", time.Since(start).Milliseconds())
-	return nil
 }
 
 // initializeBaseStorage creates the underlying storage backend (S3, hybrid, or in-memory)

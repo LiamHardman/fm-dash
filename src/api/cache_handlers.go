@@ -1120,3 +1120,113 @@ func loadSearchFromCache(ctx context.Context, cacheKey, datasetID, query string,
 		"duration_ms", time.Since(start).Milliseconds())
 	return cacheData.Results, true
 }
+
+// Lightweight cache functions that don't require expensive player data operations
+
+// generateSearchCacheKeyLightweight generates a cache key without requiring full player data
+func generateSearchCacheKeyLightweight(ctx context.Context, datasetID, query string) string {
+	logDebug(ctx, "Generating lightweight search cache key", "dataset_id", datasetID, "query", query)
+
+	// Simple hash function based on dataset ID and query only
+	cacheInput := fmt.Sprintf("%s:%s", datasetID, strings.ToLower(strings.TrimSpace(query)))
+
+	hash := 0
+	for i := 0; i < len(cacheInput); i++ {
+		char := int(cacheInput[i])
+		hash = ((hash << 5) - hash) + char
+		hash &= hash
+	}
+
+	cacheKey := fmt.Sprintf("search_%s", fmt.Sprintf("%x", hash)[:12])
+	logDebug(ctx, "Generated lightweight search cache key", "cache_key", cacheKey)
+	return cacheKey
+}
+
+// saveSearchToCacheLightweight saves search results to cache without player data requirements
+func saveSearchToCacheLightweight(ctx context.Context, cacheKey, datasetID, query string, results []SearchResult) {
+	logInfo(ctx, "Starting lightweight search cache save", "cache_key", cacheKey, "dataset_id", datasetID, "query", query, "results_count", len(results))
+	start := time.Now()
+
+	cacheData := SearchCacheData{
+		Version:     cacheVersion,
+		GeneratedAt: time.Now(),
+		CacheKey: SearchCacheKey{
+			DatasetID:   datasetID,
+			Query:       query,
+			PlayerCount: 0,  // Not used in lightweight version
+			DataHash:    "", // Not used in lightweight version
+		},
+		Results: results,
+	}
+
+	cacheDatasetID := fmt.Sprintf("cache_search_%s", cacheKey)
+
+	cacheDataset := DatasetData{
+		Players:   []Player{},
+		CacheData: "",
+	}
+
+	cacheJSON, err := json.Marshal(cacheData)
+	if err != nil {
+		logError(ctx, "Error marshaling lightweight search cache data", "error", err, "cache_key", cacheKey)
+		return
+	}
+
+	cacheDataset.CacheData = string(cacheJSON)
+
+	if err := storage.Store(cacheDatasetID, cacheDataset); err != nil {
+		logError(ctx, "Error storing lightweight search cache", "error", err, "cache_key", cacheKey, "cache_dataset_id", cacheDatasetID)
+		return
+	}
+
+	logDebug(ctx, "Lightweight search results cached successfully", "cache_key", cacheKey, "duration_ms", time.Since(start).Milliseconds())
+}
+
+// loadSearchFromCacheLightweight loads search results from cache without player data validation
+func loadSearchFromCacheLightweight(ctx context.Context, cacheKey, datasetID, query string) ([]SearchResult, bool) {
+	logInfo(ctx, "Starting lightweight search cache load", "cache_key", cacheKey, "dataset_id", datasetID, "query", query)
+	start := time.Now()
+
+	cacheDatasetID := fmt.Sprintf("cache_search_%s", cacheKey)
+
+	dummyData, err := storage.Retrieve(cacheDatasetID)
+	if err != nil {
+		logDebug(ctx, "Lightweight search cache miss", "cache_key", cacheKey, "error", err.Error())
+		return nil, false
+	}
+
+	var cacheData SearchCacheData
+	cacheSource := dummyData.CacheData
+	if cacheSource == "" {
+		// Fallback to currency symbol for backward compatibility
+		cacheSource = dummyData.CurrencySymbol
+	}
+	if err := json.Unmarshal([]byte(cacheSource), &cacheData); err != nil {
+		logError(ctx, "Error unmarshaling lightweight search cache data", "error", err, "cache_key", cacheKey)
+		return nil, false
+	}
+
+	// Lightweight validation - only check basic fields
+	if cacheData.Version != cacheVersion {
+		logDebug(ctx, "Lightweight search cache version mismatch, recalculating", "cache_version", cacheData.Version, "expected_version", cacheVersion)
+		return nil, false
+	}
+
+	if cacheData.CacheKey.DatasetID != datasetID ||
+		cacheData.CacheKey.Query != query {
+		logDebug(ctx, "Lightweight search cache key mismatch, recalculating", "cache_key", cacheKey)
+		return nil, false
+	}
+
+	// Check if cache is too old (30 minutes)
+	if time.Since(cacheData.GeneratedAt) > 30*time.Minute {
+		logDebug(ctx, "Lightweight search cache expired, recalculating", "cache_key", cacheKey, "age", time.Since(cacheData.GeneratedAt))
+		return nil, false
+	}
+
+	logDebug(ctx, "Loaded lightweight search results from cache",
+		"cache_key", cacheKey,
+		"generated_at", cacheData.GeneratedAt.Format(time.RFC3339),
+		"duration_ms", time.Since(start).Milliseconds())
+	return cacheData.Results, true
+}

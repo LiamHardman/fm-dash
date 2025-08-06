@@ -156,11 +156,11 @@ func main() {
 	// Initialize advanced memory optimizer
 	LogInfo("Advanced memory optimizer initialized")
 
-	// Initialize memory profiler
-	InitializeMemoryProfiler()
-
 	// Start automatic cleanup scheduler for old datasets
 	StartCleanupScheduler()
+
+	// Start cache cleanup scheduler for performance optimization
+	StartCacheCleanupScheduler()
 
 	// Start async configuration loading in background
 	go func() {
@@ -200,63 +200,6 @@ func main() {
 	// fsAssets := http.FileServer(http.Dir("./dist/assets"))
 	// http.Handle("/assets/", http.StripPrefix("/assets/", fsAssets))
 
-	// API endpoint for file uploads
-	http.Handle("/api/upload", wrapHandler(http.HandlerFunc(uploadHandler), "upload"))
-
-	// API endpoint for retrieving player data
-	http.Handle("/api/players/", wrapHandler(http.HandlerFunc(playerDataHandler), "player-data"))
-
-	// API endpoint for retrieving available roles
-	http.Handle("/api/roles", wrapHandler(http.HandlerFunc(cachedRolesHandler), "roles"))
-
-	// API endpoint for retrieving leagues data
-	http.Handle("/api/leagues/", wrapHandler(http.HandlerFunc(leaguesHandler), "leagues"))
-
-	// API endpoint for retrieving divisions data
-	http.Handle("/api/divisions/", wrapHandler(http.HandlerFunc(divisionsHandler), "divisions"))
-
-	// API endpoint for retrieving teams data for a specific league
-	http.Handle("/api/teams/", wrapHandler(http.HandlerFunc(teamsHandler), "teams"))
-
-	// API endpoint for retrieving top teams across all divisions
-	http.Handle("/api/top-teams/", wrapHandler(http.HandlerFunc(topTeamsHandler), "top-teams"))
-
-	// API endpoint for updating player percentiles with division filtering
-	http.Handle("/api/percentiles/", wrapHandler(http.HandlerFunc(percentilesHandler), "percentiles"))
-
-	// API endpoint for player percentiles by UID
-	http.Handle("/api/player-percentiles/", wrapHandler(http.HandlerFunc(playerPercentilesHandler), "player-percentiles"))
-
-	// API endpoint for checking percentile status
-	http.Handle("/api/percentiles-status/", wrapHandler(http.HandlerFunc(percentilesStatusHandler), "percentiles-status"))
-
-	// API endpoint for universal search (players, teams, leagues, nations)
-	http.Handle("/api/search/", wrapHandler(http.HandlerFunc(searchHandler), "search"))
-
-	// API endpoint for configuration values
-	http.Handle("/api/config", wrapHandler(http.HandlerFunc(cachedConfigHandler), "config"))
-
-	// API endpoint for bargain hunter analysis
-	http.Handle("/api/bargain-hunter/", wrapHandler(http.HandlerFunc(bargainHunterHandler), "bargain-hunter"))
-
-	// API endpoint for serving player face images
-	http.Handle("/api/faces", wrapHandler(http.HandlerFunc(facesHandler), "faces"))
-
-	// API endpoint for serving team logo images
-	http.Handle("/api/logos", wrapHandler(http.HandlerFunc(logosHandler), "logos"))
-
-	// API endpoint for team name to ID matching
-	http.Handle("/api/team-match", wrapHandler(http.HandlerFunc(teamMatchHandler), "team-match"))
-
-	// API endpoint for cache operations (nation ratings, etc.)
-	http.Handle("/api/cache/", wrapHandler(http.HandlerFunc(cacheHandler), "cache"))
-
-	// API endpoint for cache status and monitoring
-	http.Handle("/api/cache-status", wrapHandler(http.HandlerFunc(cacheStatusHandler), "cache-status"))
-
-	// API endpoint for memory optimization reports
-	http.Handle("/api/memory-optimization", wrapHandler(http.HandlerFunc(GetMemoryOptimizationHandler()), "memory-optimization"))
-
 	// Create HTTP server with timeouts and middleware
 	mux := http.NewServeMux()
 
@@ -279,7 +222,7 @@ func main() {
 	mux.Handle("/public/", http.StripPrefix("/public/", fsPublic))
 	mux.Handle("/api/upload", wrapHandler(http.HandlerFunc(uploadHandler), "upload"))
 	mux.Handle("/api/players/", wrapHandler(StreamingHandler(GetFormatAwareCacheHandler()), "player-data"))
-	mux.Handle("/api/roles", wrapHandler(http.HandlerFunc(rolesHandler), "roles"))
+	mux.Handle("/api/roles", wrapHandler(http.HandlerFunc(cachedRolesHandler), "roles"))
 	mux.Handle("/api/leagues/", wrapHandler(http.HandlerFunc(leaguesHandler), "leagues"))
 	mux.Handle("/api/divisions/", wrapHandler(http.HandlerFunc(divisionsHandler), "divisions"))
 	mux.Handle("/api/teams/", wrapHandler(http.HandlerFunc(teamsHandler), "teams"))
@@ -326,12 +269,6 @@ func main() {
 
 	// API endpoint for exporting complete dataset data
 	mux.Handle("/api/export/", wrapHandler(http.HandlerFunc(exportDataHandler), "export-data"))
-
-	// Register memory profiling endpoints
-	RegisterMemoryProfileEndpoints(mux)
-
-	// Register memory testing endpoints
-	RegisterMemoryTestEndpoints(mux)
 
 	// Create server with proper timeouts
 	server := &http.Server{

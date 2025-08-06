@@ -311,7 +311,7 @@ func calculateSimilarity(s1, s2 string) float64 {
 	len2 := len(s2)
 
 	if len1 > 0 && len2 > 0 {
-		lengthRatio := float64(minInt(len1, len2)) / float64(maxInt(len1, len2))
+		lengthRatio := float64(Min(len1, len2)) / float64(Max(len1, len2))
 
 		// If the length ratio is very low (one string is much shorter), apply penalty
 		if lengthRatio < 0.5 {
@@ -321,7 +321,7 @@ func calculateSimilarity(s1, s2 string) float64 {
 		}
 
 		// Additional penalty for very short strings when comparing to longer ones
-		if minInt(len1, len2) < 5 && maxInt(len1, len2) > 10 {
+		if Min(len1, len2) < 5 && Max(len1, len2) > 10 {
 			baseSimilarity -= 0.1 // Additional penalty for very short vs very long
 		}
 	}
@@ -468,7 +468,7 @@ func jaroSimilarity(s1, s2 string) float64 {
 	}
 
 	// Calculate the match window
-	matchWindow := (maxInt(len1, len2) / 2) - 1
+	matchWindow := (Max(len1, len2) / 2) - 1
 	if matchWindow < 0 {
 		matchWindow = 0
 	}
@@ -481,8 +481,8 @@ func jaroSimilarity(s1, s2 string) float64 {
 
 	// Find matches
 	for i := 0; i < len1; i++ {
-		start := maxInt(0, i-matchWindow)
-		end := minInt(i+matchWindow+1, len2)
+		start := Max(0, i-matchWindow)
+		end := Min(i+matchWindow+1, len2)
 
 		for j := start; j < end; j++ {
 			if s2Matches[j] || s1[i] != s2[j] {
@@ -516,21 +516,6 @@ func jaroSimilarity(s1, s2 string) float64 {
 
 	jaro := (float64(matches)/float64(len1) + float64(matches)/float64(len2) + float64(matches-transpositions/2)/float64(matches)) / 3.0
 	return jaro
-}
-
-// Helper functions for jaroSimilarity
-func maxInt(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-func minInt(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 // findTeamMatches finds matching teams for a given team name

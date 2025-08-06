@@ -657,9 +657,9 @@ func (p *ConcurrentPercentileProcessor) ProcessPercentilesWithDivisionFilterAsyn
 		attribute.String("division.target", targetDivision),
 	)
 
-	// Make a copy to avoid modifying original data
-	playersCopy := make([]Player, len(players))
-	copy(playersCopy, players)
+	// Make a proper deep copy to avoid modifying original data and prevent race conditions
+	// PERFORMANCE: Use FastDeepCopyPlayers for much better performance while staying thread-safe
+	playersCopy := FastDeepCopyPlayers(players)
 
 	// Process in a goroutine to make it non-blocking
 	resultCh := make(chan []Player, 1)

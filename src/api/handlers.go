@@ -527,6 +527,13 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	parseDuration := time.Since(parseStartTime)
 	datasetID := uuid.New().String()
 
+	// Debug logging for dataset upload
+	logDebug(ctx, "Dataset upload processing",
+		"dataset_id", datasetID,
+		"player_count", len(playersList),
+		"currency", finalDatasetCurrencySymbol,
+		"parse_duration_ms", parseDuration.Milliseconds())
+
 	// Store data immediately in memory for fast access (without percentiles initially)
 	ctx, storageSpan := StartSpan(ctx, "storage.save_dataset_async")
 	SetSpanAttributes(ctx,
@@ -570,6 +577,12 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 		PlayerCount: len(playersList),
 	}
+
+	// Debug logging for upload response
+	logDebug(ctx, "Upload response generated",
+		"dataset_id", datasetID,
+		"player_count", len(playersList),
+		"response_ready", true)
 
 	w.Header().Set("Content-Type", "application/json")
 	setCORSHeaders(w, r)
@@ -785,8 +798,8 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 		)
 
 		// Make a deep copy of players to avoid modifying the stored data and prevent race conditions
-		// Use optimized deep copy for better memory efficiency
-		playersCopy := OptimizedDeepCopyPlayers(players)
+		// CRITICAL: Use simple deepCopyPlayers instead of OptimizedDeepCopyPlayers (COW has race conditions)
+		playersCopy := deepCopyPlayers(players)
 
 		// Recalculate all player ratings based on the current calculation method setting
 		ctx, recalcSpan := StartSpan(ctx, "ratings.recalculate")
@@ -1018,105 +1031,6 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 		"division_filter":      divisionFilterStr,
 		"has_filters":          filterPosition != "" || filterRole != "" || minAgeStr != "" || maxAgeStr != "",
 	})
-}
-
-// rolesHandler returns a list of all available role names.
-func rolesHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	startTime := time.Now()
-
-	// Start comprehensive tracing
-	ctx, span := StartSpan(ctx, "api.roles.get")
-	defer span.End()
-
-	// Initialize content negotiation
-	negotiator := NewContentNegotiator(r)
-	serializer := negotiator.SelectSerializer()
-	supportsProtobuf := negotiator.SupportsProtobuf()
-
-	// Get request ID for response metadata
-	requestID := r.Header.Get("X-Request-ID")
-	if requestID == "" {
-		requestID = generateRequestID()
-	}
-
-	SetSpanAttributes(ctx,
-		attribute.String("http.method", r.Method),
-		attribute.String("http.route", "/api/roles"),
-		attribute.String("response.format", serializer.ContentType()),
-		attribute.Bool("client.supports_protobuf", supportsProtobuf),
-		attribute.String("request.id", requestID),
-	)
-
-	if r.Method != http.MethodGet {
-		WriteErrorResponse(w, r, "method_not_allowed", "Only GET method is allowed", nil, http.StatusMethodNotAllowed)
-		return
-	}
-
-	// Ensure config is initialized with timeout
-	if err := EnsureConfigInitialized(5 * time.Second); err != nil {
-		logError(ctx, "Configuration not ready for roles request", "error", err)
-		WriteErrorResponse(w, r, "config_not_ready", "Configuration loading, please try again", nil, http.StatusServiceUnavailable)
-		return
-	}
-
-	muRoleSpecificOverallWeights.RLock()
-	roleNames := make([]string, 0, len(roleSpecificOverallWeights))
-	for roleName := range roleSpecificOverallWeights {
-		roleNames = append(roleNames, roleName)
-	}
-	muRoleSpecificOverallWeights.RUnlock()
-
-	sort.Strings(roleNames) // Sort for consistent frontend display
-
-	// Set CORS headers
-	setCORSHeaders(w, r)
-
-	// Create response metadata
-	metadata := CreateResponseMetadata(requestID, safeInt32(len(roleNames)), false)
-
-	if supportsProtobuf {
-		// Create protobuf response
-		protoResponse := &pb.RolesResponse{
-			Roles:    roleNames,
-			Metadata: metadata,
-		}
-
-		// Serialize to protobuf
-		responseBytes, err := serializer.Serialize(protoResponse)
-		if err == nil {
-			// Protobuf serialization successful
-			w.Header().Set("Content-Type", serializer.ContentType())
-			if serializer.ShouldCompress() {
-				w.Header().Set("Content-Encoding", "gzip")
-			}
-
-			if _, writeErr := w.Write(responseBytes); writeErr != nil {
-				logError(ctx, "Error writing protobuf response", "error", writeErr)
-			}
-
-			logDebug(ctx, "Roles served as protobuf",
-				"role_count", len(roleNames),
-				"response_size_bytes", len(responseBytes),
-				"processing_time_ms", time.Since(startTime).Milliseconds())
-			return
-		}
-
-		// Log protobuf serialization failure
-		logWarn(ctx, "Protobuf serialization failed for roles, falling back to JSON", "error", err)
-	}
-
-	// Fallback to JSON
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(roleNames); err != nil {
-		logError(ctx, "Error encoding JSON response for roles", "error", err)
-		WriteErrorResponse(w, r, "serialization_error", "Error encoding response", nil, http.StatusInternalServerError)
-		return
-	}
-
-	logDebug(ctx, "Roles served as JSON",
-		"role_count", len(roleNames),
-		"processing_time_ms", time.Since(startTime).Milliseconds())
 }
 
 // leaguesHandler returns league data with teams and their ratings
@@ -2483,22 +2397,20 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	)
 
 	// Get player data
-	players, _, found := GetPlayerData(datasetID)
+	// Quick dataset existence check (no expensive operations)
+	_, _, found := GetPlayerDataForIndexing(datasetID)
 	if !found {
 		WriteErrorResponse(w, r, "dataset_not_found", "Dataset not found", nil, http.StatusNotFound)
 		return
 	}
 
-	// Recalculate all player ratings based on the current calculation method setting
-	players = RecalculateAllPlayersRatings(players)
+	logDebug(ctx, "Performing search", "dataset_id", datasetID, "query", query)
 
-	logDebug(ctx, "Performing search", "dataset_id", datasetID, "query", query, "player_count", len(players))
-
-	// NEW: Generate cache key and try to load from cache first
-	cacheKey := generateSearchCacheKey(ctx, datasetID, query, players)
+	// NEW: Generate cache key (lightweight)
+	cacheKey := generateSearchCacheKeyLightweight(ctx, datasetID, query)
 
 	// Try to load from cache
-	if cachedResults, found := loadSearchFromCache(ctx, cacheKey, datasetID, query, players); found {
+	if cachedResults, found := loadSearchFromCacheLightweight(ctx, cacheKey, datasetID, query); found {
 		logInfo(ctx, "Returning cached search results",
 			"dataset_id", datasetID,
 			"query", query,
@@ -2580,13 +2492,18 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		"query", query,
 		"cache_key", cacheKey)
 
-	// Perform search
-	results := performSearch(players, query)
+	// Perform optimized search
+	results, searchErr := GetHybridSearchService().Search(ctx, datasetID, query, 100)
+	if searchErr != nil {
+		logError(ctx, "Error performing optimized search", "error", searchErr)
+		WriteErrorResponse(w, r, "search_error", "Search failed", nil, http.StatusInternalServerError)
+		return
+	}
 
 	// NEW: Save to cache for future requests (only cache if results are not too large)
 	if len(results) <= 1000 { // Reasonable limit to avoid caching huge result sets
 		go func() {
-			saveSearchToCache(ctx, cacheKey, datasetID, query, players, results)
+			saveSearchToCacheLightweight(ctx, cacheKey, datasetID, query, results)
 		}()
 	}
 
@@ -3397,12 +3314,8 @@ func deepCopyPlayers(players []Player) []Player {
 		return nil
 	}
 
-	// Use optimized deep copy if memory optimizations are enabled
-	if memOptConfig.UseCopyOnWrite {
-		return OptimizedDeepCopyPlayers(players)
-	}
-
-	// Fallback to original implementation for compatibility
+	// CRITICAL: Use safe implementation instead of OptimizedDeepCopyPlayers
+	// OptimizedDeepCopyPlayers has COW race conditions with concurrent access
 	playersCopy := make([]Player, len(players))
 	for i := range players {
 		playersCopy[i] = players[i]
@@ -3415,6 +3328,22 @@ func deepCopyPlayers(players []Player) []Player {
 				for stat, value := range stats {
 					playersCopy[i].PerformancePercentiles[group][stat] = value
 				}
+			}
+		}
+
+		// Deep copy NumericAttributes map - CRITICAL for race condition prevention
+		if players[i].NumericAttributes != nil {
+			playersCopy[i].NumericAttributes = make(map[string]int)
+			for key, value := range players[i].NumericAttributes {
+				playersCopy[i].NumericAttributes[key] = value
+			}
+		}
+
+		// Deep copy Attributes map
+		if players[i].Attributes != nil {
+			playersCopy[i].Attributes = make(map[string]string)
+			for key, value := range players[i].Attributes {
+				playersCopy[i].Attributes[key] = value
 			}
 		}
 
@@ -3441,6 +3370,9 @@ func deepCopyPlayers(players []Player) []Player {
 			playersCopy[i].PositionGroups = make([]string, len(players[i].PositionGroups))
 			copy(playersCopy[i].PositionGroups, players[i].PositionGroups)
 		}
+
+		// Initialize mutex for the copied player - CRITICAL for thread safety
+		playersCopy[i].mu = sync.RWMutex{}
 
 		// Deep copy RoleSpecificOveralls slice
 		if players[i].RoleSpecificOveralls != nil {
@@ -3983,7 +3915,8 @@ func performanceDataHandler(w http.ResponseWriter, r *http.Request) {
 	// Calculate percentiles with appropriate filtering
 	ctx, percentileSpan := StartSpan(ctx, "percentiles.calculate")
 	// Make a deep copy of players to avoid modifying the stored data
-	playersCopy := OptimizedDeepCopyPlayers(players)
+	// PERFORMANCE: Use FastDeepCopyPlayers for much better performance while staying thread-safe
+	playersCopy := FastDeepCopyPlayers(players)
 
 	if divisionFilter != DivisionFilterAll {
 		// Recalculate percentiles with division filter
@@ -4807,7 +4740,8 @@ func CalculatePlayerPercentilesAsync(ctx context.Context, datasetID string, play
 	}
 
 	// Use the existing OptimizedDeepCopyPlayers function which is designed to handle this safely
-	playersCopy := OptimizedDeepCopyPlayers(storedData.Players)
+	// CRITICAL: Use safe deepCopyPlayers instead of OptimizedDeepCopyPlayers (COW has race conditions)
+	playersCopy := deepCopyPlayers(storedData.Players)
 
 	// Calculate percentiles for all division filters to ensure stability
 	CalculatePlayerPerformancePercentiles(playersCopy)
@@ -4839,7 +4773,8 @@ func CalculatePlayerPercentilesAsync(ctx context.Context, datasetID string, play
 
 // UpgradeFinderRequest represents the request parameters for finding player upgrades
 type UpgradeFinderRequest struct {
-	DatasetID        string `json:"datasetId"`
+	DatasetID        string `json:"datasetId"`     // Dataset to search for upgrades (transfer market)
+	TeamDatasetID    string `json:"teamDatasetId"` // Optional: Dataset containing the team (current squad)
 	Team             string `json:"team"`
 	Position         string `json:"position"`
 	Role             string `json:"role"`
@@ -4949,16 +4884,67 @@ func upgradeFinderHandler(w http.ResponseWriter, r *http.Request) {
 		"max_transfer_value", req.MaxTransferValue,
 		"max_salary", req.MaxSalary)
 
-	// Get players from storage
-	players, currencySymbol, found := GetPlayerData(req.DatasetID)
+	// Get players from the main dataset (transfer market) using optimized loader
+	dataLoadStart := time.Now()
+	players, currencySymbol, found := GetPlayerDataForUpgradeFinder(req.DatasetID)
+	dataLoadTime := time.Since(dataLoadStart)
+
 	if !found {
-		logWarn(ctx, "No players found for dataset", "dataset_id", req.DatasetID)
+		logWarn(ctx, "No players found for main dataset", "dataset_id", req.DatasetID)
 		WriteErrorResponse(w, r, "no_players_found", "No players found for the specified dataset", nil, http.StatusNotFound)
 		return
 	}
 
-	// Filter and find upgrades
-	upgrades := findPlayerUpgrades(players, req)
+	logDebug(ctx, "Data loading completed for upgrade finder",
+		"dataset_id", req.DatasetID,
+		"player_count", len(players),
+		"data_load_time_ms", dataLoadTime.Milliseconds())
+
+	// If a team dataset is specified, get team players from it for validation
+	var teamPlayers []Player
+	if req.TeamDatasetID != "" && req.TeamDatasetID != req.DatasetID {
+		teamLoadStart := time.Now()
+		teamPlayersData, _, teamFound := GetPlayerDataForUpgradeFinder(req.TeamDatasetID)
+		teamLoadTime := time.Since(teamLoadStart)
+
+		if !teamFound {
+			logWarn(ctx, "No players found for team dataset", "team_dataset_id", req.TeamDatasetID)
+			WriteErrorResponse(w, r, "no_team_players_found", "No players found for the specified team dataset", nil, http.StatusNotFound)
+			return
+		}
+		teamPlayers = teamPlayersData
+		logDebug(ctx, "Using separate team dataset for team validation",
+			"team_dataset_id", req.TeamDatasetID,
+			"team_players_count", len(teamPlayers),
+			"team_data_load_time_ms", teamLoadTime.Milliseconds())
+	} else {
+		// Use the same dataset for both team and upgrades
+		teamPlayers = players
+	}
+
+	// Add debug logging
+	logDebug(ctx, "Upgrade finder processing",
+		"main_dataset_id", req.DatasetID,
+		"team_dataset_id", req.TeamDatasetID,
+		"using_separate_datasets", req.TeamDatasetID != "" && req.TeamDatasetID != req.DatasetID,
+		"main_dataset_players", len(players),
+		"team_dataset_players", len(teamPlayers),
+		"team_name", req.Team,
+		"position", req.Position,
+		"min_overall", req.MinOverall)
+
+	// Filter and find upgrades using optimized parallel processing
+	filterStart := time.Now()
+	upgrades := OptimizedFindPlayerUpgrades(players, teamPlayers, req)
+	filterTime := time.Since(filterStart)
+
+	logDebug(ctx, "Upgrade finder results",
+		"upgrades_found", len(upgrades),
+		"request_team", req.Team,
+		"request_position", req.Position,
+		"filter_time_ms", filterTime.Milliseconds(),
+		"data_load_time_ms", dataLoadTime.Milliseconds(),
+		"total_time_ms", time.Since(startTime).Milliseconds())
 
 	// Set CORS headers
 	setCORSHeaders(w, r)
@@ -4989,109 +4975,6 @@ func upgradeFinderHandler(w http.ResponseWriter, r *http.Request) {
 	logDebug(ctx, "Upgrade finder response served",
 		"upgrades_found", len(upgrades),
 		"processing_time_ms", time.Since(startTime).Milliseconds())
-}
-
-// findPlayerUpgrades filters and finds player upgrades based on the request criteria
-func findPlayerUpgrades(players []Player, req UpgradeFinderRequest) []Player {
-	var upgrades []Player
-
-	for _, player := range players {
-		// Skip players from the same team
-		if req.Team != "" && player.Club == req.Team {
-			continue
-		}
-
-		// Check position match
-		if !matchesPositionForUpgrade(player, req.Position) {
-			continue
-		}
-
-		// Get player's overall for the specified role
-		playerOverall := getPlayerOverallForRole(player, req.Role, req.Position)
-		if playerOverall < req.MinOverall {
-			continue
-		}
-
-		// Check age filter
-		if req.MaxAge > 0 {
-			playerAge, _ := strconv.Atoi(player.Age)
-			if playerAge > req.MaxAge {
-				continue
-			}
-		}
-
-		// Check transfer value filter
-		if req.MaxTransferValue > 0 {
-			// Skip players who are "Not for Sale"
-			if player.TransferValue == "Not for Sale" ||
-				strings.Contains(strings.ToLower(player.TransferValue), "not for sale") {
-				continue
-			}
-
-			if player.TransferValueAmount > req.MaxTransferValue {
-				continue
-			}
-		}
-
-		// Check salary filter
-		if req.MaxSalary > 0 {
-			if player.WageAmount > req.MaxSalary {
-				continue
-			}
-		}
-
-		// Check minimum attribute filters
-		if req.MinPAC > 0 && player.PAC < req.MinPAC {
-			continue
-		}
-		if req.MinDRI > 0 && player.DRI < req.MinDRI {
-			continue
-		}
-		if req.MinSHO > 0 && player.SHO < req.MinSHO {
-			continue
-		}
-		if req.MinPAS > 0 && player.PAS < req.MinPAS {
-			continue
-		}
-		if req.MinDEF > 0 && player.DEF < req.MinDEF {
-			continue
-		}
-		if req.MinPHY > 0 && player.PHY < req.MinPHY {
-			continue
-		}
-		if req.MinGK > 0 && player.GK < req.MinGK {
-			continue
-		}
-		if req.MinDIV > 0 && player.DIV < req.MinDIV {
-			continue
-		}
-		if req.MinHAN > 0 && player.HAN < req.MinHAN {
-			continue
-		}
-		if req.MinREF > 0 && player.REF < req.MinREF {
-			continue
-		}
-		if req.MinKIC > 0 && player.KIC < req.MinKIC {
-			continue
-		}
-		if req.MinSPD > 0 && player.SPD < req.MinSPD {
-			continue
-		}
-		if req.MinPOS > 0 && player.POS < req.MinPOS {
-			continue
-		}
-
-		upgrades = append(upgrades, player)
-	}
-
-	// Sort by role-specific overall (descending)
-	sort.Slice(upgrades, func(i, j int) bool {
-		overallI := getPlayerOverallForRole(upgrades[i], req.Role, req.Position)
-		overallJ := getPlayerOverallForRole(upgrades[j], req.Role, req.Position)
-		return overallI > overallJ
-	})
-
-	return upgrades
 }
 
 // matchesPositionForUpgrade checks if a player matches the required position
@@ -5524,9 +5407,9 @@ func debugPlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 
 // logTop25OverallPlayers logs the top 25 players by overall rating with their MBR breakdown
 func logTop25OverallPlayers(players []Player) {
-	// Create a copy of players for sorting
-	playersCopy := make([]Player, len(players))
-	copy(playersCopy, players)
+	// Create a proper deep copy of players for sorting to prevent any potential race conditions
+	// PERFORMANCE: Use FastDeepCopyPlayers for much better performance while staying thread-safe
+	playersCopy := FastDeepCopyPlayers(players)
 
 	// Sort by overall rating in descending order
 	sort.Slice(playersCopy, func(i, j int) bool {

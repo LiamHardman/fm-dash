@@ -125,18 +125,38 @@ export default defineComponent({
 
       const url = `/api/search/${playerStore.currentDatasetId}?q=${encodeURIComponent(query)}`
 
+      // Performance debugging
+      const searchStart = performance.now()
+      console.log(`🔍 Starting search for "${query}"`)
+
       try {
+        const fetchStart = performance.now()
         const response = await fetch(url, { signal })
+        const fetchTime = performance.now() - fetchStart
+
         if (response.ok) {
+          const parseStart = performance.now()
           const data = await response.json()
+          const parseTime = performance.now() - parseStart
+          const totalTime = performance.now() - searchStart
+
+          console.log(`✅ Search completed for "${query}":`, {
+            totalTime: `${totalTime.toFixed(1)}ms`,
+            fetchTime: `${fetchTime.toFixed(1)}ms`,
+            parseTime: `${parseTime.toFixed(1)}ms`,
+            resultCount: Array.isArray(data) ? data.length : 0,
+          })
+
           // Ensure we always return an array
           return Array.isArray(data) ? data : []
         }
         return []
       } catch (error) {
         if (error.name === 'AbortError') {
+          console.log(`⏹️ Search aborted for "${query}"`)
           return []
         }
+        console.error(`❌ Search failed for "${query}":`, error)
         return []
       }
     }
@@ -188,7 +208,7 @@ export default defineComponent({
           currentSearchController = null
         }
       }
-    }, 300)
+    }, 150)
 
     // Watch searchQuery and trigger debounced search
     watch(searchQuery, (newQuery) => {
@@ -245,10 +265,21 @@ export default defineComponent({
       return 'rating-tier-1'
     }
 
+    // Create a fast lookup cache for players by name
+    const playerNameCache = computed(() => {
+      if (!playerStore.allPlayers) return new Map()
+
+      const cache = new Map()
+      for (const player of playerStore.allPlayers) {
+        if (player.name) {
+          cache.set(player.name.toLowerCase(), player)
+        }
+      }
+      return cache
+    })
+
     const findPlayerByName = (playerName) => {
-      return playerStore.allPlayers?.find(
-        (player) => player.name?.toLowerCase() === playerName.toLowerCase()
-      )
+      return playerNameCache.value.get(playerName.toLowerCase())
     }
 
     const handleResultClick = (result) => {
