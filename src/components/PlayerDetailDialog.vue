@@ -103,6 +103,13 @@
                                     class="player-detail-card"
                                 />
                             </div>
+                            
+                            <!-- Pros/Cons Component -->
+                            <ProsCons 
+                                :player="displayPlayer"
+                                :selected-comparison-group="selectedComparisonGroup"
+                                v-if="displayPlayer && displayPlayer.performancePercentiles"
+                            />
                         </div>
 
                         <!-- Advanced Tab Content - Performance Percentiles -->
@@ -940,6 +947,9 @@ const TeamLogo = defineAsyncComponent(() => import('../components/TeamLogo.vue')
 // Lazy load PlayerCards component for the simple view
 const PlayerCards = defineAsyncComponent(() => import('../components/PlayerCards.vue'))
 
+// Lazy load ProsCons component for the simple view
+const ProsCons = defineAsyncComponent(() => import('../components/ProsCons.vue'))
+
 const attributeFullNameMap = {
   Cor: 'Corners',
   Cro: 'Crossing',
@@ -1277,6 +1287,7 @@ export default defineComponent({
   components: {
     TeamLogo,
     PlayerCards,
+    ProsCons,
   },
   props: {
     player: { type: Object, default: () => null },
