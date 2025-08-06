@@ -6,9 +6,6 @@ export const useUiStore = defineStore('ui', () => {
   // Defaulting to true here to align with the user's intent for dark mode by default.
   const isDarkModeActive = ref(true)
 
-  // Notification preferences
-  const notificationsEnabled = ref(true)
-
   // Rating calculation method preference
   const useScaledRatings = ref(true) // Default to new scaled ratings
 
@@ -39,14 +36,6 @@ export const useUiStore = defineStore('ui', () => {
 
     try {
       localStorage.setItem('darkMode', isDarkModeActive.value ? 'true' : 'false')
-    } catch (_e) {}
-  }
-
-  // Function to toggle notifications
-  function toggleNotifications() {
-    notificationsEnabled.value = !notificationsEnabled.value
-    try {
-      localStorage.setItem('notificationsEnabled', notificationsEnabled.value ? 'true' : 'false')
     } catch (_e) {}
   }
 
@@ -134,16 +123,6 @@ export const useUiStore = defineStore('ui', () => {
     }
   }
 
-  // Initialize notification preferences
-  function initNotifications() {
-    try {
-      const storedPreference = localStorage.getItem('notificationsEnabled')
-      if (storedPreference !== null) {
-        notificationsEnabled.value = storedPreference === 'true'
-      }
-    } catch (_e) {}
-  }
-
   // Initialize rating calculation preferences
   function initRatingCalculation() {
     try {
@@ -187,7 +166,6 @@ export const useUiStore = defineStore('ui', () => {
   // Initialize all settings
   function initSettings() {
     initDarkMode()
-    initNotifications()
     initRatingCalculation()
     initFacesDisplay()
     initLogosDisplay()
@@ -207,9 +185,6 @@ export const useUiStore = defineStore('ui', () => {
     isDarkModeActive,
     toggleDarkMode,
     initDarkMode,
-    notificationsEnabled,
-    toggleNotifications,
-    initNotifications,
     useScaledRatings,
     toggleRatingCalculation,
     setRatingCalculation,
