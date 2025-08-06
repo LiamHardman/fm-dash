@@ -33,12 +33,6 @@ export const optimizedChartImports = {
 
 // VueUse optimization - only import specific composables
 export const optimizedVueUseImports = {
-  // Web notification - only used in upload page
-  webNotification: () =>
-    import('@vueuse/core').then((module) => ({
-      useWebNotification: module.useWebNotification,
-    })),
-
   // Other commonly used VueUse composables
   storage: () =>
     import('@vueuse/core').then((module) => ({

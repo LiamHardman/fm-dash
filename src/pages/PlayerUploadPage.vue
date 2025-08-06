@@ -164,25 +164,7 @@
 
 
 
-            <!-- Notification Preferences - Subtle -->
-            <div class="notification-preferences" v-if="notificationSupported">
-                <div class="subtle-preference">
-                    <q-toggle
-                        v-model="uiStore.notificationsEnabled"
-                        @update:model-value="uiStore.toggleNotifications"
-                        color="primary"
-                        size="sm"
-                    />
-                    <div class="preference-text">
-                        <span class="preference-label"
-                            >Desktop notifications</span
-                        >
-                        <span class="preference-hint"
-                            >Get notified when large uploads finish</span
-                        >
-                    </div>
-                </div>
-            </div>
+
 
             <div v-if="error" class="error-message">
                 <q-icon name="error_outline" class="error-icon" />
@@ -243,7 +225,6 @@
 </template>
 
 <script>
-import { useWebNotification } from '@vueuse/core'
 import { Notify, useQuasar } from 'quasar'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -268,19 +249,7 @@ export default {
 
     const maxFileSizeBytes = ref(15 * 1024 * 1024)
     const maxFileSizeMB = ref(15)
-    const largeFileSizeBytes = ref(20 * 1024 * 1024)
     const datasetRetentionDays = ref(30)
-
-    const {
-      isSupported: notificationSupported,
-      permissionGranted,
-      show: showNotification,
-    } = useWebNotification({
-      title: 'FM24 Data Processing Complete',
-      body: 'Your large file has been processed and is ready to view!',
-      icon: '/favicon.ico',
-      tag: 'upload-complete',
-    })
 
     const loading = computed(() => playerStore.loading)
     const error = computed({
@@ -312,8 +281,6 @@ export default {
       } catch (_error) {
         console.error('Error fetching config:', _error)
       }
-      // Initialize UI preferences
-      uiStore.initNotifications()
     })
 
     const formatFileSize = (bytes) => {
@@ -366,8 +333,6 @@ export default {
         return
       }
 
-      const isLargeFile = playerFile.value.size > largeFileSizeBytes.value
-
       // Reset progress
       uploadProgress.value = 0
       dataReady.value = false
@@ -397,17 +362,6 @@ export default {
             position: 'top',
             timeout: isDuplicate ? 3000 : 2000,
           })
-
-          // Show web notification for large files if enabled and supported (but not for duplicates)
-          if (
-            !isDuplicate &&
-            isLargeFile &&
-            uiStore.notificationsEnabled &&
-            notificationSupported.value &&
-            permissionGranted.value
-          ) {
-            showNotification()
-          }
 
           // Always redirect to dataset page regardless of file size
           setTimeout(() => {
@@ -470,7 +424,6 @@ export default {
       onFileSelected,
       playerStore,
       uiStore,
-      notificationSupported,
       maxFileSizeMB,
       loaderProps,
       handleUploadCancel,
