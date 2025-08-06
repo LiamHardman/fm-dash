@@ -44,6 +44,22 @@
                 >
             </q-btn>
 
+            <!-- Tab Navigation -->
+            <div class="tab-navigation">
+                <q-tabs
+                    v-model="activeTab"
+                    dense
+                    class="view-tabs"
+                    :class="isDarkMode ? 'tabs-dark' : 'tabs-light'"
+                    active-color="primary"
+                    :indicator-color="'transparent'"
+                    align="left"
+                >
+                    <q-tab name="simple" label="Simple" icon="style" />
+                    <q-tab name="advanced" label="Advanced" icon="analytics" />
+                </q-tabs>
+            </div>
+
             <!-- Player data not available -->
             <q-card-section v-if="player && (!displayPlayer || !displayPlayer.name)" class="scroll main-content-section no-header-section">
                 <div class="text-center q-pa-lg">
@@ -52,8 +68,6 @@
                     <div class="text-caption text-grey-6 q-mt-sm">Unable to load player information</div>
                 </div>
             </q-card-section>
-
-
 
             <q-card-section v-else-if="player && displayPlayer && displayPlayer.name" class="scroll main-content-section no-header-section">
                 <!-- Progressive loading indicator -->
@@ -79,184 +93,199 @@
 
                 <div class="row q-col-gutter-lg">
                     <div class="col-12 col-md-4">
-                        <div class="row q-col-gutter-sm q-mb-md">
-                            <div class="col-6">
-                                <q-select
-                                    v-if="performanceComparisonOptions.length > 0"
-                                    :disable="false"
-                                    v-model="selectedComparisonGroup"
-                                    :options="performanceComparisonOptions"
-                                    label="Compare Position"
-                                    dense
-                                    outlined
-                                    emit-value
-                                    map-options
-                                    class="modern-select"
-                                    :label-color="
-                                        isDarkMode ? 'grey-4' : ''
-                                    "
-                                    :popup-content-class="
-                                        isDarkMode
-                                            ? 'bg-grey-8 text-white'
-                                            : 'bg-white text-dark'
-                                    "
-                                />
-                                <q-tooltip
-                                    v-if="performanceComparisonOptions.length === 1"
-                                >
-                                    Only one comparison option available for this player and division.
-                                </q-tooltip>
-                            </div>
-                            <div class="col-6">
-                                <q-select
-                                    v-model="divisionFilter"
-                                    :options="divisionFilterOptions"
-                                    label="Compare Division"
-                                    dense
-                                    outlined
-                                    emit-value
-                                    map-options
-                                    class="modern-select"
-                                    :label-color="
-                                        isDarkMode ? 'grey-4' : ''
-                                    "
-                                    :popup-content-class="
-                                        isDarkMode
-                                            ? 'bg-grey-8 text-white'
-                                            : 'bg-white text-dark'
-                                    "
-                                    @update:model-value="onDivisionFilterChange"
+                        <!-- Simple Tab Content - Player Cards -->
+                        <div v-if="activeTab === 'simple'" class="simple-view">
+                            <div class="player-card-container">
+                                <PlayerCards 
+                                    :player="displayPlayer"
+                                    :currency-symbol="currencySymbol"
+                                    :dataset-id="datasetId"
+                                    class="player-detail-card"
                                 />
                             </div>
                         </div>
 
-                        <q-card
-                            flat
-                            bordered
-                            class="performance-percentiles-card modern-stats-card"
-                        >
-                            <q-card-section
-                                class="performance-card-header"
-                            >
-                                <div class="performance-header-title">
-                                    <q-icon name="analytics" class="q-mr-sm" />
-                                    Performance Analysis
-                                </div>
-                            </q-card-section>
-                            
-                            <q-card-section class="q-pa-md">
-                                <!-- Loading State for Percentiles -->
-                                <div v-if="showLoadingState" class="percentile-loading-area">
-                                    <div class="loading-content">
-                                        <q-spinner-dots color="primary" size="2em" />
-                                        <div class="loading-text">
-                                            <div class="text-subtitle2">Calculating Performance Percentiles...</div>
-                                            <div class="text-caption text-grey-6">
-                                                {{ isLoadingPercentiles ? 'Fetching data...' : `Retry ${percentilesRetryCount + 1}/${maxRetries}` }}
-                                            </div>
-                                        </div>
-                                        <q-btn 
-                                            v-if="percentilesRetryCount > 0" 
-                                            flat 
-                                            size="sm" 
-                                            color="primary" 
-                                            label="Retry Now" 
-                                            @click="manualRetry"
-                                            class="q-mt-sm"
-                                        />
-                                    </div>
-                                </div>
-
-                                <!-- Percentile Content -->
-                                <div v-else-if="hasAnyPerformanceData" class="percentile-content-area" :key="`${displayPlayer?.uid || displayPlayer?.UID || 'unknown'}-${displayPlayer?.name || 'unknown'}-${divisionFilter}`">
-                                    <!-- Debug info -->
-                                    <div v-if="false" class="debug-info">
-                                        forceRecompute: {{ forceRecompute }}, 
-                                        hasAnyPerformanceData: {{ hasAnyPerformanceData }}, 
-                                        categorizedPerformanceStats keys: {{ Object.keys(categorizedPerformanceStats) }}
-                                    </div>
-                                    <div
-                                        v-for="(stats, category, index) in categorizedPerformanceStats"
-                                        :key="`perf-${category}-${selectedComparisonGroup}`"
-                                        class="performance-category"
+                        <!-- Advanced Tab Content - Performance Percentiles -->
+                        <div v-if="activeTab === 'advanced'" class="advanced-view">
+                            <div class="row q-col-gutter-sm q-mb-md">
+                                <div class="col-6">
+                                    <q-select
+                                        v-if="performanceComparisonOptions.length > 0"
+                                        :disable="false"
+                                        v-model="selectedComparisonGroup"
+                                        :options="performanceComparisonOptions"
+                                        label="Compare Position"
+                                        dense
+                                        outlined
+                                        emit-value
+                                        map-options
+                                        class="modern-select"
+                                        :label-color="
+                                            isDarkMode ? 'grey-4' : ''
+                                        "
+                                        :popup-content-class="
+                                            isDarkMode
+                                                ? 'bg-grey-8 text-white'
+                                                : 'bg-white text-dark'
+                                        "
+                                    />
+                                    <q-tooltip
+                                        v-if="performanceComparisonOptions.length === 1"
                                     >
-                                        <div class="performance-category-header q-mb-sm">
-                                            <span class="performance-category-title">{{ category }}</span>
-                                        </div>
-                                        
-                                        <q-list separator dense class="performance-stats-list">
-                                            <q-item
-                                                v-for="statItem in stats"
-                                                :key="`${statItem.key}-${selectedComparisonGroup}-${divisionFilter}`"
-                                                class="performance-stat-item modern-stat-item"
-                                            >
-                                                <q-item-section class="stat-name-section">
-                                                    <q-item-label
-                                                        lines="1"
-                                                        class="stat-name-label"
-                                                        :title="statItem.name"
-                                                    >
-                                                        {{ statItem.name }}
-                                                    </q-item-label>
-                                                </q-item-section>
-                                                <q-item-section class="stat-bar-section">
-                                                    <div class="stat-bar-container">
-                                                        <div class="stat-bar-track">
-                                                            <div
-                                                                class="stat-bar-fill"
-                                                                :style="getBarFillStyle(statItem.percentile)"
-                                                            ></div>
-                                                        </div>
-                                                        <span
-                                                            v-if="
-                                                                statItem.percentile !== null &&
-                                                                statItem.percentile >= 0
-                                                            "
-                                                            class="stat-percentile-text"
-                                                        >
-                                                            {{ Math.round(statItem.percentile) }}
-                                                        </span>
-                                                        <span
-                                                            v-else
-                                                            class="stat-percentile-text text-caption text-grey-6"
-                                                            >N/A</span
-                                                        >
-                                                    </div>
-                                                </q-item-section>
-                                                <q-item-section side class="stat-value-section">
-                                                    <span class="performance-stat-value">
-                                                        {{ statItem.value !== "-" ? statItem.value : "N/A" }}
-                                                    </span>
-                                                </q-item-section>
-                                            </q-item>
-                                        </q-list>
-                                        
-                                        <q-separator
-                                            v-if="index < Object.keys(categorizedPerformanceStats).length - 1"
-                                            class="q-my-md performance-separator"
-                                        />
-                                    </div>
+                                        Only one comparison option available for this player and division.
+                                    </q-tooltip>
                                 </div>
-                                
-                                <!-- No Data State -->
-                                <div v-else class="no-performance-data">
-                                    <q-icon name="analytics" size="3em" class="text-grey-4 q-mb-md" />
-                                    <div class="text-subtitle1 text-grey-6">Performance data unavailable</div>
-                                    <div class="text-caption text-grey-6 q-mb-md">
-                                        {{ percentilesRetryCount >= maxRetries 
-                                            ? 'Could not load performance percentiles after multiple attempts.' 
-                                            : 'Performance percentiles are not available for this player.' }}
-                                    </div>
-                                    <q-btn 
-                                        v-if="percentilesRetryCount >= maxRetries" 
-                                        flat 
-                                        color="primary" 
-                                        label="Try Again" 
-                                        @click="manualRetry"
+                                <div class="col-6">
+                                    <q-select
+                                        v-model="divisionFilter"
+                                        :options="divisionFilterOptions"
+                                        label="Compare Division"
+                                        dense
+                                        outlined
+                                        emit-value
+                                        map-options
+                                        class="modern-select"
+                                        :label-color="
+                                            isDarkMode ? 'grey-4' : ''
+                                        "
+                                        :popup-content-class="
+                                            isDarkMode
+                                                ? 'bg-grey-8 text-white'
+                                                : 'bg-white text-dark'
+                                        "
+                                        @update:model-value="onDivisionFilterChange"
                                     />
                                 </div>
-                            </q-card-section>
-                        </q-card>
+                            </div>
+
+                            <q-card
+                                flat
+                                bordered
+                                class="performance-percentiles-card modern-stats-card"
+                            >
+                                <q-card-section
+                                    class="performance-card-header"
+                                >
+                                    <div class="performance-header-title">
+                                        <q-icon name="analytics" class="q-mr-sm" />
+                                        Performance Analysis
+                                    </div>
+                                </q-card-section>
+                                
+                                <q-card-section class="q-pa-md">
+                                    <!-- Loading State for Percentiles -->
+                                    <div v-if="showLoadingState" class="percentile-loading-area">
+                                        <div class="loading-content">
+                                            <q-spinner-dots color="primary" size="2em" />
+                                            <div class="loading-text">
+                                                <div class="text-subtitle2">Calculating Performance Percentiles...</div>
+                                                <div class="text-caption text-grey-6">
+                                                    {{ isLoadingPercentiles ? 'Fetching data...' : `Retry ${percentilesRetryCount + 1}/${maxRetries}` }}
+                                                </div>
+                                            </div>
+                                            <q-btn 
+                                                v-if="percentilesRetryCount > 0" 
+                                                flat 
+                                                size="sm" 
+                                                color="primary" 
+                                                label="Retry Now" 
+                                                @click="manualRetry"
+                                                class="q-mt-sm"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <!-- Percentile Content -->
+                                    <div v-else-if="hasAnyPerformanceData" class="percentile-content-area" :key="`${displayPlayer?.uid || displayPlayer?.UID || 'unknown'}-${displayPlayer?.name || 'unknown'}-${divisionFilter}`">
+                                        <!-- Debug info -->
+                                        <div v-if="false" class="debug-info">
+                                            forceRecompute: {{ forceRecompute }}, 
+                                            hasAnyPerformanceData: {{ hasAnyPerformanceData }}, 
+                                            categorizedPerformanceStats keys: {{ Object.keys(categorizedPerformanceStats) }}
+                                        </div>
+                                        <div
+                                            v-for="(stats, category, index) in categorizedPerformanceStats"
+                                            :key="`perf-${category}-${selectedComparisonGroup}`"
+                                            class="performance-category"
+                                        >
+                                            <div class="performance-category-header q-mb-sm">
+                                                <span class="performance-category-title">{{ category }}</span>
+                                            </div>
+                                            
+                                            <q-list separator dense class="performance-stats-list">
+                                                <q-item
+                                                    v-for="statItem in stats"
+                                                    :key="`${statItem.key}-${selectedComparisonGroup}-${divisionFilter}`"
+                                                    class="performance-stat-item modern-stat-item"
+                                                >
+                                                    <q-item-section class="stat-name-section">
+                                                        <q-item-label
+                                                            lines="1"
+                                                            class="stat-name-label"
+                                                            :title="statItem.name"
+                                                        >
+                                                            {{ statItem.name }}
+                                                        </q-item-label>
+                                                    </q-item-section>
+                                                    <q-item-section class="stat-bar-section">
+                                                        <div class="stat-bar-container">
+                                                            <div class="stat-bar-track">
+                                                                <div
+                                                                    class="stat-bar-fill"
+                                                                    :style="getBarFillStyle(statItem.percentile)"
+                                                                ></div>
+                                                            </div>
+                                                            <span
+                                                                v-if="
+                                                                    statItem.percentile !== null &&
+                                                                    statItem.percentile >= 0
+                                                                "
+                                                                class="stat-percentile-text"
+                                                            >
+                                                                {{ Math.round(statItem.percentile) }}
+                                                            </span>
+                                                            <span
+                                                                v-else
+                                                                class="stat-percentile-text text-caption text-grey-6"
+                                                                >N/A</span
+                                                            >
+                                                        </div>
+                                                    </q-item-section>
+                                                    <q-item-section side class="stat-value-section">
+                                                        <span class="performance-stat-value">
+                                                            {{ statItem.value !== "-" ? statItem.value : "N/A" }}
+                                                        </span>
+                                                    </q-item-section>
+                                                </q-item>
+                                            </q-list>
+                                            
+                                            <q-separator
+                                                v-if="index < Object.keys(categorizedPerformanceStats).length - 1"
+                                                class="q-my-md performance-separator"
+                                            />
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- No Data State -->
+                                    <div v-else class="no-performance-data">
+                                        <q-icon name="analytics" size="3em" class="text-grey-4 q-mb-md" />
+                                        <div class="text-subtitle1 text-grey-6">Performance data unavailable</div>
+                                        <div class="text-caption text-grey-6 q-mb-md">
+                                            {{ percentilesRetryCount >= maxRetries 
+                                                ? 'Could not load performance percentiles after multiple attempts.' 
+                                                : 'Performance percentiles are not available for this player.' }}
+                                        </div>
+                                        <q-btn 
+                                            v-if="percentilesRetryCount >= maxRetries" 
+                                            flat 
+                                            color="primary" 
+                                            label="Try Again" 
+                                            @click="manualRetry"
+                                        />
+                                    </div>
+                                </q-card-section>
+                            </q-card>
+                        </div>
                     </div>
 
                     <div class="col-12 col-md-8">
@@ -908,6 +937,9 @@ import { getCachedPlayerData, setCachedPlayerData } from '../utils/playerDetailO
 // Lazy load TeamLogo component to prevent blocking dialog opening
 const TeamLogo = defineAsyncComponent(() => import('../components/TeamLogo.vue'))
 
+// Lazy load PlayerCards component for the simple view
+const PlayerCards = defineAsyncComponent(() => import('../components/PlayerCards.vue'))
+
 const attributeFullNameMap = {
   Cor: 'Corners',
   Cro: 'Crossing',
@@ -1244,6 +1276,7 @@ export default defineComponent({
   name: 'PlayerDetailDialog',
   components: {
     TeamLogo,
+    PlayerCards,
   },
   props: {
     player: { type: Object, default: () => null },
@@ -1299,6 +1332,7 @@ export default defineComponent({
     const selectedComparisonGroup = ref('Global')
     const flagLoadError = ref(false)
     const divisionFilter = ref('same')
+    const activeTab = ref('simple') // Default to simple view
 
     // Convert props to refs for the percentile retry composable
     const _playerRef = toRef(props, 'player')
@@ -2770,6 +2804,9 @@ export default defineComponent({
 
       // Player positions computed property
       playerPositions,
+
+      // Tab system
+      activeTab,
     }
   },
 })
@@ -2842,7 +2879,7 @@ $breakpoint-xs-max: 599px !default;
     }
     
     &.no-header-section {
-        padding-top: 20px; // Minimal room for floating close button
+        padding-top: 55px; // More room since tabs are positioned higher
     }
 }
 
@@ -3906,6 +3943,30 @@ $breakpoint-xs-max: 599px !default;
 @media (max-width: 768px) {
     .main-content-section {
         padding: 16px;
+        
+        &.no-header-section {
+            padding-top: 45px; // More room since tabs are positioned higher
+        }
+    }
+    
+    .tab-navigation {
+        top: 6px;
+        left: 12px;
+        padding: 0;
+        min-width: 50px;
+        height: 36px;
+        
+        .view-tabs {
+            gap: 3px;
+            
+            .q-tab {
+                min-height: 32px;
+                height: 32px;
+                padding: 0 8px;
+                font-size: 0.6rem;
+                transition: none;
+            }
+        }
     }
     
     .player-profile-content {
@@ -3952,6 +4013,37 @@ $breakpoint-xs-max: 599px !default;
 @media (max-width: 480px) {
     .main-content-section {
         padding: 12px;
+        
+        &.no-header-section {
+            padding-top: 40px; // More room since tabs are positioned higher
+        }
+    }
+    
+    .tab-navigation {
+        top: 4px;
+        left: 8px;
+        padding: 0;
+        min-width: 45px;
+        height: 32px;
+        
+        .view-tabs {
+            gap: 2px;
+            
+            .q-tab {
+                min-height: 28px;
+                height: 28px;
+                padding: 0 6px;
+                font-size: 0.55rem;
+                transition: none;
+            }
+        }
+    }
+    
+    .floating-close-btn {
+        top: 8px;
+        right: 8px;
+        width: 32px;
+        height: 32px;
     }
     
     .player-profile-content {
@@ -3971,6 +4063,125 @@ $breakpoint-xs-max: 599px !default;
         font-size: 0.75rem;
         padding: 3px 6px;
     }
+}
+
+// Tab Navigation - Pill-shaped toggle style
+.tab-navigation {
+    position: absolute;
+    top: 8px;
+    left: 16px;
+    z-index: 10;
+    background: transparent;
+    border-radius: 20px;
+    box-shadow: none;
+    padding: 0;
+    transition: none;
+    min-width: 60px;
+    height: 40px; // Match X button height
+    display: flex;
+    justify-content: flex-start;
+}
+
+.view-tabs {
+    height: 100%;
+    display: flex;
+    gap: 4px;
+    
+    .q-tab {
+        min-height: 36px;
+        height: 36px;
+        padding: 0 12px;
+        font-size: 0.65rem;
+        font-weight: 600;
+        border-radius: 18px;
+        transition: none;
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        
+        .body--dark & {
+            background: rgba(30, 41, 59, 0.9);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        &:hover {
+            background: rgba(255, 255, 255, 1);
+            
+            .body--dark & {
+                background: rgba(30, 41, 59, 1);
+            }
+        }
+        
+        &.q-tab--active {
+            background: rgba(25, 118, 210, 0.9);
+            color: white;
+            
+            .body--dark & {
+                background: rgba(144, 202, 249, 0.9);
+                color: white;
+            }
+        }
+    }
+}
+
+.tabs-dark {
+    .q-tab {
+        color: rgba(255, 255, 255, 0.8);
+        
+        &.q-tab--active {
+            color: #90caf9;
+        }
+        
+        &:hover {
+            color: rgba(255, 255, 255, 1);
+        }
+    }
+}
+
+.tabs-light {
+    .q-tab {
+        color: rgba(0, 0, 0, 0.7);
+        
+        &.q-tab--active {
+            color: #1976d2;
+        }
+        
+        &:hover {
+            color: rgba(0, 0, 0, 0.9);
+        }
+    }
+}
+
+// Simple View Styles
+.simple-view {
+    .player-card-container {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 16px;
+        
+        .player-detail-card {
+            transform: scale(1.2);
+            transform-origin: top center;
+            margin-bottom: 16px;
+            
+            @media (max-width: 768px) {
+                transform: scale(1.1);
+            }
+            
+            @media (max-width: 480px) {
+                transform: scale(1.0);
+            }
+        }
+    }
+}
+
+// Advanced View Styles
+.advanced-view {
+    // Existing advanced view styles are already in place
 }
 
 // Floating Close Button
