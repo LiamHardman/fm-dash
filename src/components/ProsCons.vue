@@ -12,7 +12,7 @@
             :key="`pro-${index}`"
             class="pro-item"
           >
-            <span class="attribute-name">{{ performanceStatMap[pro.key] || pro.key }}</span>
+            <span class="category-name">{{ pro.category }}</span>
             <span class="attribute-value">{{ pro.value }}</span>
           </div>
         </div>
@@ -29,7 +29,7 @@
             :key="`con-${index}`"
             class="con-item"
           >
-            <span class="attribute-name">{{ performanceStatMap[con.key] || con.key }}</span>
+            <span class="category-name">{{ con.category }}</span>
             <span class="attribute-value">{{ con.value }}</span>
           </div>
         </div>
@@ -81,6 +81,58 @@ const performanceStatMap = {
   'Sv %': 'Save Percentage',
 }
 
+// Performance stat categories for grouping
+const performanceStatCategories = {
+  Discipline: {
+    stats: ['Fls', 'FA'],
+    lowerIsBetter: true, // Lower percentile is better for discipline stats
+  },
+  'Goal Scoring': {
+    stats: ['Gls/90', 'xG/90', 'NP-xG/90', 'Conv %'],
+    lowerIsBetter: false,
+  },
+  'Shot Frequency': {
+    stats: ['Shot/90', 'ShT/90'],
+    lowerIsBetter: false,
+  },
+  'Chance Creation': {
+    stats: ['Asts/90', 'xA/90', 'K Ps/90', 'Ch C/90'],
+    lowerIsBetter: false,
+  },
+  Passing: {
+    stats: ['Ps C/90', 'Ps A/90', 'Pas %', 'Pr passes/90'],
+    lowerIsBetter: false,
+  },
+  Crossing: {
+    stats: ['Cr C/90', 'CRS A/90', 'Cr C/A'],
+    lowerIsBetter: false,
+  },
+  Dribbling: {
+    stats: ['Drb/90'],
+    lowerIsBetter: false,
+  },
+  'Defensive Actions': {
+    stats: ['Tck/90', 'Int/90', 'Blk/90', 'Clr/90'],
+    lowerIsBetter: false,
+  },
+  'Defensive Efficiency': {
+    stats: ['Tck R', 'Hdrs W/90'],
+    lowerIsBetter: false,
+  },
+  Pressing: {
+    stats: ['Pres C/90'],
+    lowerIsBetter: false,
+  },
+  'Shot Stopping': {
+    stats: ['Sv %', 'xGP/90'],
+    lowerIsBetter: false,
+  },
+  'GK Team Impact': {
+    stats: ['Con/90', 'Clean Sheets', 'Cln/90'],
+    lowerIsBetter: true, // Lower is better for goals conceded
+  },
+}
+
 export default defineComponent({
   name: 'ProsCons',
   props: {
@@ -110,28 +162,60 @@ export default defineComponent({
         groupPercentilesKeys: Object.keys(groupPercentiles),
       })
 
-      // Convert percentiles to array and filter valid ones
-      const percentileArray = Object.entries(groupPercentiles)
-        .filter(([key, percentile]) => {
-          return (
-            percentile !== null && percentile !== undefined && !isNaN(percentile) && percentile >= 0
-          )
-        })
-        .map(([key, percentile]) => ({
-          key,
-          percentile: Number(percentile),
-          strength: getStrengthLevel(Number(percentile)),
-        }))
-        .filter((item) => item.strength === 'Very Strong' || item.strength === 'Strong')
-        .sort((a, b) => b.percentile - a.percentile)
-        .slice(0, 3) // Get top 3
-        .map((item) => ({
-          key: item.key,
-          value: item.strength,
-          percentile: item.percentile,
-        }))
+      // Group stats by category and find the best in each category
+      const categorizedPros = {}
 
-      return percentileArray
+      Object.entries(performanceStatCategories).forEach(([categoryName, category]) => {
+        const categoryStats = category.stats
+          .map((statKey) => {
+            const percentile = groupPercentiles[statKey]
+            if (
+              percentile === null ||
+              percentile === undefined ||
+              isNaN(percentile) ||
+              percentile < 0
+            ) {
+              return null
+            }
+            return {
+              key: statKey,
+              percentile: Number(percentile),
+              strength: getStrengthLevel(Number(percentile)),
+              category: categoryName,
+              lowerIsBetter: category.lowerIsBetter,
+            }
+          })
+          .filter((item) => item !== null)
+          .filter((item) => {
+            if (item.lowerIsBetter) {
+              // For discipline stats, lower percentile is better
+              return item.strength === 'Very Weak' || item.strength === 'Weak'
+            } else {
+              // For regular stats, higher percentile is better
+              return item.strength === 'Very Strong' || item.strength === 'Strong'
+            }
+          })
+          .sort((a, b) => {
+            if (a.lowerIsBetter) {
+              return a.percentile - b.percentile // Lower is better
+            } else {
+              return b.percentile - a.percentile // Higher is better
+            }
+          })
+
+        if (categoryStats.length > 0) {
+          // Take the best stat from each category
+          const bestStat = categoryStats[0]
+          categorizedPros[categoryName] = {
+            key: bestStat.key,
+            value: bestStat.strength,
+            percentile: bestStat.percentile,
+            category: categoryName,
+          }
+        }
+      })
+
+      return Object.values(categorizedPros)
     })
 
     const bottomAttributes = computed(() => {
@@ -140,28 +224,60 @@ export default defineComponent({
       const percentiles = props.player.performancePercentiles
       const groupPercentiles = percentiles[props.selectedComparisonGroup] || {}
 
-      // Convert percentiles to array and filter valid ones
-      const percentileArray = Object.entries(groupPercentiles)
-        .filter(([key, percentile]) => {
-          return (
-            percentile !== null && percentile !== undefined && !isNaN(percentile) && percentile >= 0
-          )
-        })
-        .map(([key, percentile]) => ({
-          key,
-          percentile: Number(percentile),
-          strength: getStrengthLevel(Number(percentile)),
-        }))
-        .filter((item) => item.strength === 'Weak' || item.strength === 'Very Weak')
-        .sort((a, b) => a.percentile - b.percentile)
-        .slice(0, 3) // Get bottom 3
-        .map((item) => ({
-          key: item.key,
-          value: item.strength,
-          percentile: item.percentile,
-        }))
+      // Group stats by category and find the worst in each category
+      const categorizedCons = {}
 
-      return percentileArray
+      Object.entries(performanceStatCategories).forEach(([categoryName, category]) => {
+        const categoryStats = category.stats
+          .map((statKey) => {
+            const percentile = groupPercentiles[statKey]
+            if (
+              percentile === null ||
+              percentile === undefined ||
+              isNaN(percentile) ||
+              percentile < 0
+            ) {
+              return null
+            }
+            return {
+              key: statKey,
+              percentile: Number(percentile),
+              strength: getStrengthLevel(Number(percentile)),
+              category: categoryName,
+              lowerIsBetter: category.lowerIsBetter,
+            }
+          })
+          .filter((item) => item !== null)
+          .filter((item) => {
+            if (item.lowerIsBetter) {
+              // For discipline stats, higher percentile is worse
+              return item.strength === 'Very Strong' || item.strength === 'Strong'
+            } else {
+              // For regular stats, lower percentile is worse
+              return item.strength === 'Weak' || item.strength === 'Very Weak'
+            }
+          })
+          .sort((a, b) => {
+            if (a.lowerIsBetter) {
+              return b.percentile - a.percentile // Higher is worse
+            } else {
+              return a.percentile - b.percentile // Lower is worse
+            }
+          })
+
+        if (categoryStats.length > 0) {
+          // Take the worst stat from each category
+          const worstStat = categoryStats[0]
+          categorizedCons[categoryName] = {
+            key: worstStat.key,
+            value: worstStat.strength,
+            percentile: worstStat.percentile,
+            category: categoryName,
+          }
+        }
+      })
+
+      return Object.values(categorizedCons)
     })
 
     // Helper function to determine strength level based on percentile
@@ -185,7 +301,7 @@ export default defineComponent({
 <style lang="scss" scoped>
 // Pros/Cons Component Styles
 .pros-cons-container {
-  margin-top: 16px;
+  margin-top: 40px; // Much more spacing to prevent intersection
   padding: 0 16px;
   
   .pros-cons-card {
@@ -193,6 +309,7 @@ export default defineComponent({
     border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     overflow: hidden;
+    display: flex; // Side-by-side layout
     
     .body--dark & {
       background: rgba(30, 41, 59, 0.95);
@@ -202,6 +319,7 @@ export default defineComponent({
     .pros-section,
     .cons-section {
       padding: 16px;
+      flex: 1; // Equal width for both sections
       
       .section-header {
         display: flex;
@@ -278,13 +396,14 @@ export default defineComponent({
         }
       }
       
-      .attribute-name {
+      .category-name {
         font-size: 0.85rem;
-        font-weight: 500;
-        color: #64748b;
+        font-weight: 600;
+        color: #334155;
+        letter-spacing: 0.5px;
         
         .body--dark & {
-          color: rgba(255, 255, 255, 0.7);
+          color: rgba(255, 255, 255, 0.85);
         }
       }
       
@@ -295,10 +414,10 @@ export default defineComponent({
     }
     
     .cons-section {
-      border-top: 1px solid rgba(0, 0, 0, 0.1);
+      border-left: 1px solid rgba(0, 0, 0, 0.1); // Changed from border-top to border-left
       
       .body--dark & {
-        border-top-color: rgba(255, 255, 255, 0.1);
+        border-left-color: rgba(255, 255, 255, 0.1);
       }
     }
   }
@@ -307,13 +426,16 @@ export default defineComponent({
 // Responsive Design
 @media (max-width: 768px) {
   .pros-cons-container {
-    margin-top: 12px;
+    margin-top: 32px;
     padding: 0 12px;
     
     .pros-cons-card {
+      flex-direction: column; // Stack vertically on mobile
+      
       .pros-section,
       .cons-section {
         padding: 12px;
+        flex: none; // Remove flex on mobile
         
         .section-header {
           margin-bottom: 8px;
@@ -336,19 +458,31 @@ export default defineComponent({
           font-size: 0.85rem;
         }
       }
+      
+      .cons-section {
+        border-left: none; // Remove left border on mobile
+        border-top: 1px solid rgba(0, 0, 0, 0.1); // Add top border instead
+        
+        .body--dark & {
+          border-top-color: rgba(255, 255, 255, 0.1);
+        }
+      }
     }
   }
 }
 
 @media (max-width: 480px) {
   .pros-cons-container {
-    margin-top: 8px;
+    margin-top: 28px;
     padding: 0 8px;
     
     .pros-cons-card {
+      flex-direction: column; // Stack vertically on small mobile
+      
       .pros-section,
       .cons-section {
         padding: 10px;
+        flex: none; // Remove flex on small mobile
         
         .section-header {
           margin-bottom: 6px;
@@ -369,6 +503,15 @@ export default defineComponent({
         
         .attribute-value {
           font-size: 0.8rem;
+        }
+      }
+      
+      .cons-section {
+        border-left: none; // Remove left border on small mobile
+        border-top: 1px solid rgba(0, 0, 0, 0.1); // Add top border instead
+        
+        .body--dark & {
+          border-top-color: rgba(255, 255, 255, 0.1);
         }
       }
     }
