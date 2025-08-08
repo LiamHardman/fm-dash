@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	pb "api/proto"
+
+	"google.golang.org/protobuf/proto"
 
 	"go.opentelemetry.io/otel/attribute"
 )
@@ -17,6 +20,16 @@ type CachedPlayerDataResponse struct {
 	Format         FormatType
 	JSONData       []Player
 	ProtobufData   *pb.PlayerDataResponse
+	CurrencySymbol string
+	CacheTime      time.Time
+	FilterHash     string
+}
+
+// CachedSerializedResponse stores only the serialized bytes for a response
+// to minimize in-memory duplication of large player slices.
+type CachedSerializedResponse struct {
+	Format         FormatType
+	Bytes          []byte
 	CurrencySymbol string
 	CacheTime      time.Time
 	FilterHash     string
@@ -52,34 +65,31 @@ func GetCachedPlayerData(ctx context.Context, r *http.Request, cacheKey string) 
 
 // CachePlayerData stores player data in the format-aware cache
 func CachePlayerData(ctx context.Context, cacheKey string, players []Player, currencySymbol string, filterHash string, expiration time.Duration) {
-	// Create JSON format cache entry
-	jsonResponse := &CachedPlayerDataResponse{
-		Format:         FormatTypeJSON,
-		JSONData:       players,
-		CurrencySymbol: currencySymbol,
-		CacheTime:      time.Now(),
-		FilterHash:     filterHash,
+	// Serialize and cache only bytes to reduce memory usage
+	// JSON bytes
+	jsonBytes, jsonErr := json.Marshal(map[string]interface{}{
+		"players":        players,
+		"currencySymbol": currencySymbol,
+	})
+	if jsonErr == nil {
+		SetFormatAwareCacheItem(cacheKey, FormatTypeJSON, &CachedSerializedResponse{
+			Format:         FormatTypeJSON,
+			Bytes:          jsonBytes,
+			CurrencySymbol: currencySymbol,
+			CacheTime:      time.Now(),
+			FilterHash:     filterHash,
+		}, expiration)
+	} else {
+		logError(ctx, "Failed to serialize JSON for cache", "error", jsonErr)
 	}
 
-	// Create Protobuf format cache entry
-	protoResponse := &CachedPlayerDataResponse{
-		Format:         FormatTypeProtobuf,
-		CurrencySymbol: currencySymbol,
-		CacheTime:      time.Now(),
-		FilterHash:     filterHash,
-	}
-
-	// Create protobuf response directly without intermediate conversion
-
-	// Create protobuf response
+	// Protobuf bytes
 	requestID := GetTraceID(ctx)
 	protoPlayerResponse := &pb.PlayerDataResponse{
 		Players:        make([]*pb.Player, 0, len(players)),
 		CurrencySymbol: currencySymbol,
 		Metadata:       CreateResponseMetadata(requestID, safeInt32(len(players)), true),
 	}
-
-	// Convert each player to protobuf
 	for _, player := range players {
 		protoPlayer, err := player.ToProto(ctx)
 		if err != nil {
@@ -91,28 +101,24 @@ func CachePlayerData(ctx context.Context, cacheKey string, players []Player, cur
 		}
 		protoPlayerResponse.Players = append(protoPlayerResponse.Players, protoPlayer)
 	}
-
-	// Set the protobuf data in the cache response
-	protoResponse.ProtobufData = protoPlayerResponse
-
-	// Store both formats in cache
-	SetFormatAwareCacheItem(cacheKey, FormatTypeJSON, jsonResponse, expiration)
-
-	// Optimize memory usage for protobuf cached data
-	optimizedProtoResponse := OptimizeMemoryForProtobuf(protoResponse).(*CachedPlayerDataResponse)
-	SetFormatAwareCacheItem(cacheKey, FormatTypeProtobuf, optimizedProtoResponse, expiration)
-
-	logDebug(ctx, "Cached player data in both formats",
-		"cache_key", cacheKey,
-		"player_count", len(players),
-		"json_size", estimateSize(jsonResponse),
-		"protobuf_size", estimateSize(optimizedProtoResponse))
+	optimizedProto := OptimizeProtobufPlayerData(ctx, protoPlayerResponse)
+	if optimizedProto != nil {
+		if data, err := proto.Marshal(optimizedProto); err == nil {
+			SetFormatAwareCacheItem(cacheKey, FormatTypeProtobuf, &CachedSerializedResponse{
+				Format:         FormatTypeProtobuf,
+				Bytes:          data,
+				CurrencySymbol: currencySymbol,
+				CacheTime:      time.Now(),
+				FilterHash:     filterHash,
+			}, expiration)
+		} else {
+			logError(ctx, "Failed to serialize protobuf for cache", "error", err)
+		}
+	}
 
 	AddSpanEvent(ctx, "cache.store",
 		attribute.String("cache.key", cacheKey),
-		attribute.Int("cache.player_count", len(players)),
-		attribute.Int64("cache.json_size", estimateSize(jsonResponse)),
-		attribute.Int64("cache.protobuf_size", estimateSize(optimizedProtoResponse)))
+		attribute.Int("cache.player_count", len(players)))
 }
 
 // GeneratePlayerCacheKey creates a cache key for player data based on filters
@@ -182,24 +188,37 @@ func WritePlayerDataResponse(ctx context.Context, w http.ResponseWriter, r *http
 	negotiator := NewContentNegotiator(r)
 	serializer := negotiator.SelectSerializer()
 
+	// Attempt to serve from serialized-byte cache first
+	baseKey := cacheKeyFromRequest(r)
+	if serialized, ok := GetFormatAwareCacheItem(baseKey, format); ok {
+		if csr, ok := serialized.(*CachedSerializedResponse); ok && csr != nil {
+			ct := serializer.ContentType()
+			if format == FormatTypeJSON {
+				ct = "application/json"
+			}
+			w.Header().Set("Content-Type", ct)
+			w.Header().Set("X-Cache-Source", "memory")
+			w.Header().Set("X-Cache-Format", string(format))
+			if _, err := w.Write(csr.Bytes); err != nil {
+				logError(r.Context(), "Error writing serialized response", "error", err)
+			}
+			return nil
+		}
+	}
+
+	// Fallback to existing behavior if serialized bytes are not present
 	if format == FormatTypeProtobuf && cachedResponse.ProtobufData != nil {
-		// Write protobuf response
 		responseData, err := serializer.Serialize(cachedResponse.ProtobufData)
 		if err != nil {
-			// Fallback to JSON on serialization error
 			logError(ctx, "Failed to serialize protobuf player data, falling back to JSON",
 				"error", err,
 				"player_count", len(cachedResponse.ProtobufData.GetPlayers()))
-
-			// Write JSON response instead
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("X-Cache-Source", "memory")
 			w.Header().Set("X-Cache-Format", "json")
 			w.Header().Set("X-Format-Fallback", "true")
-
 			return WriteJSONPlayerResponse(w, cachedResponse.JSONData, cachedResponse.CurrencySymbol)
 		}
-
 		w.Header().Set("Content-Type", serializer.ContentType())
 		w.Header().Set("X-Cache-Source", "memory")
 		w.Header().Set("X-Cache-Format", "protobuf")
@@ -207,14 +226,35 @@ func WritePlayerDataResponse(ctx context.Context, w http.ResponseWriter, r *http
 			logError(r.Context(), "Error writing protobuf response", "error", err)
 		}
 		return nil
-	} else {
-		// Write JSON response
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("X-Cache-Source", "memory")
-		w.Header().Set("X-Cache-Format", "json")
-
-		return WriteJSONPlayerResponse(w, cachedResponse.JSONData, cachedResponse.CurrencySymbol)
 	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Cache-Source", "memory")
+	w.Header().Set("X-Cache-Format", "json")
+	return WriteJSONPlayerResponse(w, cachedResponse.JSONData, cachedResponse.CurrencySymbol)
+}
+
+// cacheKeyFromRequest reconstructs the base cache key as used by GeneratePlayerCacheKey in the handler
+func cacheKeyFromRequest(r *http.Request) string {
+	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/players/"), "/")
+	datasetID := ""
+	if len(parts) > 0 {
+		datasetID = parts[0]
+	}
+	q := r.URL.Query()
+	filters := map[string]string{
+		"position":         q.Get("position"),
+		"role":             q.Get("role"),
+		"minAge":           q.Get("minAge"),
+		"maxAge":           q.Get("maxAge"),
+		"minTransferValue": q.Get("minTransferValue"),
+		"maxTransferValue": q.Get("maxTransferValue"),
+		"maxSalary":        q.Get("maxSalary"),
+		"divisionFilter":   q.Get("divisionFilter"),
+		"targetDivision":   q.Get("targetDivision"),
+		"positionCompare":  q.Get("positionCompare"),
+	}
+	return GeneratePlayerCacheKey(datasetID, filters)
 }
 
 // WriteJSONPlayerResponse writes a JSON player response
