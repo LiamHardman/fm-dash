@@ -62,26 +62,19 @@ export const getFifaWeightedOverallByPosition = (player) => {
   if (!player) return 0
   const isGK = (player.position && player.position.includes('GK')) || player.GK > 0 || player.gk > 0
   if (isGK) {
-    // GK Top-k boosted aggregator over GK categories
-    const gkStats = [
-      player.DIV ?? player.div ?? 0,
-      player.HAN ?? player.han ?? 0,
-      player.REF ?? player.ref ?? 0,
-      player.SPD ?? player.spd ?? 0,
-      player.POS ?? player.pos ?? 0,
-      player.KIC ?? player.kic ?? 0,
+    // Use primary GK category if present
+    const parts = [
+      player.GK ?? player.gk,
+      player.DIV ?? player.div,
+      player.HAN ?? player.han,
+      player.REF ?? player.ref,
+      player.SPD ?? player.spd,
+      player.POS ?? player.pos,
     ]
-    const validCount = gkStats.filter((v) => typeof v === 'number' && !Number.isNaN(v)).length
-    if (validCount === 0) return 0
-
-    const sortedGk = gkStats.slice().sort((a, b) => b - a)
-    const kGK = 3
-    const lambdaGK = 0.6
-    const topkAvgGK =
-      sortedGk.slice(0, kGK).reduce((s, v) => s + v, 0) / Math.max(1, Math.min(kGK, gkStats.length))
-    const meanAllGK = gkStats.reduce((s, v) => s + v, 0) / gkStats.length
-    const gkScore = Math.round(lambdaGK * topkAvgGK + (1 - lambdaGK) * meanAllGK)
-    return Math.max(0, Math.min(99, gkScore))
+    const valid = parts.filter((v) => typeof v === 'number' && !Number.isNaN(v))
+    if (valid.length === 0) return 0
+    // Simple average for GK categories
+    return Math.round(valid.reduce((a, b) => a + b, 0) / valid.length)
   }
 
   const PAC = player.PAC ?? player.pac ?? 0
@@ -190,28 +183,6 @@ export const getFifaWeightedOverallByPosition = (player) => {
   }
 
   const archetypes = positionArchetypeWeights[basePos]
-
-  // Top-k boosted aggregator parameters per position (defaults)
-  const topKParams = {
-    ST: { k: 2, lambda: 0.75 },
-    AMC: { k: 2, lambda: 0.7 },
-    AMR: { k: 2, lambda: 0.7 },
-    AML: { k: 2, lambda: 0.7 },
-    MR: { k: 2, lambda: 0.65 },
-    ML: { k: 2, lambda: 0.65 },
-    MC: { k: 3, lambda: 0.6 },
-    DM: { k: 3, lambda: 0.55 },
-    DR: { k: 3, lambda: 0.55 },
-    DL: { k: 3, lambda: 0.55 },
-    WBR: { k: 3, lambda: 0.55 },
-    WBL: { k: 3, lambda: 0.55 },
-    DC: { k: 2, lambda: 0.55 },
-  }
-  const { k, lambda } = topKParams[basePos] || { k: 3, lambda: 0.6 }
-  const outfieldStats = [PAC, SHO, PAS, DRI, DEF, PHY]
-  const sortedOutfield = outfieldStats.slice().sort((a, b) => b - a)
-  const topK = Math.max(1, Math.min(k, outfieldStats.length))
-  const topkAvg = sortedOutfield.slice(0, topK).reduce((s, v) => s + v, 0) / topK
   if (!archetypes || archetypes.length === 0) {
     let weights = perPositionWeights[basePos]
     if (!weights) {
@@ -231,9 +202,7 @@ export const getFifaWeightedOverallByPosition = (player) => {
       PAS * (weights.PAS || 0) +
       DEF * (weights.DEF || 0)
     const total = Object.values(weights).reduce((a, b) => a + b, 0) || 1
-    const weightedMean = weightedSum / total
-    const blended = Math.round(lambda * topkAvg + (1 - lambda) * weightedMean)
-    return Math.max(0, Math.min(99, blended))
+    return Math.round(weightedSum / total)
   }
 
   let best = 0
@@ -253,11 +222,10 @@ export const getFifaWeightedOverallByPosition = (player) => {
       (weights.PAS || 0) +
       (weights.DEF || 0)
     if (total <= 0) continue
-    const weightedMean = weightedSum / total
-    const score = Math.round(lambda * topkAvg + (1 - lambda) * weightedMean)
+    const score = Math.round(weightedSum / total)
     if (score > best) best = score
   }
-  return Math.max(0, Math.min(99, best))
+  return best
 }
 
 /**
