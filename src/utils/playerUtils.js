@@ -85,9 +85,36 @@ export const getFifaWeightedOverallByPosition = (player) => {
   const PHY = player.PHY ?? player.phy ?? 0
 
   const posStrRaw = String(player.position || '').toUpperCase()
-  // Extract first base position code, ignoring sides in parentheses
-  const basePosMatch = posStrRaw.match(/\b(GK|DR|DC|DL|WBR|WBL|DM|MR|MC|ML|AMR|AMC|AML|ST)\b/)
-  const basePos = basePosMatch ? basePosMatch[1] : ''
+  // Collect candidate base positions from short positions and position string (best-of evaluation)
+  const allowedBase = new Set([
+    'GK',
+    'DR',
+    'DC',
+    'DL',
+    'WBR',
+    'WBL',
+    'DM',
+    'MR',
+    'MC',
+    'ML',
+    'AMR',
+    'AMC',
+    'AML',
+    'ST',
+  ])
+  const shortPositions = Array.isArray(player.shortPositions)
+    ? player.shortPositions
+    : Array.isArray(player.short_positions)
+      ? player.short_positions
+      : []
+  const candidatesFromShort = shortPositions
+    .map((p) => String(p).toUpperCase())
+    .filter((p) => allowedBase.has(p))
+  const regexAll = /\b(GK|DR|DC|DL|WBR|WBL|DM|MR|MC|ML|AMR|AMC|AML|ST)\b/g
+  const matchesFromStr = posStrRaw.match(regexAll) || []
+  const candidateBasePositions = [
+    ...new Set([...candidatesFromShort, ...matchesFromStr].filter((p) => p !== 'GK')),
+  ]
 
   const positionArchetypeWeights = {
     DR: [
@@ -182,31 +209,8 @@ export const getFifaWeightedOverallByPosition = (player) => {
     ANY: { PHY: 15, PAC: 30, PAS: 15, DEF: 15, DRI: 15, SHO: 10 },
   }
 
-  const archetypes = positionArchetypeWeights[basePos]
-  if (!archetypes || archetypes.length === 0) {
-    let weights = perPositionWeights[basePos]
-    if (!weights) {
-      const isDef = /\bD[CRL]\b|\bWB[RL]\b|\bDM\b/.test(posStrRaw)
-      const isMid = /\bM[CRL]\b|\bAM[CRL]\b/.test(posStrRaw)
-      const isAtt = /\bST\b|\bAM[CRL]\b|\bW[BRL]\b/.test(posStrRaw)
-      if (isAtt) weights = genericGroups.ATT
-      else if (isMid) weights = genericGroups.MID
-      else if (isDef) weights = genericGroups.DEF
-      else weights = genericGroups.ANY
-    }
-    const weightedSum =
-      SHO * (weights.SHO || 0) +
-      PAC * (weights.PAC || 0) +
-      DRI * (weights.DRI || 0) +
-      PHY * (weights.PHY || 0) +
-      PAS * (weights.PAS || 0) +
-      DEF * (weights.DEF || 0)
-    const total = Object.values(weights).reduce((a, b) => a + b, 0) || 1
-    return Math.round(weightedSum / total)
-  }
-
-  let best = 0
-  for (const weights of archetypes) {
+  // Helper to score a single weights object
+  const scoreForWeights = (weights) => {
     const weightedSum =
       SHO * (weights.SHO || 0) +
       PAC * (weights.PAC || 0) +
@@ -221,11 +225,57 @@ export const getFifaWeightedOverallByPosition = (player) => {
       (weights.PHY || 0) +
       (weights.PAS || 0) +
       (weights.DEF || 0)
-    if (total <= 0) continue
-    const score = Math.round(weightedSum / total)
-    if (score > best) best = score
+    if (!total) return 0
+    return Math.round(weightedSum / total)
   }
-  return best
+
+  // If we have at least one candidate base position, evaluate all and return the best
+  if (candidateBasePositions.length > 0) {
+    let bestAcrossPositions = 0
+    for (const basePos of candidateBasePositions) {
+      const archetypes = positionArchetypeWeights[basePos]
+      if (archetypes && archetypes.length > 0) {
+        let bestForThisPos = 0
+        for (const weights of archetypes) {
+          const score = scoreForWeights(weights)
+          if (score > bestForThisPos) bestForThisPos = score
+        }
+        if (bestForThisPos > bestAcrossPositions) bestAcrossPositions = bestForThisPos
+        continue
+      }
+      const weights = perPositionWeights[basePos]
+      if (weights) {
+        const score = scoreForWeights(weights)
+        if (score > bestAcrossPositions) bestAcrossPositions = score
+        continue
+      }
+      // Generic fallback by group if we somehow have an unrecognized basePos
+      const isDef = /^(DR|DC|DL|WBR|WBL|DM)$/.test(basePos)
+      const isMid = /^(MR|MC|ML|AMR|AMC|AML)$/.test(basePos)
+      const isAtt = /^(ST)$/.test(basePos)
+      const generic = isAtt
+        ? genericGroups.ATT
+        : isMid
+          ? genericGroups.MID
+          : isDef
+            ? genericGroups.DEF
+            : genericGroups.ANY
+      const score = scoreForWeights(generic)
+      if (score > bestAcrossPositions) bestAcrossPositions = score
+    }
+    return bestAcrossPositions
+  }
+
+  // No specific base positions identified: infer via generic groups from the raw position string
+  let weights = null
+  const isDef = /\bD[CRL]\b|\bWB[RL]\b|\bDM\b/.test(posStrRaw)
+  const isMid = /\bM[CRL]\b|\bAM[CRL]\b/.test(posStrRaw)
+  const isAtt = /\bST\b|\bAM[CRL]\b|\bW[BRL]\b/.test(posStrRaw)
+  if (isAtt) weights = genericGroups.ATT
+  else if (isMid) weights = genericGroups.MID
+  else if (isDef) weights = genericGroups.DEF
+  else weights = genericGroups.ANY
+  return scoreForWeights(weights)
 }
 
 /**
