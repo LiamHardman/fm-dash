@@ -297,6 +297,7 @@
 
                     <div class="col-12 col-md-8">
                         <q-card
+                            v-if="activeTab === 'advanced'"
                             flat
                             bordered
                             class="q-mb-sm player-profile-card modern-profile-card"
@@ -518,7 +519,7 @@
 
                                 <q-separator spaced="md" class="profile-separator" />
 
-                                <div class="fifa-stats-section">
+                                <div v-if="activeTab === 'advanced'" class="fifa-stats-section">
                                     <div class="fifa-stats-grid">
                                         <div
                                             v-for="stat in fifaStatsToDisplay"
