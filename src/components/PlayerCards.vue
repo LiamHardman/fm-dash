@@ -54,6 +54,8 @@
 <script>
 import { useQuasar } from 'quasar'
 import { computed, defineComponent, onMounted, ref, watch } from 'vue'
+import { useUiStore } from '@/stores/uiStore'
+import { getFifaWeightedOverallByPosition } from '@/utils/playerUtils'
 import { fetchFullPlayerStats } from '../services/playerService'
 import TeamLogo from './TeamLogo.vue'
 
@@ -139,6 +141,7 @@ export default defineComponent({
   emits: ['click'],
   setup(props, { emit }) {
     const qInstance = useQuasar()
+    const uiStore = useUiStore()
     const detailedPlayerData = ref(null)
     const isLoadingDetailedData = ref(false)
     const imageLoadError = ref(false)
@@ -284,8 +287,17 @@ export default defineComponent({
       // Use detailed player data if available, otherwise use props
       const playerData = detailedPlayerData.value || props.player
 
-      // If no role is selected, use the player's main overall
+      // If no role is selected, optionally use stat summary overall if setting is enabled
       if (!props.selectedRole) {
+        if (uiStore?.useStatSummaryForOverall) {
+          // Prefer the already-calibrated Overall from the row mapping when available
+          const mapped = playerData.Overall ?? playerData.overall
+          if (typeof mapped === 'number' && mapped > 0) return mapped
+          // Fallback to raw FIFA summary if mapping isn't present (e.g., detail view)
+          try {
+            return getFifaWeightedOverallByPosition(playerData)
+          } catch (_e) {}
+        }
         return playerData.overall || playerData.Overall || 0
       }
 
@@ -330,6 +342,11 @@ export default defineComponent({
       }
 
       // Fall back to main overall if no role-specific rating found
+      if (uiStore?.useStatSummaryForOverall && !props.selectedRole) {
+        try {
+          return getFifaWeightedOverallByPosition(playerData)
+        } catch (_e) {}
+      }
       return playerData.overall || playerData.Overall || 0
     })
 

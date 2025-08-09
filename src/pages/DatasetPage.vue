@@ -255,8 +255,10 @@ import UpgradeFinderDialog from '../components/UpgradeFinderDialog.vue'
 import WonderkidsDialog from '../components/WonderkidsDialog.vue'
 import { useAnalytics } from '../composables/useAnalytics'
 import { usePlayerStore } from '../stores/playerStore'
+import { useUiStore } from '../stores/uiStore'
 import { useWishlistStore } from '../stores/wishlistStore'
 import { exportPlayersToCSV } from '../utils/csvExport'
+import { getFifaWeightedOverallByPosition } from '../utils/playerUtils'
 
 const rawTechnicalAttributeKeysConst = [
   'Cor',
@@ -334,6 +336,7 @@ export default {
     const route = useRoute()
     const playerStore = usePlayerStore()
     const wishlistStore = useWishlistStore()
+    const uiStore = useUiStore()
     const analytics = useAnalytics()
 
     const pageLoading = ref(true)
@@ -386,6 +389,7 @@ export default {
 
     // Computed properties from store
     const allPlayersData = computed(() => playerStore.allPlayers)
+    // Removed normalization/calibration; use raw FIFA-based overall from weights
     const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol)
     const currentDatasetId = computed(() => playerStore.currentDatasetId)
     const loading = computed(() => playerStore.loading)
@@ -853,6 +857,15 @@ export default {
                 `Role-specific overall applied for ${player.name}: ${roleSpecificOverall} (role: ${currentFilters.value.role})`
               )
               return { ...player, Overall: roleSpecificOverall, overall: roleSpecificOverall }
+            }
+          }
+          // If no specific role filter is active, optionally use FIFA stat summary for overall
+          if (uiStore.useStatSummaryForOverall) {
+            try {
+              const fifaOverall = getFifaWeightedOverallByPosition(player)
+              return { ...player, Overall: fifaOverall, overall: fifaOverall }
+            } catch (_e) {
+              return player
             }
           }
           return player

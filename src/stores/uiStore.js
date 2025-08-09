@@ -9,6 +9,9 @@ export const useUiStore = defineStore('ui', () => {
   // Rating calculation method preference
   const useScaledRatings = ref(true) // Default to new scaled ratings
 
+  // Overall calculation preference: use FIFA stat summary by position (off by default)
+  const useStatSummaryForOverall = ref(false)
+
   // Display preferences
   const showFaces = ref(true) // Default to showing faces
   const showLogos = ref(true) // Default to showing logos
@@ -52,6 +55,24 @@ export const useUiStore = defineStore('ui', () => {
     useScaledRatings.value = useScaled
     try {
       localStorage.setItem('useScaledRatings', useScaled ? 'true' : 'false')
+    } catch (_e) {}
+  }
+
+  // Toggle and set functions for stat summary overall preference
+  function toggleStatSummaryOverall() {
+    useStatSummaryForOverall.value = !useStatSummaryForOverall.value
+    try {
+      localStorage.setItem(
+        'useStatSummaryForOverall',
+        useStatSummaryForOverall.value ? 'true' : 'false'
+      )
+    } catch (_e) {}
+  }
+
+  function setStatSummaryOverall(enabled) {
+    useStatSummaryForOverall.value = !!enabled
+    try {
+      localStorage.setItem('useStatSummaryForOverall', enabled ? 'true' : 'false')
     } catch (_e) {}
   }
 
@@ -133,6 +154,16 @@ export const useUiStore = defineStore('ui', () => {
     } catch (_e) {}
   }
 
+  // Initialize overall calculation preference (FIFA stat summary)
+  function initStatSummaryOverall() {
+    try {
+      const storedPreference = localStorage.getItem('useStatSummaryForOverall')
+      if (storedPreference !== null) {
+        useStatSummaryForOverall.value = storedPreference === 'true'
+      }
+    } catch (_e) {}
+  }
+
   // Initialize faces display preferences
   function initFacesDisplay() {
     try {
@@ -167,6 +198,7 @@ export const useUiStore = defineStore('ui', () => {
   function initSettings() {
     initDarkMode()
     initRatingCalculation()
+    initStatSummaryOverall()
     initFacesDisplay()
     initLogosDisplay()
     initAttributeMasksDisplay()
@@ -189,6 +221,10 @@ export const useUiStore = defineStore('ui', () => {
     toggleRatingCalculation,
     setRatingCalculation,
     initRatingCalculation,
+    useStatSummaryForOverall,
+    toggleStatSummaryOverall,
+    setStatSummaryOverall,
+    initStatSummaryOverall,
     showFaces,
     toggleFaces,
     setFacesDisplay,
