@@ -812,18 +812,34 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 		// Calculate percentiles with appropriate filtering using optimized algorithm
 		ctx, percentileSpan := StartSpan(ctx, "percentiles.calculate")
 
-		if divisionFilter != DivisionFilterAll {
-			// Recalculate percentiles with division filter
-			CalculatePlayerPerformancePercentilesWithDivisionFilter(playersCopy, divisionFilter, targetDivision)
+		// Fast path: if divisionFilter is ALL and players already have global percentiles, skip recomputation
+		hasGlobal := false
+		if len(playersCopy) > 0 && playersCopy[0].PerformancePercentiles != nil {
+			if _, ok := playersCopy[0].PerformancePercentiles["Global"]; ok {
+				hasGlobal = true
+			}
+		}
+
+		// Try loading reusable percentile distributions from persistent cache
+		distributions, foundDists := loadPercentileDistributionsFromCache(ctx, datasetID, divisionFilterStr, targetDivision)
+
+		if divisionFilter == DivisionFilterAll && hasGlobal {
+			// Skip recalculation entirely when global percentiles exist
+		} else if foundDists {
+			// Apply precomputed distributions
+			ApplyPercentilesFromDistributions(playersCopy, distributions)
 		} else {
-			// Calculate global percentiles using optimized algorithm
-			CalculatePlayerPerformancePercentiles(playersCopy)
+			// Compute distributions, apply, and persist reusable cache
+			dists := BuildPercentileDistributions(playersCopy, divisionFilter, targetDivision)
+			ApplyPercentilesFromDistributions(playersCopy, dists)
+			// Persist for reuse
+			savePercentileDistributionsToCache(ctx, datasetID, divisionFilterStr, targetDivision, dists)
 		}
 
 		players = playersCopy
 		percentileSpan.End()
 
-		// Cache the percentile-calculated data for future requests
+		// Cache only light wrapper; heavy work is now in reusable distributions cache
 		cacheData := struct {
 			Players        []Player
 			CurrencySymbol string
