@@ -209,7 +209,7 @@ export default defineComponent({
       // Added CF as a direct mapping for striker roles
       if (bestPosition.includes('ST')) return 'ST'
       if (bestPosition.includes('AM')) {
-        if (bestPosition.includes('C')) return 'CF' // Treat central AM as CF
+        if (bestPosition.includes('C')) return 'CAM'
       }
 
       return fmToFifaPositionMap[bestPosition] || bestPosition

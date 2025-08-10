@@ -215,7 +215,7 @@ export class ImagePreloader {
   }
 
   // Intelligent preloading based on viewport and connection
-  intelligentPreload(sources, priority = 'normal') {
+  intelligentPreload(sources, _priority = 'normal') {
     const connection = navigator.connection || {}
     const effectiveType = connection.effectiveType || '4g'
 

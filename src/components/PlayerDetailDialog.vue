@@ -941,6 +941,7 @@ import { useUiStore } from '../stores/uiStore'
 import { formatCurrency } from '../utils/currencyUtils'
 import logger from '../utils/logger.js'
 import { getCachedPlayerData, setCachedPlayerData } from '../utils/playerDetailOptimizer.js'
+import { deriveShortPositionsFromPositionString } from '../utils/playerUtils'
 
 // Lazy load TeamLogo component to prevent blocking dialog opening
 const TeamLogo = defineAsyncComponent(() => import('../components/TeamLogo.vue'))
@@ -2463,89 +2464,19 @@ export default defineComponent({
 
     // Helper functions to derive position information from available data
     const deriveShortPositions = (player) => {
-      const positions = []
-
-      // Extract from position field (e.g., "D (RC), WB (R)" -> ["DC", "DR", "WBR"])
+      const positions = new Set()
       if (player.position) {
-        const positionParts = player.position.split(',').map((p) => p.trim())
-        for (const part of positionParts) {
-          // Extract the position abbreviation and the side/role info
-          const match = part.match(/^([A-Z/]+)\s*\(([^)]+)\)$/)
-          if (match) {
-            const basePos = match[1] // e.g., "D", "WB", "D/WB"
-            const sideInfo = match[2] // e.g., "RC", "R", "RL"
-
-            // Split compound positions (e.g., "D/WB" -> ["D", "WB"])
-            const positionTypes = basePos.split('/')
-
-            for (const posType of positionTypes) {
-              // Handle side-specific positions
-              if (sideInfo.includes('C')) {
-                // Center position
-                if (posType === 'D') {
-                  positions.push('DC')
-                } else if (posType === 'WB') {
-                  positions.push('WBR') // Default to right wing-back for center
-                } else if (posType === 'AM') {
-                  positions.push('AMC')
-                } else if (posType === 'M') {
-                  positions.push('MC')
-                } else {
-                  positions.push(posType)
-                }
-              }
-
-              if (sideInfo.includes('R')) {
-                // Right position
-                if (posType === 'D') {
-                  positions.push('DR')
-                } else if (posType === 'WB') {
-                  positions.push('WBR')
-                } else if (posType === 'AM') {
-                  positions.push('AMR')
-                } else if (posType === 'M') {
-                  positions.push('MR')
-                } else {
-                  positions.push(posType)
-                }
-              }
-
-              if (sideInfo.includes('L')) {
-                // Left position
-                if (posType === 'D') {
-                  positions.push('DL')
-                } else if (posType === 'WB') {
-                  positions.push('WBL')
-                } else if (posType === 'AM') {
-                  positions.push('AML')
-                } else if (posType === 'M') {
-                  positions.push('ML')
-                } else {
-                  positions.push(posType)
-                }
-              }
-            }
-          } else {
-            // Handle simple position without side info
-            const shortPos = part.split(' ')[0]
-            if (shortPos && !positions.includes(shortPos)) {
-              positions.push(shortPos)
-            }
-          }
+        for (const p of deriveShortPositionsFromPositionString(player.position)) {
+          positions.add(p)
         }
       }
-
-      // Extract from role names in roleSpecificOveralls
       if (player.roleSpecificOveralls) {
         for (const role of player.roleSpecificOveralls) {
-          const shortPos = role.roleName.split(' - ')[0] // Extract "AMC" from "AMC - Trequartista - Attack"
-          if (shortPos && !positions.includes(shortPos)) {
-            positions.push(shortPos)
-          }
+          const shortPos = role.roleName.split(' - ')[0]
+          if (shortPos) positions.add(shortPos)
         }
       }
-
-      return positions
+      return Array.from(positions)
     }
 
     const derivePositionGroups = (player) => {
@@ -2736,7 +2667,7 @@ export default defineComponent({
     })
 
     // Enhanced cache with access tracking
-    const getCachedData = (cache, key) => {
+    const _getCachedData = (cache, key) => {
       const data = cache.get(key)
       if (data) {
         data._lastAccess = Date.now()
@@ -2746,7 +2677,7 @@ export default defineComponent({
     }
 
     // Enhanced cache setter with access tracking
-    const setCachedData = (cache, key, data) => {
+    const _setCachedData = (cache, key, data) => {
       data._lastAccess = Date.now()
       cache.set(key, data)
 

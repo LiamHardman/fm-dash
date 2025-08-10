@@ -60,7 +60,7 @@ export const getPlayerOverall = (player) => {
  */
 export const getFifaWeightedOverallByPosition = (player) => {
   if (!player) return 0
-  const isGK = (player.position && player.position.includes('GK')) || player.GK > 0 || player.gk > 0
+  const isGK = player.position?.includes('GK') || player.GK > 0 || player.gk > 0
   if (isGK) {
     // Use primary GK category if present
     const parts = [
@@ -110,8 +110,40 @@ export const getFifaWeightedOverallByPosition = (player) => {
   const candidatesFromShort = shortPositions
     .map((p) => String(p).toUpperCase())
     .filter((p) => allowedBase.has(p))
-  const regexAll = /\b(GK|DR|DC|DL|WBR|WBL|DM|MR|MC|ML|AMR|AMC|AML|ST)\b/g
-  const matchesFromStr = posStrRaw.match(regexAll) || []
+  // Extract compact tokens (e.g., "MC", "AMC") directly
+  const compactTokenRegex = /\b(GK|DR|DC|DL|WBR|WBL|DM|MR|MC|ML|AMR|AMC|AML|ST)\b/g
+  const compactMatches = posStrRaw.match(compactTokenRegex) || []
+  // Extract spaced tokens like "M (C)", "AM (R)", "D (L)", "WB (R)" and normalize them
+  const spacedTokenRegex = /\b(AM|DM|WB|[DMWA])\s*\(\s*([CRL])\s*\)\b/g
+  const spacedMatchesNormalized = []
+  for (const match of posStrRaw.matchAll(spacedTokenRegex)) {
+    const group = match[1]
+    const side = match[2]
+    let normalized = ''
+    switch (group) {
+      case 'D':
+        normalized = side === 'C' ? 'DC' : side === 'R' ? 'DR' : 'DL'
+        break
+      case 'M':
+        normalized = side === 'C' ? 'MC' : side === 'R' ? 'MR' : 'ML'
+        break
+      case 'AM':
+        normalized = side === 'C' ? 'AMC' : side === 'R' ? 'AMR' : 'AML'
+        break
+      case 'WB':
+        normalized = side === 'R' ? 'WBR' : 'WBL'
+        break
+      case 'W':
+        normalized = side === 'R' ? 'AMR' : 'AML' // Map wide mids to AMR/AML for weighting purposes
+        break
+      default:
+        normalized = ''
+    }
+    if (normalized && allowedBase.has(normalized)) {
+      spacedMatchesNormalized.push(normalized)
+    }
+  }
+  const matchesFromStr = [...compactMatches, ...spacedMatchesNormalized]
   const candidateBasePositions = [
     ...new Set([...candidatesFromShort, ...matchesFromStr].filter((p) => p !== 'GK')),
   ]
@@ -159,6 +191,8 @@ export const getFifaWeightedOverallByPosition = (player) => {
       { PAS: 35, DRI: 20, PAC: 10, DEF: 15, PHY: 10, SHO: 10 },
       { PAS: 20, DRI: 15, PAC: 20, DEF: 15, PHY: 20, SHO: 10 },
       { PAS: 15, DRI: 10, PAC: 15, DEF: 30, PHY: 20, SHO: 10 },
+      // Creator-focused MC archetype to better reflect playmakers
+      { PAS: 47, DRI: 32, PAC: 12, PHY: 5, DEF: 2, SHO: 2 },
     ],
     AMR: [
       { PAC: 30, DRI: 25, PAS: 20, SHO: 20, PHY: 3, DEF: 2 },
@@ -174,6 +208,8 @@ export const getFifaWeightedOverallByPosition = (player) => {
       { PAS: 30, DRI: 25, PAC: 10, SHO: 25, PHY: 5, DEF: 5 },
       { PAS: 20, DRI: 20, PAC: 15, SHO: 35, PHY: 5, DEF: 5 },
       { PAS: 25, DRI: 20, PAC: 20, SHO: 20, PHY: 10, DEF: 5 },
+      // Creator-focused AMC archetype: de-emphasize SHO, boost PAS/DRI/PAC
+      { PAS: 37, DRI: 28, PAC: 18, SHO: 10, PHY: 5, DEF: 2 },
     ],
     ST: [
       { SHO: 40, PAC: 30, DRI: 15, PHY: 10, PAS: 3, DEF: 2 },
@@ -276,6 +312,132 @@ export const getFifaWeightedOverallByPosition = (player) => {
   else if (isDef) weights = genericGroups.DEF
   else weights = genericGroups.ANY
   return scoreForWeights(weights)
+}
+
+/**
+ * Derive short position codes (e.g., DR, DC, MC, AMC) from an FM-style position string.
+ * Mirrors backend ParsePlayerPositionsGo behavior closely for consistency.
+ * @param {string} positionStr
+ * @returns {string[]} Unique short codes
+ */
+export const deriveShortPositionsFromPositionString = (positionStr) => {
+  if (!positionStr || typeof positionStr !== 'string') return []
+
+  const results = new Set()
+  const allowedBase = new Set([
+    'GK',
+    'SW',
+    'DR',
+    'DC',
+    'DL',
+    'WBR',
+    'WBL',
+    'DM',
+    'MR',
+    'MC',
+    'ML',
+    'AMR',
+    'AMC',
+    'AML',
+    'ST',
+  ])
+
+  const mainParts = positionStr
+    .toUpperCase()
+    .split(',')
+    .map((p) => p.trim())
+    .filter(Boolean)
+  for (const part of mainParts) {
+    // Extract roles segment and sides from parentheses
+    const endIdx = part.lastIndexOf(')')
+    const startIdx = part.lastIndexOf('(')
+    let rolesSegment = part
+    let explicitSides = []
+    if (endIdx === part.length - 1 && startIdx > 0 && startIdx < endIdx) {
+      rolesSegment = part.slice(0, startIdx).trim()
+      const sides = part.slice(startIdx + 1, endIdx)
+      explicitSides = sides.split('').filter((c) => c === 'R' || c === 'L' || c === 'C')
+    }
+
+    const roleKeys = rolesSegment
+      .split('/')
+      .map((k) => k.trim())
+      .filter(Boolean)
+    for (const roleKey of roleKeys) {
+      // If already a direct short code like DR, MC, AML, add and continue
+      if (allowedBase.has(roleKey)) {
+        results.add(roleKey)
+        continue
+      }
+
+      // Determine sides to use
+      let sidesToUse = explicitSides
+      if (sidesToUse.length === 0) {
+        switch (roleKey) {
+          case 'D':
+          case 'M':
+          case 'AM':
+          case 'DM':
+          case 'ST':
+          case 'SW':
+            sidesToUse = ['C']
+            break
+          case 'WB':
+            // WB needs explicit side; skip if not provided
+            sidesToUse = []
+            break
+          case 'GK':
+            sidesToUse = ['']
+            break
+          default:
+            sidesToUse = ['']
+            break
+        }
+      }
+
+      for (const side of sidesToUse) {
+        let short = ''
+        if (side === '') {
+          short = roleKey
+        } else {
+          switch (roleKey) {
+            case 'D':
+              short = side === 'C' ? 'DC' : side === 'R' ? 'DR' : 'DL'
+              break
+            case 'M':
+              short = side === 'C' ? 'MC' : side === 'R' ? 'MR' : 'ML'
+              break
+            case 'AM':
+              short = side === 'C' ? 'AMC' : side === 'R' ? 'AMR' : 'AML'
+              break
+            case 'DM':
+              short = 'DM'
+              break
+            case 'WB':
+              if (side === 'R') short = 'WBR'
+              if (side === 'L') short = 'WBL'
+              break
+            case 'ST':
+              short = 'ST'
+              break
+            case 'SW':
+              short = 'SW'
+              break
+            case 'GK':
+              short = 'GK'
+              break
+            default:
+              short = roleKey + side
+          }
+        }
+        if (short && allowedBase.has(short)) {
+          results.add(short)
+        }
+      }
+    }
+  }
+
+  return Array.from(results)
 }
 
 /**

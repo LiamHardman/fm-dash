@@ -172,7 +172,7 @@ export default defineComponent({
             if (
               percentile === null ||
               percentile === undefined ||
-              isNaN(percentile) ||
+              Number.isNaN(percentile) ||
               percentile < 0
             ) {
               return null
@@ -234,7 +234,7 @@ export default defineComponent({
             if (
               percentile === null ||
               percentile === undefined ||
-              isNaN(percentile) ||
+              Number.isNaN(percentile) ||
               percentile < 0
             ) {
               return null
