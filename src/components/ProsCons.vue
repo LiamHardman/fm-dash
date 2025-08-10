@@ -95,32 +95,28 @@ const performanceStatCategories = {
     stats: ['Shot/90', 'ShT/90'],
     lowerIsBetter: false,
   },
-  'Chance Creation': {
-    stats: ['Asts/90', 'xA/90', 'K Ps/90', 'Ch C/90'],
-    lowerIsBetter: false,
-  },
-  Passing: {
-    stats: ['Ps C/90', 'Ps A/90', 'Pas %', 'Pr passes/90'],
-    lowerIsBetter: false,
-  },
-  Crossing: {
-    stats: ['Cr C/90', 'CRS A/90', 'Cr C/A'],
+  'Ball Progression': {
+    stats: [
+      'Ps C/90',
+      'Ps A/90',
+      'Pas %',
+      'Pr passes/90',
+      'Asts/90',
+      'xA/90',
+      'K Ps/90',
+      'Ch C/90',
+      'Cr C/90',
+      'CRS A/90',
+      'Cr C/A',
+    ],
     lowerIsBetter: false,
   },
   Dribbling: {
     stats: ['Drb/90'],
     lowerIsBetter: false,
   },
-  'Defensive Actions': {
-    stats: ['Tck/90', 'Int/90', 'Blk/90', 'Clr/90'],
-    lowerIsBetter: false,
-  },
-  'Defensive Efficiency': {
-    stats: ['Tck R', 'Hdrs W/90'],
-    lowerIsBetter: false,
-  },
-  Pressing: {
-    stats: ['Pres C/90'],
+  Defending: {
+    stats: ['Tck/90', 'Int/90', 'Blk/90', 'Clr/90', 'Tck R', 'Hdrs W/90', 'Pres C/90'],
     lowerIsBetter: false,
   },
   'Shot Stopping': {
