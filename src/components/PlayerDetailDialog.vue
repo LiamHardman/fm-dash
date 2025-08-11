@@ -413,6 +413,22 @@
                                                                 </q-tooltip>
                                                             </q-icon>
                                                         </h5>
+                                                        <div v-if="bestPlaystyleTagline" class="player-tagline q-mt-xs">
+                                                            <q-badge
+                                                              outline
+                                                              color="grey"
+                                                              :label="bestPlaystyleTagline.playstyle"
+                                                              class="player-tagline-badge"
+                                                            />
+                                                            <q-tooltip
+                                                              :class="isDarkMode ? 'bg-grey-7 text-white' : 'bg-white text-dark'"
+                                                              :delay="300"
+                                                              max-width="340px"
+                                                              class="modern-tooltip"
+                                                            >
+                                                              {{ bestPlaystyleTagline.significance }}
+                                                            </q-tooltip>
+                                                        </div>
                                                         <div class="player-status-badges q-mt-xs">
                                                             <q-badge
                                                                 v-if="player.isNew"
@@ -942,6 +958,7 @@ import { formatCurrency } from '../utils/currencyUtils'
 import logger from '../utils/logger.js'
 import { getCachedPlayerData, setCachedPlayerData } from '../utils/playerDetailOptimizer.js'
 import { deriveShortPositionsFromPositionString } from '../utils/playerUtils'
+import { ATTRIBUTE_NAME_TO_KEY, PLAYSTYLE_TAGLINES } from '../utils/playstyleTaglines.js'
 
 // Lazy load TeamLogo component to prevent blocking dialog opening
 const TeamLogo = defineAsyncComponent(() => import('../components/TeamLogo.vue'))
@@ -1738,6 +1755,60 @@ export default defineComponent({
       lastRoleOveralls = roleOveralls
       lastSortedRoles = [...roleOveralls].sort((a, b) => b.score - a.score)
       return lastSortedRoles
+    })
+
+    // Determine best-base position for tagline from roleSpecificOveralls, fallback to derived short positions
+    const bestBasePosition = computed(() => {
+      const roleOveralls = displayPlayer.value?.roleSpecificOveralls
+      if (roleOveralls && roleOveralls.length > 0) {
+        const best = [...roleOveralls].sort((a, b) => b.score - a.score)[0]
+        if (best?.roleName) {
+          const short = String(best.roleName).split(' - ')[0]
+          return short
+        }
+      }
+      // fallback: first derived short position if available
+      const derived = deriveShortPositions(displayPlayer.value || {})
+      return derived.length > 0 ? derived[0] : null
+    })
+
+    // Score a playstyle against player's numeric attributes (1-20 scale where available).
+    // For each attribute in fm_attributes, map to our attribute key and average available values.
+    const scorePlaystyle = (player, fmAttributes) => {
+      if (!player || !Array.isArray(fmAttributes) || fmAttributes.length === 0) return 0
+      const attrs = player.numericAttributes || player.attributes || {}
+      let sum = 0
+      let count = 0
+      for (const name of fmAttributes) {
+        const key = ATTRIBUTE_NAME_TO_KEY[name]
+        if (!key) continue
+        const val = attrs[key]
+        const num = typeof val === 'number' ? val : Number.parseInt(val, 10)
+        if (!Number.isNaN(num)) {
+          sum += num
+          count += 1
+        }
+      }
+      if (count === 0) return 0
+      return Math.round(sum / count)
+    }
+
+    // Compute the best matching playstyle for the best base position
+    const bestPlaystyleTagline = computed(() => {
+      const pos = bestBasePosition.value
+      if (!pos) return null
+      const list = PLAYSTYLE_TAGLINES[pos]
+      if (!list || list.length === 0) return null
+      let best = null
+      let bestScore = -1
+      for (const item of list) {
+        const score = scorePlaystyle(displayPlayer.value, item.fm_attributes)
+        if (score > bestScore) {
+          bestScore = score
+          best = item
+        }
+      }
+      return best
     })
 
     // Memoized currency formatting with caching
@@ -2747,6 +2818,7 @@ export default defineComponent({
 
       // Player positions computed property
       playerPositions,
+      bestPlaystyleTagline,
 
       // Tab system
       activeTab,
