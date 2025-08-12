@@ -352,30 +352,18 @@ func (s *S3Storage) storeSync(datasetID string, data DatasetData) error {
 		return fmt.Errorf("failed to marshal data: %w", err)
 	}
 
-	// Compress the JSON data
-	compressedData, err := compressData(jsonData)
-	if err != nil {
-		RecordError(ctx, err, "Failed to compress dataset data")
-		return fmt.Errorf("failed to compress data: %w", err)
-	}
-
-	objectName := fmt.Sprintf("datasets/%s.json.gz", datasetID)
-	reader := bytes.NewReader(compressedData)
+	// Store uncompressed JSON data
+	objectName := fmt.Sprintf("datasets/%s.json", datasetID)
+	reader := bytes.NewReader(jsonData)
 
 	SetSpanAttributes(ctx,
 		attribute.String("s3.bucket", s.bucketName),
 		attribute.String("s3.object", objectName),
 		attribute.Int("data.size_bytes", len(jsonData)),
-		attribute.Int("compressed.size_bytes", len(compressedData)),
-		attribute.Float64("compression.ratio", float64(len(jsonData))/float64(len(compressedData))),
 	)
 
-	_, err = s.client.PutObject(ctx, s.bucketName, objectName, reader, int64(len(compressedData)), minio.PutObjectOptions{
-		ContentType: "application/gzip",
-		UserMetadata: map[string]string{
-			"compression":   "gzip",
-			"original-size": fmt.Sprintf("%d", len(jsonData)),
-		},
+	_, err = s.client.PutObject(ctx, s.bucketName, objectName, reader, int64(len(jsonData)), minio.PutObjectOptions{
+		ContentType: "application/json",
 	})
 	if err != nil {
 		RecordError(ctx, err, "Failed to store to S3")
@@ -410,9 +398,9 @@ func (s *S3Storage) retrieveSync(datasetID string) (DatasetData, error) {
 		return s.fallback.Retrieve(datasetID)
 	}
 
-	// Try compressed file first, then fall back to uncompressed
-	objectName := fmt.Sprintf("datasets/%s.json.gz", datasetID)
-	isCompressed := true
+	// Try uncompressed file first, then fall back to legacy compressed
+	objectName := fmt.Sprintf("datasets/%s.json", datasetID)
+	isCompressed := false
 
 	SetSpanAttributes(ctx,
 		attribute.String("s3.bucket", s.bucketName),
@@ -422,9 +410,9 @@ func (s *S3Storage) retrieveSync(datasetID string) (DatasetData, error) {
 	start := time.Now()
 	object, err := s.client.GetObject(ctx, s.bucketName, objectName, minio.GetObjectOptions{})
 	if err != nil {
-		// Try uncompressed file
-		objectName = fmt.Sprintf("datasets/%s.json", datasetID)
-		isCompressed = false
+		// Try legacy compressed file
+		objectName = fmt.Sprintf("datasets/%s.json.gz", datasetID)
+		isCompressed = true
 		SetSpanAttributes(ctx, attribute.String("s3.object", objectName))
 		object, err = s.client.GetObject(ctx, s.bucketName, objectName, minio.GetObjectOptions{})
 		if err != nil {
@@ -453,7 +441,7 @@ func (s *S3Storage) retrieveSync(datasetID string) (DatasetData, error) {
 		attribute.Bool("data.compressed", isCompressed),
 	)
 
-	// Decompress if necessary
+	// Decompress only if legacy compressed object was used
 	var jsonData []byte
 	if isCompressed {
 		jsonData, err = decompressData(data)
@@ -493,13 +481,17 @@ func (s *S3Storage) deleteSync(datasetID string) error {
 		return s.fallback.Delete(datasetID)
 	}
 
-	objectName := fmt.Sprintf("datasets/%s.json", datasetID)
 	ctx := context.Background()
 
-	err := s.client.RemoveObject(ctx, s.bucketName, objectName, minio.RemoveObjectOptions{})
-	if err != nil {
-		LogWarn("Warning: Failed to delete from S3: %v. Using fallback storage.", err)
-		return s.fallback.Delete(datasetID)
+	// Attempt to delete both uncompressed and legacy compressed objects
+	jsonObject := fmt.Sprintf("datasets/%s.json", datasetID)
+	gzObject := fmt.Sprintf("datasets/%s.json.gz", datasetID)
+
+	if err := s.client.RemoveObject(ctx, s.bucketName, jsonObject, minio.RemoveObjectOptions{}); err != nil {
+		LogWarn("Warning: Failed to delete JSON object from S3: %v", err)
+	}
+	if err := s.client.RemoveObject(ctx, s.bucketName, gzObject, minio.RemoveObjectOptions{}); err != nil {
+		LogWarn("Warning: Failed to delete legacy GZIP object from S3: %v", err)
 	}
 
 	if err := s.fallback.Delete(datasetID); err != nil {
@@ -529,10 +521,24 @@ func (s *S3Storage) List() ([]string, error) {
 			return s.fallback.List()
 		}
 
-		if strings.HasSuffix(object.Key, ".json") {
+		if strings.HasSuffix(object.Key, ".json") || strings.HasSuffix(object.Key, ".json.gz") {
 			id := strings.TrimPrefix(object.Key, "datasets/")
-			id = strings.TrimSuffix(id, ".json")
-			ids = append(ids, id)
+			if strings.HasSuffix(id, ".json.gz") {
+				id = strings.TrimSuffix(id, ".json.gz")
+			} else {
+				id = strings.TrimSuffix(id, ".json")
+			}
+			// Deduplicate ids when both formats exist
+			exists := false
+			for _, existing := range ids {
+				if existing == id {
+					exists = true
+					break
+				}
+			}
+			if !exists {
+				ids = append(ids, id)
+			}
 		}
 	}
 
@@ -565,13 +571,17 @@ func (s *S3Storage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets []s
 			continue
 		}
 
-		if !strings.HasSuffix(object.Key, ".json") {
+		if !strings.HasSuffix(object.Key, ".json") && !strings.HasSuffix(object.Key, ".json.gz") {
 			continue
 		}
 
 		// Extract dataset ID from object key
 		datasetID := strings.TrimPrefix(object.Key, "datasets/")
-		datasetID = strings.TrimSuffix(datasetID, ".json")
+		if strings.HasSuffix(datasetID, ".json.gz") {
+			datasetID = strings.TrimSuffix(datasetID, ".json.gz")
+		} else {
+			datasetID = strings.TrimSuffix(datasetID, ".json")
+		}
 
 		// Skip excluded datasets (like demo)
 		if excludeSet[datasetID] {
@@ -718,8 +728,8 @@ func (s *LocalFileStorage) Store(datasetID string, data DatasetData) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	// Safely construct the filename to prevent path injection
-	filename, err := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s.json.gz", datasetID))
+	// Safely construct the filename to prevent path injection (store uncompressed)
+	filename, err := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s.json", datasetID))
 	if err != nil {
 		err := apperrors.WrapErrInvalidFilePathForDataset(sanitizeForLogging(datasetID), err)
 		RecordError(ctx, err, "Path validation failed")
@@ -733,15 +743,8 @@ func (s *LocalFileStorage) Store(datasetID string, data DatasetData) error {
 		return fmt.Errorf("failed to marshal data: %w", err)
 	}
 
-	// Compress the data
-	compressedData, err := compressData(jsonData)
-	if err != nil {
-		RecordError(ctx, err, "Failed to compress dataset data")
-		return fmt.Errorf("failed to compress data: %w", err)
-	}
-
-	// Write to file
-	if err := os.WriteFile(filename, compressedData, 0o600); err != nil {
+	// Write uncompressed JSON to file
+	if err := os.WriteFile(filename, jsonData, 0o600); err != nil {
 		RecordError(ctx, err, "Failed to write dataset file")
 		return fmt.Errorf("failed to write dataset file: %w", err)
 	}
@@ -749,7 +752,6 @@ func (s *LocalFileStorage) Store(datasetID string, data DatasetData) error {
 	SetSpanAttributes(ctx,
 		attribute.String("file.path", sanitizeForLogging(filename)),
 		attribute.Int("data.size_bytes", len(jsonData)),
-		attribute.Int("compressed.size_bytes", len(compressedData)),
 	)
 
 	LogDebug("Stored dataset %s to local file: %s", sanitizeForLogging(datasetID), sanitizeForLogging(filename))
@@ -777,23 +779,33 @@ func (s *LocalFileStorage) Retrieve(datasetID string) (DatasetData, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
-	// Try compressed file first - safely construct the filename
-	filename, err := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s.json.gz", datasetID))
+	// Try uncompressed file first - safely construct the filename
+	filename, err := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s.json", datasetID))
 	if err != nil {
 		err := apperrors.WrapErrInvalidFilePathForDataset(sanitizeForLogging(datasetID), err)
 		RecordError(ctx, err, "Path validation failed")
 		return DatasetData{}, err
 	}
-	isCompressed := true
+	isCompressed := false
 
-	// Check if file exists
+	// Check if file exists; if not, try legacy compressed file
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
-		err := apperrors.WrapErrDatasetNotFound(sanitizeForLogging(datasetID))
-		RecordError(ctx, err, "Path validation failed")
-		return DatasetData{}, err
+		legacyFilename, err2 := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s.json.gz", datasetID))
+		if err2 != nil {
+			err := apperrors.WrapErrInvalidFilePathForDataset(sanitizeForLogging(datasetID), err2)
+			RecordError(ctx, err, "Path validation failed")
+			return DatasetData{}, err
+		}
+		if _, statErr := os.Stat(legacyFilename); os.IsNotExist(statErr) {
+			err := apperrors.WrapErrDatasetNotFound(sanitizeForLogging(datasetID))
+			RecordError(ctx, err, "Path validation failed")
+			return DatasetData{}, err
+		}
+		filename = legacyFilename
+		isCompressed = true
 	}
 
-	// Read and decompress the file
+	// Read the file
 	//nolint:gosec // filename is validated by validateAndJoinPath
 	data, err := os.ReadFile(filename)
 	if err != nil {
@@ -808,7 +820,7 @@ func (s *LocalFileStorage) Retrieve(datasetID string) (DatasetData, error) {
 		attribute.Bool("data.compressed", isCompressed),
 	)
 
-	// Decompress if necessary
+	// Decompress only if legacy compressed file was used
 	var jsonData []byte
 	if isCompressed {
 		jsonData, err = decompressData(data)
