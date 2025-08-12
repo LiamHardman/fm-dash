@@ -554,8 +554,14 @@ func SetPlayerData(datasetID string, players []Player, currencySymbol string) {
 		attribute.String("store.type", "legacy_compatible"),
 	)
 
+	// Ensure configuration is loaded before enhancing players
+	// This is crucial for calculating role overall ratings and FM attributes
+	if err := EnsureConfigInitialized(10 * time.Second); err != nil {
+		LogWarn("Configuration initialization timed out during SetPlayerData, proceeding with default weights - error: %v, dataset_id: %s", err, datasetID)
+		// Continue with default weights rather than failing the operation
+	}
+
 	// Ensure all players have their NumericAttributes populated before storage
-	// This is critical because the data might be stored before the workers finish enhancement
 	enhancedPlayers := make([]Player, len(players))
 	enhancedCount := 0
 	for i, player := range players {
@@ -606,6 +612,13 @@ func SetPlayerDataAsync(datasetID string, players []Player, currencySymbol strin
 		attribute.String("dataset.currency", currencySymbol),
 		attribute.String("store.type", "legacy_compatible_async"),
 	)
+
+	// Ensure configuration is loaded before enhancing players
+	// This is crucial for calculating role overall ratings and FM attributes
+	if err := EnsureConfigInitialized(10 * time.Second); err != nil {
+		LogWarn("Configuration initialization timed out during SetPlayerDataAsync, proceeding with default weights - error: %v, dataset_id: %s", err, datasetID)
+		// Continue with default weights rather than failing the operation
+	}
 
 	// Ensure all players have their NumericAttributes populated before storage
 	// This is critical because the data is stored before the workers finish enhancement

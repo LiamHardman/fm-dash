@@ -137,6 +137,15 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 	// Cache miss - need to load and process the data
 	SetSpanAttributes(ctx, attribute.Bool("cache.hit", false))
 
+	// Ensure configuration is loaded before processing player data
+	// This is crucial for calculating role overall ratings and FM attributes
+	if err := EnsureConfigInitialized(5 * time.Second); err != nil {
+		logWarn(ctx, "Configuration initialization timed out, proceeding with default weights",
+			"error", err,
+			"dataset_id", datasetID)
+		// Continue with default weights rather than failing the request
+	}
+
 	// Parse division filter early
 	var divisionFilter = DivisionFilterAll
 	switch divisionFilterStr {
