@@ -3880,13 +3880,23 @@ func performanceDataHandler(w http.ResponseWriter, r *http.Request) {
 		attribute.String("dataset.currency", currencySymbol),
 	)
 
-	// Enhance players with calculations (convert string attributes to numeric)
+	// Enhance only if necessary (most datasets are stored already enhanced)
 	ctx, enhanceSpan := StartSpan(ctx, "players.enhance")
-	logInfo(ctx, "Enhancing players with calculations", "player_count", len(players))
-	for i := range players {
-		EnhancePlayerWithCalculations(&players[i])
+	needsEnhancement := false
+	if len(players) > 0 {
+		if len(players[0].NumericAttributes) == 0 || players[0].PerformanceStatsNumeric == nil {
+			needsEnhancement = true
+		}
 	}
-	logInfo(ctx, "Enhanced players with calculations", "player_count", len(players))
+	if needsEnhancement {
+		logInfo(ctx, "Enhancing players with calculations", "player_count", len(players))
+		for i := range players {
+			EnhancePlayerWithCalculations(&players[i])
+		}
+		logInfo(ctx, "Enhanced players with calculations", "player_count", len(players))
+	} else {
+		logDebug(ctx, "Skipping enhancement; dataset already enhanced", "player_count", len(players))
+	}
 	enhanceSpan.End()
 
 	// Recalculate all player ratings based on the current calculation method setting
@@ -4116,13 +4126,23 @@ func exportDataHandler(w http.ResponseWriter, r *http.Request) {
 		attribute.String("dataset.currency", currencySymbol),
 	)
 
-	// Enhance players with calculations (convert string attributes to numeric)
+	// Enhance only if needed for export
 	ctx, enhanceSpan := StartSpan(ctx, "players.enhance")
-	logInfo(ctx, "Enhancing players with calculations for export", "player_count", len(players))
-	for i := range players {
-		EnhancePlayerWithCalculations(&players[i])
+	needsEnhancement := false
+	if len(players) > 0 {
+		if len(players[0].NumericAttributes) == 0 || players[0].PerformanceStatsNumeric == nil {
+			needsEnhancement = true
+		}
 	}
-	logInfo(ctx, "Enhanced players with calculations for export", "player_count", len(players))
+	if needsEnhancement {
+		logInfo(ctx, "Enhancing players with calculations for export", "player_count", len(players))
+		for i := range players {
+			EnhancePlayerWithCalculations(&players[i])
+		}
+		logInfo(ctx, "Enhanced players with calculations for export", "player_count", len(players))
+	} else {
+		logDebug(ctx, "Skipping enhancement for export; dataset already enhanced", "player_count", len(players))
+	}
 	enhanceSpan.End()
 
 	// Recalculate all player ratings

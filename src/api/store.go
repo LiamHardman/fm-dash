@@ -280,14 +280,22 @@ func GetPlayerData(datasetID string) ([]Player, string, bool) {
 			// Return an optimized, safe deep copy to prevent race conditions
 			// PERFORMANCE: Use FastDeepCopyPlayers for much better performance while staying thread-safe
 			players := FastDeepCopyPlayers(data.Players)
-			// Always enhance retrieved players to ensure TotalStats and MBR are calculated
-			enhancedCount := 0
-			for i := range players {
-				EnhancePlayerWithCalculations(&players[i])
-				enhancedCount++
+			// Skip re-enhancement when data already enhanced (typical path)
+			needsEnhancement := false
+			if len(players) > 0 {
+				if len(players[0].NumericAttributes) == 0 || players[0].PerformanceStatsNumeric == nil {
+					needsEnhancement = true
+				}
 			}
-			if enhancedCount > 0 {
-				LogDebug("Enhanced %d retrieved players for dataset %s", enhancedCount, datasetID)
+			if needsEnhancement {
+				enhancedCount := 0
+				for i := range players {
+					EnhancePlayerWithCalculations(&players[i])
+					enhancedCount++
+				}
+				if enhancedCount > 0 {
+					LogDebug("Enhanced %d retrieved players for dataset %s (memory cache path)", enhancedCount, datasetID)
+				}
 			}
 			return players, data.CurrencySymbol, true
 		}
@@ -305,14 +313,22 @@ func GetPlayerData(datasetID string) ([]Player, string, bool) {
 		// Return a deep copy to prevent race conditions
 		// PERFORMANCE: Use FastDeepCopyPlayers for much better performance while staying thread-safe
 		enhancedPlayers := FastDeepCopyPlayers(players)
-		// Always enhance retrieved players to ensure TotalStats and MBR are calculated
-		enhancedCount := 0
-		for i := range enhancedPlayers {
-			EnhancePlayerWithCalculations(&enhancedPlayers[i])
-			enhancedCount++
+		// Avoid redundant enhancement if already stored enhanced
+		needsEnhancement := false
+		if len(enhancedPlayers) > 0 {
+			if len(enhancedPlayers[0].NumericAttributes) == 0 || enhancedPlayers[0].PerformanceStatsNumeric == nil {
+				needsEnhancement = true
+			}
 		}
-		if enhancedCount > 0 {
-			LogDebug("Enhanced %d retrieved players for dataset %s", enhancedCount, datasetID)
+		if needsEnhancement {
+			enhancedCount := 0
+			for i := range enhancedPlayers {
+				EnhancePlayerWithCalculations(&enhancedPlayers[i])
+				enhancedCount++
+			}
+			if enhancedCount > 0 {
+				LogDebug("Enhanced %d retrieved players for dataset %s (persistent path)", enhancedCount, datasetID)
+			}
 		}
 		if !disableInMemoryDatasetCache {
 			// Store the enhanced data in memory cache for future fast access

@@ -174,9 +174,20 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 		attribute.String("dataset.currency", currencySymbol),
 	)
 
-	// Recalculate all player ratings based on the current calculation method setting
+	// Recalculate all player ratings only if necessary
 	ctx, recalcSpan := StartSpan(ctx, "ratings.recalculate")
-	players = RecalculateAllPlayersRatings(players)
+	shouldRecalc := true
+	if len(players) > 0 {
+		// Heuristic: if OverallLower is non-zero and NumericAttributes present, assume ratings exist
+		if players[0].OverallLower != 0 && len(players[0].NumericAttributes) > 0 {
+			shouldRecalc = false
+		}
+	}
+	if shouldRecalc {
+		players = RecalculateAllPlayersRatings(players)
+	} else {
+		logDebug(ctx, "Skipping ratings recalculation; dataset appears precomputed")
+	}
 	recalcSpan.End()
 
 	// Calculate percentiles with appropriate filtering using optimized algorithm
