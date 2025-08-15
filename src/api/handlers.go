@@ -3708,9 +3708,17 @@ func teamDataHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Ensure all players have percentile data
+	// Ensure all players have percentile data and are properly enhanced
 	playersWithPercentiles := make([]Player, len(filteredPlayers))
 	copy(playersWithPercentiles, filteredPlayers)
+
+	// Enhance players with calculations (FIFA stats, overall, position parsing)
+	for i := range playersWithPercentiles {
+		EnhancePlayerWithCalculations(&playersWithPercentiles[i])
+	}
+
+	// Recalculate all player ratings based on the current calculation method setting
+	playersWithPercentiles = RecalculateAllPlayersRatings(playersWithPercentiles)
 
 	// Calculate percentiles for the filtered players
 	CalculatePlayerPerformancePercentiles(playersWithPercentiles)

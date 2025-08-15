@@ -551,16 +551,25 @@ export default {
         if (teamData.data?.players) {
           teamPlayers.value = teamData.data.players
 
-          // console.log('Team players loaded via API:', {
-          //   teamName: selectedTeamName.value,
-          //   playerCount: teamData.data.players.length,
-          //   samplePlayer: teamData.data.players[0] ? {
-          //     name: teamData.data.players[0].name,
-          //     short_positions: teamData.data.players[0].short_positions,
-          //     roleSpecificOveralls: teamData.data.players[0].roleSpecificOveralls?.length || 0,
-          //     Overall: teamData.data.players[0].Overall
-          //   } : null
-          // })
+          console.log('Team players loaded via API:', {
+            teamName: selectedTeamName.value,
+            playerCount: teamData.data.players.length,
+            samplePlayer: teamData.data.players[0]
+              ? {
+                  name: teamData.data.players[0].name,
+                  short_positions: teamData.data.players[0].shortPositions,
+                  roleSpecificOveralls: teamData.data.players[0].roleSpecificOveralls?.length || 0,
+                  Overall: teamData.data.players[0].Overall,
+                  PAC: teamData.data.players[0].PAC,
+                  SHO: teamData.data.players[0].SHO,
+                  PAS: teamData.data.players[0].PAS,
+                  DRI: teamData.data.players[0].DRI,
+                  DEF: teamData.data.players[0].DEF,
+                  PHY: teamData.data.players[0].PHY,
+                  TotalStats: teamData.data.players[0].TotalStats,
+                }
+              : null,
+          })
 
           // Auto-select the best formation for this team
           if (teamData.data.players.length > 0) {
