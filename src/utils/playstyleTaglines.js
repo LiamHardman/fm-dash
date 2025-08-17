@@ -90,7 +90,7 @@ export const PLAYSTYLE_TAGLINES = {
       fm_attributes: ['Agility', 'Reflexes', 'Flair'],
     },
     {
-      playstyle: 'Ball-Playing Goalkeeper',
+      playstyle: 'Distribution Specialist',
       significance:
         'Excels at distribution, capable of launching precise attacks with long kicks or accurate throws.',
       fm_attributes: ['Kicking', 'Passing', 'Throwing', 'Vision', 'Technique'],
@@ -154,13 +154,13 @@ export const PLAYSTYLE_TAGLINES = {
   ],
   DC: [
     {
-      playstyle: 'Ball-Playing Defender',
+      playstyle: 'Build-Up Defender',
       significance:
         'A modern defender who is elegant and comfortable in possession, capable of breaking lines with passes or carrying the ball into midfield.',
       fm_attributes: ['Passing', 'First Touch', 'Vision', 'Composure', 'Technique'],
     },
     {
-      playstyle: 'No-Nonsense Centre-Back',
+      playstyle: 'Traditional Stopper',
       significance:
         'A rugged, old-school defender who prioritizes defensive solidity above all else. Focuses on tackles, clearances, and simple play.',
       fm_attributes: ['Tackling', 'Marking', 'Positioning', 'Bravery'],
@@ -380,13 +380,13 @@ export const PLAYSTYLE_TAGLINES = {
       fm_attributes: ['Tackling', 'Positioning', 'Marking', 'Strength', 'Concentration'],
     },
     {
-      playstyle: 'Deep-Lying Playmaker',
+      playstyle: 'Deep Orchestrator',
       significance:
         "Orchestrates the team's attacks from a deep position, dictating the tempo with a wide range of passing.",
       fm_attributes: ['Passing', 'Vision', 'First Touch', 'Composure', 'Decisions'],
     },
     {
-      playstyle: 'Ball-Winning Midfielder',
+      playstyle: 'Midfield Destroyer',
       significance:
         'An energetic and aggressive player who relentlessly hunts down the opposition to win back possession all over the midfield.',
       fm_attributes: ['Tackling', 'Work Rate', 'Aggression', 'Stamina', 'Bravery'],
@@ -418,13 +418,13 @@ export const PLAYSTYLE_TAGLINES = {
   ],
   MC: [
     {
-      playstyle: 'Box-to-Box Midfielder',
+      playstyle: 'All-Action Midfielder',
       significance:
         'An all-action player with an incredible engine, contributing significantly at both ends of the pitch with tackles, runs, and goals.',
       fm_attributes: ['Work Rate', 'Stamina', 'Tackling', 'Finishing', 'Long Shots'],
     },
     {
-      playstyle: 'Advanced Playmaker',
+      playstyle: 'Creative Midfielder',
       significance:
         "Moves into the space between the opposition's midfield and defense, aiming to create clear-cut chances for the strikers.",
       fm_attributes: ['Passing', 'Vision', 'First Touch', 'Dribbling', 'Technique'],
@@ -480,7 +480,7 @@ export const PLAYSTYLE_TAGLINES = {
       fm_attributes: ['Vision', 'Passing', 'Crossing', 'Technique', 'Decisions'],
     },
     {
-      playstyle: 'Wide Midfielder (Support)',
+      playstyle: 'Balanced Winger',
       significance:
         "A balanced role, maintains the team's shape, links play between the full-back and forwards, and supports both defense and attack.",
       fm_attributes: ['Teamwork', 'Work Rate', 'Passing', 'Positioning', 'First Touch'],
@@ -524,7 +524,7 @@ export const PLAYSTYLE_TAGLINES = {
       fm_attributes: ['Vision', 'Passing', 'Crossing', 'Technique', 'Decisions'],
     },
     {
-      playstyle: 'Wide Midfielder (Support)',
+      playstyle: 'Balanced Winger',
       significance:
         "A balanced role, maintains the team's shape, links play between the full-back and forwards, and supports both defense and attack.",
       fm_attributes: ['Teamwork', 'Work Rate', 'Passing', 'Positioning', 'First Touch'],
@@ -550,7 +550,7 @@ export const PLAYSTYLE_TAGLINES = {
   ],
   AMC: [
     {
-      playstyle: 'Advanced Playmaker',
+      playstyle: 'Creative Attacker',
       significance:
         "Operates in the 'hole' between midfield and defense, using creativity and vision to unlock the opposition defense with incisive passes.",
       fm_attributes: ['Passing', 'Vision', 'First Touch', 'Technique', 'Flair'],
@@ -574,7 +574,7 @@ export const PLAYSTYLE_TAGLINES = {
       fm_attributes: ['Passing', 'Vision', 'First Touch', 'Technique', 'Decisions'],
     },
     {
-      playstyle: 'Attacking Midfielder (Attack)',
+      playstyle: 'Direct Attacker',
       significance:
         'A direct runner from deep who attacks the defensive line with dribbling and powerful shooting from range.',
       fm_attributes: ['Dribbling', 'Long Shots', 'Flair', 'Pace', 'Finishing'],
@@ -618,7 +618,7 @@ export const PLAYSTYLE_TAGLINES = {
       fm_attributes: ['Flair', 'Dribbling', 'Agility', 'Acceleration', 'Technique'],
     },
     {
-      playstyle: 'Advanced Playmaker (Wide)',
+      playstyle: 'Wide Creator',
       significance:
         "Drifts inside from a wide starting position to act as the team's main creator, finding pockets of space to dictate play.",
       fm_attributes: ['Vision', 'Passing', 'Dribbling', 'Technique', 'Flair'],
@@ -662,7 +662,7 @@ export const PLAYSTYLE_TAGLINES = {
       fm_attributes: ['Flair', 'Dribbling', 'Agility', 'Acceleration', 'Technique'],
     },
     {
-      playstyle: 'Advanced Playmaker (Wide)',
+      playstyle: 'Wide Creator',
       significance:
         "Drifts inside from a wide starting position to act as the team's main creator, finding pockets of space to dictate play.",
       fm_attributes: ['Vision', 'Passing', 'Dribbling', 'Technique', 'Flair'],
@@ -694,31 +694,31 @@ export const PLAYSTYLE_TAGLINES = {
       fm_attributes: ['Strength', 'Jumping Reach', 'Heading', 'Balance', 'Aggression'],
     },
     {
-      playstyle: 'Deep-Lying Forward',
+      playstyle: 'Support Striker',
       significance:
         'Drops back towards the midfield to link play, creating space for wingers and attacking midfielders to run in behind.',
       fm_attributes: ['Passing', 'First Touch', 'Teamwork', 'Vision', 'Composure'],
     },
     {
-      playstyle: 'Advanced Forward',
+      playstyle: 'Line Breaker',
       significance:
         'Leads the line by running in behind the defense, stretching the play, and acting as the primary goalscoring threat.',
       fm_attributes: ['Pace', 'Acceleration', 'Finishing', 'Off the Ball', 'Dribbling'],
     },
     {
-      playstyle: 'Complete Forward',
+      playstyle: 'Versatile Striker',
       significance:
         'A striker who possesses all the key attributes: can score, link play, create chances, and use both strength and pace.',
       fm_attributes: ['Finishing', 'Passing', 'Dribbling', 'Strength', 'Pace'],
     },
     {
-      playstyle: 'Pressing Forward',
+      playstyle: 'Front Presser',
       significance:
         'The first line of defense. Harasses defenders relentlessly, forcing mistakes and winning the ball back high up the pitch.',
       fm_attributes: ['Work Rate', 'Aggression', 'Stamina', 'Bravery', 'Tackling'],
     },
     {
-      playstyle: 'False Nine',
+      playstyle: 'Withdrawn Striker',
       significance:
         'A striker who drops deep into midfield, dragging defenders out of position and creating space for teammates to exploit.',
       fm_attributes: ['Dribbling', 'Passing', 'Vision', 'Off the Ball', 'First Touch'],
