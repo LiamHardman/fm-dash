@@ -255,8 +255,13 @@ import UpgradeFinderDialog from '../components/UpgradeFinderDialog.vue'
 import WonderkidsDialog from '../components/WonderkidsDialog.vue'
 import { useAnalytics } from '../composables/useAnalytics'
 import { usePlayerStore } from '../stores/playerStore'
+import { useUiStore } from '../stores/uiStore'
 import { useWishlistStore } from '../stores/wishlistStore'
 import { exportPlayersToCSV } from '../utils/csvExport'
+import {
+  deriveShortPositionsFromPositionString,
+  getFifaWeightedOverallByPosition,
+} from '../utils/playerUtils'
 
 const rawTechnicalAttributeKeysConst = [
   'Cor',
@@ -334,6 +339,7 @@ export default {
     const route = useRoute()
     const playerStore = usePlayerStore()
     const wishlistStore = useWishlistStore()
+    const uiStore = useUiStore()
     const analytics = useAnalytics()
 
     const pageLoading = ref(true)
@@ -386,6 +392,7 @@ export default {
 
     // Computed properties from store
     const allPlayersData = computed(() => playerStore.allPlayers)
+    // Removed normalization/calibration; use raw FIFA-based overall from weights
     const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol)
     const currentDatasetId = computed(() => playerStore.currentDatasetId)
     const loading = computed(() => playerStore.loading)
@@ -513,110 +520,8 @@ export default {
             const playerPosition = player.position || ''
             const playerParsedPositions = player.parsedPositions || []
 
-            // Parse the position string to extract short codes
-            const parsePositionString = (positionStr) => {
-              if (!positionStr) return []
-
-              // Split by comma to handle multiple positions
-              const positions = positionStr.split(',').map((p) => p.trim())
-              const shortCodes = []
-
-              for (const pos of positions) {
-                // Extract the main position part (before the parentheses)
-                const mainPos = pos.split('(')[0].trim()
-                const sideInfo = pos.includes('(') ? pos.split('(')[1].split(')')[0] : ''
-
-                // Handle different position formats
-                if (mainPos.includes('GK') || mainPos.includes('Goalkeeper')) {
-                  shortCodes.push('GK')
-                }
-
-                // Handle defensive positions
-                if (mainPos.includes('DR') || mainPos.includes('D R')) shortCodes.push('DR')
-                if (mainPos.includes('DC') || mainPos.includes('D C')) shortCodes.push('DC')
-                if (mainPos.includes('DL') || mainPos.includes('D L')) shortCodes.push('DL')
-
-                // Handle wing-back positions
-                if (mainPos.includes('WBR') || mainPos.includes('WB R')) shortCodes.push('WBR')
-                if (mainPos.includes('WBL') || mainPos.includes('WB L')) shortCodes.push('WBL')
-
-                // Handle defensive midfield
-                if (mainPos.includes('DM')) shortCodes.push('DM')
-
-                // Handle midfield positions
-                if (mainPos.includes('MR') || mainPos.includes('M R')) shortCodes.push('MR')
-                if (mainPos.includes('MC') || mainPos.includes('M C')) shortCodes.push('MC')
-                if (mainPos.includes('ML') || mainPos.includes('M L')) shortCodes.push('ML')
-
-                // Handle attacking midfield positions
-                if (mainPos.includes('AMR') || mainPos.includes('AM R')) shortCodes.push('AMR')
-                if (mainPos.includes('AMC') || mainPos.includes('AM C')) shortCodes.push('AMC')
-                if (mainPos.includes('AML') || mainPos.includes('AM L')) shortCodes.push('AML')
-
-                // Handle striker positions
-                if (mainPos.includes('ST')) shortCodes.push('ST')
-
-                // Handle combined positions (like D/AM, WB/AM, M/AM)
-                if (mainPos.includes('D/AM') || mainPos.includes('D AM')) {
-                  shortCodes.push('DR', 'DC', 'DL', 'AMR', 'AMC', 'AML')
-                }
-                if (mainPos.includes('WB/AM') || mainPos.includes('WB AM')) {
-                  shortCodes.push('WBR', 'WBL', 'AMR', 'AMC', 'AML')
-                }
-                if (mainPos.includes('M/AM') || mainPos.includes('M AM')) {
-                  shortCodes.push('MR', 'MC', 'ML', 'AMR', 'AMC', 'AML')
-                }
-
-                // Handle specific side indicators from the parentheses
-                if (sideInfo.includes('R')) {
-                  if (mainPos.includes('AM')) shortCodes.push('AMR')
-                  if (mainPos.includes('M')) shortCodes.push('MR')
-                  if (mainPos.includes('D')) shortCodes.push('DR')
-                  if (mainPos.includes('WB')) shortCodes.push('WBR')
-                }
-                if (sideInfo.includes('L')) {
-                  if (mainPos.includes('AM')) shortCodes.push('AML')
-                  if (mainPos.includes('M')) shortCodes.push('ML')
-                  if (mainPos.includes('D')) shortCodes.push('DL')
-                  if (mainPos.includes('WB')) shortCodes.push('WBL')
-                }
-                if (sideInfo.includes('C')) {
-                  if (mainPos.includes('AM')) shortCodes.push('AMC')
-                  if (mainPos.includes('M')) shortCodes.push('MC')
-                  if (mainPos.includes('D')) shortCodes.push('DC')
-                }
-
-                // Handle combined side indicators
-                if (sideInfo.includes('LC')) {
-                  if (mainPos.includes('AM')) {
-                    shortCodes.push('AML', 'AMC')
-                  }
-                  if (mainPos.includes('M')) {
-                    shortCodes.push('ML', 'MC')
-                  }
-                }
-                if (sideInfo.includes('RC')) {
-                  if (mainPos.includes('AM')) {
-                    shortCodes.push('AMR', 'AMC')
-                  }
-                  if (mainPos.includes('M')) {
-                    shortCodes.push('MR', 'MC')
-                  }
-                }
-                if (sideInfo.includes('RL')) {
-                  if (mainPos.includes('AM')) {
-                    shortCodes.push('AMR', 'AML')
-                  }
-                  if (mainPos.includes('M')) {
-                    shortCodes.push('MR', 'ML')
-                  }
-                }
-              }
-
-              return shortCodes
-            }
-
-            const parsedPlayerPositions = parsePositionString(playerPosition)
+            // Parse the position string to extract short codes using shared util
+            const parsedPlayerPositions = deriveShortPositionsFromPositionString(playerPosition)
 
             // Check if any of the selected positions match any of the player's position fields
             const hasMatchingPosition = currentFilters.value.position.some((selectedPos) => {
@@ -637,7 +542,42 @@ export default {
           }
 
           // Role filter
-          if (currentFilters.value.role && player.roleSpecificOveralls) {
+          if (currentFilters.value.role) {
+            console.log(`\n=== ROLE FILTERING DEBUG ===`)
+            console.log(`Filtering for role: "${currentFilters.value.role}"`)
+            console.log(`Player: ${player.name}`)
+
+            // Add comprehensive logging to debug the data
+            console.log(`=== PLAYER DATA DEBUG: ${player.name} ===`)
+            console.log('Player UID:', player.uid || player.UID)
+            console.log('Player Position:', player.position || player.Position)
+            console.log('Player ShortPositions:', player.shortPositions || player.ShortPositions)
+            console.log('Player roleSpecificOveralls:', player.roleSpecificOveralls)
+            console.log('Player roleSpecificOveralls type:', typeof player.roleSpecificOveralls)
+            console.log(
+              'Player roleSpecificOveralls length:',
+              Array.isArray(player.roleSpecificOveralls)
+                ? player.roleSpecificOveralls.length
+                : 'N/A'
+            )
+            console.log(
+              'Player NumericAttributes:',
+              player.numericAttributes || player.NumericAttributes
+            )
+            console.log(
+              'Player PerformanceStatsNumeric:',
+              player.performanceStatsNumeric || player.PerformanceStatsNumeric
+            )
+            console.log('Player Overall:', player.overall || player.Overall)
+            console.log('Player Attributes:', player.attributes || player.Attributes)
+            console.log('Filtering for role:', currentFilters.value.role)
+            console.log('==========================================')
+
+            if (!player.roleSpecificOveralls) {
+              console.log(`Player ${player.name} has NO roleSpecificOveralls field - filtering out`)
+              return false
+            }
+
             let hasRole = false
             if (Array.isArray(player.roleSpecificOveralls)) {
               hasRole = player.roleSpecificOveralls.some(
@@ -653,6 +593,25 @@ export default {
               return false
             }
             console.log(`Player ${player.name} has role: ${currentFilters.value.role}`)
+          } else {
+            // Log when no role filter is active
+            if (
+              player.name === 'William Carvalho' ||
+              player.name === 'Simon Falette' ||
+              player.name === 'Stefan de Vrij'
+            ) {
+              console.log(`\n=== NO ROLE FILTER DEBUG ===`)
+              console.log(`Player: ${player.name} - No role filter active`)
+              console.log('Player roleSpecificOveralls:', player.roleSpecificOveralls)
+              console.log('Player roleSpecificOveralls type:', typeof player.roleSpecificOveralls)
+              console.log(
+                'Player roleSpecificOveralls length:',
+                Array.isArray(player.roleSpecificOveralls)
+                  ? player.roleSpecificOveralls.length
+                  : 'N/A'
+              )
+              console.log('==========================================')
+            }
           }
 
           // Nationality filter
@@ -855,6 +814,15 @@ export default {
               return { ...player, Overall: roleSpecificOverall, overall: roleSpecificOverall }
             }
           }
+          // If no specific role filter is active, optionally use FIFA stat summary for overall
+          if (uiStore.useStatSummaryForOverall) {
+            try {
+              const fifaOverall = getFifaWeightedOverallByPosition(player)
+              return { ...player, Overall: fifaOverall, overall: fifaOverall }
+            } catch (_e) {
+              return player
+            }
+          }
           return player
         })
     })
@@ -904,6 +872,42 @@ export default {
         } else {
           // Fetch data from API
           await playerStore.fetchPlayersByDatasetId(datasetId)
+
+          // Add logging to see what data was received
+          console.log('=== DATASET LOADED DEBUG ===')
+          console.log('Dataset ID:', datasetId)
+          console.log('Total players loaded:', playerStore.allPlayers.length)
+          console.log('Current dataset ID in store:', playerStore.currentDatasetId)
+
+          // Log details of first few players to see their data structure
+          const samplePlayers = playerStore.allPlayers.slice(0, 3)
+          samplePlayers.forEach((player, index) => {
+            console.log(`--- Sample Player ${index + 1}: ${player.name} ---`)
+            console.log('Player UID:', player.uid || player.UID)
+            console.log('Player Position:', player.position || player.Position)
+            console.log('Player ShortPositions:', player.shortPositions || player.ShortPositions)
+            console.log('Player roleSpecificOveralls:', player.roleSpecificOveralls)
+            console.log('Player roleSpecificOveralls type:', typeof player.roleSpecificOveralls)
+            console.log(
+              'Player roleSpecificOveralls length:',
+              Array.isArray(player.roleSpecificOveralls)
+                ? player.roleSpecificOveralls.length
+                : 'N/A'
+            )
+            console.log(
+              'Player NumericAttributes:',
+              player.numericAttributes || player.NumericAttributes
+            )
+            console.log(
+              'Player PerformanceStatsNumeric:',
+              player.performanceStatsNumeric || player.PerformanceStatsNumeric
+            )
+            console.log('Player Overall:', player.overall || player.Overall)
+            console.log('Player Attributes:', player.attributes || player.Attributes)
+            console.log('--- End Sample Player ---')
+          })
+          console.log('=== END DATASET LOADED DEBUG ===')
+
           await playerStore.fetchAllAvailableRoles()
         }
 
@@ -936,6 +940,39 @@ export default {
 
         if (hasCachedData) {
           console.log('Using cached data for dataset:', datasetIdFromRoute)
+          console.log('=== CACHED DATA DEBUG ===')
+          console.log('Total cached players:', playerStore.allPlayers.length)
+          console.log('Current dataset ID in store:', playerStore.currentDatasetId)
+
+          // Log details of first few cached players to see their data structure
+          const sampleCachedPlayers = playerStore.allPlayers.slice(0, 3)
+          sampleCachedPlayers.forEach((player, index) => {
+            console.log(`--- Cached Player ${index + 1}: ${player.name} ---`)
+            console.log('Player UID:', player.uid || player.UID)
+            console.log('Player Position:', player.position || player.Position)
+            console.log('Player ShortPositions:', player.shortPositions || player.ShortPositions)
+            console.log('Player roleSpecificOveralls:', player.roleSpecificOveralls)
+            console.log('Player roleSpecificOveralls type:', typeof player.roleSpecificOveralls)
+            console.log(
+              'Player roleSpecificOveralls length:',
+              Array.isArray(player.roleSpecificOveralls)
+                ? player.roleSpecificOveralls.length
+                : 'N/A'
+            )
+            console.log(
+              'Player NumericAttributes:',
+              player.numericAttributes || player.NumericAttributes
+            )
+            console.log(
+              'Player PerformanceStatsNumeric:',
+              player.performanceStatsNumeric || player.PerformanceStatsNumeric
+            )
+            console.log('Player Overall:', player.overall || player.Overall)
+            console.log('Player Attributes:', player.attributes || player.Attributes)
+            console.log('--- End Cached Player ---')
+          })
+          console.log('=== END CACHED DATA DEBUG ===')
+
           pageLoading.value = false // Don't show loading if we have cached data
         }
 

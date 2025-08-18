@@ -27,6 +27,11 @@ var playerDataStore = make(map[string]struct {
 // storeMutex protects concurrent access to playerDataStore.
 var storeMutex sync.RWMutex
 
+// When true, bypasses the in-process dataset cache (playerDataStore) entirely.
+// This reduces resident memory by avoiding duplication of full player slices in RAM.
+// Set via environment variable: DISABLE_IN_MEMORY_DATASET_CACHE=true
+var disableInMemoryDatasetCache = strings.ToLower(os.Getenv("DISABLE_IN_MEMORY_DATASET_CACHE")) == "true"
+
 // InitStore initializes the global storage instance
 func InitStore() {
 	ctx := context.Background()
@@ -262,30 +267,40 @@ func GetPlayerData(datasetID string) ([]Player, string, bool) {
 		attribute.String("store.type", "legacy_compatible"),
 	)
 
-	// Try fast in-memory cache first for performance
-	storeMutex.RLock()
-	if data, exists := playerDataStore[datasetID]; exists {
+	if !disableInMemoryDatasetCache {
+		// Try fast in-memory cache first for performance
+		storeMutex.RLock()
+		if data, exists := playerDataStore[datasetID]; exists {
+			storeMutex.RUnlock()
+			AddSpanEvent(ctx, "store.memory_cache_hit")
+			SetSpanAttributes(ctx,
+				attribute.Int("dataset.player_count", len(data.Players)),
+				attribute.String("data.source", "memory_fast"),
+			)
+			// Return an optimized, safe deep copy to prevent race conditions
+			// PERFORMANCE: Use FastDeepCopyPlayers for much better performance while staying thread-safe
+			players := FastDeepCopyPlayers(data.Players)
+			// Skip re-enhancement when data already enhanced (typical path)
+			needsEnhancement := false
+			if len(players) > 0 {
+				if len(players[0].NumericAttributes) == 0 || players[0].PerformanceStatsNumeric == nil {
+					needsEnhancement = true
+				}
+			}
+			if needsEnhancement {
+				enhancedCount := 0
+				for i := range players {
+					EnhancePlayerWithCalculations(&players[i])
+					enhancedCount++
+				}
+				if enhancedCount > 0 {
+					LogDebug("Enhanced %d retrieved players for dataset %s (memory cache path)", enhancedCount, datasetID)
+				}
+			}
+			return players, data.CurrencySymbol, true
+		}
 		storeMutex.RUnlock()
-		AddSpanEvent(ctx, "store.memory_cache_hit")
-		SetSpanAttributes(ctx,
-			attribute.Int("dataset.player_count", len(data.Players)),
-			attribute.String("data.source", "memory_fast"),
-		)
-		// Return an optimized, safe deep copy to prevent race conditions
-		// PERFORMANCE: Use FastDeepCopyPlayers for much better performance while staying thread-safe
-		players := FastDeepCopyPlayers(data.Players)
-		// Always enhance retrieved players to ensure TotalStats and MBR are calculated
-		enhancedCount := 0
-		for i := range players {
-			EnhancePlayerWithCalculations(&players[i])
-			enhancedCount++
-		}
-		if enhancedCount > 0 {
-			LogDebug("Enhanced %d retrieved players for dataset %s", enhancedCount, datasetID)
-		}
-		return players, data.CurrencySymbol, true
 	}
-	storeMutex.RUnlock()
 
 	// Fallback to persistent storage only if not in memory
 	AddSpanEvent(ctx, "store.fallback_to_persistent")
@@ -298,27 +313,36 @@ func GetPlayerData(datasetID string) ([]Player, string, bool) {
 		// Return a deep copy to prevent race conditions
 		// PERFORMANCE: Use FastDeepCopyPlayers for much better performance while staying thread-safe
 		enhancedPlayers := FastDeepCopyPlayers(players)
-		// Always enhance retrieved players to ensure TotalStats and MBR are calculated
-		enhancedCount := 0
-		for i := range enhancedPlayers {
-			EnhancePlayerWithCalculations(&enhancedPlayers[i])
-			enhancedCount++
+		// Avoid redundant enhancement if already stored enhanced
+		needsEnhancement := false
+		if len(enhancedPlayers) > 0 {
+			if len(enhancedPlayers[0].NumericAttributes) == 0 || enhancedPlayers[0].PerformanceStatsNumeric == nil {
+				needsEnhancement = true
+			}
 		}
-		if enhancedCount > 0 {
-			LogDebug("Enhanced %d retrieved players for dataset %s", enhancedCount, datasetID)
+		if needsEnhancement {
+			enhancedCount := 0
+			for i := range enhancedPlayers {
+				EnhancePlayerWithCalculations(&enhancedPlayers[i])
+				enhancedCount++
+			}
+			if enhancedCount > 0 {
+				LogDebug("Enhanced %d retrieved players for dataset %s (persistent path)", enhancedCount, datasetID)
+			}
 		}
-
-		// Store the enhanced data in memory cache for future fast access
-		storeMutex.Lock()
-		playerDataStore[datasetID] = struct {
-			Players        []Player
-			CurrencySymbol string
-		}{
-			Players:        enhancedPlayers,
-			CurrencySymbol: currency,
+		if !disableInMemoryDatasetCache {
+			// Store the enhanced data in memory cache for future fast access
+			storeMutex.Lock()
+			playerDataStore[datasetID] = struct {
+				Players        []Player
+				CurrencySymbol string
+			}{
+				Players:        enhancedPlayers,
+				CurrencySymbol: currency,
+			}
+			storeMutex.Unlock()
+			LogInfo("Cached %d enhanced players from storage in memory for dataset %s", len(enhancedPlayers), datasetID)
 		}
-		storeMutex.Unlock()
-		LogInfo("Cached %d enhanced players from S3 in memory for dataset %s", len(enhancedPlayers), datasetID)
 
 		return enhancedPlayers, currency, true
 	}
@@ -546,8 +570,14 @@ func SetPlayerData(datasetID string, players []Player, currencySymbol string) {
 		attribute.String("store.type", "legacy_compatible"),
 	)
 
+	// Ensure configuration is loaded before enhancing players
+	// This is crucial for calculating role overall ratings and FM attributes
+	if err := EnsureConfigInitialized(10 * time.Second); err != nil {
+		LogWarn("Configuration initialization timed out during SetPlayerData, proceeding with default weights - error: %v, dataset_id: %s", err, datasetID)
+		// Continue with default weights rather than failing the operation
+	}
+
 	// Ensure all players have their NumericAttributes populated before storage
-	// This is critical because the data might be stored before the workers finish enhancement
 	enhancedPlayers := make([]Player, len(players))
 	enhancedCount := 0
 	for i, player := range players {
@@ -598,6 +628,13 @@ func SetPlayerDataAsync(datasetID string, players []Player, currencySymbol strin
 		attribute.String("dataset.currency", currencySymbol),
 		attribute.String("store.type", "legacy_compatible_async"),
 	)
+
+	// Ensure configuration is loaded before enhancing players
+	// This is crucial for calculating role overall ratings and FM attributes
+	if err := EnsureConfigInitialized(10 * time.Second); err != nil {
+		LogWarn("Configuration initialization timed out during SetPlayerDataAsync, proceeding with default weights - error: %v, dataset_id: %s", err, datasetID)
+		// Continue with default weights rather than failing the operation
+	}
 
 	// Ensure all players have their NumericAttributes populated before storage
 	// This is critical because the data is stored before the workers finish enhancement

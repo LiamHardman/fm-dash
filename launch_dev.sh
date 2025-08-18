@@ -40,8 +40,11 @@ trap cleanup SIGINT SIGTERM
 # Enable protobuf serialization for improved performance
 export USE_PROTOBUF=true
 export MAX_UPLOAD_SIZE=100
+export FORMAT_AWARE_CACHE_ENABLED=true
 echo "Protobuf serialization: ENABLED"
+echo "Format-aware caching: ENABLED"
 echo "To disable protobuf, set USE_PROTOBUF=false or comment out the export line above"
+echo "To disable format-aware caching, set FORMAT_AWARE_CACHE_ENABLED=false or comment out the export line above"
 echo ""
 
 # --- Start Frontend Server ---

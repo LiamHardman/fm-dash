@@ -229,6 +229,18 @@ func (p *Player) ToProto(ctx context.Context) (*proto.Player, error) {
 		// Moneyball Rating and Total Stats
 		TotalStats: safeIntToInt32(p.TotalStats),
 		Mbr:        safeIntToInt32(p.MBR),
+
+		// Role-specific overall scores for tactical analysis
+		RoleSpecificOveralls: func() []*proto.RoleOverallScore {
+			var protoRoleOveralls []*proto.RoleOverallScore
+			for _, roleOverall := range p.RoleSpecificOveralls {
+				protoRoleOveralls = append(protoRoleOveralls, &proto.RoleOverallScore{
+					RoleName: roleOverall.RoleName,
+					Score:    int32(roleOverall.Score),
+				})
+			}
+			return protoRoleOveralls
+		}(),
 	}
 
 	duration := time.Since(start)
@@ -284,44 +296,66 @@ func PlayerFromProto(ctx context.Context, protoPlayer *proto.Player) (*Player, e
 		attributes[key] = value
 	}
 
+	// Initialize numeric attributes map (will be populated by EnhancePlayerWithCalculations)
+	numericAttributes := make(map[string]int)
+
+	// Initialize performance stats maps (will be populated by EnhancePlayerWithCalculations)
+	performanceStatsNumeric := make(map[string]float64)
+	performancePercentiles := make(map[string]map[string]float64)
+
 	player := &Player{
-		UID:                 protoPlayer.GetUid(),
-		Name:                protoPlayer.GetName(),
-		Position:            protoPlayer.GetPosition(),
-		Age:                 protoPlayer.GetAge(),
-		Club:                protoPlayer.GetClub(),
-		Division:            protoPlayer.GetDivision(),
-		TransferValue:       protoPlayer.GetTransferValue(),
-		Wage:                protoPlayer.GetWage(),
-		Personality:         protoPlayer.GetPersonality(),
-		MediaHandling:       protoPlayer.GetMediaHandling(),
-		Nationality:         protoPlayer.GetNationality(),
-		NationalityISO:      protoPlayer.GetNationalityIso(),
-		NationalityFIFACode: protoPlayer.GetNationalityFifaCode(),
-		AttributeMasked:     protoPlayer.GetAttributeMasked(),
-		Attributes:          attributes,
-		ParsedPositions:     protoPlayer.GetParsedPositions(),
-		ShortPositions:      protoPlayer.GetShortPositions(),
-		PositionGroups:      protoPlayer.GetPositionGroups(),
-		PAC:                 int(protoPlayer.GetPac()),
-		SHO:                 int(protoPlayer.GetSho()),
-		PAS:                 int(protoPlayer.GetPas()),
-		DRI:                 int(protoPlayer.GetDri()),
-		DEF:                 int(protoPlayer.GetDef()),
-		PHY:                 int(protoPlayer.GetPhy()),
-		GK:                  int(protoPlayer.GetGk()),
-		DIV:                 int(protoPlayer.GetDiv()),
-		HAN:                 int(protoPlayer.GetHan()),
-		REF:                 int(protoPlayer.GetRef()),
-		KIC:                 int(protoPlayer.GetKic()),
-		SPD:                 int(protoPlayer.GetSpd()),
-		POS:                 int(protoPlayer.GetPos()),
-		Overall:             int(protoPlayer.GetOverall()),
-		BestRoleOverall:     protoPlayer.GetBestRoleOverall(),
-		TransferValueAmount: protoPlayer.GetTransferValueAmount(),
-		WageAmount:          protoPlayer.GetWageAmount(),
-		TotalStats:          int(protoPlayer.GetTotalStats()),
-		MBR:                 int(protoPlayer.GetMbr()),
+		UID:                     protoPlayer.GetUid(),
+		Name:                    protoPlayer.GetName(),
+		Position:                protoPlayer.GetPosition(),
+		Age:                     protoPlayer.GetAge(),
+		Club:                    protoPlayer.GetClub(),
+		Division:                protoPlayer.GetDivision(),
+		TransferValue:           protoPlayer.GetTransferValue(),
+		Wage:                    protoPlayer.GetWage(),
+		Personality:             protoPlayer.GetPersonality(),
+		MediaHandling:           protoPlayer.GetMediaHandling(),
+		Nationality:             protoPlayer.GetNationality(),
+		NationalityISO:          protoPlayer.GetNationalityIso(),
+		NationalityFIFACode:     protoPlayer.GetNationalityFifaCode(),
+		AttributeMasked:         protoPlayer.GetAttributeMasked(),
+		Attributes:              attributes,
+		NumericAttributes:       numericAttributes,
+		PerformanceStatsNumeric: performanceStatsNumeric,
+		PerformancePercentiles:  performancePercentiles,
+		ParsedPositions:         protoPlayer.GetParsedPositions(),
+		ShortPositions:          protoPlayer.GetShortPositions(),
+		PositionGroups:          protoPlayer.GetPositionGroups(),
+		PAC:                     int(protoPlayer.GetPac()),
+		SHO:                     int(protoPlayer.GetSho()),
+		PAS:                     int(protoPlayer.GetPas()),
+		DRI:                     int(protoPlayer.GetDri()),
+		DEF:                     int(protoPlayer.GetDef()),
+		PHY:                     int(protoPlayer.GetPhy()),
+		GK:                      int(protoPlayer.GetGk()),
+		DIV:                     int(protoPlayer.GetDiv()),
+		HAN:                     int(protoPlayer.GetHan()),
+		REF:                     int(protoPlayer.GetRef()),
+		KIC:                     int(protoPlayer.GetKic()),
+		SPD:                     int(protoPlayer.GetSpd()),
+		POS:                     int(protoPlayer.GetPos()),
+		Overall:                 int(protoPlayer.GetOverall()),
+		BestRoleOverall:         protoPlayer.GetBestRoleOverall(),
+		TransferValueAmount:     protoPlayer.GetTransferValueAmount(),
+		WageAmount:              protoPlayer.GetWageAmount(),
+		TotalStats:              int(protoPlayer.GetTotalStats()),
+		MBR:                     int(protoPlayer.GetMbr()),
+
+		// Role-specific overall scores for tactical analysis
+		RoleSpecificOveralls: func() []RoleOverallScore {
+			var roleSpecificOveralls []RoleOverallScore
+			for _, protoRoleOverall := range protoPlayer.GetRoleSpecificOveralls() {
+				roleSpecificOveralls = append(roleSpecificOveralls, RoleOverallScore{
+					RoleName: protoRoleOverall.GetRoleName(),
+					Score:    int(protoRoleOverall.GetScore()),
+				})
+			}
+			return roleSpecificOveralls
+		}(),
 	}
 
 	duration := time.Since(start)

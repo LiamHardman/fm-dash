@@ -47,7 +47,7 @@
                             unelevated 
                             icon="download" 
                             label="Export" 
-                            @click="openExportOptions" 
+                            @click="_openExportOptions" 
                             :disable="filteredPlayers.length === 0"
                             class="export-btn-modern q-mr-sm"
                         >
@@ -63,130 +63,28 @@
                 </div>
 
                 <!-- Filter Bar Integrated into Hero -->
-                <div class="filter-bar">
-                    <div class="division-filter-container">
-                        <div class="division-filter-header">
-                            <q-btn
-                                @click="selectAllDivisions"
-                                size="sm"
-                                color="primary"
-                                icon="select_all"
-                                label="Select All"
-                                dense
-                                outline
-                                class="division-action-btn"
-                            />
-                            <q-btn
-                                @click="clearAllDivisions"
-                                size="sm"
-                                color="negative"
-                                icon="clear_all"
-                                label="Clear All"
-                                dense
-                                outline
-                                class="division-action-btn"
-                            />
-                        </div>
-                        <q-select
-                            v-model="selectedDivisions"
-                            :options="divisionOptions"
-                            label="Filter by Division"
-                            dense
-                            outlined
-                            multiple
-                            :use-chips="selectedDivisions.length <= 5"
-                            use-input
-                            @filter="filterDivisionsFn"
-                            class="division-filter"
-                            dark
-                            popup-content-class="bg-grey-10"
-                            :display-value="selectedDivisionsDisplayText"
-                        >
-                             <template v-slot:no-option>
-                                <q-item>
-                                    <q-item-section class="text-grey">No divisions found</q-item-section>
-                                </q-item>
-                            </template>
-                        </q-select>
-                    </div>
-                    <div class="position-filter-container">
-                        <div class="position-filter-header">
-                            <q-btn
-                                @click="selectAllPositions"
-                                size="sm"
-                                color="primary"
-                                icon="select_all"
-                                label="Select All"
-                                dense
-                                outline
-                                class="position-action-btn"
-                            />
-                            <q-btn
-                                @click="clearAllPositions"
-                                size="sm"
-                                color="negative"
-                                icon="clear_all"
-                                label="Clear All"
-                                dense
-                                outline
-                                class="position-action-btn"
-                            />
-                        </div>
-                        <q-select
-                            v-model="selectedPositions"
-                            :options="positionOptions"
-                            label="Filter by Position"
-                            dense
-                            outlined
-                            multiple
-                            :use-chips="selectedPositions.length <= 5"
-                            use-input
-                            @filter="filterPositionsFn"
-                            class="position-filter"
-                            dark
-                            popup-content-class="bg-grey-10"
-                            :display-value="selectedPositionsDisplayText"
-                            emit-value
-                            map-options
-                        >
-                             <template v-slot:no-option>
-                                <q-item>
-                                    <q-item-section class="text-grey">No positions found</q-item-section>
-                                </q-item>
-                            </template>
-                        </q-select>
-                    </div>
-                    <div class="minutes-filter">
-                        <div class="slider-label">Minimum Minutes Played</div>
-                        <q-slider
-                            v-model="sliderValue"
-                            :min="0"
-                            :max="maxMinutes"
-                            :step="50"
-                            label
-                            :label-value="`${sliderValue}+ mins`"
-                            label-always
-                            class="q-mt-sm"
-                            dark
-                            color="light-blue-4"
-                        />
-                    </div>
-                    <div class="overall-filter">
-                        <div class="slider-label">Minimum Overall Rating</div>
-                        <q-slider
-                            v-model="overallSliderValue"
-                            :min="0"
-                            :max="maxOverall"
-                            :step="1"
-                            label
-                            :label-value="`${overallSliderValue}+ OVR`"
-                            label-always
-                            class="q-mt-sm"
-                            dark
-                            color="light-green-4"
-                        />
-                    </div>
-                </div>
+                <PerformanceFilters
+                  :selected-divisions="selectedDivisions"
+                  :selected-positions="selectedPositions"
+                  :slider-value="sliderValue"
+                  :overall-slider-value="overallSliderValue"
+                  :division-options="divisionOptions"
+                  :position-options="positionOptions"
+                  :selected-divisions-display-text="selectedDivisionsDisplayText"
+                  :selected-positions-display-text="selectedPositionsDisplayText"
+                  :max-minutes="maxMinutes"
+                  :max-overall="maxOverall"
+                  :filter-divisions-fn="filterDivisionsFn"
+                  :filter-positions-fn="filterPositionsFn"
+                  :select-all-divisions="selectAllDivisions"
+                  :clear-all-divisions="clearAllDivisions"
+                  :select-all-positions="selectAllPositions"
+                  :clear-all-positions="clearAllPositions"
+                  @update:selectedDivisions="(v) => (selectedDivisions = v)"
+                  @update:selectedPositions="(v) => (selectedPositions = v)"
+                  @update:sliderValue="(v) => (sliderValue = v)"
+                  @update:overallSliderValue="(v) => (overallSliderValue = v)"
+                />
             </div>
 
              <!-- Tabbed Content Section -->
@@ -210,219 +108,44 @@
 
                 <q-tab-panels v-model="currentTab" animated>
                     <q-tab-panel name="attacking">
-                        <div class="tab-content-layout">
-                            <q-tabs
-                                v-model="attackingPlotTab"
-                                dense
-                                class="text-grey"
-                                active-color="primary"
-                                indicator-color="primary"
-                                align="justify"
-                                narrow-indicator
-                            >
-                                <q-tab name="shooting" icon="sports_soccer" label="Shooting" />
-                            </q-tabs>
-
-                            <q-tab-panels v-model="attackingPlotTab" animated>
-                                <q-tab-panel name="shooting">
-                                    <div class="charts-grid">
-                                        <DynamicScatterPlotCard 
-                                            v-for="config in attackingShootingCharts" 
-                                            :key="config.title" 
-                                            v-bind="config" 
+                    <AttackingPanel
+                      :filtered-players="filteredPlayers"
                                             :is-dark-mode="isDarkMode" 
-                                            :all-players-data="filteredPlayers"
+                      :top-players-by-stat="topPlayersByStat"
+                      :attacking-stats="attackingStats"
+                      :attacking-charts="attackingCharts"
                                             @player-click="openPlayerDetail"
                                         />
-                                    </div>
-                                    <div class="stats-grid">
-                                        <StatCard v-for="stat in attackingStats" :key="stat.key" :stat="stat" :players="topPlayersByStat[stat.key]" @player-click="openPlayerDetail" />
-                                    </div>
                                 </q-tab-panel>
-                            </q-tab-panels>
-                        </div>
-                    </q-tab-panel>
-
                     <q-tab-panel name="passing">
-                        <div class="tab-content-layout">
-                            <q-tabs
-                                v-model="passingPlotTab"
-                                dense
-                                class="text-grey"
-                                active-color="primary"
-                                indicator-color="primary"
-                                align="justify"
-                                narrow-indicator
-                            >
-                                <q-tab name="creative" icon="lightbulb" label="Creative" />
-                                <q-tab name="progression" icon="trending_up" label="Progression" />
-                                <q-tab name="crossing" icon="swap_horiz" label="Crossing" />
-                            </q-tabs>
-
-                            <q-tab-panels v-model="passingPlotTab" animated>
-                                <q-tab-panel name="creative">
-                                    <div class="charts-grid">
-                                        <DynamicScatterPlotCard 
-                                            v-for="config in passingCreativeCharts" 
-                                            :key="config.title" 
-                                            v-bind="config" 
+                    <PassingPanel
+                      :filtered-players="filteredPlayers"
                                             :is-dark-mode="isDarkMode" 
-                                            :all-players-data="filteredPlayers"
+                      :top-players-by-stat="topPlayersByStat"
+                      :passing-stats="passingStats"
+                      :passing-charts="passingCharts"
                                             @player-click="openPlayerDetail"
                                         />
-                                    </div>
-                                    <div class="stats-grid">
-                                        <StatCard v-for="stat in passingStats" :key="stat.key" :stat="stat" :players="topPlayersByStat[stat.key]" @player-click="openPlayerDetail" />
-                                    </div>
                                 </q-tab-panel>
-                                <q-tab-panel name="progression">
-                                    <div class="charts-grid">
-                                        <DynamicScatterPlotCard 
-                                            v-for="config in passingProgressionCharts" 
-                                            :key="config.title" 
-                                            v-bind="config" 
-                                            :is-dark-mode="isDarkMode" 
-                                            :all-players-data="filteredPlayers"
-                                            @player-click="openPlayerDetail"
-                                        />
-                                    </div>
-                                    <div class="stats-grid">
-                                        <StatCard v-for="stat in passingStats" :key="stat.key" :stat="stat" :players="topPlayersByStat[stat.key]" @player-click="openPlayerDetail" />
-                                    </div>
-                                </q-tab-panel>
-                                <q-tab-panel name="crossing">
-                                    <div class="charts-grid">
-                                        <DynamicScatterPlotCard 
-                                            v-for="config in passingCrossingCharts" 
-                                            :key="config.title" 
-                                            v-bind="config" 
-                                            :is-dark-mode="isDarkMode" 
-                                            :all-players-data="filteredPlayers"
-                                            @player-click="openPlayerDetail"
-                                        />
-                                    </div>
-                                    <div class="stats-grid">
-                                        <StatCard v-for="stat in passingStats" :key="stat.key" :stat="stat" :players="topPlayersByStat[stat.key]" @player-click="openPlayerDetail" />
-                                    </div>
-                                </q-tab-panel>
-                            </q-tab-panels>
-                        </div>
-                    </q-tab-panel>
-
                     <q-tab-panel name="defending">
-                        <div class="tab-content-layout">
-                            <q-tabs
-                                v-model="defendingPlotTab"
-                                dense
-                                class="text-grey"
-                                active-color="primary"
-                                indicator-color="primary"
-                                align="justify"
-                                narrow-indicator
-                            >
-                                <q-tab name="duels" icon="sports_martial_arts" label="Duels" />
-                                <q-tab name="pressing" icon="speed" label="Pressing" />
-                                <q-tab name="aerial" icon="vertical_align_top" label="Aerial" />
-                                <q-tab name="workrate" icon="directions_run" label="Work Rate" />
-                            </q-tabs>
-
-                            <q-tab-panels v-model="defendingPlotTab" animated>
-                                <q-tab-panel name="duels">
-                                    <div class="charts-grid">
-                                        <DynamicScatterPlotCard 
-                                            v-for="config in defendingDuelsCharts" 
-                                            :key="config.title" 
-                                            v-bind="config" 
+                    <DefendingPanel
+                      :filtered-players="filteredPlayers"
                                             :is-dark-mode="isDarkMode" 
-                                            :all-players-data="filteredPlayers"
+                      :top-players-by-stat="topPlayersByStat"
+                      :defending-stats="defendingStats"
+                      :defending-charts="defendingCharts"
                                             @player-click="openPlayerDetail"
                                         />
-                                    </div>
-                                    <div class="stats-grid">
-                                        <StatCard v-for="stat in defendingStats" :key="stat.key" :stat="stat" :players="topPlayersByStat[stat.key]" @player-click="openPlayerDetail" />
-                                    </div>
                                 </q-tab-panel>
-                                <q-tab-panel name="pressing">
-                                    <div class="charts-grid">
-                                        <DynamicScatterPlotCard 
-                                            v-for="config in defendingPressingCharts" 
-                                            :key="config.title" 
-                                            v-bind="config" 
-                                            :is-dark-mode="isDarkMode" 
-                                            :all-players-data="filteredPlayers"
-                                            @player-click="openPlayerDetail"
-                                        />
-                                    </div>
-                                    <div class="stats-grid">
-                                        <StatCard v-for="stat in defendingStats" :key="stat.key" :stat="stat" :players="topPlayersByStat[stat.key]" @player-click="openPlayerDetail" />
-                                    </div>
-                                </q-tab-panel>
-                                <q-tab-panel name="aerial">
-                                    <div class="charts-grid">
-                                        <DynamicScatterPlotCard 
-                                            v-for="config in defendingAerialCharts" 
-                                            :key="config.title" 
-                                            v-bind="config" 
-                                            :is-dark-mode="isDarkMode" 
-                                            :all-players-data="filteredPlayers"
-                                            @player-click="openPlayerDetail"
-                                        />
-                                    </div>
-                                    <div class="stats-grid">
-                                        <StatCard v-for="stat in defendingStats" :key="stat.key" :stat="stat" :players="topPlayersByStat[stat.key]" @player-click="openPlayerDetail" />
-                                    </div>
-                                </q-tab-panel>
-                                <q-tab-panel name="workrate">
-                                    <div class="charts-grid">
-                                        <DynamicScatterPlotCard 
-                                            v-for="config in defendingWorkrateCharts" 
-                                            :key="config.title" 
-                                            v-bind="config" 
-                                            :is-dark-mode="isDarkMode" 
-                                            :all-players-data="filteredPlayers"
-                                            @player-click="openPlayerDetail"
-                                        />
-                                    </div>
-                                    <div class="stats-grid">
-                                        <StatCard v-for="stat in defendingStats" :key="stat.key" :stat="stat" :players="topPlayersByStat[stat.key]" @player-click="openPlayerDetail" />
-                                    </div>
-                                </q-tab-panel>
-                            </q-tab-panels>
-                        </div>
-                    </q-tab-panel>
-
                     <q-tab-panel name="goalkeeping">
-                        <div class="tab-content-layout">
-                            <q-tabs
-                                v-model="goalkeepingPlotTab"
-                                dense
-                                class="text-grey"
-                                active-color="primary"
-                                indicator-color="primary"
-                                align="justify"
-                                narrow-indicator
-                            >
-                                <q-tab name="shotstopping" icon="sports_hockey" label="Shot-Stopping" />
-                            </q-tabs>
-
-                            <q-tab-panels v-model="goalkeepingPlotTab" animated>
-                                <q-tab-panel name="shotstopping">
-                                    <div class="charts-grid">
-                                        <DynamicScatterPlotCard 
-                                            v-for="config in goalkeepingShotstoppingCharts" 
-                                            :key="config.title" 
-                                            v-bind="config" 
+                    <GoalkeepingPanel
+                      :filtered-players="filteredPlayers"
                                             :is-dark-mode="isDarkMode" 
-                                            :all-players-data="filteredPlayers"
+                      :top-players-by-stat="topPlayersByStat"
+                      :goalkeeping-stats="goalkeepingStats"
+                      :goalkeeping-charts="goalkeepingCharts"
                                             @player-click="openPlayerDetail"
                                         />
-                                    </div>
-                                    <div class="stats-grid">
-                                        <StatCard v-for="stat in goalkeepingStats" :key="stat.key" :stat="stat" :players="topPlayersByStat[stat.key]" @player-click="openPlayerDetail" />
-                                    </div>
-                                </q-tab-panel>
-                            </q-tab-panels>
-                        </div>
                     </q-tab-panel>
                 </q-tab-panels>
             </q-card>
@@ -438,12 +161,12 @@
         />
 
         <!-- Export Options Dialog -->
-        <ExportOptionsDialog
+        <DynamicExportOptionsDialog
             :show="showExportOptions"
             :player-count="filteredPlayers.length"
-            :export-type="exportFormat"
+            :export-type="_exportFormat"
             @close="showExportOptions = false"
-            @export="handleExportWithOptions"
+            @export="_handleExportWithOptions"
         />
     </q-page>
 </template>
@@ -458,7 +181,17 @@ import { fetchPerformanceData } from '../services/playerService'
 import { usePlayerStore } from '../stores/playerStore'
 import { useUiStore } from '../stores/uiStore'
 import { exportPlayersToCSV } from '../utils/csvExport.js'
+import { formatNumber } from '../utils/currencyUtils.js'
 import { getNumericValue, getPlayerDivision } from '../utils/playerUtils'
+import { useFiltering } from './performance/composables/useFiltering'
+import { usePerformanceFilters } from './performance/composables/usePerformanceFilters'
+import { useThresholds } from './performance/composables/useThresholds'
+import { useTopPlayers } from './performance/composables/useTopPlayers'
+import PerformanceFilters from './performance/PerformanceFilters.vue'
+import AttackingPanel from './performance/panels/AttackingPanel.vue'
+import DefendingPanel from './performance/panels/DefendingPanel.vue'
+import GoalkeepingPanel from './performance/panels/GoalkeepingPanel.vue'
+import PassingPanel from './performance/panels/PassingPanel.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -468,8 +201,9 @@ const uiStore = useUiStore()
 
 // Initialize dynamic components
 const {
-  DynamicPlayerDetailDialog: _DynamicPlayerDetailDialog,
-  DynamicScatterPlotCard: _DynamicScatterPlotCard,
+  DynamicPlayerDetailDialog,
+  DynamicExportOptionsDialog,
+  DynamicScatterPlotCard,
   initializePreloading,
 } = useDynamicComponents()
 
@@ -490,31 +224,40 @@ const currentTab = ref('attacking')
 const pageLoading = ref(true)
 
 // Add computed property for dark mode detection using UI store
-const _isDarkMode = computed(() => uiStore.isDarkModeActive)
+const isDarkMode = computed(() => uiStore.isDarkModeActive)
 
-// --- Filter State with new defaults ---
-const sliderValue = ref(0)
-const selectedMinutes = ref(0)
-const overallSliderValue = ref(0)
-const selectedOverall = ref(0)
-const selectedDivisions = ref([]) // Changed to empty array - default to all divisions
-const divisionOptions = ref([])
-const selectedPositions = ref([])
-const positionOptions = ref([])
-
-// --- Computed Properties from Store ---
+// --- Computed Properties from Store (declare before composables that depend on it) ---
 const allPlayersData = computed(() => playerStore.allPlayers)
+
+// --- Filter State with new defaults (via composable) ---
+const {
+  sliderValue,
+  selectedMinutes,
+  overallSliderValue,
+  selectedOverall,
+  selectedDivisions,
+  divisionOptions,
+  selectedPositions,
+  positionOptions,
+  availableDivisions,
+  availablePositions,
+  selectedDivisionsDisplayText,
+  selectedPositionsDisplayText,
+  maxMinutes,
+  maxOverall,
+  filterDivisionsFn,
+  filterPositionsFn,
+  selectAllDivisions,
+  clearAllDivisions,
+  selectAllPositions,
+  clearAllPositions,
+} = usePerformanceFilters(allPlayersData)
+
 // biome-ignore lint/correctness/noUnusedVariables: used in template
 const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol)
 const currentDatasetId = computed(() => playerStore.currentDatasetId)
 
-// --- Computed Properties for Filtering ---
-// biome-ignore lint/correctness/noUnusedVariables: used in template
-const maxMinutes = computed(() =>
-  Math.max(2000, ...allPlayersData.value.map((p) => getNumericValue(p.attributes?.Mins) || 0))
-)
-// biome-ignore lint/correctness/noUnusedVariables: used in template
-const maxOverall = computed(() => Math.max(100, ...allPlayersData.value.map((p) => p.Overall || 0)))
+// maxMinutes and maxOverall provided by usePerformanceFilters
 
 // Function to calculate thresholds for ~100 players
 const calculateThresholds = () => {
@@ -601,460 +344,27 @@ const calculateThresholds = () => {
   return { minutes: minutesThreshold, overall: overallThreshold }
 }
 
-const availableDivisions = computed(() => {
-  const divisions = [
-    ...new Set(allPlayersData.value.map((p) => getPlayerDivision(p)).filter(Boolean)),
-  ].sort()
-  // Ensure default selections are included if they exist in the data
-  selectedDivisions.value = selectedDivisions.value.filter((d) => divisions.includes(d))
-  return divisions
+// availableDivisions and availablePositions moved to composable
+
+const { filteredPlayers } = useFiltering(allPlayersData, {
+  selectedMinutes,
+  selectedOverall,
+  selectedDivisions,
+  selectedPositions,
+  getNumericValue,
+  getPlayerDivision,
 })
 
-const availablePositions = computed(() => {
-  return [
-    // Position Groups
-    { label: '--- Position Groups ---', value: null, disable: true },
-    { label: 'Goalkeeper', value: 'Goalkeeper', group: true },
-    { label: 'Defender', value: 'Defender', group: true },
-    { label: 'Midfielder', value: 'Midfielder', group: true },
-    { label: 'Forward', value: 'Forward', group: true },
-
-    // Specific Positions
-    { label: '--- Specific Positions ---', value: null, disable: true },
-
-    // Goalkeeper
-    { label: 'GK - Goalkeeper', value: 'GK' },
-
-    // Defenders
-    { label: 'DC - Centre Back', value: 'DC' },
-    { label: 'DR - Right Back', value: 'DR' },
-    { label: 'DL - Left Back', value: 'DL' },
-    { label: 'WBR - Right Wing-Back', value: 'WBR' },
-    { label: 'WBL - Left Wing-Back', value: 'WBL' },
-
-    // Midfielders
-    { label: 'DM - Defensive Midfielder', value: 'DM' },
-    { label: 'MC - Centre Midfielder', value: 'MC' },
-    { label: 'MR - Right Midfielder', value: 'MR' },
-    { label: 'ML - Left Midfielder', value: 'ML' },
-    { label: 'AMC - Attacking Mid (Centre)', value: 'AMC' },
-    { label: 'AMR - Attacking Mid (Right)', value: 'AMR' },
-    { label: 'AML - Attacking Mid (Left)', value: 'AML' },
-
-    // Forwards
-    { label: 'ST - Striker', value: 'ST' },
-  ]
-})
-
-const filteredPlayers = computed(() => {
-  // Get all available divisions for comparison
-  const allAvailableDivisions = [
-    ...new Set(allPlayersData.value.map((p) => getPlayerDivision(p)).filter(Boolean)),
-  ]
-
-  return allPlayersData.value.filter((player) => {
-    const minutesPlayed = getNumericValue(player.attributes?.Mins) || 0
-    const overall = player.Overall || 0
-    const division = getPlayerDivision(player)
-
-    const matchesMinutes = minutesPlayed >= selectedMinutes.value
-    const matchesOverall = overall >= selectedOverall.value
-    // Consider "all divisions" if empty array OR if all available divisions are selected
-    const matchesDivision =
-      selectedDivisions.value.length === 0 ||
-      selectedDivisions.value.length === allAvailableDivisions.length ||
-      selectedDivisions.value.includes(division)
-
-    const matchesPosition =
-      selectedPositions.value.length === 0 ||
-      selectedPositions.value.some((selectedPos) => {
-        const playerPositions = player.short_positions || player.shortPositions || []
-        // Handle position groups
-        if (selectedPos === 'Goalkeeper') return playerPositions.includes('GK')
-        if (selectedPos === 'Defender')
-          return playerPositions.some((pos) => ['DC', 'DR', 'DL', 'WBR', 'WBL'].includes(pos))
-        if (selectedPos === 'Midfielder')
-          return playerPositions.some((pos) =>
-            ['DM', 'MC', 'MR', 'ML', 'AMR', 'AMC', 'AML'].includes(pos)
-          )
-        if (selectedPos === 'Forward') return playerPositions.includes('ST')
-
-        // Handle specific positions
-        if (
-          [
-            'GK',
-            'DC',
-            'DR',
-            'DL',
-            'WBR',
-            'WBL',
-            'DM',
-            'MC',
-            'MR',
-            'ML',
-            'AMC',
-            'AMR',
-            'AML',
-            'ST',
-          ].includes(selectedPos)
-        ) {
-          return playerPositions.includes(selectedPos)
-        }
-
-        return false
-      })
-
-    return matchesMinutes && matchesOverall && matchesDivision && matchesPosition
-  })
-})
-
-// Computed property for custom display text in division filter
-// biome-ignore lint/correctness/noUnusedVariables: used in template
-const selectedDivisionsDisplayText = computed(() => {
-  const count = selectedDivisions.value.length
-  const allAvailableDivisions = [
-    ...new Set(allPlayersData.value.map((p) => getPlayerDivision(p)).filter(Boolean)),
-  ]
-
-  if (count === 0 || count === allAvailableDivisions.length) {
-    return 'All divisions'
-  }
-  if (count <= 5) {
-    return selectedDivisions.value.join(', ')
-  }
-  return `${count} divisions selected`
-})
-
-// Computed property for custom display text in position filter
-// biome-ignore lint/correctness/noUnusedVariables: used in template
-const selectedPositionsDisplayText = computed(() => {
-  const count = selectedPositions.value.length
-  if (count === 0) {
-    return ''
-  }
-  if (count <= 3) {
-    // Show labels for the selected positions
-    const labels = selectedPositions.value.map((value) => {
-      const option = availablePositions.value.find((opt) => opt.value === value)
-      return option ? option.label : value
-    })
-    return labels.join(', ')
-  }
-  return `${count} positions selected`
-})
+// display text moved to composable
 
 // --- Data Definitions (Charts & Stats) ---
-const scatterPlotConfigs = ref([
-  // Attacking plots
-  {
-    category: 'attacking',
-    group: 'shooting',
-    title: 'Shooting Performance',
-    xAxisKey: 'xG/90',
-    yAxisKey: 'Gls/90',
-    xAxisLabel: 'Expected Goals per 90',
-    yAxisLabel: 'Goals per 90',
-    quadrantLabels: {
-      topRight: ['Elite', 'Over-performing'],
-      topLeft: ['Clinical', 'Over-performing'],
-      bottomRight: ['Wasteful', 'Under-performing'],
-      bottomLeft: ['Low Threat', 'Under-performing'],
-    },
-  },
-  {
-    category: 'attacking',
-    group: 'shooting',
-    title: 'Shooting Efficiency',
-    xAxisKey: 'Shot/90',
-    yAxisKey: 'Conv %',
-    xAxisLabel: 'Shots per 90',
-    yAxisLabel: 'Conversion %',
-    quadrantLabels: {
-      topRight: ['Elite Attacker', ''],
-      topLeft: ['Selective Shooter', ''],
-      bottomRight: ['Inefficient Volume', ''],
-      bottomLeft: ['Limited Threat', ''],
-    },
-  },
+import { scatterPlotConfigs as scatterPlotConfigsConst } from './performance/config/chartConfigs'
 
-  // Passing plots
-  {
-    category: 'passing',
-    group: 'creative',
-    title: 'Creative Passing',
-    xAxisKey: 'xA/90',
-    yAxisKey: 'Asts/90',
-    xAxisLabel: 'Expected Assists per 90',
-    yAxisLabel: 'Assists per 90',
-    quadrantLabels: {
-      topRight: ['Elite Creator', ''],
-      topLeft: ['Fortunate Creator', ''],
-      bottomRight: ['Unlucky Creator', ''],
-      bottomLeft: ['Limited Creator', ''],
-    },
-  },
-  {
-    category: 'passing',
-    group: 'creative',
-    title: 'Key Passes',
-    xAxisKey: 'K Ps/90',
-    yAxisKey: 'Asts/90',
-    xAxisLabel: 'Key Passes per 90',
-    yAxisLabel: 'Assists per 90',
-    quadrantLabels: {
-      topRight: ['Elite Creator', ''],
-      topLeft: ['Clinical Passer', ''],
-      bottomRight: ['Wasteful Creator', ''],
-      bottomLeft: ['Limited Creator', ''],
-    },
-  },
+const scatterPlotConfigs = ref(scatterPlotConfigsConst)
 
-  {
-    category: 'passing',
-    group: 'progression',
-    title: 'Passing Progression',
-    xAxisKey: 'Pr passes/90',
-    yAxisKey: 'Pas %',
-    xAxisLabel: 'Progressive Passes per 90',
-    yAxisLabel: 'Pass Completion %',
-    quadrantLabels: {
-      topRight: ['Accurate Progressive', ''],
-      topLeft: ['Selective Progressive', ''],
-      bottomRight: ['Risky Progressive', ''],
-      bottomLeft: ['Limited Progressive', ''],
-    },
-  },
-  {
-    category: 'passing',
-    group: 'progression',
-    title: 'Passing Volume',
-    xAxisKey: 'Ps C/90',
-    yAxisKey: 'Pas %',
-    xAxisLabel: 'Passes Completed per 90',
-    yAxisLabel: 'Pass Completion %',
-    quadrantLabels: {
-      topRight: ['Elite Passer', ''],
-      topLeft: ['Accurate Passer', ''],
-      bottomRight: ['Volume Passer', ''],
-      bottomLeft: ['Limited Passer', ''],
-    },
-  },
+import { statCategories as statCategoriesConst } from './performance/config/statConfigs'
 
-  {
-    category: 'passing',
-    group: 'crossing',
-    title: 'Crossing Efficiency',
-    xAxisKey: 'Crs A/90',
-    yAxisKey: 'Cr C/90',
-    xAxisLabel: 'Crosses Attempted per 90',
-    yAxisLabel: 'Crosses Completed per 90',
-    quadrantLabels: {
-      topRight: ['Elite Crosser', ''],
-      topLeft: ['Selective Crosser', ''],
-      bottomRight: ['Volume Crosser', ''],
-      bottomLeft: ['Limited Crosser', ''],
-    },
-  },
-  {
-    category: 'passing',
-    group: 'crossing',
-    title: 'Crossing Impact',
-    xAxisKey: 'Crs A/90',
-    yAxisKey: 'xA/90',
-    xAxisLabel: 'Crosses Attempted per 90',
-    yAxisLabel: 'Expected Assists per 90',
-    quadrantLabels: {
-      topRight: ['Elite Crosser', ''],
-      topLeft: ['Clinical Crosser', ''],
-      bottomRight: ['Volume Crosser', ''],
-      bottomLeft: ['Limited Crosser', ''],
-    },
-  },
-
-  // Defending plots
-  {
-    category: 'defending',
-    group: 'duels',
-    title: 'Defensive Duels',
-    xAxisKey: 'Tck/90',
-    yAxisKey: 'Tck R',
-    xAxisLabel: 'Tackles per 90',
-    yAxisLabel: 'Tackle Success %',
-    quadrantLabels: {
-      topRight: ['Elite Ball-Winner', ''],
-      topLeft: ['Conservative', ''],
-      bottomRight: ['Reckless', ''],
-      bottomLeft: ['Passive', ''],
-    },
-  },
-  {
-    category: 'defending',
-    group: 'duels',
-    title: 'Defensive Actions',
-    xAxisKey: 'Tck/90',
-    yAxisKey: 'Int/90',
-    xAxisLabel: 'Tackles per 90',
-    yAxisLabel: 'Interceptions per 90',
-    quadrantLabels: {
-      topRight: ['Elite Defender', ''],
-      topLeft: ['Tackle Specialist', ''],
-      bottomRight: ['Interception Specialist', ''],
-      bottomLeft: ['Limited Defender', ''],
-    },
-  },
-
-  {
-    category: 'defending',
-    group: 'pressing',
-    title: 'Pressing Efficiency',
-    xAxisKey: 'Pres C/90',
-    yAxisKey: 'Poss Won/90',
-    xAxisLabel: 'Pressures Completed per 90',
-    yAxisLabel: 'Possession Won per 90',
-    quadrantLabels: {
-      topRight: ['Effective Presser', ''],
-      topLeft: ['Positional Winner', ''],
-      bottomRight: ['Ineffective Presser', ''],
-      bottomLeft: ['Low Activity', ''],
-    },
-  },
-  {
-    category: 'defending',
-    group: 'pressing',
-    title: 'Pressing Impact',
-    xAxisKey: 'Pres A/90',
-    yAxisKey: 'Poss Won/90',
-    xAxisLabel: 'Pressures Attempted per 90',
-    yAxisLabel: 'Possession Won per 90',
-    quadrantLabels: {
-      topRight: ['Elite Presser', ''],
-      topLeft: ['Selective Presser', ''],
-      bottomRight: ['Ineffective Presser', ''],
-      bottomLeft: ['Limited Presser', ''],
-    },
-  },
-
-  {
-    category: 'defending',
-    group: 'aerial',
-    title: 'Aerial Duels',
-    xAxisKey: 'Aer A/90',
-    yAxisKey: 'Hdrs W/90',
-    xAxisLabel: 'Aerial Challenges per 90',
-    yAxisLabel: 'Headers Won per 90',
-    quadrantLabels: {
-      topRight: ['Elite Aerial', ''],
-      topLeft: ['Selective Winner', ''],
-      bottomRight: ['Ineffective Challenger', ''],
-      bottomLeft: ['Limited Aerial', ''],
-    },
-  },
-  {
-    category: 'defending',
-    group: 'aerial',
-    title: 'Aerial & Clearance Impact',
-    xAxisKey: 'K Hdrs/90',
-    yAxisKey: 'Clr/90',
-    xAxisLabel: 'Key Headers per 90',
-    yAxisLabel: 'Clearances per 90',
-    quadrantLabels: {
-      topRight: ['Elite Aerial Defender', ''],
-      topLeft: ['Selective Header', ''],
-      bottomRight: ['Clearance Specialist', ''],
-      bottomLeft: ['Limited Aerial', ''],
-    },
-  },
-
-  {
-    category: 'defending',
-    group: 'workrate',
-    title: 'Work Rate',
-    xAxisKey: 'Dist/90',
-    yAxisKey: 'Sprints/90',
-    xAxisLabel: 'Distance Covered per 90',
-    yAxisLabel: 'Sprints per 90',
-    quadrantLabels: {
-      topRight: ['Elite Work Rate', ''],
-      topLeft: ['Endurance Runner', ''],
-      bottomRight: ['Sprint Specialist', ''],
-      bottomLeft: ['Limited Movement', ''],
-    },
-  },
-  {
-    category: 'defending',
-    group: 'workrate',
-    title: 'Defensive Intensity',
-    xAxisKey: 'Dist/90',
-    yAxisKey: 'Pres A/90',
-    xAxisLabel: 'Distance Covered per 90',
-    yAxisLabel: 'Pressures Attempted per 90',
-    quadrantLabels: {
-      topRight: ['Elite Intensity', ''],
-      topLeft: ['Endurance Presser', ''],
-      bottomRight: ['Sprint Presser', ''],
-      bottomLeft: ['Limited Intensity', ''],
-    },
-  },
-
-  // Goalkeeping plots
-  {
-    category: 'goalkeeping',
-    group: 'shotstopping',
-    title: 'Shot-Stopping',
-    xAxisKey: 'Con/90',
-    yAxisKey: 'Sv %',
-    xAxisLabel: 'Goals Conceded per 90',
-    yAxisLabel: 'Save Percentage',
-    quadrantLabels: {
-      topRight: ['Busy & Effective', ''],
-      topLeft: ['Elite Goalkeeper', ''],
-      bottomRight: ['Struggling', ''],
-      bottomLeft: ['Protected', ''],
-    },
-  },
-  {
-    category: 'goalkeeping',
-    group: 'shotstopping',
-    title: 'Shot Prevention',
-    xAxisKey: 'xGP/90',
-    yAxisKey: 'Con/90',
-    xAxisLabel: 'Expected Goals Prevented per 90',
-    yAxisLabel: 'Goals Conceded per 90',
-    quadrantLabels: {
-      topRight: ['Elite Shot-Stopper', ''],
-      topLeft: ['Protected Keeper', ''],
-      bottomRight: ['Exposed Keeper', ''],
-      bottomLeft: ['Limited Impact', ''],
-    },
-  },
-])
-
-const statCategories = {
-  offensive: [
-    { key: 'Gls/90', name: 'Goals per 90' },
-    { key: 'xG/90', name: 'xG per 90' },
-    { key: 'Shot/90', name: 'Shots per 90' },
-    { key: 'Conv %', name: 'Conversion %' },
-  ],
-  passing: [
-    { key: 'Asts/90', name: 'Assists per 90' },
-    { key: 'xA/90', name: 'xA per 90' },
-    { key: 'K Ps/90', name: 'Key Passes per 90' },
-    { key: 'Pas %', name: 'Pass Completion %' },
-  ],
-  defensive: [
-    { key: 'Tck/90', name: 'Tackles per 90' },
-    { key: 'Int/90', name: 'Interceptions per 90' },
-    { key: 'Hdrs W/90', name: 'Headers Won per 90' },
-    { key: 'Pres C/90', name: 'Pressures Completed p90' },
-  ],
-  goalkeeping: [
-    { key: 'Con/90', name: 'Goals Conceded p90' },
-    { key: 'xGP/90', name: 'xG Prevented p90' },
-    { key: 'Sv %', name: 'Save Percentage' },
-    { key: 'Clean Sheets', name: 'Clean Sheets' },
-  ],
-}
+const statCategories = statCategoriesConst
 
 // --- Computed properties for each tab ---
 const attackingCharts = computed(() =>
@@ -1123,29 +433,18 @@ const allStatsForCalculation = computed(() => [
 // --- Helper Methods ---
 
 // --- Core Methods ---
-const calculateTopPerformers = () => {
-  const playersToProcess = filteredPlayers.value
-  const results = {}
-  const uniqueStats = [
-    ...new Map(allStatsForCalculation.value.map((item) => [item.key, item])).values(),
-  ]
-
-  for (const stat of uniqueStats) {
-    const playersWithStat = playersToProcess.filter((player) => {
-      const value = getNumericValue(player, stat)
-      return value !== null && value !== undefined && !Number.isNaN(value)
-    })
-
-    const _results = playersWithStat
-      .map((player) => ({
-        player,
-        value: getNumericValue(player, stat),
-      }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 10)
-  }
-  topPlayersByStat.value = results
-}
+const { topPlayersByStat: _topPlayersByStat, calculateTopPerformers } = useTopPlayers(
+  filteredPlayers,
+  computed(() => allStatsForCalculation.value),
+  getNumericValue
+)
+watch(
+  _topPlayersByStat,
+  (v) => {
+    topPlayersByStat.value = v
+  },
+  { immediate: true, deep: true }
+)
 
 // biome-ignore lint/correctness/noUnusedVariables: used in template
 const openPlayerDetail = (player) => {
@@ -1247,6 +546,12 @@ const fetchPlayersAndCurrency = async (datasetId) => {
     selectedPositions.value = [] // Empty means all positions
 
     // Set both thresholds after data is loaded to ensure at least 100 players
+    const { calculateThresholds } = useThresholds(
+      allPlayersData,
+      { selectedDivisions, selectedPositions },
+      getNumericValue,
+      getPlayerDivision
+    )
     const thresholds = calculateThresholds()
 
     sliderValue.value = thresholds.minutes
@@ -1280,49 +585,7 @@ const initializeData = async () => {
   }
 }
 
-// biome-ignore lint/correctness/noUnusedVariables: used in template
-const filterDivisionsFn = (val, update) => {
-  update(() => {
-    const needle = val.toLowerCase()
-    divisionOptions.value = availableDivisions.value.filter(
-      (v) => v.toLowerCase().indexOf(needle) > -1
-    )
-  })
-}
-
-// Functions to handle select all and clear all divisions
-// biome-ignore lint/correctness/noUnusedVariables: used in template
-const selectAllDivisions = () => {
-  selectedDivisions.value = [...availableDivisions.value]
-}
-
-// biome-ignore lint/correctness/noUnusedVariables: used in template
-const clearAllDivisions = () => {
-  selectedDivisions.value = []
-}
-
-// biome-ignore lint/correctness/noUnusedVariables: used in template
-const filterPositionsFn = (val, update) => {
-  update(() => {
-    const needle = val.toLowerCase()
-    positionOptions.value = availablePositions.value.filter(
-      (option) => option.label.toLowerCase().indexOf(needle) > -1
-    )
-  })
-}
-
-// Functions to handle select all and clear all positions
-// biome-ignore lint/correctness/noUnusedVariables: used in template
-const selectAllPositions = () => {
-  selectedPositions.value = availablePositions.value
-    .filter((option) => option.value !== null && !option.disable)
-    .map((option) => option.value)
-}
-
-// biome-ignore lint/correctness/noUnusedVariables: used in template
-const clearAllPositions = () => {
-  selectedPositions.value = []
-}
+// filter handlers moved to usePerformanceFilters composable
 
 // --- Watchers & Lifecycle ---
 watch(

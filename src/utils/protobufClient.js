@@ -168,6 +168,12 @@ class ProtobufClient {
           },
           player: {
             nested: {
+              RoleOverallScore: {
+                fields: {
+                  role_name: { type: 'string', id: 1 },
+                  score: { type: 'int32', id: 2 },
+                },
+              },
               Player: {
                 fields: {
                   uid: { type: 'int64', id: 1 },
@@ -218,6 +224,13 @@ class ProtobufClient {
                   // Moneyball Rating and Total Stats
                   total_stats: { type: 'int32', id: 36 },
                   mbr: { type: 'int32', id: 37 },
+
+                  // Role-specific overall scores for tactical analysis
+                  roleSpecificOveralls: {
+                    rule: 'repeated',
+                    type: 'player.RoleOverallScore',
+                    id: 38,
+                  },
                 },
               },
             },

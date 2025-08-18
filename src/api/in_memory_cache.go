@@ -43,8 +43,9 @@ var memCache *InMemoryCache
 const (
 	defaultExpiration = 90 * time.Second // Further reduced for aggressive cleanup
 	noExpiration      = 0
-	defaultMaxSize    = 32 * 1024 * 1024 // 32MB max size (reduced from 64MB for better memory usage)
-	defaultMaxItems   = 750              // Maximum 750 items (reduced from 1,500 for lower memory footprint)
+	// Increase cache capacity to better retain percentile-calculated datasets and avoid frequent recomputation
+	defaultMaxSize  = 128 * 1024 * 1024 // 128MB max size
+	defaultMaxItems = 1500              // Allow more items before eviction
 )
 
 // InitInMemoryCache initializes the in-memory cache system

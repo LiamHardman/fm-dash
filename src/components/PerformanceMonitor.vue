@@ -130,7 +130,7 @@
 
 <script>
 import { useQuasar } from 'quasar'
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 
 export default {
   name: 'PerformanceMonitor',

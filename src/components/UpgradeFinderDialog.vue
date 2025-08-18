@@ -1704,7 +1704,7 @@ export default {
           const teamPlayers = teamData.data.players
 
           // Check if players have role-specific overalls
-          const playersWithRoleOveralls = teamPlayers.filter(
+          const _playersWithRoleOveralls = teamPlayers.filter(
             (p) =>
               p.roleSpecificOveralls &&
               (Array.isArray(p.roleSpecificOveralls)
@@ -2333,7 +2333,7 @@ export default {
         } else {
           $q.notify({
             type: 'negative',
-            message: 'Failed to upload team dataset: ' + playerStore.error,
+            message: `Failed to upload team dataset: ${playerStore.error}`,
             position: 'top',
             timeout: 3000,
           })

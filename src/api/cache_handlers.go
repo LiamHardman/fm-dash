@@ -497,6 +497,17 @@ type PercentilesCacheData struct {
 	Percentiles map[string]map[string]float64 `json:"percentiles"`
 }
 
+// PercentileDistributionsCacheData stores reusable precomputed distributions
+type PercentileDistributionsCacheData struct {
+	Version        string    `json:"version"`
+	GeneratedAt    time.Time `json:"generatedAt"`
+	DatasetID      string    `json:"datasetId"`
+	DivisionFilter string    `json:"divisionFilter"`
+	TargetDivision string    `json:"targetDivision"`
+	// Distributions[group][stat] = sorted float64 values
+	Distributions map[string]map[string][]float64 `json:"distributions"`
+}
+
 // generatePercentilesCacheKey generates a cache key for percentiles calculation
 func generatePercentilesCacheKey(ctx context.Context, datasetID, playerName, divisionFilter, targetDivision string, players []Player) string {
 	logDebug(ctx, "Generating percentiles cache key", "dataset_id", datasetID, "player_name", playerName, "player_count", len(players))
@@ -533,6 +544,11 @@ func generatePercentilesCacheKey(ctx context.Context, datasetID, playerName, div
 
 	logDebug(ctx, "Generated percentiles cache key", "cache_key", cacheKey, "duration_ms", time.Since(start).Milliseconds())
 	return cacheKey
+}
+
+// generatePercentileDistributionsKey creates a key for reusable distributions
+func generatePercentileDistributionsKey(datasetID, divisionFilter, targetDivision string) string {
+	return fmt.Sprintf("percentile_dists:%s:%s:%s", datasetID, divisionFilter, targetDivision)
 }
 
 // savePercentilesToCache saves percentiles calculation to cache
@@ -579,6 +595,55 @@ func savePercentilesToCache(ctx context.Context, cacheKey, datasetID, playerName
 	}
 
 	logDebug(ctx, "Percentiles cached successfully", "cache_key", cacheKey, "duration_ms", time.Since(start).Milliseconds())
+}
+
+// savePercentileDistributionsToCache persists precomputed distributions using storage
+func savePercentileDistributionsToCache(ctx context.Context, datasetID, divisionFilter, targetDivision string, distributions map[string]map[string][]float64) {
+	cacheKey := generatePercentileDistributionsKey(datasetID, divisionFilter, targetDivision)
+	start := time.Now()
+	data := PercentileDistributionsCacheData{
+		Version:        cacheVersion,
+		GeneratedAt:    time.Now(),
+		DatasetID:      datasetID,
+		DivisionFilter: divisionFilter,
+		TargetDivision: targetDivision,
+		Distributions:  distributions,
+	}
+	cacheDatasetID := fmt.Sprintf("cache_percentile_distributions_%s", cacheKey)
+	payload := DatasetData{}
+	jsonBytes, err := json.Marshal(data)
+	if err != nil {
+		logError(ctx, "Error marshaling percentile distributions", "error", err, "cache_key", cacheKey)
+		return
+	}
+	payload.CacheData = string(jsonBytes)
+	if err := storage.Store(cacheDatasetID, payload); err != nil {
+		logError(ctx, "Error storing percentile distributions", "error", err, "cache_key", cacheKey, "cache_dataset_id", cacheDatasetID)
+		return
+	}
+	logDebug(ctx, "Saved percentile distributions", "cache_key", cacheKey, "duration_ms", time.Since(start).Milliseconds())
+}
+
+// loadPercentileDistributionsFromCache loads precomputed distributions from storage
+func loadPercentileDistributionsFromCache(ctx context.Context, datasetID, divisionFilter, targetDivision string) (map[string]map[string][]float64, bool) {
+	cacheKey := generatePercentileDistributionsKey(datasetID, divisionFilter, targetDivision)
+	cacheDatasetID := fmt.Sprintf("cache_percentile_distributions_%s", cacheKey)
+	dummyData, err := storage.Retrieve(cacheDatasetID)
+	if err != nil {
+		return nil, false
+	}
+	var data PercentileDistributionsCacheData
+	source := dummyData.CacheData
+	if source == "" {
+		source = dummyData.CurrencySymbol
+	}
+	if err := json.Unmarshal([]byte(source), &data); err != nil {
+		return nil, false
+	}
+	if data.Version != cacheVersion || data.DatasetID != datasetID || data.DivisionFilter != divisionFilter || data.TargetDivision != targetDivision {
+		return nil, false
+	}
+	return data.Distributions, true
 }
 
 // loadPercentilesFromCache loads percentiles calculation from cache

@@ -812,18 +812,34 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 		// Calculate percentiles with appropriate filtering using optimized algorithm
 		ctx, percentileSpan := StartSpan(ctx, "percentiles.calculate")
 
-		if divisionFilter != DivisionFilterAll {
-			// Recalculate percentiles with division filter
-			CalculatePlayerPerformancePercentilesWithDivisionFilter(playersCopy, divisionFilter, targetDivision)
+		// Fast path: if divisionFilter is ALL and players already have global percentiles, skip recomputation
+		hasGlobal := false
+		if len(playersCopy) > 0 && playersCopy[0].PerformancePercentiles != nil {
+			if _, ok := playersCopy[0].PerformancePercentiles["Global"]; ok {
+				hasGlobal = true
+			}
+		}
+
+		// Try loading reusable percentile distributions from persistent cache
+		distributions, foundDists := loadPercentileDistributionsFromCache(ctx, datasetID, divisionFilterStr, targetDivision)
+
+		if divisionFilter == DivisionFilterAll && hasGlobal {
+			// Skip recalculation entirely when global percentiles exist
+		} else if foundDists {
+			// Apply precomputed distributions
+			ApplyPercentilesFromDistributions(playersCopy, distributions)
 		} else {
-			// Calculate global percentiles using optimized algorithm
-			CalculatePlayerPerformancePercentiles(playersCopy)
+			// Compute distributions, apply, and persist reusable cache
+			dists := BuildPercentileDistributions(playersCopy, divisionFilter, targetDivision)
+			ApplyPercentilesFromDistributions(playersCopy, dists)
+			// Persist for reuse
+			savePercentileDistributionsToCache(ctx, datasetID, divisionFilterStr, targetDivision, dists)
 		}
 
 		players = playersCopy
 		percentileSpan.End()
 
-		// Cache the percentile-calculated data for future requests
+		// Cache only light wrapper; heavy work is now in reusable distributions cache
 		cacheData := struct {
 			Players        []Player
 			CurrencySymbol string
@@ -3444,6 +3460,16 @@ func fullPlayerStatsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Ensure configuration is loaded before processing player data
+	// This is crucial for calculating role overall ratings and FM attributes
+	if err := EnsureConfigInitialized(5 * time.Second); err != nil {
+		logWarn(ctx, "Configuration initialization timed out, proceeding with default weights",
+			"error", err,
+			"dataset_id", datasetID,
+			"player_uid", playerUID)
+		// Continue with default weights rather than failing the request
+	}
+
 	// Find the specific player
 	var targetPlayer *Player
 	for _, player := range players {
@@ -3682,9 +3708,17 @@ func teamDataHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Ensure all players have percentile data
+	// Ensure all players have percentile data and are properly enhanced
 	playersWithPercentiles := make([]Player, len(filteredPlayers))
 	copy(playersWithPercentiles, filteredPlayers)
+
+	// Enhance players with calculations (FIFA stats, overall, position parsing)
+	for i := range playersWithPercentiles {
+		EnhancePlayerWithCalculations(&playersWithPercentiles[i])
+	}
+
+	// Recalculate all player ratings based on the current calculation method setting
+	playersWithPercentiles = RecalculateAllPlayersRatings(playersWithPercentiles)
 
 	// Calculate percentiles for the filtered players
 	CalculatePlayerPerformancePercentiles(playersWithPercentiles)
@@ -3854,13 +3888,23 @@ func performanceDataHandler(w http.ResponseWriter, r *http.Request) {
 		attribute.String("dataset.currency", currencySymbol),
 	)
 
-	// Enhance players with calculations (convert string attributes to numeric)
+	// Enhance only if necessary (most datasets are stored already enhanced)
 	ctx, enhanceSpan := StartSpan(ctx, "players.enhance")
-	logInfo(ctx, "Enhancing players with calculations", "player_count", len(players))
-	for i := range players {
-		EnhancePlayerWithCalculations(&players[i])
+	needsEnhancement := false
+	if len(players) > 0 {
+		if len(players[0].NumericAttributes) == 0 || players[0].PerformanceStatsNumeric == nil {
+			needsEnhancement = true
+		}
 	}
-	logInfo(ctx, "Enhanced players with calculations", "player_count", len(players))
+	if needsEnhancement {
+		logInfo(ctx, "Enhancing players with calculations", "player_count", len(players))
+		for i := range players {
+			EnhancePlayerWithCalculations(&players[i])
+		}
+		logInfo(ctx, "Enhanced players with calculations", "player_count", len(players))
+	} else {
+		logDebug(ctx, "Skipping enhancement; dataset already enhanced", "player_count", len(players))
+	}
 	enhanceSpan.End()
 
 	// Recalculate all player ratings based on the current calculation method setting
@@ -4090,13 +4134,23 @@ func exportDataHandler(w http.ResponseWriter, r *http.Request) {
 		attribute.String("dataset.currency", currencySymbol),
 	)
 
-	// Enhance players with calculations (convert string attributes to numeric)
+	// Enhance only if needed for export
 	ctx, enhanceSpan := StartSpan(ctx, "players.enhance")
-	logInfo(ctx, "Enhancing players with calculations for export", "player_count", len(players))
-	for i := range players {
-		EnhancePlayerWithCalculations(&players[i])
+	needsEnhancement := false
+	if len(players) > 0 {
+		if len(players[0].NumericAttributes) == 0 || players[0].PerformanceStatsNumeric == nil {
+			needsEnhancement = true
+		}
 	}
-	logInfo(ctx, "Enhanced players with calculations for export", "player_count", len(players))
+	if needsEnhancement {
+		logInfo(ctx, "Enhancing players with calculations for export", "player_count", len(players))
+		for i := range players {
+			EnhancePlayerWithCalculations(&players[i])
+		}
+		logInfo(ctx, "Enhanced players with calculations for export", "player_count", len(players))
+	} else {
+		logDebug(ctx, "Skipping enhancement for export; dataset already enhanced", "player_count", len(players))
+	}
 	enhanceSpan.End()
 
 	// Recalculate all player ratings

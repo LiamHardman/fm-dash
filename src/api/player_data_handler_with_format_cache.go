@@ -137,6 +137,15 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 	// Cache miss - need to load and process the data
 	SetSpanAttributes(ctx, attribute.Bool("cache.hit", false))
 
+	// Ensure configuration is loaded before processing player data
+	// This is crucial for calculating role overall ratings and FM attributes
+	if err := EnsureConfigInitialized(5 * time.Second); err != nil {
+		logWarn(ctx, "Configuration initialization timed out, proceeding with default weights",
+			"error", err,
+			"dataset_id", datasetID)
+		// Continue with default weights rather than failing the request
+	}
+
 	// Parse division filter early
 	var divisionFilter = DivisionFilterAll
 	switch divisionFilterStr {
@@ -165,9 +174,20 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 		attribute.String("dataset.currency", currencySymbol),
 	)
 
-	// Recalculate all player ratings based on the current calculation method setting
+	// Recalculate all player ratings only if necessary
 	ctx, recalcSpan := StartSpan(ctx, "ratings.recalculate")
-	players = RecalculateAllPlayersRatings(players)
+	shouldRecalc := true
+	if len(players) > 0 {
+		// Heuristic: if OverallLower is non-zero and NumericAttributes present, assume ratings exist
+		if players[0].OverallLower != 0 && len(players[0].NumericAttributes) > 0 {
+			shouldRecalc = false
+		}
+	}
+	if shouldRecalc {
+		players = RecalculateAllPlayersRatings(players)
+	} else {
+		logDebug(ctx, "Skipping ratings recalculation; dataset appears precomputed")
+	}
 	recalcSpan.End()
 
 	// Calculate percentiles with appropriate filtering using optimized algorithm

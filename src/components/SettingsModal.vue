@@ -191,6 +191,44 @@
                         </q-card>
                     </q-expansion-item>
 
+                    <!-- Overall Calculation Source Section -->
+                    <q-expansion-item
+                        expand-separator
+                        icon="insights"
+                        label="Overall Rating Source"
+                        caption="Choose how overall is computed when no specific role is selected"
+                        header-class="settings-expansion-header"
+                        class="settings-expansion"
+                        :default-opened="false"
+                    >
+                        <q-card flat class="expansion-content">
+                            <q-card-section>
+                                <div class="section-description">
+                                    When enabled, overall uses FIFA category stats with position-based weights unless a role filter is applied. Otherwise, role-based overall from FM attributes is used.
+                                </div>
+
+                                <q-card flat bordered class="option-card q-mt-md">
+                                    <q-card-section class="option-content">
+                                        <div class="option-header">
+                                            <div class="option-info">
+                                                <q-icon name="tune" size="1.5rem" class="option-icon" />
+                                                <div class="option-text">
+                                                    <div class="option-title">Use stat summary ratings to calculate overall rating</div>
+                                                    <div class="option-description">Off by default. Applies FIFA category weights per position when no specific role is selected.</div>
+                                                </div>
+                                            </div>
+                                            <q-toggle
+                                                v-model="useStatSummaryForOverall"
+                                                color="primary"
+                                                size="lg"
+                                            />
+                                        </div>
+                                    </q-card-section>
+                                </q-card>
+                            </q-card-section>
+                        </q-card>
+                    </q-expansion-item>
+
                     <!-- Display Preferences Section -->
                     <q-expansion-item
                         expand-separator
@@ -404,6 +442,11 @@ export default defineComponent({
       set: (_value) => uiStore.toggleAttributeMasks(),
     })
 
+    const useStatSummaryForOverall = computed({
+      get: () => uiStore.useStatSummaryForOverall,
+      set: (value) => uiStore.setStatSummaryOverall(value),
+    })
+
     const isLoading = ref(false)
     const activeTab = ref('general')
 
@@ -490,6 +533,7 @@ export default defineComponent({
       showDialog,
       closeModal,
       useScaledRatings,
+      useStatSummaryForOverall,
       setRatingMethod,
       showFaces,
       showLogos,

@@ -1,0 +1,197 @@
+<template>
+  <div class="filter-bar">
+    <div class="division-filter-container">
+      <div class="division-filter-header">
+        <q-btn
+          @click="selectAllDivisions()"
+          size="sm"
+          color="primary"
+          icon="select_all"
+          label="Select All"
+          dense
+          outline
+          class="division-action-btn"
+        />
+        <q-btn
+          @click="clearAllDivisions()"
+          size="sm"
+          color="negative"
+          icon="clear_all"
+          label="Clear All"
+          dense
+          outline
+          class="division-action-btn"
+        />
+      </div>
+      <q-select
+        v-model="selectedDivisionsModel"
+        :options="divisionOptions"
+        label="Filter by Division"
+        dense
+        outlined
+        multiple
+        :use-chips="selectedDivisionsModel.length <= 5"
+        use-input
+        @filter="filterDivisionsFn"
+        class="division-filter"
+        dark
+        popup-content-class="bg-grey-10"
+        :display-value="selectedDivisionsDisplayText"
+      >
+        <template v-slot:no-option>
+          <q-item>
+            <q-item-section class="text-grey">No divisions found</q-item-section>
+          </q-item>
+        </template>
+      </q-select>
+    </div>
+
+    <div class="position-filter-container">
+      <div class="position-filter-header">
+        <q-btn
+          @click="selectAllPositions()"
+          size="sm"
+          color="primary"
+          icon="select_all"
+          label="Select All"
+          dense
+          outline
+          class="position-action-btn"
+        />
+        <q-btn
+          @click="clearAllPositions()"
+          size="sm"
+          color="negative"
+          icon="clear_all"
+          label="Clear All"
+          dense
+          outline
+          class="position-action-btn"
+        />
+      </div>
+      <q-select
+        v-model="selectedPositionsModel"
+        :options="positionOptions"
+        label="Filter by Position"
+        dense
+        outlined
+        multiple
+        :use-chips="selectedPositionsModel.length <= 5"
+        use-input
+        @filter="filterPositionsFn"
+        class="position-filter"
+        dark
+        popup-content-class="bg-grey-10"
+        :display-value="selectedPositionsDisplayText"
+        emit-value
+        map-options
+      >
+        <template v-slot:no-option>
+          <q-item>
+            <q-item-section class="text-grey">No positions found</q-item-section>
+          </q-item>
+        </template>
+      </q-select>
+    </div>
+
+    <div class="minutes-filter">
+      <div class="slider-label">Minimum Minutes Played</div>
+      <q-slider
+        v-model="sliderValueModel"
+        :min="0"
+        :max="maxMinutes"
+        :step="50"
+        label
+        :label-value="`${sliderValueModel}+ mins`"
+        label-always
+        class="q-mt-sm"
+        dark
+        color="light-blue-4"
+      />
+    </div>
+
+    <div class="overall-filter">
+      <div class="slider-label">Minimum Overall Rating</div>
+      <q-slider
+        v-model="overallSliderValueModel"
+        :min="0"
+        :max="maxOverall"
+        :step="1"
+        label
+        :label-value="`${overallSliderValueModel}+ OVR`"
+        label-always
+        class="q-mt-sm"
+        dark
+        color="light-green-4"
+      />
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { computed } from 'vue'
+
+const emit = defineEmits([
+  'update:selectedDivisions',
+  'update:selectedPositions',
+  'update:sliderValue',
+  'update:overallSliderValue',
+])
+
+const props = defineProps({
+  // models
+  selectedDivisions: { type: Array, required: true },
+  selectedPositions: { type: Array, required: true },
+  sliderValue: { type: Number, required: true },
+  overallSliderValue: { type: Number, required: true },
+  // options and labels
+  divisionOptions: { type: Array, required: true },
+  positionOptions: { type: Array, required: true },
+  selectedDivisionsDisplayText: { type: String, required: true },
+  selectedPositionsDisplayText: { type: String, required: true },
+  // bounds
+  maxMinutes: { type: Number, required: true },
+  maxOverall: { type: Number, required: true },
+  // callbacks
+  filterDivisionsFn: { type: Function, required: true },
+  filterPositionsFn: { type: Function, required: true },
+  selectAllDivisions: { type: Function, required: true },
+  clearAllDivisions: { type: Function, required: true },
+  selectAllPositions: { type: Function, required: true },
+  clearAllPositions: { type: Function, required: true },
+})
+
+const selectedDivisionsModel = computed({
+  get: () => props.selectedDivisions,
+  set: (val) => emit('update:selectedDivisions', val),
+})
+
+const selectedPositionsModel = computed({
+  get: () => props.selectedPositions,
+  set: (val) => emit('update:selectedPositions', val),
+})
+
+const sliderValueModel = computed({
+  get: () => props.sliderValue,
+  set: (val) => emit('update:sliderValue', val),
+})
+
+const overallSliderValueModel = computed({
+  get: () => props.overallSliderValue,
+  set: (val) => emit('update:overallSliderValue', val),
+})
+
+const {
+  filterDivisionsFn,
+  filterPositionsFn,
+  selectAllDivisions,
+  clearAllDivisions,
+  selectAllPositions,
+  clearAllPositions,
+} = props
+</script>
+
+<style scoped>
+/* Inherit styling from page via classes used above */
+</style>
+

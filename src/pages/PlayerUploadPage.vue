@@ -335,7 +335,7 @@ export default {
         return
       }
 
-      const isLargeFile = playerFile.value.size > largeFileSizeBytes.value
+      const _isLargeFile = playerFile.value.size > largeFileSizeBytes.value
 
       // Reset progress
       uploadProgress.value = 0

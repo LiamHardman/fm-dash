@@ -375,7 +375,43 @@ export const usePlayerStore = defineStore('player', () => {
 
       // Extract players from response (handle both protobuf and JSON formats)
       uploadFlowProfiler.markStep('player_processing_start')
-      const players = response.players || []
+      let players = response.players || []
+
+      // Normalize protobuf-decoded fields to expected shape
+      if (players.length > 0 && players[0] && players[0].essential_attributes !== undefined) {
+        players = players.map((p) => {
+          const normalized = { ...p }
+          // Map essential_attributes -> attributes (FM/perf attrs subset)
+          if (p.essential_attributes && !p.attributes) {
+            normalized.attributes = p.essential_attributes
+          }
+          // Ensure roleSpecificOveralls stays as an array of { roleName, score }
+          if (Array.isArray(p.roleSpecificOveralls)) {
+            normalized.roleSpecificOveralls = p.roleSpecificOveralls.map((r) => ({
+              roleName: r.role_name ?? r.roleName,
+              score: Number(r.score) || 0,
+            }))
+          }
+          // Normalize positions (protobuf uses short_positions etc.)
+          if (!p.shortPositions && Array.isArray(p.short_positions)) {
+            normalized.shortPositions = p.short_positions
+          }
+          if (!p.parsedPositions && Array.isArray(p.parsed_positions)) {
+            normalized.parsedPositions = p.parsed_positions
+          }
+          if (!p.positionGroups && Array.isArray(p.position_groups)) {
+            normalized.positionGroups = p.position_groups
+          }
+          // Normalize overall capitalization variants
+          if (normalized.overall !== undefined && normalized.Overall === undefined) {
+            normalized.Overall = Number(normalized.overall) || 0
+          }
+          // Carry through numeric/perf maps if present
+          normalized.numericAttributes = normalized.numericAttributes || {}
+          normalized.performanceStatsNumeric = normalized.performanceStatsNumeric || {}
+          return normalized
+        })
+      }
       allPlayers.value = processPlayersFromAPI(players)
       uploadFlowProfiler.markStep('player_processing_end', {
         processedPlayerCount: allPlayers.value.length,

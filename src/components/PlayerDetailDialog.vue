@@ -44,6 +44,22 @@
                 >
             </q-btn>
 
+            <!-- Tab Navigation -->
+            <div class="tab-navigation">
+                <q-tabs
+                    v-model="activeTab"
+                    dense
+                    class="view-tabs"
+                    :class="isDarkMode ? 'tabs-dark' : 'tabs-light'"
+                    active-color="primary"
+                    :indicator-color="'transparent'"
+                    align="left"
+                >
+                    <q-tab name="simple" label="Simple" icon="style" />
+                    <q-tab name="advanced" label="Advanced" icon="analytics" />
+                </q-tabs>
+            </div>
+
             <!-- Player data not available -->
             <q-card-section v-if="player && (!displayPlayer || !displayPlayer.name)" class="scroll main-content-section no-header-section">
                 <div class="text-center q-pa-lg">
@@ -52,8 +68,6 @@
                     <div class="text-caption text-grey-6 q-mt-sm">Unable to load player information</div>
                 </div>
             </q-card-section>
-
-
 
             <q-card-section v-else-if="player && displayPlayer && displayPlayer.name" class="scroll main-content-section no-header-section">
                 <!-- Progressive loading indicator -->
@@ -79,6 +93,27 @@
 
                 <div class="row q-col-gutter-lg">
                     <div class="col-12 col-md-4">
+                        <!-- Simple Tab Content - Player Cards -->
+                        <div v-if="activeTab === 'simple'" class="simple-view">
+                            <div class="player-card-container">
+                                <PlayerCards 
+                                    :player="displayPlayer"
+                                    :currency-symbol="currencySymbol"
+                                    :dataset-id="datasetId"
+                                    class="player-detail-card"
+                                />
+                            </div>
+                            
+                            <!-- Pros/Cons Component -->
+                            <ProsCons 
+                                :player="displayPlayer"
+                                :selected-comparison-group="selectedComparisonGroup"
+                                v-if="displayPlayer && displayPlayer.performancePercentiles"
+                            />
+                        </div>
+
+                        <!-- Advanced Tab Content - Performance Percentiles -->
+                        <div v-if="activeTab === 'advanced'" class="advanced-view">
                         <div class="row q-col-gutter-sm q-mb-md">
                             <div class="col-6">
                                 <q-select
@@ -257,10 +292,12 @@
                                 </div>
                             </q-card-section>
                         </q-card>
+                        </div>
                     </div>
 
                     <div class="col-12 col-md-8">
                         <q-card
+                            v-if="activeTab === 'advanced'"
                             flat
                             bordered
                             class="q-mb-sm player-profile-card modern-profile-card"
@@ -376,6 +413,22 @@
                                                                 </q-tooltip>
                                                             </q-icon>
                                                         </h5>
+                                                        <div v-if="bestPlaystyleTagline" class="player-tagline q-mt-xs">
+                                                            <q-badge
+                                                              outline
+                                                              color="grey"
+                                                              :label="bestPlaystyleTagline.playstyle"
+                                                              class="player-tagline-badge"
+                                                            />
+                                                            <q-tooltip
+                                                              :class="isDarkMode ? 'bg-grey-7 text-white' : 'bg-white text-dark'"
+                                                              :delay="300"
+                                                              max-width="340px"
+                                                              class="modern-tooltip"
+                                                            >
+                                                              {{ bestPlaystyleTagline.significance }}
+                                                            </q-tooltip>
+                                                        </div>
                                                         <div class="player-status-badges q-mt-xs">
                                                             <q-badge
                                                                 v-if="player.isNew"
@@ -482,7 +535,7 @@
 
                                 <q-separator spaced="md" class="profile-separator" />
 
-                                <div class="fifa-stats-section">
+                                <div v-if="activeTab === 'advanced'" class="fifa-stats-section">
                                     <div class="fifa-stats-grid">
                                         <div
                                             v-for="stat in fifaStatsToDisplay"
@@ -904,9 +957,17 @@ import { useUiStore } from '../stores/uiStore'
 import { formatCurrency } from '../utils/currencyUtils'
 import logger from '../utils/logger.js'
 import { getCachedPlayerData, setCachedPlayerData } from '../utils/playerDetailOptimizer.js'
+import { deriveShortPositionsFromPositionString } from '../utils/playerUtils'
+import { ATTRIBUTE_NAME_TO_KEY, PLAYSTYLE_TAGLINES } from '../utils/playstyleTaglines.js'
 
 // Lazy load TeamLogo component to prevent blocking dialog opening
 const TeamLogo = defineAsyncComponent(() => import('../components/TeamLogo.vue'))
+
+// Lazy load PlayerCards component for the simple view
+const PlayerCards = defineAsyncComponent(() => import('../components/PlayerCards.vue'))
+
+// Lazy load ProsCons component for the simple view
+const ProsCons = defineAsyncComponent(() => import('../components/ProsCons.vue'))
 
 const attributeFullNameMap = {
   Cor: 'Corners',
@@ -1244,6 +1305,8 @@ export default defineComponent({
   name: 'PlayerDetailDialog',
   components: {
     TeamLogo,
+    PlayerCards,
+    ProsCons,
   },
   props: {
     player: { type: Object, default: () => null },
@@ -1299,6 +1362,7 @@ export default defineComponent({
     const selectedComparisonGroup = ref('Global')
     const flagLoadError = ref(false)
     const divisionFilter = ref('same')
+    const activeTab = ref('simple') // Default to simple view
 
     // Convert props to refs for the percentile retry composable
     const _playerRef = toRef(props, 'player')
@@ -1691,6 +1755,60 @@ export default defineComponent({
       lastRoleOveralls = roleOveralls
       lastSortedRoles = [...roleOveralls].sort((a, b) => b.score - a.score)
       return lastSortedRoles
+    })
+
+    // Determine best-base position for tagline from roleSpecificOveralls, fallback to derived short positions
+    const bestBasePosition = computed(() => {
+      const roleOveralls = displayPlayer.value?.roleSpecificOveralls
+      if (roleOveralls && roleOveralls.length > 0) {
+        const best = [...roleOveralls].sort((a, b) => b.score - a.score)[0]
+        if (best?.roleName) {
+          const short = String(best.roleName).split(' - ')[0]
+          return short
+        }
+      }
+      // fallback: first derived short position if available
+      const derived = deriveShortPositions(displayPlayer.value || {})
+      return derived.length > 0 ? derived[0] : null
+    })
+
+    // Score a playstyle against player's numeric attributes (1-20 scale where available).
+    // For each attribute in fm_attributes, map to our attribute key and average available values.
+    const scorePlaystyle = (player, fmAttributes) => {
+      if (!player || !Array.isArray(fmAttributes) || fmAttributes.length === 0) return 0
+      const attrs = player.numericAttributes || player.attributes || {}
+      let sum = 0
+      let count = 0
+      for (const name of fmAttributes) {
+        const key = ATTRIBUTE_NAME_TO_KEY[name]
+        if (!key) continue
+        const val = attrs[key]
+        const num = typeof val === 'number' ? val : Number.parseInt(val, 10)
+        if (!Number.isNaN(num)) {
+          sum += num
+          count += 1
+        }
+      }
+      if (count === 0) return 0
+      return Math.round(sum / count)
+    }
+
+    // Compute the best matching playstyle for the best base position
+    const bestPlaystyleTagline = computed(() => {
+      const pos = bestBasePosition.value
+      if (!pos) return null
+      const list = PLAYSTYLE_TAGLINES[pos]
+      if (!list || list.length === 0) return null
+      let best = null
+      let bestScore = -1
+      for (const item of list) {
+        const score = scorePlaystyle(displayPlayer.value, item.fm_attributes)
+        if (score > bestScore) {
+          bestScore = score
+          best = item
+        }
+      }
+      return best
     })
 
     // Memoized currency formatting with caching
@@ -2417,89 +2535,19 @@ export default defineComponent({
 
     // Helper functions to derive position information from available data
     const deriveShortPositions = (player) => {
-      const positions = []
-
-      // Extract from position field (e.g., "D (RC), WB (R)" -> ["DC", "DR", "WBR"])
+      const positions = new Set()
       if (player.position) {
-        const positionParts = player.position.split(',').map((p) => p.trim())
-        for (const part of positionParts) {
-          // Extract the position abbreviation and the side/role info
-          const match = part.match(/^([A-Z/]+)\s*\(([^)]+)\)$/)
-          if (match) {
-            const basePos = match[1] // e.g., "D", "WB", "D/WB"
-            const sideInfo = match[2] // e.g., "RC", "R", "RL"
-
-            // Split compound positions (e.g., "D/WB" -> ["D", "WB"])
-            const positionTypes = basePos.split('/')
-
-            for (const posType of positionTypes) {
-              // Handle side-specific positions
-              if (sideInfo.includes('C')) {
-                // Center position
-                if (posType === 'D') {
-                  positions.push('DC')
-                } else if (posType === 'WB') {
-                  positions.push('WBR') // Default to right wing-back for center
-                } else if (posType === 'AM') {
-                  positions.push('AMC')
-                } else if (posType === 'M') {
-                  positions.push('MC')
-                } else {
-                  positions.push(posType)
-                }
-              }
-
-              if (sideInfo.includes('R')) {
-                // Right position
-                if (posType === 'D') {
-                  positions.push('DR')
-                } else if (posType === 'WB') {
-                  positions.push('WBR')
-                } else if (posType === 'AM') {
-                  positions.push('AMR')
-                } else if (posType === 'M') {
-                  positions.push('MR')
-                } else {
-                  positions.push(posType)
-                }
-              }
-
-              if (sideInfo.includes('L')) {
-                // Left position
-                if (posType === 'D') {
-                  positions.push('DL')
-                } else if (posType === 'WB') {
-                  positions.push('WBL')
-                } else if (posType === 'AM') {
-                  positions.push('AML')
-                } else if (posType === 'M') {
-                  positions.push('ML')
-                } else {
-                  positions.push(posType)
-                }
-              }
-            }
-          } else {
-            // Handle simple position without side info
-            const shortPos = part.split(' ')[0]
-            if (shortPos && !positions.includes(shortPos)) {
-              positions.push(shortPos)
-            }
-          }
+        for (const p of deriveShortPositionsFromPositionString(player.position)) {
+          positions.add(p)
         }
       }
-
-      // Extract from role names in roleSpecificOveralls
       if (player.roleSpecificOveralls) {
         for (const role of player.roleSpecificOveralls) {
-          const shortPos = role.roleName.split(' - ')[0] // Extract "AMC" from "AMC - Trequartista - Attack"
-          if (shortPos && !positions.includes(shortPos)) {
-            positions.push(shortPos)
-          }
+          const shortPos = role.roleName.split(' - ')[0]
+          if (shortPos) positions.add(shortPos)
         }
       }
-
-      return positions
+      return Array.from(positions)
     }
 
     const derivePositionGroups = (player) => {
@@ -2690,7 +2738,7 @@ export default defineComponent({
     })
 
     // Enhanced cache with access tracking
-    const getCachedData = (cache, key) => {
+    const _getCachedData = (cache, key) => {
       const data = cache.get(key)
       if (data) {
         data._lastAccess = Date.now()
@@ -2700,7 +2748,7 @@ export default defineComponent({
     }
 
     // Enhanced cache setter with access tracking
-    const setCachedData = (cache, key, data) => {
+    const _setCachedData = (cache, key, data) => {
       data._lastAccess = Date.now()
       cache.set(key, data)
 
@@ -2770,6 +2818,10 @@ export default defineComponent({
 
       // Player positions computed property
       playerPositions,
+      bestPlaystyleTagline,
+
+      // Tab system
+      activeTab,
     }
   },
 })
@@ -2842,7 +2894,7 @@ $breakpoint-xs-max: 599px !default;
     }
     
     &.no-header-section {
-        padding-top: 20px; // Minimal room for floating close button
+        padding-top: 55px; // More room since tabs are positioned higher
     }
 }
 
@@ -3906,6 +3958,30 @@ $breakpoint-xs-max: 599px !default;
 @media (max-width: 768px) {
     .main-content-section {
         padding: 16px;
+        
+        &.no-header-section {
+            padding-top: 45px; // More room since tabs are positioned higher
+        }
+    }
+    
+    .tab-navigation {
+        top: 6px;
+        left: 12px;
+        padding: 0;
+        min-width: 50px;
+        height: 36px;
+        
+        .view-tabs {
+            gap: 3px;
+            
+            .q-tab {
+                min-height: 32px;
+                height: 32px;
+                padding: 0 8px;
+                font-size: 0.6rem;
+                transition: none;
+            }
+        }
     }
     
     .player-profile-content {
@@ -3952,6 +4028,37 @@ $breakpoint-xs-max: 599px !default;
 @media (max-width: 480px) {
     .main-content-section {
         padding: 12px;
+        
+        &.no-header-section {
+            padding-top: 40px; // More room since tabs are positioned higher
+        }
+    }
+    
+    .tab-navigation {
+        top: 4px;
+        left: 8px;
+        padding: 0;
+        min-width: 45px;
+        height: 32px;
+        
+        .view-tabs {
+            gap: 2px;
+            
+            .q-tab {
+                min-height: 28px;
+                height: 28px;
+                padding: 0 6px;
+                font-size: 0.55rem;
+                transition: none;
+            }
+        }
+    }
+    
+    .floating-close-btn {
+        top: 8px;
+        right: 8px;
+        width: 32px;
+        height: 32px;
     }
     
     .player-profile-content {
@@ -3972,6 +4079,124 @@ $breakpoint-xs-max: 599px !default;
         padding: 3px 6px;
     }
 }
+
+// Tab Navigation - Pill-shaped toggle style
+.tab-navigation {
+    position: absolute;
+    top: 8px;
+    left: 16px;
+    z-index: 10;
+    background: transparent;
+    border-radius: 20px;
+    box-shadow: none;
+    padding: 0;
+    transition: none;
+    min-width: 60px;
+    height: 40px; // Match X button height
+    display: flex;
+    justify-content: flex-start;
+}
+
+.view-tabs {
+    height: 100%;
+    display: flex;
+    gap: 4px;
+    
+    .q-tab {
+        min-height: 36px;
+        height: 36px;
+        padding: 0 12px;
+        font-size: 0.65rem;
+        font-weight: 600;
+        border-radius: 18px;
+        transition: none;
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        
+        .body--dark & {
+            background: rgba(30, 41, 59, 0.9);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        &:hover {
+            background: rgba(255, 255, 255, 1);
+            
+            .body--dark & {
+                background: rgba(30, 41, 59, 1);
+            }
+        }
+        
+        &.q-tab--active {
+            background: rgba(25, 118, 210, 0.9);
+            color: white;
+            
+            .body--dark & {
+                background: rgba(144, 202, 249, 0.9);
+                color: white;
+            }
+        }
+    }
+}
+
+.tabs-dark {
+    .q-tab {
+        color: rgba(255, 255, 255, 0.8);
+        
+        &.q-tab--active {
+            color: #90caf9;
+        }
+        
+        &:hover {
+            color: rgba(255, 255, 255, 1);
+        }
+    }
+}
+
+.tabs-light {
+    .q-tab {
+        color: rgba(0, 0, 0, 0.7);
+        
+        &.q-tab--active {
+            color: #1976d2;
+        }
+        
+        &:hover {
+            color: rgba(0, 0, 0, 0.9);
+        }
+    }
+}
+
+// Simple View Styles
+.simple-view {
+    .player-card-container {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 16px;
+        margin-bottom: 16px; // ensure space below the card
+        
+        .player-detail-card {
+            // remove scaling to avoid overlap with following sections
+            transform: none;
+            transform-origin: top center;
+            margin-bottom: 12px;
+            
+            @media (max-width: 768px) {
+                transform: none;
+            }
+            
+            @media (max-width: 480px) {
+                transform: none;
+            }
+        }
+    }
+}
+
+// (Advanced view specific styles removed - no empty ruleset)
 
 // Floating Close Button
 .floating-close-btn {

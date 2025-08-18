@@ -28,6 +28,269 @@ var percentileCalculationMutex sync.RWMutex
 // Global mutex for protecting the entire players slice during percentile calculations
 var playersPercentileMutex sync.RWMutex
 
+// PercentileDistributions holds precomputed sorted value arrays per group/stat
+// Keyed by group name (e.g., "Global", "Defenders", detailed groups), then stat key.
+type PercentileDistributions map[string]map[string][]float64
+
+// BuildPercentileDistributions constructs sorted value arrays for all percentile groups
+// according to the provided division filter. This avoids re-sorting on each request.
+func BuildPercentileDistributions(players []Player, divisionFilter DivisionFilter, targetDivision string) PercentileDistributions {
+	distributions := make(PercentileDistributions)
+
+	if len(players) == 0 {
+		return distributions
+	}
+
+	// Filter indices once if needed
+	var eligibleIndices []int
+	if divisionFilter == DivisionFilterAll {
+		eligibleIndices = make([]int, len(players))
+		for i := range players {
+			eligibleIndices[i] = i
+		}
+	} else {
+		for i := range players {
+			if isPlayerInTargetDivision(&players[i], divisionFilter, targetDivision) {
+				eligibleIndices = append(eligibleIndices, i)
+			}
+		}
+	}
+
+	// Global distributions
+	global := make(map[string][]float64, len(PerformanceStatKeys))
+	for _, statKey := range PerformanceStatKeys {
+		values := make([]float64, 0, len(eligibleIndices))
+		for _, idx := range eligibleIndices {
+			if val, ok := players[idx].PerformanceStatsNumeric[statKey]; ok && !math.IsNaN(val) {
+				values = append(values, val)
+			}
+		}
+		if len(values) > 0 {
+			sort.Float64s(values)
+			global[statKey] = values
+		}
+	}
+	distributions["Global"] = global
+
+	// Broad positional groups
+	playersByGroup := make(map[string][]int)
+	for i := range players {
+		for _, groupName := range players[i].PositionGroups {
+			playersByGroup[groupName] = append(playersByGroup[groupName], i)
+		}
+	}
+
+	for _, groupName := range PositionGroupsForPercentiles {
+		groupIndicesAll := playersByGroup[groupName]
+		if len(groupIndicesAll) == 0 {
+			continue
+		}
+
+		// Respect division filter by intersecting
+		groupIndices := make([]int, 0, len(groupIndicesAll))
+		if divisionFilter == DivisionFilterAll {
+			groupIndices = groupIndicesAll
+		} else {
+			// Fast mark eligible
+			eligible := make(map[int]struct{}, len(eligibleIndices))
+			for _, idx := range eligibleIndices {
+				eligible[idx] = struct{}{}
+			}
+			for _, idx := range groupIndicesAll {
+				if _, ok := eligible[idx]; ok {
+					groupIndices = append(groupIndices, idx)
+				}
+			}
+		}
+
+		if len(groupIndices) == 0 {
+			continue
+		}
+
+		groupStatValues := make(map[string][]float64, len(PerformanceStatKeys))
+		for _, statKey := range PerformanceStatKeys {
+			values := make([]float64, 0, len(groupIndices))
+			for _, idx := range groupIndices {
+				if val, ok := players[idx].PerformanceStatsNumeric[statKey]; ok && !math.IsNaN(val) {
+					values = append(values, val)
+				}
+			}
+			if len(values) > 0 {
+				sort.Float64s(values)
+				groupStatValues[statKey] = values
+			}
+		}
+		distributions[groupName] = groupStatValues
+	}
+
+	// Detailed positional groups
+	playersByDetailedGroup := make(map[string][]int)
+	for i := range players {
+		for detailedGroupName, shortPositions := range DetailedPositionGroupsForPercentiles {
+			for _, playerShortPos := range players[i].ShortPositions {
+				for _, requiredShortPos := range shortPositions {
+					if playerShortPos == requiredShortPos {
+						playersByDetailedGroup[detailedGroupName] = append(playersByDetailedGroup[detailedGroupName], i)
+						goto nextDetailedGroupBuild
+					}
+				}
+			}
+		}
+	nextDetailedGroupBuild:
+	}
+
+	for detailedGroupName, groupIndicesAll := range playersByDetailedGroup {
+		if len(groupIndicesAll) == 0 {
+			continue
+		}
+		groupIndices := make([]int, 0, len(groupIndicesAll))
+		if divisionFilter == DivisionFilterAll {
+			groupIndices = groupIndicesAll
+		} else {
+			eligible := make(map[int]struct{}, len(eligibleIndices))
+			for _, idx := range eligibleIndices {
+				eligible[idx] = struct{}{}
+			}
+			for _, idx := range groupIndicesAll {
+				if _, ok := eligible[idx]; ok {
+					groupIndices = append(groupIndices, idx)
+				}
+			}
+		}
+		if len(groupIndices) == 0 {
+			continue
+		}
+
+		detailedGroupStatValues := make(map[string][]float64, len(PerformanceStatKeys))
+		for _, statKey := range PerformanceStatKeys {
+			values := make([]float64, 0, len(groupIndices))
+			for _, idx := range groupIndices {
+				if val, ok := players[idx].PerformanceStatsNumeric[statKey]; ok && !math.IsNaN(val) {
+					values = append(values, val)
+				}
+			}
+			if len(values) > 0 {
+				sort.Float64s(values)
+				detailedGroupStatValues[statKey] = values
+			}
+		}
+		distributions[detailedGroupName] = detailedGroupStatValues
+	}
+
+	return distributions
+}
+
+// ApplyPercentilesFromDistributions applies precomputed distributions to players
+// to fill PerformancePercentiles for Global, broad and detailed groups.
+func ApplyPercentilesFromDistributions(players []Player, distributions PercentileDistributions) {
+	if len(players) == 0 {
+		return
+	}
+
+	// Initialize maps
+	for i := range players {
+		if players[i].PerformancePercentiles == nil {
+			players[i].PerformancePercentiles = make(map[string]map[string]float64)
+		}
+		if players[i].PerformancePercentiles["Global"] == nil {
+			players[i].PerformancePercentiles["Global"] = make(map[string]float64)
+		}
+	}
+
+	// Global
+	if global, ok := distributions["Global"]; ok {
+		for _, statKey := range PerformanceStatKeys {
+			sortedValues, has := global[statKey]
+			for i := range players {
+				if !has {
+					players[i].PerformancePercentiles["Global"][statKey] = -1
+					continue
+				}
+				if val, ok := players[i].PerformanceStatsNumeric[statKey]; ok && !math.IsNaN(val) {
+					players[i].PerformancePercentiles["Global"][statKey] = calculatePercentileValue(val, sortedValues)
+				} else {
+					players[i].PerformancePercentiles["Global"][statKey] = -1
+				}
+			}
+		}
+	}
+
+	// Precompute memberships
+	playersByGroup := make(map[string][]int)
+	for i := range players {
+		for _, groupName := range players[i].PositionGroups {
+			playersByGroup[groupName] = append(playersByGroup[groupName], i)
+		}
+	}
+
+	playersByDetailedGroup := make(map[string][]int)
+	for i := range players {
+		for detailedGroupName, shortPositions := range DetailedPositionGroupsForPercentiles {
+			for _, playerShortPos := range players[i].ShortPositions {
+				for _, requiredShortPos := range shortPositions {
+					if playerShortPos == requiredShortPos {
+						playersByDetailedGroup[detailedGroupName] = append(playersByDetailedGroup[detailedGroupName], i)
+						goto nextDetailedGroupApply
+					}
+				}
+			}
+		}
+	nextDetailedGroupApply:
+	}
+
+	// Broad groups
+	for _, groupName := range PositionGroupsForPercentiles {
+		if groupStats, ok := distributions[groupName]; ok {
+			// Ensure map exists
+			for i := range players {
+				if players[i].PerformancePercentiles[groupName] == nil {
+					players[i].PerformancePercentiles[groupName] = make(map[string]float64)
+				}
+			}
+			indices := playersByGroup[groupName]
+			for _, statKey := range PerformanceStatKeys {
+				sortedValues, has := groupStats[statKey]
+				for _, idx := range indices {
+					if !has {
+						players[idx].PerformancePercentiles[groupName][statKey] = -1
+						continue
+					}
+					if val, ok := players[idx].PerformanceStatsNumeric[statKey]; ok && !math.IsNaN(val) {
+						players[idx].PerformancePercentiles[groupName][statKey] = calculatePercentileValue(val, sortedValues)
+					} else {
+						players[idx].PerformancePercentiles[groupName][statKey] = -1
+					}
+				}
+			}
+		}
+	}
+
+	// Detailed groups
+	for detailedGroupName, indices := range playersByDetailedGroup {
+		if groupStats, ok := distributions[detailedGroupName]; ok {
+			for _, idx := range indices {
+				if players[idx].PerformancePercentiles[detailedGroupName] == nil {
+					players[idx].PerformancePercentiles[detailedGroupName] = make(map[string]float64)
+				}
+			}
+			for _, statKey := range PerformanceStatKeys {
+				sortedValues, has := groupStats[statKey]
+				for _, idx := range indices {
+					if !has {
+						players[idx].PerformancePercentiles[detailedGroupName][statKey] = -1
+						continue
+					}
+					if val, ok := players[idx].PerformanceStatsNumeric[statKey]; ok && !math.IsNaN(val) {
+						players[idx].PerformancePercentiles[detailedGroupName][statKey] = calculatePercentileValue(val, sortedValues)
+					} else {
+						players[idx].PerformancePercentiles[detailedGroupName][statKey] = -1
+					}
+				}
+			}
+		}
+	}
+}
+
 // generateDatasetHash creates a hash of the dataset for cache invalidation
 func generateDatasetHash(players []Player) string {
 	hasher := sha256.New()
