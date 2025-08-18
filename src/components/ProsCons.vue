@@ -7,30 +7,42 @@
           <span class="section-title">Pros</span>
         </div>
         <div class="pros-list">
-          <div 
-            v-for="(pro, index) in topAttributes" 
+          <div
+            v-for="(pro, index) in topAttributes"
             :key="`pro-${index}`"
-            class="pro-item"
+            class="attribute-item pro-item"
           >
             <span class="category-name">{{ pro.category }}</span>
-            <span class="attribute-value">{{ pro.value }}</span>
+            <div class="percentile-display">
+              <div class="percentile-bar-container">
+                <div class="percentile-bar pro-bar" :style="{ width: pro.percentile + '%' }"></div>
+              </div>
+              <span class="percentile-value">{{ Math.round(pro.percentile) }}</span>
+            </div>
+            <span class="attribute-value pro-value">{{ pro.value }}</span>
           </div>
         </div>
       </div>
-      
+
       <div class="cons-section">
         <div class="section-header">
           <q-icon name="thumb_down" color="negative" class="q-mr-sm" />
           <span class="section-title">Cons</span>
         </div>
         <div class="cons-list">
-          <div 
-            v-for="(con, index) in bottomAttributes" 
+          <div
+            v-for="(con, index) in bottomAttributes"
             :key="`con-${index}`"
-            class="con-item"
+            class="attribute-item con-item"
           >
             <span class="category-name">{{ con.category }}</span>
-            <span class="attribute-value">{{ con.value }}</span>
+            <div class="percentile-display">
+              <div class="percentile-bar-container">
+                <div class="percentile-bar con-bar" :style="{ width: con.percentile + '%' }"></div>
+              </div>
+              <span class="percentile-value">{{ Math.round(con.percentile) }}</span>
+            </div>
+            <span class="attribute-value con-value">{{ con.value }}</span>
           </div>
         </div>
       </div>
@@ -41,6 +53,7 @@
 <script>
 import { computed, defineComponent } from 'vue'
 
+// Data maps
 const performanceStatMap = {
   'Asts/90': 'Assists per 90',
   'Av Rat': 'Average Rating',
@@ -81,20 +94,13 @@ const performanceStatMap = {
   'Sv %': 'Save Percentage',
 }
 
-// Performance stat categories for grouping
+// --- Start of Changed Section ---
+
 const performanceStatCategories = {
-  Discipline: {
-    stats: ['Fls', 'FA'],
-    lowerIsBetter: true, // Lower percentile is better for discipline stats
-  },
-  'Goal Scoring': {
-    stats: ['Gls/90', 'xG/90', 'NP-xG/90', 'Conv %'],
-    lowerIsBetter: false,
-  },
-  'Shot Frequency': {
-    stats: ['Shot/90', 'ShT/90'],
-    lowerIsBetter: false,
-  },
+  Fouls: { stats: ['Fls'], lowerIsBetter: true }, // Renamed and isolated Fls
+  'Drawing Fouls': { stats: ['FA'], lowerIsBetter: false }, // New category for FA
+  'Goal Scoring': { stats: ['Gls/90', 'xG/90', 'NP-xG/90', 'Conv %'], lowerIsBetter: false },
+  'Shot Frequency': { stats: ['Shot/90', 'ShT/90'], lowerIsBetter: false },
   'Ball Progression': {
     stats: [
       'Ps C/90',
@@ -111,58 +117,46 @@ const performanceStatCategories = {
     ],
     lowerIsBetter: false,
   },
-  Dribbling: {
-    stats: ['Drb/90'],
-    lowerIsBetter: false,
-  },
+  Dribbling: { stats: ['Drb/90'], lowerIsBetter: false },
   Defending: {
     stats: ['Tck/90', 'Int/90', 'Blk/90', 'Clr/90', 'Tck R', 'Hdrs W/90', 'Pres C/90'],
     lowerIsBetter: false,
   },
-  'Shot Stopping': {
-    stats: ['Sv %', 'xGP/90'],
-    lowerIsBetter: false,
-  },
-  'GK Team Impact': {
-    stats: ['Con/90', 'Clean Sheets', 'Cln/90'],
-    lowerIsBetter: true, // Lower is better for goals conceded
-  },
+  'Shot Stopping': { stats: ['Sv %', 'xGP/90'], lowerIsBetter: false },
+  'GK Team Impact': { stats: ['Con/90', 'Clean Sheets', 'Cln/90'], lowerIsBetter: true },
 }
 
 export default defineComponent({
   name: 'ProsCons',
   props: {
-    player: {
-      type: Object,
-      required: true,
-    },
-    selectedComparisonGroup: {
-      type: String,
-      default: 'Global',
-    },
+    player: { type: Object, required: true },
+    selectedComparisonGroup: { type: String, default: 'Global' },
   },
   setup(props) {
-    // Computed properties for pros/cons analysis based on performance percentiles
-    const topAttributes = computed(() => {
+    // Updated function to return text that reflects the stat's nature
+    const getStrengthText = (percentile, lowerIsBetter = false) => {
+      if (lowerIsBetter) {
+        if (percentile >= 89) return 'Very High' // A con
+        if (percentile >= 74) return 'High' // A con
+        if (percentile <= 11) return 'Very Low' // A pro
+        if (percentile <= 36) return 'Low' // A pro
+      } else {
+        if (percentile >= 89) return 'Very Strong' // A pro
+        if (percentile >= 74) return 'Strong' // A pro
+        if (percentile <= 11) return 'Very Weak' // A con
+        if (percentile <= 36) return 'Weak' // A con
+      }
+      return null
+    }
+
+    const attributes = computed(() => {
       if (!props.player?.performancePercentiles) return []
-
-      const percentiles = props.player.performancePercentiles
-      const groupPercentiles = percentiles[props.selectedComparisonGroup] || {}
-
-      // Debug logging
-      console.log('ProsCons Debug:', {
-        hasPercentiles: !!props.player.performancePercentiles,
-        selectedGroup: props.selectedComparisonGroup,
-        availableGroups: Object.keys(percentiles),
-        groupPercentiles: groupPercentiles,
-        groupPercentilesKeys: Object.keys(groupPercentiles),
-      })
-
-      // Group stats by category and find the best in each category
-      const categorizedPros = {}
+      const groupPercentiles =
+        props.player.performancePercentiles[props.selectedComparisonGroup] || {}
+      const allAttributes = []
 
       Object.entries(performanceStatCategories).forEach(([categoryName, category]) => {
-        const categoryStats = category.stats
+        const bestStat = category.stats
           .map((statKey) => {
             const percentile = groupPercentiles[statKey]
             if (
@@ -173,344 +167,192 @@ export default defineComponent({
             ) {
               return null
             }
+            // Pass lowerIsBetter flag to get correct text
+            const strength = getStrengthText(Number(percentile), category.lowerIsBetter)
+            if (!strength) return null
+
             return {
               key: statKey,
               percentile: Number(percentile),
-              strength: getStrengthLevel(Number(percentile)),
+              value: strength,
               category: categoryName,
               lowerIsBetter: category.lowerIsBetter,
             }
           })
-          .filter((item) => item !== null)
-          .filter((item) => {
-            if (item.lowerIsBetter) {
-              // For discipline stats, lower percentile is better
-              return item.strength === 'Very Weak' || item.strength === 'Weak'
-            } else {
-              // For regular stats, higher percentile is better
-              return item.strength === 'Very Strong' || item.strength === 'Strong'
-            }
-          })
+          .filter(Boolean)
           .sort((a, b) => {
-            if (a.lowerIsBetter) {
-              return a.percentile - b.percentile // Lower is better
-            } else {
-              return b.percentile - a.percentile // Higher is better
-            }
-          })
+            const effectivePercentileA = a.lowerIsBetter ? 100 - a.percentile : a.percentile
+            const effectivePercentileB = b.lowerIsBetter ? 100 - b.percentile : b.percentile
+            return effectivePercentileB - effectivePercentileA
+          })[0]
 
-        if (categoryStats.length > 0) {
-          // Take the best stat from each category
-          const bestStat = categoryStats[0]
-          categorizedPros[categoryName] = {
-            key: bestStat.key,
-            value: bestStat.strength,
-            percentile: bestStat.percentile,
-            category: categoryName,
-          }
+        if (bestStat) {
+          allAttributes.push(bestStat)
         }
       })
+      return allAttributes
+    })
 
-      return Object.values(categorizedPros)
+    const topAttributes = computed(() => {
+      const pros = ['Very Strong', 'Strong', 'Very Low', 'Low']
+      return attributes.value
+        .filter((attr) => pros.includes(attr.value))
+        .sort((a, b) => {
+          const effectivePercentileA = a.lowerIsBetter ? 100 - a.percentile : a.percentile
+          const effectivePercentileB = b.lowerIsBetter ? 100 - b.percentile : b.percentile
+          return effectivePercentileB - effectivePercentileA // Sort descending by "goodness"
+        })
     })
 
     const bottomAttributes = computed(() => {
-      if (!props.player?.performancePercentiles) return []
-
-      const percentiles = props.player.performancePercentiles
-      const groupPercentiles = percentiles[props.selectedComparisonGroup] || {}
-
-      // Group stats by category and find the worst in each category
-      const categorizedCons = {}
-
-      Object.entries(performanceStatCategories).forEach(([categoryName, category]) => {
-        const categoryStats = category.stats
-          .map((statKey) => {
-            const percentile = groupPercentiles[statKey]
-            if (
-              percentile === null ||
-              percentile === undefined ||
-              Number.isNaN(percentile) ||
-              percentile < 0
-            ) {
-              return null
-            }
-            return {
-              key: statKey,
-              percentile: Number(percentile),
-              strength: getStrengthLevel(Number(percentile)),
-              category: categoryName,
-              lowerIsBetter: category.lowerIsBetter,
-            }
-          })
-          .filter((item) => item !== null)
-          .filter((item) => {
-            if (item.lowerIsBetter) {
-              // For discipline stats, higher percentile is worse
-              return item.strength === 'Very Strong' || item.strength === 'Strong'
-            } else {
-              // For regular stats, lower percentile is worse
-              return item.strength === 'Weak' || item.strength === 'Very Weak'
-            }
-          })
-          .sort((a, b) => {
-            if (a.lowerIsBetter) {
-              return b.percentile - a.percentile // Higher is worse
-            } else {
-              return a.percentile - b.percentile // Lower is worse
-            }
-          })
-
-        if (categoryStats.length > 0) {
-          // Take the worst stat from each category
-          const worstStat = categoryStats[0]
-          categorizedCons[categoryName] = {
-            key: worstStat.key,
-            value: worstStat.strength,
-            percentile: worstStat.percentile,
-            category: categoryName,
-          }
-        }
-      })
-
-      return Object.values(categorizedCons)
+      const cons = ['Very Weak', 'Weak', 'Very High', 'High']
+      return attributes.value
+        .filter((attr) => cons.includes(attr.value))
+        .sort((a, b) => {
+          const effectivePercentileA = a.lowerIsBetter ? 100 - a.percentile : a.percentile
+          const effectivePercentileB = b.lowerIsBetter ? 100 - b.percentile : b.percentile
+          return effectivePercentileA - effectivePercentileB // Sort ascending by "goodness" (worst first)
+        })
     })
 
-    // Helper function to determine strength level based on percentile
-    const getStrengthLevel = (percentile) => {
-      if (percentile >= 89) return 'Very Strong'
-      if (percentile >= 74) return 'Strong'
-      if (percentile <= 11) return 'Very Weak'
-      if (percentile <= 36) return 'Weak'
-      return null // For middle range percentiles (37-73)
-    }
+    // --- End of Changed Section ---
 
     return {
       topAttributes,
       bottomAttributes,
-      performanceStatMap,
     }
   },
 })
 </script>
 
+
 <style lang="scss" scoped>
-// Pros/Cons Component Styles
 .pros-cons-container {
-  margin-top: 40px; // Much more spacing to prevent intersection
+  margin-top: 40px;
   padding: 0 16px;
-  
+
   .pros-cons-card {
     background: rgba(255, 255, 255, 0.95);
     border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     overflow: hidden;
-    display: flex; // Side-by-side layout
-    
+    display: flex;
+
     .body--dark & {
       background: rgba(30, 41, 59, 0.95);
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     }
-    
-    .pros-section,
-    .cons-section {
-      padding: 16px;
-      flex: 1; // Equal width for both sections
-      
-      .section-header {
-        display: flex;
-        align-items: center;
-        margin-bottom: 12px;
-        
-        .section-title {
-          font-size: 1rem;
-          font-weight: 600;
-          color: #334155;
-          
-          .body--dark & {
-            color: rgba(255, 255, 255, 0.9);
-          }
-        }
-      }
-      
-      .pros-list,
-      .cons-list {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-      
-      .pro-item,
-      .con-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 8px 12px;
-        border-radius: 6px;
-        transition: all 0.2s ease;
-        
-        &:hover {
-          transform: translateX(2px);
-        }
-      }
-      
-      .pro-item {
-        background: rgba(34, 197, 94, 0.1);
-        border-left: 3px solid #22c55e;
-        
-        .body--dark & {
-          background: rgba(34, 197, 94, 0.15);
-          border-left-color: #34d399;
-        }
-        
-        .attribute-value {
-          color: #059669;
-          font-weight: 600;
-          
-          .body--dark & {
-            color: #34d399;
-          }
-        }
-      }
-      
-      .con-item {
-        background: rgba(239, 68, 68, 0.1);
-        border-left: 3px solid #ef4444;
-        
-        .body--dark & {
-          background: rgba(239, 68, 68, 0.15);
-          border-left-color: #f87171;
-        }
-        
-        .attribute-value {
-          color: #dc2626;
-          font-weight: 600;
-          
-          .body--dark & {
-            color: #f87171;
-          }
-        }
-      }
-      
-      .category-name {
-        font-size: 0.85rem;
+  }
+
+  .pros-section,
+  .cons-section {
+    padding: 16px;
+    flex: 1;
+    min-width: 0;
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 12px;
+
+      .section-title {
+        font-size: 1rem;
         font-weight: 600;
-        color: #334155;
-        letter-spacing: 0.5px;
-        
-        .body--dark & {
-          color: rgba(255, 255, 255, 0.85);
-        }
-      }
-      
-      .attribute-value {
-        font-size: 0.9rem;
-        font-weight: 700;
+        .body--dark & { color: rgba(255, 255, 255, 0.9); }
       }
     }
-    
-    .cons-section {
-      border-left: 1px solid rgba(0, 0, 0, 0.1); // Changed from border-top to border-left
-      
-      .body--dark & {
-        border-left-color: rgba(255, 255, 255, 0.1);
-      }
+
+    .pros-list,
+    .cons-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
     }
+  }
+
+  .attribute-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .pro-item,
+  .con-item {
+    background: none;
+    padding: 0;
+  }
+
+  .category-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    .body--dark & { color: rgba(255, 255, 255, 0.85); }
+  }
+
+  .attribute-value {
+    font-size: 0.8rem;
+    font-weight: 700;
+    align-self: flex-end;
+  }
+
+  .pro-value {
+    color: #059669;
+    .body--dark & { color: #34d399; }
+  }
+
+  .con-value {
+    color: #dc2626;
+    .body--dark & { color: #f87171; }
+  }
+
+  .percentile-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .percentile-bar-container {
+    flex-grow: 1;
+    height: 6px;
+    background-color: #e2e8f0;
+    border-radius: 3px;
+    overflow: hidden;
+    .body--dark & { background-color: #475569; }
+  }
+
+  .percentile-bar {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s ease-out;
+  }
+
+  .pro-bar { background-color: #22c55e; }
+  .con-bar { background-color: #ef4444; }
+
+  .percentile-value {
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    min-width: 20px;
+    text-align: right;
+    .body--dark & { color: #cbd5e1; }
+  }
+
+  .cons-section {
+    border-left: 1px solid rgba(0, 0, 0, 0.1);
+    .body--dark & { border-left-color: rgba(255, 255, 255, 0.1); }
   }
 }
 
 // Responsive Design
 @media (max-width: 768px) {
-  .pros-cons-container {
-    margin-top: 32px;
-    padding: 0 12px;
-    
-    .pros-cons-card {
-      flex-direction: column; // Stack vertically on mobile
-      
-      .pros-section,
-      .cons-section {
-        padding: 12px;
-        flex: none; // Remove flex on mobile
-        
-        .section-header {
-          margin-bottom: 8px;
-          
-          .section-title {
-            font-size: 0.9rem;
-          }
-        }
-        
-        .pro-item,
-        .con-item {
-          padding: 6px 10px;
-        }
-        
-        .attribute-name {
-          font-size: 0.8rem;
-        }
-        
-        .attribute-value {
-          font-size: 0.85rem;
-        }
-      }
-      
-      .cons-section {
-        border-left: none; // Remove left border on mobile
-        border-top: 1px solid rgba(0, 0, 0, 0.1); // Add top border instead
-        
-        .body--dark & {
-          border-top-color: rgba(255, 255, 255, 0.1);
-        }
-      }
-    }
-  }
-}
+  .pros-cons-container .pros-cons-card {
+    flex-direction: column;
 
-@media (max-width: 480px) {
-  .pros-cons-container {
-    margin-top: 28px;
-    padding: 0 8px;
-    
-    .pros-cons-card {
-      flex-direction: column; // Stack vertically on small mobile
-      
-      .pros-section,
-      .cons-section {
-        padding: 10px;
-        flex: none; // Remove flex on small mobile
-        
-        .section-header {
-          margin-bottom: 6px;
-          
-          .section-title {
-            font-size: 0.85rem;
-          }
-        }
-        
-        .pro-item,
-        .con-item {
-          padding: 4px 8px;
-        }
-        
-        .attribute-name {
-          font-size: 0.75rem;
-        }
-        
-        .attribute-value {
-          font-size: 0.8rem;
-        }
-      }
-      
-      .cons-section {
-        border-left: none; // Remove left border on small mobile
-        border-top: 1px solid rgba(0, 0, 0, 0.1); // Add top border instead
-        
-        .body--dark & {
-          border-top-color: rgba(255, 255, 255, 0.1);
-        }
-      }
+    .cons-section {
+      border-left: none;
+      border-top: 1px solid rgba(0, 0, 0, 0.1);
+      .body--dark & { border-top-color: rgba(255, 255, 255, 0.1); }
     }
   }
 }
-</style> 
+</style>
