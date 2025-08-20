@@ -12,7 +12,7 @@ RUN echo "Building Vue app with VITE_API_BASE_URL=${VITE_API_BASE_URL}"
 # No need to rebuild esbuild when using npm ci with locked versions
 RUN npm run build
 
-FROM golang:1.24-alpine AS go-builder
+FROM golang:1.25-alpine AS go-builder
 LABEL stage=go-builder
 WORKDIR /app-go
 RUN apk add --no-cache ca-certificates git
