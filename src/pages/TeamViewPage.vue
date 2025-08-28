@@ -551,25 +551,7 @@ export default {
         if (teamData.data?.players) {
           teamPlayers.value = teamData.data.players
 
-          console.log('Team players loaded via API:', {
-            teamName: selectedTeamName.value,
-            playerCount: teamData.data.players.length,
-            samplePlayer: teamData.data.players[0]
-              ? {
-                  name: teamData.data.players[0].name,
-                  short_positions: teamData.data.players[0].shortPositions,
-                  roleSpecificOveralls: teamData.data.players[0].roleSpecificOveralls?.length || 0,
-                  Overall: teamData.data.players[0].Overall,
-                  PAC: teamData.data.players[0].PAC,
-                  SHO: teamData.data.players[0].SHO,
-                  PAS: teamData.data.players[0].PAS,
-                  DRI: teamData.data.players[0].DRI,
-                  DEF: teamData.data.players[0].DEF,
-                  PHY: teamData.data.players[0].PHY,
-                  TotalStats: teamData.data.players[0].TotalStats,
-                }
-              : null,
-          })
+          // Team players loaded successfully
 
           // Auto-select the best formation for this team
           if (teamData.data.players.length > 0) {
@@ -969,10 +951,7 @@ export default {
           : null,
       })
 
-      // Debug: Check position mappings
-      console.log('Position mappings for GK:', positionSideMap.GK)
-      console.log('Position mappings for ST (C):', positionSideMap['ST (C)'])
-      console.log('Fallback mappings for GK:', fallbackPositionMap.GK)
+      // Position mappings configured
 
       // Check cache first
       const cacheKey = formationCache.generateKey(teamPlayers.value, 'team-best')
@@ -1035,17 +1014,7 @@ export default {
             }
           }
 
-          // Debug: Log the first few players and their position data
-          if (formationKey === '442_classic' && slot.role === 'GK') {
-            console.log('Debug - Sample players for GK position:')
-            for (let i = 0; i < Math.min(3, teamPlayers.value.length); i++) {
-              const player = teamPlayers.value[i]
-              const overallInRole = getPlayerOverallForRole(player, slot.role)
-              console.log(
-                `Player ${i}: ${player.name}, positions: ${player.shortPositions}, overall: ${overallInRole}, threshold: ${MIN_SUITABILITY_THRESHOLD}`
-              )
-            }
-          }
+          // Position calculation complete
         }
 
         // Sort assignments by sort score
@@ -1099,11 +1068,7 @@ export default {
         }
       }
 
-      console.log('Formation calculation result:', {
-        bestFormationKey,
-        bestAverageOverall,
-        totalFormationsTested: Object.keys(formations).length,
-      })
+      // Formation calculation complete
 
       // Cache the result
       if (bestFormationKey) {

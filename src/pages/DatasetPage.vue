@@ -420,15 +420,7 @@ export default {
     })
     const salaryRangeForFilters = computed(() => {
       const range = playerStore.salaryRange || { min: 0, max: 1000000 }
-      // Debug logging
-      if (range.max === 10000) {
-        console.log(
-          'Salary range debug:',
-          range,
-          'playerStore.salaryRange:',
-          playerStore.salaryRange
-        )
-      }
+      // Salary range processing
       return range
     })
 
@@ -543,38 +535,7 @@ export default {
 
           // Role filter
           if (currentFilters.value.role) {
-            console.log(`\n=== ROLE FILTERING DEBUG ===`)
-            console.log(`Filtering for role: "${currentFilters.value.role}"`)
-            console.log(`Player: ${player.name}`)
-
-            // Add comprehensive logging to debug the data
-            console.log(`=== PLAYER DATA DEBUG: ${player.name} ===`)
-            console.log('Player UID:', player.uid || player.UID)
-            console.log('Player Position:', player.position || player.Position)
-            console.log('Player ShortPositions:', player.shortPositions || player.ShortPositions)
-            console.log('Player roleSpecificOveralls:', player.roleSpecificOveralls)
-            console.log('Player roleSpecificOveralls type:', typeof player.roleSpecificOveralls)
-            console.log(
-              'Player roleSpecificOveralls length:',
-              Array.isArray(player.roleSpecificOveralls)
-                ? player.roleSpecificOveralls.length
-                : 'N/A'
-            )
-            console.log(
-              'Player NumericAttributes:',
-              player.numericAttributes || player.NumericAttributes
-            )
-            console.log(
-              'Player PerformanceStatsNumeric:',
-              player.performanceStatsNumeric || player.PerformanceStatsNumeric
-            )
-            console.log('Player Overall:', player.overall || player.Overall)
-            console.log('Player Attributes:', player.attributes || player.Attributes)
-            console.log('Filtering for role:', currentFilters.value.role)
-            console.log('==========================================')
-
             if (!player.roleSpecificOveralls) {
-              console.log(`Player ${player.name} has NO roleSpecificOveralls field - filtering out`)
               return false
             }
 
@@ -587,30 +548,7 @@ export default {
               hasRole = Object.hasOwn(player.roleSpecificOveralls, currentFilters.value.role)
             }
             if (!hasRole) {
-              console.log(
-                `Player ${player.name} filtered out - doesn't have role: ${currentFilters.value.role}`
-              )
               return false
-            }
-            console.log(`Player ${player.name} has role: ${currentFilters.value.role}`)
-          } else {
-            // Log when no role filter is active
-            if (
-              player.name === 'William Carvalho' ||
-              player.name === 'Simon Falette' ||
-              player.name === 'Stefan de Vrij'
-            ) {
-              console.log(`\n=== NO ROLE FILTER DEBUG ===`)
-              console.log(`Player: ${player.name} - No role filter active`)
-              console.log('Player roleSpecificOveralls:', player.roleSpecificOveralls)
-              console.log('Player roleSpecificOveralls type:', typeof player.roleSpecificOveralls)
-              console.log(
-                'Player roleSpecificOveralls length:',
-                Array.isArray(player.roleSpecificOveralls)
-                  ? player.roleSpecificOveralls.length
-                  : 'N/A'
-              )
-              console.log('==========================================')
             }
           }
 
@@ -864,7 +802,6 @@ export default {
           playerStore.allPlayers.length > 0 && playerStore.currentDatasetId === datasetId
 
         if (hasExistingData) {
-          console.log('Using existing data from store for dataset:', datasetId)
           // Data is already available, just ensure roles are loaded
           if (playerStore.allAvailableRoles.length === 0) {
             await playerStore.fetchAllAvailableRoles()
@@ -872,42 +809,6 @@ export default {
         } else {
           // Fetch data from API
           await playerStore.fetchPlayersByDatasetId(datasetId)
-
-          // Add logging to see what data was received
-          console.log('=== DATASET LOADED DEBUG ===')
-          console.log('Dataset ID:', datasetId)
-          console.log('Total players loaded:', playerStore.allPlayers.length)
-          console.log('Current dataset ID in store:', playerStore.currentDatasetId)
-
-          // Log details of first few players to see their data structure
-          const samplePlayers = playerStore.allPlayers.slice(0, 3)
-          samplePlayers.forEach((player, index) => {
-            console.log(`--- Sample Player ${index + 1}: ${player.name} ---`)
-            console.log('Player UID:', player.uid || player.UID)
-            console.log('Player Position:', player.position || player.Position)
-            console.log('Player ShortPositions:', player.shortPositions || player.ShortPositions)
-            console.log('Player roleSpecificOveralls:', player.roleSpecificOveralls)
-            console.log('Player roleSpecificOveralls type:', typeof player.roleSpecificOveralls)
-            console.log(
-              'Player roleSpecificOveralls length:',
-              Array.isArray(player.roleSpecificOveralls)
-                ? player.roleSpecificOveralls.length
-                : 'N/A'
-            )
-            console.log(
-              'Player NumericAttributes:',
-              player.numericAttributes || player.NumericAttributes
-            )
-            console.log(
-              'Player PerformanceStatsNumeric:',
-              player.performanceStatsNumeric || player.PerformanceStatsNumeric
-            )
-            console.log('Player Overall:', player.overall || player.Overall)
-            console.log('Player Attributes:', player.attributes || player.Attributes)
-            console.log('--- End Sample Player ---')
-          })
-          console.log('=== END DATASET LOADED DEBUG ===')
-
           await playerStore.fetchAllAvailableRoles()
         }
 
@@ -939,40 +840,6 @@ export default {
           playerStore.allPlayers.length > 0 && playerStore.currentDatasetId === datasetIdFromRoute
 
         if (hasCachedData) {
-          console.log('Using cached data for dataset:', datasetIdFromRoute)
-          console.log('=== CACHED DATA DEBUG ===')
-          console.log('Total cached players:', playerStore.allPlayers.length)
-          console.log('Current dataset ID in store:', playerStore.currentDatasetId)
-
-          // Log details of first few cached players to see their data structure
-          const sampleCachedPlayers = playerStore.allPlayers.slice(0, 3)
-          sampleCachedPlayers.forEach((player, index) => {
-            console.log(`--- Cached Player ${index + 1}: ${player.name} ---`)
-            console.log('Player UID:', player.uid || player.UID)
-            console.log('Player Position:', player.position || player.Position)
-            console.log('Player ShortPositions:', player.shortPositions || player.ShortPositions)
-            console.log('Player roleSpecificOveralls:', player.roleSpecificOveralls)
-            console.log('Player roleSpecificOveralls type:', typeof player.roleSpecificOveralls)
-            console.log(
-              'Player roleSpecificOveralls length:',
-              Array.isArray(player.roleSpecificOveralls)
-                ? player.roleSpecificOveralls.length
-                : 'N/A'
-            )
-            console.log(
-              'Player NumericAttributes:',
-              player.numericAttributes || player.NumericAttributes
-            )
-            console.log(
-              'Player PerformanceStatsNumeric:',
-              player.performanceStatsNumeric || player.PerformanceStatsNumeric
-            )
-            console.log('Player Overall:', player.overall || player.Overall)
-            console.log('Player Attributes:', player.attributes || player.Attributes)
-            console.log('--- End Cached Player ---')
-          })
-          console.log('=== END CACHED DATA DEBUG ===')
-
           pageLoading.value = false // Don't show loading if we have cached data
         }
 
