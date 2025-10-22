@@ -69,15 +69,11 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ['vue', 'vue-router', 'pinia', '@quasar/extras', 'quasar'],
-    // Force include problematic modules to prevent initialization issues
-    force: true,
     // Ensure proper module resolution
     esbuildOptions: {
       target: 'esnext',
       // Add tree-shaking optimization
       treeShaking: true,
-      // Enable advanced minification during dev dependencies
-      minify: true,
     },
     // Pre-bundle heavy dependencies for faster dev server startup
     entries: ['src/main.js', 'src/stores/playerStore.js', 'src/composables/useApi.js'],
@@ -263,19 +259,14 @@ export default defineConfig({
     sourcemap: process.env.NODE_ENV === 'development',
     cssCodeSplit: true,
     assetsInlineLimit: 2048, // Reduced from 4096 to avoid large inline assets
-    // Enable advanced minification
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: process.env.NODE_ENV === 'production',
-        drop_debugger: true,
-        pure_funcs: ['console.log', 'console.info'], // Remove specific console methods
-        passes: 2, // Multiple compression passes
+    // Use esbuild for much faster minification (5-10x faster than terser)
+    minify: 'esbuild',
+    // Optional: esbuild minify options for production
+    ...(process.env.NODE_ENV === 'production' && {
+      esbuild: {
+        drop: ['console', 'debugger'],
       },
-      mangle: {
-        safari10: true, // Safari 10+ compatibility
-      },
-    },
+    }),
     // CommonJS to ESM conversion optimization
     commonjsOptions: {
       include: [/node_modules/],

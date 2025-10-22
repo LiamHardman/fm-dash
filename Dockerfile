@@ -1,27 +1,46 @@
-FROM node:24-alpine AS vue-builder
+# Pin specific node version to prevent cache invalidation
+FROM node:24.12.0-alpine AS vue-builder
 LABEL stage=vue-builder
 WORKDIR /app-vue
+
 # Copy package files for better caching and consistent dependency versions
 COPY package.json package-lock.json ./
-# Use npm ci for consistent, reproducible builds
-RUN npm ci --legacy-peer-deps
-COPY . .
+
+# Use npm ci with BuildKit cache mount for faster, reproducible builds
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --legacy-peer-deps
+
+# Copy only necessary source files (dockerignore filters out the rest)
+COPY src ./src
+COPY public ./public
+COPY index.html vite.config.js ./
+
 ARG VITE_API_BASE_URL=/api
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 RUN echo "Building Vue app with VITE_API_BASE_URL=${VITE_API_BASE_URL}"
-# No need to rebuild esbuild when using npm ci with locked versions
+
+# Build the Vue application
 RUN npm run build
 
-FROM golang:1.24-alpine AS go-builder
+# Pin golang version for cache stability
+FROM golang:1.24.0-alpine AS go-builder
 LABEL stage=go-builder
 WORKDIR /app-go
 RUN apk add --no-cache ca-certificates git
+
 COPY src/api/go.mod src/api/go.sum ./
-RUN go mod download
-RUN go mod verify
+
+# Use BuildKit cache mount for Go modules
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download && \
+    go mod verify
+
 COPY src/api/ ./
-RUN go mod tidy
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /app-go/v2fmdash-server .
+
+# Build with cache mounts for faster compilation
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /app-go/v2fmdash-server .
 
 # Use Alpine for the final image instead of Debian
 FROM alpine:3.20

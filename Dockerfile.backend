@@ -1,13 +1,23 @@
 # Backend Dockerfile for Go API
-FROM golang:1.24-alpine AS go-builder
+# Pin golang version for cache stability
+FROM golang:1.24.0-alpine AS go-builder
 LABEL stage=go-builder
 WORKDIR /app-go
 RUN apk add --no-cache ca-certificates git
+
 COPY src/api/go.mod src/api/go.sum ./
-RUN go mod download
-RUN go mod verify
+
+# Use BuildKit cache mount for Go modules
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download && \
+    go mod verify
+
 COPY src/api/ ./
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /app-go/v2fmdash-server .
+
+# Build with cache mounts for faster compilation
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /app-go/v2fmdash-server .
 
 # Use distroless for maximum security
 FROM gcr.io/distroless/static-debian12:nonroot

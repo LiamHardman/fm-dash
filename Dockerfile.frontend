@@ -1,15 +1,21 @@
 # Frontend Dockerfile for Vue.js application
-FROM node:24-alpine AS vue-builder
+# Pin specific node version to prevent cache invalidation
+FROM node:24.12.0-alpine AS vue-builder
 LABEL stage=vue-builder
 WORKDIR /app-vue
 
 # Copy package files first for better layer caching
 COPY package*.json ./
-# Install dependencies, forcing npm to handle optional dependencies correctly for Alpine
-RUN npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
-# Copy all source files
-COPY . .
+# Install dependencies with BuildKit cache mount for faster builds
+# The cache mount persists npm cache between builds
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --legacy-peer-deps
+
+# Copy only necessary source files (dockerignore filters out the rest)
+COPY src ./src
+COPY public ./public
+COPY index.html vite.config.js ./
 
 # Build the application
 RUN npm run build
