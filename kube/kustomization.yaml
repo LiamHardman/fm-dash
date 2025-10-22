@@ -2,10 +2,25 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
+  # Unified deployment (1 replica with nginx+go)
   - kube.yaml
+  # Separate frontend/backend deployments (3 replicas each)
+  - kube_multiple_replicas.yaml
 
-# This allows ArgoCD Image Updater to automatically update the image
+# This section allows ArgoCD Image Updater to automatically update all three images
 images:
+  # Unified image
   - name: ghcr.io/liamhardman/fm-dash
     newName: ghcr.io/liamhardman/fm-dash
     newTag: dev
+  
+  # Backend image (for multiple replicas deployment)
+  - name: ghcr.io/liamhardman/fm-dash-backend
+    newName: ghcr.io/liamhardman/fm-dash-backend
+    newTag: dev
+  
+  # Frontend image (for multiple replicas deployment)
+  - name: ghcr.io/liamhardman/fm-dash-frontend
+    newName: ghcr.io/liamhardman/fm-dash-frontend
+    newTag: dev
+
