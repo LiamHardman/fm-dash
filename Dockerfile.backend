@@ -1,6 +1,5 @@
 # Backend Dockerfile for Go API
-# Pin golang version for cache stability
-FROM golang:1.24.0-alpine AS go-builder
+FROM golang:1.24-alpine AS go-builder
 LABEL stage=go-builder
 WORKDIR /app-go
 RUN apk add --no-cache ca-certificates git

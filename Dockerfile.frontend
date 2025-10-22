@@ -1,6 +1,5 @@
 # Frontend Dockerfile for Vue.js application
-# Pin specific node version to prevent cache invalidation
-FROM node:24.12.0-alpine AS vue-builder
+FROM node:24-alpine AS vue-builder
 LABEL stage=vue-builder
 WORKDIR /app-vue
 

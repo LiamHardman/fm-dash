@@ -1,5 +1,4 @@
-# Pin specific node version to prevent cache invalidation
-FROM node:24.12.0-alpine AS vue-builder
+FROM node:24-alpine AS vue-builder
 LABEL stage=vue-builder
 WORKDIR /app-vue
 
@@ -22,8 +21,7 @@ RUN echo "Building Vue app with VITE_API_BASE_URL=${VITE_API_BASE_URL}"
 # Build the Vue application
 RUN npm run build
 
-# Pin golang version for cache stability
-FROM golang:1.24.0-alpine AS go-builder
+FROM golang:1.24-alpine AS go-builder
 LABEL stage=go-builder
 WORKDIR /app-go
 RUN apk add --no-cache ca-certificates git

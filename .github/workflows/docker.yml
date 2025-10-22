@@ -21,6 +21,8 @@ jobs:
       IMAGE_BASE: ${{ github.repository }}
       # Lowercase versions for cache refs (required by GitHub Container Registry)
       CACHE_BASE: ghcr.io/liamhardman/fm-dash
+      # Enable Docker BuildKit for optimized builds with cache mounts
+      DOCKER_BUILDKIT: 1
 
     steps:
       - name: Checkout code
