@@ -381,14 +381,38 @@
                                             <div class="col player-name-section">
                                                 <div class="player-name-container">
                                                     <div class="player-name-and-status">
-                                                        <h5
-                                                            class="text-h5 player-name no-margin"
-                                                            :class="
-                                                                isDarkMode ? 'text-white' : 'text-dark'
-                                                            "
-                                                                                            :title="displayPlayer?.name || 'Unknown Player'"
-                            >
-                                {{ displayPlayer?.name || 'Unknown Player' }}
+                                                        <div class="player-name-with-copy">
+                                                            <h5
+                                                                class="text-h5 player-name no-margin"
+                                                                :class="
+                                                                    isDarkMode ? 'text-white' : 'text-dark'
+                                                                "
+                                                                :title="displayPlayer?.name || 'Unknown Player'"
+                                                            >
+                                                                {{ displayPlayer?.name || 'Unknown Player' }}
+                                                            </h5>
+                                                            <q-btn
+                                                                flat
+                                                                dense
+                                                                round
+                                                                size="sm"
+                                                                icon="content_copy"
+                                                                @click="copyPlayerName"
+                                                                class="copy-name-btn q-ml-xs"
+                                                                :class="isDarkMode ? 'text-grey-4' : 'text-grey-7'"
+                                                            >
+                                                                <q-tooltip
+                                                                    :class="
+                                                                        isDarkMode
+                                                                            ? 'bg-grey-7 text-white'
+                                                                            : 'bg-white text-dark'
+                                                                    "
+                                                                    :delay="300"
+                                                                    class="modern-tooltip"
+                                                                >
+                                                                    Copy player name
+                                                                </q-tooltip>
+                                                            </q-btn>
                                                             <q-icon
                                                                 v-if="player.attributeMasked"
                                                                 name="warning"
@@ -412,7 +436,7 @@
                                                                     </div>
                                                                 </q-tooltip>
                                                             </q-icon>
-                                                        </h5>
+                                                        </div>
                                                         <div v-if="bestPlaystyleTagline" class="player-tagline q-mt-xs">
                                                             <q-badge
                                                               outline
@@ -2758,6 +2782,52 @@ export default defineComponent({
       }
     }
 
+    // Copy player name to clipboard
+    const copyPlayerName = async () => {
+      const playerName = displayPlayer.value?.name || 'Unknown Player'
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          // Use modern Clipboard API
+          await navigator.clipboard.writeText(playerName)
+        } else {
+          // Fallback for older browsers or non-secure contexts
+          const textArea = document.createElement('textarea')
+          textArea.value = playerName
+          textArea.style.position = 'fixed'
+          textArea.style.left = '-999999px'
+          textArea.style.top = '-999999px'
+          document.body.appendChild(textArea)
+          textArea.focus()
+          textArea.select()
+          document.execCommand('copy')
+          textArea.remove()
+        }
+        
+        // Show success notification
+        qInstance.notify({
+          type: 'positive',
+          message: `Copied "${playerName}" to clipboard`,
+          position: 'top',
+          timeout: 2000,
+          icon: 'content_copy',
+        })
+      } catch (error) {
+        logger.error('Failed to copy player name to clipboard', {
+          error: error.message,
+          player_name: playerName,
+        })
+        
+        // Show error notification
+        qInstance.notify({
+          type: 'negative',
+          message: 'Failed to copy to clipboard',
+          position: 'top',
+          timeout: 2000,
+          icon: 'error',
+        })
+      }
+    }
+
     return {
       qInstance,
       attributeCategories,
@@ -2822,6 +2892,9 @@ export default defineComponent({
 
       // Tab system
       activeTab,
+
+      // Clipboard functionality
+      copyPlayerName,
     }
   },
 })
@@ -4335,6 +4408,35 @@ $breakpoint-xs-max: 599px !default;
     }
     50% {
         opacity: 0.8;
+    }
+}
+
+.player-name-with-copy {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    
+    .player-name {
+        margin: 0;
+    }
+}
+
+.copy-name-btn {
+    opacity: 0.7;
+    transition: all 0.2s ease;
+    
+    &:hover {
+        opacity: 1;
+        transform: scale(1.1);
+        background: rgba(25, 118, 210, 0.1);
+        
+        .body--dark & {
+            background: rgba(144, 202, 249, 0.1);
+        }
+    }
+    
+    &:active {
+        transform: scale(0.95);
     }
 }
 </style>
