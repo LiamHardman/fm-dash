@@ -686,6 +686,10 @@ func EnhancePlayerWithCalculations(player *Player) {
 	player.MBR = CalculateMoneyballRating(player, valueScore)
 	player.Mbr = player.MBR // Ensure Mbr is set to the calculated MBR value
 
+	// Calculate fm21-cas Current Ability (CA) estimate - AFTER ShortPositions are derived
+	player.CA = CalculateCAS(player)
+	player.Ca = player.CA
+
 	// Note: We changed from using the mean of all role-specific overall scores
 	// to using the mean of the top 7 role-specific overall scores
 	// --- END: Overall Calculation ---

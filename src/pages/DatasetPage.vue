@@ -370,6 +370,7 @@ export default {
       },
       maxSalary: 1000000, // Default to 1M, will be updated by watch function
       minOverall: 0,
+      minCA: 0,
       minPAC: 0,
       minSHO: 0,
       minPAS: 0,
@@ -736,6 +737,12 @@ export default {
           if (
             currentFilters.value.minOverall > 0 &&
             (player.Overall || 0) < currentFilters.value.minOverall
+          ) {
+            return false
+          }
+          if (
+            currentFilters.value.minCA > 0 &&
+            (player.CA || player.ca || 0) < currentFilters.value.minCA
           ) {
             return false
           }

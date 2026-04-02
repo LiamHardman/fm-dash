@@ -1,6 +1,6 @@
 import { computed } from 'vue'
 
-export function usePlayerTableColumns(isGoalkeeperView, showValueScore) {
+export function usePlayerTableColumns(isGoalkeeperView, showValueScore, showCA) {
   // Column styles
   const nameColumnStyle =
     'width: 200px; min-width: 200px; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'
@@ -84,6 +84,16 @@ export function usePlayerTableColumns(isGoalkeeperView, showValueScore) {
       name: 'Overall',
       label: 'Overall',
       field: 'overall',
+      sortable: true,
+      align: 'center',
+      isOverallStat: true,
+      style: overallColumnStyle,
+      headerStyle: overallColumnStyle,
+    },
+    CA: {
+      name: 'CA',
+      label: 'CA',
+      field: 'ca',
       sortable: true,
       align: 'center',
       isOverallStat: true,
@@ -297,6 +307,12 @@ export function usePlayerTableColumns(isGoalkeeperView, showValueScore) {
     // Add value score column if enabled
     if (showValueScore) {
       newOrderBase.push(baseColumnDefinitions.valueScore)
+    }
+
+    // Add CA column if enabled in settings
+    const caEnabled = typeof showCA === 'object' && showCA !== null ? showCA.value : showCA
+    if (caEnabled) {
+      newOrderBase.push(baseColumnDefinitions.CA)
     }
 
     const fifaColumnsInOrder = isGoalkeeperView

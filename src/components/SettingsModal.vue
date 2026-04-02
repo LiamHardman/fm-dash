@@ -306,6 +306,26 @@
                                             </div>
                                         </q-card-section>
                                     </q-card>
+
+                                    <!-- Current Ability (CA) Toggle -->
+                                    <q-card flat bordered class="option-card">
+                                        <q-card-section class="option-content">
+                                            <div class="option-header">
+                                                <div class="option-info">
+                                                    <q-icon name="psychology" size="1.5rem" class="option-icon" />
+                                                    <div class="option-text">
+                                                        <div class="option-title">Current Ability (CA) Column</div>
+                                                        <div class="option-description">Show the estimated Current Ability score (0–200) in the player table and detail view. Based on the fm21-cas algorithm.</div>
+                                                    </div>
+                                                </div>
+                                                <q-toggle
+                                                    v-model="showCA"
+                                                    color="teal"
+                                                    size="lg"
+                                                />
+                                            </div>
+                                        </q-card-section>
+                                    </q-card>
                                 </div>
 
                                 <div class="display-info">
@@ -442,6 +462,11 @@ export default defineComponent({
       set: (_value) => uiStore.toggleAttributeMasks(),
     })
 
+    const showCA = computed({
+      get: () => uiStore.showCA,
+      set: (value) => uiStore.setCADisplay(value),
+    })
+
     const useStatSummaryForOverall = computed({
       get: () => uiStore.useStatSummaryForOverall,
       set: (value) => uiStore.setStatSummaryOverall(value),
@@ -538,6 +563,7 @@ export default defineComponent({
       showFaces,
       showLogos,
       showAttributeMasks,
+      showCA,
       isLoading,
       activeTab,
       showTutorial,
