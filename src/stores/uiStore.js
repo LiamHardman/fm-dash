@@ -16,6 +16,7 @@ export const useUiStore = defineStore('ui', () => {
   const showFaces = ref(true) // Default to showing faces
   const showLogos = ref(true) // Default to showing logos
   const showAttributeMasks = ref(true) // Default to showing attribute masks
+  const showCA = ref(false) // Default to hiding Current Ability (CA) column
 
   // Tutorial state
   const showFirstTimeTutorial = ref(false) // Control tutorial modal visibility
@@ -116,6 +117,22 @@ export const useUiStore = defineStore('ui', () => {
     } catch (_e) {}
   }
 
+  // Function to toggle CA (Current Ability) column display
+  function toggleCA() {
+    showCA.value = !showCA.value
+    try {
+      localStorage.setItem('showCA', showCA.value ? 'true' : 'false')
+    } catch (_e) {}
+  }
+
+  // Function to set CA display directly
+  function setCADisplay(showCAEnabled) {
+    showCA.value = showCAEnabled
+    try {
+      localStorage.setItem('showCA', showCAEnabled ? 'true' : 'false')
+    } catch (_e) {}
+  }
+
   // Initialize dark mode from localStorage or system preference
   function initDarkMode() {
     let darkModePreference = true
@@ -194,6 +211,16 @@ export const useUiStore = defineStore('ui', () => {
     } catch (_e) {}
   }
 
+  // Initialize CA display preferences
+  function initCADisplay() {
+    try {
+      const storedPreference = localStorage.getItem('showCA')
+      if (storedPreference !== null) {
+        showCA.value = storedPreference === 'true'
+      }
+    } catch (_e) {}
+  }
+
   // Initialize all settings
   function initSettings() {
     initDarkMode()
@@ -202,6 +229,7 @@ export const useUiStore = defineStore('ui', () => {
     initFacesDisplay()
     initLogosDisplay()
     initAttributeMasksDisplay()
+    initCADisplay()
   }
 
   // Tutorial functions
@@ -236,6 +264,10 @@ export const useUiStore = defineStore('ui', () => {
     showAttributeMasks,
     toggleAttributeMasks,
     initAttributeMasksDisplay,
+    showCA,
+    toggleCA,
+    setCADisplay,
+    initCADisplay,
     showFirstTimeTutorial,
     showTutorial,
     hideTutorial,

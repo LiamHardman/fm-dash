@@ -66,6 +66,8 @@ type Player struct {
 	TotalStatsLower      int                `json:"totalStats"`
 	MBR                  int                `json:"MBR"`
 	Mbr                  int                `json:"mbr"`
+	CA                   int                `json:"CA"`  // fm21-cas Current Ability estimate (0–200 scale)
+	Ca                   int                `json:"ca"`  // lowercase alias for frontend compatibility
 	BestRoleOverall      string             `json:"bestRoleOverall"`
 	RoleSpecificOveralls []RoleOverallScore `json:"roleSpecificOveralls"`
 	TransferValueAmount  int64              `json:"transferValueAmount"`

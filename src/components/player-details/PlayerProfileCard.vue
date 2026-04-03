@@ -204,6 +204,23 @@
                   <div class="financial-value wage-value">{{ formattedWage }}</div>
                 </div>
               </div>
+              <!-- Current Ability (CA) — shown only when enabled in Settings -->
+              <div class="financial-row q-mt-sm" v-if="showCA && (player.CA || player.ca)">
+                <q-icon name="psychology" class="financial-icon ca-icon q-mr-sm" />
+                <div class="financial-item-content">
+                  <div class="financial-label">Current Ability</div>
+                  <div class="financial-value ca-value">
+                    {{ player.CA || player.ca }}
+                    <q-tooltip max-width="280px" class="modern-tooltip">
+                      <div class="tooltip-header">⚽ Current Ability (CA)</div>
+                      <div class="tooltip-description">
+                        Estimated Current Ability using the fm21-cas algorithm.
+                        Calculated from position-weighted FM attributes. Scale: 0–200.
+                      </div>
+                    </q-tooltip>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -242,6 +259,7 @@ export default defineComponent({
     // UI settings
     const showFaces = computed(() => uiStore.showFaces)
     const shouldShowTeamLogo = computed(() => uiStore.shouldShowTeamLogo)
+    const showCA = computed(() => uiStore.showCA)
 
     // Player face image URL
     const playerFaceImageUrl = computed(() => {
@@ -278,6 +296,7 @@ export default defineComponent({
       flagLoadError,
       showFaces,
       shouldShowTeamLogo,
+      showCA,
       playerFaceImageUrl,
       formattedTransferValue,
       formattedWage,
@@ -394,6 +413,23 @@ export default defineComponent({
     .body--dark & {
       color: #81c784;
     }
+  }
+
+  &.ca-value {
+    color: #00838f;
+    cursor: help;
+
+    .body--dark & {
+      color: #4dd0e1;
+    }
+  }
+}
+
+.ca-icon {
+  color: #00838f;
+
+  .body--dark & {
+    color: #4dd0e1;
   }
 }
 

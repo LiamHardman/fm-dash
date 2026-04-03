@@ -179,7 +179,10 @@ export default {
     const playerStore = usePlayerStore()
     const wishlistStore = useWishlistStore()
     const _router = useRouter()
-    const _uiStore = useUiStore()
+    const uiStore = useUiStore()
+
+    // Reactive CA display preference from settings
+    const showCA = computed(() => uiStore.showCA)
 
     // Initialize optimized sorting and web workers
     const { sortLargeArray, clearSortCache } = useOptimizedSorting()
@@ -191,7 +194,8 @@ export default {
     // Initialize composables
     const { currentColumns, getColumnLabel, getSortFieldKey } = usePlayerTableColumns(
       props.isGoalkeeperView,
-      props.showValueScore
+      props.showValueScore,
+      showCA
     )
 
     const {
