@@ -2,7 +2,7 @@ name: Dev Build & Release
 
 on:
   push:
-    branches: [dev]
+    branches: [dev, main]
 
 jobs:
   # Code Quality Checks
