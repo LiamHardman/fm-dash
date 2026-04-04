@@ -206,8 +206,9 @@ func loadJSONWeights(filePath string, defaultWeights map[string]map[string]int) 
 	// Additional validation: ensure path is within allowed directories
 	allowedDirs := []string{"public"}
 	pathIsAllowed := false
+	normalizedPath := filepath.ToSlash(filePath)
 	for _, allowedDir := range allowedDirs {
-		if strings.HasPrefix(filePath, allowedDir+"/") || filePath == allowedDir {
+		if strings.HasPrefix(normalizedPath, allowedDir+"/") || normalizedPath == allowedDir {
 			pathIsAllowed = true
 			break
 		}
