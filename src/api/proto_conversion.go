@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"strconv"
 	"time"
 
 	"api/proto"
@@ -137,15 +136,10 @@ func (p *Player) ToProto(ctx context.Context) (*proto.Player, error) {
 		"conversion_type", "player",
 		"conversion_direction", "to_protobuf")
 
-	// Create copies of position data to avoid race conditions
-	parsedPositionsCopy := make([]string, len(p.ParsedPositions))
-	copy(parsedPositionsCopy, p.ParsedPositions)
-
-	shortPositionsCopy := make([]string, len(p.ShortPositions))
-	copy(shortPositionsCopy, p.ShortPositions)
-
-	positionGroupsCopy := make([]string, len(p.PositionGroups))
-	copy(positionGroupsCopy, p.PositionGroups)
+	// Position data
+	parsedPositionsCopy := p.ParsedPositions
+	shortPositionsCopy := p.ShortPositions
+	positionGroupsCopy := p.PositionGroups
 
 	// Include both FM attributes and performance statistics for calculations
 	essentialAttributes := make(map[string]string)
@@ -242,6 +236,8 @@ func (p *Player) ToProto(ctx context.Context) (*proto.Player, error) {
 			}
 			return protoRoleOveralls
 		}(),
+		
+		Ca: safeIntToInt32(p.CA),
 	}
 
 	duration := time.Since(start)
@@ -293,15 +289,9 @@ func PlayerFromProto(ctx context.Context, protoPlayer *proto.Player) (*Player, e
 
 	// Convert essential attributes from string
 	attributes := make(map[string]string)
-	
-	// Initialize numeric attributes map early so we can parse them (needed for CA calculation dynamically)
-	numericAttributes := make(map[string]int)
 
 	for key, value := range protoPlayer.GetEssentialAttributes() {
 		attributes[key] = value
-		if val, err := strconv.Atoi(value); err == nil {
-			numericAttributes[key] = val
-		}
 	}
 
 	// Initialize performance stats maps (will be populated by EnhancePlayerWithCalculations)
@@ -324,7 +314,7 @@ func PlayerFromProto(ctx context.Context, protoPlayer *proto.Player) (*Player, e
 		NationalityFIFACode:     protoPlayer.GetNationalityFifaCode(),
 		AttributeMasked:         protoPlayer.GetAttributeMasked(),
 		Attributes:              attributes,
-		NumericAttributes:       numericAttributes,
+		NumericAttributes:       nil,
 		PerformanceStatsNumeric: performanceStatsNumeric,
 		PerformancePercentiles:  performancePercentiles,
 		ParsedPositions:         protoPlayer.GetParsedPositions(),
@@ -363,9 +353,8 @@ func PlayerFromProto(ctx context.Context, protoPlayer *proto.Player) (*Player, e
 		}(),
 	}
 
-	// CA is not stored in protobuf (to avoid invasive schema migrations), 
-	// so we calculate it here dynamically using the numeric attributes we just parsed.
-	player.CA = CalculateCAS(player)
+	// Use cached CA from protobuf
+	player.CA = int(protoPlayer.GetCa())
 	player.Ca = player.CA
 
 	duration := time.Since(start)

@@ -199,25 +199,36 @@ func (s *S3Storage) storeSync(datasetID string, data DatasetData) error {
 		}
 	}()
 
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		RecordError(ctx, err, "Failed to marshal dataset data")
-		LogWarn("JSON marshal error for dataset %s: %v", sanitizeForLogging(datasetID), err)
-		return fmt.Errorf("failed to marshal data: %w", err)
+	var fileData []byte
+	var objectName string
+	var contentType string
+
+	if len(data.RawBytes) > 0 {
+		fileData = data.RawBytes
+		objectName = fmt.Sprintf("datasets/%s.pb.gz", datasetID)
+		contentType = "application/octet-stream"
+	} else {
+		var err error
+		fileData, err = json.Marshal(data)
+		if err != nil {
+			RecordError(ctx, err, "Failed to marshal dataset data")
+			LogWarn("JSON marshal error for dataset %s: %v", sanitizeForLogging(datasetID), err)
+			return fmt.Errorf("failed to marshal data: %w", err)
+		}
+		objectName = fmt.Sprintf("datasets/%s.json", datasetID)
+		contentType = "application/json"
 	}
 
-	// Store uncompressed JSON data
-	objectName := fmt.Sprintf("datasets/%s.json", datasetID)
-	reader := bytes.NewReader(jsonData)
+	reader := bytes.NewReader(fileData)
 
 	SetSpanAttributes(ctx,
 		attribute.String("s3.bucket", s.bucketName),
 		attribute.String("s3.object", objectName),
-		attribute.Int("data.size_bytes", len(jsonData)),
+		attribute.Int("data.size_bytes", len(fileData)),
 	)
 
-	_, err = s.client.PutObject(ctx, s.bucketName, objectName, reader, int64(len(jsonData)), minio.PutObjectOptions{
-		ContentType: "application/json",
+	_, err := s.client.PutObject(ctx, s.bucketName, objectName, reader, int64(len(fileData)), minio.PutObjectOptions{
+		ContentType: contentType,
 	})
 	if err != nil {
 		RecordError(ctx, err, "Failed to store to S3")
@@ -252,9 +263,11 @@ func (s *S3Storage) retrieveSync(datasetID string) (DatasetData, error) {
 		return s.fallback.Retrieve(datasetID)
 	}
 
-	// Try uncompressed file first, then fall back to legacy compressed
-	objectName := fmt.Sprintf("datasets/%s.json", datasetID)
 	isCompressed := false
+	isProtobuf := false
+
+	// Try .pb.gz first
+	objectName := fmt.Sprintf("datasets/%s.pb.gz", datasetID)
 
 	SetSpanAttributes(ctx,
 		attribute.String("s3.bucket", s.bucketName),
@@ -263,18 +276,31 @@ func (s *S3Storage) retrieveSync(datasetID string) (DatasetData, error) {
 
 	start := time.Now()
 	object, err := s.client.GetObject(ctx, s.bucketName, objectName, minio.GetObjectOptions{})
-	if err != nil {
-		// Try legacy compressed file
-		objectName = fmt.Sprintf("datasets/%s.json.gz", datasetID)
-		isCompressed = true
+	// MinIO GetObject returns immediately, we need Stat to see if it actually exists
+	_, statErr := object.Stat()
+	
+	if err != nil || statErr != nil {
+		// Try uncompressed file
+		objectName = fmt.Sprintf("datasets/%s.json", datasetID)
 		SetSpanAttributes(ctx, attribute.String("s3.object", objectName))
 		object, err = s.client.GetObject(ctx, s.bucketName, objectName, minio.GetObjectOptions{})
-		if err != nil {
-			RecordError(ctx, err, "Failed to retrieve from S3")
-			LogWarn("Warning: Failed to retrieve from S3: %v. Trying fallback storage.", err)
-			AddSpanEvent(ctx, "storage.fallback_to_memory", attribute.String("reason", "s3_get_failed"))
-			return s.fallback.Retrieve(datasetID)
+		_, statErr = object.Stat()
+		if err != nil || statErr != nil {
+			// Try legacy compressed file
+			objectName = fmt.Sprintf("datasets/%s.json.gz", datasetID)
+			isCompressed = true
+			SetSpanAttributes(ctx, attribute.String("s3.object", objectName))
+			object, err = s.client.GetObject(ctx, s.bucketName, objectName, minio.GetObjectOptions{})
+			_, statErr = object.Stat()
+			if err != nil || statErr != nil {
+				RecordError(ctx, err, "Failed to retrieve from S3")
+				LogWarn("Warning: Failed to retrieve from S3: %v, %v. Trying fallback storage.", err, statErr)
+				AddSpanEvent(ctx, "storage.fallback_to_memory", attribute.String("reason", "s3_get_failed"))
+				return s.fallback.Retrieve(datasetID)
+			}
 		}
+	} else {
+		isProtobuf = true
 	}
 	defer func() {
 		if closeErr := object.Close(); closeErr != nil {
@@ -311,11 +337,15 @@ func (s *S3Storage) retrieveSync(datasetID string) (DatasetData, error) {
 	}
 
 	var dataset DatasetData
-	if err := json.Unmarshal(jsonData, &dataset); err != nil {
-		RecordError(ctx, err, "Failed to unmarshal S3 data")
-		LogWarn("Warning: Failed to unmarshal S3 data: %v. Trying fallback storage.", err)
-		AddSpanEvent(ctx, "storage.fallback_to_memory", attribute.String("reason", "unmarshal_failed"))
-		return s.fallback.Retrieve(datasetID)
+	if isProtobuf {
+		dataset.RawBytes = jsonData
+	} else {
+		if err := json.Unmarshal(jsonData, &dataset); err != nil {
+			RecordError(ctx, err, "Failed to unmarshal S3 data")
+			LogWarn("Warning: Failed to unmarshal S3 data: %v. Trying fallback storage.", err)
+			AddSpanEvent(ctx, "storage.fallback_to_memory", attribute.String("reason", "unmarshal_failed"))
+			return s.fallback.Retrieve(datasetID)
+		}
 	}
 
 	SetSpanAttributes(ctx, attribute.Int("dataset.player_count", len(dataset.Players)))
@@ -337,10 +367,14 @@ func (s *S3Storage) deleteSync(datasetID string) error {
 
 	ctx := context.Background()
 
-	// Attempt to delete both uncompressed and legacy compressed objects
+	// Attempt to delete pb, uncompressed, and legacy compressed objects
+	pbObject := fmt.Sprintf("datasets/%s.pb.gz", datasetID)
 	jsonObject := fmt.Sprintf("datasets/%s.json", datasetID)
 	gzObject := fmt.Sprintf("datasets/%s.json.gz", datasetID)
 
+	if err := s.client.RemoveObject(ctx, s.bucketName, pbObject, minio.RemoveObjectOptions{}); err != nil {
+		LogWarn("Warning: Failed to delete pb from S3: %v", err)
+	}
 	if err := s.client.RemoveObject(ctx, s.bucketName, jsonObject, minio.RemoveObjectOptions{}); err != nil {
 		LogWarn("Warning: Failed to delete JSON object from S3: %v", err)
 	}

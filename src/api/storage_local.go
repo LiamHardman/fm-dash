@@ -55,30 +55,38 @@ func (s *LocalFileStorage) Store(datasetID string, data DatasetData) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	// Safely construct the filename to prevent path injection (store uncompressed)
-	filename, err := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s.json", datasetID))
+	var fileData []byte
+	var ext string
+	if len(data.RawBytes) > 0 {
+		fileData = data.RawBytes
+		ext = ".pb.gz"
+	} else {
+		var err error
+		fileData, err = json.Marshal(data)
+		if err != nil {
+			RecordError(ctx, err, "Failed to marshal dataset data")
+			return fmt.Errorf("failed to marshal data: %w", err)
+		}
+		ext = ".json"
+	}
+
+	// Safely construct the filename to prevent path injection
+	filename, err := validateAndJoinPath(s.datasetDir, datasetID+ext)
 	if err != nil {
 		err := apperrors.WrapErrInvalidFilePathForDataset(sanitizeForLogging(datasetID), err)
 		RecordError(ctx, err, "Path validation failed")
 		return err
 	}
 
-	// Marshal to JSON
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		RecordError(ctx, err, "Failed to marshal dataset data")
-		return fmt.Errorf("failed to marshal data: %w", err)
-	}
-
-	// Write uncompressed JSON to file
-	if err := os.WriteFile(filename, jsonData, 0o600); err != nil {
+	// Write file data
+	if err := os.WriteFile(filename, fileData, 0o600); err != nil {
 		RecordError(ctx, err, "Failed to write dataset file")
 		return fmt.Errorf("failed to write dataset file: %w", err)
 	}
 
 	SetSpanAttributes(ctx,
 		attribute.String("file.path", sanitizeForLogging(filename)),
-		attribute.Int("data.size_bytes", len(jsonData)),
+		attribute.Int("data.size_bytes", len(fileData)),
 	)
 
 	LogDebug("Stored dataset %s to local file: %s", sanitizeForLogging(datasetID), sanitizeForLogging(filename))
@@ -114,22 +122,33 @@ func (s *LocalFileStorage) Retrieve(datasetID string) (DatasetData, error) {
 		return DatasetData{}, err
 	}
 	isCompressed := false
+	isProtobuf := false
 
-	// Check if file exists; if not, try legacy compressed file
+	// Check if file exists; if not, try others
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
-		legacyFilename, err2 := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s.json.gz", datasetID))
-		if err2 != nil {
-			err := apperrors.WrapErrInvalidFilePathForDataset(sanitizeForLogging(datasetID), err2)
-			RecordError(ctx, err, "Path validation failed")
-			return DatasetData{}, err
+		pbFilename, errPb := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s.pb.gz", datasetID))
+		if errPb == nil {
+			if _, statErr := os.Stat(pbFilename); statErr == nil {
+				filename = pbFilename
+				isProtobuf = true
+			}
 		}
-		if _, statErr := os.Stat(legacyFilename); os.IsNotExist(statErr) {
-			err := apperrors.WrapErrDatasetNotFound(sanitizeForLogging(datasetID))
-			RecordError(ctx, err, "Path validation failed")
-			return DatasetData{}, err
+		
+		if !isProtobuf {
+			legacyFilename, err2 := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s.json.gz", datasetID))
+			if err2 != nil {
+				err := apperrors.WrapErrInvalidFilePathForDataset(sanitizeForLogging(datasetID), err2)
+				RecordError(ctx, err, "Path validation failed")
+				return DatasetData{}, err
+			}
+			if _, statErr := os.Stat(legacyFilename); os.IsNotExist(statErr) {
+				err := apperrors.WrapErrDatasetNotFound(sanitizeForLogging(datasetID))
+				RecordError(ctx, err, "Dataset not found")
+				return DatasetData{}, err
+			}
+			filename = legacyFilename
+			isCompressed = true
 		}
-		filename = legacyFilename
-		isCompressed = true
 	}
 
 	// Read the file
@@ -161,9 +180,13 @@ func (s *LocalFileStorage) Retrieve(datasetID string) (DatasetData, error) {
 	}
 
 	var dataset DatasetData
-	if err := json.Unmarshal(jsonData, &dataset); err != nil {
-		RecordError(ctx, err, "Failed to unmarshal dataset data")
-		return DatasetData{}, fmt.Errorf("failed to unmarshal data: %w", err)
+	if isProtobuf {
+		dataset.RawBytes = jsonData
+	} else {
+		if err := json.Unmarshal(jsonData, &dataset); err != nil {
+			RecordError(ctx, err, "Failed to unmarshal dataset data")
+			return DatasetData{}, fmt.Errorf("failed to unmarshal data: %w", err)
+		}
 	}
 
 	SetSpanAttributes(ctx, attribute.Int("dataset.player_count", len(dataset.Players)))
@@ -182,22 +205,25 @@ func (s *LocalFileStorage) Delete(datasetID string) error {
 	defer s.mutex.Unlock()
 
 	// Try to delete both compressed and uncompressed versions - safely construct paths
-	compressedFile, err := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s.json.gz", datasetID))
-	if err != nil {
-		return fmt.Errorf("invalid file path for compressed file: %w", err)
-	}
-
-	uncompressedFile, err := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s.json", datasetID))
-	if err != nil {
-		return fmt.Errorf("invalid file path for uncompressed file: %w", err)
-	}
+	pbFile, _ := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s.pb.gz", datasetID))
+	compressedFile, _ := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s.json.gz", datasetID))
+	uncompressedFile, _ := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s.json", datasetID))
 
 	// Don't treat "file not found" as an error
-	if err := os.Remove(compressedFile); err != nil && !os.IsNotExist(err) {
-		LogWarn("Warning: Failed to remove compressed file %s: %v", sanitizeForLogging(compressedFile), err)
+	if pbFile != "" {
+		if err := os.Remove(pbFile); err != nil && !os.IsNotExist(err) {
+			LogWarn("Warning: Failed to remove pb file %s: %v", sanitizeForLogging(pbFile), err)
+		}
 	}
-	if err := os.Remove(uncompressedFile); err != nil && !os.IsNotExist(err) {
-		LogWarn("Warning: Failed to remove uncompressed file %s: %v", sanitizeForLogging(uncompressedFile), err)
+	if compressedFile != "" {
+		if err := os.Remove(compressedFile); err != nil && !os.IsNotExist(err) {
+			LogWarn("Warning: Failed to remove compressed file %s: %v", sanitizeForLogging(compressedFile), err)
+		}
+	}
+	if uncompressedFile != "" {
+		if err := os.Remove(uncompressedFile); err != nil && !os.IsNotExist(err) {
+			LogWarn("Warning: Failed to remove uncompressed file %s: %v", sanitizeForLogging(uncompressedFile), err)
+		}
 	}
 
 	LogDebug("Deleted dataset %s from local storage", sanitizeForLogging(datasetID))

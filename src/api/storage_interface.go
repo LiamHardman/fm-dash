@@ -18,4 +18,5 @@ type DatasetData struct {
 	Players        []Player `json:"players"`
 	CurrencySymbol string   `json:"currency_symbol"`
 	CacheData      string   `json:"cache_data,omitempty"`
+	RawBytes       []byte   `json:"-"`
 }

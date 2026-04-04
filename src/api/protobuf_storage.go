@@ -409,33 +409,9 @@ func (s *ProtobufStorage) decompressProtobufData(data []byte) ([]byte, error) {
 func (s *ProtobufStorage) storeProtobufBytes(ctx context.Context, datasetID string, data []byte) error {
 	logDebug(ctx, "Storing protobuf bytes", "dataset_id", datasetID, "size_bytes", len(data))
 
-	// Encode the protobuf bytes as a base64 string in a special player record
-	// This allows us to use the existing storage interface without modification
-	encodedData := base64.StdEncoding.EncodeToString(data)
-
-	// Create a special dataset that contains the encoded protobuf data
+	// Create a dataset wrapper to pass the raw bytes directly to storage backends
 	protobufDataset := DatasetData{
-		Players: []Player{{
-			UID:                     -1, // Special marker UID to indicate protobuf data
-			Name:                    "__PROTOBUF_DATA__",
-			Position:                encodedData,                  // Store encoded data in position field
-			Age:                     fmt.Sprintf("%d", len(data)), // Store original size
-			Club:                    "PROTOBUF_STORAGE",
-			Division:                "v1", // Version marker
-			TransferValue:           "",
-			Wage:                    "",
-			Nationality:             "PROTOBUF",
-			NationalityISO:          "PB",
-			NationalityFIFACode:     "PB",
-			Attributes:              make(map[string]string),
-			NumericAttributes:       make(map[string]int),
-			PerformanceStatsNumeric: make(map[string]float64),
-			PerformancePercentiles:  make(map[string]map[string]float64),
-			ParsedPositions:         []string{},
-			ShortPositions:          []string{},
-			PositionGroups:          []string{},
-			RoleSpecificOveralls:    []RoleOverallScore{},
-		}},
+		RawBytes:       data,
 		CurrencySymbol: "__PROTOBUF_MARKER__",
 	}
 
@@ -460,27 +436,26 @@ func (s *ProtobufStorage) retrieveProtobufBytes(ctx context.Context, datasetID s
 		return nil, fmt.Errorf("failed to retrieve protobuf dataset: %w", err)
 	}
 
-	// Check if this is a protobuf dataset
-	if dataset.CurrencySymbol != "__PROTOBUF_MARKER__" {
-		logDebug(ctx, "Dataset is not in protobuf format", "dataset_id", datasetID, "currency_symbol", dataset.CurrencySymbol)
-		return nil, ErrNotProtobufFormat
+	if len(dataset.RawBytes) > 0 {
+		logDebug(ctx, "Successfully retrieved protobuf bytes natively", "dataset_id", datasetID, "size_bytes", len(dataset.RawBytes))
+		return dataset.RawBytes, nil
 	}
 
-	if len(dataset.Players) != 1 || dataset.Players[0].UID != -1 || dataset.Players[0].Name != "__PROTOBUF_DATA__" {
-		logError(ctx, "Invalid protobuf dataset format", "dataset_id", datasetID, "player_count", len(dataset.Players))
-		return nil, ErrInvalidProtobufFormat
+	// Fallback to legacy base64 format for backwards compatibility
+	if dataset.CurrencySymbol == "__PROTOBUF_MARKER__" && len(dataset.Players) == 1 && dataset.Players[0].UID == -1 && dataset.Players[0].Name == "__PROTOBUF_DATA__" {
+		encodedData := dataset.Players[0].Position
+		data, err := base64.StdEncoding.DecodeString(encodedData)
+		if err != nil {
+			logError(ctx, "Failed to decode legacy protobuf data", "error", err, "dataset_id", datasetID)
+			return nil, fmt.Errorf("failed to decode legacy protobuf data: %w", err)
+		}
+
+		logDebug(ctx, "Successfully retrieved legacy protobuf bytes", "dataset_id", datasetID, "size_bytes", len(data))
+		return data, nil
 	}
 
-	// Decode the base64 data
-	encodedData := dataset.Players[0].Position
-	data, err := base64.StdEncoding.DecodeString(encodedData)
-	if err != nil {
-		logError(ctx, "Failed to decode protobuf data", "error", err, "dataset_id", datasetID)
-		return nil, fmt.Errorf("failed to decode protobuf data: %w", err)
-	}
-
-	logDebug(ctx, "Successfully retrieved protobuf bytes", "dataset_id", datasetID, "size_bytes", len(data))
-	return data, nil
+	logDebug(ctx, "Dataset is not in protobuf format", "dataset_id", datasetID, "currency_symbol", dataset.CurrencySymbol)
+	return nil, ErrNotProtobufFormat
 }
 
 // storeWithJSONFallback falls back to JSON storage when protobuf fails

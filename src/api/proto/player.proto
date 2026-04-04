@@ -64,6 +64,9 @@ message Player {
   
   // Role-specific overall scores for tactical analysis
   repeated RoleOverallScore roleSpecificOveralls = 38;
+  
+  // Cached Current Ability to avoid re-parsing overhead
+  int32 ca = 39;
 }
 
 // DatasetData represents a dataset containing player information
