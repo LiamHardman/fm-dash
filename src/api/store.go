@@ -280,11 +280,15 @@ func GetPlayerData(datasetID string) ([]Player, string, bool) {
 			// Return an optimized, safe deep copy to prevent race conditions
 			// PERFORMANCE: Use FastDeepCopyPlayers for much better performance while staying thread-safe
 			players := FastDeepCopyPlayers(data.Players)
-			// Skip re-enhancement when data already enhanced (typical path)
+			// Skip re-enhancement when data already enhanced (typical path).
+			// Iterate all players rather than sampling only players[0]: if any single
+			// player is missing computed fields the whole slice is treated as needing
+			// enhancement so we never silently serve partial data.
 			needsEnhancement := false
-			if len(players) > 0 {
-				if len(players[0].NumericAttributes) == 0 || players[0].PerformanceStatsNumeric == nil {
+			for i := range players {
+				if len(players[i].NumericAttributes) == 0 || players[i].PerformanceStatsNumeric == nil {
 					needsEnhancement = true
+					break
 				}
 			}
 			if needsEnhancement {
@@ -313,11 +317,14 @@ func GetPlayerData(datasetID string) ([]Player, string, bool) {
 		// Return a deep copy to prevent race conditions
 		// PERFORMANCE: Use FastDeepCopyPlayers for much better performance while staying thread-safe
 		enhancedPlayers := FastDeepCopyPlayers(players)
-		// Avoid redundant enhancement if already stored enhanced
+		// Avoid redundant enhancement if already stored enhanced.
+		// Iterate all players rather than sampling only enhancedPlayers[0] so that
+		// partially-enhanced datasets (e.g. after a mid-flight crash) are fully recovered.
 		needsEnhancement := false
-		if len(enhancedPlayers) > 0 {
-			if len(enhancedPlayers[0].NumericAttributes) == 0 || enhancedPlayers[0].PerformanceStatsNumeric == nil {
+		for i := range enhancedPlayers {
+			if len(enhancedPlayers[i].NumericAttributes) == 0 || enhancedPlayers[i].PerformanceStatsNumeric == nil {
 				needsEnhancement = true
+				break
 			}
 		}
 		if needsEnhancement {

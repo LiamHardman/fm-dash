@@ -52,9 +52,22 @@ func (s *HybridStorage) Retrieve(datasetID string) (DatasetData, error) {
 		return DatasetData{}, err
 	}
 
-	// Store in memory for future access (warm up the cache)
+	// Store in memory for future access (warm up the cache).
+	// The caller receives the same underlying []Player array that came off disk.
+	// If the goroutine stores a reference to that same array, InMemoryStorage.Store
+	// will share the backing array with the returned value.  Any concurrent mutation
+	// on either side (filters applied by handlers, future in-place operations in the
+	// memory store) would then be an undetected data race.  Take an explicit copy of
+	// the slice so the goroutine owns its own independent backing array.
+	cacheData := DatasetData{
+		CurrencySymbol: data.CurrencySymbol,
+		CacheData:      data.CacheData,
+		RawBytes:       data.RawBytes,
+		Players:        make([]Player, len(data.Players)),
+	}
+	copy(cacheData.Players, data.Players)
 	go func() {
-		if storeErr := s.memory.Store(datasetID, data); storeErr != nil {
+		if storeErr := s.memory.Store(datasetID, cacheData); storeErr != nil {
 			LogWarn("Warning: Failed to cache dataset %s in memory: %v", sanitizeForLogging(datasetID), storeErr)
 		} else {
 			LogDebug("Successfully cached dataset %s in memory for future access", sanitizeForLogging(datasetID))

@@ -464,10 +464,25 @@ func (s *ProtobufStorage) storeWithJSONFallback(ctx context.Context, datasetID s
 	return s.backend.Store(datasetID, data)
 }
 
-// retrieveWithJSONFallback falls back to JSON retrieval when protobuf fails
+// retrieveWithJSONFallback falls back to JSON retrieval when protobuf fails.
+// It guards against accidentally returning the raw protobuf wrapper as player data:
+// if the underlying record is a protobuf-format file (identified by the __PROTOBUF_MARKER__
+// currency symbol or non-empty RawBytes), deserialization already failed upstream and
+// returning an empty DatasetData here would silently surface as "0 players found".
+// Returning an error instead surfaces the problem clearly to callers.
 func (s *ProtobufStorage) retrieveWithJSONFallback(ctx context.Context, datasetID string) (DatasetData, error) {
 	logInfo(ctx, "Using JSON fallback for retrieving dataset", "dataset_id", datasetID)
-	return s.backend.Retrieve(datasetID)
+	data, err := s.backend.Retrieve(datasetID)
+	if err != nil {
+		return DatasetData{}, err
+	}
+	if data.CurrencySymbol == "__PROTOBUF_MARKER__" || len(data.RawBytes) > 0 {
+		return DatasetData{}, fmt.Errorf(
+			"dataset %s is stored in protobuf format but protobuf deserialization failed; the dataset may be corrupted",
+			datasetID,
+		)
+	}
+	return data, nil
 }
 
 // logFallbackEvent logs protobuf fallback events for monitoring and debugging

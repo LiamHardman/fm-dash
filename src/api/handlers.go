@@ -85,25 +85,37 @@ func removeDuplicateMapping(datasetID string) {
 }
 
 func cleanupStaleDuplicateMappings() {
-	hashMapMutex.Lock()
-	defer hashMapMutex.Unlock()
+	// Step 1: snapshot the map under a read lock so we never hold any lock
+	// while doing disk / memory I/O in GetPlayerData below.  Holding a write
+	// lock across those calls blocked every concurrent upload for the entire
+	// cleanup duration and could cause live-lock under load.
+	hashMapMutex.RLock()
+	snapshot := make(map[string]string, len(fileHashToDatasetMap))
+	for hash, id := range fileHashToDatasetMap {
+		snapshot[hash] = id
+	}
+	hashMapMutex.RUnlock()
 
+	// Step 2: check dataset existence outside any lock.
 	var staleMappings []string
-	for hash, datasetID := range fileHashToDatasetMap {
-		// Check if the dataset still exists
+	for hash, datasetID := range snapshot {
 		if _, _, found := GetPlayerData(datasetID); !found {
 			staleMappings = append(staleMappings, hash)
 		}
 	}
 
-	// Remove stale mappings
+	if len(staleMappings) == 0 {
+		return
+	}
+
+	// Step 3: delete stale entries under a write lock.
+	hashMapMutex.Lock()
 	for _, hash := range staleMappings {
 		delete(fileHashToDatasetMap, hash)
 	}
+	hashMapMutex.Unlock()
 
-	if len(staleMappings) > 0 {
-		logInfo(context.Background(), "Cleaned up %d stale duplicate mappings", len(staleMappings))
-	}
+	logInfo(context.Background(), "Cleaned up %d stale duplicate mappings", len(staleMappings))
 }
 
 // setCORSHeaders sets secure CORS headers based on the request origin
