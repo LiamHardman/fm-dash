@@ -145,7 +145,7 @@ func (p *Player) ToProto(ctx context.Context) (*proto.Player, error) {
 	essentialAttributes := make(map[string]string)
 	if p.Attributes != nil {
 		// Include FM attributes for FIFA stat calculations
-		fmAttrs := []string{"Acc", "Agg", "Agi", "Ant", "Bal", "Bra", "Cmd", "Cmp", "Cnt", "Com", "Cor", "Cro", "Dec", "Det", "Dri", "Ecc", "Fin", "Fir", "Fla", "Fre", "Han", "Hea", "Jum", "Kic", "L Th", "Ldr", "Lon", "Mar", "Nat", "OtB", "Pac", "Pas", "Pen", "Pos", "Pun", "Ref", "Sta", "Str", "TRO", "Tck", "Tea", "Tec", "Thr", "Vis", "Wor"}
+		fmAttrs := []string{"Acc", "Aer", "Agg", "Agi", "Ant", "Bal", "Bra", "Cmd", "Cmp", "Cnt", "Com", "Cor", "Cro", "Dec", "Det", "Dri", "Ecc", "Fin", "Fir", "Fla", "Fre", "Han", "Hea", "Jum", "Kic", "1v1", "L Th", "Ldr", "Lon", "Mar", "Nat", "OtB", "Pac", "Pas", "Pen", "Pos", "Pun", "Ref", "Sta", "Str", "TRO", "Tck", "Tea", "Tec", "Thr", "Vis", "Wor"}
 		// Include all performance statistics for display and calculations
 		perfAttrs := []string{
 			// General stats

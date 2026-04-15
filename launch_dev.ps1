@@ -118,6 +118,9 @@ try {
             $backendJob = Start-Job -Name "BackendDevServer" -ScriptBlock {
                 param($path)
                 Set-Location -Path $path
+                $env:USE_PROTOBUF = "true"
+                $env:MAX_UPLOAD_SIZE = "100"
+                $env:FORMAT_AWARE_CACHE_ENABLED = "true"
                 go run . *>&1
             } -ArgumentList $goApiDir
 

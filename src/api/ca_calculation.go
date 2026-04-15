@@ -133,8 +133,20 @@ var casPositionWeights = map[string][]float64{
 	},
 }
 
-// calculateCASForPosition computes the fm21-cas CA rating for a player at a given position.
-// It implements the two-pass weighted amplification formula from the fm21-cas Android app.
+// calculateCASForPosition estimates the FM CA for a player at a given position.
+//
+// The algorithm mirrors the approach described by FM researchers:
+//  1. Compute the position-weighted average of relevant attributes (zero-weight
+//     attributes are excluded — they are irrelevant for that position).
+//  2. Apply the linear equation derived from in-game editor experiments:
+//     CA = 19.8 × weightedAvg − 117.8
+//     This is calibrated so that all-6 attributes → CA 1, all-16 → CA 199.
+//
+// Note: FM applies an additional CA premium for individual attributes ≥ 17
+// (higher attributes become exponentially more expensive to develop). This
+// means the estimate will slightly understate CA for elite players who have
+// many attributes in the 17–20 band.
+//
 // Returns 0 if the position is unknown or no valid attribute data is available.
 func calculateCASForPosition(playerNumericAttributes map[string]int, shortPositionKey string) int {
 	weights, ok := casPositionWeights[shortPositionKey]
@@ -142,66 +154,41 @@ func calculateCASForPosition(playerNumericAttributes map[string]int, shortPositi
 		return 0
 	}
 
-	n := len(casAttrOrder)
-
-	// Build point and weight arrays:
-	// - Zero-weight attributes (irrelevant for the position) are floored to 1 (hidden attr treatment)
-	// - Attributes not present in the player data are set to 1 (minimum)
-	points := make([]float64, n)
-	effectiveWeights := make([]float64, n)
-
+	// Compute the weighted average over attributes that have a non-zero position weight.
+	// Zero-weight attributes are irrelevant for this position and are excluded entirely.
+	var sumWeightedAttrs, sumWeights float64
 	for i, attrKey := range casAttrOrder {
-		rawWeight := weights[i]
-		attrValue := 1 // floor: hidden/irrelevant attrs default to 1
+		w := weights[i]
+		if w == 0 {
+			continue
+		}
+
+		attrValue := 1 // default to minimum if attribute is absent
 		if v, exists := playerNumericAttributes[attrKey]; exists && v > 0 {
 			attrValue = v
 		}
 		// Clamp to valid FM range [1, 20]
 		if attrValue < 1 {
 			attrValue = 1
-		}
-		if attrValue > 20 {
+		} else if attrValue > 20 {
 			attrValue = 20
 		}
 
-		points[i] = float64(attrValue)
-
-		// Zero-weight positions are treated as weight=1 for the denominator
-		// (preserves the spirit of the fm21-cas hidden attribute handling)
-		if rawWeight == 0 {
-			effectiveWeights[i] = 1.0
-		} else {
-			effectiveWeights[i] = rawWeight
-		}
-	}
-
-	// Pass 1: Compute sums
-	var sumAttrs, sumWeights float64
-	for i := 0; i < n; i++ {
-		sumAttrs += points[i]
-		sumWeights += effectiveWeights[i]
+		sumWeightedAttrs += float64(attrValue) * w
+		sumWeights += w
 	}
 
 	if sumWeights == 0 {
 		return 0
 	}
 
-	// Weighted average of raw points
-	avgCaWeighted := sumAttrs / sumWeights
+	weightedAvg := sumWeightedAttrs / sumWeights
 
-	// Pass 2: Amplified weighted sum
-	var sumAttrMod float64
-	amplifier := (sumWeights + avgCaWeighted) / sumWeights
-	for i := 0; i < n; i++ {
-		sumAttrMod += (points[i] * effectiveWeights[i]) * amplifier
-	}
+	// Linear equation: CA = 19.8 × weightedAvg − 117.8
+	// Derived from: attr=6 → CA=1, attr=16 → CA=199 (slope = 198/10 = 19.8)
+	ca := 19.8*weightedAvg - 117.8
 
-	// Final scaling (×10 as per the original formula)
-	finalMod := sumAttrMod / sumWeights * amplifier * 10
-
-	result := int(math.Round(finalMod))
-
-	// Clamp to FM CA scale (1–200); values below 1 or above 200 are pathological
+	result := int(math.Round(ca))
 	if result < 1 {
 		return 1
 	}
