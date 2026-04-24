@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"bytes"
 	"io"
 	"log/slog"
 	"math"
@@ -469,7 +470,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Wrap file parsing in a child span using the already-read content
 	err = TraceFileProcessing(ctx, handler.Filename, actualFileSize, func(_ context.Context) error {
-		contentReader := strings.NewReader(string(fileContent))
+		contentReader := bytes.NewReader(fileContent)
 		return ParseHTMLPlayerTable(contentReader, &headersSnapshot, rowCellsChan, numWorkers, resultsChan, &wg)
 	})
 	processingError = err
