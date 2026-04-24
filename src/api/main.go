@@ -270,6 +270,9 @@ func main() {
 	// API endpoint for exporting complete dataset data
 	mux.Handle("/api/export/", wrapHandler(http.HandlerFunc(exportDataHandler), "export-data"))
 
+	// Register memory profiling and pprof endpoints
+	RegisterMemoryProfileEndpoints(mux)
+
 	// Create server with proper timeouts
 	server := &http.Server{
 		Addr:              ":" + port,

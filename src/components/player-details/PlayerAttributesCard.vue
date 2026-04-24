@@ -39,7 +39,7 @@
                 <span
                   :class="[
                     'attribute-value modern-attribute-value',
-                    getUnifiedRatingClass(player.attributes[attrKey], 20)
+                    getUnifiedRatingClass(player.numericAttributes?.[attrKey] ?? player.attributes?.[attrKey], 20)
                   ]"
                 >
                   {{ getDisplayAttribute(attrKey) }}
@@ -100,7 +100,7 @@
                 <span
                   :class="[
                     'attribute-value modern-attribute-value',
-                    getUnifiedRatingClass(player.attributes[attrKey], 20)
+                    getUnifiedRatingClass(player.numericAttributes?.[attrKey] ?? player.attributes?.[attrKey], 20)
                   ]"
                 >
                   {{ getDisplayAttribute(attrKey) }}
@@ -161,7 +161,7 @@
                     <span
                       :class="[
                         'attribute-value modern-attribute-value',
-                        getUnifiedRatingClass(player.attributes[attrKey], 20)
+                        getUnifiedRatingClass(player.numericAttributes?.[attrKey] ?? player.attributes?.[attrKey], 20)
                       ]"
                     >
                       {{ getDisplayAttribute(attrKey) }}
@@ -246,7 +246,7 @@ export default defineComponent({
 
     // Attribute categories
     const attributeCategories = computed(() => {
-      const allAttributes = props.player?.attributes || {}
+      const allAttributes = props.player?.numericAttributes || props.player?.attributes || {}
       const attributeKeys = Object.keys(allAttributes)
 
       const technical = attributeKeys.filter((key) =>
@@ -403,7 +403,7 @@ export default defineComponent({
 
     // Get display attribute value
     const getDisplayAttribute = (attrKey) => {
-      const value = props.player?.attributes?.[attrKey]
+      const value = props.player?.numericAttributes?.[attrKey] ?? props.player?.attributes?.[attrKey]
       if (value === undefined || value === null) return '-'
       return value
     }

@@ -293,6 +293,10 @@ export default defineConfig({
         // rewrite: (path) => path.replace(/^\/api/, '')
         // However, your Go routes are already /api/players and /api/roles, so no rewrite needed here.
       },
+      '/debug': {
+        target: 'http://localhost:8091',
+        changeOrigin: true,
+      },
     },
   },
   define: {

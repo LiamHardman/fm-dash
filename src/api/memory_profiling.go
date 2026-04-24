@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/pprof"
+	"os"
 	"runtime"
 	"sort"
 	"time"
@@ -451,31 +452,39 @@ func advancedOptimizationHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// RegisterMemoryProfileEndpoints registers memory profiling endpoints
+// RegisterMemoryProfileEndpoints registers memory profiling endpoints on the main mux
+// and starts a separate bare debug server for pprof (no middleware — pprof writes its
+// own gzip binary format and must not be wrapped by CompressionMiddleware).
 func RegisterMemoryProfileEndpoints(mux *http.ServeMux) {
-	// Memory analysis endpoint
+	// Memory analysis endpoints go on the main mux (middleware is fine here)
 	mux.Handle("/api/debug/memory/analysis", wrapHandler(http.HandlerFunc(memoryProfileHandler), "memory-analysis"))
-
-	// Memory snapshot endpoint
 	mux.Handle("/api/debug/memory/snapshot", wrapHandler(http.HandlerFunc(memorySnapshotHandler), "memory-snapshot"))
-
-	// Force garbage collection endpoint
 	mux.Handle("/api/debug/memory/gc", wrapHandler(http.HandlerFunc(garbageCollectHandler), "force-gc"))
-
-	// Advanced optimization endpoint
 	mux.Handle("/api/debug/memory/optimize", wrapHandler(http.HandlerFunc(advancedOptimizationHandler), "advanced-optimization"))
 
-	// Standard Go pprof endpoints for detailed profiling
-	mux.HandleFunc("/debug/pprof/", pprof.Index)
-	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
-	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
-	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
-	mux.Handle("/debug/pprof/heap", pprof.Handler("heap"))
-	mux.Handle("/debug/pprof/allocs", pprof.Handler("allocs"))
-	mux.Handle("/debug/pprof/goroutine", pprof.Handler("goroutine"))
-	mux.Handle("/debug/pprof/block", pprof.Handler("block"))
-	mux.Handle("/debug/pprof/mutex", pprof.Handler("mutex"))
+	// pprof runs on its own bare mux so that CompressionMiddleware never intercepts it.
+	debugPort := os.Getenv("DEBUG_PORT")
+	if debugPort == "" {
+		debugPort = "8092"
+	}
+	debugMux := http.NewServeMux()
+	debugMux.HandleFunc("/debug/pprof/", pprof.Index)
+	debugMux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	debugMux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	debugMux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	debugMux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	debugMux.Handle("/debug/pprof/heap", pprof.Handler("heap"))
+	debugMux.Handle("/debug/pprof/allocs", pprof.Handler("allocs"))
+	debugMux.Handle("/debug/pprof/goroutine", pprof.Handler("goroutine"))
+	debugMux.Handle("/debug/pprof/block", pprof.Handler("block"))
+	debugMux.Handle("/debug/pprof/mutex", pprof.Handler("mutex"))
 
-	LogInfo("Memory profiling endpoints registered at /api/debug/memory/* and /debug/pprof/*")
+	go func() {
+		LogInfo("pprof debug server listening on :" + debugPort)
+		if err := http.ListenAndServe(":"+debugPort, debugMux); err != nil {
+			LogWarn("pprof debug server stopped: %v", err)
+		}
+	}()
+
+	LogInfo("Memory profiling endpoints registered at /api/debug/memory/* and pprof at :%s/debug/pprof/*", debugPort)
 }

@@ -137,6 +137,8 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 	// Cache miss - need to load and process the data
 	SetSpanAttributes(ctx, attribute.Bool("cache.hit", false))
 
+	stageStart := time.Now()
+
 	// Ensure configuration is loaded before processing player data
 	// This is crucial for calculating role overall ratings and FM attributes
 	if err := EnsureConfigInitialized(5 * time.Second); err != nil {
@@ -145,6 +147,8 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 			"dataset_id", datasetID)
 		// Continue with default weights rather than failing the request
 	}
+	logInfo(ctx, "PERF config_init", "ms", time.Since(stageStart).Milliseconds(), "total_ms", time.Since(startTime).Milliseconds())
+	stageStart = time.Now()
 
 	// Parse division filter early
 	var divisionFilter = DivisionFilterAll
@@ -157,10 +161,21 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 		divisionFilter = DivisionFilterAll
 	}
 
+	// If the upload handler's background percentile calculation is still running for
+	// this dataset, wait for it to finish. This avoids re-running the full calculation
+	// synchronously here while the same work is already in progress on another goroutine.
+	if waitForPendingPercentileCalc(datasetID) {
+		logDebug(ctx, "Waited for background percentile calculation to complete", "dataset_id", datasetID)
+	}
+	logInfo(ctx, "PERF percentile_wait", "ms", time.Since(stageStart).Milliseconds(), "total_ms", time.Since(startTime).Milliseconds())
+	stageStart = time.Now()
+
 	// Use the storage interface to get player data
 	ctx, dataSpan := StartSpan(ctx, "storage.get_dataset")
 	players, currencySymbol, found := GetPlayerData(datasetID)
 	dataSpan.End()
+	logInfo(ctx, "PERF storage_get", "ms", time.Since(stageStart).Milliseconds(), "total_ms", time.Since(startTime).Milliseconds())
+	stageStart = time.Now()
 
 	if !found {
 		logWarn(ctx, "Player data not found", "dataset_id", datasetID)
@@ -189,25 +204,46 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 		logDebug(ctx, "Skipping ratings recalculation; dataset appears precomputed")
 	}
 	recalcSpan.End()
+	logInfo(ctx, "PERF ratings_recalc", "ms", time.Since(stageStart).Milliseconds(), "total_ms", time.Since(startTime).Milliseconds(), "skipped", !shouldRecalc)
+	stageStart = time.Now()
 
-	// Calculate percentiles with appropriate filtering using optimized algorithm
-	ctx, percentileSpan := StartSpan(ctx, "percentiles.calculate")
 	// Make a deep copy of players to avoid modifying the stored data and prevent race conditions
-	// PERFORMANCE: Use FastDeepCopyPlayers for much better performance while staying thread-safe
 	playersCopy := FastDeepCopyPlayers(players)
+	logInfo(ctx, "PERF deep_copy", "ms", time.Since(stageStart).Milliseconds(), "total_ms", time.Since(startTime).Milliseconds(), "player_count", len(playersCopy))
+	stageStart = time.Now()
 
-	// Apply division filtering for percentile calculation
-	filteredPlayersForPercentiles := ApplyDivisionFilter(playersCopy, divisionFilter, targetDivision)
+	// Calculate percentiles with appropriate filtering using optimized algorithm.
+	// Skip if the background goroutine already wrote percentiles into the stored data
+	// (which we just deep-copied above), detected by checking the first player.
+	ctx, percentileSpan := StartSpan(ctx, "percentiles.calculate")
+	hasGlobalPercentiles := len(playersCopy) > 0 &&
+		playersCopy[0].PerformancePercentiles != nil &&
+		len(playersCopy[0].PerformancePercentiles["Global"]) > 0
 
-	// Calculate percentiles
-	CalculatePlayerPerformancePercentiles(filteredPlayersForPercentiles)
+	if !hasGlobalPercentiles || divisionFilter != DivisionFilterAll {
+		filteredPlayersForPercentiles := ApplyDivisionFilter(playersCopy, divisionFilter, targetDivision)
+		CalculatePlayerPerformancePercentiles(filteredPlayersForPercentiles)
+	} else {
+		logDebug(ctx, "Skipping percentile calculation; already present on stored data", "dataset_id", datasetID)
+	}
 	percentileSpan.End()
+	logInfo(ctx, "PERF percentile_calc", "ms", time.Since(stageStart).Milliseconds(), "total_ms", time.Since(startTime).Milliseconds(), "skipped", hasGlobalPercentiles && divisionFilter == DivisionFilterAll)
+	stageStart = time.Now()
 
 	// Apply all filters to get the final result set
 	ctx, filterSpan := StartSpan(ctx, "filters.apply")
 	filteredPlayers := ApplyAllFilters(ctx, playersCopy, filterPosition, filterRole, minAgeStr, maxAgeStr,
 		minTransferValueStr, maxTransferValueStr, maxSalaryStr, divisionFilter, targetDivision, positionCompare)
 	filterSpan.End()
+	logInfo(ctx, "PERF filter_apply", "ms", time.Since(stageStart).Milliseconds(), "total_ms", time.Since(startTime).Milliseconds(), "filtered_count", len(filteredPlayers))
+	stageStart = time.Now()
+
+	// Strip the raw Attributes string map from the response. numericAttributes carries
+	// the same data as parsed integers and is sufficient for all frontend use. Removing
+	// the duplicate string map roughly halves the uncompressed response size.
+	for i := range filteredPlayers {
+		filteredPlayers[i].Attributes = nil
+	}
 
 	SetSpanAttributes(ctx,
 		attribute.Int("dataset.filtered_player_count", len(filteredPlayers)),
@@ -254,6 +290,8 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 		// Set the protobuf data in the cache response
 		cachedResponse.ProtobufData = protoPlayerResponse
 	}
+	logInfo(ctx, "PERF proto_conversion", "ms", time.Since(stageStart).Milliseconds(), "total_ms", time.Since(startTime).Milliseconds(), "format", string(format))
+	stageStart = time.Now()
 
 	// Write the response using the appropriate format
 	if err := WritePlayerDataResponse(ctx, w, r, cachedResponse); err != nil {
@@ -263,4 +301,5 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 			"format", format)
 		WriteErrorResponse(w, r, "response_error", "Error writing response", nil, http.StatusInternalServerError)
 	}
+	logInfo(ctx, "PERF response_write", "ms", time.Since(stageStart).Milliseconds(), "total_ms", time.Since(startTime).Milliseconds())
 }

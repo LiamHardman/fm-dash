@@ -606,6 +606,10 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Register the in-progress calculation so the first GET request waits for it
+	// instead of re-running percentile calculation from scratch concurrently.
+	asyncDoneCh := registerPendingPercentileCalc(datasetID)
+
 	// Start async percentile calculation
 	go func() {
 		ctx, asyncSpan := StartSpan(context.Background(), "async.percentile_calculation")
@@ -625,8 +629,11 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		// Log top 25 MBR players after calculations are complete
 		logTop25OverallPlayers(playersList)
 
-		// Update the stored data with calculated percentiles
+		// Update the stored data with calculated percentiles, then signal completion.
+		// The order matters: SetPlayerData must finish before completePendingPercentileCalc
+		// unblocks any waiting GET handler.
 		SetPlayerData(datasetID, playersList, finalDatasetCurrencySymbol)
+		completePendingPercentileCalc(datasetID, asyncDoneCh)
 
 		calculationTime := time.Since(startTime)
 		logInfo(ctx, "Completed async percentile calculation for dataset %s in %v", datasetID, calculationTime)

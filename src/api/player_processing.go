@@ -9,6 +9,19 @@ import (
 	apperrors "api/errors"
 )
 
+// fmAttributeKeys is the set of FM attributes that can be masked. Package-level to
+// avoid allocating a new map on every RecalculatePlayerRatings call.
+var fmAttributeKeys = map[string]bool{
+	"Acc": true, "Pac": true, "Str": true, "Sta": true, "Nat": true, "Bal": true, "Jum": true, "Agi": true,
+	"Agg": true, "Ant": true, "Bra": true, "Cmp": true, "Cnt": true, "Dec": true, "Det": true, "Fla": true,
+	"Ldr": true, "OtB": true, "Pos": true, "Tea": true, "Vis": true, "Wor": true,
+	"Cor": true, "Cro": true, "Dri": true, "Fin": true, "Fir": true, "Fre": true, "Hea": true, "Lon": true,
+	"L Th": true, "Mar": true, "Pas": true, "Pen": true, "Tck": true, "Tec": true,
+	"Aer": true, "Cmd": true, "Com": true, "Ecc": true, "Han": true, "Kic": true, "1v1": true, "Ref": true,
+	"TRO": true, "Thr": true, "Pun": true,
+	"Left Foot": true, "Right Foot": true,
+}
+
 // Memory pools for reducing allocations during role calculations
 var (
 	roleSlicePool = sync.Pool{
@@ -698,23 +711,6 @@ func EnhancePlayerWithCalculations(player *Player) {
 	// This is more comprehensive than only checking technical attributes above
 	player.AttributeMasked = false
 
-	// Define FM attribute keys that should be checked for masking
-	fmAttributeKeys := map[string]bool{
-		// Physical
-		"Acc": true, "Pac": true, "Str": true, "Sta": true, "Nat": true, "Bal": true, "Jum": true, "Agi": true,
-		// Mental
-		"Agg": true, "Ant": true, "Bra": true, "Cmp": true, "Cnt": true, "Dec": true, "Det": true, "Fla": true,
-		"Ldr": true, "OtB": true, "Pos": true, "Tea": true, "Vis": true, "Wor": true,
-		// Technical
-		"Cor": true, "Cro": true, "Dri": true, "Fin": true, "Fir": true, "Fre": true, "Hea": true, "Lon": true,
-		"L Th": true, "Mar": true, "Pas": true, "Pen": true, "Tck": true, "Tec": true,
-		// Goalkeeping
-		"Aer": true, "Cmd": true, "Com": true, "Ecc": true, "Han": true, "Kic": true, "1v1": true, "Ref": true,
-		"TRO": true, "Thr": true, "Pun": true,
-		// Other potential FM attributes
-		"Left Foot": true, "Right Foot": true,
-	}
-
 	for key, value := range player.Attributes {
 		// Only check FM attributes, not performance stats
 		if !fmAttributeKeys[key] {
@@ -913,23 +909,6 @@ func RecalculatePlayerRatings(player *Player) {
 	// Check ALL attributes for masking and set the AttributeMasked flag
 	// This ensures the flag is updated even during recalculations
 	player.AttributeMasked = false
-
-	// Define FM attribute keys that should be checked for masking
-	fmAttributeKeys := map[string]bool{
-		// Physical
-		"Acc": true, "Pac": true, "Str": true, "Sta": true, "Nat": true, "Bal": true, "Jum": true, "Agi": true,
-		// Mental
-		"Agg": true, "Ant": true, "Bra": true, "Cmp": true, "Cnt": true, "Dec": true, "Det": true, "Fla": true,
-		"Ldr": true, "OtB": true, "Pos": true, "Tea": true, "Vis": true, "Wor": true,
-		// Technical
-		"Cor": true, "Cro": true, "Dri": true, "Fin": true, "Fir": true, "Fre": true, "Hea": true, "Lon": true,
-		"L Th": true, "Mar": true, "Pas": true, "Pen": true, "Tck": true, "Tec": true,
-		// Goalkeeping
-		"Aer": true, "Cmd": true, "Com": true, "Ecc": true, "Han": true, "Kic": true, "1v1": true, "Ref": true,
-		"TRO": true, "Thr": true, "Pun": true,
-		// Other potential FM attributes
-		"Left Foot": true, "Right Foot": true,
-	}
 
 	for key, value := range player.Attributes {
 		// Only check FM attributes, not performance stats
