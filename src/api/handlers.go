@@ -466,21 +466,26 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	// Start performance timer for parsing
-	parseTimer := CreateParseTimerWithContext(ctx, "html_parsing")
+	parseTimer := CreateParseTimerWithContext(ctx, "file_parsing")
+
+	isCSV := strings.HasSuffix(strings.ToLower(handler.Filename), ".csv")
 
 	// Wrap file parsing in a child span using the already-read content
 	err = TraceFileProcessing(ctx, handler.Filename, actualFileSize, func(_ context.Context) error {
 		contentReader := bytes.NewReader(fileContent)
+		if isCSV {
+			return ParseCSVPlayerTable(contentReader, &headersSnapshot, rowCellsChan, numWorkers, resultsChan, &wg)
+		}
 		return ParseHTMLPlayerTable(contentReader, &headersSnapshot, rowCellsChan, numWorkers, resultsChan, &wg)
 	})
 	processingError = err
 
-	// Note: rowCellsChan is now closed by ParseHTMLPlayerTable function to prevent race conditions
-	LogDebug("HTML parsing attempt finished - channel closed by parser.")
+	// Note: rowCellsChan is now closed by the parser to prevent race conditions
+	LogDebug("File parsing attempt finished - channel closed by parser.")
 
 	if processingError != nil {
-		RecordError(ctx, processingError, "HTML parsing failed")
-		logError(ctx, "Error during HTML parsing or worker setup", "error", processingError)
+		RecordError(ctx, processingError, "File parsing failed")
+		logError(ctx, "Error during file parsing or worker setup", "error", processingError)
 		if len(headersSnapshot) > 0 {
 			logInfo(ctx, "Waiting for any potentially started workers after parsing error...")
 			wg.Wait()

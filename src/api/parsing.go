@@ -364,3 +364,132 @@ tokenLoop:
 
 	return processingError
 }
+
+// csvHeaderNormalize maps CSV-specific header names to the canonical header names
+// used by parseCellsToPlayer, so the same worker logic handles both HTML and CSV exports.
+// FM's CSV export uses full attribute names; the HTML view uses the short abbreviations
+// that all downstream rating calculations expect.
+var csvHeaderNormalize = map[string]string{
+	// Column identity differences
+	"Player": "Name",
+	"Nation": "Nat",
+
+	// Physical attributes
+	"Acceleration":          "Acc",
+	"Pace":                  "Pac",
+	"Strength":              "Str",
+	"Stamina":               "Sta",
+	"Natural Fitness":       "Nat",
+	"Balance":               "Bal",
+	"Jumping Reach":         "Jum",
+	"Agility":               "Agi",
+
+	// Mental attributes
+	"Aggression":            "Agg",
+	"Anticipation":          "Ant",
+	"Bravery":               "Bra",
+	"Composure":             "Cmp",
+	"Concentration":         "Cnt",
+	"Decisions":             "Dec",
+	"Determination":         "Det",
+	"Flair":                 "Fla",
+	"Leadership":            "Ldr",
+	"Off The Ball":          "OtB",
+	"Positioning":           "Pos",
+	"Team Work":             "Tea",
+	"Vision":                "Vis",
+	"Work Rate":             "Wor",
+
+	// Technical attributes
+	"Corners":               "Cor",
+	"Crossing":              "Cro",
+	"Dribbling":             "Dri",
+	"Finishing":             "Fin",
+	"First Touch":           "Fir",
+	"Free Kick Taking":      "Fre",
+	"Heading":               "Hea",
+	"Long Shots":            "Lon",
+	"Long Throws":           "L Th",
+	"Marking":               "Mar",
+	"Passing":               "Pas",
+	"Penalty Taking":        "Pen",
+	"Tackling":              "Tck",
+	"Technique":             "Tec",
+
+	// Goalkeeper attributes
+	"Aerial Reach":          "Aer",
+	"Command Of Area":       "Cmd",
+	"Communication":         "Com",
+	"Eccentricity":          "Ecc",
+	"Handling":              "Han",
+	"Kicking":               "Kic",
+	"One On Ones":           "1v1",
+	"Reflexes":              "Ref",
+	"Rushing Out (Tendency)": "TRO",
+	"Throwing":              "Thr",
+	"Punching":              "Pun",
+}
+
+// ParseCSVPlayerTable parses a semicolon-delimited CSV player export (as produced by FM's
+// "Export to CSV" view option) and feeds rows into the same worker pipeline used by
+// ParseHTMLPlayerTable. The first non-empty line is treated as the header row.
+func ParseCSVPlayerTable(file io.Reader, headersSnapshot *[]string, rowCellsChan chan []string, numWorkers int, resultsChan chan<- PlayerParseResult, wg *sync.WaitGroup) (processingError error) {
+	scanner := bufio.NewScanner(file)
+
+	var headers []string
+	workersStarted := false
+	channelClosed := false
+
+	closeChannelOnce := func() {
+		if !channelClosed {
+			channelClosed = true
+			close(rowCellsChan)
+		}
+	}
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if line == "" {
+			continue
+		}
+
+		if headers == nil {
+			// First non-empty line is the header row.
+			rawHeaders := strings.Split(line, ";")
+			headers = make([]string, len(rawHeaders))
+			for i, h := range rawHeaders {
+				normalized := strings.TrimSpace(h)
+				if canonical, ok := csvHeaderNormalize[normalized]; ok {
+					normalized = canonical
+				}
+				headers[i] = normalized
+			}
+			*headersSnapshot = headers
+
+			wg.Add(numWorkers)
+			for i := 0; i < numWorkers; i++ {
+				go PlayerParserWorker(i, rowCellsChan, resultsChan, wg, headers)
+			}
+			workersStarted = true
+			continue
+		}
+
+		cells := strings.Split(line, ";")
+		sendRowWithBackpressure(rowCellsChan, cells, 5*time.Second)
+	}
+
+	if err := scanner.Err(); err != nil {
+		processingError = err
+	}
+
+	if workersStarted {
+		closeChannelOnce()
+	} else {
+		if processingError == nil {
+			processingError = apperrors.ErrNoTableHeadersFound
+		}
+		closeChannelOnce()
+	}
+
+	return processingError
+}

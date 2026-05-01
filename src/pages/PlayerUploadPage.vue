@@ -33,7 +33,7 @@
                                 Select Your FM24 Export File
                             </h3>
                             <p class="upload-description">
-                                Choose your exported HTML file from Football
+                                Choose your exported HTML or CSV file from Football
                                 Manager 2024
                             </p>
                         </div>
@@ -51,11 +51,11 @@
                                 />
                                 <div class="dropzone-text">
                                     <div class="dropzone-primary">
-                                        Drop your HTML file here or click to
+                                        Drop your HTML or CSV file here or click to
                                         browse
                                     </div>
                                     <div class="dropzone-secondary">
-                                        Supports .html files up to {{ maxFileSizeMB }}MB (≈{{ formatNumber(maxPlayersSupported) }} players)
+                                        Supports .html and .csv files up to {{ maxFileSizeMB }}MB (≈{{ formatNumber(maxPlayersSupported) }} players)
                                     </div>
                                 </div>
                             </div>
@@ -86,7 +86,7 @@
 
                             <q-file
                                 v-model="playerFile"
-                                accept=".html"
+                                accept=".html,.csv"
                                 class="hidden-file-input"
                                 @update:model-value="onFileSelected"
                             />
@@ -100,7 +100,7 @@
                                     size="1.2rem"
                                     color="positive"
                                 />
-                                <span>HTML format only</span>
+                                <span>HTML or CSV format</span>
                             </div>
                             <div class="requirement-item">
                                 <q-icon
