@@ -33,7 +33,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24.3'
+          go-version: '1.25.x'
           cache-dependency-path: src/api/go.sum
 
       - name: Run golangci-lint
@@ -67,7 +67,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24.3'
+          go-version: '1.25.x'
           cache-dependency-path: src/api/go.sum
 
       - name: Build backend
@@ -288,4 +288,4 @@ jobs:
           
           echo "🎉 All deployments successfully rolled out!"
         env:
-          KUBECONFIG: kubeconfig.yaml 
+          KUBECONFIG: kubeconfig.yaml

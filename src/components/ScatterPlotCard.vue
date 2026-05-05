@@ -26,6 +26,7 @@
 import { Chart as ChartJS, Legend, LinearScale, PointElement, Title, Tooltip } from 'chart.js'
 import annotationPlugin from 'chartjs-plugin-annotation'
 import { computed } from 'vue'
+// biome-ignore lint/correctness/noUnusedImports: used in template
 import { Scatter } from 'vue-chartjs'
 
 // Register Chart.js components and the annotation plugin
@@ -87,10 +88,12 @@ const processedData = computed(() => {
   return props.allPlayersData
     .map((player) => {
       const xValue = getNumericValue(
-        player.performanceStatsNumeric?.[props.xAxisKey] || player.numericAttributes?.[props.xAxisKey]
+        player.performanceStatsNumeric?.[props.xAxisKey] ||
+          player.numericAttributes?.[props.xAxisKey]
       )
       const yValue = getNumericValue(
-        player.performanceStatsNumeric?.[props.yAxisKey] || player.numericAttributes?.[props.yAxisKey]
+        player.performanceStatsNumeric?.[props.yAxisKey] ||
+          player.numericAttributes?.[props.yAxisKey]
       )
 
       if (xValue === null || yValue === null || xValue === 0 || yValue === 0) return null
@@ -117,6 +120,7 @@ const avgY = computed(() => {
 })
 
 // --- Chart Configuration ---
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const chartData = computed(() => ({
   datasets: [
     {
@@ -128,6 +132,7 @@ const chartData = computed(() => ({
   ],
 }))
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const chartOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: true,

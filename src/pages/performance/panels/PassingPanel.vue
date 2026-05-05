@@ -36,9 +36,11 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+// biome-ignore lint/correctness/noUnusedImports: used in template
 import StatCard from '../../../components/StatCard.vue'
 import { useDynamicComponents } from '../../../composables/useDynamicComponents.js'
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const { DynamicScatterPlotCard } = useDynamicComponents()
 
 const props = defineProps({
@@ -51,11 +53,15 @@ const props = defineProps({
 
 defineEmits(['player-click'])
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const plotTab = ref('creative')
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const creativeCharts = computed(() => props.passingCharts.filter((c) => c.group === 'creative'))
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const progressionCharts = computed(() =>
   props.passingCharts.filter((c) => c.group === 'progression')
 )
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const crossingCharts = computed(() => props.passingCharts.filter((c) => c.group === 'crossing'))
 </script>
 

@@ -403,7 +403,8 @@ export default defineComponent({
 
     // Get display attribute value
     const getDisplayAttribute = (attrKey) => {
-      const value = props.player?.numericAttributes?.[attrKey] ?? props.player?.attributes?.[attrKey]
+      const value =
+        props.player?.numericAttributes?.[attrKey] ?? props.player?.attributes?.[attrKey]
       if (value === undefined || value === null) return '-'
       return value
     }

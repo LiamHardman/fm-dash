@@ -45,9 +45,11 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+// biome-ignore lint/correctness/noUnusedImports: used in template
 import StatCard from '../../../components/StatCard.vue'
 import { useDynamicComponents } from '../../../composables/useDynamicComponents.js'
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const { DynamicScatterPlotCard } = useDynamicComponents()
 
 const props = defineProps({
@@ -60,10 +62,15 @@ const props = defineProps({
 
 defineEmits(['player-click'])
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const plotTab = ref('duels')
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const duelsCharts = computed(() => props.defendingCharts.filter((c) => c.group === 'duels'))
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const pressingCharts = computed(() => props.defendingCharts.filter((c) => c.group === 'pressing'))
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const aerialCharts = computed(() => props.defendingCharts.filter((c) => c.group === 'aerial'))
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const workrateCharts = computed(() => props.defendingCharts.filter((c) => c.group === 'workrate'))
 </script>
 

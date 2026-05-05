@@ -109,6 +109,7 @@
 </template>
 
 <script setup>
+// biome-ignore lint/correctness/noUnusedImports: used in template
 import { formatNumber } from '../utils/datasetUtils'
 
 defineProps({

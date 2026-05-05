@@ -53,47 +53,6 @@
 <script>
 import { computed, defineComponent } from 'vue'
 
-// Data maps
-const performanceStatMap = {
-  'Asts/90': 'Assists per 90',
-  'Av Rat': 'Average Rating',
-  'Blk/90': 'Blocks per 90',
-  'Ch C/90': 'Chances Created per 90',
-  'Clr/90': 'Clearances per 90',
-  'Cr C/90': 'Crosses Completed per 90',
-  'Drb/90': 'Dribbles per 90',
-  'xA/90': 'Expected Assists per 90',
-  'xG/90': 'Expected Goals per 90',
-  'Gls/90': 'Goals per 90',
-  'Hdrs W/90': 'Headers Won per 90',
-  'Int/90': 'Interceptions per 90',
-  'K Ps/90': 'Key Passes per 90',
-  'Ps C/90': 'Passes Completed per 90',
-  'Shot/90': 'Shots per 90',
-  'Tck/90': 'Tackles per 90',
-  'Poss Won/90': 'Possession Won per 90',
-  'ShT/90': 'Shots on Target per 90',
-  'Pres C/90': 'Pressures Completed per 90',
-  'Poss Lost/90': 'Possession Lost per 90',
-  'Pr passes/90': 'Progressive Passes per 90',
-  'Conv %': 'Conversion %',
-  'Tck R': 'Tackle Ratio %',
-  'Pas %': 'Pass Completion %',
-  'Cr C/A': 'Cross Completion %',
-  Fls: 'Fouls',
-  Apps: 'Appearances',
-  'NP-xG/90': 'Non-Penalty xG per 90',
-  'Ps A/90': 'Pass Attempts per 90',
-  Mins: 'Minutes Played',
-  'Clean Sheets': 'Clean Sheets',
-  FA: 'Fouls Against',
-  'CRS A/90': 'Crosses Attempted per 90',
-  'Con/90': 'Goals Conceded per 90',
-  'Cln/90': 'Clean Sheets per 90',
-  'xGP/90': 'Expected Goals Prevented per 90',
-  'Sv %': 'Save Percentage',
-}
-
 // --- Start of Changed Section ---
 
 const performanceStatCategories = {

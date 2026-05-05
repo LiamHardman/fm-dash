@@ -30,7 +30,7 @@ query-filters:
   # Filter out standard library alerts for recent Go versions
   - exclude:
       id: go/stdlib/net/http
-      reason: "Using Go 1.24.3 with latest security patches"
+      reason: "Using Go 1.25.x with latest security patches"
   
   # Focus on high-severity issues only for HTTP/2
   - include:
@@ -86,4 +86,4 @@ javascript:
   exclude-patterns:
     - "*.min.js"
     - "*.bundle.js"
-    - "node_modules/**" 
+    - "node_modules/**"

@@ -1,5 +1,3 @@
-import { computed } from 'vue'
-
 export function useThresholds(allPlayersData, filters, getNumericValue, getPlayerDivision) {
   const calculateThresholds = () => {
     if (!allPlayersData.value.length) return { minutes: 0, overall: 0 }

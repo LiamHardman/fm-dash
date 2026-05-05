@@ -181,16 +181,22 @@ import { fetchPerformanceData } from '../services/playerService'
 import { usePlayerStore } from '../stores/playerStore'
 import { useUiStore } from '../stores/uiStore'
 import { exportPlayersToCSV } from '../utils/csvExport.js'
+// biome-ignore lint/correctness/noUnusedImports: used in template
 import { formatNumber } from '../utils/currencyUtils.js'
 import { getNumericValue, getPlayerDivision } from '../utils/playerUtils'
 import { useFiltering } from './performance/composables/useFiltering'
 import { usePerformanceFilters } from './performance/composables/usePerformanceFilters'
 import { useThresholds } from './performance/composables/useThresholds'
 import { useTopPlayers } from './performance/composables/useTopPlayers'
+// biome-ignore lint/correctness/noUnusedImports: used in template
 import PerformanceFilters from './performance/PerformanceFilters.vue'
+// biome-ignore lint/correctness/noUnusedImports: used in template
 import AttackingPanel from './performance/panels/AttackingPanel.vue'
+// biome-ignore lint/correctness/noUnusedImports: used in template
 import DefendingPanel from './performance/panels/DefendingPanel.vue'
+// biome-ignore lint/correctness/noUnusedImports: used in template
 import GoalkeepingPanel from './performance/panels/GoalkeepingPanel.vue'
+// biome-ignore lint/correctness/noUnusedImports: used in template
 import PassingPanel from './performance/panels/PassingPanel.vue'
 
 const router = useRouter()
@@ -201,9 +207,10 @@ const uiStore = useUiStore()
 
 // Initialize dynamic components
 const {
+  // biome-ignore lint/correctness/noUnusedVariables: used in template
   DynamicPlayerDetailDialog,
+  // biome-ignore lint/correctness/noUnusedVariables: used in template
   DynamicExportOptionsDialog,
-  DynamicScatterPlotCard,
   initializePreloading,
 } = useDynamicComponents()
 
@@ -223,7 +230,7 @@ const _exportFormat = ref('csv')
 const currentTab = ref('attacking')
 const pageLoading = ref(true)
 
-// Add computed property for dark mode detection using UI store
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const isDarkMode = computed(() => uiStore.isDarkModeActive)
 
 // --- Computed Properties from Store (declare before composables that depend on it) ---
@@ -241,15 +248,25 @@ const {
   positionOptions,
   availableDivisions,
   availablePositions,
+  // biome-ignore lint/correctness/noUnusedVariables: used in template
   selectedDivisionsDisplayText,
+  // biome-ignore lint/correctness/noUnusedVariables: used in template
   selectedPositionsDisplayText,
+  // biome-ignore lint/correctness/noUnusedVariables: used in template
   maxMinutes,
+  // biome-ignore lint/correctness/noUnusedVariables: used in template
   maxOverall,
+  // biome-ignore lint/correctness/noUnusedVariables: used in template
   filterDivisionsFn,
+  // biome-ignore lint/correctness/noUnusedVariables: used in template
   filterPositionsFn,
+  // biome-ignore lint/correctness/noUnusedVariables: used in template
   selectAllDivisions,
+  // biome-ignore lint/correctness/noUnusedVariables: used in template
   clearAllDivisions,
+  // biome-ignore lint/correctness/noUnusedVariables: used in template
   selectAllPositions,
+  // biome-ignore lint/correctness/noUnusedVariables: used in template
   clearAllPositions,
 } = usePerformanceFilters(allPlayersData)
 

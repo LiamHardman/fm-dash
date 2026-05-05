@@ -18,9 +18,11 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+// biome-ignore lint/correctness/noUnusedImports: used in template
 import StatCard from '../../../components/StatCard.vue'
 import { useDynamicComponents } from '../../../composables/useDynamicComponents.js'
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const { DynamicScatterPlotCard } = useDynamicComponents()
 
 const props = defineProps({
@@ -33,7 +35,9 @@ const props = defineProps({
 
 defineEmits(['player-click'])
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const plotTab = ref('shotstopping')
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const shotstoppingCharts = computed(() =>
   props.goalkeepingCharts.filter((c) => c.group === 'shotstopping')
 )

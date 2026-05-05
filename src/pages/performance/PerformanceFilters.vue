@@ -161,32 +161,42 @@ const props = defineProps({
   clearAllPositions: { type: Function, required: true },
 })
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const selectedDivisionsModel = computed({
   get: () => props.selectedDivisions,
   set: (val) => emit('update:selectedDivisions', val),
 })
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const selectedPositionsModel = computed({
   get: () => props.selectedPositions,
   set: (val) => emit('update:selectedPositions', val),
 })
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const sliderValueModel = computed({
   get: () => props.sliderValue,
   set: (val) => emit('update:sliderValue', val),
 })
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 const overallSliderValueModel = computed({
   get: () => props.overallSliderValue,
   set: (val) => emit('update:overallSliderValue', val),
 })
 
 const {
+  // biome-ignore lint/correctness/noUnusedVariables: used in template
   filterDivisionsFn,
+  // biome-ignore lint/correctness/noUnusedVariables: used in template
   filterPositionsFn,
+  // biome-ignore lint/correctness/noUnusedVariables: used in template
   selectAllDivisions,
+  // biome-ignore lint/correctness/noUnusedVariables: used in template
   clearAllDivisions,
+  // biome-ignore lint/correctness/noUnusedVariables: used in template
   selectAllPositions,
+  // biome-ignore lint/correctness/noUnusedVariables: used in template
   clearAllPositions,
 } = props
 </script>

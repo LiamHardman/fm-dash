@@ -2802,7 +2802,7 @@ export default defineComponent({
           document.execCommand('copy')
           textArea.remove()
         }
-        
+
         // Show success notification
         qInstance.notify({
           type: 'positive',
@@ -2816,7 +2816,7 @@ export default defineComponent({
           error: error.message,
           player_name: playerName,
         })
-        
+
         // Show error notification
         qInstance.notify({
           type: 'negative',

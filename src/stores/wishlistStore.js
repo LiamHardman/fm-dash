@@ -41,7 +41,10 @@ export const useWishlistStore = defineStore('wishlist', () => {
       await wishlistService.saveWishlist(datasetId, wishlistsByDataset.value[datasetId])
     } catch (error) {
       console.error('Wishlist save failed:', error)
-      Notify.create({ type: 'negative', message: 'Could not save wishlist. Changes may not persist.' })
+      Notify.create({
+        type: 'negative',
+        message: 'Could not save wishlist. Changes may not persist.',
+      })
     }
   }
 

@@ -11,9 +11,7 @@ export function useTopPlayers(filteredPlayers, statsConfig, getNumericValue) {
   })
 
   const readStatValue = (player, key) => {
-    const raw =
-      (player.performanceStatsNumeric && player.performanceStatsNumeric[key]) ??
-      (player.attributes && player.attributes[key])
+    const raw = player.performanceStatsNumeric?.[key] ?? player.attributes?.[key]
     return getNumericValue(raw)
   }
 

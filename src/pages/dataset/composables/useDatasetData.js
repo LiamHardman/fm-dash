@@ -85,7 +85,7 @@ export function useDatasetData() {
       }
 
       if (currentFilters.value.role && currentFilters.value.role.length > 0) {
-        const playerRoles = (player.best_roles && player.best_roles.slice(0, 3)) || []
+        const playerRoles = player.best_roles?.slice(0, 3) || []
         if (!currentFilters.value.role.some((role) => playerRoles.includes(role))) return false
       }
 
@@ -122,7 +122,7 @@ export function useDatasetData() {
         return false
 
       const statValueOrZero = (obj, key) => {
-        const raw = (obj && obj[key]) ?? null
+        const raw = obj?.[key] ?? null
         const num = Number.parseFloat(String(raw).replace(/,/g, ''))
         return Number.isNaN(num) ? 0 : num
       }

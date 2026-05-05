@@ -53,7 +53,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24.3'
+          go-version: '1.25.x'
           cache-dependency-path: src/api/go.sum
           check-latest: true
 
@@ -175,7 +175,7 @@ jobs:
       if: matrix.language == 'go'
       uses: actions/setup-go@v5
       with:
-        go-version: '1.24.3'
+        go-version: '1.25.x'
         cache-dependency-path: src/api/go.sum
 
     - name: Setup Node.js (for JavaScript analysis)
@@ -262,7 +262,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24.3'
+          go-version: '1.25.x'
           cache-dependency-path: src/api/go.sum
 
       - name: Build Go backend
@@ -849,4 +849,4 @@ jobs:
           echo "  • Docker images build concurrently after builds complete"
           echo "  • Release artifacts use pre-built components"
           echo "  • Maintained all quality gates and security checks"
-          echo "  • Kubernetes deployments restarted after successful builds" 
+          echo "  • Kubernetes deployments restarted after successful builds"

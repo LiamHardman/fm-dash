@@ -1,5 +1,5 @@
 # Backend Dockerfile for Go API
-FROM golang:1.24-alpine AS go-builder
+FROM golang:1.25-alpine AS go-builder
 LABEL stage=go-builder
 WORKDIR /app-go
 RUN apk add --no-cache ca-certificates git
@@ -37,4 +37,4 @@ EXPOSE 8091
 ENV PORT_GO_API=8091
 
 # Run as non-root user (distroless nonroot user)
-CMD ["./v2fmdash-server"] 
+CMD ["./v2fmdash-server"]
