@@ -1,8 +1,8 @@
-version: 2
+version: "2"
 
 run:
   timeout: 5m
-  go: "1.25.0"
+  go: "1.25"
   modules-download-mode: readonly
   allow-parallel-runners: true
 
@@ -29,27 +29,27 @@ linters:
     - ireturn
     - staticcheck
     - unused
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - gosec
+          - gocritic
+          - errcheck
+  settings:
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+        - name: unused-parameter
+          disabled: true
+        - name: indent-error-flow
+          disabled: true
+        - name: var-naming
+          disabled: true
+        - name: empty-block
+          disabled: true
 
 issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - gosec
-        - gocritic
-        - errcheck
   max-issues-per-linter: 0
   max-same-issues: 0
-
-linters-settings:
-  revive:
-    rules:
-      - name: exported
-        disabled: true
-      - name: unused-parameter
-        disabled: true
-      - name: indent-error-flow
-        disabled: true
-      - name: var-naming
-        disabled: true
-      - name: empty-block
-        disabled: true

@@ -229,6 +229,13 @@ jobs:
 
       - name: Configure kubectl
         run: |
+          set -euo pipefail
+
+          if [ -z "${KUBECONFIG_CONTENT:-}" ]; then
+            echo "Error: KUBECONFIG secret is empty or not configured."
+            exit 1
+          fi
+
           # Function to check if content is valid base64
           is_base64() {
             local content="$1"
@@ -257,8 +264,16 @@ jobs:
             echo "Error: Failed to create kubeconfig.yaml"
             exit 1
           fi
+
+          chmod 600 kubeconfig.yaml
           
           export KUBECONFIG=kubeconfig.yaml
+          if ! kubectl config view --raw >/dev/null; then
+            echo "Error: KUBECONFIG secret is not a valid kubeconfig file."
+            echo "Expected a full kubeconfig YAML/JSON document. The clusters, contexts, and users fields must be lists."
+            exit 1
+          fi
+
           kubectl config current-context
         env:
           KUBECONFIG: kubeconfig.yaml
