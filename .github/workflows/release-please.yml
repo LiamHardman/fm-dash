@@ -23,7 +23,6 @@ jobs:
         id: release
         with:
           release-type: node
-          package-name: fm-dash
           token: ${{ secrets.GITHUB_TOKEN }}
 
   # Build and push Docker images when a release is created

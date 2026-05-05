@@ -480,7 +480,7 @@ func RegisterMemoryProfileEndpoints(mux *http.ServeMux) {
 	debugMux.Handle("/debug/pprof/mutex", pprof.Handler("mutex"))
 
 	go func() {
-		LogInfo("pprof debug server listening on :" + debugPort)
+		LogInfo("pprof debug server listening on :%s", debugPort)
 		if err := http.ListenAndServe(":"+debugPort, debugMux); err != nil {
 			LogWarn("pprof debug server stopped: %v", err)
 		}

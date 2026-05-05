@@ -56,10 +56,10 @@ jobs:
           go mod tidy
 
       - name: Run golangci-lint
-        working-directory: ./src/api
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.2.2
-          $(go env GOPATH)/bin/golangci-lint run
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12.1
+          working-directory: ./src/api
 
   # Tests
   test:

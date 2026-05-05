@@ -37,10 +37,10 @@ jobs:
           cache-dependency-path: src/api/go.sum
 
       - name: Run golangci-lint
-        working-directory: ./src/api
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.2.2
-          $(go env GOPATH)/bin/golangci-lint run
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12.1
+          working-directory: ./src/api
 
   # Build and Package
   build:
@@ -232,10 +232,11 @@ jobs:
           # Function to check if content is valid base64
           is_base64() {
             local content="$1"
+            content="$(printf '%s' "$content" | tr -d '[:space:]')"
             # Check if content contains only base64 characters and has proper length
-            if echo "$content" | grep -q '^[A-Za-z0-9+/]*=*$' && [ $(( ${#content} % 4 )) -eq 0 ]; then
+            if printf '%s' "$content" | grep -q '^[A-Za-z0-9+/]*=*$' && [ $(( ${#content} % 4 )) -eq 0 ]; then
               # Try to decode and check if it produces valid output
-              if echo "$content" | base64 -d > /dev/null 2>&1; then
+              if printf '%s' "$content" | base64 -d > /dev/null 2>&1; then
                 return 0
               fi
             fi
@@ -243,12 +244,12 @@ jobs:
           }
           
           # Try to detect if content is base64 encoded
-          if is_base64 "${{ secrets.KUBECONFIG }}"; then
+          if is_base64 "$KUBECONFIG_CONTENT"; then
             echo "Detected base64-encoded kubeconfig, decoding..."
-            echo "${{ secrets.KUBECONFIG }}" | base64 -d > kubeconfig.yaml
+            printf '%s' "$KUBECONFIG_CONTENT" | tr -d '[:space:]' | base64 -d > kubeconfig.yaml
           else
             echo "Detected plain text kubeconfig..."
-            echo "${{ secrets.KUBECONFIG }}" > kubeconfig.yaml
+            printf '%s' "$KUBECONFIG_CONTENT" > kubeconfig.yaml
           fi
           
           # Verify the kubeconfig file was created successfully
@@ -261,6 +262,7 @@ jobs:
           kubectl config current-context
         env:
           KUBECONFIG: kubeconfig.yaml
+          KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG }}
 
       - name: Rollout restart deployments
         run: |
