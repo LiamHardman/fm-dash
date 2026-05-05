@@ -60,7 +60,7 @@
     "chartjs-plugin-annotation": "^3.1.0",
     "fs-minipass": "^3.0.3",
     "pinia": "^3.0.2",
-    "protobufjs": "^7.5.3",
+    "protobufjs": "^7.5.5",
     "quasar": "^2.14.4",
     "unique-slug": "^5.0.0",
     "vue": "^3.4.19",
@@ -78,7 +78,7 @@
     "@vitejs/plugin-vue": "^6.0.0",
     "@vue/test-utils": "^2.4.6",
     "conventional-changelog-conventionalcommits": "^8.0.0",
-    "happy-dom": "^18.0.1",
+    "happy-dom": "^20.8.9",
     "husky": "^9.1.7",
     "jsdom": "^26.1.0",
     "lint-staged": "^16.1.0",
@@ -86,8 +86,15 @@
     "sass": "^1.71.1",
     "semantic-release": "^24.2.7",
     "terser": "^5.43.1",
-    "vite": "^7.0.2",
+    "vite": "^7.3.2",
     "vitest": "^3.2.0"
+  },
+  "overrides": {
+    "postcss": ">=8.5.10",
+    "handlebars": ">=4.7.9",
+    "yaml": ">=2.8.3",
+    "tar": ">=7.5.11",
+    "lodash-es": ">=4.18.0"
   },
   "lint-staged": {
     "*.{js,ts,vue,html,css,scss}": [
