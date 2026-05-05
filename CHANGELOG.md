@@ -56,6 +56,28 @@
 
 * Improved loading experience ([97fcd00](https://github.com/LiamHardman/fm-dash/commit/97fcd000b3a18efa2c988b7fc26ae3d26a3b4120))
 
+## [1.1.0](https://github.com/LiamHardman/fm-dash/compare/v1.0.2...v1.1.0) (2026-05-05)
+
+
+### Features
+
+* Added copy to clipboard button for player names ([#108](https://github.com/LiamHardman/fm-dash/issues/108)) ([d374b65](https://github.com/LiamHardman/fm-dash/commit/d374b65f44d30b30ce4a64ff826d34d3fc1e1508))
+* fm26 print screen support ([3b13322](https://github.com/LiamHardman/fm-dash/commit/3b133222a03815c8213677e072389fa7fe048c2e))
+* major performance improvements, UI enhancements, and storage refactoring ([9bddb8f](https://github.com/LiamHardman/fm-dash/commit/9bddb8f98011cee321c16470c1d243936bc09304))
+* optimizations ([0bc1f4e](https://github.com/LiamHardman/fm-dash/commit/0bc1f4e4500893501ac553a5d151cbeb8b71a5e8))
+
+
+### Bug Fixes
+
+* Added kustomization yaml ([#110](https://github.com/LiamHardman/fm-dash/issues/110)) ([53434d2](https://github.com/LiamHardman/fm-dash/commit/53434d2173f7517db8e1bddf9c57aa6d26cd6e1f))
+* docker speed optimizations ([#113](https://github.com/LiamHardman/fm-dash/issues/113)) ([bf20511](https://github.com/LiamHardman/fm-dash/commit/bf2051184b0e74b8ff14fa88cdceaa97b507a640))
+* implementation of automated removal of artifacts ([d9071f7](https://github.com/LiamHardman/fm-dash/commit/d9071f7e1ae3a2868086a8e825e8babe7bb840e4))
+* launch_dev.ps1 fix ([0177cf8](https://github.com/LiamHardman/fm-dash/commit/0177cf8c3159d09bcaabfb79185310b76e523be1))
+* mem optimization ([09fb741](https://github.com/LiamHardman/fm-dash/commit/09fb7417a4bb54395bc530d5d83a7aa8bafd8ec1))
+* resolve 30 Dependabot security alerts (npm + Go) ([e5aec71](https://github.com/LiamHardman/fm-dash/commit/e5aec7182578d19e8f8b7f0662021d078d72e805))
+* resolve Dependabot security alerts in npm and Go dependencies ([4ea9471](https://github.com/LiamHardman/fm-dash/commit/4ea947191ee9edde5fd8deea9709dd81bc146d3c))
+* updated kustomization.yaml ([#111](https://github.com/LiamHardman/fm-dash/issues/111)) ([8f78ca4](https://github.com/LiamHardman/fm-dash/commit/8f78ca43d214704db56819edffa191ec43e55439))
+
 ## [1.0.2](https://github.com/LiamHardman/fm-dash/compare/v1.0.1...v1.0.2) (2025-08-06)
 
 
