@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { Notify } from 'quasar'
 import { ref } from 'vue'
 import { analytics } from '../services/analytics'
 import wishlistService from '../services/wishlistService'
@@ -38,7 +39,10 @@ export const useWishlistStore = defineStore('wishlist', () => {
 
     try {
       await wishlistService.saveWishlist(datasetId, wishlistsByDataset.value[datasetId])
-    } catch (_error) {}
+    } catch (error) {
+      console.error('Wishlist save failed:', error)
+      Notify.create({ type: 'negative', message: 'Could not save wishlist. Changes may not persist.' })
+    }
   }
 
   // Add player to wishlist for specific dataset
@@ -107,7 +111,10 @@ export const useWishlistStore = defineStore('wishlist', () => {
       // Also delete from both MinIO and localStorage
       try {
         await wishlistService.deleteWishlist(datasetId)
-      } catch (_error) {}
+      } catch (error) {
+        console.error('Wishlist delete failed:', error)
+        Notify.create({ type: 'negative', message: 'Could not delete wishlist from storage.' })
+      }
     }
   }
 

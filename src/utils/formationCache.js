@@ -100,10 +100,13 @@ class FormationCache {
 // Export singleton instance
 export const formationCache = new FormationCache()
 
-// Auto-cleanup every 5 minutes
-setInterval(
+const _cleanupInterval = setInterval(
   () => {
     formationCache.cleanup()
   },
   5 * 60 * 1000
 )
+
+export function destroyFormationCache() {
+  clearInterval(_cleanupInterval)
+}

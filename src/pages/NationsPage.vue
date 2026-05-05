@@ -544,7 +544,7 @@
 
 <script>
 import { useQuasar } from 'quasar'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import GradientBackground from '../components/GradientBackground.vue'
 import PitchDisplay from '../components/PitchDisplay.vue'
@@ -1309,15 +1309,19 @@ export default {
       processCalculationQueue()
     }
 
-    const fetchPlayersAndCurrency = async (datasetId) => {
+    const fetchPlayersAndCurrency = async (datasetId, signal = null) => {
       pageLoading.value = true
       pageLoadingError.value = ''
       try {
         await playerStore.fetchPlayersByDatasetId(datasetId)
       } catch (err) {
-        pageLoadingError.value = `Failed to load player data: ${err.message || 'Unknown server error'}. Please try uploading again.`
+        if (!signal?.aborted) {
+          pageLoadingError.value = `Failed to load player data: ${err.message || 'Unknown server error'}. Please try uploading again.`
+        }
       } finally {
-        pageLoading.value = false
+        if (!signal?.aborted) {
+          pageLoading.value = false
+        }
       }
     }
 
@@ -2173,6 +2177,13 @@ export default {
         : 'bg-blue-2 text-primary'
     }
 
+    let isMounted = true
+    let nationsFetchController = null
+    onUnmounted(() => {
+      isMounted = false
+      nationsFetchController?.abort()
+    })
+
     watch(
       () => allPlayersData.value,
       async (newVal) => {
@@ -2180,13 +2191,12 @@ export default {
         if (newVal && newVal.length > 0) {
           populateNationFilterOptions()
 
-          // NEW: Generate new cache key and try to load from cache
           cacheKey.value = generateCacheKey()
 
           const cacheLoaded = await loadNationRatingsFromCache()
+          if (!isMounted) return
 
           if (!cacheLoaded) {
-            // NEW: Initialize nations and start calculations
             initializeNationsData()
             setTimeout(() => {
               startRatingCalculations()
@@ -2198,8 +2208,8 @@ export default {
           clearNationSelection()
           allNationNamesCache.value = []
           nationOptions.value = []
-          nationsData.value = [] // NEW: Clear nations data
-          cacheKey.value = null // NEW: Clear cache key
+          nationsData.value = []
+          cacheKey.value = null
         }
       },
       { immediate: false }
@@ -2208,25 +2218,26 @@ export default {
     watch(
       () => route.query.datasetId,
       async (newId, oldId) => {
-        if (newId && newId !== oldId) {
-          sessionStorage.setItem('currentDatasetId', newId)
-          await fetchPlayersAndCurrency(newId)
-          clearNationSelection()
-          nationsData.value = [] // NEW: Clear nations data
-          cacheKey.value = null // NEW: Clear cache key
-          if (!pageLoadingError.value && allPlayersData.value.length > 0) {
-            populateNationFilterOptions()
-
-            // NEW: Generate cache key and try to load from cache
-            cacheKey.value = generateCacheKey()
-            const cacheLoaded = await loadNationRatingsFromCache()
-
-            if (!cacheLoaded) {
-              initializeNationsData() // NEW: Initialize nations
-              setTimeout(() => {
-                startRatingCalculations() // NEW: Start calculations
-              }, 100)
-            }
+        if (!newId || newId === oldId) return
+        nationsFetchController?.abort()
+        nationsFetchController = new AbortController()
+        const signal = nationsFetchController.signal
+        sessionStorage.setItem('currentDatasetId', newId)
+        await fetchPlayersAndCurrency(newId, signal)
+        if (signal.aborted) return
+        clearNationSelection()
+        nationsData.value = []
+        cacheKey.value = null
+        if (!pageLoadingError.value && allPlayersData.value.length > 0) {
+          populateNationFilterOptions()
+          cacheKey.value = generateCacheKey()
+          const cacheLoaded = await loadNationRatingsFromCache()
+          if (signal.aborted) return
+          if (!cacheLoaded) {
+            initializeNationsData()
+            setTimeout(() => {
+              startRatingCalculations()
+            }, 100)
           }
         }
       }

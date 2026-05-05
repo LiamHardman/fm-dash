@@ -393,7 +393,11 @@ export async function fetchPlayerDataWithPercentiles(
 }
 
 // Cleanup caches periodically
-setInterval(cleanupCaches, 60000) // Every minute
+const _cleanupInterval = setInterval(cleanupCaches, 60000) // Every minute
+
+function destroy() {
+  clearInterval(_cleanupInterval)
+}
 
 export default {
   fetchPlayerDataOptimized,
@@ -404,4 +408,5 @@ export default {
   clearAllCaches,
   cleanupCaches,
   fetchPlayerDataWithPercentiles,
+  destroy,
 }

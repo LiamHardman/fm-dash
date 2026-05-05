@@ -243,7 +243,7 @@
 
 <script>
 import { useQuasar } from 'quasar'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BargainHunterDialog from '../components/BargainHunterDialog.vue'
 import ExportOptionsDialog from '../components/ExportOptionsDialog.vue'
@@ -862,7 +862,7 @@ export default {
       return false
     })
 
-    const fetchDataset = async (datasetId) => {
+    const fetchDataset = async (datasetId, signal = null) => {
       pageLoading.value = true
       pageLoadingError.value = ''
       try {
@@ -919,6 +919,7 @@ export default {
         }
 
         await wishlistStore.initializeWishlistForDataset(datasetId)
+        if (signal?.aborted) return
 
         const initTvRange = playerStore.initialDatasetTransferValueRange
         const initSalaryRange = playerStore.salaryRange
@@ -1159,12 +1160,16 @@ export default {
 
     const showFilters = ref(false)
 
+    let datasetFetchController = null
+    onUnmounted(() => datasetFetchController?.abort())
+
     watch(
       () => route.params.datasetId,
       async (newId, oldId) => {
-        if (newId && newId !== oldId) {
-          await fetchDataset(newId)
-        }
+        if (!newId || newId === oldId) return
+        datasetFetchController?.abort()
+        datasetFetchController = new AbortController()
+        await fetchDataset(newId, datasetFetchController.signal)
       }
     )
 
