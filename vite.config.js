@@ -111,53 +111,10 @@ export default defineConfig({
         warn(warning)
       },
       output: {
-        // Advanced manual chunks for optimal caching and loading
+        // Keep manual chunking limited to third-party libraries. Local source
+        // modules have enough cross-route dependencies that forcing them into
+        // named chunks can create ESM evaluation cycles in production builds.
         manualChunks: (id) => {
-          // Store modules - load early and separately to prevent initialization issues
-          if (id.includes('stores/')) {
-            if (id.includes('optimizedPlayerStore.js')) {
-              return 'store-optimized-player'
-            }
-            if (id.includes('playerStore.js')) {
-              return 'store-player'
-            }
-            if (id.includes('uiStore.js')) {
-              return 'store-ui'
-            }
-            if (id.includes('wishlistStore.js')) {
-              return 'store-wishlist'
-            }
-            return 'store-misc'
-          }
-
-          // Route-based chunks for major pages
-          if (
-            id.includes('pages/PlayerUploadPage.vue') ||
-            id.includes('components/InteractiveUploadLoader.vue')
-          ) {
-            return 'page-upload'
-          }
-          if (
-            id.includes('pages/DatasetPage.vue') ||
-            id.includes('components/PlayerTableRow.vue')
-          ) {
-            return 'page-player-table'
-          }
-          // Keep PlayerDataTable in a separate chunk to avoid initialization issues
-          if (id.includes('components/PlayerDataTable.vue')) {
-            return 'component-player-data-table'
-          }
-          if (id.includes('pages/TeamViewPage.vue') || id.includes('components/PitchDisplay.vue')) {
-            return 'page-team-view'
-          }
-          if (
-            id.includes('pages/PerformancePage.vue') ||
-            id.includes('components/PerformanceMonitor.vue')
-          ) {
-            return 'page-performance'
-          }
-
-          // Vendor chunk splitting
           if (id.includes('node_modules')) {
             // Core Vue framework - highest priority, keep small
             if (
@@ -211,28 +168,6 @@ export default defineConfig({
               }
               return 'vendor-misc'
             }
-          }
-
-          // Component-based chunks for heavy components
-          if (
-            id.includes('components/PlayerDetailDialog.vue') ||
-            id.includes('components/player-details/')
-          ) {
-            return 'component-player-details'
-          }
-          if (
-            id.includes('components/ExportOptionsDialog.vue') ||
-            id.includes('utils/csvExport.js')
-          ) {
-            return 'component-export'
-          }
-          if (id.includes('components/ScatterPlotCard.vue') || id.includes('components/filters/')) {
-            return 'component-charts-filters'
-          }
-
-          // Composables and utilities - separate from stores
-          if (id.includes('composables/') || id.includes('utils/') || id.includes('services/')) {
-            return 'shared-utilities'
           }
         },
         chunkFileNames: (chunkInfo) => {
