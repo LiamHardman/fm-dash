@@ -206,6 +206,67 @@ describe('playerStore', () => {
     })
   })
 
+  describe('dataset facets', () => {
+    it('should compute dropdown facets when players are replaced', () => {
+      store.setPlayers([
+        {
+          id: 1,
+          name: 'Player 1',
+          club: 'Arsenal',
+          nationality: 'England',
+          division: 'Premier League',
+          media_handling: 'Media-friendly, Unflappable',
+          personality: 'Professional',
+        },
+        {
+          id: 2,
+          name: 'Player 2',
+          club: 'Chelsea',
+          nationality: 'France',
+          division: 'Premier League',
+          media_handling: 'Unflappable',
+          personality: 'Ambitious',
+        },
+        {
+          id: 3,
+          name: 'Player 3',
+          club: 'Arsenal',
+          nationality: 'England',
+          division: 'Championship',
+          media_handling: '',
+          personality: 'Professional',
+        },
+      ])
+
+      expect(store.uniqueClubs).toEqual(['Arsenal', 'Chelsea'])
+      expect(store.uniqueNationalities).toEqual(['England', 'France'])
+      expect(store.uniqueDivisions).toEqual(['Championship', 'Premier League'])
+      expect(store.uniqueMediaHandlings).toEqual(['Media-friendly', 'Unflappable'])
+      expect(store.uniquePersonalities).toEqual(['Ambitious', 'Professional'])
+    })
+
+    it('should clear dropdown facets on reset', () => {
+      store.setPlayers([
+        {
+          id: 1,
+          club: 'Arsenal',
+          nationality: 'England',
+          division: 'Premier League',
+          media_handling: 'Media-friendly',
+          personality: 'Professional',
+        },
+      ])
+
+      store.resetState()
+
+      expect(store.uniqueClubs).toEqual([])
+      expect(store.uniqueNationalities).toEqual([])
+      expect(store.uniqueDivisions).toEqual([])
+      expect(store.uniqueMediaHandlings).toEqual([])
+      expect(store.uniquePersonalities).toEqual([])
+    })
+  })
+
   describe('protobuf utilities', () => {
     it('should toggle protobuf support', () => {
       store.setProtobufEnabled(false)

@@ -2,6 +2,9 @@
  * Advanced fuzzy team name matching utility
  * Provides multiple algorithms for matching team names with slight variations
  */
+import { normalizeTeamName } from './teamNormalization.js'
+
+export { normalizeTeamName } from './teamNormalization.js'
 
 /**
  * Calculate Levenshtein distance between two strings
@@ -39,35 +42,6 @@ function levenshteinDistance(str1, str2) {
 }
 
 /**
- * Normalize team name by removing common prefixes, suffixes, and formatting
- * @param {string} name - Team name to normalize
- * @returns {string} - Normalized name
- */
-export function normalizeTeamName(name) {
-  if (!name) return ''
-
-  return (
-    name
-      .toLowerCase()
-      .trim()
-      // Remove common prefixes (more comprehensive list)
-      .replace(
-        /^(fc|cf|ac|sc|cd|ud|real|club|athletic|atletico|athletico|deportivo|sporting|association|society|union|united)\s+/i,
-        ''
-      )
-      // Remove common suffixes
-      .replace(
-        /\s+(fc|cf|ac|sc|cd|ud|club|united|city|town|rovers|wanderers|albion|villa|county|athletic|atletico|athletico|deportivo|sporting|utd|f\.?c\.?|c\.?f\.?|s\.?c\.?|association|society|union)$/i,
-        ''
-      )
-      // Remove special characters and standardize spacing
-      .replace(/[^\w\s]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim()
-  )
-}
-
-/**
  * Calculate similarity score between two team names
  * @param {string} name1 - First team name
  * @param {string} name2 - Second team name
@@ -79,12 +53,13 @@ export function calculateTeamSimilarity(name1, name2) {
 
   // Exact match after normalization
   if (norm1 === norm2) return 1.0
+  if (!norm1 || !norm2) return 0
 
   // Check for substring matches
-  if (norm1.includes(norm2) || norm2.includes(norm1)) {
+  if (norm1.length > 3 && norm2.length > 3 && (norm1.includes(norm2) || norm2.includes(norm1))) {
     const longer = norm1.length > norm2.length ? norm1 : norm2
     const shorter = norm1.length > norm2.length ? norm2 : norm1
-    return (shorter.length / longer.length) * 0.9 // Slight penalty for partial match
+    return Math.min(0.95, 0.8 + (shorter.length / longer.length) * 0.15)
   }
 
   // Levenshtein-based similarity

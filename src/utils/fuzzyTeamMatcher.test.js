@@ -15,13 +15,13 @@ describe('fuzzyTeamMatcher', () => {
     })
 
     test('should convert to lowercase and trim', () => {
-      expect(normalizeTeamName('  MANCHESTER UNITED  ')).toBe('manchester')
+      expect(normalizeTeamName('  MANCHESTER UNITED  ')).toBe('manchester united')
       expect(normalizeTeamName('Arsenal FC')).toBe('arsenal')
     })
 
     test('should remove common prefixes', () => {
       expect(normalizeTeamName('FC Barcelona')).toBe('barcelona')
-      expect(normalizeTeamName('Real Madrid')).toBe('madrid')
+      expect(normalizeTeamName('Real Madrid')).toBe('real madrid')
       expect(normalizeTeamName('AC Milan')).toBe('milan')
       expect(normalizeTeamName('Athletic Bilbao')).toBe('bilbao')
       expect(normalizeTeamName('Atletico Madrid')).toBe('madrid')
@@ -29,8 +29,8 @@ describe('fuzzyTeamMatcher', () => {
     })
 
     test('should remove common suffixes', () => {
-      expect(normalizeTeamName('Manchester United')).toBe('manchester')
-      expect(normalizeTeamName('Manchester City')).toBe('manchester')
+      expect(normalizeTeamName('Manchester United')).toBe('manchester united')
+      expect(normalizeTeamName('Manchester City')).toBe('manchester city')
       expect(normalizeTeamName('Arsenal FC')).toBe('arsenal')
       expect(normalizeTeamName('Chelsea F.C.')).toBe('chelsea')
       expect(normalizeTeamName('Blackburn Rovers')).toBe('blackburn')
@@ -40,16 +40,23 @@ describe('fuzzyTeamMatcher', () => {
     })
 
     test('should remove special characters and normalize spacing', () => {
-      expect(normalizeTeamName('Real-Madrid C.F.')).toBe('realmadrid')
-      expect(normalizeTeamName('Bayern  München')).toBe('bayern mnchen') // Special chars removed
-      expect(normalizeTeamName('AC/DC Milan')).toBe('acdc milan')
+      expect(normalizeTeamName('Real-Madrid C.F.')).toBe('real madrid')
+      expect(normalizeTeamName('Bayern  München')).toBe('bayern munchen')
+      expect(normalizeTeamName('AC/DC Milan')).toBe('dc milan')
     })
 
     test('should handle complex team names', () => {
       expect(normalizeTeamName('Real Club Deportivo de La Coruña')).toBe(
-        'club deportivo de la corua'
+        'real club deportivo de la coruna'
       )
-      expect(normalizeTeamName('Athletic Club de Bilbao')).toBe('club de bilbao')
+      expect(normalizeTeamName('Athletic Club de Bilbao')).toBe('de bilbao')
+    })
+
+    test('should expand common abbreviations', () => {
+      expect(normalizeTeamName('Man Utd')).toBe('manchester united')
+      expect(normalizeTeamName('Man City')).toBe('manchester city')
+      expect(normalizeTeamName('PSG')).toBe('paris saint germain')
+      expect(normalizeTeamName('Nottm Forest')).toBe('nottingham forest')
     })
   })
 

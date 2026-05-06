@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, ref, shallowRef, watch } from 'vue'
+import { computed, ref, shallowRef } from 'vue'
 import playerService from '../services/playerService.js'
 import { PerformanceTracker } from '../utils/performance.js'
 import uploadFlowProfiler from '../utils/performanceProfiler.js'
@@ -21,67 +21,55 @@ export const usePlayerStore = defineStore('player', () => {
   const AGE_SLIDER_MIN_DEFAULT = 15
   const AGE_SLIDER_MAX_DEFAULT = 50
 
-  const uniqueClubs = computed(() => {
-    if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) return []
-    const clubs = new Set()
-    for (const player of allPlayers.value) {
-      if (player.club) clubs.add(player.club)
-    }
-    return Array.from(clubs).sort()
-  })
-
-  const uniqueNationalities = computed(() => {
-    if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) return []
-    const nationalities = new Set()
-    for (const p of allPlayers.value) {
-      if (p.nationality) nationalities.add(p.nationality)
-    }
-    return Array.from(nationalities).sort()
-  })
-
-  const uniqueMediaHandlings = computed(() => {
-    if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) return []
-    const mediaHandlingsIndividual = new Set()
-    for (const p of allPlayers.value) {
-      if (p.media_handling) {
-        for (const style of p.media_handling.split(',')) {
-          const trimmedStyle = style.trim()
-          if (trimmedStyle) mediaHandlingsIndividual.add(trimmedStyle)
-        }
-      }
-    }
-    return Array.from(mediaHandlingsIndividual).sort()
-  })
-
-  const uniquePersonalities = computed(() => {
-    if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) return []
-    const personalities = new Set()
-    for (const p of allPlayers.value) {
-      if (p.personality) personalities.add(p.personality)
-    }
-    return Array.from(personalities).sort()
-  })
-
+  const uniqueClubs = ref([])
+  const uniqueNationalities = ref([])
+  const uniqueMediaHandlings = ref([])
+  const uniquePersonalities = ref([])
   const uniqueDivisions = ref([])
 
-  // Update uniqueDivisions when allPlayers changes
-  watch(
-    allPlayers,
-    (newPlayers) => {
-      if (!Array.isArray(newPlayers) || newPlayers.length === 0) {
-        uniqueDivisions.value = []
-        return
-      }
-      const divisions = new Set()
-      for (const p of newPlayers) {
-        if (p.division && p.division.trim() !== '') {
-          divisions.add(p.division)
+  function updateDatasetFacets(players) {
+    if (!Array.isArray(players) || players.length === 0) {
+      uniqueClubs.value = []
+      uniqueNationalities.value = []
+      uniqueMediaHandlings.value = []
+      uniquePersonalities.value = []
+      uniqueDivisions.value = []
+      return
+    }
+
+    const clubs = new Set()
+    const nationalities = new Set()
+    const mediaHandlings = new Set()
+    const personalities = new Set()
+    const divisions = new Set()
+
+    for (const player of players) {
+      if (player.club) clubs.add(player.club)
+      if (player.nationality) nationalities.add(player.nationality)
+      if (player.personality) personalities.add(player.personality)
+      if (player.division && player.division.trim() !== '') divisions.add(player.division)
+
+      if (player.media_handling) {
+        for (const style of player.media_handling.split(',')) {
+          const trimmedStyle = style.trim()
+          if (trimmedStyle) mediaHandlings.add(trimmedStyle)
         }
       }
-      uniqueDivisions.value = Array.from(divisions).sort()
-    },
-    { immediate: true }
-  )
+    }
+
+    uniqueClubs.value = Array.from(clubs).sort()
+    uniqueNationalities.value = Array.from(nationalities).sort()
+    uniqueMediaHandlings.value = Array.from(mediaHandlings).sort()
+    uniquePersonalities.value = Array.from(personalities).sort()
+    uniqueDivisions.value = Array.from(divisions).sort()
+  }
+
+  function setProcessedPlayers(playersData) {
+    const processedPlayers = processPlayersFromAPI(playersData)
+    allPlayers.value = processedPlayers
+    updateDatasetFacets(processedPlayers)
+    return processedPlayers
+  }
 
   const uniquePositionsCount = computed(() => {
     if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) return 0
@@ -215,7 +203,7 @@ export const usePlayerStore = defineStore('player', () => {
         uploadFlowProfiler.markStep('data_processing_start')
 
         // Store data immediately from upload response
-        allPlayers.value = processPlayersFromAPI(response.players)
+        setProcessedPlayers(response.players)
         allAvailableRoles.value = response.roles
 
         uploadFlowProfiler.markStep('data_processing_end', {
@@ -412,7 +400,7 @@ export const usePlayerStore = defineStore('player', () => {
           return normalized
         })
       }
-      allPlayers.value = processPlayersFromAPI(players)
+      setProcessedPlayers(players)
       uploadFlowProfiler.markStep('player_processing_end', {
         processedPlayerCount: allPlayers.value.length,
       })
@@ -552,6 +540,7 @@ export const usePlayerStore = defineStore('player', () => {
 
   function resetState() {
     allPlayers.value = []
+    updateDatasetFacets([])
     currentDatasetId.value = null
     detectedCurrencySymbol.value = '£'
     allAvailableRoles.value = []
@@ -605,7 +594,7 @@ export const usePlayerStore = defineStore('player', () => {
             // Use cached data
             if (parsed.players) {
               // Full cache available
-              allPlayers.value = processPlayersFromAPI(parsed.players)
+              setProcessedPlayers(parsed.players)
               allAvailableRoles.value = parsed.roles
               detectedCurrencySymbol.value = parsed.currencySymbol || storedCurrencySymbol || '£'
 
@@ -771,7 +760,7 @@ export const usePlayerStore = defineStore('player', () => {
 
   // New methods for setting data directly
   function setPlayers(players) {
-    allPlayers.value = processPlayersFromAPI(players)
+    setProcessedPlayers(players)
   }
 
   function setCurrencySymbol(symbol) {

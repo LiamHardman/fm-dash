@@ -1,4 +1,5 @@
 import { computed, reactive, readonly, ref } from 'vue'
+import { normalizeTeamName } from '../utils/teamNormalization.js'
 import teamsData from '../utils/teams_data.json' with { type: 'json' }
 
 /**
@@ -61,73 +62,6 @@ export function useTeamLogos(options = {}) {
   const isProcessing = ref(false)
   const processedCount = ref(0)
   const totalCount = ref(0)
-
-  /**
-   * Enhanced normalization with comprehensive abbreviation handling
-   * @param {string} name - The team name to normalize
-   * @returns {string} - Normalized team name
-   */
-  const normalizeTeamName = (name) => {
-    if (!name) return ''
-
-    const normalized = name
-      .toLowerCase()
-      .trim()
-      // Remove common prefixes and suffixes
-      .replace(/^(fc|cf|ac|sc|as|ca|cs|rc|rs|cd|ud|rcd|rsd|rfc|afc|cfc|sfc)\s+/i, '')
-      .replace(
-        /\s+(fc|cf|ac|sc|as|ca|cs|rc|rs|cd|ud|rcd|rsd|rfc|afc|cfc|sfc|f\.c\.?|a\.c\.?|s\.c\.?)$/i,
-        ''
-      )
-      .replace(/\s+f\.c\.?$/i, '')
-      .replace(/^f\.c\.?\s+/i, '')
-      // Handle punctuation and special characters
-      .replace(/[^\w\s]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-
-    // Handle common abbreviations and variations
-    const abbreviations = {
-      psg: 'paris saint germain',
-      'paris saint-germain': 'paris saint germain',
-      'man utd': 'manchester united',
-      'man city': 'manchester city',
-      tottenham: 'tottenham hotspur',
-      spurs: 'tottenham hotspur',
-      brighton: 'brighton hove albion',
-      'west ham': 'west ham united',
-      newcastle: 'newcastle united',
-      'sheffield utd': 'sheffield united',
-      'sheffield wed': 'sheffield wednesday',
-      'nottm forest': 'nottingham forest',
-      'notts forest': 'nottingham forest',
-      wolves: 'wolverhampton wanderers',
-      'crystal palace': 'crystal palace',
-      qpr: 'queens park rangers',
-      barca: 'barcelona',
-      'real madrid': 'real madrid',
-      'atletico madrid': 'atletico madrid',
-      sevilla: 'sevilla',
-      valencia: 'valencia',
-      villarreal: 'villarreal',
-      'real sociedad': 'real sociedad',
-      'athletic bilbao': 'athletic bilbao',
-      'real betis': 'real betis',
-      'celta vigo': 'celta vigo',
-      espanyol: 'espanyol',
-      getafe: 'getafe',
-      levante: 'levante',
-      granada: 'granada',
-      cadiz: 'cadiz',
-      osasuna: 'osasuna',
-      elche: 'elche',
-      mallorca: 'mallorca',
-      alaves: 'alaves',
-      'rayo vallecano': 'rayo vallecano',
-    }
-
-    return abbreviations[normalized] || normalized
-  }
 
   // Enhanced pre-processing with multiple index types for optimal performance
   const teamIndex = (() => {
