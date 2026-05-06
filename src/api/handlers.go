@@ -1,12 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"bytes"
 	"io"
 	"log/slog"
 	"math"
@@ -973,14 +973,14 @@ func playerDataHandler(w http.ResponseWriter, r *http.Request) {
 		if filterRole != "" {
 			roleMatched := false
 			for _, roleOverall := range playerCopy.RoleSpecificOveralls {
-				if roleOverall.RoleName == filterRole {
+				if roleOverall.RoleName == filterRole || strings.Contains(roleOverall.RoleName, filterRole) {
 					playerCopy.Overall = roleOverall.Score // Update player's main overall to the role-specific one for display
 					roleMatched = true
 					break
 				}
 			}
 			if !roleMatched {
-				playerCopy.Overall = 0 // Set to 0 for unmatched roles when filtering by role
+				continue
 			}
 		}
 		processedPlayers = append(processedPlayers, playerCopy)

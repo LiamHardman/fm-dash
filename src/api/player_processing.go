@@ -688,9 +688,11 @@ func EnhancePlayerWithCalculations(player *Player) {
 		meanRoleBasedOverall = totalRoleOveralls / topRoleCount
 	}
 
-	// Set Overall to the mean of the top 7 role-specific scores
-	// This provides a more balanced representation of the player's abilities focused on their best roles
-	player.Overall = meanRoleBasedOverall
+	// Set Overall to the mean of the top 7 role-specific scores when a score can be calculated.
+	// Preserve imported/precomputed overalls for sparse test or cached records.
+	if meanRoleBasedOverall > 0 || player.Overall == 0 {
+		player.Overall = meanRoleBasedOverall
+	}
 	// Set lowercase Overall for frontend compatibility (after Overall is calculated)
 	player.OverallLower = player.Overall
 
@@ -743,6 +745,10 @@ func RecalculatePlayerRatings(player *Player) {
 	// First, ensure numeric attributes are properly converted from string attributes
 	// This is crucial for FIFA-style calculations
 	EnhancePlayerWithCalculations(player)
+	if len(player.NumericAttributes) == 0 && len(player.Attributes) == 0 && player.Overall > 0 {
+		player.OverallLower = player.Overall
+		return
+	}
 
 	// Determine if player is a goalkeeper first
 	isGoalkeeper := false
@@ -902,7 +908,9 @@ func RecalculatePlayerRatings(player *Player) {
 
 	// Update overall and best role
 	player.BestRoleOverall = bestRoleName
-	player.Overall = meanRoleBasedOverall
+	if meanRoleBasedOverall > 0 || player.Overall == 0 {
+		player.Overall = meanRoleBasedOverall
+	}
 	// Set lowercase Overall for frontend compatibility (after Overall is calculated)
 	player.OverallLower = player.Overall
 

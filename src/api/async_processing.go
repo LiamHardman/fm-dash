@@ -25,7 +25,7 @@ func DefaultProcessingConfig() ProcessingConfig {
 	numCPU := runtime.NumCPU()
 	return ProcessingConfig{
 		WorkerCount:   numCPU * 3,  // Increased worker count for better CPU utilization
-		BatchSize:     1000,        // Larger batch size for better throughput
+		BatchSize:     100,         // Conservative default batch size
 		BufferSize:    numCPU * 32, // Larger buffer for better concurrency
 		MaxGoroutines: numCPU * 6,  // Allow more concurrent goroutines
 	}

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -285,7 +287,12 @@ func WriteResponse(w http.ResponseWriter, r *http.Request, data interface{}) err
 
 	w.Header().Set("Content-Type", serializer.ContentType())
 	logDebug(r.Context(), "WriteResponse: setting content type", "content_type", serializer.ContentType())
-	if serializer.ShouldCompress() {
+	if shouldGzipResponse(r, serializer) {
+		compressedData, err := gzipResponseData(responseData)
+		if err != nil {
+			return WrapErrorf(ErrSerializationFailed, "gzip: %v", err)
+		}
+		responseData = compressedData
 		w.Header().Set("Content-Encoding", "gzip")
 	}
 
@@ -311,12 +318,16 @@ func WriteErrorResponse(w http.ResponseWriter, r *http.Request, errorCode, messa
 		Metadata:  metadata,
 	}
 
-	w.WriteHeader(statusCode)
-
-	// Try to write protobuf error response, fallback to JSON
-	if err := WriteResponse(w, r, errorResponse); err != nil {
-		// Final fallback to simple JSON error
+	negotiator := NewContentNegotiator(r)
+	serializer := negotiator.SelectSerializer()
+	responseData, err := serializer.Serialize(errorResponse)
+	if err != nil {
+		serializer = &JSONSerializer{}
+		responseData, err = serializer.Serialize(errorResponse)
+	}
+	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(statusCode)
 		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"error":   errorCode,
 			"message": message,
@@ -324,7 +335,42 @@ func WriteErrorResponse(w http.ResponseWriter, r *http.Request, errorCode, messa
 		}); err != nil {
 			logError(r.Context(), "Error encoding error response", "error", err)
 		}
+		return
 	}
+
+	if r.Method != "OPTIONS" {
+		setCORSHeaders(w, r)
+	}
+	w.Header().Set("Content-Type", serializer.ContentType())
+	if shouldGzipResponse(r, serializer) {
+		compressedData, err := gzipResponseData(responseData)
+		if err != nil {
+			logError(r.Context(), "Error compressing error response", "error", err)
+		} else {
+			responseData = compressedData
+			w.Header().Set("Content-Encoding", "gzip")
+		}
+	}
+	w.WriteHeader(statusCode)
+	if _, err := w.Write(responseData); err != nil {
+		logError(r.Context(), "Error writing error response", "error", err)
+	}
+}
+
+func shouldGzipResponse(r *http.Request, serializer ResponseSerializer) bool {
+	return serializer.ShouldCompress() && strings.Contains(r.Header.Get("Accept-Encoding"), "gzip")
+}
+
+func gzipResponseData(data []byte) ([]byte, error) {
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	if _, err := gz.Write(data); err != nil {
+		return nil, err
+	}
+	if err := gz.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 // generateRequestID generates a simple request ID

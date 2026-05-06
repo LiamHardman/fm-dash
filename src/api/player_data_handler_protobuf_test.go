@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
 
-	"google.golang.org/protobuf/proto"
 	pb "api/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 // TestPlayerDataHandlerProtobufSupport tests the enhanced playerDataHandler with protobuf support
@@ -19,66 +20,66 @@ func TestPlayerDataHandlerProtobufSupport(t *testing.T) {
 	testDatasetID := "test-dataset-123"
 	testPlayers := []Player{
 		{
-			UID:                 1,
-			Name:               "Test Player 1",
-			Position:           "ST",
-			Age:                "25",
-			Club:               "Test FC",
-			Division:           "Premier League",
-			TransferValue:      "£50M",
-			Wage:               "£100K",
-			Nationality:        "England",
-			NationalityISO:     "ENG",
-			NationalityFIFACode: "ENG",
-			Overall:            85,
-			PAC:                90,
-			SHO:                88,
-			PAS:                75,
-			DRI:                82,
-			DEF:                30,
-			PHY:                85,
-			TransferValueAmount: 50000000,
-			WageAmount:         100000,
-			Attributes:         map[string]string{"Finishing": "18", "Pace": "17"},
-			NumericAttributes:  map[string]int{"Finishing": 18, "Pace": 17},
+			UID:                     1,
+			Name:                    "Test Player 1",
+			Position:                "ST",
+			Age:                     "25",
+			Club:                    "Test FC",
+			Division:                "Premier League",
+			TransferValue:           "£50M",
+			Wage:                    "£100K",
+			Nationality:             "England",
+			NationalityISO:          "ENG",
+			NationalityFIFACode:     "ENG",
+			Overall:                 85,
+			PAC:                     90,
+			SHO:                     88,
+			PAS:                     75,
+			DRI:                     82,
+			DEF:                     30,
+			PHY:                     85,
+			TransferValueAmount:     50000000,
+			WageAmount:              100000,
+			Attributes:              map[string]string{"Finishing": "18", "Pace": "17"},
+			NumericAttributes:       map[string]int{"Finishing": 18, "Pace": 17},
 			PerformanceStatsNumeric: map[string]float64{"Goals": 25.5, "Assists": 8.2},
 			PerformancePercentiles:  map[string]map[string]float64{"Attacking": {"Goals": 95.5, "Assists": 78.3}},
-			ParsedPositions:    []string{"ST", "CF"},
-			ShortPositions:     []string{"ST"},
-			PositionGroups:     []string{"Forward"},
+			ParsedPositions:         []string{"ST", "CF"},
+			ShortPositions:          []string{"ST"},
+			PositionGroups:          []string{"Forward"},
 			RoleSpecificOveralls: []RoleOverallScore{
 				{RoleName: "Advanced Forward", Score: 87},
 				{RoleName: "Poacher", Score: 85},
 			},
 		},
 		{
-			UID:                 2,
-			Name:               "Test Player 2",
-			Position:           "CM",
-			Age:                "28",
-			Club:               "Test United",
-			Division:           "Premier League",
-			TransferValue:      "£30M",
-			Wage:               "£80K",
-			Nationality:        "Spain",
-			NationalityISO:     "ESP",
-			NationalityFIFACode: "ESP",
-			Overall:            82,
-			PAC:                70,
-			SHO:                75,
-			PAS:                90,
-			DRI:                85,
-			DEF:                78,
-			PHY:                80,
-			TransferValueAmount: 30000000,
-			WageAmount:         80000,
-			Attributes:         map[string]string{"Passing": "19", "Vision": "18"},
-			NumericAttributes:  map[string]int{"Passing": 19, "Vision": 18},
+			UID:                     2,
+			Name:                    "Test Player 2",
+			Position:                "CM",
+			Age:                     "28",
+			Club:                    "Test United",
+			Division:                "Premier League",
+			TransferValue:           "£30M",
+			Wage:                    "£80K",
+			Nationality:             "Spain",
+			NationalityISO:          "ESP",
+			NationalityFIFACode:     "ESP",
+			Overall:                 82,
+			PAC:                     70,
+			SHO:                     75,
+			PAS:                     90,
+			DRI:                     85,
+			DEF:                     78,
+			PHY:                     80,
+			TransferValueAmount:     30000000,
+			WageAmount:              80000,
+			Attributes:              map[string]string{"Passing": "19", "Vision": "18"},
+			NumericAttributes:       map[string]int{"Passing": 19, "Vision": 18},
 			PerformanceStatsNumeric: map[string]float64{"Passes": 85.2, "KeyPasses": 3.8},
 			PerformancePercentiles:  map[string]map[string]float64{"Midfield": {"Passes": 88.7, "KeyPasses": 82.1}},
-			ParsedPositions:    []string{"CM", "CAM"},
-			ShortPositions:     []string{"CM"},
-			PositionGroups:     []string{"Midfielder"},
+			ParsedPositions:         []string{"CM", "CAM"},
+			ShortPositions:          []string{"CM"},
+			PositionGroups:          []string{"Midfielder"},
 			RoleSpecificOveralls: []RoleOverallScore{
 				{RoleName: "Deep Lying Playmaker", Score: 84},
 				{RoleName: "Box to Box Midfielder", Score: 81},
@@ -231,7 +232,7 @@ func TestPlayerDataHandlerProtobufSupport(t *testing.T) {
 // TestPlayerDataHandlerProtobufFallback tests fallback behavior when protobuf serialization fails
 func TestPlayerDataHandlerProtobufFallback(t *testing.T) {
 	testDatasetID := "test-fallback-dataset"
-	
+
 	// Create test data with potentially problematic values
 	testPlayers := []Player{
 		{
@@ -329,26 +330,26 @@ func TestPlayerDataHandlerErrorHandling(t *testing.T) {
 // TestPlayerDataHandlerFiltering tests filtering functionality with protobuf responses
 func TestPlayerDataHandlerFiltering(t *testing.T) {
 	testDatasetID := "test-filtering-dataset"
-	
+
 	// Create test data with different positions and roles
 	testPlayers := []Player{
 		{
-			UID:          1,
-			Name:         "Striker",
-			Position:     "ST",
-			Age:          "25",
-			Overall:      85,
+			UID:            1,
+			Name:           "Striker",
+			Position:       "ST",
+			Age:            "25",
+			Overall:        85,
 			ShortPositions: []string{"ST"},
 			RoleSpecificOveralls: []RoleOverallScore{
 				{RoleName: "Advanced Forward", Score: 87},
 			},
 		},
 		{
-			UID:          2,
-			Name:         "Midfielder",
-			Position:     "CM",
-			Age:          "28",
-			Overall:      82,
+			UID:            2,
+			Name:           "Midfielder",
+			Position:       "CM",
+			Age:            "28",
+			Overall:        82,
 			ShortPositions: []string{"CM"},
 			RoleSpecificOveralls: []RoleOverallScore{
 				{RoleName: "Deep Lying Playmaker", Score: 84},
@@ -363,10 +364,10 @@ func TestPlayerDataHandlerFiltering(t *testing.T) {
 	}()
 
 	tests := []struct {
-		name           string
-		queryParams    string
-		acceptHeader   string
-		expectedCount  int
+		name          string
+		queryParams   string
+		acceptHeader  string
+		expectedCount int
 	}{
 		{
 			name:          "Filter by position - JSON",
@@ -408,12 +409,16 @@ func TestPlayerDataHandlerFiltering(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			url := fmt.Sprintf("/api/players/%s", testDatasetID)
+			requestURL := fmt.Sprintf("/api/players/%s", testDatasetID)
 			if tt.queryParams != "" {
-				url += "?" + tt.queryParams
+				values, err := url.ParseQuery(tt.queryParams)
+				if err != nil {
+					t.Fatalf("Failed to parse query params: %v", err)
+				}
+				requestURL += "?" + values.Encode()
 			}
 
-			req := httptest.NewRequest("GET", url, nil)
+			req := httptest.NewRequest("GET", requestURL, nil)
 			req.Header.Set("Accept", tt.acceptHeader)
 
 			w := httptest.NewRecorder()
@@ -451,22 +456,22 @@ func TestPlayerDataHandlerFiltering(t *testing.T) {
 // TestPlayerDataHandlerPerformanceMetrics tests performance tracking for protobuf vs JSON
 func TestPlayerDataHandlerPerformanceMetrics(t *testing.T) {
 	testDatasetID := "test-performance-dataset"
-	
+
 	// Create larger test dataset for performance comparison
 	testPlayers := make([]Player, 100)
 	for i := 0; i < 100; i++ {
 		testPlayers[i] = Player{
 			UID:                 int64(i + 1),
-			Name:               fmt.Sprintf("Player %d", i+1),
-			Position:           "ST",
-			Age:                "25",
-			Club:               "Test FC",
-			Overall:            80 + (i % 20),
+			Name:                fmt.Sprintf("Player %d", i+1),
+			Position:            "ST",
+			Age:                 "25",
+			Club:                "Test FC",
+			Overall:             80 + (i % 20),
 			TransferValueAmount: int64(1000000 * (i + 1)),
-			WageAmount:         int64(10000 * (i + 1)),
-			Attributes:         map[string]string{"Finishing": "15", "Pace": "16"},
-			NumericAttributes:  map[string]int{"Finishing": 15, "Pace": 16},
-			ShortPositions:     []string{"ST"},
+			WageAmount:          int64(10000 * (i + 1)),
+			Attributes:          map[string]string{"Finishing": "15", "Pace": "16"},
+			NumericAttributes:   map[string]int{"Finishing": 15, "Pace": 16},
+			ShortPositions:      []string{"ST"},
 		}
 	}
 	testCurrency := "£"
@@ -506,11 +511,11 @@ func TestPlayerDataHandlerPerformanceMetrics(t *testing.T) {
 	t.Logf("Performance comparison for %d players:", len(testPlayers))
 	t.Logf("JSON: %v duration, %d bytes", jsonDuration, jsonSize)
 	t.Logf("Protobuf: %v duration, %d bytes", protobufDuration, protobufSize)
-	
+
 	if protobufSize > 0 && jsonSize > 0 {
 		compressionRatio := float64(protobufSize) / float64(jsonSize)
 		t.Logf("Compression ratio: %.2f (protobuf/json)", compressionRatio)
-		
+
 		// Protobuf should generally be smaller
 		if compressionRatio > 1.0 {
 			t.Logf("Warning: Protobuf response is larger than JSON (ratio: %.2f)", compressionRatio)

@@ -312,7 +312,11 @@ func testRolesEndpoint(ctx context.Context, t *testing.T, useProtobuf bool) {
 	}
 
 	// Check for expected roles
-	expectedRoles := []string{"Goalkeeper", "Centre Back", "Full Back"}
+	expectedRoles := []string{
+		"GK - Goalkeeper - Defend",
+		"DC - Ball Playing Defender - Defend",
+		"DC - Central Defender - Defend",
+	}
 	for _, expectedRole := range expectedRoles {
 		found := false
 		for _, role := range roles {
@@ -428,9 +432,9 @@ func testTeamsEndpoint(ctx context.Context, t *testing.T, useProtobuf bool) {
 
 	// Test teams endpoint with first league
 	leagueName := leagues[0].Name
-	// URL encode the league name to handle spaces and special characters
-	encodedLeagueName := url.QueryEscape(leagueName)
-	req = httptest.NewRequest("GET", fmt.Sprintf("/api/teams/%s?league=%s", datasetID, encodedLeagueName), nil)
+	// URL encode the league name as a path segment to handle spaces and special characters
+	encodedLeagueName := url.PathEscape(leagueName)
+	req = httptest.NewRequest("GET", fmt.Sprintf("/api/teams/%s/%s", datasetID, encodedLeagueName), nil)
 	w = httptest.NewRecorder()
 
 	teamsHandler(w, req)
@@ -450,6 +454,7 @@ func testTeamsEndpoint(ctx context.Context, t *testing.T, useProtobuf bool) {
 	// Validate response structure
 	if len(teams) == 0 {
 		t.Error("Teams array should not be empty")
+		return
 	}
 
 	// Validate team structure
@@ -516,7 +521,7 @@ func testSearchEndpoint(ctx context.Context, t *testing.T, useProtobuf bool) {
 			}
 
 			// Ensure response is valid JSON
-			var response map[string]interface{}
+			var response []SearchResult
 			if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
 				t.Errorf("Invalid JSON response for %s: %v", tc.name, err)
 			}

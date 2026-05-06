@@ -86,7 +86,7 @@ func validateEnvironmentVariables() error {
 	// Validate S3_ENDPOINT format if set
 	if endpoint := os.Getenv("S3_ENDPOINT"); endpoint != "" {
 		if !strings.Contains(endpoint, ":") && !strings.HasPrefix(endpoint, "http") {
-			return WrapErrorf(ErrInvalidS3Endpoint, "endpoint: %s (should include port or be full URL)", endpoint)
+			return WrapErrorf(ErrInvalidS3Endpoint, "endpoint: %s (should include port or be full URL): invalid S3_ENDPOINT format", endpoint)
 		}
 	}
 

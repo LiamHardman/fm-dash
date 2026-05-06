@@ -22,7 +22,7 @@ func TestEndToEndProtobufErrorHandling(t *testing.T) {
 	mux := http.NewServeMux()
 
 	// Register handlers for different test scenarios
-	mux.HandleFunc("/api/players/normal", playerDataHandler)
+	mux.HandleFunc("/api/players/normal", testPlayerDataHandler)
 	mux.HandleFunc("/api/players/error/serialization", serializationErrorHandler)
 	mux.HandleFunc("/api/players/error/conversion", conversionErrorHandler)
 	mux.HandleFunc("/api/players/error/validation", validationErrorHandler)
@@ -363,7 +363,7 @@ func TestConcurrentErrorHandling(t *testing.T) {
 	mux := http.NewServeMux()
 
 	// Register handlers for different test scenarios
-	mux.HandleFunc("/api/players/normal", playerDataHandler)
+	mux.HandleFunc("/api/players/normal", testPlayerDataHandler)
 	mux.HandleFunc("/api/players/error/serialization", serializationErrorHandler)
 	mux.HandleFunc("/api/players/error/conversion", conversionErrorHandler)
 

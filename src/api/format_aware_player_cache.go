@@ -54,6 +54,47 @@ func GetCachedPlayerData(ctx context.Context, r *http.Request, cacheKey string) 
 
 			return cachedResponse, true
 		}
+		if serializedResponse, ok := cached.(*CachedSerializedResponse); ok && serializedResponse != nil {
+			cachedResponse := &CachedPlayerDataResponse{
+				Format:         serializedResponse.Format,
+				CurrencySymbol: serializedResponse.CurrencySymbol,
+				CacheTime:      serializedResponse.CacheTime,
+				FilterHash:     serializedResponse.FilterHash,
+			}
+
+			switch format {
+			case FormatTypeJSON:
+				var jsonResponse struct {
+					Players        []Player `json:"players"`
+					CurrencySymbol string   `json:"currencySymbol"`
+				}
+				if err := json.Unmarshal(serializedResponse.Bytes, &jsonResponse); err != nil {
+					logError(ctx, "Failed to deserialize cached JSON player data", "error", err)
+					break
+				}
+				cachedResponse.JSONData = jsonResponse.Players
+				if cachedResponse.CurrencySymbol == "" {
+					cachedResponse.CurrencySymbol = jsonResponse.CurrencySymbol
+				}
+			case FormatTypeProtobuf:
+				protoResponse := &pb.PlayerDataResponse{}
+				if err := proto.Unmarshal(serializedResponse.Bytes, protoResponse); err != nil {
+					logError(ctx, "Failed to deserialize cached protobuf player data", "error", err)
+					break
+				}
+				cachedResponse.ProtobufData = protoResponse
+				if cachedResponse.CurrencySymbol == "" {
+					cachedResponse.CurrencySymbol = protoResponse.GetCurrencySymbol()
+				}
+			}
+
+			AddSpanEvent(ctx, "cache.hit",
+				attribute.String("cache.key", cacheKey),
+				attribute.String("cache.format", string(format)),
+				attribute.Float64("cache.age_seconds", time.Since(serializedResponse.CacheTime).Seconds()))
+
+			return cachedResponse, true
+		}
 	}
 
 	AddSpanEvent(ctx, "cache.miss",
@@ -171,6 +212,9 @@ func optimizeCommonStrings(protoResponse *pb.PlayerDataResponse) {
 // WritePlayerDataResponse writes the player data response using the appropriate format
 func WritePlayerDataResponse(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	cachedResponse *CachedPlayerDataResponse) error {
+	if cachedResponse == nil {
+		return fmt.Errorf("cached player data is unavailable")
+	}
 
 	format := GetCacheFormatFromRequest(r)
 	negotiator := NewContentNegotiator(r)
@@ -230,17 +274,15 @@ func cacheKeyFromRequest(r *http.Request) string {
 		datasetID = parts[0]
 	}
 	q := r.URL.Query()
-	filters := map[string]string{
-		"position":         q.Get("position"),
-		"role":             q.Get("role"),
-		"minAge":           q.Get("minAge"),
-		"maxAge":           q.Get("maxAge"),
-		"minTransferValue": q.Get("minTransferValue"),
-		"maxTransferValue": q.Get("maxTransferValue"),
-		"maxSalary":        q.Get("maxSalary"),
-		"divisionFilter":   q.Get("divisionFilter"),
-		"targetDivision":   q.Get("targetDivision"),
-		"positionCompare":  q.Get("positionCompare"),
+	filters := map[string]string{}
+	for _, key := range []string{
+		"position", "role", "minAge", "maxAge", "minTransferValue",
+		"maxTransferValue", "maxSalary", "divisionFilter", "targetDivision",
+		"positionCompare",
+	} {
+		if value := q.Get(key); value != "" {
+			filters[key] = value
+		}
 	}
 	return GeneratePlayerCacheKey(datasetID, filters)
 }

@@ -28,12 +28,11 @@ func calculateWeightedAverageLinear(playerNumericAttributes, categoryAttributeWe
 
 	for attrKey, weightForAttribute := range categoryAttributeWeights {
 		attributeValue, exists := playerNumericAttributes[attrKey]
-		if !exists || attributeValue <= 0 {
+		if !exists || attributeValue < 1 || attributeValue > 20 {
 			continue
 		}
 
-		// Clamp to valid range
-		validValue := math.Max(1, math.Min(20, float64(attributeValue)))
+		validValue := float64(attributeValue)
 		weightFloat := float64(weightForAttribute)
 		weightedAttributeSum += validValue * weightFloat
 		totalApplicableWeightsSum += weightFloat
@@ -47,6 +46,7 @@ func calculateWeightedAverageLinear(playerNumericAttributes, categoryAttributeWe
 	// Apply linear scaling
 	scaledScore := (weightedAttributeSum / totalApplicableWeightsSum) * 5.3
 	result = int(scaledScore + 0.5)
+	result = Clamp(result, 0, 99)
 	return
 }
 
@@ -108,6 +108,13 @@ func computeNonLinearScaling(linearRating float64) int {
 // - Progressively lowers players below 75
 // - Makes players at 50 or below significantly lower
 func applyNonLinearScaling(linearRating float64) int {
+	if math.IsNaN(linearRating) || math.IsInf(linearRating, -1) {
+		return 0
+	}
+	if math.IsInf(linearRating, 1) {
+		return 99
+	}
+
 	// Use lookup table for integer values
 	if linearRating >= 0 && linearRating < 100 && linearRating == float64(int(linearRating)) {
 		return nonLinearScalingLookup[int(linearRating)]

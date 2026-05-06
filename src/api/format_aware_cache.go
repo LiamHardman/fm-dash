@@ -28,15 +28,15 @@ func ParseFormatAwareCacheKey(key string) (string, FormatType) {
 	if len(parts) < 2 {
 		return key, FormatTypeJSON // Default to JSON if no format specified
 	}
-	
+
 	format := FormatType(parts[len(parts)-1])
 	baseKey := strings.Join(parts[:len(parts)-1], ":")
-	
+
 	// Validate format type
 	if format != FormatTypeJSON && format != FormatTypeProtobuf {
-		return key, FormatTypeJSON // Default to JSON for invalid formats
+		return baseKey, FormatTypeJSON // Default to JSON for invalid formats
 	}
-	
+
 	return baseKey, format
 }
 
