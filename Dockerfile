@@ -41,7 +41,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /app-go/v2fmdash-server .
 
 # Use Alpine for the final image instead of Debian
-FROM alpine:3.20
+FROM alpine:3.23
 LABEL stage=final-image
 WORKDIR /app
 
