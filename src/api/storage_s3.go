@@ -27,6 +27,8 @@ type S3Storage struct {
 	operationsChan chan storageOperation
 	workerPool     sync.WaitGroup
 	shutdown       chan struct{}
+	formatCache    map[string]string
+	formatCacheMu  sync.RWMutex
 }
 
 type storageOperation struct {
@@ -96,6 +98,7 @@ func CreateS3Storage(endpoint, accessKey, secretKey, bucketName string, useSSL b
 		fallback:       fallback,
 		operationsChan: make(chan storageOperation, operationsBuffer),
 		shutdown:       make(chan struct{}),
+		formatCache:    make(map[string]string),
 	}
 
 	// Start optimized worker pool
@@ -205,7 +208,7 @@ func (s *S3Storage) storeSync(datasetID string, data DatasetData) error {
 
 	if len(data.RawBytes) > 0 {
 		fileData = data.RawBytes
-		objectName = fmt.Sprintf("datasets/%s.pb.gz", datasetID)
+		objectName = fmt.Sprintf("%s%s%s", datasetObjectPrefix, datasetID, datasetExtProtobuf)
 		contentType = "application/octet-stream"
 	} else {
 		var err error
@@ -215,7 +218,7 @@ func (s *S3Storage) storeSync(datasetID string, data DatasetData) error {
 			LogWarn("JSON marshal error for dataset %s: %v", sanitizeForLogging(datasetID), err)
 			return fmt.Errorf("failed to marshal data: %w", err)
 		}
-		objectName = fmt.Sprintf("datasets/%s.json", datasetID)
+		objectName = fmt.Sprintf("%s%s%s", datasetObjectPrefix, datasetID, datasetExtJSON)
 		contentType = "application/json"
 	}
 
@@ -238,6 +241,7 @@ func (s *S3Storage) storeSync(datasetID string, data DatasetData) error {
 	}
 
 	RecordDBOperation(ctx, "store", "s3_datasets", time.Since(start), 1)
+	s.setCachedFormat(datasetID, objectName)
 	LogDebug("Stored dataset %s to S3", sanitizeForLogging(datasetID))
 	return nil
 }
@@ -245,6 +249,87 @@ func (s *S3Storage) storeSync(datasetID string, data DatasetData) error {
 // Retrieve is the public synchronous interface
 func (s *S3Storage) Retrieve(datasetID string) (DatasetData, error) {
 	return s.retrieveSync(datasetID)
+}
+
+func (s *S3Storage) cachedFormat(datasetID string) (string, bool) {
+	s.formatCacheMu.RLock()
+	defer s.formatCacheMu.RUnlock()
+	format, ok := s.formatCache[datasetID]
+	return format, ok
+}
+
+func (s *S3Storage) setCachedFormat(datasetID, objectName string) {
+	_, ok := datasetIDFromStorageName(objectName)
+	if !ok {
+		return
+	}
+	s.formatCacheMu.Lock()
+	defer s.formatCacheMu.Unlock()
+	if s.formatCache == nil {
+		s.formatCache = make(map[string]string)
+	}
+	s.formatCache[datasetID] = objectName
+}
+
+func (s *S3Storage) clearCachedFormat(datasetID string) {
+	s.formatCacheMu.Lock()
+	defer s.formatCacheMu.Unlock()
+	delete(s.formatCache, datasetID)
+}
+
+func (s *S3Storage) getDatasetObject(ctx context.Context, datasetID string) (*minio.Object, string, error) {
+	objectNames := []string{
+		fmt.Sprintf("%s%s%s", datasetObjectPrefix, datasetID, datasetExtProtobuf),
+		fmt.Sprintf("%s%s%s", datasetObjectPrefix, datasetID, datasetExtJSON),
+		fmt.Sprintf("%s%s%s", datasetObjectPrefix, datasetID, datasetExtJSONGzip),
+	}
+
+	if cachedObjectName, ok := s.cachedFormat(datasetID); ok {
+		objectNames = append([]string{cachedObjectName}, objectNames...)
+	}
+
+	var lastErr error
+	probeCount := 0
+	tried := make(map[string]struct{}, len(objectNames))
+	for _, objectName := range objectNames {
+		if _, exists := tried[objectName]; exists {
+			continue
+		}
+		tried[objectName] = struct{}{}
+		probeCount++
+
+		SetSpanAttributes(ctx,
+			attribute.String("s3.bucket", s.bucketName),
+			attribute.String("s3.object", objectName),
+		)
+
+		object, err := s.client.GetObject(ctx, s.bucketName, objectName, minio.GetObjectOptions{})
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		if _, statErr := object.Stat(); statErr != nil {
+			lastErr = statErr
+			if closeErr := object.Close(); closeErr != nil {
+				LogWarn("Failed to close missing S3 object: %v", closeErr)
+			}
+			continue
+		}
+
+		s.setCachedFormat(datasetID, objectName)
+		SetSpanAttributes(ctx,
+			attribute.Int("s3.object_probe_count", probeCount),
+			attribute.String("storage.object_format", datasetFormatFromStorageName(objectName)),
+		)
+		return object, objectName, nil
+	}
+
+	s.clearCachedFormat(datasetID)
+	SetSpanAttributes(ctx, attribute.Int("s3.object_probe_count", probeCount))
+	if lastErr == nil {
+		lastErr = fmt.Errorf("dataset %s not found in S3", datasetID)
+	}
+	return nil, "", lastErr
 }
 
 // retrieveSync performs synchronous retrieval operation
@@ -263,45 +348,18 @@ func (s *S3Storage) retrieveSync(datasetID string) (DatasetData, error) {
 		return s.fallback.Retrieve(datasetID)
 	}
 
-	isCompressed := false
-	isProtobuf := false
-
-	// Try .pb.gz first
-	objectName := fmt.Sprintf("datasets/%s.pb.gz", datasetID)
-
-	SetSpanAttributes(ctx,
-		attribute.String("s3.bucket", s.bucketName),
-		attribute.String("s3.object", objectName),
-	)
-
 	start := time.Now()
-	object, err := s.client.GetObject(ctx, s.bucketName, objectName, minio.GetObjectOptions{})
-	// MinIO GetObject returns immediately, we need Stat to see if it actually exists
-	_, statErr := object.Stat()
-	
-	if err != nil || statErr != nil {
-		// Try uncompressed file
-		objectName = fmt.Sprintf("datasets/%s.json", datasetID)
-		SetSpanAttributes(ctx, attribute.String("s3.object", objectName))
-		object, err = s.client.GetObject(ctx, s.bucketName, objectName, minio.GetObjectOptions{})
-		_, statErr = object.Stat()
-		if err != nil || statErr != nil {
-			// Try legacy compressed file
-			objectName = fmt.Sprintf("datasets/%s.json.gz", datasetID)
-			isCompressed = true
-			SetSpanAttributes(ctx, attribute.String("s3.object", objectName))
-			object, err = s.client.GetObject(ctx, s.bucketName, objectName, minio.GetObjectOptions{})
-			_, statErr = object.Stat()
-			if err != nil || statErr != nil {
-				RecordError(ctx, err, "Failed to retrieve from S3")
-				LogWarn("Warning: Failed to retrieve from S3: %v, %v. Trying fallback storage.", err, statErr)
-				AddSpanEvent(ctx, "storage.fallback_to_memory", attribute.String("reason", "s3_get_failed"))
-				return s.fallback.Retrieve(datasetID)
-			}
-		}
-	} else {
-		isProtobuf = true
+	object, objectName, err := s.getDatasetObject(ctx, datasetID)
+	if err != nil {
+		RecordError(ctx, err, "Failed to retrieve from S3")
+		LogWarn("Warning: Failed to retrieve from S3: %v. Trying fallback storage.", err)
+		AddSpanEvent(ctx, "storage.fallback_to_memory", attribute.String("reason", "s3_get_failed"))
+		return s.fallback.Retrieve(datasetID)
 	}
+	isCompressed := strings.HasSuffix(objectName, datasetExtJSONGzip)
+	isProtobuf := strings.HasSuffix(objectName, datasetExtProtobuf)
+	objectFormat := datasetFormatFromStorageName(objectName)
+
 	defer func() {
 		if closeErr := object.Close(); closeErr != nil {
 			LogWarn("Failed to close S3 object: %v", closeErr)
@@ -319,6 +377,7 @@ func (s *S3Storage) retrieveSync(datasetID string) (DatasetData, error) {
 	SetSpanAttributes(ctx,
 		attribute.Int("data.size_bytes", len(data)),
 		attribute.Bool("data.compressed", isCompressed),
+		attribute.String("storage.object_format", objectFormat),
 	)
 
 	// Decompress only if legacy compressed object was used
@@ -350,7 +409,7 @@ func (s *S3Storage) retrieveSync(datasetID string) (DatasetData, error) {
 
 	SetSpanAttributes(ctx, attribute.Int("dataset.player_count", len(dataset.Players)))
 	RecordDBOperation(ctx, "retrieve", "s3_datasets", time.Since(start), 1)
-	LogDebug("Retrieved dataset %s from S3", sanitizeForLogging(datasetID))
+	LogInfo("Retrieved dataset %s from S3 using %s format", sanitizeForLogging(datasetID), objectFormat)
 	return dataset, nil
 }
 
@@ -368,9 +427,9 @@ func (s *S3Storage) deleteSync(datasetID string) error {
 	ctx := context.Background()
 
 	// Attempt to delete pb, uncompressed, and legacy compressed objects
-	pbObject := fmt.Sprintf("datasets/%s.pb.gz", datasetID)
-	jsonObject := fmt.Sprintf("datasets/%s.json", datasetID)
-	gzObject := fmt.Sprintf("datasets/%s.json.gz", datasetID)
+	pbObject := fmt.Sprintf("%s%s%s", datasetObjectPrefix, datasetID, datasetExtProtobuf)
+	jsonObject := fmt.Sprintf("%s%s%s", datasetObjectPrefix, datasetID, datasetExtJSON)
+	gzObject := fmt.Sprintf("%s%s%s", datasetObjectPrefix, datasetID, datasetExtJSONGzip)
 
 	if err := s.client.RemoveObject(ctx, s.bucketName, pbObject, minio.RemoveObjectOptions{}); err != nil {
 		LogWarn("Warning: Failed to delete pb from S3: %v", err)
@@ -386,6 +445,7 @@ func (s *S3Storage) deleteSync(datasetID string) error {
 		LogWarn("Warning: Failed to delete from fallback storage: %v", err)
 		// Don't return error since S3 deletion succeeded
 	}
+	s.clearCachedFormat(datasetID)
 	LogDebug("Deleted dataset %s from S3", sanitizeForLogging(datasetID))
 	return nil
 }
@@ -403,30 +463,16 @@ func (s *S3Storage) List() ([]string, error) {
 	})
 
 	var ids []string
+	seen := make(map[string]struct{})
 	for object := range objectCh {
 		if object.Err != nil {
 			LogWarn("Warning: Error listing S3 objects: %v. Using fallback storage.", object.Err)
 			return s.fallback.List()
 		}
 
-		if strings.HasSuffix(object.Key, ".json") || strings.HasSuffix(object.Key, ".json.gz") {
-			id := strings.TrimPrefix(object.Key, "datasets/")
-			if strings.HasSuffix(id, ".json.gz") {
-				id = strings.TrimSuffix(id, ".json.gz")
-			} else {
-				id = strings.TrimSuffix(id, ".json")
-			}
-			// Deduplicate ids when both formats exist
-			exists := false
-			for _, existing := range ids {
-				if existing == id {
-					exists = true
-					break
-				}
-			}
-			if !exists {
-				ids = append(ids, id)
-			}
+		id, ok := datasetIDFromStorageName(object.Key)
+		if ok {
+			ids = appendDatasetIDOnce(ids, seen, id)
 		}
 	}
 
@@ -459,16 +505,9 @@ func (s *S3Storage) CleanupOldDatasets(maxAge time.Duration, excludeDatasets []s
 			continue
 		}
 
-		if !strings.HasSuffix(object.Key, ".json") && !strings.HasSuffix(object.Key, ".json.gz") {
+		datasetID, ok := datasetIDFromStorageName(object.Key)
+		if !ok {
 			continue
-		}
-
-		// Extract dataset ID from object key
-		datasetID := strings.TrimPrefix(object.Key, "datasets/")
-		if strings.HasSuffix(datasetID, ".json.gz") {
-			datasetID = strings.TrimSuffix(datasetID, ".json.gz")
-		} else {
-			datasetID = strings.TrimSuffix(datasetID, ".json")
 		}
 
 		// Skip excluded datasets (like demo)

@@ -71,6 +71,22 @@ export const usePlayerStore = defineStore('player', () => {
     return processedPlayers
   }
 
+  function normalizePercentileGroups(performancePercentiles) {
+    if (!performancePercentiles || typeof performancePercentiles !== 'object') {
+      return {}
+    }
+
+    const normalized = {}
+    for (const [group, values] of Object.entries(performancePercentiles)) {
+      if (values?.percentiles && typeof values.percentiles === 'object') {
+        normalized[group] = values.percentiles
+      } else if (values && typeof values === 'object') {
+        normalized[group] = values
+      }
+    }
+    return normalized
+  }
+
   const uniquePositionsCount = computed(() => {
     if (!Array.isArray(allPlayers.value) || allPlayers.value.length === 0) return 0
     const s = new Set()
@@ -365,14 +381,17 @@ export const usePlayerStore = defineStore('player', () => {
       uploadFlowProfiler.markStep('player_processing_start')
       let players = response.players || []
 
-      // Normalize protobuf-decoded fields to expected shape
-      if (players.length > 0 && players[0] && players[0].essential_attributes !== undefined) {
+      // Normalize protobuf-decoded fields to expected frontend shape.
+      if (players.length > 0 && players[0]) {
         players = players.map((p) => {
           const normalized = { ...p }
-          // Map essential_attributes -> attributes (FM/perf attrs subset)
-          if (p.essential_attributes && !p.attributes) {
-            normalized.attributes = p.essential_attributes
+          const attributes = p.attributes || p.essentialAttributes || p.essential_attributes
+          if (attributes) {
+            normalized.attributes = attributes
           }
+          normalized.media_handling = p.media_handling ?? p.mediaHandling ?? ''
+          normalized.nationalityIso = p.nationalityIso ?? p.nationality_iso ?? ''
+          normalized.nationality_fifa_code = p.nationality_fifa_code ?? p.nationalityFifaCode ?? ''
           // Ensure roleSpecificOveralls stays as an array of { roleName, score }
           if (Array.isArray(p.roleSpecificOveralls)) {
             normalized.roleSpecificOveralls = p.roleSpecificOveralls.map((r) => ({
@@ -397,6 +416,9 @@ export const usePlayerStore = defineStore('player', () => {
           // Carry through numeric/perf maps if present
           normalized.numericAttributes = normalized.numericAttributes || {}
           normalized.performanceStatsNumeric = normalized.performanceStatsNumeric || {}
+          normalized.performancePercentiles = normalizePercentileGroups(
+            normalized.performancePercentiles
+          )
           return normalized
         })
       }
@@ -484,6 +506,10 @@ export const usePlayerStore = defineStore('player', () => {
         // Ensure role-specific overalls are properly formatted
         roleSpecificOveralls: Array.isArray(p.roleSpecificOveralls) ? p.roleSpecificOveralls : [],
 
+        media_handling: p.media_handling ?? p.mediaHandling ?? '',
+        personality: p.personality ?? '',
+        attributes: p.attributes || p.essentialAttributes || p.essential_attributes || {},
+
         // Ensure FIFA-style stats are numbers
         PAC: Number(p.PAC) || 0,
         SHO: Number(p.SHO) || 0,
@@ -521,7 +547,7 @@ export const usePlayerStore = defineStore('player', () => {
 
         // Ensure performance stats are properly formatted
         performanceStatsNumeric: p.performanceStatsNumeric || {},
-        performancePercentiles: p.performancePercentiles || {},
+        performancePercentiles: normalizePercentileGroups(p.performancePercentiles),
       }
 
       return processedPlayer

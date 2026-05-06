@@ -67,6 +67,17 @@ message Player {
   
   // Cached Current Ability to avoid re-parsing overhead
   int32 ca = 39;
+
+  // Full persistence fields. These are intentionally separate from
+  // essential_attributes so older protobuf objects can still be read.
+  map<string, string> attributes = 40;
+  map<string, int32> numeric_attributes = 41;
+  map<string, double> performance_stats_numeric = 42;
+  map<string, PerformancePercentileMap> performance_percentiles = 43;
+}
+
+message PerformancePercentileMap {
+  map<string, double> percentiles = 1;
 }
 
 // DatasetData represents a dataset containing player information

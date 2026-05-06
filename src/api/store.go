@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -677,18 +676,10 @@ func SetPlayerDataAsync(datasetID string, players []Player, currencySymbol strin
 	// Store in new storage system asynchronously (potentially slow S3/disk operation)
 	AddSpanEvent(ctx, "store.new_storage_async_queued")
 
-	// Serialize the enhanced data immediately to avoid race conditions during async storage
-	// This way the goroutine only works with immutable JSON data
-	data := DatasetData{
-		Players:        enhancedPlayers,
+	// Copy the enhanced data immediately to avoid races during async storage.
+	dataSnapshot := DatasetData{
+		Players:        FastDeepCopyPlayers(enhancedPlayers),
 		CurrencySymbol: currencySymbol,
-	}
-
-	serializedData, err := json.Marshal(data)
-	if err != nil {
-		RecordError(ctx, err, "Failed to serialize data for async storage")
-		LogWarn("Error serializing dataset %s for async storage: %v", sanitizeForLogging(datasetID), err)
-		return
 	}
 
 	go func() {
@@ -698,21 +689,13 @@ func SetPlayerDataAsync(datasetID string, players []Player, currencySymbol strin
 
 		SetSpanAttributes(asyncCtx,
 			attribute.String("dataset.id", datasetID),
-			attribute.Int("dataset.serialized_bytes", len(serializedData)),
+			attribute.Int("dataset.player_count", len(dataSnapshot.Players)),
 			attribute.String("operation.type", "async_persistent_storage"),
 		)
 
 		startTime := time.Now()
 
-		// Deserialize and store using the existing storage interface
-		var deserializedData DatasetData
-		if err := json.Unmarshal(serializedData, &deserializedData); err != nil {
-			RecordError(asyncCtx, err, "Failed to deserialize data for async storage")
-			LogWarn("Error deserializing dataset %s for async storage: %v", sanitizeForLogging(datasetID), err)
-			return
-		}
-
-		if err := StoreDataset(datasetID, deserializedData.Players, deserializedData.CurrencySymbol); err != nil {
+		if err := StoreDataset(datasetID, dataSnapshot.Players, dataSnapshot.CurrencySymbol); err != nil {
 			RecordError(asyncCtx, err, "Failed to store in new storage system asynchronously")
 			LogWarn("Error storing dataset %s to persistent storage asynchronously: %v", sanitizeForLogging(datasetID), err)
 			return

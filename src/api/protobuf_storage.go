@@ -60,19 +60,13 @@ func (s *ProtobufStorage) Store(datasetID string, data DatasetData) error {
 	}
 
 	// Convert to protobuf
-	protoData, err := playerData.ToProto(ctx)
+	protoData, err := playerData.ToProtoOptimized(ctx)
 	if err != nil {
 		convErr := NewProtobufConversionError(ctx, "to_protobuf", "DatasetData", datasetID, err)
 		RecordError(ctx, convErr, "Failed to convert data to protobuf")
-		s.logFallbackEvent(ProtobufFallbackEvent{
-			DatasetID: datasetID,
-			Reason:    FallbackReasonConversionFailed,
-			Error:     convErr,
-			Message:   "Protobuf conversion failed during store operation",
-		})
-		AddSpanEvent(ctx, "storage.fallback_to_json", attribute.String("reason", string(FallbackReasonConversionFailed)))
-		return s.storeWithJSONFallback(ctx, datasetID, data)
+		return convErr
 	}
+	protoData.CacheData = data.CacheData
 
 	// Serialize protobuf to binary
 	ctx, marshalSpan := StartSpanWithAttributes(ctx, "protobuf.serialization.marshal", []attribute.KeyValue{
@@ -85,14 +79,7 @@ func (s *ProtobufStorage) Store(datasetID string, data DatasetData) error {
 	if err != nil {
 		marshalErr := NewProtobufError(ctx, "marshal", datasetID, "Failed to marshal protobuf data", err)
 		RecordError(ctx, marshalErr, "Failed to marshal protobuf data")
-		s.logFallbackEvent(ProtobufFallbackEvent{
-			DatasetID: datasetID,
-			Reason:    FallbackReasonMarshalFailed,
-			Error:     marshalErr,
-			Message:   "Protobuf marshaling failed during store operation",
-		})
-		AddSpanEvent(ctx, "storage.fallback_to_json", attribute.String("reason", string(FallbackReasonMarshalFailed)))
-		return s.storeWithJSONFallback(ctx, datasetID, data)
+		return marshalErr
 	}
 
 	SetSpanAttributes(ctx, attribute.Int("protobuf.marshaled_size_bytes", len(protoBytes)))
@@ -102,14 +89,7 @@ func (s *ProtobufStorage) Store(datasetID string, data DatasetData) error {
 	if err != nil {
 		compErr := NewProtobufCompressionError(ctx, "compress", datasetID, err)
 		RecordError(ctx, compErr, "Failed to compress protobuf data")
-		s.logFallbackEvent(ProtobufFallbackEvent{
-			DatasetID: datasetID,
-			Reason:    FallbackReasonCompressionFailed,
-			Error:     compErr,
-			Message:   "Protobuf compression failed during store operation",
-		})
-		AddSpanEvent(ctx, "storage.fallback_to_json", attribute.String("reason", string(FallbackReasonCompressionFailed)))
-		return s.storeWithJSONFallback(ctx, datasetID, data)
+		return compErr
 	}
 
 	SetSpanAttributes(ctx,
@@ -123,14 +103,7 @@ func (s *ProtobufStorage) Store(datasetID string, data DatasetData) error {
 	if err != nil {
 		storageErr := NewProtobufError(ctx, "store", datasetID, "Failed to store protobuf data", err)
 		RecordError(ctx, storageErr, "Failed to store protobuf data")
-		s.logFallbackEvent(ProtobufFallbackEvent{
-			DatasetID: datasetID,
-			Reason:    FallbackReasonStorageFailed,
-			Error:     storageErr,
-			Message:   "Protobuf storage failed during store operation",
-		})
-		AddSpanEvent(ctx, "storage.fallback_to_json", attribute.String("reason", string(FallbackReasonStorageFailed)))
-		return s.storeWithJSONFallback(ctx, datasetID, data)
+		return storageErr
 	}
 
 	duration := time.Since(start)
@@ -182,16 +155,8 @@ func (s *ProtobufStorage) Retrieve(datasetID string) (DatasetData, error) {
 	// Try to retrieve protobuf data first
 	compressedData, err := s.retrieveProtobufBytes(ctx, datasetID)
 	if err != nil {
-		// If protobuf retrieval fails, try JSON fallback
 		retrievalErr := NewProtobufError(ctx, "retrieve", datasetID, "Failed to retrieve protobuf data", err)
-		s.logFallbackEvent(ProtobufFallbackEvent{
-			DatasetID: datasetID,
-			Reason:    FallbackReasonRetrievalFailed,
-			Error:     retrievalErr,
-			Message:   "Protobuf retrieval failed during retrieve operation",
-		})
-		AddSpanEvent(ctx, "storage.fallback_to_json", attribute.String("reason", string(FallbackReasonRetrievalFailed)))
-		return s.retrieveWithJSONFallback(ctx, datasetID)
+		return DatasetData{}, retrievalErr
 	}
 
 	// Decompress protobuf data
@@ -199,14 +164,7 @@ func (s *ProtobufStorage) Retrieve(datasetID string) (DatasetData, error) {
 	if err != nil {
 		decompErr := NewProtobufCompressionError(ctx, "decompress", datasetID, err)
 		RecordError(ctx, decompErr, "Failed to decompress protobuf data")
-		s.logFallbackEvent(ProtobufFallbackEvent{
-			DatasetID: datasetID,
-			Reason:    FallbackReasonDecompressionFailed,
-			Error:     decompErr,
-			Message:   "Protobuf decompression failed during retrieve operation",
-		})
-		AddSpanEvent(ctx, "storage.fallback_to_json", attribute.String("reason", string(FallbackReasonDecompressionFailed)))
-		return s.retrieveWithJSONFallback(ctx, datasetID)
+		return DatasetData{}, decompErr
 	}
 
 	// Unmarshal protobuf data
@@ -222,35 +180,22 @@ func (s *ProtobufStorage) Retrieve(datasetID string) (DatasetData, error) {
 	if err != nil {
 		unmarshalErr := NewProtobufError(ctx, "unmarshal", datasetID, "Failed to unmarshal protobuf data", err)
 		RecordError(ctx, unmarshalErr, "Failed to unmarshal protobuf data")
-		s.logFallbackEvent(ProtobufFallbackEvent{
-			DatasetID: datasetID,
-			Reason:    FallbackReasonUnmarshalFailed,
-			Error:     unmarshalErr,
-			Message:   "Protobuf unmarshaling failed during retrieve operation",
-		})
-		AddSpanEvent(ctx, "storage.fallback_to_json", attribute.String("reason", string(FallbackReasonUnmarshalFailed)))
-		return s.retrieveWithJSONFallback(ctx, datasetID)
+		return DatasetData{}, unmarshalErr
 	}
 
 	// Convert from protobuf to native structs
-	playerData, err := DatasetDataFromProto(ctx, &protoData)
+	playerData, err := DatasetDataFromProtoOptimized(ctx, &protoData)
 	if err != nil {
 		convErr := NewProtobufConversionError(ctx, "from_protobuf", "DatasetData", datasetID, err)
 		RecordError(ctx, convErr, "Failed to convert protobuf to native structs")
-		s.logFallbackEvent(ProtobufFallbackEvent{
-			DatasetID: datasetID,
-			Reason:    FallbackReasonConversionFailed,
-			Error:     convErr,
-			Message:   "Protobuf conversion failed during retrieve operation",
-		})
-		AddSpanEvent(ctx, "storage.fallback_to_json", attribute.String("reason", string(FallbackReasonConversionFailed)))
-		return s.retrieveWithJSONFallback(ctx, datasetID)
+		return DatasetData{}, convErr
 	}
 
 	// Convert back to DatasetData format
 	result := DatasetData{
 		Players:        playerData.Players,
 		CurrencySymbol: playerData.CurrencySymbol,
+		CacheData:      protoData.GetCacheData(),
 	}
 
 	SetSpanAttributes(ctx,
@@ -432,7 +377,7 @@ func (s *ProtobufStorage) retrieveProtobufBytes(ctx context.Context, datasetID s
 	// Retrieve the special dataset
 	dataset, err := s.backend.Retrieve(datasetID)
 	if err != nil {
-		logError(ctx, "Failed to retrieve protobuf dataset", "error", err, "dataset_id", datasetID)
+		logDebug(ctx, "Failed to retrieve protobuf dataset", "error", err, "dataset_id", datasetID)
 		return nil, fmt.Errorf("failed to retrieve protobuf dataset: %w", err)
 	}
 

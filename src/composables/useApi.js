@@ -74,13 +74,7 @@ export function useApi(initialBaseURL) {
 
       // Check if we should use protobuf
       if (messageType && (await initializeProtobuf())) {
-        try {
-          // Try to use protobuf
-          return await protobufClient.fetchWithProtobuf(fullUrl, config, messageType)
-        } catch (protobufError) {
-          // Fall back to JSON on protobuf error
-          console.warn('Protobuf request failed, falling back to JSON:', protobufError)
-        }
+        return await protobufClient.fetchWithProtobuf(fullUrl, config, messageType)
       }
 
       // Standard JSON request

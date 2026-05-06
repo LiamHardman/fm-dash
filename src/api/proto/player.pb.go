@@ -123,9 +123,15 @@ type Player struct {
 	// Role-specific overall scores for tactical analysis
 	RoleSpecificOveralls []*RoleOverallScore `protobuf:"bytes,38,rep,name=roleSpecificOveralls,proto3" json:"roleSpecificOveralls,omitempty"`
 	// Cached Current Ability to avoid re-parsing overhead
-	Ca            int32 `protobuf:"varint,39,opt,name=ca,proto3" json:"ca,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Ca int32 `protobuf:"varint,39,opt,name=ca,proto3" json:"ca,omitempty"`
+	// Full persistence fields. These are intentionally separate from
+	// essential_attributes so older protobuf objects can still be read.
+	Attributes              map[string]string                    `protobuf:"bytes,40,rep,name=attributes,proto3" json:"attributes,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	NumericAttributes       map[string]int32                     `protobuf:"bytes,41,rep,name=numeric_attributes,json=numericAttributes,proto3" json:"numeric_attributes,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	PerformanceStatsNumeric map[string]float64                   `protobuf:"bytes,42,rep,name=performance_stats_numeric,json=performanceStatsNumeric,proto3" json:"performance_stats_numeric,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"fixed64,2,opt,name=value"`
+	PerformancePercentiles  map[string]*PerformancePercentileMap `protobuf:"bytes,43,rep,name=performance_percentiles,json=performancePercentiles,proto3" json:"performance_percentiles,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *Player) Reset() {
@@ -431,6 +437,78 @@ func (x *Player) GetCa() int32 {
 	return 0
 }
 
+func (x *Player) GetAttributes() map[string]string {
+	if x != nil {
+		return x.Attributes
+	}
+	return nil
+}
+
+func (x *Player) GetNumericAttributes() map[string]int32 {
+	if x != nil {
+		return x.NumericAttributes
+	}
+	return nil
+}
+
+func (x *Player) GetPerformanceStatsNumeric() map[string]float64 {
+	if x != nil {
+		return x.PerformanceStatsNumeric
+	}
+	return nil
+}
+
+func (x *Player) GetPerformancePercentiles() map[string]*PerformancePercentileMap {
+	if x != nil {
+		return x.PerformancePercentiles
+	}
+	return nil
+}
+
+type PerformancePercentileMap struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Percentiles   map[string]float64     `protobuf:"bytes,1,rep,name=percentiles,proto3" json:"percentiles,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"fixed64,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PerformancePercentileMap) Reset() {
+	*x = PerformancePercentileMap{}
+	mi := &file_proto_player_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PerformancePercentileMap) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PerformancePercentileMap) ProtoMessage() {}
+
+func (x *PerformancePercentileMap) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_player_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PerformancePercentileMap.ProtoReflect.Descriptor instead.
+func (*PerformancePercentileMap) Descriptor() ([]byte, []int) {
+	return file_proto_player_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *PerformancePercentileMap) GetPercentiles() map[string]float64 {
+	if x != nil {
+		return x.Percentiles
+	}
+	return nil
+}
+
 // DatasetData represents a dataset containing player information
 type DatasetData struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
@@ -443,7 +521,7 @@ type DatasetData struct {
 
 func (x *DatasetData) Reset() {
 	*x = DatasetData{}
-	mi := &file_proto_player_proto_msgTypes[2]
+	mi := &file_proto_player_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -455,7 +533,7 @@ func (x *DatasetData) String() string {
 func (*DatasetData) ProtoMessage() {}
 
 func (x *DatasetData) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_player_proto_msgTypes[2]
+	mi := &file_proto_player_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -468,7 +546,7 @@ func (x *DatasetData) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DatasetData.ProtoReflect.Descriptor instead.
 func (*DatasetData) Descriptor() ([]byte, []int) {
-	return file_proto_player_proto_rawDescGZIP(), []int{2}
+	return file_proto_player_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *DatasetData) GetPlayers() []*Player {
@@ -499,7 +577,7 @@ const file_proto_player_proto_rawDesc = "" +
 	"\x12proto/player.proto\x12\x06player\"E\n" +
 	"\x10RoleOverallScore\x12\x1b\n" +
 	"\trole_name\x18\x01 \x01(\tR\broleName\x12\x14\n" +
-	"\x05score\x18\x02 \x01(\x05R\x05score\"\xee\t\n" +
+	"\x05score\x18\x02 \x01(\x05R\x05score\"\x90\x0f\n" +
 	"\x06Player\x12\x10\n" +
 	"\x03uid\x18\x01 \x01(\x03R\x03uid\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1a\n" +
@@ -542,10 +620,33 @@ const file_proto_player_proto_rawDesc = "" +
 	"totalStats\x12\x10\n" +
 	"\x03mbr\x18% \x01(\x05R\x03mbr\x12L\n" +
 	"\x14roleSpecificOveralls\x18& \x03(\v2\x18.player.RoleOverallScoreR\x14roleSpecificOveralls\x12\x0e\n" +
-	"\x02ca\x18' \x01(\x05R\x02ca\x1aF\n" +
+	"\x02ca\x18' \x01(\x05R\x02ca\x12>\n" +
+	"\n" +
+	"attributes\x18( \x03(\v2\x1e.player.Player.AttributesEntryR\n" +
+	"attributes\x12T\n" +
+	"\x12numeric_attributes\x18) \x03(\v2%.player.Player.NumericAttributesEntryR\x11numericAttributes\x12g\n" +
+	"\x19performance_stats_numeric\x18* \x03(\v2+.player.Player.PerformanceStatsNumericEntryR\x17performanceStatsNumeric\x12c\n" +
+	"\x17performance_percentiles\x18+ \x03(\v2*.player.Player.PerformancePercentilesEntryR\x16performancePercentiles\x1aF\n" +
 	"\x18EssentialAttributesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x7f\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a=\n" +
+	"\x0fAttributesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aD\n" +
+	"\x16NumericAttributesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\x1aJ\n" +
+	"\x1cPerformanceStatsNumericEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\x01R\x05value:\x028\x01\x1ak\n" +
+	"\x1bPerformancePercentilesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x126\n" +
+	"\x05value\x18\x02 \x01(\v2 .player.PerformancePercentileMapR\x05value:\x028\x01\"\xaf\x01\n" +
+	"\x18PerformancePercentileMap\x12S\n" +
+	"\vpercentiles\x18\x01 \x03(\v21.player.PerformancePercentileMap.PercentilesEntryR\vpercentiles\x1a>\n" +
+	"\x10PercentilesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\x01R\x05value:\x028\x01\"\x7f\n" +
 	"\vDatasetData\x12(\n" +
 	"\aplayers\x18\x01 \x03(\v2\x0e.player.PlayerR\aplayers\x12'\n" +
 	"\x0fcurrency_symbol\x18\x02 \x01(\tR\x0ecurrencySymbol\x12\x1d\n" +
@@ -564,22 +665,34 @@ func file_proto_player_proto_rawDescGZIP() []byte {
 	return file_proto_player_proto_rawDescData
 }
 
-var file_proto_player_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_proto_player_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_proto_player_proto_goTypes = []any{
-	(*RoleOverallScore)(nil), // 0: player.RoleOverallScore
-	(*Player)(nil),           // 1: player.Player
-	(*DatasetData)(nil),      // 2: player.DatasetData
-	nil,                      // 3: player.Player.EssentialAttributesEntry
+	(*RoleOverallScore)(nil),         // 0: player.RoleOverallScore
+	(*Player)(nil),                   // 1: player.Player
+	(*PerformancePercentileMap)(nil), // 2: player.PerformancePercentileMap
+	(*DatasetData)(nil),              // 3: player.DatasetData
+	nil,                              // 4: player.Player.EssentialAttributesEntry
+	nil,                              // 5: player.Player.AttributesEntry
+	nil,                              // 6: player.Player.NumericAttributesEntry
+	nil,                              // 7: player.Player.PerformanceStatsNumericEntry
+	nil,                              // 8: player.Player.PerformancePercentilesEntry
+	nil,                              // 9: player.PerformancePercentileMap.PercentilesEntry
 }
 var file_proto_player_proto_depIdxs = []int32{
-	3, // 0: player.Player.essential_attributes:type_name -> player.Player.EssentialAttributesEntry
+	4, // 0: player.Player.essential_attributes:type_name -> player.Player.EssentialAttributesEntry
 	0, // 1: player.Player.roleSpecificOveralls:type_name -> player.RoleOverallScore
-	1, // 2: player.DatasetData.players:type_name -> player.Player
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	5, // 2: player.Player.attributes:type_name -> player.Player.AttributesEntry
+	6, // 3: player.Player.numeric_attributes:type_name -> player.Player.NumericAttributesEntry
+	7, // 4: player.Player.performance_stats_numeric:type_name -> player.Player.PerformanceStatsNumericEntry
+	8, // 5: player.Player.performance_percentiles:type_name -> player.Player.PerformancePercentilesEntry
+	9, // 6: player.PerformancePercentileMap.percentiles:type_name -> player.PerformancePercentileMap.PercentilesEntry
+	1, // 7: player.DatasetData.players:type_name -> player.Player
+	2, // 8: player.Player.PerformancePercentilesEntry.value:type_name -> player.PerformancePercentileMap
+	9, // [9:9] is the sub-list for method output_type
+	9, // [9:9] is the sub-list for method input_type
+	9, // [9:9] is the sub-list for extension type_name
+	9, // [9:9] is the sub-list for extension extendee
+	0, // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_proto_player_proto_init() }
@@ -593,7 +706,7 @@ func file_proto_player_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_player_proto_rawDesc), len(file_proto_player_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

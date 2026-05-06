@@ -174,6 +174,45 @@ func (p *Player) ToProto(ctx context.Context) (*proto.Player, error) {
 		}
 	}
 
+	var attributes map[string]string
+	if len(p.Attributes) > 0 {
+		attributes = make(map[string]string, len(p.Attributes))
+		for key, value := range p.Attributes {
+			attributes[key] = value
+		}
+	}
+
+	var numericAttributes map[string]int32
+	if len(p.NumericAttributes) > 0 {
+		numericAttributes = make(map[string]int32, len(p.NumericAttributes))
+		for key, value := range p.NumericAttributes {
+			numericAttributes[key] = safeIntToInt32(value)
+		}
+	}
+
+	var performanceStatsNumeric map[string]float64
+	if len(p.PerformanceStatsNumeric) > 0 {
+		performanceStatsNumeric = make(map[string]float64, len(p.PerformanceStatsNumeric))
+		for key, value := range p.PerformanceStatsNumeric {
+			performanceStatsNumeric[key] = value
+		}
+	}
+
+	var performancePercentiles map[string]*proto.PerformancePercentileMap
+	if len(p.PerformancePercentiles) > 0 {
+		performancePercentiles = make(map[string]*proto.PerformancePercentileMap, len(p.PerformancePercentiles))
+		for category, percentiles := range p.PerformancePercentiles {
+			protoPercentiles := &proto.PerformancePercentileMap{}
+			if len(percentiles) > 0 {
+				protoPercentiles.Percentiles = make(map[string]float64, len(percentiles))
+				for key, value := range percentiles {
+					protoPercentiles.Percentiles[key] = value
+				}
+			}
+			performancePercentiles[category] = protoPercentiles
+		}
+	}
+
 	protoPlayer := &proto.Player{
 		Uid:                 p.UID,
 		Name:                p.Name,
@@ -213,6 +252,11 @@ func (p *Player) ToProto(ctx context.Context) (*proto.Player, error) {
 
 		// Essential attributes only
 		EssentialAttributes: essentialAttributes,
+		Attributes:          attributes,
+		NumericAttributes:   numericAttributes,
+
+		PerformanceStatsNumeric: performanceStatsNumeric,
+		PerformancePercentiles:  performancePercentiles,
 
 		// Best role for display
 		BestRoleOverall: p.BestRoleOverall,
@@ -227,7 +271,7 @@ func (p *Player) ToProto(ctx context.Context) (*proto.Player, error) {
 
 		// Role-specific overall scores for tactical analysis
 		RoleSpecificOveralls: func() []*proto.RoleOverallScore {
-			var protoRoleOveralls []*proto.RoleOverallScore
+			protoRoleOveralls := make([]*proto.RoleOverallScore, 0, len(p.RoleSpecificOveralls))
 			for _, roleOverall := range p.RoleSpecificOveralls {
 				protoRoleOveralls = append(protoRoleOveralls, &proto.RoleOverallScore{
 					RoleName: roleOverall.RoleName,
@@ -236,7 +280,7 @@ func (p *Player) ToProto(ctx context.Context) (*proto.Player, error) {
 			}
 			return protoRoleOveralls
 		}(),
-		
+
 		Ca: safeIntToInt32(p.CA),
 	}
 
@@ -287,16 +331,46 @@ func PlayerFromProto(ctx context.Context, protoPlayer *proto.Player) (*Player, e
 		"conversion_direction", "from_protobuf",
 		"essential_attributes_count", len(protoPlayer.GetEssentialAttributes()))
 
-	// Convert essential attributes from string
-	attributes := make(map[string]string)
-
-	for key, value := range protoPlayer.GetEssentialAttributes() {
-		attributes[key] = value
+	var attributes map[string]string
+	if len(protoPlayer.GetAttributes()) > 0 {
+		attributes = make(map[string]string, len(protoPlayer.GetAttributes()))
+		for key, value := range protoPlayer.GetAttributes() {
+			attributes[key] = value
+		}
+	} else if len(protoPlayer.GetEssentialAttributes()) > 0 {
+		attributes = make(map[string]string, len(protoPlayer.GetEssentialAttributes()))
+		for key, value := range protoPlayer.GetEssentialAttributes() {
+			attributes[key] = value
+		}
 	}
 
-	// Initialize performance stats maps (will be populated by EnhancePlayerWithCalculations)
-	performanceStatsNumeric := make(map[string]float64)
-	performancePercentiles := make(map[string]map[string]float64)
+	var numericAttributes map[string]int
+	if len(protoPlayer.GetNumericAttributes()) > 0 {
+		numericAttributes = make(map[string]int, len(protoPlayer.GetNumericAttributes()))
+		for key, value := range protoPlayer.GetNumericAttributes() {
+			numericAttributes[key] = int(value)
+		}
+	}
+
+	var performanceStatsNumeric map[string]float64
+	if len(protoPlayer.GetPerformanceStatsNumeric()) > 0 {
+		performanceStatsNumeric = make(map[string]float64, len(protoPlayer.GetPerformanceStatsNumeric()))
+		for key, value := range protoPlayer.GetPerformanceStatsNumeric() {
+			performanceStatsNumeric[key] = value
+		}
+	}
+
+	var performancePercentiles map[string]map[string]float64
+	if len(protoPlayer.GetPerformancePercentiles()) > 0 {
+		performancePercentiles = make(map[string]map[string]float64, len(protoPlayer.GetPerformancePercentiles()))
+		for category, protoPercentiles := range protoPlayer.GetPerformancePercentiles() {
+			percentiles := make(map[string]float64, len(protoPercentiles.GetPercentiles()))
+			for key, value := range protoPercentiles.GetPercentiles() {
+				percentiles[key] = value
+			}
+			performancePercentiles[category] = percentiles
+		}
+	}
 
 	player := &Player{
 		UID:                     protoPlayer.GetUid(),
@@ -314,7 +388,7 @@ func PlayerFromProto(ctx context.Context, protoPlayer *proto.Player) (*Player, e
 		NationalityFIFACode:     protoPlayer.GetNationalityFifaCode(),
 		AttributeMasked:         protoPlayer.GetAttributeMasked(),
 		Attributes:              attributes,
-		NumericAttributes:       nil,
+		NumericAttributes:       numericAttributes,
 		PerformanceStatsNumeric: performanceStatsNumeric,
 		PerformancePercentiles:  performancePercentiles,
 		ParsedPositions:         protoPlayer.GetParsedPositions(),
@@ -342,7 +416,7 @@ func PlayerFromProto(ctx context.Context, protoPlayer *proto.Player) (*Player, e
 
 		// Role-specific overall scores for tactical analysis
 		RoleSpecificOveralls: func() []RoleOverallScore {
-			var roleSpecificOveralls []RoleOverallScore
+			roleSpecificOveralls := make([]RoleOverallScore, 0, len(protoPlayer.GetRoleSpecificOveralls()))
 			for _, protoRoleOverall := range protoPlayer.GetRoleSpecificOveralls() {
 				roleSpecificOveralls = append(roleSpecificOveralls, RoleOverallScore{
 					RoleName: protoRoleOverall.GetRoleName(),
@@ -356,6 +430,22 @@ func PlayerFromProto(ctx context.Context, protoPlayer *proto.Player) (*Player, e
 	// Use cached CA from protobuf
 	player.CA = int(protoPlayer.GetCa())
 	player.Ca = player.CA
+	player.Pac = player.PAC
+	player.Sho = player.SHO
+	player.Pas = player.PAS
+	player.Dri = player.DRI
+	player.Def = player.DEF
+	player.Phy = player.PHY
+	player.Gk = player.GK
+	player.Div = player.DIV
+	player.Han = player.HAN
+	player.Ref = player.REF
+	player.Kic = player.KIC
+	player.Spd = player.SPD
+	player.Pos = player.POS
+	player.OverallLower = player.Overall
+	player.TotalStatsLower = player.TotalStats
+	player.Mbr = player.MBR
 
 	duration := time.Since(start)
 	SetSpanAttributes(ctx,
@@ -403,7 +493,7 @@ func (d *PlayerDataWithCurrency) ToProto(ctx context.Context) (*proto.DatasetDat
 		"conversion_direction", "to_protobuf",
 		"currency_symbol", d.CurrencySymbol)
 
-	var protoPlayers []*proto.Player
+	protoPlayers := make([]*proto.Player, 0, len(d.Players))
 	for i, player := range d.Players {
 		protoPlayer, err := player.ToProto(ctx)
 		if err != nil {
@@ -464,7 +554,7 @@ func DatasetDataFromProto(ctx context.Context, protoDataset *proto.DatasetData) 
 		"conversion_direction", "from_protobuf",
 		"currency_symbol", protoDataset.GetCurrencySymbol())
 
-	var players []Player
+	players := make([]Player, 0, len(protoDataset.GetPlayers()))
 	for i, protoPlayer := range protoDataset.GetPlayers() {
 		player, err := PlayerFromProto(ctx, protoPlayer)
 		if err != nil {
@@ -501,20 +591,10 @@ func DatasetDataFromProto(ctx context.Context, protoDataset *proto.DatasetData) 
 
 // ToProtoOptimized converts a PlayerDataWithCurrency to protobuf format with optimizations
 func (d *PlayerDataWithCurrency) ToProtoOptimized(ctx context.Context) (*proto.DatasetData, error) {
-	// For now, use the same implementation as ToProto
-	// In a real implementation, this would include optimizations like:
-	// - Object pooling
-	// - Reduced memory allocations
-	// - Parallel processing for large datasets
 	return d.ToProto(ctx)
 }
 
 // DatasetDataFromProtoOptimized converts a protobuf DatasetData to the native struct with optimizations
 func DatasetDataFromProtoOptimized(ctx context.Context, protoDataset *proto.DatasetData) (*PlayerDataWithCurrency, error) {
-	// For now, use the same implementation as DatasetDataFromProto
-	// In a real implementation, this would include optimizations like:
-	// - Object pooling
-	// - Reduced memory allocations
-	// - Parallel processing for large datasets
 	return DatasetDataFromProto(ctx, protoDataset)
 }

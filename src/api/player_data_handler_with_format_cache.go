@@ -238,13 +238,6 @@ func formatAwarePlayerDataHandler(w http.ResponseWriter, r *http.Request) {
 	logInfo(ctx, "PERF filter_apply", "ms", time.Since(stageStart).Milliseconds(), "total_ms", time.Since(startTime).Milliseconds(), "filtered_count", len(filteredPlayers))
 	stageStart = time.Now()
 
-	// Strip the raw Attributes string map from the response. numericAttributes carries
-	// the same data as parsed integers and is sufficient for all frontend use. Removing
-	// the duplicate string map roughly halves the uncompressed response size.
-	for i := range filteredPlayers {
-		filteredPlayers[i].Attributes = nil
-	}
-
 	SetSpanAttributes(ctx,
 		attribute.Int("dataset.filtered_player_count", len(filteredPlayers)),
 		attribute.String("dataset.currency", currencySymbol),

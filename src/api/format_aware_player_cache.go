@@ -101,9 +101,8 @@ func CachePlayerData(ctx context.Context, cacheKey string, players []Player, cur
 		}
 		protoPlayerResponse.Players = append(protoPlayerResponse.Players, protoPlayer)
 	}
-	optimizedProto := OptimizeProtobufPlayerData(ctx, protoPlayerResponse)
-	if optimizedProto != nil {
-		if data, err := proto.Marshal(optimizedProto); err == nil {
+	if protoPlayerResponse != nil {
+		if data, err := proto.Marshal(protoPlayerResponse); err == nil {
 			SetFormatAwareCacheItem(cacheKey, FormatTypeProtobuf, &CachedSerializedResponse{
 				Format:         FormatTypeProtobuf,
 				Bytes:          data,
@@ -151,19 +150,8 @@ func OptimizeProtobufPlayerData(ctx context.Context, protoResponse *pb.PlayerDat
 		return nil
 	}
 
-	// Log the original size
 	originalSize := estimateSize(protoResponse)
-
-	// Apply memory optimizations:
-
-	// 1. Remove redundant data that can be recalculated
-	// Note: In optimized protobuf schema, PerformancePercentiles is not included
-	// so no optimization needed here
-
-	// 2. Optimize string storage for common values
 	optimizeCommonStrings(protoResponse)
-
-	// Log the optimized size
 	optimizedSize := estimateSize(protoResponse)
 
 	logDebug(ctx, "Optimized protobuf player data memory usage",
@@ -210,14 +198,10 @@ func WritePlayerDataResponse(ctx context.Context, w http.ResponseWriter, r *http
 	if format == FormatTypeProtobuf && cachedResponse.ProtobufData != nil {
 		responseData, err := serializer.Serialize(cachedResponse.ProtobufData)
 		if err != nil {
-			logError(ctx, "Failed to serialize protobuf player data, falling back to JSON",
+			logError(ctx, "Failed to serialize protobuf player data",
 				"error", err,
 				"player_count", len(cachedResponse.ProtobufData.GetPlayers()))
-			w.Header().Set("Content-Type", "application/json")
-			w.Header().Set("X-Cache-Source", "memory")
-			w.Header().Set("X-Cache-Format", "json")
-			w.Header().Set("X-Format-Fallback", "true")
-			return WriteJSONPlayerResponse(w, cachedResponse.JSONData, cachedResponse.CurrencySymbol)
+			return fmt.Errorf("failed to serialize protobuf player data: %w", err)
 		}
 		w.Header().Set("Content-Type", serializer.ContentType())
 		w.Header().Set("X-Cache-Source", "memory")
@@ -226,6 +210,10 @@ func WritePlayerDataResponse(ctx context.Context, w http.ResponseWriter, r *http
 			logError(r.Context(), "Error writing protobuf response", "error", err)
 		}
 		return nil
+	}
+
+	if format == FormatTypeProtobuf {
+		return fmt.Errorf("protobuf response requested but protobuf data is unavailable")
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -65,13 +65,17 @@ func TestProtobufStorage_Store(t *testing.T) {
 		t.Fatalf("Failed to retrieve stored data from backend: %v", err)
 	}
 
-	// Check if it's stored as protobuf marker
+	// Check if it's stored as native raw protobuf bytes
 	if storedData.CurrencySymbol != "__PROTOBUF_MARKER__" {
 		t.Errorf("Expected protobuf marker, got: %s", storedData.CurrencySymbol)
 	}
 
-	if len(storedData.Players) != 1 || storedData.Players[0].UID != -1 {
-		t.Errorf("Expected protobuf marker player, got: %+v", storedData.Players)
+	if len(storedData.RawBytes) == 0 {
+		t.Error("Expected protobuf bytes to be stored in RawBytes")
+	}
+
+	if len(storedData.Players) != 0 {
+		t.Errorf("Expected no marker players for RawBytes storage, got: %+v", storedData.Players)
 	}
 }
 
@@ -320,6 +324,29 @@ func TestProtobufStorage_ProtobufBytesStorage(t *testing.T) {
 
 	if string(retrievedData) != string(testData) {
 		t.Errorf("Expected retrieved data %s, got %s", string(testData), string(retrievedData))
+	}
+}
+
+func TestProtobufStorage_CacheDataRoundTrip(t *testing.T) {
+	backend := CreateInMemoryStorage()
+	storage := CreateProtobufStorage(backend)
+
+	testData := DatasetData{
+		CacheData:      `{"kind":"player_percentiles","value":42}`,
+		CurrencySymbol: "£",
+	}
+
+	if err := storage.Store("cache-data-test", testData); err != nil {
+		t.Fatalf("Failed to store cache data: %v", err)
+	}
+
+	retrievedData, err := storage.Retrieve("cache-data-test")
+	if err != nil {
+		t.Fatalf("Failed to retrieve cache data: %v", err)
+	}
+
+	if retrievedData.CacheData != testData.CacheData {
+		t.Fatalf("CacheData mismatch: got %q, want %q", retrievedData.CacheData, testData.CacheData)
 	}
 }
 

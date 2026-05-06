@@ -144,8 +144,11 @@ class ProtobufClient {
   async fetchWithProtobuf(url, options, messageType) {
     await this.initialize()
 
-    if (!this.protobufSupported || !this.protobufEnabled) {
-      return this.fallbackToJSON(url, options)
+    if (!this.protobufSupported) {
+      throw new Error('Protobuf is not supported by this client')
+    }
+    if (!this.protobufEnabled) {
+      throw new Error('Protobuf is disabled')
     }
 
     try {
@@ -163,7 +166,7 @@ class ProtobufClient {
 
       const contentType = response.headers.get('Content-Type')
       if (!contentType || !contentType.includes('application/x-protobuf')) {
-        return this.handleNonProtobufResponse(response)
+        throw new Error(`Expected protobuf response, got ${contentType || 'no content type'}`)
       }
 
       const buffer = await response.arrayBuffer()
@@ -177,8 +180,8 @@ class ProtobufClient {
         },
       }
     } catch (error) {
-      logger.error('Protobuf request failed, falling back to JSON:', error)
-      return this.fallbackToJSON(url, options)
+      logger.error('Protobuf request failed:', error)
+      throw error
     }
   }
 

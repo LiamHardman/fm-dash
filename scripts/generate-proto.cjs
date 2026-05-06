@@ -27,6 +27,7 @@ const protoFiles = [
 ]
   .map((f) => path.join(root, f))
   .join(' ')
+const protoIncludePath = path.join(root, 'src', 'api')
 
 const outFile = path.join(root, 'src', 'utils', 'proto-descriptor.js')
 
@@ -35,7 +36,9 @@ protoFiles.split(' ').forEach((f) => console.log(' ', f))
 
 let jsonOutput
 try {
-  jsonOutput = execSync(`npx pbjs -t json ${protoFiles}`, { cwd: root }).toString()
+  jsonOutput = execSync(`npx pbjs -t json --path "${protoIncludePath}" ${protoFiles}`, {
+    cwd: root,
+  }).toString()
 } catch (err) {
   console.error('pbjs failed:', err.message)
   process.exit(1)

@@ -118,6 +118,45 @@ describe('playerStore', () => {
       expect(store.protobufMetrics.compressionRatio).toBe(0.6)
     })
 
+    it('should normalize full protobuf player fields for UI use', async () => {
+      const protobufResponse = {
+        players: [
+          {
+            id: 1,
+            name: 'Player 1',
+            age: '25',
+            mediaHandling: 'Media-friendly',
+            attributes: { Finishing: '17' },
+            numericAttributes: { Finishing: 17 },
+            performanceStatsNumeric: { Goals: 12.5 },
+            performancePercentiles: {
+              Global: {
+                percentiles: {
+                  Goals: 92.4,
+                },
+              },
+            },
+          },
+        ],
+        currencySymbol: '$',
+        _protobuf: {
+          format: 'protobuf',
+          payloadSize: 1000,
+        },
+      }
+
+      playerService.getPlayersByDatasetId.mockResolvedValue(protobufResponse)
+
+      await store.fetchPlayersByDatasetId('123')
+
+      expect(store.allPlayers[0].attributes).toEqual({ Finishing: '17' })
+      expect(store.allPlayers[0].numericAttributes).toEqual({ Finishing: 17 })
+      expect(store.allPlayers[0].performanceStatsNumeric).toEqual({ Goals: 12.5 })
+      expect(store.allPlayers[0].performancePercentiles).toEqual({ Global: { Goals: 92.4 } })
+      expect(store.allPlayers[0].media_handling).toBe('Media-friendly')
+      expect(store.uniqueMediaHandlings).toEqual(['Media-friendly'])
+    })
+
     it('should handle JSON responses', async () => {
       // Mock a JSON response
       const jsonResponse = {

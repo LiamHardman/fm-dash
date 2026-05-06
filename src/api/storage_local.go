@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -114,8 +113,8 @@ func (s *LocalFileStorage) Retrieve(datasetID string) (DatasetData, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
-	// Try uncompressed file first - safely construct the filename
-	filename, err := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s.json", datasetID))
+	// Try protobuf first, then current JSON, then legacy compressed JSON.
+	filename, err := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s%s", datasetID, datasetExtProtobuf))
 	if err != nil {
 		err := apperrors.WrapErrInvalidFilePathForDataset(sanitizeForLogging(datasetID), err)
 		RecordError(ctx, err, "Path validation failed")
@@ -126,16 +125,16 @@ func (s *LocalFileStorage) Retrieve(datasetID string) (DatasetData, error) {
 
 	// Check if file exists; if not, try others
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
-		pbFilename, errPb := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s.pb.gz", datasetID))
-		if errPb == nil {
-			if _, statErr := os.Stat(pbFilename); statErr == nil {
-				filename = pbFilename
-				isProtobuf = true
-			}
+		jsonFilename, errJSON := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s%s", datasetID, datasetExtJSON))
+		if errJSON != nil {
+			err := apperrors.WrapErrInvalidFilePathForDataset(sanitizeForLogging(datasetID), errJSON)
+			RecordError(ctx, err, "Path validation failed")
+			return DatasetData{}, err
 		}
-		
-		if !isProtobuf {
-			legacyFilename, err2 := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s.json.gz", datasetID))
+		if _, statErr := os.Stat(jsonFilename); statErr == nil {
+			filename = jsonFilename
+		} else {
+			legacyFilename, err2 := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s%s", datasetID, datasetExtJSONGzip))
 			if err2 != nil {
 				err := apperrors.WrapErrInvalidFilePathForDataset(sanitizeForLogging(datasetID), err2)
 				RecordError(ctx, err, "Path validation failed")
@@ -149,6 +148,8 @@ func (s *LocalFileStorage) Retrieve(datasetID string) (DatasetData, error) {
 			filename = legacyFilename
 			isCompressed = true
 		}
+	} else {
+		isProtobuf = true
 	}
 
 	// Read the file
@@ -205,9 +206,9 @@ func (s *LocalFileStorage) Delete(datasetID string) error {
 	defer s.mutex.Unlock()
 
 	// Try to delete both compressed and uncompressed versions - safely construct paths
-	pbFile, _ := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s.pb.gz", datasetID))
-	compressedFile, _ := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s.json.gz", datasetID))
-	uncompressedFile, _ := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s.json", datasetID))
+	pbFile, _ := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s%s", datasetID, datasetExtProtobuf))
+	compressedFile, _ := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s%s", datasetID, datasetExtJSONGzip))
+	uncompressedFile, _ := validateAndJoinPath(s.datasetDir, fmt.Sprintf("%s%s", datasetID, datasetExtJSON))
 
 	// Don't treat "file not found" as an error
 	if pbFile != "" {
@@ -241,28 +242,16 @@ func (s *LocalFileStorage) List() ([]string, error) {
 	}
 
 	var ids []string
+	seen := make(map[string]struct{})
 	for _, entry := range entries {
 		if entry.IsDir() {
 			continue
 		}
 
 		name := entry.Name()
-		if strings.HasSuffix(name, ".json.gz") {
-			id := strings.TrimSuffix(name, ".json.gz")
-			ids = append(ids, id)
-		} else if strings.HasSuffix(name, ".json") {
-			id := strings.TrimSuffix(name, ".json")
-			// Only add if we don't already have the compressed version
-			found := false
-			for _, existingID := range ids {
-				if existingID == id {
-					found = true
-					break
-				}
-			}
-			if !found {
-				ids = append(ids, id)
-			}
+		id, ok := datasetIDFromStorageName(name)
+		if ok {
+			ids = appendDatasetIDOnce(ids, seen, id)
 		}
 	}
 
@@ -293,16 +282,9 @@ func (s *LocalFileStorage) CleanupOldDatasets(maxAge time.Duration, excludeDatas
 		}
 
 		name := entry.Name()
-		if !strings.HasSuffix(name, ".json") && !strings.HasSuffix(name, ".json.gz") {
+		datasetID, ok := datasetIDFromStorageName(name)
+		if !ok {
 			continue
-		}
-
-		// Extract dataset ID from object key
-		var datasetID string
-		if strings.HasSuffix(name, ".json.gz") {
-			datasetID = strings.TrimSuffix(name, ".json.gz")
-		} else {
-			datasetID = strings.TrimSuffix(name, ".json")
 		}
 
 		// Skip excluded datasets
