@@ -142,130 +142,122 @@
                     </div>
                 </GradientBackground>
 
-                <!-- Formation & Tactics Section - New Layout -->
+                <!-- Formation & Tactics Section -->
                 <div class="formation-tactics-layout">
-                    <!-- Left Side - Formation Controls and Squad Depth -->
-                    <div class="formation-controls-panel">
-                        <!-- Formation Selection -->
-                        <q-card class="formation-card">
-                            <q-card-section>
-                                <div class="card-header">
-                                    <h3 class="card-title">
-                                        <q-icon name="diagram" class="card-icon" />
-                                        Tactical Setup
-                                    </h3>
-                                    <p class="card-subtitle">Optimize your formation and lineup</p>
-                                </div>
+                    <q-card class="formation-card">
+                        <q-card-section>
+                            <div class="card-header">
+                                <h3 class="card-title">
+                                    <q-icon name="diagram" class="card-icon" />
+                                    Tactical Setup
+                                </h3>
+                                <p class="card-subtitle">Optimize your formation and lineup</p>
+                            </div>
+                            
+                            <div class="formation-controls">
+                                <q-select
+                                    v-model="selectedFormationKey"
+                                    :options="formationOptions"
+                                    label="Select Formation"
+                                    outlined
+                                    emit-value
+                                    map-options
+                                    class="formation-select"
+                                    :label-color="quasarInstance.dark.isActive ? 'grey-4' : ''"
+                                />
                                 
-                                <div class="formation-controls">
-                                    <q-select
-                                        v-model="selectedFormationKey"
-                                        :options="formationOptions"
-                                        label="Select Formation"
-                                        outlined
-                                        emit-value
-                                        map-options
-                                        class="formation-select"
-                                        :label-color="quasarInstance.dark.isActive ? 'grey-4' : ''"
-                                    />
-                                    
-                                    <q-banner
-                                        v-if="calculationMessage"
-                                        class="calculation-banner"
-                                        :class="calculationMessageClass"
-                                    >
-                                        {{ calculationMessage }}
-                                    </q-banner>
-                                </div>
-                            </q-card-section>
-                        </q-card>
+                                <q-banner
+                                    v-if="calculationMessage"
+                                    class="calculation-banner"
+                                    :class="calculationMessageClass"
+                                >
+                                    {{ calculationMessage }}
+                                </q-banner>
+                            </div>
+                        </q-card-section>
+                    </q-card>
 
-                        <!-- Squad Depth Card -->
-                        <q-card 
-                            v-if="selectedFormationKey && Object.keys(squadComposition).length > 0"
-                            class="squad-depth-card"
-                        >
-                            <q-card-section>
-                                <div class="card-header">
-                                    <h3 class="card-title">
-                                        <q-icon name="groups_3" class="card-icon" />
-                                        Squad Depth
-                                    </h3>
-                                    <p class="card-subtitle">Player availability by position</p>
-                                </div>
-                                
-                                <div class="squad-depth-grid">
-                                    <div
-                                        v-for="slot in currentFormationLayout.flatMap(row => row.positions)"
-                                        :key="slot.id"
-                                        class="depth-position-modern"
-                                    >
-                                        <div class="position-header">
-                                            <span class="position-name">
-                                                {{ getSlotDisplayName(slot, currentFormationLayout.flatMap(r => r.positions)) }}
-                                            </span>
-                                            <span class="player-count">
-                                                {{ squadComposition[slot.id]?.length || 0 }} players
-                                            </span>
-                                        </div>
-                                        
-                                        <div v-if="squadComposition[slot.id] && squadComposition[slot.id].length > 0" class="depth-players-modern">
-                                            <div
-                                                v-for="(playerEntry, index) in squadComposition[slot.id].slice(0, 3)"
-                                                :key="playerEntry.player.name + '-' + slot.id + '-' + index"
-                                                class="player-card-mini"
-                                                :class="{ 'is-starter': index === 0 }"
-                                                @click="handlePlayerSelectedFromTeam(playerEntry.player)"
-                                            >
-                                                <div class="player-rank">{{ index + 1 }}</div>
-                                                <div class="player-info">
-                                                    <div class="player-name">{{ playerEntry.player.name }}</div>
-                                                    <div class="player-positions">
-                                                        {{ playerEntry.player.shortPositions?.slice(0, 2).join(', ') || 'N/A' }}
-                                                    </div>
-                                                </div>
-                                                <div class="player-rating" :class="getOverallClass(playerEntry.overallInRole)">
-                                                    {{ playerEntry.overallInRole }}
+                    <q-card class="pitch-card" v-if="selectedFormationKey">
+                        <q-card-section>
+                            <div class="card-header">
+                                <h3 class="card-title">
+                                    <q-icon name="stadium" class="card-icon" />
+                                    Formation View
+                                </h3>
+                                <p class="card-subtitle">Interactive pitch with your starting XI</p>
+                            </div>
+                            
+                            <div class="pitch-stage">
+                                <PitchDisplay
+                                    :formation="currentFormationLayout"
+                                    :players="bestTeamPlayersForPitch"
+                                    display-mode="cards"
+                                    :currency-symbol="detectedCurrencySymbol"
+                                    :dataset-id="currentDatasetId"
+                                    @player-click="handlePlayerSelectedFromTeam"
+                                    @player-moved="handlePlayerMovedOnPitch"
+                                />
+                            </div>
+                        </q-card-section>
+                    </q-card>
+
+                    <q-card 
+                        v-if="selectedFormationKey && Object.keys(squadComposition).length > 0"
+                        class="squad-depth-card"
+                    >
+                        <q-card-section>
+                            <div class="card-header">
+                                <h3 class="card-title">
+                                    <q-icon name="groups_3" class="card-icon" />
+                                    Squad Depth
+                                </h3>
+                                <p class="card-subtitle">Player availability by position</p>
+                            </div>
+                            
+                            <div class="squad-depth-grid">
+                                <div
+                                    v-for="slot in currentFormationLayout.flatMap(row => row.positions)"
+                                    :key="slot.id"
+                                    class="depth-position-modern"
+                                >
+                                    <div class="position-header">
+                                        <span class="position-name">
+                                            {{ getSlotDisplayName(slot, currentFormationLayout.flatMap(r => r.positions)) }}
+                                        </span>
+                                        <span class="player-count">
+                                            {{ squadComposition[slot.id]?.length || 0 }} players
+                                        </span>
+                                    </div>
+                                    
+                                    <div v-if="squadComposition[slot.id] && squadComposition[slot.id].length > 0" class="depth-players-modern">
+                                        <div
+                                            v-for="(playerEntry, index) in squadComposition[slot.id].slice(0, 3)"
+                                            :key="playerEntry.player.name + '-' + slot.id + '-' + index"
+                                            class="player-card-mini"
+                                            :class="{ 'is-starter': index === 0 }"
+                                            @click="handlePlayerSelectedFromTeam(playerEntry.player)"
+                                        >
+                                            <div class="player-rank">{{ index + 1 }}</div>
+                                            <div class="player-info">
+                                                <div class="player-name">{{ playerEntry.player.name }}</div>
+                                                <div class="player-positions">
+                                                    {{ playerEntry.player.shortPositions?.slice(0, 2).join(', ') || 'N/A' }}
                                                 </div>
                                             </div>
-                                        </div>
-                                        
-                                        <div v-else class="no-players-state">
-                                            <q-icon name="person_off" size="1.5rem" />
-                                            <span>No suitable players</span>
+                                            <div class="player-rating" :class="getOverallClass(playerEntry.overallInRole)">
+                                                {{ playerEntry.overallInRole }}
+                                            </div>
                                         </div>
                                     </div>
+                                    
+                                    <div v-else class="no-players-state">
+                                        <q-icon name="person_off" size="1.5rem" />
+                                        <span>No suitable players</span>
+                                    </div>
                                 </div>
-                            </q-card-section>
-                        </q-card>
-                    </div>
-
-                    <!-- Right Side - Pitch Visualization -->
-                    <div class="formation-display-panel">
-                        <q-card class="pitch-card" v-if="selectedFormationKey">
-                            <q-card-section>
-                                <div class="card-header">
-                                    <h3 class="card-title">
-                                        <q-icon name="stadium" class="card-icon" />
-                                        Formation View
-                                    </h3>
-                                    <p class="card-subtitle">Interactive pitch with your starting XI</p>
-                                </div>
-                                
-                                <div class="pitch-container">
-                                    <PitchDisplay
-                                        :formation="currentFormationLayout"
-                                        :players="bestTeamPlayersForPitch"
-                                        display-mode="cards"
-                                        :currency-symbol="detectedCurrencySymbol"
-                                        :dataset-id="currentDatasetId"
-                                        @player-click="handlePlayerSelectedFromTeam"
-                                        @player-moved="handlePlayerMovedOnPitch"
-                                    />
-                                </div>
-                            </q-card-section>
-                        </q-card>
-                    </div>
+                            </div>
+                        </q-card-section>
+                    </q-card>
                 </div>
 
                 <!-- Players Table -->
@@ -487,6 +479,38 @@ export default {
       'AM (C)': ['AMC', 'MC'],
       'ST (C)': ['ST', 'AMC'],
       GK: ['GK'],
+    }
+
+    const LINEUP_SELECTION_VERSION = 'v2-strict-positions'
+
+    const getPlayerShortPositions = (player) => {
+      if (Array.isArray(player?.shortPositions)) return player.shortPositions
+      if (Array.isArray(player?.short_positions)) return player.short_positions
+      return []
+    }
+
+    const getSlotExactPositions = (slotRole) => positionSideMap[slotRole.toUpperCase()] || []
+
+    const getSlotFallbackPositions = (slotRole) => {
+      const exactPositions = getSlotExactPositions(slotRole)
+      const fallbackPositions = fallbackPositionMap[slotRole.toUpperCase()] || []
+      return fallbackPositions.filter((position) => !exactPositions.includes(position))
+    }
+
+    const getExactCandidateCountForSlot = (slot) => {
+      const slotPositions = getSlotExactPositions(slot.role)
+      return teamPlayers.value.filter((player) =>
+        getPlayerShortPositions(player).some((position) => slotPositions.includes(position))
+      ).length
+    }
+
+    const getSlotSelectionOrder = (formationSlots) => {
+      return [...formationSlots].sort((a, b) => {
+        const exactCandidateDifference =
+          getExactCandidateCountForSlot(a) - getExactCandidateCountForSlot(b)
+        if (exactCandidateDifference !== 0) return exactCandidateDifference
+        return formationSlots.indexOf(a) - formationSlots.indexOf(b)
+      })
     }
 
     const fetchPlayersAndCurrency = async (datasetId) => {
@@ -978,7 +1002,10 @@ export default {
       console.log('Fallback mappings for GK:', fallbackPositionMap.GK)
 
       // Check cache first
-      const cacheKey = formationCache.generateKey(teamPlayers.value, 'team-best')
+      const cacheKey = formationCache.generateKey(
+        teamPlayers.value,
+        `team-best-${LINEUP_SELECTION_VERSION}`
+      )
       const cachedResult = formationCache.get(cacheKey)
       if (cachedResult) {
         // console.log('Using cached formation result:', cachedResult.bestFormationKey)
@@ -1056,8 +1083,8 @@ export default {
 
         const assignedPlayersToSlots = new Set()
 
-        // Fill starting XI for this formation
-        for (const slot of formationSlots) {
+        // Fill scarce natural positions first so flexible players do not block wing-backs/full-backs.
+        for (const slot of getSlotSelectionOrder(formationSlots)) {
           for (const assignment of allPotentialPlayerAssignments) {
             if (
               assignment.slotId === slot.id &&
@@ -1134,7 +1161,7 @@ export default {
       // Check cache first for squad composition
       const cacheKey = formationCache.generateKey(
         teamPlayers.value,
-        `team-depth-${selectedFormationKey.value}`
+        `team-depth-${LINEUP_SELECTION_VERSION}-${selectedFormationKey.value}`
       )
       const cachedResult = formationCache.get(cacheKey)
       if (cachedResult) {
@@ -1172,10 +1199,7 @@ export default {
       const playerPositionMap = new Map() // Maps player name to positions they can play
 
       for (const player of teamPlayers.value) {
-        const playablePositions = []
-        if (player.shortPositions && player.shortPositions.length > 0) {
-          playablePositions.push(...player.shortPositions)
-        }
+        const playablePositions = [...getPlayerShortPositions(player)]
         playerPositionMap.set(player.name, playablePositions)
       }
 
@@ -1191,8 +1215,8 @@ export default {
           // Only include players who meet the threshold and are properly positioned
           if (overallInRole >= MIN_SUITABILITY_THRESHOLD) {
             // Get the compatible positions for this slot
-            const slotPositions = positionSideMap[slot.role.toUpperCase()] || []
-            const _fallbackPositions = fallbackPositionMap[slot.role.toUpperCase()] || []
+            const slotPositions = getSlotExactPositions(slot.role)
+            const fallbackPositions = getSlotFallbackPositions(slot.role)
 
             // STRICT POSITION CHECKING: Check if player can play in this position
             // For this to be true, the player MUST have one of the required positions
@@ -1205,11 +1229,10 @@ export default {
             const isExactMatch = playerPositions.some((pos) => slotPositions.includes(pos))
 
             // Include both exact matches and fallback positions for more options
-            const _canPlayInPosition =
-              isExactMatch || playerPositions.some((pos) => _fallbackPositions.includes(pos))
+            const isFallbackMatch = playerPositions.some((pos) => fallbackPositions.includes(pos))
+            const canPlayInPosition = isExactMatch || isFallbackMatch
 
-            // More inclusive approach - include players who meet the threshold
-            if (overallInRole >= MIN_SUITABILITY_THRESHOLD) {
+            if (canPlayInPosition) {
               // Strict position filtering:
               // 1. For first team selection, we want EXACT position matches only unless
               //    there are no players for a position
@@ -1244,10 +1267,11 @@ export default {
       })
 
       const assignedPlayersToSlots = new Set()
+      const slotsByNaturalScarcity = getSlotSelectionOrder(formationSlots)
 
       for (let depthIndex = 0; depthIndex < 3; depthIndex++) {
         // First pass: fill positions with exact matches
-        for (const slot of formationSlots) {
+        for (const slot of slotsByNaturalScarcity) {
           if (tempSquadComposition[slot.id].length === depthIndex) {
             // If this slot needs a player at current depth
             for (const assignment of allPotentialPlayerAssignments) {
@@ -1286,12 +1310,13 @@ export default {
         }
 
         // Second pass: fill remaining positions with fallback matches
-        for (const slot of formationSlots) {
+        for (const slot of slotsByNaturalScarcity) {
           if (tempSquadComposition[slot.id].length === depthIndex) {
             // If this slot still needs a player after the first pass
             for (const assignment of allPotentialPlayerAssignments) {
               if (
                 assignment.slotId === slot.id &&
+                !assignment.exactMatch &&
                 !assignedPlayersToSlots.has(assignment.player.name)
               ) {
                 // Check if this player is already a starter in *another* slot if we are filling backups
@@ -1326,7 +1351,10 @@ export default {
 
       // Ensure each slot in tempSquadComposition is sorted by overallInRole descending
       for (const slotId in tempSquadComposition) {
-        tempSquadComposition[slotId].sort((a, b) => b.overallInRole - a.overallInRole)
+        tempSquadComposition[slotId].sort((a, b) => {
+          if (a.exactMatch !== b.exactMatch) return a.exactMatch ? -1 : 1
+          return b.overallInRole - a.overallInRole
+        })
       }
 
       // Check if any positions have no players assigned at all
@@ -1341,7 +1369,7 @@ export default {
 
           for (const player of teamPlayers.value) {
             if (!assignedPlayersToSlots.has(player.name)) {
-              const playerPositions = player.shortPositions || []
+              const playerPositions = getPlayerShortPositions(player)
 
               // Check if player can play any fallback position
               const canPlayFallback = playerPositions.some((pos) => fallbackPositions.includes(pos))
@@ -1996,16 +2024,11 @@ $border-radius-small: 8px;
     66% { transform: translateY(-10px) rotate(-1deg); }
 }
 
-// Formation and Tactics Layout - New Structure
 .formation-tactics-layout {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    flex-direction: column;
     gap: 2rem;
     margin-bottom: 2rem;
-    
-    @media (max-width: 1200px) {
-        grid-template-columns: 1fr;
-    }
 }
 
 .formation-controls-panel {
@@ -2074,20 +2097,28 @@ $border-radius-small: 8px;
 
 // Formation Controls
 .formation-controls {
+    display: grid;
+    grid-template-columns: minmax(260px, 380px) minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+
     .formation-select {
-        margin-bottom: 1rem;
+        margin-bottom: 0;
     }
     
     .calculation-banner {
         border-radius: $border-radius-small;
         font-weight: 500;
     }
+
+    @media (max-width: 768px) {
+        grid-template-columns: 1fr;
+    }
 }
 
-// Squad Depth Grid - Adjusted for left panel
 .squad-depth-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 1rem;
     
     @media (max-width: 768px) {
@@ -2258,10 +2289,10 @@ $border-radius-small: 8px;
 }
 
 // Pitch Container
-.pitch-container {
+.pitch-stage {
     background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
     border-radius: $border-radius;
-    padding: 2rem;
+    padding: 0.75rem;
     margin-top: 1rem;
     position: relative;
     overflow: hidden;
@@ -2278,6 +2309,67 @@ $border-radius-small: 8px;
             linear-gradient(0deg, rgba(255, 255, 255, 0.1) 50%, transparent 50%);
         background-size: 20px 20px;
         opacity: 0.3;
+    }
+
+    :deep(.pitch-container--cards) {
+        max-width: min(1280px, 100%);
+        min-height: max(820px, calc(var(--formation-rows) * 176px));
+        margin: 0 auto;
+        padding: 16px 10px;
+    }
+
+    :deep(.pitch-container--cards .formation-row) {
+        min-height: 166px;
+    }
+
+    :deep(.pitch-container--cards .player-slot) {
+        min-height: 166px;
+    }
+
+    :deep(.player-card-slot) {
+        width: 122px;
+        height: 183px;
+    }
+
+    :deep(.pitch-player-card),
+    :deep(.pitch-player-card:hover),
+    :deep(.pitch-player-card:focus-within) {
+        transform: scale(0.43);
+    }
+
+    :deep(.empty-card-slot) {
+        width: 122px;
+        height: 170px;
+    }
+
+    @media (max-width: 900px) {
+        padding: 0.5rem;
+
+        :deep(.pitch-container--cards) {
+            min-height: max(700px, calc(var(--formation-rows) * 146px));
+            padding: 12px 6px;
+        }
+
+        :deep(.pitch-container--cards .formation-row),
+        :deep(.pitch-container--cards .player-slot) {
+            min-height: 140px;
+        }
+
+        :deep(.player-card-slot) {
+            width: 102px;
+            height: 153px;
+        }
+
+        :deep(.pitch-player-card),
+        :deep(.pitch-player-card:hover),
+        :deep(.pitch-player-card:focus-within) {
+            transform: scale(0.36);
+        }
+
+        :deep(.empty-card-slot) {
+            width: 102px;
+            height: 142px;
+        }
     }
 }
 
@@ -2318,7 +2410,6 @@ $border-radius-small: 8px;
 // Responsive Design
 @media (max-width: 1200px) {
     .formation-tactics-layout {
-        grid-template-columns: 1fr;
         gap: 1.5rem;
     }
     
