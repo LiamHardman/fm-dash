@@ -97,9 +97,11 @@
                         <div v-if="activeTab === 'simple'" class="simple-view">
                             <div class="player-card-container">
                                 <PlayerCards 
-                                    :player="displayPlayer"
+                                    :player="cardDisplayPlayer"
                                     :currency-symbol="currencySymbol"
                                     :dataset-id="datasetId"
+                                    :card-design-override="cardDisplayPlayer?.totsCardDesign"
+                                    :position-override="cardDisplayPlayer?.totsDisplayPosition"
                                     class="player-detail-card"
                                 />
                             </div>
@@ -1408,6 +1410,20 @@ export default defineComponent({
           ? props.player
           : null
       return result
+    })
+
+    const cardDisplayPlayer = computed(() => {
+      if (!props.player?.totsDisplayPosition) return displayPlayer.value
+      if (!displayPlayer.value) return props.player
+
+      return {
+        ...displayPlayer.value,
+        ...props.player,
+        attributes: displayPlayer.value.attributes || props.player.attributes,
+        numericAttributes: displayPlayer.value.numericAttributes || props.player.numericAttributes,
+        performancePercentiles:
+          displayPlayer.value.performancePercentiles || props.player.performancePercentiles,
+      }
     })
 
     // Use the percentile retry composable with displayPlayer instead of props.player
@@ -2882,6 +2898,7 @@ export default defineComponent({
       isLoadingDetailedData,
       detailedDataError,
       displayPlayer,
+      cardDisplayPlayer,
       forceRecompute,
       updateComparisonGroupForPlayer,
       isDarkMode, // <-- add this line
@@ -4529,4 +4546,3 @@ body.body--dark .q-page {
 }
 
 </style>
-

@@ -144,6 +144,10 @@ export default defineComponent({
       type: String,
       default: null,
     },
+    positionOverride: {
+      type: String,
+      default: null,
+    },
   },
   emits: ['click'],
   setup(props, { emit }) {
@@ -155,6 +159,7 @@ export default defineComponent({
 
     // Format position to show only the first position
     const formattedPosition = computed(() => {
+      if (props.positionOverride) return props.positionOverride
       if (!props.player.position) return ''
       let bestPosition = null
       let bestScore = 0
@@ -455,6 +460,7 @@ export default defineComponent({
 
     // Check if player is a goalkeeper
     const isGoalkeeper = computed(() => {
+      if (props.positionOverride === 'GK') return true
       if (!props.player.position) return false
 
       // Check various ways the position might indicate goalkeeper
@@ -494,10 +500,10 @@ export default defineComponent({
       if (isGoalkeeper.value) {
         return [
           { label: 'DIV', value: props.player.div },
-          { label: 'HAN', value: props.player.han },
-          { label: 'KIC', value: props.player.kic },
           { label: 'REF', value: props.player.ref },
+          { label: 'HAN', value: props.player.han },
           { label: 'SPD', value: props.player.spd },
+          { label: 'KIC', value: props.player.kic },
           { label: 'POS', value: props.player.pos },
         ]
       }

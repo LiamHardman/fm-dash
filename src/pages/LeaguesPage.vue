@@ -209,6 +209,7 @@
                                         :currency-symbol="detectedCurrencySymbol"
                                         :dataset-id="currentDatasetId"
                                         :card-design-override="getTotsCardDesign(slot.player)"
+                                        :position-override="slot.player.totsDisplayPosition"
                                         @click="openPlayerDetail(slot.player)"
                                     />
                                     <template v-else>
@@ -375,24 +376,103 @@ export default {
     const showPlayerDetailDialog = ref(false)
 
     const totsShape = [
-      { group: 'ATT', count: 3 },
-      { group: 'MID', count: 3 },
-      { group: 'DEF', count: 4 },
-      { group: 'GK', count: 1 },
+      {
+        group: 'ATT',
+        slots: [
+          {
+            key: 'att-left',
+            displayPreference: ['LW', 'LM', 'ST', 'RW', 'RM'],
+            eligible: ['LW', 'AML', 'LM', 'ML', 'ST', 'STC', 'CF', 'RW', 'AMR', 'RM', 'MR'],
+          },
+          {
+            key: 'att-centre',
+            displayPreference: ['ST', 'LW', 'RW', 'LM', 'RM'],
+            eligible: ['ST', 'STC', 'CF', 'LW', 'AML', 'LM', 'ML', 'RW', 'AMR', 'RM', 'MR'],
+          },
+          {
+            key: 'att-right',
+            displayPreference: ['RW', 'RM', 'ST', 'LW', 'LM'],
+            eligible: ['RW', 'AMR', 'RM', 'MR', 'ST', 'STC', 'CF', 'LW', 'AML', 'LM', 'ML'],
+          },
+        ],
+      },
+      {
+        group: 'MID',
+        slots: Array.from({ length: 3 }, (_, index) => ({
+          key: `mid-${index}`,
+          displayPreference: ['CM', 'CDM', 'CAM'],
+          eligible: ['CM', 'MC', 'CDM', 'DM', 'CAM', 'AMC'],
+        })),
+      },
+      {
+        group: 'DEF',
+        slots: [
+          {
+            key: 'def-lb',
+            displayPosition: 'LB',
+            displayPreference: ['LB'],
+            eligible: ['LB', 'DL', 'LWB', 'WBL'],
+          },
+          {
+            key: 'def-lcb',
+            displayPosition: 'CB',
+            displayPreference: ['CB'],
+            eligible: ['CB', 'DC', 'D', 'SW'],
+          },
+          {
+            key: 'def-rcb',
+            displayPosition: 'CB',
+            displayPreference: ['CB'],
+            eligible: ['CB', 'DC', 'D', 'SW'],
+          },
+          {
+            key: 'def-rb',
+            displayPosition: 'RB',
+            displayPreference: ['RB'],
+            eligible: ['RB', 'DR', 'RWB', 'WBR'],
+          },
+        ],
+      },
+      {
+        group: 'GK',
+        slots: [
+          {
+            key: 'gk',
+            displayPosition: 'GK',
+            displayPreference: ['GK'],
+            eligible: ['GK', 'Goalkeeper'],
+          },
+        ],
+      },
     ]
 
-    const positionGroupAliases = {
+    const displayPositionAliases = {
       GK: ['GK', 'Goalkeeper'],
-      DEF: ['D', 'DC', 'DR', 'DL', 'WBR', 'WBL', 'CB', 'RB', 'LB', 'RWB', 'LWB', 'SW'],
-      MID: ['M', 'MC', 'MR', 'ML', 'DM', 'AMC', 'CM', 'CDM', 'CAM', 'RM', 'LM', 'AM'],
-      ATT: ['ST', 'AMR', 'AML', 'CF', 'LW', 'RW', 'IF', 'TQ', 'F9'],
+      LB: ['LB', 'DL', 'LWB', 'WBL'],
+      CB: ['CB', 'DC', 'D', 'SW'],
+      RB: ['RB', 'DR', 'RWB', 'WBR'],
+      CM: ['CM', 'MC', 'M'],
+      CDM: ['CDM', 'DM'],
+      CAM: ['CAM', 'AMC', 'AM'],
+      LW: ['LW', 'AML'],
+      LM: ['LM', 'ML'],
+      ST: ['ST', 'STC', 'CF'],
+      RW: ['RW', 'AMR'],
+      RM: ['RM', 'MR'],
     }
 
-    for (const [group, positions] of Object.entries(positionGroups)) {
-      positionGroupAliases[group] = Array.from(
-        new Set([...(positionGroupAliases[group] || []), ...positions])
-      )
-    }
+    const knownPositionCodes = Array.from(
+      new Set([
+        ...Object.values(displayPositionAliases).flat(),
+        ...Object.values(positionGroups).flat(),
+        'D',
+        'M',
+        'AM',
+      ])
+    )
+      .map((position) => String(position).toUpperCase())
+      .filter(Boolean)
+      .sort((a, b) => b.length - a.length)
 
     const getPerformanceStat = (player, keys) => {
       const stats = player?.performanceStatsNumeric || player?.PerformanceStatsNumeric || {}
@@ -416,18 +496,39 @@ export default {
       }
 
       const rawPosition = String(player?.position || '').toUpperCase()
-      const allKnownCodes = Array.from(new Set(Object.values(positionGroupAliases).flat()))
-        .filter((code) => code && code !== 'D' && code !== 'M' && code !== 'AM')
-        .sort((a, b) => b.length - a.length)
-
-      for (const code of allKnownCodes) {
+      for (const code of knownPositionCodes) {
         const pattern = new RegExp(`(^|[^A-Z])${code}([^A-Z]|$)`)
         if (pattern.test(rawPosition)) codes.add(code)
       }
 
-      if (rawPosition.includes('D (') || rawPosition === 'D') codes.add('D')
-      if (rawPosition.includes('M (') || rawPosition === 'M') codes.add('M')
-      if (rawPosition.includes('AM (') || rawPosition === 'AM') codes.add('AM')
+      const sideGroups = rawPosition.matchAll(/\b(D|WB|M|AM)\s*\(([^)]+)\)/g)
+      for (const match of sideGroups) {
+        const family = match[1]
+        const sides = match[2]
+
+        if (family === 'D') {
+          codes.add('D')
+          if (sides.includes('C')) codes.add('DC')
+          if (sides.includes('R')) codes.add('DR')
+          if (sides.includes('L')) codes.add('DL')
+        }
+        if (family === 'WB') {
+          if (sides.includes('R')) codes.add('WBR')
+          if (sides.includes('L')) codes.add('WBL')
+        }
+        if (family === 'M') {
+          codes.add('M')
+          if (sides.includes('C')) codes.add('MC')
+          if (sides.includes('R')) codes.add('MR')
+          if (sides.includes('L')) codes.add('ML')
+        }
+        if (family === 'AM') {
+          codes.add('AM')
+          if (sides.includes('C')) codes.add('AMC')
+          if (sides.includes('R')) codes.add('AMR')
+          if (sides.includes('L')) codes.add('AML')
+        }
+      }
 
       for (const parsedPosition of player?.parsedPositions || []) {
         const normalized = String(parsedPosition).toLowerCase()
@@ -446,30 +547,157 @@ export default {
       return codes
     }
 
-    const getPlayerTotsGroup = (player) => {
+    const canPlayAny = (codes, positions) => {
+      return positions.some((position) => codes.has(String(position).toUpperCase()))
+    }
+
+    const canPlayDisplayPosition = (codes, position) => {
+      return canPlayAny(codes, displayPositionAliases[position] || [position])
+    }
+
+    const getSlotDisplayPosition = (player, slot) => {
+      if (slot.displayPosition) return slot.displayPosition
       const codes = getPlayerPositionCodes(player)
 
-      for (const group of ['GK', 'DEF', 'MID', 'ATT']) {
-        const aliases = positionGroupAliases[group] || []
-        if (aliases.some((code) => codes.has(code))) return group
+      for (const displayPosition of slot.displayPreference || []) {
+        if (canPlayDisplayPosition(codes, displayPosition)) return displayPosition
       }
 
-      return null
+      return slot.displayPreference?.[0] || ''
+    }
+
+    const getSlotFitScore = (player, slot) => {
+      const codes = getPlayerPositionCodes(player)
+      const index = (slot.displayPreference || []).findIndex((displayPosition) =>
+        canPlayDisplayPosition(codes, displayPosition)
+      )
+
+      return index === -1 ? 99 : index
+    }
+
+    const getOverallValue = (player) => {
+      const overall = Number(player?.Overall ?? player?.overall ?? 0)
+      return Number.isNaN(overall) ? 0 : overall
+    }
+
+    const getPlayerSelectionKey = (player) =>
+      player?.uid || player?.UID || player?.id || player?.name
+
+    const clampNumber = (value, min, max) => Math.min(max, Math.max(min, value))
+
+    const outfieldStatKeys = ['pac', 'dri', 'sho', 'def', 'pas', 'phy']
+    const goalkeeperStatKeys = ['div', 'han', 'kic', 'ref', 'spd', 'pos']
+
+    const statRelevanceByPosition = {
+      GK: { div: 1.18, han: 1.08, kic: 0.72, ref: 1.2, spd: 0.55, pos: 1.12 },
+      LB: { pac: 0.9, dri: 0.65, sho: 0.22, def: 1.2, pas: 0.76, phy: 1.05 },
+      RB: { pac: 0.9, dri: 0.65, sho: 0.22, def: 1.2, pas: 0.76, phy: 1.05 },
+      CB: { pac: 0.58, dri: 0.28, sho: 0.18, def: 1.24, pas: 0.64, phy: 1.14 },
+      CDM: { pac: 0.5, dri: 0.68, sho: 0.36, def: 1.12, pas: 1.1, phy: 0.96 },
+      CM: { pac: 0.48, dri: 0.9, sho: 0.58, def: 0.68, pas: 1.18, phy: 0.78 },
+      CAM: { pac: 0.72, dri: 1.12, sho: 0.95, def: 0.24, pas: 1.16, phy: 0.52 },
+      LW: { pac: 1.12, dri: 1.14, sho: 0.82, def: 0.22, pas: 0.82, phy: 0.52 },
+      LM: { pac: 1.02, dri: 1.04, sho: 0.62, def: 0.48, pas: 0.92, phy: 0.62 },
+      ST: { pac: 0.84, dri: 0.72, sho: 1.22, def: 0.16, pas: 0.58, phy: 0.92 },
+      RW: { pac: 1.12, dri: 1.14, sho: 0.82, def: 0.22, pas: 0.82, phy: 0.52 },
+      RM: { pac: 1.02, dri: 1.04, sho: 0.62, def: 0.48, pas: 0.92, phy: 0.62 },
+    }
+
+    const getRelevantStatFloor = (targetOverall, relevance) => {
+      if (relevance >= 1.18) return targetOverall - 2
+      if (relevance >= 1) return targetOverall - 7
+      if (relevance >= 0.82) return targetOverall - 8
+      if (relevance >= 0.62) return targetOverall - 10
+      return 0
+    }
+
+    const getUpgradedStat = (
+      statValue,
+      baseOverall,
+      targetOverall,
+      relevance,
+      displayPosition,
+      positionBonus
+    ) => {
+      const numericStat = Number(statValue)
+      if (Number.isNaN(numericStat) || numericStat <= 0) return statValue
+
+      const overallBoost = Math.max(0, targetOverall - baseOverall)
+      let statBoost = overallBoost * (0.65 + relevance * 0.7) + positionBonus
+
+      if (numericStat >= targetOverall + 2) statBoost *= 0.35
+      else if (numericStat >= targetOverall) statBoost *= 0.5
+
+      const floor = getRelevantStatFloor(targetOverall, relevance)
+      const isAttacker = ['LW', 'LM', 'ST', 'RW', 'RM'].includes(displayPosition)
+      const positionCap =
+        relevance >= 0.62 ? targetOverall + 8 : targetOverall - (isAttacker ? 5 : 8)
+      const boosted = Math.max(numericStat + statBoost, floor)
+
+      return Math.round(clampNumber(boosted, numericStat, Math.min(99, positionCap)))
+    }
+
+    const createTotsPlayer = (player, displayPosition, leagueAverages) => {
+      const baseOverall = getOverallValue(player)
+      const leagueAverageOverall = leagueAverages.averageOverall || baseOverall || 65
+      const ratingBonus = player.totsRating
+        ? clampNumber(
+            (player.totsRating - leagueAverages.averagePerformanceRating) * 1.3,
+            -1.5,
+            2.5
+          )
+        : 0
+      const belowLeagueBoost = Math.max(0, leagueAverageOverall - baseOverall) * 0.68
+      const aboveLeagueDiscount = Math.max(0, baseOverall - leagueAverageOverall) * 0.08
+      const rawBoost = 8 + belowLeagueBoost - aboveLeagueDiscount + ratingBonus
+      const targetOverall = Math.round(
+        clampNumber(baseOverall + rawBoost, baseOverall + 4, displayPosition === 'GK' ? 94 : 96)
+      )
+      const relevance = statRelevanceByPosition[displayPosition] || statRelevanceByPosition.CM
+      const statKeys = displayPosition === 'GK' ? goalkeeperStatKeys : outfieldStatKeys
+      const positionBonus =
+        displayPosition === 'GK'
+          ? 0
+          : ['LW', 'LM', 'RW', 'RM'].includes(displayPosition)
+            ? 3
+            : displayPosition === 'ST'
+              ? 2
+              : 1
+      const boostedPlayer = {
+        ...player,
+        Overall: targetOverall,
+        overall: targetOverall,
+        totsBaseOverall: baseOverall,
+        totsCardDesign: getTotsCardDesignForOverall(targetOverall),
+        totsDisplayPosition: displayPosition,
+      }
+
+      for (const key of statKeys) {
+        boostedPlayer[key] = getUpgradedStat(
+          player[key],
+          baseOverall,
+          targetOverall,
+          relevance[key] || 0.25,
+          displayPosition,
+          positionBonus
+        )
+      }
+
+      return boostedPlayer
     }
 
     const teamOfSeasonLineup = computed(() => {
       const selectedLeague = selectedLeagueName.value
       const players = Array.isArray(playerStore.allPlayers) ? playerStore.allPlayers : []
 
-      const groupedPlayers = {
-        ATT: [],
-        MID: [],
-        DEF: [],
-        GK: [],
-      }
+      const eligiblePlayers = []
       let totalPlayers = 0
       let playersWithRating = 0
       let playersWithFiveApps = 0
+      let overallTotal = 0
+      let overallCount = 0
+      let performanceRatingTotal = 0
+      let performanceRatingCount = 0
 
       for (const player of players) {
         if (!player || player.division !== selectedLeague) continue
@@ -477,42 +705,62 @@ export default {
 
         const rating = getPerformanceStat(player, ['Av Rat', 'Rating', 'Average Rating'])
         const appearances = getPerformanceStat(player, ['Apps', 'Appearances', 'Aps'])
-        const group = getPlayerTotsGroup(player)
+        const overall = getOverallValue(player)
 
         if (rating !== null) playersWithRating++
         if (appearances !== null && appearances >= 5) playersWithFiveApps++
+        if (overall > 0) {
+          overallTotal += overall
+          overallCount++
+        }
+        if (rating !== null) {
+          performanceRatingTotal += rating
+          performanceRatingCount++
+        }
 
-        if (!group || rating === null || appearances === null || appearances < 5) continue
-
-        groupedPlayers[group].push({
+        if (rating === null || appearances === null || appearances < 5) continue
+        eligiblePlayers.push({
           ...player,
           totsRating: rating,
           totsAppearances: appearances,
         })
       }
 
+      const leagueAverages = {
+        averageOverall: overallCount > 0 ? overallTotal / overallCount : 65,
+        averagePerformanceRating:
+          performanceRatingCount > 0 ? performanceRatingTotal / performanceRatingCount : 6.8,
+      }
       const selectedIds = new Set()
       const rows = totsShape.map((row) => {
-        const candidates = groupedPlayers[row.group]
-          .filter((player) => !selectedIds.has(player.uid || player.name))
-          .sort((a, b) => {
-            if (b.totsRating !== a.totsRating) return b.totsRating - a.totsRating
-            if (b.totsAppearances !== a.totsAppearances)
-              return b.totsAppearances - a.totsAppearances
-            return (b.Overall || b.overall || 0) - (a.Overall || a.overall || 0)
-          })
-
-        const playersForRow = candidates.slice(0, row.count)
-        for (const player of playersForRow) {
-          selectedIds.add(player.uid || player.name)
-        }
-
         return {
           group: row.group,
-          slots: Array.from({ length: row.count }, (_, index) => ({
-            index,
-            player: playersForRow[index] || null,
-          })),
+          slots: row.slots.map((slot, index) => {
+            const candidates = eligiblePlayers
+              .filter((player) => !selectedIds.has(getPlayerSelectionKey(player)))
+              .filter((player) => canPlayAny(getPlayerPositionCodes(player), slot.eligible))
+              .sort((a, b) => {
+                const fitDifference = getSlotFitScore(a, slot) - getSlotFitScore(b, slot)
+                if (fitDifference !== 0) return fitDifference
+                if (b.totsRating !== a.totsRating) return b.totsRating - a.totsRating
+                if (b.totsAppearances !== a.totsAppearances)
+                  return b.totsAppearances - a.totsAppearances
+                return getOverallValue(b) - getOverallValue(a)
+              })
+
+            const selectedPlayer = candidates[0] || null
+            if (selectedPlayer) selectedIds.add(getPlayerSelectionKey(selectedPlayer))
+            const displayPosition = selectedPlayer
+              ? getSlotDisplayPosition(selectedPlayer, slot)
+              : slot.displayPosition || slot.displayPreference?.[0] || row.group
+
+            return {
+              index,
+              player: selectedPlayer
+                ? createTotsPlayer(selectedPlayer, displayPosition, leagueAverages)
+                : null,
+            }
+          }),
         }
       })
 
@@ -661,11 +909,15 @@ export default {
       showPlayerDetailDialog.value = true
     }
 
-    const getTotsCardDesign = (player) => {
-      const overall = Number(player?.Overall ?? player?.overall ?? 0)
+    const getTotsCardDesignForOverall = (overall) => {
       if (overall >= 75) return 'card-design--gold-season-trophy'
       if (overall >= 65) return 'card-design--silver-season-laurel'
       return 'card-design--bronze-season-ribbon'
+    }
+
+    const getTotsCardDesign = (player) => {
+      const overall = Number(player?.Overall ?? player?.overall ?? 0)
+      return getTotsCardDesignForOverall(overall)
     }
 
     const getOverallClass = (overall) => {
