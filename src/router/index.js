@@ -11,6 +11,7 @@ const DocsPage = () => import('../pages/DocsPage.vue')
 const WishlistPage = () => import('../pages/WishlistPage.vue')
 const PerformancePage = () => import('../pages/PerformancePage.vue')
 const CardDesignsPage = () => import('../pages/CardDesignsPage.vue')
+const CardHoverPage = () => import('../pages/CardHoverPage.vue')
 
 const routes = [
   {
@@ -98,6 +99,11 @@ const routes = [
     path: '/cards',
     name: 'cards',
     component: CardDesignsPage,
+  },
+  {
+    path: '/card_hover',
+    name: 'card-hover',
+    component: CardHoverPage,
   },
 ]
 
