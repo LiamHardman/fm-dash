@@ -3,100 +3,133 @@
         <section class="cards-preview-shell">
             <div class="preview-header">
                 <div>
-                    <p class="preview-kicker">Bronze non-rare explorations</p>
+                    <p class="preview-kicker">Standard tier explorations</p>
                     <h1>FM-Dash card surface studies</h1>
                 </div>
                 <p class="preview-summary">
-                    Three CSS-only treatments using one shared player-card
-                    hierarchy: rating, position, name, vitals, identity marks,
-                    face area, and six footer stats.
+                    CSS-only standard-tier treatments grouped by rarity. Each
+                    set keeps the shared player-card hierarchy: rating,
+                    position, name, vitals, identity marks, face area, and six
+                    footer stats.
                 </p>
             </div>
 
-            <div
-                class="card-gallery"
-                aria-label="Bronze non-rare card design previews"
-            >
-                <article
-                    v-for="design in designs"
-                    :key="design.id"
-                    class="design-panel"
+            <div class="design-sections">
+                <section
+                    v-for="section in designSections"
+                    :key="section.id"
+                    class="design-section"
+                    :aria-labelledby="`${section.id}-title`"
                 >
-                    <div
-                        class="concept-card"
-                        :class="`concept-card--${design.id}`"
-                        :style="design.tokens"
-                    >
-                        <div class="concept-card__texture"></div>
-                        <div class="concept-card__content">
-                            <header class="concept-card__header">
-                                <div class="concept-card__rating-block">
-                                    <div class="concept-card__rating">
-                                        {{ player.overall }}
-                                    </div>
-                                    <div class="concept-card__position">
-                                        {{ player.position }}
-                                    </div>
-                                </div>
-                                <div class="concept-card__identity">
-                                    <div class="concept-card__name">
-                                        {{ player.name }}
-                                    </div>
-                                    <div class="concept-card__vitals">
-                                        {{ player.vitals }}
-                                    </div>
-                                </div>
-                            </header>
-
-                            <section
-                                class="concept-card__middle"
-                                aria-label="Player identity"
-                            >
-                                <div class="concept-card__marks">
-                                    <div
-                                        class="concept-card__flag"
-                                        aria-label="Example nation flag"
-                                    >
-                                        <span></span>
-                                        <span></span>
-                                        <span></span>
-                                    </div>
-                                    <div
-                                        class="concept-card__club"
-                                        aria-label="Example club crest"
-                                    >
-                                        <q-icon name="shield" size="30px" />
-                                    </div>
-                                </div>
-
-                                <div
-                                    class="concept-card__portrait"
-                                    aria-label="Example player portrait"
-                                >
-                                    <q-icon name="person" size="124px" />
-                                </div>
-                            </section>
-
-                            <footer class="concept-card__footer">
-                                <div class="concept-card__stats">
-                                    <div
-                                        v-for="stat in player.stats"
-                                        :key="stat.label"
-                                        class="concept-card__stat"
-                                    >
-                                        <span>{{ stat.value }}</span>
-                                        {{ stat.label }}
-                                    </div>
-                                </div>
-                            </footer>
+                    <div class="design-section__header">
+                        <div>
+                            <p class="preview-kicker">{{ section.kicker }}</p>
+                            <h2 :id="`${section.id}-title`">
+                                {{ section.title }}
+                            </h2>
                         </div>
+                        <p>{{ section.description }}</p>
                     </div>
 
-                    <div class="design-notes">
-                        <h2>{{ design.name }}</h2>
-                        <p>{{ design.description }}</p>
+                    <div
+                        class="card-gallery"
+                        :aria-label="`${section.title} card design previews`"
+                    >
+                        <article
+                            v-for="(design, index) in section.designs"
+                            :key="design.id"
+                            class="design-panel"
+                        >
+                            <div
+                                class="concept-card"
+                                :class="[
+                                    `concept-card--${design.variant}`,
+                                    `concept-card--${design.id}`,
+                                ]"
+                                :style="design.tokens"
+                            >
+                                <div class="concept-card__texture"></div>
+                                <div class="concept-card__content">
+                                    <header class="concept-card__header">
+                                        <div class="concept-card__rating-block">
+                                            <div class="concept-card__rating">
+                                                {{ section.player.overall }}
+                                            </div>
+                                            <div class="concept-card__position">
+                                                {{ section.player.position }}
+                                            </div>
+                                        </div>
+                                        <div class="concept-card__identity">
+                                            <div class="concept-card__name">
+                                                {{ section.player.name }}
+                                            </div>
+                                            <div class="concept-card__vitals">
+                                                {{ section.player.vitals }}
+                                            </div>
+                                        </div>
+                                    </header>
+
+                                    <section
+                                        class="concept-card__middle"
+                                        aria-label="Player identity"
+                                    >
+                                        <div class="concept-card__marks">
+                                            <div
+                                                class="concept-card__flag"
+                                                aria-label="Example nation flag"
+                                            >
+                                                <span></span>
+                                                <span></span>
+                                                <span></span>
+                                            </div>
+                                            <div
+                                                class="concept-card__club"
+                                                aria-label="Example club crest"
+                                            >
+                                                <q-icon
+                                                    name="shield"
+                                                    size="30px"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div
+                                            class="concept-card__portrait"
+                                            aria-label="Example player portrait"
+                                        >
+                                            <q-icon
+                                                name="person"
+                                                size="124px"
+                                            />
+                                        </div>
+                                    </section>
+
+                                    <footer class="concept-card__footer">
+                                        <div class="concept-card__stats">
+                                            <div
+                                                v-for="stat in section.player
+                                                    .stats"
+                                                :key="stat.label"
+                                                class="concept-card__stat"
+                                            >
+                                                <span>{{ stat.value }}</span>
+                                                {{ stat.label }}
+                                            </div>
+                                        </div>
+                                    </footer>
+                                </div>
+                            </div>
+
+                            <div class="design-notes">
+                                <p class="design-number">
+                                    {{ index + 1 }}
+                                </p>
+                                <h3>{{ design.name }}</h3>
+                                <p>{{ design.description }}</p>
+                            </div>
+                        </article>
                     </div>
-                </article>
+                </section>
             </div>
         </section>
     </q-page>
@@ -105,24 +138,100 @@
 <script>
 import { defineComponent } from 'vue'
 
-const player = {
+const bronzeNonRarePlayer = {
   overall: 62,
   position: 'CM',
   name: 'Hartley',
   vitals: '21 | 325K | 2K/wk',
   stats: [
     { label: 'PAC', value: 58 },
-    { label: 'SHO', value: 53 },
-    { label: 'PAS', value: 59 },
     { label: 'DRI', value: 57 },
+    { label: 'SHO', value: 53 },
     { label: 'DEF', value: 54 },
+    { label: 'PAS', value: 59 },
     { label: 'PHY', value: 60 },
   ],
 }
 
-const designs = [
+const bronzeRarePlayer = {
+  overall: 62,
+  position: 'CM',
+  name: 'Hartley',
+  vitals: '21 | 325K | 2K/wk',
+  stats: [
+    { label: 'PAC', value: 69 },
+    { label: 'DRI', value: 68 },
+    { label: 'SHO', value: 57 },
+    { label: 'DEF', value: 51 },
+    { label: 'PAS', value: 66 },
+    { label: 'PHY', value: 64 },
+  ],
+}
+
+const silverNonRarePlayer = {
+  overall: 72,
+  position: 'RB',
+  name: 'Larsen',
+  vitals: '24 | 2.4M | 9K/wk',
+  stats: [
+    { label: 'PAC', value: 73 },
+    { label: 'DRI', value: 70 },
+    { label: 'SHO', value: 58 },
+    { label: 'DEF', value: 71 },
+    { label: 'PAS', value: 68 },
+    { label: 'PHY', value: 69 },
+  ],
+}
+
+const silverRarePlayer = {
+  overall: 72,
+  position: 'RB',
+  name: 'Larsen',
+  vitals: '24 | 2.4M | 9K/wk',
+  stats: [
+    { label: 'PAC', value: 82 },
+    { label: 'DRI', value: 79 },
+    { label: 'SHO', value: 61 },
+    { label: 'DEF', value: 72 },
+    { label: 'PAS', value: 76 },
+    { label: 'PHY', value: 74 },
+  ],
+}
+
+const goldNonRarePlayer = {
+  overall: 82,
+  position: 'CAM',
+  name: 'Marquez',
+  vitals: '27 | 24M | 68K/wk',
+  stats: [
+    { label: 'PAC', value: 78 },
+    { label: 'DRI', value: 83 },
+    { label: 'SHO', value: 80 },
+    { label: 'DEF', value: 54 },
+    { label: 'PAS', value: 84 },
+    { label: 'PHY', value: 72 },
+  ],
+}
+
+const goldRarePlayer = {
+  overall: 82,
+  position: 'CAM',
+  name: 'Marquez',
+  vitals: '27 | 24M | 68K/wk',
+  stats: [
+    { label: 'PAC', value: 88 },
+    { label: 'DRI', value: 89 },
+    { label: 'SHO', value: 84 },
+    { label: 'DEF', value: 58 },
+    { label: 'PAS', value: 87 },
+    { label: 'PHY', value: 78 },
+  ],
+}
+
+const bronzeNonRareDesigns = [
   {
     id: 'weathered-alloy',
+    variant: 'non-rare',
     name: 'Weathered Alloy',
     description:
       'Matte bronze body, softened diagonal panels, low edge light, and fine surface scratches for an entry-tier metal card.',
@@ -133,6 +242,8 @@ const designs = [
       '--card-border': '#94613b',
       '--card-border-muted': '#4a2a1a',
       '--card-accent': '#c2834c',
+      '--card-cut': '#c2834c',
+      '--card-highlight': '#f3e5d6',
       '--card-text': '#f3e5d6',
       '--card-muted': '#c8a98a',
       '--card-stat': '#d28f56',
@@ -141,6 +252,7 @@ const designs = [
   },
   {
     id: 'brushed-copper',
+    variant: 'non-rare',
     name: 'Brushed Copper',
     description:
       'Linear brushed grain, charcoal lower field, subtle copper divider, and restrained corner highlights.',
@@ -151,6 +263,8 @@ const designs = [
       '--card-border': '#a87143',
       '--card-border-muted': '#3c261b',
       '--card-accent': '#d0975d',
+      '--card-cut': '#d0975d',
+      '--card-highlight': '#f4e6d8',
       '--card-text': '#f4e6d8',
       '--card-muted': '#bea07f',
       '--card-stat': '#d79b62',
@@ -159,6 +273,7 @@ const designs = [
   },
   {
     id: 'aged-plate',
+    variant: 'non-rare',
     name: 'Aged Plate',
     description:
       'Darker umber plate with stamped geometry, oxidised grooves, and a flatter glow so it stays clearly non-rare.',
@@ -169,6 +284,8 @@ const designs = [
       '--card-border': '#806044',
       '--card-border-muted': '#332319',
       '--card-accent': '#b5794d',
+      '--card-cut': '#b5794d',
+      '--card-highlight': '#f0e1d1',
       '--card-text': '#f0e1d1',
       '--card-muted': '#b99d80',
       '--card-stat': '#c98755',
@@ -177,12 +294,398 @@ const designs = [
   },
 ]
 
+const bronzeRareDesigns = [
+  {
+    id: 'polished-bronze',
+    variant: 'rare',
+    name: 'Polished Bronze',
+    description:
+      'Polished bronze base with a radial brushed surface, layered rim, and warm cuts that mark it as a standout low-tier card.',
+    tokens: {
+      '--card-bg': '#20120d',
+      '--card-surface': '#7a3f20',
+      '--card-surface-soft': '#b66d37',
+      '--card-border': '#d38c4c',
+      '--card-border-muted': '#5e321e',
+      '--card-accent': '#f0a35c',
+      '--card-cut': '#ffd09a',
+      '--card-highlight': '#fff1d5',
+      '--card-text': '#fff0df',
+      '--card-muted': '#e3b98f',
+      '--card-stat': '#ffc079',
+      '--card-shadow': 'rgba(224, 126, 55, 0.34)',
+    },
+  },
+  {
+    id: 'copper-starburst',
+    variant: 'rare',
+    name: 'Copper Starburst',
+    description:
+      'Darker chocolate bronze with a restrained starburst behind the portrait and small orange-gold sparks near the rating frame.',
+    tokens: {
+      '--card-bg': '#1a100c',
+      '--card-surface': '#603119',
+      '--card-surface-soft': '#a45a2b',
+      '--card-border': '#c47b3c',
+      '--card-border-muted': '#4a2718',
+      '--card-accent': '#ef9546',
+      '--card-cut': '#ffc46e',
+      '--card-highlight': '#ffe6bd',
+      '--card-text': '#fff2e3',
+      '--card-muted': '#d9ad82',
+      '--card-stat': '#ffb361',
+      '--card-shadow': 'rgba(230, 117, 42, 0.32)',
+    },
+  },
+  {
+    id: 'amber-facets',
+    variant: 'rare',
+    name: 'Amber Facets',
+    description:
+      'Angular polished-bronze facets, thin luminous seams, and a sharper stat glow without drifting into silver or gold value cues.',
+    tokens: {
+      '--card-bg': '#21130f',
+      '--card-surface': '#6d351b',
+      '--card-surface-soft': '#bd6f34',
+      '--card-border': '#d18b48',
+      '--card-border-muted': '#56301f',
+      '--card-accent': '#f3a65f',
+      '--card-cut': '#ffd38d',
+      '--card-highlight': '#fff0cc',
+      '--card-text': '#fff1df',
+      '--card-muted': '#deb087',
+      '--card-stat': '#ffbd72',
+      '--card-shadow': 'rgba(218, 119, 49, 0.34)',
+    },
+  },
+]
+
+const silverNonRareDesigns = [
+  {
+    id: 'satin-steel',
+    variant: 'non-rare',
+    name: 'Satin Steel',
+    description:
+      'Muted satin-metal body with soft horizontal brushing, graphite lower field, and a quiet steel rim for a stable standard card.',
+    tokens: {
+      '--card-bg': '#14181d',
+      '--card-surface': '#5f6971',
+      '--card-surface-soft': '#8b969e',
+      '--card-border': '#9ba5ac',
+      '--card-border-muted': '#35404a',
+      '--card-accent': '#b5bec5',
+      '--card-cut': '#c9d0d5',
+      '--card-highlight': '#dde4e8',
+      '--card-text': '#edf2f5',
+      '--card-muted': '#aab5bd',
+      '--card-stat': '#cfd8de',
+      '--card-shadow': 'rgba(124, 140, 151, 0.18)',
+    },
+  },
+  {
+    id: 'graphite-aluminium',
+    variant: 'non-rare',
+    name: 'Graphite Aluminium',
+    description:
+      'Brushed aluminium over a graphite plate, using low-sheen blue-grey reflections and restrained edge light.',
+    tokens: {
+      '--card-bg': '#10151b',
+      '--card-surface': '#505c66',
+      '--card-surface-soft': '#7e8b95',
+      '--card-border': '#8e9aa3',
+      '--card-border-muted': '#2e3943',
+      '--card-accent': '#aeb9c1',
+      '--card-cut': '#c5ced5',
+      '--card-highlight': '#dbe3e7',
+      '--card-text': '#eaf0f3',
+      '--card-muted': '#a5b1ba',
+      '--card-stat': '#c8d3da',
+      '--card-shadow': 'rgba(106, 124, 138, 0.18)',
+    },
+  },
+  {
+    id: 'pale-geometric',
+    variant: 'non-rare',
+    name: 'Frosted Plate',
+    description:
+      'Frosted steel panels and understated angular seams give the average-tier card structure without adding rare-card shine.',
+    tokens: {
+      '--card-bg': '#151a20',
+      '--card-surface': '#59646c',
+      '--card-surface-soft': '#8f9aa1',
+      '--card-border': '#9ea8af',
+      '--card-border-muted': '#37414a',
+      '--card-accent': '#b9c2c8',
+      '--card-cut': '#d0d7dc',
+      '--card-highlight': '#e2e8eb',
+      '--card-text': '#eef3f5',
+      '--card-muted': '#adb8bf',
+      '--card-stat': '#d2dbe0',
+      '--card-shadow': 'rgba(132, 148, 158, 0.16)',
+    },
+  },
+]
+
+const silverRareDesigns = [
+  {
+    id: 'polished-silver',
+    variant: 'rare',
+    name: 'Machined Prism',
+    description:
+      'High-polish silver with machined triangular plates, a double rim, and bright corner glints while staying out of event-card blue.',
+    tokens: {
+      '--card-bg': '#10161d',
+      '--card-surface': '#8b98a3',
+      '--card-surface-soft': '#d4dde3',
+      '--card-border': '#eef5f8',
+      '--card-border-muted': '#586672',
+      '--card-accent': '#f7fbfd',
+      '--card-cut': '#ffffff',
+      '--card-highlight': '#ffffff',
+      '--card-text': '#fbfdff',
+      '--card-muted': '#d3e0e8',
+      '--card-stat': '#ffffff',
+      '--card-shadow': 'rgba(207, 229, 239, 0.36)',
+    },
+  },
+  {
+    id: 'crystal-facet',
+    variant: 'rare',
+    name: 'Crystal Facet',
+    description:
+      'Diamond-cut geometry, icy white facets, and small cyan glints arranged as a crystalline field behind the portrait.',
+    tokens: {
+      '--card-bg': '#0f1720',
+      '--card-surface': '#74818c',
+      '--card-surface-soft': '#c7d5dc',
+      '--card-border': '#e6f3f6',
+      '--card-border-muted': '#465660',
+      '--card-accent': '#d9fbff',
+      '--card-cut': '#8decf6',
+      '--card-highlight': '#ffffff',
+      '--card-text': '#f8fdff',
+      '--card-muted': '#cbe3ea',
+      '--card-stat': '#ddfbff',
+      '--card-shadow': 'rgba(128, 231, 242, 0.3)',
+    },
+  },
+  {
+    id: 'prismatic-edge',
+    variant: 'rare',
+    name: 'Prismatic Lattice',
+    description:
+      'Bright silver foil with a prismatic lattice, layered inset trim, and controlled glints near the footer divider.',
+    tokens: {
+      '--card-bg': '#111820',
+      '--card-surface': '#82909b',
+      '--card-surface-soft': '#dce6eb',
+      '--card-border': '#edf6f8',
+      '--card-border-muted': '#52616b',
+      '--card-accent': '#f5fbff',
+      '--card-cut': '#bff8ff',
+      '--card-highlight': '#ffffff',
+      '--card-text': '#fbfdff',
+      '--card-muted': '#d5e2e9',
+      '--card-stat': '#f4fcff',
+      '--card-shadow': 'rgba(194, 240, 249, 0.34)',
+    },
+  },
+]
+
+const goldNonRareDesigns = [
+  {
+    id: 'antique-foil',
+    variant: 'non-rare',
+    name: 'Antique Foil',
+    description:
+      'Muted antique-gold foil with a soft black underplate, shallow brushing, and a quiet rim for premium standard cards without rare-card shine.',
+    tokens: {
+      '--card-bg': '#17130b',
+      '--card-surface': '#776029',
+      '--card-surface-soft': '#a68d4a',
+      '--card-border': '#b39a58',
+      '--card-border-muted': '#443719',
+      '--card-accent': '#c8ae65',
+      '--card-cut': '#d5bc75',
+      '--card-highlight': '#ead79d',
+      '--card-text': '#f3e6bd',
+      '--card-muted': '#cab378',
+      '--card-stat': '#d0ae58',
+      '--card-shadow': 'rgba(176, 143, 62, 0.16)',
+    },
+  },
+  {
+    id: 'satin-sovereign',
+    variant: 'non-rare',
+    name: 'Satin Sovereign',
+    description:
+      'Low-lustre satin plating with olive-gold shadows, broad diagonal flow, and deliberately reduced glow around the footer stats.',
+    tokens: {
+      '--card-bg': '#17140d',
+      '--card-surface': '#6e5520',
+      '--card-surface-soft': '#aa914d',
+      '--card-border': '#aa9252',
+      '--card-border-muted': '#3f3218',
+      '--card-accent': '#c6ad67',
+      '--card-cut': '#d9c27a',
+      '--card-highlight': '#ead9a5',
+      '--card-text': '#f2e4bc',
+      '--card-muted': '#c7af73',
+      '--card-stat': '#cfad59',
+      '--card-shadow': 'rgba(164, 132, 56, 0.15)',
+    },
+  },
+  {
+    id: 'ochre-panel',
+    variant: 'non-rare',
+    name: 'Ochre Panel',
+    description:
+      'Darker ochre metal panels with a smoked lower field, stamped seams, and minimal shimmer so the card reads as gold but still restrained.',
+    tokens: {
+      '--card-bg': '#15110a',
+      '--card-surface': '#634a1b',
+      '--card-surface-soft': '#927438',
+      '--card-border': '#9e854b',
+      '--card-border-muted': '#382b14',
+      '--card-accent': '#bca15d',
+      '--card-cut': '#cbb16d',
+      '--card-highlight': '#e6d196',
+      '--card-text': '#efe1b8',
+      '--card-muted': '#bea66c',
+      '--card-stat': '#c8a751',
+      '--card-shadow': 'rgba(142, 110, 45, 0.14)',
+    },
+  },
+]
+
+const goldRareDesigns = [
+  {
+    id: 'royal-foil-burst',
+    variant: 'rare',
+    name: 'Swept Foil Fan',
+    description:
+      'Reflective gold foil pulled into a swept fan of raised ribs, with bright ridge highlights behind the portrait and calmer metal below the stats.',
+    tokens: {
+      '--card-bg': '#171006',
+      '--card-surface': '#a97812',
+      '--card-surface-soft': '#f0c95d',
+      '--card-border': '#ffe08a',
+      '--card-border-muted': '#684911',
+      '--card-accent': '#ffd667',
+      '--card-cut': '#fff0a8',
+      '--card-highlight': '#fff9dc',
+      '--card-text': '#fff7d7',
+      '--card-muted': '#f0d58b',
+      '--card-stat': '#ffe17a',
+      '--card-shadow': 'rgba(255, 199, 76, 0.38)',
+    },
+  },
+  {
+    id: 'jewel-trim',
+    variant: 'rare',
+    name: 'Folded Lattice',
+    description:
+      'High-polish gold with folded triangular planes, inset ridge lines, and alternating bright and shadowed facets across the upper body.',
+    tokens: {
+      '--card-bg': '#140f08',
+      '--card-surface': '#b88616',
+      '--card-surface-soft': '#f4d06a',
+      '--card-border': '#ffe79a',
+      '--card-border-muted': '#704d12',
+      '--card-accent': '#ffdc74',
+      '--card-cut': '#fff6c2',
+      '--card-highlight': '#fffdf0',
+      '--card-text': '#fff8dc',
+      '--card-muted': '#f1d890',
+      '--card-stat': '#ffe682',
+      '--card-shadow': 'rgba(255, 211, 94, 0.4)',
+    },
+  },
+  {
+    id: 'crown-facets',
+    variant: 'rare',
+    name: 'Embossed Relief',
+    description:
+      'Embossed abstract relief shapes over yellow-gold foil, using raised shadow cuts and fine speckle so it feels special without becoming an Icon card.',
+    tokens: {
+      '--card-bg': '#181006',
+      '--card-surface': '#a26f10',
+      '--card-surface-soft': '#e6ba4b',
+      '--card-border': '#f6d77a',
+      '--card-border-muted': '#64430d',
+      '--card-accent': '#ffd45f',
+      '--card-cut': '#ffec9a',
+      '--card-highlight': '#fff8ce',
+      '--card-text': '#fff5ce',
+      '--card-muted': '#ebcf81',
+      '--card-stat': '#ffdc6d',
+      '--card-shadow': 'rgba(244, 190, 64, 0.38)',
+    },
+  },
+]
+
+const designSections = [
+  {
+    id: 'bronze-non-rare',
+    kicker: 'Standard bronze',
+    title: 'Bronze Non-Rare',
+    description:
+      'Grounded, lower-shine bronze concepts for modest players: metal grain, restrained diagonal paneling, and simple single-rim reads.',
+    player: bronzeNonRarePlayer,
+    designs: bronzeNonRareDesigns,
+  },
+  {
+    id: 'bronze-rare',
+    kicker: 'Hidden-gem bronze',
+    title: 'Bronze Rare',
+    description:
+      'Polished bronze concepts for low-tier players with standout attributes: layered rims, warm luminous cuts, and stronger edge light.',
+    player: bronzeRarePlayer,
+    designs: bronzeRareDesigns,
+  },
+  {
+    id: 'silver-non-rare',
+    kicker: 'Standard silver',
+    title: 'Silver Non-Rare',
+    description:
+      'Balanced silver concepts for average-rated players: satin steel, clean brushed texture, graphite depth, and controlled reflection.',
+    player: silverNonRarePlayer,
+    designs: silverNonRareDesigns,
+  },
+  {
+    id: 'silver-rare',
+    kicker: 'Standout silver',
+    title: 'Silver Rare',
+    description:
+      'Sharper silver concepts for average-rated players with stronger attributes: polished rims, crystalline facets, and cool glints.',
+    player: silverRarePlayer,
+    designs: silverRareDesigns,
+  },
+  {
+    id: 'gold-non-rare',
+    kicker: 'Standard gold',
+    title: 'Gold Non-Rare',
+    description:
+      'Muted premium gold concepts for above-average players: antique foil, satin plating, ochre shadows, low glow, and restrained metal texture.',
+    player: goldNonRarePlayer,
+    designs: goldNonRareDesigns,
+  },
+  {
+    id: 'gold-rare',
+    kicker: 'Elite standard gold',
+    title: 'Gold Rare',
+    description:
+      'Richer rare gold concepts for above-average players with exceptional attributes: swept foil ribs, folded lattice facets, embossed relief, and stronger rating frames.',
+    player: goldRarePlayer,
+    designs: goldRareDesigns,
+  },
+]
+
 export default defineComponent({
   name: 'CardDesignsPage',
   setup() {
     return {
-      designs,
-      player,
+      designSections,
     }
   },
 })
@@ -194,8 +697,13 @@ export default defineComponent({
     background:
         radial-gradient(
             circle at 20% 8%,
-            rgba(194, 131, 76, 0.18),
+            rgba(240, 163, 92, 0.18),
             transparent 28rem
+        ),
+        radial-gradient(
+            circle at 82% 22%,
+            rgba(171, 204, 222, 0.16),
+            transparent 22rem
         ),
         linear-gradient(135deg, #10141d 0%, #161b24 52%, #0d1118 100%);
     color: #f6eee6;
@@ -243,6 +751,39 @@ export default defineComponent({
     line-height: 1.6;
 }
 
+.design-sections {
+    display: grid;
+    gap: 3.5rem;
+}
+
+.design-section {
+    display: grid;
+    gap: 1.25rem;
+}
+
+.design-section__header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 430px);
+    gap: 2rem;
+    align-items: end;
+
+    h2 {
+        margin: 0;
+        color: #fff4e6;
+        font-size: 1.45rem;
+        line-height: 1.1;
+        font-weight: 800;
+        letter-spacing: 0;
+    }
+
+    p {
+        margin: 0;
+        color: rgba(246, 238, 230, 0.68);
+        font-size: 0.9rem;
+        line-height: 1.55;
+    }
+}
+
 .card-gallery {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -259,7 +800,7 @@ export default defineComponent({
 .design-notes {
     width: min(280px, 100%);
 
-    h2 {
+    h3 {
         margin: 0 0 0.35rem;
         font-size: 1rem;
         line-height: 1.2;
@@ -275,6 +816,20 @@ export default defineComponent({
     }
 }
 
+.design-notes .design-number {
+    width: 1.7rem;
+    height: 1.7rem;
+    display: grid;
+    place-items: center;
+    margin: 0 0 0.6rem;
+    color: #1a100b;
+    background: var(--card-accent);
+    border-radius: 50%;
+    font-size: 0.82rem;
+    line-height: 1;
+    font-weight: 900;
+}
+
 .concept-card {
     width: 280px;
     height: 420px;
@@ -282,7 +837,12 @@ export default defineComponent({
     overflow: hidden;
     color: var(--card-text);
     background:
-        linear-gradient(155deg, rgba(255, 255, 255, 0.08), transparent 31%),
+        radial-gradient(
+            circle at 50% 8%,
+            rgba(255, 218, 170, 0.18),
+            transparent 8rem
+        ),
+        linear-gradient(155deg, rgba(255, 255, 255, 0.12), transparent 31%),
         linear-gradient(
             180deg,
             var(--card-surface) 0%,
@@ -293,6 +853,8 @@ export default defineComponent({
     border-radius: 12px;
     box-shadow:
         0 18px 42px rgba(0, 0, 0, 0.42),
+        inset 0 0 0 1px rgba(255, 235, 201, 0.2),
+        inset 0 0 0 7px rgba(66, 32, 18, 0.24),
         0 0 18px var(--card-shadow);
     isolation: isolate;
     transition:
@@ -304,15 +866,20 @@ export default defineComponent({
         transform: translateY(-6px);
         box-shadow:
             0 26px 56px rgba(0, 0, 0, 0.48),
-            0 0 24px var(--card-shadow);
+            inset 0 0 0 1px rgba(255, 235, 201, 0.28),
+            inset 0 0 0 7px rgba(66, 32, 18, 0.2),
+            0 0 30px var(--card-shadow);
     }
 
     &::before {
         content: "";
         position: absolute;
         inset: 10px;
-        border: 1px solid rgba(255, 232, 205, 0.18);
+        border: 1px solid rgba(255, 224, 184, 0.36);
         border-radius: 8px;
+        box-shadow:
+            inset 0 0 0 1px rgba(112, 57, 28, 0.48),
+            0 0 18px rgba(255, 161, 81, 0.1);
         z-index: 1;
         pointer-events: none;
     }
@@ -327,12 +894,72 @@ export default defineComponent({
         background: linear-gradient(
             90deg,
             transparent,
+            var(--card-cut),
+            var(--card-accent),
+            var(--card-cut),
+            transparent
+        );
+        box-shadow: 0 0 14px rgba(255, 172, 92, 0.38);
+        opacity: 0.94;
+        z-index: 3;
+        transform: rotate(-2deg);
+    }
+}
+
+.concept-card--non-rare {
+    background:
+        linear-gradient(155deg, rgba(255, 255, 255, 0.08), transparent 31%),
+        linear-gradient(
+            180deg,
+            var(--card-surface) 0%,
+            var(--card-bg) 58%,
+            #120f0d 100%
+        );
+    box-shadow:
+        0 18px 42px rgba(0, 0, 0, 0.42),
+        0 0 18px var(--card-shadow);
+
+    &:hover,
+    &:focus-within {
+        box-shadow:
+            0 26px 56px rgba(0, 0, 0, 0.48),
+            0 0 24px var(--card-shadow);
+    }
+
+    &::before {
+        border-color: rgba(255, 232, 205, 0.18);
+        box-shadow: none;
+    }
+
+    &::after {
+        background: linear-gradient(
+            90deg,
+            transparent,
             var(--card-accent),
             transparent
         );
+        box-shadow: none;
         opacity: 0.9;
-        z-index: 3;
-        transform: rotate(-2deg);
+    }
+
+    .concept-card__rating-block {
+        padding: 0;
+
+        &::before {
+            opacity: 0;
+        }
+    }
+
+    .concept-card__rating {
+        text-shadow: 0 2px 9px rgba(0, 0, 0, 0.42);
+    }
+
+    .concept-card__vitals {
+        border-color: rgba(255, 230, 198, 0.28);
+    }
+
+    .concept-card__stat span {
+        text-shadow: none;
     }
 }
 
@@ -448,6 +1075,1088 @@ export default defineComponent({
     }
 }
 
+.concept-card--polished-bronze {
+    .concept-card__texture {
+        background:
+            repeating-radial-gradient(
+                circle at 50% 12%,
+                rgba(255, 229, 196, 0.08) 0 1px,
+                transparent 1px 9px
+            ),
+            repeating-linear-gradient(
+                112deg,
+                rgba(255, 235, 211, 0.07) 0 1px,
+                transparent 1px 12px
+            ),
+            linear-gradient(
+                152deg,
+                transparent 0 24%,
+                rgba(255, 167, 84, 0.16) 24% 25%,
+                transparent 25% 57%,
+                rgba(0, 0, 0, 0.32) 57% 68%,
+                transparent 68%
+            ),
+            radial-gradient(
+                circle at 70% 18%,
+                rgba(255, 180, 96, 0.24),
+                transparent 7.5rem
+            );
+        opacity: 0.82;
+    }
+}
+
+.concept-card--copper-starburst {
+    background:
+        radial-gradient(
+            circle at 58% 30%,
+            rgba(255, 167, 73, 0.18),
+            transparent 9rem
+        ),
+        linear-gradient(110deg, rgba(255, 231, 200, 0.09), transparent 30%),
+        linear-gradient(
+            180deg,
+            var(--card-surface-soft) 0%,
+            var(--card-surface) 35%,
+            var(--card-bg) 68%
+        );
+
+    .concept-card__texture {
+        background:
+            conic-gradient(
+                from 212deg at 56% 32%,
+                transparent 0deg,
+                rgba(255, 189, 100, 0.18) 14deg,
+                transparent 24deg,
+                transparent 54deg,
+                rgba(255, 142, 54, 0.13) 66deg,
+                transparent 78deg,
+                transparent 360deg
+            ),
+            repeating-linear-gradient(
+                0deg,
+                rgba(255, 238, 220, 0.04) 0 1px,
+                transparent 1px 5px
+            ),
+            repeating-linear-gradient(
+                96deg,
+                transparent 0 17px,
+                rgba(18, 12, 9, 0.24) 17px 18px
+            ),
+            linear-gradient(
+                150deg,
+                transparent 0 38%,
+                rgba(255, 160, 69, 0.12) 38% 39%,
+                rgba(16, 12, 10, 0.46) 39% 62%,
+                transparent 62%
+            ),
+            radial-gradient(
+                circle at 32% 7%,
+                rgba(255, 196, 118, 0.15),
+                transparent 7.5rem
+            );
+        mix-blend-mode: screen;
+        opacity: 0.7;
+    }
+}
+
+.concept-card--amber-facets {
+    background:
+        linear-gradient(145deg, rgba(255, 235, 210, 0.12), transparent 26%),
+        linear-gradient(
+            180deg,
+            var(--card-surface-soft) 0%,
+            var(--card-surface) 38%,
+            var(--card-bg) 100%
+        );
+
+    .concept-card__texture {
+        background:
+            linear-gradient(
+                135deg,
+                transparent 0 16%,
+                rgba(255, 194, 114, 0.18) 16% 17%,
+                transparent 17% 42%,
+                rgba(0, 0, 0, 0.28) 42% 55%,
+                transparent 55%
+            ),
+            linear-gradient(
+                38deg,
+                transparent 0 31%,
+                rgba(255, 216, 164, 0.16) 31% 32%,
+                transparent 32% 64%,
+                rgba(230, 130, 58, 0.11) 64% 65%,
+                transparent 65%
+            ),
+            linear-gradient(
+                162deg,
+                transparent 0 48%,
+                rgba(255, 171, 84, 0.17) 48% 49%,
+                transparent 49%
+            ),
+            radial-gradient(
+                circle at 68% 20%,
+                rgba(255, 185, 99, 0.19),
+                transparent 8rem
+            ),
+            repeating-linear-gradient(
+                120deg,
+                transparent 0 26px,
+                rgba(255, 224, 194, 0.052) 26px 27px
+            );
+        opacity: 0.78;
+    }
+}
+
+.concept-card--satin-steel,
+.concept-card--graphite-aluminium,
+.concept-card--pale-geometric,
+.concept-card--polished-silver,
+.concept-card--crystal-facet,
+.concept-card--prismatic-edge {
+    background:
+        radial-gradient(
+            circle at 50% 8%,
+            rgba(240, 248, 252, 0.18),
+            transparent 8rem
+        ),
+        linear-gradient(155deg, rgba(255, 255, 255, 0.16), transparent 31%),
+        linear-gradient(
+            180deg,
+            var(--card-surface) 0%,
+            var(--card-bg) 58%,
+            #0c1117 100%
+        );
+
+    &::before {
+        border-color: rgba(240, 248, 252, 0.34);
+        box-shadow:
+            inset 0 0 0 1px rgba(112, 129, 140, 0.42),
+            0 0 18px rgba(214, 235, 244, 0.12);
+    }
+
+    &::after {
+        background: linear-gradient(
+            90deg,
+            transparent,
+            var(--card-cut),
+            var(--card-accent),
+            var(--card-cut),
+            transparent
+        );
+        box-shadow: 0 0 14px rgba(210, 237, 247, 0.34);
+    }
+
+    .concept-card__rating-block::before {
+        border-left-color: var(--card-cut);
+        border-top-color: rgba(240, 248, 252, 0.5);
+    }
+
+    .concept-card__rating {
+        text-shadow:
+            0 2px 9px rgba(0, 0, 0, 0.48),
+            0 0 14px rgba(214, 235, 244, 0.18);
+    }
+
+    .concept-card__vitals {
+        color: #10161d;
+        background: linear-gradient(180deg, var(--card-accent), var(--card-border-muted));
+        border-color: rgba(240, 248, 252, 0.42);
+    }
+
+    .concept-card__flag,
+    .concept-card__club {
+        border-color: rgba(240, 248, 252, 0.28);
+        background: rgba(11, 16, 22, 0.62);
+    }
+
+    .concept-card__club {
+        color: var(--card-accent);
+        box-shadow:
+            0 7px 16px rgba(0, 0, 0, 0.25),
+            inset 0 0 0 1px rgba(230, 242, 248, 0.18);
+    }
+
+    .concept-card__portrait {
+        color: rgba(240, 248, 252, 0.84);
+        background:
+            radial-gradient(
+                ellipse at 50% 64%,
+                rgba(7, 12, 18, 0.46),
+                transparent 56%
+            ),
+            radial-gradient(
+                ellipse at 50% 30%,
+                rgba(216, 236, 246, 0.14),
+                transparent 48%
+            ),
+            linear-gradient(
+                180deg,
+                rgba(255, 255, 255, 0.07),
+                rgba(255, 255, 255, 0)
+            );
+    }
+
+    .concept-card__stat span {
+        text-shadow: 0 0 12px rgba(220, 244, 252, 0.22);
+    }
+}
+
+.concept-card--satin-steel,
+.concept-card--graphite-aluminium,
+.concept-card--pale-geometric {
+    &::before {
+        border-color: rgba(225, 234, 239, 0.2);
+        box-shadow: none;
+    }
+
+    &::after {
+        background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(210, 219, 224, 0.72),
+            transparent
+        );
+        box-shadow: none;
+    }
+
+    .concept-card__rating {
+        text-shadow: 0 2px 9px rgba(0, 0, 0, 0.44);
+    }
+
+    .concept-card__vitals {
+        background: linear-gradient(180deg, var(--card-accent), #66727b);
+        border-color: rgba(225, 234, 239, 0.26);
+    }
+
+    .concept-card__portrait {
+        background:
+            radial-gradient(
+                ellipse at 50% 64%,
+                rgba(7, 12, 18, 0.48),
+                transparent 56%
+            ),
+            radial-gradient(
+                ellipse at 50% 30%,
+                rgba(192, 207, 216, 0.08),
+                transparent 48%
+            ),
+            linear-gradient(
+                180deg,
+                rgba(255, 255, 255, 0.04),
+                rgba(255, 255, 255, 0)
+            );
+    }
+
+    .concept-card__stat span {
+        text-shadow: none;
+    }
+}
+
+.concept-card--satin-steel {
+    background:
+        linear-gradient(120deg, rgba(255, 255, 255, 0.08), transparent 27%),
+        linear-gradient(
+            180deg,
+            var(--card-surface-soft) 0%,
+            var(--card-surface) 38%,
+            var(--card-bg) 72%
+        );
+
+    .concept-card__texture {
+        background:
+            repeating-linear-gradient(
+                0deg,
+                rgba(255, 255, 255, 0.05) 0 1px,
+                transparent 1px 5px
+            ),
+            repeating-linear-gradient(
+                94deg,
+                transparent 0 18px,
+                rgba(8, 13, 18, 0.28) 18px 19px
+            ),
+            linear-gradient(
+                150deg,
+                transparent 0 39%,
+                rgba(8, 13, 18, 0.5) 39% 61%,
+                transparent 61%
+            ),
+            radial-gradient(
+                circle at 56% 11%,
+                rgba(205, 217, 224, 0.08),
+                transparent 8.5rem
+            );
+        opacity: 0.56;
+    }
+}
+
+.concept-card--graphite-aluminium {
+    background:
+        linear-gradient(112deg, rgba(255, 255, 255, 0.07), transparent 32%),
+        linear-gradient(
+            180deg,
+            var(--card-surface) 0%,
+            #29313a 48%,
+            var(--card-bg) 100%
+        );
+
+    .concept-card__texture {
+        background:
+            repeating-linear-gradient(
+                90deg,
+                rgba(240, 248, 252, 0.045) 0 1px,
+                transparent 1px 7px
+            ),
+            repeating-linear-gradient(
+                0deg,
+                transparent 0 14px,
+                rgba(12, 18, 24, 0.22) 14px 15px
+            ),
+            linear-gradient(
+                145deg,
+                transparent 0 28%,
+                rgba(210, 226, 235, 0.1) 28% 29%,
+                transparent 29% 56%,
+                rgba(0, 0, 0, 0.25) 56% 70%,
+                transparent 70%
+            ),
+            radial-gradient(
+                circle at 74% 20%,
+                rgba(184, 201, 211, 0.08),
+                transparent 7.5rem
+            );
+        opacity: 0.58;
+    }
+}
+
+.concept-card--pale-geometric {
+    background:
+        linear-gradient(145deg, rgba(255, 255, 255, 0.08), transparent 29%),
+        linear-gradient(
+            180deg,
+            var(--card-surface-soft) 0%,
+            var(--card-surface) 42%,
+            var(--card-bg) 100%
+        );
+
+    .concept-card__texture {
+        background:
+            linear-gradient(
+                136deg,
+                transparent 0 17%,
+                rgba(244, 250, 253, 0.13) 17% 18%,
+                transparent 18% 43%,
+                rgba(11, 17, 22, 0.26) 43% 57%,
+                transparent 57%
+            ),
+            linear-gradient(
+                42deg,
+                transparent 0 33%,
+                rgba(235, 244, 248, 0.12) 33% 34%,
+                transparent 34% 66%
+            ),
+            repeating-linear-gradient(
+                118deg,
+                transparent 0 28px,
+                rgba(244, 250, 253, 0.045) 28px 29px
+            ),
+            radial-gradient(
+                circle at 64% 22%,
+                rgba(200, 214, 222, 0.08),
+                transparent 8rem
+            );
+        opacity: 0.6;
+    }
+}
+
+.concept-card--polished-silver {
+    background:
+        conic-gradient(
+            from 228deg at 58% 24%,
+            rgba(255, 255, 255, 0) 0deg,
+            rgba(255, 255, 255, 0.16) 18deg,
+            rgba(87, 103, 115, 0.18) 38deg,
+            rgba(255, 255, 255, 0) 58deg,
+            rgba(255, 255, 255, 0) 126deg,
+            rgba(232, 244, 250, 0.18) 144deg,
+            rgba(255, 255, 255, 0) 168deg,
+            rgba(255, 255, 255, 0) 360deg
+        ),
+        radial-gradient(
+            circle at 66% 19%,
+            rgba(255, 255, 255, 0.24),
+            transparent 8rem
+        ),
+        linear-gradient(112deg, rgba(255, 255, 255, 0.18), transparent 29%),
+        linear-gradient(
+            180deg,
+            var(--card-surface-soft) 0%,
+            var(--card-surface) 36%,
+            var(--card-bg) 68%
+        );
+
+    .concept-card__texture {
+        background:
+            linear-gradient(
+                136deg,
+                transparent 0 13%,
+                rgba(255, 255, 255, 0.18) 13% 14%,
+                transparent 14% 33%,
+                rgba(61, 76, 88, 0.3) 33% 48%,
+                transparent 48%
+            ),
+            linear-gradient(
+                46deg,
+                transparent 0 25%,
+                rgba(238, 248, 252, 0.16) 25% 26%,
+                transparent 26% 58%,
+                rgba(255, 255, 255, 0.14) 58% 59%,
+                transparent 59%
+            ),
+            repeating-radial-gradient(
+                circle at 50% 12%,
+                rgba(255, 255, 255, 0.09) 0 1px,
+                transparent 1px 10px
+            ),
+            repeating-linear-gradient(
+                113deg,
+                rgba(255, 255, 255, 0.065) 0 1px,
+                transparent 1px 13px
+            ),
+            linear-gradient(
+                154deg,
+                transparent 0 24%,
+                rgba(255, 255, 255, 0.2) 24% 25%,
+                transparent 25% 55%,
+                rgba(0, 0, 0, 0.3) 55% 68%,
+                transparent 68%
+            );
+        opacity: 0.8;
+    }
+}
+
+.concept-card--crystal-facet {
+    background:
+        conic-gradient(
+            from 188deg at 60% 28%,
+            rgba(255, 255, 255, 0) 0deg,
+            rgba(141, 236, 246, 0.16) 20deg,
+            rgba(255, 255, 255, 0) 40deg,
+            rgba(255, 255, 255, 0) 92deg,
+            rgba(255, 255, 255, 0.18) 116deg,
+            rgba(255, 255, 255, 0) 138deg,
+            rgba(255, 255, 255, 0) 360deg
+        ),
+        radial-gradient(
+            circle at 58% 31%,
+            rgba(141, 236, 246, 0.18),
+            transparent 9rem
+        ),
+        linear-gradient(115deg, rgba(255, 255, 255, 0.16), transparent 30%),
+        linear-gradient(
+            180deg,
+            var(--card-surface-soft) 0%,
+            var(--card-surface) 38%,
+            var(--card-bg) 71%
+        );
+
+    .concept-card__texture {
+        background:
+            repeating-linear-gradient(
+                60deg,
+                transparent 0 22px,
+                rgba(217, 251, 255, 0.08) 22px 23px,
+                transparent 23px 44px
+            ),
+            repeating-linear-gradient(
+                120deg,
+                transparent 0 24px,
+                rgba(255, 255, 255, 0.07) 24px 25px,
+                transparent 25px 48px
+            ),
+            linear-gradient(
+                132deg,
+                transparent 0 15%,
+                rgba(255, 255, 255, 0.2) 15% 16%,
+                transparent 16% 38%,
+                rgba(141, 236, 246, 0.16) 38% 39%,
+                rgba(8, 13, 18, 0.28) 39% 56%,
+                transparent 56%
+            ),
+            linear-gradient(
+                38deg,
+                transparent 0 31%,
+                rgba(238, 251, 255, 0.18) 31% 32%,
+                transparent 32% 64%,
+                rgba(141, 236, 246, 0.12) 64% 65%,
+                transparent 65%
+            ),
+            radial-gradient(
+                circle at 72% 18%,
+                rgba(217, 251, 255, 0.2),
+                transparent 7rem
+            ),
+            repeating-linear-gradient(
+                118deg,
+                transparent 0 24px,
+                rgba(236, 250, 255, 0.055) 24px 25px
+            );
+        opacity: 0.78;
+    }
+}
+
+.concept-card--prismatic-edge {
+    background:
+        conic-gradient(
+            from 204deg at 62% 23%,
+            transparent 0deg,
+            rgba(191, 248, 255, 0.2) 18deg,
+            transparent 30deg,
+            transparent 74deg,
+            rgba(255, 255, 255, 0.22) 86deg,
+            transparent 96deg,
+            transparent 148deg,
+            rgba(218, 233, 241, 0.16) 166deg,
+            transparent 182deg,
+            transparent 360deg
+        ),
+        linear-gradient(112deg, rgba(255, 255, 255, 0.16), transparent 31%),
+        linear-gradient(
+            180deg,
+            var(--card-surface-soft) 0%,
+            var(--card-surface) 36%,
+            var(--card-bg) 70%
+        );
+
+    .concept-card__texture {
+        background:
+            repeating-linear-gradient(
+                45deg,
+                transparent 0 20px,
+                rgba(191, 248, 255, 0.075) 20px 21px,
+                transparent 21px 40px
+            ),
+            repeating-linear-gradient(
+                135deg,
+                transparent 0 24px,
+                rgba(255, 255, 255, 0.07) 24px 25px,
+                transparent 25px 48px
+            ),
+            linear-gradient(
+                150deg,
+                transparent 0 22%,
+                rgba(191, 248, 255, 0.18) 22% 23%,
+                transparent 23% 54%,
+                rgba(8, 13, 18, 0.28) 54% 66%,
+                transparent 66%
+            ),
+            linear-gradient(
+                28deg,
+                transparent 0 42%,
+                rgba(255, 255, 255, 0.18) 42% 43%,
+                transparent 43%
+            ),
+            repeating-linear-gradient(
+                92deg,
+                rgba(255, 255, 255, 0.05) 0 1px,
+                transparent 1px 11px
+            ),
+            radial-gradient(
+                circle at 30% 9%,
+                rgba(245, 251, 255, 0.17),
+                transparent 7.5rem
+            );
+        opacity: 0.76;
+    }
+}
+
+.concept-card--antique-foil,
+.concept-card--satin-sovereign,
+.concept-card--ochre-panel,
+.concept-card--royal-foil-burst,
+.concept-card--jewel-trim,
+.concept-card--crown-facets {
+    background:
+        radial-gradient(
+            circle at 50% 8%,
+            rgba(226, 190, 102, 0.16),
+            transparent 8rem
+        ),
+        linear-gradient(155deg, rgba(238, 215, 142, 0.1), transparent 31%),
+        linear-gradient(
+            180deg,
+            var(--card-surface) 0%,
+            var(--card-bg) 58%,
+            #110d07 100%
+        );
+
+    &::before {
+        border-color: rgba(235, 209, 132, 0.32);
+        box-shadow:
+            inset 0 0 0 1px rgba(112, 80, 22, 0.5),
+            0 0 18px rgba(228, 181, 67, 0.12);
+    }
+
+    &::after {
+        background: linear-gradient(
+            90deg,
+            transparent,
+            var(--card-cut),
+            var(--card-accent),
+            var(--card-cut),
+            transparent
+        );
+        box-shadow: 0 0 14px rgba(232, 188, 76, 0.3);
+    }
+
+    .concept-card__rating-block::before {
+        border-left-color: var(--card-cut);
+        border-top-color: rgba(236, 214, 153, 0.48);
+    }
+
+    .concept-card__rating {
+        text-shadow:
+            0 2px 9px rgba(0, 0, 0, 0.52),
+            0 0 14px rgba(218, 171, 60, 0.16);
+    }
+
+    .concept-card__vitals {
+        color: #171006;
+        background: linear-gradient(180deg, var(--card-accent), var(--card-border-muted));
+        border-color: rgba(238, 216, 154, 0.38);
+    }
+
+    .concept-card__flag,
+    .concept-card__club {
+        border-color: rgba(234, 208, 130, 0.26);
+        background: rgba(16, 12, 7, 0.64);
+    }
+
+    .concept-card__club {
+        color: var(--card-accent);
+        box-shadow:
+            0 7px 16px rgba(0, 0, 0, 0.25),
+            inset 0 0 0 1px rgba(232, 204, 128, 0.18);
+    }
+
+    .concept-card__portrait {
+        color: rgba(238, 217, 155, 0.84);
+        background:
+            radial-gradient(
+                ellipse at 50% 64%,
+                rgba(11, 8, 4, 0.48),
+                transparent 56%
+            ),
+            radial-gradient(
+                ellipse at 50% 30%,
+                rgba(220, 176, 66, 0.12),
+                transparent 48%
+            ),
+            linear-gradient(
+                180deg,
+                rgba(255, 255, 255, 0.07),
+                rgba(255, 255, 255, 0)
+            );
+    }
+
+    .concept-card__stat span {
+        text-shadow: 0 0 12px rgba(225, 178, 66, 0.2);
+    }
+}
+
+.concept-card--antique-foil,
+.concept-card--satin-sovereign,
+.concept-card--ochre-panel {
+    border-color: var(--card-border);
+    box-shadow:
+        0 18px 42px rgba(0, 0, 0, 0.42),
+        0 0 13px var(--card-shadow);
+
+    &:hover,
+    &:focus-within {
+        box-shadow:
+            0 26px 56px rgba(0, 0, 0, 0.48),
+            0 0 18px var(--card-shadow);
+    }
+
+    &::before {
+        border-color: rgba(215, 191, 122, 0.18);
+        box-shadow: none;
+    }
+
+    &::after {
+        background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(205, 176, 100, 0.58),
+            transparent
+        );
+        box-shadow: none;
+        opacity: 0.68;
+    }
+
+    .concept-card__rating {
+        text-shadow: 0 2px 9px rgba(0, 0, 0, 0.46);
+    }
+
+    .concept-card__vitals {
+        background: linear-gradient(180deg, var(--card-accent), #625025);
+        border-color: rgba(221, 198, 132, 0.24);
+    }
+
+    .concept-card__portrait {
+        background:
+            radial-gradient(
+                ellipse at 50% 64%,
+                rgba(11, 8, 4, 0.48),
+                transparent 56%
+            ),
+            radial-gradient(
+                ellipse at 50% 30%,
+                rgba(190, 151, 57, 0.07),
+                transparent 48%
+            ),
+            linear-gradient(
+                180deg,
+                rgba(255, 255, 255, 0.04),
+                rgba(255, 255, 255, 0)
+            );
+    }
+
+    .concept-card__stat span {
+        text-shadow: none;
+    }
+}
+
+.concept-card--antique-foil {
+    background:
+        linear-gradient(114deg, rgba(228, 203, 132, 0.055), transparent 29%),
+        linear-gradient(
+            180deg,
+            var(--card-surface-soft) 0%,
+            var(--card-surface) 38%,
+            var(--card-bg) 72%
+        );
+
+    .concept-card__texture {
+        background:
+            repeating-linear-gradient(
+                0deg,
+                rgba(230, 208, 148, 0.026) 0 1px,
+                transparent 1px 6px
+            ),
+            repeating-linear-gradient(
+                94deg,
+                transparent 0 18px,
+                rgba(16, 12, 7, 0.34) 18px 19px
+            ),
+            linear-gradient(
+                150deg,
+                transparent 0 40%,
+                rgba(12, 9, 5, 0.52) 40% 62%,
+                transparent 62%
+            ),
+            radial-gradient(
+                circle at 61% 13%,
+                rgba(210, 178, 92, 0.08),
+                transparent 8rem
+            );
+        opacity: 0.52;
+    }
+}
+
+.concept-card--satin-sovereign {
+    background:
+        linear-gradient(126deg, rgba(225, 205, 139, 0.06), transparent 31%),
+        linear-gradient(
+            180deg,
+            var(--card-surface-soft) 0%,
+            #7d652f 42%,
+            var(--card-bg) 100%
+        );
+
+    .concept-card__texture {
+        background:
+            repeating-linear-gradient(
+                92deg,
+                rgba(226, 203, 135, 0.03) 0 1px,
+                transparent 1px 10px
+            ),
+            linear-gradient(
+                145deg,
+                transparent 0 26%,
+                rgba(219, 191, 111, 0.08) 26% 27%,
+                transparent 27% 57%,
+                rgba(0, 0, 0, 0.34) 57% 70%,
+                transparent 70%
+            ),
+            linear-gradient(
+                36deg,
+                transparent 0 35%,
+                rgba(220, 196, 126, 0.07) 35% 36%,
+                transparent 36%
+            ),
+            radial-gradient(
+                circle at 72% 22%,
+                rgba(198, 166, 80, 0.07),
+                transparent 8rem
+            );
+        opacity: 0.54;
+    }
+}
+
+.concept-card--ochre-panel {
+    background:
+        linear-gradient(145deg, rgba(222, 193, 117, 0.045), transparent 27%),
+        linear-gradient(
+            180deg,
+            var(--card-surface) 0%,
+            #3d2f17 50%,
+            var(--card-bg) 100%
+        );
+
+    .concept-card__texture {
+        background:
+            linear-gradient(
+                134deg,
+                transparent 0 18%,
+                rgba(208, 179, 102, 0.08) 18% 19%,
+                transparent 19% 43%,
+                rgba(10, 8, 5, 0.38) 43% 58%,
+                transparent 58%
+            ),
+            linear-gradient(
+                45deg,
+                transparent 0 34%,
+                rgba(195, 160, 76, 0.08) 34% 35%,
+                transparent 35% 65%
+            ),
+            repeating-linear-gradient(
+                120deg,
+                transparent 0 28px,
+                rgba(225, 199, 128, 0.03) 28px 29px
+            ),
+            radial-gradient(
+                circle at 66% 22%,
+                rgba(181, 145, 63, 0.06),
+                transparent 8rem
+            );
+        opacity: 0.56;
+    }
+}
+
+.concept-card--royal-foil-burst {
+    background:
+        linear-gradient(
+            180deg,
+            rgba(255, 232, 132, 0.18) 0%,
+            rgba(219, 167, 39, 0.08) 43%,
+            rgba(33, 22, 6, 0.28) 66%,
+            var(--card-bg) 100%
+        ),
+        conic-gradient(
+            from 226deg at 15% 57%,
+            transparent 0deg,
+            rgba(255, 246, 187, 0.18) 10deg,
+            transparent 18deg,
+            transparent 34deg,
+            rgba(255, 213, 84, 0.19) 44deg,
+            transparent 52deg,
+            transparent 70deg,
+            rgba(255, 238, 150, 0.18) 81deg,
+            transparent 90deg,
+            transparent 360deg
+        ),
+        radial-gradient(
+            circle at 24% 52%,
+            rgba(255, 241, 169, 0.26),
+            transparent 11rem
+        ),
+        linear-gradient(112deg, rgba(255, 246, 205, 0.18), transparent 30%),
+        linear-gradient(
+            180deg,
+            var(--card-surface-soft) 0%,
+            var(--card-surface) 36%,
+            var(--card-bg) 70%
+        );
+
+    .concept-card__texture {
+        background:
+            repeating-conic-gradient(
+                from 232deg at 14% 56%,
+                rgba(255, 250, 205, 0.22) 0deg 1deg,
+                rgba(107, 75, 18, 0.18) 1deg 2deg,
+                transparent 2deg 7deg
+            ),
+            conic-gradient(
+                from 228deg at 14% 56%,
+                rgba(255, 255, 224, 0) 0deg,
+                rgba(255, 244, 174, 0.28) 24deg,
+                rgba(130, 90, 20, 0.18) 46deg,
+                rgba(255, 236, 136, 0.2) 70deg,
+                transparent 104deg,
+                transparent 360deg
+            ),
+            repeating-linear-gradient(
+                86deg,
+                rgba(255, 243, 180, 0.04) 0 1px,
+                transparent 1px 7px
+            ),
+            linear-gradient(
+                180deg,
+                transparent 0 60%,
+                rgba(20, 13, 4, 0.32) 60% 100%
+            ),
+            radial-gradient(
+                ellipse at 15% 56%,
+                rgba(255, 248, 191, 0.26),
+                transparent 12rem
+            );
+        opacity: 0.82;
+    }
+}
+
+.concept-card--jewel-trim {
+    background:
+        linear-gradient(
+            140deg,
+            rgba(255, 248, 210, 0.22) 0 18%,
+            transparent 18% 48%,
+            rgba(121, 81, 14, 0.18) 48% 63%,
+            transparent 63%
+        ),
+        linear-gradient(118deg, rgba(255, 248, 213, 0.2), transparent 30%),
+        linear-gradient(
+            180deg,
+            var(--card-surface-soft) 0%,
+            var(--card-surface) 37%,
+            var(--card-bg) 70%
+        );
+
+    .concept-card__texture {
+        background:
+            linear-gradient(
+                132deg,
+                transparent 0 12%,
+                rgba(255, 255, 230, 0.32) 12% 13%,
+                rgba(125, 86, 15, 0.22) 13% 14%,
+                transparent 14% 28%,
+                rgba(255, 231, 117, 0.22) 28% 44%,
+                rgba(111, 75, 13, 0.2) 44% 55%,
+                transparent 55%
+            ),
+            linear-gradient(
+                43deg,
+                transparent 0 18%,
+                rgba(255, 247, 198, 0.24) 18% 19%,
+                rgba(109, 75, 16, 0.2) 19% 20%,
+                transparent 20% 44%,
+                rgba(255, 238, 152, 0.18) 44% 60%,
+                transparent 60%
+            ),
+            linear-gradient(
+                21deg,
+                transparent 0 36%,
+                rgba(92, 63, 12, 0.22) 36% 37%,
+                rgba(255, 253, 222, 0.22) 37% 38%,
+                transparent 38% 72%,
+                rgba(255, 231, 122, 0.2) 72% 84%,
+                transparent 84%
+            ),
+            linear-gradient(
+                156deg,
+                transparent 0 42%,
+                rgba(255, 251, 220, 0.2) 42% 43%,
+                transparent 43% 63%,
+                rgba(92, 63, 12, 0.2) 63% 64%,
+                transparent 64%
+            ),
+            repeating-linear-gradient(
+                112deg,
+                rgba(255, 244, 198, 0.052) 0 1px,
+                transparent 1px 16px
+            ),
+            radial-gradient(
+                circle at 65% 25%,
+                rgba(255, 245, 196, 0.2),
+                transparent 8rem
+            );
+        opacity: 0.84;
+    }
+}
+
+.concept-card--crown-facets {
+    background:
+        radial-gradient(
+            ellipse at 74% 30%,
+            rgba(104, 74, 18, 0.2),
+            transparent 9rem
+        ),
+        radial-gradient(
+            circle at 78% 34%,
+            rgba(255, 240, 150, 0.2),
+            transparent 5rem
+        ),
+        linear-gradient(115deg, rgba(255, 244, 199, 0.14), transparent 30%),
+        linear-gradient(
+            180deg,
+            var(--card-surface-soft) 0%,
+            var(--card-surface) 38%,
+            var(--card-bg) 72%
+        );
+
+    .concept-card__texture {
+        background:
+            radial-gradient(
+                ellipse at 76% 29%,
+                rgba(255, 237, 139, 0.2) 0 9%,
+                rgba(91, 65, 16, 0.18) 10% 17%,
+                transparent 18%
+            ),
+            radial-gradient(
+                ellipse at 88% 45%,
+                rgba(255, 232, 126, 0.18) 0 8%,
+                rgba(91, 65, 16, 0.18) 9% 15%,
+                transparent 16%
+            ),
+            radial-gradient(
+                ellipse at 63% 46%,
+                rgba(255, 224, 108, 0.16) 0 8%,
+                rgba(91, 65, 16, 0.18) 9% 15%,
+                transparent 16%
+            ),
+            radial-gradient(
+                ellipse at 79% 58%,
+                rgba(255, 235, 140, 0.15) 0 8%,
+                rgba(91, 65, 16, 0.18) 9% 14%,
+                transparent 15%
+            ),
+            linear-gradient(
+                138deg,
+                transparent 0 20%,
+                rgba(79, 56, 14, 0.26) 20% 21%,
+                rgba(255, 246, 194, 0.18) 21% 22%,
+                transparent 22% 56%
+            ),
+            linear-gradient(
+                31deg,
+                transparent 0 42%,
+                rgba(255, 247, 197, 0.16) 42% 43%,
+                transparent 43% 64%
+            ),
+            repeating-radial-gradient(
+                circle at 36% 21%,
+                rgba(255, 250, 215, 0.045) 0 1px,
+                transparent 1px 6px
+            ),
+            repeating-linear-gradient(
+                102deg,
+                transparent 0 24px,
+                rgba(91, 65, 16, 0.07) 24px 25px
+            );
+        opacity: 0.84;
+    }
+}
+
 .concept-card__content {
     position: relative;
     z-index: 2;
@@ -466,7 +2175,19 @@ export default defineComponent({
 }
 
 .concept-card__rating-block {
+    position: relative;
+    padding: 0.25rem 0.2rem 0.45rem;
     text-align: left;
+
+    &::before {
+        content: "";
+        position: absolute;
+        inset: -0.28rem -0.12rem 0.1rem -0.38rem;
+        border-left: 2px solid var(--card-cut);
+        border-top: 1px solid rgba(255, 211, 156, 0.5);
+        border-radius: 7px 0 0 0;
+        opacity: 0.78;
+    }
 }
 
 .concept-card__rating {
@@ -474,7 +2195,9 @@ export default defineComponent({
     font-size: 3.25rem;
     line-height: 0.88;
     font-weight: 900;
-    text-shadow: 0 2px 9px rgba(0, 0, 0, 0.42);
+    text-shadow:
+        0 2px 9px rgba(0, 0, 0, 0.48),
+        0 0 14px rgba(255, 181, 96, 0.18);
 }
 
 .concept-card__position {
@@ -509,8 +2232,8 @@ export default defineComponent({
     margin-top: 0.55rem;
     padding: 0.22rem 0.5rem;
     color: #1a100b;
-    background: linear-gradient(180deg, var(--card-accent), #9f6337);
-    border: 1px solid rgba(255, 230, 198, 0.28);
+    background: linear-gradient(180deg, var(--card-accent), var(--card-border-muted));
+    border: 1px solid rgba(255, 230, 198, 0.38);
     border-radius: 4px;
     font-size: 0.72rem;
     line-height: 1.1;
@@ -566,6 +2289,9 @@ export default defineComponent({
     display: grid;
     place-items: center;
     color: var(--card-accent);
+    box-shadow:
+        0 7px 16px rgba(0, 0, 0, 0.25),
+        inset 0 0 0 1px rgba(255, 208, 154, 0.18);
 }
 
 .concept-card__portrait {
@@ -576,12 +2302,17 @@ export default defineComponent({
     height: 156px;
     display: grid;
     place-items: center;
-    color: rgba(247, 222, 198, 0.78);
+    color: rgba(255, 229, 203, 0.82);
     background:
         radial-gradient(
             ellipse at 50% 64%,
             rgba(15, 11, 9, 0.42),
             transparent 56%
+        ),
+        radial-gradient(
+            ellipse at 50% 30%,
+            rgba(255, 172, 85, 0.12),
+            transparent 48%
         ),
         linear-gradient(
             180deg,
@@ -626,16 +2357,19 @@ export default defineComponent({
         font-weight: 900;
         min-width: 2ch;
         text-align: right;
+        text-shadow: 0 0 12px rgba(255, 181, 96, 0.22);
     }
 }
 
 @media (max-width: 980px) {
     .preview-header,
+    .design-section__header,
     .card-gallery {
         grid-template-columns: 1fr;
     }
 
-    .preview-header {
+    .preview-header,
+    .design-section__header {
         align-items: start;
     }
 
