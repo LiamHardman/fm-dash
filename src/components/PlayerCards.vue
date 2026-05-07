@@ -1,22 +1,28 @@
 <template>
-    <div class="fifa-card" :class="[cardTypeClass, rarityClass]" @click="handleCardClick">
+    <div class="fifa-card" :class="[cardTypeClass, rarityClass, cardDesignClass]" @click="handleCardClick">
         <div class="card-bg"></div>
         <div class="card-content">
             <div class="card-header">
-                <div class="player-rating">{{ playerOverall }}</div>
-                <div class="player-position" :style="positionStyle">{{ formattedPosition }}</div>
-                <div class="player-name">{{ formattedPlayerName }}</div>
-                <div class="player-vitals-container">
-                    <div class="player-vitals">{{ playerVitals }}</div>
+                <div class="rating-block">
+                    <div class="player-rating">{{ playerOverall }}</div>
+                    <div class="player-position" :style="positionStyle">{{ formattedPosition }}</div>
+                </div>
+                <div class="player-identity">
+                    <div class="player-name">{{ formattedPlayerName }}</div>
+                    <div class="player-vitals-container">
+                        <div class="player-vitals">{{ playerVitals }}</div>
+                    </div>
                 </div>
             </div>
 
             <div class="card-middle">
-                <div class="nation-flag" v-if="effectiveNationFlagUrl">
-                    <img :src="effectiveNationFlagUrl" alt="Nation Flag" />
-                </div>
-                <div class="club-logo" v-if="player.club && player.club !== '-'">
-                    <TeamLogo :team-name="player.club" :size="40" class="player-club-logo" />
+                <div class="card-marks">
+                    <div class="nation-flag" v-if="effectiveNationFlagUrl">
+                        <img :src="effectiveNationFlagUrl" alt="Nation Flag" />
+                    </div>
+                    <div class="club-logo" v-if="player.club && player.club !== '-'">
+                        <TeamLogo :team-name="player.club" :size="40" class="player-club-logo" />
+                    </div>
                 </div>
                 <div class="player-photo">
                     <img 
@@ -28,22 +34,19 @@
                         ref="playerImage"
                     />
                     <div v-else class="fallback-icon">
-                        <q-icon name="person" size="150px" color="grey-8" />
+                        <q-icon name="person" size="124px" />
                     </div>
                 </div>
             </div>
 
             <div class="card-footer">
                 <div class="stats-grid">
-                    <div class="stats-column">
-                        <div class="stat-item"><span>{{ isGoalkeeper ? player.div : player.pac }}</span> {{ isGoalkeeper ? 'DIV' : 'PAC' }}</div>
-                        <div class="stat-item"><span>{{ isGoalkeeper ? player.han : player.sho }}</span> {{ isGoalkeeper ? 'HAN' : 'SHO' }}</div>
-                        <div class="stat-item"><span>{{ isGoalkeeper ? player.kic : player.pas }}</span> {{ isGoalkeeper ? 'KIC' : 'PAS' }}</div>
-                    </div>
-                    <div class="stats-column">
-                        <div class="stat-item"><span>{{ isGoalkeeper ? player.ref : player.dri }}</span> {{ isGoalkeeper ? 'REF' : 'DRI' }}</div>
-                        <div class="stat-item"><span>{{ isGoalkeeper ? player.spd : player.def }}</span> {{ isGoalkeeper ? 'SPD' : 'DEF' }}</div>
-                        <div class="stat-item"><span>{{ isGoalkeeper ? player.pos : player.phy }}</span> {{ isGoalkeeper ? 'POS' : 'PHY' }}</div>
+                    <div
+                        v-for="stat in playerStats"
+                        :key="stat.label"
+                        class="stat-item"
+                    >
+                        <span>{{ stat.value }}</span> {{ stat.label }}
                     </div>
                 </div>
             </div>
@@ -355,10 +358,30 @@ export default defineComponent({
 
     // Card type and rarity logic
     const cardType = computed(() => {
+      if (isIconCard.value) return 'icon'
+
       const overall = playerOverall.value || 0
       if (overall >= 75) return 'gold'
       if (overall >= 65) return 'silver'
       return 'bronze'
+    })
+
+    const isIconCard = computed(() => {
+      const player = props.player || {}
+      const cardFields = [
+        player.cardType,
+        player.card_type,
+        player.card_design,
+        player.cardDesign,
+        player.rarity,
+        player.playerType,
+        player.player_type,
+      ]
+
+      return (
+        player.isIcon === true ||
+        cardFields.some((value) => String(value || '').toLowerCase() === 'icon')
+      )
     })
 
     const isRare = computed(() => {
@@ -404,6 +427,26 @@ export default defineComponent({
 
     const cardTypeClass = computed(() => `card-${cardType.value}`)
     const rarityClass = computed(() => (isRare.value ? 'rare' : 'non-rare'))
+    const cardDesignClass = computed(() => {
+      if (cardType.value === 'icon') return 'card-design--ivory-museum'
+
+      const designByTypeAndRarity = {
+        bronze: {
+          'non-rare': 'card-design--aged-plate',
+          rare: 'card-design--amber-facets',
+        },
+        silver: {
+          'non-rare': 'card-design--pale-geometric',
+          rare: 'card-design--polished-silver',
+        },
+        gold: {
+          'non-rare': 'card-design--antique-foil',
+          rare: 'card-design--confetti-foil',
+        },
+      }
+
+      return designByTypeAndRarity[cardType.value]?.[rarityClass.value] || 'card-design--aged-plate'
+    })
 
     // Check if player is a goalkeeper
     const isGoalkeeper = computed(() => {
@@ -440,6 +483,28 @@ export default defineComponent({
         return `/api/faces?uid=${encodeURIComponent(playerUID)}`
       }
       return null
+    })
+
+    const playerStats = computed(() => {
+      if (isGoalkeeper.value) {
+        return [
+          { label: 'DIV', value: props.player.div },
+          { label: 'HAN', value: props.player.han },
+          { label: 'KIC', value: props.player.kic },
+          { label: 'REF', value: props.player.ref },
+          { label: 'SPD', value: props.player.spd },
+          { label: 'POS', value: props.player.pos },
+        ]
+      }
+
+      return [
+        { label: 'PAC', value: props.player.pac },
+        { label: 'DRI', value: props.player.dri },
+        { label: 'SHO', value: props.player.sho },
+        { label: 'DEF', value: props.player.def },
+        { label: 'PAS', value: props.player.pas },
+        { label: 'PHY', value: props.player.phy },
+      ]
     })
 
     // Fetch detailed data logic (unchanged)
@@ -573,376 +638,15 @@ export default defineComponent({
       handleImageLoad,
       cardTypeClass,
       rarityClass,
+      cardDesignClass,
       isGoalkeeper,
       playerOverall,
+      playerStats,
     }
   },
 })
 </script>
 
 <style lang="scss" scoped>
-// Define variables
-$card-bg: #1e1e1e;
-$gold-accent: #c89b3c;
-$text-light: #e0e0e0;
-$border-color: #444;
-
-// Card type colors - Rare variants
-$bronze-color-rare: #b8860b;
-$silver-color-rare: #e5e4e2;
-$gold-color-rare: #ffd700;
-
-// Card type colors - Non-rare variants
-$bronze-color-non-rare: #8b4513;
-$silver-color-non-rare: #a8a8a8;
-$gold-color-non-rare: #daa520;
-
-// Rarity effects
-$rare-glow: 0 0 20px rgba(255, 215, 0, 0.6);
-$non-rare-glow: 0 0 10px rgba(255, 255, 255, 0.3);
-
-.fifa-card {
-    width: 280px;
-    height: 420px;
-    background: $card-bg;
-    border-radius: 12px;
-    position: relative;
-    overflow: hidden;
-    color: $text-light;
-    font-family: 'Roboto', 'Helvetica Neue', 'Arial', sans-serif;
-    border: 2px solid $gold-accent;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    cursor: pointer;
-
-    &:hover {
-        transform: translateY(-10px) scale(1.03);
-        box-shadow: 0 20px 40px rgba($gold-accent, 0.3);
-    }
-
-    // This pseudo-element creates the grey diagonal background
-    &::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 185px; // Height of the top section
-        background: #2a2a2a;
-        transform: skewY(-5deg);
-        transform-origin: top left;
-        z-index: 1;
-    }
-
-    // This pseudo-element creates the gold diagonal line
-    &::after {
-        content: '';
-        position: absolute;
-        top: 280px; // Positioned between player face and stats
-        left: -5%;
-        width: 110%;
-        height: 3px;
-        background: linear-gradient(90deg, #d4af37, #c89b3c);
-        z-index: 3;
-        box-shadow: 0 0 10px rgba($gold-accent, 0.7);
-    }
-
-    // Card type styles with rarity variants
-    &.card-bronze {
-        &.rare {
-            border-color: $bronze-color-rare;
-            
-            &::after {
-                background: linear-gradient(90deg, $bronze-color-rare, darken($bronze-color-rare, 10%));
-                box-shadow: 0 0 10px rgba($bronze-color-rare, 0.7);
-            }
-            
-            .player-vitals-container {
-                background: $bronze-color-rare;
-            }
-            
-            .stat-item span {
-                color: $bronze-color-rare;
-            }
-        }
-        
-        &.non-rare {
-            border-color: $bronze-color-non-rare;
-            
-            &::after {
-                background: linear-gradient(90deg, $bronze-color-non-rare, darken($bronze-color-non-rare, 10%));
-                box-shadow: 0 0 10px rgba($bronze-color-non-rare, 0.7);
-            }
-            
-            .player-vitals-container {
-                background: $bronze-color-non-rare;
-            }
-            
-            .stat-item span {
-                color: $bronze-color-non-rare;
-            }
-        }
-    }
-
-    &.card-silver {
-        &.rare {
-            border-color: $silver-color-rare;
-            
-            &::after {
-                background: linear-gradient(90deg, $silver-color-rare, darken($silver-color-rare, 10%));
-                box-shadow: 0 0 10px rgba($silver-color-rare, 0.7);
-            }
-            
-            .player-vitals-container {
-                background: $silver-color-rare;
-            }
-            
-            .stat-item span {
-                color: $silver-color-rare;
-            }
-        }
-        
-        &.non-rare {
-            border-color: $silver-color-non-rare;
-            
-            &::after {
-                background: linear-gradient(90deg, $silver-color-non-rare, darken($silver-color-non-rare, 10%));
-                box-shadow: 0 0 10px rgba($silver-color-non-rare, 0.7);
-            }
-            
-            .player-vitals-container {
-                background: $silver-color-non-rare;
-            }
-            
-            .stat-item span {
-                color: $silver-color-non-rare;
-            }
-        }
-    }
-
-    &.card-gold {
-        &.rare {
-            border-color: $gold-color-rare;
-            
-            &::after {
-                background: linear-gradient(90deg, $gold-color-rare, darken($gold-color-rare, 10%));
-                box-shadow: 0 0 10px rgba($gold-color-rare, 0.7);
-            }
-            
-            .player-vitals-container {
-                background: $gold-color-rare;
-            }
-            
-            .stat-item span {
-                color: $gold-color-rare;
-            }
-        }
-        
-        &.non-rare {
-            border-color: $gold-color-non-rare;
-            
-            &::after {
-                background: linear-gradient(90deg, $gold-color-non-rare, darken($gold-color-non-rare, 10%));
-                box-shadow: 0 0 10px rgba($gold-color-non-rare, 0.7);
-            }
-            
-            .player-vitals-container {
-                background: $gold-color-non-rare;
-            }
-            
-            .stat-item span {
-                color: $gold-color-non-rare;
-            }
-        }
-    }
-
-    // Rarity styles
-    &.rare {
-        box-shadow: $rare-glow;
-        
-        &:hover {
-            box-shadow: 0 20px 40px rgba(255, 215, 0, 0.4), $rare-glow;
-        }
-        
-        &::before {
-            background: linear-gradient(135deg, #2a2a2a, #3a3a3a);
-        }
-    }
-
-    &.non-rare {
-        box-shadow: $non-rare-glow;
-        
-        &:hover {
-            box-shadow: 0 20px 40px rgba(255, 255, 255, 0.2), $non-rare-glow;
-        }
-    }
-}
-
-.card-content {
-    position: relative;
-    z-index: 2;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-}
-
-// Header section
-.card-header {
-    position: relative;
-    height: 170px;
-    padding: 1rem;
-    z-index: 4;
-
-    .player-rating {
-        position: absolute;
-        top: 15px;
-        left: 20px;
-        font-size: 3rem;
-        font-weight: 900;
-        color: $text-light;
-        line-height: 1;
-    }
-
-    .player-position {
-        position: absolute;
-        top: 60px;
-        left: 20px;
-        font-size: 1.4rem;
-        font-weight: 600;
-        color: $text-light;
-        opacity: 0.9;
-        min-width: 35px; // Reduced to account for 2-letter positions
-        text-align: left;
-    }
-
-    .player-name {
-        position: absolute;
-        top: 25px;
-        left: 80px; // Start after the rating area
-        right: 20px; // Leave some space on the right
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: $text-light;
-        white-space: nowrap;
-        text-align: center;
-        overflow: hidden;
-        text-overflow: ellipsis; // Handle very long names
-    }
-
-    .player-vitals-container {
-        position: absolute;
-        top: 60px;
-        right: 20px;
-        background: $gold-accent;
-        padding: 4px 8px;
-        border-radius: 4px;
-    }
-
-    .player-vitals {
-        font-size: 0.8rem;
-        font-weight: 600;
-        color: #1e1e1e;
-        white-space: nowrap;
-    }
-}
-
-
-// Middle section
-.card-middle {
-    flex-grow: 1;
-    position: relative;
-    z-index: 2;
-
-    .nation-flag {
-        position: absolute;
-        top: -65px;
-        left: 20px;
-        width: 45px;
-        z-index: 5;
-        
-        img {
-            width: 100%;
-            height: 30px;
-            object-fit: cover;
-            border-radius: 3px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-    }
-
-    .club-logo {
-        position: absolute;
-        top: -25px;
-        left: 20px;
-        width: 45px;
-        height: 45px;
-        z-index: 5;
-
-        :deep(.team-logo),
-        :deep(img) {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
-    }
-
-    .player-photo {
-        position: absolute;
-        top: -112px;
-        right: 0px;
-        width: 180px;
-        height: 200px;
-        
-        img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            object-position: bottom center;
-        }
-        
-        .fallback-icon {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-    }
-}
-
-// Footer section
-.card-footer {
-    padding: 0 1.5rem 1rem 1.5rem;
-    position: relative;
-    z-index: 2;
-    margin-top: auto; // Pushes footer to the bottom
-
-    .stats-grid {
-        display: flex;
-        justify-content: space-between;
-        gap: 1.5rem;
-    }
-
-    .stats-column {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    .stat-item {
-        display: flex;
-        align-items: baseline;
-        font-size: 1.1rem;
-        font-weight: 500;
-        color: $text-light;
-
-        span {
-            color: $gold-accent;
-            font-weight: 700;
-            font-size: 1.2rem;
-            margin-right: 0.5rem;
-            width: 35px; // Aligns the stat labels
-            text-align: left;
-        }
-    }
-}
+@use "../styles/card-designs";
 </style>

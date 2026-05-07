@@ -1,0 +1,30 @@
+.card-design--polished-silver {
+    --card-bg: #10161d;
+    --card-surface: #8b98a3;
+    --card-surface-soft: #d4dde3;
+    --card-border: #eef5f8;
+    --card-border-muted: #586672;
+    --card-accent: #f7fbfd;
+    --card-cut: #ffffff;
+    --card-highlight: #ffffff;
+    --card-text: #fbfdff;
+    --card-muted: #d3e0e8;
+    --card-stat: #ffffff;
+    --card-shadow: rgba(207, 229, 239, 0.36);
+
+    background:
+        conic-gradient(from 228deg at 58% 24%, rgba(255, 255, 255, 0) 0deg, rgba(255, 255, 255, 0.16) 18deg, rgba(87, 103, 115, 0.18) 38deg, rgba(255, 255, 255, 0) 58deg, rgba(255, 255, 255, 0) 126deg, rgba(232, 244, 250, 0.18) 144deg, rgba(255, 255, 255, 0) 168deg, rgba(255, 255, 255, 0) 360deg),
+        radial-gradient(circle at 66% 19%, rgba(255, 255, 255, 0.24), transparent 8rem),
+        linear-gradient(112deg, rgba(255, 255, 255, 0.18), transparent 29%),
+        linear-gradient(180deg, var(--card-surface-soft) 0%, var(--card-surface) 36%, var(--card-bg) 68%);
+}
+
+.card-design--polished-silver .card-bg {
+    background:
+        linear-gradient(136deg, transparent 0 13%, rgba(255, 255, 255, 0.18) 13% 14%, transparent 14% 33%, rgba(61, 76, 88, 0.3) 33% 48%, transparent 48%),
+        linear-gradient(46deg, transparent 0 25%, rgba(238, 248, 252, 0.16) 25% 26%, transparent 26% 58%, rgba(255, 255, 255, 0.14) 58% 59%, transparent 59%),
+        repeating-radial-gradient(circle at 50% 12%, rgba(255, 255, 255, 0.09) 0 1px, transparent 1px 10px),
+        repeating-linear-gradient(113deg, rgba(255, 255, 255, 0.065) 0 1px, transparent 1px 13px),
+        linear-gradient(154deg, transparent 0 24%, rgba(255, 255, 255, 0.2) 24% 25%, transparent 25% 55%, rgba(0, 0, 0, 0.3) 55% 68%, transparent 68%);
+    opacity: 0.8;
+}

@@ -1,0 +1,28 @@
+.card-design--amber-facets {
+    --card-bg: #21130f;
+    --card-surface: #6d351b;
+    --card-surface-soft: #bd6f34;
+    --card-border: #d18b48;
+    --card-border-muted: #56301f;
+    --card-accent: #f3a65f;
+    --card-cut: #ffd38d;
+    --card-highlight: #fff0cc;
+    --card-text: #fff1df;
+    --card-muted: #deb087;
+    --card-stat: #ffbd72;
+    --card-shadow: rgba(218, 119, 49, 0.34);
+
+    background:
+        linear-gradient(145deg, rgba(255, 235, 210, 0.12), transparent 26%),
+        linear-gradient(180deg, var(--card-surface-soft) 0%, var(--card-surface) 38%, var(--card-bg) 100%);
+}
+
+.card-design--amber-facets .card-bg {
+    background:
+        linear-gradient(135deg, transparent 0 16%, rgba(255, 194, 114, 0.18) 16% 17%, transparent 17% 42%, rgba(0, 0, 0, 0.28) 42% 55%, transparent 55%),
+        linear-gradient(38deg, transparent 0 31%, rgba(255, 216, 164, 0.16) 31% 32%, transparent 32% 64%, rgba(230, 130, 58, 0.11) 64% 65%, transparent 65%),
+        linear-gradient(162deg, transparent 0 48%, rgba(255, 171, 84, 0.17) 48% 49%, transparent 49%),
+        radial-gradient(circle at 68% 20%, rgba(255, 185, 99, 0.19), transparent 8rem),
+        repeating-linear-gradient(120deg, transparent 0 26px, rgba(255, 224, 194, 0.052) 26px 27px);
+    opacity: 0.78;
+}

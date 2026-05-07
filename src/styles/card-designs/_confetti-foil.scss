@@ -1,0 +1,28 @@
+.card-design--confetti-foil {
+    --card-bg: #160f05;
+    --card-surface: #a66e0e;
+    --card-surface-soft: #f2c957;
+    --card-border: #ffe486;
+    --card-border-muted: #65450e;
+    --card-accent: #ffd05e;
+    --card-cut: #fff2ab;
+    --card-highlight: #fffbe0;
+    --card-text: #fff6d1;
+    --card-muted: #eed084;
+    --card-stat: #ffe177;
+    --card-shadow: rgba(255, 202, 77, 0.4);
+
+    background:
+        radial-gradient(circle at 47% 18%, rgba(255, 244, 177, 0.16), transparent 9rem),
+        linear-gradient(180deg, var(--card-surface-soft) 0%, var(--card-surface) 40%, var(--card-bg) 74%);
+}
+
+.card-design--confetti-foil .card-bg {
+    background:
+        linear-gradient(24deg, transparent 0 15%, rgba(255, 250, 205, 0.2) 15% 17%, transparent 17% 47%, rgba(93, 64, 13, 0.18) 47% 49%, transparent 49%),
+        linear-gradient(111deg, transparent 0 21%, rgba(255, 222, 93, 0.18) 21% 23%, transparent 23% 58%, rgba(255, 248, 194, 0.18) 58% 60%, transparent 60%),
+        linear-gradient(152deg, transparent 0 33%, rgba(91, 63, 13, 0.18) 33% 35%, transparent 35% 73%, rgba(255, 236, 126, 0.16) 73% 75%, transparent 75%),
+        repeating-linear-gradient(97deg, transparent 0 22px, rgba(255, 246, 187, 0.045) 22px 23px),
+        linear-gradient(180deg, transparent 0 60%, rgba(12, 8, 3, 0.44) 60% 100%);
+    opacity: 0.8;
+}

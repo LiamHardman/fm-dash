@@ -1,0 +1,107 @@
+@use "base";
+@use "aged-plate";
+@use "amber-facets";
+@use "pale-geometric";
+@use "polished-silver";
+@use "antique-foil";
+@use "confetti-foil";
+@use "ivory-museum";
+
+.card-design--aged-plate,
+.card-design--antique-foil,
+.card-design--pale-geometric {
+    box-shadow:
+        0 18px 42px rgba(0, 0, 0, 0.42),
+        0 0 13px var(--card-shadow);
+
+    &:hover,
+    &:focus-within {
+        box-shadow:
+            0 26px 56px rgba(0, 0, 0, 0.48),
+            0 0 18px var(--card-shadow);
+    }
+
+    &::before {
+        border-color: rgba(255, 232, 205, 0.18);
+        box-shadow: none;
+    }
+
+    &::after {
+        background: linear-gradient(90deg, transparent, var(--card-accent), transparent);
+        box-shadow: none;
+        opacity: 0.78;
+    }
+
+    .rating-block {
+        padding: 0;
+
+        &::before {
+            opacity: 0;
+        }
+    }
+
+    .player-rating,
+    .stat-item span {
+        text-shadow: none;
+    }
+}
+
+.card-design--pale-geometric,
+.card-design--polished-silver {
+    &::before {
+        border-color: rgba(240, 248, 252, 0.34);
+        box-shadow:
+            inset 0 0 0 1px rgba(112, 129, 140, 0.42),
+            0 0 18px rgba(214, 235, 244, 0.12);
+    }
+
+    &::after {
+        background: linear-gradient(90deg, transparent, var(--card-cut), var(--card-accent), var(--card-cut), transparent);
+        box-shadow: 0 0 14px rgba(210, 237, 247, 0.34);
+    }
+
+    .rating-block::before {
+        border-left-color: var(--card-cut);
+        border-top-color: rgba(240, 248, 252, 0.5);
+    }
+
+    .player-vitals-container {
+        color: #10161d;
+        background: linear-gradient(180deg, var(--card-accent), var(--card-border-muted));
+        border-color: rgba(240, 248, 252, 0.42);
+    }
+
+    .nation-flag,
+    .club-logo {
+        border-color: rgba(240, 248, 252, 0.28);
+        background: rgba(11, 16, 22, 0.62);
+    }
+
+    .player-photo {
+        color: rgba(240, 248, 252, 0.84);
+        background:
+            radial-gradient(ellipse at 50% 64%, rgba(7, 12, 18, 0.46), transparent 56%),
+            radial-gradient(ellipse at 50% 30%, rgba(216, 236, 246, 0.14), transparent 48%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0));
+    }
+}
+
+.card-design--confetti-foil {
+    &::before {
+        border-color: rgba(235, 209, 132, 0.32);
+        box-shadow:
+            inset 0 0 0 1px rgba(112, 80, 22, 0.5),
+            0 0 18px rgba(228, 181, 67, 0.12);
+    }
+
+    &::after {
+        background: linear-gradient(90deg, transparent, var(--card-cut), var(--card-accent), var(--card-cut), transparent);
+        box-shadow: 0 0 14px rgba(232, 188, 76, 0.3);
+    }
+
+    .player-vitals-container {
+        color: #171006;
+        background: linear-gradient(180deg, var(--card-accent), var(--card-border-muted));
+        border-color: rgba(238, 216, 154, 0.38);
+    }
+}

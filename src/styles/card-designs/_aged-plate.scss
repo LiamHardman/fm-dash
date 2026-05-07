@@ -1,0 +1,27 @@
+.card-design--aged-plate {
+    --card-bg: #1c1713;
+    --card-surface: #4c2b1d;
+    --card-surface-soft: #6a3b27;
+    --card-border: #806044;
+    --card-border-muted: #332319;
+    --card-accent: #b5794d;
+    --card-cut: #b5794d;
+    --card-highlight: #f0e1d1;
+    --card-text: #f0e1d1;
+    --card-muted: #b99d80;
+    --card-stat: #c98755;
+    --card-shadow: rgba(111, 78, 49, 0.24);
+
+    background:
+        linear-gradient(145deg, rgba(255, 235, 210, 0.05), transparent 26%),
+        linear-gradient(180deg, var(--card-surface) 0%, #2a1d16 48%, var(--card-bg) 100%);
+}
+
+.card-design--aged-plate .card-bg {
+    background:
+        linear-gradient(135deg, transparent 0 18%, rgba(0, 0, 0, 0.25) 18% 19%, transparent 19%),
+        linear-gradient(45deg, transparent 0 36%, rgba(181, 121, 77, 0.13) 36% 37%, transparent 37%),
+        repeating-radial-gradient(circle at 32% 30%, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 9px),
+        repeating-linear-gradient(120deg, transparent 0 26px, rgba(255, 224, 194, 0.045) 26px 27px);
+    opacity: 0.7;
+}

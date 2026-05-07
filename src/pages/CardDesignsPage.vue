@@ -760,6 +760,198 @@ const goldRareDesigns = [
   },
 ]
 
+const goldRareBackgroundDesigns = [
+  {
+    id: 'sunburst-vault',
+    variant: 'rare',
+    name: 'Sunburst Vault',
+    description:
+      'A classic centred foil burst with alternating polished rays, strongest behind the portrait and fading into a calmer lower panel.',
+    tokens: {
+      '--card-bg': '#160f05',
+      '--card-surface': '#a87410',
+      '--card-surface-soft': '#f3ca55',
+      '--card-border': '#ffe283',
+      '--card-border-muted': '#63450f',
+      '--card-accent': '#ffd866',
+      '--card-cut': '#fff0a2',
+      '--card-highlight': '#fff9d8',
+      '--card-text': '#fff7d2',
+      '--card-muted': '#efd48b',
+      '--card-stat': '#ffe17a',
+      '--card-shadow': 'rgba(255, 203, 74, 0.4)',
+    },
+  },
+  {
+    id: 'damascus-foil',
+    variant: 'rare',
+    name: 'Damascus Foil',
+    description:
+      'Layered wave bands mimic forged precious metal, giving the background a premium organic grain instead of hard facets.',
+    tokens: {
+      '--card-bg': '#130d05',
+      '--card-surface': '#9a6810',
+      '--card-surface-soft': '#e7bd4f',
+      '--card-border': '#f8da7a',
+      '--card-border-muted': '#5b3e0d',
+      '--card-accent': '#ffcf5b',
+      '--card-cut': '#ffef9f',
+      '--card-highlight': '#fff7ce',
+      '--card-text': '#fff4cc',
+      '--card-muted': '#e8c97e',
+      '--card-stat': '#ffdb70',
+      '--card-shadow': 'rgba(244, 188, 62, 0.38)',
+    },
+  },
+  {
+    id: 'black-gold-chevron',
+    variant: 'rare',
+    name: 'Black-Gold Chevron',
+    description:
+      'Deep black enamel chevrons interrupt the gold foil for a sharper standard-rare read without becoming a performance card.',
+    tokens: {
+      '--card-bg': '#0b0905',
+      '--card-surface': '#8e6110',
+      '--card-surface-soft': '#e9bd46',
+      '--card-border': '#ffe07d',
+      '--card-border-muted': '#4b350d',
+      '--card-accent': '#ffd15f',
+      '--card-cut': '#fff1a8',
+      '--card-highlight': '#fff8d0',
+      '--card-text': '#fff4cb',
+      '--card-muted': '#e5c878',
+      '--card-stat': '#ffdc6d',
+      '--card-shadow': 'rgba(255, 197, 69, 0.38)',
+    },
+  },
+  {
+    id: 'quilted-ingot',
+    variant: 'rare',
+    name: 'Quilted Ingot',
+    description:
+      'Soft raised lozenges and inset shadows create an embossed luxury texture that stays readable behind the player area.',
+    tokens: {
+      '--card-bg': '#171005',
+      '--card-surface': '#a57111',
+      '--card-surface-soft': '#edc65a',
+      '--card-border': '#ffdf82',
+      '--card-border-muted': '#67470f',
+      '--card-accent': '#ffd467',
+      '--card-cut': '#fff0a6',
+      '--card-highlight': '#fff9d7',
+      '--card-text': '#fff5d0',
+      '--card-muted': '#eccf84',
+      '--card-stat': '#ffe07a',
+      '--card-shadow': 'rgba(250, 196, 70, 0.38)',
+    },
+  },
+  {
+    id: 'liquid-aurum',
+    variant: 'rare',
+    name: 'Liquid Aurum',
+    description:
+      'Molten gold gradients pool across the upper field, creating broad fluid highlights rather than tight metallic grain.',
+    tokens: {
+      '--card-bg': '#180e04',
+      '--card-surface': '#b0710d',
+      '--card-surface-soft': '#ffd15f',
+      '--card-border': '#ffe48c',
+      '--card-border-muted': '#6a430b',
+      '--card-accent': '#ffca52',
+      '--card-cut': '#fff3ae',
+      '--card-highlight': '#fff9d9',
+      '--card-text': '#fff6d2',
+      '--card-muted': '#f0ce80',
+      '--card-stat': '#ffe078',
+      '--card-shadow': 'rgba(255, 190, 53, 0.4)',
+    },
+  },
+  {
+    id: 'art-deco-ribs',
+    variant: 'rare',
+    name: 'Art Deco Ribs',
+    description:
+      'Symmetric stepped ribs and narrow linework give the card a formal premium background without borrowing Icon ivory cues.',
+    tokens: {
+      '--card-bg': '#140e05',
+      '--card-surface': '#9c6b12',
+      '--card-surface-soft': '#e9c04f',
+      '--card-border': '#ffe187',
+      '--card-border-muted': '#5d410e',
+      '--card-accent': '#ffd76b',
+      '--card-cut': '#fff0aa',
+      '--card-highlight': '#fff8d4',
+      '--card-text': '#fff5d0',
+      '--card-muted': '#e9cc82',
+      '--card-stat': '#ffe17b',
+      '--card-shadow': 'rgba(250, 199, 77, 0.39)',
+    },
+  },
+  {
+    id: 'confetti-foil',
+    variant: 'rare',
+    name: 'Confetti Foil',
+    description:
+      'Small scattered foil chips add sparkle and movement while keeping the palette standard gold instead of season-event blue.',
+    tokens: {
+      '--card-bg': '#160f05',
+      '--card-surface': '#a66e0e',
+      '--card-surface-soft': '#f2c957',
+      '--card-border': '#ffe486',
+      '--card-border-muted': '#65450e',
+      '--card-accent': '#ffd05e',
+      '--card-cut': '#fff2ab',
+      '--card-highlight': '#fffbe0',
+      '--card-text': '#fff6d1',
+      '--card-muted': '#eed084',
+      '--card-stat': '#ffe177',
+      '--card-shadow': 'rgba(255, 202, 77, 0.4)',
+    },
+  },
+  {
+    id: 'circuit-gilt',
+    variant: 'rare',
+    name: 'Circuit Gilt',
+    description:
+      'Thin technical trace lines and plated nodes produce a modern analytical gold rare background for data-heavy players.',
+    tokens: {
+      '--card-bg': '#120d05',
+      '--card-surface': '#98680f',
+      '--card-surface-soft': '#eac455',
+      '--card-border': '#ffe28a',
+      '--card-border-muted': '#583e0e',
+      '--card-accent': '#ffd96f',
+      '--card-cut': '#fff2ad',
+      '--card-highlight': '#fff9d9',
+      '--card-text': '#fff5d1',
+      '--card-muted': '#e9cd84',
+      '--card-stat': '#ffe27d',
+      '--card-shadow': 'rgba(249, 198, 79, 0.38)',
+    },
+  },
+  {
+    id: 'woven-laurel',
+    variant: 'rare',
+    name: 'Woven Laurel',
+    description:
+      'A dark woven foil base with subtle laurel arcs gives the rare card a football-award cue without becoming Team of the Season.',
+    tokens: {
+      '--card-bg': '#120d05',
+      '--card-surface': '#8f6412',
+      '--card-surface-soft': '#e3bb4f',
+      '--card-border': '#ffdf83',
+      '--card-border-muted': '#573d0e',
+      '--card-accent': '#ffd36a',
+      '--card-cut': '#fff1a7',
+      '--card-highlight': '#fff8d4',
+      '--card-text': '#fff5cf',
+      '--card-muted': '#e7c97e',
+      '--card-stat': '#ffdf76',
+      '--card-shadow': 'rgba(246, 193, 72, 0.38)',
+    },
+  },
+]
+
 const totwBronzeDesigns = [
   {
     id: 'bronze-week-strike',
@@ -1489,6 +1681,15 @@ const designSections = [
       'Explosive match-event concepts with vivid orange, black match-night depth, hot foil energy, and protected text contrast.',
     player: manOfTheMatchPlayer,
     designs: manOfTheMatchDesigns,
+  },
+  {
+    id: 'gold-rare-background-lab',
+    kicker: 'Background exploration',
+    title: 'Gold Rare Background Lab',
+    description:
+      'Nine additional gold rare background studies using the same card structure, data, borders, and typography so the surface direction can be compared directly.',
+    player: goldRarePlayer,
+    designs: goldRareBackgroundDesigns,
   },
 ]
 
@@ -2485,7 +2686,16 @@ export default defineComponent({
 .concept-card--ochre-panel,
 .concept-card--royal-foil-burst,
 .concept-card--jewel-trim,
-.concept-card--crown-facets {
+.concept-card--crown-facets,
+.concept-card--sunburst-vault,
+.concept-card--damascus-foil,
+.concept-card--black-gold-chevron,
+.concept-card--quilted-ingot,
+.concept-card--liquid-aurum,
+.concept-card--art-deco-ribs,
+.concept-card--confetti-foil,
+.concept-card--circuit-gilt,
+.concept-card--woven-laurel {
     background:
         radial-gradient(
             circle at 50% 8%,
@@ -2965,6 +3175,188 @@ export default defineComponent({
                 rgba(91, 65, 16, 0.07) 24px 25px
             );
         opacity: 0.84;
+    }
+}
+
+.concept-card--sunburst-vault {
+    background:
+        radial-gradient(circle at 50% 43%, rgba(255, 248, 190, 0.26), transparent 10rem),
+        conic-gradient(
+            from -18deg at 50% 43%,
+            rgba(255, 241, 148, 0.23) 0deg 10deg,
+            rgba(100, 69, 14, 0.12) 10deg 18deg,
+            rgba(255, 205, 67, 0.2) 18deg 29deg,
+            transparent 29deg 41deg,
+            rgba(255, 248, 196, 0.2) 41deg 52deg,
+            rgba(96, 66, 12, 0.16) 52deg 62deg,
+            rgba(255, 224, 103, 0.2) 62deg 78deg,
+            transparent 78deg 360deg
+        ),
+        linear-gradient(180deg, var(--card-surface-soft) 0%, var(--card-surface) 42%, var(--card-bg) 74%);
+
+    .concept-card__texture {
+        background:
+            repeating-conic-gradient(
+                from -18deg at 50% 43%,
+                rgba(255, 249, 202, 0.16) 0deg 1deg,
+                transparent 1deg 7deg
+            ),
+            linear-gradient(180deg, transparent 0 58%, rgba(12, 8, 3, 0.44) 58% 100%);
+        opacity: 0.84;
+    }
+}
+
+.concept-card--damascus-foil {
+    background:
+        radial-gradient(ellipse at 50% 28%, rgba(255, 236, 143, 0.16), transparent 11rem),
+        linear-gradient(180deg, var(--card-surface-soft) 0%, var(--card-surface) 40%, var(--card-bg) 74%);
+
+    .concept-card__texture {
+        background:
+            repeating-radial-gradient(
+                ellipse at 18% 22%,
+                rgba(255, 246, 178, 0.12) 0 2px,
+                rgba(94, 63, 12, 0.16) 2px 4px,
+                transparent 4px 12px
+            ),
+            repeating-radial-gradient(
+                ellipse at 78% 34%,
+                transparent 0 8px,
+                rgba(255, 231, 116, 0.1) 8px 10px,
+                rgba(70, 47, 10, 0.15) 10px 12px,
+                transparent 12px 22px
+            ),
+            linear-gradient(180deg, transparent 0 61%, rgba(13, 9, 4, 0.42) 61% 100%);
+        opacity: 0.7;
+    }
+}
+
+.concept-card--black-gold-chevron {
+    background:
+        linear-gradient(180deg, rgba(255, 232, 128, 0.15), transparent 42%),
+        linear-gradient(180deg, var(--card-surface-soft) 0%, var(--card-surface) 38%, var(--card-bg) 74%);
+
+    .concept-card__texture {
+        background:
+            repeating-linear-gradient(
+                135deg,
+                transparent 0 28px,
+                rgba(10, 8, 4, 0.48) 28px 46px,
+                rgba(255, 238, 142, 0.14) 46px 48px,
+                transparent 48px 76px
+            ),
+            repeating-linear-gradient(
+                45deg,
+                transparent 0 34px,
+                rgba(9, 7, 4, 0.38) 34px 52px,
+                rgba(255, 246, 190, 0.1) 52px 54px,
+                transparent 54px 88px
+            ),
+            linear-gradient(180deg, transparent 0 58%, rgba(7, 6, 4, 0.58) 58% 100%);
+        opacity: 0.74;
+    }
+}
+
+.concept-card--quilted-ingot {
+    background:
+        radial-gradient(circle at 50% 18%, rgba(255, 243, 171, 0.16), transparent 9rem),
+        linear-gradient(180deg, var(--card-surface-soft) 0%, var(--card-surface) 42%, var(--card-bg) 76%);
+
+    .concept-card__texture {
+        background:
+            linear-gradient(45deg, rgba(255, 247, 184, 0.12) 25%, transparent 25% 75%, rgba(82, 56, 12, 0.18) 75%),
+            linear-gradient(-45deg, rgba(86, 58, 12, 0.18) 25%, transparent 25% 75%, rgba(255, 246, 181, 0.12) 75%),
+            repeating-linear-gradient(90deg, rgba(255, 243, 173, 0.035) 0 1px, transparent 1px 18px),
+            linear-gradient(180deg, transparent 0 60%, rgba(12, 8, 3, 0.42) 60% 100%);
+        background-size:
+            56px 56px,
+            56px 56px,
+            auto,
+            auto;
+        opacity: 0.66;
+    }
+}
+
+.concept-card--liquid-aurum {
+    background:
+        radial-gradient(ellipse at 28% 21%, rgba(255, 245, 174, 0.34), transparent 8rem),
+        radial-gradient(ellipse at 74% 36%, rgba(255, 204, 70, 0.28), transparent 9rem),
+        radial-gradient(ellipse at 43% 54%, rgba(108, 68, 9, 0.28), transparent 8rem),
+        linear-gradient(180deg, var(--card-surface-soft) 0%, var(--card-surface) 43%, var(--card-bg) 76%);
+
+    .concept-card__texture {
+        background:
+            radial-gradient(ellipse at 23% 31%, rgba(255, 252, 205, 0.22) 0 18%, transparent 19%),
+            radial-gradient(ellipse at 70% 26%, rgba(255, 235, 127, 0.19) 0 19%, transparent 20%),
+            radial-gradient(ellipse at 58% 49%, rgba(87, 54, 8, 0.24) 0 20%, transparent 21%),
+            repeating-linear-gradient(96deg, rgba(255, 242, 169, 0.035) 0 1px, transparent 1px 9px),
+            linear-gradient(180deg, transparent 0 60%, rgba(13, 8, 3, 0.46) 60% 100%);
+        opacity: 0.76;
+    }
+}
+
+.concept-card--art-deco-ribs {
+    background:
+        radial-gradient(ellipse at 50% 17%, rgba(255, 242, 161, 0.18), transparent 9rem),
+        linear-gradient(180deg, var(--card-surface-soft) 0%, var(--card-surface) 40%, var(--card-bg) 74%);
+
+    .concept-card__texture {
+        background:
+            linear-gradient(90deg, transparent 0 18%, rgba(255, 247, 188, 0.18) 18% 19%, transparent 19% 81%, rgba(255, 247, 188, 0.18) 81% 82%, transparent 82%),
+            linear-gradient(90deg, transparent 0 27%, rgba(87, 60, 12, 0.22) 27% 28%, transparent 28% 72%, rgba(87, 60, 12, 0.22) 72% 73%, transparent 73%),
+            linear-gradient(90deg, transparent 0 38%, rgba(255, 230, 118, 0.16) 38% 39%, transparent 39% 61%, rgba(255, 230, 118, 0.16) 61% 62%, transparent 62%),
+            repeating-linear-gradient(0deg, transparent 0 18px, rgba(255, 244, 174, 0.055) 18px 19px),
+            linear-gradient(180deg, transparent 0 61%, rgba(12, 8, 3, 0.44) 61% 100%);
+        opacity: 0.78;
+    }
+}
+
+.concept-card--confetti-foil {
+    background:
+        radial-gradient(circle at 47% 18%, rgba(255, 244, 177, 0.16), transparent 9rem),
+        linear-gradient(180deg, var(--card-surface-soft) 0%, var(--card-surface) 40%, var(--card-bg) 74%);
+
+    .concept-card__texture {
+        background:
+            linear-gradient(24deg, transparent 0 15%, rgba(255, 250, 205, 0.2) 15% 17%, transparent 17% 47%, rgba(93, 64, 13, 0.18) 47% 49%, transparent 49%),
+            linear-gradient(111deg, transparent 0 21%, rgba(255, 222, 93, 0.18) 21% 23%, transparent 23% 58%, rgba(255, 248, 194, 0.18) 58% 60%, transparent 60%),
+            linear-gradient(152deg, transparent 0 33%, rgba(91, 63, 13, 0.18) 33% 35%, transparent 35% 73%, rgba(255, 236, 126, 0.16) 73% 75%, transparent 75%),
+            repeating-linear-gradient(97deg, transparent 0 22px, rgba(255, 246, 187, 0.045) 22px 23px),
+            linear-gradient(180deg, transparent 0 60%, rgba(12, 8, 3, 0.44) 60% 100%);
+        opacity: 0.8;
+    }
+}
+
+.concept-card--circuit-gilt {
+    background:
+        radial-gradient(circle at 64% 24%, rgba(255, 244, 177, 0.15), transparent 9rem),
+        linear-gradient(180deg, var(--card-surface-soft) 0%, var(--card-surface) 39%, var(--card-bg) 74%);
+
+    .concept-card__texture {
+        background:
+            radial-gradient(circle at 28% 28%, rgba(255, 246, 184, 0.2) 0 2px, transparent 3px),
+            radial-gradient(circle at 68% 36%, rgba(255, 246, 184, 0.18) 0 2px, transparent 3px),
+            linear-gradient(90deg, transparent 0 18%, rgba(255, 239, 141, 0.16) 18% 19%, transparent 19% 45%, rgba(86, 59, 12, 0.2) 45% 46%, transparent 46%),
+            linear-gradient(0deg, transparent 0 25%, rgba(255, 239, 141, 0.14) 25% 26%, transparent 26% 54%, rgba(86, 59, 12, 0.2) 54% 55%, transparent 55%),
+            repeating-linear-gradient(90deg, transparent 0 32px, rgba(255, 245, 180, 0.05) 32px 33px),
+            linear-gradient(180deg, transparent 0 60%, rgba(12, 8, 3, 0.46) 60% 100%);
+        opacity: 0.78;
+    }
+}
+
+.concept-card--woven-laurel {
+    background:
+        radial-gradient(ellipse at 50% 19%, rgba(255, 239, 150, 0.14), transparent 10rem),
+        linear-gradient(180deg, var(--card-surface-soft) 0%, var(--card-surface) 40%, var(--card-bg) 76%);
+
+    .concept-card__texture {
+        background:
+            radial-gradient(ellipse at 24% 46%, transparent 0 34%, rgba(255, 236, 126, 0.14) 35% 37%, transparent 38%),
+            radial-gradient(ellipse at 76% 46%, transparent 0 34%, rgba(255, 236, 126, 0.14) 35% 37%, transparent 38%),
+            repeating-linear-gradient(45deg, rgba(255, 245, 181, 0.045) 0 2px, transparent 2px 9px),
+            repeating-linear-gradient(135deg, rgba(72, 50, 12, 0.12) 0 2px, transparent 2px 10px),
+            linear-gradient(180deg, transparent 0 60%, rgba(12, 8, 3, 0.48) 60% 100%);
+        opacity: 0.7;
     }
 }
 

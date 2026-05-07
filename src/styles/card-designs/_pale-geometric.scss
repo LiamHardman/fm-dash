@@ -1,0 +1,27 @@
+.card-design--pale-geometric {
+    --card-bg: #151a20;
+    --card-surface: #59646c;
+    --card-surface-soft: #8f9aa1;
+    --card-border: #9ea8af;
+    --card-border-muted: #37414a;
+    --card-accent: #b9c2c8;
+    --card-cut: #d0d7dc;
+    --card-highlight: #e2e8eb;
+    --card-text: #eef3f5;
+    --card-muted: #adb8bf;
+    --card-stat: #d2dbe0;
+    --card-shadow: rgba(132, 148, 158, 0.16);
+
+    background:
+        linear-gradient(145deg, rgba(255, 255, 255, 0.08), transparent 29%),
+        linear-gradient(180deg, var(--card-surface-soft) 0%, var(--card-surface) 42%, var(--card-bg) 100%);
+}
+
+.card-design--pale-geometric .card-bg {
+    background:
+        linear-gradient(136deg, transparent 0 17%, rgba(244, 250, 253, 0.13) 17% 18%, transparent 18% 43%, rgba(11, 17, 22, 0.26) 43% 57%, transparent 57%),
+        linear-gradient(42deg, transparent 0 33%, rgba(235, 244, 248, 0.12) 33% 34%, transparent 34% 66%),
+        repeating-linear-gradient(118deg, transparent 0 28px, rgba(244, 250, 253, 0.045) 28px 29px),
+        radial-gradient(circle at 64% 22%, rgba(200, 214, 222, 0.08), transparent 8rem);
+    opacity: 0.6;
+}

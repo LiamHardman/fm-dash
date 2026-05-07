@@ -1,0 +1,27 @@
+.card-design--antique-foil {
+    --card-bg: #17130b;
+    --card-surface: #776029;
+    --card-surface-soft: #a68d4a;
+    --card-border: #b39a58;
+    --card-border-muted: #443719;
+    --card-accent: #c8ae65;
+    --card-cut: #d5bc75;
+    --card-highlight: #ead79d;
+    --card-text: #f3e6bd;
+    --card-muted: #cab378;
+    --card-stat: #d0ae58;
+    --card-shadow: rgba(176, 143, 62, 0.16);
+
+    background:
+        linear-gradient(114deg, rgba(228, 203, 132, 0.055), transparent 29%),
+        linear-gradient(180deg, var(--card-surface-soft) 0%, var(--card-surface) 38%, var(--card-bg) 72%);
+}
+
+.card-design--antique-foil .card-bg {
+    background:
+        repeating-linear-gradient(0deg, rgba(230, 208, 148, 0.026) 0 1px, transparent 1px 6px),
+        repeating-linear-gradient(94deg, transparent 0 18px, rgba(16, 12, 7, 0.34) 18px 19px),
+        linear-gradient(150deg, transparent 0 40%, rgba(12, 9, 5, 0.52) 40% 62%, transparent 62%),
+        radial-gradient(circle at 61% 13%, rgba(210, 178, 92, 0.08), transparent 8rem);
+    opacity: 0.52;
+}
