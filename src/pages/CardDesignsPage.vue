@@ -3,11 +3,12 @@
         <section class="cards-preview-shell">
             <div class="preview-header">
                 <div>
-                    <p class="preview-kicker">Standard tier explorations</p>
+                    <p class="preview-kicker">Card tier explorations</p>
                     <h1>FM-Dash card surface studies</h1>
                 </div>
                 <p class="preview-summary">
-                    CSS-only standard-tier treatments grouped by rarity. Each
+                    CSS-only card treatments grouped by standard rarity,
+                    performance events, legacy stories, and match moments. Each
                     set keeps the shared player-card hierarchy: rating,
                     position, name, vitals, identity marks, face area, and six
                     footer stats.
@@ -225,6 +226,141 @@ const goldRarePlayer = {
     { label: 'DEF', value: 58 },
     { label: 'PAS', value: 87 },
     { label: 'PHY', value: 78 },
+  ],
+}
+
+const totwBronzePlayer = {
+  overall: 64,
+  position: 'ST',
+  name: 'Owusu',
+  vitals: '22 | 450K | 3K/wk',
+  stats: [
+    { label: 'PAC', value: 76 },
+    { label: 'DRI', value: 67 },
+    { label: 'SHO', value: 72 },
+    { label: 'DEF', value: 38 },
+    { label: 'PAS', value: 60 },
+    { label: 'PHY', value: 69 },
+  ],
+}
+
+const totwSilverPlayer = {
+  overall: 74,
+  position: 'LW',
+  name: 'Iversen',
+  vitals: '25 | 4.8M | 14K/wk',
+  stats: [
+    { label: 'PAC', value: 84 },
+    { label: 'DRI', value: 79 },
+    { label: 'SHO', value: 75 },
+    { label: 'DEF', value: 45 },
+    { label: 'PAS', value: 73 },
+    { label: 'PHY', value: 68 },
+  ],
+}
+
+const totwGoldPlayer = {
+  overall: 84,
+  position: 'ST',
+  name: 'Bennett',
+  vitals: '28 | 38M | 91K/wk',
+  stats: [
+    { label: 'PAC', value: 86 },
+    { label: 'DRI', value: 85 },
+    { label: 'SHO', value: 89 },
+    { label: 'DEF', value: 44 },
+    { label: 'PAS', value: 80 },
+    { label: 'PHY', value: 82 },
+  ],
+}
+
+const totsBronzePlayer = {
+  overall: 66,
+  position: 'CDM',
+  name: 'Nolan',
+  vitals: '23 | 700K | 5K/wk',
+  stats: [
+    { label: 'PAC', value: 68 },
+    { label: 'DRI', value: 70 },
+    { label: 'SHO', value: 58 },
+    { label: 'DEF', value: 74 },
+    { label: 'PAS', value: 72 },
+    { label: 'PHY', value: 78 },
+  ],
+}
+
+const totsSilverPlayer = {
+  overall: 76,
+  position: 'CM',
+  name: 'Kovac',
+  vitals: '26 | 7.5M | 22K/wk',
+  stats: [
+    { label: 'PAC', value: 77 },
+    { label: 'DRI', value: 80 },
+    { label: 'SHO', value: 73 },
+    { label: 'DEF', value: 78 },
+    { label: 'PAS', value: 82 },
+    { label: 'PHY', value: 79 },
+  ],
+}
+
+const totsGoldPlayer = {
+  overall: 88,
+  position: 'RW',
+  name: 'Valente',
+  vitals: '29 | 72M | 145K/wk',
+  stats: [
+    { label: 'PAC', value: 91 },
+    { label: 'DRI', value: 90 },
+    { label: 'SHO', value: 87 },
+    { label: 'DEF', value: 52 },
+    { label: 'PAS', value: 88 },
+    { label: 'PHY', value: 80 },
+  ],
+}
+
+const iconPlayer = {
+  overall: 91,
+  position: 'CM',
+  name: 'Moretti',
+  vitals: 'Legend | 0 | 0/wk',
+  stats: [
+    { label: 'PAC', value: 82 },
+    { label: 'DRI', value: 92 },
+    { label: 'SHO', value: 86 },
+    { label: 'DEF', value: 84 },
+    { label: 'PAS', value: 94 },
+    { label: 'PHY', value: 83 },
+  ],
+}
+
+const heroPlayer = {
+  overall: 87,
+  position: 'CAM',
+  name: 'Duarte',
+  vitals: 'Hero | 0 | 0/wk',
+  stats: [
+    { label: 'PAC', value: 84 },
+    { label: 'DRI', value: 89 },
+    { label: 'SHO', value: 85 },
+    { label: 'DEF', value: 58 },
+    { label: 'PAS', value: 88 },
+    { label: 'PHY', value: 78 },
+  ],
+}
+
+const manOfTheMatchPlayer = {
+  overall: 86,
+  position: 'GK',
+  name: 'Ramos',
+  vitals: '30 | 31M | 88K/wk',
+  stats: [
+    { label: 'DIV', value: 89 },
+    { label: 'HAN', value: 87 },
+    { label: 'KIC', value: 82 },
+    { label: 'REF', value: 91 },
+    { label: 'SPD', value: 58 },
+    { label: 'POS', value: 88 },
   ],
 }
 
@@ -624,6 +760,600 @@ const goldRareDesigns = [
   },
 ]
 
+const totwBronzeDesigns = [
+  {
+    id: 'bronze-week-strike',
+    variant: 'totw',
+    name: 'Bronze Week Strike',
+    description:
+      'Near-black performance body with layered bronze strike marks, a warm inner rim, and a compact flare behind the portrait for a weekly breakout.',
+    tokens: {
+      '--card-bg': '#070605',
+      '--card-surface': '#110b08',
+      '--card-surface-soft': '#7d4524',
+      '--card-border': '#c27b42',
+      '--card-border-muted': '#2d1a10',
+      '--card-accent': '#e39a55',
+      '--card-cut': '#ffbd76',
+      '--card-highlight': '#ffe2bd',
+      '--card-text': '#fff1df',
+      '--card-muted': '#d6ad83',
+      '--card-stat': '#ffb366',
+      '--card-shadow': 'rgba(226, 132, 61, 0.34)',
+    },
+  },
+  {
+    id: 'bronze-week-signal',
+    variant: 'totw',
+    name: 'Copper Signal',
+    description:
+      'Copper soundwave bands run through a near-black field, with amber peaks and smoked bronze depth behind the portrait.',
+    tokens: {
+      '--card-bg': '#060505',
+      '--card-surface': '#100a08',
+      '--card-surface-soft': '#69391f',
+      '--card-border': '#b8733e',
+      '--card-border-muted': '#2c1a11',
+      '--card-accent': '#df8b49',
+      '--card-cut': '#ffc27c',
+      '--card-highlight': '#ffe8cc',
+      '--card-text': '#fff0e1',
+      '--card-muted': '#d2a47c',
+      '--card-stat': '#f6a85f',
+      '--card-shadow': 'rgba(219, 121, 55, 0.32)',
+    },
+  },
+  {
+    id: 'bronze-week-spotlight',
+    variant: 'totw',
+    name: 'Amber Spotlight',
+    description:
+      'A black outer shell, bronze spotlight cone, shadowed stadium arcs, and restrained edge sparks make the lower-tier event card read immediately.',
+    tokens: {
+      '--card-bg': '#070504',
+      '--card-surface': '#130b07',
+      '--card-surface-soft': '#875126',
+      '--card-border': '#ca8343',
+      '--card-border-muted': '#301d12',
+      '--card-accent': '#eba057',
+      '--card-cut': '#ffd08d',
+      '--card-highlight': '#fff0d1',
+      '--card-text': '#fff3e4',
+      '--card-muted': '#deb58b',
+      '--card-stat': '#ffba72',
+      '--card-shadow': 'rgba(235, 144, 65, 0.34)',
+    },
+  },
+]
+
+const totwSilverDesigns = [
+  {
+    id: 'silver-week-beam',
+    variant: 'totw',
+    name: 'Silver Beam',
+    description:
+      'Cool stadium beams cut across a blackened steel body with a bright silver inner rim and icy rating highlights.',
+    tokens: {
+      '--card-bg': '#05080c',
+      '--card-surface': '#0a1118',
+      '--card-surface-soft': '#778691',
+      '--card-border': '#d8e3e9',
+      '--card-border-muted': '#26313b',
+      '--card-accent': '#edf6fb',
+      '--card-cut': '#bdf4ff',
+      '--card-highlight': '#ffffff',
+      '--card-text': '#f7fbff',
+      '--card-muted': '#cad7de',
+      '--card-stat': '#e8f7ff',
+      '--card-shadow': 'rgba(188, 230, 246, 0.32)',
+    },
+  },
+  {
+    id: 'silver-week-shards',
+    variant: 'totw',
+    name: 'Icy Shards',
+    description:
+      'Angular silver shards sit over a black match-night base, adding stronger event energy without becoming too blue.',
+    tokens: {
+      '--card-bg': '#05080d',
+      '--card-surface': '#0a1119',
+      '--card-surface-soft': '#73828e',
+      '--card-border': '#cfdce4',
+      '--card-border-muted': '#25313b',
+      '--card-accent': '#e5f2f8',
+      '--card-cut': '#a7ecf6',
+      '--card-highlight': '#ffffff',
+      '--card-text': '#f5fbff',
+      '--card-muted': '#c5d5dd',
+      '--card-stat': '#def5fb',
+      '--card-shadow': 'rgba(166, 224, 238, 0.3)',
+    },
+  },
+  {
+    id: 'silver-week-lights',
+    variant: 'totw',
+    name: 'Floodlight Steel',
+    description:
+      'A darker floodlight motif, steel glow, and black rim make the silver weekly standout feel clinical and controlled.',
+    tokens: {
+      '--card-bg': '#04070b',
+      '--card-surface': '#091018',
+      '--card-surface-soft': '#7f8f9b',
+      '--card-border': '#e3ebef',
+      '--card-border-muted': '#28343e',
+      '--card-accent': '#f3fbff',
+      '--card-cut': '#c8f8ff',
+      '--card-highlight': '#ffffff',
+      '--card-text': '#f8fdff',
+      '--card-muted': '#cedde4',
+      '--card-stat': '#f0fbff',
+      '--card-shadow': 'rgba(201, 237, 247, 0.32)',
+    },
+  },
+]
+
+const totwGoldDesigns = [
+  {
+    id: 'gold-week-headline',
+    variant: 'totw',
+    name: 'Headline Rays',
+    description:
+      'Near-black foil body with deeper headline gold rays, a glowing inner rim, and a bright but controlled stat divider.',
+    tokens: {
+      '--card-bg': '#060503',
+      '--card-surface': '#100b04',
+      '--card-surface-soft': '#a87515',
+      '--card-border': '#ffd46b',
+      '--card-border-muted': '#3b2a0b',
+      '--card-accent': '#ffcc58',
+      '--card-cut': '#fff0a5',
+      '--card-highlight': '#fff8d8',
+      '--card-text': '#fff5d1',
+      '--card-muted': '#e9c978',
+      '--card-stat': '#ffdd75',
+      '--card-shadow': 'rgba(255, 195, 65, 0.4)',
+    },
+  },
+  {
+    id: 'gold-week-flash',
+    variant: 'totw',
+    name: 'Foil Flash',
+    description:
+      'Diagonal gold foil flashes and black-on-black paneling travel through the portrait field while the lower stat area remains readable.',
+    tokens: {
+      '--card-bg': '#060503',
+      '--card-surface': '#110c04',
+      '--card-surface-soft': '#9d6810',
+      '--card-border': '#f5c95f',
+      '--card-border-muted': '#372609',
+      '--card-accent': '#ffc852',
+      '--card-cut': '#ffe892',
+      '--card-highlight': '#fff6cd',
+      '--card-text': '#fff3cb',
+      '--card-muted': '#e5c36f',
+      '--card-stat': '#ffd96f',
+      '--card-shadow': 'rgba(246, 184, 55, 0.38)',
+    },
+  },
+  {
+    id: 'gold-week-strokes',
+    variant: 'totw',
+    name: 'Matchday Strokes',
+    description:
+      'Energetic gold brush strokes, dark stadium bands, and spotlight flecks give the top field movement without overpowering the player data.',
+    tokens: {
+      '--card-bg': '#060503',
+      '--card-surface': '#120c04',
+      '--card-surface-soft': '#b27c18',
+      '--card-border': '#ffda73',
+      '--card-border-muted': '#3d2b0a',
+      '--card-accent': '#ffd05d',
+      '--card-cut': '#fff1a8',
+      '--card-highlight': '#fff9dd',
+      '--card-text': '#fff6d3',
+      '--card-muted': '#edcd7b',
+      '--card-stat': '#ffe27b',
+      '--card-shadow': 'rgba(255, 202, 76, 0.4)',
+    },
+  },
+]
+
+const totsBronzeDesigns = [
+  {
+    id: 'bronze-season-laurel',
+    variant: 'tots',
+    name: 'Bronze Laurel',
+    description:
+      'Bronze achievement card with dark seasonal depth, bronze laurel geometry, ceremonial trim, and a quieter teal glow.',
+    tokens: {
+      '--card-bg': '#091417',
+      '--card-surface': '#6f4528',
+      '--card-surface-soft': '#b8743f',
+      '--card-border': '#d09357',
+      '--card-border-muted': '#3b2518',
+      '--card-accent': '#2fc4b4',
+      '--card-cut': '#f2b06b',
+      '--card-highlight': '#ffe4c2',
+      '--card-text': '#fff0df',
+      '--card-muted': '#cbb191',
+      '--card-stat': '#ffc37c',
+      '--card-shadow': 'rgba(42, 190, 174, 0.26)',
+    },
+  },
+  {
+    id: 'bronze-season-ribbon',
+    variant: 'tots',
+    name: 'Teal Ribbon',
+    description:
+      'Flowing teal ribbon forms move through an aged bronze body and frame for a season-long recognition card.',
+    tokens: {
+      '--card-bg': '#081316',
+      '--card-surface': '#684025',
+      '--card-surface-soft': '#a96837',
+      '--card-border': '#cf8b4f',
+      '--card-border-muted': '#392417',
+      '--card-accent': '#35bfa9',
+      '--card-cut': '#efab67',
+      '--card-highlight': '#ffe2be',
+      '--card-text': '#fff0de',
+      '--card-muted': '#c8ad8b',
+      '--card-stat': '#ffbc73',
+      '--card-shadow': 'rgba(52, 184, 161, 0.25)',
+    },
+  },
+  {
+    id: 'bronze-season-engraved',
+    variant: 'tots',
+    name: 'Engraved Trophy',
+    description:
+      'Trophy-engraved bronze plates dominate the seasonal base, with small emerald points of celebration.',
+    tokens: {
+      '--card-bg': '#091312',
+      '--card-surface': '#73482a',
+      '--card-surface-soft': '#bd7842',
+      '--card-border': '#d29257',
+      '--card-border-muted': '#3e2819',
+      '--card-accent': '#49c98e',
+      '--card-cut': '#f3b371',
+      '--card-highlight': '#ffe7c8',
+      '--card-text': '#fff2e2',
+      '--card-muted': '#cfb392',
+      '--card-stat': '#ffc27a',
+      '--card-shadow': 'rgba(73, 201, 142, 0.24)',
+    },
+  },
+]
+
+const totsSilverDesigns = [
+  {
+    id: 'silver-season-crest',
+    variant: 'tots',
+    name: 'Silver Crest',
+    description:
+      'Polished silver body, deep navy undertone, and a restrained crest pattern create a composed season card.',
+    tokens: {
+      '--card-bg': '#08131c',
+      '--card-surface': '#7d8b94',
+      '--card-surface-soft': '#d5dee3',
+      '--card-border': '#eef6f8',
+      '--card-border-muted': '#3d4b56',
+      '--card-accent': '#4dbfe7',
+      '--card-cut': '#f5ffff',
+      '--card-highlight': '#ffffff',
+      '--card-text': '#f8fdff',
+      '--card-muted': '#d2e3ea',
+      '--card-stat': '#effbff',
+      '--card-shadow': 'rgba(70, 187, 226, 0.28)',
+    },
+  },
+  {
+    id: 'silver-season-wave',
+    variant: 'tots',
+    name: 'Royal Wave',
+    description:
+      'Silver trophy metal carries elegant royal-blue wave geometry, preserving the tier read without the drama of gold season cards.',
+    tokens: {
+      '--card-bg': '#08111c',
+      '--card-surface': '#74838e',
+      '--card-surface-soft': '#cad5dc',
+      '--card-border': '#e5eef2',
+      '--card-border-muted': '#3a4a58',
+      '--card-accent': '#4d8dff',
+      '--card-cut': '#f1fbff',
+      '--card-highlight': '#ffffff',
+      '--card-text': '#f7fcff',
+      '--card-muted': '#cedde7',
+      '--card-stat': '#eaf8ff',
+      '--card-shadow': 'rgba(78, 141, 255, 0.28)',
+    },
+  },
+  {
+    id: 'silver-season-laurel',
+    variant: 'tots',
+    name: 'Composed Laurel',
+    description:
+      'Layered laurel arcs, clean white-blue glow, and a polished silver body keep the season card formal and legible.',
+    tokens: {
+      '--card-bg': '#07121a',
+      '--card-surface': '#84929b',
+      '--card-surface-soft': '#dbe5ea',
+      '--card-border': '#f0f7fa',
+      '--card-border-muted': '#40505a',
+      '--card-accent': '#6fe0ee',
+      '--card-cut': '#fbffff',
+      '--card-highlight': '#ffffff',
+      '--card-text': '#f8fdff',
+      '--card-muted': '#d5e5eb',
+      '--card-stat': '#f0fdff',
+      '--card-shadow': 'rgba(111, 224, 238, 0.28)',
+    },
+  },
+]
+
+const totsGoldDesigns = [
+  {
+    id: 'gold-season-crown',
+    variant: 'tots',
+    name: 'Season Crown',
+    description:
+      'Deep navy trophy foil with crown-like gold geometry, layered celebration rays, royal-blue depth, and the strongest season-card edge glow.',
+    tokens: {
+      '--card-bg': '#070f1b',
+      '--card-surface': '#17275a',
+      '--card-surface-soft': '#e5b437',
+      '--card-border': '#ffe58c',
+      '--card-border-muted': '#2a3762',
+      '--card-accent': '#4c7dff',
+      '--card-cut': '#fff1a6',
+      '--card-highlight': '#fff9dc',
+      '--card-text': '#fff7d6',
+      '--card-muted': '#ead287',
+      '--card-stat': '#ffe789',
+      '--card-shadow': 'rgba(255, 210, 86, 0.42)',
+    },
+  },
+  {
+    id: 'gold-season-celebration',
+    variant: 'tots',
+    name: 'Celebration Lights',
+    description:
+      'Stadium celebration lighting, rich gold trim, confetti-like foil points, and a blue-black body signal season-defining excellence.',
+    tokens: {
+      '--card-bg': '#060d18',
+      '--card-surface': '#17244c',
+      '--card-surface-soft': '#dba62d',
+      '--card-border': '#ffe07c',
+      '--card-border-muted': '#25365c',
+      '--card-accent': '#5d8dff',
+      '--card-cut': '#ffeca1',
+      '--card-highlight': '#fff8d5',
+      '--card-text': '#fff5cf',
+      '--card-muted': '#e5cb7d',
+      '--card-stat': '#ffe27c',
+      '--card-shadow': 'rgba(255, 202, 76, 0.4)',
+    },
+  },
+  {
+    id: 'gold-season-trophy',
+    variant: 'tots',
+    name: 'Trophy Foil',
+    description:
+      'Ornate trophy-foil arcs, starburst facets, and luminous gold edges carry the premium season mood while preserving dark stat contrast.',
+    tokens: {
+      '--card-bg': '#070e17',
+      '--card-surface': '#182652',
+      '--card-surface-soft': '#edbb3f',
+      '--card-border': '#ffe895',
+      '--card-border-muted': '#263251',
+      '--card-accent': '#6f95ff',
+      '--card-cut': '#fff2a9',
+      '--card-highlight': '#fff9df',
+      '--card-text': '#fff7d8',
+      '--card-muted': '#ead087',
+      '--card-stat': '#ffe98d',
+      '--card-shadow': 'rgba(255, 216, 96, 0.42)',
+    },
+  },
+]
+
+const iconDesigns = [
+  {
+    id: 'ivory-museum',
+    variant: 'icon',
+    name: 'Ivory Museum',
+    description:
+      'Pearl ivory body, antique-gold trim, and a museum-frame silhouette separate legendary cards from standard gold.',
+    tokens: {
+      '--card-bg': '#f0e3c8',
+      '--card-surface': '#fbf2df',
+      '--card-surface-soft': '#d8bd77',
+      '--card-border': '#b9903b',
+      '--card-border-muted': '#8b743c',
+      '--card-accent': '#b88c35',
+      '--card-cut': '#f4d98b',
+      '--card-highlight': '#fffaf0',
+      '--card-text': '#3d2b12',
+      '--card-muted': '#6e5a31',
+      '--card-stat': '#9f7627',
+      '--card-shadow': 'rgba(240, 218, 166, 0.36)',
+    },
+  },
+  {
+    id: 'pearl-relief',
+    variant: 'icon',
+    name: 'Pearl Relief',
+    description:
+      'Soft porcelain panels and raised heritage relief shapes create a timeless card with restrained gold accents.',
+    tokens: {
+      '--card-bg': '#eee0c2',
+      '--card-surface': '#fff6e5',
+      '--card-surface-soft': '#dbc486',
+      '--card-border': '#c29b45',
+      '--card-border-muted': '#947a3d',
+      '--card-accent': '#c0943c',
+      '--card-cut': '#f7df93',
+      '--card-highlight': '#fffdf5',
+      '--card-text': '#382710',
+      '--card-muted': '#6a5530',
+      '--card-stat': '#a77b27',
+      '--card-shadow': 'rgba(238, 214, 158, 0.38)',
+    },
+  },
+  {
+    id: 'parchment-frame',
+    variant: 'icon',
+    name: 'Parchment Frame',
+    description:
+      'Aged parchment grain, charcoal insets, and elegant gold linework give the card a historic presentation.',
+    tokens: {
+      '--card-bg': '#e9d8b4',
+      '--card-surface': '#fbefd8',
+      '--card-surface-soft': '#cfb16a',
+      '--card-border': '#ad8432',
+      '--card-border-muted': '#806734',
+      '--card-accent': '#aa7c29',
+      '--card-cut': '#efd178',
+      '--card-highlight': '#fff7e8',
+      '--card-text': '#35240f',
+      '--card-muted': '#66502a',
+      '--card-stat': '#956b21',
+      '--card-shadow': 'rgba(224, 196, 130, 0.34)',
+    },
+  },
+]
+
+const heroDesigns = [
+  {
+    id: 'mural-burst',
+    variant: 'hero',
+    name: 'Mural Burst',
+    description:
+      'Deep neutral poster base with bold club-adaptable rays, halftone texture, and a badge-like nameplate.',
+    tokens: {
+      '--card-bg': '#101024',
+      '--card-surface': '#1c2151',
+      '--card-surface-soft': '#d63f70',
+      '--card-border': '#f0c35b',
+      '--card-border-muted': '#293060',
+      '--card-accent': '#27c1ff',
+      '--card-cut': '#ffdf71',
+      '--card-highlight': '#fff1bd',
+      '--card-text': '#fff2db',
+      '--card-muted': '#cfd5ff',
+      '--card-stat': '#ffdc6c',
+      '--card-shadow': 'rgba(39, 193, 255, 0.34)',
+    },
+  },
+  {
+    id: 'scarf-stripes',
+    variant: 'hero',
+    name: 'Scarf Stripes',
+    description:
+      'Supporter-scarf striping, enamel trim, and punchy accent channels make the card emotional without becoming classic like Icon.',
+    tokens: {
+      '--card-bg': '#0e1424',
+      '--card-surface': '#172d44',
+      '--card-surface-soft': '#e34c42',
+      '--card-border': '#f4d060',
+      '--card-border-muted': '#28405d',
+      '--card-accent': '#40d6a4',
+      '--card-cut': '#ffe27a',
+      '--card-highlight': '#fff4c7',
+      '--card-text': '#fff3df',
+      '--card-muted': '#c5e2df',
+      '--card-stat': '#ffe06f',
+      '--card-shadow': 'rgba(64, 214, 164, 0.32)',
+    },
+  },
+  {
+    id: 'badge-poster',
+    variant: 'hero',
+    name: 'Badge Poster',
+    description:
+      'Graphic poster blocks, bold frame steps, and adaptable accent panels create a fan-favourite story card.',
+    tokens: {
+      '--card-bg': '#121024',
+      '--card-surface': '#26204b',
+      '--card-surface-soft': '#d94f2f',
+      '--card-border': '#f2bf4d',
+      '--card-border-muted': '#342b62',
+      '--card-accent': '#66d3ff',
+      '--card-cut': '#ffdc74',
+      '--card-highlight': '#fff2c2',
+      '--card-text': '#fff2df',
+      '--card-muted': '#d0d6ff',
+      '--card-stat': '#ffda68',
+      '--card-shadow': 'rgba(102, 211, 255, 0.32)',
+    },
+  },
+]
+
+const manOfTheMatchDesigns = [
+  {
+    id: 'orange-impact',
+    variant: 'match-event',
+    name: 'Orange Impact',
+    description:
+      'Vivid orange impact lines explode from a black match-night base, with a hot rim and protected dark stat zone.',
+    tokens: {
+      '--card-bg': '#160905',
+      '--card-surface': '#2a0f07',
+      '--card-surface-soft': '#f36a1d',
+      '--card-border': '#ff8c2a',
+      '--card-border-muted': '#66220b',
+      '--card-accent': '#ff7a1a',
+      '--card-cut': '#ffd09a',
+      '--card-highlight': '#fff0d9',
+      '--card-text': '#fff3e8',
+      '--card-muted': '#ffc49a',
+      '--card-stat': '#ffb05f',
+      '--card-shadow': 'rgba(255, 106, 28, 0.44)',
+    },
+  },
+  {
+    id: 'match-night-flare',
+    variant: 'match-event',
+    name: 'Match-Night Flare',
+    description:
+      'Hot foil flare, deep red-orange shadows, and white edge flashes make the one-match dominance feel immediate.',
+    tokens: {
+      '--card-bg': '#150706',
+      '--card-surface': '#2d0d08',
+      '--card-surface-soft': '#e64e19',
+      '--card-border': '#ff7f26',
+      '--card-border-muted': '#5c1c0c',
+      '--card-accent': '#ff6d17',
+      '--card-cut': '#ffc487',
+      '--card-highlight': '#fff1de',
+      '--card-text': '#fff2e8',
+      '--card-muted': '#ffbd91',
+      '--card-stat': '#ffa654',
+      '--card-shadow': 'rgba(255, 92, 24, 0.42)',
+    },
+  },
+  {
+    id: 'ember-spotlight',
+    variant: 'match-event',
+    name: 'Ember Spotlight',
+    description:
+      'Abstract ember gradients and a sharp orange spotlight frame the portrait while avoiding bright orange behind white text.',
+    tokens: {
+      '--card-bg': '#130806',
+      '--card-surface': '#2a0e08',
+      '--card-surface-soft': '#ff741f',
+      '--card-border': '#ff9733',
+      '--card-border-muted': '#64230c',
+      '--card-accent': '#ff7f22',
+      '--card-cut': '#ffd39d',
+      '--card-highlight': '#fff4e5',
+      '--card-text': '#fff4ea',
+      '--card-muted': '#ffc69f',
+      '--card-stat': '#ffb86d',
+      '--card-shadow': 'rgba(255, 118, 31, 0.44)',
+    },
+  },
+]
+
 const designSections = [
   {
     id: 'bronze-non-rare',
@@ -678,6 +1408,87 @@ const designSections = [
       'Richer rare gold concepts for above-average players with exceptional attributes: swept foil ribs, folded lattice facets, embossed relief, and stronger rating frames.',
     player: goldRarePlayer,
     designs: goldRareDesigns,
+  },
+  {
+    id: 'totw-bronze',
+    kicker: 'Weekly performance bronze',
+    title: 'Team of the Week Bronze',
+    description:
+      'Bronze performance concepts for a lower-rated weekly breakout: black outer rims, bronze event energy, and sharp but modest glow.',
+    player: totwBronzePlayer,
+    designs: totwBronzeDesigns,
+  },
+  {
+    id: 'totw-silver',
+    kicker: 'Weekly performance silver',
+    title: 'Team of the Week Silver',
+    description:
+      'Silver performance concepts for a clinical weekly standout: dark match-night bodies, cool beams, shards, and bright inner rims.',
+    player: totwSilverPlayer,
+    designs: totwSilverDesigns,
+  },
+  {
+    id: 'totw-gold',
+    kicker: 'Weekly performance gold',
+    title: 'Team of the Week Gold',
+    description:
+      'Gold performance concepts for headline weekly form: black foil, golden spotlight energy, and controlled event shimmer.',
+    player: totwGoldPlayer,
+    designs: totwGoldDesigns,
+  },
+  {
+    id: 'tots-bronze',
+    kicker: 'Season achievement bronze',
+    title: 'Team of the Season Bronze',
+    description:
+      'Bronze season concepts with ceremonial navy bases, bronze trim, teal accents, and achievement-led patterns.',
+    player: totsBronzePlayer,
+    designs: totsBronzeDesigns,
+  },
+  {
+    id: 'tots-silver',
+    kicker: 'Season achievement silver',
+    title: 'Team of the Season Silver',
+    description:
+      'Prestige silver season concepts using trophy metal, royal-blue depth, laurel geometry, and composed white-blue glow.',
+    player: totsSilverPlayer,
+    designs: totsSilverDesigns,
+  },
+  {
+    id: 'tots-gold',
+    kicker: 'Season achievement gold',
+    title: 'Team of the Season Gold',
+    description:
+      'Season-defining gold concepts with ornate trophy foil, royal-blue structure, crown geometry, and luminous ceremonial edges.',
+    player: totsGoldPlayer,
+    designs: totsGoldDesigns,
+  },
+  {
+    id: 'icon',
+    kicker: 'Legacy legend',
+    title: 'Icon',
+    description:
+      'Classic legacy concepts built from ivory, pearl, parchment, and antique-gold frames rather than black event styling.',
+    player: iconPlayer,
+    designs: iconDesigns,
+  },
+  {
+    id: 'hero',
+    kicker: 'Story favourite',
+    title: 'Hero',
+    description:
+      'Graphic story-card concepts with mural energy, scarf-inspired patterns, adaptable club-color slots, and badge-like frames.',
+    player: heroPlayer,
+    designs: heroDesigns,
+  },
+  {
+    id: 'man-of-the-match',
+    kicker: 'Single-match event',
+    title: 'Man of the Match',
+    description:
+      'Explosive match-event concepts with vivid orange, black match-night depth, hot foil energy, and protected text contrast.',
+    player: manOfTheMatchPlayer,
+    designs: manOfTheMatchDesigns,
   },
 ]
 
@@ -2154,6 +2965,756 @@ export default defineComponent({
                 rgba(91, 65, 16, 0.07) 24px 25px
             );
         opacity: 0.84;
+    }
+}
+
+.concept-card--totw {
+    border-color: #080808;
+    background:
+        radial-gradient(
+            ellipse at 52% 32%,
+            rgba(0, 0, 0, 0.28),
+            transparent 11rem
+        ),
+        radial-gradient(
+            circle at 50% 18%,
+            color-mix(in srgb, var(--card-accent) 26%, transparent),
+            transparent 9rem
+        ),
+        conic-gradient(
+            from 220deg at 56% 24%,
+            transparent 0deg,
+            color-mix(in srgb, var(--card-cut) 16%, transparent) 16deg,
+            transparent 34deg,
+            transparent 72deg,
+            color-mix(in srgb, var(--card-accent) 12%, transparent) 88deg,
+            transparent 108deg,
+            transparent 360deg
+        ),
+        linear-gradient(145deg, rgba(255, 255, 255, 0.035), transparent 24%),
+        linear-gradient(
+            180deg,
+            var(--card-surface) 0%,
+            var(--card-bg) 54%,
+            #030303 100%
+        );
+    box-shadow:
+        0 20px 46px rgba(0, 0, 0, 0.56),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+        inset 0 0 0 7px rgba(0, 0, 0, 0.48),
+        0 0 27px var(--card-shadow);
+
+    &:hover,
+    &:focus-within {
+        box-shadow:
+            0 29px 60px rgba(0, 0, 0, 0.6),
+            inset 0 0 0 1px rgba(255, 255, 255, 0.14),
+            inset 0 0 0 7px rgba(0, 0, 0, 0.4),
+            0 0 38px var(--card-shadow);
+    }
+
+    &::before {
+        inset: 9px;
+        border-color: var(--card-border);
+        box-shadow:
+            inset 0 0 0 1px rgba(0, 0, 0, 0.72),
+            0 0 20px var(--card-shadow);
+    }
+
+    &::after {
+        top: 280px;
+        height: 4px;
+        background: linear-gradient(
+            90deg,
+            transparent,
+            var(--card-cut),
+            var(--card-accent),
+            var(--card-cut),
+            transparent
+        );
+        box-shadow: 0 0 18px var(--card-shadow);
+    }
+
+    .concept-card__rating-block::before {
+        border-left-color: var(--card-cut);
+        border-top-color: color-mix(in srgb, var(--card-highlight) 52%, transparent);
+    }
+
+    .concept-card__vitals {
+        color: #080808;
+        background: linear-gradient(180deg, var(--card-cut), var(--card-accent));
+        border-color: color-mix(in srgb, var(--card-highlight) 42%, transparent);
+    }
+
+    .concept-card__flag,
+    .concept-card__club {
+        background: rgba(5, 5, 5, 0.7);
+        border-color: color-mix(in srgb, var(--card-border) 34%, transparent);
+    }
+
+    .concept-card__portrait {
+        color: color-mix(in srgb, var(--card-highlight) 76%, transparent);
+        background:
+            radial-gradient(
+                ellipse at 50% 64%,
+                rgba(0, 0, 0, 0.54),
+                transparent 56%
+            ),
+            radial-gradient(
+                ellipse at 52% 28%,
+                color-mix(in srgb, var(--card-accent) 18%, transparent),
+                transparent 48%
+            );
+    }
+}
+
+.concept-card--bronze-week-strike {
+    background:
+        radial-gradient(circle at 68% 24%, rgba(255, 163, 80, 0.16), transparent 7rem),
+        conic-gradient(from 230deg at 56% 28%, transparent 0deg, rgba(255, 187, 110, 0.2) 18deg, rgba(77, 38, 18, 0.32) 35deg, transparent 56deg, transparent 360deg),
+        linear-gradient(135deg, rgba(255, 162, 80, 0.08) 0 14%, transparent 14% 45%, rgba(255, 173, 86, 0.06) 45% 58%, transparent 58%),
+        linear-gradient(180deg, #100a07 0%, var(--card-bg) 58%, #030303 100%);
+
+    .concept-card__texture {
+        background:
+            repeating-conic-gradient(from 224deg at 58% 28%, rgba(255, 172, 88, 0.18) 0deg 1deg, transparent 1deg 7deg),
+            repeating-linear-gradient(116deg, transparent 0 16px, rgba(255, 154, 77, 0.12) 16px 18px, transparent 18px 34px),
+            linear-gradient(142deg, transparent 0 38%, rgba(255, 186, 105, 0.18) 38% 40%, rgba(0, 0, 0, 0.26) 40% 55%, transparent 55%),
+            radial-gradient(circle at 68% 34%, rgba(255, 163, 80, 0.18), transparent 8rem);
+        opacity: 0.84;
+    }
+}
+
+.concept-card--bronze-week-signal {
+    background:
+        radial-gradient(ellipse at 48% 30%, rgba(223, 139, 73, 0.16), transparent 8rem),
+        linear-gradient(128deg, rgba(223, 139, 73, 0.06), transparent 26%),
+        linear-gradient(180deg, #0e0907 0%, var(--card-bg) 60%, #030303 100%);
+
+    .concept-card__texture {
+        background:
+            repeating-radial-gradient(ellipse at 50% 34%, rgba(255, 174, 92, 0.18) 0 1px, transparent 1px 8px),
+            repeating-radial-gradient(ellipse at 50% 34%, transparent 0 18px, rgba(226, 139, 73, 0.13) 18px 21px, transparent 21px 34px),
+            repeating-linear-gradient(90deg, transparent 0 14px, rgba(226, 139, 73, 0.1) 14px 16px, transparent 16px 29px),
+            linear-gradient(180deg, transparent 0 58%, rgba(0, 0, 0, 0.46) 58% 100%);
+        opacity: 0.78;
+    }
+}
+
+.concept-card--bronze-week-spotlight {
+    background:
+        radial-gradient(ellipse at 60% 24%, rgba(255, 177, 91, 0.2), transparent 9rem),
+        conic-gradient(from 210deg at 58% 24%, transparent 0deg, rgba(255, 189, 112, 0.22) 18deg, rgba(63, 31, 14, 0.34) 42deg, transparent 68deg, transparent 360deg),
+        linear-gradient(152deg, transparent 0 24%, rgba(242, 154, 75, 0.16) 24% 43%, transparent 43%),
+        linear-gradient(180deg, #120b07 0%, var(--card-bg) 62%, #030303 100%);
+
+    .concept-card__texture {
+        background:
+            repeating-conic-gradient(from 214deg at 58% 24%, rgba(255, 189, 112, 0.12) 0deg 1deg, transparent 1deg 8deg),
+            radial-gradient(circle at 76% 18%, rgba(255, 207, 141, 0.2), transparent 3.5rem),
+            repeating-linear-gradient(105deg, transparent 0 22px, rgba(255, 167, 84, 0.08) 22px 24px),
+            linear-gradient(180deg, transparent 0 58%, rgba(0, 0, 0, 0.4) 58% 100%);
+        opacity: 0.82;
+    }
+}
+
+.concept-card--silver-week-beam,
+.concept-card--silver-week-shards,
+.concept-card--silver-week-lights {
+    .concept-card__rating {
+        text-shadow:
+            0 2px 9px rgba(0, 0, 0, 0.52),
+            0 0 15px rgba(205, 244, 255, 0.22);
+    }
+}
+
+.concept-card--silver-week-beam {
+    background:
+        radial-gradient(circle at 66% 22%, rgba(223, 247, 255, 0.16), transparent 7rem),
+        conic-gradient(from 226deg at 54% 20%, transparent 0deg, rgba(238, 250, 255, 0.18) 14deg, rgba(22, 35, 46, 0.44) 30deg, transparent 52deg, transparent 360deg),
+        linear-gradient(180deg, #080d13 0%, var(--card-bg) 60%, #020304 100%);
+
+    .concept-card__texture {
+        background:
+            repeating-conic-gradient(from 226deg at 54% 20%, rgba(234, 250, 255, 0.13) 0deg 1deg, transparent 1deg 8deg),
+            linear-gradient(117deg, transparent 0 18%, rgba(234, 250, 255, 0.2) 18% 20%, transparent 20% 38%, rgba(184, 236, 248, 0.14) 38% 41%, transparent 41%),
+            radial-gradient(circle at 66% 22%, rgba(223, 247, 255, 0.14), transparent 8rem),
+            repeating-linear-gradient(96deg, transparent 0 14px, rgba(229, 245, 250, 0.05) 14px 15px);
+        opacity: 0.86;
+    }
+}
+
+.concept-card--silver-week-shards {
+    background:
+        radial-gradient(ellipse at 58% 26%, rgba(207, 238, 246, 0.14), transparent 8rem),
+        linear-gradient(140deg, rgba(255, 255, 255, 0.04), transparent 24%),
+        linear-gradient(180deg, #081018 0%, var(--card-bg) 58%, #020304 100%);
+
+    .concept-card__texture {
+        background:
+            linear-gradient(139deg, transparent 0 13%, rgba(238, 249, 252, 0.22) 13% 29%, transparent 29% 45%, rgba(153, 222, 236, 0.16) 45% 61%, transparent 61%),
+            linear-gradient(41deg, transparent 0 34%, rgba(240, 252, 255, 0.17) 34% 36%, rgba(8, 14, 20, 0.38) 36% 52%, transparent 52%),
+            repeating-linear-gradient(112deg, transparent 0 22px, rgba(200, 232, 239, 0.08) 22px 24px),
+            repeating-linear-gradient(66deg, transparent 0 30px, rgba(255, 255, 255, 0.045) 30px 31px);
+        opacity: 0.84;
+    }
+}
+
+.concept-card--silver-week-lights {
+    background:
+        radial-gradient(ellipse at 50% 0%, rgba(244, 252, 255, 0.16), transparent 9rem),
+        radial-gradient(circle at 72% 24%, rgba(195, 241, 251, 0.12), transparent 6rem),
+        linear-gradient(180deg, #070c12 0%, var(--card-bg) 62%, #020304 100%);
+
+    .concept-card__texture {
+        background:
+            repeating-conic-gradient(from 228deg at 50% 0%, rgba(246, 253, 255, 0.12) 0deg 1deg, transparent 1deg 10deg),
+            conic-gradient(from 228deg at 50% 0%, transparent 0deg, rgba(246, 253, 255, 0.2) 13deg, transparent 26deg, transparent 44deg, rgba(195, 241, 251, 0.16) 55deg, transparent 68deg, transparent 360deg),
+            radial-gradient(ellipse at 50% 0%, rgba(244, 252, 255, 0.16), transparent 10rem),
+            linear-gradient(180deg, transparent 0 58%, rgba(0, 0, 0, 0.44) 58% 100%);
+        opacity: 0.86;
+    }
+}
+
+.concept-card--gold-week-headline,
+.concept-card--gold-week-flash,
+.concept-card--gold-week-strokes {
+    .concept-card__rating {
+        text-shadow:
+            0 2px 9px rgba(0, 0, 0, 0.54),
+            0 0 17px rgba(255, 213, 101, 0.24);
+    }
+}
+
+.concept-card--gold-week-headline {
+    background:
+        radial-gradient(circle at 54% 28%, rgba(255, 216, 101, 0.16), transparent 8rem),
+        conic-gradient(from 220deg at 52% 28%, transparent 0deg, rgba(255, 229, 132, 0.22) 18deg, rgba(61, 43, 10, 0.46) 36deg, transparent 60deg, transparent 360deg),
+        linear-gradient(180deg, #0e0a04 0%, var(--card-bg) 60%, #020201 100%);
+
+    .concept-card__texture {
+        background:
+            repeating-conic-gradient(from 220deg at 52% 28%, rgba(255, 229, 132, 0.18) 0deg 1deg, transparent 1deg 7deg),
+            conic-gradient(from 218deg at 52% 28%, transparent 0deg, rgba(255, 216, 101, 0.24) 22deg, rgba(0, 0, 0, 0.34) 46deg, transparent 70deg, transparent 360deg),
+            repeating-linear-gradient(102deg, transparent 0 18px, rgba(255, 207, 84, 0.08) 18px 19px),
+            linear-gradient(180deg, transparent 0 58%, rgba(0, 0, 0, 0.46) 58% 100%);
+        opacity: 0.88;
+    }
+}
+
+.concept-card--gold-week-flash {
+    background:
+        radial-gradient(ellipse at 62% 24%, rgba(255, 199, 78, 0.16), transparent 8rem),
+        linear-gradient(128deg, rgba(255, 236, 161, 0.12) 0 12%, transparent 12% 42%, rgba(255, 199, 78, 0.12) 42% 50%, transparent 50%),
+        linear-gradient(180deg, #0f0a04 0%, var(--card-bg) 58%, #020201 100%);
+
+    .concept-card__texture {
+        background:
+            linear-gradient(128deg, transparent 0 10%, rgba(255, 236, 161, 0.28) 10% 15%, transparent 15% 32%, rgba(255, 199, 78, 0.18) 32% 48%, rgba(0, 0, 0, 0.3) 48% 57%, transparent 57%),
+            linear-gradient(40deg, transparent 0 48%, rgba(255, 227, 130, 0.17) 48% 51%, transparent 51%),
+            repeating-linear-gradient(96deg, rgba(255, 224, 127, 0.05) 0 1px, transparent 1px 8px),
+            repeating-linear-gradient(142deg, transparent 0 26px, rgba(255, 210, 96, 0.08) 26px 28px);
+        opacity: 0.88;
+    }
+}
+
+.concept-card--gold-week-strokes {
+    background:
+        radial-gradient(circle at 74% 24%, rgba(255, 232, 142, 0.16), transparent 6rem),
+        linear-gradient(112deg, transparent 0 14%, rgba(255, 214, 92, 0.16) 14% 21%, transparent 21% 38%, rgba(255, 238, 166, 0.1) 38% 42%, transparent 42%),
+        linear-gradient(180deg, #100b04 0%, var(--card-bg) 60%, #020201 100%);
+
+    .concept-card__texture {
+        background:
+            linear-gradient(112deg, transparent 0 15%, rgba(255, 214, 92, 0.24) 15% 20%, rgba(0, 0, 0, 0.28) 20% 31%, transparent 31% 40%, rgba(255, 238, 166, 0.17) 40% 43%, transparent 43%),
+            radial-gradient(circle at 74% 24%, rgba(255, 232, 142, 0.18), transparent 6rem),
+            repeating-linear-gradient(118deg, transparent 0 18px, rgba(255, 205, 78, 0.09) 18px 20px),
+            repeating-radial-gradient(circle at 72% 22%, rgba(255, 236, 162, 0.08) 0 1px, transparent 1px 7px);
+        opacity: 0.88;
+    }
+}
+
+.concept-card--tots {
+    border-color: var(--card-border);
+    background:
+        radial-gradient(
+            circle at 50% 8%,
+            color-mix(in srgb, var(--card-surface-soft) 24%, transparent),
+            transparent 9rem
+        ),
+        radial-gradient(
+            ellipse at 72% 24%,
+            color-mix(in srgb, var(--card-accent) 16%, transparent),
+            transparent 8rem
+        ),
+        conic-gradient(
+            from 225deg at 52% 28%,
+            transparent 0deg,
+            color-mix(in srgb, var(--card-cut) 14%, transparent) 20deg,
+            transparent 42deg,
+            transparent 360deg
+        ),
+        linear-gradient(140deg, color-mix(in srgb, var(--card-cut) 12%, transparent), transparent 34%),
+        linear-gradient(180deg, var(--card-surface-soft) 0%, var(--card-surface) 36%, var(--card-bg) 70%, #050a0e 100%);
+    box-shadow:
+        0 19px 44px rgba(0, 0, 0, 0.48),
+        inset 0 0 0 1px color-mix(in srgb, var(--card-highlight) 18%, transparent),
+        inset 0 0 0 7px rgba(8, 22, 34, 0.36),
+        0 0 28px var(--card-shadow);
+
+    &:hover,
+    &:focus-within {
+        box-shadow:
+            0 28px 58px rgba(0, 0, 0, 0.54),
+            inset 0 0 0 1px color-mix(in srgb, var(--card-highlight) 24%, transparent),
+            inset 0 0 0 7px rgba(8, 22, 34, 0.3),
+            0 0 38px var(--card-shadow);
+    }
+
+    &::before {
+        inset: 8px;
+        border-color: color-mix(in srgb, var(--card-border) 72%, transparent);
+        box-shadow:
+            inset 0 0 0 1px color-mix(in srgb, var(--card-accent) 22%, transparent),
+            0 0 22px var(--card-shadow);
+    }
+
+    &::after {
+        background: linear-gradient(
+            90deg,
+            transparent,
+            var(--card-accent),
+            var(--card-cut),
+            var(--card-accent),
+            transparent
+        );
+        box-shadow: 0 0 18px var(--card-shadow);
+    }
+
+    .concept-card__vitals {
+        color: #071017;
+        background: linear-gradient(180deg, var(--card-cut), var(--card-accent));
+        border-color: color-mix(in srgb, var(--card-highlight) 38%, transparent);
+    }
+
+    .concept-card__portrait {
+        color: color-mix(in srgb, var(--card-highlight) 78%, transparent);
+        background:
+            radial-gradient(ellipse at 50% 64%, rgba(0, 0, 0, 0.48), transparent 56%),
+            radial-gradient(ellipse at 50% 28%, color-mix(in srgb, var(--card-accent) 17%, transparent), transparent 48%);
+    }
+}
+
+.concept-card--bronze-season-laurel,
+.concept-card--bronze-season-ribbon,
+.concept-card--bronze-season-engraved {
+    .concept-card__rating {
+        text-shadow:
+            0 2px 9px rgba(0, 0, 0, 0.52),
+            0 0 15px rgba(242, 176, 107, 0.18);
+    }
+}
+
+.concept-card--bronze-season-laurel {
+    background:
+        radial-gradient(circle at 44% 12%, rgba(242, 176, 107, 0.24), transparent 8rem),
+        radial-gradient(circle at 70% 24%, rgba(47, 196, 180, 0.14), transparent 7rem),
+        linear-gradient(132deg, rgba(242, 176, 107, 0.16), transparent 26%),
+        linear-gradient(180deg, var(--card-surface-soft) 0%, var(--card-surface) 42%, var(--card-bg) 76%);
+
+    .concept-card__texture {
+        background:
+            repeating-radial-gradient(ellipse at 50% 24%, transparent 0 16px, rgba(242, 176, 107, 0.16) 16px 18px, transparent 18px 34px),
+            repeating-linear-gradient(106deg, transparent 0 20px, rgba(255, 217, 181, 0.07) 20px 21px),
+            linear-gradient(118deg, transparent 0 26%, rgba(47, 196, 180, 0.16) 26% 29%, rgba(65, 38, 22, 0.24) 29% 42%, transparent 42%),
+            radial-gradient(circle at 68% 18%, rgba(47, 196, 180, 0.14), transparent 7rem);
+        opacity: 0.78;
+    }
+}
+
+.concept-card--bronze-season-ribbon {
+    background:
+        radial-gradient(circle at 36% 12%, rgba(239, 171, 103, 0.22), transparent 8rem),
+        linear-gradient(125deg, transparent 0 18%, rgba(53, 191, 169, 0.14) 18% 32%, transparent 32% 54%, rgba(239, 171, 103, 0.16) 54% 62%, transparent 62%),
+        linear-gradient(180deg, var(--card-surface-soft) 0%, var(--card-surface) 44%, var(--card-bg) 76%);
+
+    .concept-card__texture {
+        background:
+            linear-gradient(125deg, transparent 0 18%, rgba(53, 191, 169, 0.2) 18% 32%, transparent 32% 52%, rgba(239, 171, 103, 0.18) 52% 61%, transparent 61%),
+            linear-gradient(36deg, transparent 0 38%, rgba(53, 191, 169, 0.16) 38% 43%, rgba(64, 39, 22, 0.22) 43% 52%, transparent 52%),
+            repeating-linear-gradient(100deg, transparent 0 18px, rgba(255, 217, 181, 0.08) 18px 19px);
+        opacity: 0.78;
+    }
+}
+
+.concept-card--bronze-season-engraved {
+    background:
+        radial-gradient(circle at 42% 14%, rgba(243, 179, 113, 0.24), transparent 8rem),
+        radial-gradient(circle at 70% 24%, rgba(73, 201, 142, 0.14), transparent 7rem),
+        linear-gradient(180deg, var(--card-surface-soft) 0%, var(--card-surface) 42%, var(--card-bg) 76%);
+
+    .concept-card__texture {
+        background:
+            repeating-linear-gradient(92deg, transparent 0 10px, rgba(255, 220, 184, 0.09) 10px 11px),
+            repeating-radial-gradient(circle at 66% 22%, rgba(73, 201, 142, 0.15) 0 1px, transparent 1px 8px),
+            repeating-radial-gradient(circle at 34% 22%, rgba(255, 220, 184, 0.07) 0 1px, transparent 1px 7px),
+            linear-gradient(145deg, transparent 0 32%, rgba(243, 179, 113, 0.17) 32% 35%, rgba(58, 35, 20, 0.25) 35% 50%, transparent 50%);
+        opacity: 0.78;
+    }
+}
+
+.concept-card--silver-season-crest {
+    background:
+        radial-gradient(circle at 42% 12%, rgba(245, 255, 255, 0.32), transparent 8rem),
+        radial-gradient(circle at 72% 20%, rgba(77, 191, 231, 0.14), transparent 8rem),
+        linear-gradient(180deg, var(--card-surface-soft) 0%, var(--card-surface) 42%, var(--card-bg) 78%);
+
+    .concept-card__texture {
+        background:
+            linear-gradient(135deg, transparent 0 15%, rgba(245, 255, 255, 0.22) 15% 18%, transparent 18% 41%, rgba(77, 191, 231, 0.15) 41% 59%, transparent 59%),
+            repeating-radial-gradient(ellipse at 50% 24%, transparent 0 18px, rgba(238, 246, 248, 0.14) 18px 20px, transparent 20px 38px),
+            repeating-linear-gradient(98deg, rgba(255, 255, 255, 0.06) 0 1px, transparent 1px 9px),
+            radial-gradient(circle at 72% 20%, rgba(77, 191, 231, 0.14), transparent 8rem);
+        opacity: 0.82;
+    }
+}
+
+.concept-card--silver-season-wave {
+    background:
+        radial-gradient(circle at 42% 12%, rgba(241, 251, 255, 0.28), transparent 8rem),
+        linear-gradient(126deg, transparent 0 18%, rgba(77, 141, 255, 0.15) 18% 33%, transparent 33% 52%, rgba(241, 251, 255, 0.16) 52% 56%, transparent 56%),
+        linear-gradient(180deg, var(--card-surface-soft) 0%, var(--card-surface) 42%, var(--card-bg) 78%);
+
+    .concept-card__texture {
+        background:
+            linear-gradient(126deg, transparent 0 18%, rgba(77, 141, 255, 0.2) 18% 34%, transparent 34% 50%, rgba(241, 251, 255, 0.18) 50% 54%, rgba(57, 73, 89, 0.24) 54% 63%, transparent 63%),
+            repeating-linear-gradient(107deg, transparent 0 18px, rgba(229, 238, 242, 0.08) 18px 19px),
+            repeating-linear-gradient(24deg, rgba(255, 255, 255, 0.045) 0 1px, transparent 1px 12px),
+            radial-gradient(circle at 70% 22%, rgba(77, 141, 255, 0.16), transparent 8rem);
+        opacity: 0.82;
+    }
+}
+
+.concept-card--silver-season-laurel {
+    background:
+        radial-gradient(circle at 42% 12%, rgba(240, 253, 255, 0.3), transparent 8rem),
+        radial-gradient(circle at 66% 20%, rgba(111, 224, 238, 0.14), transparent 8rem),
+        linear-gradient(180deg, var(--card-surface-soft) 0%, var(--card-surface) 42%, var(--card-bg) 78%);
+
+    .concept-card__texture {
+        background:
+            repeating-radial-gradient(ellipse at 50% 28%, transparent 0 15px, rgba(240, 253, 255, 0.16) 15px 17px, transparent 17px 34px),
+            repeating-linear-gradient(105deg, transparent 0 20px, rgba(255, 255, 255, 0.08) 20px 21px),
+            linear-gradient(42deg, transparent 0 34%, rgba(111, 224, 238, 0.16) 34% 39%, rgba(62, 78, 88, 0.22) 39% 49%, transparent 49%),
+            radial-gradient(circle at 64% 17%, rgba(111, 224, 238, 0.16), transparent 8rem);
+        opacity: 0.82;
+    }
+}
+
+.concept-card--gold-season-crown,
+.concept-card--gold-season-celebration,
+.concept-card--gold-season-trophy {
+    .concept-card__rating {
+        text-shadow:
+            0 2px 9px rgba(0, 0, 0, 0.54),
+            0 0 18px rgba(255, 218, 105, 0.28);
+    }
+}
+
+.concept-card--gold-season-crown {
+    background:
+        radial-gradient(circle at 18% 13%, rgba(255, 225, 125, 0.22), transparent 4.5rem),
+        radial-gradient(circle at 80% 17%, rgba(76, 125, 255, 0.22), transparent 6rem),
+        radial-gradient(circle at 56% 30%, rgba(255, 225, 125, 0.2), transparent 8.5rem),
+        conic-gradient(from 225deg at 50% 28%, transparent 0deg, rgba(255, 225, 125, 0.26) 18deg, rgba(28, 43, 91, 0.35) 38deg, rgba(76, 125, 255, 0.2) 66deg, transparent 92deg, transparent 360deg),
+        linear-gradient(180deg, var(--card-surface) 0%, var(--card-bg) 58%, #050913 100%);
+
+    .concept-card__texture {
+        background:
+            repeating-conic-gradient(from 225deg at 50% 28%, rgba(255, 225, 125, 0.16) 0deg 1deg, transparent 1deg 8deg),
+            conic-gradient(from 225deg at 50% 28%, transparent 0deg, rgba(255, 225, 125, 0.22) 18deg, transparent 35deg, transparent 56deg, rgba(76, 125, 255, 0.18) 70deg, transparent 88deg, transparent 360deg),
+            linear-gradient(137deg, transparent 0 18%, rgba(255, 241, 166, 0.2) 18% 21%, rgba(17, 29, 62, 0.28) 21% 35%, transparent 35%),
+            repeating-linear-gradient(104deg, transparent 0 18px, rgba(255, 225, 125, 0.09) 18px 20px),
+            repeating-radial-gradient(circle at 76% 18%, rgba(255, 240, 172, 0.08) 0 1px, transparent 1px 7px);
+        opacity: 0.9;
+    }
+}
+
+.concept-card--gold-season-celebration {
+    background:
+        radial-gradient(circle at 18% 12%, rgba(255, 217, 111, 0.28), transparent 4rem),
+        radial-gradient(circle at 78% 18%, rgba(93, 141, 255, 0.24), transparent 5rem),
+        radial-gradient(circle at 58% 32%, rgba(255, 217, 111, 0.18), transparent 9rem),
+        conic-gradient(from 228deg at 52% 24%, transparent 0deg, rgba(255, 236, 161, 0.2) 15deg, rgba(93, 141, 255, 0.16) 33deg, transparent 58deg, transparent 360deg),
+        linear-gradient(180deg, var(--card-surface) 0%, var(--card-bg) 58%, #050913 100%);
+
+    .concept-card__texture {
+        background:
+            repeating-conic-gradient(from 230deg at 50% 18%, rgba(255, 236, 161, 0.16) 0deg 1deg, transparent 1deg 8deg),
+            repeating-radial-gradient(circle at 21% 14%, rgba(255, 237, 156, 0.12) 0 1px, transparent 1px 8px),
+            linear-gradient(126deg, transparent 0 18%, rgba(255, 224, 124, 0.16) 18% 24%, transparent 24% 48%, rgba(93, 141, 255, 0.14) 48% 62%, transparent 62%),
+            radial-gradient(circle at 18% 12%, rgba(255, 217, 111, 0.2), transparent 4rem),
+            radial-gradient(circle at 78% 18%, rgba(93, 141, 255, 0.18), transparent 5rem);
+        opacity: 0.9;
+    }
+}
+
+.concept-card--gold-season-trophy {
+    background:
+        radial-gradient(circle at 50% 18%, rgba(255, 228, 134, 0.24), transparent 8rem),
+        radial-gradient(circle at 72% 18%, rgba(111, 149, 255, 0.2), transparent 7rem),
+        conic-gradient(from 218deg at 52% 28%, transparent 0deg, rgba(255, 242, 169, 0.24) 18deg, rgba(24, 38, 82, 0.38) 38deg, rgba(111, 149, 255, 0.16) 62deg, transparent 90deg, transparent 360deg),
+        linear-gradient(180deg, var(--card-surface) 0%, var(--card-bg) 58%, #050913 100%);
+
+    .concept-card__texture {
+        background:
+            repeating-radial-gradient(ellipse at 50% 24%, transparent 0 13px, rgba(255, 228, 134, 0.18) 13px 16px, transparent 16px 31px),
+            repeating-conic-gradient(from 218deg at 52% 28%, rgba(255, 242, 169, 0.12) 0deg 1deg, transparent 1deg 8deg),
+            linear-gradient(128deg, transparent 0 26%, rgba(255, 242, 169, 0.22) 26% 29%, rgba(24, 38, 82, 0.3) 29% 44%, transparent 44% 56%, rgba(111, 149, 255, 0.16) 56% 69%, transparent 69%),
+            radial-gradient(circle at 68% 18%, rgba(255, 228, 134, 0.2), transparent 8rem),
+            repeating-linear-gradient(98deg, transparent 0 20px, rgba(255, 231, 142, 0.08) 20px 22px);
+        opacity: 0.9;
+    }
+}
+
+.concept-card--icon {
+    border-color: var(--card-border);
+    color: var(--card-text);
+    background:
+        radial-gradient(circle at 50% 8%, rgba(255, 255, 255, 0.4), transparent 8rem),
+        linear-gradient(142deg, rgba(184, 140, 53, 0.12), transparent 34%),
+        linear-gradient(180deg, var(--card-surface) 0%, var(--card-bg) 64%, #d9c59e 100%);
+    box-shadow:
+        0 18px 42px rgba(0, 0, 0, 0.38),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.5),
+        inset 0 0 0 7px rgba(132, 102, 45, 0.2),
+        0 0 22px var(--card-shadow);
+
+    &:hover,
+    &:focus-within {
+        box-shadow:
+            0 26px 56px rgba(0, 0, 0, 0.44),
+            inset 0 0 0 1px rgba(255, 255, 255, 0.58),
+            inset 0 0 0 7px rgba(132, 102, 45, 0.18),
+            0 0 30px var(--card-shadow);
+    }
+
+    &::before {
+        border-color: rgba(160, 116, 41, 0.54);
+        box-shadow:
+            inset 0 0 0 1px rgba(255, 255, 255, 0.46),
+            0 0 16px rgba(184, 140, 53, 0.16);
+    }
+
+    &::after {
+        background: linear-gradient(90deg, transparent, var(--card-border), var(--card-cut), var(--card-border), transparent);
+        box-shadow: 0 0 10px rgba(184, 140, 53, 0.18);
+    }
+
+    .concept-card__rating {
+        color: var(--card-text);
+        text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+    }
+
+    .concept-card__position,
+    .concept-card__vitals,
+    .concept-card__stat {
+        color: var(--card-muted);
+    }
+
+    .concept-card__vitals {
+        background: linear-gradient(180deg, rgba(255, 249, 232, 0.84), rgba(207, 177, 106, 0.58));
+        border-color: rgba(169, 124, 38, 0.34);
+    }
+
+    .concept-card__flag,
+    .concept-card__club {
+        background: rgba(67, 48, 22, 0.1);
+        border-color: rgba(156, 113, 38, 0.32);
+    }
+
+    .concept-card__club {
+        color: var(--card-accent);
+    }
+
+    .concept-card__portrait {
+        color: rgba(110, 79, 30, 0.46);
+        background:
+            radial-gradient(ellipse at 50% 64%, rgba(104, 78, 34, 0.12), transparent 56%),
+            radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.42), transparent 48%);
+    }
+}
+
+.concept-card--ivory-museum {
+    .concept-card__texture {
+        background:
+            repeating-linear-gradient(90deg, rgba(111, 84, 32, 0.04) 0 1px, transparent 1px 12px),
+            linear-gradient(145deg, transparent 0 26%, rgba(181, 138, 54, 0.16) 26% 28%, transparent 28% 62%, rgba(181, 138, 54, 0.08) 62% 64%, transparent 64%),
+            radial-gradient(circle at 72% 18%, rgba(255, 255, 255, 0.42), transparent 7rem);
+        opacity: 0.72;
+    }
+}
+
+.concept-card--pearl-relief {
+    .concept-card__texture {
+        background:
+            repeating-radial-gradient(ellipse at 50% 24%, transparent 0 18px, rgba(174, 132, 46, 0.08) 18px 20px, transparent 20px 39px),
+            linear-gradient(130deg, rgba(255, 255, 255, 0.24), transparent 28%),
+            linear-gradient(39deg, transparent 0 40%, rgba(192, 148, 60, 0.12) 40% 42%, transparent 42%);
+        opacity: 0.7;
+    }
+}
+
+.concept-card--parchment-frame {
+    .concept-card__texture {
+        background:
+            repeating-linear-gradient(8deg, rgba(91, 67, 28, 0.035) 0 1px, transparent 1px 7px),
+            repeating-linear-gradient(98deg, transparent 0 18px, rgba(119, 87, 32, 0.04) 18px 19px),
+            linear-gradient(142deg, transparent 0 34%, rgba(53, 36, 15, 0.1) 34% 44%, transparent 44%);
+        opacity: 0.68;
+    }
+}
+
+.concept-card--hero {
+    border-color: var(--card-border);
+    background:
+        radial-gradient(circle at 50% 18%, color-mix(in srgb, var(--card-accent) 18%, transparent), transparent 8rem),
+        linear-gradient(145deg, color-mix(in srgb, var(--card-surface-soft) 16%, transparent), transparent 30%),
+        linear-gradient(180deg, var(--card-surface) 0%, var(--card-bg) 58%, #080914 100%);
+    box-shadow:
+        0 18px 42px rgba(0, 0, 0, 0.46),
+        inset 0 0 0 1px color-mix(in srgb, var(--card-highlight) 18%, transparent),
+        inset 0 0 0 7px rgba(10, 12, 30, 0.36),
+        0 0 25px var(--card-shadow);
+
+    &::before {
+        border-color: color-mix(in srgb, var(--card-border) 70%, transparent);
+        box-shadow:
+            inset 0 0 0 1px color-mix(in srgb, var(--card-accent) 18%, transparent),
+            0 0 18px var(--card-shadow);
+    }
+
+    &::after {
+        background: linear-gradient(90deg, transparent, var(--card-accent), var(--card-cut), var(--card-accent), transparent);
+        box-shadow: 0 0 17px var(--card-shadow);
+    }
+
+    .concept-card__vitals {
+        color: #0d1020;
+        background: linear-gradient(180deg, var(--card-cut), var(--card-accent));
+    }
+
+    .concept-card__portrait {
+        color: color-mix(in srgb, var(--card-highlight) 76%, transparent);
+        background:
+            radial-gradient(ellipse at 50% 64%, rgba(0, 0, 0, 0.46), transparent 56%),
+            radial-gradient(ellipse at 50% 30%, color-mix(in srgb, var(--card-accent) 16%, transparent), transparent 48%);
+    }
+}
+
+.concept-card--mural-burst {
+    .concept-card__texture {
+        background:
+            repeating-conic-gradient(from 230deg at 52% 32%, rgba(255, 220, 108, 0.2) 0deg 2deg, transparent 2deg 10deg),
+            repeating-radial-gradient(circle at 72% 18%, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 6px),
+            linear-gradient(122deg, transparent 0 34%, rgba(214, 63, 112, 0.2) 34% 50%, transparent 50%);
+        opacity: 0.82;
+    }
+}
+
+.concept-card--scarf-stripes {
+    .concept-card__texture {
+        background:
+            repeating-linear-gradient(116deg, rgba(227, 76, 66, 0.22) 0 12px, transparent 12px 24px, rgba(64, 214, 164, 0.18) 24px 31px, transparent 31px 46px),
+            linear-gradient(180deg, transparent 0 58%, rgba(0, 0, 0, 0.34) 58% 100%);
+        opacity: 0.68;
+    }
+}
+
+.concept-card--badge-poster {
+    .concept-card__texture {
+        background:
+            linear-gradient(132deg, rgba(217, 79, 47, 0.22) 0 18%, transparent 18% 44%, rgba(102, 211, 255, 0.16) 44% 57%, transparent 57%),
+            linear-gradient(42deg, transparent 0 24%, rgba(255, 220, 116, 0.18) 24% 26%, transparent 26% 64%, rgba(217, 79, 47, 0.16) 64% 76%, transparent 76%),
+            repeating-linear-gradient(90deg, transparent 0 18px, rgba(255, 255, 255, 0.05) 18px 19px);
+        opacity: 0.78;
+    }
+}
+
+.concept-card--match-event {
+    border-color: var(--card-border);
+    background:
+        radial-gradient(circle at 54% 24%, rgba(255, 117, 31, 0.24), transparent 9rem),
+        linear-gradient(145deg, rgba(255, 196, 135, 0.12), transparent 30%),
+        linear-gradient(180deg, var(--card-surface) 0%, var(--card-bg) 58%, #080302 100%);
+    box-shadow:
+        0 18px 42px rgba(0, 0, 0, 0.5),
+        inset 0 0 0 1px rgba(255, 214, 172, 0.18),
+        inset 0 0 0 7px rgba(63, 21, 6, 0.34),
+        0 0 28px var(--card-shadow);
+
+    &:hover,
+    &:focus-within {
+        box-shadow:
+            0 28px 58px rgba(0, 0, 0, 0.56),
+            inset 0 0 0 1px rgba(255, 214, 172, 0.24),
+            inset 0 0 0 7px rgba(63, 21, 6, 0.28),
+            0 0 40px var(--card-shadow);
+    }
+
+    &::before {
+        border-color: rgba(255, 151, 51, 0.68);
+        box-shadow:
+            inset 0 0 0 1px rgba(255, 215, 169, 0.16),
+            0 0 22px var(--card-shadow);
+    }
+
+    &::after {
+        height: 4px;
+        background: linear-gradient(90deg, transparent, var(--card-cut), var(--card-accent), var(--card-cut), transparent);
+        box-shadow: 0 0 19px var(--card-shadow);
+    }
+
+    .concept-card__vitals {
+        color: #170704;
+        background: linear-gradient(180deg, var(--card-cut), var(--card-accent));
+    }
+
+    .concept-card__portrait {
+        color: rgba(255, 231, 208, 0.82);
+        background:
+            radial-gradient(ellipse at 50% 64%, rgba(0, 0, 0, 0.52), transparent 56%),
+            radial-gradient(ellipse at 50% 30%, rgba(255, 117, 31, 0.18), transparent 48%);
+    }
+}
+
+.concept-card--orange-impact {
+    .concept-card__texture {
+        background:
+            repeating-conic-gradient(from 230deg at 58% 28%, rgba(255, 128, 36, 0.24) 0deg 2deg, transparent 2deg 10deg),
+            linear-gradient(126deg, transparent 0 24%, rgba(255, 208, 154, 0.2) 24% 26%, transparent 26%),
+            linear-gradient(180deg, transparent 0 58%, rgba(0, 0, 0, 0.38) 58% 100%);
+        opacity: 0.8;
+    }
+}
+
+.concept-card--match-night-flare {
+    .concept-card__texture {
+        background:
+            radial-gradient(circle at 70% 18%, rgba(255, 240, 220, 0.22), transparent 4.5rem),
+            linear-gradient(135deg, transparent 0 20%, rgba(255, 109, 23, 0.26) 20% 34%, transparent 34% 52%, rgba(255, 196, 135, 0.16) 52% 54%, transparent 54%),
+            repeating-linear-gradient(108deg, transparent 0 24px, rgba(255, 126, 38, 0.08) 24px 25px);
+        opacity: 0.78;
+    }
+}
+
+.concept-card--ember-spotlight {
+    .concept-card__texture {
+        background:
+            conic-gradient(from 225deg at 58% 30%, transparent 0deg, rgba(255, 127, 34, 0.32) 26deg, rgba(255, 211, 157, 0.16) 42deg, transparent 64deg, transparent 360deg),
+            radial-gradient(circle at 60% 28%, rgba(255, 151, 51, 0.24), transparent 8rem),
+            repeating-linear-gradient(96deg, rgba(255, 127, 34, 0.05) 0 1px, transparent 1px 9px);
+        opacity: 0.8;
     }
 }
 
