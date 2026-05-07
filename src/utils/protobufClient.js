@@ -170,7 +170,23 @@ class ProtobufClient {
       }
 
       const buffer = await response.arrayBuffer()
-      const decodedData = await this.decodeProtobufResponse(buffer, messageType)
+      let decodedData
+
+      try {
+        decodedData = await this.decodeProtobufResponse(buffer, messageType)
+      } catch (decodeError) {
+        logger.warn('Protobuf decode failed, retrying as JSON:', {
+          url,
+          messageType,
+          error: decodeError.message,
+          bufferSize: buffer.byteLength,
+        })
+
+        return await this.fallbackToJSON(url, options, {
+          fallbackReason: 'protobuf_decode_failed',
+          originalError: decodeError.message,
+        })
+      }
 
       return {
         ...decodedData,
@@ -264,9 +280,9 @@ class ProtobufClient {
   /**
    * Fall back to JSON request
    */
-  async fallbackToJSON(url, options = {}) {
+  async fallbackToJSON(url, options = {}, protobufMetadata = {}) {
     try {
-      const headers = options.headers || {}
+      const headers = { ...(options.headers || {}) }
       headers.Accept = 'application/json'
 
       const response = await fetch(url, {
@@ -285,6 +301,7 @@ class ProtobufClient {
         _protobuf: {
           format: 'json',
           fallbackReason: this.getFallbackReason(),
+          ...protobufMetadata,
         },
       }
     } catch (error) {

@@ -1,7 +1,11 @@
 <template>
     <div
         class="pitch-container"
-        :class="{ 'dark-mode': quasar.dark.isActive }"
+        :class="{
+            'dark-mode': quasar.dark.isActive,
+            'pitch-container--cards': displayMode === 'cards',
+        }"
+        :style="pitchStyle"
         @dragover.prevent="handleDragOver"
         @drop.prevent="handleDropOnPitch"
     >
@@ -43,70 +47,100 @@
                 @dragover.prevent
                 @drop.prevent="handleDropOnSlot($event, pos.id, pos.role)"
             >
-                <div
-                    class="player-representation"
-                    :class="[
-                        { 'has-player': !!players[pos.id] },
-                        getPlayerOverallClass(players[pos.id]?.Overall, 100),
-                    ]"
-                    :draggable="!!players[pos.id]"
-                    @dragstart="
-                        handleDragStart($event, players[pos.id], pos.id)
-                    "
-                    @dragend="handleDragEnd"
-                >
-                    <template v-if="players[pos.id]">
-                        <div class="position-indicator-wrapper">
-                            <span
-                                v-if="players[pos.id].exactPositionMatch"
-                                class="position-match-dot exact-match"
-                                title="Natural position"
-                            ></span>
-                            <span
-                                v-else
-                                class="position-match-dot off-position"
-                                title="Off position"
-                            ></span>
-                            <span class="player-overall-display">
-                                {{ players[pos.id].Overall || "N/A" }}
-                            </span>
-                        </div>
-                    </template>
-                    <q-icon
-                        v-else
-                        name="add_circle_outline"
-                        size="28px"
-                        class="empty-slot-icon"
-                    />
-                </div>
-                <div
-                    class="position-label"
-                    :class="{
-                        'dark-text': !quasar.dark.isActive && !players[pos.id],
-                    }"
-                >
-                    {{ pos.role }}
-                </div>
-                <div
-                    v-if="players[pos.id]"
-                    class="player-name-label"
-                    :class="{ 'dark-text': !quasar.dark.isActive }"
-                    :title="players[pos.id].name"
-                >
-                    {{ players[pos.id].name }}
-                </div>
-                <div
-                    v-if="players[pos.id]"
-                    class="player-best-role-label"
-                    :class="{ 'dark-text': !quasar.dark.isActive }"
-                    :title="
-                        getBestRoleForPlayerInSlot(players[pos.id], pos.role)
-                    "
-                >
-                    ({{
-                        getBestRoleForPlayerInSlot(players[pos.id], pos.role)
-                    }})
-                </div>
+                <template v-if="displayMode === 'cards'">
+                    <div
+                        v-if="players[pos.id]"
+                        class="player-card-slot"
+                        :draggable="!!players[pos.id]"
+                        @click.stop
+                        @dragstart="handleDragStart($event, players[pos.id], pos.id)"
+                        @dragend="handleDragEnd"
+                    >
+                        <PlayerCards
+                            :player="players[pos.id]"
+                            :currency-symbol="currencySymbol"
+                            :dataset-id="datasetId"
+                            :position-override="getCardPositionForSlot(pos.role)"
+                            class="pitch-player-card"
+                            @click="$emit('player-click', players[pos.id])"
+                        />
+                        <span
+                            class="card-position-match-dot"
+                            :class="players[pos.id].exactPositionMatch ? 'exact-match' : 'off-position'"
+                            :title="players[pos.id].exactPositionMatch ? 'Natural position' : 'Off position'"
+                        ></span>
+                    </div>
+                    <div v-else class="empty-card-slot">
+                        <q-icon name="add_circle_outline" size="28px" />
+                        <span>{{ pos.role }}</span>
+                    </div>
+                </template>
+                <template v-else>
+                    <div
+                        class="player-representation"
+                        :class="[
+                            { 'has-player': !!players[pos.id] },
+                            getPlayerOverallClass(players[pos.id]?.Overall, 100),
+                        ]"
+                        :draggable="!!players[pos.id]"
+                        @dragstart="
+                            handleDragStart($event, players[pos.id], pos.id)
+                        "
+                        @dragend="handleDragEnd"
+                    >
+                        <template v-if="players[pos.id]">
+                            <div class="position-indicator-wrapper">
+                                <span
+                                    v-if="players[pos.id].exactPositionMatch"
+                                    class="position-match-dot exact-match"
+                                    title="Natural position"
+                                ></span>
+                                <span
+                                    v-else
+                                    class="position-match-dot off-position"
+                                    title="Off position"
+                                ></span>
+                                <span class="player-overall-display">
+                                    {{ players[pos.id].Overall || "N/A" }}
+                                </span>
+                            </div>
+                        </template>
+                        <q-icon
+                            v-else
+                            name="add_circle_outline"
+                            size="28px"
+                            class="empty-slot-icon"
+                        />
+                    </div>
+                    <div
+                        class="position-label"
+                        :class="{
+                            'dark-text': !quasar.dark.isActive && !players[pos.id],
+                        }"
+                    >
+                        {{ pos.role }}
+                    </div>
+                    <div
+                        v-if="players[pos.id]"
+                        class="player-name-label"
+                        :class="{ 'dark-text': !quasar.dark.isActive }"
+                        :title="players[pos.id].name"
+                    >
+                        {{ players[pos.id].name }}
+                    </div>
+                    <div
+                        v-if="players[pos.id]"
+                        class="player-best-role-label"
+                        :class="{ 'dark-text': !quasar.dark.isActive }"
+                        :title="
+                            getBestRoleForPlayerInSlot(players[pos.id], pos.role)
+                        "
+                    >
+                        ({{
+                            getBestRoleForPlayerInSlot(players[pos.id], pos.role)
+                        }})
+                    </div>
+                </template>
             </div>
         </div>
         <div v-if="formation.length === 0" class="no-formation-message">
@@ -140,7 +174,8 @@
 
 <script>
 import { useQuasar } from 'quasar'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import PlayerCards from './PlayerCards.vue'
 
 // Helper map to convert general formation slot roles to base position key prefixes
 // used in player.roleSpecificOveralls (e.g., "ST (C)" -> "ST").
@@ -163,6 +198,7 @@ const fmSlotRoleToKeyPrefixMap = {
 
 export default {
   name: 'PitchDisplay',
+  components: { PlayerCards },
   props: {
     formation: {
       type: Array,
@@ -178,12 +214,29 @@ export default {
       type: Boolean,
       default: false,
     },
+    displayMode: {
+      type: String,
+      default: 'circles',
+      validator: (value) => ['circles', 'cards'].includes(value),
+    },
+    currencySymbol: {
+      type: String,
+      default: '£',
+    },
+    datasetId: {
+      type: String,
+      default: null,
+    },
   },
   emits: ['player-click', 'player-moved', 'position-click'],
   setup(props, { emit }) {
     const quasar = useQuasar()
     const isDragging = ref(false)
     const draggedPlayerInfo = ref(null)
+
+    const pitchStyle = computed(() => ({
+      '--formation-rows': Math.max(1, props.formation.length),
+    }))
 
     const getPlayerSlotStyle = (numPlayersInRow) => {
       const percentageWidth = 100 / Math.max(1, numPlayersInRow)
@@ -203,6 +256,26 @@ export default {
       if (percentage >= 55) return 'rating-tier-3'
       if (percentage >= 40) return 'rating-tier-2'
       return 'rating-tier-1'
+    }
+
+    const getCardPositionForSlot = (slotRole) => {
+      const positionMap = {
+        GK: 'GK',
+        'D (R)': 'RB',
+        'D (L)': 'LB',
+        'D (C)': 'CB',
+        'WB (R)': 'RWB',
+        'WB (L)': 'LWB',
+        'DM (C)': 'CDM',
+        'M (R)': 'RM',
+        'M (L)': 'LM',
+        'M (C)': 'CM',
+        'AM (R)': 'RW',
+        'AM (L)': 'LW',
+        'AM (C)': 'CAM',
+        'ST (C)': 'ST',
+      }
+      return positionMap[slotRole] || slotRole
     }
 
     // Function to get the best role name for a player in a specific slot
@@ -343,8 +416,10 @@ export default {
     return {
       quasar,
       isDragging,
+      pitchStyle,
       getPlayerSlotStyle,
       getPlayerOverallClass,
+      getCardPositionForSlot,
       getBestRoleForPlayerInSlot,
       getPlayerSlotTitle,
       handleDragStart,
@@ -379,6 +454,23 @@ export default {
     &.dark-mode {
         background-color: #388e3c;
         border-color: #bdbdbd;
+    }
+
+    &.pitch-container--cards {
+        max-width: 960px;
+        aspect-ratio: auto;
+        min-height: max(720px, calc(var(--formation-rows) * 152px));
+        padding: 24px 16px;
+        background:
+            radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.13), transparent 18rem),
+            linear-gradient(120deg, #073b3d 0%, #0b5a4f 54%, #456236 100%);
+        border-color: rgba(255, 255, 255, 0.36);
+
+        &.dark-mode {
+            background:
+                radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.1), transparent 18rem),
+                linear-gradient(120deg, #032f3b 0%, #0c4b46 54%, #38462f 100%);
+        }
     }
 }
 
@@ -517,6 +609,13 @@ export default {
     margin: 2px 0;
 }
 
+.pitch-container--cards {
+    .formation-row {
+        flex: 1 1 0;
+        min-height: 140px;
+    }
+}
+
 .player-slot {
     display: flex;
     flex-direction: column;
@@ -531,6 +630,72 @@ export default {
 
     &:hover .player-representation.has-player {
         transform: scale(1.05);
+    }
+}
+
+.pitch-container--cards {
+    .player-slot {
+        min-height: 140px;
+        padding: 0 0.2rem;
+    }
+}
+
+.player-card-slot {
+    position: relative;
+    width: 96px;
+    height: 144px;
+    cursor: grab;
+    transition: transform 0.18s ease;
+
+    &:hover {
+        transform: translateY(-3px);
+    }
+
+    :deep(.pitch-player-card) {
+        transform: scale(0.34);
+        transform-origin: top left;
+    }
+
+    :deep(.pitch-player-card:hover),
+    :deep(.pitch-player-card:focus-within) {
+        transform: scale(0.34);
+    }
+}
+
+.card-position-match-dot {
+    position: absolute;
+    top: 6px;
+    right: 7px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.78);
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.34);
+
+    &.exact-match {
+        background-color: #36d27f;
+    }
+
+    &.off-position {
+        background-color: #ffb340;
+    }
+}
+
+.empty-card-slot {
+    width: 96px;
+    height: 132px;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 0.35rem;
+    color: rgba(255, 255, 255, 0.68);
+    border: 1px dashed rgba(255, 255, 255, 0.42);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.12);
+
+    span {
+        font-size: 0.75rem;
+        font-weight: 800;
     }
 }
 

@@ -16,6 +16,54 @@ const getApiEndpoint = () => {
 // If no API_ENDPOINT is set, use the current location
 const _resolvedApiEndpoint = API_ENDPOINT || getApiEndpoint()
 
+const parseResponseDataField = (response, contextLabel) => {
+  if (response?.data === undefined || response?.data === null) {
+    return response
+  }
+
+  if (typeof response.data === 'string') {
+    try {
+      return JSON.parse(response.data)
+    } catch (parseError) {
+      logger.error(`Error parsing ${contextLabel} data from response:`, parseError)
+      throw new Error(`Invalid ${contextLabel} data format`)
+    }
+  }
+
+  return response.data
+}
+
+const fetchJsonResponse = async (url, options = {}) => {
+  const response = await fetch(url, {
+    ...options,
+    cache: 'no-store',
+    headers: {
+      ...(options.headers || {}),
+      Accept: 'application/json',
+      'Cache-Control': 'no-cache',
+      Pragma: 'no-cache',
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+  }
+
+  const text = await response.text()
+  try {
+    return JSON.parse(text)
+  } catch (parseError) {
+    logger.error('Error parsing JSON response:', {
+      url,
+      contentType: response.headers.get('Content-Type'),
+      status: response.status,
+      preview: text.slice(0, 80),
+      error: parseError.message,
+    })
+    throw parseError
+  }
+}
+
 export default {
   async uploadPlayerFile(formData, maxSizeBytes = 15 * 1024 * 1024, onProgress = null) {
     const file = formData.get('playerFile')
@@ -209,21 +257,16 @@ export async function fetchFullPlayerStats(datasetID, playerUID) {
     })
 
     // Handle protobuf response structure where data is in the data field
-    if (response.data) {
-      try {
-        const parsedData = JSON.parse(response.data)
-        const totalTime = performance.now() - startTime
-        logger.info('fetchFullPlayerStats parsing completed', {
-          dataset_id: datasetID,
-          player_uid: playerUID,
-          total_time_ms: Math.round(totalTime),
-          parse_time_ms: Math.round(totalTime - apiTime),
-        })
-        return { data: parsedData, format: 'json' }
-      } catch (parseError) {
-        logger.error('Error parsing detailed player data from protobuf response:', parseError)
-        throw new Error('Invalid detailed player data format')
-      }
+    if (response.data !== undefined && response.data !== null) {
+      const parsedData = parseResponseDataField(response, 'detailed player')
+      const totalTime = performance.now() - startTime
+      logger.info('fetchFullPlayerStats parsing completed', {
+        dataset_id: datasetID,
+        player_uid: playerUID,
+        total_time_ms: Math.round(totalTime),
+        parse_time_ms: Math.round(totalTime - apiTime),
+      })
+      return { data: parsedData, format: 'json' }
     }
 
     // Fallback for JSON responses or direct data objects
@@ -255,25 +298,17 @@ export async function fetchFullPlayerStats(datasetID, playerUID) {
  */
 export async function fetchTeamData(datasetID, type, name) {
   try {
-    // Use protobuf-aware API for team data
-    const { get } = useProtobufApi('')
     const url = `/api/team-data/${datasetID}/${type}/${encodeURIComponent(name)}`
 
-    const response = await get(url, {}, 'api.GenericResponse')
+    const responseData = await fetchJsonResponse(url)
 
     // Handle protobuf response structure where data is in the data field
-    if (response.data) {
-      try {
-        const parsedData = JSON.parse(response.data)
-        return { data: parsedData, format: 'json' }
-      } catch (parseError) {
-        logger.error('Error parsing team data from protobuf response:', parseError)
-        throw new Error('Invalid team data format')
-      }
+    if (responseData.data !== undefined && responseData.data !== null) {
+      return { data: parseResponseDataField(responseData, 'team'), format: 'json' }
     }
 
     // Fallback for JSON responses or direct data objects
-    return { data: response, format: 'json' }
+    return { data: responseData, format: 'json' }
   } catch (error) {
     logger.error('Error fetching team data:', error)
     throw error
@@ -295,14 +330,8 @@ export async function fetchTopTeams(datasetID, limit = 100) {
     const response = await get(url, {}, 'api.GenericResponse')
 
     // Handle protobuf response structure where data is in the data field
-    if (response.data) {
-      try {
-        const parsedData = JSON.parse(response.data)
-        return parsedData
-      } catch (parseError) {
-        logger.error('Error parsing top teams data from protobuf response:', parseError)
-        throw new Error('Invalid top teams data format')
-      }
+    if (response.data !== undefined && response.data !== null) {
+      return parseResponseDataField(response, 'top teams')
     }
 
     // Fallback for JSON responses or direct data objects
@@ -344,14 +373,8 @@ export async function fetchPerformanceData(datasetID, filters = {}) {
     const response = await get(url, {}, 'api.GenericResponse')
 
     // Handle protobuf response structure where data is in the data field
-    if (response.data) {
-      try {
-        const parsedData = JSON.parse(response.data)
-        return { data: parsedData, format: 'json' }
-      } catch (parseError) {
-        logger.error('Error parsing performance data from protobuf response:', parseError)
-        throw new Error('Invalid performance data format')
-      }
+    if (response.data !== undefined && response.data !== null) {
+      return { data: parseResponseDataField(response, 'performance'), format: 'json' }
     }
 
     // Fallback for JSON responses or direct data objects
@@ -370,14 +393,8 @@ export async function findPlayerUpgrades(request) {
     const response = await post('/api/upgrade-finder', request, {}, 'api.GenericResponse')
 
     // Handle protobuf response structure where data is in the data field
-    if (response.data) {
-      try {
-        const parsedData = JSON.parse(response.data)
-        return { data: parsedData, format: 'json' }
-      } catch (parseError) {
-        logger.error('Error parsing upgrade finder data from protobuf response:', parseError)
-        throw new Error('Invalid upgrade finder data format')
-      }
+    if (response.data !== undefined && response.data !== null) {
+      return { data: parseResponseDataField(response, 'upgrade finder'), format: 'json' }
     }
 
     // Fallback for JSON responses or direct data objects

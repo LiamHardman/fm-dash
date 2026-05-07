@@ -301,6 +301,9 @@ export default defineComponent({
 
       // If no role is selected, optionally use stat summary overall if setting is enabled
       if (!props.selectedRole) {
+        const explicitOverall = props.player.Overall ?? props.player.overall
+        if (typeof explicitOverall === 'number' && explicitOverall > 0) return explicitOverall
+
         if (uiStore?.useStatSummaryForOverall) {
           // Prefer the already-calibrated Overall from the row mapping when available
           const mapped = playerData.Overall ?? playerData.overall

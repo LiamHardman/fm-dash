@@ -287,7 +287,7 @@ func WriteResponse(w http.ResponseWriter, r *http.Request, data interface{}) err
 
 	w.Header().Set("Content-Type", serializer.ContentType())
 	logDebug(r.Context(), "WriteResponse: setting content type", "content_type", serializer.ContentType())
-	if shouldGzipResponse(r, serializer) {
+	if shouldGzipResponse(w, r, serializer) {
 		compressedData, err := gzipResponseData(responseData)
 		if err != nil {
 			return WrapErrorf(ErrSerializationFailed, "gzip: %v", err)
@@ -342,7 +342,7 @@ func WriteErrorResponse(w http.ResponseWriter, r *http.Request, errorCode, messa
 		setCORSHeaders(w, r)
 	}
 	w.Header().Set("Content-Type", serializer.ContentType())
-	if shouldGzipResponse(r, serializer) {
+	if shouldGzipResponse(w, r, serializer) {
 		compressedData, err := gzipResponseData(responseData)
 		if err != nil {
 			logError(r.Context(), "Error compressing error response", "error", err)
@@ -357,7 +357,10 @@ func WriteErrorResponse(w http.ResponseWriter, r *http.Request, errorCode, messa
 	}
 }
 
-func shouldGzipResponse(r *http.Request, serializer ResponseSerializer) bool {
+func shouldGzipResponse(w http.ResponseWriter, r *http.Request, serializer ResponseSerializer) bool {
+	if w.Header().Get("Content-Encoding") != "" {
+		return false
+	}
 	return serializer.ShouldCompress() && strings.Contains(r.Header.Get("Accept-Encoding"), "gzip")
 }
 

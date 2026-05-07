@@ -256,6 +256,9 @@
                                     <PitchDisplay
                                         :formation="currentFormationLayout"
                                         :players="bestTeamPlayersForPitch"
+                                        display-mode="cards"
+                                        :currency-symbol="detectedCurrencySymbol"
+                                        :dataset-id="currentDatasetId"
                                         @player-click="handlePlayerSelectedFromTeam"
                                         @player-moved="handlePlayerMovedOnPitch"
                                     />
