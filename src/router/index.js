@@ -10,6 +10,7 @@ const LeaguesPage = () => import('../pages/LeaguesPage.vue')
 const DocsPage = () => import('../pages/DocsPage.vue')
 const WishlistPage = () => import('../pages/WishlistPage.vue')
 const PerformancePage = () => import('../pages/PerformancePage.vue')
+const CardDesignsPage = () => import('../pages/CardDesignsPage.vue')
 
 const routes = [
   {
@@ -92,6 +93,11 @@ const routes = [
     path: '/docs',
     name: 'docs',
     component: DocsPage,
+  },
+  {
+    path: '/cards',
+    name: 'cards',
+    component: CardDesignsPage,
   },
 ]
 
