@@ -1,0 +1,151 @@
+.card-design--bronze-season-ribbon,
+.card-design--silver-season-laurel,
+.card-design--gold-season-trophy {
+    border-color: var(--card-border);
+    background:
+        radial-gradient(circle at 50% 8%, color-mix(in srgb, var(--card-surface-soft) 24%, transparent), transparent 9rem),
+        radial-gradient(ellipse at 72% 24%, color-mix(in srgb, var(--card-accent) 16%, transparent), transparent 8rem),
+        conic-gradient(from 225deg at 52% 28%, transparent 0deg, color-mix(in srgb, var(--card-cut) 14%, transparent) 20deg, transparent 42deg, transparent 360deg),
+        linear-gradient(140deg, color-mix(in srgb, var(--card-cut) 12%, transparent), transparent 34%),
+        linear-gradient(180deg, var(--card-surface-soft) 0%, var(--card-surface) 36%, var(--card-bg) 70%, #050a0e 100%);
+    box-shadow:
+        0 19px 44px rgba(0, 0, 0, 0.48),
+        inset 0 0 0 1px color-mix(in srgb, var(--card-highlight) 18%, transparent),
+        inset 0 0 0 7px rgba(8, 22, 34, 0.36),
+        0 0 28px var(--card-shadow);
+
+    &:hover,
+    &:focus-within {
+        box-shadow:
+            0 28px 58px rgba(0, 0, 0, 0.54),
+            inset 0 0 0 1px color-mix(in srgb, var(--card-highlight) 24%, transparent),
+            inset 0 0 0 7px rgba(8, 22, 34, 0.3),
+            0 0 38px var(--card-shadow);
+    }
+
+    &::before {
+        inset: 8px;
+        border-color: color-mix(in srgb, var(--card-border) 72%, transparent);
+        box-shadow:
+            inset 0 0 0 1px color-mix(in srgb, var(--card-accent) 22%, transparent),
+            0 0 22px var(--card-shadow);
+    }
+
+    &::after {
+        background: linear-gradient(90deg, transparent, var(--card-accent), var(--card-cut), var(--card-accent), transparent);
+        box-shadow: 0 0 18px var(--card-shadow);
+    }
+
+    .player-vitals-container {
+        color: #071017;
+        background: linear-gradient(180deg, var(--card-cut), var(--card-accent));
+        border-color: color-mix(in srgb, var(--card-highlight) 38%, transparent);
+    }
+
+    .player-photo {
+        color: color-mix(in srgb, var(--card-highlight) 78%, transparent);
+        background:
+            radial-gradient(ellipse at 50% 64%, rgba(0, 0, 0, 0.48), transparent 56%),
+            radial-gradient(ellipse at 50% 28%, color-mix(in srgb, var(--card-accent) 17%, transparent), transparent 48%);
+    }
+}
+
+.card-design--bronze-season-ribbon {
+    --card-bg: #081316;
+    --card-surface: #684025;
+    --card-surface-soft: #a96837;
+    --card-border: #cf8b4f;
+    --card-border-muted: #392417;
+    --card-accent: #35bfa9;
+    --card-cut: #efab67;
+    --card-highlight: #ffe2be;
+    --card-text: #fff0de;
+    --card-muted: #c8ad8b;
+    --card-stat: #ffbc73;
+    --card-shadow: rgba(52, 184, 161, 0.25);
+
+    background:
+        radial-gradient(circle at 36% 12%, rgba(239, 171, 103, 0.22), transparent 8rem),
+        linear-gradient(125deg, transparent 0 18%, rgba(53, 191, 169, 0.14) 18% 32%, transparent 32% 54%, rgba(239, 171, 103, 0.16) 54% 62%, transparent 62%),
+        linear-gradient(180deg, var(--card-surface-soft) 0%, var(--card-surface) 44%, var(--card-bg) 76%);
+
+    .card-bg {
+        background:
+            linear-gradient(125deg, transparent 0 18%, rgba(53, 191, 169, 0.2) 18% 32%, transparent 32% 52%, rgba(239, 171, 103, 0.18) 52% 61%, transparent 61%),
+            linear-gradient(36deg, transparent 0 38%, rgba(53, 191, 169, 0.16) 38% 43%, rgba(64, 39, 22, 0.22) 43% 52%, transparent 52%),
+            repeating-linear-gradient(100deg, transparent 0 18px, rgba(255, 217, 181, 0.08) 18px 19px);
+        opacity: 0.78;
+    }
+
+    .player-rating {
+        text-shadow:
+            0 2px 9px rgba(0, 0, 0, 0.52),
+            0 0 15px rgba(242, 176, 107, 0.18);
+    }
+}
+
+.card-design--silver-season-laurel {
+    --card-bg: #07121a;
+    --card-surface: #84929b;
+    --card-surface-soft: #dbe5ea;
+    --card-border: #f0f7fa;
+    --card-border-muted: #40505a;
+    --card-accent: #6fe0ee;
+    --card-cut: #fbffff;
+    --card-highlight: #ffffff;
+    --card-text: #f8fdff;
+    --card-muted: #d5e5eb;
+    --card-stat: #f0fdff;
+    --card-shadow: rgba(111, 224, 238, 0.28);
+
+    background:
+        radial-gradient(circle at 42% 12%, rgba(240, 253, 255, 0.3), transparent 8rem),
+        radial-gradient(circle at 66% 20%, rgba(111, 224, 238, 0.14), transparent 8rem),
+        linear-gradient(180deg, var(--card-surface-soft) 0%, var(--card-surface) 42%, var(--card-bg) 78%);
+
+    .card-bg {
+        background:
+            repeating-radial-gradient(ellipse at 50% 28%, transparent 0 15px, rgba(240, 253, 255, 0.16) 15px 17px, transparent 17px 34px),
+            repeating-linear-gradient(105deg, transparent 0 20px, rgba(255, 255, 255, 0.08) 20px 21px),
+            linear-gradient(42deg, transparent 0 34%, rgba(111, 224, 238, 0.16) 34% 39%, rgba(62, 78, 88, 0.22) 39% 49%, transparent 49%),
+            radial-gradient(circle at 64% 17%, rgba(111, 224, 238, 0.16), transparent 8rem);
+        opacity: 0.82;
+    }
+}
+
+.card-design--gold-season-trophy {
+    --card-bg: #070e17;
+    --card-surface: #182652;
+    --card-surface-soft: #edbb3f;
+    --card-border: #ffe895;
+    --card-border-muted: #263251;
+    --card-accent: #6f95ff;
+    --card-cut: #fff2a9;
+    --card-highlight: #fff9df;
+    --card-text: #fff7d8;
+    --card-muted: #ead087;
+    --card-stat: #ffe98d;
+    --card-shadow: rgba(255, 216, 96, 0.42);
+
+    background:
+        radial-gradient(circle at 50% 18%, rgba(255, 228, 134, 0.24), transparent 8rem),
+        radial-gradient(circle at 72% 18%, rgba(111, 149, 255, 0.2), transparent 7rem),
+        conic-gradient(from 218deg at 52% 28%, transparent 0deg, rgba(255, 242, 169, 0.24) 18deg, rgba(24, 38, 82, 0.38) 38deg, rgba(111, 149, 255, 0.16) 62deg, transparent 90deg, transparent 360deg),
+        linear-gradient(180deg, var(--card-surface) 0%, var(--card-bg) 58%, #050913 100%);
+
+    .card-bg {
+        background:
+            repeating-radial-gradient(ellipse at 50% 24%, transparent 0 13px, rgba(255, 228, 134, 0.18) 13px 16px, transparent 16px 31px),
+            repeating-conic-gradient(from 218deg at 52% 28%, rgba(255, 242, 169, 0.12) 0deg 1deg, transparent 1deg 8deg),
+            linear-gradient(128deg, transparent 0 26%, rgba(255, 242, 169, 0.22) 26% 29%, rgba(24, 38, 82, 0.3) 29% 44%, transparent 44% 56%, rgba(111, 149, 255, 0.16) 56% 69%, transparent 69%),
+            radial-gradient(circle at 68% 18%, rgba(255, 228, 134, 0.2), transparent 8rem),
+            repeating-linear-gradient(98deg, transparent 0 20px, rgba(255, 231, 142, 0.08) 20px 22px);
+        opacity: 0.9;
+    }
+
+    .player-rating {
+        text-shadow:
+            0 2px 9px rgba(0, 0, 0, 0.54),
+            0 0 18px rgba(255, 218, 105, 0.28);
+    }
+}

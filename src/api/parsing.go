@@ -380,8 +380,14 @@ tokenLoop:
 // that all downstream rating calculations expect.
 var csvHeaderNormalize = map[string]string{
 	// Column identity differences
-	"Player": "Name",
-	"Nation": "Nat",
+	"Player":         "Name",
+	"Nation":         "Nat",
+	"League":         "Division",
+	"Competition":    "Division",
+	"Rating":         "Av Rat",
+	"Average Rating": "Av Rat",
+	"Appearances":    "Apps",
+	"Aps":            "Apps",
 
 	// Physical attributes
 	"Acceleration":    "Acc",

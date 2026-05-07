@@ -178,6 +178,55 @@
 
                 <!-- Selected League Teams -->
                 <div v-if="selectedLeagueName && !loadingLeague && leagueTeams.length > 0">
+                    <section
+                        class="tots-lineup q-mb-md"
+                        :class="quasarInstance.dark.isActive ? 'tots-lineup--dark' : 'tots-lineup--light'"
+                    >
+                        <div class="tots-lineup__header">
+                            <div>
+                                <div class="tots-lineup__kicker">Team of the Season</div>
+                                <h2>{{ selectedLeagueName }} XI</h2>
+                            </div>
+                            <p>Top rated eligible players by position group, minimum 5 appearances.</p>
+                        </div>
+
+                        <div v-if="teamOfSeasonLineup.hasPlayers" class="tots-lineup__pitch">
+                            <div
+                                v-for="row in teamOfSeasonLineup.rows"
+                                :key="row.group"
+                                class="tots-lineup__row"
+                                :class="`tots-lineup__row--${row.group.toLowerCase()}`"
+                            >
+                                <div
+                                    v-for="slot in row.slots"
+                                    :key="`${row.group}-${slot.index}`"
+                                    class="tots-card-slot"
+                                    :class="{ 'tots-card-slot--empty': !slot.player }"
+                                >
+                                    <PlayerCards
+                                        v-if="slot.player"
+                                        :player="slot.player"
+                                        :currency-symbol="detectedCurrencySymbol"
+                                        :dataset-id="currentDatasetId"
+                                        :card-design-override="getTotsCardDesign(slot.player)"
+                                        @click="openPlayerDetail(slot.player)"
+                                    />
+                                    <template v-else>
+                                        <span>{{ row.group }}</span>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-else class="tots-lineup__empty">
+                            <div>No eligible players found for this league.</div>
+                            <div class="tots-lineup__empty-details">
+                                {{ teamOfSeasonLineup.totalPlayers }} players,
+                                {{ teamOfSeasonLineup.playersWithRating }} with rating,
+                                {{ teamOfSeasonLineup.playersWithFiveApps }} with 5+ appearances.
+                            </div>
+                        </div>
+                    </section>
+
                     <q-card
                         :class="
                             quasarInstance.dark.isActive
@@ -279,17 +328,20 @@
 import { useQuasar } from 'quasar'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import PlayerCards from '../components/PlayerCards.vue'
 import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
+import { usePlayerUtils } from '../composables/usePlayerUtils'
 import { usePlayerStore } from '../stores/playerStore'
 
 export default {
   name: 'LeaguesPage',
-  components: { PlayerDetailDialog },
+  components: { PlayerDetailDialog, PlayerCards },
   setup() {
     const quasarInstance = useQuasar()
     const router = useRouter()
     const route = useRoute()
     const playerStore = usePlayerStore()
+    const { positionGroups } = usePlayerUtils()
 
     const selectedLeagueName = ref(null)
     const leagueOptions = ref([])
@@ -321,6 +373,157 @@ export default {
 
     const playerForDetailView = ref(null)
     const showPlayerDetailDialog = ref(false)
+
+    const totsShape = [
+      { group: 'ATT', count: 3 },
+      { group: 'MID', count: 3 },
+      { group: 'DEF', count: 4 },
+      { group: 'GK', count: 1 },
+    ]
+
+    const positionGroupAliases = {
+      GK: ['GK', 'Goalkeeper'],
+      DEF: ['D', 'DC', 'DR', 'DL', 'WBR', 'WBL', 'CB', 'RB', 'LB', 'RWB', 'LWB', 'SW'],
+      MID: ['M', 'MC', 'MR', 'ML', 'DM', 'AMC', 'CM', 'CDM', 'CAM', 'RM', 'LM', 'AM'],
+      ATT: ['ST', 'AMR', 'AML', 'CF', 'LW', 'RW', 'IF', 'TQ', 'F9'],
+    }
+
+    for (const [group, positions] of Object.entries(positionGroups)) {
+      positionGroupAliases[group] = Array.from(
+        new Set([...(positionGroupAliases[group] || []), ...positions])
+      )
+    }
+
+    const getPerformanceStat = (player, keys) => {
+      const stats = player?.performanceStatsNumeric || player?.PerformanceStatsNumeric || {}
+      const attrs = player?.attributes || {}
+
+      for (const key of keys) {
+        const raw = stats[key] ?? attrs[key]
+        if (raw === null || raw === undefined || raw === '' || raw === '-') continue
+        const value = Number(String(raw).replace('%', '').replace(',', '').trim())
+        if (!Number.isNaN(value)) return value
+      }
+
+      return null
+    }
+
+    const getPlayerPositionCodes = (player) => {
+      const codes = new Set()
+
+      for (const pos of player?.shortPositions || player?.short_positions || []) {
+        if (pos) codes.add(String(pos).toUpperCase())
+      }
+
+      const rawPosition = String(player?.position || '').toUpperCase()
+      const allKnownCodes = Array.from(new Set(Object.values(positionGroupAliases).flat()))
+        .filter((code) => code && code !== 'D' && code !== 'M' && code !== 'AM')
+        .sort((a, b) => b.length - a.length)
+
+      for (const code of allKnownCodes) {
+        const pattern = new RegExp(`(^|[^A-Z])${code}([^A-Z]|$)`)
+        if (pattern.test(rawPosition)) codes.add(code)
+      }
+
+      if (rawPosition.includes('D (') || rawPosition === 'D') codes.add('D')
+      if (rawPosition.includes('M (') || rawPosition === 'M') codes.add('M')
+      if (rawPosition.includes('AM (') || rawPosition === 'AM') codes.add('AM')
+
+      for (const parsedPosition of player?.parsedPositions || []) {
+        const normalized = String(parsedPosition).toLowerCase()
+        if (normalized.includes('goalkeeper')) codes.add('GK')
+        if (
+          normalized.includes('back') ||
+          normalized.includes('defender') ||
+          normalized.includes('sweeper')
+        ) {
+          codes.add('D')
+        }
+        if (normalized.includes('midfielder')) codes.add('M')
+        if (normalized.includes('striker') || normalized.includes('winger')) codes.add('ST')
+      }
+
+      return codes
+    }
+
+    const getPlayerTotsGroup = (player) => {
+      const codes = getPlayerPositionCodes(player)
+
+      for (const group of ['GK', 'DEF', 'MID', 'ATT']) {
+        const aliases = positionGroupAliases[group] || []
+        if (aliases.some((code) => codes.has(code))) return group
+      }
+
+      return null
+    }
+
+    const teamOfSeasonLineup = computed(() => {
+      const selectedLeague = selectedLeagueName.value
+      const players = Array.isArray(playerStore.allPlayers) ? playerStore.allPlayers : []
+
+      const groupedPlayers = {
+        ATT: [],
+        MID: [],
+        DEF: [],
+        GK: [],
+      }
+      let totalPlayers = 0
+      let playersWithRating = 0
+      let playersWithFiveApps = 0
+
+      for (const player of players) {
+        if (!player || player.division !== selectedLeague) continue
+        totalPlayers++
+
+        const rating = getPerformanceStat(player, ['Av Rat', 'Rating', 'Average Rating'])
+        const appearances = getPerformanceStat(player, ['Apps', 'Appearances', 'Aps'])
+        const group = getPlayerTotsGroup(player)
+
+        if (rating !== null) playersWithRating++
+        if (appearances !== null && appearances >= 5) playersWithFiveApps++
+
+        if (!group || rating === null || appearances === null || appearances < 5) continue
+
+        groupedPlayers[group].push({
+          ...player,
+          totsRating: rating,
+          totsAppearances: appearances,
+        })
+      }
+
+      const selectedIds = new Set()
+      const rows = totsShape.map((row) => {
+        const candidates = groupedPlayers[row.group]
+          .filter((player) => !selectedIds.has(player.uid || player.name))
+          .sort((a, b) => {
+            if (b.totsRating !== a.totsRating) return b.totsRating - a.totsRating
+            if (b.totsAppearances !== a.totsAppearances)
+              return b.totsAppearances - a.totsAppearances
+            return (b.Overall || b.overall || 0) - (a.Overall || a.overall || 0)
+          })
+
+        const playersForRow = candidates.slice(0, row.count)
+        for (const player of playersForRow) {
+          selectedIds.add(player.uid || player.name)
+        }
+
+        return {
+          group: row.group,
+          slots: Array.from({ length: row.count }, (_, index) => ({
+            index,
+            player: playersForRow[index] || null,
+          })),
+        }
+      })
+
+      return {
+        rows,
+        totalPlayers,
+        playersWithRating,
+        playersWithFiveApps,
+        hasPlayers: rows.some((row) => row.slots.some((slot) => slot.player)),
+      }
+    })
 
     const fetchLeaguesAndCurrency = async (datasetId) => {
       pageLoading.value = true
@@ -453,6 +656,18 @@ export default {
       }
     }
 
+    const openPlayerDetail = (player) => {
+      playerForDetailView.value = player
+      showPlayerDetailDialog.value = true
+    }
+
+    const getTotsCardDesign = (player) => {
+      const overall = Number(player?.Overall ?? player?.overall ?? 0)
+      if (overall >= 75) return 'card-design--gold-season-trophy'
+      if (overall >= 65) return 'card-design--silver-season-laurel'
+      return 'card-design--bronze-season-ribbon'
+    }
+
     const getOverallClass = (overall) => {
       if (overall === null || overall === undefined || overall === 0) return 'rating-na'
       const numericOverall = Number(overall)
@@ -567,6 +782,9 @@ export default {
       playerForDetailView,
       showPlayerDetailDialog,
       handleTeamSelected,
+      openPlayerDetail,
+      teamOfSeasonLineup,
+      getTotsCardDesign,
       getOverallClass,
       getStarClass,
       getStarRating,
@@ -742,6 +960,148 @@ export default {
 .filter-card,
 .q-card {
     border-radius: $generic-border-radius;
+}
+
+.tots-lineup {
+    border-radius: 8px;
+    padding: 1.25rem;
+    border: 1px solid rgba(25, 90, 120, 0.22);
+    background:
+        linear-gradient(145deg, rgba(10, 48, 70, 0.96), rgba(17, 89, 94, 0.94) 48%, rgba(132, 105, 38, 0.9)),
+        repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.06) 0 1px, transparent 1px 18px);
+    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.18);
+    color: white;
+
+    &--dark {
+        border-color: rgba(255, 215, 128, 0.28);
+    }
+}
+
+.tots-lineup__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1.5rem;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+
+    h2 {
+        margin: 0;
+        font-size: 1.35rem;
+        font-weight: 800;
+        letter-spacing: 0;
+    }
+
+    p {
+        max-width: 360px;
+        margin: 0;
+        color: rgba(255, 255, 255, 0.78);
+        font-size: 0.9rem;
+        line-height: 1.45;
+        text-align: right;
+    }
+}
+
+.tots-lineup__kicker {
+    color: #f4d06f;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    text-transform: uppercase;
+}
+
+.tots-lineup__pitch {
+    display: grid;
+    gap: 0.85rem;
+    padding: 1rem;
+    border-radius: 8px;
+    background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+        rgba(1, 28, 39, 0.42);
+    background-size: 52px 52px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.tots-lineup__empty {
+    padding: 1.25rem;
+    border-radius: 8px;
+    border: 1px dashed rgba(255, 255, 255, 0.28);
+    background: rgba(1, 28, 39, 0.32);
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 0.92rem;
+    font-weight: 700;
+    line-height: 1.4;
+    text-align: center;
+}
+
+.tots-lineup__empty-details {
+    margin-top: 0.35rem;
+    color: rgba(255, 255, 255, 0.68);
+    font-size: 0.82rem;
+}
+
+.tots-lineup__row {
+    display: grid;
+    justify-content: center;
+    gap: clamp(0.65rem, 2vw, 1.25rem);
+
+    &--att,
+    &--mid {
+        grid-template-columns: repeat(3, 154px);
+    }
+
+    &--def {
+        grid-template-columns: repeat(4, 154px);
+    }
+
+    &--gk {
+        grid-template-columns: 154px;
+    }
+}
+
+.tots-card-slot {
+    position: relative;
+    width: 154px;
+    height: 231px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+
+    :deep(.fifa-card) {
+        flex: 0 0 auto;
+        transform: scale(0.55);
+        transform-origin: top center;
+    }
+
+    :deep(.fifa-card:hover),
+    :deep(.fifa-card:focus-within) {
+        transform: scale(0.55) translateY(-6px);
+    }
+
+    &--empty {
+        min-height: 124px;
+        display: grid;
+        place-items: center;
+        border: 1px dashed rgba(255, 255, 255, 0.24);
+        border-radius: 8px;
+        color: rgba(255, 255, 255, 0.72);
+        background: rgba(255, 255, 255, 0.08);
+        font-size: 0.78rem;
+        font-weight: 800;
+    }
+}
+
+.tots-card-slot--empty {
+    height: auto;
+}
+
+.tots-card-slot--empty span {
+    display: inline-grid;
+    min-width: 2.8rem;
+    min-height: 2.8rem;
+    place-items: center;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.08);
 }
 
 .leagues-list,
@@ -980,6 +1340,95 @@ export default {
         
         .body--dark & {
             box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
+        }
+    }
+}
+
+@media (max-width: 760px) {
+    .tots-lineup {
+        padding: 0.85rem;
+    }
+
+    .tots-lineup__header {
+        display: grid;
+        gap: 0.5rem;
+
+        p {
+            max-width: none;
+            text-align: left;
+        }
+    }
+
+    .tots-lineup__pitch {
+        gap: 0.7rem;
+        padding: 0.65rem;
+    }
+
+    .tots-lineup__row {
+        gap: 0.45rem;
+
+        &--att,
+        &--mid {
+            grid-template-columns: repeat(3, 92px);
+        }
+
+        &--def {
+            grid-template-columns: repeat(4, 92px);
+        }
+
+        &--gk {
+            grid-template-columns: 92px;
+        }
+    }
+
+    .tots-card-slot {
+        width: 92px;
+        height: 138px;
+
+        :deep(.fifa-card) {
+            transform: scale(0.329);
+        }
+
+        :deep(.fifa-card:hover),
+        :deep(.fifa-card:focus-within) {
+            transform: scale(0.329) translateY(-6px);
+        }
+
+        &--empty {
+            min-height: 74px;
+        }
+    }
+}
+
+@media (max-width: 420px) {
+    .tots-lineup__row {
+        gap: 0.25rem;
+
+        &--att,
+        &--mid {
+            grid-template-columns: repeat(3, 68px);
+        }
+
+        &--def {
+            grid-template-columns: repeat(4, 68px);
+        }
+
+        &--gk {
+            grid-template-columns: 68px;
+        }
+    }
+
+    .tots-card-slot {
+        width: 68px;
+        height: 102px;
+
+        :deep(.fifa-card) {
+            transform: scale(0.243);
+        }
+
+        :deep(.fifa-card:hover),
+        :deep(.fifa-card:focus-within) {
+            transform: scale(0.243) translateY(-6px);
         }
     }
 }

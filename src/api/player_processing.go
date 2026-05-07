@@ -357,10 +357,9 @@ func EnhancePlayerWithCalculations(player *Player) {
 						minsCleaned := strings.ReplaceAll(statStrCleaned, ",", "")
 						parsedValue, err = fastParseFloat(minsCleaned)
 					case "Apps":
-						// Handle appearances with substitutes like "22 (4)"
+						// Handle appearances with substitutes like "22 (4)" or "22(4)".
 						if strings.Contains(statStrCleaned, "(") {
-							// Extract main appearances and substitute appearances
-							parts := strings.Split(statStrCleaned, " (")
+							parts := strings.SplitN(statStrCleaned, "(", 2)
 							if len(parts) == 2 {
 								mainApps, err1 := fastParseFloat(strings.TrimSpace(parts[0]))
 								subAppsStr := strings.TrimRight(strings.TrimSpace(parts[1]), ")")

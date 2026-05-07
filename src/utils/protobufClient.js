@@ -166,7 +166,7 @@ class ProtobufClient {
 
       const contentType = response.headers.get('Content-Type')
       if (!contentType || !contentType.includes('application/x-protobuf')) {
-        throw new Error(`Expected protobuf response, got ${contentType || 'no content type'}`)
+        return await this.handleNonProtobufResponse(response)
       }
 
       const buffer = await response.arrayBuffer()

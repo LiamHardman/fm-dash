@@ -140,6 +140,10 @@ export default defineComponent({
       type: String,
       default: null,
     },
+    cardDesignOverride: {
+      type: String,
+      default: null,
+    },
   },
   emits: ['click'],
   setup(props, { emit }) {
@@ -428,6 +432,7 @@ export default defineComponent({
     const cardTypeClass = computed(() => `card-${cardType.value}`)
     const rarityClass = computed(() => (isRare.value ? 'rare' : 'non-rare'))
     const cardDesignClass = computed(() => {
+      if (props.cardDesignOverride) return props.cardDesignOverride
       if (cardType.value === 'icon') return 'card-design--ivory-museum'
 
       const designByTypeAndRarity = {
