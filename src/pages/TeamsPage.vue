@@ -61,7 +61,7 @@
             <!-- Loading States -->
             <div v-if="pageLoading" class="loading-state">
                 <q-spinner-orbit color="primary" size="4em" />
-                <div class="loading-text">Loading player database...</div>
+                <div class="loading-text">Loading teams overview...</div>
             </div>
             
             <div v-else-if="teamsLoading" class="loading-state">
@@ -73,7 +73,7 @@
 
             <!-- Teams Overview Card -->
             <q-card
-                v-if="!pageLoading && !pageLoadingError && allPlayersData.length > 0"
+                v-if="!pageLoading && !pageLoadingError && teamsData.length > 0"
                 class="teams-overview-card"
             >
                 <q-card-section>
@@ -180,7 +180,7 @@
 
             <!-- Additional Banners -->
             <q-banner
-                v-else-if="!pageLoading && !loadingTeam && allPlayersData.length > 0 && !selectedTeamName"
+                v-else-if="!pageLoading && !pageLoadingError && teamsData.length > 0"
                 class="info-banner"
             >
                 <template v-slot:avatar>
@@ -190,7 +190,7 @@
             </q-banner>
             
             <q-banner
-                v-else-if="!pageLoading && !loadingTeam && allPlayersData.length === 0 && !pageLoadingError"
+                v-else-if="!pageLoading && !teamsLoading && teamsData.length === 0 && !pageLoadingError"
                 class="warning-banner"
             >
                 <template v-slot:avatar>
@@ -207,13 +207,6 @@
             </q-banner>
         </div>
 
-        <!-- Player Detail Dialog -->
-        <PlayerDetailDialog
-            :player="playerForDetailView"
-            :show="showPlayerDetailDialog"
-            @close="showPlayerDetailDialog = false"
-            :currency-symbol="detectedCurrencySymbol"
-        />
     </q-page>
 </template>
 
@@ -221,15 +214,13 @@
 import { useQuasar } from 'quasar'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import PlayerDataTable from '../components/PlayerDataTable.vue'
-import PlayerDetailDialog from '../components/PlayerDetailDialog.vue'
 import TeamLogo from '../components/TeamLogo.vue'
 import { fetchTopTeams } from '../services/playerService'
 import { usePlayerStore } from '../stores/playerStore'
 
 export default {
   name: 'TeamsPage',
-  components: { PlayerDataTable, PlayerDetailDialog, TeamLogo },
+  components: { TeamLogo },
   setup() {
     const quasarInstance = useQuasar()
     const router = useRouter()
@@ -239,43 +230,26 @@ export default {
     const pageLoading = ref(true)
     const pageLoadingError = ref('')
 
-    // Computed properties from store
-    const allPlayersData = computed(() => playerStore.allPlayers)
-    const detectedCurrencySymbol = computed(() => playerStore.detectedCurrencySymbol)
     const currentDatasetId = computed(() => playerStore.currentDatasetId)
-
-    const playerForDetailView = ref(null)
-    const showPlayerDetailDialog = ref(false)
 
     // Teams data
     const teamsData = ref([])
     const teamsLoading = ref(false)
     const showAllTeams = ref(false)
 
-    const fetchPlayersAndCurrency = async (datasetId) => {
-      pageLoading.value = true
-      pageLoadingError.value = ''
-      try {
-        await playerStore.fetchPlayersByDatasetId(datasetId)
-      } catch (err) {
-        pageLoadingError.value = `Failed to load player data: ${err.message || 'Unknown server error'}. Please try uploading again.`
-      } finally {
-        pageLoading.value = false
-      }
-    }
-
-    const loadTopTeams = async () => {
-      if (!currentDatasetId.value || !allPlayersData.value.length) {
+    const loadTopTeams = async (datasetId = currentDatasetId.value) => {
+      if (!datasetId) {
         teamsData.value = []
         return
       }
 
       teamsLoading.value = true
       try {
-        const teams = await fetchTopTeams(currentDatasetId.value, 100)
+        const teams = await fetchTopTeams(datasetId, 100)
         teamsData.value = teams
       } catch (error) {
         console.error('Error loading top teams:', error)
+        pageLoadingError.value = `Failed to load teams data: ${error.message || 'Unknown server error'}. Please try uploading again.`
         quasarInstance.notify({
           type: 'negative',
           message: 'Failed to load teams data',
@@ -385,58 +359,39 @@ export default {
         } else if (!datasetIdFromQuery && sessionStorage.getItem('currentDatasetId')) {
           router.replace({ query: { datasetId: finalDatasetId } })
         }
-        await fetchPlayersAndCurrency(finalDatasetId)
+        playerStore.setCurrentDatasetId(finalDatasetId)
+        await loadTopTeams(finalDatasetId)
       } else {
         pageLoadingError.value =
           'No player dataset ID found. Please upload a file on the main page.'
-        pageLoading.value = false
       }
-
-      if (!pageLoadingError.value && allPlayersData.value.length > 0) {
-        await loadTopTeams()
-      }
+      pageLoading.value = false
     })
-
-    watch(
-      () => allPlayersData.value,
-      async (newVal) => {
-        if (pageLoading.value) return
-        if (newVal && newVal.length > 0) {
-          await loadTopTeams()
-        } else if (!pageLoadingError.value) {
-          teamsData.value = []
-        }
-      },
-      { immediate: false }
-    )
 
     watch(
       () => route.query.datasetId,
       async (newId, oldId) => {
         if (newId && newId !== oldId) {
           sessionStorage.setItem('currentDatasetId', newId)
-          await fetchPlayersAndCurrency(newId)
+          playerStore.setCurrentDatasetId(newId)
           teamsData.value = []
-          if (!pageLoadingError.value && allPlayersData.value.length > 0) {
-            await loadTopTeams()
-          }
+          pageLoadingError.value = ''
+          pageLoading.value = true
+          await loadTopTeams(newId)
+          pageLoading.value = false
         }
       }
     )
 
     return {
-      allPlayersData,
       selectTeam,
       pageLoading,
       pageLoadingError,
-      playerForDetailView,
-      showPlayerDetailDialog,
       getOverallClass,
       getStarClass,
       getStarRating,
       quasarInstance,
       router,
-      detectedCurrencySymbol,
       currentDatasetId,
       shareDataset,
       teamsData,

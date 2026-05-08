@@ -5126,7 +5126,6 @@ func processTopTeamsData(players []Player, limit int) []Team {
 			Name:        teamName,
 			Division:    teamPlayers[0].Division, // Use first player's division
 			PlayerCount: len(teamPlayers),
-			Players:     teamPlayers,
 		}
 
 		ratings := calculateTeamRatings(teamPlayers)
@@ -5202,7 +5201,7 @@ func topTeamsHandler(w http.ResponseWriter, r *http.Request) {
 	logInfo(ctx, "Processing top teams request", "dataset_id", datasetID, "limit", limit)
 
 	// Try to get top teams data from cache first
-	cacheKey := fmt.Sprintf("top_teams_%s_%d", datasetID, limit)
+	cacheKey := fmt.Sprintf("top_teams_summary_%s_%d", datasetID, limit)
 	if cached, found := getFromMemCache(cacheKey); found {
 		if teamsData, ok := cached.([]Team); ok {
 			logInfo(ctx, "Retrieved top teams data from memory cache", "dataset_id", datasetID, "limit", limit)
